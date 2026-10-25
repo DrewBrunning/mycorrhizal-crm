@@ -19,19 +19,18 @@ import org.junit.AssumptionViolatedException
 const val REQUIRE_REFERENCES_ARG = "requireReferences"
 
 /** True when [value] is the instrumentation-argument spelling of "yes" (case-insensitive `true`). */
-internal fun isRequireReferences(value: String?): Boolean = value?.trim().equals("true", ignoreCase = true)
+internal fun isRequireReferences(value: String?): Boolean = value?.trim().equals(
+    "true",
+    ignoreCase = true
+)
 
 /** Core decision, argument-injected so it is JVM-testable. */
-internal fun assumeOrFailInCi(
-    message: String,
-    condition: Boolean,
-    requireReferences: Boolean,
-) {
+internal fun assumeOrFailInCi(message: String, condition: Boolean, requireReferences: Boolean) {
     if (condition) return
     if (requireReferences) {
         throw AssertionError(
             "$message (requireReferences=true: this dependency is always provided in CI, " +
-                "so this is a failure, not a skip)",
+                "so this is a failure, not a skip)"
         )
     }
     // A JUnit skip: byte-for-byte what assumeTrue(message, false) does, but
@@ -41,15 +40,12 @@ internal fun assumeOrFailInCi(
 }
 
 /** Reads `requireReferences` from the running instrumentation's arguments. */
-private fun requireReferencesFromInstrumentation(): Boolean =
-    isRequireReferences(
-        androidx.test.platform.app.InstrumentationRegistry
-            .getArguments()
-            .getString(REQUIRE_REFERENCES_ARG),
-    )
+private fun requireReferencesFromInstrumentation(): Boolean = isRequireReferences(
+    androidx.test.platform.app.InstrumentationRegistry
+        .getArguments()
+        .getString(REQUIRE_REFERENCES_ARG)
+)
 
 /** Skip locally, fail in CI (`requireReferences=true`) when [condition] is false. */
-fun assumeOrFailInCi(
-    message: String,
-    condition: Boolean,
-) = assumeOrFailInCi(message, condition, requireReferencesFromInstrumentation())
+fun assumeOrFailInCi(message: String, condition: Boolean) =
+    assumeOrFailInCi(message, condition, requireReferencesFromInstrumentation())

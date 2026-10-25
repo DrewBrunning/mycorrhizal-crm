@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.network
 
+import java.util.concurrent.atomic.AtomicInteger
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.mockwebserver.MockResponse
@@ -8,7 +9,6 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
-import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Issue #1826: an authenticated 403 from the configured server signals
@@ -31,10 +31,14 @@ class ForbiddenInterceptorTest {
         server.shutdown()
     }
 
-    private fun client(notifier: ForbiddenNotifier, baseUrl: String = server.url("/").toString()): OkHttpClient =
-        OkHttpClient.Builder()
-            .addInterceptor(ForbiddenInterceptor(notifier, BaseUrlProvider { baseUrl }))
-            .build()
+    private fun client(
+        notifier: ForbiddenNotifier,
+        baseUrl: String = server.url(
+            "/"
+        ).toString()
+    ): OkHttpClient = OkHttpClient.Builder()
+        .addInterceptor(ForbiddenInterceptor(notifier, BaseUrlProvider { baseUrl }))
+        .build()
 
     private fun counted(): Pair<ForbiddenNotifier, AtomicInteger> {
         val notifier = ForbiddenNotifier()
@@ -43,10 +47,11 @@ class ForbiddenInterceptorTest {
         return notifier to signals
     }
 
-    private fun get(client: OkHttpClient, bearer: String? = "t1") =
-        client.newCall(
-            Request.Builder().url(server.url("/x")).apply { bearer?.let { header("Authorization", "Bearer $it") } }.build(),
-        ).execute()
+    private fun get(client: OkHttpClient, bearer: String? = "t1") = client.newCall(
+        Request.Builder().url(
+            server.url("/x")
+        ).apply { bearer?.let { header("Authorization", "Bearer $it") } }.build()
+    ).execute()
 
     @Test
     fun `an authenticated 403 signals forbidden`() {
@@ -130,7 +135,7 @@ class ForbiddenInterceptorTest {
         val client = NetworkFactory.okHttpClient(
             tokenProvider = TokenProvider { "t1" },
             baseUrlProvider = baseUrl,
-            forbiddenInterceptor = ForbiddenInterceptor(notifier, baseUrl),
+            forbiddenInterceptor = ForbiddenInterceptor(notifier, baseUrl)
         )
         server.enqueue(MockResponse().setResponseCode(403))
 

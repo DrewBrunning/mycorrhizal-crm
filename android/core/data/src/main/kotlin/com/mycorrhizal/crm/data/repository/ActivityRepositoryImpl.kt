@@ -4,8 +4,8 @@ import com.mycorrhizal.crm.data.local.CachedActivity
 import com.mycorrhizal.crm.data.local.CachedActivityDao
 import com.mycorrhizal.crm.domain.repository.ActivityRepository
 import com.mycorrhizal.crm.domain.repository.ContactActivitiesPage
-import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ActivitiesPage
+import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ActivityInput
 import com.mycorrhizal.crm.network.ApiClient
 import javax.inject.Inject
@@ -18,7 +18,7 @@ import javax.inject.Inject
  */
 class ActivityRepositoryImpl @Inject constructor(
     private val apiClient: ApiClient,
-    private val dao: CachedActivityDao,
+    private val dao: CachedActivityDao
 ) : ActivityRepository {
 
     override suspend fun listForContact(
@@ -27,18 +27,34 @@ class ActivityRepositoryImpl @Inject constructor(
         limit: Int?,
         search: String?,
         fromDate: String?,
-        toDate: String?,
+        toDate: String?
     ): Result<ContactActivitiesPage> {
-        val result = apiClient.listContactActivities(contactId, cursor, limit, search, fromDate, toDate)
+        val result = apiClient.listContactActivities(
+            contactId,
+            cursor,
+            limit,
+            search,
+            fromDate,
+            toDate
+        )
         val response = result.getOrNull()
         if (response != null) {
             dao.upsertAll(response.activities.map { it.toCached() })
         }
-        return result.map { response -> ContactActivitiesPage(activities = response.activities, nextCursor = response.nextCursor) }
+        return result.map { response ->
+            ContactActivitiesPage(
+                activities = response.activities,
+                nextCursor = response.nextCursor
+            )
+        }
     }
 
     override suspend fun listAll(cursor: String?, limit: Int?): Result<ActivitiesPage> {
-        val result = apiClient.listActivities(cursor = cursor, limit = limit, includeContacts = true)
+        val result = apiClient.listActivities(
+            cursor = cursor,
+            limit = limit,
+            includeContacts = true
+        )
         result.getOrNull()?.let { page -> dao.upsertAll(page.activities.map { it.toCached() }) }
         return result
     }
@@ -70,6 +86,6 @@ class ActivityRepositoryImpl @Inject constructor(
         location = location,
         date = date,
         type = type,
-        deleted = deleted,
+        deleted = deleted
     )
 }

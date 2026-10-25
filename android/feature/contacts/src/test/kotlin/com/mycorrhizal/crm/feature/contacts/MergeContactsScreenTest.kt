@@ -2,7 +2,6 @@ package com.mycorrhizal.crm.feature.contacts
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
-import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsToggleable
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -34,7 +33,7 @@ class MergeContactsScreenTest {
     private fun setContent(
         uiState: MergeUiState,
         onPick: (ContactSummary) -> Unit = {},
-        onResolve: (String, String) -> Unit = { _, _ -> },
+        onResolve: (String, String) -> Unit = { _, _ -> }
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -42,7 +41,7 @@ class MergeContactsScreenTest {
                     uiState = uiState,
                     onBack = {},
                     onPick = onPick,
-                    onResolve = onResolve,
+                    onResolve = onResolve
                 )
             }
         }
@@ -65,10 +64,10 @@ class MergeContactsScreenTest {
                 searchQuery = "Dana",
                 searchResults = listOf(
                     ContactSummary(id = 5, uid = "uid-5", fn = "Dana White"),
-                    ContactSummary(id = 7, uid = "uid-7", fn = "Dana Brown"),
-                ),
+                    ContactSummary(id = 7, uid = "uid-7", fn = "Dana Brown")
+                )
             ),
-            onPick = { picked = it },
+            onPick = { picked = it }
         )
 
         composeTestRule.onNodeWithText("Dana White").assertIsDisplayed()
@@ -83,11 +82,13 @@ class MergeContactsScreenTest {
             MergeUiState(
                 keepId = 1,
                 mergeId = 5,
-                pickedOther = ContactSummary(id = 5, uid = "uid-5", fn = "Dana White"),
-            ),
+                pickedOther = ContactSummary(id = 5, uid = "uid-5", fn = "Dana White")
+            )
         )
 
-        composeTestRule.onNodeWithText("Will merge Dana White into the kept contact.").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Will merge Dana White into the kept contact."
+        ).assertIsDisplayed()
     }
 
     @Test
@@ -97,8 +98,8 @@ class MergeContactsScreenTest {
                 keepId = 1,
                 mergeId = 5,
                 pickedOther = ContactSummary(id = 5, uid = "uid-5", fn = "Dana White"),
-                isLoading = true,
-            ),
+                isLoading = true
+            )
         )
 
         composeTestRule.onNodeWithTag("merge-preview-loading").assertIsDisplayed()
@@ -111,7 +112,8 @@ class MergeContactsScreenTest {
                 keepId = 1,
                 mergeId = 2,
                 preview = ContactMergePreviewResponse(
-                    keepId = 1, mergeId = 2,
+                    keepId = 1,
+                    mergeId = 2,
                     resolution = ContactMergeResolution(),
                     associationCounts = ContactMergeAssociationCounts(
                         notes = 3,
@@ -122,21 +124,27 @@ class MergeContactsScreenTest {
                         lifeEvents = 2,
                         fieldValues = 1,
                         contactSyncLinks = 1,
-                        attachments = 1,
-                    ),
-                ),
-            ),
+                        attachments = 1
+                    )
+                )
+            )
         )
 
-        composeTestRule.onNodeWithText("Will move to the kept contact:").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Will move to the kept contact:"
+        ).performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("3 notes").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("2 relationship edges").performScrollTo().assertIsDisplayed()
         // The categories this ticket said were missing from Android's breakdown:
         composeTestRule.onNodeWithText("1 circle memberships").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("1 household memberships").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "1 household memberships"
+        ).performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("4 tags").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("2 life events").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("1 custom field values").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "1 custom field values"
+        ).performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("1 sync links").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("1 attachments").performScrollTo().assertIsDisplayed()
     }
@@ -148,11 +156,12 @@ class MergeContactsScreenTest {
                 keepId = 1,
                 mergeId = 2,
                 preview = ContactMergePreviewResponse(
-                    keepId = 1, mergeId = 2,
+                    keepId = 1,
+                    mergeId = 2,
                     resolution = ContactMergeResolution(),
-                    associationCounts = ContactMergeAssociationCounts(),
-                ),
-            ),
+                    associationCounts = ContactMergeAssociationCounts()
+                )
+            )
         )
 
         composeTestRule.onNodeWithText("Nothing to move.").performScrollTo().assertIsDisplayed()
@@ -167,28 +176,34 @@ class MergeContactsScreenTest {
                 keepId = 1,
                 mergeId = 2,
                 preview = ContactMergePreviewResponse(
-                    keepId = 1, mergeId = 2,
+                    keepId = 1,
+                    mergeId = 2,
                     resolution = ContactMergeResolution(
                         conflicts = listOf(
                             ContactMergeFieldConflict(
                                 field = "nickname",
                                 label = "Nickname",
                                 keeperValue = "Andy",
-                                loserValue = "Drew",
-                            ),
-                        ),
+                                loserValue = "Drew"
+                            )
+                        )
                     ),
-                    associationCounts = ContactMergeAssociationCounts(),
-                ),
+                    associationCounts = ContactMergeAssociationCounts()
+                )
             ),
-            onResolve = { field, value -> resolvedField = field; resolvedValue = value },
+            onResolve = { field, value ->
+                resolvedField = field
+                resolvedValue = value
+            }
         )
 
         // #199: Modifier.toggleable on the row merges the option value into
         // the checkbox's own accessible name -- previously an unnamed
         // Checkbox sat in a row whose own .clickable carried no role/state at
         // all, so TalkBack announced neither.
-        composeTestRule.onNodeWithText("Drew").performScrollTo().assertIsToggleable().assertIsOff().performClick()
+        composeTestRule.onNodeWithText(
+            "Drew"
+        ).performScrollTo().assertIsToggleable().assertIsOff().performClick()
         assertEquals("nickname", resolvedField)
         assertEquals("Drew", resolvedValue)
     }
@@ -203,11 +218,13 @@ class MergeContactsScreenTest {
                 MergeContactsScreenContent(
                     uiState = MergeUiState(keepId = 1, mergeId = 2),
                     onBack = {},
-                    otherName = "Dan White",
+                    otherName = "Dan White"
                 )
             }
         }
 
-        composeTestRule.onNodeWithText("Will merge Dan White into the kept contact.").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Will merge Dan White into the kept contact."
+        ).assertIsDisplayed()
     }
 }

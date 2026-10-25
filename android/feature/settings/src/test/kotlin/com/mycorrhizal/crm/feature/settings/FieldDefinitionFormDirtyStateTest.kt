@@ -25,7 +25,9 @@ class FieldDefinitionFormDirtyStateTest {
     }
 
     @Test
-    fun `a new field form starts clean, becomes dirty, and returns to clean`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a new field form starts clean, becomes dirty, and returns to clean`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = FieldDefinitionFormViewModel(repository, SavedStateHandle())
         advanceUntilIdle()
         assertFalse(vm.uiState.value.isDirty)
@@ -50,7 +52,9 @@ class FieldDefinitionFormDirtyStateTest {
     }
 
     @Test
-    fun `a loaded field edit starts clean, and the key stays read-only and clean`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a loaded field edit starts clean, and the key stays read-only and clean`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.get("d1") } returns Result.success(
             FieldDefinition(
                 id = "d1",
@@ -59,10 +63,13 @@ class FieldDefinitionFormDirtyStateTest {
                 type = "enum",
                 constraints = FieldConstraints(values = listOf("Latte"), multi = true),
                 projection = "vcard:X-COFFEE",
-                sensitivity = "private",
-            ),
+                sensitivity = "private"
+            )
         )
-        val vm = FieldDefinitionFormViewModel(repository, SavedStateHandle(mapOf("fieldDefinitionId" to "d1")))
+        val vm = FieldDefinitionFormViewModel(
+            repository,
+            SavedStateHandle(mapOf("fieldDefinitionId" to "d1"))
+        )
         advanceUntilIdle()
 
         assertFalse(vm.uiState.value.isDirty)

@@ -4,20 +4,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import com.mycorrhizal.crm.ui.components.FormScaffold
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.swipeUp
-import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.performTextInput
 import com.mycorrhizal.crm.model.network.ContactFlat
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.ui.components.FormScaffold
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -44,7 +44,7 @@ class ActivityFormScreenTest {
         onAddParticipant: (ContactSummary) -> Unit = {},
         onRemoveParticipant: (Int) -> Unit = {},
         onDateChange: (String) -> Unit = {},
-        onSave: () -> Unit = {},
+        onSave: () -> Unit = {}
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -54,7 +54,7 @@ class ActivityFormScreenTest {
                     saveLabel = if (state.isEdit) "Save changes" else "Create activity",
                     isSaving = state.isSaving,
                     onSave = onSave,
-                    snackbarHostState = remember { SnackbarHostState() },
+                    snackbarHostState = remember { SnackbarHostState() }
                 ) { padding ->
                     ActivityFormContent(
                         state = state,
@@ -66,7 +66,7 @@ class ActivityFormScreenTest {
                         onContactSearchChange = onSearchChange,
                         onAddParticipant = onAddParticipant,
                         onRemoveParticipant = onRemoveParticipant,
-                        modifier = Modifier.padding(padding),
+                        modifier = Modifier.padding(padding)
                     )
                 }
             }
@@ -79,9 +79,12 @@ class ActivityFormScreenTest {
         setContent(
             ActivityFormState(
                 contactId = 5,
-                participants = listOf(ContactFlat(id = 5, firstname = "Dana"), ContactFlat(id = 9, firstname = "Bob")),
+                participants = listOf(
+                    ContactFlat(id = 5, firstname = "Dana"),
+                    ContactFlat(id = 9, firstname = "Bob")
+                )
             ),
-            onRemoveParticipant = { removed = it },
+            onRemoveParticipant = { removed = it }
         )
         composeTestRule.onNodeWithText("Dana").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Bob").performScrollTo().assertIsDisplayed()
@@ -95,9 +98,11 @@ class ActivityFormScreenTest {
         var query = ""
         setContent(
             ActivityFormState(contactId = 5),
-            onSearchChange = { query = it },
+            onSearchChange = { query = it }
         )
-        composeTestRule.onNodeWithText("Add participants").performScrollTo().performTextInput("dana")
+        composeTestRule.onNodeWithText(
+            "Add participants"
+        ).performScrollTo().performTextInput("dana")
         assertEquals("dana", query)
     }
 
@@ -108,9 +113,11 @@ class ActivityFormScreenTest {
             ActivityFormState(
                 contactId = 5,
                 contactSearchQuery = "dana",
-                contactSearchResults = listOf(ContactSummary(id = 9, firstname = "Dana", lastname = "Lee")),
+                contactSearchResults = listOf(
+                    ContactSummary(id = 9, firstname = "Dana", lastname = "Lee")
+                )
             ),
-            onAddParticipant = { added = it },
+            onAddParticipant = { added = it }
         )
         composeTestRule.onNodeWithText("Dana Lee").performScrollTo().performClick()
         assertEquals(9, added?.id)
@@ -121,7 +128,7 @@ class ActivityFormScreenTest {
         var saved = false
         setContent(
             ActivityFormState(contactId = 5, title = "Lunch"),
-            onSave = { saved = true },
+            onSave = { saved = true }
         )
         composeTestRule.onNodeWithText("Create activity").performClick()
         assertEquals(true, saved)
@@ -138,7 +145,10 @@ class ActivityFormScreenTest {
         composeTestRule.onNodeWithText("Create activity").assertIsDisplayed()
         composeTestRule.onNode(hasScrollAction()).performTouchInput { swipeUp() }
         composeTestRule.onNodeWithText("Create activity").assertIsDisplayed()
-        composeTestRule.onNode(hasScrollAction()).performTouchInput { swipeDown(); swipeDown() }
+        composeTestRule.onNode(hasScrollAction()).performTouchInput {
+            swipeDown()
+            swipeDown()
+        }
         composeTestRule.onNodeWithText("Create activity").assertIsDisplayed()
         composeTestRule.onNodeWithText("Create activity").performClick()
         assertEquals(true, saved)
@@ -152,7 +162,7 @@ class ActivityFormScreenTest {
         var picked: String? = null
         setContent(
             ActivityFormState(contactId = 5, title = "Lunch", date = "2026-08-10"),
-            onDateChange = { picked = it },
+            onDateChange = { picked = it }
         )
 
         composeTestRule.onNodeWithText("10.08.2026").assertIsDisplayed()

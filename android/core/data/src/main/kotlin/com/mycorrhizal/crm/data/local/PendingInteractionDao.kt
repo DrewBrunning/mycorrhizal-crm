@@ -38,7 +38,7 @@ interface PendingInteractionDao {
     @Query(
         "DELETE FROM pending_interactions WHERE synced = 0 AND id NOT IN " +
             "(SELECT id FROM pending_interactions WHERE synced = 0 " +
-            "ORDER BY timestampMillis DESC, id DESC LIMIT :keep)",
+            "ORDER BY timestampMillis DESC, id DESC LIMIT :keep)"
     )
     suspend fun trimUnsynced(keep: Int)
 
@@ -50,10 +50,16 @@ interface PendingInteractionDao {
      */
     @Query(
         "SELECT COUNT(*) FROM pending_interactions WHERE kind = :kind " +
-            "AND phoneNumber = :phoneNumber AND timestampMillis = :timestampMillis",
+            "AND phoneNumber = :phoneNumber AND timestampMillis = :timestampMillis"
     )
     suspend fun countExact(kind: String, phoneNumber: String, timestampMillis: Long): Int
 
-    @Query("SELECT * FROM pending_interactions WHERE kind = :kind AND phoneNumber = :phoneNumber AND timestampMillis > :sinceMillis ORDER BY timestampMillis DESC LIMIT 1")
-    suspend fun findRecent(kind: String, phoneNumber: String, sinceMillis: Long): PendingInteraction?
+    @Query(
+        "SELECT * FROM pending_interactions WHERE kind = :kind AND phoneNumber = :phoneNumber AND timestampMillis > :sinceMillis ORDER BY timestampMillis DESC LIMIT 1"
+    )
+    suspend fun findRecent(
+        kind: String,
+        phoneNumber: String,
+        sinceMillis: Long
+    ): PendingInteraction?
 }

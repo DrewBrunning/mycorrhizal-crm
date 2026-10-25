@@ -61,10 +61,7 @@ import java.time.format.FormatStyle
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PasskeysScreen(
-    onBack: () -> Unit,
-    viewModel: PasskeysViewModel = hiltViewModel(),
-) {
+fun PasskeysScreen(onBack: () -> Unit, viewModel: PasskeysViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     // The provider UI launches from this Activity context; it is handed to the
     // ViewModel for one call and never retained.
@@ -75,19 +72,25 @@ fun PasskeysScreen(
             TopAppBar(
                 navigationIcon = {
                     AccessibleIconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back)
+                        )
                     }
                 },
                 title = {
-                    Text(stringResource(R.string.settings_passkeys_title), style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        stringResource(R.string.settings_passkeys_title),
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
-        },
+        }
     ) { padding ->
         PasskeysContent(
             state = state,
@@ -100,7 +103,7 @@ fun PasskeysScreen(
             onRemoveWithCode = viewModel::removeWithCode,
             onRemoveWithPasskey = { viewModel.removeWithAnotherPasskey(context) },
             onDismissRecoveryCodes = viewModel::dismissRecoveryCodes,
-            modifier = Modifier.padding(padding),
+            modifier = Modifier.padding(padding)
         )
     }
 }
@@ -117,14 +120,14 @@ fun PasskeysContent(
     onRemoveWithCode: (String) -> Unit,
     onRemoveWithPasskey: () -> Unit,
     onDismissRecoveryCodes: () -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         if (state.loading) {
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -134,21 +137,31 @@ fun PasskeysContent(
             Text(
                 text = stringResource(R.string.settings_passkeys_description),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             if (state.passkeys.isEmpty()) {
-                Text(stringResource(R.string.settings_passkeys_empty), style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    stringResource(R.string.settings_passkeys_empty),
+                    style = MaterialTheme.typography.bodyMedium
+                )
             } else {
                 state.passkeys.forEachIndexed { index, passkey ->
                     if (index > 0) HorizontalDivider()
-                    PasskeyRow(passkey = passkey, enabled = !state.busy, onRemove = { onRequestRemove(passkey) })
+                    PasskeyRow(
+                        passkey = passkey,
+                        enabled = !state.busy,
+                        onRemove = { onRequestRemove(passkey) }
+                    )
                 }
             }
 
             when {
                 state.blockedText != null -> InfoText(state.blockedText)
+
                 state.blockedRes != null -> InfoText(stringResource(state.blockedRes))
+
                 !state.available -> InfoText(stringResource(R.string.settings_passkeys_unavailable))
+
                 else -> {
                     val addingLabel = stringResource(R.string.a11y_state_saving)
                     Button(
@@ -156,7 +169,7 @@ fun PasskeysContent(
                         enabled = !state.busy,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .semantics { if (state.busy) stateDescription = addingLabel },
+                            .semantics { if (state.busy) stateDescription = addingLabel }
                     ) {
                         Text(stringResource(R.string.settings_passkeys_add_button))
                     }
@@ -169,20 +182,28 @@ fun PasskeysContent(
                 text = stringResource(res),
                 color = MaterialTheme.colorScheme.tertiary,
                 style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
             )
         }
 
         // A dialog-level error is shown inside its dialog; only surface it here
         // when none is up, so a live-region read doesn't announce it twice.
         val dialogOpen = state.adding || state.removing != null || state.recoveryCodes != null
-        val errorText = if (dialogOpen) null else state.errorRes?.let { stringResource(it) } ?: state.error
+        val errorText = if (dialogOpen) {
+            null
+        } else {
+            state.errorRes?.let {
+                stringResource(
+                    it
+                )
+            } ?: state.error
+        }
         errorText?.let { text ->
             Text(
                 text = text,
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
             )
         }
     }
@@ -196,7 +217,7 @@ fun PasskeysContent(
             errorRes = state.errorRes,
             onConfirm = onConfirmAdd,
             onUseExistingPasskey = onAddWithPasskey,
-            onDismiss = onDismissAdd,
+            onDismiss = onDismissAdd
         )
     }
 
@@ -209,7 +230,7 @@ fun PasskeysContent(
             errorRes = state.errorRes,
             onConfirmCode = onRemoveWithCode,
             onUseAnotherPasskey = onRemoveWithPasskey,
-            onDismiss = onDismissRemove,
+            onDismiss = onDismissRemove
         )
     }
 
@@ -223,7 +244,7 @@ private fun InfoText(text: String) {
     Text(
         text = text,
         style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
     )
 }
 
@@ -237,22 +258,25 @@ private fun PasskeyRow(passkey: WebAuthnCredential, enabled: Boolean, onRemove: 
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(passkey.name, style = MaterialTheme.typography.bodyLarge)
             Text(
                 supporting,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         TextButton(
             onClick = onRemove,
             enabled = enabled,
-            modifier = Modifier.semantics { contentDescription = removeDescription },
+            modifier = Modifier.semantics { contentDescription = removeDescription }
         ) {
-            Text(stringResource(R.string.settings_passkeys_remove_button), color = MaterialTheme.colorScheme.error)
+            Text(
+                stringResource(R.string.settings_passkeys_remove_button),
+                color = MaterialTheme.colorScheme.error
+            )
         }
     }
 }
@@ -266,7 +290,7 @@ internal fun AddPasskeyDialog(
     errorRes: Int?,
     onConfirm: (name: String, proofCode: String) -> Unit,
     onUseExistingPasskey: (name: String) -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     var name by remember { mutableStateOf("") }
     // Issue #1337: once the account holds a second factor, adding another needs
@@ -279,7 +303,7 @@ internal fun AddPasskeyDialog(
             // Scrolls: the proof fields (#1337) make this dialog tall on small screens.
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 OutlinedTextField(
                     value = name,
@@ -288,13 +312,13 @@ internal fun AddPasskeyDialog(
                     enabled = !busy,
                     label = { Text(stringResource(R.string.settings_passkeys_name_label)) },
                     supportingText = { Text(stringResource(R.string.settings_passkeys_name_help)) },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
                 )
                 if (needsProof) {
                     Text(
                         text = stringResource(R.string.settings_passkeys_add_proof_description),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     OutlinedTextField(
                         value = code,
@@ -303,30 +327,45 @@ internal fun AddPasskeyDialog(
                         enabled = !busy,
                         label = { Text(stringResource(R.string.settings_passkeys_code_label)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth()
                     )
                     if (canProveWithPasskey) {
                         OutlinedButton(
                             onClick = { onUseExistingPasskey(name) },
                             enabled = !busy,
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(stringResource(R.string.settings_passkeys_add_use_existing))
                         }
                     }
                 }
                 if (busy) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         CircularProgressIndicator(modifier = Modifier.size(18.dp))
-                        Text(stringResource(R.string.settings_passkeys_adding), style = MaterialTheme.typography.bodySmall)
+                        Text(
+                            stringResource(R.string.settings_passkeys_adding),
+                            style = MaterialTheme.typography.bodySmall
+                        )
                     }
                 }
                 val message = errorRes?.let { stringResource(it) } ?: error
-                message?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                message?.let {
+                    Text(
+                        it,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             }
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(name, code) }, enabled = !busy && (!needsProof || code.isNotBlank())) {
+            TextButton(
+                onClick = { onConfirm(name, code) },
+                enabled = !busy && (!needsProof || code.isNotBlank())
+            ) {
                 Text(stringResource(R.string.settings_passkeys_add_confirm))
             }
         },
@@ -334,7 +373,7 @@ internal fun AddPasskeyDialog(
             TextButton(onClick = onDismiss, enabled = !busy) {
                 Text(stringResource(R.string.settings_cancel))
             }
-        },
+        }
     )
 }
 
@@ -348,7 +387,7 @@ internal fun RemovePasskeyDialog(
     errorRes: Int?,
     onConfirmCode: (String) -> Unit,
     onUseAnotherPasskey: () -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     var code by remember { mutableStateOf("") }
     AlertDialog(
@@ -357,9 +396,12 @@ internal fun RemovePasskeyDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    text = stringResource(R.string.settings_passkeys_remove_description, target.name),
+                    text = stringResource(
+                        R.string.settings_passkeys_remove_description,
+                        target.name
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 OutlinedTextField(
                     value = code,
@@ -368,14 +410,24 @@ internal fun RemovePasskeyDialog(
                     enabled = !busy,
                     label = { Text(stringResource(R.string.settings_passkeys_code_label)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
                 )
                 val message = errorRes?.let { stringResource(it) } ?: error
-                message?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                message?.let {
+                    Text(
+                        it,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
                 // Hidden (not merely disabled) when no OTHER passkey exists: the
                 // server would answer 409, and the sole passkey cannot vouch for itself.
                 if (canProveWithPasskey) {
-                    OutlinedButton(onClick = onUseAnotherPasskey, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+                    OutlinedButton(
+                        onClick = onUseAnotherPasskey,
+                        enabled = !busy,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         Text(stringResource(R.string.settings_passkeys_use_another))
                     }
                 }
@@ -383,21 +435,26 @@ internal fun RemovePasskeyDialog(
         },
         confirmButton = {
             TextButton(onClick = { onConfirmCode(code) }, enabled = !busy && code.isNotBlank()) {
-                Text(stringResource(if (busy) R.string.settings_passkeys_remove_submitting else R.string.settings_passkeys_remove_confirm))
+                Text(
+                    stringResource(
+                        if (busy) R.string.settings_passkeys_remove_submitting else R.string.settings_passkeys_remove_confirm
+                    )
+                )
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss, enabled = !busy) {
                 Text(stringResource(R.string.settings_cancel))
             }
-        },
+        }
     )
 }
 
 private const val MAX_NAME_LENGTH = 100
 
 /** Medium localized date; falls back to the raw server string if it is not an ISO timestamp. */
-internal fun formatPasskeyDate(iso: String): String =
-    runCatching {
-        OffsetDateTime.parse(iso).toLocalDate().format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))
-    }.getOrDefault(iso)
+internal fun formatPasskeyDate(iso: String): String = runCatching {
+    OffsetDateTime.parse(
+        iso
+    ).toLocalDate().format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))
+}.getOrDefault(iso)

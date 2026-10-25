@@ -37,15 +37,22 @@ class PasskeysViewModelTest {
     private val client = FakePasskeyClient()
 
     private val phone = WebAuthnCredential("id-phone", "Phone", "2026-09-01T10:00:00Z", null)
-    private val key = WebAuthnCredential("id-key", "YubiKey", "2026-09-02T10:00:00Z", "2026-09-03T10:00:00Z")
+    private val key = WebAuthnCredential(
+        "id-key",
+        "YubiKey",
+        "2026-09-02T10:00:00Z",
+        "2026-09-03T10:00:00Z"
+    )
 
     private fun TestScope.vm(
         list: List<WebAuthnCredential> = listOf(phone),
         available: Boolean = true,
-        totpEnabled: Boolean = false,
+        totpEnabled: Boolean = false
     ): PasskeysViewModel {
         coEvery { repo.listPasskeys() } returns Result.success(list)
-        coEvery { auth.getTwoFactorStatus() } returns Result.success(TwoFactorStatusResponse(enabled = totpEnabled))
+        coEvery { auth.getTwoFactorStatus() } returns Result.success(
+            TwoFactorStatusResponse(enabled = totpEnabled)
+        )
         val vm = PasskeysViewModel(repo, client, auth) { available }
         advanceUntilIdle()
         return vm
@@ -54,7 +61,9 @@ class PasskeysViewModelTest {
     // --- load / gate ---
 
     @Test
-    fun `load lists the credentials and reports the gate`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `load lists the credentials and reports the gate`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = vm(listOf(phone, key))
         val state = vm.uiState.value
         assertFalse(state.loading)
@@ -75,7 +84,9 @@ class PasskeysViewModelTest {
     @Test
     fun `a list failure surfaces the message`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { repo.listPasskeys() } returns Result.failure(ApiError.Server(500, "boom"))
-        coEvery { auth.getTwoFactorStatus() } returns Result.success(TwoFactorStatusResponse(enabled = false))
+        coEvery { auth.getTwoFactorStatus() } returns Result.success(
+            TwoFactorStatusResponse(enabled = false)
+        )
         val vm = PasskeysViewModel(repo, client, auth) { true }
         advanceUntilIdle()
         assertFalse(vm.uiState.value.loading)
@@ -88,10 +99,17 @@ class PasskeysViewModelTest {
     fun `adding a passkey runs begin, the ceremony and finish then refreshes the list`() =
         runTest(mainDispatcherRule.testDispatcher) {
             val vm = vm()
-            coEvery { repo.beginRegistration("Laptop", SecondFactorProof.Code("123456")) } returns Result.success("""{"publicKey":{"challenge":"c"}}""")
+            coEvery {
+                repo.beginRegistration(
+                    "Laptop",
+                    SecondFactorProof.Code("123456")
+                )
+            } returns Result.success("""{"publicKey":{"challenge":"c"}}""")
             client.createResult = PasskeyResult.Success("""{"id":"att"}""")
             coEvery { repo.finishRegistration("""{"id":"att"}""") } returns
-                Result.success(WebAuthnRegisterResponse("new", "Laptop", "2026-09-29T10:00:00Z", emptyList()))
+                Result.success(
+                    WebAuthnRegisterResponse("new", "Laptop", "2026-09-29T10:00:00Z", emptyList())
+                )
             coEvery { repo.listPasskeys() } returns Result.success(listOf(phone, key))
 
             vm.startAdd()
@@ -114,7 +132,14 @@ class PasskeysViewModelTest {
             val vm = vm(list = emptyList())
             coEvery { repo.beginRegistration(any(), any()) } returns Result.success("{}")
             coEvery { repo.finishRegistration(any()) } returns
-                Result.success(WebAuthnRegisterResponse("new", "P", "2026-09-29T10:00:00Z", listOf("AAAAA-BBBBB-CCCCC")))
+                Result.success(
+                    WebAuthnRegisterResponse(
+                        "new",
+                        "P",
+                        "2026-09-29T10:00:00Z",
+                        listOf("AAAAA-BBBBB-CCCCC")
+                    )
+                )
 
             vm.addPasskey(context, "", "123456")
             advanceUntilIdle()
@@ -125,7 +150,9 @@ class PasskeysViewModelTest {
         }
 
     @Test
-    fun `a cancelled ceremony is silent and never calls finish`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a cancelled ceremony is silent and never calls finish`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = vm()
         coEvery { repo.beginRegistration(any(), any()) } returns Result.success("{}")
         client.createResult = PasskeyResult.Cancelled
@@ -145,7 +172,9 @@ class PasskeysViewModelTest {
     }
 
     @Test
-    fun `an unassociated server blocks enrollment persistently`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `an unassociated server blocks enrollment persistently`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = vm()
         coEvery { repo.beginRegistration(any(), any()) } returns Result.success("{}")
         client.createResult = PasskeyResult.NotAssociated
@@ -161,7 +190,9 @@ class PasskeysViewModelTest {
     }
 
     @Test
-    fun `a missing provider blocks enrollment persistently`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a missing provider blocks enrollment persistently`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = vm()
         coEvery { repo.beginRegistration(any(), any()) } returns Result.success("{}")
         client.createResult = PasskeyResult.NoProvider
@@ -197,7 +228,12 @@ class PasskeysViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             val vm = vm()
             val oidc = "Two-factor authentication is not available for accounts that sign in through an identity provider"
-            coEvery { repo.beginRegistration(any(), any()) } returns Result.failure(ApiError.Client(403, oidc))
+            coEvery {
+                repo.beginRegistration(
+                    any(),
+                    any()
+                )
+            } returns Result.failure(ApiError.Client(403, oidc))
 
             vm.addPasskey(context, "x", "123456")
             advanceUntilIdle()
@@ -212,7 +248,12 @@ class PasskeysViewModelTest {
     fun `other begin failures show the server message and keep enrollment available`() =
         runTest(mainDispatcherRule.testDispatcher) {
             val vm = vm()
-            coEvery { repo.beginRegistration(any(), any()) } returns Result.failure(ApiError.Client(409, "RP not configured"))
+            coEvery {
+                repo.beginRegistration(
+                    any(),
+                    any()
+                )
+            } returns Result.failure(ApiError.Client(409, "RP not configured"))
 
             vm.addPasskey(context, "x", "123456")
             advanceUntilIdle()
@@ -222,10 +263,16 @@ class PasskeysViewModelTest {
         }
 
     @Test
-    fun `a rejected attestation shows the server message`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a rejected attestation shows the server message`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = vm()
         coEvery { repo.beginRegistration(any(), any()) } returns Result.success("{}")
-        coEvery { repo.finishRegistration(any()) } returns Result.failure(ApiError.Client(400, "attestation invalid"))
+        coEvery {
+            repo.finishRegistration(
+                any()
+            )
+        } returns Result.failure(ApiError.Client(400, "attestation invalid"))
 
         vm.addPasskey(context, "x", "123456")
         advanceUntilIdle()
@@ -237,7 +284,9 @@ class PasskeysViewModelTest {
     // --- removal ---
 
     @Test
-    fun `removal with a code succeeds and refreshes`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `removal with a code succeeds and refreshes`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = vm(listOf(phone, key))
         coEvery { repo.removeWithCode("id-phone", "123456") } returns Result.success(Unit)
         coEvery { repo.listPasskeys() } returns Result.success(listOf(key))
@@ -253,7 +302,9 @@ class PasskeysViewModelTest {
     }
 
     @Test
-    fun `removing the last factor keeps the session and shows success`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `removing the last factor keeps the session and shows success`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         // The repository adopts the re-issued token (#1338); the view model must
         // not sign the user out. `auth` is a strict mock, so any logout call would throw.
         val vm = vm(listOf(phone))
@@ -281,9 +332,16 @@ class PasskeysViewModelTest {
     }
 
     @Test
-    fun `a rejected proof keeps the dialog with the localized message`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a rejected proof keeps the dialog with the localized message`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = vm(listOf(phone, key))
-        coEvery { repo.removeWithCode(any(), any()) } returns Result.failure(ApiError.Client(400, "bad"))
+        coEvery {
+            repo.removeWithCode(
+                any(),
+                any()
+            )
+        } returns Result.failure(ApiError.Client(400, "bad"))
 
         vm.requestRemove(phone)
         vm.removeWithCode("000000")
@@ -296,15 +354,26 @@ class PasskeysViewModelTest {
     }
 
     @Test
-    fun `404 and 409 show the server message verbatim`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `404 and 409 show the server message verbatim`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = vm(listOf(phone, key))
-        coEvery { repo.removeWithCode(any(), any()) } returns Result.failure(ApiError.Client(404, "Passkey not found"))
+        coEvery {
+            repo.removeWithCode(
+                any(),
+                any()
+            )
+        } returns Result.failure(ApiError.Client(404, "Passkey not found"))
         vm.requestRemove(phone)
         vm.removeWithCode("1")
         advanceUntilIdle()
         assertEquals("Passkey not found", vm.uiState.value.error)
 
-        coEvery { repo.beginProof(any()) } returns Result.failure(ApiError.Client(409, "No other passkey is registered"))
+        coEvery {
+            repo.beginProof(
+                any()
+            )
+        } returns Result.failure(ApiError.Client(409, "No other passkey is registered"))
         vm.removeWithAnotherPasskey(context)
         advanceUntilIdle()
         assertEquals("No other passkey is registered", vm.uiState.value.error)
@@ -315,9 +384,18 @@ class PasskeysViewModelTest {
     fun `removal by another passkey passes the removed id as exclude_id and sends the assertion`() =
         runTest(mainDispatcherRule.testDispatcher) {
             val vm = vm(listOf(phone, key))
-            coEvery { repo.beginProof("id-phone") } returns Result.success("""{"publicKey":{"challenge":"p"}}""")
+            coEvery {
+                repo.beginProof(
+                    "id-phone"
+                )
+            } returns Result.success("""{"publicKey":{"challenge":"p"}}""")
             client.getResult = PasskeyResult.Success("""{"id":"other-key"}""")
-            coEvery { repo.removeWithAssertion("id-phone", """{"id":"other-key"}""") } returns Result.success(Unit)
+            coEvery {
+                repo.removeWithAssertion(
+                    "id-phone",
+                    """{"id":"other-key"}"""
+                )
+            } returns Result.success(Unit)
             coEvery { repo.listPasskeys() } returns Result.success(listOf(key))
 
             vm.requestRemove(phone)
@@ -332,7 +410,9 @@ class PasskeysViewModelTest {
         }
 
     @Test
-    fun `the passkey proof is unavailable with only one passkey`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `the passkey proof is unavailable with only one passkey`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = vm(listOf(phone))
         vm.requestRemove(phone)
         assertFalse(vm.uiState.value.canProveWithPasskey)
@@ -343,14 +423,18 @@ class PasskeysViewModelTest {
     }
 
     @Test
-    fun `the passkey proof is unavailable behind a closed gate`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `the passkey proof is unavailable behind a closed gate`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = vm(listOf(phone, key), available = false)
         vm.requestRemove(phone)
         assertFalse(vm.uiState.value.canProveWithPasskey)
     }
 
     @Test
-    fun `cancelling the proof ceremony is silent and keeps the dialog`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `cancelling the proof ceremony is silent and keeps the dialog`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = vm(listOf(phone, key))
         coEvery { repo.beginProof(any()) } returns Result.success("{}")
         client.getResult = PasskeyResult.Cancelled
@@ -368,7 +452,9 @@ class PasskeysViewModelTest {
     }
 
     @Test
-    fun `proof ceremony outcomes map to their messages`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `proof ceremony outcomes map to their messages`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = vm(listOf(phone, key))
         coEvery { repo.beginProof(any()) } returns Result.success("{}")
         vm.requestRemove(phone)
@@ -378,7 +464,7 @@ class PasskeysViewModelTest {
             PasskeyResult.NotAssociated to R.string.settings_passkeys_not_associated,
             PasskeyResult.NoProvider to R.string.settings_passkeys_no_provider,
             PasskeyResult.Failed("x") to R.string.settings_passkeys_invalid_proof,
-            PasskeyResult.AlreadyRegistered to R.string.settings_passkeys_invalid_proof,
+            PasskeyResult.AlreadyRegistered to R.string.settings_passkeys_invalid_proof
         )
         for ((result, res) in expected) {
             client.getResult = result
@@ -390,10 +476,17 @@ class PasskeysViewModelTest {
     }
 
     @Test
-    fun `a rejected assertion shows the localized proof failure`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a rejected assertion shows the localized proof failure`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = vm(listOf(phone, key))
         coEvery { repo.beginProof(any()) } returns Result.success("{}")
-        coEvery { repo.removeWithAssertion(any(), any()) } returns Result.failure(ApiError.Client(400, "bad"))
+        coEvery {
+            repo.removeWithAssertion(
+                any(),
+                any()
+            )
+        } returns Result.failure(ApiError.Client(400, "bad"))
 
         vm.requestRemove(phone)
         vm.removeWithAnotherPasskey(context)
@@ -404,7 +497,9 @@ class PasskeysViewModelTest {
     }
 
     @Test
-    fun `dismissing dialogs and messages clears them`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `dismissing dialogs and messages clears them`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = vm()
         vm.startAdd()
         vm.dismissAdd()
@@ -437,11 +532,15 @@ class PasskeysViewModelTest {
         coEvery { repo.beginRegistration(any(), any()) } returns Result.success("{}")
         client.createResult = PasskeyResult.Success(attestation)
         coEvery { repo.finishRegistration(attestation) } returns
-            Result.success(WebAuthnRegisterResponse("new", "N", "2026-09-29T10:00:00Z", emptyList()))
+            Result.success(
+                WebAuthnRegisterResponse("new", "N", "2026-09-29T10:00:00Z", emptyList())
+            )
     }
 
     @Test
-    fun `the first passkey is enrolled with no proof`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `the first passkey is enrolled with no proof`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = vm(list = emptyList())
         assertFalse(vm.uiState.value.needsAddProof)
         enrollmentSucceeds()
@@ -483,7 +582,9 @@ class PasskeysViewModelTest {
     }
 
     @Test
-    fun `a TOTP-only account is asked for a proof too`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a TOTP-only account is asked for a proof too`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = vm(list = emptyList(), totpEnabled = true)
         assertTrue(vm.uiState.value.needsAddProof)
         assertFalse(vm.uiState.value.canProveAddWithPasskey)
@@ -500,7 +601,9 @@ class PasskeysViewModelTest {
     }
 
     @Test
-    fun `a failed status lookup does not block the list`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a failed status lookup does not block the list`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repo.listPasskeys() } returns Result.success(emptyList())
         coEvery { auth.getTwoFactorStatus() } returns Result.failure(ApiError.Server(500, "boom"))
         val vm = PasskeysViewModel(repo, client, auth) { true }
@@ -515,7 +618,12 @@ class PasskeysViewModelTest {
     fun `a rejected code keeps the dialog open with the localized message and creates nothing`() =
         runTest(mainDispatcherRule.testDispatcher) {
             val vm = vm()
-            coEvery { repo.beginRegistration(any(), any()) } returns Result.failure(ApiError.Client(400, "Invalid code"))
+            coEvery {
+                repo.beginRegistration(
+                    any(),
+                    any()
+                )
+            } returns Result.failure(ApiError.Client(400, "Invalid code"))
 
             vm.startAdd()
             vm.addPasskey(context, "x", "000000")
@@ -530,7 +638,9 @@ class PasskeysViewModelTest {
         }
 
     @Test
-    fun `a locked-out proof shows the server message`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a locked-out proof shows the server message`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = vm()
         coEvery { repo.beginRegistration(any(), any()) } returns
             Result.failure(ApiError.Client(429, "Account temporarily locked"))
@@ -544,7 +654,9 @@ class PasskeysViewModelTest {
     }
 
     @Test
-    fun `a 400 without a proof (bad name) shows the server message`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a 400 without a proof (bad name) shows the server message`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = vm(list = emptyList())
         coEvery { repo.beginRegistration(any(), any()) } returns
             Result.failure(ApiError.Client(400, "Name must be 100 characters or fewer"))
@@ -557,12 +669,18 @@ class PasskeysViewModelTest {
     }
 
     @Test
-    fun `adding can be proven with an existing passkey`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `adding can be proven with an existing passkey`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = vm(listOf(phone, key))
         assertFalse(vm.uiState.value.canProveAddWithPasskey) // dialog not open yet
         vm.startAdd()
         assertTrue(vm.uiState.value.canProveAddWithPasskey)
-        coEvery { repo.beginProof(null) } returns Result.success("""{"publicKey":{"challenge":"p"}}""")
+        coEvery {
+            repo.beginProof(
+                null
+            )
+        } returns Result.success("""{"publicKey":{"challenge":"p"}}""")
         client.getResult = PasskeyResult.Success("""{"id":"asserted"}""")
         enrollmentSucceeds()
 
@@ -570,7 +688,12 @@ class PasskeysViewModelTest {
         advanceUntilIdle()
 
         assertEquals(listOf("""{"publicKey":{"challenge":"p"}}"""), client.requested)
-        coVerify { repo.beginRegistration("Tablet", SecondFactorProof.Assertion("""{"id":"asserted"}""")) }
+        coVerify {
+            repo.beginRegistration(
+                "Tablet",
+                SecondFactorProof.Assertion("""{"id":"asserted"}""")
+            )
+        }
         assertEquals(R.string.settings_passkeys_add_success, vm.uiState.value.messageRes)
         assertFalse(vm.uiState.value.adding)
     }
@@ -624,7 +747,11 @@ class PasskeysViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             val vm = vm(listOf(phone))
             vm.startAdd()
-            coEvery { repo.beginProof(null) } returns Result.failure(ApiError.Client(409, "No passkey is registered"))
+            coEvery {
+                repo.beginProof(
+                    null
+                )
+            } returns Result.failure(ApiError.Client(409, "No passkey is registered"))
 
             vm.addPasskeyWithExistingPasskey(context, "x")
             advanceUntilIdle()
@@ -636,12 +763,19 @@ class PasskeysViewModelTest {
         }
 
     @Test
-    fun `a rejected assertion proof shows the localized message`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a rejected assertion proof shows the localized message`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = vm(listOf(phone))
         vm.startAdd()
         coEvery { repo.beginProof(null) } returns Result.success("{}")
         client.getResult = PasskeyResult.Success("""{"id":"asserted"}""")
-        coEvery { repo.beginRegistration(any(), any()) } returns Result.failure(ApiError.Client(400, "Invalid code"))
+        coEvery {
+            repo.beginRegistration(
+                any(),
+                any()
+            )
+        } returns Result.failure(ApiError.Client(400, "Invalid code"))
 
         vm.addPasskeyWithExistingPasskey(context, "x")
         advanceUntilIdle()

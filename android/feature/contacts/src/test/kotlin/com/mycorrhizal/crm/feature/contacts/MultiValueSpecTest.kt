@@ -37,12 +37,24 @@ class MultiValueSpecTest {
 
     @Test
     fun `email edits preserve id pref and label, write type to contexts, new rows have no default`() {
-        val loaded = Email(id = "e1", address = "a@b.c", contexts = listOf("work"), pref = 1, label = "custom")
+        val loaded = Email(
+            id = "e1",
+            address = "a@b.c",
+            contexts = listOf("work"),
+            pref = 1,
+            label = "custom"
+        )
         val edited = EmailSpec.withType(EmailSpec.withValue(loaded, "x@y.z"), "home")
         // The type writes to contexts[0] (web parity); label is X-ABLabel, preserve-only.
         assertEquals(
-            Email(id = "e1", address = "x@y.z", contexts = listOf("home"), pref = 1, label = "custom"),
-            edited,
+            Email(
+                id = "e1",
+                address = "x@y.z",
+                contexts = listOf("home"),
+                pref = 1,
+                label = "custom"
+            ),
+            edited
         )
         // A loaded row's type is never overwritten by a default (test case 3).
         assertEquals("work", EmailSpec.type(loaded))
@@ -53,7 +65,7 @@ class MultiValueSpecTest {
             EmailSpec,
             Email(id = "e1", address = "a@b.c", pref = 1),
             Email(address = "b@b.b"),
-            Email(address = "c@c.c"),
+            Email(address = "c@c.c")
         )
     }
 
@@ -68,7 +80,7 @@ class MultiValueSpecTest {
         // contexts[0] still wins when both are present.
         assertEquals(
             "work",
-            EmailSpec.type(Email(address = "a@b.c", contexts = listOf("work"), label = "home")),
+            EmailSpec.type(Email(address = "a@b.c", contexts = listOf("work"), label = "home"))
         )
         // A free-text X-ABLabel is not a selectable type: leave the dropdown blank.
         assertNull(EmailSpec.type(Email(address = "a@b.c", label = "custom", contexts = null)))
@@ -77,23 +89,40 @@ class MultiValueSpecTest {
         assertEquals("cell", PhoneSpec.type(Phone(number = "+1", label = "cell")))
         assertEquals(
             "voice",
-            PhoneSpec.type(Phone(number = "+1", features = listOf("voice"), label = "home")),
+            PhoneSpec.type(Phone(number = "+1", features = listOf("voice"), label = "home"))
         )
         assertEquals(
             "home",
-            PhoneSpec.type(Phone(number = "+1", features = null, contexts = null, label = "home")),
+            PhoneSpec.type(Phone(number = "+1", features = null, contexts = null, label = "home"))
         )
         assertEquals("work", OnlineServiceSpec.type(OnlineService(uri = "x", label = "work")))
-        assertEquals("home", LinkSpec.type(com.mycorrhizal.crm.model.network.Resource(uri = "x", label = "home")))
+        assertEquals(
+            "home",
+            LinkSpec.type(com.mycorrhizal.crm.model.network.Resource(uri = "x", label = "home"))
+        )
     }
 
     @Test
     fun `phone edits preserve id pref features and label, write type to contexts, new rows default to cell`() {
-        val loaded = Phone(id = "p1", number = "+1", contexts = listOf("work"), pref = 1, features = listOf("voice"), label = "custom")
+        val loaded = Phone(
+            id = "p1",
+            number = "+1",
+            contexts = listOf("work"),
+            pref = 1,
+            features = listOf("voice"),
+            label = "custom"
+        )
         val edited = PhoneSpec.withType(PhoneSpec.withValue(loaded, "+2"), "home")
         assertEquals(
-            Phone(id = "p1", number = "+2", contexts = listOf("home"), pref = 1, features = listOf("voice"), label = "custom"),
-            edited,
+            Phone(
+                id = "p1",
+                number = "+2",
+                contexts = listOf("home"),
+                pref = 1,
+                features = listOf("voice"),
+                label = "custom"
+            ),
+            edited
         )
         // A phone's type prefers features[0] (web parity), for a vCard-imported row.
         assertEquals("voice", PhoneSpec.type(loaded))
@@ -108,28 +137,58 @@ class MultiValueSpecTest {
             PhoneSpec,
             Phone(id = "p1", number = "+1", pref = 1),
             Phone(number = "+2"),
-            Phone(number = "+3"),
+            Phone(number = "+3")
         )
     }
 
     @Test
     fun `online service edits preserve service id pref and label, user moves to uri, service name editable`() {
-        val loaded = OnlineService(id = "s1", service = "Signal", user = "@dana", contexts = listOf("work"), pref = 1, label = "custom")
-        val edited = OnlineServiceSpec.withType(OnlineServiceSpec.withValue(loaded, "@dana2"), "home")
+        val loaded = OnlineService(
+            id = "s1",
+            service = "Signal",
+            user = "@dana",
+            contexts = listOf("work"),
+            pref = 1,
+            label = "custom"
+        )
+        val edited = OnlineServiceSpec.withType(
+            OnlineServiceSpec.withValue(loaded, "@dana2"),
+            "home"
+        )
         assertEquals(
-            OnlineService(id = "s1", service = "Signal", uri = "@dana2", user = null, contexts = listOf("home"), pref = 1, label = "custom"),
-            edited,
+            OnlineService(
+                id = "s1",
+                service = "Signal",
+                uri = "@dana2",
+                user = null,
+                contexts = listOf("home"),
+                pref = 1,
+                label = "custom"
+            ),
+            edited
         )
         // The service name is editable separately (the link-resolver key).
         assertEquals(
-            OnlineService(id = "s1", service = "Telegram", uri = "@dana2", user = null, contexts = listOf("home"), pref = 1, label = "custom"),
-            OnlineServiceSpec.withServiceName(edited, "Telegram"),
+            OnlineService(
+                id = "s1",
+                service = "Telegram",
+                uri = "@dana2",
+                user = null,
+                contexts = listOf("home"),
+                pref = 1,
+                label = "custom"
+            ),
+            OnlineServiceSpec.withServiceName(edited, "Telegram")
         )
         // A row stored in `uri` stays in `uri` (no user-move).
-        val uriRow = OnlineService(id = "s2", service = "Mastodon", uri = "https://mastodon.example/@dana")
+        val uriRow = OnlineService(
+            id = "s2",
+            service = "Mastodon",
+            uri = "https://mastodon.example/@dana"
+        )
         assertEquals(
             OnlineService(id = "s2", service = "Mastodon", uri = "https://mastodon.example/@dana2"),
-            OnlineServiceSpec.withValue(uriRow, "https://mastodon.example/@dana2"),
+            OnlineServiceSpec.withValue(uriRow, "https://mastodon.example/@dana2")
         )
         assertEquals("work", OnlineServiceSpec.type(loaded))
         assertNull(OnlineServiceSpec.blank().contexts)
@@ -138,7 +197,7 @@ class MultiValueSpecTest {
             OnlineServiceSpec,
             OnlineService(id = "s1", uri = "x", pref = 1),
             OnlineService(uri = "y"),
-            OnlineService(uri = "z"),
+            OnlineService(uri = "z")
         )
     }
 }

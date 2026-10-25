@@ -9,16 +9,13 @@ import javax.inject.Inject
  * Audit-trail access over [ApiClient]. Stateless pass-through — the audit log
  * is server-scoped and immutable, so there is nothing to mirror locally.
  */
-class AuditRepositoryImpl @Inject constructor(
-    private val apiClient: ApiClient,
-) : AuditRepository {
+class AuditRepositoryImpl @Inject constructor(private val apiClient: ApiClient) : AuditRepository {
     override suspend fun list(
         entityType: String?,
         entityId: String?,
-        limit: Int,
+        limit: Int
     ): Result<AuditEventsResponse> =
         apiClient.getAuditEvents(entityType = entityType, entityId = entityId, limit = limit)
 
-    override suspend fun undo(id: Long): Result<Unit> =
-        apiClient.undoAuditEvent(id).map { Unit }
+    override suspend fun undo(id: Long): Result<Unit> = apiClient.undoAuditEvent(id).map { Unit }
 }

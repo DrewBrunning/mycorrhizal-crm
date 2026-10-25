@@ -32,7 +32,7 @@ import com.mycorrhizal.crm.ui.R
 @Composable
 fun BiometricEnrollmentPromptHost(
     onDone: () -> Unit,
-    viewModel: BiometricEnrollmentViewModel = hiltViewModel(),
+    viewModel: BiometricEnrollmentViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -48,7 +48,7 @@ fun BiometricEnrollmentPromptHost(
             error = state.error,
             onEnroll = viewModel::enroll,
             onNotNow = viewModel::notNow,
-            onNeverAskAgain = viewModel::neverAskAgain,
+            onNeverAskAgain = viewModel::neverAskAgain
         )
     }
 }
@@ -66,7 +66,7 @@ fun BiometricEnrollmentDialog(
     error: Boolean,
     onEnroll: () -> Unit,
     onNotNow: () -> Unit,
-    onNeverAskAgain: () -> Unit,
+    onNeverAskAgain: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onNotNow,
@@ -77,7 +77,7 @@ fun BiometricEnrollmentDialog(
                     Text(
                         text = stringResource(R.string.biometric_enroll_error),
                         color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
                     )
                 } else {
                     Text(stringResource(R.string.biometric_enroll_dialog_body))
@@ -85,7 +85,7 @@ fun BiometricEnrollmentDialog(
                 TextButton(
                     onClick = onNeverAskAgain,
                     enabled = !isBusy,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(stringResource(R.string.biometric_enroll_never))
                 }
@@ -100,6 +100,6 @@ fun BiometricEnrollmentDialog(
             TextButton(onClick = onNotNow, enabled = !isBusy) {
                 Text(stringResource(R.string.biometric_enroll_not_now))
             }
-        },
+        }
     )
 }

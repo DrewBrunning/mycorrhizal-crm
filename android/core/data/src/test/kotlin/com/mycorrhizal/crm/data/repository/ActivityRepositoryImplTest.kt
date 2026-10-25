@@ -5,8 +5,8 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.mycorrhizal.crm.data.local.AppDatabase
 import com.mycorrhizal.crm.data.local.CachedActivity
-import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ActivitiesPage
+import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ActivityInput
 import com.mycorrhizal.crm.model.network.ContactActivitiesResponse
 import com.mycorrhizal.crm.network.ApiClient
@@ -48,13 +48,22 @@ class ActivityRepositoryImplTest {
 
     @Test
     fun `listForContact caches activities and returns them`() = runTest {
-        coEvery { apiClient.listContactActivities(5, any(), any(), any(), any(), any()) } returns Result.success(
+        coEvery {
+            apiClient.listContactActivities(
+                5,
+                any(),
+                any(),
+                any(),
+                any(),
+                any()
+            )
+        } returns Result.success(
             ContactActivitiesResponse(
                 activities = listOf(
                     Activity(id = 1, title = "Coffee with Dana", type = "visit"),
-                    Activity(id = 2, title = "Phone call", type = "call"),
-                ),
-            ),
+                    Activity(id = 2, title = "Phone call", type = "call")
+                )
+            )
         )
 
         val result = repository.listForContact(5)
@@ -69,8 +78,17 @@ class ActivityRepositoryImplTest {
 
     @Test
     fun `listForContact propagates a 404`() = runTest {
-        coEvery { apiClient.listContactActivities(999, any(), any(), any(), any(), any()) } returns Result.failure(
-            ApiError.Client(404, "Contact not found"),
+        coEvery {
+            apiClient.listContactActivities(
+                999,
+                any(),
+                any(),
+                any(),
+                any(),
+                any()
+            )
+        } returns Result.failure(
+            ApiError.Client(404, "Contact not found")
         )
 
         val result = repository.listForContact(999)
@@ -83,8 +101,20 @@ class ActivityRepositoryImplTest {
     // M19: the page carries the T17 next_cursor for "load more".
     @Test
     fun `listForContact carries the next cursor`() = runTest {
-        coEvery { apiClient.listContactActivities(5, any(), any(), any(), any(), any()) } returns Result.success(
-            ContactActivitiesResponse(activities = listOf(Activity(id = 1, title = "Coffee")), nextCursor = "cursor-2"),
+        coEvery {
+            apiClient.listContactActivities(
+                5,
+                any(),
+                any(),
+                any(),
+                any(),
+                any()
+            )
+        } returns Result.success(
+            ContactActivitiesResponse(
+                activities = listOf(Activity(id = 1, title = "Coffee")),
+                nextCursor = "cursor-2"
+            )
         )
 
         val result = repository.listForContact(5)
@@ -96,7 +126,19 @@ class ActivityRepositoryImplTest {
     // M19: delete drops the local cache row after a successful server soft delete.
     @Test
     fun `delete removes the cached row on success`() = runTest {
-        db.cachedActivityDao().upsertAll(listOf(CachedActivity(id = 1, title = "Coffee", description = null, location = null, date = null, type = null, deleted = false)))
+        db.cachedActivityDao().upsertAll(
+            listOf(
+                CachedActivity(
+                    id = 1,
+                    title = "Coffee",
+                    description = null,
+                    location = null,
+                    date = null,
+                    type = null,
+                    deleted = false
+                )
+            )
+        )
         coEvery { apiClient.deleteActivity(1) } returns Result.success(Unit)
 
         val result = repository.delete(1, null)
@@ -108,7 +150,19 @@ class ActivityRepositoryImplTest {
     // M19: a failed delete must not clear the local cache (the item stays).
     @Test
     fun `delete failure leaves the cached row`() = runTest {
-        db.cachedActivityDao().upsertAll(listOf(CachedActivity(id = 1, title = "Coffee", description = null, location = null, date = null, type = null, deleted = false)))
+        db.cachedActivityDao().upsertAll(
+            listOf(
+                CachedActivity(
+                    id = 1,
+                    title = "Coffee",
+                    description = null,
+                    location = null,
+                    date = null,
+                    type = null,
+                    deleted = false
+                )
+            )
+        )
         coEvery { apiClient.deleteActivity(1) } returns Result.failure(ApiError.Client(500, "boom"))
 
         val result = repository.delete(1, null)
@@ -120,11 +174,19 @@ class ActivityRepositoryImplTest {
     // M9: the Activities drawer inbox — GET /activities?include=contacts, all contacts' activities.
     @Test
     fun `listAll requests included contacts and caches the page`() = runTest {
-        coEvery { apiClient.listActivities(cursor = null, limit = null, includeContacts = true) } returns Result.success(
+        coEvery {
+            apiClient.listActivities(
+                cursor = null,
+                limit = null,
+                includeContacts = true
+            )
+        } returns Result.success(
             ActivitiesPage(
-                activitiesRaw = listOf(Activity(id = 1, title = "Coffee with Dana", type = "visit")),
-                nextCursor = "cursor-2",
-            ),
+                activitiesRaw = listOf(
+                    Activity(id = 1, title = "Coffee with Dana", type = "visit")
+                ),
+                nextCursor = "cursor-2"
+            )
         )
 
         val result = repository.listAll()
@@ -139,8 +201,14 @@ class ActivityRepositoryImplTest {
     // this is the repository-level proof (ApiClientTest covers the JSON parse itself).
     @Test
     fun `listAll tolerates a null activities list`() = runTest {
-        coEvery { apiClient.listActivities(cursor = null, limit = null, includeContacts = true) } returns Result.success(
-            ActivitiesPage(activitiesRaw = null),
+        coEvery {
+            apiClient.listActivities(
+                cursor = null,
+                limit = null,
+                includeContacts = true
+            )
+        } returns Result.success(
+            ActivitiesPage(activitiesRaw = null)
         )
 
         val result = repository.listAll()
@@ -152,7 +220,7 @@ class ActivityRepositoryImplTest {
     @Test
     fun `get returns the single activity`() = runTest {
         coEvery { apiClient.getActivity(7) } returns Result.success(
-            Activity(id = 7, title = "Lunch", type = "meal"),
+            Activity(id = 7, title = "Lunch", type = "meal")
         )
 
         val result = repository.get(7)
@@ -187,7 +255,7 @@ class ActivityRepositoryImplTest {
     @Test
     fun `create propagates a validation failure`() = runTest {
         coEvery { apiClient.createActivity(any()) } returns Result.failure(
-            ApiError.Client(400, "Title is required"),
+            ApiError.Client(400, "Title is required")
         )
 
         val result = repository.create(ActivityInput(title = ""))
@@ -200,7 +268,13 @@ class ActivityRepositoryImplTest {
     // Issue #1665 / ADR 0008: the revision is forwarded as If-Match.
     @Test
     fun `update and delete forward the revision`() = runTest {
-        coEvery { apiClient.updateActivity(7, any(), 5) } returns Result.success(Activity(id = 7, title = "x"))
+        coEvery {
+            apiClient.updateActivity(
+                7,
+                any(),
+                5
+            )
+        } returns Result.success(Activity(id = 7, title = "x"))
         coEvery { apiClient.deleteActivity(7, 5) } returns Result.success(Unit)
 
         assertTrue(repository.update(7, ActivityInput(title = "x"), 5).isSuccess)

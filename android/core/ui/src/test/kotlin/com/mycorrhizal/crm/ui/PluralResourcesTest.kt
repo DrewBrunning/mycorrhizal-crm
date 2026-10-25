@@ -44,12 +44,20 @@ class PluralResourcesTest {
             "de" to ("1 Kontakt" to "2 Kontakte"),
             "es" to ("1 contacto" to "2 contactos"),
             "fr" to ("1 contact" to "2 contacts"),
-            "it" to ("1 contatto" to "2 contatti"),
+            "it" to ("1 contatto" to "2 contatti")
         )
         for ((tag, forms) in expected) {
             val ctx = contextFor(tag)
-            assertEquals("$tag singular", forms.first, plural(ctx, R.plurals.triage_contacts_count, 1))
-            assertEquals("$tag plural", forms.second, plural(ctx, R.plurals.triage_contacts_count, 2))
+            assertEquals(
+                "$tag singular",
+                forms.first,
+                plural(ctx, R.plurals.triage_contacts_count, 1)
+            )
+            assertEquals(
+                "$tag plural",
+                forms.second,
+                plural(ctx, R.plurals.triage_contacts_count, 2)
+            )
         }
     }
 
@@ -60,12 +68,20 @@ class PluralResourcesTest {
             "de" to ("in 1 Tag" to "in 333 Tagen"),
             "es" to ("en 1 día" to "en 333 días"),
             "fr" to ("dans 1 jour" to "dans 333 jours"),
-            "it" to ("tra 1 giorno" to "tra 333 giorni"),
+            "it" to ("tra 1 giorno" to "tra 333 giorni")
         )
         for ((tag, forms) in expected) {
             val ctx = contextFor(tag)
-            assertEquals("$tag singular", forms.first, plural(ctx, R.plurals.prep_upcoming_dates_in_days, 1))
-            assertEquals("$tag plural", forms.second, plural(ctx, R.plurals.prep_upcoming_dates_in_days, 333))
+            assertEquals(
+                "$tag singular",
+                forms.first,
+                plural(ctx, R.plurals.prep_upcoming_dates_in_days, 1)
+            )
+            assertEquals(
+                "$tag plural",
+                forms.second,
+                plural(ctx, R.plurals.prep_upcoming_dates_in_days, 333)
+            )
         }
     }
 
@@ -76,7 +92,7 @@ class PluralResourcesTest {
             "de" to ("1 potenzielles Duplikatpaar" to "2 potenzielle Duplikatpaare"),
             "es" to ("1 posible pareja de duplicados" to "2 posibles parejas de duplicados"),
             "fr" to ("1 paire de doublons potentielle" to "2 paires de doublons potentielles"),
-            "it" to ("1 possibile coppia di duplicati" to "2 possibili coppie di duplicati"),
+            "it" to ("1 possibile coppia di duplicati" to "2 possibili coppie di duplicati")
         )
         for ((tag, forms) in expected) {
             val ctx = contextFor(tag)

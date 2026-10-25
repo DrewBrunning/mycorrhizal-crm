@@ -9,12 +9,12 @@ import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.LocalAuthCapabilities
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /** What the lock screen needs to render (issue #722). */
 data class AppLockUiState(
@@ -23,7 +23,7 @@ data class AppLockUiState(
     /** The device can currently complete the local check (biometric or secure lock screen). */
     val canAuthenticate: Boolean = true,
     /** Failure of the last local-auth attempt, shown under the unlock button. */
-    @StringRes val errorRes: Int? = null,
+    @StringRes val errorRes: Int? = null
 )
 
 /** Outcome of a local-auth attempt (biometric prompt or device credential). */
@@ -53,7 +53,7 @@ class AppLockViewModel @Inject constructor(
     private val appLockController: AppLockController,
     private val authRepository: AuthRepository,
     private val localAuthCapabilities: LocalAuthCapabilities,
-    sessionManager: SessionManager,
+    sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AppLockUiState())
@@ -65,7 +65,7 @@ class AppLockViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         username = session.username ?: it.username,
-                        canAuthenticate = localAuthCapabilities.canEnableLocalAuth(),
+                        canAuthenticate = localAuthCapabilities.canEnableLocalAuth()
                     )
                 }
             }
@@ -81,10 +81,13 @@ class AppLockViewModel @Inject constructor(
     fun onAuthResult(outcome: AppLockAuthOutcome) {
         when (outcome) {
             AppLockAuthOutcome.Success -> appLockController.onUserAuthenticated()
+
             AppLockAuthOutcome.Cancelled -> _uiState.update { it.copy(isUnlocking = false) }
+
             AppLockAuthOutcome.NotAvailable -> _uiState.update {
                 it.copy(isUnlocking = false, errorRes = R.string.app_lock_unsupported)
             }
+
             AppLockAuthOutcome.Error -> _uiState.update {
                 it.copy(isUnlocking = false, errorRes = R.string.app_lock_auth_failed)
             }

@@ -21,7 +21,7 @@ data class GraphConnectionsResponse(
     @Json(name = "from_vcard_uid") val fromVCardUid: String = "",
     @Json(name = "from_name") val fromName: String = "",
     val depth: Int = 0,
-    val chains: List<GraphChain>? = null,
+    val chains: List<GraphChain>? = null
 ) {
     val chainsOrEmpty: List<GraphChain> get() = chains ?: emptyList()
 }
@@ -50,7 +50,7 @@ data class GraphChain(
     val steps: List<GraphChainStep>? = null,
     @Json(name = "health_score") val healthScore: Int? = null,
     @Json(name = "health_band") val healthBand: String? = null,
-    val deceased: Boolean = false,
+    val deceased: Boolean = false
 ) {
     val stepsOrEmpty: List<GraphChainStep> get() = steps ?: emptyList()
 
@@ -77,10 +77,11 @@ data class GraphChain(
      * Issue #1755: the same path with caller-supplied (translated) relation labels, one per
      * step in [stepsOrEmpty] order -- the UI passes `relationshipRoleLabel(step.relation)`.
      */
-    fun readablePath(relationLabels: List<String>): String =
-        stepsOrEmpty.mapIndexed { i, step ->
-            "${step.contactName.ifBlank { "Unknown" }} (${relationLabels.getOrElse(i) { step.relation.replace('_', ' ') }})"
-        }.joinToString(" → ")
+    fun readablePath(relationLabels: List<String>): String = stepsOrEmpty.mapIndexed { i, step ->
+        "${step.contactName.ifBlank { "Unknown" }} (${relationLabels.getOrElse(
+            i
+        ) { step.relation.replace('_', ' ') }})"
+    }.joinToString(" → ")
 
     /**
      * Issue #1763: the path as a row subtitle, without repeating the target's
@@ -107,5 +108,5 @@ data class GraphChainStep(
     @Json(name = "contact_id") val contactId: Int = 0,
     @Json(name = "contact_vcard_uid") val contactVCardUid: String = "",
     @Json(name = "contact_name") val contactName: String = "",
-    val relation: String = "",
+    val relation: String = ""
 )

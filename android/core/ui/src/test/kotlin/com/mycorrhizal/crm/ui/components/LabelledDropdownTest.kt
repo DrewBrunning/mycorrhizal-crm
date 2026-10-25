@@ -1,25 +1,25 @@
 package com.mycorrhizal.crm.ui.components
 
-import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
-import androidx.compose.ui.test.hasClickAction
-import androidx.compose.ui.test.hasContentDescription
-import androidx.compose.ui.test.performKeyInput
-import androidx.compose.ui.test.pressKey
-import androidx.compose.ui.test.requestFocus
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.performKeyInput
+import androidx.compose.ui.test.pressKey
+import androidx.compose.ui.test.requestFocus
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -39,7 +39,7 @@ class LabelledDropdownTest {
 
     private val options = listOf(
         DropdownOption("a", "Alpha", sectionHeader = "Letters"),
-        DropdownOption("b", "Beta"),
+        DropdownOption("b", "Beta")
     )
 
     @Test
@@ -52,13 +52,16 @@ class LabelledDropdownTest {
                     valueText = "Alpha",
                     options = options,
                     onSelect = { picked = it },
-                    modifier = Modifier.testTag("dd"),
+                    modifier = Modifier.testTag("dd")
                 )
             }
         }
         composeTestRule.onNodeWithText("Pick").assertIsDisplayed()
         composeTestRule.onNodeWithTag("dd").assert(
-            SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription, listOf("Pick, Alpha")),
+            SemanticsMatcher.expectValue(
+                SemanticsProperties.ContentDescription,
+                listOf("Pick, Alpha")
+            )
         )
         composeTestRule.onNodeWithText("Beta").assertDoesNotExist()
         composeTestRule.onNodeWithTag("dd").performClick()
@@ -78,7 +81,7 @@ class LabelledDropdownTest {
                     valueText = "Alpha",
                     options = options,
                     onSelect = {},
-                    modifier = Modifier.testTag("dd"),
+                    modifier = Modifier.testTag("dd")
                 )
             }
         }
@@ -101,13 +104,13 @@ class LabelledDropdownTest {
                     valueText = "Alpha",
                     options = options,
                     onSelect = {},
-                    modifier = Modifier.testTag("dd"),
+                    modifier = Modifier.testTag("dd")
                 )
             }
         }
         composeTestRule.onAllNodes(
             SemanticsMatcher.keyIsDefined(SemanticsProperties.EditableText),
-            useUnmergedTree = true,
+            useUnmergedTree = true
         ).assertCountEquals(0)
         composeTestRule.onNode(hasContentDescription("Pick, Alpha"))
             .assert(hasClickAction())
@@ -124,7 +127,7 @@ class LabelledDropdownTest {
                     options = options,
                     onSelect = {},
                     enabled = false,
-                    modifier = Modifier.testTag("dd"),
+                    modifier = Modifier.testTag("dd")
                 )
             }
         }
@@ -142,7 +145,7 @@ class LabelledDropdownTest {
                     isSaving = false,
                     onClick = { clicks++ },
                     enabled = false,
-                    disabledHint = "Enter a name to continue",
+                    disabledHint = "Enter a name to continue"
                 )
             }
         }
@@ -164,7 +167,7 @@ class LabelledDropdownTest {
                         isSaving = true,
                         onClick = {},
                         enabled = false,
-                        disabledHint = "Should not show",
+                        disabledHint = "Should not show"
                     )
                 }
             }
@@ -185,8 +188,10 @@ class LabelledDropdownTest {
                         saveLabel = "Hidden save",
                         isSaving = false,
                         onSave = {},
-                        snackbarHostState = androidx.compose.runtime.remember { androidx.compose.material3.SnackbarHostState() },
-                        showSaveBar = false,
+                        snackbarHostState = androidx.compose.runtime.remember {
+                            androidx.compose.material3.SnackbarHostState()
+                        },
+                        showSaveBar = false
                     ) {}
                 }
             }

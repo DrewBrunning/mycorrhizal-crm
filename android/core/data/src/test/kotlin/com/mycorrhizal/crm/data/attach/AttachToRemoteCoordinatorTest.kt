@@ -15,6 +15,8 @@ import com.mycorrhizal.crm.network.TokenProvider
 import com.mycorrhizal.crm.network.toApiError
 import io.mockk.coEvery
 import io.mockk.mockk
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
@@ -29,8 +31,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import java.util.concurrent.CopyOnWriteArrayList
-import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * ADR 0028 Decision 3 / issue #1265: the attach wizard's orchestration, exercised
@@ -73,7 +73,9 @@ class AttachToRemoteCoordinatorTest {
             dispatcher = object : Dispatcher() {
                 override fun dispatch(request: RecordedRequest): MockResponse =
                     if (request.path == "/api/v1/export/account" && request.method == "GET") {
-                        MockResponse().setResponseCode(exportStatus).setBody(exportBody ?: if (exportStatus == 200) bundleJson else "{}")
+                        MockResponse().setResponseCode(
+                            exportStatus
+                        ).setBody(exportBody ?: if (exportStatus == 200) bundleJson else "{}")
                     } else {
                         // The Local server must ONLY ever be asked to export.
                         MockResponse().setResponseCode(599)
@@ -92,30 +94,54 @@ class AttachToRemoteCoordinatorTest {
                             MockResponse().setResponseCode(200)
                                 .setHeader("Set-Cookie", "2fa_pending=PENDING; Path=/")
                                 .setBody("{\"two_factor_required\":true$loginMethodsJson}")
+
                         path == "/api/v1/login" ->
                             MockResponse().setResponseCode(loginStatus)
                                 .setHeader("Set-Cookie", "auth_token=REMOTE-JWT; Path=/; HttpOnly")
                                 .setBody(loginBody)
+
                         path == "/health" -> MockResponse().setResponseCode(200).setBody(healthBody)
+
                         path == "/api/v1/webauthn/login/begin" ->
-                            MockResponse().setResponseCode(200).setBody("""{"publicKey":{"challenge":"c"}}""")
+                            MockResponse().setResponseCode(
+                                200
+                            ).setBody("""{"publicKey":{"challenge":"c"}}""")
+
                         path == "/api/v1/webauthn/login/finish" ->
                             MockResponse().setResponseCode(200)
-                                .setHeader("Set-Cookie", "auth_token=REMOTE-JWT-PASSKEY; Path=/; HttpOnly")
+                                .setHeader(
+                                    "Set-Cookie",
+                                    "auth_token=REMOTE-JWT-PASSKEY; Path=/; HttpOnly"
+                                )
                                 .setBody("""{"language":"en"}""")
+
                         path == "/api/v1/login/2fa" ->
                             MockResponse().setResponseCode(200)
-                                .setHeader("Set-Cookie", "auth_token=REMOTE-JWT-2FA; Path=/; HttpOnly")
+                                .setHeader(
+                                    "Set-Cookie",
+                                    "auth_token=REMOTE-JWT-2FA; Path=/; HttpOnly"
+                                )
                                 .setBody("""{"language":"en"}""")
+
                         path == "/api/v1/import/mycorrhizal/upload" -> {
                             uploadCount.incrementAndGet()
                             val status = uploadStatuses.removeFirstOrNull() ?: 200
                             MockResponse().setResponseCode(status).setBody(
-                                if (status == 200) """{"session_id":"s-${uploadCount.get()}","version":1,"totals":{"contacts":1,"notes":4,"activities":2}}""" else "{}",
+                                if (status ==
+                                    200
+                                ) {
+                                    """{"session_id":"s-${uploadCount.get()}","version":1,"totals":{"contacts":1,"notes":4,"activities":2}}"""
+                                } else {
+                                    "{}"
+                                }
                             )
                         }
+
                         path == "/api/v1/import/mycorrhizal/fetch" ->
-                            MockResponse().setResponseCode(fetchStatuses.removeFirstOrNull() ?: 202).setBody("{}")
+                            MockResponse().setResponseCode(
+                                fetchStatuses.removeFirstOrNull() ?: 202
+                            ).setBody("{}")
+
                         path == "/api/v1/import/mycorrhizal/status" -> {
                             val queue = if (confirmed) importPhases else preparePhases
                             val phase = queue.firstOrNull() ?: if (confirmed) "done" else "ready"
@@ -123,19 +149,25 @@ class AttachToRemoteCoordinatorTest {
                             MockResponse().setResponseCode(200).setBody(
                                 """{"session_id":"s","phase":"$phase","phase_done":1,"phase_total":3,
                                    "error":"${if (phase == "failed") "boom" else ""}",
-                                   "result":{"total_processed":1,"created":1,"updated":0,"skipped":0}}""",
+                                   "result":{"total_processed":1,"created":1,"updated":0,"skipped":0}}"""
                             )
                         }
+
                         path == "/api/v1/import/mycorrhizal/preview" ->
                             MockResponse().setResponseCode(200).setBody(
                                 """{"session_id":"s","rows":[{"row_index":0,"suggested_action":"add"}],
-                                   "total_rows":1,"valid_rows":1,"duplicate_count":0,"error_count":0,"loss_report":[]}""",
+                                   "total_rows":1,"valid_rows":1,"duplicate_count":0,"error_count":0,"loss_report":[]}"""
                             )
+
                         path == "/api/v1/import/mycorrhizal/confirm" -> {
                             confirmed = true
                             MockResponse().setResponseCode(202).setBody("{}")
                         }
-                        path == "/api/v1/import/mycorrhizal/cancel" -> MockResponse().setResponseCode(200).setBody("{}")
+
+                        path == "/api/v1/import/mycorrhizal/cancel" -> MockResponse().setResponseCode(
+                            200
+                        ).setBody("{}")
+
                         else -> MockResponse().setResponseCode(404)
                     }
                 }
@@ -161,22 +193,29 @@ class AttachToRemoteCoordinatorTest {
             tokenStorage = tokens,
             prefsStorage = FakeSessionPrefsStorage(),
             pendingInteractions = pending,
-            newProfileId = { "profile-${++n}" },
+            newProfileId = { "profile-${++n}" }
         )
     }
 
-    private fun apiFor(server: MockWebServer, token: TokenProvider = TokenProvider { null }): ApiClient =
-        ApiClient(
-            NetworkFactory.okHttpClient(token, BaseUrlProvider { server.url("/").toString().trimEnd('/') }),
-            NetworkFactory.moshi(),
-        )
+    private fun apiFor(
+        server: MockWebServer,
+        token: TokenProvider = TokenProvider {
+            null
+        }
+    ): ApiClient = ApiClient(
+        NetworkFactory.okHttpClient(
+            token,
+            BaseUrlProvider { server.url("/").toString().trimEnd('/') }
+        ),
+        NetworkFactory.moshi()
+    )
 
     private fun coordinator(): AttachToRemoteCoordinator {
         var keys = 0
         return AttachToRemoteCoordinator(
             sessionManager = manager,
             localApi = apiFor(local),
-            remoteApiFactory = AttachRemoteApiFactory { _, tp -> apiFor(remote, tp) },
+            remoteApiFactory = AttachRemoteApiFactory { _, tp -> apiFor(remote, tp) }
         ).apply {
             pollIntervalMs = 0
             maxPolls = 5
@@ -189,11 +228,16 @@ class AttachToRemoteCoordinatorTest {
     private suspend fun AttachToRemoteCoordinator.signInNew() =
         signIn(null, "Home", remoteUrl, "alice", "pw")
 
-    private fun remoteRequests(path: String) = remoteLog.filter { it.requestUrl?.encodedPath == path }
+    private fun remoteRequests(path: String) = remoteLog.filter {
+        it.requestUrl?.encodedPath == path
+    }
 
     private suspend fun assertLocalStillActiveAndWritable() {
         assertEquals(ServerProfileKind.Local, manager.activeProfile()?.kind)
-        assertFalse("Local must not be archived before the final step", manager.isActiveProfileArchived())
+        assertFalse(
+            "Local must not be archived before the final step",
+            manager.isActiveProfileArchived()
+        )
         assertEquals("LOCAL-JWT", manager.bearerToken())
     }
 
@@ -213,7 +257,10 @@ class AttachToRemoteCoordinatorTest {
         assertEquals(1, prepared.totals.contacts)
         assertEquals(4, prepared.totals.notes)
         assertEquals(1, prepared.preview.rows.size)
-        assertEquals(listOf(AttachStage.Exporting, AttachStage.Uploading), stages.distinct().take(2))
+        assertEquals(
+            listOf(AttachStage.Exporting, AttachStage.Uploading),
+            stages.distinct().take(2)
+        )
 
         val result = c.confirm(listOf(RowImportAction(0, "add"))).getOrThrow()
         assertEquals(1, result.created)
@@ -227,36 +274,50 @@ class AttachToRemoteCoordinatorTest {
         assertEquals("REMOTE-JWT", manager.bearerToken())
         val archivedLocal = manager.profiles().single { it.id == localId }
         assertTrue("the Local profile is now a read-only archive", archivedLocal.archived)
-        assertEquals("the Local token is kept so the archive stays browsable", "LOCAL-JWT", tokens.tokens[localId])
+        assertEquals(
+            "the Local token is kept so the archive stays browsable",
+            "LOCAL-JWT",
+            tokens.tokens[localId]
+        )
     }
 
     @Test
-    fun `the exact exported bytes are uploaded with an Idempotency-Key and the remote bearer`() = runTest {
-        val c = coordinator()
-        c.begin().getOrThrow()
-        c.signInNew().getOrThrow()
-        c.prepare().getOrThrow()
+    fun `the exact exported bytes are uploaded with an Idempotency-Key and the remote bearer`() =
+        runTest {
+            val c = coordinator()
+            c.begin().getOrThrow()
+            c.signInNew().getOrThrow()
+            c.prepare().getOrThrow()
 
-        val upload = remoteRequests("/api/v1/import/mycorrhizal/upload").single()
-        assertEquals("key-1", upload.getHeader("Idempotency-Key"))
-        assertEquals("Bearer REMOTE-JWT", upload.getHeader("Authorization"))
-        assertTrue(upload.body.readUtf8().contains(bundleJson))
-        // The Local server saw only the export, and never the remote credential.
-        val localRequests = generateSequence { local.takeRequest(0, java.util.concurrent.TimeUnit.MILLISECONDS) }.toList()
-        assertEquals(listOf("GET /api/v1/export/account"), localRequests.map { "${it.method} ${it.path}" })
-    }
+            val upload = remoteRequests("/api/v1/import/mycorrhizal/upload").single()
+            assertEquals("key-1", upload.getHeader("Idempotency-Key"))
+            assertEquals("Bearer REMOTE-JWT", upload.getHeader("Authorization"))
+            assertTrue(upload.body.readUtf8().contains(bundleJson))
+            // The Local server saw only the export, and never the remote credential.
+            val localRequests = generateSequence {
+                local.takeRequest(
+                    0,
+                    java.util.concurrent.TimeUnit.MILLISECONDS
+                )
+            }.toList()
+            assertEquals(
+                listOf("GET /api/v1/export/account"),
+                localRequests.map { "${it.method} ${it.path}" }
+            )
+        }
 
     @Test
-    fun `nothing is sent to the Local server except the export - no remote to local flow`() = runTest {
-        val c = coordinator()
-        c.begin().getOrThrow()
-        c.signInNew().getOrThrow()
-        c.prepare().getOrThrow()
-        c.confirm(listOf(RowImportAction(0, "add"))).getOrThrow()
-        c.finish()
+    fun `nothing is sent to the Local server except the export - no remote to local flow`() =
+        runTest {
+            val c = coordinator()
+            c.begin().getOrThrow()
+            c.signInNew().getOrThrow()
+            c.prepare().getOrThrow()
+            c.confirm(listOf(RowImportAction(0, "add"))).getOrThrow()
+            c.finish()
 
-        assertEquals(1, local.requestCount)
-    }
+            assertEquals(1, local.requestCount)
+        }
 
     @Test
     fun `confirm forwards the reviewed per-row actions and session`() = runTest {
@@ -319,17 +380,18 @@ class AttachToRemoteCoordinatorTest {
     }
 
     @Test
-    fun `retrying a failed sign-in reuses the profile instead of stacking one per attempt`() = runTest {
-        loginStatus = 401
-        val c = coordinator()
-        c.begin().getOrThrow()
-        c.signInNew()
-        c.signInNew()
-        loginStatus = 200
-        c.signInNew().getOrThrow()
+    fun `retrying a failed sign-in reuses the profile instead of stacking one per attempt`() =
+        runTest {
+            loginStatus = 401
+            val c = coordinator()
+            c.begin().getOrThrow()
+            c.signInNew()
+            c.signInNew()
+            loginStatus = 200
+            c.signInNew().getOrThrow()
 
-        assertEquals(1, manager.profiles().count { it.kind is ServerProfileKind.Remote })
-    }
+            assertEquals(1, manager.profiles().count { it.kind is ServerProfileKind.Remote })
+        }
 
     @Test
     fun `an existing Remote profile can be chosen and is not duplicated`() = runTest {
@@ -356,7 +418,9 @@ class AttachToRemoteCoordinatorTest {
     fun `a login that returns no session token is a failure`() = runTest {
         // Same server, but without a Set-Cookie: the remote said 200 yet issued nothing.
         remote.dispatcher = object : Dispatcher() {
-            override fun dispatch(request: RecordedRequest) = MockResponse().setResponseCode(200).setBody("{}")
+            override fun dispatch(request: RecordedRequest) = MockResponse().setResponseCode(
+                200
+            ).setBody("{}")
         }
         val c = coordinator()
         c.begin().getOrThrow()
@@ -384,17 +448,24 @@ class AttachToRemoteCoordinatorTest {
     // --- Issue #1293: `methods` and the passkey route ----------------------------
 
     @Test
-    fun `two-factor sign-in reports the enrolled methods and whether the remote offers passkeys`() = runTest {
-        twoFactorRequired = true
-        loginMethodsJson = ""","methods":["webauthn"]"""
-        healthBody = """{"version":"1.3.0","capabilities":["contacts","webauthn_android"]}"""
-        val c = coordinator()
-        c.begin().getOrThrow()
+    fun `two-factor sign-in reports the enrolled methods and whether the remote offers passkeys`() =
+        runTest {
+            twoFactorRequired = true
+            loginMethodsJson = ""","methods":["webauthn"]"""
+            healthBody = """{"version":"1.3.0","capabilities":["contacts","webauthn_android"]}"""
+            val c = coordinator()
+            c.begin().getOrThrow()
 
-        val result = c.signInNew().getOrThrow()
+            val result = c.signInNew().getOrThrow()
 
-        assertEquals(AttachSignInResult.TwoFactorRequired(listOf("webauthn"), serverOffersPasskeys = true), result)
-    }
+            assertEquals(
+                AttachSignInResult.TwoFactorRequired(
+                    listOf("webauthn"),
+                    serverOffersPasskeys = true
+                ),
+                result
+            )
+        }
 
     @Test
     fun `a remote that does not declare the capability does not offer passkeys`() = runTest {
@@ -405,8 +476,11 @@ class AttachToRemoteCoordinatorTest {
         c.begin().getOrThrow()
 
         assertEquals(
-            AttachSignInResult.TwoFactorRequired(listOf("totp", "webauthn"), serverOffersPasskeys = false),
-            c.signInNew().getOrThrow(),
+            AttachSignInResult.TwoFactorRequired(
+                listOf("totp", "webauthn"),
+                serverOffersPasskeys = false
+            ),
+            c.signInNew().getOrThrow()
         )
     }
 
@@ -418,7 +492,10 @@ class AttachToRemoteCoordinatorTest {
             healthBody = body
             val c = coordinator()
             c.begin().getOrThrow()
-            assertEquals(false, (c.signInNew().getOrThrow() as AttachSignInResult.TwoFactorRequired).serverOffersPasskeys)
+            assertEquals(
+                false,
+                (c.signInNew().getOrThrow() as AttachSignInResult.TwoFactorRequired).serverOffersPasskeys
+            )
         }
     }
 
@@ -429,7 +506,10 @@ class AttachToRemoteCoordinatorTest {
         val c = coordinator()
         c.begin().getOrThrow()
 
-        assertEquals(AttachSignInResult.TwoFactorRequired(listOf("totp"), false), c.signInNew().getOrThrow())
+        assertEquals(
+            AttachSignInResult.TwoFactorRequired(listOf("totp"), false),
+            c.signInNew().getOrThrow()
+        )
         assertEquals(0, remoteRequests("/health").size)
     }
 
@@ -495,40 +575,42 @@ class AttachToRemoteCoordinatorTest {
     }
 
     @Test
-    fun `an over-limit export surfaces the server's actionable message on the export step and uploads nothing`() = runTest {
-        val msg = "The account bundle is 70.0 MiB, which is over the 64 MiB limit the import accepts."
-        exportStatus = 507
-        exportBody = """{"error":{"code":"INSUFFICIENT_STORAGE","message":"$msg"}}"""
-        val c = coordinator()
-        c.begin().getOrThrow()
-        c.signInNew().getOrThrow()
-        val stages = mutableListOf<AttachStage>()
+    fun `an over-limit export surfaces the server's actionable message on the export step and uploads nothing`() =
+        runTest {
+            val msg = "The account bundle is 70.0 MiB, which is over the 64 MiB limit the import accepts."
+            exportStatus = 507
+            exportBody = """{"error":{"code":"INSUFFICIENT_STORAGE","message":"$msg"}}"""
+            val c = coordinator()
+            c.begin().getOrThrow()
+            c.signInNew().getOrThrow()
+            val stages = mutableListOf<AttachStage>()
 
-        val failure = c.prepare { stages += it.stage }.exceptionOrNull()
+            val failure = c.prepare { stages += it.stage }.exceptionOrNull()
 
-        assertEquals(msg, failure?.toApiError()?.displayMessage)
-        assertEquals(listOf(AttachStage.Exporting), stages)
-        assertEquals(0, uploadCount.get())
-        assertLocalStillActiveAndWritable()
-    }
+            assertEquals(msg, failure?.toApiError()?.displayMessage)
+            assertEquals(listOf(AttachStage.Exporting), stages)
+            assertEquals(0, uploadCount.get())
+            assertLocalStillActiveAndWritable()
+        }
 
     @Test
-    fun `a failed upload retries with the SAME Idempotency-Key and reuses the exported bundle`() = runTest {
-        uploadStatuses += 500
-        val c = coordinator()
-        c.begin().getOrThrow()
-        c.signInNew().getOrThrow()
+    fun `a failed upload retries with the SAME Idempotency-Key and reuses the exported bundle`() =
+        runTest {
+            uploadStatuses += 500
+            val c = coordinator()
+            c.begin().getOrThrow()
+            c.signInNew().getOrThrow()
 
-        assertTrue(c.prepare().isFailure)
-        assertLocalStillActiveAndWritable()
-        c.prepare().getOrThrow()
+            assertTrue(c.prepare().isFailure)
+            assertLocalStillActiveAndWritable()
+            c.prepare().getOrThrow()
 
-        val uploads = remoteRequests("/api/v1/import/mycorrhizal/upload")
-        assertEquals(2, uploads.size)
-        assertEquals("key-1", uploads[0].getHeader("Idempotency-Key"))
-        assertEquals("key-1", uploads[1].getHeader("Idempotency-Key"))
-        assertEquals("the bundle is exported once and held in memory", 1, local.requestCount)
-    }
+            val uploads = remoteRequests("/api/v1/import/mycorrhizal/upload")
+            assertEquals(2, uploads.size)
+            assertEquals("key-1", uploads[0].getHeader("Idempotency-Key"))
+            assertEquals("key-1", uploads[1].getHeader("Idempotency-Key"))
+            assertEquals("the bundle is exported once and held in memory", 1, local.requestCount)
+        }
 
     @Test
     fun `a failed fetch resumes without exporting or uploading again`() = runTest {
@@ -559,38 +641,42 @@ class AttachToRemoteCoordinatorTest {
     }
 
     @Test
-    fun `a server-side failed phase is surfaced and the next attempt re-uploads under a fresh key`() = runTest {
-        preparePhases += "failed"
-        val c = coordinator()
-        c.begin().getOrThrow()
-        c.signInNew().getOrThrow()
+    fun `a server-side failed phase is surfaced and the next attempt re-uploads under a fresh key`() =
+        runTest {
+            preparePhases += "failed"
+            val c = coordinator()
+            c.begin().getOrThrow()
+            c.signInNew().getOrThrow()
 
-        val failure = c.prepare().exceptionOrNull()
-        assertTrue(failure is AttachException)
-        assertEquals("boom", failure?.message)
-        assertLocalStillActiveAndWritable()
+            val failure = c.prepare().exceptionOrNull()
+            assertTrue(failure is AttachException)
+            assertEquals("boom", failure?.message)
+            assertLocalStillActiveAndWritable()
 
-        preparePhases.clear()
-        c.prepare().getOrThrow()
+            preparePhases.clear()
+            c.prepare().getOrThrow()
 
-        val keys = remoteRequests("/api/v1/import/mycorrhizal/upload").map { it.getHeader("Idempotency-Key") }
-        assertEquals(listOf("key-1", "key-2"), keys)
-        assertNotEquals(keys[0], keys[1])
-    }
+            val keys = remoteRequests(
+                "/api/v1/import/mycorrhizal/upload"
+            ).map { it.getHeader("Idempotency-Key") }
+            assertEquals(listOf("key-1", "key-2"), keys)
+            assertNotEquals(keys[0], keys[1])
+        }
 
     @Test
-    fun `the dead session is dropped on the server so it does not count against the per-user cap`() = runTest {
-        preparePhases += "failed"
-        val c = coordinator()
-        c.begin().getOrThrow()
-        c.signInNew().getOrThrow()
+    fun `the dead session is dropped on the server so it does not count against the per-user cap`() =
+        runTest {
+            preparePhases += "failed"
+            val c = coordinator()
+            c.begin().getOrThrow()
+            c.signInNew().getOrThrow()
 
-        assertTrue(c.prepare().isFailure)
+            assertTrue(c.prepare().isFailure)
 
-        val cancels = remoteRequests("/api/v1/import/mycorrhizal/cancel")
-        assertEquals(1, cancels.size)
-        assertEquals("session_id=s-1", cancels.single().requestUrl?.query)
-    }
+            val cancels = remoteRequests("/api/v1/import/mycorrhizal/cancel")
+            assertEquals(1, cancels.size)
+            assertEquals("session_id=s-1", cancels.single().requestUrl?.query)
+        }
 
     @Test
     fun `a cancelled phase is a failure too`() = runTest {
@@ -644,22 +730,23 @@ class AttachToRemoteCoordinatorTest {
     }
 
     @Test
-    fun `a finished import drops its remote session so a re-run is not refused by the session cap`() = runTest {
-        val c = coordinator()
-        c.begin().getOrThrow()
-        c.signInNew().getOrThrow()
-        c.prepare().getOrThrow()
-        assertTrue(remoteRequests("/api/v1/import/mycorrhizal/cancel").isEmpty())
+    fun `a finished import drops its remote session so a re-run is not refused by the session cap`() =
+        runTest {
+            val c = coordinator()
+            c.begin().getOrThrow()
+            c.signInNew().getOrThrow()
+            c.prepare().getOrThrow()
+            assertTrue(remoteRequests("/api/v1/import/mycorrhizal/cancel").isEmpty())
 
-        c.confirm(listOf(RowImportAction(0, "add"))).getOrThrow()
+            c.confirm(listOf(RowImportAction(0, "add"))).getOrThrow()
 
-        val cancels = remoteRequests("/api/v1/import/mycorrhizal/cancel")
-        assertEquals(1, cancels.size)
-        assertEquals("session_id=s-1", cancels.single().requestUrl?.query)
-        // ...and the wizard's own later cancel() has nothing left to drop.
-        c.cancel()
-        assertEquals(1, remoteRequests("/api/v1/import/mycorrhizal/cancel").size)
-    }
+            val cancels = remoteRequests("/api/v1/import/mycorrhizal/cancel")
+            assertEquals(1, cancels.size)
+            assertEquals("session_id=s-1", cancels.single().requestUrl?.query)
+            // ...and the wizard's own later cancel() has nothing left to drop.
+            c.cancel()
+            assertEquals(1, remoteRequests("/api/v1/import/mycorrhizal/cancel").size)
+        }
 
     @Test
     fun `a failed import does not drop the session - the user may retry the confirm`() = runTest {
@@ -692,29 +779,30 @@ class AttachToRemoteCoordinatorTest {
     // --- finish -----------------------------------------------------------------
 
     @Test
-    fun `finish asks for confirmation when unsent Local interactions would be dropped and changes nothing`() = runTest {
-        val repo = mockk<PendingInteractionRepository>()
-        coEvery { repo.unsynced() } returns listOf(mockk<PendingInteraction>(), mockk())
-        pending = repo
-        manager = newManager().also {
-            it.init()
-            it.activateLocalProfile("LOCAL-JWT")
+    fun `finish asks for confirmation when unsent Local interactions would be dropped and changes nothing`() =
+        runTest {
+            val repo = mockk<PendingInteractionRepository>()
+            coEvery { repo.unsynced() } returns listOf(mockk<PendingInteraction>(), mockk())
+            pending = repo
+            manager = newManager().also {
+                it.init()
+                it.activateLocalProfile("LOCAL-JWT")
+            }
+            val c = coordinator()
+            c.begin().getOrThrow()
+            c.signInNew().getOrThrow()
+            c.prepare().getOrThrow()
+            c.confirm(listOf(RowImportAction(0, "add"))).getOrThrow()
+
+            val outcome = c.finish()
+
+            assertEquals(AttachFinishResult.NeedsConfirmation(2), outcome)
+            assertLocalStillActiveAndWritable()
+
+            assertEquals(AttachFinishResult.Done, c.finish(discardPending = true))
+            assertTrue(manager.profiles().single { it.kind is ServerProfileKind.Local }.archived)
+            assertEquals(ServerProfileKind.Remote(remoteUrl), manager.activeProfile()?.kind)
         }
-        val c = coordinator()
-        c.begin().getOrThrow()
-        c.signInNew().getOrThrow()
-        c.prepare().getOrThrow()
-        c.confirm(listOf(RowImportAction(0, "add"))).getOrThrow()
-
-        val outcome = c.finish()
-
-        assertEquals(AttachFinishResult.NeedsConfirmation(2), outcome)
-        assertLocalStillActiveAndWritable()
-
-        assertEquals(AttachFinishResult.Done, c.finish(discardPending = true))
-        assertTrue(manager.profiles().single { it.kind is ServerProfileKind.Local }.archived)
-        assertEquals(ServerProfileKind.Remote(remoteUrl), manager.activeProfile()?.kind)
-    }
 
     @Test
     fun `finish before sign-in or begin fails`() = runTest {
@@ -774,6 +862,8 @@ class AttachToRemoteCoordinatorTest {
         second.confirm(listOf(RowImportAction(0, "add"))).getOrThrow()
         assertEquals(AttachFinishResult.Done, second.finish())
         assertEquals(1, manager.profiles().count { it.kind is ServerProfileKind.Remote })
-        assertNotNull(manager.profiles().single { it.kind is ServerProfileKind.Local }.takeIf { it.archived })
+        assertNotNull(
+            manager.profiles().single { it.kind is ServerProfileKind.Local }.takeIf { it.archived }
+        )
     }
 }

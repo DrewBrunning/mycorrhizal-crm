@@ -26,7 +26,9 @@ class CustomExportViewModelTest {
     private val exportRepository = mockk<ExportRepository>()
 
     @Test
-    fun `non-sensitive sections are selected by default`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `non-sensitive sections are selected by default`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = CustomExportViewModel(exportRepository)
 
         val state = vm.uiState.value
@@ -51,7 +53,9 @@ class CustomExportViewModelTest {
     }
 
     @Test
-    fun `revealSensitive unlocks sensitive sections`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `revealSensitive unlocks sensitive sections`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = CustomExportViewModel(exportRepository)
 
         assertFalse(vm.uiState.value.sensitiveRevealed)
@@ -115,7 +119,9 @@ class CustomExportViewModelTest {
         }
 
     @Test
-    fun `export failure surfaces the error and clears isExporting`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `export failure surfaces the error and clears isExporting`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { exportRepository.exportContactsVcf(null, any(), any()) } returns
             Result.failure(ApiError.Client(500, "boom"))
         val vm = CustomExportViewModel(exportRepository)
@@ -141,7 +147,9 @@ class CustomExportViewModelTest {
     }
 
     @Test
-    fun `checkLossReport populates the report on success`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `checkLossReport populates the report on success`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val report = ExportLossPreflightResponse(
             format = "vcard4",
             contactCount = 2,
@@ -155,11 +163,17 @@ class CustomExportViewModelTest {
                     concept = "custom_field",
                     bucket = "unsupported",
                     reason = "no vcard4 home",
-                    message = "Custom field 'Favorite color' has no vCard 4.0 home",
-                ),
-            ),
+                    message = "Custom field 'Favorite color' has no vCard 4.0 home"
+                )
+            )
         )
-        coEvery { exportRepository.preflight("vcard4", any(), any()) } returns Result.success(report)
+        coEvery {
+            exportRepository.preflight(
+                "vcard4",
+                any(),
+                any()
+            )
+        } returns Result.success(report)
         val vm = CustomExportViewModel(exportRepository)
 
         vm.checkLossReport()
@@ -173,7 +187,9 @@ class CustomExportViewModelTest {
     }
 
     @Test
-    fun `checkLossReport failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `checkLossReport failure surfaces the error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { exportRepository.preflight("vcard4", any(), any()) } returns
             Result.failure(ApiError.Client(500, "preflight failed"))
         val vm = CustomExportViewModel(exportRepository)

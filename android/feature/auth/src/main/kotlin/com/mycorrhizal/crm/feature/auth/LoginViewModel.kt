@@ -6,8 +6,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.data.passkey.PasskeyAvailability
 import com.mycorrhizal.crm.data.passkey.PasskeyCredentialClient
-import com.mycorrhizal.crm.data.passkey.PasskeyResult
 import com.mycorrhizal.crm.data.passkey.PasskeyIssue
+import com.mycorrhizal.crm.data.passkey.PasskeyResult
 import com.mycorrhizal.crm.data.passkey.SecondFactorPrompt
 import com.mycorrhizal.crm.data.passkey.offersPasskey
 import com.mycorrhizal.crm.data.passkey.secondFactorPrompt
@@ -21,6 +21,7 @@ import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.toApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,7 +29,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class LoginUiState(
     val serverUrl: String = "",
@@ -48,7 +48,7 @@ data class LoginUiState(
     val twoFactorMethods: List<String>? = null,
     // Issue #1293: set when a passkey attempt dropped the step to the degraded
     // (code-only) state, so the copy can say why. Null = no runtime failure.
-    val passkeyIssue: PasskeyIssue? = null,
+    val passkeyIssue: PasskeyIssue? = null
 )
 
 enum class LoginMode { PASSWORD, API_TOKEN }
@@ -71,7 +71,7 @@ class LoginViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     // Issue #1293 / ADR 0034: the passkey capability gate and the Credential Manager seam.
     private val passkeyAvailability: PasskeyAvailability,
-    private val passkeyClient: PasskeyCredentialClient,
+    private val passkeyClient: PasskeyCredentialClient
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
@@ -93,7 +93,13 @@ class LoginViewModel @Inject constructor(
             val storedUrl = sessionManager.serverUrl()
             if (!storedUrl.isNullOrBlank()) {
                 _uiState.update { current ->
-                    if (current.serverUrl.isBlank()) current.copy(serverUrl = storedUrl) else current
+                    if (current.serverUrl.isBlank()) {
+                        current.copy(
+                            serverUrl = storedUrl
+                        )
+                    } else {
+                        current
+                    }
                 }
             }
         }
@@ -116,12 +122,7 @@ class LoginViewModel @Inject constructor(
      * passed in rather than stored in [LoginUiState] — a password or API token
      * must not linger in ViewModel state after the attempt (security).
      */
-    fun onSubmit(
-        serverUrl: String,
-        identifier: String,
-        password: String,
-        apiToken: String,
-    ) {
+    fun onSubmit(serverUrl: String, identifier: String, password: String, apiToken: String) {
         if (_uiState.value.isLoading) return
 
         val trimmedUrl = serverUrl.trim().trimEnd('/')
@@ -140,6 +141,7 @@ class LoginViewModel @Inject constructor(
                 password.isBlank() -> R.string.login_error_password_required
                 else -> null
             }
+
             LoginMode.API_TOKEN -> when {
                 apiToken.isBlank() -> R.string.login_error_token_required
                 !apiToken.startsWith("mycorrhizal_") -> R.string.login_error_token_prefix
@@ -166,6 +168,7 @@ class LoginViewModel @Inject constructor(
                     _uiState.update { it.copy(isLoading = false) }
                     _events.send(LoginEvent.LoggedIn)
                 }
+
                 // N8 (#814): 2FA account — the password was correct but no
                 // session exists yet. Stay on this screen's code step.
                 is LoginUseCase.Result.TwoFactorRequired -> {
@@ -176,21 +179,25 @@ class LoginViewModel @Inject constructor(
                             twoFactorMethods = result.methods,
                             twoFactorPrompt = secondFactorPrompt(
                                 result.methods,
-                                result.methods.includesPasskey() && passkeyAvailability.isAvailable(),
+                                result.methods.includesPasskey() &&
+                                    passkeyAvailability.isAvailable()
                             ),
                             passkeyIssue = null,
                             errorRes = null,
-                            error = null,
+                            error = null
                         )
                     }
                 }
+
                 is LoginUseCase.Result.Failure -> {
                     _uiState.update { it.copy(isLoading = false, error = result.message) }
                 }
+
                 is LoginWithApiTokenUseCase.Result.Success -> {
                     _uiState.update { it.copy(isLoading = false) }
                     _events.send(LoginEvent.LoggedIn)
                 }
+
                 is LoginWithApiTokenUseCase.Result.Failure -> {
                     _uiState.update { it.copy(isLoading = false, error = result.message) }
                 }
@@ -208,7 +215,7 @@ class LoginViewModel @Inject constructor(
                 twoFactorMethods = null,
                 passkeyIssue = null,
                 errorRes = null,
-                error = null,
+                error = null
             )
         }
     }
@@ -236,7 +243,7 @@ class LoginViewModel @Inject constructor(
                 },
                 onFailure = { error ->
                     handleTwoFactorFailure(error)
-                },
+                }
             )
         }
     }
@@ -255,7 +262,11 @@ class LoginViewModel @Inject constructor(
      */
     fun onUsePasskey(context: Context) {
         val current = _uiState.value
-        if (current.isLoading || !current.twoFactorStep || !current.twoFactorPrompt.offersPasskey) return
+        if (current.isLoading || !current.twoFactorStep ||
+            !current.twoFactorPrompt.offersPasskey
+        ) {
+            return
+        }
         _uiState.update { it.copy(isLoading = true, errorRes = null, error = null) }
         viewModelScope.launch {
             val options = authRepository.beginPasskeyLogin().getOrElse { error ->
@@ -268,15 +279,30 @@ class LoginViewModel @Inject constructor(
                         _uiState.update { it.copy(isLoading = false) }
                         _events.send(LoginEvent.LoggedIn)
                     },
-                    onFailure = { error -> handlePasskeyFailure(error, fromBegin = false) },
+                    onFailure = { error -> handlePasskeyFailure(error, fromBegin = false) }
                 )
+
                 PasskeyResult.Cancelled -> _uiState.update { it.copy(isLoading = false) }
+
                 PasskeyResult.NoMatchingPasskey ->
-                    _uiState.update { it.copy(isLoading = false, errorRes = R.string.login_error_passkey_no_match) }
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorRes = R.string.login_error_passkey_no_match
+                        )
+                    }
+
                 PasskeyResult.NotAssociated -> degradePasskey(PasskeyIssue.NOT_ASSOCIATED)
+
                 PasskeyResult.NoProvider -> degradePasskey(PasskeyIssue.NO_PROVIDER)
+
                 PasskeyResult.AlreadyRegistered, is PasskeyResult.Failed ->
-                    _uiState.update { it.copy(isLoading = false, errorRes = R.string.login_error_passkey_failed) }
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorRes = R.string.login_error_passkey_failed
+                        )
+                    }
             }
         }
     }
@@ -287,7 +313,7 @@ class LoginViewModel @Inject constructor(
             it.copy(
                 isLoading = false,
                 twoFactorPrompt = secondFactorPrompt(it.twoFactorMethods, passkeyAvailable = false),
-                passkeyIssue = issue,
+                passkeyIssue = issue
             )
         }
     }
@@ -297,10 +323,17 @@ class LoginViewModel @Inject constructor(
         val expired = fromBegin && apiError is ApiError.Client && apiError.code == 401
         when {
             expired -> handleTwoFactorFailure(error)
+
             apiError is ApiError.Client && apiError.code == 429 ->
                 // Lockout: surface the server's message and stop (web parity).
                 _uiState.update { it.copy(isLoading = false, error = apiError.displayMessage) }
-            else -> _uiState.update { it.copy(isLoading = false, errorRes = R.string.login_error_passkey_failed) }
+
+            else -> _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    errorRes = R.string.login_error_passkey_failed
+                )
+            }
         }
     }
 
@@ -313,16 +346,18 @@ class LoginViewModel @Inject constructor(
             twoFactorStep = true,
             twoFactorMethods = _uiState.value.twoFactorMethods,
             twoFactorPrompt = _uiState.value.twoFactorPrompt,
-            passkeyIssue = _uiState.value.passkeyIssue,
+            passkeyIssue = _uiState.value.passkeyIssue
         )
         _uiState.value = when {
             apiError is ApiError.Client && apiError.code == 401 ->
                 // The 10-minute challenge expired (or was already consumed /
                 // 2FA was disabled) — a retry here can never succeed.
                 base.copy(twoFactorStep = false, errorRes = R.string.login_error_two_factor_expired)
+
             apiError is ApiError.Client && apiError.code == 429 ->
                 // Lockout: surface the server's message and stop (web parity).
                 base.copy(error = apiError.displayMessage)
+
             else ->
                 // 400 wrong code and any transient/network failure keep the
                 // user on the step with the localized "invalid code" copy.

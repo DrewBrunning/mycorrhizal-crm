@@ -33,7 +33,7 @@ class ContactPhoneIndexBackfillWorkerTest {
             appContext = context,
             workerParams = mockk(relaxed = true),
             contactRepository = contacts,
-            trackingSettings = settings,
+            trackingSettings = settings
         )
 
     @Test

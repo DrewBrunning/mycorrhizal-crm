@@ -69,7 +69,7 @@ fun GeoPulseSuggestionsScreen(
     onBack: () -> Unit,
     onLogStay: (GeoPulseStaySuggestion, prefillDate: String) -> Unit,
     onOpenSettings: () -> Unit,
-    viewModel: GeoPulseSuggestionsViewModel = hiltViewModel(),
+    viewModel: GeoPulseSuggestionsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     // Coming back from the form: re-run the last lookup so the stay now reads "Already logged".
@@ -80,7 +80,7 @@ fun GeoPulseSuggestionsScreen(
         onDateChange = viewModel::onDateChange,
         onLookup = viewModel::lookup,
         onLogStay = onLogStay,
-        onOpenSettings = onOpenSettings,
+        onOpenSettings = onOpenSettings
     )
 }
 
@@ -93,10 +93,12 @@ fun GeoPulseSuggestionsContent(
     onDateChange: (String) -> Unit = {},
     onLookup: () -> Unit = {},
     onLogStay: (GeoPulseStaySuggestion, prefillDate: String) -> Unit = { _, _ -> },
-    onOpenSettings: () -> Unit = {},
+    onOpenSettings: () -> Unit = {}
 ) {
     var showDatePicker by remember { mutableStateOf(false) }
-    val zone = remember(state.timezone) { runCatching { ZoneId.of(state.timezone) }.getOrDefault(ZoneId.systemDefault()) }
+    val zone = remember(
+        state.timezone
+    ) { runCatching { ZoneId.of(state.timezone) }.getOrDefault(ZoneId.systemDefault()) }
     val unnamedPlace = stringResource(R.string.geopulse_unnamed_place)
 
     Scaffold(
@@ -104,33 +106,44 @@ fun GeoPulseSuggestionsContent(
             TopAppBar(
                 navigationIcon = {
                     AccessibleIconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back)
+                        )
                     }
                 },
-                title = { Text(stringResource(R.string.geopulse_title), style = MaterialTheme.typography.titleLarge) },
+                title = {
+                    Text(
+                        stringResource(R.string.geopulse_title),
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
-        },
+        }
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding).testTag("geopulse-suggestions-list"),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
                 Text(
                     stringResource(R.string.geopulse_description),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             item {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
                     OutlinedTextField(
                         value = state.date,
                         onValueChange = {},
@@ -141,18 +154,24 @@ fun GeoPulseSuggestionsContent(
                             AccessibleIconButton(onClick = { showDatePicker = true }) {
                                 Icon(
                                     Icons.Outlined.CalendarToday,
-                                    contentDescription = stringResource(R.string.geopulse_pick_date),
+                                    contentDescription = stringResource(
+                                        R.string.geopulse_pick_date
+                                    )
                                 )
                             }
                         },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f)
                     )
                     Button(
                         onClick = onLookup,
                         enabled = state.date.isNotBlank() && !state.isLoading,
-                        modifier = Modifier.heightIn(min = 56.dp),
+                        modifier = Modifier.heightIn(min = 56.dp)
                     ) {
-                        Text(stringResource(if (state.isLoading) R.string.geopulse_looking_up else R.string.geopulse_look_up))
+                        Text(
+                            stringResource(
+                                if (state.isLoading) R.string.geopulse_looking_up else R.string.geopulse_look_up
+                            )
+                        )
                     }
                 }
             }
@@ -170,9 +189,17 @@ fun GeoPulseSuggestionsContent(
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
+                    modifier = Modifier.fillMaxWidth().semantics {
+                        liveRegion =
+                            LiveRegionMode.Polite
+                    }
                 ) {
-                    if (state.isLoading) CircularProgressIndicator(modifier = Modifier.padding(2.dp), strokeWidth = 2.dp)
+                    if (state.isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.padding(2.dp),
+                            strokeWidth = 2.dp
+                        )
+                    }
                     if (announcement.isNotEmpty()) {
                         Text(announcement, style = MaterialTheme.typography.labelLarge)
                     }
@@ -186,7 +213,7 @@ fun GeoPulseSuggestionsContent(
                             error,
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+                            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
                         )
                         OutlinedButton(onClick = onOpenSettings) {
                             Text(stringResource(R.string.geopulse_open_settings))
@@ -197,42 +224,68 @@ fun GeoPulseSuggestionsContent(
 
             val suggestions = state.suggestions
             if (suggestions != null && suggestions.isEmpty()) {
-                item { Text(stringResource(R.string.geopulse_no_stays), style = MaterialTheme.typography.bodyMedium) }
+                item {
+                    Text(
+                        stringResource(R.string.geopulse_no_stays),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
             }
-            items(suggestions.orEmpty(), key = { it.externalRef.ifBlank { it.stayId.toString() } }) { stay ->
+            items(
+                suggestions.orEmpty(),
+                key = { it.externalRef.ifBlank { it.stayId.toString() } }
+            ) { stay ->
                 val place = stay.location.ifBlank { unnamedPlace }
                 val time = formatStayTime(stay.timestamp, zone)
-                val area = listOf(stay.city, stay.country).filter { it.isNotBlank() }.joinToString(", ")
+                val area = listOf(
+                    stay.city,
+                    stay.country
+                ).filter { it.isNotBlank() }.joinToString(", ")
                 val duration = durationText(stay.durationSeconds)
                 val logged = stay.existingActivityId != null
                 val logLabel = stringResource(R.string.geopulse_log_activity_at, place, time)
                 Card(modifier = Modifier.fillMaxWidth().testTag("geopulse-stay-${stay.stayId}")) {
-                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.Top,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     place,
                                     style = MaterialTheme.typography.titleSmall,
-                                    modifier = Modifier.semantics { heading() },
+                                    modifier = Modifier.semantics { heading() }
                                 )
                                 Text(
-                                    listOf(time, duration, area).filter { it.isNotBlank() }.joinToString(" · "),
+                                    listOf(
+                                        time,
+                                        duration,
+                                        area
+                                    ).filter { it.isNotBlank() }.joinToString(" · "),
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                             if (logged) {
                                 Text(
                                     stringResource(R.string.geopulse_already_logged),
                                     style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.tertiary,
+                                    color = MaterialTheme.colorScheme.tertiary
                                 )
                             } else {
                                 OutlinedButton(
-                                    onClick = { onLogStay(stay, stayPrefillDate(stay.timestamp, zone, state.date)) },
+                                    onClick = {
+                                        onLogStay(
+                                            stay,
+                                            stayPrefillDate(stay.timestamp, zone, state.date)
+                                        )
+                                    },
                                     modifier = Modifier
                                         .heightIn(min = 48.dp)
-                                        .semantics { contentDescription = logLabel },
+                                        .semantics { contentDescription = logLabel }
                                 ) {
                                     Text(stringResource(R.string.geopulse_log_activity))
                                 }
@@ -242,18 +295,27 @@ fun GeoPulseSuggestionsContent(
                             Text(
                                 stringResource(R.string.geopulse_photos, stay.photos.size),
                                 style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
                                 stay.photos.forEach { photo ->
                                     Surface(
                                         shape = MaterialTheme.shapes.small,
-                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                                        border = BorderStroke(
+                                            1.dp,
+                                            MaterialTheme.colorScheme.outlineVariant
+                                        )
                                     ) {
                                         Text(
                                             photo.fileName.ifBlank { photo.id },
                                             style = MaterialTheme.typography.labelMedium,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                            modifier = Modifier.padding(
+                                                horizontal = 8.dp,
+                                                vertical = 4.dp
+                                            )
                                         )
                                     }
                                 }
@@ -262,7 +324,7 @@ fun GeoPulseSuggestionsContent(
                             Text(
                                 stringResource(R.string.geopulse_photos_unavailable),
                                 style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -272,21 +334,31 @@ fun GeoPulseSuggestionsContent(
     }
 
     if (showDatePicker) {
-        val initialMillis = runCatching { LocalDate.parse(state.date).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli() }.getOrNull()
+        val initialMillis = runCatching {
+            LocalDate.parse(
+                state.date
+            ).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+        }.getOrNull()
         val pickerState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
                 TextButton(onClick = {
                     pickerState.selectedDateMillis?.let { millis ->
-                        onDateChange(Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate().toString())
+                        onDateChange(
+                            Instant.ofEpochMilli(
+                                millis
+                            ).atZone(ZoneOffset.UTC).toLocalDate().toString()
+                        )
                     }
                     showDatePicker = false
                 }) { Text(stringResource(R.string.action_confirm)) }
             },
             dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text(stringResource(R.string.action_cancel)) }
-            },
+                TextButton(
+                    onClick = { showDatePicker = false }
+                ) { Text(stringResource(R.string.action_cancel)) }
+            }
         ) {
             DatePicker(state = pickerState, showModeToggle = false)
         }

@@ -32,7 +32,7 @@ class WebhookRepositoryImplTest {
     @Test
     fun `list returns the webhooks on success`() = runTest {
         coEvery { apiClient.listWebhooks() } returns Result.success(
-            listOf(Webhook(id = 1, name = "Hook 1")),
+            listOf(Webhook(id = 1, name = "Hook 1"))
         )
 
         val result = repository.list()
@@ -53,9 +53,14 @@ class WebhookRepositoryImplTest {
 
     @Test
     fun `create forwards the input and returns the created webhook`() = runTest {
-        val input = WebhookInput(name = "Hook", url = "https://example.com", events = listOf("contact.created"), isActive = true)
+        val input = WebhookInput(
+            name = "Hook",
+            url = "https://example.com",
+            events = listOf("contact.created"),
+            isActive = true
+        )
         coEvery { apiClient.createWebhook(input) } returns Result.success(
-            WebhookCreateResponse(id = 1, name = "Hook", secret = "s3cr3t"),
+            WebhookCreateResponse(id = 1, name = "Hook", secret = "s3cr3t")
         )
 
         val result = repository.create(input)
@@ -66,8 +71,18 @@ class WebhookRepositoryImplTest {
 
     @Test
     fun `update forwards id and input`() = runTest {
-        val input = WebhookInput(name = "Renamed", url = "https://example.com", events = emptyList(), isActive = false)
-        coEvery { apiClient.updateWebhook(1, input) } returns Result.success(Webhook(id = 1, name = "Renamed"))
+        val input = WebhookInput(
+            name = "Renamed",
+            url = "https://example.com",
+            events = emptyList(),
+            isActive = false
+        )
+        coEvery {
+            apiClient.updateWebhook(
+                1,
+                input
+            )
+        } returns Result.success(Webhook(id = 1, name = "Renamed"))
 
         val result = repository.update(1, input)
 
@@ -87,7 +102,7 @@ class WebhookRepositoryImplTest {
     @Test
     fun `test triggers a delivery attempt`() = runTest {
         coEvery { apiClient.testWebhook(1) } returns Result.success(
-            WebhookDelivery(id = 9, webhookId = 1, eventType = "test"),
+            WebhookDelivery(id = 9, webhookId = 1, eventType = "test")
         )
 
         val result = repository.test(1)
@@ -99,7 +114,7 @@ class WebhookRepositoryImplTest {
     @Test
     fun `deliveries returns the delivery history`() = runTest {
         coEvery { apiClient.getWebhookDeliveries(1) } returns Result.success(
-            listOf(WebhookDelivery(id = 1, webhookId = 1, eventType = "contact.created")),
+            listOf(WebhookDelivery(id = 1, webhookId = 1, eventType = "contact.created"))
         )
 
         val result = repository.deliveries(1)
@@ -117,7 +132,7 @@ class ApiTokenRepositoryImplTest {
     @Test
     fun `list returns the tokens on success`() = runTest {
         coEvery { apiClient.listApiTokens() } returns Result.success(
-            listOf(ApiToken(id = 1, name = "Sync script")),
+            listOf(ApiToken(id = 1, name = "Sync script"))
         )
 
         val result = repository.list()
@@ -140,7 +155,7 @@ class ApiTokenRepositoryImplTest {
     fun `create forwards the input and returns the plaintext once`() = runTest {
         val input = ApiTokenInput(name = "New token", expiresInDays = 90, scope = "full")
         coEvery { apiClient.createApiToken(input) } returns Result.success(
-            ApiTokenCreateResponse(id = 1, name = "New token", token = "s3cr3t"),
+            ApiTokenCreateResponse(id = 1, name = "New token", token = "s3cr3t")
         )
 
         val result = repository.create(input)
@@ -160,7 +175,11 @@ class ApiTokenRepositoryImplTest {
 
     @Test
     fun `revoke failure is normalized through mapError`() = runTest {
-        coEvery { apiClient.revokeApiToken(1) } returns Result.failure(ApiError.Client(404, "not found"))
+        coEvery {
+            apiClient.revokeApiToken(
+                1
+            )
+        } returns Result.failure(ApiError.Client(404, "not found"))
 
         val result = repository.revoke(1)
 
@@ -170,7 +189,9 @@ class ApiTokenRepositoryImplTest {
 
     @Test
     fun `revokeAll returns the revoked count`() = runTest {
-        coEvery { apiClient.revokeAllApiTokens() } returns Result.success(RevokeAllApiTokensResponse(revoked = 2))
+        coEvery { apiClient.revokeAllApiTokens() } returns Result.success(
+            RevokeAllApiTokensResponse(revoked = 2)
+        )
 
         val result = repository.revokeAll()
 
@@ -181,7 +202,7 @@ class ApiTokenRepositoryImplTest {
     @Test
     fun `rotate returns the reissued token with a fresh plaintext`() = runTest {
         coEvery { apiClient.rotateApiToken(1) } returns Result.success(
-            ApiTokenCreateResponse(id = 8, name = "Sync script", token = "rotated456"),
+            ApiTokenCreateResponse(id = 8, name = "Sync script", token = "rotated456")
         )
 
         val result = repository.rotate(1)
@@ -200,7 +221,7 @@ class CalendarSubscriptionRepositoryImplTest {
     @Test
     fun `list returns the calendars on success`() = runTest {
         coEvery { apiClient.listCalendarSubscriptions() } returns Result.success(
-            listOf(CalendarSubscription(id = 1, name = "Personal")),
+            listOf(CalendarSubscription(id = 1, name = "Personal"))
         )
 
         val result = repository.list()
@@ -211,7 +232,9 @@ class CalendarSubscriptionRepositoryImplTest {
 
     @Test
     fun `list failure is normalized through mapError`() = runTest {
-        coEvery { apiClient.listCalendarSubscriptions() } returns Result.failure(ApiError.Server(500, "boom"))
+        coEvery { apiClient.listCalendarSubscriptions() } returns Result.failure(
+            ApiError.Server(500, "boom")
+        )
 
         val result = repository.list()
 
@@ -223,7 +246,7 @@ class CalendarSubscriptionRepositoryImplTest {
     fun `create forwards the input and returns the created subscription`() = runTest {
         val input = CalendarSubscriptionInput(name = "Personal", url = "https://example.com/a.ics")
         coEvery { apiClient.createCalendarSubscription(input) } returns Result.success(
-            CalendarSubscription(id = 9, name = "Personal"),
+            CalendarSubscription(id = 9, name = "Personal")
         )
 
         val result = repository.create(input)
@@ -236,7 +259,7 @@ class CalendarSubscriptionRepositoryImplTest {
     fun `update forwards id and input`() = runTest {
         val input = CalendarSubscriptionInput(name = "Renamed", url = "https://example.com/a.ics")
         coEvery { apiClient.updateCalendarSubscription(9, input) } returns Result.success(
-            CalendarSubscription(id = 9, name = "Renamed"),
+            CalendarSubscription(id = 9, name = "Renamed")
         )
 
         val result = repository.update(9, input)
@@ -257,7 +280,7 @@ class CalendarSubscriptionRepositoryImplTest {
     @Test
     fun `sync returns the run tallies`() = runTest {
         coEvery { apiClient.syncCalendarSubscription(9) } returns Result.success(
-            CalendarSyncResult(created = 2, updated = 1, skipped = 0),
+            CalendarSyncResult(created = 2, updated = 1, skipped = 0)
         )
 
         val result = repository.sync(9)
@@ -268,7 +291,11 @@ class CalendarSubscriptionRepositoryImplTest {
 
     @Test
     fun `sync failure is normalized through mapError`() = runTest {
-        coEvery { apiClient.syncCalendarSubscription(9) } returns Result.failure(ApiError.Client(400, "unreachable"))
+        coEvery {
+            apiClient.syncCalendarSubscription(
+                9
+            )
+        } returns Result.failure(ApiError.Client(400, "unreachable"))
 
         val result = repository.sync(9)
 
@@ -285,7 +312,7 @@ class ContactSubscriptionRepositoryImplTest {
     @Test
     fun `list returns the contact subscriptions on success`() = runTest {
         coEvery { apiClient.listContactSubscriptions() } returns Result.success(
-            listOf(ContactSubscription(id = 1, name = "Address Book")),
+            listOf(ContactSubscription(id = 1, name = "Address Book"))
         )
 
         val result = repository.list()
@@ -296,7 +323,9 @@ class ContactSubscriptionRepositoryImplTest {
 
     @Test
     fun `list failure is normalized through mapError`() = runTest {
-        coEvery { apiClient.listContactSubscriptions() } returns Result.failure(ApiError.Server(500, "boom"))
+        coEvery { apiClient.listContactSubscriptions() } returns Result.failure(
+            ApiError.Server(500, "boom")
+        )
 
         val result = repository.list()
 
@@ -313,7 +342,7 @@ class NotificationSettingsRepositoryImplTest {
     @Test
     fun `config returns the current settings`() = runTest {
         coEvery { apiClient.getNotificationConfig() } returns Result.success(
-            NotificationConfig(ntfyUrl = "https://ntfy.sh", notifyNtfy = true),
+            NotificationConfig(ntfyUrl = "https://ntfy.sh", notifyNtfy = true)
         )
 
         val result = repository.config()
@@ -326,7 +355,7 @@ class NotificationSettingsRepositoryImplTest {
     fun `save forwards the input`() = runTest {
         val input = NotificationConfigInput(ntfyUrl = "https://ntfy.sh", notifyNtfy = true)
         coEvery { apiClient.saveNotificationConfig(input) } returns Result.success(
-            NotificationConfig(ntfyUrl = "https://ntfy.sh", notifyNtfy = true),
+            NotificationConfig(ntfyUrl = "https://ntfy.sh", notifyNtfy = true)
         )
 
         val result = repository.save(input)
@@ -337,7 +366,7 @@ class NotificationSettingsRepositoryImplTest {
     @Test
     fun `test surfaces a failed channel test`() = runTest {
         coEvery { apiClient.testNotificationChannel("ntfy") } returns Result.success(
-            NotificationTestResult(ok = false, error = "unauthorized"),
+            NotificationTestResult(ok = false, error = "unauthorized")
         )
 
         val result = repository.test("ntfy")
@@ -348,7 +377,11 @@ class NotificationSettingsRepositoryImplTest {
 
     @Test
     fun `test failure is normalized through mapError`() = runTest {
-        coEvery { apiClient.testNotificationChannel("gotify") } returns Result.failure(ApiError.Client(401, "unauthorized"))
+        coEvery {
+            apiClient.testNotificationChannel(
+                "gotify"
+            )
+        } returns Result.failure(ApiError.Client(401, "unauthorized"))
 
         val result = repository.test("gotify")
 

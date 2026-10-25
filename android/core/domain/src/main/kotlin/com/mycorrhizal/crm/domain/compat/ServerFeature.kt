@@ -49,73 +49,104 @@ private val SERVER_BASELINE: AppVersion = AppVersion(1, 0, 0)
  * them is a data-only change.
  */
 enum class ServerFeature(val minServerVersion: AppVersion) {
-
     // --- The v1.0.0 baseline (the oldest server this app will talk to) ---
 
     /** Contact list/detail/create/edit/delete and the flat list contract. */
     CONTACTS(SERVER_BASELINE),
+
     /** Per-contact activity timeline (list/create/edit/delete). */
     CONTACT_ACTIVITIES(SERVER_BASELINE),
+
     /** Per-contact notes timeline (list/create/edit/delete). */
     CONTACT_NOTES(SERVER_BASELINE),
+
     /** Per-contact reminders (list/create/edit/delete/complete). */
     CONTACT_REMINDERS(SERVER_BASELINE),
+
     /** Relationship edges between contacts. */
     CONTACT_RELATIONSHIPS(SERVER_BASELINE),
+
     /** Cadence policies / overdue reach-outs. */
     CONTACT_CADENCE(SERVER_BASELINE),
+
     /** Occasion events + attendee/RSVP tracking (ADR 0026, issue #1228). */
     OCCASIONS(SERVER_BASELINE),
+
     /** Life events on a contact. */
     CONTACT_LIFE_EVENTS(SERVER_BASELINE),
+
     /** Gift ideas on a contact. */
     CONTACT_GIFTS(SERVER_BASELINE),
+
     /** Contact preferences. */
     CONTACT_PREFERENCES(SERVER_BASELINE),
+
     /** Conversation agenda. */
     CONTACT_CONVERSATION_AGENDA(SERVER_BASELINE),
+
     /** The prep-view briefing (GET /contacts/:id/briefing). */
     CONTACT_PREP(SERVER_BASELINE),
+
     /** Contact attachments (list/download/upload). */
     CONTACT_ATTACHMENTS(SERVER_BASELINE),
+
     /** Contact merge (preview + commit). */
     CONTACT_MERGE(SERVER_BASELINE),
+
     /** Contact shares inbox/outbox + recipient directory. */
     CONTACT_SHARES(SERVER_BASELINE),
+
     /** Contact network graph from a contact. */
     CONTACT_NETWORK(SERVER_BASELINE),
+
     /** The top-level network graph. */
     NETWORK(SERVER_BASELINE),
+
     /** Dashboard composite (birthdays, reminders, cadence, reach-out). */
     DASHBOARD(SERVER_BASELINE),
+
     /** Activities inbox (drawer "activities"). */
     ACTIVITIES_INBOX(SERVER_BASELINE),
+
     /** Notes inbox (drawer "notes"). */
     NOTES_INBOX(SERVER_BASELINE),
+
     /** Circles + members. */
     CIRCLES(SERVER_BASELINE),
+
     /** Tags. */
     TAGS(SERVER_BASELINE),
+
     /** Households + members + address suggestions. */
     HOUSEHOLDS(SERVER_BASELINE),
+
     /** Audit log view + undo. */
     AUDIT_LOG(SERVER_BASELINE),
+
     /** Data review: relationship/address suggestions + scan/apply. */
     DATA_REVIEW(SERVER_BASELINE),
+
     /** Dataset export (CSV / vCard 3+4 / JSContact). */
     DATASET_EXPORT(SERVER_BASELINE),
+
     /** Import (device contacts, vCard file, records). */
     IMPORT(SERVER_BASELINE),
+
     /** Two-factor status/setup/confirm/disable/recovery + the 2FA login step. */
     TWO_FACTOR(SERVER_BASELINE),
+
     /** Webhooks + deliveries + test. */
     WEBHOOKS(SERVER_BASELINE),
+
     /** Notification channel (ntfy/Gotify) configuration + test. */
     NOTIFICATION_CHANNELS(SERVER_BASELINE),
+
     /** API token create/list/revoke. */
     API_TOKENS(SERVER_BASELINE),
+
     /** Immich configuration + people. */
     IMMICH(SERVER_BASELINE),
+
     /** Admin user management. */
     ADMIN_USERS(SERVER_BASELINE),
 
@@ -123,10 +154,13 @@ enum class ServerFeature(val minServerVersion: AppVersion) {
 
     /** Admin system events / subsystem health / error aggregation (v0.6.2+). */
     SYSTEM_EVENTS(AppVersion(0, 6, 2)),
+
     /** Audit-log CSV export (v0.6.1+). */
     AUDIT_EXPORT(AppVersion(0, 6, 1)),
+
     /** API-token rotation + revoke-all (v0.6.1+). */
     API_TOKENS_ADVANCED(AppVersion(0, 6, 1)),
+
     /** Biometric device-grant sign-in: enroll/exchange/revoke (v0.6.10+). */
-    DEVICE_GRANT_SIGNIN(AppVersion(0, 6, 10)),
+    DEVICE_GRANT_SIGNIN(AppVersion(0, 6, 10))
 }

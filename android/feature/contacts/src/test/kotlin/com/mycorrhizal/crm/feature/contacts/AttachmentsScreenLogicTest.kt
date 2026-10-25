@@ -11,6 +11,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.mycorrhizal.crm.model.network.ContactAttachment
 import io.mockk.every
 import io.mockk.mockk
+import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -19,7 +20,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import java.io.File
 
 /**
  * AttachmentsScreen.kt (63 missed lines, the highest-missed Android file in
@@ -228,15 +228,16 @@ class AttachmentsScreenLogicTest {
     fun `openDownloadedAttachment swallows a failure launching the viewer`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val throwingContext = object : ContextWrapper(context) {
-            override fun startActivity(intent: Intent) {
-                throw android.content.ActivityNotFoundException("no activity can view this attachment")
-            }
+            override fun startActivity(intent: Intent): Unit =
+                throw android.content.ActivityNotFoundException(
+                    "no activity can view this attachment"
+                )
         }
         val attachment = ContactAttachment(
             id = 7,
             originalName = "scan.pdf",
             contentType = "application/pdf",
-            sizeBytes = 3,
+            sizeBytes = 3
         )
 
         // Must not throw: a provider with no registered viewer is expected,
@@ -253,15 +254,16 @@ class AttachmentsScreenLogicTest {
     fun `openDownloadedAttachment sanitizes an unsafe original name before writing to disk`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val throwingContext = object : ContextWrapper(context) {
-            override fun startActivity(intent: Intent) {
-                throw android.content.ActivityNotFoundException("no activity can view this attachment")
-            }
+            override fun startActivity(intent: Intent): Unit =
+                throw android.content.ActivityNotFoundException(
+                    "no activity can view this attachment"
+                )
         }
         val attachment = ContactAttachment(
             id = 9,
             originalName = "../../etc/passwd",
             contentType = "text/plain",
-            sizeBytes = 1,
+            sizeBytes = 1
         )
 
         openDownloadedAttachment(throwingContext, attachment, byteArrayOf(1))

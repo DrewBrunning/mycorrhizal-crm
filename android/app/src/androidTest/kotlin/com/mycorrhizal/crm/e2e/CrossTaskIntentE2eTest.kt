@@ -101,7 +101,9 @@ class CrossTaskIntentE2eTest {
         assertEquals(
             "a recreate must not re-navigate to the consumed link",
             0,
-            compose.onAllNodes(hasContentDescription("Mark $displayName as favorite")).fetchSemanticsNodes().size,
+            compose.onAllNodes(
+                hasContentDescription("Mark $displayName as favorite")
+            ).fetchSemanticsNodes().size
         )
     }
 
@@ -147,7 +149,9 @@ class CrossTaskIntentE2eTest {
         assertEquals(
             "a rejected link must not navigate",
             0,
-            compose.onAllNodes(hasContentDescription("Mark $displayName as favorite")).fetchSemanticsNodes().size,
+            compose.onAllNodes(
+                hasContentDescription("Mark $displayName as favorite")
+            ).fetchSemanticsNodes().size
         )
     }
 
@@ -175,7 +179,7 @@ class CrossTaskIntentE2eTest {
         assertEquals(emptyList<String>(), backend.noteContents(contactId))
         assertNull(
             "a consumed share must not stay on the intent",
-            activity()!!.intent.getStringExtra("android.intent.extra.TEXT"),
+            activity()!!.intent.getStringExtra("android.intent.extra.TEXT")
         )
     }
 
@@ -197,15 +201,21 @@ class CrossTaskIntentE2eTest {
      * does not resolve.
      */
     private fun viewCrossTask(uri: String, mustStart: Boolean = true) {
-        require(uri.none { it.isWhitespace() || it == '\'' }) { "URI must be a single unquoted shell word" }
+        require(
+            uri.none { it.isWhitespace() || it == '\'' }
+        ) { "URI must be a single unquoted shell word" }
         val out = shell("am start -W -a android.intent.action.VIEW -d $uri -p $pkg")
         if (mustStart) assertStarted(out, uri)
     }
 
     /** `am start -a SEND` from the shell; [text] must be a single shell word. */
     private fun shareCrossTask(text: String) {
-        require(text.none { it.isWhitespace() || it == '\'' }) { "text must be a single unquoted shell word" }
-        val out = shell("am start -W -a android.intent.action.SEND -t text/plain -p $pkg --es android.intent.extra.TEXT $text")
+        require(
+            text.none { it.isWhitespace() || it == '\'' }
+        ) { "text must be a single unquoted shell word" }
+        val out = shell(
+            "am start -W -a android.intent.action.SEND -t text/plain -p $pkg --es android.intent.extra.TEXT $text"
+        )
         assertStarted(out, text)
     }
 
@@ -231,7 +241,10 @@ class CrossTaskIntentE2eTest {
      * [shell] does not read — so success is asserted on stdout, not failure looked for.
      */
     private fun assertStarted(amOutput: String, what: String) {
-        assertTrue("`am start -W` for $what did not report `Status: ok`; it printed: [$amOutput]", amOutput.contains("Status: ok"))
+        assertTrue(
+            "`am start -W` for $what did not report `Status: ok`; it printed: [$amOutput]",
+            amOutput.contains("Status: ok")
+        )
     }
 
     private fun mainActivities(): List<MainActivity> = E2eActivities.mainActivities()
@@ -244,7 +257,9 @@ class CrossTaskIntentE2eTest {
             var resumed = false
             instrumentation.runOnMainSync {
                 resumed = ActivityLifecycleMonitorRegistry.getInstance()
-                    .getActivitiesInStage(Stage.RESUMED).filterIsInstance<MainActivity>().isNotEmpty()
+                    .getActivitiesInStage(
+                        Stage.RESUMED
+                    ).filterIsInstance<MainActivity>().isNotEmpty()
             }
             if (resumed) return
             Thread.sleep(200)
@@ -306,7 +321,9 @@ class CrossTaskIntentE2eTest {
         replaceTextInField("Server URL", E2eConfig.serverUrl)
         replaceTextInField("Username or email", E2eConfig.SEED_USERNAME)
         waitForText("Password")
-        compose.onNode(hasText("Password") and hasSetTextAction()).performTextInput(E2eConfig.SEED_PASSWORD)
+        compose.onNode(
+            hasText("Password") and hasSetTextAction()
+        ).performTextInput(E2eConfig.SEED_PASSWORD)
         compose.onNodeWithText("Sign in").performClick()
         waitForText("Dashboard")
     }

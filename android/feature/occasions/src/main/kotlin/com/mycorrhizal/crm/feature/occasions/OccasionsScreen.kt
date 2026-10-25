@@ -18,6 +18,7 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.Group
+import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -28,10 +29,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import com.mycorrhizal.crm.ui.components.BrandFab
-import com.mycorrhizal.crm.ui.components.DiscardChangesDialog
-import com.mycorrhizal.crm.ui.components.FabListContentPadding
-import com.mycorrhizal.crm.ui.components.EmptyState
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -66,10 +63,13 @@ import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.ui.LocalDateFormat
 import com.mycorrhizal.crm.ui.LocalIs24Hour
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.DiscardChangesDialog
+import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
-import androidx.compose.material.icons.outlined.Menu
 import java.util.Locale
 
 /**
@@ -82,7 +82,7 @@ fun OccasionsScreen(
     // Issue #1758: a top-level drawer destination; null hides the hamburger (no drawer at Expanded).
     onMenuClick: (() -> Unit)? = {},
     onOpenAttendees: (String) -> Unit,
-    viewModel: OccasionsViewModel = hiltViewModel(),
+    viewModel: OccasionsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -105,47 +105,72 @@ fun OccasionsScreen(
                     // null at Expanded width where the rail replaces it.
                     onMenuClick?.let { onMenu ->
                         IconButton(onClick = onMenu) {
-                            Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
+                            Icon(
+                                Icons.Outlined.Menu,
+                                contentDescription = stringResource(R.string.cd_menu)
+                            )
                         }
                     }
                 },
-                title = { Text(stringResource(R.string.occasions_title), style = MaterialTheme.typography.titleLarge) },
+                title = {
+                    Text(
+                        stringResource(R.string.occasions_title),
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
         floatingActionButton = {
-            BrandFab(onClick = { editing = null; showDialog = true }) {
-                Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.occasions_add_event))
+            BrandFab(onClick = {
+                editing = null
+                showDialog = true
+            }) {
+                Icon(
+                    Icons.Outlined.Add,
+                    contentDescription = stringResource(R.string.occasions_add_event)
+                )
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
             when {
                 state.errorRes != null -> CenteredMessage(stringResource(state.errorRes!!))
-                state.isLoading && state.events.isEmpty() -> CenteredMessage(stringResource(R.string.a11y_state_loading))
+
+                state.isLoading && state.events.isEmpty() -> CenteredMessage(
+                    stringResource(R.string.a11y_state_loading)
+                )
+
                 state.events.isEmpty() -> EmptyState(
                     title = stringResource(R.string.occasions_empty),
                     body = stringResource(R.string.occasions_empty_body),
                     actionLabel = stringResource(R.string.occasions_add_event),
-                    onAction = { editing = null; showDialog = true },
+                    onAction = {
+                        editing = null
+                        showDialog = true
+                    }
                 )
+
                 else -> LazyColumn(
                     modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
                     contentPadding = FabListContentPadding,
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(state.events, key = { it.id }) { event ->
                         OccasionEventRow(
                             event = event,
                             onOpen = { onOpenAttendees(event.id) },
-                            onEdit = { editing = event; showDialog = true },
-                            onDelete = { pendingDelete = event },
+                            onEdit = {
+                                editing = event
+                                showDialog = true
+                            },
+                            onDelete = { pendingDelete = event }
                         )
                     }
                 }
@@ -160,12 +185,27 @@ fun OccasionsScreen(
             onSave = { form ->
                 val current = editing
                 if (current != null) {
-                    viewModel.update(current.id, form.title, form.startsAt, form.endsAt, form.location, form.sensitivity, form.notes)
+                    viewModel.update(
+                        current.id,
+                        form.title,
+                        form.startsAt,
+                        form.endsAt,
+                        form.location,
+                        form.sensitivity,
+                        form.notes
+                    )
                 } else {
-                    viewModel.create(form.title, form.startsAt, form.endsAt, form.location, form.sensitivity, form.notes)
+                    viewModel.create(
+                        form.title,
+                        form.startsAt,
+                        form.endsAt,
+                        form.location,
+                        form.sensitivity,
+                        form.notes
+                    )
                 }
                 showDialog = false
-            },
+            }
         )
     }
 
@@ -175,11 +215,21 @@ fun OccasionsScreen(
             title = { Text(stringResource(R.string.occasions_delete_title)) },
             text = { Text(stringResource(R.string.occasions_delete_confirm, event.title)) },
             confirmButton = {
-                TextButton(enabled = !state.isMutating, onClick = { viewModel.delete(event.id); pendingDelete = null }) {
+                TextButton(
+                    enabled = !state.isMutating,
+                    onClick = {
+                        viewModel.delete(event.id)
+                        pendingDelete = null
+                    }
+                ) {
                     Text(stringResource(R.string.action_delete))
                 }
             },
-            dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text(stringResource(R.string.action_cancel)) } },
+            dismissButton = {
+                TextButton(
+                    onClick = { pendingDelete = null }
+                ) { Text(stringResource(R.string.action_cancel)) }
+            }
         )
     }
 }
@@ -187,7 +237,11 @@ fun OccasionsScreen(
 @Composable
 internal fun CenteredMessage(text: String) {
     Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
-        Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -196,15 +250,28 @@ private fun OccasionEventRow(
     event: OccasionEvent,
     onOpen: () -> Unit,
     onEdit: () -> Unit,
-    onDelete: () -> Unit,
+    onDelete: () -> Unit
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(vertical = 8.dp),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(vertical = 8.dp)
     ) {
-        Text(event.title, style = MaterialTheme.typography.bodyLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        Text(formatEventWhen(event, LocalDateFormat.current, LocalIs24Hour.current), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            event.title,
+            style = MaterialTheme.typography.bodyLarge,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            formatEventWhen(event, LocalDateFormat.current, LocalIs24Hour.current),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         event.location?.takeIf { it.isNotBlank() }?.let {
-            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                it,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             TextButton(onClick = onOpen) {
@@ -215,7 +282,10 @@ private fun OccasionEventRow(
                 Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.action_edit))
             }
             IconButton(onClick = onDelete) {
-                Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.action_delete))
+                Icon(
+                    Icons.Outlined.Delete,
+                    contentDescription = stringResource(R.string.action_delete)
+                )
             }
         }
     }
@@ -227,7 +297,7 @@ internal data class OccasionEventForm(
     val endsAt: String?,
     val location: String?,
     val sensitivity: String,
-    val notes: String?,
+    val notes: String?
 )
 
 /**
@@ -239,7 +309,7 @@ internal data class OccasionEventForm(
 internal fun OccasionEventDialog(
     event: OccasionEvent?,
     onDismiss: () -> Unit,
-    onSave: (OccasionEventForm) -> Unit,
+    onSave: (OccasionEventForm) -> Unit
 ) {
     // Resolved in composition (not via the Context inside onClick) so a
     // configuration change -- e.g. a locale switch -- re-resolves them.
@@ -250,7 +320,9 @@ internal fun OccasionEventDialog(
     var startsAt by remember(event) { mutableStateOf(event?.startsAt ?: "") }
     var endsAt by remember(event) { mutableStateOf(event?.endsAt ?: "") }
     var location by remember(event) { mutableStateOf(event?.location ?: "") }
-    var sensitivity by remember(event) { mutableStateOf(event?.sensitivity ?: OccasionSensitivity.NORMAL) }
+    var sensitivity by remember(
+        event
+    ) { mutableStateOf(event?.sensitivity ?: OccasionSensitivity.NORMAL) }
     var notes by remember(event) { mutableStateOf(event?.notes ?: "") }
     var error by remember { mutableStateOf<String?>(null) }
     var showDiscardDialog by rememberSaveable { mutableStateOf(false) }
@@ -266,30 +338,53 @@ internal fun OccasionEventDialog(
         onDismissRequest = requestDismiss,
         title = {
             Text(
-                text = stringResource(if (event == null) R.string.occasions_create_title else R.string.occasions_edit_title),
-                modifier = Modifier.semantics { heading() },
+                text = stringResource(
+                    if (event ==
+                        null
+                    ) {
+                        R.string.occasions_create_title
+                    } else {
+                        R.string.occasions_edit_title
+                    }
+                ),
+                modifier = Modifier.semantics { heading() }
             )
         },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 OutlinedTextField(
                     value = title,
-                    onValueChange = { title = it; error = null },
+                    onValueChange = {
+                        title = it
+                        error = null
+                    },
                     label = { Text(stringResource(R.string.occasions_event_title)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
                 )
-                InstantField(stringResource(R.string.occasions_starts_at), startsAt) { startsAt = it; error = null }
-                InstantField(stringResource(R.string.occasions_ends_at), endsAt) { endsAt = it; error = null }
+                InstantField(
+                    stringResource(R.string.occasions_starts_at),
+                    startsAt
+                ) {
+                    startsAt = it
+                    error = null
+                }
+                InstantField(
+                    stringResource(R.string.occasions_ends_at),
+                    endsAt
+                ) {
+                    endsAt = it
+                    error = null
+                }
                 OutlinedTextField(
                     value = location,
                     onValueChange = { location = it },
                     label = { Text(stringResource(R.string.occasions_location)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
                 )
                 SensitivitySelect(sensitivity) { sensitivity = it }
                 OutlinedTextField(
@@ -297,7 +392,7 @@ internal fun OccasionEventDialog(
                     onValueChange = { notes = it },
                     label = { Text(stringResource(R.string.occasions_notes)) },
                     minLines = 3,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
                 )
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             }
@@ -307,8 +402,11 @@ internal fun OccasionEventDialog(
                 val trimmed = title.trim()
                 when {
                     trimmed.isEmpty() -> error = titleRequiredMsg
+
                     startsAt.isBlank() -> error = startRequiredMsg
+
                     isEndBeforeStart(startsAt, endsAt) -> error = endBeforeStartMsg
+
                     else -> onSave(
                         OccasionEventForm(
                             title = trimmed,
@@ -316,13 +414,17 @@ internal fun OccasionEventDialog(
                             endsAt = endsAt.ifBlank { null },
                             location = location.trim().ifBlank { null },
                             sensitivity = sensitivity,
-                            notes = notes.trim().ifBlank { null },
-                        ),
+                            notes = notes.trim().ifBlank { null }
+                        )
                     )
                 }
             }) { Text(stringResource(R.string.action_save)) }
         },
-        dismissButton = { TextButton(onClick = requestDismiss) { Text(stringResource(R.string.action_cancel)) } },
+        dismissButton = {
+            TextButton(
+                onClick = requestDismiss
+            ) { Text(stringResource(R.string.action_cancel)) }
+        }
     )
 
     if (showDiscardDialog) {
@@ -332,7 +434,7 @@ internal fun OccasionEventDialog(
             onDiscard = {
                 showDiscardDialog = false
                 onDismiss()
-            },
+            }
         )
     }
 }
@@ -344,7 +446,7 @@ private fun SensitivitySelect(value: String, onSelect: (String) -> Unit) {
         Text(
             stringResource(R.string.occasions_sensitivity),
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Box {
             OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
@@ -354,7 +456,10 @@ private fun SensitivitySelect(value: String, onSelect: (String) -> Unit) {
                 OccasionSensitivity.ALL.forEach { option ->
                     DropdownMenuItem(
                         text = { Text(sensitivityLabel(option)) },
-                        onClick = { expanded = false; onSelect(option) },
+                        onClick = {
+                            expanded = false
+                            onSelect(option)
+                        }
                     )
                 }
             }
@@ -382,22 +487,31 @@ private fun InstantField(label: String, value: String, onChange: (String) -> Uni
                 Icon(Icons.Outlined.Event, contentDescription = label)
             }
         },
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth()
     )
     if (picking) {
         InstantPickerDialog(
             initial = value,
-            onConfirm = { iso -> onChange(iso); picking = false },
-            onDismiss = { picking = false },
+            onConfirm = { iso ->
+                onChange(iso)
+                picking = false
+            },
+            onDismiss = { picking = false }
         )
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun InstantPickerDialog(initial: String, onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
+private fun InstantPickerDialog(
+    initial: String,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
     val fallback = remember { Instant.now() }
-    val initialInstant = remember(initial) { runCatching { Instant.parse(initial) }.getOrDefault(fallback) }
+    val initialInstant = remember(
+        initial
+    ) { runCatching { Instant.parse(initial) }.getOrDefault(fallback) }
     val initialLocal = remember(initialInstant) { pickerInitial(initialInstant) }
     val is24Hour = LocalIs24Hour.current
     var step by remember { mutableIntStateOf(0) }
@@ -405,14 +519,22 @@ private fun InstantPickerDialog(initial: String, onConfirm: (String) -> Unit, on
     val timeState = rememberTimePickerState(
         initialHour = initialLocal.hour,
         initialMinute = initialLocal.minute,
-        is24Hour = is24Hour,
+        is24Hour = is24Hour
     )
 
     if (step == 0) {
         DatePickerDialog(
             onDismissRequest = onDismiss,
-            confirmButton = { TextButton(onClick = { step = 1 }) { Text(stringResource(R.string.action_confirm)) } },
-            dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+            confirmButton = {
+                TextButton(
+                    onClick = { step = 1 }
+                ) { Text(stringResource(R.string.action_confirm)) }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = onDismiss
+                ) { Text(stringResource(R.string.action_cancel)) }
+            }
         ) {
             DatePicker(state = dateState, showModeToggle = false)
         }
@@ -427,7 +549,11 @@ private fun InstantPickerDialog(initial: String, onConfirm: (String) -> Unit, on
                     onConfirm(toRfc3339(millis, timeState.hour, timeState.minute))
                 }) { Text(stringResource(R.string.action_confirm)) }
             },
-            dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+            dismissButton = {
+                TextButton(
+                    onClick = onDismiss
+                ) { Text(stringResource(R.string.action_cancel)) }
+            }
         )
     }
 }
@@ -444,12 +570,18 @@ internal fun instantToDisplay(
     dateFormat: String = DateFormat.EU,
     is24Hour: Boolean = true,
     zone: ZoneId = ZoneId.systemDefault(),
-    locale: Locale = Locale.getDefault(),
+    locale: Locale = Locale.getDefault()
 ): String {
     if (iso.isBlank()) return ""
     val instant = runCatching { Instant.parse(iso) }.getOrNull() ?: return iso
     val local = instant.atZone(zone)
-    val date = DateFormat.formatFull(local.year, local.monthValue, local.dayOfMonth, dateFormat, locale)
+    val date = DateFormat.formatFull(
+        local.year,
+        local.monthValue,
+        local.dayOfMonth,
+        dateFormat,
+        locale
+    )
     return "$date ${DateFormat.formatTime(iso, is24Hour, zone, locale)}"
 }
 
@@ -465,7 +597,7 @@ internal fun formatEventWhen(
     dateFormat: String = DateFormat.EU,
     is24Hour: Boolean = true,
     zone: ZoneId = ZoneId.systemDefault(),
-    locale: Locale = Locale.getDefault(),
+    locale: Locale = Locale.getDefault()
 ): String {
     val start = instantToDisplay(event.startsAt, dateFormat, is24Hour, zone, locale)
     val endIso = event.endsAt?.takeIf { it.isNotBlank() } ?: return start
@@ -474,7 +606,16 @@ internal fun formatEventWhen(
     val endInstant = runCatching { Instant.parse(endIso) }.getOrNull() ?: return full
     if (endInstant == startInstant) return start
     val sameDay = startInstant.atZone(zone).toLocalDate() == endInstant.atZone(zone).toLocalDate()
-    return if (sameDay) "$start – ${DateFormat.formatTime(endIso, is24Hour, zone, locale)}" else full
+    return if (sameDay) {
+        "$start – ${DateFormat.formatTime(
+            endIso,
+            is24Hour,
+            zone,
+            locale
+        )}"
+    } else {
+        full
+    }
 }
 
 /** True when both are parseable instants and [endsAt] is strictly before [startsAt]. */
@@ -494,7 +635,7 @@ internal fun pickerInitial(instant: Instant, zone: ZoneId = ZoneId.systemDefault
         // Material's DatePicker speaks UTC midnight of the chosen calendar date.
         dateMillis = local.toLocalDate().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
         hour = local.hour,
-        minute = local.minute,
+        minute = local.minute
     )
 }
 
@@ -508,7 +649,7 @@ internal fun toRfc3339(
     dateMillis: Long,
     hour: Int,
     minute: Int,
-    zone: ZoneId = ZoneId.systemDefault(),
+    zone: ZoneId = ZoneId.systemDefault()
 ): String {
     val date = Instant.ofEpochMilli(dateMillis).atZone(ZoneOffset.UTC).toLocalDate()
     return date.atTime(hour, minute).atZone(zone).toInstant().toString()

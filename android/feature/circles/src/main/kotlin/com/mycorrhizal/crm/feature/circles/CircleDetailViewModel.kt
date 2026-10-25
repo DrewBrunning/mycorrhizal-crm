@@ -12,12 +12,12 @@ import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class CircleDetailUiState(
     val circleId: String = "",
@@ -28,14 +28,14 @@ data class CircleDetailUiState(
     val isLoading: Boolean = false,
     val removingUid: String? = null,
     val error: String? = null,
-    @StringRes val errorRes: Int? = null,
+    @StringRes val errorRes: Int? = null
 )
 
 @HiltViewModel
 class CircleDetailViewModel @Inject constructor(
     private val circleRepository: CircleRepository,
     private val contactRepository: ContactRepository,
-    savedStateHandle: SavedStateHandle,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val circleId: String = run {
@@ -52,7 +52,13 @@ class CircleDetailViewModel @Inject constructor(
 
     fun load() {
         if (circleId.isBlank()) {
-            _uiState.update { it.copy(isLoading = false, errorRes = R.string.circles_error_missing_id, error = null) }
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    errorRes = R.string.circles_error_missing_id,
+                    error = null
+                )
+            }
             return
         }
         viewModelScope.launch {
@@ -66,7 +72,7 @@ class CircleDetailViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -98,7 +104,7 @@ class CircleDetailViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -112,13 +118,13 @@ class CircleDetailViewModel @Inject constructor(
                     _uiState.update { state ->
                         state.copy(
                             removingUid = null,
-                            members = state.members.filterNot { it.memberVCardUid == vcardUid },
+                            members = state.members.filterNot { it.memberVCardUid == vcardUid }
                         )
                     }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(removingUid = null, error = error.displayMessage) }
-                },
+                }
             )
         }
     }

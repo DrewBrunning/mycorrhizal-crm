@@ -53,7 +53,7 @@ class TagRepositoryImplTest {
     @Test
     fun `list mirrors the page into the cache`() = runTest {
         coEvery { apiClient.listTags(cursor = null, limit = 20) } returns Result.success(
-            TagsPage(tags = listOf(Tag(id = "t1", name = "vip"))),
+            TagsPage(tags = listOf(Tag(id = "t1", name = "vip")))
         )
 
         val result = repository.list(cursor = null, limit = 20)
@@ -65,7 +65,12 @@ class TagRepositoryImplTest {
 
     @Test
     fun `list failure propagates without touching the cache`() = runTest {
-        coEvery { apiClient.listTags(cursor = null, limit = 20) } returns Result.failure(ApiError.Server(500, "boom"))
+        coEvery {
+            apiClient.listTags(
+                cursor = null,
+                limit = 20
+            )
+        } returns Result.failure(ApiError.Server(500, "boom"))
 
         val result = repository.list(cursor = null, limit = 20)
 
@@ -76,16 +81,16 @@ class TagRepositoryImplTest {
     @Test
     fun `tagsForContact replaces the tagging mirror wholesale`() = runTest {
         db.cachedContactTagDao().upsertAll(
-            listOf(CachedContactTag(id = 99, tagId = "stale", contactVCardUid = "u1")),
+            listOf(CachedContactTag(id = 99, tagId = "stale", contactVCardUid = "u1"))
         )
         coEvery { apiClient.listTags(includeContacts = true, limit = 100) } returns Result.success(
             TagsPage(
                 tags = listOf(Tag(id = "t1", name = "vip"), Tag(id = "t2", name = "family")),
                 contacts = listOf(
                     ContactTag(id = 1, tagId = "t1", contactVCardUid = "u1"),
-                    ContactTag(id = 2, tagId = "t2", contactVCardUid = "u2"),
-                ),
-            ),
+                    ContactTag(id = 2, tagId = "t2", contactVCardUid = "u2")
+                )
+            )
         )
 
         val result = repository.tagsForContact("u1")
@@ -109,8 +114,8 @@ class TagRepositoryImplTest {
         coEvery { apiClient.getTag("t1") } returns Result.success(
             TagDetailResponse(
                 tag = Tag(id = "t1", name = "vip"),
-                contacts = listOf(ContactTag(id = 1, tagId = "t1", contactVCardUid = "u1")),
-            ),
+                contacts = listOf(ContactTag(id = 1, tagId = "t1", contactVCardUid = "u1"))
+            )
         )
 
         val result = repository.getWithContacts("t1")
@@ -122,7 +127,11 @@ class TagRepositoryImplTest {
 
     @Test
     fun `create mirrors the created tag into the cache`() = runTest {
-        coEvery { apiClient.createTag(TagInput(name = "vip")) } returns Result.success(Tag(id = "t1", name = "vip"))
+        coEvery {
+            apiClient.createTag(
+                TagInput(name = "vip")
+            )
+        } returns Result.success(Tag(id = "t1", name = "vip"))
 
         val result = repository.create("vip")
 
@@ -133,7 +142,9 @@ class TagRepositoryImplTest {
     @Test
     fun `delete cascades to the cached tag and its taggings`() = runTest {
         db.cachedTagDao().upsert(CachedTag(id = "t1", name = "vip"))
-        db.cachedContactTagDao().upsertAll(listOf(CachedContactTag(id = 1, tagId = "t1", contactVCardUid = "u1")))
+        db.cachedContactTagDao().upsertAll(
+            listOf(CachedContactTag(id = 1, tagId = "t1", contactVCardUid = "u1"))
+        )
         coEvery { apiClient.deleteTag("t1") } returns Result.success(Unit)
 
         val result = repository.delete("t1")
@@ -156,8 +167,13 @@ class TagRepositoryImplTest {
 
     @Test
     fun `addContact upserts the new tagging`() = runTest {
-        coEvery { apiClient.addContactTag("t1", ContactTagInput(contactVCardUid = "u1")) } returns Result.success(
-            ContactTag(id = 1, tagId = "t1", contactVCardUid = "u1"),
+        coEvery {
+            apiClient.addContactTag(
+                "t1",
+                ContactTagInput(contactVCardUid = "u1")
+            )
+        } returns Result.success(
+            ContactTag(id = 1, tagId = "t1", contactVCardUid = "u1")
         )
 
         val result = repository.addContact("t1", "u1")
@@ -168,7 +184,9 @@ class TagRepositoryImplTest {
 
     @Test
     fun `removeContact deletes the cached tagging`() = runTest {
-        db.cachedContactTagDao().upsertAll(listOf(CachedContactTag(id = 1, tagId = "t1", contactVCardUid = "u1")))
+        db.cachedContactTagDao().upsertAll(
+            listOf(CachedContactTag(id = 1, tagId = "t1", contactVCardUid = "u1"))
+        )
         coEvery { apiClient.removeContactTag("t1", "u1") } returns Result.success(Unit)
 
         val result = repository.removeContact("t1", "u1")

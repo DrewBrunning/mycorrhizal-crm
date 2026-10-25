@@ -65,7 +65,7 @@ class AdaptiveLayoutTest {
         windowSizeClass: WindowSizeClass,
         currentRoute: String? = "home",
         onDestinationClick: (String) -> Unit = {},
-        railInsets: WindowInsets = WindowInsets(0, 0, 0, 0),
+        railInsets: WindowInsets = WindowInsets(0, 0, 0, 0)
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -74,7 +74,7 @@ class AdaptiveLayoutTest {
                     windowSizeClass = windowSizeClass,
                     drawerState = rememberDrawerState(initialValue = DrawerValue.Closed),
                     onDestinationClick = onDestinationClick,
-                    railInsets = railInsets,
+                    railInsets = railInsets
                 ) {
                     Text("CONTENT", modifier = Modifier.fillMaxSize().testTag("main-content"))
                 }
@@ -85,7 +85,7 @@ class AdaptiveLayoutTest {
     private fun setAdaptiveContent(
         isTwoPane: Boolean,
         currentRoute: String?,
-        constrainWidth: Boolean = false,
+        constrainWidth: Boolean = false
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -93,8 +93,13 @@ class AdaptiveLayoutTest {
                     isTwoPane = isTwoPane,
                     currentRoute = currentRoute,
                     constrainWidth = constrainWidth,
-                    content = { Text("DETAIL", modifier = Modifier.fillMaxSize().testTag("fake-detail")) },
-                    listPane = { Text("LIST", modifier = Modifier.testTag("fake-list")) },
+                    content = {
+                        Text(
+                            "DETAIL",
+                            modifier = Modifier.fillMaxSize().testTag("fake-detail")
+                        )
+                    },
+                    listPane = { Text("LIST", modifier = Modifier.testTag("fake-list")) }
                 )
             }
         }
@@ -141,7 +146,15 @@ class AdaptiveLayoutTest {
         }
         composeTestRule.onNodeWithTag("rail-more").assertExists()
         // Secondary destinations live behind More, so their labels cannot truncate the rail.
-        listOf("activities", "notes", "occasions", "data", "import", "audit", "settings").forEach { route ->
+        listOf(
+            "activities",
+            "notes",
+            "occasions",
+            "data",
+            "import",
+            "audit",
+            "settings"
+        ).forEach { route ->
             composeTestRule.onNodeWithTag("rail-$route").assertDoesNotExist()
         }
     }
@@ -279,7 +292,12 @@ class AdaptiveLayoutTest {
                         isTwoPane = false,
                         currentRoute = "home",
                         constrainWidth = true,
-                        content = { Text("DETAIL", modifier = Modifier.fillMaxSize().testTag("capped-detail")) },
+                        content = {
+                            Text(
+                                "DETAIL",
+                                modifier = Modifier.fillMaxSize().testTag("capped-detail")
+                            )
+                        }
                     )
                 }
             }
@@ -298,7 +316,12 @@ class AdaptiveLayoutTest {
                         isTwoPane = false,
                         currentRoute = "home",
                         constrainWidth = false,
-                        content = { Text("DETAIL", modifier = Modifier.fillMaxSize().testTag("full-detail")) },
+                        content = {
+                            Text(
+                                "DETAIL",
+                                modifier = Modifier.fillMaxSize().testTag("full-detail")
+                            )
+                        }
                     )
                 }
             }

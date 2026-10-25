@@ -25,7 +25,7 @@ import okhttp3.Response
  */
 class SessionExpiryInterceptor(
     private val notifier: SessionExpiryNotifier,
-    private val baseUrlProvider: BaseUrlProvider,
+    private val baseUrlProvider: BaseUrlProvider
 ) : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {

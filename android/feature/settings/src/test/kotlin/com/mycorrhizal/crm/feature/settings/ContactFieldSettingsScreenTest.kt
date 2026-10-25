@@ -36,7 +36,10 @@ class ContactFieldSettingsScreenTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 ContactFieldSettingsContent(
-                    state = ContactFieldSettingsUiState(isLoading = false, enabled = DEFAULT_ENABLED_CONTACT_FIELDS),
+                    state = ContactFieldSettingsUiState(
+                        isLoading = false,
+                        enabled = DEFAULT_ENABLED_CONTACT_FIELDS
+                    )
                 )
             }
         }
@@ -49,12 +52,17 @@ class ContactFieldSettingsScreenTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 ContactFieldSettingsContent(
-                    state = ContactFieldSettingsUiState(isLoading = false, enabled = DEFAULT_ENABLED_CONTACT_FIELDS),
+                    state = ContactFieldSettingsUiState(
+                        isLoading = false,
+                        enabled = DEFAULT_ENABLED_CONTACT_FIELDS
+                    )
                 )
             }
         }
 
-        composeTestRule.onNodeWithText("Keywords").performScrollTo().assertIsToggleable().assertIsOff()
+        composeTestRule.onNodeWithText(
+            "Keywords"
+        ).performScrollTo().assertIsToggleable().assertIsOff()
     }
 
     @Test
@@ -63,8 +71,11 @@ class ContactFieldSettingsScreenTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 ContactFieldSettingsContent(
-                    state = ContactFieldSettingsUiState(isLoading = false, enabled = DEFAULT_ENABLED_CONTACT_FIELDS),
-                    onToggle = { toggled = it },
+                    state = ContactFieldSettingsUiState(
+                        isLoading = false,
+                        enabled = DEFAULT_ENABLED_CONTACT_FIELDS
+                    ),
+                    onToggle = { toggled = it }
                 )
             }
         }
@@ -93,8 +104,8 @@ class ContactFieldSettingsScreenTest {
                     state = ContactFieldSettingsUiState(
                         isLoading = false,
                         enabled = DEFAULT_ENABLED_CONTACT_FIELDS,
-                        savingKey = ContactFieldKey.EMAILS,
-                    ),
+                        savingKey = ContactFieldKey.EMAILS
+                    )
                 )
             }
         }
@@ -108,13 +119,21 @@ class ContactFieldSettingsScreenTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 ContactFieldSettingsContent(
-                    state = ContactFieldSettingsUiState(isLoading = false, saveError = "Could not save"),
+                    state = ContactFieldSettingsUiState(
+                        isLoading = false,
+                        saveError = "Could not save"
+                    )
                 )
             }
         }
 
         composeTestRule.onNodeWithText("Could not save")
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Assertive))
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.LiveRegion,
+                    LiveRegionMode.Assertive
+                )
+            )
     }
 
     @Test
@@ -149,16 +168,16 @@ class ContactFieldSettingsScreenTest {
         }
 
         composeTestRule.onNodeWithText(
-            "A single date, such as a wedding or the first time you met.",
+            "A single date, such as a wedding or the first time you met."
         ).performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText(
-            "A list of dates you want to remember, each with its own type.",
+            "A list of dates you want to remember, each with its own type."
         ).performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText(
-            "The language this contact card is written in, not a language the person speaks.",
+            "The language this contact card is written in, not a language the person speaks."
         ).performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText(
-            "The languages this person speaks.",
+            "The languages this person speaks."
         ).performScrollTo().assertIsDisplayed()
     }
 

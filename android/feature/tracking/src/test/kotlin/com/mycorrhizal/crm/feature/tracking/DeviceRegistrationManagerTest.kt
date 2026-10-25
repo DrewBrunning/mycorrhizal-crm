@@ -42,8 +42,15 @@ class DeviceRegistrationManagerTest {
         availability: FcmAvailability,
         store: DeviceRegistrationStore,
         tokenSource: FcmTokenSource = fakeToken,
-        capabilities: ServerCapabilitiesStore = DefaultServerCapabilitiesStore(),
-    ) = DeviceRegistrationManager(apiClient, availability, store, context, tokenSource, capabilities)
+        capabilities: ServerCapabilitiesStore = DefaultServerCapabilitiesStore()
+    ) = DeviceRegistrationManager(
+        apiClient,
+        availability,
+        store,
+        context,
+        tokenSource,
+        capabilities
+    )
 
     @Test
     fun `registration is a no-op when the deployment does not offer push`() = runTest {
@@ -63,7 +70,7 @@ class DeviceRegistrationManagerTest {
             availability,
             mockk<DeviceRegistrationStore>(relaxed = true),
             tokenSource,
-            capabilities,
+            capabilities
         ).register()
 
         assertTrue(result.isSuccess)
@@ -82,7 +89,12 @@ class DeviceRegistrationManagerTest {
         val store = mockk<DeviceRegistrationStore>(relaxed = true)
         every { store.loadDeviceId() } returns null
 
-        val result = manager(apiClient, availability, store, capabilities = DefaultServerCapabilitiesStore()).register()
+        val result = manager(
+            apiClient,
+            availability,
+            store,
+            capabilities = DefaultServerCapabilitiesStore()
+        ).register()
 
         assertTrue(result.isSuccess)
         coVerify { apiClient.registerDevice(any()) }
@@ -95,7 +107,12 @@ class DeviceRegistrationManagerTest {
         every { availability.isAvailable(context) } returns false
         val tokenSource = mockk<FcmTokenSource>(relaxed = true)
 
-        val result = manager(apiClient, availability, mockk<DeviceRegistrationStore>(relaxed = true), tokenSource)
+        val result = manager(
+            apiClient,
+            availability,
+            mockk<DeviceRegistrationStore>(relaxed = true),
+            tokenSource
+        )
             .register()
 
         assertTrue(result.isSuccess)
@@ -133,7 +150,12 @@ class DeviceRegistrationManagerTest {
         every { availability.isAvailable(context) } returns true
         val tokenSource = FcmTokenSource { error("no Play Services") }
 
-        val result = manager(apiClient, availability, mockk<DeviceRegistrationStore>(relaxed = true), tokenSource)
+        val result = manager(
+            apiClient,
+            availability,
+            mockk<DeviceRegistrationStore>(relaxed = true),
+            tokenSource
+        )
             .register()
 
         assertTrue(result.isSuccess)
@@ -178,7 +200,11 @@ class DeviceRegistrationManagerTest {
         val store = mockk<DeviceRegistrationStore>(relaxed = true)
         every { store.loadDeviceId() } returns 3
 
-        val result = manager(apiClient, availability, store).register(tokenOverride = "rotated-token")
+        val result = manager(
+            apiClient,
+            availability,
+            store
+        ).register(tokenOverride = "rotated-token")
 
         assertTrue(result.isSuccess)
         coVerify { apiClient.deleteDevice(3) }
@@ -222,13 +248,21 @@ class DeviceRegistrationManagerTest {
         val apiClient = mockk<ApiClient>()
         coEvery { apiClient.registerDevice(any()) } returns
             Result.success(DeviceRegistration(id = 9, token = "rotated-token", client = "fcm"))
-        coEvery { apiClient.deleteDevice(any()) } returns Result.failure(RuntimeException("gone already"))
+        coEvery {
+            apiClient.deleteDevice(
+                any()
+            )
+        } returns Result.failure(RuntimeException("gone already"))
         val availability = mockk<FcmAvailability>()
         every { availability.isAvailable(context) } returns true
         val store = mockk<DeviceRegistrationStore>(relaxed = true)
         every { store.loadDeviceId() } returns 4
 
-        val result = manager(apiClient, availability, store).register(tokenOverride = "rotated-token")
+        val result = manager(
+            apiClient,
+            availability,
+            store
+        ).register(tokenOverride = "rotated-token")
 
         assertTrue(result.isSuccess)
         coVerify { store.saveDeviceId(9) }

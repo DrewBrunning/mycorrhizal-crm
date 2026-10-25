@@ -3,8 +3,8 @@ package com.mycorrhizal.crm.feature.contacts
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.backup.BundleBackupReminder
-import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.ActivityRepository
+import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.BundleBackupRepository
 import com.mycorrhizal.crm.feature.tracking.QuickCaptureFormState
 import com.mycorrhizal.crm.feature.tracking.QuickCapturePrefillFactory
@@ -18,6 +18,7 @@ import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.OffsetDateTime
+import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,7 +26,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /**
  * Issue #1824: the uncapped size of each server-capped dashboard block (see
@@ -37,7 +37,7 @@ data class DashboardTotals(
     val upcomingReminders: Int? = null,
     val overdue: Int? = null,
     val reachOutSuggestions: Int? = null,
-    val dataDecayOverdue: Int? = null,
+    val dataDecayOverdue: Int? = null
 )
 
 /** Keeps a pre-cap total in step with an optimistic row removal/restore; stays null when absent. */
@@ -81,12 +81,14 @@ data class DashboardUiState(
      * this banner nudges an account-bundle export when none exists or the last
      * is over 30 days old (see [BundleBackupReminder]). Dismissible.
      */
-    val showBackupReminder: Boolean = false,
+    val showBackupReminder: Boolean = false
 ) {
     /** True when at least one widget has data, so a refresh keeps the list on screen. */
     val hasContent: Boolean
-        get() = birthdays.isNotEmpty() || upcomingReminders.isNotEmpty() || randomContacts.isNotEmpty() ||
-            overdueCadences.isNotEmpty() || favorites.isNotEmpty() || reachOutSuggestions.isNotEmpty() ||
+        get() = birthdays.isNotEmpty() || upcomingReminders.isNotEmpty() ||
+            randomContacts.isNotEmpty() ||
+            overdueCadences.isNotEmpty() || favorites.isNotEmpty() ||
+            reachOutSuggestions.isNotEmpty() ||
             dataDecayOverdue.isNotEmpty()
 }
 
@@ -109,7 +111,7 @@ class DashboardViewModel @Inject constructor(
     private val apiClient: ApiClient,
     private val authRepository: AuthRepository,
     private val bundleBackupRepository: BundleBackupRepository,
-    private val activityRepository: ActivityRepository,
+    private val activityRepository: ActivityRepository
 ) : ViewModel() {
 
     /** Epoch-millis clock; overridable so tests can pin "now" for the 30-day rule. */
@@ -125,7 +127,11 @@ class DashboardViewModel @Inject constructor(
         load()
         viewModelScope.launch {
             bundleBackupRepository.observeStatus().collect { status ->
-                _uiState.update { it.copy(showBackupReminder = BundleBackupReminder.shouldShow(status, nowMillis())) }
+                _uiState.update {
+                    it.copy(
+                        showBackupReminder = BundleBackupReminder.shouldShow(status, nowMillis())
+                    )
+                }
             }
         }
         viewModelScope.launch {
@@ -156,14 +162,14 @@ class DashboardViewModel @Inject constructor(
                                 upcomingReminders = dashboard.upcomingRemindersTotal,
                                 overdue = dashboard.overdueTotal,
                                 reachOutSuggestions = dashboard.reachOutSuggestionsTotal,
-                                dataDecayOverdue = dashboard.dataDecayOverdueTotal,
-                            ),
+                                dataDecayOverdue = dashboard.dataDecayOverdueTotal
+                            )
                         )
                     }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -182,7 +188,13 @@ class DashboardViewModel @Inject constructor(
                 state.copy(
                     completingId = id,
                     upcomingReminders = state.upcomingReminders.filterNot { it.id == id },
-                    totals = if (removed == null) state.totals else state.totals.copy(upcomingReminders = state.totals.upcomingReminders.adjusted(-1)),
+                    totals = if (removed == null) {
+                        state.totals
+                    } else {
+                        state.totals.copy(
+                            upcomingReminders = state.totals.upcomingReminders.adjusted(-1)
+                        )
+                    }
                 )
             }
             apiClient.completeReminder(id, skip).foldApiError(
@@ -198,11 +210,13 @@ class DashboardViewModel @Inject constructor(
                                 completingId = null,
                                 actionError = error.displayMessage,
                                 upcomingReminders = restored,
-                                totals = state.totals.copy(upcomingReminders = state.totals.upcomingReminders.adjusted(1)),
+                                totals = state.totals.copy(
+                                    upcomingReminders = state.totals.upcomingReminders.adjusted(1)
+                                )
                             )
                         }
                     }
-                },
+                }
             )
         }
     }
@@ -221,7 +235,13 @@ class DashboardViewModel @Inject constructor(
                 state.copy(
                     dismissingSuggestionId = id,
                     reachOutSuggestions = state.reachOutSuggestions.filterNot { it.id == id },
-                    totals = if (removed == null) state.totals else state.totals.copy(reachOutSuggestions = state.totals.reachOutSuggestions.adjusted(-1)),
+                    totals = if (removed == null) {
+                        state.totals
+                    } else {
+                        state.totals.copy(
+                            reachOutSuggestions = state.totals.reachOutSuggestions.adjusted(-1)
+                        )
+                    }
                 )
             }
             apiClient.dismissReachOutSuggestion(id).foldApiError(
@@ -229,7 +249,10 @@ class DashboardViewModel @Inject constructor(
                 onError = { error ->
                     _uiState.update { state ->
                         if (removed == null) {
-                            state.copy(dismissingSuggestionId = null, actionError = error.displayMessage)
+                            state.copy(
+                                dismissingSuggestionId = null,
+                                actionError = error.displayMessage
+                            )
                         } else {
                             val restored = state.reachOutSuggestions.toMutableList()
                             restored.add(index.coerceIn(0, restored.size), removed)
@@ -237,11 +260,15 @@ class DashboardViewModel @Inject constructor(
                                 dismissingSuggestionId = null,
                                 actionError = error.displayMessage,
                                 reachOutSuggestions = restored,
-                                totals = state.totals.copy(reachOutSuggestions = state.totals.reachOutSuggestions.adjusted(1)),
+                                totals = state.totals.copy(
+                                    reachOutSuggestions = state.totals.reachOutSuggestions.adjusted(
+                                        1
+                                    )
+                                )
                             )
                         }
                     }
-                },
+                }
             )
         }
     }
@@ -263,7 +290,13 @@ class DashboardViewModel @Inject constructor(
                 state.copy(
                     verifyingDataDecayId = id,
                     dataDecayOverdue = state.dataDecayOverdue.filterNot { it.policy?.id == id },
-                    totals = if (removed == null) state.totals else state.totals.copy(dataDecayOverdue = state.totals.dataDecayOverdue.adjusted(-1)),
+                    totals = if (removed == null) {
+                        state.totals
+                    } else {
+                        state.totals.copy(
+                            dataDecayOverdue = state.totals.dataDecayOverdue.adjusted(-1)
+                        )
+                    }
                 )
             }
             apiClient.verifyDataDecayPolicy(id).foldApiError(
@@ -271,7 +304,10 @@ class DashboardViewModel @Inject constructor(
                 onError = { error ->
                     _uiState.update { state ->
                         if (removed == null) {
-                            state.copy(verifyingDataDecayId = null, actionError = error.displayMessage)
+                            state.copy(
+                                verifyingDataDecayId = null,
+                                actionError = error.displayMessage
+                            )
                         } else {
                             val restored = state.dataDecayOverdue.toMutableList()
                             restored.add(index.coerceIn(0, restored.size), removed)
@@ -279,11 +315,13 @@ class DashboardViewModel @Inject constructor(
                                 verifyingDataDecayId = null,
                                 actionError = error.displayMessage,
                                 dataDecayOverdue = restored,
-                                totals = state.totals.copy(dataDecayOverdue = state.totals.dataDecayOverdue.adjusted(1)),
+                                totals = state.totals.copy(
+                                    dataDecayOverdue = state.totals.dataDecayOverdue.adjusted(1)
+                                )
                             )
                         }
                     }
-                },
+                }
             )
         }
     }
@@ -297,15 +335,16 @@ class DashboardViewModel @Inject constructor(
     fun newQuickCaptureState(
         scope: CoroutineScope,
         blankTitleMessage: String,
-        now: OffsetDateTime = OffsetDateTime.now(),
+        now: OffsetDateTime = OffsetDateTime.now()
     ): QuickCaptureFormState = QuickCaptureFormState(
         activityRepository = activityRepository,
         scope = scope,
         prefill = QuickCapturePrefillFactory.forManual(now.toString()),
-        blankTitleMessage = blankTitleMessage,
+        blankTitleMessage = blankTitleMessage
     )
 
-    /** Clears the transient complete/skip error once its snackbar has been shown. */
+    /* Clears the transient complete/skip error once its snackbar has been shown. */
+
     /** Snooze the backup banner (it may return after [BundleBackupReminder.SNOOZE_MILLIS]). */
     fun dismissBackupReminder() {
         viewModelScope.launch { bundleBackupRepository.dismissReminder(nowMillis()) }

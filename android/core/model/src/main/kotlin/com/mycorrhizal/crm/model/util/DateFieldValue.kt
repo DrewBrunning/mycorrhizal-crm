@@ -30,7 +30,7 @@ enum class DateFieldMode(val allowsTime: Boolean) {
     DATE_UTC_MIDNIGHT(false),
     DATE_TIME(true),
     DATE_TIME_OPTIONAL(true),
-    PARTIAL(false),
+    PARTIAL(false)
 }
 
 /**
@@ -45,7 +45,7 @@ data class DateFieldState(
     val yearUnknown: Boolean = false,
     val yearOnly: Int? = null,
     /** A year+month partial (`YYYY-MM`, no day) — kept visible and untouched on save. */
-    val yearMonth: String? = null,
+    val yearMonth: String? = null
 )
 
 /**
@@ -68,17 +68,19 @@ object DateFieldValue {
     fun parse(
         value: String?,
         mode: DateFieldMode,
-        zone: ZoneId = ZoneId.systemDefault(),
+        zone: ZoneId = ZoneId.systemDefault()
     ): DateFieldState {
         val raw = value?.trim().orEmpty()
         if (raw.isEmpty()) return DateFieldState()
         return when (mode) {
             DateFieldMode.PARTIAL -> parsePartial(raw)
+
             DateFieldMode.DATE_ONLY,
-            DateFieldMode.DATE_UTC_MIDNIGHT,
+            DateFieldMode.DATE_UTC_MIDNIGHT
             -> parseDay(raw, zone, allowTime = false)
+
             DateFieldMode.DATE_TIME,
-            DateFieldMode.DATE_TIME_OPTIONAL,
+            DateFieldMode.DATE_TIME_OPTIONAL
             -> parseDay(raw, zone, allowTime = true)
         }
     }
@@ -87,7 +89,13 @@ object DateFieldValue {
         PARTIAL_YEARLESS.matchEntire(raw)?.let { match ->
             val month = match.groupValues[1].toInt()
             val day = match.groupValues[2].toInt()
-            val date = runCatching { LocalDate.of(PARTIAL_PLACEHOLDER_YEAR, month, day) }.getOrNull()
+            val date = runCatching {
+                LocalDate.of(
+                    PARTIAL_PLACEHOLDER_YEAR,
+                    month,
+                    day
+                )
+            }.getOrNull()
                 ?: return DateFieldState()
             return DateFieldState(date = date, yearUnknown = true)
         }
@@ -96,7 +104,7 @@ object DateFieldValue {
                 LocalDate.of(
                     match.groupValues[1].toInt(),
                     match.groupValues[2].toInt(),
-                    match.groupValues[3].toInt(),
+                    match.groupValues[3].toInt()
                 )
             }.getOrNull() ?: return DateFieldState()
             return DateFieldState(date = date)
@@ -125,7 +133,7 @@ object DateFieldValue {
         val local = instant.atZone(zone)
         return DateFieldState(
             date = local.toLocalDate(),
-            time = if (allowTime) local.toLocalTime().withSecond(0).withNano(0) else null,
+            time = if (allowTime) local.toLocalTime().withSecond(0).withNano(0) else null
         )
     }
 
@@ -136,7 +144,7 @@ object DateFieldValue {
         dateFormat: String,
         is24Hour: Boolean,
         zone: ZoneId = ZoneId.systemDefault(),
-        locale: Locale = Locale.getDefault(),
+        locale: Locale = Locale.getDefault()
     ): String {
         val state = parse(value, mode, zone)
         state.yearOnly?.let { return "$it" }
@@ -160,17 +168,37 @@ object DateFieldValue {
         time: LocalTime?,
         mode: DateFieldMode,
         yearUnknown: Boolean = false,
-        zone: ZoneId = ZoneId.systemDefault(),
+        zone: ZoneId = ZoneId.systemDefault()
     ): String = when (mode) {
         DateFieldMode.PARTIAL -> if (yearUnknown) {
             "--%02d-%02d".format(date.monthValue, date.dayOfMonth)
         } else {
             date.toString()
         }
+
         DateFieldMode.DATE_ONLY -> date.toString()
+
         DateFieldMode.DATE_UTC_MIDNIGHT -> "${date}T00:00:00Z"
-        DateFieldMode.DATE_TIME -> if (time != null) instant(date, time, zone) else "${date}T00:00:00Z"
-        DateFieldMode.DATE_TIME_OPTIONAL -> if (time != null) instant(date, time, zone) else date.toString()
+
+        DateFieldMode.DATE_TIME -> if (time != null) {
+            instant(
+                date,
+                time,
+                zone
+            )
+        } else {
+            "${date}T00:00:00Z"
+        }
+
+        DateFieldMode.DATE_TIME_OPTIONAL -> if (time != null) {
+            instant(
+                date,
+                time,
+                zone
+            )
+        } else {
+            date.toString()
+        }
     }
 
     /** An RFC 3339 instant with seconds and the device zone's offset. */
@@ -198,7 +226,7 @@ object DateFieldValue {
     fun timeLabel(
         time: LocalTime,
         is24Hour: Boolean,
-        locale: Locale = Locale.getDefault(),
+        locale: Locale = Locale.getDefault()
     ): String = DateTimeFormatter
         .ofPattern(if (is24Hour) "HH:mm" else "h:mm a", locale)
         .format(time)
@@ -216,9 +244,13 @@ object DateFieldValue {
         return when {
             month != null && day != null && partial.year != null ->
                 "%04d-%02d-%02d".format(partial.year, month, day)
+
             month != null && day != null -> "--%02d-%02d".format(month, day)
+
             partial.year != null && month != null -> "%04d-%02d".format(partial.year, month)
+
             partial.year != null -> "${partial.year}"
+
             else -> ""
         }
     }

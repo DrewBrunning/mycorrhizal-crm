@@ -32,30 +32,34 @@ fun ServerOutdatedNotice(
     serverVersion: String,
     currentVersion: String,
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     Surface(
         color = MaterialTheme.colorScheme.secondaryContainer,
         contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
         shape = RoundedCornerShape(16.dp),
         shadowElevation = 6.dp,
-        modifier = modifier.testTag("server-outdated-notice"),
+        modifier = modifier.testTag("server-outdated-notice")
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(start = 16.dp, top = 4.dp, bottom = 4.dp, end = 4.dp),
+            modifier = Modifier.padding(start = 16.dp, top = 4.dp, bottom = 4.dp, end = 4.dp)
         ) {
             Text(
-                text = stringResource(R.string.server_outdated_notice_message, serverVersion, currentVersion),
+                text = stringResource(
+                    R.string.server_outdated_notice_message,
+                    serverVersion,
+                    currentVersion
+                ),
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.weight(1f),
                 maxLines = 3,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
             IconButton(onClick = onDismiss) {
                 Icon(
                     imageVector = Icons.Outlined.Close,
-                    contentDescription = stringResource(R.string.server_outdated_notice_dismiss),
+                    contentDescription = stringResource(R.string.server_outdated_notice_dismiss)
                 )
             }
         }

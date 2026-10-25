@@ -37,7 +37,7 @@ class InteractionSyncWorker @AssistedInject constructor(
     @Assisted workerParams: WorkerParameters,
     private val pendingInteractionRepository: PendingInteractionRepository,
     private val trackingSettings: TrackingSettingsRepository,
-    apiClient: ApiClient,
+    apiClient: ApiClient
 ) : CoroutineWorker(appContext, workerParams) {
 
     private val flusher = PendingInteractionFlusher(pendingInteractionRepository, apiClient)
@@ -50,5 +50,8 @@ class InteractionSyncWorker @AssistedInject constructor(
         return Result.success()
     }
 
-    internal fun formatDateForTest(epochMillis: Long): String = PendingInteractionFlusher.formatDate(epochMillis)
+    internal fun formatDateForTest(epochMillis: Long): String =
+        PendingInteractionFlusher.formatDate(
+            epochMillis
+        )
 }

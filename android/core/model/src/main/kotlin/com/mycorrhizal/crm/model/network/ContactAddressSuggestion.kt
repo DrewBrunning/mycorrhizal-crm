@@ -20,14 +20,14 @@ data class ContactAddressSuggestion(
     @Json(name = "source_name") val sourceName: String = "",
     @Json(name = "relation_type") val relationType: String? = null,
     val address: Address? = null,
-    @Json(name = "address_key") val addressKey: String = "",
+    @Json(name = "address_key") val addressKey: String = ""
 )
 
 /** POST /contacts/address-suggestions response. */
 @JsonClass(generateAdapter = true)
 data class ContactAddressSuggestionsResponse(
     val suggestions: List<ContactAddressSuggestion> = emptyList(),
-    val total: Int = 0,
+    val total: Int = 0
 )
 
 /**
@@ -39,5 +39,5 @@ data class ApplyContactAddressSuggestionInput(
     @Json(name = "contact_vcard_uid") val contactVCardUid: String,
     @Json(name = "source_kind") val sourceKind: String,
     @Json(name = "source_id") val sourceId: String,
-    @Json(name = "address_key") val addressKey: String,
+    @Json(name = "address_key") val addressKey: String
 )

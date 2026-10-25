@@ -30,14 +30,24 @@ interface OccasionEventRepository {
     suspend fun delete(id: String): Result<Unit>
 
     /** Invite one owned contact to an event. */
-    suspend fun addAttendee(eventId: String, input: OccasionEventAttendeeInput): Result<OccasionEventAttendee>
+    suspend fun addAttendee(
+        eventId: String,
+        input: OccasionEventAttendeeInput
+    ): Result<OccasionEventAttendee>
 
     /** Record an attendee's RSVP status. */
-    suspend fun updateAttendee(eventId: String, vcardUid: String, rsvp: String): Result<OccasionEventAttendee>
+    suspend fun updateAttendee(
+        eventId: String,
+        vcardUid: String,
+        rsvp: String
+    ): Result<OccasionEventAttendee>
 
     /** Remove one contact from an event's attendee list. */
     suspend fun removeAttendee(eventId: String, vcardUid: String): Result<Unit>
 
     /** Candidate invitees from one or more circles, excluding those already invited. */
-    suspend fun suggestInvitees(circleIds: List<String>, eventId: String?): Result<List<InviteeSuggestion>>
+    suspend fun suggestInvitees(
+        circleIds: List<String>,
+        eventId: String?
+    ): Result<List<InviteeSuggestion>>
 }

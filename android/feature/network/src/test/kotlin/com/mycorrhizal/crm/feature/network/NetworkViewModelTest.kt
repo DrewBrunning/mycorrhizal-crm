@@ -1,8 +1,8 @@
 package com.mycorrhizal.crm.feature.network
 
 import androidx.lifecycle.SavedStateHandle
-import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.CircleWithMembers
+import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.GraphRepository
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
@@ -46,7 +46,7 @@ class NetworkViewModelTest {
 
     private fun record(id: Int, uid: String, name: String) = ContactRecordResponse(
         id = id,
-        card = Card(uid = uid, name = Name(full = name)),
+        card = Card(uid = uid, name = Name(full = name))
     )
 
     private fun chain(
@@ -58,7 +58,7 @@ class NetworkViewModelTest {
         // Issue #383 (ADR-0023): optional so every existing call site (none
         // of which cares about the score) is unaffected.
         healthScore: Int? = null,
-        healthBand: String? = null,
+        healthBand: String? = null
     ) = GraphChain(
         targetId = targetId,
         targetVCardUid = uid,
@@ -66,18 +66,28 @@ class NetworkViewModelTest {
         depth = depth,
         steps = steps,
         healthScore = healthScore,
-        healthBand = healthBand,
+        healthBand = healthBand
     )
 
     private fun stubFrom(contactId: Int = 1, uid: String = "uid-1", name: String = "Alice") {
-        coEvery { contactRepository.getContact(contactId) } returns Result.success(record(contactId, uid, name))
+        coEvery {
+            contactRepository.getContact(
+                contactId
+            )
+        } returns Result.success(record(contactId, uid, name))
     }
 
     private fun stubConnections(
         from: String = "uid-1",
-        response: GraphConnectionsResponse = GraphConnectionsResponse(chains = emptyList()),
+        response: GraphConnectionsResponse = GraphConnectionsResponse(chains = emptyList())
     ) {
-        coEvery { graphRepository.getConnections(from = from, depth = any(), relation = any()) } returns
+        coEvery {
+            graphRepository.getConnections(
+                from = from,
+                depth = any(),
+                relation = any()
+            )
+        } returns
             Result.success(response)
     }
 
@@ -91,10 +101,28 @@ class NetworkViewModelTest {
                 fromName = "Alice",
                 depth = 2,
                 chains = listOf(
-                    chain(10, "t1", "Carol", depth = 1, steps = listOf(GraphChainStep(10, "t1", "Carol", "child_of"))),
-                    chain(20, "t2", "Dave", depth = 2, steps = listOf(GraphChainStep(20, "t2", "Dave", "spouse_of"))),
-                    chain(30, "t3", "Eve", depth = 1, steps = listOf(GraphChainStep(30, "t3", "Eve", "sibling_of"))),
-                ),
+                    chain(
+                        10,
+                        "t1",
+                        "Carol",
+                        depth = 1,
+                        steps = listOf(GraphChainStep(10, "t1", "Carol", "child_of"))
+                    ),
+                    chain(
+                        20,
+                        "t2",
+                        "Dave",
+                        depth = 2,
+                        steps = listOf(GraphChainStep(20, "t2", "Dave", "spouse_of"))
+                    ),
+                    chain(
+                        30,
+                        "t3",
+                        "Eve",
+                        depth = 1,
+                        steps = listOf(GraphChainStep(30, "t3", "Eve", "sibling_of"))
+                    )
+                )
             )
             stubConnections(response = response)
 
@@ -117,7 +145,7 @@ class NetworkViewModelTest {
             coEvery { graphRepository.circlesWithMembers() } returns Result.success(emptyList())
             coEvery { graphRepository.selfContactVCardUid() } returns Result.success("self-uid")
             coEvery { contactRepository.resolveByUid(listOf("self-uid")) } returns Result.success(
-                mapOf("self-uid" to ContactSummary(id = 9, uid = "self-uid", fn = "Me")),
+                mapOf("self-uid" to ContactSummary(id = 9, uid = "self-uid", fn = "Me"))
             )
             stubConnections(from = "self-uid")
 
@@ -128,7 +156,13 @@ class NetworkViewModelTest {
             assertFalse(state.isLoading)
             assertEquals("self-uid", state.fromVCardUid)
             assertEquals("Me", state.fromName)
-            coVerify { graphRepository.getConnections(from = "self-uid", depth = 2, relation = null) }
+            coVerify {
+                graphRepository.getConnections(
+                    from = "self-uid",
+                    depth = 2,
+                    relation = null
+                )
+            }
         }
 
     @Test
@@ -168,7 +202,13 @@ class NetworkViewModelTest {
             stubFrom()
             coEvery { graphRepository.circlesWithMembers() } returns Result.success(emptyList())
             stubConnections()
-            coEvery { graphRepository.getConnections(from = "uid-1", depth = 3, relation = "brother") } returns
+            coEvery {
+                graphRepository.getConnections(
+                    from = "uid-1",
+                    depth = 3,
+                    relation = "brother"
+                )
+            } returns
                 Result.success(GraphConnectionsResponse(chains = emptyList()))
 
             val vm = viewModel(contactId = 1)
@@ -176,13 +216,25 @@ class NetworkViewModelTest {
             vm.onRelationInputChange("brother")
             vm.applyRelation()
             advanceUntilIdle()
-            coVerify { graphRepository.getConnections(from = "uid-1", depth = 2, relation = "brother") }
+            coVerify {
+                graphRepository.getConnections(
+                    from = "uid-1",
+                    depth = 2,
+                    relation = "brother"
+                )
+            }
 
             vm.setDepth(3)
             advanceUntilIdle()
 
             assertEquals(3, vm.uiState.value.depth)
-            coVerify { graphRepository.getConnections(from = "uid-1", depth = 3, relation = "brother") }
+            coVerify {
+                graphRepository.getConnections(
+                    from = "uid-1",
+                    depth = 3,
+                    relation = "brother"
+                )
+            }
         }
 
     @Test
@@ -191,7 +243,13 @@ class NetworkViewModelTest {
             stubFrom()
             coEvery { graphRepository.circlesWithMembers() } returns Result.success(emptyList())
             stubConnections()
-            coEvery { graphRepository.getConnections(from = "uid-1", depth = 2, relation = "brother") } returns
+            coEvery {
+                graphRepository.getConnections(
+                    from = "uid-1",
+                    depth = 2,
+                    relation = "brother"
+                )
+            } returns
                 Result.success(GraphConnectionsResponse(chains = emptyList()))
 
             val vm = viewModel(contactId = 1)
@@ -202,7 +260,13 @@ class NetworkViewModelTest {
             advanceUntilIdle()
 
             assertEquals("brother", vm.uiState.value.appliedRelation)
-            coVerify { graphRepository.getConnections(from = "uid-1", depth = 2, relation = "brother") }
+            coVerify {
+                graphRepository.getConnections(
+                    from = "uid-1",
+                    depth = 2,
+                    relation = "brother"
+                )
+            }
         }
 
     @Test
@@ -231,15 +295,29 @@ class NetworkViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             stubFrom()
             coEvery { graphRepository.circlesWithMembers() } returns Result.success(
-                listOf(CircleWithMembers(id = "c1", name = "Family", memberVCardUids = setOf("t1"))),
+                listOf(
+                    CircleWithMembers(id = "c1", name = "Family", memberVCardUids = setOf("t1"))
+                )
             )
             stubConnections(
                 response = GraphConnectionsResponse(
                     chains = listOf(
-                        chain(10, "t1", "Carol", depth = 1, steps = listOf(GraphChainStep(10, "t1", "Carol", "child_of"))),
-                        chain(20, "t2", "Dave", depth = 1, steps = listOf(GraphChainStep(20, "t2", "Dave", "spouse_of"))),
-                    ),
-                ),
+                        chain(
+                            10,
+                            "t1",
+                            "Carol",
+                            depth = 1,
+                            steps = listOf(GraphChainStep(10, "t1", "Carol", "child_of"))
+                        ),
+                        chain(
+                            20,
+                            "t2",
+                            "Dave",
+                            depth = 1,
+                            steps = listOf(GraphChainStep(20, "t2", "Dave", "spouse_of"))
+                        )
+                    )
+                )
             )
 
             val vm = viewModel(contactId = 1)
@@ -259,7 +337,7 @@ class NetworkViewModelTest {
     fun `a contact without a vcard uid errors without firing a request`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { contactRepository.getContact(1) } returns Result.success(
-                ContactRecordResponse(id = 1, card = Card(name = Name(full = "No UID"))),
+                ContactRecordResponse(id = 1, card = Card(name = Name(full = "No UID")))
             )
             coEvery { graphRepository.circlesWithMembers() } returns Result.success(emptyList())
 
@@ -280,7 +358,11 @@ class NetworkViewModelTest {
             // carries no UID. The traversal must still run off that top-level
             // uid rather than erroring on a missing card.uid.
             coEvery { contactRepository.getContact(1) } returns Result.success(
-                ContactRecordResponse(id = 1, uid = "uid-1", card = Card(name = Name(full = "Alice"))),
+                ContactRecordResponse(
+                    id = 1,
+                    uid = "uid-1",
+                    card = Card(name = Name(full = "Alice"))
+                )
             )
             coEvery { graphRepository.circlesWithMembers() } returns Result.success(emptyList())
             stubConnections()
@@ -291,7 +373,9 @@ class NetworkViewModelTest {
             assertFalse(vm.uiState.value.isLoading)
             assertNull(vm.uiState.value.errorRes)
             assertEquals("uid-1", vm.uiState.value.fromVCardUid)
-            coVerify(exactly = 1) { graphRepository.getConnections(from = "uid-1", depth = any(), relation = any()) }
+            coVerify(
+                exactly = 1
+            ) { graphRepository.getConnections(from = "uid-1", depth = any(), relation = any()) }
         }
 
     @Test
@@ -306,12 +390,12 @@ class NetworkViewModelTest {
                 com.mycorrhizal.crm.domain.repository.ContactsPage(
                     contacts = listOf(
                         ContactSummary(id = 1, uid = "uid-1", fn = "Alice"),
-                        ContactSummary(id = 2, uid = "uid-2", fn = "Bob"),
+                        ContactSummary(id = 2, uid = "uid-2", fn = "Bob")
                     ),
                     nextCursor = null,
                     limit = 25,
-                    sync = null,
-                ),
+                    sync = null
+                )
             )
 
             val vm = viewModel(contactId = 1)
@@ -320,7 +404,10 @@ class NetworkViewModelTest {
             vm.searchContacts("bo")
             advanceUntilIdle()
 
-            assertEquals(listOf("Bob"), vm.uiState.value.contactSearchResults.map { it.displayName })
+            assertEquals(
+                listOf("Bob"),
+                vm.uiState.value.contactSearchResults.map { it.displayName }
+            )
         }
 
     @Test
@@ -344,7 +431,7 @@ class NetworkViewModelTest {
 
             assertFalse(
                 "a failed search must not leave contactSearchLoading stuck true",
-                vm.uiState.value.contactSearchLoading,
+                vm.uiState.value.contactSearchLoading
             )
             assertTrue(vm.uiState.value.contactSearchResults.isEmpty())
         }
@@ -355,7 +442,13 @@ class NetworkViewModelTest {
             stubFrom()
             coEvery { graphRepository.circlesWithMembers() } returns Result.success(emptyList())
             stubConnections()
-            coEvery { graphRepository.getConnections(from = "uid-2", depth = 2, relation = null) } returns
+            coEvery {
+                graphRepository.getConnections(
+                    from = "uid-2",
+                    depth = 2,
+                    relation = null
+                )
+            } returns
                 Result.success(GraphConnectionsResponse(chains = emptyList()))
 
             val vm = viewModel(contactId = 1)
@@ -378,8 +471,16 @@ class NetworkViewModelTest {
                 Result.failure(ApiError.Client(500, "boom"))
             stubConnections(
                 response = GraphConnectionsResponse(
-                    chains = listOf(chain(10, "t1", "Carol", 1, steps = listOf(GraphChainStep(10, "t1", "Carol", "child_of")))),
-                ),
+                    chains = listOf(
+                        chain(
+                            10,
+                            "t1",
+                            "Carol",
+                            1,
+                            steps = listOf(GraphChainStep(10, "t1", "Carol", "child_of"))
+                        )
+                    )
+                )
             )
 
             val vm = viewModel(contactId = 1)
@@ -392,19 +493,24 @@ class NetworkViewModelTest {
         }
 
     @Test
-    fun `a graph load failure surfaces the error`() =
-        runTest(mainDispatcherRule.testDispatcher) {
-            stubFrom()
-            coEvery { graphRepository.circlesWithMembers() } returns Result.success(emptyList())
-            coEvery { graphRepository.getConnections(from = "uid-1", depth = any(), relation = any()) } returns
-                Result.failure(ApiError.Client(400, "depth must be at most 5"))
+    fun `a graph load failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
+        stubFrom()
+        coEvery { graphRepository.circlesWithMembers() } returns Result.success(emptyList())
+        coEvery {
+            graphRepository.getConnections(
+                from = "uid-1",
+                depth = any(),
+                relation = any()
+            )
+        } returns
+            Result.failure(ApiError.Client(400, "depth must be at most 5"))
 
-            val vm = viewModel(contactId = 1)
-            advanceUntilIdle()
+        val vm = viewModel(contactId = 1)
+        advanceUntilIdle()
 
-            assertFalse(vm.uiState.value.isLoading)
-            assertEquals("depth must be at most 5", vm.uiState.value.error)
-        }
+        assertFalse(vm.uiState.value.isLoading)
+        assertEquals("depth must be at most 5", vm.uiState.value.error)
+    }
 
     @Test
     fun `a rapid depth change cancels the in-flight traversal so the newer response wins`() =
@@ -414,19 +520,47 @@ class NetworkViewModelTest {
             // The depth-2 request is slow; the user switches to depth 3 while
             // it is still in flight. Without cancellation the depth-2 response
             // would land last and show the old network under the new chip.
-            coEvery { graphRepository.getConnections(from = "uid-1", depth = 2, relation = null) } coAnswers {
+            coEvery {
+                graphRepository.getConnections(
+                    from = "uid-1",
+                    depth = 2,
+                    relation = null
+                )
+            } coAnswers {
                 delay(1000)
                 Result.success(
                     GraphConnectionsResponse(
-                        chains = listOf(chain(10, "t1", "Old", 1, steps = listOf(GraphChainStep(10, "t1", "Old", "child_of")))),
-                    ),
+                        chains = listOf(
+                            chain(
+                                10,
+                                "t1",
+                                "Old",
+                                1,
+                                steps = listOf(GraphChainStep(10, "t1", "Old", "child_of"))
+                            )
+                        )
+                    )
                 )
             }
-            coEvery { graphRepository.getConnections(from = "uid-1", depth = 3, relation = null) } returns
+            coEvery {
+                graphRepository.getConnections(
+                    from = "uid-1",
+                    depth = 3,
+                    relation = null
+                )
+            } returns
                 Result.success(
                     GraphConnectionsResponse(
-                        chains = listOf(chain(20, "t2", "New", 1, steps = listOf(GraphChainStep(20, "t2", "New", "spouse_of")))),
-                    ),
+                        chains = listOf(
+                            chain(
+                                20,
+                                "t2",
+                                "New",
+                                1,
+                                steps = listOf(GraphChainStep(20, "t2", "New", "spouse_of"))
+                            )
+                        )
+                    )
                 )
 
             val vm = viewModel(contactId = 1)
@@ -447,13 +581,33 @@ class NetworkViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             stubFrom()
             coEvery { graphRepository.circlesWithMembers() } returns Result.success(emptyList())
-            coEvery { graphRepository.getConnections(from = "uid-1", depth = 2, relation = null) } returns
+            coEvery {
+                graphRepository.getConnections(
+                    from = "uid-1",
+                    depth = 2,
+                    relation = null
+                )
+            } returns
                 Result.success(
                     GraphConnectionsResponse(
-                        chains = listOf(chain(10, "t1", "Carol", 1, steps = listOf(GraphChainStep(10, "t1", "Carol", "child_of")))),
-                    ),
+                        chains = listOf(
+                            chain(
+                                10,
+                                "t1",
+                                "Carol",
+                                1,
+                                steps = listOf(GraphChainStep(10, "t1", "Carol", "child_of"))
+                            )
+                        )
+                    )
                 )
-            coEvery { graphRepository.getConnections(from = "uid-1", depth = 3, relation = null) } returns
+            coEvery {
+                graphRepository.getConnections(
+                    from = "uid-1",
+                    depth = 3,
+                    relation = null
+                )
+            } returns
                 Result.failure(ApiError.Client(500, "boom"))
 
             val vm = viewModel(contactId = 1)
@@ -488,11 +642,17 @@ class NetworkViewModelTest {
                         depth = 1,
                         steps = listOf(GraphChainStep(10, "t1", "Carol", "child_of")),
                         healthScore = 72,
-                        healthBand = "moss",
+                        healthBand = "moss"
                     ),
                     // No score computed for this target — must stay null, not defaulted.
-                    chain(20, "t2", "Dave", depth = 1, steps = listOf(GraphChainStep(20, "t2", "Dave", "spouse_of"))),
-                ),
+                    chain(
+                        20,
+                        "t2",
+                        "Dave",
+                        depth = 1,
+                        steps = listOf(GraphChainStep(20, "t2", "Dave", "spouse_of"))
+                    )
+                )
             )
             stubConnections(response = response)
 

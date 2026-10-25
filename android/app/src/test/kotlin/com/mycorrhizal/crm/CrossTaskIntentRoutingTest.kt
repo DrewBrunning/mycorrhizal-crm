@@ -27,7 +27,7 @@ class CrossTaskIntentRoutingTest {
         Intent.FLAG_ACTIVITY_NEW_TASK,
         Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED,
         Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP,
-        Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP,
+        Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
     )
 
     @Test
@@ -41,7 +41,9 @@ class CrossTaskIntentRoutingTest {
     @Test
     fun `a cross-task start that is a Recents reopen or a recreate is still a replay`() {
         externalFlags.forEach { flags ->
-            assertFalse(shouldHandleLaunchIntent(true, flags or Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY))
+            assertFalse(
+                shouldHandleLaunchIntent(true, flags or Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY)
+            )
             assertFalse(shouldHandleLaunchIntent(false, flags))
         }
     }
@@ -54,7 +56,10 @@ class CrossTaskIntentRoutingTest {
 
         // Strict parsing is unaffected by the delivery path: rejected links stay rejected.
         listOf("mycorrhizal://settings", "mycorrhizal://contacts/42/edit").forEach {
-            val rejected = Intent(Intent.ACTION_VIEW, Uri.parse(it)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            val rejected = Intent(
+                Intent.ACTION_VIEW,
+                Uri.parse(it)
+            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             assertNull(deepLinkRoute(deepLinkUri(rejected)))
         }
     }

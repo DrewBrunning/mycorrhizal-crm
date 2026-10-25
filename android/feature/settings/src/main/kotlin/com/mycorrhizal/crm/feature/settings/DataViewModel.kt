@@ -13,15 +13,15 @@ import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.network.toApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import javax.inject.Inject
 
 /**
  * T104 + address suggestions: the "propose data" screen. Two opt-in engines —
@@ -55,14 +55,11 @@ data class DataUiState(
      * backup-recovery flow this entry point is for).
      */
     val canRestoreBundle: Boolean = false,
-    val error: String? = null,
+    val error: String? = null
 )
 
 /** One completed dataset export: the bytes plus the format's filename/mime for the share sheet. */
-data class DataExport(
-    val kind: DataExportKind,
-    val bytes: ByteArray,
-) {
+data class DataExport(val kind: DataExportKind, val bytes: ByteArray) {
     val fileName: String = kind.fileName
     val mimeType: String = kind.mimeType
 }
@@ -85,7 +82,7 @@ enum class DataExportKind(val fileName: String, val mimeType: String) {
     // the DataExport/shareExportFile plumbing) rather than a parallel type.
     CUSTOM_VCF4("mycorrhizal-contacts-custom.vcf", "text/vcard"),
     CUSTOM_VCF3("mycorrhizal-contacts-custom-v3.vcf", "text/vcard"),
-    CUSTOM_JSCONTACT("mycorrhizal-contacts-custom.jscontact.json", "application/json"),
+    CUSTOM_JSCONTACT("mycorrhizal-contacts-custom.jscontact.json", "application/json")
 }
 
 @HiltViewModel
@@ -93,7 +90,7 @@ class DataViewModel @Inject constructor(
     private val contactRepository: ContactRepository,
     private val relationshipEdgeRepository: RelationshipEdgeRepository,
     private val exportRepository: ExportRepository,
-    private val bundleBackupRepository: BundleBackupRepository,
+    private val bundleBackupRepository: BundleBackupRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DataUiState())
@@ -129,13 +126,18 @@ class DataViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isSuggestingRelationships = false,
-                            suggestedRelationshipCount = edges.size,
+                            suggestedRelationshipCount = edges.size
                         )
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isSuggestingRelationships = false, error = error.displayMessage) }
-                },
+                    _uiState.update {
+                        it.copy(
+                            isSuggestingRelationships = false,
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }
@@ -154,13 +156,18 @@ class DataViewModel @Inject constructor(
                         it.copy(
                             suggestionsLoading = false,
                             suggestionsLoaded = true,
-                            addressSuggestions = suggestions,
+                            addressSuggestions = suggestions
                         )
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(suggestionsLoading = false, error = error.displayMessage) }
-                },
+                    _uiState.update {
+                        it.copy(
+                            suggestionsLoading = false,
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }
@@ -176,21 +183,25 @@ class DataViewModel @Inject constructor(
                     contactVCardUid = suggestion.contactVCardUid,
                     sourceKind = suggestion.sourceKind,
                     sourceId = suggestion.sourceId,
-                    addressKey = suggestion.addressKey,
-                ),
+                    addressKey = suggestion.addressKey
+                )
             ).foldApiError(
                 onSuccess = {
                     _uiState.update { state ->
                         state.copy(
                             applyingKey = null,
-                            addressSuggestions = state.addressSuggestions.filterNot { suggestionKey(it) == key },
-                            infoRes = R.string.data_address_applied,
+                            addressSuggestions = state.addressSuggestions.filterNot {
+                                suggestionKey(
+                                    it
+                                ) == key
+                            },
+                            infoRes = R.string.data_address_applied
                         )
                     }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(applyingKey = null, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -212,21 +223,35 @@ class DataViewModel @Inject constructor(
         _uiState.update { it.copy(isExporting = true, error = null) }
         val fetch: suspend () -> Result<ByteArray> = when (kind) {
             DataExportKind.CSV -> exportRepository::exportDataCsv
-            DataExportKind.VCF3 -> { { exportRepository.exportContactsVcf(3) } }
-            DataExportKind.VCF4 -> { { exportRepository.exportContactsVcf(null) } }
+
+            DataExportKind.VCF3 -> {
+                { exportRepository.exportContactsVcf(3) }
+            }
+
+            DataExportKind.VCF4 -> {
+                { exportRepository.exportContactsVcf(null) }
+            }
+
             DataExportKind.JSCONTACT -> exportRepository::exportContactsJsContact
+
             DataExportKind.AUDIT_CSV -> exportRepository::exportAuditLogCsv
+
             DataExportKind.CUSTOM_VCF4, DataExportKind.CUSTOM_VCF3, DataExportKind.CUSTOM_JSCONTACT ->
                 error("DataViewModel.export() does not handle $kind — use CustomExportViewModel")
         }
         viewModelScope.launch {
             fetch().foldApiError(
                 onSuccess = { bytes ->
-                    _uiState.update { it.copy(isExporting = false, exported = DataExport(kind, bytes)) }
+                    _uiState.update {
+                        it.copy(
+                            isExporting = false,
+                            exported = DataExport(kind, bytes)
+                        )
+                    }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isExporting = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -249,16 +274,29 @@ class DataViewModel @Inject constructor(
                     val written = write(bytes)
                     if (written.isSuccess) {
                         bundleBackupRepository.recordExport(nowMillis())
-                        _uiState.update { it.copy(isExporting = false, infoRes = R.string.data_bundle_exported) }
+                        _uiState.update {
+                            it.copy(
+                                isExporting = false,
+                                infoRes = R.string.data_bundle_exported
+                            )
+                        }
                     } else {
                         _uiState.update {
-                            it.copy(isExporting = false, infoRes = R.string.data_bundle_write_failed)
+                            it.copy(
+                                isExporting = false,
+                                infoRes = R.string.data_bundle_write_failed
+                            )
                         }
                     }
                 },
                 onFailure = { error ->
-                    _uiState.update { it.copy(isExporting = false, error = error.toApiError().displayMessage) }
-                },
+                    _uiState.update {
+                        it.copy(
+                            isExporting = false,
+                            error = error.toApiError().displayMessage
+                        )
+                    }
+                }
             )
         }
     }

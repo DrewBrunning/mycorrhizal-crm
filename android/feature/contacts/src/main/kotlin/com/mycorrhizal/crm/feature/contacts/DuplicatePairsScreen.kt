@@ -65,7 +65,7 @@ import com.mycorrhizal.crm.ui.components.RefreshableContent
 fun DuplicatePairsScreen(
     onBack: () -> Unit,
     onMerge: (keepId: Long, mergeId: Long, mergeName: String) -> Unit,
-    viewModel: DuplicatePairsViewModel = hiltViewModel(),
+    viewModel: DuplicatePairsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     DuplicatePairsScreenContent(
@@ -74,7 +74,7 @@ fun DuplicatePairsScreen(
         onMerge = onMerge,
         onDismiss = viewModel::dismiss,
         onLoad = viewModel::load,
-        onErrorShown = viewModel::onErrorShown,
+        onErrorShown = viewModel::onErrorShown
     )
 }
 
@@ -91,7 +91,7 @@ fun DuplicatePairsScreenContent(
     onMerge: (keepId: Long, mergeId: Long, mergeName: String) -> Unit = { _, _, _ -> },
     onDismiss: (DuplicatePair) -> Unit = {},
     onLoad: () -> Unit = {},
-    onErrorShown: () -> Unit = {},
+    onErrorShown: () -> Unit = {}
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     // Which pair a Merge is in progress for, and the chosen keeper UID (null
@@ -107,84 +107,104 @@ fun DuplicatePairsScreenContent(
             TopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back)
+                        )
                     }
                 },
-                title = { Text(stringResource(R.string.duplicates_title), style = MaterialTheme.typography.titleLarge) },
+                title = {
+                    Text(
+                        stringResource(R.string.duplicates_title),
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             RefreshableContent(
                 isRefreshing = uiState.isLoading && uiState.pairs.isNotEmpty(),
                 onRefresh = onLoad,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize()
             ) {
                 Column(modifier = Modifier.fillMaxSize()) {
                     when {
-                uiState.isLoading && uiState.pairs.isEmpty() -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier
-                            .align(Alignment.CenterHorizontally)
-                            .padding(24.dp)
-                            .testTag("duplicates-loading"),
-                    )
-                }
-                uiState.error != null && uiState.pairs.isEmpty() -> {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.fillMaxWidth().padding(24.dp),
-                    ) {
-                        Text(
-                            text = uiState.error.orEmpty(),
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                        Button(onClick = onLoad, modifier = Modifier.padding(top = 12.dp)) {
-                            Text(stringResource(R.string.action_retry))
-                        }
-                    }
-                }
-                uiState.pairs.isEmpty() -> {
-                    EmptyState(
-                        title = stringResource(R.string.duplicates_empty),
-                        modifier = Modifier.testTag("duplicates-empty"),
-                    )
-                }
-                else -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(vertical = 8.dp),
-                    ) {
-                        item(key = "count") {
-                            Text(
-                                text = pluralStringResource(R.plurals.duplicates_count, uiState.total, uiState.total),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                        uiState.isLoading && uiState.pairs.isEmpty() -> {
+                            CircularProgressIndicator(
+                                modifier = Modifier
+                                    .align(Alignment.CenterHorizontally)
+                                    .padding(24.dp)
+                                    .testTag("duplicates-loading")
                             )
                         }
-                        items(uiState.pairs, key = { it.reviewKey }) { pair ->
-                            DuplicatePairRow(
-                                pair = pair,
-                                dismissing = uiState.dismissingKey == pair.reviewKey,
-                                onMerge = { pendingMerge = pair to pair.a.uid },
-                                onDismiss = { pendingDismiss = pair },
+
+                        uiState.error != null && uiState.pairs.isEmpty() -> {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.fillMaxWidth().padding(24.dp)
+                            ) {
+                                Text(
+                                    text = uiState.error.orEmpty(),
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Button(onClick = onLoad, modifier = Modifier.padding(top = 12.dp)) {
+                                    Text(stringResource(R.string.action_retry))
+                                }
+                            }
+                        }
+
+                        uiState.pairs.isEmpty() -> {
+                            EmptyState(
+                                title = stringResource(R.string.duplicates_empty),
+                                modifier = Modifier.testTag("duplicates-empty")
                             )
-                            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                        }
+
+                        else -> {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(vertical = 8.dp)
+                            ) {
+                                item(key = "count") {
+                                    Text(
+                                        text = pluralStringResource(
+                                            R.plurals.duplicates_count,
+                                            uiState.total,
+                                            uiState.total
+                                        ),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(
+                                            horizontal = 16.dp,
+                                            vertical = 4.dp
+                                        )
+                                    )
+                                }
+                                items(uiState.pairs, key = { it.reviewKey }) { pair ->
+                                    DuplicatePairRow(
+                                        pair = pair,
+                                        dismissing = uiState.dismissingKey == pair.reviewKey,
+                                        onMerge = { pendingMerge = pair to pair.a.uid },
+                                        onDismiss = { pendingDismiss = pair }
+                                    )
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(horizontal = 16.dp)
+                                    )
+                                }
+                            }
                         }
                     }
                 }
             }
-            }
-        }
         }
     }
 
@@ -205,7 +225,7 @@ fun DuplicatePairsScreenContent(
                 val merge = if (keeperUidChoice == pair.a.uid) pair.b else pair.a
                 pendingMerge = null
                 onMerge(keep.id.toLong(), merge.id.toLong(), merge.displayName)
-            },
+            }
         )
     }
 
@@ -220,7 +240,7 @@ fun DuplicatePairsScreenContent(
                         pendingDismiss = null
                         onDismiss(pair)
                     },
-                    modifier = Modifier.testTag("dismiss-confirm"),
+                    modifier = Modifier.testTag("dismiss-confirm")
                 ) {
                     Text(stringResource(R.string.duplicates_not_duplicate))
                 }
@@ -229,7 +249,7 @@ fun DuplicatePairsScreenContent(
                 TextButton(onClick = { pendingDismiss = null }) {
                     Text(stringResource(R.string.action_cancel))
                 }
-            },
+            }
         )
     }
 }
@@ -245,7 +265,7 @@ private fun DuplicatePairRow(
     pair: DuplicatePair,
     dismissing: Boolean,
     onMerge: () -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -254,37 +274,43 @@ private fun DuplicatePairRow(
                 text = stringResource(R.string.duplicates_vs),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 8.dp),
+                modifier = Modifier.padding(horizontal = 8.dp)
             )
             DuplicateContactLine(contact = pair.b, modifier = Modifier.weight(1f))
         }
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(top = 8.dp),
+            modifier = Modifier.padding(top = 8.dp)
         ) {
             pair.reasons.forEach { reason ->
                 AssistChip(
                     onClick = {},
                     label = { Text(reasonLabel(reason)) },
-                    enabled = false,
+                    enabled = false
                 )
             }
             Text(
-                text = stringResource(R.string.duplicates_confidence, (pair.confidence * 100).toInt()),
+                text = stringResource(
+                    R.string.duplicates_confidence,
+                    (pair.confidence * 100).toInt()
+                ),
                 style = MaterialTheme.typography.labelSmall,
-                color = if (pair.confidence >= 0.9) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.align(Alignment.CenterVertically),
+                color = if (pair.confidence >= 0.9) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                modifier = Modifier.align(Alignment.CenterVertically)
             )
         }
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(top = 4.dp),
+            modifier = Modifier.padding(top = 4.dp)
         ) {
             OutlinedButton(
                 onClick = onMerge,
                 enabled = !dismissing,
-                modifier = Modifier.testTag("merge-pair-${pair.reviewKey}"),
+                modifier = Modifier.testTag("merge-pair-${pair.reviewKey}")
             ) {
                 Text(stringResource(R.string.duplicates_merge))
             }
@@ -301,14 +327,14 @@ private fun DuplicateContactLine(contact: ContactSummary, modifier: Modifier = M
         ContactAvatar(
             photoUri = contact.photoThumbnail ?: contact.photo,
             contentDescription = contact.displayName,
-            size = 40.dp,
+            size = 40.dp
         )
         Column(modifier = Modifier.padding(start = 8.dp)) {
             Text(
                 text = contact.displayName,
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
             // Issue #1754: the same blank-filtering rule as the contact list.
             // Render nothing (not a lone " · " or a blank line) when there is
@@ -316,7 +342,7 @@ private fun DuplicateContactLine(contact: ContactSummary, modifier: Modifier = M
             val subtitle = listOfNotNull(
                 contact.primaryEmail?.takeIf { it.isNotBlank() },
                 contact.primaryPhone?.takeIf { it.isNotBlank() },
-                if (contact.archived) stringResource(R.string.contact_archived) else null,
+                if (contact.archived) stringResource(R.string.contact_archived) else null
             ).joinToString(" · ")
             if (subtitle.isNotBlank()) {
                 Text(
@@ -324,7 +350,7 @@ private fun DuplicateContactLine(contact: ContactSummary, modifier: Modifier = M
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -345,9 +371,11 @@ private fun MergeKeeperDialog(
     pair: DuplicatePair,
     initialKeeperUid: String?,
     onDismissRequest: () -> Unit,
-    onConfirm: (keeperUid: String) -> Unit,
+    onConfirm: (keeperUid: String) -> Unit
 ) {
-    var keeperUid by rememberSaveable(pair.reviewKey) { mutableStateOf(initialKeeperUid ?: pair.a.uid.orEmpty()) }
+    var keeperUid by rememberSaveable(
+        pair.reviewKey
+    ) { mutableStateOf(initialKeeperUid ?: pair.a.uid.orEmpty()) }
     AlertDialog(
         onDismissRequest = onDismissRequest,
         title = { Text(stringResource(R.string.duplicates_merge_title)) },
@@ -356,7 +384,7 @@ private fun MergeKeeperDialog(
                 Text(
                     text = stringResource(R.string.duplicates_kept_hint),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 listOf(pair.a, pair.b).forEach { contact ->
                     Row(
@@ -366,14 +394,14 @@ private fun MergeKeeperDialog(
                             .selectable(
                                 selected = keeperUid == contact.uid,
                                 onClick = { keeperUid = contact.uid.orEmpty() },
-                                role = Role.RadioButton,
+                                role = Role.RadioButton
                             )
                             .padding(vertical = 4.dp)
-                            .testTag("keeper-${contact.id}"),
+                            .testTag("keeper-${contact.id}")
                     ) {
                         RadioButton(
                             selected = keeperUid == contact.uid,
-                            onClick = null,
+                            onClick = null
                         )
                         Text(contact.displayName, modifier = Modifier.padding(start = 8.dp))
                     }
@@ -384,7 +412,7 @@ private fun MergeKeeperDialog(
             TextButton(
                 onClick = { if (keeperUid.isNotBlank()) onConfirm(keeperUid) },
                 enabled = keeperUid.isNotBlank(),
-                modifier = Modifier.testTag("merge-confirm"),
+                modifier = Modifier.testTag("merge-confirm")
             ) {
                 Text(stringResource(R.string.duplicates_merge))
             }
@@ -393,6 +421,6 @@ private fun MergeKeeperDialog(
             TextButton(onClick = onDismissRequest) {
                 Text(stringResource(R.string.action_cancel))
             }
-        },
+        }
     )
 }

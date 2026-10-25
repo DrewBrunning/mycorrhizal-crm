@@ -18,9 +18,9 @@ import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.mycorrhizal.crm.data.repository.AppLocale
-import com.mycorrhizal.crm.data.share.composeSharedDraft
 import com.mycorrhizal.crm.data.session.OidcPendingRequestStore
 import com.mycorrhizal.crm.data.session.SessionManager
+import com.mycorrhizal.crm.data.share.composeSharedDraft
 import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.PendingInteractionRepository
@@ -45,21 +45,21 @@ import kotlinx.coroutines.launch
  * #1740 debug-build exemption is gone). Kept as a named pure function so the
  * policy is pinned by a JVM unit test.
  */
-internal fun shouldSetFlagSecure(blockScreenshotsSetting: Boolean): Boolean = blockScreenshotsSetting
+internal fun shouldSetFlagSecure(blockScreenshotsSetting: Boolean): Boolean =
+    blockScreenshotsSetting
 
-private fun androidx.compose.ui.graphics.Color.toArgbCompat(): Int =
-    android.graphics.Color.argb(
-        (alpha * 255).toInt(),
-        (red * 255).toInt(),
-        (green * 255).toInt(),
-        (blue * 255).toInt(),
-    )
+private fun androidx.compose.ui.graphics.Color.toArgbCompat(): Int = android.graphics.Color.argb(
+    (alpha * 255).toInt(),
+    (red * 255).toInt(),
+    (green * 255).toInt(),
+    (blue * 255).toInt()
+)
 
-@AndroidEntryPoint
 // Issue #722: FragmentActivity (still a ComponentActivity, so the Compose
 // setContent/edge-to-edge extensions are unchanged) is the host type
 // androidx.biometric's BiometricPrompt requires. No Fragment is ever added —
 // this is purely the prompt's host contract.
+@AndroidEntryPoint
 class MainActivity : FragmentActivity() {
 
     @Inject
@@ -71,7 +71,8 @@ class MainActivity : FragmentActivity() {
     lateinit var appLockController: com.mycorrhizal.crm.data.session.AppLockController
 
     @Inject
-    lateinit var localAuthSettings: com.mycorrhizal.crm.domain.repository.LocalAuthSettingsRepository
+    lateinit var localAuthSettings:
+        com.mycorrhizal.crm.domain.repository.LocalAuthSettingsRepository
 
     // M5 §5: the OIDC native return stores the JWT so the session flips to
     // logged-in without a second manual login (the web sets an httpOnly cookie
@@ -200,11 +201,15 @@ class MainActivity : FragmentActivity() {
         // frame on cold start, then follow later changes live.
         applyFlagSecure(
             shouldSetFlagSecure(
-                kotlinx.coroutines.runBlocking { localAuthSettings.blockScreenshots().first() },
-            ),
+                kotlinx.coroutines.runBlocking { localAuthSettings.blockScreenshots().first() }
+            )
         )
         lifecycleScope.launch {
-            localAuthSettings.blockScreenshots().collect { applyFlagSecure(shouldSetFlagSecure(it)) }
+            localAuthSettings.blockScreenshots().collect {
+                applyFlagSecure(
+                    shouldSetFlagSecure(it)
+                )
+            }
         }
 
         // filterTouchesWhenObscured rejects touches while another app's window
@@ -238,7 +243,9 @@ class MainActivity : FragmentActivity() {
         // it has been pinned. AppLocale is the sync cache (see attachBaseContext).
         val darkThemeAtLaunch = when (appSettings.currentThemePreference()) {
             AppSettingsRepository.THEME_DARK -> true
+
             AppSettingsRepository.THEME_LIGHT -> false
+
             else -> (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
                 Configuration.UI_MODE_NIGHT_YES
         }
@@ -251,23 +258,25 @@ class MainActivity : FragmentActivity() {
                 // is unused here; passed the same color for clarity.
                 SystemBarStyle.light(
                     MycorrhizalColors.myceliumDark.toArgbCompat(),
-                    MycorrhizalColors.myceliumDark.toArgbCompat(),
+                    MycorrhizalColors.myceliumDark.toArgbCompat()
                 )
             } else {
                 SystemBarStyle.dark(MycorrhizalColors.mycelium.toArgbCompat())
             },
             navigationBarStyle = when {
                 darkThemeAtLaunch -> SystemBarStyle.dark(MycorrhizalColors.boneDark.toArgbCompat())
+
                 // Issue #1920: API 26 cannot render dark icons on the bone bar
                 // (android:windowLightNavigationBar is API 27+), so the launch
                 // window paints the bar brand green with light icons instead.
                 Build.VERSION.SDK_INT < Build.VERSION_CODES.O_MR1 ->
                     SystemBarStyle.dark(MycorrhizalColors.mycelium.toArgbCompat())
+
                 else -> SystemBarStyle.light(
                     MycorrhizalColors.bone.toArgbCompat(),
-                    MycorrhizalColors.bone.toArgbCompat(),
+                    MycorrhizalColors.bone.toArgbCompat()
                 )
-            },
+            }
         )
 
         setContent {
@@ -290,7 +299,7 @@ class MainActivity : FragmentActivity() {
                     onShareHandled = { pendingShare.value = null },
                     onStartOidc = ::startOidcLogin,
                     oidcError = oidcError,
-                    onOidcErrorShown = { oidcError.value = null },
+                    onOidcErrorShown = { oidcError.value = null }
                 )
             }
         }
@@ -323,17 +332,30 @@ class MainActivity : FragmentActivity() {
     private fun consumeLaunchIntent(savedStateIsNull: Boolean) {
         val current = intent ?: return
         val identity = launchIntentIdentity(current)
-        if (!shouldHandleLaunchIntent(savedStateIsNull, current.flags, identity, lastConsumedLaunchIdentity)) return
-        lastConsumedLaunchIdentity = nextConsumedLaunchIdentity(lastConsumedLaunchIdentity, identity)
+        if (!shouldHandleLaunchIntent(
+                savedStateIsNull,
+                current.flags,
+                identity,
+                lastConsumedLaunchIdentity
+            )
+        ) {
+            return
+        }
+        lastConsumedLaunchIdentity = nextConsumedLaunchIdentity(
+            lastConsumedLaunchIdentity,
+            identity
+        )
         handleOidcReturn(current.data)
         handleDeepLink(current)
         handleShare(current)
-        setIntent(Intent(current).apply {
-            data = null
-            removeExtra(NotificationBuilder.EXTRA_DEEP_LINK)
-            removeExtra(Intent.EXTRA_TEXT)
-            removeExtra(Intent.EXTRA_SUBJECT)
-        })
+        setIntent(
+            Intent(current).apply {
+                data = null
+                removeExtra(NotificationBuilder.EXTRA_DEEP_LINK)
+                removeExtra(Intent.EXTRA_TEXT)
+                removeExtra(Intent.EXTRA_SUBJECT)
+            }
+        )
     }
 
     /**
@@ -389,7 +411,7 @@ class MainActivity : FragmentActivity() {
             launchBrowser = { url ->
                 val intent = Intent(Intent.ACTION_VIEW, url.toUri())
                 runCatching { startActivity(intent) }
-            },
+            }
         )
     }
 }
@@ -418,10 +440,21 @@ internal fun deepLinkRoute(uri: Uri?): String? {
     val segments = strictPathSegments(uri) ?: return null
     return when (uri.host) {
         "home" -> if (segments.isEmpty()) "home" else null
+
         "search" -> if (segments.isEmpty()) searchRoute(uri) else null
+
         "contacts" -> contactsRoute(segments)?.let { "contacts/$it" }
+
         "circles", "tags", "households" ->
-            if (segments.size == 1 && OPAQUE_ID.matches(segments[0])) "${uri.host}/${segments[0]}" else null
+            if (segments.size == 1 && OPAQUE_ID.matches(
+                    segments[0]
+                )
+            ) {
+                "${uri.host}/${segments[0]}"
+            } else {
+                null
+            }
+
         else -> null
     }
 }
@@ -433,7 +466,12 @@ internal fun deepLinkRoute(uri: Uri?): String? {
 internal fun deepLinkUri(intent: Intent?): Uri? {
     if (intent == null) return null
     val data = intent.data
-    if (intent.action == Intent.ACTION_VIEW && data != null && parseOidcReturn(data) == null) return data
+    if (intent.action == Intent.ACTION_VIEW && data != null && parseOidcReturn(
+            data
+        ) == null
+    ) {
+        return data
+    }
     return intent.getStringExtra(NotificationBuilder.EXTRA_DEEP_LINK)
         ?.takeIf { it.isNotBlank() }
         ?.let(Uri::parse)
@@ -448,7 +486,11 @@ private const val SEARCH_QUERY_MAX_CHARS = 200
 private fun searchRoute(uri: Uri): String {
     val q = (uri.getQueryParameter("q") ?: "")
         .trim()
-        .filter { Character.getType(it) != Character.CONTROL.toInt() && Character.getType(it) != Character.FORMAT.toInt() }
+        .filter {
+            Character.getType(
+                it
+            ) != Character.CONTROL.toInt() && Character.getType(it) != Character.FORMAT.toInt()
+        }
         .take(SEARCH_QUERY_MAX_CHARS)
     return if (q.isEmpty()) "contacts" else "contacts?search=${Uri.encode(q)}"
 }
@@ -508,10 +550,14 @@ data class PendingShare(val text: String, val receivedAtMillis: Long) {
  * The manifest filter is advisory (explicit intents bypass it), so the type is re-checked.
  */
 internal fun shareDraftFromIntent(intent: Intent?): String? {
-    if (intent == null || intent.action != Intent.ACTION_SEND || intent.type != "text/plain") return null
+    if (intent == null || intent.action != Intent.ACTION_SEND ||
+        intent.type != "text/plain"
+    ) {
+        return null
+    }
     return composeSharedDraft(
         subject = intent.getCharSequenceExtra(Intent.EXTRA_SUBJECT)?.toString(),
-        text = intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString(),
+        text = intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()
     )
 }
 
@@ -529,7 +575,7 @@ internal fun shouldHandleLaunchIntent(
     savedStateIsNull: Boolean,
     flags: Int,
     identity: String? = null,
-    consumedIdentity: String? = null,
+    consumedIdentity: String? = null
 ): Boolean {
     if ((flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) != 0) return false
     if (savedStateIsNull) return true
@@ -542,7 +588,8 @@ internal fun shouldHandleLaunchIntent(
  * that a link was consumed, or a later restore with the original task intent
  * would replay it.
  */
-internal fun nextConsumedLaunchIdentity(previous: String?, identity: String?): String? = identity ?: previous
+internal fun nextConsumedLaunchIdentity(previous: String?, identity: String?): String? =
+    identity ?: previous
 
 /**
  * Stable identity of a launch intent's payload (data URI, notification link,
@@ -555,7 +602,7 @@ internal fun launchIntentIdentity(intent: Intent?): String? {
         intent.dataString,
         intent.getStringExtra(NotificationBuilder.EXTRA_DEEP_LINK),
         intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString(),
-        intent.getCharSequenceExtra(Intent.EXTRA_SUBJECT)?.toString(),
+        intent.getCharSequenceExtra(Intent.EXTRA_SUBJECT)?.toString()
     )
     if (parts.all { it.isNullOrEmpty() }) return null
     return parts.joinToString("\u0000") { it.orEmpty() }
@@ -567,7 +614,9 @@ private const val STATE_CONSUMED_LAUNCH_IDENTITY = "consumed_launch_identity"
  * ADR 0029 §4: clears this pending link whenever [session] reports logged-out,
  * so a link received while signed out never navigates in the next account.
  */
-internal suspend fun <T : Any> MutableStateFlow<T?>.clearWhenLoggedOut(session: Flow<SessionState>) {
+internal suspend fun <T : Any> MutableStateFlow<T?>.clearWhenLoggedOut(
+    session: Flow<SessionState>
+) {
     session.collect { if (!it.isLoggedIn) value = null }
 }
 
@@ -587,7 +636,7 @@ internal sealed interface OidcReturn {
         val state: String,
         val code: String,
         val language: String?,
-        val dateFormat: String?,
+        val dateFormat: String?
     ) : OidcReturn
 
     data object Failure : OidcReturn
@@ -610,6 +659,6 @@ internal fun parseOidcReturn(uri: Uri?): OidcReturn? {
         state = state,
         code = code,
         language = uri.getQueryParameter("language"),
-        dateFormat = uri.getQueryParameter("date_format"),
+        dateFormat = uri.getQueryParameter("date_format")
     )
 }

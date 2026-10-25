@@ -1,10 +1,10 @@
 package com.mycorrhizal.crm.feature.contacts
 
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -58,7 +58,7 @@ class ContactSectionScreensTest {
 
     private fun record(
         card: Card = Card(name = Name(full = "Dana White")),
-        crm: CRMEnvelope = CRMEnvelope(),
+        crm: CRMEnvelope = CRMEnvelope()
     ) = ContactRecordResponse(id = 5, uid = "uid-5", revision = 7, card = card, crm = crm)
 
     private fun setSkills(state: ContactSectionsUiState): ContactSectionsViewModel {
@@ -73,7 +73,12 @@ class ContactSectionScreensTest {
 
     @Test
     fun `skills empty state offers the create action and opens the form`() {
-        setSkills(ContactSectionsUiState(enabledFields = ContactFieldKey.entries.toSet(), record = record()))
+        setSkills(
+            ContactSectionsUiState(
+                enabledFields = ContactFieldKey.entries.toSet(),
+                record = record()
+            )
+        )
 
         composeTestRule.onNodeWithText("No skills or interests yet").assertIsDisplayed()
         composeTestRule.onNodeWithText("Add skill or interest").performClick()
@@ -81,7 +86,9 @@ class ContactSectionScreensTest {
         composeTestRule.onNodeWithText("Add skill or interest").assertIsDisplayed()
         composeTestRule.onNodeWithTag("personal-info-value").assertIsDisplayed()
         composeTestRule.onNodeWithTag("personal-info-level").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("personal-info-sensitivity").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithTag(
+            "personal-info-sensitivity"
+        ).performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -91,18 +98,27 @@ class ContactSectionScreensTest {
                 record = record(
                     card = Card(
                         personalInfo = listOf(
-                            PersonalInfo(id = "pi-1", kind = "expertise", value = "Go", level = "expert"),
-                            PersonalInfo(id = "pi-2", kind = "hobby", value = "Climbing"),
-                        ),
+                            PersonalInfo(
+                                id = "pi-1",
+                                kind = "expertise",
+                                value = "Go",
+                                level = "expert"
+                            ),
+                            PersonalInfo(id = "pi-2", kind = "hobby", value = "Climbing")
+                        )
                     ),
                     crm = CRMEnvelope(
                         personalInfoMeta = mapOf(
-                            "pi-1" to PersonalInfoMeta(favorite = true, sensitivity = "private", notes = "Core language"),
-                            "pi-2" to PersonalInfoMeta(sensitivity = "secret"),
-                        ),
-                    ),
-                ),
-            ),
+                            "pi-1" to PersonalInfoMeta(
+                                favorite = true,
+                                sensitivity = "private",
+                                notes = "Core language"
+                            ),
+                            "pi-2" to PersonalInfoMeta(sensitivity = "secret")
+                        )
+                    )
+                )
+            )
         )
 
         composeTestRule.onNodeWithText("Expertise").assertIsDisplayed()
@@ -113,18 +129,27 @@ class ContactSectionScreensTest {
         composeTestRule.onNodeWithContentDescription("Favorite").assertIsDisplayed()
         composeTestRule.onAllNodesWithText("Private").fetchSemanticsNodes()
         composeTestRule.onNodeWithTag("personal-info-lock-pi-1").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("personal-info-lock-pi-2").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithTag(
+            "personal-info-lock-pi-2"
+        ).performScrollTo().assertIsDisplayed()
     }
 
     @Test
     fun `adding an expertise entry forwards kind value level sensitivity and notes`() {
-        val vm = setSkills(ContactSectionsUiState(enabledFields = ContactFieldKey.entries.toSet(), record = record()))
+        val vm = setSkills(
+            ContactSectionsUiState(
+                enabledFields = ContactFieldKey.entries.toSet(),
+                record = record()
+            )
+        )
 
         composeTestRule.onNodeWithContentDescription("Add skill or interest").performClick()
         composeTestRule.onNodeWithTag("personal-info-value").performTextInput("Go")
         composeTestRule.onNodeWithTag("personal-info-level").performScrollTo().performClick()
         composeTestRule.onNodeWithText("Expert").performClick()
-        composeTestRule.onNodeWithTag("personal-info-notes").performScrollTo().performTextInput("Core language")
+        composeTestRule.onNodeWithTag(
+            "personal-info-notes"
+        ).performScrollTo().performTextInput("Core language")
         composeTestRule.onNodeWithTag("personal-info-sensitivity").performScrollTo().performClick()
         composeTestRule.onNodeWithText("Private").performClick()
         composeTestRule.onNodeWithTag("personal-info-favorite").performScrollTo().performClick()
@@ -140,14 +165,19 @@ class ContactSectionScreensTest {
                         it.notes == "Core language" &&
                         it.sensitivity == "private" &&
                         it.favorite
-                },
+                }
             )
         }
     }
 
     @Test
     fun `switching a skill to hobby offers the hobby level options and clears the expertise level`() {
-        val vm = setSkills(ContactSectionsUiState(enabledFields = ContactFieldKey.entries.toSet(), record = record()))
+        val vm = setSkills(
+            ContactSectionsUiState(
+                enabledFields = ContactFieldKey.entries.toSet(),
+                record = record()
+            )
+        )
 
         composeTestRule.onNodeWithContentDescription("Add skill or interest").performClick()
         composeTestRule.onNodeWithTag("personal-info-level").performClick()
@@ -169,10 +199,27 @@ class ContactSectionScreensTest {
         val vm = setSkills(
             ContactSectionsUiState(
                 record = record(
-                    card = Card(personalInfo = listOf(PersonalInfo(id = "pi-1", kind = "expertise", value = "Go", level = "expert"))),
-                    crm = CRMEnvelope(personalInfoMeta = mapOf("pi-1" to PersonalInfoMeta(notes = "Core", sensitivity = "secret", favorite = true))),
-                ),
-            ),
+                    card = Card(
+                        personalInfo = listOf(
+                            PersonalInfo(
+                                id = "pi-1",
+                                kind = "expertise",
+                                value = "Go",
+                                level = "expert"
+                            )
+                        )
+                    ),
+                    crm = CRMEnvelope(
+                        personalInfoMeta = mapOf(
+                            "pi-1" to PersonalInfoMeta(
+                                notes = "Core",
+                                sensitivity = "secret",
+                                favorite = true
+                            )
+                        )
+                    )
+                )
+            )
         )
 
         composeTestRule.onNodeWithTag("personal-info-edit-pi-1").performClick()
@@ -185,18 +232,34 @@ class ContactSectionScreensTest {
         composeTestRule.onNodeWithTag("personal-info-favorite").performScrollTo().assertIsOn()
 
         composeTestRule.onNodeWithText("Save").performClick()
-        verify { vm.savePersonalInfo("pi-1", match { it.value == "Go" && it.level == "expert" && it.sensitivity == "secret" }) }
+        verify {
+            vm.savePersonalInfo(
+                "pi-1",
+                match { it.value == "Go" && it.level == "expert" && it.sensitivity == "secret" }
+            )
+        }
     }
 
     @Test
     fun `deleting a skill asks first and then deletes by id`() {
         val vm = setSkills(
-            ContactSectionsUiState(enabledFields = ContactFieldKey.entries.toSet(), record = record(card = Card(personalInfo = listOf(PersonalInfo(id = "pi-1", kind = "hobby", value = "Climbing"))))),
+            ContactSectionsUiState(
+                enabledFields = ContactFieldKey.entries.toSet(),
+                record = record(
+                    card = Card(
+                        personalInfo = listOf(
+                            PersonalInfo(id = "pi-1", kind = "hobby", value = "Climbing")
+                        )
+                    )
+                )
+            )
         )
 
         composeTestRule.onNodeWithTag("personal-info-delete-pi-1").performClick()
         composeTestRule.onNodeWithText("Delete entry?").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Delete “Climbing”? This cannot be undone.").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Delete “Climbing”? This cannot be undone."
+        ).assertIsDisplayed()
         composeTestRule.onNodeWithText("Delete").performClick()
 
         verify { vm.deletePersonalInfo("pi-1") }
@@ -205,7 +268,11 @@ class ContactSectionScreensTest {
     @Test
     fun `a 412 conflict shows the shared dialog and loads the latest record`() {
         val vm = setSkills(
-            ContactSectionsUiState(enabledFields = ContactFieldKey.entries.toSet(), record = record(), conflict = true),
+            ContactSectionsUiState(
+                enabledFields = ContactFieldKey.entries.toSet(),
+                record = record(),
+                conflict = true
+            )
         )
 
         composeTestRule.onNodeWithText("Changed elsewhere").assertIsDisplayed()
@@ -218,7 +285,12 @@ class ContactSectionScreensTest {
 
     @Test
     fun `work empty state opens the organization form and saves the entry`() {
-        val vm = viewModel(ContactSectionsUiState(enabledFields = ContactFieldKey.entries.toSet(), record = record()))
+        val vm = viewModel(
+            ContactSectionsUiState(
+                enabledFields = ContactFieldKey.entries.toSet(),
+                record = record()
+            )
+        )
         composeTestRule.setContent {
             MycorrhizalTheme { ContactWorkScreen(onBack = {}, viewModel = vm) }
         }
@@ -234,7 +306,10 @@ class ContactSectionScreensTest {
         verify {
             vm.saveOrganization(
                 null,
-                match { it.name == "Globex" && it.department == "R&D" && it.startYear == "2019" && it.endYear == "2024" },
+                match {
+                    it.name == "Globex" && it.department == "R&D" && it.startYear == "2019" &&
+                        it.endYear == "2024"
+                }
             )
         }
     }
@@ -246,18 +321,37 @@ class ContactSectionScreensTest {
                 enabledFields = ContactFieldKey.entries.toSet(),
                 record = record(
                     card = Card(
-                        organizations = listOf(Organization(id = "org-1", name = "Acme", units = listOf(com.mycorrhizal.crm.model.network.OrgUnit(name = "Ops")))),
-                        titles = listOf(Title(id = "t-1", name = "Engineer", kind = "role")),
+                        organizations = listOf(
+                            Organization(
+                                id = "org-1",
+                                name = "Acme",
+                                units = listOf(
+                                    com.mycorrhizal.crm.model.network.OrgUnit(name = "Ops")
+                                )
+                            )
+                        ),
+                        titles = listOf(Title(id = "t-1", name = "Engineer", kind = "role"))
                     ),
                     crm = CRMEnvelope(
                         workInformation = "Builds things",
                         periods = listOf(
-                            EntryPeriod(kind = "organization", entryId = "org-1", range = TemporalRange(start = PartialDate(year = 2019), end = PartialDate(year = 2024))),
-                            EntryPeriod(kind = "title", entryId = "t-1", range = TemporalRange(start = PartialDate(year = 2020))),
-                        ),
-                    ),
-                ),
-            ),
+                            EntryPeriod(
+                                kind = "organization",
+                                entryId = "org-1",
+                                range = TemporalRange(
+                                    start = PartialDate(year = 2019),
+                                    end = PartialDate(year = 2024)
+                                )
+                            ),
+                            EntryPeriod(
+                                kind = "title",
+                                entryId = "t-1",
+                                range = TemporalRange(start = PartialDate(year = 2020))
+                            )
+                        )
+                    )
+                )
+            )
         )
         composeTestRule.setContent {
             MycorrhizalTheme { ContactWorkScreen(onBack = {}, viewModel = vm) }
@@ -269,20 +363,27 @@ class ContactSectionScreensTest {
         composeTestRule.onNodeWithTag("contact-work-list").performScrollToNode(hasText("Engineer"))
         composeTestRule.onNodeWithText("Engineer").assertIsDisplayed()
         composeTestRule.onNodeWithText("Role · 2020 –").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("contact-work-list").performScrollToNode(hasText("Builds things"))
+        composeTestRule.onNodeWithTag(
+            "contact-work-list"
+        ).performScrollToNode(hasText("Builds things"))
         composeTestRule.onNodeWithText("Builds things").assertIsDisplayed()
     }
 
     @Test
     fun `editing work information opens a prefilled form and clears it when blanked`() {
         val vm = viewModel(
-            ContactSectionsUiState(enabledFields = ContactFieldKey.entries.toSet(), record = record(crm = CRMEnvelope(workInformation = "Builds things"))),
+            ContactSectionsUiState(
+                enabledFields = ContactFieldKey.entries.toSet(),
+                record = record(crm = CRMEnvelope(workInformation = "Builds things"))
+            )
         )
         composeTestRule.setContent {
             MycorrhizalTheme { ContactWorkScreen(onBack = {}, viewModel = vm) }
         }
 
-        composeTestRule.onNodeWithTag("contact-work-edit-information").performScrollTo().performClick()
+        composeTestRule.onNodeWithTag(
+            "contact-work-edit-information"
+        ).performScrollTo().performClick()
         composeTestRule.onNodeWithText("Builds things").assertIsDisplayed()
         composeTestRule.onNodeWithTag("work-information").performTextReplacement("")
         composeTestRule.onNodeWithText("Save").performClick()
@@ -292,7 +393,12 @@ class ContactSectionScreensTest {
 
     @Test
     fun `adding a title forwards its kind and period`() {
-        val vm = viewModel(ContactSectionsUiState(enabledFields = ContactFieldKey.entries.toSet(), record = record(card = Card(titles = listOf(Title(id = "t-1", name = "Engineer"))))))
+        val vm = viewModel(
+            ContactSectionsUiState(
+                enabledFields = ContactFieldKey.entries.toSet(),
+                record = record(card = Card(titles = listOf(Title(id = "t-1", name = "Engineer"))))
+            )
+        )
         composeTestRule.setContent {
             MycorrhizalTheme { ContactWorkScreen(onBack = {}, viewModel = vm) }
         }
@@ -304,12 +410,24 @@ class ContactSectionScreensTest {
         composeTestRule.onNodeWithTag("work-period-start").performTextInput("2022")
         composeTestRule.onNodeWithText("Create").performClick()
 
-        verify { vm.saveTitle(null, match { it.name == "Advisor" && it.kind == "role" && it.startYear == "2022" }) }
+        verify {
+            vm.saveTitle(
+                null,
+                match { it.name == "Advisor" && it.kind == "role" && it.startYear == "2022" }
+            )
+        }
     }
 
     @Test
     fun `deleting an organization asks first and then deletes by id`() {
-        val vm = viewModel(ContactSectionsUiState(enabledFields = ContactFieldKey.entries.toSet(), record = record(card = Card(organizations = listOf(Organization(id = "org-1", name = "Acme"))))))
+        val vm = viewModel(
+            ContactSectionsUiState(
+                enabledFields = ContactFieldKey.entries.toSet(),
+                record = record(
+                    card = Card(organizations = listOf(Organization(id = "org-1", name = "Acme")))
+                )
+            )
+        )
         composeTestRule.setContent {
             MycorrhizalTheme { ContactWorkScreen(onBack = {}, viewModel = vm) }
         }
@@ -325,7 +443,12 @@ class ContactSectionScreensTest {
 
     @Test
     fun `anniversaries empty state opens the form and save is disabled without a date`() {
-        val vm = viewModel(ContactSectionsUiState(enabledFields = ContactFieldKey.entries.toSet(), record = record()))
+        val vm = viewModel(
+            ContactSectionsUiState(
+                enabledFields = ContactFieldKey.entries.toSet(),
+                record = record()
+            )
+        )
         composeTestRule.setContent {
             MycorrhizalTheme { ContactAnniversariesScreen(onBack = {}, viewModel = vm) }
         }
@@ -344,12 +467,24 @@ class ContactSectionScreensTest {
                 record = record(
                     card = Card(
                         anniversaries = listOf(
-                            Anniversary(id = "birth-1", kind = "birth", date = AnniversaryDate(partial = PartialDate(year = 1990, month = 6, day = 15))),
-                            Anniversary(id = "a-1", kind = "wedding", date = AnniversaryDate(partial = PartialDate(year = 2020, month = 6, day = 1))),
-                        ),
-                    ),
-                ),
-            ),
+                            Anniversary(
+                                id = "birth-1",
+                                kind = "birth",
+                                date = AnniversaryDate(
+                                    partial = PartialDate(year = 1990, month = 6, day = 15)
+                                )
+                            ),
+                            Anniversary(
+                                id = "a-1",
+                                kind = "wedding",
+                                date = AnniversaryDate(
+                                    partial = PartialDate(year = 2020, month = 6, day = 1)
+                                )
+                            )
+                        )
+                    )
+                )
+            )
         )
         composeTestRule.setContent {
             MycorrhizalTheme { ContactAnniversariesScreen(onBack = {}, viewModel = vm) }
@@ -368,11 +503,17 @@ class ContactSectionScreensTest {
                 record = record(
                     card = Card(
                         anniversaries = listOf(
-                            Anniversary(id = "a-1", kind = "death", date = AnniversaryDate(partial = PartialDate(year = 2021, month = 3, day = 4))),
-                        ),
-                    ),
-                ),
-            ),
+                            Anniversary(
+                                id = "a-1",
+                                kind = "death",
+                                date = AnniversaryDate(
+                                    partial = PartialDate(year = 2021, month = 3, day = 4)
+                                )
+                            )
+                        )
+                    )
+                )
+            )
         )
         composeTestRule.setContent {
             MycorrhizalTheme { ContactAnniversariesScreen(onBack = {}, viewModel = vm) }
@@ -384,15 +525,22 @@ class ContactSectionScreensTest {
         composeTestRule.onNodeWithText("04.03.2021").assertIsDisplayed()
         composeTestRule.onNodeWithText("Save").performClick()
 
-        verify { vm.saveAnniversary("a-1", match { it.kind == "death" && it.date == "2021-03-04" }) }
+        verify {
+            vm.saveAnniversary(
+                "a-1",
+                match { it.kind == "death" && it.date == "2021-03-04" }
+            )
+        }
     }
 
     @Test
     fun `deleting an anniversary asks first and then deletes by id`() {
         val vm = viewModel(
             ContactSectionsUiState(
-                record = record(card = Card(anniversaries = listOf(Anniversary(id = "a-1", kind = "wedding")))),
-            ),
+                record = record(
+                    card = Card(anniversaries = listOf(Anniversary(id = "a-1", kind = "wedding")))
+                )
+            )
         )
         composeTestRule.setContent {
             MycorrhizalTheme { ContactAnniversariesScreen(onBack = {}, viewModel = vm) }
@@ -410,14 +558,24 @@ class ContactSectionScreensTest {
         val vm = setSkills(
             ContactSectionsUiState(
                 record = record(
-                    card = Card(personalInfo = listOf(PersonalInfo(id = "pi-1", kind = "hobby", value = "Climbing"))),
-                ),
-            ),
+                    card = Card(
+                        personalInfo = listOf(
+                            PersonalInfo(id = "pi-1", kind = "hobby", value = "Climbing")
+                        )
+                    )
+                )
+            )
         )
         composeTestRule.onNodeWithTag("personal-info-edit-pi-1").performClick()
         composeTestRule.onNodeWithTag("personal-info-favorite").performScrollTo().assertIsOff()
         // Keep the reference used: the VM is the screen's state source.
-        assertEquals("uid-5", ContactSectionsUiState(enabledFields = ContactFieldKey.entries.toSet(), record = record()).record?.uid)
+        assertEquals(
+            "uid-5",
+            ContactSectionsUiState(
+                enabledFields = ContactFieldKey.entries.toSet(),
+                record = record()
+            ).record?.uid
+        )
         verify(exactly = 0) { vm.deletePersonalInfo(any()) }
     }
 }

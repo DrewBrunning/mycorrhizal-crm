@@ -22,9 +22,9 @@ class ServerProfileCodecTest {
         val snapshot = ProfilesSnapshot(
             profiles = listOf(
                 remote("p1", "https://one.example.com", "One"),
-                ServerProfile("p2", ServerProfileKind.Local, "On this device"),
+                ServerProfile("p2", ServerProfileKind.Local, "On this device")
             ),
-            activeProfileId = "p2",
+            activeProfileId = "p2"
         )
 
         val decoded = ServerProfileCodec.decode(ServerProfileCodec.encode(snapshot), "p2")
@@ -36,9 +36,9 @@ class ServerProfileCodecTest {
     fun `round-trips labels and urls containing separators and unicode`() {
         val snapshot = ProfilesSnapshot(
             profiles = listOf(
-                remote("p1", "https://one.example.com/path?a=1&b=2", "Wörk\tand\nnewline"),
+                remote("p1", "https://one.example.com/path?a=1&b=2", "Wörk\tand\nnewline")
             ),
-            activeProfileId = "p1",
+            activeProfileId = "p1"
         )
 
         val decoded = ServerProfileCodec.decode(ServerProfileCodec.encode(snapshot), "p1")
@@ -69,7 +69,7 @@ class ServerProfileCodecTest {
     fun `active id falls back to the first profile when the stored one is unknown`() {
         val snapshot = ProfilesSnapshot(
             profiles = listOf(remote("p1", "https://one.example.com", "One")),
-            activeProfileId = "p1",
+            activeProfileId = "p1"
         )
 
         val decoded = ServerProfileCodec.decode(ServerProfileCodec.encode(snapshot), "missing")
@@ -88,9 +88,9 @@ class ServerProfileCodecTest {
         val snapshot = ProfilesSnapshot(
             profiles = listOf(
                 remote("p1", "https://one.example.com", "One"),
-                ServerProfile("p2", ServerProfileKind.Local, "On this device", archived = true),
+                ServerProfile("p2", ServerProfileKind.Local, "On this device", archived = true)
             ),
-            activeProfileId = "p1",
+            activeProfileId = "p1"
         )
 
         val decoded = ServerProfileCodec.decode(ServerProfileCodec.encode(snapshot), "p1")
@@ -113,10 +113,12 @@ class ServerProfileCodecTest {
     @Test
     fun `an unarchived profile is still written as the four-column row`() {
         val encoded = ServerProfileCodec.encode(
-            ProfilesSnapshot(profiles = listOf(remote("p1", "https://one.example.com", "One")), activeProfileId = "p1"),
+            ProfilesSnapshot(
+                profiles = listOf(remote("p1", "https://one.example.com", "One")),
+                activeProfileId = "p1"
+            )
         )
 
         assertEquals(3, encoded.count { it == '\t' })
     }
 }
-

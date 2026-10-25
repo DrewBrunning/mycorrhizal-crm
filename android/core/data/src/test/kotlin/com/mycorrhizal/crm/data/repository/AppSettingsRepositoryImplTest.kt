@@ -46,7 +46,6 @@ class AppSettingsRepositoryImplTest {
         assertEquals("de", AppLocale.languageTag)
     }
 
-
     @Test
     fun `contact sort defaults to name and persists a change`() = runTest {
         val r = repo()
@@ -56,7 +55,7 @@ class AppSettingsRepositoryImplTest {
 
         assertEquals(
             AppSettingsRepository.CONTACT_SORT_RECENTLY_ADDED,
-            r.contactSortPreference().first(),
+            r.contactSortPreference().first()
         )
     }
 

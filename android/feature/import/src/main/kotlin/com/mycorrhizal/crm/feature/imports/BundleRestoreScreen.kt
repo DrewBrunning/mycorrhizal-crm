@@ -52,7 +52,7 @@ import kotlinx.coroutines.withContext
 fun BundleRestoreScreen(
     onBack: () -> Unit,
     onDone: () -> Unit,
-    viewModel: BundleRestoreViewModel = hiltViewModel(),
+    viewModel: BundleRestoreViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     BundleRestoreScreenContent(
@@ -67,7 +67,7 @@ fun BundleRestoreScreen(
         onRowActionChange = viewModel::setRowAction,
         onResolveAll = viewModel::resolveAll,
         onConfirm = viewModel::confirm,
-        onErrorShown = viewModel::onErrorShown,
+        onErrorShown = viewModel::onErrorShown
     )
 }
 
@@ -83,19 +83,23 @@ fun BundleRestoreScreenContent(
     onRowActionChange: (Int, String) -> Unit = { _, _ -> },
     onResolveAll: () -> Unit = {},
     onConfirm: () -> Unit = {},
-    onErrorShown: () -> Unit = {},
+    onErrorShown: () -> Unit = {}
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+    val filePicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
             val resolver = context.contentResolver
             // Probe the declared size before reading, so an oversized pick is
             // rejected without allocating it (same guard as the VCF import).
-            val meta = withContext(Dispatchers.IO) { queryFileMeta(resolver, uri, "account-bundle.json") }
+            val meta = withContext(
+                Dispatchers.IO
+            ) { queryFileMeta(resolver, uri, "account-bundle.json") }
             if (meta.size != null && meta.size > BundleRestoreViewModel.MAX_BUNDLE_SIZE_BYTES) {
                 onFileTooLarge()
                 return@launch
@@ -110,20 +114,26 @@ fun BundleRestoreScreenContent(
             TopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back)
+                        )
                     }
                 },
                 title = {
-                    Text(stringResource(R.string.bundle_restore_title), style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        stringResource(R.string.bundle_restore_title),
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when (uiState.step) {
@@ -131,20 +141,27 @@ fun BundleRestoreScreenContent(
                     Text(
                         text = stringResource(R.string.bundle_restore_working),
                         style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(16.dp).testTag("bundle-restore-working"),
+                        modifier = Modifier.padding(16.dp).testTag("bundle-restore-working")
                     )
                     LoadingSkeleton()
                 }
-                BundleRestoreStep.PICK -> PickStep(onPick = { filePicker.launch(arrayOf("application/json", "*/*")) })
+
+                BundleRestoreStep.PICK -> PickStep(
+                    onPick = { filePicker.launch(arrayOf("application/json", "*/*")) }
+                )
+
                 BundleRestoreStep.REVIEW -> uiState.preview?.let { preview ->
                     Column(modifier = Modifier.fillMaxSize()) {
                         if (preview.lossReport.isNotEmpty()) {
                             Text(
-                                text = stringResource(R.string.bundle_restore_loss, preview.lossReport.size),
+                                text = stringResource(
+                                    R.string.bundle_restore_loss,
+                                    preview.lossReport.size
+                                ),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                                    .testTag("bundle-restore-loss"),
+                                    .testTag("bundle-restore-loss")
                             )
                         }
                         Box(modifier = Modifier.weight(1f)) {
@@ -153,26 +170,31 @@ fun BundleRestoreScreenContent(
                                 rowActions = uiState.rowActions,
                                 onRowActionChange = onRowActionChange,
                                 onResolveAll = onResolveAll,
-                                onConfirm = onConfirm,
+                                onConfirm = onConfirm
                             )
                         }
                     }
                 }
+
                 BundleRestoreStep.RESULT -> uiState.result?.let { result ->
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(16.dp),
-                        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
+                        modifier = Modifier.fillMaxSize().verticalScroll(
+                            rememberScrollState()
+                        ).padding(24.dp)
                     ) {
                         Text(
                             text = stringResource(
                                 R.string.bundle_restore_result,
                                 result.created,
                                 result.updated,
-                                result.skipped,
+                                result.skipped
                             ),
                             style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(top = 48.dp).testTag("bundle-restore-result"),
+                            modifier = Modifier.padding(
+                                top = 48.dp
+                            ).testTag("bundle-restore-result")
                         )
                         Button(onClick = onDone) { Text(stringResource(R.string.action_confirm)) }
                     }
@@ -194,13 +216,17 @@ fun BundleRestoreScreenContent(
 private fun PickStep(onPick: () -> Unit) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.fillMaxSize().padding(24.dp),
+        modifier = Modifier.fillMaxSize().padding(24.dp)
     ) {
-        Icon(Icons.Outlined.CloudUpload, contentDescription = null, modifier = Modifier.padding(top = 48.dp))
+        Icon(
+            Icons.Outlined.CloudUpload,
+            contentDescription = null,
+            modifier = Modifier.padding(top = 48.dp)
+        )
         Text(
             text = stringResource(R.string.bundle_restore_pick_hint),
             style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(vertical = 16.dp),
+            modifier = Modifier.padding(vertical = 16.dp)
         )
         Button(onClick = onPick, modifier = Modifier.testTag("bundle-restore-pick")) {
             Text(stringResource(R.string.bundle_restore_pick))

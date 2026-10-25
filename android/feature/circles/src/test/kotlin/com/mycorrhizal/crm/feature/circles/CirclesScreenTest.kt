@@ -59,7 +59,7 @@ class CirclesScreenTest {
     private fun setScreen(darkTheme: Boolean) {
         val repository = mockk<CircleRepository>()
         coEvery { repository.list(any(), any()) } returns Result.success(
-            listOf(Circle(id = "c1", name = "Friends"), Circle(id = "c2", name = "Family")),
+            listOf(Circle(id = "c1", name = "Friends"), Circle(id = "c2", name = "Family"))
         )
         val viewModel = CirclesViewModel(repository)
 
@@ -127,7 +127,9 @@ class CirclesScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithContentDescription(str(R.string.a11y_state_loading)).assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(
+            str(R.string.a11y_state_loading)
+        ).assertIsDisplayed()
     }
 
     @Test

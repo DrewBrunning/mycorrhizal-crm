@@ -26,25 +26,30 @@ class EncryptedTokenStorage(context: Context) : TokenStorage {
             FILE_NAME,
             masterKey,
             EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
         )
     }
 
     override suspend fun save(profileId: String, token: String) {
-        prefs.edit { putString(keyFor(profileId), token) } // # pragma: no cover — needs a real Android Keystore (see EncryptedTokenStorageGuardTest)
+        prefs.edit {
+            putString(keyFor(profileId), token)
+        } // # pragma: no cover — needs a real Android Keystore (see EncryptedTokenStorageGuardTest)
     }
 
-    override suspend fun load(profileId: String): String? =
-        prefs.getString(keyFor(profileId), null)
+    override suspend fun load(profileId: String): String? = prefs.getString(keyFor(profileId), null)
 
     override suspend fun clear(profileId: String) {
-        prefs.edit { remove(keyFor(profileId)) } // # pragma: no cover — needs a real Android Keystore (see EncryptedTokenStorageGuardTest)
+        prefs.edit {
+            remove(keyFor(profileId))
+        } // # pragma: no cover — needs a real Android Keystore (see EncryptedTokenStorageGuardTest)
     }
 
     override suspend fun loadLegacy(): String? = prefs.getString(KEY_LEGACY_JWT, null)
 
     override suspend fun clearLegacy() {
-        prefs.edit { remove(KEY_LEGACY_JWT) } // # pragma: no cover — needs a real Android Keystore (see EncryptedTokenStorageGuardTest)
+        prefs.edit {
+            remove(KEY_LEGACY_JWT)
+        } // # pragma: no cover — needs a real Android Keystore (see EncryptedTokenStorageGuardTest)
     }
 
     private fun keyFor(profileId: String): String = "$KEY_JWT_PREFIX$profileId"

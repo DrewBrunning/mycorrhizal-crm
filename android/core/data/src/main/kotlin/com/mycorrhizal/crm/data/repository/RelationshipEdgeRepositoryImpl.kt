@@ -16,25 +16,27 @@ import javax.inject.Inject
  */
 class RelationshipEdgeRepositoryImpl @Inject constructor(
     private val apiClient: ApiClient,
-    private val dao: CachedRelationshipEdgeDao,
+    private val dao: CachedRelationshipEdgeDao
 ) : RelationshipEdgeRepository {
 
     override suspend fun listForContact(
         contactId: String,
         status: String?,
-        cursor: String?,
+        cursor: String?
     ): Result<List<RelationshipEdge>> {
         val result = apiClient.listRelationshipEdges(
             contactId = contactId,
             status = status,
-            cursor = cursor,
+            cursor = cursor
         )
         val page = result.getOrNull()
         if (page != null) {
             // Full-resync: wipe the cached edges touching this contact, then
             // write the fresh set (avoids stale rows surviving an unfollow).
             dao.getForContact(contactId).forEach { dao.deleteById(it.id) }
-            dao.upsertAll(page.relationshipEdges.filterNot { it.status == "suggested" }.map { it.toCached() })
+            dao.upsertAll(
+                page.relationshipEdges.filterNot { it.status == "suggested" }.map { it.toCached() }
+            )
         }
         return result.map { page -> page.relationshipEdges }
     }
@@ -45,7 +47,10 @@ class RelationshipEdgeRepositoryImpl @Inject constructor(
         return result
     }
 
-    override suspend fun update(id: String, input: RelationshipEdgeInput): Result<RelationshipEdge> {
+    override suspend fun update(
+        id: String,
+        input: RelationshipEdgeInput
+    ): Result<RelationshipEdge> {
         val result = apiClient.updateRelationshipEdge(id, input)
         result.getOrNull()?.let { dao.upsert(it.toCached()) }
         return result
@@ -76,6 +81,6 @@ class RelationshipEdgeRepositoryImpl @Inject constructor(
         directional = directional,
         status = status,
         sensitivity = sensitivity,
-        updatedAt = updatedAt,
+        updatedAt = updatedAt
     )
 }

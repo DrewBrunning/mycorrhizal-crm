@@ -7,9 +7,9 @@ import com.mycorrhizal.crm.domain.repository.DeviceGrantCreated
 import com.mycorrhizal.crm.domain.repository.DeviceGrantRepository
 import com.mycorrhizal.crm.domain.repository.LocalAuthSettingsRepository
 import com.mycorrhizal.crm.network.ApiClient
-import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.flow.Flow
 
 /**
  * Issue #722: the client half of fully biometric login — enroll this device
@@ -25,7 +25,7 @@ class DeviceGrantManager @Inject constructor(
     private val api: ApiClient,
     private val storage: DeviceGrantTokenStorage,
     private val settings: LocalAuthSettingsRepository,
-    private val sessionManager: SessionManager,
+    private val sessionManager: SessionManager
 ) : DeviceGrantRepository {
 
     /** The plaintext grant stored for the active profile, or null. */
@@ -51,7 +51,7 @@ class DeviceGrantManager @Inject constructor(
                 settings.setBiometricEnrollmentStatus(BiometricEnrollmentStatus.ENROLLED)
                 Result.success(Unit)
             },
-            onFailure = { Result.failure(it) },
+            onFailure = { Result.failure(it) }
         )
     }
 
@@ -76,7 +76,7 @@ class DeviceGrantManager @Inject constructor(
                 settings.setBiometricEnrollmentStatus(BiometricEnrollmentStatus.OPTED_OUT)
                 Result.success(Unit)
             },
-            onFailure = { Result.failure(it) },
+            onFailure = { Result.failure(it) }
         )
     }
 
@@ -86,7 +86,11 @@ class DeviceGrantManager @Inject constructor(
             if (token == null || token.isBlank()) {
                 error("Server did not return a device grant token")
             } else {
-                DeviceGrantCreated(id = response.id, label = response.label.orEmpty(), token = token)
+                DeviceGrantCreated(
+                    id = response.id,
+                    label = response.label.orEmpty(),
+                    token = token
+                )
             }
         }
 
@@ -96,7 +100,7 @@ class DeviceGrantManager @Inject constructor(
                 sessionManager.setToken(freshToken)
                 Result.success(Unit)
             },
-            onFailure = { Result.failure(it) },
+            onFailure = { Result.failure(it) }
         )
 
     /**

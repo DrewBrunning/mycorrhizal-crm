@@ -14,25 +14,23 @@ import javax.inject.Inject
  * the timeline is server-scoped, instance-wide and immutable, so there is
  * nothing to mirror locally.
  */
-class SystemEventRepositoryImpl @Inject constructor(
-    private val apiClient: ApiClient,
-) : SystemEventRepository {
+class SystemEventRepositoryImpl @Inject constructor(private val apiClient: ApiClient) :
+    SystemEventRepository {
     override suspend fun list(
         component: String?,
         severity: String?,
         eventType: String?,
         correlationId: String?,
         ids: List<Long>?,
-        limit: Int,
-    ): Result<SystemEventsResponse> =
-        apiClient.getSystemEvents(
-            component = component,
-            severity = severity,
-            eventType = eventType,
-            correlationId = correlationId,
-            ids = ids,
-            limit = limit,
-        )
+        limit: Int
+    ): Result<SystemEventsResponse> = apiClient.getSystemEvents(
+        component = component,
+        severity = severity,
+        eventType = eventType,
+        correlationId = correlationId,
+        ids = ids,
+        limit = limit
+    )
 
     override suspend fun subsystemHealth(): Result<SubsystemHealthResponse> =
         apiClient.getSubsystemHealth()
@@ -40,13 +38,12 @@ class SystemEventRepositoryImpl @Inject constructor(
     override suspend fun errorAggregation(windowHours: Int): Result<ErrorAggregationResponse> =
         apiClient.getErrorAggregation(windowHours)
 
-    override suspend fun jobRunHealth(): Result<JobRunHealthResponse> =
-        apiClient.getJobRunHealth()
+    override suspend fun jobRunHealth(): Result<JobRunHealthResponse> = apiClient.getJobRunHealth()
 
     override suspend fun jobRuns(
         jobName: String?,
         result: String?,
-        limit: Int,
+        limit: Int
     ): Result<JobRunsResponse> =
         apiClient.getJobRuns(jobName = jobName, result = result, limit = limit)
 }

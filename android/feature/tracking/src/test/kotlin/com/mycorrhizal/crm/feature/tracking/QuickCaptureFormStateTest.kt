@@ -5,9 +5,9 @@ import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ActivityInput
 import com.mycorrhizal.crm.model.network.ContactSummary
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.slot
-import io.mockk.coVerify
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -26,12 +26,16 @@ class QuickCaptureFormStateTest {
     fun `save creates the activity with the prefilled participant and date`() = runTest {
         val repo = mockk<ActivityRepository>()
         val captured = slot<ActivityInput>()
-        coEvery { repo.create(capture(captured)) } returns Result.success(Activity(id = 1, title = "Call"))
+        coEvery {
+            repo.create(
+                capture(captured)
+            )
+        } returns Result.success(Activity(id = 1, title = "Call"))
         val scope = CoroutineScope(StandardTestDispatcher(testScheduler))
         val state = QuickCaptureFormState(
             activityRepository = repo,
             scope = scope,
-            prefill = QuickCapturePrefillFactory.forCall(jane, "2026-08-18T12:00:00Z"),
+            prefill = QuickCapturePrefillFactory.forCall(jane, "2026-08-18T12:00:00Z")
         )
 
         state.save()
@@ -54,7 +58,7 @@ class QuickCaptureFormStateTest {
         val state = QuickCaptureFormState(
             activityRepository = repo,
             scope = scope,
-            prefill = QuickCapturePrefillFactory.forCall(null, "2026-08-18T12:00:00Z"),
+            prefill = QuickCapturePrefillFactory.forCall(null, "2026-08-18T12:00:00Z")
         )
 
         state.save()
@@ -73,7 +77,7 @@ class QuickCaptureFormStateTest {
         val state = QuickCaptureFormState(
             activityRepository = repo,
             scope = scope,
-            prefill = QuickCapturePrefillFactory.forCall(jane, "2026-08-18T12:00:00Z"),
+            prefill = QuickCapturePrefillFactory.forCall(jane, "2026-08-18T12:00:00Z")
         )
 
         state.onTitleChange("Caught up over lunch")
@@ -93,7 +97,7 @@ class QuickCaptureFormStateTest {
             activityRepository = repo,
             scope = scope,
             prefill = QuickCapturePrefillFactory.forCall(jane, "2026-08-18T12:00:00Z"),
-            blankTitleMessage = "Title is required",
+            blankTitleMessage = "Title is required"
         )
 
         state.onTitleChange("   ")
@@ -113,7 +117,7 @@ class QuickCaptureFormStateTest {
         val state = QuickCaptureFormState(
             activityRepository = repo,
             scope = scope,
-            prefill = QuickCapturePrefillFactory.forCall(jane, "2026-08-18T12:00:00Z"),
+            prefill = QuickCapturePrefillFactory.forCall(jane, "2026-08-18T12:00:00Z")
         )
 
         state.save()
@@ -135,7 +139,7 @@ class QuickCaptureFormStateTest {
             activityRepository = mockk<ActivityRepository>(relaxed = true),
             scope = CoroutineScope(StandardTestDispatcher()),
             prefill = QuickCapturePrefillFactory.forCall(jane, "2026-08-18T12:00:00Z"),
-            onFirstInteraction = { calls++ },
+            onFirstInteraction = { calls++ }
         )
 
         state.onTitleChange("Caught up")

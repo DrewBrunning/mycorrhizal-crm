@@ -10,6 +10,7 @@ import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,7 +18,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class NotesUiState(
     val contactId: Int = 0,
@@ -35,13 +35,13 @@ data class NotesUiState(
     @StringRes val errorRes: Int? = null,
     val error: String? = null,
     /** ADR 0008: a delete was rejected with 412 — the record changed elsewhere since the list loaded. */
-    val conflict: Boolean = false,
+    val conflict: Boolean = false
 )
 
 @HiltViewModel
 class NotesViewModel @Inject constructor(
     private val noteRepository: NoteRepository,
-    savedStateHandle: SavedStateHandle,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val contactId: Int = run {
@@ -81,7 +81,13 @@ class NotesViewModel @Inject constructor(
 
     fun load() {
         if (contactId == 0) {
-            _uiState.update { it.copy(isLoading = false, errorRes = R.string.note_error_missing_id, error = null) }
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    errorRes = R.string.note_error_missing_id,
+                    error = null
+                )
+            }
             return
         }
         // A superseding load cancels the previous one so an older, slower
@@ -94,14 +100,20 @@ class NotesViewModel @Inject constructor(
                 contactId,
                 search = filters.searchQuery.ifBlank { null },
                 fromDate = filters.fromDate.ifBlank { null },
-                toDate = filters.toDate.ifBlank { null },
+                toDate = filters.toDate.ifBlank { null }
             ).foldApiError(
                 onSuccess = { page ->
-                    _uiState.update { it.copy(isLoading = false, notes = page.notes, nextCursor = page.nextCursor) }
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            notes = page.notes,
+                            nextCursor = page.nextCursor
+                        )
+                    }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -117,21 +129,26 @@ class NotesViewModel @Inject constructor(
                 cursor = state.nextCursor,
                 search = state.searchQuery.ifBlank { null },
                 fromDate = state.fromDate.ifBlank { null },
-                toDate = state.toDate.ifBlank { null },
+                toDate = state.toDate.ifBlank { null }
             ).foldApiError(
                 onSuccess = { page ->
                     _uiState.update {
-                        it.copy(isLoadingMore = false, notes = it.notes + page.notes, nextCursor = page.nextCursor)
+                        it.copy(
+                            isLoadingMore = false,
+                            notes = it.notes + page.notes,
+                            nextCursor = page.nextCursor
+                        )
                     }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoadingMore = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
 
-    /** Delete a note (M19). Confirmation is the screen's job — see M17's rule. */
+    /* Delete a note (M19). Confirmation is the screen's job — see M17's rule. */
+
     /** Conflict dialog "Not now": nothing was deleted; the list stays as it is. */
     fun onConflictDismissed() {
         _uiState.update { it.copy(conflict = false) }
@@ -143,7 +160,9 @@ class NotesViewModel @Inject constructor(
         load()
     }
 
-    private fun revisionOf(id: Int): Int? = _uiState.value.notes.firstOrNull { it.id == id }?.revision
+    private fun revisionOf(id: Int): Int? = _uiState.value.notes.firstOrNull {
+        it.id == id
+    }?.revision
 
     fun delete(id: Int) {
         if (_uiState.value.deletingId != null) return
@@ -163,7 +182,7 @@ class NotesViewModel @Inject constructor(
                             it.copy(deletingId = null, error = error.displayMessage)
                         }
                     }
-                },
+                }
             )
         }
     }

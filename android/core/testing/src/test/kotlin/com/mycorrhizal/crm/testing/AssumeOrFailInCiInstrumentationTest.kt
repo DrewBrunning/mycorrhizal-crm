@@ -22,7 +22,7 @@ class AssumeOrFailInCiInstrumentationTest {
     private fun registerArguments(vararg pairs: Pair<String, String>) {
         InstrumentationRegistry.registerInstance(
             InstrumentationRegistry.getInstrumentation(),
-            Bundle().apply { pairs.forEach { (key, value) -> putString(key, value) } },
+            Bundle().apply { pairs.forEach { (key, value) -> putString(key, value) } }
         )
     }
 

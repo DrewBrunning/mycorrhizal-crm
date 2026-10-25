@@ -15,12 +15,12 @@ import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.toApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /**
  * Passkey enrollment and management (issue #1293 / ADR 0034, web parity
@@ -51,7 +51,7 @@ class PasskeysViewModel @Inject constructor(
     private val passkeyRepository: PasskeyRepository,
     private val passkeyClient: PasskeyCredentialClient,
     private val authRepository: AuthRepository,
-    private val passkeyAvailability: PasskeyAvailability,
+    private val passkeyAvailability: PasskeyAvailability
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PasskeysUiState())
@@ -72,11 +72,22 @@ class PasskeysViewModel @Inject constructor(
             passkeyRepository.listPasskeys()
                 .onSuccess { list ->
                     _uiState.update {
-                        it.copy(loading = false, available = available, passkeys = list, totpEnabled = totpEnabled)
+                        it.copy(
+                            loading = false,
+                            available = available,
+                            passkeys = list,
+                            totpEnabled = totpEnabled
+                        )
                     }
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(loading = false, available = available, error = e.serverText()) }
+                    _uiState.update {
+                        it.copy(
+                            loading = false,
+                            available = available,
+                            error = e.serverText()
+                        )
+                    }
                 }
         }
     }
@@ -127,30 +138,59 @@ class PasskeysViewModel @Inject constructor(
         }
         return when (val ceremony = passkeyClient.getPasskey(context, options)) {
             is PasskeyResult.Success -> SecondFactorProof.Assertion(ceremony.json)
+
             PasskeyResult.Cancelled -> {
                 _uiState.update { it.copy(busy = false) }
                 null
             }
+
             PasskeyResult.NoMatchingPasskey -> {
-                _uiState.update { it.copy(busy = false, errorRes = R.string.settings_passkeys_no_other_here) }
+                _uiState.update {
+                    it.copy(
+                        busy = false,
+                        errorRes = R.string.settings_passkeys_no_other_here
+                    )
+                }
                 null
             }
+
             PasskeyResult.NotAssociated -> {
-                _uiState.update { it.copy(busy = false, errorRes = R.string.settings_passkeys_not_associated) }
+                _uiState.update {
+                    it.copy(
+                        busy = false,
+                        errorRes = R.string.settings_passkeys_not_associated
+                    )
+                }
                 null
             }
+
             PasskeyResult.NoProvider -> {
-                _uiState.update { it.copy(busy = false, errorRes = R.string.settings_passkeys_no_provider) }
+                _uiState.update {
+                    it.copy(
+                        busy = false,
+                        errorRes = R.string.settings_passkeys_no_provider
+                    )
+                }
                 null
             }
+
             PasskeyResult.AlreadyRegistered, is PasskeyResult.Failed -> {
-                _uiState.update { it.copy(busy = false, errorRes = R.string.settings_passkeys_invalid_proof) }
+                _uiState.update {
+                    it.copy(
+                        busy = false,
+                        errorRes = R.string.settings_passkeys_invalid_proof
+                    )
+                }
                 null
             }
         }
     }
 
-    private fun runAdd(context: Context, name: String, obtainProof: suspend () -> SecondFactorProof?) {
+    private fun runAdd(
+        context: Context,
+        name: String,
+        obtainProof: suspend () -> SecondFactorProof?
+    ) {
         _uiState.update { it.copy(busy = true, error = null, errorRes = null, messageRes = null) }
         viewModelScope.launch {
             val proof = obtainProof()
@@ -163,21 +203,42 @@ class PasskeysViewModel @Inject constructor(
             }
             when (val ceremony = passkeyClient.createPasskey(context, options)) {
                 is PasskeyResult.Success -> finishAdd(ceremony.json)
+
                 PasskeyResult.Cancelled -> _uiState.update { it.copy(busy = false, adding = false) }
+
                 PasskeyResult.NotAssociated ->
                     _uiState.update {
-                        it.copy(busy = false, adding = false, blockedRes = R.string.settings_passkeys_not_associated)
+                        it.copy(
+                            busy = false,
+                            adding = false,
+                            blockedRes = R.string.settings_passkeys_not_associated
+                        )
                     }
+
                 PasskeyResult.NoProvider ->
                     _uiState.update {
-                        it.copy(busy = false, adding = false, blockedRes = R.string.settings_passkeys_no_provider)
+                        it.copy(
+                            busy = false,
+                            adding = false,
+                            blockedRes = R.string.settings_passkeys_no_provider
+                        )
                     }
+
                 PasskeyResult.AlreadyRegistered ->
                     _uiState.update {
-                        it.copy(busy = false, errorRes = R.string.settings_passkeys_already_registered)
+                        it.copy(
+                            busy = false,
+                            errorRes = R.string.settings_passkeys_already_registered
+                        )
                     }
+
                 PasskeyResult.NoMatchingPasskey, is PasskeyResult.Failed ->
-                    _uiState.update { it.copy(busy = false, errorRes = R.string.settings_passkeys_add_error) }
+                    _uiState.update {
+                        it.copy(
+                            busy = false,
+                            errorRes = R.string.settings_passkeys_add_error
+                        )
+                    }
             }
         }
     }
@@ -194,7 +255,7 @@ class PasskeysViewModel @Inject constructor(
                 adding = false,
                 passkeys = refreshed ?: state.passkeys,
                 recoveryCodes = registered.recoveryCodes.takeIf { it.isNotEmpty() },
-                messageRes = R.string.settings_passkeys_add_success,
+                messageRes = R.string.settings_passkeys_add_success
             )
         }
     }
@@ -203,7 +264,12 @@ class PasskeysViewModel @Inject constructor(
         val apiError = error.toApiError()
         if (apiError is ApiError.Client && apiError.code == HTTP_BAD_REQUEST && proofSent) {
             // The proof was rejected (wrong code or failed assertion): localized copy, dialog stays open.
-            _uiState.update { it.copy(busy = false, errorRes = R.string.settings_passkeys_invalid_proof) }
+            _uiState.update {
+                it.copy(
+                    busy = false,
+                    errorRes = R.string.settings_passkeys_invalid_proof
+                )
+            }
         } else if (apiError is ApiError.Client && apiError.code == HTTP_FORBIDDEN) {
             // The backend's oidcUserErr: an identity-provider account cannot enroll.
             // Persistent, like the TOTP screen's server-worded 403 — but it also
@@ -219,7 +285,14 @@ class PasskeysViewModel @Inject constructor(
     /** Ask to remove [credential]; opens the proof dialog. */
     fun requestRemove(credential: WebAuthnCredential) {
         if (_uiState.value.busy) return
-        _uiState.update { it.copy(removing = credential, error = null, errorRes = null, messageRes = null) }
+        _uiState.update {
+            it.copy(
+                removing = credential,
+                error = null,
+                errorRes = null,
+                messageRes = null
+            )
+        }
     }
 
     fun dismissRemove() {
@@ -258,16 +331,47 @@ class PasskeysViewModel @Inject constructor(
                 is PasskeyResult.Success ->
                     passkeyRepository.removeWithAssertion(target.id, ceremony.json)
                         .onSuccess { afterRemove(target) }
-                        .onFailure { e -> _uiState.update { it.copy(busy = false).withProofError(e) } }
+                        .onFailure { e ->
+                            _uiState.update {
+                                it.copy(
+                                    busy = false
+                                ).withProofError(e)
+                            }
+                        }
+
                 PasskeyResult.Cancelled -> _uiState.update { it.copy(busy = false) }
+
                 PasskeyResult.NoMatchingPasskey ->
-                    _uiState.update { it.copy(busy = false, errorRes = R.string.settings_passkeys_no_other_here) }
+                    _uiState.update {
+                        it.copy(
+                            busy = false,
+                            errorRes = R.string.settings_passkeys_no_other_here
+                        )
+                    }
+
                 PasskeyResult.NotAssociated ->
-                    _uiState.update { it.copy(busy = false, errorRes = R.string.settings_passkeys_not_associated) }
+                    _uiState.update {
+                        it.copy(
+                            busy = false,
+                            errorRes = R.string.settings_passkeys_not_associated
+                        )
+                    }
+
                 PasskeyResult.NoProvider ->
-                    _uiState.update { it.copy(busy = false, errorRes = R.string.settings_passkeys_no_provider) }
+                    _uiState.update {
+                        it.copy(
+                            busy = false,
+                            errorRes = R.string.settings_passkeys_no_provider
+                        )
+                    }
+
                 PasskeyResult.AlreadyRegistered, is PasskeyResult.Failed ->
-                    _uiState.update { it.copy(busy = false, errorRes = R.string.settings_passkeys_invalid_proof) }
+                    _uiState.update {
+                        it.copy(
+                            busy = false,
+                            errorRes = R.string.settings_passkeys_invalid_proof
+                        )
+                    }
             }
         }
     }
@@ -279,7 +383,7 @@ class PasskeysViewModel @Inject constructor(
                 busy = false,
                 removing = null,
                 passkeys = refreshed ?: state.passkeys.filterNot { it.id == removed.id },
-                messageRes = R.string.settings_passkeys_remove_success,
+                messageRes = R.string.settings_passkeys_remove_success
             )
         }
     }
@@ -339,7 +443,7 @@ data class PasskeysUiState(
     /** A one-shot success line, shown then cleared. */
     @StringRes val messageRes: Int? = null,
     val error: String? = null,
-    @StringRes val errorRes: Int? = null,
+    @StringRes val errorRes: Int? = null
 ) {
     /** Enrollment is offered only through an open gate and for an account that is not blocked. */
     val canAdd: Boolean get() = available && blockedRes == null && blockedText == null

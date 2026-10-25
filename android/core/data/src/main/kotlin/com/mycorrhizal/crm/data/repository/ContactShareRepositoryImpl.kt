@@ -17,9 +17,8 @@ import javax.inject.Inject
  * inherently online data (see ContactShareRepository's doc comment). Follows
  * the MergeRepositoryImpl precedent of a thin ApiClient passthrough.
  */
-class ContactShareRepositoryImpl @Inject constructor(
-    private val apiClient: ApiClient,
-) : ContactShareRepository {
+class ContactShareRepositoryImpl @Inject constructor(private val apiClient: ApiClient) :
+    ContactShareRepository {
 
     override suspend fun listIncoming(cursor: String?, limit: Int): Result<ContactSharesPage> =
         apiClient.listIncomingContactShares(cursor = cursor, limit = limit)
@@ -36,12 +35,13 @@ class ContactShareRepositoryImpl @Inject constructor(
     override suspend fun confirm(
         id: String,
         sessionId: String,
-        actions: List<RowImportAction>,
-    ): Result<ImportResult> =
-        apiClient.confirmContactShare(id, ImportConfirmRequest(sessionId = sessionId, actions = actions))
+        actions: List<RowImportAction>
+    ): Result<ImportResult> = apiClient.confirmContactShare(
+        id,
+        ImportConfirmRequest(sessionId = sessionId, actions = actions)
+    )
 
-    override suspend fun decline(id: String): Result<Unit> =
-        apiClient.declineContactShare(id)
+    override suspend fun decline(id: String): Result<Unit> = apiClient.declineContactShare(id)
 
     override suspend fun userDirectory(): Result<List<UserDirectoryEntry>> =
         apiClient.getUserDirectory()

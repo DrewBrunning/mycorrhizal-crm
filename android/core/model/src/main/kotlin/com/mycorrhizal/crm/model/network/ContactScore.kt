@@ -38,7 +38,7 @@ data class ContactScoreResponse(
      * user-set target closeness. Always present on current servers and null
      * when the contact has no target.
      */
-    val target: ContactScoreTarget? = null,
+    val target: ContactScoreTarget? = null
 )
 
 /**
@@ -58,7 +58,7 @@ data class ContactScoreTarget(
     /** English; render [reasonCode] + [reasonParams] instead (scoreReasonText). */
     val reason: String = "",
     @Json(name = "reason_code") val reasonCode: String? = null,
-    @Json(name = "reason_params") val reasonParams: ScoreReasonParams = ScoreReasonParams(),
+    @Json(name = "reason_params") val reasonParams: ScoreReasonParams = ScoreReasonParams()
 )
 
 /** `ambient_reason`: a current member of a household the user's self-contact is also in. */
@@ -86,7 +86,7 @@ data class ContactScoreFacet(
      * case the English [reason] is shown.
      */
     @Json(name = "reason_code") val reasonCode: String? = null,
-    @Json(name = "reason_params") val reasonParams: ScoreReasonParams = ScoreReasonParams(),
+    @Json(name = "reason_params") val reasonParams: ScoreReasonParams = ScoreReasonParams()
 )
 
 /**
@@ -103,7 +103,7 @@ data class ScoreReasonParams(
     val expected: Double? = null,
     val score: Int? = null,
     val relation: String? = null,
-    val tier: String? = null,
+    val tier: String? = null
 )
 
 /**
@@ -134,6 +134,6 @@ object ScoreReasonCode {
         RECENCY_NONE, RECENCY_DAYS, FREQUENCY_COUNT,
         REACH_OUT_PENDING, REACH_OUT_NONE, LAST_UPDATED_DAYS,
         AMBIENT_HOUSEHOLD, AMBIENT_FLAG,
-        TARGET_CADENCE_POLICY, TARGET_TIER, TARGET_AMBIENT,
+        TARGET_CADENCE_POLICY, TARGET_TIER, TARGET_AMBIENT
     )
 }

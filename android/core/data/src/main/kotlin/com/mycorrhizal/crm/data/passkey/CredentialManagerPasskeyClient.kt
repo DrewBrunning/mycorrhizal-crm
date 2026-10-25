@@ -25,9 +25,9 @@ import androidx.credentials.exceptions.domerrors.NotAllowedError
 import androidx.credentials.exceptions.domerrors.SecurityError
 import androidx.credentials.exceptions.publickeycredential.CreatePublicKeyCredentialDomException
 import androidx.credentials.exceptions.publickeycredential.GetPublicKeyCredentialDomException
-import kotlinx.coroutines.CancellationException
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CancellationException
 
 /**
  * Production [PasskeyCredentialClient]: the platform Credential Manager
@@ -54,7 +54,7 @@ class CredentialManagerPasskeyClient @Inject constructor() : PasskeyCredentialCl
     override suspend fun createPasskey(context: Context, optionsJson: String): PasskeyResult = try {
         val response = CredentialManager.create(context).createCredential(
             context,
-            CreatePublicKeyCredentialRequest(unwrapPublicKeyOptions(optionsJson)),
+            CreatePublicKeyCredentialRequest(unwrapPublicKeyOptions(optionsJson))
         )
         (response as? CreatePublicKeyCredentialResponse)
             ?.registrationResponseJson
@@ -72,7 +72,9 @@ class CredentialManagerPasskeyClient @Inject constructor() : PasskeyCredentialCl
     override suspend fun getPasskey(context: Context, optionsJson: String): PasskeyResult = try {
         val result = CredentialManager.create(context).getCredential(
             context,
-            GetCredentialRequest(listOf(GetPublicKeyCredentialOption(unwrapPublicKeyOptions(optionsJson)))),
+            GetCredentialRequest(
+                listOf(GetPublicKeyCredentialOption(unwrapPublicKeyOptions(optionsJson)))
+            )
         )
         (result.credential as? PublicKeyCredential)
             ?.authenticationResponseJson
@@ -124,35 +126,45 @@ private val ASSOCIATION_MARKERS = listOf(
     "not associated",
     "asset link",
     "assetlinks",
-    "digital asset",
+    "digital asset"
 )
 
 internal fun classifyCreateFailure(e: CreateCredentialException): PasskeyResult = when (e) {
     is CreateCredentialCancellationException -> PasskeyResult.Cancelled
+
     is CreateCredentialProviderConfigurationException,
     is CreateCredentialUnsupportedException,
-    is CreateCredentialNoCreateOptionException,
+    is CreateCredentialNoCreateOptionException
     -> PasskeyResult.NoProvider
+
     is CreatePublicKeyCredentialDomException -> when {
         isAssociationFailure(e.domError, e.errorMessage) -> PasskeyResult.NotAssociated
+
         e.domError is InvalidStateError -> PasskeyResult.AlreadyRegistered
+
         // NotAllowedError / AbortError is the spec's catch-all for "user declined or it timed out".
         e.domError is NotAllowedError || e.domError is AbortError -> PasskeyResult.Cancelled
+
         else -> PasskeyResult.Failed(e.javaClass.simpleName)
     }
+
     else -> PasskeyResult.Failed(e.javaClass.simpleName)
 }
 
 internal fun classifyGetFailure(e: GetCredentialException): PasskeyResult = when (e) {
     is GetCredentialCancellationException -> PasskeyResult.Cancelled
+
     is NoCredentialException -> PasskeyResult.NoMatchingPasskey
+
     is GetCredentialProviderConfigurationException,
-    is GetCredentialUnsupportedException,
+    is GetCredentialUnsupportedException
     -> PasskeyResult.NoProvider
+
     is GetPublicKeyCredentialDomException -> when {
         isAssociationFailure(e.domError, e.errorMessage) -> PasskeyResult.NotAssociated
         e.domError is NotAllowedError || e.domError is AbortError -> PasskeyResult.Cancelled
         else -> PasskeyResult.Failed(e.javaClass.simpleName)
     }
+
     else -> PasskeyResult.Failed(e.javaClass.simpleName)
 }

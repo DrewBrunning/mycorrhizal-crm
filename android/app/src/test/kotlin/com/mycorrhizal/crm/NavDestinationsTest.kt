@@ -8,11 +8,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
-import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -56,9 +56,12 @@ class NavDestinationsTest {
 
         assertEquals(
             listOf("home", "contacts", "circles", "tags", "households", "network", "map"),
-            routes(NavGroup.PEOPLE),
+            routes(NavGroup.PEOPLE)
         )
-        assertEquals(listOf("activities", "notes", "occasions", "shares"), routes(NavGroup.INTERACTIONS))
+        assertEquals(
+            listOf("activities", "notes", "occasions", "shares"),
+            routes(NavGroup.INTERACTIONS)
+        )
         assertEquals(listOf("data", "import", "audit"), routes(NavGroup.DATA_ADMIN))
         assertEquals(listOf("settings"), routes(NavGroup.FOOTER))
         assertEquals("settings", navDestinations.last().route)
@@ -68,7 +71,11 @@ class NavDestinationsTest {
     fun `each group is contiguous so a divider falls only between groups`() {
         val order = navDestinations.map { it.group }
         val collapsed = order.filterIndexed { i, g -> i == 0 || order[i - 1] != g }
-        assertEquals("a group appears in two separate runs: $order", collapsed.distinct(), collapsed)
+        assertEquals(
+            "a group appears in two separate runs: $order",
+            collapsed.distinct(),
+            collapsed
+        )
     }
 
     @Test
@@ -99,7 +106,7 @@ class NavDestinationsTest {
         "data" to R.string.settings_data,
         "import" to R.string.import_title,
         "audit" to R.string.audit_title,
-        "settings" to R.string.settings_title,
+        "settings" to R.string.settings_title
     )
 
     private fun localized(locale: Locale): Context {
@@ -115,12 +122,22 @@ class NavDestinationsTest {
 
     @Test
     fun `the drawer label equals the screen title for every destination in every locale`() {
-        for (locale in listOf(Locale.ENGLISH, Locale.GERMAN, Locale("es"), Locale.FRENCH, Locale.ITALIAN)) {
+        for (locale in listOf(
+            Locale.ENGLISH,
+            Locale.GERMAN,
+            Locale("es"),
+            Locale.FRENCH,
+            Locale.ITALIAN
+        )) {
             val context = localized(locale)
             for (destination in navDestinations) {
                 val label = context.getString(destination.labelRes)
                 val title = context.getString(screenTitleRes.getValue(destination.route))
-                assertEquals("${destination.route} [$locale]: drawer label vs screen title", title, label)
+                assertEquals(
+                    "${destination.route} [$locale]: drawer label vs screen title",
+                    title,
+                    label
+                )
             }
         }
     }
@@ -128,7 +145,9 @@ class NavDestinationsTest {
     @Test
     fun `the notes destination names the unassigned subset it lists`() {
         // Issue #1757: "Notes" read as "all of my notes"; the screen lists only contact-less ones.
-        val label = localized(Locale.ENGLISH).getString(navDestinations.first { it.route == "notes" }.labelRes)
+        val label = localized(
+            Locale.ENGLISH
+        ).getString(navDestinations.first { it.route == "notes" }.labelRes)
         assertEquals("Unassigned notes", label)
     }
 
@@ -166,7 +185,7 @@ class NavDestinationsTest {
         username: String? = null,
         serverHost: String? = null,
         onClick: (String) -> Unit = {},
-        onHeaderClick: () -> Unit = {},
+        onHeaderClick: () -> Unit = {}
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -175,7 +194,7 @@ class NavDestinationsTest {
                     onDestinationClick = onClick,
                     username = username,
                     serverHost = serverHost,
-                    onHeaderClick = onHeaderClick,
+                    onHeaderClick = onHeaderClick
                 )
             }
         }
@@ -236,7 +255,12 @@ class NavDestinationsTest {
     @Test
     fun `the header shows who is signed in and where, and opens Servers`() {
         var opened = 0
-        setDrawer(currentRoute = "home", username = "alice", serverHost = "crm.example.com", onHeaderClick = { opened++ })
+        setDrawer(
+            currentRoute = "home",
+            username = "alice",
+            serverHost = "crm.example.com",
+            onHeaderClick = { opened++ }
+        )
 
         composeTestRule.onNodeWithText("alice").assertExists()
         composeTestRule.onNodeWithText("crm.example.com").assertExists()
@@ -249,7 +273,9 @@ class NavDestinationsTest {
         var opened = 0
         setDrawer(currentRoute = "home", onHeaderClick = { opened++ })
 
-        composeTestRule.onNodeWithTag("drawer-header").assertTextEquals("Mycorrhizal").performClick()
+        composeTestRule.onNodeWithTag(
+            "drawer-header"
+        ).assertTextEquals("Mycorrhizal").performClick()
         assertEquals(0, opened)
     }
 
@@ -264,11 +290,15 @@ class NavDestinationsTest {
                 val entry by navController.currentBackStackEntryAsState()
                 Column {
                     NavHost(navController, startDestination = "home") {
-                        allDrawerRoutes.forEach { route -> composable(route) { Text("screen-$route") } }
+                        allDrawerRoutes.forEach { route ->
+                            composable(
+                                route
+                            ) { Text("screen-$route") }
+                        }
                     }
                     DrawerContent(
                         currentRoute = entry?.destination?.route,
-                        onDestinationClick = { navController.navigateToRoot(it) },
+                        onDestinationClick = { navController.navigateToRoot(it) }
                     )
                 }
             }

@@ -3,27 +3,25 @@ package com.mycorrhizal.crm.feature.imports
 import android.Manifest
 import android.app.Application
 import android.content.Context
-import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
+import android.content.Intent
+import android.provider.Settings
 import androidx.activity.compose.LocalActivityResultRegistryOwner
 import androidx.activity.result.ActivityResultRegistry
 import androidx.activity.result.ActivityResultRegistryOwner
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.core.app.ActivityOptionsCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import android.content.Intent
-import android.provider.Settings
 import androidx.test.core.app.ApplicationProvider
-import org.robolectric.Shadows.shadowOf
-import org.junit.Assert.assertEquals
-import androidx.compose.ui.test.junit4.createComposeRule
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.testing.MainDispatcherRule
@@ -33,10 +31,12 @@ import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
@@ -61,7 +61,7 @@ class ImportContactsScreenTest {
         emails = listOf("jane@example.com"),
         addresses = emptyList(),
         organization = null,
-        birthday = null,
+        birthday = null
     )
 
     // The screen's load runs viewModelScope (Dispatchers.Main) and
@@ -84,7 +84,7 @@ class ImportContactsScreenTest {
         // null: the real host Activity's registry. Otherwise the system dialog's
         // answer, delivered through a fake registry (granting it in the shadow
         // package manager first when true, as the OS would).
-        permissionDialogAnswer: Boolean? = null,
+        permissionDialogAnswer: Boolean? = null
     ) {
         if (grantPermission) grantContacts()
         val apiClient = mockk<ApiClient>()
@@ -94,7 +94,7 @@ class ImportContactsScreenTest {
         val viewModel = ImportContactsViewModel(
             apiClient = apiClient,
             contactRepository = contactRepository,
-            appContext = mockk<Context>(relaxed = true),
+            appContext = mockk<Context>(relaxed = true)
         ).apply {
             readDeviceContacts = { readDevice() }
             ioDispatcher = mainDispatcherRule.testDispatcher
@@ -107,7 +107,7 @@ class ImportContactsScreenTest {
                         requestCode: Int,
                         contract: ActivityResultContract<I, O>,
                         input: I,
-                        options: ActivityOptionsCompat?,
+                        options: ActivityOptionsCompat?
                     ) {
                         dialogLaunches++
                         if (answer) grantContacts()
@@ -121,10 +121,16 @@ class ImportContactsScreenTest {
             MycorrhizalTheme(darkTheme = darkTheme) {
                 CompositionLocalProvider(LocalLifecycleOwner provides lifecycleOwner) {
                     val screen = @Composable {
-                        ImportContactsScreen(viewModel = viewModel, onImportVcf = onImportVcf, onImportCsv = onImportCsv)
+                        ImportContactsScreen(
+                            viewModel = viewModel,
+                            onImportVcf = onImportVcf,
+                            onImportCsv = onImportCsv
+                        )
                     }
                     if (registryOwner != null) {
-                        CompositionLocalProvider(LocalActivityResultRegistryOwner provides registryOwner) { screen() }
+                        CompositionLocalProvider(
+                            LocalActivityResultRegistryOwner provides registryOwner
+                        ) { screen() }
                     } else {
                         screen()
                     }
@@ -137,7 +143,9 @@ class ImportContactsScreenTest {
 
     /** A lifecycle the test drives, so pause/resume can be simulated. */
     private val lifecycleOwner = object : LifecycleOwner {
-        val registry = LifecycleRegistry.createUnsafe(this).apply { currentState = Lifecycle.State.RESUMED }
+        val registry = LifecycleRegistry.createUnsafe(
+            this
+        ).apply { currentState = Lifecycle.State.RESUMED }
         override val lifecycle: Lifecycle get() = registry
     }
 
@@ -177,7 +185,10 @@ class ImportContactsScreenTest {
     @Test
     fun `without the contacts permission the rationale shows and the device is not read`() {
         var reads = 0
-        setScreen(grantPermission = false, readDevice = { reads++; emptyList() })
+        setScreen(grantPermission = false, readDevice = {
+            reads++
+            emptyList()
+        })
 
         composeTestRule.onNodeWithText("Grant access").assertIsDisplayed()
         assertEquals(0, reads)
@@ -275,7 +286,10 @@ class ImportContactsScreenTest {
     @Test
     fun `granting in system settings loads the list on return`() {
         var reads = 0
-        setScreen(grantPermission = false, readDevice = { reads++; listOf(jane) })
+        setScreen(grantPermission = false, readDevice = {
+            reads++
+            listOf(jane)
+        })
         composeTestRule.onNodeWithText("Grant access").assertIsDisplayed()
 
         grantContacts()
@@ -290,13 +304,20 @@ class ImportContactsScreenTest {
     @Test
     fun `a resume after the list loaded keeps the selection and does not re-read`() {
         var reads = 0
-        setScreen(readDevice = { reads++; listOf(jane) })
+        setScreen(readDevice = {
+            reads++
+            listOf(jane)
+        })
         composeTestRule.onNodeWithText("Jane Smith").performClick()
-        composeTestRule.onNodeWithText("Import 1 selected (0 possible duplicates)").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Import 1 selected (0 possible duplicates)"
+        ).assertIsDisplayed()
 
         pauseAndResume()
 
         assertEquals(1, reads)
-        composeTestRule.onNodeWithText("Import 1 selected (0 possible duplicates)").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Import 1 selected (0 possible duplicates)"
+        ).assertIsDisplayed()
     }
 }

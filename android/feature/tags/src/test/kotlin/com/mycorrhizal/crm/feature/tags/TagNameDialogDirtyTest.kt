@@ -32,7 +32,7 @@ class TagNameDialogDirtyTest {
                     initial = initial,
                     confirmLabel = "Create",
                     onConfirm = {},
-                    onDismiss = onDismiss,
+                    onDismiss = onDismiss
                 )
             }
         }
@@ -58,7 +58,9 @@ class TagNameDialogDirtyTest {
         composeTestRule.onNodeWithText("Cancel").performClick()
 
         composeTestRule.onNodeWithText("Discard changes?").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Your edits to this tag haven't been saved.").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Your edits to this tag haven't been saved."
+        ).assertIsDisplayed()
         assertEquals(false, dismissed)
 
         composeTestRule.onNodeWithText("Keep editing").performClick()

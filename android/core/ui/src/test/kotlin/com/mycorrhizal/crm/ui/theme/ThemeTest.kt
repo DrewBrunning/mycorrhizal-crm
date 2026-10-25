@@ -23,23 +23,39 @@ class ThemeTest {
         // The three bundled brand-font files must resolve as raw resources; a
         // missing font file would resolve to 0 (and font rendering would fall
         // back to the system font). T99 removed a fourth, eb_garamond.
-        assertEquals(0, context.resources.getIdentifier("font/eb_garamond", "raw", context.packageName))
-        assertNotEquals(0, context.resources.getIdentifier("font/ibm_plex_sans", "raw", context.packageName))
-        assertNotEquals(0, context.resources.getIdentifier("font/ibm_plex_mono_regular", "raw", context.packageName))
-        assertNotEquals(0, context.resources.getIdentifier("font/ibm_plex_mono_medium", "raw", context.packageName))
+        assertEquals(
+            0,
+            context.resources.getIdentifier("font/eb_garamond", "raw", context.packageName)
+        )
+        assertNotEquals(
+            0,
+            context.resources.getIdentifier("font/ibm_plex_sans", "raw", context.packageName)
+        )
+        assertNotEquals(
+            0,
+            context.resources.getIdentifier(
+                "font/ibm_plex_mono_regular",
+                "raw",
+                context.packageName
+            )
+        )
+        assertNotEquals(
+            0,
+            context.resources.getIdentifier("font/ibm_plex_mono_medium", "raw", context.packageName)
+        )
     }
 
     @Test
     fun `color palette carries the web tokens exactly`() {
-        assertEquals(Color(0xFF3E543E), MycorrhizalColors.mycelium)  // primary
-        assertEquals(Color(0xFFFAF5EA), MycorrhizalColors.bone)      // surface
-        assertEquals(Color(0xFF30271F), MycorrhizalColors.bark)      // onSurface
-        assertEquals(Color(0xFFAD5349), MycorrhizalColors.russula)   // error
+        assertEquals(Color(0xFF3E543E), MycorrhizalColors.mycelium) // primary
+        assertEquals(Color(0xFFFAF5EA), MycorrhizalColors.bone) // surface
+        assertEquals(Color(0xFF30271F), MycorrhizalColors.bark) // onSurface
+        assertEquals(Color(0xFFAD5349), MycorrhizalColors.russula) // error
         // #206: moss (#0D844C) and laccaria (#7B6B98) were darkened so they
         // clear 4.5:1 as text on parchment -- a deliberate Android-side
         // divergence from the web tokens (pinned by ThemeContrastTest).
-        assertEquals(Color(0xFF0A6E3F), MycorrhizalColors.moss)      // tertiary/success
-        assertEquals(Color(0xFF655681), MycorrhizalColors.laccaria)  // info
+        assertEquals(Color(0xFF0A6E3F), MycorrhizalColors.moss) // tertiary/success
+        assertEquals(Color(0xFF655681), MycorrhizalColors.laccaria) // info
     }
 
     @Test

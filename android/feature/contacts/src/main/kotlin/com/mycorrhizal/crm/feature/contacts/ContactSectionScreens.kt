@@ -60,18 +60,18 @@ import com.mycorrhizal.crm.model.network.PersonalInfoMeta
 import com.mycorrhizal.crm.model.network.Title
 import com.mycorrhizal.crm.model.util.DateFieldMode
 import com.mycorrhizal.crm.model.util.DateFieldValue
+import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.BrandFab
-import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.DateField
 import com.mycorrhizal.crm.ui.components.DropdownOption
 import com.mycorrhizal.crm.ui.components.EmptyState
-import com.mycorrhizal.crm.ui.components.ScreenTitle
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.FormScaffold
 import com.mycorrhizal.crm.ui.components.LabelledDropdown
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.ScreenTitle
 import com.mycorrhizal.crm.ui.components.WriteConflictDialog
 import com.mycorrhizal.crm.ui.components.typeOptionLabel
-import com.mycorrhizal.crm.ui.R
 
 private val SkillsKinds = listOf("expertise", "hobby", "interest")
 private val Sensitivities = listOf("normal", "private", "secret")
@@ -90,7 +90,7 @@ private fun SectionListScaffold(
     onBack: () -> Unit,
     state: ContactSectionsUiState,
     onErrorShown: () -> Unit,
-    content: @Composable () -> Unit,
+    content: @Composable () -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     Scaffold(
@@ -98,15 +98,18 @@ private fun SectionListScaffold(
             TopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back)
+                        )
                     }
                 },
                 title = { ScreenTitle(text = title) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
         floatingActionButton = {
@@ -116,12 +119,16 @@ private fun SectionListScaffold(
                 }
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when {
                 state.isLoading && state.record == null -> LoadingSkeleton()
-                state.record == null -> EmptyState(state.error ?: stringResource(R.string.contact_not_found))
+
+                state.record == null -> EmptyState(
+                    state.error ?: stringResource(R.string.contact_not_found)
+                )
+
                 else -> content()
             }
         }
@@ -143,12 +150,12 @@ private fun SectionHeading(text: String, action: (@Composable () -> Unit)? = nul
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(
             text = text,
             style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.primary,
+            color = MaterialTheme.colorScheme.primary
         )
         action?.invoke()
     }
@@ -170,23 +177,28 @@ private fun EntryRow(
     editTag: String,
     deleteTag: String,
     onEdit: () -> Unit,
-    onDelete: () -> Unit,
+    onDelete: () -> Unit
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-        tonalElevation = 1.dp,
+        tonalElevation = 1.dp
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = title, style = MaterialTheme.typography.bodyLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
                 if (!subtitle.isNullOrBlank()) {
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 badges()
@@ -195,7 +207,10 @@ private fun EntryRow(
                 Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.action_edit))
             }
             IconButton(onClick = onDelete, modifier = Modifier.testTag(deleteTag)) {
-                Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.action_delete))
+                Icon(
+                    Icons.Outlined.Delete,
+                    contentDescription = stringResource(R.string.action_delete)
+                )
             }
         }
     }
@@ -209,7 +224,7 @@ private fun ConfirmableEntryRow(
     editTag: String,
     deleteTag: String,
     onEdit: () -> Unit,
-    onDelete: () -> Unit,
+    onDelete: () -> Unit
 ) {
     var confirmDelete by remember { mutableStateOf(false) }
     EntryRow(
@@ -218,13 +233,16 @@ private fun ConfirmableEntryRow(
         editTag = editTag,
         deleteTag = deleteTag,
         onEdit = onEdit,
-        onDelete = { confirmDelete = true },
+        onDelete = { confirmDelete = true }
     )
     if (confirmDelete) {
         DeleteConfirmDialog(
             label = title,
-            onConfirm = { confirmDelete = false; onDelete() },
-            onDismiss = { confirmDelete = false },
+            onConfirm = {
+                confirmDelete = false
+                onDelete()
+            },
+            onDismiss = { confirmDelete = false }
         )
     }
 }
@@ -237,21 +255,27 @@ private fun DeleteConfirmDialog(label: String, onConfirm: () -> Unit, onDismiss:
         text = { Text(stringResource(R.string.contact_section_delete_confirm, label)) },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error)
+                Text(
+                    stringResource(R.string.action_delete),
+                    color = MaterialTheme.colorScheme.error
+                )
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
-        },
+        }
     )
 }
 
 @Composable
-private fun ConflictDialogIfNeeded(state: ContactSectionsUiState, viewModel: ContactSectionsViewModel) {
+private fun ConflictDialogIfNeeded(
+    state: ContactSectionsUiState,
+    viewModel: ContactSectionsViewModel
+) {
     if (state.conflict) {
         WriteConflictDialog(
             onLoadLatest = viewModel::onConflictLoadLatest,
-            onKeep = viewModel::onConflictDismissed,
+            onKeep = viewModel::onConflictDismissed
         )
     }
 }
@@ -261,10 +285,7 @@ private fun ConflictDialogIfNeeded(state: ContactSectionsUiState, viewModel: Con
 // ---------------------------------------------------------------------------
 
 @Composable
-fun ContactSkillsScreen(
-    onBack: () -> Unit,
-    viewModel: ContactSectionsViewModel = hiltViewModel(),
-) {
+fun ContactSkillsScreen(onBack: () -> Unit, viewModel: ContactSectionsViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var editingId by rememberSaveable { mutableStateOf<String?>(null) }
     var adding by rememberSaveable { mutableStateOf(false) }
@@ -282,7 +303,10 @@ fun ContactSkillsScreen(
                 adding = false
                 editingId = null
             },
-            onBack = { adding = false; editingId = null },
+            onBack = {
+                adding = false
+                editingId = null
+            }
         )
         ConflictDialogIfNeeded(state, viewModel)
         return
@@ -294,16 +318,19 @@ fun ContactSkillsScreen(
         onAdd = { adding = true },
         onBack = onBack,
         state = state,
-        onErrorShown = viewModel::onErrorShown,
+        onErrorShown = viewModel::onErrorShown
     ) {
-        LazyColumn(modifier = Modifier.fillMaxSize().testTag("contact-skills-list"), contentPadding = FabListContentPadding) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().testTag("contact-skills-list"),
+            contentPadding = FabListContentPadding
+        ) {
             if (entries.isEmpty()) {
                 item {
                     EmptyState(
                         title = stringResource(R.string.contact_skills_empty),
                         body = stringResource(R.string.contact_skills_empty_body),
                         actionLabel = stringResource(R.string.contact_skills_add),
-                        onAction = { adding = true },
+                        onAction = { adding = true }
                     )
                 }
             } else {
@@ -317,7 +344,7 @@ fun ContactSkillsScreen(
                                 entry = entry,
                                 meta = meta,
                                 onEdit = { editingId = entry.id },
-                                onDelete = { entry.id?.let(viewModel::deletePersonalInfo) },
+                                onDelete = { entry.id?.let(viewModel::deletePersonalInfo) }
                             )
                         }
                     }
@@ -331,7 +358,7 @@ fun ContactSkillsScreen(
                             entry = entry,
                             meta = meta,
                             onEdit = { editingId = entry.id },
-                            onDelete = { entry.id?.let(viewModel::deletePersonalInfo) },
+                            onDelete = { entry.id?.let(viewModel::deletePersonalInfo) }
                         )
                     }
                 }
@@ -347,7 +374,7 @@ internal fun PersonalInfoRow(
     entry: PersonalInfo,
     meta: PersonalInfoMeta?,
     onEdit: () -> Unit,
-    onDelete: () -> Unit,
+    onDelete: () -> Unit
 ) {
     val id = entry.id.orEmpty()
     val sensitive = meta?.sensitivity != null && meta.sensitivity != "normal"
@@ -356,28 +383,35 @@ internal fun PersonalInfoRow(
         title = entry.value.orEmpty(),
         subtitle = meta?.notes,
         badges = {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 entry.level?.takeIf { it.isNotBlank() }?.let {
                     Surface(
                         color = MaterialTheme.colorScheme.surfaceVariant,
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp)
                     ) {
                         Text(
                             text = stringResource(personalInfoLevelLabelRes(it)),
                             style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
                 }
                 entry.label?.takeIf { it.isNotBlank() }?.let {
-                    Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
                 if (meta?.favorite == true) {
                     Icon(
                         Icons.Filled.Star,
                         contentDescription = stringResource(R.string.contact_skills_favorite),
                         tint = MaterialTheme.colorScheme.tertiary,
-                        modifier = Modifier.size(18.dp).testTag("personal-info-favorite-$id"),
+                        modifier = Modifier.size(18.dp).testTag("personal-info-favorite-$id")
                     )
                 }
                 if (sensitive) {
@@ -385,7 +419,7 @@ internal fun PersonalInfoRow(
                         Icons.Outlined.Lock,
                         contentDescription = stringResource(R.string.contact_skills_locked),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp).testTag("personal-info-lock-$id"),
+                        modifier = Modifier.size(18.dp).testTag("personal-info-lock-$id")
                     )
                 }
             }
@@ -393,13 +427,16 @@ internal fun PersonalInfoRow(
         editTag = "personal-info-edit-$id",
         deleteTag = "personal-info-delete-$id",
         onEdit = onEdit,
-        onDelete = { confirmDelete = true },
+        onDelete = { confirmDelete = true }
     )
     if (confirmDelete) {
         DeleteConfirmDialog(
             label = entry.value.orEmpty(),
-            onConfirm = { confirmDelete = false; onDelete() },
-            onDismiss = { confirmDelete = false },
+            onConfirm = {
+                confirmDelete = false
+                onDelete()
+            },
+            onDismiss = { confirmDelete = false }
         )
     }
 }
@@ -410,14 +447,18 @@ private fun PersonalInfoFormScreen(
     meta: PersonalInfoMeta?,
     isSaving: Boolean,
     onSave: (PersonalInfoFormData) -> Unit,
-    onBack: () -> Unit,
+    onBack: () -> Unit
 ) {
-    var kind by rememberSaveable(initial?.id) { mutableStateOf(initial?.kind?.takeIf { it in SkillsKinds } ?: "expertise") }
+    var kind by rememberSaveable(
+        initial?.id
+    ) { mutableStateOf(initial?.kind?.takeIf { it in SkillsKinds } ?: "expertise") }
     var value by rememberSaveable(initial?.id) { mutableStateOf(initial?.value.orEmpty()) }
     var level by rememberSaveable(initial?.id) { mutableStateOf(initial?.level) }
     var label by rememberSaveable(initial?.id) { mutableStateOf(initial?.label.orEmpty()) }
     var notes by rememberSaveable(initial?.id) { mutableStateOf(meta?.notes.orEmpty()) }
-    var sensitivity by rememberSaveable(initial?.id) { mutableStateOf(meta?.sensitivity ?: "normal") }
+    var sensitivity by rememberSaveable(
+        initial?.id
+    ) { mutableStateOf(meta?.sensitivity ?: "normal") }
     var favorite by rememberSaveable(initial?.id) { mutableStateOf(meta?.favorite == true) }
     val snackbar = remember { SnackbarHostState() }
     val isDirty = kind != (initial?.kind?.takeIf { it in SkillsKinds } ?: "expertise") ||
@@ -429,9 +470,13 @@ private fun PersonalInfoFormScreen(
         favorite != (meta?.favorite == true)
 
     FormScaffold(
-        title = stringResource(if (initial != null) R.string.contact_skills_edit else R.string.contact_skills_add),
+        title = stringResource(
+            if (initial != null) R.string.contact_skills_edit else R.string.contact_skills_add
+        ),
         onBack = onBack,
-        saveLabel = stringResource(if (initial != null) R.string.action_save else R.string.action_create),
+        saveLabel = stringResource(
+            if (initial != null) R.string.action_save else R.string.action_create
+        ),
         isSaving = isSaving,
         onSave = {
             onSave(
@@ -442,15 +487,15 @@ private fun PersonalInfoFormScreen(
                     label = label,
                     notes = notes,
                     sensitivity = sensitivity,
-                    favorite = favorite,
-                ),
+                    favorite = favorite
+                )
             )
         },
         snackbarHostState = snackbar,
         saveEnabled = value.isNotBlank(),
         saveDisabledHint = stringResource(R.string.contact_section_value_required),
         isDirty = isDirty,
-        entityLabel = stringResource(R.string.entity_contact),
+        entityLabel = stringResource(R.string.entity_contact)
     ) { padding ->
         Column(
             modifier = Modifier
@@ -458,7 +503,7 @@ private fun PersonalInfoFormScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             LabelledDropdown(
                 label = stringResource(R.string.contact_skills_kind),
@@ -468,14 +513,14 @@ private fun PersonalInfoFormScreen(
                     kind = it
                     if (level !in personalInfoLevelOptions(it)) level = null
                 },
-                modifier = Modifier.testTag("personal-info-kind"),
+                modifier = Modifier.testTag("personal-info-kind")
             )
             OutlinedTextField(
                 value = value,
                 onValueChange = { value = it },
                 label = { Text(stringResource(R.string.contact_skills_value)) },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth().testTag("personal-info-value"),
+                modifier = Modifier.fillMaxWidth().testTag("personal-info-value")
             )
             val levelOptions = personalInfoLevelOptions(kind)
             LabelledDropdown(
@@ -485,43 +530,62 @@ private fun PersonalInfoFormScreen(
                 } else {
                     stringResource(personalInfoLevelLabelRes(level))
                 },
-                options = listOf(DropdownOption<String?>(null, stringResource(R.string.contact_personal_info_level_none))) +
-                    levelOptions.map { DropdownOption<String?>(it, stringResource(personalInfoLevelLabelRes(it))) },
+                options = listOf(
+                    DropdownOption<String?>(
+                        null,
+                        stringResource(R.string.contact_personal_info_level_none)
+                    )
+                ) +
+                    levelOptions.map {
+                        DropdownOption<String?>(
+                            it,
+                            stringResource(personalInfoLevelLabelRes(it))
+                        )
+                    },
                 onSelect = { level = it },
-                modifier = Modifier.testTag("personal-info-level"),
+                modifier = Modifier.testTag("personal-info-level")
             )
             OutlinedTextField(
                 value = label,
                 onValueChange = { label = it },
                 label = { Text(stringResource(R.string.contact_personal_info_label)) },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth().testTag("personal-info-label"),
+                modifier = Modifier.fillMaxWidth().testTag("personal-info-label")
             )
             OutlinedTextField(
                 value = notes,
                 onValueChange = { notes = it },
                 label = { Text(stringResource(R.string.contact_skills_notes)) },
                 supportingText = { Text(stringResource(R.string.contact_skills_notes_hint)) },
-                modifier = Modifier.fillMaxWidth().testTag("personal-info-notes"),
+                modifier = Modifier.fillMaxWidth().testTag("personal-info-notes")
             )
             LabelledDropdown(
                 label = stringResource(R.string.relationships_sensitivity),
                 valueText = stringResource(sensitivityLabelRes(sensitivity)),
-                options = Sensitivities.map { DropdownOption(it, stringResource(sensitivityLabelRes(it))) },
+                options = Sensitivities.map {
+                    DropdownOption(
+                        it,
+                        stringResource(sensitivityLabelRes(it))
+                    )
+                },
                 onSelect = { sensitivity = it },
-                modifier = Modifier.testTag("personal-info-sensitivity"),
+                modifier = Modifier.testTag("personal-info-sensitivity")
             )
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("personal-info-favorite")
-                    .toggleable(value = favorite, onValueChange = { favorite = it }, role = Role.Switch),
-                verticalAlignment = Alignment.CenterVertically,
+                    .toggleable(
+                        value = favorite,
+                        onValueChange = { favorite = it },
+                        role = Role.Switch
+                    ),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = stringResource(R.string.contact_skills_favorite),
                     style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f)
                 )
                 Switch(checked = favorite, onCheckedChange = null)
             }
@@ -547,10 +611,7 @@ private sealed interface WorkEditor {
 }
 
 @Composable
-fun ContactWorkScreen(
-    onBack: () -> Unit,
-    viewModel: ContactSectionsViewModel = hiltViewModel(),
-) {
+fun ContactWorkScreen(onBack: () -> Unit, viewModel: ContactSectionsViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var editor by rememberSaveable { mutableStateOf<WorkEditor?>(null) }
     var editingOrgId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -572,7 +633,10 @@ fun ContactWorkScreen(
             OrganizationFormScreen(
                 initial = initial,
                 period = initial?.id?.let { id ->
-                    record?.crm?.periods?.firstOrNull { it.kind == "organization" && it.entryId == id }
+                    record?.crm?.periods?.firstOrNull {
+                        it.kind == "organization" &&
+                            it.entryId == id
+                    }
                 },
                 isSaving = state.isSaving,
                 onSave = {
@@ -580,11 +644,15 @@ fun ContactWorkScreen(
                     editor = null
                     editingOrgId = null
                 },
-                onBack = { editor = null; editingOrgId = null },
+                onBack = {
+                    editor = null
+                    editingOrgId = null
+                }
             )
             ConflictDialogIfNeeded(state, viewModel)
             return
         }
+
         WorkEditor.Title -> {
             val initial = editingTitleId?.let { id -> titles.firstOrNull { it.id == id } }
             TitleFormScreen(
@@ -598,11 +666,15 @@ fun ContactWorkScreen(
                     editor = null
                     editingTitleId = null
                 },
-                onBack = { editor = null; editingTitleId = null },
+                onBack = {
+                    editor = null
+                    editingTitleId = null
+                }
             )
             ConflictDialogIfNeeded(state, viewModel)
             return
         }
+
         WorkEditor.WorkInformation -> {
             WorkInformationFormScreen(
                 initial = workInformation.orEmpty(),
@@ -611,11 +683,12 @@ fun ContactWorkScreen(
                     viewModel.saveWorkInformation(it)
                     editor = null
                 },
-                onBack = { editor = null },
+                onBack = { editor = null }
             )
             ConflictDialogIfNeeded(state, viewModel)
             return
         }
+
         null -> Unit
     }
 
@@ -625,16 +698,19 @@ fun ContactWorkScreen(
         onAdd = { editor = WorkEditor.Organization },
         onBack = onBack,
         state = state,
-        onErrorShown = viewModel::onErrorShown,
+        onErrorShown = viewModel::onErrorShown
     ) {
-        LazyColumn(modifier = Modifier.fillMaxSize().testTag("contact-work-list"), contentPadding = FabListContentPadding) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().testTag("contact-work-list"),
+            contentPadding = FabListContentPadding
+        ) {
             if (organizations.isEmpty() && titles.isEmpty() && workInformation.isNullOrBlank()) {
                 item {
                     EmptyState(
                         title = stringResource(R.string.contact_work_empty),
                         body = stringResource(R.string.contact_work_empty_body),
                         actionLabel = stringResource(R.string.contact_work_add_organization),
-                        onAction = { editor = WorkEditor.Organization },
+                        onAction = { editor = WorkEditor.Organization }
                     )
                 }
             }
@@ -643,24 +719,30 @@ fun ContactWorkScreen(
                     SectionHeading(stringResource(R.string.contact_work_section_organizations)) {
                         AddTextButton(
                             label = stringResource(R.string.contact_work_add_organization),
-                            tag = "contact-work-add-organization",
+                            tag = "contact-work-add-organization"
                         ) { editor = WorkEditor.Organization }
                     }
                 }
                 items(organizations, key = { it.id ?: it.name.orEmpty() }) { org ->
                     val period = org.id?.let { id ->
-                        record?.crm?.periods?.firstOrNull { it.kind == "organization" && it.entryId == id }
+                        record?.crm?.periods?.firstOrNull {
+                            it.kind == "organization" &&
+                                it.entryId == id
+                        }
                     }
                     ConfirmableEntryRow(
                         title = org.name.orEmpty(),
                         subtitle = listOfNotNull(
                             org.units?.firstOrNull()?.name?.takeIf { it.isNotBlank() },
-                            periodLabel(period?.range),
+                            periodLabel(period?.range)
                         ).joinToString(" · "),
                         editTag = "organization-edit-${org.id}",
                         deleteTag = "organization-delete-${org.id}",
-                        onEdit = { editingOrgId = org.id; editor = WorkEditor.Organization },
-                        onDelete = { org.id?.let(viewModel::deleteOrganization) },
+                        onEdit = {
+                            editingOrgId = org.id
+                            editor = WorkEditor.Organization
+                        },
+                        onDelete = { org.id?.let(viewModel::deleteOrganization) }
                     )
                 }
             }
@@ -669,7 +751,7 @@ fun ContactWorkScreen(
                     SectionHeading(stringResource(R.string.contact_work_section_titles)) {
                         AddTextButton(
                             label = stringResource(R.string.contact_work_add_title),
-                            tag = "contact-work-add-title",
+                            tag = "contact-work-add-title"
                         ) { editor = WorkEditor.Title }
                     }
                 }
@@ -681,14 +763,23 @@ fun ContactWorkScreen(
                         title = title.name.orEmpty(),
                         subtitle = listOfNotNull(
                             stringResource(
-                                if (title.kind == "role") R.string.contact_work_kind_role else R.string.contact_work_kind_title,
+                                if (title.kind ==
+                                    "role"
+                                ) {
+                                    R.string.contact_work_kind_role
+                                } else {
+                                    R.string.contact_work_kind_title
+                                }
                             ),
-                            periodLabel(period?.range),
+                            periodLabel(period?.range)
                         ).joinToString(" · "),
                         editTag = "title-edit-${title.id}",
                         deleteTag = "title-delete-${title.id}",
-                        onEdit = { editingTitleId = title.id; editor = WorkEditor.Title },
-                        onDelete = { title.id?.let(viewModel::deleteTitle) },
+                        onEdit = {
+                            editingTitleId = title.id
+                            editor = WorkEditor.Title
+                        },
+                        onDelete = { title.id?.let(viewModel::deleteTitle) }
                     )
                 }
             }
@@ -697,7 +788,7 @@ fun ContactWorkScreen(
                     SectionHeading(stringResource(R.string.contact_work_section_information)) {
                         AddTextButton(
                             label = stringResource(R.string.contact_work_edit_information),
-                            tag = "contact-work-edit-information",
+                            tag = "contact-work-edit-information"
                         ) { editor = WorkEditor.WorkInformation }
                     }
                 }
@@ -706,7 +797,10 @@ fun ContactWorkScreen(
                         Text(
                             text = workInformation,
                             style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                            modifier = Modifier.fillMaxWidth().padding(
+                                horizontal = 16.dp,
+                                vertical = 4.dp
+                            )
                         )
                     }
                 }
@@ -733,7 +827,7 @@ private fun PeriodFields(
     start: String,
     end: String,
     onStartChange: (String) -> Unit,
-    onEndChange: (String) -> Unit,
+    onEndChange: (String) -> Unit
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
         OutlinedTextField(
@@ -741,14 +835,14 @@ private fun PeriodFields(
             onValueChange = onStartChange,
             label = { Text(stringResource(R.string.contact_period_from)) },
             singleLine = true,
-            modifier = Modifier.weight(1f).testTag("work-period-start"),
+            modifier = Modifier.weight(1f).testTag("work-period-start")
         )
         OutlinedTextField(
             value = end,
             onValueChange = onEndChange,
             label = { Text(stringResource(R.string.contact_period_to)) },
             singleLine = true,
-            modifier = Modifier.weight(1f).testTag("work-period-end"),
+            modifier = Modifier.weight(1f).testTag("work-period-end")
         )
     }
 }
@@ -759,46 +853,73 @@ private fun OrganizationFormScreen(
     period: com.mycorrhizal.crm.model.network.EntryPeriod?,
     isSaving: Boolean,
     onSave: (OrganizationFormData) -> Unit,
-    onBack: () -> Unit,
+    onBack: () -> Unit
 ) {
     var name by rememberSaveable(initial?.id) { mutableStateOf(initial?.name.orEmpty()) }
-    var department by rememberSaveable(initial?.id) { mutableStateOf(initial?.units?.firstOrNull()?.name.orEmpty()) }
-    var start by rememberSaveable(initial?.id) { mutableStateOf(period?.range?.start?.year?.toString().orEmpty()) }
-    var end by rememberSaveable(initial?.id) { mutableStateOf(period?.range?.end?.year?.toString().orEmpty()) }
+    var department by rememberSaveable(
+        initial?.id
+    ) { mutableStateOf(initial?.units?.firstOrNull()?.name.orEmpty()) }
+    var start by rememberSaveable(
+        initial?.id
+    ) { mutableStateOf(period?.range?.start?.year?.toString().orEmpty()) }
+    var end by rememberSaveable(
+        initial?.id
+    ) { mutableStateOf(period?.range?.end?.year?.toString().orEmpty()) }
     val snackbar = remember { SnackbarHostState() }
     val isDirty = name != initial?.name.orEmpty() ||
         department != initial?.units?.firstOrNull()?.name.orEmpty() ||
         start != period?.range?.start?.year?.toString().orEmpty() ||
         end != period?.range?.end?.year?.toString().orEmpty()
     FormScaffold(
-        title = stringResource(if (initial != null) R.string.contact_work_edit_organization else R.string.contact_work_add_organization),
+        title = stringResource(
+            if (initial !=
+                null
+            ) {
+                R.string.contact_work_edit_organization
+            } else {
+                R.string.contact_work_add_organization
+            }
+        ),
         onBack = onBack,
-        saveLabel = stringResource(if (initial != null) R.string.action_save else R.string.action_create),
+        saveLabel = stringResource(
+            if (initial != null) R.string.action_save else R.string.action_create
+        ),
         isSaving = isSaving,
-        onSave = { onSave(OrganizationFormData(name = name, department = department, startYear = start, endYear = end)) },
+        onSave = {
+            onSave(
+                OrganizationFormData(
+                    name = name,
+                    department = department,
+                    startYear = start,
+                    endYear = end
+                )
+            )
+        },
         snackbarHostState = snackbar,
         saveEnabled = name.isNotBlank(),
         saveDisabledHint = stringResource(R.string.contact_section_value_required),
         isDirty = isDirty,
-        entityLabel = stringResource(R.string.entity_contact),
+        entityLabel = stringResource(R.string.entity_contact)
     ) { padding ->
         Column(
-            modifier = Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(
+                padding
+            ).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
                 label = { Text(stringResource(R.string.contact_work_organization_name)) },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth().testTag("organization-name"),
+                modifier = Modifier.fillMaxWidth().testTag("organization-name")
             )
             OutlinedTextField(
                 value = department,
                 onValueChange = { department = it },
                 label = { Text(stringResource(R.string.contact_work_department_optional)) },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth().testTag("organization-department"),
+                modifier = Modifier.fillMaxWidth().testTag("organization-department")
             )
             PeriodFields(start, end, { start = it }, { end = it })
         }
@@ -811,51 +932,79 @@ private fun TitleFormScreen(
     period: com.mycorrhizal.crm.model.network.EntryPeriod?,
     isSaving: Boolean,
     onSave: (TitleFormData) -> Unit,
-    onBack: () -> Unit,
+    onBack: () -> Unit
 ) {
     var name by rememberSaveable(initial?.id) { mutableStateOf(initial?.name.orEmpty()) }
-    var kind by rememberSaveable(initial?.id) { mutableStateOf(initial?.kind?.takeIf { it == "role" } ?: "title") }
-    var start by rememberSaveable(initial?.id) { mutableStateOf(period?.range?.start?.year?.toString().orEmpty()) }
-    var end by rememberSaveable(initial?.id) { mutableStateOf(period?.range?.end?.year?.toString().orEmpty()) }
+    var kind by rememberSaveable(
+        initial?.id
+    ) { mutableStateOf(initial?.kind?.takeIf { it == "role" } ?: "title") }
+    var start by rememberSaveable(
+        initial?.id
+    ) { mutableStateOf(period?.range?.start?.year?.toString().orEmpty()) }
+    var end by rememberSaveable(
+        initial?.id
+    ) { mutableStateOf(period?.range?.end?.year?.toString().orEmpty()) }
     val snackbar = remember { SnackbarHostState() }
     val isDirty = name != initial?.name.orEmpty() ||
         kind != (initial?.kind?.takeIf { it == "role" } ?: "title") ||
         start != period?.range?.start?.year?.toString().orEmpty() ||
         end != period?.range?.end?.year?.toString().orEmpty()
     FormScaffold(
-        title = stringResource(if (initial != null) R.string.contact_work_edit_title else R.string.contact_work_add_title),
+        title = stringResource(
+            if (initial !=
+                null
+            ) {
+                R.string.contact_work_edit_title
+            } else {
+                R.string.contact_work_add_title
+            }
+        ),
         onBack = onBack,
-        saveLabel = stringResource(if (initial != null) R.string.action_save else R.string.action_create),
+        saveLabel = stringResource(
+            if (initial != null) R.string.action_save else R.string.action_create
+        ),
         isSaving = isSaving,
-        onSave = { onSave(TitleFormData(name = name, kind = kind, startYear = start, endYear = end)) },
+        onSave = {
+            onSave(
+                TitleFormData(name = name, kind = kind, startYear = start, endYear = end)
+            )
+        },
         snackbarHostState = snackbar,
         saveEnabled = name.isNotBlank(),
         saveDisabledHint = stringResource(R.string.contact_section_value_required),
         isDirty = isDirty,
-        entityLabel = stringResource(R.string.entity_contact),
+        entityLabel = stringResource(R.string.entity_contact)
     ) { padding ->
         Column(
-            modifier = Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(
+                padding
+            ).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             LabelledDropdown(
                 label = stringResource(R.string.contact_work_title_kind),
                 valueText = stringResource(
-                    if (kind == "role") R.string.contact_work_kind_role else R.string.contact_work_kind_title,
+                    if (kind ==
+                        "role"
+                    ) {
+                        R.string.contact_work_kind_role
+                    } else {
+                        R.string.contact_work_kind_title
+                    }
                 ),
                 options = listOf(
                     DropdownOption("title", stringResource(R.string.contact_work_kind_title)),
-                    DropdownOption("role", stringResource(R.string.contact_work_kind_role)),
+                    DropdownOption("role", stringResource(R.string.contact_work_kind_role))
                 ),
                 onSelect = { kind = it },
-                modifier = Modifier.testTag("title-kind"),
+                modifier = Modifier.testTag("title-kind")
             )
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
                 label = { Text(stringResource(R.string.contact_work_title_name)) },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth().testTag("title-name"),
+                modifier = Modifier.fillMaxWidth().testTag("title-name")
             )
             PeriodFields(start, end, { start = it }, { end = it })
         }
@@ -867,7 +1016,7 @@ private fun WorkInformationFormScreen(
     initial: String,
     isSaving: Boolean,
     onSave: (String) -> Unit,
-    onBack: () -> Unit,
+    onBack: () -> Unit
 ) {
     var value by rememberSaveable { mutableStateOf(initial) }
     val snackbar = remember { SnackbarHostState() }
@@ -880,11 +1029,13 @@ private fun WorkInformationFormScreen(
         onSave = { onSave(value) },
         snackbarHostState = snackbar,
         isDirty = isDirty,
-        entityLabel = stringResource(R.string.entity_contact),
+        entityLabel = stringResource(R.string.entity_contact)
     ) { padding ->
         Column(
-            modifier = Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(
+                padding
+            ).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             OutlinedTextField(
                 value = value,
@@ -892,7 +1043,7 @@ private fun WorkInformationFormScreen(
                 label = { Text(stringResource(R.string.contact_work_section_information)) },
                 supportingText = { Text(stringResource(R.string.contact_work_information_hint)) },
                 minLines = 3,
-                modifier = Modifier.fillMaxWidth().testTag("work-information"),
+                modifier = Modifier.fillMaxWidth().testTag("work-information")
             )
         }
     }
@@ -905,7 +1056,7 @@ private fun WorkInformationFormScreen(
 @Composable
 fun ContactAnniversariesScreen(
     onBack: () -> Unit,
-    viewModel: ContactSectionsViewModel = hiltViewModel(),
+    viewModel: ContactSectionsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var editingId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -922,7 +1073,10 @@ fun ContactAnniversariesScreen(
                 adding = false
                 editingId = null
             },
-            onBack = { adding = false; editingId = null },
+            onBack = {
+                adding = false
+                editingId = null
+            }
         )
         ConflictDialogIfNeeded(state, viewModel)
         return
@@ -934,16 +1088,19 @@ fun ContactAnniversariesScreen(
         onAdd = { adding = true },
         onBack = onBack,
         state = state,
-        onErrorShown = viewModel::onErrorShown,
+        onErrorShown = viewModel::onErrorShown
     ) {
-        LazyColumn(modifier = Modifier.fillMaxSize().testTag("contact-anniversaries-list"), contentPadding = FabListContentPadding) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().testTag("contact-anniversaries-list"),
+            contentPadding = FabListContentPadding
+        ) {
             if (entries.isEmpty()) {
                 item {
                     EmptyState(
                         title = stringResource(R.string.contact_anniversaries_empty),
                         body = stringResource(R.string.contact_anniversaries_empty_body),
                         actionLabel = stringResource(R.string.contact_anniversary_add),
-                        onAction = { adding = true },
+                        onAction = { adding = true }
                     )
                 }
             } else {
@@ -951,11 +1108,15 @@ fun ContactAnniversariesScreen(
                     val id = anniversary.id.orEmpty()
                     ConfirmableEntryRow(
                         title = stringResource(anniversaryKindLabelRes(anniversary)),
-                        subtitle = anniversary.date?.partial?.let { DateFieldValue.partialFieldValue(it) }.orEmpty(),
+                        subtitle = anniversary.date?.partial?.let {
+                            DateFieldValue.partialFieldValue(
+                                it
+                            )
+                        }.orEmpty(),
                         editTag = "anniversary-edit-$id",
                         deleteTag = "anniversary-delete-$id",
                         onEdit = { editingId = anniversary.id },
-                        onDelete = { anniversary.id?.let(viewModel::deleteAnniversary) },
+                        onDelete = { anniversary.id?.let(viewModel::deleteAnniversary) }
                     )
                 }
             }
@@ -966,15 +1127,20 @@ fun ContactAnniversariesScreen(
 }
 
 @StringRes
-private fun anniversaryKindLabelRes(anniversary: Anniversary): Int =
-    if (anniversary.kind == "death") R.string.contact_anniversary_kind_death else R.string.contact_anniversary_kind_wedding
+private fun anniversaryKindLabelRes(anniversary: Anniversary): Int = if (anniversary.kind ==
+    "death"
+) {
+    R.string.contact_anniversary_kind_death
+} else {
+    R.string.contact_anniversary_kind_wedding
+}
 
 @Composable
 private fun AnniversaryFormScreen(
     initial: Anniversary?,
     isSaving: Boolean,
     onSave: (AnniversaryFormData) -> Unit,
-    onBack: () -> Unit,
+    onBack: () -> Unit
 ) {
     var kind by rememberSaveable(initial?.id) {
         mutableStateOf(initial?.kind?.takeIf { it in AnniversaryKinds } ?: "wedding")
@@ -986,36 +1152,60 @@ private fun AnniversaryFormScreen(
     val isDirty = kind != (initial?.kind?.takeIf { it in AnniversaryKinds } ?: "wedding") ||
         date != DateFieldValue.partialFieldValue(initial?.date?.partial)
     FormScaffold(
-        title = stringResource(if (initial != null) R.string.contact_anniversary_edit else R.string.contact_anniversary_add),
+        title = stringResource(
+            if (initial !=
+                null
+            ) {
+                R.string.contact_anniversary_edit
+            } else {
+                R.string.contact_anniversary_add
+            }
+        ),
         onBack = onBack,
-        saveLabel = stringResource(if (initial != null) R.string.action_save else R.string.action_create),
+        saveLabel = stringResource(
+            if (initial != null) R.string.action_save else R.string.action_create
+        ),
         isSaving = isSaving,
         onSave = { onSave(AnniversaryFormData(kind = kind, date = date)) },
         snackbarHostState = snackbar,
         saveEnabled = date.isNotBlank(),
         saveDisabledHint = stringResource(R.string.contact_section_date_required),
         isDirty = isDirty,
-        entityLabel = stringResource(R.string.entity_contact),
+        entityLabel = stringResource(R.string.entity_contact)
     ) { padding ->
         Column(
-            modifier = Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(
+                padding
+            ).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             LabelledDropdown(
                 label = stringResource(R.string.contact_anniversary_kind),
                 valueText = stringResource(
-                    if (kind == "death") R.string.contact_anniversary_kind_death else R.string.contact_anniversary_kind_wedding,
+                    if (kind ==
+                        "death"
+                    ) {
+                        R.string.contact_anniversary_kind_death
+                    } else {
+                        R.string.contact_anniversary_kind_wedding
+                    }
                 ),
                 options = AnniversaryKinds.map {
                     DropdownOption(
                         it,
                         stringResource(
-                            if (it == "death") R.string.contact_anniversary_kind_death else R.string.contact_anniversary_kind_wedding,
-                        ),
+                            if (it ==
+                                "death"
+                            ) {
+                                R.string.contact_anniversary_kind_death
+                            } else {
+                                R.string.contact_anniversary_kind_wedding
+                            }
+                        )
                     )
                 },
                 onSelect = { kind = it },
-                modifier = Modifier.testTag("anniversary-kind"),
+                modifier = Modifier.testTag("anniversary-kind")
             )
             DateField(
                 value = date,
@@ -1024,7 +1214,7 @@ private fun AnniversaryFormScreen(
                 mode = DateFieldMode.PARTIAL,
                 allowClear = true,
                 testTag = "anniversary-date",
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth()
             )
         }
     }

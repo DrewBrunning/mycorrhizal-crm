@@ -24,12 +24,12 @@ import com.mycorrhizal.crm.domain.repository.RelationshipEdgeRepository
 import com.mycorrhizal.crm.domain.repository.ReminderRepository
 import com.mycorrhizal.crm.domain.repository.SeafileRepository
 import com.mycorrhizal.crm.domain.repository.TagRepository
+import com.mycorrhizal.crm.model.network.CRMEnvelope
 import com.mycorrhizal.crm.model.network.CadencePolicyInput
 import com.mycorrhizal.crm.model.network.Circle
-import com.mycorrhizal.crm.model.network.CRMEnvelope
 import com.mycorrhizal.crm.model.network.ContactFieldKey
-import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactFieldValuesInput
+import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactScoreResponse
 import com.mycorrhizal.crm.model.network.DEFAULT_ENABLED_CONTACT_FIELDS
 import com.mycorrhizal.crm.model.network.ExternalActivity
@@ -41,22 +41,22 @@ import com.mycorrhizal.crm.model.network.ImmichPerson
 import com.mycorrhizal.crm.model.network.ImmichPersonSummary
 import com.mycorrhizal.crm.model.network.PaperlessDocument
 import com.mycorrhizal.crm.model.network.ReminderCompletion
-import com.mycorrhizal.crm.model.network.resolveEnabledFields
 import com.mycorrhizal.crm.model.network.SeafileItem
 import com.mycorrhizal.crm.model.network.SeafileLibrary
 import com.mycorrhizal.crm.model.network.SeafileLinkRequest
 import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.model.network.WebDAVItem
+import com.mycorrhizal.crm.model.network.resolveEnabledFields
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class ContactDetailUiState(
     val contact: ContactRecordResponse? = null,
@@ -195,7 +195,7 @@ data class ContactDetailUiState(
     val relationshipCount: Int? = null,
     val attachmentCount: Int? = null,
     /** 0 or 1 — a contact has at most one cadence policy. */
-    val cadenceCount: Int? = null,
+    val cadenceCount: Int? = null
 )
 
 sealed interface ContactDetailEvent {
@@ -245,7 +245,7 @@ class ContactDetailViewModel @Inject constructor(
     private val relationshipEdgeRepository: RelationshipEdgeRepository,
     private val attachmentRepository: AttachmentRepository,
     private val cadencePolicyRepository: CadencePolicyRepository,
-    savedStateHandle: SavedStateHandle,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val contactId: Int = run {
@@ -267,7 +267,7 @@ class ContactDetailViewModel @Inject constructor(
                     it.copy(
                         dateFormat = session.dateFormat,
                         selfContactVCardUid = session.selfContactVCardUid,
-                        enabledFields = resolveEnabledFields(session.enabledContactFields),
+                        enabledFields = resolveEnabledFields(session.enabledContactFields)
                     )
                 }
             }
@@ -276,7 +276,13 @@ class ContactDetailViewModel @Inject constructor(
 
     fun load() {
         if (contactId == 0) {
-            _uiState.update { it.copy(isLoading = false, errorRes = R.string.contact_error_missing_id, error = null) }
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    errorRes = R.string.contact_error_missing_id,
+                    error = null
+                )
+            }
             return
         }
         viewModelScope.launch {
@@ -297,7 +303,7 @@ class ContactDetailViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
-                },
+                }
             )
         }
         loadCustomFields()
@@ -316,7 +322,7 @@ class ContactDetailViewModel @Inject constructor(
         viewModelScope.launch {
             contactScoreRepository.getScore(contactId).foldApiError(
                 onSuccess = { score -> _uiState.update { it.copy(score = score) } },
-                onError = {},
+                onError = {}
             )
         }
     }
@@ -330,8 +336,14 @@ class ContactDetailViewModel @Inject constructor(
         if (contactId == 0) return
         viewModelScope.launch {
             reminderRepository.listCompletions(contactId).foldApiError(
-                onSuccess = { completions -> _uiState.update { it.copy(completions = completions) } },
-                onError = {},
+                onSuccess = { completions ->
+                    _uiState.update {
+                        it.copy(
+                            completions = completions
+                        )
+                    }
+                },
+                onError = {}
             )
         }
     }
@@ -347,7 +359,7 @@ class ContactDetailViewModel @Inject constructor(
                 onSuccess = { loadCompletions() },
                 onError = { error ->
                     _uiState.update { it.copy(error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -361,7 +373,7 @@ class ContactDetailViewModel @Inject constructor(
         viewModelScope.launch {
             fieldDefinitionRepository.list().foldApiError(
                 onSuccess = { defs -> _uiState.update { it.copy(fieldDefinitions = defs) } },
-                onError = {},
+                onError = {}
             )
         }
         viewModelScope.launch {
@@ -370,7 +382,7 @@ class ContactDetailViewModel @Inject constructor(
                     val byDefinitionId = values.associate { it.fieldDefinitionId to it.value }
                     _uiState.update { it.copy(fieldValuesByDefinitionId = byDefinitionId) }
                 },
-                onError = {},
+                onError = {}
             )
         }
     }
@@ -390,22 +402,41 @@ class ContactDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(savingFieldDefinitionId = definitionId, error = null) }
             val current = _uiState.value.fieldValuesByDefinitionId
-            val next = if (newValue == null) current - definitionId else current + (definitionId to newValue)
+            val next = if (newValue ==
+                null
+            ) {
+                current - definitionId
+            } else {
+                current + (definitionId to newValue)
+            }
             val input = ContactFieldValuesInput(
-                fieldValues = next.map { (id, value) -> FieldValueInput(fieldDefinitionId = id, value = value) },
+                fieldValues = next.map { (id, value) ->
+                    FieldValueInput(
+                        fieldDefinitionId = id,
+                        value = value
+                    )
+                }
             )
             fieldDefinitionRepository.replaceContactValues(contactId, input).foldApiError(
                 onSuccess = { values ->
                     _uiState.update {
                         it.copy(
                             savingFieldDefinitionId = null,
-                            fieldValuesByDefinitionId = values.associate { v -> v.fieldDefinitionId to v.value },
+                            fieldValuesByDefinitionId = values.associate { v ->
+                                v.fieldDefinitionId to
+                                    v.value
+                            }
                         )
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(savingFieldDefinitionId = null, error = error.displayMessage) }
-                },
+                    _uiState.update {
+                        it.copy(
+                            savingFieldDefinitionId = null,
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }
@@ -421,25 +452,25 @@ class ContactDetailViewModel @Inject constructor(
         viewModelScope.launch {
             circleRepository.circlesForContact(uid).foldApiError(
                 onSuccess = { circles -> _uiState.update { it.copy(contactCircles = circles) } },
-                onError = {},
+                onError = {}
             )
         }
         viewModelScope.launch {
             circleRepository.list().foldApiError(
                 onSuccess = { circles -> _uiState.update { it.copy(allCircles = circles) } },
-                onError = {},
+                onError = {}
             )
         }
         viewModelScope.launch {
             tagRepository.tagsForContact(uid).foldApiError(
                 onSuccess = { tags -> _uiState.update { it.copy(contactTags = tags) } },
-                onError = {},
+                onError = {}
             )
         }
         viewModelScope.launch {
             tagRepository.list().foldApiError(
                 onSuccess = { tags -> _uiState.update { it.copy(allTags = tags) } },
-                onError = {},
+                onError = {}
             )
         }
     }
@@ -460,37 +491,67 @@ class ContactDetailViewModel @Inject constructor(
                 onSuccess = { identities ->
                     _uiState.update { it.copy(externalIdentities = identities) }
                 },
-                onError = {},
+                onError = {}
             )
         }
         viewModelScope.launch {
             immichRepository.isConfigured().foldApiError(
-                onSuccess = { configured -> _uiState.update { it.copy(immichConfigured = configured) } },
-                onError = {},
+                onSuccess = { configured ->
+                    _uiState.update {
+                        it.copy(
+                            immichConfigured = configured
+                        )
+                    }
+                },
+                onError = {}
             )
         }
         viewModelScope.launch {
             paperlessRepository.isConfigured().foldApiError(
-                onSuccess = { configured -> _uiState.update { it.copy(paperlessConfigured = configured) } },
-                onError = {},
+                onSuccess = { configured ->
+                    _uiState.update {
+                        it.copy(
+                            paperlessConfigured = configured
+                        )
+                    }
+                },
+                onError = {}
             )
         }
         viewModelScope.launch {
             seafileRepository.isConfigured().foldApiError(
-                onSuccess = { configured -> _uiState.update { it.copy(seafileConfigured = configured) } },
-                onError = {},
+                onSuccess = { configured ->
+                    _uiState.update {
+                        it.copy(
+                            seafileConfigured = configured
+                        )
+                    }
+                },
+                onError = {}
             )
         }
         viewModelScope.launch {
             nextcloudRepository.isConfigured().foldApiError(
-                onSuccess = { configured -> _uiState.update { it.copy(nextcloudConfigured = configured) } },
-                onError = {},
+                onSuccess = { configured ->
+                    _uiState.update {
+                        it.copy(
+                            nextcloudConfigured = configured
+                        )
+                    }
+                },
+                onError = {}
             )
         }
         viewModelScope.launch {
             externalActivityRepository.listForContact(uid).foldApiError(
-                onSuccess = { activities -> _uiState.update { it.copy(externalActivities = activities) } },
-                onError = {},
+                onSuccess = { activities ->
+                    _uiState.update {
+                        it.copy(
+                            externalActivities = activities
+                        )
+                    }
+                },
+                onError = {}
             )
         }
         loadImmichSummary(uid)
@@ -507,46 +568,70 @@ class ContactDetailViewModel @Inject constructor(
         if (!uid.isNullOrBlank()) {
             viewModelScope.launch {
                 lifeEventRepository.listForContact(uid).foldApiError(
-                    onSuccess = { items -> _uiState.update { it.copy(lifeEventCount = items.size) } },
-                    onError = {},
+                    onSuccess = { items ->
+                        _uiState.update {
+                            it.copy(
+                                lifeEventCount = items.size
+                            )
+                        }
+                    },
+                    onError = {}
                 )
             }
             viewModelScope.launch {
                 giftRepository.listForContact(uid).foldApiError(
                     onSuccess = { items -> _uiState.update { it.copy(giftCount = items.size) } },
-                    onError = {},
+                    onError = {}
                 )
             }
             viewModelScope.launch {
                 preferenceRepository.listForContact(uid).foldApiError(
-                    onSuccess = { items -> _uiState.update { it.copy(preferenceCount = items.size) } },
-                    onError = {},
+                    onSuccess = { items ->
+                        _uiState.update {
+                            it.copy(
+                                preferenceCount = items.size
+                            )
+                        }
+                    },
+                    onError = {}
                 )
             }
             viewModelScope.launch {
                 conversationAgendaRepository.listForContact(uid).foldApiError(
                     onSuccess = { items -> _uiState.update { it.copy(agendaCount = items.size) } },
-                    onError = {},
+                    onError = {}
                 )
             }
             viewModelScope.launch {
                 relationshipEdgeRepository.listForContact(uid).foldApiError(
-                    onSuccess = { items -> _uiState.update { it.copy(relationshipCount = items.size) } },
-                    onError = {},
+                    onSuccess = { items ->
+                        _uiState.update {
+                            it.copy(
+                                relationshipCount = items.size
+                            )
+                        }
+                    },
+                    onError = {}
                 )
             }
             viewModelScope.launch {
                 cadencePolicyRepository.listForContact(uid).foldApiError(
                     onSuccess = { items -> _uiState.update { it.copy(cadenceCount = items.size) } },
-                    onError = {},
+                    onError = {}
                 )
             }
         }
         if (contact.id != 0) {
             viewModelScope.launch {
                 attachmentRepository.list(contact.id).foldApiError(
-                    onSuccess = { page -> _uiState.update { it.copy(attachmentCount = page.total) } },
-                    onError = {},
+                    onSuccess = { page ->
+                        _uiState.update {
+                            it.copy(
+                                attachmentCount = page.total
+                            )
+                        }
+                    },
+                    onError = {}
                 )
             }
         }
@@ -556,7 +641,7 @@ class ContactDetailViewModel @Inject constructor(
         viewModelScope.launch {
             immichRepository.getContactSummary(uid).foldApiError(
                 onSuccess = { summary -> _uiState.update { it.copy(immichSummary = summary) } },
-                onError = {},
+                onError = {}
             )
         }
     }
@@ -572,8 +657,13 @@ class ContactDetailViewModel @Inject constructor(
                     _uiState.value.contact?.let { loadExternalLinks(it) }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isExternalLinkMutating = false, error = error.displayMessage) }
-                },
+                    _uiState.update {
+                        it.copy(
+                            isExternalLinkMutating = false,
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }
@@ -589,12 +679,22 @@ class ContactDetailViewModel @Inject constructor(
             _uiState.update { it.copy(isExternalLinkMutating = true, error = null) }
             immichRepository.unlinkPerson(uid).foldApiError(
                 onSuccess = {
-                    _uiState.update { it.copy(isExternalLinkMutating = false, immichSummary = null) }
+                    _uiState.update {
+                        it.copy(
+                            isExternalLinkMutating = false,
+                            immichSummary = null
+                        )
+                    }
                     _uiState.value.contact?.let { loadExternalLinks(it) }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isExternalLinkMutating = false, error = error.displayMessage) }
-                },
+                    _uiState.update {
+                        it.copy(
+                            isExternalLinkMutating = false,
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }
@@ -618,7 +718,7 @@ class ContactDetailViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(immichSyncing = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -635,8 +735,13 @@ class ContactDetailViewModel @Inject constructor(
                     _uiState.update { it.copy(immichPeople = people, immichPeopleLoading = false) }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(immichPeopleLoading = false, error = error.displayMessage) }
-                },
+                    _uiState.update {
+                        it.copy(
+                            immichPeopleLoading = false,
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }
@@ -655,7 +760,7 @@ class ContactDetailViewModel @Inject constructor(
                     loadExternalLinks(contact)
                     loadImmichAssets()
                 },
-                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } },
+                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } }
             )
         }
     }
@@ -670,8 +775,13 @@ class ContactDetailViewModel @Inject constructor(
                     _uiState.update { it.copy(immichAssets = assets, immichAssetsLoading = false) }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(immichAssetsLoading = false, error = error.displayMessage) }
-                },
+                    _uiState.update {
+                        it.copy(
+                            immichAssetsLoading = false,
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }
@@ -693,7 +803,7 @@ class ContactDetailViewModel @Inject constructor(
             }
             result.foldApiError(
                 onSuccess = { bytes -> onBytes(bytes) },
-                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } },
+                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } }
             )
         }
     }
@@ -714,11 +824,21 @@ class ContactDetailViewModel @Inject constructor(
             _uiState.update { it.copy(paperlessDocumentsLoading = true, error = null) }
             paperlessRepository.searchDocuments().foldApiError(
                 onSuccess = { documents ->
-                    _uiState.update { it.copy(paperlessDocuments = documents, paperlessDocumentsLoading = false) }
+                    _uiState.update {
+                        it.copy(
+                            paperlessDocuments = documents,
+                            paperlessDocumentsLoading = false
+                        )
+                    }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(paperlessDocumentsLoading = false, error = error.displayMessage) }
-                },
+                    _uiState.update {
+                        it.copy(
+                            paperlessDocumentsLoading = false,
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }
@@ -731,7 +851,7 @@ class ContactDetailViewModel @Inject constructor(
             _uiState.update { it.copy(error = null) }
             paperlessRepository.linkDocument(uid, document.id.toString()).foldApiError(
                 onSuccess = { loadExternalLinks(contact) },
-                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } },
+                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } }
             )
         }
     }
@@ -741,15 +861,30 @@ class ContactDetailViewModel @Inject constructor(
         if (_uiState.value.seafileBrowseLoading) return
         viewModelScope.launch {
             _uiState.update {
-                it.copy(seafileBrowseLoading = true, error = null, seafileBrowseRepoId = null, seafileBrowsePath = "/")
+                it.copy(
+                    seafileBrowseLoading = true,
+                    error = null,
+                    seafileBrowseRepoId = null,
+                    seafileBrowsePath = "/"
+                )
             }
             seafileRepository.listLibraries().foldApiError(
                 onSuccess = { libraries ->
-                    _uiState.update { it.copy(seafileLibraries = libraries, seafileBrowseLoading = false) }
+                    _uiState.update {
+                        it.copy(
+                            seafileLibraries = libraries,
+                            seafileBrowseLoading = false
+                        )
+                    }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(seafileBrowseLoading = false, error = error.displayMessage) }
-                },
+                    _uiState.update {
+                        it.copy(
+                            seafileBrowseLoading = false,
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }
@@ -758,15 +893,30 @@ class ContactDetailViewModel @Inject constructor(
     fun enterSeafileDir(repoId: String, path: String = "/") {
         viewModelScope.launch {
             _uiState.update {
-                it.copy(seafileBrowseLoading = true, error = null, seafileBrowseRepoId = repoId, seafileBrowsePath = path)
+                it.copy(
+                    seafileBrowseLoading = true,
+                    error = null,
+                    seafileBrowseRepoId = repoId,
+                    seafileBrowsePath = path
+                )
             }
             seafileRepository.listDir(repoId, path).foldApiError(
                 onSuccess = { items ->
-                    _uiState.update { it.copy(seafileBrowseItems = items, seafileBrowseLoading = false) }
+                    _uiState.update {
+                        it.copy(
+                            seafileBrowseItems = items,
+                            seafileBrowseLoading = false
+                        )
+                    }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(seafileBrowseLoading = false, error = error.displayMessage) }
-                },
+                    _uiState.update {
+                        it.copy(
+                            seafileBrowseLoading = false,
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }
@@ -798,11 +948,11 @@ class ContactDetailViewModel @Inject constructor(
                     name = item.name,
                     type = item.type,
                     size = item.size.takeIf { it > 0 },
-                    mtime = item.mtime.takeIf { it > 0 },
-                ),
+                    mtime = item.mtime.takeIf { it > 0 }
+                )
             ).foldApiError(
                 onSuccess = { loadExternalLinks(contact) },
-                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } },
+                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } }
             )
         }
     }
@@ -810,14 +960,30 @@ class ContactDetailViewModel @Inject constructor(
     /** Browse a Nextcloud directory (path defaults to the dav root). */
     fun loadNextcloudDir(path: String = "/") {
         viewModelScope.launch {
-            _uiState.update { it.copy(nextcloudBrowseLoading = true, error = null, nextcloudBrowsePath = path) }
+            _uiState.update {
+                it.copy(
+                    nextcloudBrowseLoading = true,
+                    error = null,
+                    nextcloudBrowsePath = path
+                )
+            }
             nextcloudRepository.listDir(path).foldApiError(
                 onSuccess = { items ->
-                    _uiState.update { it.copy(nextcloudBrowseItems = items, nextcloudBrowseLoading = false) }
+                    _uiState.update {
+                        it.copy(
+                            nextcloudBrowseItems = items,
+                            nextcloudBrowseLoading = false
+                        )
+                    }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(nextcloudBrowseLoading = false, error = error.displayMessage) }
-                },
+                    _uiState.update {
+                        it.copy(
+                            nextcloudBrowseLoading = false,
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }
@@ -830,7 +996,7 @@ class ContactDetailViewModel @Inject constructor(
             _uiState.update { it.copy(error = null) }
             nextcloudRepository.linkItem(uid, item).foldApiError(
                 onSuccess = { loadExternalLinks(contact) },
-                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } },
+                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } }
             )
         }
     }
@@ -845,7 +1011,10 @@ class ContactDetailViewModel @Inject constructor(
         if (contactId == 0 || _uiState.value.isMutating) return
         viewModelScope.launch {
             _uiState.update { it.copy(isMutating = true, error = null) }
-            contactRepository.deleteContact(contactId, _uiState.value.contact?.revision).foldApiError(
+            contactRepository.deleteContact(
+                contactId,
+                _uiState.value.contact?.revision
+            ).foldApiError(
                 onSuccess = {
                     _uiState.update { it.copy(isMutating = false) }
                     _events.value = ContactDetailEvent.ContactDeleted
@@ -858,7 +1027,7 @@ class ContactDetailViewModel @Inject constructor(
                             it.copy(isMutating = false, error = error.displayMessage)
                         }
                     }
-                },
+                }
             )
         }
     }
@@ -880,7 +1049,11 @@ class ContactDetailViewModel @Inject constructor(
      */
     private suspend fun refreshRevision() {
         contactRepository.getContact(contactId).getOrNull()?.let { fresh ->
-            _uiState.update { it.copy(contact = it.contact?.copy(revision = fresh.revision, etag = fresh.etag)) }
+            _uiState.update {
+                it.copy(
+                    contact = it.contact?.copy(revision = fresh.revision, etag = fresh.etag)
+                )
+            }
         }
     }
 
@@ -906,7 +1079,7 @@ class ContactDetailViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isMutating = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -927,7 +1100,7 @@ class ContactDetailViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isMutating = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -951,7 +1124,7 @@ class ContactDetailViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isMutating = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -967,8 +1140,16 @@ class ContactDetailViewModel @Inject constructor(
      */
     private var favoriteEpoch = 0
 
-    private fun ContactRecordResponse.withFavoriteFrom(current: ContactRecordResponse?, epochAtStart: Int) =
-        if (current != null && epochAtStart != favoriteEpoch) copy(isFavorite = current.isFavorite) else this
+    private fun ContactRecordResponse.withFavoriteFrom(
+        current: ContactRecordResponse?,
+        epochAtStart: Int
+    ) = if (current != null && epochAtStart != favoriteEpoch) {
+        copy(
+            isFavorite = current.isFavorite
+        )
+    } else {
+        this
+    }
 
     /**
      * Toggles the contact's favorite flag in the detail header, mirroring web
@@ -994,9 +1175,12 @@ class ContactDetailViewModel @Inject constructor(
                 onSuccess = {},
                 onError = { error ->
                     _uiState.update {
-                        it.copy(contact = it.contact?.copy(isFavorite = wasFavorite), error = error.displayMessage)
+                        it.copy(
+                            contact = it.contact?.copy(isFavorite = wasFavorite),
+                            error = error.displayMessage
+                        )
                     }
-                },
+                }
             )
         }
     }
@@ -1027,14 +1211,14 @@ class ContactDetailViewModel @Inject constructor(
                             .copy(targetCloseness = response.targetCloseness)
                         state.copy(
                             contact = state.contact?.copy(crm = crm),
-                            cadencePolicyOffer = response.cadencePolicyOffer,
+                            cadencePolicyOffer = response.cadencePolicyOffer
                         )
                     }
                     loadScore()
                 },
                 onError = { error ->
                     _uiState.update { it.copy(error = error.displayMessage) }
-                },
+                }
             )
             // The write bumps the revision exactly like a favorite toggle; re-read
             // it in this coroutine so a later delete doesn't send a stale If-Match.
@@ -1058,7 +1242,7 @@ class ContactDetailViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -1088,7 +1272,7 @@ class ContactDetailViewModel @Inject constructor(
                 onSuccess = { _uiState.update { it.copy(isMutating = false) } },
                 onError = { error ->
                     _uiState.update { it.copy(isMutating = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -1101,7 +1285,7 @@ class ContactDetailViewModel @Inject constructor(
         viewModelScope.launch {
             circleRepository.addMember(circle.id, uid).foldApiError(
                 onSuccess = { reloadMemberships() },
-                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } },
+                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } }
             )
         }
     }
@@ -1111,7 +1295,7 @@ class ContactDetailViewModel @Inject constructor(
         viewModelScope.launch {
             circleRepository.removeMember(circle.id, uid).foldApiError(
                 onSuccess = { reloadMemberships() },
-                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } },
+                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } }
             )
         }
     }
@@ -1122,7 +1306,7 @@ class ContactDetailViewModel @Inject constructor(
         viewModelScope.launch {
             tagRepository.addContact(tag.id, uid).foldApiError(
                 onSuccess = { reloadMemberships() },
-                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } },
+                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } }
             )
         }
     }
@@ -1132,7 +1316,7 @@ class ContactDetailViewModel @Inject constructor(
         viewModelScope.launch {
             tagRepository.removeContact(tag.id, uid).foldApiError(
                 onSuccess = { reloadMemberships() },
-                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } },
+                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } }
             )
         }
     }
@@ -1149,7 +1333,7 @@ class ContactDetailViewModel @Inject constructor(
                 onSuccess = { load() },
                 onError = { error ->
                     _uiState.update { it.copy(error = error.displayMessage) }
-                },
+                }
             )
         }
     }

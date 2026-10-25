@@ -14,11 +14,11 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -37,12 +37,12 @@ import com.mycorrhizal.crm.model.network.ADDRESS_SENSITIVITIES
 import com.mycorrhizal.crm.model.network.Address
 import com.mycorrhizal.crm.model.network.AddressComponent
 import com.mycorrhizal.crm.model.network.EntryPeriod
+import com.mycorrhizal.crm.model.network.addressRowKey
+import com.mycorrhizal.crm.model.network.entryPeriodOf
 import com.mycorrhizal.crm.model.network.formatGeoUri
 import com.mycorrhizal.crm.model.network.isGeocodable
 import com.mycorrhizal.crm.model.network.parseCoordinateInput
 import com.mycorrhizal.crm.model.network.parseGeoUri
-import com.mycorrhizal.crm.model.network.addressRowKey
-import com.mycorrhizal.crm.model.network.entryPeriodOf
 import com.mycorrhizal.crm.model.network.upsertEntryPeriod
 import com.mycorrhizal.crm.model.network.yearTemporalRange
 import com.mycorrhizal.crm.ui.R
@@ -72,7 +72,7 @@ fun AddressEditor(
     // ADR 0031: coordinates + the explicit geocode lookup, keyed by `addressRowKey`
     // (a new row has no id). `null` onFindCoordinates shows the action disabled.
     geocode: AddressGeocodeState = AddressGeocodeState(),
-    onFindCoordinates: ((rowKey: String) -> Unit)? = null,
+    onFindCoordinates: ((rowKey: String) -> Unit)? = null
 ) {
     // Per-row reveal keys for the hidden additional fields. Only ever grows
     // (web's useRowKeys semantics); loaded rows key off their stable `id`,
@@ -93,7 +93,17 @@ fun AddressEditor(
                 periodStart = period?.range?.start?.year?.toString().orEmpty(),
                 periodEnd = period?.range?.end?.year?.toString().orEmpty(),
                 onDraftChange = { newDraft ->
-                    onChange(addresses.mapIndexed { i, a -> if (i == index) a.withDraft(newDraft) else a })
+                    onChange(
+                        addresses.mapIndexed { i, a ->
+                            if (i == index) {
+                                a.withDraft(
+                                    newDraft
+                                )
+                            } else {
+                                a
+                            }
+                        }
+                    )
                 },
                 onRemove = { onChange(addresses.filterIndexed { i, _ -> i != index }) },
                 onPeriodChange = { start, end ->
@@ -101,27 +111,41 @@ fun AddressEditor(
                     // one for a brand-new/legacy row before attaching.
                     val id = address.id ?: UUID.randomUUID().toString()
                     if (address.id == null) {
-                        onChange(addresses.mapIndexed { i, a -> if (i == index) a.copy(id = id) else a })
+                        onChange(
+                            addresses.mapIndexed { i, a -> if (i == index) a.copy(id = id) else a }
+                        )
                     }
-                    onPeriodsChange(upsertEntryPeriod(periods, "address", id, yearTemporalRange(start, end)))
+                    onPeriodsChange(
+                        upsertEntryPeriod(periods, "address", id, yearTemporalRange(start, end))
+                    )
                 },
                 onRevealAdditional = { revealedKeys = revealedKeys + key },
                 findReason = findCoordinatesReason(address, geocode, onFindCoordinates != null),
                 finding = key in geocode.inFlight,
                 findError = geocode.errors[key],
-                onFindCoordinates = { onFindCoordinates?.invoke(key) },
+                onFindCoordinates = { onFindCoordinates?.invoke(key) }
             )
         }
         // A new row is minted a stable element id up front so its geocode in-flight
         // state and result are keyed by identity, not by a position that shifts
         // when an earlier row is removed mid-lookup.
         TextButton(
-            onClick = { onChange(addresses + Address(id = UUID.randomUUID().toString(), contexts = listOf("home"))) },
+            onClick = {
+                onChange(
+                    addresses + Address(
+                        id = UUID.randomUUID().toString(),
+                        contexts = listOf("home")
+                    )
+                )
+            }
         ) {
             Icon(Icons.Outlined.Add, contentDescription = null)
             Text(
-                text = stringResource(R.string.contact_add_named, stringResource(R.string.contact_item_address)),
-                modifier = Modifier.padding(start = 4.dp),
+                text = stringResource(
+                    R.string.contact_add_named,
+                    stringResource(R.string.contact_item_address)
+                ),
+                modifier = Modifier.padding(start = 4.dp)
             )
         }
     }
@@ -136,10 +160,19 @@ fun AddressEditor(
  * only the contact.
  */
 @Composable
-private fun findCoordinatesReason(address: Address, geocode: AddressGeocodeState, hasCallback: Boolean): String? = when {
+private fun findCoordinatesReason(
+    address: Address,
+    geocode: AddressGeocodeState,
+    hasCallback: Boolean
+): String? = when {
     !address.isGeocodable -> stringResource(R.string.contact_address_find_coordinates_sensitive)
+
     geocode.localProfile -> stringResource(R.string.contact_address_find_coordinates_local)
-    !geocode.canGeocode || !hasCallback -> stringResource(R.string.contact_address_find_coordinates_save_first)
+
+    !geocode.canGeocode || !hasCallback -> stringResource(
+        R.string.contact_address_find_coordinates_save_first
+    )
+
     else -> null
 }
 
@@ -159,7 +192,7 @@ private data class AddressDraft(
     val timeZone: String?,
     val full: String?,
     /** `normal` | `private` | `secret`; null/blank = normal and is preserved untouched. */
-    val sensitivity: String?,
+    val sensitivity: String?
 ) {
     val hasAdditionalParts: Boolean
         get() = pobox.isNotBlank() || apartment.isNotBlank() || floor.isNotBlank()
@@ -168,7 +201,7 @@ private data class AddressDraft(
 /** Component kinds the editor has a field for; everything else is passthrough. */
 private val KNOWN_ADDRESS_KINDS = setOf(
     "name", "number", "locality", "region", "postcode", "country",
-    "postOfficeBox", "apartment", "floor",
+    "postOfficeBox", "apartment", "floor"
 )
 
 private fun Address.toDraft(): AddressDraft {
@@ -188,20 +221,36 @@ private fun Address.toDraft(): AddressDraft {
         coordinates = coordinates,
         timeZone = timeZone,
         full = full,
-        sensitivity = sensitivity,
+        sensitivity = sensitivity
     )
 }
 
 private fun Address.withDraft(draft: AddressDraft): Address {
     val components = buildList {
         if (draft.street.isNotBlank()) add(AddressComponent(kind = "name", value = draft.street))
-        if (draft.pobox.isNotBlank()) add(AddressComponent(kind = "postOfficeBox", value = draft.pobox))
-        if (draft.apartment.isNotBlank()) add(AddressComponent(kind = "apartment", value = draft.apartment))
+        if (draft.pobox.isNotBlank()) {
+            add(
+                AddressComponent(kind = "postOfficeBox", value = draft.pobox)
+            )
+        }
+        if (draft.apartment.isNotBlank()) {
+            add(
+                AddressComponent(kind = "apartment", value = draft.apartment)
+            )
+        }
         if (draft.floor.isNotBlank()) add(AddressComponent(kind = "floor", value = draft.floor))
         if (draft.city.isNotBlank()) add(AddressComponent(kind = "locality", value = draft.city))
         if (draft.region.isNotBlank()) add(AddressComponent(kind = "region", value = draft.region))
-        if (draft.postal.isNotBlank()) add(AddressComponent(kind = "postcode", value = draft.postal))
-        if (draft.country.isNotBlank()) add(AddressComponent(kind = "country", value = draft.country))
+        if (draft.postal.isNotBlank()) {
+            add(
+                AddressComponent(kind = "postcode", value = draft.postal)
+            )
+        }
+        if (draft.country.isNotBlank()) {
+            add(
+                AddressComponent(kind = "country", value = draft.country)
+            )
+        }
         addAll(draft.passthrough)
     }
     // Preserve extra contexts: the type dropdown edits contexts[0]; the rest
@@ -215,7 +264,7 @@ private fun Address.withDraft(draft: AddressDraft): Address {
         components = components.ifEmpty { null },
         contexts = contexts,
         coordinates = draft.coordinates?.ifBlank { null },
-        sensitivity = draft.sensitivity?.ifBlank { null },
+        sensitivity = draft.sensitivity?.ifBlank { null }
     )
 }
 
@@ -234,18 +283,21 @@ private fun AddressRow(
     findReason: String?,
     finding: Boolean,
     findError: String?,
-    onFindCoordinates: () -> Unit,
+    onFindCoordinates: () -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 8.dp)) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.padding(bottom = 8.dp)
+    ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             TypeDropdown(
                 current = draft.type.ifBlank { null },
                 options = CONTACT_TYPE_OPTIONS,
                 onTypeChange = { type -> onDraftChange(draft.copy(type = type.orEmpty())) },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f)
             )
             IconButton(onClick = onRemove, enabled = canRemove) {
                 Icon(
@@ -253,14 +305,14 @@ private fun AddressRow(
                     contentDescription = stringResource(
                         R.string.contact_remove_named,
                         stringResource(R.string.contact_item_address),
-                        rowNumber,
-                    ),
+                        rowNumber
+                    )
                 )
             }
         }
         SensitivityDropdown(
             current = draft.sensitivity,
-            onChange = { onDraftChange(draft.copy(sensitivity = it)) },
+            onChange = { onDraftChange(draft.copy(sensitivity = it)) }
         )
         // T115: the standard address parts advertise their ContentType so the
         // Autofill service can fill street/city/region/postal/country from the
@@ -269,7 +321,7 @@ private fun AddressRow(
             value = draft.street,
             onValueChange = { onDraftChange(draft.copy(street = it)) },
             label = stringResource(R.string.contact_address_street),
-            contentType = ContentType.AddressStreet,
+            contentType = ContentType.AddressStreet
         )
         if (showAdditional) {
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -278,21 +330,21 @@ private fun AddressRow(
                     onValueChange = { onDraftChange(draft.copy(pobox = it)) },
                     label = { Text(stringResource(R.string.contact_address_pobox)) },
                     singleLine = true,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f)
                 )
                 OutlinedTextField(
                     value = draft.apartment,
                     onValueChange = { onDraftChange(draft.copy(apartment = it)) },
                     label = { Text(stringResource(R.string.contact_address_apartment)) },
                     singleLine = true,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f)
                 )
                 OutlinedTextField(
                     value = draft.floor,
                     onValueChange = { onDraftChange(draft.copy(floor = it)) },
                     label = { Text(stringResource(R.string.contact_address_floor)) },
                     singleLine = true,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f)
                 )
             }
         } else {
@@ -306,14 +358,14 @@ private fun AddressRow(
                 onValueChange = { onDraftChange(draft.copy(city = it)) },
                 label = stringResource(R.string.contact_address_city),
                 contentType = ContentType.AddressLocality,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f)
             )
             AutofillOutlinedTextField(
                 value = draft.region,
                 onValueChange = { onDraftChange(draft.copy(region = it)) },
                 label = stringResource(R.string.contact_address_region),
                 contentType = ContentType.AddressRegion,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f)
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -322,14 +374,14 @@ private fun AddressRow(
                 onValueChange = { onDraftChange(draft.copy(postal = it)) },
                 label = stringResource(R.string.contact_address_postal),
                 contentType = ContentType.PostalCode,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f)
             )
             AutofillOutlinedTextField(
                 value = draft.country,
                 onValueChange = { onDraftChange(draft.copy(country = it)) },
                 label = stringResource(R.string.contact_address_country),
                 contentType = ContentType.AddressCountry,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f)
             )
         }
         CoordinatesField(
@@ -338,7 +390,7 @@ private fun AddressRow(
             findReason = findReason,
             finding = finding,
             findError = findError,
-            onFind = onFindCoordinates,
+            onFind = onFindCoordinates
         )
         // ADR 0025 (#1233): the period this address was lived at — whole years,
         // either side blank (open-ended). The wire carries the full PartialDate.
@@ -349,7 +401,7 @@ private fun AddressRow(
                 label = { Text(stringResource(R.string.contact_period_from)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f)
             )
             OutlinedTextField(
                 value = periodEnd,
@@ -357,7 +409,7 @@ private fun AddressRow(
                 label = { Text(stringResource(R.string.contact_period_to)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f)
             )
         }
     }
@@ -384,7 +436,7 @@ private fun SensitivityDropdown(current: String?, onChange: (String) -> Unit) {
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier
                 .fillMaxWidth()
-                .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
         )
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             ADDRESS_SENSITIVITIES.forEach { option ->
@@ -393,7 +445,7 @@ private fun SensitivityDropdown(current: String?, onChange: (String) -> Unit) {
                     onClick = {
                         expanded = false
                         onChange(option)
-                    },
+                    }
                 )
             }
         }
@@ -406,7 +458,7 @@ private fun sensitivityLabel(token: String): String = stringResource(
         "private" -> R.string.contact_address_sensitivity_private
         "secret" -> R.string.contact_address_sensitivity_secret
         else -> R.string.contact_address_sensitivity_normal
-    },
+    }
 )
 
 /**
@@ -422,7 +474,7 @@ private fun CoordinatesField(
     findReason: String?,
     finding: Boolean,
     findError: String?,
-    onFind: () -> Unit,
+    onFind: () -> Unit
 ) {
     fun display(stored: String?): String =
         parseGeoUri(stored)?.let { "${it.latitude}, ${it.longitude}" } ?: stored.orEmpty()
@@ -432,7 +484,11 @@ private fun CoordinatesField(
         // Re-sync only when the stored value no longer matches what is typed, so
         // typing "-0.10" is not reformatted to "-0.1" under the cursor.
         val typed = parseCoordinateInput(text)?.let { formatGeoUri(it.latitude, it.longitude) }
-        if (typed != coordinates && !(text.isBlank() && coordinates == null)) text = display(coordinates)
+        if (typed != coordinates && !(text.isBlank() && coordinates == null)) {
+            text = display(
+                coordinates
+            )
+        }
     }
     val invalid = text.isNotBlank() && parseCoordinateInput(text) == null
 
@@ -443,7 +499,10 @@ private fun CoordinatesField(
                 text = input
                 when {
                     input.isBlank() -> onCoordinatesChange(null)
-                    else -> parseCoordinateInput(input)?.let { onCoordinatesChange(formatGeoUri(it.latitude, it.longitude)) }
+
+                    else -> parseCoordinateInput(
+                        input
+                    )?.let { onCoordinatesChange(formatGeoUri(it.latitude, it.longitude)) }
                 }
             },
             label = { Text(stringResource(R.string.contact_address_coordinates)) },
@@ -451,30 +510,38 @@ private fun CoordinatesField(
             supportingText = {
                 Text(
                     stringResource(
-                        if (invalid) R.string.contact_address_coordinates_invalid else R.string.contact_address_coordinates_hint,
-                    ),
+                        if (invalid) R.string.contact_address_coordinates_invalid else R.string.contact_address_coordinates_hint
+                    )
                 )
             },
             isError = invalid,
             singleLine = true,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f)
         )
         OutlinedButton(
             onClick = onFind,
             enabled = findReason == null && !finding,
-            modifier = Modifier.padding(top = 8.dp),
+            modifier = Modifier.padding(top = 8.dp)
         ) {
             Text(
                 stringResource(
-                    if (finding) R.string.contact_address_find_coordinates_loading else R.string.contact_address_find_coordinates,
-                ),
+                    if (finding) R.string.contact_address_find_coordinates_loading else R.string.contact_address_find_coordinates
+                )
             )
         }
     }
     findReason?.let {
-        Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            it,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
     findError?.let {
-        Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+        Text(
+            it,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error
+        )
     }
 }

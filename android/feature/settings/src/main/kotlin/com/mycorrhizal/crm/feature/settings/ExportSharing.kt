@@ -24,7 +24,7 @@ internal fun shareExportFile(context: Context, export: DataExport) {
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         context.startActivity(
-            Intent.createChooser(intent, context.getString(R.string.data_export_share_title)),
+            Intent.createChooser(intent, context.getString(R.string.data_export_share_title))
         )
     } catch (_: Exception) {
         // No activity can handle the share — nothing to do.

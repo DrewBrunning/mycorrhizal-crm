@@ -49,7 +49,9 @@ class ContactFieldSettingsViewModelTest {
 
     @Test
     fun `load failure surfaces the load error`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { repository.getEnabledContactFields() } returns Result.failure(ApiError.Server(500, "boom"))
+        coEvery { repository.getEnabledContactFields() } returns Result.failure(
+            ApiError.Server(500, "boom")
+        )
         val vm = ContactFieldSettingsViewModel(repository)
         advanceUntilIdle()
 
@@ -60,7 +62,7 @@ class ContactFieldSettingsViewModelTest {
     fun `toggling on a disabled key enables it and patches the full resulting set`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { repository.getEnabledContactFields() } returns Result.success(
-                DEFAULT_ENABLED_CONTACT_FIELDS.map { it.wireKey },
+                DEFAULT_ENABLED_CONTACT_FIELDS.map { it.wireKey }
             )
             val captured = mutableListOf<List<String>>()
             coEvery { repository.updateEnabledContactFields(any()) } answers {
@@ -81,9 +83,13 @@ class ContactFieldSettingsViewModelTest {
     @Test
     fun `toggling off an enabled key disables it`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { repository.getEnabledContactFields() } returns Result.success(
-            DEFAULT_ENABLED_CONTACT_FIELDS.map { it.wireKey },
+            DEFAULT_ENABLED_CONTACT_FIELDS.map { it.wireKey }
         )
-        coEvery { repository.updateEnabledContactFields(any()) } answers { Result.success(firstArg()) }
+        coEvery {
+            repository.updateEnabledContactFields(
+                any()
+            )
+        } answers { Result.success(firstArg()) }
         val vm = ContactFieldSettingsViewModel(repository)
         advanceUntilIdle()
         assertTrue(ContactFieldKey.EMAILS in vm.uiState.value.enabled)
@@ -99,7 +105,7 @@ class ContactFieldSettingsViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { repository.getEnabledContactFields() } returns Result.success(emptyList())
             coEvery { repository.updateEnabledContactFields(any()) } returns Result.failure(
-                ApiError.Server(500, "boom"),
+                ApiError.Server(500, "boom")
             )
             val vm = ContactFieldSettingsViewModel(repository)
             advanceUntilIdle()
@@ -113,9 +119,15 @@ class ContactFieldSettingsViewModelTest {
         }
 
     @Test
-    fun `a second toggle while one is already saving is ignored`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a second toggle while one is already saving is ignored`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.getEnabledContactFields() } returns Result.success(emptyList())
-        coEvery { repository.updateEnabledContactFields(any()) } returns Result.success(listOf("emails"))
+        coEvery {
+            repository.updateEnabledContactFields(
+                any()
+            )
+        } returns Result.success(listOf("emails"))
         val vm = ContactFieldSettingsViewModel(repository)
         advanceUntilIdle()
 
@@ -133,7 +145,10 @@ class ContactFieldSettingsViewModelTest {
         // Sanity check for the settings screen's render loop: every enum entry
         // must have a group, or it silently never appears in the UI.
         ContactFieldKey.entries.forEach { key ->
-            assertTrue("$key must be grouped for the settings screen to render it", CONTACT_FIELD_GROUP.containsKey(key))
+            assertTrue(
+                "$key must be grouped for the settings screen to render it",
+                CONTACT_FIELD_GROUP.containsKey(key)
+            )
         }
     }
 }

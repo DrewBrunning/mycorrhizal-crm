@@ -30,7 +30,7 @@ class ForceUpdateScreenTest {
         requiredVersion: String = "0.6.0",
         currentVersion: String = "0.1.0",
         serverUrl: String? = "https://crm.example.com",
-        onLogout: () -> Unit = {},
+        onLogout: () -> Unit = {}
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -38,7 +38,7 @@ class ForceUpdateScreenTest {
                     requiredVersion = requiredVersion,
                     currentVersion = currentVersion,
                     serverUrl = serverUrl,
-                    onLogout = onLogout,
+                    onLogout = onLogout
                 )
             }
         }
@@ -46,7 +46,11 @@ class ForceUpdateScreenTest {
 
     @Test
     fun `shows the required current and server versions`() {
-        setContent(requiredVersion = "0.6.0", currentVersion = "0.5.0", serverUrl = "https://crm.example.com")
+        setContent(
+            requiredVersion = "0.6.0",
+            currentVersion = "0.5.0",
+            serverUrl = "https://crm.example.com"
+        )
 
         composeTestRule.onNodeWithText("Update required").assertIsDisplayed()
         // The message and the server line both name the actionable versions.
@@ -94,7 +98,7 @@ class ForceUpdateScreenTest {
                     serverUrl = "https://crm.example.com",
                     loggedIn = false,
                     onLogout = { loggedOut = true },
-                    onBackToLogin = { backToLogin = true },
+                    onBackToLogin = { backToLogin = true }
                 )
             }
         }

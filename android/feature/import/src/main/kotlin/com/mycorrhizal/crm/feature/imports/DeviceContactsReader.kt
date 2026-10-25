@@ -20,11 +20,11 @@ class DeviceContactsReader(private val contentResolver: ContentResolver) {
             arrayOf(
                 ContactsContract.Contacts._ID,
                 ContactsContract.Contacts.LOOKUP_KEY,
-                ContactsContract.Contacts.DISPLAY_NAME_PRIMARY,
+                ContactsContract.Contacts.DISPLAY_NAME_PRIMARY
             ),
             null,
             null,
-            "${ContactsContract.Contacts.DISPLAY_NAME_PRIMARY} ASC",
+            "${ContactsContract.Contacts.DISPLAY_NAME_PRIMARY} ASC"
         ) ?: return out
         contacts.use {
             val idIdx = it.getColumnIndexOrThrow(ContactsContract.Contacts._ID)
@@ -43,8 +43,8 @@ class DeviceContactsReader(private val contentResolver: ContentResolver) {
                         emails = emptyList(),
                         addresses = emptyList(),
                         organization = null,
-                        birthday = null,
-                    ).withData(readDataRows(contactId)),
+                        birthday = null
+                    ).withData(readDataRows(contactId))
                 )
             }
         }
@@ -66,11 +66,11 @@ class DeviceContactsReader(private val contentResolver: ContentResolver) {
                 ContactsContract.Data.DATA7,
                 ContactsContract.Data.DATA8,
                 ContactsContract.Data.DATA9,
-                ContactsContract.Data.DATA10,
+                ContactsContract.Data.DATA10
             ),
             "${ContactsContract.Data.CONTACT_ID} = ?",
             arrayOf(contactId.toString()),
-            null,
+            null
         ) ?: return out
         cursor.use {
             val mimeIdx = it.getColumnIndexOrThrow(ContactsContract.Data.MIMETYPE)
@@ -97,8 +97,8 @@ class DeviceContactsReader(private val contentResolver: ContentResolver) {
                         data7 = it.getStringOrNull(d7),
                         data8 = it.getStringOrNull(d8),
                         data9 = it.getStringOrNull(d9),
-                        data10 = it.getStringOrNull(d10),
-                    ),
+                        data10 = it.getStringOrNull(d10)
+                    )
                 )
             }
         }
@@ -119,9 +119,11 @@ class DeviceContactsReader(private val contentResolver: ContentResolver) {
                 CommonDataKinds.Phone.CONTENT_ITEM_TYPE -> {
                     row.data1?.let { phones.add(it to (row.data2?.toIntOrNull() ?: 0)) }
                 }
+
                 CommonDataKinds.Email.CONTENT_ITEM_TYPE -> {
                     row.data1?.takeIf { it.isNotBlank() }?.let { emails.add(it) }
                 }
+
                 CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE -> {
                     // Real StructuredPostal column layout: DATA1=FORMATTED_ADDRESS,
                     // DATA4=STREET, DATA7=CITY, DATA8=REGION, DATA9=POSTCODE, DATA10=COUNTRY.
@@ -145,14 +147,16 @@ class DeviceContactsReader(private val contentResolver: ContentResolver) {
                                 formattedAddress = formatted,
                                 customLabel = row.data3?.takeIf { it.isNotBlank() },
                                 type = row.data2?.toIntOrNull()
-                                    ?: CommonDataKinds.StructuredPostal.TYPE_OTHER,
-                            ),
+                                    ?: CommonDataKinds.StructuredPostal.TYPE_OTHER
+                            )
                         )
                     }
                 }
+
                 CommonDataKinds.Organization.CONTENT_ITEM_TYPE -> {
                     if (organization == null) organization = row.data1
                 }
+
                 CommonDataKinds.Event.CONTENT_ITEM_TYPE -> {
                     // Only the birthday event; skip the anniversary type.
                     if (row.data2?.toIntOrNull() == CommonDataKinds.Event.TYPE_BIRTHDAY) {
@@ -166,7 +170,7 @@ class DeviceContactsReader(private val contentResolver: ContentResolver) {
             emails = emails,
             addresses = addresses,
             organization = organization,
-            birthday = birthday,
+            birthday = birthday
         )
     }
 }

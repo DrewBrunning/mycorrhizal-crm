@@ -42,7 +42,7 @@ data class CachedContact(
     val card: Card? = null,
     val crm: CRMEnvelope? = null,
     /** Server-side updated_at, used for cache freshness decisions. */
-    val updatedAt: String? = null,
+    val updatedAt: String? = null
 ) {
     val displayName: String
         get() = fn?.takeIf { it.isNotBlank() }

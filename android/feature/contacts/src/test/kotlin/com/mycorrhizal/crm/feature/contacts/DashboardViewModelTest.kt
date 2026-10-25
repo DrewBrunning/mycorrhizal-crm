@@ -54,35 +54,57 @@ class DashboardViewModelTest {
         val apiClient = mockk<ApiClient>()
         val authRepository = mockk<AuthRepository>()
         every { authRepository.observeSession() } returns flowOf(SessionState())
-        val vm = DashboardViewModel(apiClient, authRepository, bundleBackupRepository, activityRepository)
+        val vm = DashboardViewModel(
+            apiClient,
+            authRepository,
+            bundleBackupRepository,
+            activityRepository
+        )
         vm.nowMillis = { NOW }
         return Triple(vm, apiClient, authRepository)
     }
 
     private fun fullDashboard() = DashboardResponse(
         birthdays = listOf(Birthday(name = "Alice", contactId = 1L)),
-        randomContacts = listOf(DashboardRandomContact(id = 3, firstname = "Bob", lastname = "Smith", nickname = "Bobby")),
+        randomContacts = listOf(
+            DashboardRandomContact(
+                id = 3,
+                firstname = "Bob",
+                lastname = "Smith",
+                nickname = "Bobby"
+            )
+        ),
         upcomingReminders = listOf(
-            DashboardReminder(id = 7, message = "Call Dana", remindAt = "2026-08-15T09:00:00Z", contactId = 3, contactName = "Bobby Smith"),
+            DashboardReminder(
+                id = 7,
+                message = "Call Dana",
+                remindAt = "2026-08-15T09:00:00Z",
+                contactId = 3,
+                contactName = "Bobby Smith"
+            )
         ),
         overdue = listOf(
             OverdueCadence(
                 policy = CadencePolicy(id = "c1", entityId = "u3"),
                 health = CadenceHealth(overdueBy = 3),
                 contactId = 3L,
-                contactName = "Bobby Smith",
-            ),
+                contactName = "Bobby Smith"
+            )
         ),
         // Issue #212: the favorites quick-access block (web #173).
         favorites = listOf(
-            DashboardRandomContact(id = 9, firstname = "Zebra", lastname = "Smith", nickname = "Z"),
+            DashboardRandomContact(id = 9, firstname = "Zebra", lastname = "Smith", nickname = "Z")
         ),
         // Issue #177: pending event-driven reach-out suggestions.
         reachOutSuggestions = listOf(
             ReachOutSuggestion(
-                id = "s1", kind = "organization", oldValue = "OldCo", newValue = "NewCo",
-                contactId = 3L, contactName = "Bobby Smith",
-            ),
+                id = "s1",
+                kind = "organization",
+                oldValue = "OldCo",
+                newValue = "NewCo",
+                contactId = 3L,
+                contactName = "Bobby Smith"
+            )
         ),
         // Issue #352: contacts whose info is due for re-verification.
         dataDecayOverdue = listOf(
@@ -90,9 +112,9 @@ class DashboardViewModelTest {
                 policy = DataDecayPolicy(id = "d1", entityId = "u3"),
                 health = DataDecayHealth(overdueBy = 40),
                 contactId = 3L,
-                contactName = "Bobby Smith",
-            ),
-        ),
+                contactName = "Bobby Smith"
+            )
+        )
     )
 
     @Test
@@ -148,11 +170,17 @@ class DashboardViewModelTest {
     fun `hasContent is false for the default state and true when any widget has data`() {
         assertFalse(DashboardUiState().hasContent)
         assertTrue(DashboardUiState(birthdays = listOf(Birthday(name = "Alice"))).hasContent)
-        assertTrue(DashboardUiState(upcomingReminders = listOf(DashboardReminder(id = 1))).hasContent)
-        assertTrue(DashboardUiState(randomContacts = listOf(DashboardRandomContact(id = 1))).hasContent)
+        assertTrue(
+            DashboardUiState(upcomingReminders = listOf(DashboardReminder(id = 1))).hasContent
+        )
+        assertTrue(
+            DashboardUiState(randomContacts = listOf(DashboardRandomContact(id = 1))).hasContent
+        )
         assertTrue(DashboardUiState(overdueCadences = listOf(OverdueCadence())).hasContent)
         assertTrue(DashboardUiState(favorites = listOf(DashboardRandomContact(id = 1))).hasContent)
-        assertTrue(DashboardUiState(reachOutSuggestions = listOf(ReachOutSuggestion(id = "s1"))).hasContent)
+        assertTrue(
+            DashboardUiState(reachOutSuggestions = listOf(ReachOutSuggestion(id = "s1"))).hasContent
+        )
         assertTrue(DashboardUiState(dataDecayOverdue = listOf(OverdueDataDecayPolicy())).hasContent)
     }
 
@@ -160,7 +188,9 @@ class DashboardViewModelTest {
     fun `a dashboard fetch failure surfaces the error`() =
         runTest(mainDispatcherRule.testDispatcher) {
             val (viewModel, apiClient, _) = newViewModel()
-            coEvery { apiClient.getDashboard() } returns Result.failure(ApiError.Server(500, "boom"))
+            coEvery { apiClient.getDashboard() } returns Result.failure(
+                ApiError.Server(500, "boom")
+            )
 
             advanceUntilIdle()
 
@@ -176,10 +206,14 @@ class DashboardViewModelTest {
             coEvery { apiClient.getDashboard() } returns Result.success(
                 DashboardResponse(
                     upcomingReminders = listOf(
-                        DashboardReminder(id = 1, message = "Call Dana", contactName = "Bobby Smith"),
-                        DashboardReminder(id = 2, message = "Water plants", contactName = "Alice"),
-                    ),
-                ),
+                        DashboardReminder(
+                            id = 1,
+                            message = "Call Dana",
+                            contactName = "Bobby Smith"
+                        ),
+                        DashboardReminder(id = 2, message = "Water plants", contactName = "Alice")
+                    )
+                )
             )
             coEvery { apiClient.completeReminder(1, false) } coAnswers {
                 // The optimistic removal must have already happened by the
@@ -205,11 +239,15 @@ class DashboardViewModelTest {
             coEvery { apiClient.getDashboard() } returns Result.success(
                 DashboardResponse(
                     upcomingReminders = listOf(
-                        DashboardReminder(id = 1, message = "Call Dana", contactName = "Bobby Smith"),
+                        DashboardReminder(
+                            id = 1,
+                            message = "Call Dana",
+                            contactName = "Bobby Smith"
+                        ),
                         DashboardReminder(id = 2, message = "Water plants", contactName = "Alice"),
-                        DashboardReminder(id = 3, message = "Pay rent", contactName = "Alice"),
-                    ),
-                ),
+                        DashboardReminder(id = 3, message = "Pay rent", contactName = "Alice")
+                    )
+                )
             )
             coEvery { apiClient.completeReminder(2, false) } returns
                 Result.failure(ApiError.Server(500, "boom"))
@@ -269,10 +307,20 @@ class DashboardViewModelTest {
             coEvery { apiClient.getDashboard() } returns Result.success(
                 DashboardResponse(
                     reachOutSuggestions = listOf(
-                        ReachOutSuggestion(id = "s1", kind = "organization", newValue = "NewCo", contactName = "Bobby Smith"),
-                        ReachOutSuggestion(id = "s2", kind = "title", newValue = "CTO", contactName = "Alice"),
-                    ),
-                ),
+                        ReachOutSuggestion(
+                            id = "s1",
+                            kind = "organization",
+                            newValue = "NewCo",
+                            contactName = "Bobby Smith"
+                        ),
+                        ReachOutSuggestion(
+                            id = "s2",
+                            kind = "title",
+                            newValue = "CTO",
+                            contactName = "Alice"
+                        )
+                    )
+                )
             )
             coEvery { apiClient.dismissReachOutSuggestion("s1") } coAnswers {
                 // The optimistic removal must have already happened by the
@@ -297,11 +345,26 @@ class DashboardViewModelTest {
             coEvery { apiClient.getDashboard() } returns Result.success(
                 DashboardResponse(
                     reachOutSuggestions = listOf(
-                        ReachOutSuggestion(id = "s1", kind = "organization", newValue = "NewCo", contactName = "Bobby Smith"),
-                        ReachOutSuggestion(id = "s2", kind = "title", newValue = "CTO", contactName = "Alice"),
-                        ReachOutSuggestion(id = "s3", kind = "address", newValue = "Elsewhere", contactName = "Carol"),
-                    ),
-                ),
+                        ReachOutSuggestion(
+                            id = "s1",
+                            kind = "organization",
+                            newValue = "NewCo",
+                            contactName = "Bobby Smith"
+                        ),
+                        ReachOutSuggestion(
+                            id = "s2",
+                            kind = "title",
+                            newValue = "CTO",
+                            contactName = "Alice"
+                        ),
+                        ReachOutSuggestion(
+                            id = "s3",
+                            kind = "address",
+                            newValue = "Elsewhere",
+                            contactName = "Carol"
+                        )
+                    )
+                )
             )
             coEvery { apiClient.dismissReachOutSuggestion("s2") } returns
                 Result.failure(ApiError.Server(500, "boom"))
@@ -325,10 +388,16 @@ class DashboardViewModelTest {
             coEvery { apiClient.getDashboard() } returns Result.success(
                 DashboardResponse(
                     dataDecayOverdue = listOf(
-                        OverdueDataDecayPolicy(policy = DataDecayPolicy(id = "d1"), contactName = "Bobby Smith"),
-                        OverdueDataDecayPolicy(policy = DataDecayPolicy(id = "d2"), contactName = "Alice"),
-                    ),
-                ),
+                        OverdueDataDecayPolicy(
+                            policy = DataDecayPolicy(id = "d1"),
+                            contactName = "Bobby Smith"
+                        ),
+                        OverdueDataDecayPolicy(
+                            policy = DataDecayPolicy(id = "d2"),
+                            contactName = "Alice"
+                        )
+                    )
+                )
             )
             coEvery { apiClient.verifyDataDecayPolicy("d1") } coAnswers {
                 // The optimistic removal must have already happened by the
@@ -342,7 +411,10 @@ class DashboardViewModelTest {
             advanceUntilIdle()
 
             coVerify(exactly = 1) { apiClient.verifyDataDecayPolicy("d1") }
-            assertEquals(listOf("d2"), viewModel.uiState.value.dataDecayOverdue.map { it.policy?.id })
+            assertEquals(
+                listOf("d2"),
+                viewModel.uiState.value.dataDecayOverdue.map { it.policy?.id }
+            )
             assertNull(viewModel.uiState.value.verifyingDataDecayId)
         }
 
@@ -353,11 +425,20 @@ class DashboardViewModelTest {
             coEvery { apiClient.getDashboard() } returns Result.success(
                 DashboardResponse(
                     dataDecayOverdue = listOf(
-                        OverdueDataDecayPolicy(policy = DataDecayPolicy(id = "d1"), contactName = "Bobby Smith"),
-                        OverdueDataDecayPolicy(policy = DataDecayPolicy(id = "d2"), contactName = "Alice"),
-                        OverdueDataDecayPolicy(policy = DataDecayPolicy(id = "d3"), contactName = "Carol"),
-                    ),
-                ),
+                        OverdueDataDecayPolicy(
+                            policy = DataDecayPolicy(id = "d1"),
+                            contactName = "Bobby Smith"
+                        ),
+                        OverdueDataDecayPolicy(
+                            policy = DataDecayPolicy(id = "d2"),
+                            contactName = "Alice"
+                        ),
+                        OverdueDataDecayPolicy(
+                            policy = DataDecayPolicy(id = "d3"),
+                            contactName = "Carol"
+                        )
+                    )
+                )
             )
             coEvery { apiClient.verifyDataDecayPolicy("d2") } returns
                 Result.failure(ApiError.Server(500, "boom"))
@@ -379,21 +460,21 @@ class DashboardViewModelTest {
     private fun cappedDashboard() = DashboardResponse(
         upcomingReminders = listOf(
             DashboardReminder(id = 1, message = "A", contactName = "X"),
-            DashboardReminder(id = 2, message = "B", contactName = "X"),
+            DashboardReminder(id = 2, message = "B", contactName = "X")
         ),
         reachOutSuggestions = listOf(
             ReachOutSuggestion(id = "s1", kind = "organization", contactId = 1L, contactName = "X"),
-            ReachOutSuggestion(id = "s2", kind = "organization", contactId = 2L, contactName = "Y"),
+            ReachOutSuggestion(id = "s2", kind = "organization", contactId = 2L, contactName = "Y")
         ),
         dataDecayOverdue = listOf(
             OverdueDataDecayPolicy(policy = DataDecayPolicy(id = "d1"), contactName = "X"),
-            OverdueDataDecayPolicy(policy = DataDecayPolicy(id = "d2"), contactName = "Y"),
+            OverdueDataDecayPolicy(policy = DataDecayPolicy(id = "d2"), contactName = "Y")
         ),
         birthdaysTotal = 40,
         upcomingRemindersTotal = 60,
         overdueTotal = 26,
         reachOutSuggestionsTotal = 30,
-        dataDecayOverdueTotal = 27,
+        dataDecayOverdueTotal = 27
     )
 
     @Test
@@ -406,10 +487,13 @@ class DashboardViewModelTest {
 
             assertEquals(
                 DashboardTotals(
-                    birthdays = 40, upcomingReminders = 60, overdue = 26,
-                    reachOutSuggestions = 30, dataDecayOverdue = 27,
+                    birthdays = 40,
+                    upcomingReminders = 60,
+                    overdue = 26,
+                    reachOutSuggestions = 30,
+                    dataDecayOverdue = 27
                 ),
-                viewModel.uiState.value.totals,
+                viewModel.uiState.value.totals
             )
         }
 
@@ -429,8 +513,18 @@ class DashboardViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             val (viewModel, apiClient, _) = newViewModel()
             coEvery { apiClient.getDashboard() } returns Result.success(cappedDashboard())
-            coEvery { apiClient.completeReminder(1, false) } returns Result.success(ReminderCompleteResponse(message = "ok"))
-            coEvery { apiClient.completeReminder(2, false) } returns Result.failure(ApiError.Server(500, "boom"))
+            coEvery {
+                apiClient.completeReminder(
+                    1,
+                    false
+                )
+            } returns Result.success(ReminderCompleteResponse(message = "ok"))
+            coEvery {
+                apiClient.completeReminder(
+                    2,
+                    false
+                )
+            } returns Result.failure(ApiError.Server(500, "boom"))
             advanceUntilIdle()
 
             viewModel.completeReminder(1)
@@ -449,8 +543,16 @@ class DashboardViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             val (viewModel, apiClient, _) = newViewModel()
             coEvery { apiClient.getDashboard() } returns Result.success(cappedDashboard())
-            coEvery { apiClient.dismissReachOutSuggestion("s1") } returns Result.success(MessageResponse(message = "ok"))
-            coEvery { apiClient.dismissReachOutSuggestion("s2") } returns Result.failure(ApiError.Server(500, "boom"))
+            coEvery {
+                apiClient.dismissReachOutSuggestion(
+                    "s1"
+                )
+            } returns Result.success(MessageResponse(message = "ok"))
+            coEvery {
+                apiClient.dismissReachOutSuggestion(
+                    "s2"
+                )
+            } returns Result.failure(ApiError.Server(500, "boom"))
             advanceUntilIdle()
 
             viewModel.dismissReachOutSuggestion("s1")
@@ -467,8 +569,16 @@ class DashboardViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             val (viewModel, apiClient, _) = newViewModel()
             coEvery { apiClient.getDashboard() } returns Result.success(cappedDashboard())
-            coEvery { apiClient.verifyDataDecayPolicy("d1") } returns Result.success(DataDecayPolicy(id = "d1"))
-            coEvery { apiClient.verifyDataDecayPolicy("d2") } returns Result.failure(ApiError.Server(500, "boom"))
+            coEvery {
+                apiClient.verifyDataDecayPolicy(
+                    "d1"
+                )
+            } returns Result.success(DataDecayPolicy(id = "d1"))
+            coEvery {
+                apiClient.verifyDataDecayPolicy(
+                    "d2"
+                )
+            } returns Result.failure(ApiError.Server(500, "boom"))
             advanceUntilIdle()
 
             viewModel.verifyDataDecay("d1")
@@ -485,7 +595,12 @@ class DashboardViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             val (viewModel, apiClient, _) = newViewModel()
             coEvery { apiClient.getDashboard() } returns Result.success(fullDashboard())
-            coEvery { apiClient.completeReminder(7, false) } returns Result.failure(ApiError.Server(500, "boom"))
+            coEvery {
+                apiClient.completeReminder(
+                    7,
+                    false
+                )
+            } returns Result.failure(ApiError.Server(500, "boom"))
             advanceUntilIdle()
 
             viewModel.completeReminder(7)
@@ -499,10 +614,17 @@ class DashboardViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             val apiClient = mockk<ApiClient>()
             val authRepository = mockk<AuthRepository>()
-            every { authRepository.observeSession() } returns flowOf(SessionState(dateFormat = "us"))
+            every { authRepository.observeSession() } returns flowOf(
+                SessionState(dateFormat = "us")
+            )
             coEvery { apiClient.getDashboard() } returns Result.success(DashboardResponse())
 
-            val viewModel = DashboardViewModel(apiClient, authRepository, bundleBackupRepository, activityRepository)
+            val viewModel = DashboardViewModel(
+                apiClient,
+                authRepository,
+                bundleBackupRepository,
+                activityRepository
+            )
             advanceUntilIdle()
 
             assertEquals("us", viewModel.uiState.value.dateFormat)
@@ -519,7 +641,12 @@ class DashboardViewModelTest {
                 Result.failure(ApiError.Server(500, "boom")) andThen
                 Result.success(DashboardResponse())
 
-            val viewModel = DashboardViewModel(apiClient, authRepository, bundleBackupRepository, activityRepository)
+            val viewModel = DashboardViewModel(
+                apiClient,
+                authRepository,
+                bundleBackupRepository,
+                activityRepository
+            )
             advanceUntilIdle()
             assertEquals("Server error (500)", viewModel.uiState.value.error)
 
@@ -539,7 +666,9 @@ class DashboardViewModelTest {
     }
 
     @Test
-    fun `banner shows for a never-exported local profile`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `banner shows for a never-exported local profile`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         backupStatus.value = BundleBackupStatus(isLocalProfile = true)
         val (vm, api, _) = newViewModel()
         stubDashboard(api)
@@ -549,7 +678,9 @@ class DashboardViewModelTest {
     }
 
     @Test
-    fun `banner is hidden for a remote profile even if never exported`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `banner is hidden for a remote profile even if never exported`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         backupStatus.value = BundleBackupStatus(isLocalProfile = false)
         val (vm, api, _) = newViewModel()
         stubDashboard(api)
@@ -559,20 +690,27 @@ class DashboardViewModelTest {
     }
 
     @Test
-    fun `banner is hidden right after an export and returns once it goes stale`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `banner is hidden right after an export and returns once it goes stale`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         backupStatus.value = BundleBackupStatus(isLocalProfile = true, lastExportAt = NOW - DAY)
         val (vm, api, _) = newViewModel()
         stubDashboard(api)
         advanceUntilIdle()
         assertFalse(vm.uiState.value.showBackupReminder)
 
-        backupStatus.value = BundleBackupStatus(isLocalProfile = true, lastExportAt = NOW - 31 * DAY)
+        backupStatus.value = BundleBackupStatus(
+            isLocalProfile = true,
+            lastExportAt = NOW - 31 * DAY
+        )
         advanceUntilIdle()
         assertTrue(vm.uiState.value.showBackupReminder)
     }
 
     @Test
-    fun `dismissing the banner records the dismissal at now`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `dismissing the banner records the dismissal at now`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         backupStatus.value = BundleBackupStatus(isLocalProfile = true)
         val (vm, api, _) = newViewModel()
         stubDashboard(api)

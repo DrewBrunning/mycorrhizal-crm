@@ -6,17 +6,17 @@ import com.mycorrhizal.crm.model.network.ImportRun
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class ImportHistoryUiState(
     val runs: List<ImportRun> = emptyList(),
     val isLoading: Boolean = false,
-    val error: String? = null,
+    val error: String? = null
 )
 
 /**
@@ -26,9 +26,7 @@ data class ImportHistoryUiState(
  * precedent as [VcfImportViewModel] calling [ApiClient] directly).
  */
 @HiltViewModel
-class ImportHistoryViewModel @Inject constructor(
-    private val apiClient: ApiClient,
-) : ViewModel() {
+class ImportHistoryViewModel @Inject constructor(private val apiClient: ApiClient) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ImportHistoryUiState())
     val uiState: StateFlow<ImportHistoryUiState> = _uiState.asStateFlow()
@@ -42,7 +40,14 @@ class ImportHistoryViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             apiClient.getImportHistory().foldApiError(
                 onSuccess = { runs -> _uiState.update { it.copy(isLoading = false, runs = runs) } },
-                onError = { error -> _uiState.update { it.copy(isLoading = false, error = error.displayMessage) } },
+                onError = { error ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }

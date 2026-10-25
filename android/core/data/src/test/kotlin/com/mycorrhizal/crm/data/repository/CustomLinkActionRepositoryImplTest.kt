@@ -41,7 +41,7 @@ class CustomLinkActionRepositoryImplTest {
         label = label,
         kind = "APP_OPEN",
         mimeType = "text/plain",
-        intentUriTemplate = "$protocol://open?id={value}",
+        intentUriTemplate = "$protocol://open?id={value}"
     )
 
     @Test

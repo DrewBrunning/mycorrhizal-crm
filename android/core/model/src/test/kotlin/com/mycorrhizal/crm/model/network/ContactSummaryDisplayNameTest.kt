@@ -14,7 +14,7 @@ class ContactSummaryDisplayNameTest {
             uid = "u1",
             firstname = "Elizabeth",
             lastname = "Brunning",
-            fn = "Elizabeth",
+            fn = "Elizabeth"
         )
         assertEquals("Elizabeth Brunning", summary.displayName)
     }
@@ -27,7 +27,7 @@ class ContactSummaryDisplayNameTest {
             firstname = "Elizabeth",
             nickname = "Liz",
             lastname = "Brunning",
-            fn = "Elizabeth",
+            fn = "Elizabeth"
         )
         assertEquals("Elizabeth \"Liz\" Brunning", summary.displayName)
     }

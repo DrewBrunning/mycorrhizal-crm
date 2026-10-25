@@ -46,7 +46,7 @@ class QuickCaptureSheetTest {
             activityRepository = repo,
             scope = scope,
             prefill = QuickCapturePrefillFactory.forCall(null, "2026-08-18T12:00:00Z"),
-            blankTitleMessage = "Title is required",
+            blankTitleMessage = "Title is required"
         )
         // forCall() defaults the title to "Call" for an unresolved caller --
         // clear it so save() hits the blank-title validation this test needs.
@@ -81,7 +81,7 @@ class QuickCaptureSheetTest {
         val state = QuickCaptureFormState(
             activityRepository = repo,
             scope = scope,
-            prefill = QuickCapturePrefillFactory.forCall(null, "2026-08-18T12:00:00Z"),
+            prefill = QuickCapturePrefillFactory.forCall(null, "2026-08-18T12:00:00Z")
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -109,14 +109,14 @@ class QuickCaptureSheetTest {
         val state = QuickCaptureFormState(
             activityRepository = repo,
             scope = scope,
-            prefill = QuickCapturePrefillFactory.forCall(null, "2026-08-18T12:00:00Z"),
+            prefill = QuickCapturePrefillFactory.forCall(null, "2026-08-18T12:00:00Z")
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
                 QuickCaptureSheet(
                     state = state,
                     onDismiss = {},
-                    onFirstInteraction = { interactions++ },
+                    onFirstInteraction = { interactions++ }
                 )
             }
         }
@@ -135,7 +135,7 @@ class QuickCaptureSheetTest {
             activityRepository = repo,
             scope = scope,
             prefill = QuickCapturePrefillFactory.forManual("2026-08-18T12:00:00Z"),
-            blankTitleMessage = "Title is required",
+            blankTitleMessage = "Title is required"
         )
         composeTestRule.setContent {
             MycorrhizalTheme {

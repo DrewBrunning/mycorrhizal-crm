@@ -20,7 +20,7 @@ import javax.inject.Inject
 class TagRepositoryImpl @Inject constructor(
     private val apiClient: ApiClient,
     private val tagDao: CachedTagDao,
-    private val contactTagDao: CachedContactTagDao,
+    private val contactTagDao: CachedContactTagDao
 ) : TagRepository {
 
     override suspend fun list(cursor: String?, limit: Int): Result<List<Tag>> {
@@ -106,12 +106,12 @@ class TagRepositoryImpl @Inject constructor(
     private fun Tag.toCached(): CachedTag = CachedTag(
         id = id,
         name = name,
-        updatedAt = updatedAt,
+        updatedAt = updatedAt
     )
 
     private fun ContactTag.toCached(): CachedContactTag = CachedContactTag(
         id = id,
         tagId = tagId,
-        contactVCardUid = contactVCardUid,
+        contactVCardUid = contactVCardUid
     )
 }

@@ -2,13 +2,13 @@ package com.mycorrhizal.crm.feature.timelineentities
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.StateRestorationTester
-import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextReplacement
 import androidx.lifecycle.SavedStateHandle
 import com.mycorrhizal.crm.domain.repository.ActivityRepository
@@ -29,9 +29,9 @@ import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
-import org.junit.Assert.assertEquals
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -59,7 +59,7 @@ class EntityFormScreensFlowTest {
 
     private fun contacts(): ContactRepository = mockk<ContactRepository>().also {
         coEvery { it.getContact(5) } returns Result.success(
-            ContactRecordResponse(id = 5, card = Card(uid = uid, name = Name(full = "Dana White"))),
+            ContactRecordResponse(id = 5, card = Card(uid = uid, name = Name(full = "Dana White")))
         )
     }
 
@@ -71,14 +71,25 @@ class EntityFormScreensFlowTest {
         coEvery { activityRepo.listForContact(5, any(), any(), any(), any(), any()) } returns
             Result.success(ContactActivitiesPage(activities = emptyList(), nextCursor = null))
         coEvery { prefRepo.listForContact(uid) } returns Result.success(emptyList())
-        return GiftsViewModel(giftRepo, lifeRepo, activityRepo, prefRepo, contacts(), SavedStateHandle(mapOf("contactId" to 5)))
+        return GiftsViewModel(
+            giftRepo,
+            lifeRepo,
+            activityRepo,
+            prefRepo,
+            contacts(),
+            SavedStateHandle(mapOf("contactId" to 5))
+        )
     }
 
     @Test
     fun `new gift opens a full-screen form, back returns to the list, save creates the gift`() {
         val giftRepo = mockk<GiftRepository>()
         coEvery { giftRepo.listForContact(uid) } returns Result.success(emptyList())
-        coEvery { giftRepo.create(any()) } returns Result.success(Gift(id = "g1", entityId = uid, description = "Socks"))
+        coEvery {
+            giftRepo.create(
+                any()
+            )
+        } returns Result.success(Gift(id = "g1", entityId = uid, description = "Socks"))
         val vm = giftsViewModel(giftRepo)
         composeTestRule.setContent { MycorrhizalTheme { GiftsScreen(onBack = {}, viewModel = vm) } }
 
@@ -105,9 +116,20 @@ class EntityFormScreensFlowTest {
     fun `new life event opens a full-screen form and saving creates it`() {
         val repo = mockk<LifeEventRepository>()
         coEvery { repo.listForContact(uid) } returns Result.success(emptyList())
-        coEvery { repo.create(any()) } returns Result.success(LifeEvent(id = "e1", entityId = uid, type = "married"))
+        coEvery {
+            repo.create(
+                any()
+            )
+        } returns Result.success(LifeEvent(id = "e1", entityId = uid, type = "married"))
         val vm = LifeEventsViewModel(repo, contacts(), SavedStateHandle(mapOf("contactId" to 5)))
-        composeTestRule.setContent { MycorrhizalTheme { LifeEventsScreen(onBack = {}, viewModel = vm) } }
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                LifeEventsScreen(
+                    onBack = {},
+                    viewModel = vm
+                )
+            }
+        }
 
         composeTestRule.onNodeWithContentDescription("New life event").performClick()
         composeTestRule.onNodeWithContentDescription("New life event").assertDoesNotExist()
@@ -128,7 +150,14 @@ class EntityFormScreensFlowTest {
         val repo = mockk<LifeEventRepository>()
         coEvery { repo.listForContact(uid) } returns Result.success(emptyList())
         val vm = LifeEventsViewModel(repo, contacts(), SavedStateHandle(mapOf("contactId" to 5)))
-        composeTestRule.setContent { MycorrhizalTheme { LifeEventsScreen(onBack = {}, viewModel = vm) } }
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                LifeEventsScreen(
+                    onBack = {},
+                    viewModel = vm
+                )
+            }
+        }
 
         composeTestRule.onNodeWithContentDescription("New life event").performClick()
         composeTestRule.onNodeWithContentDescription("Back").performClick()
@@ -179,11 +208,20 @@ class EntityFormScreensFlowTest {
     @Test
     fun `reopening the same life event form keeps its related-contact selection`() {
         val repo = mockk<LifeEventRepository>()
-        val event = LifeEvent(id = "e1", entityId = uid, type = "married", relatedEntityIds = listOf("u2"))
+        val event = LifeEvent(
+            id = "e1",
+            entityId = uid,
+            type = "married",
+            relatedEntityIds = listOf("u2")
+        )
         coEvery { repo.listForContact(uid) } returns Result.success(listOf(event))
         val contactRepo = contacts()
         val sam = ContactSummary(id = 2, uid = "u2", fn = "Sam")
-        coEvery { contactRepo.resolveByUid(listOf("u2")) } returns Result.success(mapOf("u2" to sam))
+        coEvery {
+            contactRepo.resolveByUid(
+                listOf("u2")
+            )
+        } returns Result.success(mapOf("u2" to sam))
         val vm = LifeEventsViewModel(repo, contactRepo, SavedStateHandle(mapOf("contactId" to 5)))
 
         vm.onDialogOpened(event)
@@ -209,10 +247,17 @@ class EntityFormScreensFlowTest {
         val repo = mockk<PreferenceRepository>()
         coEvery { repo.listForContact(uid) } returns Result.success(emptyList())
         coEvery { repo.create(any()) } returns Result.success(
-            Preference(id = "p1", entityId = uid, category = "food", value = "Pizza"),
+            Preference(id = "p1", entityId = uid, category = "food", value = "Pizza")
         )
         val vm = preferencesViewModel(repo)
-        composeTestRule.setContent { MycorrhizalTheme { PreferencesScreen(onBack = {}, viewModel = vm) } }
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                PreferencesScreen(
+                    onBack = {},
+                    viewModel = vm
+                )
+            }
+        }
 
         composeTestRule.onNodeWithContentDescription("New preference").performClick()
         composeTestRule.onNodeWithContentDescription("New preference").assertDoesNotExist()
@@ -234,11 +279,24 @@ class EntityFormScreensFlowTest {
     @Test
     fun `editing a preference opens the form pre-filled and save updates it`() {
         val repo = mockk<PreferenceRepository>()
-        val pref = Preference(id = "p1", entityId = uid, category = "drink", key = "favorite", value = "matcha")
+        val pref = Preference(
+            id = "p1",
+            entityId = uid,
+            category = "drink",
+            key = "favorite",
+            value = "matcha"
+        )
         coEvery { repo.listForContact(uid) } returns Result.success(listOf(pref))
         coEvery { repo.update("p1", any()) } returns Result.success(pref)
         val vm = preferencesViewModel(repo)
-        composeTestRule.setContent { MycorrhizalTheme { PreferencesScreen(onBack = {}, viewModel = vm) } }
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                PreferencesScreen(
+                    onBack = {},
+                    viewModel = vm
+                )
+            }
+        }
 
         composeTestRule.onNodeWithContentDescription("Edit").performClick()
         composeTestRule.onNodeWithText("Edit preference").assertIsDisplayed()
@@ -251,10 +309,24 @@ class EntityFormScreensFlowTest {
     @Test
     fun `back from a preference form returns to the same scroll position in the list`() {
         val repo = mockk<PreferenceRepository>()
-        val prefs = (0 until 40).map { Preference(id = "p$it", entityId = uid, category = "food", value = "Dish $it") }
+        val prefs = (0 until 40).map {
+            Preference(
+                id = "p$it",
+                entityId = uid,
+                category = "food",
+                value = "Dish $it"
+            )
+        }
         coEvery { repo.listForContact(uid) } returns Result.success(prefs)
         val vm = preferencesViewModel(repo)
-        composeTestRule.setContent { MycorrhizalTheme { PreferencesScreen(onBack = {}, viewModel = vm) } }
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                PreferencesScreen(
+                    onBack = {},
+                    viewModel = vm
+                )
+            }
+        }
 
         composeTestRule.onNodeWithTag("entity-list").performScrollToIndex(30)
         composeTestRule.onNodeWithText("Dish 29").performClick()
@@ -271,7 +343,14 @@ class EntityFormScreensFlowTest {
         coEvery { repo.listForContact(uid) } returns Result.success(emptyList())
         val vm = preferencesViewModel(repo)
         val restoration = StateRestorationTester(composeTestRule)
-        restoration.setContent { MycorrhizalTheme { PreferencesScreen(onBack = {}, viewModel = vm) } }
+        restoration.setContent {
+            MycorrhizalTheme {
+                PreferencesScreen(
+                    onBack = {},
+                    viewModel = vm
+                )
+            }
+        }
 
         composeTestRule.onNodeWithContentDescription("New preference").performClick()
         composeTestRule.onNodeWithText("Value").performTextReplacement("Pizza")
@@ -294,9 +373,16 @@ class EntityFormScreensFlowTest {
             Result.success(ContactActivitiesPage(activities = emptyList(), nextCursor = null))
         coEvery { prefRepo.listForContact(uid) } returns Result.success(emptyList())
         coEvery { prefRepo.create(any()) } returns Result.success(
-            Preference(id = "p1", entityId = uid, category = "jewelry_metal", value = "Gold"),
+            Preference(id = "p1", entityId = uid, category = "jewelry_metal", value = "Gold")
         )
-        val vm = GiftsViewModel(giftRepo, lifeRepo, activityRepo, prefRepo, contacts(), SavedStateHandle(mapOf("contactId" to 5)))
+        val vm = GiftsViewModel(
+            giftRepo,
+            lifeRepo,
+            activityRepo,
+            prefRepo,
+            contacts(),
+            SavedStateHandle(mapOf("contactId" to 5))
+        )
         composeTestRule.setContent { MycorrhizalTheme { GiftsScreen(onBack = {}, viewModel = vm) } }
 
         composeTestRule.onNodeWithText("Clothing sizes & gift preferences (0)").performClick()

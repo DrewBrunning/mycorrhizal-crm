@@ -18,6 +18,6 @@ interface ContactTimelineRepository {
         types: Collection<String> = emptyList(),
         bucket: String? = null,
         cursor: String? = null,
-        limit: Int = 25,
+        limit: Int = 25
     ): Result<ContactTimelinePage>
 }

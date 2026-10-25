@@ -11,8 +11,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import com.mycorrhizal.crm.domain.repository.AuditRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
-import com.mycorrhizal.crm.model.network.AuditEvent
 import com.mycorrhizal.crm.model.network.AuditEntityTypes
+import com.mycorrhizal.crm.model.network.AuditEvent
 import com.mycorrhizal.crm.model.network.AuditEventsResponse
 import com.mycorrhizal.crm.model.network.AuditOperations
 import com.mycorrhizal.crm.model.network.ContactSummary
@@ -22,7 +22,6 @@ import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -47,7 +46,7 @@ class AuditScreenTest {
         createdAt = "2026-08-14T10:00:00Z",
         entityType = AuditEntityTypes.CONTACT,
         entityId = "uid-1",
-        operation = AuditOperations.UPDATE,
+        operation = AuditOperations.UPDATE
     )
 
     @Test
@@ -59,8 +58,8 @@ class AuditScreenTest {
                 createdAt = "2026-08-14T09:00:00Z",
                 entityType = AuditEntityTypes.CONTACT,
                 entityId = "uid-2",
-                operation = AuditOperations.DELETE,
-            ),
+                operation = AuditOperations.DELETE
+            )
         )
         var undoClicked = false
         var openedContact: Int? = null
@@ -75,7 +74,7 @@ class AuditScreenTest {
                     onOpenContact = { openedContact = it },
                     canLoadMore = false,
                     isLoadingMore = false,
-                    onLoadMore = {},
+                    onLoadMore = {}
                 )
             }
         }
@@ -100,7 +99,7 @@ class AuditScreenTest {
                     onOpenContact = {},
                     canLoadMore = false,
                     isLoadingMore = false,
-                    onLoadMore = {},
+                    onLoadMore = {}
                 )
             }
         }
@@ -119,14 +118,19 @@ class AuditScreenTest {
                 AuditEventList(
                     events = listOf(contactUpdate(id = 1)),
                     contactsByUid = mapOf(
-                        "uid-1" to ContactSummary(id = 5, uid = "uid-1", firstname = "Dana", lastname = "White"),
+                        "uid-1" to ContactSummary(
+                            id = 5,
+                            uid = "uid-1",
+                            firstname = "Dana",
+                            lastname = "White"
+                        )
                     ),
                     canUndo = true,
                     onUndoClick = {},
                     onOpenContact = { openedContact = it },
                     canLoadMore = false,
                     isLoadingMore = false,
-                    onLoadMore = {},
+                    onLoadMore = {}
                 )
             }
         }
@@ -149,7 +153,7 @@ class AuditScreenTest {
                     onOpenContact = {},
                     canLoadMore = true,
                     isLoadingMore = false,
-                    onLoadMore = { loadMoreClicked = true },
+                    onLoadMore = { loadMoreClicked = true }
                 )
             }
         }
@@ -169,7 +173,7 @@ class AuditScreenTest {
                     hasFilters = false,
                     onEntityTypeChange = {},
                     onEntityIdChange = {},
-                    onClearFilters = {},
+                    onClearFilters = {}
                 )
             }
         }
@@ -186,7 +190,7 @@ class AuditScreenTest {
     private fun setScreen(
         auditRepository: AuditRepository,
         contactRepository: ContactRepository,
-        darkTheme: Boolean = false,
+        darkTheme: Boolean = false
     ) {
         val viewModel = AuditViewModel(auditRepository, contactRepository)
         composeTestRule.setContent {
@@ -201,7 +205,13 @@ class AuditScreenTest {
     fun `confirming undo runs the undo then refreshes the list`() {
         val auditRepository = mockk<AuditRepository>()
         val contactRepository = mockk<ContactRepository>()
-        coEvery { auditRepository.list(entityType = any(), entityId = any(), limit = any()) } returns
+        coEvery {
+            auditRepository.list(
+                entityType = any(),
+                entityId = any(),
+                limit = any()
+            )
+        } returns
             Result.success(AuditEventsResponse(auditEvents = listOf(contactUpdate(id = 1))))
         coEvery { contactRepository.resolveByUid(any()) } returns Result.success(emptyMap())
         coEvery { auditRepository.undo(1L) } returns Result.success(Unit)
@@ -217,14 +227,22 @@ class AuditScreenTest {
         composeTestRule.waitForIdle()
 
         coVerify(exactly = 1) { auditRepository.undo(1L) }
-        coVerify(exactly = 2) { auditRepository.list(entityType = null, entityId = null, limit = 100) }
+        coVerify(
+            exactly = 2
+        ) { auditRepository.list(entityType = null, entityId = null, limit = 100) }
     }
 
     @Test
     fun `the clear filters button is enabled while the entity id input has text`() {
         val auditRepository = mockk<AuditRepository>()
         val contactRepository = mockk<ContactRepository>()
-        coEvery { auditRepository.list(entityType = any(), entityId = any(), limit = any()) } returns
+        coEvery {
+            auditRepository.list(
+                entityType = any(),
+                entityId = any(),
+                limit = any()
+            )
+        } returns
             Result.success(AuditEventsResponse(auditEvents = emptyList()))
         coEvery { contactRepository.resolveByUid(any()) } returns Result.success(emptyMap())
 
@@ -243,7 +261,13 @@ class AuditScreenTest {
         val contactRepository = mockk<ContactRepository>()
         // Gate the list fetch so the initial-load skeleton stays on screen.
         val gate = kotlinx.coroutines.CompletableDeferred<Result<AuditEventsResponse>>()
-        coEvery { auditRepository.list(entityType = any(), entityId = any(), limit = any()) } coAnswers {
+        coEvery {
+            auditRepository.list(
+                entityType = any(),
+                entityId = any(),
+                limit = any()
+            )
+        } coAnswers {
             gate.await()
         }
 
@@ -256,7 +280,13 @@ class AuditScreenTest {
     fun `an empty list with a failed load renders the inline error text`() {
         val auditRepository = mockk<AuditRepository>()
         val contactRepository = mockk<ContactRepository>()
-        coEvery { auditRepository.list(entityType = any(), entityId = any(), limit = any()) } returns
+        coEvery {
+            auditRepository.list(
+                entityType = any(),
+                entityId = any(),
+                limit = any()
+            )
+        } returns
             Result.failure(ApiError.Client(500, "boom"))
 
         setScreen(auditRepository, contactRepository)
@@ -271,7 +301,13 @@ class AuditScreenTest {
     private fun populatedAuditRepository(): Pair<AuditRepository, ContactRepository> {
         val auditRepository = mockk<AuditRepository>()
         val contactRepository = mockk<ContactRepository>()
-        coEvery { auditRepository.list(entityType = any(), entityId = any(), limit = any()) } returns
+        coEvery {
+            auditRepository.list(
+                entityType = any(),
+                entityId = any(),
+                limit = any()
+            )
+        } returns
             Result.success(AuditEventsResponse(auditEvents = listOf(contactUpdate(id = 1))))
         coEvery { contactRepository.resolveByUid(any()) } returns
             Result.success(mapOf("uid-1" to ContactSummary(id = 1, fn = "Alice")))

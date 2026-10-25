@@ -20,20 +20,25 @@ sealed class ApiError(message: String, cause: Throwable? = null) : Exception(mes
     val displayMessage: String
         get() = when (this) {
             is Network -> "No connection"
+
             is Timeout -> "Request timed out"
+
             // 507 is the server's deliberate, operator-actionable capacity refusal
             // (issue #1313: an account bundle over the import size cap) — its
             // message names the limit and the remedy, so show it instead of the
             // generic text. Other 5xx bodies stay hidden (may carry internals).
             is Server -> when {
                 code == INSUFFICIENT_STORAGE && body.isNotBlank() -> body
+
                 // The backend's ErrExternal: a fixed, user-actionable string about a configured
                 // outbound integration ("Could not reach GeoPulse. Is the instance up?"), never
                 // internals. Gated on the error code, not the status, so INTERNAL_ERROR /
                 // DATABASE_ERROR bodies (also 5xx) stay hidden.
                 errorCode == EXTERNAL_SERVICE_ERROR && body.isNotBlank() -> body
+
                 else -> "Server error ($code)"
             }
+
             is Client -> when (code) {
                 401 -> "Session expired — please log in again"
                 403 -> "You don't have permission"
@@ -41,9 +46,13 @@ sealed class ApiError(message: String, cause: Throwable? = null) : Exception(mes
                 409 -> message ?: "Conflict"
                 else -> message ?: "Request failed"
             }
+
             is PreconditionFailed -> "Changed elsewhere — load the latest version"
+
             is Parse -> "Unexpected server response"
+
             is ArchivedProfile -> "This profile is a read-only archive — switch to your server to make changes"
+
             is Unknown -> "Something went wrong"
         }
 
@@ -62,7 +71,11 @@ sealed class ApiError(message: String, cause: Throwable? = null) : Exception(mes
     class Parse(body: String) : ApiError(body)
 
     /** A write was refused because the active profile is a read-only archive (ADR 0028 Decision 3). */
-    class ArchivedProfile(cause: ArchivedProfileWriteException) : ApiError("Archived profile is read-only", cause)
+    class ArchivedProfile(cause: ArchivedProfileWriteException) :
+        ApiError(
+            "Archived profile is read-only",
+            cause
+        )
     class Unknown(cause: Throwable) : ApiError("Unknown error", cause)
 }
 
@@ -80,13 +93,10 @@ fun Throwable.toApiError(): ApiError = when (this) {
 }
 
 /** Folds a [Result] onto success/error callbacks, converting failures to [ApiError]. */
-fun <T> Result<T>.foldApiError(
-    onSuccess: (T) -> Unit,
-    onError: (ApiError) -> Unit,
-) {
+fun <T> Result<T>.foldApiError(onSuccess: (T) -> Unit, onError: (ApiError) -> Unit) {
     fold(
         onSuccess = onSuccess,
-        onFailure = { e -> onError(e.toApiError()) },
+        onFailure = { e -> onError(e.toApiError()) }
     )
 }
 

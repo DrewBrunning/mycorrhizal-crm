@@ -4,9 +4,9 @@ import com.mycorrhizal.crm.network.LOCAL_SERVER_SENTINEL_URL
 import com.mycorrhizal.crm.network.LocalSocketPathProvider
 import com.mycorrhizal.crm.network.ProfileAwareDns
 import com.mycorrhizal.crm.network.ProfileAwareSocketFactory
+import java.util.concurrent.TimeUnit
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import java.util.concurrent.TimeUnit
 
 /**
  * GET /health over the embedded server's Unix socket. Uses the same
@@ -36,7 +36,7 @@ class AndroidLocalServerHealthProbe : LocalServerHealthProbe {
         }
         return runCatching {
             pinnedClient.newCall(
-                Request.Builder().url("$LOCAL_SERVER_SENTINEL_URL/health").build(),
+                Request.Builder().url("$LOCAL_SERVER_SENTINEL_URL/health").build()
             ).execute().use { it.isSuccessful }
         }.getOrDefault(false)
     }

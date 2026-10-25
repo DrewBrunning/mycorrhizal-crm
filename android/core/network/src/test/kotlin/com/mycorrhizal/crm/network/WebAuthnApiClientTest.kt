@@ -24,7 +24,9 @@ class WebAuthnApiClientTest {
         server = MockWebServer()
         server.start()
         val okHttp = OkHttpClient.Builder()
-            .addInterceptor(BaseUrlInterceptor(BaseUrlProvider { server.url("/").toString().trimEnd('/') }))
+            .addInterceptor(
+                BaseUrlInterceptor(BaseUrlProvider { server.url("/").toString().trimEnd('/') })
+            )
             .build()
         client = ApiClient(okHttp, Moshi.Builder().add(KotlinJsonAdapterFactory()).build())
     }
@@ -39,7 +41,7 @@ class WebAuthnApiClientTest {
             MockResponse()
                 .setResponseCode(200)
                 .setHeader("Set-Cookie", "2fa_pending=chal; Path=/; HttpOnly")
-                .setBody(body),
+                .setBody(body)
         )
     }
 
@@ -89,7 +91,7 @@ class WebAuthnApiClientTest {
         server.enqueue(
             MockResponse().setResponseCode(200)
                 .setHeader("Set-Cookie", "auth_token=jwt; Path=/")
-                .setBody("""{"language":"en","methods":["webauthn"]}"""),
+                .setBody("""{"language":"en","methods":["webauthn"]}""")
         )
         assertNull(client.login("a", "b").getOrThrow().methods)
     }
@@ -97,60 +99,76 @@ class WebAuthnApiClientTest {
     // --- login ceremony ---
 
     @Test
-    fun `webauthnLoginBegin posts with the pending cookie and returns the raw options`() = runBlocking {
-        val options = """{"publicKey":{"challenge":"abc","rpId":"example.com"}}"""
-        server.enqueue(MockResponse().setResponseCode(200).setBody(options))
+    fun `webauthnLoginBegin posts with the pending cookie and returns the raw options`() =
+        runBlocking {
+            val options = """{"publicKey":{"challenge":"abc","rpId":"example.com"}}"""
+            server.enqueue(MockResponse().setResponseCode(200).setBody(options))
 
-        val result = client.webauthnLoginBegin("chal-1")
+            val result = client.webauthnLoginBegin("chal-1")
 
-        assertEquals(options, result.getOrThrow())
-        val request = server.takeRequest()
-        assertEquals("POST", request.method)
-        assertEquals("/api/v1/webauthn/login/begin", request.path)
-        assertEquals("2fa_pending=chal-1", request.getHeader("Cookie"))
-    }
+            assertEquals(options, result.getOrThrow())
+            val request = server.takeRequest()
+            assertEquals("POST", request.method)
+            assertEquals("/api/v1/webauthn/login/begin", request.path)
+            assertEquals("2fa_pending=chal-1", request.getHeader("Cookie"))
+        }
 
     @Test
     fun `webauthnLoginBegin maps 400 401 and 409`() = runBlocking {
         for (code in listOf(400, 401, 409)) {
-            server.enqueue(MockResponse().setResponseCode(code).setBody("""{"error":{"code":"x","message":"m$code"}}"""))
+            server.enqueue(
+                MockResponse().setResponseCode(
+                    code
+                ).setBody("""{"error":{"code":"x","message":"m$code"}}""")
+            )
             val error = clientError(client.webauthnLoginBegin("c"), code)
             assertEquals("m$code", error.message)
         }
     }
 
     @Test
-    fun `webauthnLoginFinish forwards the credential verbatim and captures the session`() = runBlocking {
-        server.enqueue(
-            MockResponse().setResponseCode(200)
-                .setHeader("Set-Cookie", "auth_token=pk-session; Path=/; HttpOnly")
-                .setBody("""{"language":"de","date_format":"eu"}"""),
-        )
-        val credential = """{"id":"AAA","response":{"clientDataJSON":"e30"},"type":"public-key"}"""
+    fun `webauthnLoginFinish forwards the credential verbatim and captures the session`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setResponseCode(200)
+                    .setHeader("Set-Cookie", "auth_token=pk-session; Path=/; HttpOnly")
+                    .setBody("""{"language":"de","date_format":"eu"}""")
+            )
+            val credential = """{"id":"AAA","response":{"clientDataJSON":"e30"},"type":"public-key"}"""
 
-        val login = client.webauthnLoginFinish(credential, "chal-1").getOrThrow()
+            val login = client.webauthnLoginFinish(credential, "chal-1").getOrThrow()
 
-        assertEquals("pk-session", login.token)
-        assertEquals("de", login.language)
-        assertEquals("eu", login.dateFormat)
-        val request = server.takeRequest()
-        assertEquals("POST", request.method)
-        assertEquals("/api/v1/webauthn/login/finish", request.path)
-        assertEquals("2fa_pending=chal-1", request.getHeader("Cookie"))
-        assertEquals(credential, request.body.readUtf8())
-    }
+            assertEquals("pk-session", login.token)
+            assertEquals("de", login.language)
+            assertEquals("eu", login.dateFormat)
+            val request = server.takeRequest()
+            assertEquals("POST", request.method)
+            assertEquals("/api/v1/webauthn/login/finish", request.path)
+            assertEquals("2fa_pending=chal-1", request.getHeader("Cookie"))
+            assertEquals(credential, request.body.readUtf8())
+        }
 
     @Test
-    fun `webauthnLoginFinish maps rejection expiry client floor conflict and lockout`() = runBlocking {
-        for (code in listOf(400, 401, 403, 409)) {
-            server.enqueue(MockResponse().setResponseCode(code).setBody("""{"error":{"code":"x","message":"m$code"}}"""))
-            clientError(client.webauthnLoginFinish("{}", "c"), code)
+    fun `webauthnLoginFinish maps rejection expiry client floor conflict and lockout`() =
+        runBlocking {
+            for (code in listOf(400, 401, 403, 409)) {
+                server.enqueue(
+                    MockResponse().setResponseCode(
+                        code
+                    ).setBody("""{"error":{"code":"x","message":"m$code"}}""")
+                )
+                clientError(client.webauthnLoginFinish("{}", "c"), code)
+            }
+            server.enqueue(
+                MockResponse().setResponseCode(
+                    429
+                ).setBody("""{"error":"locked","message":"Try again later."}""")
+            )
+            assertEquals(
+                "Try again later.",
+                clientError(client.webauthnLoginFinish("{}", "c"), 429).message
+            )
         }
-        server.enqueue(
-            MockResponse().setResponseCode(429).setBody("""{"error":"locked","message":"Try again later."}"""),
-        )
-        assertEquals("Try again later.", clientError(client.webauthnLoginFinish("{}", "c"), 429).message)
-    }
 
     // --- enrollment ---
 
@@ -177,7 +195,11 @@ class WebAuthnApiClientTest {
     @Test
     fun `webauthnRegisterBegin maps 400 403 and 409`() = runBlocking {
         for (code in listOf(400, 401, 403, 409)) {
-            server.enqueue(MockResponse().setResponseCode(code).setBody("""{"error":{"code":"x","message":"m"}}"""))
+            server.enqueue(
+                MockResponse().setResponseCode(
+                    code
+                ).setBody("""{"error":{"code":"x","message":"m"}}""")
+            )
             clientError(client.webauthnRegisterBegin(), code)
         }
     }
@@ -188,8 +210,8 @@ class WebAuthnApiClientTest {
             MockResponse().setResponseCode(201)
                 .setHeader("Set-Cookie", "auth_token=reissued; Path=/; HttpOnly")
                 .setBody(
-                    """{"id":"11111111-1111-1111-1111-111111111111","name":"Pixel","created_at":"2026-09-29T10:00:00Z","recovery_codes":["AAAAA-BBBBB-CCCCC"]}""",
-                ),
+                    """{"id":"11111111-1111-1111-1111-111111111111","name":"Pixel","created_at":"2026-09-29T10:00:00Z","recovery_codes":["AAAAA-BBBBB-CCCCC"]}"""
+                )
         )
         val attestation = """{"id":"AAA","type":"public-key"}"""
 
@@ -204,20 +226,25 @@ class WebAuthnApiClientTest {
     }
 
     @Test
-    fun `webauthnRegisterFinish tolerates a missing cookie and empty recovery codes`() = runBlocking {
-        server.enqueue(
-            MockResponse().setResponseCode(201)
-                .setBody("""{"id":"i","name":"n","created_at":"t","recovery_codes":[]}"""),
-        )
-        val result = client.webauthnRegisterFinish("{}").getOrThrow()
-        assertNull(result.reissuedToken)
-        assertTrue(result.value.recoveryCodes.isEmpty())
-    }
+    fun `webauthnRegisterFinish tolerates a missing cookie and empty recovery codes`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setResponseCode(201)
+                    .setBody("""{"id":"i","name":"n","created_at":"t","recovery_codes":[]}""")
+            )
+            val result = client.webauthnRegisterFinish("{}").getOrThrow()
+            assertNull(result.reissuedToken)
+            assertTrue(result.value.recoveryCodes.isEmpty())
+        }
 
     @Test
     fun `webauthnRegisterFinish maps 400 403 and 409`() = runBlocking {
         for (code in listOf(400, 401, 403, 409)) {
-            server.enqueue(MockResponse().setResponseCode(code).setBody("""{"error":{"code":"x","message":"m"}}"""))
+            server.enqueue(
+                MockResponse().setResponseCode(
+                    code
+                ).setBody("""{"error":{"code":"x","message":"m"}}""")
+            )
             clientError(client.webauthnRegisterFinish("{}"), code)
         }
     }
@@ -228,8 +255,8 @@ class WebAuthnApiClientTest {
     fun `listWebAuthnCredentials parses credentials including a null last_used_at`() = runBlocking {
         server.enqueue(
             MockResponse().setResponseCode(200).setBody(
-                """{"credentials":[{"id":"a","name":"Phone","created_at":"2026-09-01T00:00:00Z","last_used_at":"2026-09-02T00:00:00Z"},{"id":"b","name":"Key","created_at":"2026-09-03T00:00:00Z","last_used_at":null}]}""",
-            ),
+                """{"credentials":[{"id":"a","name":"Phone","created_at":"2026-09-01T00:00:00Z","last_used_at":"2026-09-02T00:00:00Z"},{"id":"b","name":"Key","created_at":"2026-09-03T00:00:00Z","last_used_at":null}]}"""
+            )
         )
 
         val list = client.listWebAuthnCredentials().getOrThrow().credentials
@@ -244,7 +271,9 @@ class WebAuthnApiClientTest {
 
     @Test
     fun `listWebAuthnCredentials maps 401`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(401).setBody("""{"error":{"code":"x","message":"m"}}"""))
+        server.enqueue(
+            MockResponse().setResponseCode(401).setBody("""{"error":{"code":"x","message":"m"}}""")
+        )
         clientError(client.listWebAuthnCredentials(), 401)
         Unit
     }
@@ -272,14 +301,20 @@ class WebAuthnApiClientTest {
     @Test
     fun `webauthnProofBegin maps 404 and 409`() = runBlocking {
         for (code in listOf(401, 404, 409)) {
-            server.enqueue(MockResponse().setResponseCode(code).setBody("""{"error":{"code":"x","message":"m"}}"""))
+            server.enqueue(
+                MockResponse().setResponseCode(
+                    code
+                ).setBody("""{"error":{"code":"x","message":"m"}}""")
+            )
             clientError(client.webauthnProofBegin("x"), code)
         }
     }
 
     @Test
     fun `deleteWebAuthnCredential sends a code proof`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"message":"Passkey removed"}"""))
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"message":"Passkey removed"}""")
+        )
 
         val result = client.deleteWebAuthnCredential("cred-1", "123456").getOrThrow()
 
@@ -292,31 +327,40 @@ class WebAuthnApiClientTest {
     }
 
     @Test
-    fun `deleteWebAuthnCredential surfaces the re-issued session when the last factor goes`() = runBlocking {
-        server.enqueue(
-            MockResponse().setResponseCode(200)
-                .setHeader("Set-Cookie", "auth_token=reissued-del; Path=/; HttpOnly")
-                .setBody("""{"message":"Passkey removed"}"""),
-        )
+    fun `deleteWebAuthnCredential surfaces the re-issued session when the last factor goes`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setResponseCode(200)
+                    .setHeader("Set-Cookie", "auth_token=reissued-del; Path=/; HttpOnly")
+                    .setBody("""{"message":"Passkey removed"}""")
+            )
 
-        val result = client.deleteWebAuthnCredential("cred-1", "123456").getOrThrow()
+            val result = client.deleteWebAuthnCredential("cred-1", "123456").getOrThrow()
 
-        assertEquals("reissued-del", result.reissuedToken)
-        assertEquals("Passkey removed", result.value.message)
-    }
+            assertEquals("reissued-del", result.reissuedToken)
+            assertEquals("Passkey removed", result.value.message)
+        }
 
     @Test
-    fun `deleteWebAuthnCredentialWithAssertion surfaces the re-issued session and tolerates none`() = runBlocking {
-        server.enqueue(
-            MockResponse().setResponseCode(200)
-                .setHeader("Set-Cookie", "auth_token=reissued-assert; Path=/; HttpOnly")
-                .setBody("""{"message":"Passkey removed"}"""),
-        )
-        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"message":"Passkey removed"}"""))
+    fun `deleteWebAuthnCredentialWithAssertion surfaces the re-issued session and tolerates none`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setResponseCode(200)
+                    .setHeader("Set-Cookie", "auth_token=reissued-assert; Path=/; HttpOnly")
+                    .setBody("""{"message":"Passkey removed"}""")
+            )
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody("""{"message":"Passkey removed"}""")
+            )
 
-        assertEquals("reissued-assert", client.deleteWebAuthnCredentialWithAssertion("c", "{}").getOrThrow().reissuedToken)
-        assertNull(client.deleteWebAuthnCredentialWithAssertion("c", "{}").getOrThrow().reissuedToken)
-    }
+            assertEquals(
+                "reissued-assert",
+                client.deleteWebAuthnCredentialWithAssertion("c", "{}").getOrThrow().reissuedToken
+            )
+            assertNull(
+                client.deleteWebAuthnCredentialWithAssertion("c", "{}").getOrThrow().reissuedToken
+            )
+        }
 
     @Test
     fun `deleteWebAuthnCredential percent-encodes the id as a single path segment`() = runBlocking {
@@ -328,38 +372,57 @@ class WebAuthnApiClientTest {
     @Test
     fun `deleteWebAuthnCredential maps 400 and 404`() = runBlocking {
         for (code in listOf(400, 401, 404)) {
-            server.enqueue(MockResponse().setResponseCode(code).setBody("""{"error":{"code":"x","message":"m"}}"""))
+            server.enqueue(
+                MockResponse().setResponseCode(
+                    code
+                ).setBody("""{"error":{"code":"x","message":"m"}}""")
+            )
             clientError(client.deleteWebAuthnCredential("id", "c"), code)
         }
     }
 
     @Test
-    fun `deleteWebAuthnCredentialWithAssertion embeds the assertion object verbatim`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"message":"Passkey removed"}"""))
-        val assertion = """{"id":"AAA","response":{"signature":"sig"},"n":1}"""
+    fun `deleteWebAuthnCredentialWithAssertion embeds the assertion object verbatim`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody("""{"message":"Passkey removed"}""")
+            )
+            val assertion = """{"id":"AAA","response":{"signature":"sig"},"n":1}"""
 
-        client.deleteWebAuthnCredentialWithAssertion("cred-1", assertion).getOrThrow()
+            client.deleteWebAuthnCredentialWithAssertion("cred-1", assertion).getOrThrow()
 
-        val request = server.takeRequest()
-        assertEquals("DELETE", request.method)
-        assertEquals("/api/v1/webauthn/credentials/cred-1", request.path)
-        assertEquals("""{"assertion":$assertion}""", request.body.readUtf8())
-    }
-
-    @Test
-    fun `deleteWebAuthnCredentialWithAssertion rejects a non-object assertion without a request`() = runBlocking {
-        for (bad in listOf("not json", "[1]", "\"s\"")) {
-            val error = client.deleteWebAuthnCredentialWithAssertion("id", bad).exceptionOrNull()
-            assertTrue("for $bad: $error", error is ApiError.Parse)
+            val request = server.takeRequest()
+            assertEquals("DELETE", request.method)
+            assertEquals("/api/v1/webauthn/credentials/cred-1", request.path)
+            assertEquals("""{"assertion":$assertion}""", request.body.readUtf8())
         }
-        assertEquals(0, server.requestCount)
-    }
 
     @Test
-    fun `deleteWebAuthnCredentialWithAssertion maps a rejected proof to Client 400`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(400).setBody("""{"error":{"code":"x","message":"bad proof"}}"""))
-        assertEquals("bad proof", clientError(client.deleteWebAuthnCredentialWithAssertion("i", "{}"), 400).message)
-    }
+    fun `deleteWebAuthnCredentialWithAssertion rejects a non-object assertion without a request`() =
+        runBlocking {
+            for (bad in listOf("not json", "[1]", "\"s\"")) {
+                val error = client.deleteWebAuthnCredentialWithAssertion(
+                    "id",
+                    bad
+                ).exceptionOrNull()
+                assertTrue("for $bad: $error", error is ApiError.Parse)
+            }
+            assertEquals(0, server.requestCount)
+        }
+
+    @Test
+    fun `deleteWebAuthnCredentialWithAssertion maps a rejected proof to Client 400`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setResponseCode(
+                    400
+                ).setBody("""{"error":{"code":"x","message":"bad proof"}}""")
+            )
+            assertEquals(
+                "bad proof",
+                clientError(client.deleteWebAuthnCredentialWithAssertion("i", "{}"), 400).message
+            )
+        }
 
     // --- issue #1337: enrollment proof on register/begin ---
 
@@ -382,8 +445,15 @@ class WebAuthnApiClientTest {
         client.webauthnRegisterBegin("   ", code = "12\"34").getOrThrow()
         assertEquals("""{"code":"12\"34"}""", server.takeRequest().body.readUtf8())
 
-        client.webauthnRegisterBegin(null, code = "1", assertionJson = """{"id":"a"}""").getOrThrow()
-        assertEquals("""{"code":"1","assertion":{"id":"a"}}""", server.takeRequest().body.readUtf8())
+        client.webauthnRegisterBegin(
+            null,
+            code = "1",
+            assertionJson = """{"id":"a"}"""
+        ).getOrThrow()
+        assertEquals(
+            """{"code":"1","assertion":{"id":"a"}}""",
+            server.takeRequest().body.readUtf8()
+        )
     }
 
     @Test
@@ -393,7 +463,10 @@ class WebAuthnApiClientTest {
 
         client.webauthnRegisterBegin("Tablet", assertionJson = assertion).getOrThrow()
 
-        assertEquals("""{"name":"Tablet","assertion":$assertion}""", server.takeRequest().body.readUtf8())
+        assertEquals(
+            """{"name":"Tablet","assertion":$assertion}""",
+            server.takeRequest().body.readUtf8()
+        )
     }
 
     @Test
@@ -407,9 +480,23 @@ class WebAuthnApiClientTest {
 
     @Test
     fun `webauthnRegisterBegin maps a rejected proof 400 and a lockout 429`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(400).setBody("""{"error":{"code":"x","message":"Invalid code"}}"""))
-        assertEquals("Invalid code", clientError(client.webauthnRegisterBegin("x", code = "0"), 400).message)
-        server.enqueue(MockResponse().setResponseCode(429).setBody("""{"error":"locked","message":"Try again later."}"""))
-        assertEquals("Try again later.", clientError(client.webauthnRegisterBegin("x", code = "0"), 429).message)
+        server.enqueue(
+            MockResponse().setResponseCode(
+                400
+            ).setBody("""{"error":{"code":"x","message":"Invalid code"}}""")
+        )
+        assertEquals(
+            "Invalid code",
+            clientError(client.webauthnRegisterBegin("x", code = "0"), 400).message
+        )
+        server.enqueue(
+            MockResponse().setResponseCode(
+                429
+            ).setBody("""{"error":"locked","message":"Try again later."}""")
+        )
+        assertEquals(
+            "Try again later.",
+            clientError(client.webauthnRegisterBegin("x", code = "0"), 429).message
+        )
     }
 }

@@ -43,13 +43,13 @@ class ContactSectionsViewModelTest {
         card = Card(
             name = Name(full = "Dana White"),
             organizations = listOf(Organization(id = "org-1", name = "Acme")),
-            personalInfo = listOf(PersonalInfo(id = "pi-1", kind = "expertise", value = "Go")),
-        ),
+            personalInfo = listOf(PersonalInfo(id = "pi-1", kind = "expertise", value = "Go"))
+        )
     )
 
     private fun viewModel(
         getResult: Result<ContactRecordResponse> = Result.success(record),
-        enabledContactFields: List<String>? = null,
+        enabledContactFields: List<String>? = null
     ): ContactSectionsViewModel {
         coEvery { contactRepository.getContact(5) } returns getResult
         every { authRepository.observeSession() } returns
@@ -57,7 +57,7 @@ class ContactSectionsViewModelTest {
         return ContactSectionsViewModel(
             contactRepository,
             authRepository,
-            SavedStateHandle(mapOf("contactId" to 5)),
+            SavedStateHandle(mapOf("contactId" to 5))
         )
     }
 
@@ -74,7 +74,9 @@ class ContactSectionsViewModelTest {
 
     @Test
     fun `load failure surfaces the message`() = runTest {
-        val vm = viewModel(getResult = Result.failure(ApiError.Network(java.io.IOException("offline"))))
+        val vm = viewModel(
+            getResult = Result.failure(ApiError.Network(java.io.IOException("offline")))
+        )
         advanceUntilIdle()
 
         assertNull(vm.uiState.value.record)
@@ -83,35 +85,36 @@ class ContactSectionsViewModelTest {
     }
 
     @Test
-    fun `saving a skill PUTs the full record with the loaded revision and the new level and metadata`() = runTest {
-        val vm = viewModel()
-        advanceUntilIdle()
-        val input = slot<ContactRecordInput>()
-        coEvery { contactRepository.updateContact(5, capture(input), 7) } returns
-            Result.success(record.copy(revision = 8))
+    fun `saving a skill PUTs the full record with the loaded revision and the new level and metadata`() =
+        runTest {
+            val vm = viewModel()
+            advanceUntilIdle()
+            val input = slot<ContactRecordInput>()
+            coEvery { contactRepository.updateContact(5, capture(input), 7) } returns
+                Result.success(record.copy(revision = 8))
 
-        vm.savePersonalInfo(
-            editingId = null,
-            form = PersonalInfoFormData(
-                kind = "expertise",
-                value = "Rust",
-                level = "beginner",
-                sensitivity = "private",
-                notes = "learning",
-            ),
-        )
-        advanceUntilIdle()
+            vm.savePersonalInfo(
+                editingId = null,
+                form = PersonalInfoFormData(
+                    kind = "expertise",
+                    value = "Rust",
+                    level = "beginner",
+                    sensitivity = "private",
+                    notes = "learning"
+                )
+            )
+            advanceUntilIdle()
 
-        val entry = input.captured.card!!.personalInfo!!.last()
-        assertEquals("Rust", entry.value)
-        assertEquals("beginner", entry.level)
-        assertEquals("private", input.captured.crm!!.personalInfoMeta!![entry.id]!!.sensitivity)
-        assertEquals("learning", input.captured.crm!!.personalInfoMeta!![entry.id]!!.notes)
-        // Untouched data rides along in the full-record PUT.
-        assertEquals(listOf("org-1"), input.captured.card!!.organizations!!.map { it.id })
-        assertEquals(8, vm.uiState.value.record?.revision)
-        assertFalse(vm.uiState.value.isSaving)
-    }
+            val entry = input.captured.card!!.personalInfo!!.last()
+            assertEquals("Rust", entry.value)
+            assertEquals("beginner", entry.level)
+            assertEquals("private", input.captured.crm!!.personalInfoMeta!![entry.id]!!.sensitivity)
+            assertEquals("learning", input.captured.crm!!.personalInfoMeta!![entry.id]!!.notes)
+            // Untouched data rides along in the full-record PUT.
+            assertEquals(listOf("org-1"), input.captured.card!!.organizations!!.map { it.id })
+            assertEquals(8, vm.uiState.value.record?.revision)
+            assertFalse(vm.uiState.value.isSaving)
+        }
 
     @Test
     fun `a blank skill value is rejected locally without a PUT`() = runTest {
@@ -165,7 +168,13 @@ class ContactSectionsViewModelTest {
         val vm = viewModel()
         advanceUntilIdle()
         val input = slot<ContactRecordInput>()
-        coEvery { contactRepository.updateContact(5, capture(input), 7) } returns Result.success(record)
+        coEvery {
+            contactRepository.updateContact(
+                5,
+                capture(input),
+                7
+            )
+        } returns Result.success(record)
 
         vm.saveWorkInformation("  Analyst  ")
         advanceUntilIdle()
@@ -191,7 +200,7 @@ class ContactSectionsViewModelTest {
         val vm = ContactSectionsViewModel(
             contactRepository,
             authRepository,
-            SavedStateHandle(emptyMap<String, Any>()),
+            SavedStateHandle(emptyMap<String, Any>())
         )
         advanceUntilIdle()
 

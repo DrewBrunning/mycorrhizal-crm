@@ -6,12 +6,12 @@ import com.mycorrhizal.crm.domain.repository.NextcloudRepository
 import com.mycorrhizal.crm.model.network.NextcloudConfigInput
 import com.mycorrhizal.crm.network.ApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class NextcloudSettingsUiState(
     val isLoading: Boolean = true,
@@ -26,7 +26,7 @@ data class NextcloudSettingsUiState(
     val username: String = "",
     val hasAppPassword: Boolean = false,
     /** Write-only: what the user typed this session. Empty on save keeps the stored password. */
-    val appPassword: String = "",
+    val appPassword: String = ""
 ) {
     /** Issue #1775: the app password is required on first connect (there is no stored one to keep). */
     val tokenRequired: Boolean get() = !hasAppPassword
@@ -42,9 +42,8 @@ data class NextcloudTestOutcome(val ok: Boolean, val message: String?)
  * up front.
  */
 @HiltViewModel
-class NextcloudSettingsViewModel @Inject constructor(
-    private val repository: NextcloudRepository,
-) : ViewModel() {
+class NextcloudSettingsViewModel @Inject constructor(private val repository: NextcloudRepository) :
+    ViewModel() {
 
     private val _uiState = MutableStateFlow(NextcloudSettingsUiState())
     val uiState: StateFlow<NextcloudSettingsUiState> = _uiState.asStateFlow()
@@ -63,7 +62,7 @@ class NextcloudSettingsViewModel @Inject constructor(
                             isLoading = false,
                             baseUrl = config.baseUrl.orEmpty(),
                             username = config.username.orEmpty(),
-                            hasAppPassword = config.hasAppPassword,
+                            hasAppPassword = config.hasAppPassword
                         )
                     }
                 }
@@ -73,9 +72,24 @@ class NextcloudSettingsViewModel @Inject constructor(
         }
     }
 
-    fun onBaseUrlChange(value: String) = _uiState.update { it.copy(baseUrl = value, testResult = null) }
-    fun onUsernameChange(value: String) = _uiState.update { it.copy(username = value, testResult = null) }
-    fun onAppPasswordChange(value: String) = _uiState.update { it.copy(appPassword = value, testResult = null) }
+    fun onBaseUrlChange(value: String) = _uiState.update {
+        it.copy(
+            baseUrl = value,
+            testResult = null
+        )
+    }
+    fun onUsernameChange(value: String) = _uiState.update {
+        it.copy(
+            username = value,
+            testResult = null
+        )
+    }
+    fun onAppPasswordChange(value: String) = _uiState.update {
+        it.copy(
+            appPassword = value,
+            testResult = null
+        )
+    }
 
     /** Save the current base URL/username/app password. An empty password keeps the stored one. */
     fun save() {
@@ -84,7 +98,11 @@ class NextcloudSettingsViewModel @Inject constructor(
             _uiState.update { it.copy(isSaving = true, saveError = null) }
             val s = _uiState.value
             repository.saveConfig(
-                NextcloudConfigInput(baseUrl = s.baseUrl.trim(), username = s.username.trim(), appPassword = s.appPassword.trim()),
+                NextcloudConfigInput(
+                    baseUrl = s.baseUrl.trim(),
+                    username = s.username.trim(),
+                    appPassword = s.appPassword.trim()
+                )
             )
                 .onSuccess { config ->
                     _uiState.update {
@@ -95,7 +113,7 @@ class NextcloudSettingsViewModel @Inject constructor(
                             hasAppPassword = config.hasAppPassword,
                             // The password is write-only — clear what the user typed so it
                             // never lingers in state (mirrors web and Immich).
-                            appPassword = "",
+                            appPassword = ""
                         )
                     }
                 }
@@ -116,13 +134,20 @@ class NextcloudSettingsViewModel @Inject constructor(
             _uiState.update { it.copy(isTesting = true, saveError = null, testResult = null) }
             val s = _uiState.value
             val saved = repository.saveConfig(
-                NextcloudConfigInput(baseUrl = s.baseUrl.trim(), username = s.username.trim(), appPassword = s.appPassword.trim()),
+                NextcloudConfigInput(
+                    baseUrl = s.baseUrl.trim(),
+                    username = s.username.trim(),
+                    appPassword = s.appPassword.trim()
+                )
             )
             if (saved.isFailure) {
                 _uiState.update {
                     it.copy(
                         isTesting = false,
-                        testResult = NextcloudTestOutcome(ok = false, message = saved.exceptionOrNull().displayMessage()),
+                        testResult = NextcloudTestOutcome(
+                            ok = false,
+                            message = saved.exceptionOrNull().displayMessage()
+                        )
                     )
                 }
                 return@launch
@@ -133,18 +158,30 @@ class NextcloudSettingsViewModel @Inject constructor(
                     baseUrl = config.baseUrl.orEmpty(),
                     username = config.username.orEmpty(),
                     hasAppPassword = config.hasAppPassword,
-                    appPassword = "",
+                    appPassword = ""
                 )
             }
             repository.testConnection()
                 .onSuccess { result ->
                     _uiState.update {
-                        it.copy(isTesting = false, testResult = NextcloudTestOutcome(ok = result.ok, message = result.message))
+                        it.copy(
+                            isTesting = false,
+                            testResult = NextcloudTestOutcome(
+                                ok = result.ok,
+                                message = result.message
+                            )
+                        )
                     }
                 }
                 .onFailure { e ->
                     _uiState.update {
-                        it.copy(isTesting = false, testResult = NextcloudTestOutcome(ok = false, message = e.displayMessage()))
+                        it.copy(
+                            isTesting = false,
+                            testResult = NextcloudTestOutcome(
+                                ok = false,
+                                message = e.displayMessage()
+                            )
+                        )
                     }
                 }
         }

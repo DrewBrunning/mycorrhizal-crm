@@ -6,12 +6,6 @@ import com.mycorrhizal.crm.domain.repository.GeoPulseRepository
 import com.mycorrhizal.crm.model.network.GeoPulseStaySuggestion
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -19,6 +13,12 @@ import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 data class GeoPulseSuggestionsUiState(
     /** The date shown in the picker (YYYY-MM-DD) — may differ from [lookedUpDate] until "Look up". */
@@ -30,7 +30,7 @@ data class GeoPulseSuggestionsUiState(
     /** The date the current [suggestions] were fetched for. */
     val lookedUpDate: String? = null,
     /** IANA zone the lookup used; stay times and local dates are rendered in it. */
-    val timezone: String,
+    val timezone: String
 )
 
 /**
@@ -39,14 +39,13 @@ data class GeoPulseSuggestionsUiState(
  * ephemeral (nothing is stored until the form is saved); the contacts are always the user's choice.
  */
 @HiltViewModel
-class GeoPulseSuggestionsViewModel @Inject constructor(
-    private val repository: GeoPulseRepository,
-) : ViewModel() {
+class GeoPulseSuggestionsViewModel @Inject constructor(private val repository: GeoPulseRepository) :
+    ViewModel() {
 
     private val zone: ZoneId = ZoneId.systemDefault()
 
     private val _uiState = MutableStateFlow(
-        GeoPulseSuggestionsUiState(date = LocalDate.now(zone).toString(), timezone = zone.id),
+        GeoPulseSuggestionsUiState(date = LocalDate.now(zone).toString(), timezone = zone.id)
     )
     val uiState: StateFlow<GeoPulseSuggestionsUiState> = _uiState.asStateFlow()
 
@@ -67,13 +66,19 @@ class GeoPulseSuggestionsViewModel @Inject constructor(
                         it.copy(
                             isLoading = false,
                             suggestions = resp.suggestions,
-                            lookedUpDate = resp.date.ifBlank { s.date },
+                            lookedUpDate = resp.date.ifBlank { s.date }
                         )
                     }
                 },
                 onError = { e ->
-                    _uiState.update { it.copy(isLoading = false, error = e.displayMessage, suggestions = null) }
-                },
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = e.displayMessage,
+                            suggestions = null
+                        )
+                    }
+                }
             )
         }
     }
@@ -102,9 +107,12 @@ fun stayPrefillDate(timestamp: String, zone: ZoneId, fallbackDate: String): Stri
     val day = parseStayInstant(timestamp)?.atZone(zone)?.toLocalDate()
         ?: runCatching { LocalDate.parse(fallbackDate) }.getOrNull()
         ?: LocalDate.now(zone)
-    return day.atTime(LocalTime.MIDNIGHT).atZone(zone).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+    return day.atTime(
+        LocalTime.MIDNIGHT
+    ).atZone(zone).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
 }
 
 /** The stay's start time as HH:mm in [zone] (the same zone the lookup defined the day in). */
-fun formatStayTime(timestamp: String, zone: ZoneId): String =
-    parseStayInstant(timestamp)?.atZone(zone)?.format(DateTimeFormatter.ofPattern("HH:mm")) ?: timestamp
+fun formatStayTime(timestamp: String, zone: ZoneId): String = parseStayInstant(
+    timestamp
+)?.atZone(zone)?.format(DateTimeFormatter.ofPattern("HH:mm")) ?: timestamp

@@ -40,8 +40,15 @@ class ApiTokensScreenTest {
         name: String = "CI token",
         scope: String = "full",
         revokedAt: String? = null,
-        expiresAt: String? = null,
-    ) = ApiToken(id = id, name = name, createdAt = "2026-01-01T00:00:00Z", scope = scope, revokedAt = revokedAt, expiresAt = expiresAt)
+        expiresAt: String? = null
+    ) = ApiToken(
+        id = id,
+        name = name,
+        createdAt = "2026-01-01T00:00:00Z",
+        scope = scope,
+        revokedAt = revokedAt,
+        expiresAt = expiresAt
+    )
 
     // --- Top-level ApiTokensScreen: the RefreshableContent wrapper + its
     // loading/empty/populated branches only execute when the real screen is
@@ -87,7 +94,9 @@ class ApiTokensScreenTest {
     @Test
     fun `top-level screen renders the token list`() {
         val repository = mockk<ApiTokenRepository>()
-        coEvery { repository.list() } returns Result.success(listOf(token(1, name = "Deploy token")))
+        coEvery { repository.list() } returns Result.success(
+            listOf(token(1, name = "Deploy token"))
+        )
 
         setScreen(ApiTokensViewModel(repository))
 
@@ -99,7 +108,7 @@ class ApiTokensScreenTest {
         val repository = mockk<ApiTokenRepository>()
         coEvery { repository.list() } returnsMany listOf(
             Result.success(listOf(token(1, name = "Deploy token"))),
-            Result.failure(ApiError.Server(500, "boom")),
+            Result.failure(ApiError.Server(500, "boom"))
         )
         val viewModel = ApiTokensViewModel(repository)
         setScreen(viewModel)
@@ -114,8 +123,12 @@ class ApiTokensScreenTest {
     @Test
     fun `top-level screen shows the revoke-all count above the list`() {
         val repository = mockk<ApiTokenRepository>()
-        coEvery { repository.list() } returns Result.success(listOf(token(1, name = "Deploy token")))
-        coEvery { repository.revokeAll() } returns Result.success(RevokeAllApiTokensResponse(revoked = 2))
+        coEvery { repository.list() } returns Result.success(
+            listOf(token(1, name = "Deploy token"))
+        )
+        coEvery { repository.revokeAll() } returns Result.success(
+            RevokeAllApiTokensResponse(revoked = 2)
+        )
         val viewModel = ApiTokensViewModel(repository)
         setScreen(viewModel)
 
@@ -137,7 +150,7 @@ class ApiTokensScreenTest {
                     rotating = false,
                     revoking = false,
                     onRotate = { rotated = true },
-                    onRevoke = { revoked = true },
+                    onRevoke = { revoked = true }
                 )
             }
         }
@@ -159,7 +172,7 @@ class ApiTokensScreenTest {
                     rotating = false,
                     revoking = false,
                     onRotate = {},
-                    onRevoke = {},
+                    onRevoke = {}
                 )
             }
         }
@@ -177,7 +190,7 @@ class ApiTokensScreenTest {
                     rotating = false,
                     revoking = false,
                     onRotate = {},
-                    onRevoke = {},
+                    onRevoke = {}
                 )
             }
         }
@@ -194,7 +207,7 @@ class ApiTokensScreenTest {
                 CreateApiTokenDialog(
                     isSaving = false,
                     onConfirm = { name, _, _ -> confirmedName = name },
-                    onDismiss = {},
+                    onDismiss = {}
                 )
             }
         }
@@ -214,8 +227,11 @@ class ApiTokensScreenTest {
             MycorrhizalTheme {
                 CreateApiTokenDialog(
                     isSaving = false,
-                    onConfirm = { _, expiresInDays, s -> days = expiresInDays; scope = s },
-                    onDismiss = {},
+                    onConfirm = { _, expiresInDays, s ->
+                        days = expiresInDays
+                        scope = s
+                    },
+                    onDismiss = {}
                 )
             }
         }
@@ -235,7 +251,7 @@ class ApiTokensScreenTest {
                 CreateApiTokenDialog(
                     isSaving = false,
                     onConfirm = { _, _, s -> scope = s },
-                    onDismiss = {},
+                    onDismiss = {}
                 )
             }
         }
@@ -252,9 +268,14 @@ class ApiTokensScreenTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 RevealedTokenDialog(
-                    revealed = ApiTokenCreateResponse(id = 1, name = "New", scope = "full", token = "mcrh_live_abc123"),
+                    revealed = ApiTokenCreateResponse(
+                        id = 1,
+                        name = "New",
+                        scope = "full",
+                        token = "mcrh_live_abc123"
+                    ),
                     isRotation = false,
-                    onDismiss = {},
+                    onDismiss = {}
                 )
             }
         }
@@ -268,9 +289,14 @@ class ApiTokensScreenTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 RevealedTokenDialog(
-                    revealed = ApiTokenCreateResponse(id = 1, name = "New", scope = "full", token = "mcrh_live_rotated"),
+                    revealed = ApiTokenCreateResponse(
+                        id = 1,
+                        name = "New",
+                        scope = "full",
+                        token = "mcrh_live_rotated"
+                    ),
                     isRotation = true,
-                    onDismiss = {},
+                    onDismiss = {}
                 )
             }
         }
@@ -285,9 +311,14 @@ class ApiTokensScreenTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 RevealedTokenDialog(
-                    revealed = ApiTokenCreateResponse(id = 1, name = "New", scope = "full", token = "s3cret"),
+                    revealed = ApiTokenCreateResponse(
+                        id = 1,
+                        name = "New",
+                        scope = "full",
+                        token = "s3cret"
+                    ),
                     isRotation = false,
-                    onDismiss = { dismissed = true },
+                    onDismiss = { dismissed = true }
                 )
             }
         }
@@ -301,7 +332,9 @@ class ApiTokensScreenTest {
     @Test
     fun `revoke all is not a top-bar icon and lives in the overflow`() {
         val repository = mockk<ApiTokenRepository>()
-        coEvery { repository.list() } returns Result.success(listOf(token(1, name = "Deploy token")))
+        coEvery { repository.list() } returns Result.success(
+            listOf(token(1, name = "Deploy token"))
+        )
         setScreen(ApiTokensViewModel(repository))
 
         composeTestRule.onNodeWithContentDescription("Revoke all").assertDoesNotExist()
@@ -311,8 +344,12 @@ class ApiTokensScreenTest {
     @Test
     fun `opening the overflow then revoke all shows the confirmation and revokes`() {
         val repository = mockk<ApiTokenRepository>()
-        coEvery { repository.list() } returns Result.success(listOf(token(1, name = "Deploy token")))
-        coEvery { repository.revokeAll() } returns Result.success(RevokeAllApiTokensResponse(revoked = 1))
+        coEvery { repository.list() } returns Result.success(
+            listOf(token(1, name = "Deploy token"))
+        )
+        coEvery { repository.revokeAll() } returns Result.success(
+            RevokeAllApiTokensResponse(revoked = 1)
+        )
         setScreen(ApiTokensViewModel(repository))
 
         composeTestRule.onNodeWithContentDescription("More options").performClick()
@@ -328,7 +365,9 @@ class ApiTokensScreenTest {
     @Test
     fun `revoke all is disabled in the overflow when no token is active`() {
         val repository = mockk<ApiTokenRepository>()
-        coEvery { repository.list() } returns Result.success(listOf(token(1, name = "Old", revokedAt = "2026-01-02T00:00:00Z")))
+        coEvery { repository.list() } returns Result.success(
+            listOf(token(1, name = "Old", revokedAt = "2026-01-02T00:00:00Z"))
+        )
         setScreen(ApiTokensViewModel(repository))
 
         composeTestRule.onNodeWithContentDescription("More options").performClick()

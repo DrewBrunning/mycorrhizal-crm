@@ -42,5 +42,8 @@ interface FieldDefinitionRepository {
     suspend fun contactValues(contactId: Int): Result<List<FieldValue>>
 
     /** Full-replace a contact's custom-field values — see [ContactFieldValuesInput]'s doc comment. */
-    suspend fun replaceContactValues(contactId: Int, input: ContactFieldValuesInput): Result<List<FieldValue>>
+    suspend fun replaceContactValues(
+        contactId: Int,
+        input: ContactFieldValuesInput
+    ): Result<List<FieldValue>>
 }

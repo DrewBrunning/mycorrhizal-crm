@@ -9,5 +9,5 @@ data class CachedNote(
     @PrimaryKey val id: Int,
     val content: String? = null,
     val date: String? = null,
-    val deleted: Boolean = false,
+    val deleted: Boolean = false
 )

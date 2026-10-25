@@ -6,14 +6,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performSemanticsAction
-import androidx.compose.ui.test.performTextClearance
-import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import com.mycorrhizal.crm.model.network.Address
 import com.mycorrhizal.crm.model.network.AddressComponent
 import com.mycorrhizal.crm.ui.components.AddressEditor
@@ -66,9 +66,9 @@ class AddressEditorTest {
                     contexts = listOf("home", "delivery"),
                     pref = 1,
                     coordinates = "geo:1,2",
-                    components = listOf(AddressComponent(kind = "name", value = "1 Elm St")),
-                ),
-            ),
+                    components = listOf(AddressComponent(kind = "name", value = "1 Elm St"))
+                )
+            )
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -95,11 +95,11 @@ class AddressEditorTest {
                             id = "addr-1",
                             components = listOf(
                                 AddressComponent(kind = "name", value = "1 Elm St"),
-                                AddressComponent(kind = "postOfficeBox", value = "PO 42"),
-                            ),
-                        ),
+                                AddressComponent(kind = "postOfficeBox", value = "PO 42")
+                            )
+                        )
                     ),
-                    onChange = {},
+                    onChange = {}
                 )
             }
         }
@@ -112,7 +112,7 @@ class AddressEditorTest {
         initial: List<Address>,
         geocode: AddressGeocodeState = AddressGeocodeState(canGeocode = true),
         onFind: ((String) -> Unit)? = {},
-        onFound: (String) -> Unit = {},
+        onFound: (String) -> Unit = {}
     ): () -> List<Address> {
         var addresses by mutableStateOf(initial)
         composeTestRule.setContent {
@@ -121,7 +121,12 @@ class AddressEditorTest {
                     addresses = addresses,
                     onChange = { addresses = it },
                     geocode = geocode,
-                    onFindCoordinates = onFind?.let { f -> { id: String -> f(id); onFound(id) } },
+                    onFindCoordinates = onFind?.let { f ->
+                        { id: String ->
+                            f(id)
+                            onFound(id)
+                        }
+                    }
                 )
             }
         }
@@ -220,22 +225,35 @@ class AddressEditorTest {
         setEditor(listOf(Address(id = "a1", sensitivity = sensitivity)), onFound = { found += it })
 
         composeTestRule.onNodeWithText("Find coordinates").assertIsNotEnabled()
-        composeTestRule.onNodeWithText("never sent to the geocoder", substring = true).assertExists()
+        composeTestRule.onNodeWithText(
+            "never sent to the geocoder",
+            substring = true
+        ).assertExists()
         assertTrue(found.isEmpty())
         // Manual entry still works for a sensitive address.
         composeTestRule.onNodeWithText(coordinatesLabel).assertIsEnabled()
     }
 
     @Test
-    fun `find coordinates is disabled with a reason for a private address`() = assertSensitiveBlocked("private")
+    fun `find coordinates is disabled with a reason for a private address`() =
+        assertSensitiveBlocked(
+            "private"
+        )
 
     @Test
-    fun `find coordinates is disabled with a reason for a secret address`() = assertSensitiveBlocked("secret")
+    fun `find coordinates is disabled with a reason for a secret address`() =
+        assertSensitiveBlocked(
+            "secret"
+        )
 
     @Test
     fun `find coordinates works for a new unsaved row and reports its positional key`() {
         val found = mutableListOf<String>()
-        setEditor(listOf(Address()), geocode = AddressGeocodeState(canGeocode = true), onFound = { found += it })
+        setEditor(
+            listOf(Address()),
+            geocode = AddressGeocodeState(canGeocode = true),
+            onFound = { found += it }
+        )
 
         composeTestRule.onNodeWithText("Find coordinates").assertIsEnabled().performClick()
 
@@ -255,10 +273,13 @@ class AddressEditorTest {
         setEditor(
             listOf(Address(id = "a1")),
             geocode = AddressGeocodeState(canGeocode = true, localProfile = true),
-            onFound = { found += it },
+            onFound = { found += it }
         )
         composeTestRule.onNodeWithText("Find coordinates").assertIsNotEnabled()
-        composeTestRule.onNodeWithText("Not available in local profiles", substring = true).assertExists()
+        composeTestRule.onNodeWithText(
+            "Not available in local profiles",
+            substring = true
+        ).assertExists()
         assertTrue(found.isEmpty())
         // Manual entry still works.
         composeTestRule.onNodeWithText(coordinatesLabel).assertIsEnabled()
@@ -268,7 +289,7 @@ class AddressEditorTest {
     fun `a new row's in-flight state and error are keyed by its positional key`() {
         setEditor(
             listOf(Address()),
-            geocode = AddressGeocodeState(canGeocode = true, inFlight = setOf("row-0")),
+            geocode = AddressGeocodeState(canGeocode = true, inFlight = setOf("row-0"))
         )
         composeTestRule.onNodeWithText("Looking up coordinates…").assertIsNotEnabled()
     }
@@ -337,7 +358,10 @@ class AddressEditorTest {
         composeTestRule.onNodeWithText("Normal").performClick()
         composeTestRule.onNodeWithText("Private").performClick()
         composeTestRule.onNodeWithText("Find coordinates").assertIsNotEnabled()
-        composeTestRule.onNodeWithText("never sent to the geocoder", substring = true).assertExists()
+        composeTestRule.onNodeWithText(
+            "never sent to the geocoder",
+            substring = true
+        ).assertExists()
 
         composeTestRule.onNodeWithText("Private").performClick()
         composeTestRule.onNodeWithText("Normal").performClick()
@@ -361,7 +385,7 @@ class AddressEditorTest {
     fun `an in-flight lookup disables the button and says so`() {
         setEditor(
             listOf(Address(id = "a1")),
-            geocode = AddressGeocodeState(canGeocode = true, inFlight = setOf("a1")),
+            geocode = AddressGeocodeState(canGeocode = true, inFlight = setOf("a1"))
         )
 
         composeTestRule.onNodeWithText("Looking up coordinates…").assertIsNotEnabled()
@@ -371,7 +395,10 @@ class AddressEditorTest {
     fun `a failed lookup shows its error under the row`() {
         setEditor(
             listOf(Address(id = "a1")),
-            geocode = AddressGeocodeState(canGeocode = true, errors = mapOf("a1" to "geocoding is not enabled on this server")),
+            geocode = AddressGeocodeState(
+                canGeocode = true,
+                errors = mapOf("a1" to "geocoding is not enabled on this server")
+            )
         )
 
         composeTestRule.onNodeWithText("geocoding is not enabled on this server").assertExists()
@@ -380,7 +407,7 @@ class AddressEditorTest {
     @Test
     fun `editing the street keeps coordinates and sensitivity`() {
         val current = setEditor(
-            listOf(Address(id = "a", sensitivity = "secret", coordinates = "geo:1,2")),
+            listOf(Address(id = "a", sensitivity = "secret", coordinates = "geo:1,2"))
         )
 
         composeTestRule.onNodeWithText("City").performTextInput("Metropolis")

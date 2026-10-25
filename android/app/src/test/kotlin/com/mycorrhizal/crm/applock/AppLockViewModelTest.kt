@@ -30,12 +30,12 @@ class AppLockViewModelTest {
     private class Harness(
         val viewModel: AppLockViewModel,
         val controller: AppLockController,
-        val authRepository: AuthRepository,
+        val authRepository: AuthRepository
     )
 
     private fun harness(
         session: SessionState = SessionState(isLoggedIn = true, username = "alice"),
-        canAuthenticate: Boolean = true,
+        canAuthenticate: Boolean = true
     ): Harness {
         val controller = mockk<AppLockController>(relaxed = true)
         val authRepository = mockk<AuthRepository>(relaxed = true)
@@ -51,7 +51,9 @@ class AppLockViewModelTest {
     }
 
     @Test
-    fun `the session username and device capability are surfaced`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `the session username and device capability are surfaced`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val h = harness(session = SessionState(isLoggedIn = true, username = "alice"))
         advanceUntilIdle()
 
@@ -60,7 +62,9 @@ class AppLockViewModelTest {
     }
 
     @Test
-    fun `an unsupported device reports it cannot authenticate`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `an unsupported device reports it cannot authenticate`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val h = harness(canAuthenticate = false)
         advanceUntilIdle()
 
@@ -69,7 +73,9 @@ class AppLockViewModelTest {
 
     // Verify #1: a successful local check clears the gate.
     @Test
-    fun `a successful local auth unlocks the session`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a successful local auth unlocks the session`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val h = harness()
         advanceUntilIdle()
 
@@ -81,7 +87,9 @@ class AppLockViewModelTest {
 
     // Verify #1: cancelling the prompt leaves the app locked (no unlock, no error).
     @Test
-    fun `a cancelled prompt leaves the app locked without an error`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a cancelled prompt leaves the app locked without an error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val h = harness()
         advanceUntilIdle()
 
@@ -90,11 +98,16 @@ class AppLockViewModelTest {
 
         verify(exactly = 0) { h.controller.onUserAuthenticated() }
         assertNull(h.viewModel.uiState.value.errorRes)
-        assertFalse("a cancel must re-enable the retry button", h.viewModel.uiState.value.isUnlocking)
+        assertFalse(
+            "a cancel must re-enable the retry button",
+            h.viewModel.uiState.value.isUnlocking
+        )
     }
 
     @Test
-    fun `an OS error is surfaced on the lock screen`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `an OS error is surfaced on the lock screen`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val h = harness()
         advanceUntilIdle()
 
@@ -107,7 +120,9 @@ class AppLockViewModelTest {
     }
 
     @Test
-    fun `an unavailable device shows the unsupported message`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `an unavailable device shows the unsupported message`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val h = harness(canAuthenticate = false)
         advanceUntilIdle()
 
@@ -117,7 +132,9 @@ class AppLockViewModelTest {
     }
 
     @Test
-    fun `onAuthStarted marks the unlock in progress and clears any prior error`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `onAuthStarted marks the unlock in progress and clears any prior error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val h = harness()
         advanceUntilIdle()
         h.viewModel.onAuthResult(AppLockAuthOutcome.Error)

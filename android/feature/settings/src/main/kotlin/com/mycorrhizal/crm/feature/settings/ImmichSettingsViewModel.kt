@@ -6,12 +6,12 @@ import com.mycorrhizal.crm.domain.repository.ImmichRepository
 import com.mycorrhizal.crm.model.network.ImmichConfigInput
 import com.mycorrhizal.crm.network.ApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class ImmichSettingsUiState(
     val isLoading: Boolean = true,
@@ -28,7 +28,7 @@ data class ImmichSettingsUiState(
     /** Only meaningful (and only shown) once [hasApiKey] is true — mirrors web's `ImmichSettings.tsx`. */
     val syncEnabled: Boolean = true,
     val lastSyncStatus: String? = null,
-    val lastSyncError: String? = null,
+    val lastSyncError: String? = null
 ) {
     /** Issue #1775: the token is required on first connect (there is no stored key to keep). */
     val tokenRequired: Boolean get() = !hasApiKey
@@ -44,9 +44,8 @@ data class ImmichTestOutcome(val ok: Boolean, val message: String?)
  * confirm-then-remove) rather than inventing a new settings-form pattern.
  */
 @HiltViewModel
-class ImmichSettingsViewModel @Inject constructor(
-    private val repository: ImmichRepository,
-) : ViewModel() {
+class ImmichSettingsViewModel @Inject constructor(private val repository: ImmichRepository) :
+    ViewModel() {
 
     private val _uiState = MutableStateFlow(ImmichSettingsUiState())
     val uiState: StateFlow<ImmichSettingsUiState> = _uiState.asStateFlow()
@@ -67,7 +66,7 @@ class ImmichSettingsViewModel @Inject constructor(
                             hasApiKey = config.hasApiKey,
                             syncEnabled = config.syncEnabled,
                             lastSyncStatus = config.lastSyncStatus,
-                            lastSyncError = config.lastSyncError,
+                            lastSyncError = config.lastSyncError
                         )
                     }
                 }
@@ -77,9 +76,24 @@ class ImmichSettingsViewModel @Inject constructor(
         }
     }
 
-    fun onBaseUrlChange(value: String) = _uiState.update { it.copy(baseUrl = value, testResult = null) }
-    fun onApiKeyChange(value: String) = _uiState.update { it.copy(apiKey = value, testResult = null) }
-    fun onSyncEnabledChange(value: Boolean) = _uiState.update { it.copy(syncEnabled = value, testResult = null) }
+    fun onBaseUrlChange(value: String) = _uiState.update {
+        it.copy(
+            baseUrl = value,
+            testResult = null
+        )
+    }
+    fun onApiKeyChange(value: String) = _uiState.update {
+        it.copy(
+            apiKey = value,
+            testResult = null
+        )
+    }
+    fun onSyncEnabledChange(value: Boolean) = _uiState.update {
+        it.copy(
+            syncEnabled = value,
+            testResult = null
+        )
+    }
 
     /** Save the current base URL/API key/sync toggle. An empty API key keeps the stored one. */
     fun save() {
@@ -88,7 +102,11 @@ class ImmichSettingsViewModel @Inject constructor(
             _uiState.update { it.copy(isSaving = true, saveError = null) }
             val s = _uiState.value
             repository.saveConfig(
-                ImmichConfigInput(baseUrl = s.baseUrl.trim(), apiKey = s.apiKey.trim(), syncEnabled = s.syncEnabled),
+                ImmichConfigInput(
+                    baseUrl = s.baseUrl.trim(),
+                    apiKey = s.apiKey.trim(),
+                    syncEnabled = s.syncEnabled
+                )
             )
                 .onSuccess { config ->
                     _uiState.update {
@@ -101,7 +119,7 @@ class ImmichSettingsViewModel @Inject constructor(
                             lastSyncError = config.lastSyncError,
                             // The key is write-only — clear what the user typed so it
                             // never lingers in state (mirrors web and NotificationChannels).
-                            apiKey = "",
+                            apiKey = ""
                         )
                     }
                 }
@@ -122,13 +140,20 @@ class ImmichSettingsViewModel @Inject constructor(
             _uiState.update { it.copy(isTesting = true, saveError = null, testResult = null) }
             val s = _uiState.value
             val saved = repository.saveConfig(
-                ImmichConfigInput(baseUrl = s.baseUrl.trim(), apiKey = s.apiKey.trim(), syncEnabled = s.syncEnabled),
+                ImmichConfigInput(
+                    baseUrl = s.baseUrl.trim(),
+                    apiKey = s.apiKey.trim(),
+                    syncEnabled = s.syncEnabled
+                )
             )
             if (saved.isFailure) {
                 _uiState.update {
                     it.copy(
                         isTesting = false,
-                        testResult = ImmichTestOutcome(ok = false, message = saved.exceptionOrNull().displayMessage()),
+                        testResult = ImmichTestOutcome(
+                            ok = false,
+                            message = saved.exceptionOrNull().displayMessage()
+                        )
                     )
                 }
                 return@launch
@@ -139,18 +164,24 @@ class ImmichSettingsViewModel @Inject constructor(
                     baseUrl = config.baseUrl.orEmpty(),
                     hasApiKey = config.hasApiKey,
                     syncEnabled = config.syncEnabled,
-                    apiKey = "",
+                    apiKey = ""
                 )
             }
             repository.testConnection()
                 .onSuccess { result ->
                     _uiState.update {
-                        it.copy(isTesting = false, testResult = ImmichTestOutcome(ok = result.ok, message = result.message))
+                        it.copy(
+                            isTesting = false,
+                            testResult = ImmichTestOutcome(ok = result.ok, message = result.message)
+                        )
                     }
                 }
                 .onFailure { e ->
                     _uiState.update {
-                        it.copy(isTesting = false, testResult = ImmichTestOutcome(ok = false, message = e.displayMessage()))
+                        it.copy(
+                            isTesting = false,
+                            testResult = ImmichTestOutcome(ok = false, message = e.displayMessage())
+                        )
                     }
                 }
         }

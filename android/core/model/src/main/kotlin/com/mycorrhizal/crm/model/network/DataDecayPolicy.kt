@@ -12,7 +12,7 @@ import com.squareup.moshi.JsonClass
 @JsonClass(generateAdapter = true)
 data class DataDecayHealth(
     @Json(name = "next_due") val nextDue: String = "",
-    @Json(name = "overdue_by") val overdueBy: Int = 0,
+    @Json(name = "overdue_by") val overdueBy: Int = 0
 ) {
     /** Mirrors web's `isOverdue = health.overdue_by > 0` — due today is NOT overdue. */
     val isOverdue: Boolean
@@ -34,5 +34,5 @@ data class DataDecayPolicy(
     @Json(name = "interval_days") val intervalDays: Int = 0,
     @Json(name = "last_verified_at") val lastVerifiedAt: String? = null,
     val active: Boolean = true,
-    val health: DataDecayHealth? = null,
+    val health: DataDecayHealth? = null
 )

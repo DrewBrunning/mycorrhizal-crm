@@ -13,10 +13,10 @@ class PushMessageParserTest {
                 "type" to "reminder",
                 "reminder_id" to "42",
                 "due_at" to "2026-08-18T06:00:00Z",
-                "deep_link" to "mycorrhizal://contacts/7",
+                "deep_link" to "mycorrhizal://contacts/7"
             ),
             title = "Reminder",
-            body = "Jane: Call about dinner",
+            body = "Jane: Call about dinner"
         )
 
         requireNotNull(push)
@@ -38,7 +38,7 @@ class PushMessageParserTest {
         val push = PushMessageParser.parse(
             data = mapOf("type" to "reminder"),
             title = "Test",
-            body = "Hello",
+            body = "Hello"
         )
 
         requireNotNull(push)
@@ -49,9 +49,12 @@ class PushMessageParserTest {
     @Test
     fun `an explicit channel is honored over the type default`() {
         val push = PushMessageParser.parse(
-            data = mapOf("type" to "reminder", "channel" to MycorrhizalNotificationChannels.CADENCE),
+            data = mapOf(
+                "type" to "reminder",
+                "channel" to MycorrhizalNotificationChannels.CADENCE
+            ),
             title = "T",
-            body = "B",
+            body = "B"
         )
 
         requireNotNull(push)
@@ -63,7 +66,7 @@ class PushMessageParserTest {
         val push = PushMessageParser.parse(
             data = mapOf("type" to "reminder", "deep_link" to "  "),
             title = "T",
-            body = "B",
+            body = "B"
         )
 
         requireNotNull(push)

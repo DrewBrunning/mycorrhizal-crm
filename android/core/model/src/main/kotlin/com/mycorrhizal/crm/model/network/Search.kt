@@ -17,7 +17,7 @@ data class SearchResult(
     /** Canonical relation token when the whole query is a registry synonym ("brother" -> sibling_of). */
     @Json(name = "resolved_relation") val resolvedRelation: String? = null,
     val notes: List<SearchNoteHit> = emptyList(),
-    val activities: List<SearchActivityHit> = emptyList(),
+    val activities: List<SearchActivityHit> = emptyList()
 )
 
 /** One matched note (backend embeds `models.Note`, gorm.Model identity keys serialize PascalCase). */
@@ -28,7 +28,7 @@ data class SearchNoteHit(
     val date: String? = null,
     @Json(name = "contact_id") val contactId: Int? = null,
     @Json(name = "contact_name") val contactName: String? = null,
-    val snippet: String? = null,
+    val snippet: String? = null
 )
 
 /** One matched activity (backend embeds `models.Activity`). */
@@ -41,5 +41,5 @@ data class SearchActivityHit(
     val date: String? = null,
     val type: String? = null,
     val contacts: List<ContactFlat>? = null,
-    val snippet: String? = null,
+    val snippet: String? = null
 )

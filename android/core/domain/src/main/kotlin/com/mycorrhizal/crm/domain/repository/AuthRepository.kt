@@ -31,7 +31,7 @@ data class SessionState(
      * resolve this via `ContactFieldKey.resolveEnabledFields` rather than
      * reading it raw.
      */
-    val enabledContactFields: List<String>? = null,
+    val enabledContactFields: List<String>? = null
 )
 
 /**
@@ -49,7 +49,7 @@ sealed interface LoginOutcome {
      */
     data class TwoFactorRequired(
         /** Issue #1293: enrolled second-factor tokens from the login response; null from an older server. */
-        val methods: List<String>? = null,
+        val methods: List<String>? = null
     ) : LoginOutcome
 }
 

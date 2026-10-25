@@ -77,7 +77,13 @@ class SmsHistoryReaderTest {
         val cursor = MatrixCursor(projection)
         val sortOrder = slot<String>()
         every {
-            contentResolver.query(Telephony.Sms.Sent.CONTENT_URI, projection, any(), any(), capture(sortOrder))
+            contentResolver.query(
+                Telephony.Sms.Sent.CONTENT_URI,
+                projection,
+                any(),
+                any(),
+                capture(sortOrder)
+            )
         } returns cursor
 
         reader.readSentSince(sinceMillis = 0L, limit = 50)

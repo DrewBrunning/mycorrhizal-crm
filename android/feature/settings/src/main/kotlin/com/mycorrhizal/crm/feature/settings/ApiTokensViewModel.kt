@@ -33,7 +33,7 @@ data class ApiTokensUiState(
     /** A transient action error (load/create/revoke/revoke-all/rotate), shown and then cleared. */
     val error: String? = null,
     /** How many tokens the last revoke-all call actually revoked, shown and then cleared. */
-    val revokedAllCount: Int? = null,
+    val revokedAllCount: Int? = null
 ) {
     val activeCount: Int get() = tokens.count { it.isActive() }
 }
@@ -41,7 +41,11 @@ data class ApiTokensUiState(
 /** A token is usable when it hasn't been revoked and hasn't passed its expiry. */
 fun ApiToken.isExpired(): Boolean {
     val expiresAt = expiresAt ?: return false
-    return runCatching { java.time.Instant.parse(expiresAt) <= java.time.Instant.now() }.getOrDefault(false)
+    return runCatching {
+        java.time.Instant.parse(
+            expiresAt
+        ) <= java.time.Instant.now()
+    }.getOrDefault(false)
 }
 
 fun ApiToken.isActive(): Boolean = revokedAt == null && !isExpired()
@@ -59,9 +63,8 @@ fun ApiToken.isActive(): Boolean = revokedAt == null && !isExpired()
  * makes (`await fetchTokens()` after every mutation).
  */
 @HiltViewModel
-class ApiTokensViewModel @Inject constructor(
-    private val repository: ApiTokenRepository,
-) : ViewModel() {
+class ApiTokensViewModel @Inject constructor(private val repository: ApiTokenRepository) :
+    ViewModel() {
 
     private val _uiState = MutableStateFlow(ApiTokensUiState())
     val uiState: StateFlow<ApiTokensUiState> = _uiState.asStateFlow()
@@ -76,26 +79,46 @@ class ApiTokensViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             repository.list()
                 .onSuccess { list -> _uiState.update { it.copy(isLoading = false, tokens = list) } }
-                .onFailure { e -> _uiState.update { it.copy(isLoading = false, error = e.displayMessage()) } }
+                .onFailure { e ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = e.displayMessage()
+                        )
+                    }
+                }
         }
     }
 
     fun create(
         name: String,
         expiresInDays: Int = DEFAULT_API_TOKEN_EXPIRY_DAYS,
-        scope: String = DEFAULT_API_TOKEN_SCOPE,
+        scope: String = DEFAULT_API_TOKEN_SCOPE
     ) {
         if (_uiState.value.isSaving || name.isBlank()) return
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, error = null) }
-            repository.create(ApiTokenInput(name = name.trim(), expiresInDays = expiresInDays, scope = scope))
+            repository.create(
+                ApiTokenInput(name = name.trim(), expiresInDays = expiresInDays, scope = scope)
+            )
                 .onSuccess { created ->
                     _uiState.update {
-                        it.copy(isSaving = false, revealedToken = created, revealedIsRotation = false)
+                        it.copy(
+                            isSaving = false,
+                            revealedToken = created,
+                            revealedIsRotation = false
+                        )
                     }
                     load()
                 }
-                .onFailure { e -> _uiState.update { it.copy(isSaving = false, error = e.displayMessage()) } }
+                .onFailure { e ->
+                    _uiState.update {
+                        it.copy(
+                            isSaving = false,
+                            error = e.displayMessage()
+                        )
+                    }
+                }
         }
     }
 
@@ -107,7 +130,14 @@ class ApiTokensViewModel @Inject constructor(
                     _uiState.update { it.copy(revokingId = null) }
                     load()
                 }
-                .onFailure { e -> _uiState.update { it.copy(revokingId = null, error = e.displayMessage()) } }
+                .onFailure { e ->
+                    _uiState.update {
+                        it.copy(
+                            revokingId = null,
+                            error = e.displayMessage()
+                        )
+                    }
+                }
         }
     }
 
@@ -117,10 +147,22 @@ class ApiTokensViewModel @Inject constructor(
             _uiState.update { it.copy(isRevokingAll = true, error = null, revokedAllCount = null) }
             repository.revokeAll()
                 .onSuccess { result ->
-                    _uiState.update { it.copy(isRevokingAll = false, revokedAllCount = result.revoked) }
+                    _uiState.update {
+                        it.copy(
+                            isRevokingAll = false,
+                            revokedAllCount = result.revoked
+                        )
+                    }
                     load()
                 }
-                .onFailure { e -> _uiState.update { it.copy(isRevokingAll = false, error = e.displayMessage()) } }
+                .onFailure { e ->
+                    _uiState.update {
+                        it.copy(
+                            isRevokingAll = false,
+                            error = e.displayMessage()
+                        )
+                    }
+                }
         }
     }
 
@@ -130,11 +172,22 @@ class ApiTokensViewModel @Inject constructor(
             repository.rotate(token.id)
                 .onSuccess { result ->
                     _uiState.update {
-                        it.copy(rotatingId = null, revealedToken = result, revealedIsRotation = true)
+                        it.copy(
+                            rotatingId = null,
+                            revealedToken = result,
+                            revealedIsRotation = true
+                        )
                     }
                     load()
                 }
-                .onFailure { e -> _uiState.update { it.copy(rotatingId = null, error = e.displayMessage()) } }
+                .onFailure { e ->
+                    _uiState.update {
+                        it.copy(
+                            rotatingId = null,
+                            error = e.displayMessage()
+                        )
+                    }
+                }
         }
     }
 

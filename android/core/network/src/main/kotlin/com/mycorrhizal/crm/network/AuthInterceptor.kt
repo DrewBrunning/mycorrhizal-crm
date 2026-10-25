@@ -22,7 +22,7 @@ fun interface TokenProvider {
  */
 class AuthInterceptor(
     private val tokenProvider: TokenProvider,
-    private val baseUrlProvider: BaseUrlProvider,
+    private val baseUrlProvider: BaseUrlProvider
 ) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val token = tokenProvider.bearerToken()
@@ -36,7 +36,7 @@ class AuthInterceptor(
             return chain.proceed(request)
         }
         return chain.proceed(
-            request.newBuilder().header("Authorization", "Bearer $token").build(),
+            request.newBuilder().header("Authorization", "Bearer $token").build()
         )
     }
 }

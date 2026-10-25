@@ -26,7 +26,11 @@ internal object AboutDetails {
         add("build: ${buildLabel(info)}")
         info.commit?.takeIf { it.isNotBlank() }?.let { add("commit: $it") }
         info.buildDate?.takeIf { it.isNotBlank() }?.let { add("built: $it") }
-        server?.version?.takeIf { it.isNotBlank() }?.let { add("server: ${versionWithCommit(it, server.commit)}") }
+        server?.version?.takeIf { it.isNotBlank() }?.let {
+            add(
+                "server: ${versionWithCommit(it, server.commit)}"
+            )
+        }
         server?.buildDate?.takeIf { it.isNotBlank() }?.let { add("server built: $it") }
     }.joinToString("\n")
 }

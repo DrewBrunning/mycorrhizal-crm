@@ -11,60 +11,54 @@ import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.MapRepository
 import com.mycorrhizal.crm.domain.repository.TagRepository
+import com.mycorrhizal.crm.model.network.Address
+import com.mycorrhizal.crm.model.network.Anniversary
+import com.mycorrhizal.crm.model.network.AnniversaryDate
 import com.mycorrhizal.crm.model.network.CRMEnvelope
 import com.mycorrhizal.crm.model.network.Card
+import com.mycorrhizal.crm.model.network.CardNote
 import com.mycorrhizal.crm.model.network.Circle
+import com.mycorrhizal.crm.model.network.ContactFieldKey
 import com.mycorrhizal.crm.model.network.ContactRecordInput
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
+import com.mycorrhizal.crm.model.network.DEFAULT_ENABLED_CONTACT_FIELDS
 import com.mycorrhizal.crm.model.network.Email
 import com.mycorrhizal.crm.model.network.EntryPeriod
+import com.mycorrhizal.crm.model.network.GeocodeDraftRequest
+import com.mycorrhizal.crm.model.network.GrammaticalGender
+import com.mycorrhizal.crm.model.network.LanguagePref
 import com.mycorrhizal.crm.model.network.Name
 import com.mycorrhizal.crm.model.network.NameComponent
 import com.mycorrhizal.crm.model.network.Nickname
+import com.mycorrhizal.crm.model.network.OnlineService
+import com.mycorrhizal.crm.model.network.OrgUnit
+import com.mycorrhizal.crm.model.network.Organization
+import com.mycorrhizal.crm.model.network.PersonalInfo
 import com.mycorrhizal.crm.model.network.Phone
-import com.mycorrhizal.crm.model.network.Address
-import com.mycorrhizal.crm.model.network.GeocodeDraftRequest
+import com.mycorrhizal.crm.model.network.Pronouns
+import com.mycorrhizal.crm.model.network.Resource
+import com.mycorrhizal.crm.model.network.SpeakToAs
+import com.mycorrhizal.crm.model.network.Tag
+import com.mycorrhizal.crm.model.network.Title
 import com.mycorrhizal.crm.model.network.addressRowKey
 import com.mycorrhizal.crm.model.network.isGeocodable
-import com.mycorrhizal.crm.model.network.OnlineService
-import com.mycorrhizal.crm.model.network.Organization
-import com.mycorrhizal.crm.model.network.OrgUnit
-import com.mycorrhizal.crm.model.network.PersonalInfo
-import com.mycorrhizal.crm.model.network.Resource
-import com.mycorrhizal.crm.model.network.Title
-import com.mycorrhizal.crm.model.network.Anniversary
-import com.mycorrhizal.crm.model.network.AnniversaryDate
-import com.mycorrhizal.crm.model.network.ContactFieldKey
-import com.mycorrhizal.crm.model.network.DEFAULT_ENABLED_CONTACT_FIELDS
-import com.mycorrhizal.crm.model.network.GrammaticalGender
-import com.mycorrhizal.crm.model.network.LanguagePref
-import com.mycorrhizal.crm.model.network.Pronouns
 import com.mycorrhizal.crm.model.network.resolveEnabledFields
-import com.mycorrhizal.crm.model.network.SpeakToAs
 import com.mycorrhizal.crm.model.network.upsertEntryPeriod
 import com.mycorrhizal.crm.model.network.yearTemporalRange
-import com.mycorrhizal.crm.model.network.CardNote
-import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.model.util.formatForEdit
 import com.mycorrhizal.crm.model.util.parsePartialDateForEdit
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
-import com.mycorrhizal.crm.ui.components.EmailSpec
-import com.mycorrhizal.crm.ui.components.LinkSpec
-import com.mycorrhizal.crm.ui.components.OnlineServiceSpec
-import com.mycorrhizal.crm.ui.components.PersonalInfoSpec
-import com.mycorrhizal.crm.ui.components.PhoneSpec
-import com.mycorrhizal.crm.ui.components.TitleSpec
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.util.Locale
+import java.util.UUID
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.Locale
-import java.util.UUID
-import javax.inject.Inject
 
 /**
  * Editable form state for a contact's core Card fields. Field text lives
@@ -171,7 +165,7 @@ data class ContactFormState(
     /** ADR 0008: the save was rejected with 412 — the contact changed elsewhere since it loaded. */
     val conflict: Boolean = false,
     /** Issue #1751: the editable state the form opened with, for [isDirty]. */
-    val baseline: ContactFormState? = null,
+    val baseline: ContactFormState? = null
 ) {
     val isEdit: Boolean get() = contactId != null
 
@@ -192,7 +186,7 @@ data class ContactFormState(
         allTags = emptyList(),
         enabledFields = emptySet(),
         localProfile = false,
-        baseline = null,
+        baseline = null
     )
 
     /** Snapshot for the ViewModel to store as [baseline] after the form is fully loaded. */
@@ -226,10 +220,15 @@ data class ContactFormState(
             kind = cardKind.ifBlank { null },
             name = mergeName(baseCard.name),
             nicknames = if (nickname.isNotBlank()) {
-                (baseCard.nicknames.orEmpty().let { existing ->
-                    if (existing.isEmpty()) listOf(Nickname(name = nickname.trim()))
-                    else listOf(existing.first().copy(name = nickname.trim())) + existing.drop(1)
-                })
+                (
+                    baseCard.nicknames.orEmpty().let { existing ->
+                        if (existing.isEmpty()) {
+                            listOf(Nickname(name = nickname.trim()))
+                        } else {
+                            listOf(existing.first().copy(name = nickname.trim())) + existing.drop(1)
+                        }
+                    }
+                    )
             } else {
                 baseCard.nicknames
             },
@@ -248,14 +247,16 @@ data class ContactFormState(
             addresses = addresses.mapNotNull { address ->
                 // Drop a row the user emptied (no components and no LABEL to preserve);
                 // trim every surviving component's value.
-                if (address.components.orEmpty().none { it.value?.isNotBlank() == true } && address.full.isNullOrBlank()) {
+                if (address.components.orEmpty().none { it.value?.isNotBlank() == true } &&
+                    address.full.isNullOrBlank()
+                ) {
                     null
                 } else {
                     address.copy(
                         components = address.components?.map { c ->
                             val value = c.value
                             if (value.isNullOrBlank()) c else c.copy(value = value.trim())
-                        },
+                        }
                     )
                 }
             }.ifEmpty { null },
@@ -281,11 +282,13 @@ data class ContactFormState(
                 val language = pref.language?.trim()
                 if (language.isNullOrBlank()) null else pref.copy(language = language)
             }.ifEmpty { null },
-            keywords = keywords.map { it.trim() }.filter { it.isNotBlank() }.distinct().ifEmpty { null },
+            keywords = keywords.map {
+                it.trim()
+            }.filter { it.isNotBlank() }.distinct().ifEmpty { null },
             notes = cardNotes.mapNotNull { note ->
                 val text = note.note?.trim()
                 if (text.isNullOrBlank()) null else note.copy(note = text)
-            }.ifEmpty { null },
+            }.ifEmpty { null }
         )
         // ADR 0025 (#1233): mint an element ID for the organization / job-title
         // entry a period is being attached to, then fold the edited org/title
@@ -310,12 +313,12 @@ data class ContactFormState(
             periods = mergedPeriods.ifEmpty { null },
             // Issue #1734: send what was read. `ambient` (the state) is null until loaded or
             // toggled, so fall back to the base record's value rather than dropping the key.
-            ambient = ambient ?: baseCrm.ambient,
+            ambient = ambient ?: baseCrm.ambient
         )
         return ContactRecordInput(
             gender = base?.gender,
             card = finalizedCard,
-            crm = crm,
+            crm = crm
         )
     }
 
@@ -361,7 +364,7 @@ data class ContactFormState(
                 result,
                 "organization",
                 orgId,
-                yearTemporalRange(organizationPeriodStart, organizationPeriodEnd),
+                yearTemporalRange(organizationPeriodStart, organizationPeriodEnd)
             )
         }
         val jobTitle = card.titles?.firstOrNull { it.kind == "title" } ?: card.titles?.firstOrNull()
@@ -370,13 +373,13 @@ data class ContactFormState(
                 result,
                 "title",
                 titleId,
-                yearTemporalRange(jobTitlePeriodStart, jobTitlePeriodEnd),
+                yearTemporalRange(jobTitlePeriodStart, jobTitlePeriodEnd)
             )
         }
         val entryIds = mapOf(
             "address" to card.addresses.orEmpty().mapNotNull { it.id }.toSet(),
             "organization" to card.organizations.orEmpty().mapNotNull { it.id }.toSet(),
-            "title" to card.titles.orEmpty().mapNotNull { it.id }.toSet(),
+            "title" to card.titles.orEmpty().mapNotNull { it.id }.toSet()
         )
         return result.filter { period ->
             val ids = entryIds[period.kind] ?: return@filter false
@@ -404,7 +407,11 @@ data class ContactFormState(
             addAll(kept)
             if (prefix.isNotBlank()) add(NameComponent(kind = "title", value = prefix.trim()))
             if (givenName.isNotBlank()) add(NameComponent(kind = "given", value = givenName.trim()))
-            if (middleName.isNotBlank()) add(NameComponent(kind = "given2", value = middleName.trim()))
+            if (middleName.isNotBlank()) {
+                add(
+                    NameComponent(kind = "given2", value = middleName.trim())
+                )
+            }
             if (surname.isNotBlank()) add(NameComponent(kind = "surname", value = surname.trim()))
             if (suffix.isNotBlank()) add(NameComponent(kind = "generation", value = suffix.trim()))
         }
@@ -416,7 +423,7 @@ data class ContactFormState(
             isOrdered = base?.isOrdered,
             defaultSeparator = base?.defaultSeparator,
             phoneticSystem = base?.phoneticSystem,
-            phoneticScript = base?.phoneticScript,
+            phoneticScript = base?.phoneticScript
         )
     }
 
@@ -434,13 +441,16 @@ data class ContactFormState(
     private fun mergeAnniversaries(
         base: List<Anniversary>?,
         birthday: String,
-        editedOthers: List<Anniversary>,
+        editedOthers: List<Anniversary>
     ): List<Anniversary>? {
         val trimmedOthers = editedOthers.filter { it.date.hasEditableDate() }
         val birth = if (birthday.isBlank()) {
             base.orEmpty().firstOrNull { it.kind == "birth" }
         } else {
-            Anniversary(kind = "birth", date = AnniversaryDate(partial = parsePartialDateForEdit(birthday)))
+            Anniversary(
+                kind = "birth",
+                date = AnniversaryDate(partial = parsePartialDateForEdit(birthday))
+            )
         }
         return (trimmedOthers + listOfNotNull(birth)).ifEmpty { null }
     }
@@ -469,7 +479,7 @@ data class ContactFormState(
         if (trimmedPronouns.isEmpty() && trimmedGenders.isEmpty()) return null
         return (base ?: SpeakToAs()).copy(
             pronouns = trimmedPronouns.ifEmpty { null },
-            grammaticalGenders = trimmedGenders.ifEmpty { null },
+            grammaticalGenders = trimmedGenders.ifEmpty { null }
         )
     }
 
@@ -485,7 +495,7 @@ data class ContactFormState(
         val first = baseOrgs.firstOrNull()
         val edited = (first ?: Organization()).copy(
             name = organizationName.trim(),
-            units = if (department.isBlank()) null else listOf(OrgUnit(name = department.trim())),
+            units = if (department.isBlank()) null else listOf(OrgUnit(name = department.trim()))
         )
         return listOf(edited) + baseOrgs.drop(1)
     }
@@ -495,9 +505,11 @@ data class ContactFormState(
         services.mapNotNull { service ->
             val trimmed = service.copy(
                 uri = service.uri?.trim()?.ifBlank { null },
-                user = service.user?.trim()?.ifBlank { null },
+                user = service.user?.trim()?.ifBlank { null }
             )
-            if (trimmed.uri.isNullOrBlank() && trimmed.user.isNullOrBlank() && trimmed.service.isNullOrBlank()) {
+            if (trimmed.uri.isNullOrBlank() && trimmed.user.isNullOrBlank() &&
+                trimmed.service.isNullOrBlank()
+            ) {
                 null
             } else {
                 trimmed
@@ -528,7 +540,7 @@ class ContactFormViewModel @Inject constructor(
     private val mapRepository: MapRepository,
     // Issue #1287 follow-up: whether the active profile is on-device (no geocode routes).
     sessionManager: SessionManager,
-    savedStateHandle: SavedStateHandle,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val contactId: Int? = run {
@@ -563,7 +575,11 @@ class ContactFormViewModel @Inject constructor(
         }
         viewModelScope.launch {
             authRepository.observeSession().collect { session ->
-                _uiState.update { it.copy(enabledFields = resolveEnabledFields(session.enabledContactFields)) }
+                _uiState.update {
+                    it.copy(
+                        enabledFields = resolveEnabledFields(session.enabledContactFields)
+                    )
+                }
             }
         }
     }
@@ -573,13 +589,13 @@ class ContactFormViewModel @Inject constructor(
         viewModelScope.launch {
             circleRepository.list().foldApiError(
                 onSuccess = { circles -> _uiState.update { it.copy(allCircles = circles) } },
-                onError = {},
+                onError = {}
             )
         }
         viewModelScope.launch {
             tagRepository.list().foldApiError(
                 onSuccess = { tags -> _uiState.update { it.copy(allTags = tags) } },
-                onError = {},
+                onError = {}
             )
         }
     }
@@ -599,7 +615,7 @@ class ContactFormViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -618,7 +634,7 @@ class ContactFormViewModel @Inject constructor(
                         it.copy(circles = names, baseline = it.baseline?.copy(circles = names))
                     }
                 },
-                onError = {},
+                onError = {}
             )
         }
         viewModelScope.launch {
@@ -629,7 +645,7 @@ class ContactFormViewModel @Inject constructor(
                         it.copy(tags = names, baseline = it.baseline?.copy(tags = names))
                     }
                 },
-                onError = {},
+                onError = {}
             )
         }
     }
@@ -644,6 +660,7 @@ class ContactFormViewModel @Inject constructor(
     fun onCardKindChange(value: String) = _uiState.update { it.copy(cardKind = value) }
     fun onAmbientChange(value: Boolean) = _uiState.update { it.copy(ambient = value) }
     fun onLanguageChange(value: String) = _uiState.update { it.copy(language = value) }
+
     // M7: each multi-value list takes the whole edited list from MultiValueEditor. The
     // editor only ever `.copy()`s the exact object at an index (never reconstructs), so
     // object identity — and with it every unshown field — survives a middle-row delete
@@ -652,6 +669,7 @@ class ContactFormViewModel @Inject constructor(
     fun onEmailsChange(value: List<Email>) = _uiState.update { it.copy(emails = value) }
     fun onPhonesChange(value: List<Phone>) = _uiState.update { it.copy(phones = value) }
     fun onAddressesChange(value: List<Address>) = _uiState.update { it.copy(addresses = value) }
+
     /**
      * ADR 0031: one explicit geocode lookup for one address row, keyed by
      * `addressRowKey` (a new row has no id). It uses the stateless draft route, so the
@@ -666,10 +684,18 @@ class ContactFormViewModel @Inject constructor(
         val id = contactId ?: return
         val state = _uiState.value
         if (state.localProfile || rowKey in state.geocodeInFlight) return
-        val address = state.addresses.withIndex().firstOrNull { (i, a) -> addressRowKey(a, i) == rowKey }?.value ?: return
+        val address = state.addresses.withIndex().firstOrNull { (i, a) ->
+            addressRowKey(
+                a,
+                i
+            ) == rowKey
+        }?.value ?: return
         if (!address.isGeocodable) return
         _uiState.update {
-            it.copy(geocodeInFlight = it.geocodeInFlight + rowKey, geocodeErrors = it.geocodeErrors - rowKey)
+            it.copy(
+                geocodeInFlight = it.geocodeInFlight + rowKey,
+                geocodeErrors = it.geocodeErrors - rowKey
+            )
         }
         viewModelScope.launch {
             mapRepository.geocodeAddressDraft(id, address.toGeocodeDraft()).foldApiError(
@@ -677,9 +703,17 @@ class ContactFormViewModel @Inject constructor(
                     _uiState.update { s ->
                         s.copy(
                             addresses = s.addresses.mapIndexed { i, a ->
-                                if (addressRowKey(a, i) == rowKey) a.copy(coordinates = result.coordinates) else a
+                                if (addressRowKey(
+                                        a,
+                                        i
+                                    ) == rowKey
+                                ) {
+                                    a.copy(coordinates = result.coordinates)
+                                } else {
+                                    a
+                                }
                             },
-                            geocodeInFlight = s.geocodeInFlight - rowKey,
+                            geocodeInFlight = s.geocodeInFlight - rowKey
                         )
                     }
                 },
@@ -687,45 +721,109 @@ class ContactFormViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             geocodeInFlight = it.geocodeInFlight - rowKey,
-                            geocodeErrors = it.geocodeErrors + (rowKey to error.displayMessage),
+                            geocodeErrors = it.geocodeErrors + (rowKey to error.displayMessage)
                         )
                     }
-                },
+                }
             )
         }
     }
 
     fun onTitlesChange(value: List<Title>) = _uiState.update { it.copy(titles = value) }
-    fun onImppChange(value: List<OnlineService>) = _uiState.update { it.copy(imppAddresses = value) }
-    fun onSocialChange(value: List<OnlineService>) = _uiState.update { it.copy(socialProfiles = value) }
-    fun onOtherServicesChange(value: List<OnlineService>) = _uiState.update { it.copy(otherOnlineServices = value) }
+    fun onImppChange(value: List<OnlineService>) = _uiState.update {
+        it.copy(
+            imppAddresses = value
+        )
+    }
+    fun onSocialChange(value: List<OnlineService>) = _uiState.update {
+        it.copy(
+            socialProfiles = value
+        )
+    }
+    fun onOtherServicesChange(value: List<OnlineService>) = _uiState.update {
+        it.copy(
+            otherOnlineServices = value
+        )
+    }
     fun onLinksChange(value: List<Resource>) = _uiState.update { it.copy(links = value) }
-    fun onPersonalInfoChange(value: List<PersonalInfo>) = _uiState.update { it.copy(personalInfo = value) }
-    fun onOrganizationNameChange(value: String) = _uiState.update { it.copy(organizationName = value) }
+    fun onPersonalInfoChange(value: List<PersonalInfo>) = _uiState.update {
+        it.copy(
+            personalInfo = value
+        )
+    }
+    fun onOrganizationNameChange(value: String) = _uiState.update {
+        it.copy(
+            organizationName = value
+        )
+    }
     fun onDepartmentChange(value: String) = _uiState.update { it.copy(department = value) }
+
     // ADR 0025 (#1233): whole-year period fields for the professional section,
     // plus the period list the address editor writes into.
-    fun onOrganizationPeriodStartChange(value: String) = _uiState.update { it.copy(organizationPeriodStart = value) }
-    fun onOrganizationPeriodEndChange(value: String) = _uiState.update { it.copy(organizationPeriodEnd = value) }
-    fun onJobTitlePeriodStartChange(value: String) = _uiState.update { it.copy(jobTitlePeriodStart = value) }
-    fun onJobTitlePeriodEndChange(value: String) = _uiState.update { it.copy(jobTitlePeriodEnd = value) }
+    fun onOrganizationPeriodStartChange(value: String) = _uiState.update {
+        it.copy(
+            organizationPeriodStart = value
+        )
+    }
+    fun onOrganizationPeriodEndChange(value: String) = _uiState.update {
+        it.copy(
+            organizationPeriodEnd = value
+        )
+    }
+    fun onJobTitlePeriodStartChange(value: String) = _uiState.update {
+        it.copy(
+            jobTitlePeriodStart = value
+        )
+    }
+    fun onJobTitlePeriodEndChange(value: String) = _uiState.update {
+        it.copy(
+            jobTitlePeriodEnd = value
+        )
+    }
     fun onPeriodsChange(value: List<EntryPeriod>) = _uiState.update { it.copy(periods = value) }
     fun onHowWeMetChange(value: String) = _uiState.update { it.copy(howWeMet = value) }
-    fun onWorkInformationChange(value: String) = _uiState.update { it.copy(workInformation = value) }
-    fun onContactInformationChange(value: String) = _uiState.update { it.copy(contactInformation = value) }
+    fun onWorkInformationChange(value: String) = _uiState.update {
+        it.copy(
+            workInformation = value
+        )
+    }
+    fun onContactInformationChange(value: String) = _uiState.update {
+        it.copy(
+            contactInformation = value
+        )
+    }
     fun onBirthdayChange(value: String) = _uiState.update { it.copy(birthday = value) }
     fun onCardNotesChange(value: List<CardNote>) = _uiState.update { it.copy(cardNotes = value) }
+
     // Issue #832: fields with no prior Android UI.
     fun onGenderChange(value: String) = _uiState.update { it.copy(gender = value) }
-    fun onPreferredLanguagesChange(value: List<LanguagePref>) = _uiState.update { it.copy(preferredLanguages = value) }
+    fun onPreferredLanguagesChange(value: List<LanguagePref>) = _uiState.update {
+        it.copy(
+            preferredLanguages = value
+        )
+    }
     fun onPronounsChange(value: List<Pronouns>) = _uiState.update { it.copy(pronouns = value) }
-    fun onGrammaticalGendersChange(value: List<GrammaticalGender>) = _uiState.update { it.copy(grammaticalGenders = value) }
+    fun onGrammaticalGendersChange(value: List<GrammaticalGender>) = _uiState.update {
+        it.copy(
+            grammaticalGenders = value
+        )
+    }
     fun onKeywordsChange(value: List<String>) = _uiState.update { it.copy(keywords = value) }
-    fun onAnniversariesChange(value: List<Anniversary>) = _uiState.update { it.copy(anniversaries = value) }
+    fun onAnniversariesChange(value: List<Anniversary>) = _uiState.update {
+        it.copy(
+            anniversaries = value
+        )
+    }
 
     /** M24: toggle a circle on/off the selection by name (deduped against what's already on). */
     fun onCircleToggle(name: String) = _uiState.update {
-        if (name in it.circles) it.copy(circles = it.circles - name) else it.copy(circles = it.circles + name)
+        if (name in it.circles) {
+            it.copy(
+                circles = it.circles - name
+            )
+        } else {
+            it.copy(circles = it.circles + name)
+        }
     }
 
     /** M24: toggle a tag on/off the selection by name. */
@@ -783,7 +881,7 @@ class ContactFormViewModel @Inject constructor(
                             it.copy(isSaving = false, error = error.displayMessage)
                         }
                     }
-                },
+                }
             )
         }
     }
@@ -798,7 +896,9 @@ class ContactFormViewModel @Inject constructor(
     private suspend fun applyMembershipChanges(record: ContactRecordResponse) {
         val uid = record.uid ?: return
         val state = _uiState.value
-        val selectedCircleIds = state.allCircles.filter { it.name in state.circles }.map { it.id }.toSet()
+        val selectedCircleIds = state.allCircles.filter {
+            it.name in state.circles
+        }.map { it.id }.toSet()
         val selectedTagIds = state.allTags.filter { it.name in state.tags }.map { it.id }.toSet()
 
         val loadedCircles = circleRepository.circlesForContact(uid).getOrNull().orEmpty()
@@ -854,15 +954,23 @@ class ContactFormViewModel @Inject constructor(
         // plus the full period list (address periods and everything the form
         // doesn't surface) so a save round-trips it rather than dropping it.
         val periods = record.crm?.periods.orEmpty()
-        val organizationPeriod = periods.firstOrNull { it.kind == "organization" && it.entryId == firstOrg?.id }
+        val organizationPeriod = periods.firstOrNull {
+            it.kind == "organization" &&
+                it.entryId == firstOrg?.id
+        }
         val jobTitleEntry = titles.firstOrNull { it.kind == "title" } ?: titles.firstOrNull()
-        val jobTitlePeriod = periods.firstOrNull { it.kind == "title" && it.entryId == jobTitleEntry?.id }
+        val jobTitlePeriod = periods.firstOrNull {
+            it.kind == "title" &&
+                it.entryId == jobTitleEntry?.id
+        }
         val imppAddresses = card?.imppAddresses.orEmpty()
         val socialProfiles = card?.socialProfiles.orEmpty()
         val otherOnlineServices = card?.otherOnlineServices.orEmpty()
         val links = card?.links.orEmpty()
         val personalInfo = card?.personalInfo.orEmpty()
-        val birthday = card?.anniversaries?.firstOrNull { it.kind == "birth" }?.date?.partial?.formatForEdit() ?: ""
+        val birthday =
+            card?.anniversaries?.firstOrNull { it.kind == "birth" }?.date?.partial?.formatForEdit()
+                ?: ""
         // Issue #832: every non-birth entry, loaded as the real objects (same
         // T81 contract as titles/personalInfo/etc.) — mergeAnniversaries
         // reassembles this alongside the birth scalar on save.
@@ -908,7 +1016,7 @@ class ContactFormViewModel @Inject constructor(
             pronouns = card?.speakToAs?.pronouns.orEmpty(),
             grammaticalGenders = card?.speakToAs?.grammaticalGenders.orEmpty(),
             keywords = card?.keywords.orEmpty(),
-            anniversaries = anniversaries,
+            anniversaries = anniversaries
         )
     }
 
@@ -925,17 +1033,17 @@ class ContactFormViewModel @Inject constructor(
  */
 private fun newEntryId(): String = UUID.randomUUID().toString()
 
-
-
 /** The postal fields the draft geocode route reads, from the row's current text. */
 private fun Address.toGeocodeDraft(): GeocodeDraftRequest {
-    fun find(kind: String): String = components.orEmpty().firstOrNull { it.kind == kind }?.value.orEmpty()
+    fun find(kind: String): String = components.orEmpty().firstOrNull {
+        it.kind == kind
+    }?.value.orEmpty()
     return GeocodeDraftRequest(
         street = find("name").ifBlank { find("number") },
         city = find("locality"),
         region = find("region"),
         postal = find("postcode"),
         country = find("country").ifBlank { countryCode.orEmpty() },
-        sensitivity = sensitivity.orEmpty(),
+        sensitivity = sensitivity.orEmpty()
     )
 }

@@ -30,9 +30,14 @@ class ExternalIdentityRepositoryImplTest {
 
     @Test
     fun `listForContact maps the page to its identities and forwards the uid`() = runTest {
-        val identity = ExternalIdentity(id = "i1", entityId = "u5", system = "paperless", externalId = "doc-1")
+        val identity = ExternalIdentity(
+            id = "i1",
+            entityId = "u5",
+            system = "paperless",
+            externalId = "doc-1"
+        )
         coEvery { apiClient.listExternalIdentities("u5", any()) } returns Result.success(
-            ExternalIdentitiesPage(externalIdentities = listOf(identity), total = 1),
+            ExternalIdentitiesPage(externalIdentities = listOf(identity), total = 1)
         )
 
         val result = repository.listForContact("u5")
@@ -59,7 +64,9 @@ class ImmichRepositoryImplTest {
 
     @Test
     fun `isConfigured maps has_api_key`() = runTest {
-        coEvery { apiClient.getImmichConfig() } returns Result.success(ImmichConfigResponse(hasApiKey = true))
+        coEvery { apiClient.getImmichConfig() } returns Result.success(
+            ImmichConfigResponse(hasApiKey = true)
+        )
 
         val result = repository.isConfigured()
 
@@ -79,7 +86,7 @@ class ImmichRepositoryImplTest {
     @Test
     fun `listPeople unwraps the response`() = runTest {
         coEvery { apiClient.listImmichPeople() } returns Result.success(
-            listOf(ImmichPerson(id = "p1", name = "Alice")),
+            listOf(ImmichPerson(id = "p1", name = "Alice"))
         )
 
         val result = repository.listPeople()
@@ -101,7 +108,7 @@ class ImmichRepositoryImplTest {
     @Test
     fun `getContactSummary unwraps the nullable summary`() = runTest {
         coEvery { apiClient.getImmichContactSummary("u5") } returns Result.success(
-            ImmichPersonSummary(personName = "Alice", photoCount = 3),
+            ImmichPersonSummary(personName = "Alice", photoCount = 3)
         )
 
         val result = repository.getContactSummary("u5")
@@ -112,7 +119,7 @@ class ImmichRepositoryImplTest {
     @Test
     fun `listContactAssets unwraps the response`() = runTest {
         coEvery { apiClient.listImmichContactAssets("u5") } returns Result.success(
-            listOf(com.mycorrhizal.crm.model.network.ImmichAssetSummary(id = "a1")),
+            listOf(com.mycorrhizal.crm.model.network.ImmichAssetSummary(id = "a1"))
         )
 
         val result = repository.listContactAssets("u5")
@@ -132,7 +139,9 @@ class ImmichRepositoryImplTest {
 
     @Test
     fun `getConfig forwards to the client`() = runTest {
-        coEvery { apiClient.getImmichConfig() } returns Result.success(ImmichConfigResponse(hasApiKey = true))
+        coEvery { apiClient.getImmichConfig() } returns Result.success(
+            ImmichConfigResponse(hasApiKey = true)
+        )
 
         val result = repository.getConfig()
 
@@ -142,7 +151,11 @@ class ImmichRepositoryImplTest {
     @Test
     fun `saveConfig forwards the input`() = runTest {
         val input = ImmichConfigInput(baseUrl = "https://immich.example", apiKey = "secret")
-        coEvery { apiClient.saveImmichConfig(input) } returns Result.success(ImmichConfigResponse(hasApiKey = true))
+        coEvery {
+            apiClient.saveImmichConfig(
+                input
+            )
+        } returns Result.success(ImmichConfigResponse(hasApiKey = true))
 
         val result = repository.saveConfig(input)
 
@@ -162,7 +175,7 @@ class ImmichRepositoryImplTest {
     @Test
     fun `testConnection forwards to the client`() = runTest {
         coEvery { apiClient.testImmichConnection() } returns Result.success(
-            ImmichConnectionTestResult(ok = false, message = "invalid key"),
+            ImmichConnectionTestResult(ok = false, message = "invalid key")
         )
 
         val result = repository.testConnection()
@@ -178,7 +191,9 @@ class PaperlessRepositoryImplTest {
 
     @Test
     fun `isConfigured maps has_api_token`() = runTest {
-        coEvery { apiClient.getPaperlessConfig() } returns Result.success(PaperlessConfigResponse(hasApiToken = true))
+        coEvery { apiClient.getPaperlessConfig() } returns Result.success(
+            PaperlessConfigResponse(hasApiToken = true)
+        )
 
         val result = repository.isConfigured()
 
@@ -188,7 +203,7 @@ class PaperlessRepositoryImplTest {
     @Test
     fun `searchDocuments forwards the query`() = runTest {
         coEvery { apiClient.searchPaperlessDocuments("lease") } returns Result.success(
-            listOf(PaperlessDocument(id = 1, title = "Lease")),
+            listOf(PaperlessDocument(id = 1, title = "Lease"))
         )
 
         val result = repository.searchDocuments("lease")
@@ -215,7 +230,9 @@ class SeafileRepositoryImplTest {
 
     @Test
     fun `isConfigured maps has_api_token`() = runTest {
-        coEvery { apiClient.getSeafileConfig() } returns Result.success(SeafileConfigResponse(hasApiToken = true))
+        coEvery { apiClient.getSeafileConfig() } returns Result.success(
+            SeafileConfigResponse(hasApiToken = true)
+        )
 
         val result = repository.isConfigured()
 
@@ -224,7 +241,9 @@ class SeafileRepositoryImplTest {
 
     @Test
     fun `listLibraries forwards to the client`() = runTest {
-        coEvery { apiClient.listSeafileLibraries() } returns Result.success(listOf(SeafileLibrary(id = "r1", name = "Docs")))
+        coEvery { apiClient.listSeafileLibraries() } returns Result.success(
+            listOf(SeafileLibrary(id = "r1", name = "Docs"))
+        )
 
         val result = repository.listLibraries()
 
@@ -234,7 +253,7 @@ class SeafileRepositoryImplTest {
     @Test
     fun `listDir forwards repoId and path`() = runTest {
         coEvery { apiClient.listSeafileDir("r1", "/docs") } returns Result.success(
-            listOf(SeafileItem(id = "f1", name = "doc.pdf", type = "file")),
+            listOf(SeafileItem(id = "f1", name = "doc.pdf", type = "file"))
         )
 
         val result = repository.listDir("r1", "/docs")
@@ -245,7 +264,12 @@ class SeafileRepositoryImplTest {
 
     @Test
     fun `linkItem forwards the request`() = runTest {
-        val request = SeafileLinkRequest(repoId = "r1", path = "/docs/doc.pdf", name = "doc.pdf", type = "file")
+        val request = SeafileLinkRequest(
+            repoId = "r1",
+            path = "/docs/doc.pdf",
+            name = "doc.pdf",
+            type = "file"
+        )
         coEvery { apiClient.linkSeafileContact("u5", request) } returns Result.success(Unit)
 
         val result = repository.linkItem("u5", request)
@@ -263,7 +287,7 @@ class NextcloudRepositoryImplTest {
     @Test
     fun `isConfigured maps has_app_password`() = runTest {
         coEvery { apiClient.getNextcloudConfig() } returns Result.success(
-            NextcloudConfigResponse(hasAppPassword = true),
+            NextcloudConfigResponse(hasAppPassword = true)
         )
 
         val result = repository.isConfigured()
@@ -274,7 +298,7 @@ class NextcloudRepositoryImplTest {
     @Test
     fun `listDir defaults to the dav root`() = runTest {
         coEvery { apiClient.listNextcloudDir("/") } returns Result.success(
-            listOf(WebDAVItem(name = "Photos", path = "/Photos", type = "dir")),
+            listOf(WebDAVItem(name = "Photos", path = "/Photos", type = "dir"))
         )
 
         val result = repository.listDir()
@@ -285,7 +309,12 @@ class NextcloudRepositoryImplTest {
 
     @Test
     fun `linkItem maps the WebDAV item into the link request`() = runTest {
-        val item = WebDAVItem(name = "img.jpg", path = "/Photos/img.jpg", type = "file", size = 2048)
+        val item = WebDAVItem(
+            name = "img.jpg",
+            path = "/Photos/img.jpg",
+            type = "file",
+            size = 2048
+        )
         coEvery {
             apiClient.linkNextcloudContact(
                 "u5",
@@ -293,8 +322,8 @@ class NextcloudRepositoryImplTest {
                     path = "/Photos/img.jpg",
                     name = "img.jpg",
                     type = "file",
-                    size = 2048,
-                ),
+                    size = 2048
+                )
             )
         } returns Result.success(Unit)
 
@@ -311,8 +340,14 @@ class GeoPulseRepositoryImplTest {
 
     @Test
     fun `config calls forward to the client`() = runTest {
-        val input = com.mycorrhizal.crm.model.network.GeoPulseConfigInput("https://g.example.com", "tok")
-        val config = com.mycorrhizal.crm.model.network.GeoPulseConfigResponse("https://g.example.com", true)
+        val input = com.mycorrhizal.crm.model.network.GeoPulseConfigInput(
+            "https://g.example.com",
+            "tok"
+        )
+        val config = com.mycorrhizal.crm.model.network.GeoPulseConfigResponse(
+            "https://g.example.com",
+            true
+        )
         coEvery { apiClient.getGeoPulseConfig() } returns Result.success(config)
         coEvery { apiClient.saveGeoPulseConfig(input) } returns Result.success(config)
         coEvery { apiClient.deleteGeoPulseConfig() } returns Result.success(Unit)
@@ -324,10 +359,20 @@ class GeoPulseRepositoryImplTest {
 
     @Test
     fun `test connection and suggestions forward their arguments`() = runTest {
-        val test = com.mycorrhizal.crm.model.network.GeoPulseConnectionTestResult(ok = true, stage = "ok")
-        val sugg = com.mycorrhizal.crm.model.network.GeoPulseSuggestionsResponse(date = "2026-03-10")
+        val test = com.mycorrhizal.crm.model.network.GeoPulseConnectionTestResult(
+            ok = true,
+            stage = "ok"
+        )
+        val sugg = com.mycorrhizal.crm.model.network.GeoPulseSuggestionsResponse(
+            date = "2026-03-10"
+        )
         coEvery { apiClient.testGeoPulseConnection() } returns Result.success(test)
-        coEvery { apiClient.getGeoPulseSuggestions("2026-03-10", "Europe/Rome") } returns Result.success(sugg)
+        coEvery {
+            apiClient.getGeoPulseSuggestions(
+                "2026-03-10",
+                "Europe/Rome"
+            )
+        } returns Result.success(sugg)
 
         assertEquals(test, repository.testConnection().getOrThrow())
         assertEquals(sugg, repository.getSuggestions("2026-03-10", "Europe/Rome").getOrThrow())

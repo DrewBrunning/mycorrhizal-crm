@@ -27,7 +27,7 @@ class AuthInterceptorTest {
 
     private fun interceptor(token: String?): AuthInterceptor = AuthInterceptor(
         tokenProvider = TokenProvider { token },
-        baseUrlProvider = BaseUrlProvider { server.url("/").toString().trimEnd('/') },
+        baseUrlProvider = BaseUrlProvider { server.url("/").toString().trimEnd('/') }
     )
 
     @Test
@@ -85,7 +85,7 @@ class AuthInterceptorTest {
         // not be attached to a host other than the configured origin.
         val auth = AuthInterceptor(
             tokenProvider = TokenProvider { "secret-jwt" },
-            baseUrlProvider = BaseUrlProvider { "https://configured.example.com" },
+            baseUrlProvider = BaseUrlProvider { "https://configured.example.com" }
         )
         val client = OkHttpClient.Builder().addInterceptor(auth).build()
         server.enqueue(MockResponse().setResponseCode(200))
@@ -100,7 +100,7 @@ class AuthInterceptorTest {
     fun `omits header when the base url is not configured`() {
         val auth = AuthInterceptor(
             tokenProvider = TokenProvider { "secret-jwt" },
-            baseUrlProvider = BaseUrlProvider { "" },
+            baseUrlProvider = BaseUrlProvider { "" }
         )
         val client = OkHttpClient.Builder().addInterceptor(auth).build()
         server.enqueue(MockResponse().setResponseCode(200))

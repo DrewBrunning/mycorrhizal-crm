@@ -47,7 +47,7 @@ class RoomPassphraseStore(context: Context) {
             FILE_NAME,
             masterKey,
             EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
         )
     }
 
@@ -65,7 +65,8 @@ class RoomPassphraseStore(context: Context) {
         // commit()'s Boolean (issue #998), so the raw editor is deliberate.
         //noinspection UseKtx
         val committed = prefs.edit().putString(KEY_PASSPHRASE, passphrase).commit() // # pragma: no cover — needs a real Android Keystore (see RoomEncryptionGuardTest)
-        check(committed && prefs.getString(KEY_PASSPHRASE, null) == passphrase) { // # pragma: no cover
+        check(committed && prefs.getString(KEY_PASSPHRASE, null) == passphrase) {
+            // # pragma: no cover
             "Failed to durably persist the Room passphrase; refusing to encrypt the cache " + // # pragma: no cover
                 "with a value that might not survive a process death" // # pragma: no cover
         } // # pragma: no cover
@@ -74,7 +75,9 @@ class RoomPassphraseStore(context: Context) {
 
     /** Drops the stored passphrase (only safe alongside deleting the DB file). */
     fun clear() {
-        prefs.edit { remove(KEY_PASSPHRASE) } // # pragma: no cover — needs a real Android Keystore (see RoomEncryptionGuardTest)
+        prefs.edit {
+            remove(KEY_PASSPHRASE)
+        } // # pragma: no cover — needs a real Android Keystore (see RoomEncryptionGuardTest)
     }
 
     private fun generatePassphrase(): String = randomHexPassphrase()
@@ -96,7 +99,7 @@ class RoomPassphraseStore(context: Context) {
  */
 internal fun randomHexPassphrase(
     random: SecureRandom = SecureRandom(),
-    byteCount: Int = 32,
+    byteCount: Int = 32
 ): String {
     val bytes = ByteArray(byteCount)
     random.nextBytes(bytes)

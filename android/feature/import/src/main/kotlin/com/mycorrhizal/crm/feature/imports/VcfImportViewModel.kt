@@ -11,12 +11,12 @@ import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 enum class VcfImportStep { PICK, PREVIEW, RESULT }
 
@@ -31,7 +31,7 @@ data class VcfImportUiState(
     val result: ImportResult? = null,
     val isLoading: Boolean = false,
     @StringRes val errorRes: Int? = null,
-    val error: String? = null,
+    val error: String? = null
 )
 
 /**
@@ -42,9 +42,7 @@ data class VcfImportUiState(
  * `/search` — a composite flow with no single-entity home).
  */
 @HiltViewModel
-class VcfImportViewModel @Inject constructor(
-    private val apiClient: ApiClient,
-) : ViewModel() {
+class VcfImportViewModel @Inject constructor(private val apiClient: ApiClient) : ViewModel() {
 
     private val _uiState = MutableStateFlow(VcfImportUiState())
     val uiState: StateFlow<VcfImportUiState> = _uiState.asStateFlow()
@@ -63,25 +61,55 @@ class VcfImportViewModel @Inject constructor(
     fun onFilePicked(fileName: String, bytes: ByteArray) {
         if (_uiState.value.isLoading) return
         if (bytes.isEmpty()) {
-            _uiState.update { it.copy(errorRes = R.string.import_vcf_error_invalid_file, error = null) }
+            _uiState.update {
+                it.copy(
+                    errorRes = R.string.import_vcf_error_invalid_file,
+                    error = null
+                )
+            }
             return
         }
         if (bytes.size > MAX_VCF_SIZE_BYTES) {
-            _uiState.update { it.copy(errorRes = R.string.import_vcf_error_too_large, error = null) }
+            _uiState.update {
+                it.copy(
+                    errorRes = R.string.import_vcf_error_too_large,
+                    error = null
+                )
+            }
             return
         }
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorRes = null, error = null, fileName = fileName) }
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    errorRes = null,
+                    error = null,
+                    fileName = fileName
+                )
+            }
             apiClient.uploadVcfImport(bytes, fileName).foldApiError(
                 onSuccess = { preview ->
                     val actions = preview.rows.associate { row ->
-                        row.rowIndex to if (row.validationErrors.isNotEmpty()) "skip" else row.suggestedAction
+                        row.rowIndex to
+                            if (row.validationErrors.isNotEmpty()) "skip" else row.suggestedAction
                     }
                     _uiState.update {
-                        it.copy(isLoading = false, step = VcfImportStep.PREVIEW, preview = preview, rowActions = actions)
+                        it.copy(
+                            isLoading = false,
+                            step = VcfImportStep.PREVIEW,
+                            preview = preview,
+                            rowActions = actions
+                        )
                     }
                 },
-                onError = { error -> _uiState.update { it.copy(isLoading = false, error = error.displayMessage) } },
+                onError = { error ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }
@@ -112,12 +140,32 @@ class VcfImportViewModel @Inject constructor(
         if (_uiState.value.isLoading) return
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
-            val actions = _uiState.value.rowActions.map { (rowIndex, action) -> RowImportAction(rowIndex, action) }
-            apiClient.confirmVcfImport(ImportConfirmRequest(sessionId = preview.sessionId, actions = actions)).foldApiError(
+            val actions = _uiState.value.rowActions.map { (rowIndex, action) ->
+                RowImportAction(
+                    rowIndex,
+                    action
+                )
+            }
+            apiClient.confirmVcfImport(
+                ImportConfirmRequest(sessionId = preview.sessionId, actions = actions)
+            ).foldApiError(
                 onSuccess = { result ->
-                    _uiState.update { it.copy(isLoading = false, step = VcfImportStep.RESULT, result = result) }
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            step = VcfImportStep.RESULT,
+                            result = result
+                        )
+                    }
                 },
-                onError = { error -> _uiState.update { it.copy(isLoading = false, error = error.displayMessage) } },
+                onError = { error ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }

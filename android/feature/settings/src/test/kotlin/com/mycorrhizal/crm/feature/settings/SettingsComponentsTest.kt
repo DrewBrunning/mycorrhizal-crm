@@ -32,8 +32,12 @@ class SettingsComponentsTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 androidx.compose.foundation.layout.Column {
-                    androidx.compose.material3.Text(requiredFieldLabel("Server URL", required = true))
-                    androidx.compose.material3.Text(requiredFieldLabel("Server URL", required = false))
+                    androidx.compose.material3.Text(
+                        requiredFieldLabel("Server URL", required = true)
+                    )
+                    androidx.compose.material3.Text(
+                        requiredFieldLabel("Server URL", required = false)
+                    )
                 }
             }
         }
@@ -51,7 +55,7 @@ class SettingsComponentsTest {
                     canSave = true,
                     isSaving = false,
                     onClick = { saved = true },
-                    disabledHint = "Fill in the required fields",
+                    disabledHint = "Fill in the required fields"
                 )
             }
         }
@@ -68,7 +72,7 @@ class SettingsComponentsTest {
                     canSave = false,
                     isSaving = false,
                     onClick = {},
-                    disabledHint = "Fill in the required fields",
+                    disabledHint = "Fill in the required fields"
                 )
             }
         }
@@ -76,7 +80,12 @@ class SettingsComponentsTest {
         composeTestRule.onNodeWithText("Save").assertIsNotEnabled()
         composeTestRule.onNodeWithText("Fill in the required fields").assertIsDisplayed()
         composeTestRule.onNodeWithText("Save")
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Fill in the required fields"))
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.StateDescription,
+                    "Fill in the required fields"
+                )
+            )
     }
 
     @Test
@@ -87,13 +96,15 @@ class SettingsComponentsTest {
                     canSave = true,
                     isSaving = true,
                     onClick = {},
-                    disabledHint = "Fill in the required fields",
+                    disabledHint = "Fill in the required fields"
                 )
             }
         }
 
         composeTestRule.onNodeWithText("Save").assertIsNotEnabled()
-        composeTestRule.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo))
+        composeTestRule.onNode(
+            SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo)
+        )
             .assertIsDisplayed()
         composeTestRule.onNodeWithText("Save")
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Saving"))

@@ -45,7 +45,7 @@ enum class ContactFieldKey(val wireKey: String) {
     CARD_NOTES("cardNotes"),
     PREFERRED_LANGUAGES("preferredLanguages"),
     CARD_KIND("cardKind"),
-    LANGUAGE("language"),
+    LANGUAGE("language")
     ;
 
     companion object {
@@ -62,7 +62,7 @@ enum class ContactFieldGroup {
     NAME,
     WORK,
     PERSONAL,
-    MYCORRHIZAL,
+    MYCORRHIZAL
 }
 
 /**
@@ -101,7 +101,7 @@ val CONTACT_FIELD_GROUP: Map<ContactFieldKey, ContactFieldGroup> = mapOf(
     ContactFieldKey.CARD_KIND to ContactFieldGroup.PERSONAL,
     ContactFieldKey.LANGUAGE to ContactFieldGroup.PERSONAL,
     ContactFieldKey.HOW_WE_MET to ContactFieldGroup.MYCORRHIZAL,
-    ContactFieldKey.CONTACT_INFORMATION to ContactFieldGroup.MYCORRHIZAL,
+    ContactFieldKey.CONTACT_INFORMATION to ContactFieldGroup.MYCORRHIZAL
 )
 
 /** Section render order — mirrors web's `CONTACT_FIELD_GROUPS` array order. */
@@ -110,7 +110,7 @@ val CONTACT_FIELD_GROUP_ORDER: List<ContactFieldGroup> = listOf(
     ContactFieldGroup.NAME,
     ContactFieldGroup.WORK,
     ContactFieldGroup.PERSONAL,
-    ContactFieldGroup.MYCORRHIZAL,
+    ContactFieldGroup.MYCORRHIZAL
 )
 
 /**
@@ -129,7 +129,7 @@ val DEFAULT_ENABLED_CONTACT_FIELDS: Set<ContactFieldKey> = setOf(
     ContactFieldKey.PERSONAL_INFO,
     ContactFieldKey.HOW_WE_MET,
     ContactFieldKey.WORK_INFORMATION,
-    ContactFieldKey.CONTACT_INFORMATION,
+    ContactFieldKey.CONTACT_INFORMATION
 )
 
 /**
@@ -140,9 +140,8 @@ val DEFAULT_ENABLED_CONTACT_FIELDS: Set<ContactFieldKey> = setOf(
  * only its recognized wire keys, silently dropping ones Android doesn't (yet)
  * know about.
  */
-fun resolveEnabledFields(stored: List<String>?): Set<ContactFieldKey> =
-    if (stored == null) {
-        DEFAULT_ENABLED_CONTACT_FIELDS
-    } else {
-        stored.mapNotNull { ContactFieldKey.fromWireKey(it) }.toSet()
-    }
+fun resolveEnabledFields(stored: List<String>?): Set<ContactFieldKey> = if (stored == null) {
+    DEFAULT_ENABLED_CONTACT_FIELDS
+} else {
+    stored.mapNotNull { ContactFieldKey.fromWireKey(it) }.toSet()
+}

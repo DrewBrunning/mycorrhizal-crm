@@ -10,19 +10,17 @@ import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.network.ApiClient
 import javax.inject.Inject
 
-class MergeRepositoryImpl @Inject constructor(
-    private val apiClient: ApiClient,
-) : MergeRepository {
-    override suspend fun preview(request: ContactMergeRequest): Result<ContactMergePreviewResponse> =
-        apiClient.previewMerge(request)
+class MergeRepositoryImpl @Inject constructor(private val apiClient: ApiClient) : MergeRepository {
+    override suspend fun preview(
+        request: ContactMergeRequest
+    ): Result<ContactMergePreviewResponse> = apiClient.previewMerge(request)
 
     override suspend fun commit(request: ContactMergeRequest): Result<ContactRecordResponse> =
         apiClient.commitMerge(request)
 }
 
-class BulkOperationRepositoryImpl @Inject constructor(
-    private val apiClient: ApiClient,
-) : BulkOperationRepository {
+class BulkOperationRepositoryImpl @Inject constructor(private val apiClient: ApiClient) :
+    BulkOperationRepository {
     override suspend fun run(input: BulkContactOperationInput): Result<BulkOperationResult> =
         apiClient.bulkOperation(input)
 }

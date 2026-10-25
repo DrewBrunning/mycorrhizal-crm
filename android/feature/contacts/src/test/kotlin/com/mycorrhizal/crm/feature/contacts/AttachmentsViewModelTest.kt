@@ -23,12 +23,17 @@ class AttachmentsViewModelTest {
 
     private val attachmentRepository = mockk<AttachmentRepository>()
 
-    private val scan = ContactAttachment(id = 7, originalName = "scan.pdf", contentType = "application/pdf", sizeBytes = 2048)
+    private val scan = ContactAttachment(
+        id = 7,
+        originalName = "scan.pdf",
+        contentType = "application/pdf",
+        sizeBytes = 2048
+    )
 
     @Test
     fun `setContact loads the attachment list`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { attachmentRepository.list(5) } returns Result.success(
-            AttachmentListResponse(attachments = listOf(scan), total = 1),
+            AttachmentListResponse(attachments = listOf(scan), total = 1)
         )
 
         val vm = AttachmentsViewModel(attachmentRepository)
@@ -43,7 +48,11 @@ class AttachmentsViewModelTest {
 
     @Test
     fun `list failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { attachmentRepository.list(5) } returns Result.failure(ApiError.Client(500, "boom"))
+        coEvery {
+            attachmentRepository.list(
+                5
+            )
+        } returns Result.failure(ApiError.Client(500, "boom"))
 
         val vm = AttachmentsViewModel(attachmentRepository)
         vm.setContact(5)
@@ -53,11 +62,20 @@ class AttachmentsViewModelTest {
     }
 
     @Test
-    fun `upload posts the file and refetches the list`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `upload posts the file and refetches the list`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { attachmentRepository.list(5) } returns Result.success(
-            AttachmentListResponse(attachments = emptyList(), total = 0),
+            AttachmentListResponse(attachments = emptyList(), total = 0)
         )
-        coEvery { attachmentRepository.upload(5, "notes.txt", "text/plain", any()) } returns Result.success(Unit)
+        coEvery {
+            attachmentRepository.upload(
+                5,
+                "notes.txt",
+                "text/plain",
+                any()
+            )
+        } returns Result.success(Unit)
 
         val vm = AttachmentsViewModel(attachmentRepository)
         vm.setContact(5)
@@ -74,10 +92,10 @@ class AttachmentsViewModelTest {
     @Test
     fun `upload failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { attachmentRepository.list(5) } returns Result.success(
-            AttachmentListResponse(attachments = emptyList(), total = 0),
+            AttachmentListResponse(attachments = emptyList(), total = 0)
         )
         coEvery { attachmentRepository.upload(any(), any(), any(), any()) } returns Result.failure(
-            ApiError.Client(400, "too large"),
+            ApiError.Client(400, "too large")
         )
 
         val vm = AttachmentsViewModel(attachmentRepository)
@@ -93,7 +111,7 @@ class AttachmentsViewModelTest {
     @Test
     fun `delete removes the row locally`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { attachmentRepository.list(5) } returns Result.success(
-            AttachmentListResponse(attachments = listOf(scan), total = 1),
+            AttachmentListResponse(attachments = listOf(scan), total = 1)
         )
         coEvery { attachmentRepository.delete(7) } returns Result.success(Unit)
 
@@ -113,9 +131,13 @@ class AttachmentsViewModelTest {
     fun `download exposes the bytes once and clears on handled`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { attachmentRepository.list(5) } returns Result.success(
-                AttachmentListResponse(attachments = listOf(scan), total = 1),
+                AttachmentListResponse(attachments = listOf(scan), total = 1)
             )
-            coEvery { attachmentRepository.download(7) } returns Result.success("bytes".toByteArray())
+            coEvery {
+                attachmentRepository.download(
+                    7
+                )
+            } returns Result.success("bytes".toByteArray())
 
             val vm = AttachmentsViewModel(attachmentRepository)
             vm.setContact(5)
@@ -135,9 +157,13 @@ class AttachmentsViewModelTest {
     @Test
     fun `download failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { attachmentRepository.list(5) } returns Result.success(
-            AttachmentListResponse(attachments = listOf(scan), total = 1),
+            AttachmentListResponse(attachments = listOf(scan), total = 1)
         )
-        coEvery { attachmentRepository.download(7) } returns Result.failure(ApiError.Client(404, "gone"))
+        coEvery {
+            attachmentRepository.download(
+                7
+            )
+        } returns Result.failure(ApiError.Client(404, "gone"))
 
         val vm = AttachmentsViewModel(attachmentRepository)
         vm.setContact(5)
@@ -151,13 +177,18 @@ class AttachmentsViewModelTest {
     }
 
     @Test
-    fun `rejectUpload reports the size rejection resource`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `rejectUpload reports the size rejection resource`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = AttachmentsViewModel(attachmentRepository)
         vm.rejectUpload()
 
         val state = vm.uiState.value
         assertNull(state.error)
-        assertEquals(com.mycorrhizal.crm.ui.R.string.attachments_size_too_large, state.uploadErrorRes)
+        assertEquals(
+            com.mycorrhizal.crm.ui.R.string.attachments_size_too_large,
+            state.uploadErrorRes
+        )
 
         vm.onErrorShown()
         assertNull(vm.uiState.value.uploadErrorRes)

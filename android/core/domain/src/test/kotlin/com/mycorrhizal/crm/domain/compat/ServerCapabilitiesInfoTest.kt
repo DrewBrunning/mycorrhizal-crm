@@ -25,7 +25,7 @@ class ServerCapabilitiesInfoTest {
     fun `a present capability list is authoritative`() {
         val embedded = ServerCapabilitiesInfo(
             deployment = ServerCapabilitiesInfo.DEPLOYMENT_EMBEDDED,
-            capabilities = setOf(ServerCapability.CONTACTS, ServerCapability.EXPORT),
+            capabilities = setOf(ServerCapability.CONTACTS, ServerCapability.EXPORT)
         )
         assertTrue(embedded.supports(ServerCapability.CONTACTS))
         assertTrue(embedded.supports(ServerCapability.EXPORT))
@@ -54,7 +54,7 @@ class ServerCapabilitiesInfoTest {
         val health = ServerHealth(
             version = "1.2.0",
             deployment = "embedded",
-            capabilities = listOf("contacts", "calendar"),
+            capabilities = listOf("contacts", "calendar")
         )
         val info = health.toCapabilitiesInfo()
         assertEquals("embedded", info.deployment)

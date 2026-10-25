@@ -38,7 +38,7 @@ class HouseholdsViewModelTest {
     private val suggestion = AddressHouseholdSuggestion(
         addressHash = "ah1",
         memberHash = "mh1",
-        memberVCardUids = listOf("u1", "u2"),
+        memberVCardUids = listOf("u1", "u2")
     )
 
     @Before
@@ -52,8 +52,8 @@ class HouseholdsViewModelTest {
         coEvery { householdRepository.list(any(), any()) } returns Result.success(
             listOf(
                 Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT),
-                Household(id = "h2", name = "Flat", type = HouseholdTypes.ROOMMATES),
-            ),
+                Household(id = "h2", name = "Flat", type = HouseholdTypes.ROOMMATES)
+            )
         )
 
         val vm = HouseholdsViewModel(householdRepository, contactRepository)
@@ -68,7 +68,7 @@ class HouseholdsViewModelTest {
     @Test
     fun `load failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { householdRepository.list(any(), any()) } returns Result.failure(
-            ApiError.Client(500, "boom"),
+            ApiError.Client(500, "boom")
         )
 
         val vm = HouseholdsViewModel(householdRepository, contactRepository)
@@ -110,10 +110,18 @@ class HouseholdsViewModelTest {
     @Test
     fun `rename updates the household in place`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { householdRepository.list(any(), any()) } returns Result.success(
-            listOf(Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT)),
+            listOf(Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT))
         )
-        coEvery { householdRepository.update("h1", "Main Home", HouseholdTypes.FAMILY_UNIT) } returns
-            Result.success(Household(id = "h1", name = "Main Home", type = HouseholdTypes.FAMILY_UNIT))
+        coEvery {
+            householdRepository.update(
+                "h1",
+                "Main Home",
+                HouseholdTypes.FAMILY_UNIT
+            )
+        } returns
+            Result.success(
+                Household(id = "h1", name = "Main Home", type = HouseholdTypes.FAMILY_UNIT)
+            )
 
         val vm = HouseholdsViewModel(householdRepository, contactRepository)
         advanceUntilIdle()
@@ -129,8 +137,8 @@ class HouseholdsViewModelTest {
         coEvery { householdRepository.list(any(), any()) } returns Result.success(
             listOf(
                 Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT),
-                Household(id = "h2", name = "Flat", type = HouseholdTypes.ROOMMATES),
-            ),
+                Household(id = "h2", name = "Flat", type = HouseholdTypes.ROOMMATES)
+            )
         )
         coEvery { householdRepository.delete("h1") } returns Result.success(Unit)
 
@@ -146,7 +154,9 @@ class HouseholdsViewModelTest {
     @Test
     fun `scan loads address suggestions into state`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { householdRepository.list(any(), any()) } returns Result.success(emptyList())
-        coEvery { householdRepository.suggestAddressHouseholds() } returns Result.success(listOf(suggestion))
+        coEvery { householdRepository.suggestAddressHouseholds() } returns Result.success(
+            listOf(suggestion)
+        )
         coEvery { contactRepository.resolveByUid(any()) } returns Result.success(emptyMap())
 
         val vm = HouseholdsViewModel(householdRepository, contactRepository)
@@ -163,9 +173,13 @@ class HouseholdsViewModelTest {
     }
 
     @Test
-    fun `scan with nothing to suggest renders an empty state`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `scan with nothing to suggest renders an empty state`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { householdRepository.list(any(), any()) } returns Result.success(emptyList())
-        coEvery { householdRepository.suggestAddressHouseholds() } returns Result.success(emptyList())
+        coEvery { householdRepository.suggestAddressHouseholds() } returns Result.success(
+            emptyList()
+        )
 
         val vm = HouseholdsViewModel(householdRepository, contactRepository)
         advanceUntilIdle()
@@ -182,7 +196,7 @@ class HouseholdsViewModelTest {
     fun `scan failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { householdRepository.list(any(), any()) } returns Result.success(emptyList())
         coEvery { householdRepository.suggestAddressHouseholds() } returns Result.failure(
-            ApiError.Client(500, "boom"),
+            ApiError.Client(500, "boom")
         )
 
         val vm = HouseholdsViewModel(householdRepository, contactRepository)
@@ -195,14 +209,22 @@ class HouseholdsViewModelTest {
     }
 
     @Test
-    fun `accept removes the suggestion and reloads households`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `accept removes the suggestion and reloads households`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { householdRepository.list(any(), any()) } returnsMany listOf(
             Result.success(emptyList()),
-            Result.success(listOf(Household(id = "h9", name = "Alice & Bob", type = HouseholdTypes.FAMILY_UNIT))),
+            Result.success(
+                listOf(
+                    Household(id = "h9", name = "Alice & Bob", type = HouseholdTypes.FAMILY_UNIT)
+                )
+            )
         )
-        coEvery { householdRepository.suggestAddressHouseholds() } returns Result.success(listOf(suggestion))
+        coEvery { householdRepository.suggestAddressHouseholds() } returns Result.success(
+            listOf(suggestion)
+        )
         coEvery { householdRepository.acceptAddressSuggestion(any()) } returns Result.success(
-            Household(id = "h9", name = "Alice & Bob", type = HouseholdTypes.FAMILY_UNIT),
+            Household(id = "h9", name = "Alice & Bob", type = HouseholdTypes.FAMILY_UNIT)
         )
 
         val vm = HouseholdsViewModel(householdRepository, contactRepository)
@@ -220,11 +242,15 @@ class HouseholdsViewModelTest {
     }
 
     @Test
-    fun `accept failure surfaces the error and keeps the suggestion`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `accept failure surfaces the error and keeps the suggestion`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { householdRepository.list(any(), any()) } returns Result.success(emptyList())
-        coEvery { householdRepository.suggestAddressHouseholds() } returns Result.success(listOf(suggestion))
+        coEvery { householdRepository.suggestAddressHouseholds() } returns Result.success(
+            listOf(suggestion)
+        )
         coEvery { householdRepository.acceptAddressSuggestion(any()) } returns Result.failure(
-            ApiError.Client(409, "already in a household"),
+            ApiError.Client(409, "already in a household")
         )
 
         val vm = HouseholdsViewModel(householdRepository, contactRepository)
@@ -244,7 +270,9 @@ class HouseholdsViewModelTest {
     @Test
     fun `dismiss removes the suggestion`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { householdRepository.list(any(), any()) } returns Result.success(emptyList())
-        coEvery { householdRepository.suggestAddressHouseholds() } returns Result.success(listOf(suggestion))
+        coEvery { householdRepository.suggestAddressHouseholds() } returns Result.success(
+            listOf(suggestion)
+        )
         coEvery { householdRepository.dismissAddressSuggestion(any()) } returns Result.success(Unit)
 
         val vm = HouseholdsViewModel(householdRepository, contactRepository)
@@ -263,12 +291,14 @@ class HouseholdsViewModelTest {
     @Test
     fun `scan resolves suggestion member names`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { householdRepository.list(any(), any()) } returns Result.success(emptyList())
-        coEvery { householdRepository.suggestAddressHouseholds() } returns Result.success(listOf(suggestion))
+        coEvery { householdRepository.suggestAddressHouseholds() } returns Result.success(
+            listOf(suggestion)
+        )
         coEvery { contactRepository.resolveByUid(listOf("u1", "u2")) } returns Result.success(
             mapOf(
                 "u1" to ContactSummary(id = 1, uid = "u1", firstname = "Alice"),
-                "u2" to ContactSummary(id = 2, uid = "u2", firstname = "Bob"),
-            ),
+                "u2" to ContactSummary(id = 2, uid = "u2", firstname = "Bob")
+            )
         )
 
         val vm = HouseholdsViewModel(householdRepository, contactRepository)
@@ -283,10 +313,17 @@ class HouseholdsViewModelTest {
     // --- create/rename/delete failure paths ---
 
     @Test
-    fun `create failure surfaces the error and resets isSaving`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `create failure surfaces the error and resets isSaving`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { householdRepository.list(any(), any()) } returns Result.success(emptyList())
-        coEvery { householdRepository.create("Home", HouseholdTypes.FAMILY_UNIT) } returns Result.failure(
-            ApiError.Client(409, "duplicate"),
+        coEvery {
+            householdRepository.create(
+                "Home",
+                HouseholdTypes.FAMILY_UNIT
+            )
+        } returns Result.failure(
+            ApiError.Client(409, "duplicate")
         )
 
         val vm = HouseholdsViewModel(householdRepository, contactRepository)
@@ -305,7 +342,7 @@ class HouseholdsViewModelTest {
     @Test
     fun `rename is a no-op for a blank name`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { householdRepository.list(any(), any()) } returns Result.success(
-            listOf(Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT)),
+            listOf(Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT))
         )
 
         val vm = HouseholdsViewModel(householdRepository, contactRepository)
@@ -321,10 +358,16 @@ class HouseholdsViewModelTest {
     @Test
     fun `rename failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { householdRepository.list(any(), any()) } returns Result.success(
-            listOf(Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT)),
+            listOf(Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT))
         )
-        coEvery { householdRepository.update("h1", "New", HouseholdTypes.FAMILY_UNIT) } returns Result.failure(
-            ApiError.Client(500, "boom"),
+        coEvery {
+            householdRepository.update(
+                "h1",
+                "New",
+                HouseholdTypes.FAMILY_UNIT
+            )
+        } returns Result.failure(
+            ApiError.Client(500, "boom")
         )
 
         val vm = HouseholdsViewModel(householdRepository, contactRepository)
@@ -338,11 +381,17 @@ class HouseholdsViewModelTest {
     }
 
     @Test
-    fun `delete failure surfaces the error and keeps the household`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `delete failure surfaces the error and keeps the household`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { householdRepository.list(any(), any()) } returns Result.success(
-            listOf(Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT)),
+            listOf(Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT))
         )
-        coEvery { householdRepository.delete("h1") } returns Result.failure(ApiError.Client(500, "boom"))
+        coEvery {
+            householdRepository.delete(
+                "h1"
+            )
+        } returns Result.failure(ApiError.Client(500, "boom"))
 
         val vm = HouseholdsViewModel(householdRepository, contactRepository)
         advanceUntilIdle()
@@ -358,11 +407,15 @@ class HouseholdsViewModelTest {
     // --- dismiss failure + state helpers ---
 
     @Test
-    fun `dismiss failure surfaces the error and keeps the suggestion`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `dismiss failure surfaces the error and keeps the suggestion`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { householdRepository.list(any(), any()) } returns Result.success(emptyList())
-        coEvery { householdRepository.suggestAddressHouseholds() } returns Result.success(listOf(suggestion))
+        coEvery { householdRepository.suggestAddressHouseholds() } returns Result.success(
+            listOf(suggestion)
+        )
         coEvery { householdRepository.dismissAddressSuggestion(any()) } returns Result.failure(
-            ApiError.Client(500, "boom"),
+            ApiError.Client(500, "boom")
         )
 
         val vm = HouseholdsViewModel(householdRepository, contactRepository)
@@ -379,9 +432,13 @@ class HouseholdsViewModelTest {
     }
 
     @Test
-    fun `onErrorShown and onInfoShown clear their respective state`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `onErrorShown and onInfoShown clear their respective state`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { householdRepository.list(any(), any()) } returns Result.success(emptyList())
-        coEvery { householdRepository.suggestAddressHouseholds() } returns Result.success(listOf(suggestion))
+        coEvery { householdRepository.suggestAddressHouseholds() } returns Result.success(
+            listOf(suggestion)
+        )
         coEvery { householdRepository.dismissAddressSuggestion(any()) } returns Result.success(Unit)
 
         val vm = HouseholdsViewModel(householdRepository, contactRepository)
@@ -413,20 +470,26 @@ class HouseholdDetailViewModelTest {
         coEvery { contactRepository.resolveByUid(any()) } returns Result.success(emptyMap())
     }
 
-    private fun viewModel(id: String = "h1"): HouseholdDetailViewModel =
-        HouseholdDetailViewModel(
-            householdRepository,
-            contactRepository,
-            SavedStateHandle(mapOf("householdId" to id)),
-        )
+    private fun viewModel(id: String = "h1"): HouseholdDetailViewModel = HouseholdDetailViewModel(
+        householdRepository,
+        contactRepository,
+        SavedStateHandle(mapOf("householdId" to id))
+    )
 
     @Test
     fun `loads household and members on init`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { householdRepository.getWithMembers("h1") } returns Result.success(
             HouseholdDetail(
                 household = Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT),
-                members = listOf(HouseholdMember(id = 1, householdId = "h1", memberVCardUid = "uid-1", role = "adult")),
-            ),
+                members = listOf(
+                    HouseholdMember(
+                        id = 1,
+                        householdId = "h1",
+                        memberVCardUid = "uid-1",
+                        role = "adult"
+                    )
+                )
+            )
         )
 
         val vm = viewModel()
@@ -440,15 +503,24 @@ class HouseholdDetailViewModelTest {
     }
 
     @Test
-    fun `load resolves member names via contact resolution`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `load resolves member names via contact resolution`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { householdRepository.getWithMembers("h1") } returns Result.success(
             HouseholdDetail(
                 household = Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT),
-                members = listOf(HouseholdMember(id = 1, householdId = "h1", memberVCardUid = "uid-1", role = "adult")),
-            ),
+                members = listOf(
+                    HouseholdMember(
+                        id = 1,
+                        householdId = "h1",
+                        memberVCardUid = "uid-1",
+                        role = "adult"
+                    )
+                )
+            )
         )
         coEvery { contactRepository.resolveByUid(listOf("uid-1")) } returns Result.success(
-            mapOf("uid-1" to ContactSummary(id = 7, uid = "uid-1", firstname = "Alice")),
+            mapOf("uid-1" to ContactSummary(id = 7, uid = "uid-1", firstname = "Alice"))
         )
 
         val vm = viewModel()
@@ -463,11 +535,11 @@ class HouseholdDetailViewModelTest {
         coEvery { householdRepository.getWithMembers("h1") } returns Result.success(
             HouseholdDetail(
                 household = Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT),
-                members = emptyList(),
-            ),
+                members = emptyList()
+            )
         )
         coEvery { householdRepository.addMember("h1", "uid-2", null) } returns Result.success(
-            HouseholdMember(id = 2, householdId = "h1", memberVCardUid = "uid-2"),
+            HouseholdMember(id = 2, householdId = "h1", memberVCardUid = "uid-2")
         )
 
         val vm = viewModel()
@@ -480,14 +552,29 @@ class HouseholdDetailViewModelTest {
     }
 
     @Test
-    fun `updateMemberRole updates the member in place`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `updateMemberRole updates the member in place`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { householdRepository.getWithMembers("h1") } returns Result.success(
             HouseholdDetail(
                 household = Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT),
-                members = listOf(HouseholdMember(id = 1, householdId = "h1", memberVCardUid = "uid-1", role = "adult")),
-            ),
+                members = listOf(
+                    HouseholdMember(
+                        id = 1,
+                        householdId = "h1",
+                        memberVCardUid = "uid-1",
+                        role = "adult"
+                    )
+                )
+            )
         )
-        coEvery { householdRepository.updateMember("h1", "uid-1", "child") } returns Result.success(Unit)
+        coEvery {
+            householdRepository.updateMember(
+                "h1",
+                "uid-1",
+                "child"
+            )
+        } returns Result.success(Unit)
 
         val vm = viewModel()
         advanceUntilIdle()
@@ -500,12 +587,21 @@ class HouseholdDetailViewModelTest {
     }
 
     @Test
-    fun `updateMemberRole with no role clears via an empty string not a null`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `updateMemberRole with no role clears via an empty string not a null`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { householdRepository.getWithMembers("h1") } returns Result.success(
             HouseholdDetail(
                 household = Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT),
-                members = listOf(HouseholdMember(id = 1, householdId = "h1", memberVCardUid = "uid-1", role = "adult")),
-            ),
+                members = listOf(
+                    HouseholdMember(
+                        id = 1,
+                        householdId = "h1",
+                        memberVCardUid = "uid-1",
+                        role = "adult"
+                    )
+                )
+            )
         )
         coEvery { householdRepository.updateMember("h1", "uid-1", "") } returns Result.success(Unit)
 
@@ -520,15 +616,24 @@ class HouseholdDetailViewModelTest {
     }
 
     @Test
-    fun `updateMemberRole failure surfaces the error and resets the updating flag`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `updateMemberRole failure surfaces the error and resets the updating flag`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { householdRepository.getWithMembers("h1") } returns Result.success(
             HouseholdDetail(
                 household = Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT),
-                members = listOf(HouseholdMember(id = 1, householdId = "h1", memberVCardUid = "uid-1", role = "adult")),
-            ),
+                members = listOf(
+                    HouseholdMember(
+                        id = 1,
+                        householdId = "h1",
+                        memberVCardUid = "uid-1",
+                        role = "adult"
+                    )
+                )
+            )
         )
         coEvery { householdRepository.updateMember("h1", "uid-1", "child") } returns Result.failure(
-            ApiError.Client(500, "boom"),
+            ApiError.Client(500, "boom")
         )
 
         val vm = viewModel()
@@ -549,9 +654,9 @@ class HouseholdDetailViewModelTest {
                 household = Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT),
                 members = listOf(
                     HouseholdMember(id = 1, householdId = "h1", memberVCardUid = "uid-1"),
-                    HouseholdMember(id = 2, householdId = "h1", memberVCardUid = "uid-2"),
-                ),
-            ),
+                    HouseholdMember(id = 2, householdId = "h1", memberVCardUid = "uid-2")
+                )
+            )
         )
         coEvery { householdRepository.removeMember("h1", "uid-1") } returns Result.success(Unit)
 
@@ -565,15 +670,17 @@ class HouseholdDetailViewModelTest {
     }
 
     @Test
-    fun `suggestRelationships surfaces the count when edges are created`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `suggestRelationships surfaces the count when edges are created`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { householdRepository.getWithMembers("h1") } returns Result.success(
             HouseholdDetail(
                 household = Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT),
                 members = listOf(
                     HouseholdMember(id = 1, householdId = "h1", memberVCardUid = "uid-1"),
-                    HouseholdMember(id = 2, householdId = "h1", memberVCardUid = "uid-2"),
-                ),
-            ),
+                    HouseholdMember(id = 2, householdId = "h1", memberVCardUid = "uid-2")
+                )
+            )
         )
         coEvery { householdRepository.suggestRelationships("h1") } returns Result.success(
             listOf(
@@ -582,9 +689,9 @@ class HouseholdDetailViewModelTest {
                     sourceId = "uid-1",
                     targetId = "uid-2",
                     type = "spouse_of",
-                    status = "suggested",
-                ),
-            ),
+                    status = "suggested"
+                )
+            )
         )
 
         val vm = viewModel()
@@ -602,14 +709,22 @@ class HouseholdDetailViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { householdRepository.getWithMembers("h1") } returns Result.success(
                 HouseholdDetail(
-                    household = Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT),
+                    household = Household(
+                        id = "h1",
+                        name = "Home",
+                        type = HouseholdTypes.FAMILY_UNIT
+                    ),
                     members = listOf(
                         HouseholdMember(id = 1, householdId = "h1", memberVCardUid = "uid-1"),
-                        HouseholdMember(id = 2, householdId = "h1", memberVCardUid = "uid-2"),
-                    ),
-                ),
+                        HouseholdMember(id = 2, householdId = "h1", memberVCardUid = "uid-2")
+                    )
+                )
             )
-            coEvery { householdRepository.suggestRelationships("h1") } returns Result.success(emptyList())
+            coEvery {
+                householdRepository.suggestRelationships(
+                    "h1"
+                )
+            } returns Result.success(emptyList())
 
             val vm = viewModel()
             advanceUntilIdle()
@@ -622,12 +737,16 @@ class HouseholdDetailViewModelTest {
         }
 
     @Test
-    fun `suggestRelationships is a no-op with fewer than two members`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `suggestRelationships is a no-op with fewer than two members`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { householdRepository.getWithMembers("h1") } returns Result.success(
             HouseholdDetail(
                 household = Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT),
-                members = listOf(HouseholdMember(id = 1, householdId = "h1", memberVCardUid = "uid-1")),
-            ),
+                members = listOf(
+                    HouseholdMember(id = 1, householdId = "h1", memberVCardUid = "uid-1")
+                )
+            )
         )
 
         val vm = viewModel()
@@ -640,23 +759,27 @@ class HouseholdDetailViewModelTest {
     }
 
     @Test
-    fun `searchContacts returns results excluding existing members`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `searchContacts returns results excluding existing members`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { householdRepository.getWithMembers("h1") } returns Result.success(
             HouseholdDetail(
                 household = Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT),
-                members = listOf(HouseholdMember(id = 1, householdId = "h1", memberVCardUid = "uid-1")),
-            ),
+                members = listOf(
+                    HouseholdMember(id = 1, householdId = "h1", memberVCardUid = "uid-1")
+                )
+            )
         )
         coEvery { contactRepository.listContacts(any(), any(), any()) } returns Result.success(
             ContactsPage(
                 contacts = listOf(
                     ContactSummary(id = 1, uid = "uid-1", firstname = "Alice"),
-                    ContactSummary(id = 2, uid = "uid-2", firstname = "Bob"),
+                    ContactSummary(id = 2, uid = "uid-2", firstname = "Bob")
                 ),
                 nextCursor = null,
                 limit = 25,
-                sync = null,
-            ),
+                sync = null
+            )
         )
 
         val vm = viewModel()
@@ -670,12 +793,14 @@ class HouseholdDetailViewModelTest {
     }
 
     @Test
-    fun `blank search does not query the repository`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `blank search does not query the repository`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { householdRepository.getWithMembers("h1") } returns Result.success(
             HouseholdDetail(
                 household = Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT),
-                members = emptyList(),
-            ),
+                members = emptyList()
+            )
         )
 
         val vm = viewModel()
@@ -688,15 +813,17 @@ class HouseholdDetailViewModelTest {
     }
 
     @Test
-    fun `search failure clears loading without surfacing an error`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `search failure clears loading without surfacing an error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { householdRepository.getWithMembers("h1") } returns Result.success(
             HouseholdDetail(
                 household = Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT),
-                members = emptyList(),
-            ),
+                members = emptyList()
+            )
         )
         coEvery { contactRepository.listContacts(any(), any(), any()) } returns Result.failure(
-            ApiError.Network(java.io.IOException("offline")),
+            ApiError.Network(java.io.IOException("offline"))
         )
 
         val vm = viewModel()
@@ -713,7 +840,9 @@ class HouseholdDetailViewModelTest {
     // --- load edge cases ---
 
     @Test
-    fun `missing household id sets the missing-id error`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `missing household id sets the missing-id error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = viewModel(id = "")
         advanceUntilIdle()
 
@@ -724,7 +853,11 @@ class HouseholdDetailViewModelTest {
 
     @Test
     fun `load failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { householdRepository.getWithMembers("h1") } returns Result.failure(ApiError.Client(500, "boom"))
+        coEvery {
+            householdRepository.getWithMembers(
+                "h1"
+            )
+        } returns Result.failure(ApiError.Client(500, "boom"))
 
         val vm = viewModel()
         advanceUntilIdle()
@@ -740,8 +873,8 @@ class HouseholdDetailViewModelTest {
         coEvery { householdRepository.getWithMembers("h1") } returns Result.success(
             HouseholdDetail(
                 household = Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT),
-                members = emptyList(),
-            ),
+                members = emptyList()
+            )
         )
 
         val vm = viewModel()
@@ -758,11 +891,11 @@ class HouseholdDetailViewModelTest {
         coEvery { householdRepository.getWithMembers("h1") } returns Result.success(
             HouseholdDetail(
                 household = Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT),
-                members = emptyList(),
-            ),
+                members = emptyList()
+            )
         )
         coEvery { householdRepository.addMember("h1", "uid-2", null) } returns Result.failure(
-            ApiError.Client(409, "already a member"),
+            ApiError.Client(409, "already a member")
         )
 
         val vm = viewModel()
@@ -776,14 +909,23 @@ class HouseholdDetailViewModelTest {
     }
 
     @Test
-    fun `removeMember failure surfaces the error and keeps the member`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `removeMember failure surfaces the error and keeps the member`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { householdRepository.getWithMembers("h1") } returns Result.success(
             HouseholdDetail(
                 household = Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT),
-                members = listOf(HouseholdMember(id = 1, householdId = "h1", memberVCardUid = "uid-1")),
-            ),
+                members = listOf(
+                    HouseholdMember(id = 1, householdId = "h1", memberVCardUid = "uid-1")
+                )
+            )
         )
-        coEvery { householdRepository.removeMember("h1", "uid-1") } returns Result.failure(ApiError.Client(500, "boom"))
+        coEvery {
+            householdRepository.removeMember(
+                "h1",
+                "uid-1"
+            )
+        } returns Result.failure(ApiError.Client(500, "boom"))
 
         val vm = viewModel()
         advanceUntilIdle()
@@ -799,18 +941,20 @@ class HouseholdDetailViewModelTest {
     // --- suggestRelationships failure + state helpers ---
 
     @Test
-    fun `suggestRelationships failure surfaces the error and resets the flag`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `suggestRelationships failure surfaces the error and resets the flag`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { householdRepository.getWithMembers("h1") } returns Result.success(
             HouseholdDetail(
                 household = Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT),
                 members = listOf(
                     HouseholdMember(id = 1, householdId = "h1", memberVCardUid = "uid-1"),
-                    HouseholdMember(id = 2, householdId = "h1", memberVCardUid = "uid-2"),
-                ),
-            ),
+                    HouseholdMember(id = 2, householdId = "h1", memberVCardUid = "uid-2")
+                )
+            )
         )
         coEvery { householdRepository.suggestRelationships("h1") } returns Result.failure(
-            ApiError.Client(500, "boom"),
+            ApiError.Client(500, "boom")
         )
 
         val vm = viewModel()
@@ -825,18 +969,28 @@ class HouseholdDetailViewModelTest {
     }
 
     @Test
-    fun `onErrorShown and onInfoShown clear their respective state`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `onErrorShown and onInfoShown clear their respective state`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { householdRepository.getWithMembers("h1") } returns Result.success(
             HouseholdDetail(
                 household = Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT),
                 members = listOf(
                     HouseholdMember(id = 1, householdId = "h1", memberVCardUid = "uid-1"),
-                    HouseholdMember(id = 2, householdId = "h1", memberVCardUid = "uid-2"),
-                ),
-            ),
+                    HouseholdMember(id = 2, householdId = "h1", memberVCardUid = "uid-2")
+                )
+            )
         )
         coEvery { householdRepository.suggestRelationships("h1") } returns Result.success(
-            listOf(RelationshipEdge(id = "e1", sourceId = "uid-1", targetId = "uid-2", type = "spouse_of", status = "suggested")),
+            listOf(
+                RelationshipEdge(
+                    id = "e1",
+                    sourceId = "uid-1",
+                    targetId = "uid-2",
+                    type = "spouse_of",
+                    status = "suggested"
+                )
+            )
         )
 
         val vm = viewModel()
@@ -852,20 +1006,22 @@ class HouseholdDetailViewModelTest {
     }
 
     @Test
-    fun `clearContactSearch resets the search state`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `clearContactSearch resets the search state`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { householdRepository.getWithMembers("h1") } returns Result.success(
             HouseholdDetail(
                 household = Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT),
-                members = emptyList(),
-            ),
+                members = emptyList()
+            )
         )
         coEvery { contactRepository.listContacts(any(), any(), any()) } returns Result.success(
             ContactsPage(
                 contacts = listOf(ContactSummary(id = 2, uid = "uid-2", firstname = "Bob")),
                 nextCursor = null,
                 limit = 25,
-                sync = null,
-            ),
+                sync = null
+            )
         )
 
         val vm = viewModel()

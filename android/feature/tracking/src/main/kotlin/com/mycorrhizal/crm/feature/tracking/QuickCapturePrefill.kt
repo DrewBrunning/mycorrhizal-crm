@@ -23,7 +23,7 @@ data class QuickCapturePrefill(
      * to resolve, so the sheet must not label it "Unknown number". The call
      * overlay leaves this false and keeps its caller-resolution labels.
      */
-    val manual: Boolean = false,
+    val manual: Boolean = false
 )
 
 /**
@@ -40,7 +40,7 @@ object QuickCapturePrefillFactory {
                 firstname = it.firstname,
                 lastname = it.lastname,
                 nickname = it.nickname,
-                uid = it.uid,
+                uid = it.uid
             )
         }
         return QuickCapturePrefill(
@@ -50,7 +50,7 @@ object QuickCapturePrefillFactory {
             participants = listOfNotNull(participant),
             // The canonical app display name (`firstname "nickname" lastname`,
             // matching every other surface). The chip and activity both use it.
-            contactName = contact?.displayName?.takeIf { it.isNotBlank() },
+            contactName = contact?.displayName?.takeIf { it.isNotBlank() }
         )
     }
 
@@ -66,7 +66,7 @@ object QuickCapturePrefillFactory {
         date = nowIso,
         participants = emptyList(),
         contactName = null,
-        manual = true,
+        manual = true
     )
 
     const val CALL_TITLE = "Call"

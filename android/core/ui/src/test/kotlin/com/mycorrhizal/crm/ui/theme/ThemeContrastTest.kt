@@ -1,9 +1,9 @@
 package com.mycorrhizal.crm.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import kotlin.math.pow
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import kotlin.math.pow
 
 /**
  * Issue #206: WCAG 1.4.3 (Minimum, AA) contrast over the actual token/surface
@@ -38,20 +38,20 @@ class ThemeContrastTest {
         val ratio = contrastRatio(fg, bg)
         assertTrue(
             "$label: contrast ${"%.2f".format(ratio)}:1 is below the " +
-                "$minimum:1 minimum on ${bg}",
-            ratio >= minimum,
+                "$minimum:1 minimum on $bg",
+            ratio >= minimum
         )
     }
 
     // The app's three light grounds (Theme.kt: bone page / parchment cards /
     // paper dialogs). Cards render surfaceContainerLow; dialogs render
     // surfaceContainerHigh.
-    private val page = LightColors.surface          // bone
-    private val card = LightColors.surfaceContainerLow   // parchment
+    private val page = LightColors.surface // bone
+    private val card = LightColors.surfaceContainerLow // parchment
     private val dialog = LightColors.surfaceContainerHigh // paper
 
-    private val darkPage = DarkColors.surface            // boneDark
-    private val darkCard = DarkColors.surfaceContainerLow   // parchmentDark
+    private val darkPage = DarkColors.surface // boneDark
+    private val darkCard = DarkColors.surfaceContainerLow // parchmentDark
     private val darkDialog = DarkColors.surfaceContainerHigh // paperDark
 
     @Test
@@ -91,9 +91,24 @@ class ThemeContrastTest {
     fun `non-text accent pairings clear 3 to 1 (borders and icon tints)`() {
         // #200: the warning foreground (overdue borders/icon tints) is the
         // darkened amber, not the chip's container amber.
-        assertContrast(MycorrhizalColors.chanterelleForeground, page, 3.0, "warning border on the page")
-        assertContrast(MycorrhizalColors.chanterelleForeground, card, 3.0, "warning border on cards")
-        assertContrast(MycorrhizalColors.chanterelleDark, darkCard, 3.0, "warning border on dark cards")
+        assertContrast(
+            MycorrhizalColors.chanterelleForeground,
+            page,
+            3.0,
+            "warning border on the page"
+        )
+        assertContrast(
+            MycorrhizalColors.chanterelleForeground,
+            card,
+            3.0,
+            "warning border on cards"
+        )
+        assertContrast(
+            MycorrhizalColors.chanterelleDark,
+            darkCard,
+            3.0,
+            "warning border on dark cards"
+        )
         // #206: OperationBadge's 1dp border is the accent at full opacity — a
         // non-text 3:1 bar on the card ground in both themes.
         assertContrast(LightColors.tertiary, card, 3.0, "badge border (tertiary) on cards")

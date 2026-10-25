@@ -50,18 +50,38 @@ fun contactFieldLabel(key: ContactFieldKey): String = when (key) {
  */
 @Composable
 fun contactFieldDescription(key: ContactFieldKey): String? = when (key) {
-    ContactFieldKey.ANNIVERSARY -> stringResource(R.string.settings_contact_fields_anniversary_description)
-    ContactFieldKey.ANNIVERSARIES -> stringResource(R.string.settings_contact_fields_anniversaries_description)
-    ContactFieldKey.LANGUAGE -> stringResource(R.string.settings_contact_fields_language_description)
-    ContactFieldKey.PREFERRED_LANGUAGES -> stringResource(R.string.settings_contact_fields_preferred_languages_description)
+    ContactFieldKey.ANNIVERSARY -> stringResource(
+        R.string.settings_contact_fields_anniversary_description
+    )
+
+    ContactFieldKey.ANNIVERSARIES -> stringResource(
+        R.string.settings_contact_fields_anniversaries_description
+    )
+
+    ContactFieldKey.LANGUAGE -> stringResource(
+        R.string.settings_contact_fields_language_description
+    )
+
+    ContactFieldKey.PREFERRED_LANGUAGES -> stringResource(
+        R.string.settings_contact_fields_preferred_languages_description
+    )
+
     else -> null
 }
 
 @Composable
 fun contactFieldGroupLabel(group: ContactFieldGroup): String = when (group) {
-    ContactFieldGroup.COMMUNICATION -> stringResource(R.string.settings_contact_fields_group_communication)
+    ContactFieldGroup.COMMUNICATION -> stringResource(
+        R.string.settings_contact_fields_group_communication
+    )
+
     ContactFieldGroup.NAME -> stringResource(R.string.settings_contact_fields_group_name)
+
     ContactFieldGroup.WORK -> stringResource(R.string.settings_contact_fields_group_work)
+
     ContactFieldGroup.PERSONAL -> stringResource(R.string.settings_contact_fields_group_personal)
-    ContactFieldGroup.MYCORRHIZAL -> stringResource(R.string.settings_contact_fields_group_mycorrhizal)
+
+    ContactFieldGroup.MYCORRHIZAL -> stringResource(
+        R.string.settings_contact_fields_group_mycorrhizal
+    )
 }

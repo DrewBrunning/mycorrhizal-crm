@@ -19,6 +19,7 @@ import com.mycorrhizal.crm.model.network.HouseholdTypes
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,7 +27,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class HouseholdsUiState(
     val households: List<Household> = emptyList(),
@@ -43,13 +43,13 @@ data class HouseholdsUiState(
     val isSaving: Boolean = false,
     val deletingId: String? = null,
     @AnyRes val infoRes: Int? = null,
-    val infoCount: Int? = null,
+    val infoCount: Int? = null
 )
 
 @HiltViewModel
 class HouseholdsViewModel @Inject constructor(
     private val householdRepository: HouseholdRepository,
-    private val contactRepository: ContactRepository,
+    private val contactRepository: ContactRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HouseholdsUiState())
@@ -69,7 +69,7 @@ class HouseholdsViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -82,14 +82,17 @@ class HouseholdsViewModel @Inject constructor(
             householdRepository.create(trimmed, type).foldApiError(
                 onSuccess = { household ->
                     _uiState.update {
-                        it.copy(isSaving = false, households = (it.households + household)
-                            .sortedBy { h -> h.name.lowercase() })
+                        it.copy(
+                            isSaving = false,
+                            households = (it.households + household)
+                                .sortedBy { h -> h.name.lowercase() }
+                        )
                     }
                     onDone()
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isSaving = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -104,13 +107,13 @@ class HouseholdsViewModel @Inject constructor(
                     _uiState.update { state ->
                         state.copy(
                             households = state.households.map { if (it.id == id) household else it }
-                                .sortedBy { h -> h.name.lowercase() },
+                                .sortedBy { h -> h.name.lowercase() }
                         )
                     }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -122,12 +125,15 @@ class HouseholdsViewModel @Inject constructor(
             householdRepository.delete(id).foldApiError(
                 onSuccess = {
                     _uiState.update { state ->
-                        state.copy(deletingId = null, households = state.households.filterNot { it.id == id })
+                        state.copy(
+                            deletingId = null,
+                            households = state.households.filterNot { it.id == id }
+                        )
                     }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(deletingId = null, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -149,14 +155,19 @@ class HouseholdsViewModel @Inject constructor(
                         it.copy(
                             suggestionsLoading = false,
                             suggestionsLoaded = true,
-                            addressSuggestions = suggestions,
+                            addressSuggestions = suggestions
                         )
                     }
                     resolveSuggestionMemberNames(suggestions)
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(suggestionsLoading = false, error = error.displayMessage) }
-                },
+                    _uiState.update {
+                        it.copy(
+                            suggestionsLoading = false,
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }
@@ -167,22 +178,31 @@ class HouseholdsViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(pendingSuggestionKey = "accept:$key", error = null) }
             householdRepository.acceptAddressSuggestion(
-                AcceptHouseholdSuggestionInput(memberVCardUids = suggestion.memberVCardUids),
+                AcceptHouseholdSuggestionInput(memberVCardUids = suggestion.memberVCardUids)
             ).foldApiError(
                 onSuccess = { _ ->
                     _uiState.update { state ->
                         state.copy(
                             pendingSuggestionKey = null,
-                            addressSuggestions = state.addressSuggestions.filterNot { suggestionKey(it) == key },
-                            infoRes = R.string.households_suggestion_accepted,
+                            addressSuggestions = state.addressSuggestions.filterNot {
+                                suggestionKey(
+                                    it
+                                ) == key
+                            },
+                            infoRes = R.string.households_suggestion_accepted
                         )
                     }
                     // Refresh the list so the materialized household appears.
                     load()
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(pendingSuggestionKey = null, error = error.displayMessage) }
-                },
+                    _uiState.update {
+                        it.copy(
+                            pendingSuggestionKey = null,
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }
@@ -193,20 +213,29 @@ class HouseholdsViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(pendingSuggestionKey = "dismiss:$key", error = null) }
             householdRepository.dismissAddressSuggestion(
-                DismissHouseholdSuggestionInput(memberVCardUids = suggestion.memberVCardUids),
+                DismissHouseholdSuggestionInput(memberVCardUids = suggestion.memberVCardUids)
             ).foldApiError(
                 onSuccess = {
                     _uiState.update { state ->
                         state.copy(
                             pendingSuggestionKey = null,
-                            addressSuggestions = state.addressSuggestions.filterNot { suggestionKey(it) == key },
-                            infoRes = R.string.households_suggestion_dismissed,
+                            addressSuggestions = state.addressSuggestions.filterNot {
+                                suggestionKey(
+                                    it
+                                ) == key
+                            },
+                            infoRes = R.string.households_suggestion_dismissed
                         )
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(pendingSuggestionKey = null, error = error.displayMessage) }
-                },
+                    _uiState.update {
+                        it.copy(
+                            pendingSuggestionKey = null,
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }
@@ -256,14 +285,14 @@ data class HouseholdDetailUiState(
     val error: String? = null,
     @StringRes val errorRes: Int? = null,
     @StringRes val infoRes: Int? = null,
-    val infoCount: Int? = null,
+    val infoCount: Int? = null
 )
 
 @HiltViewModel
 class HouseholdDetailViewModel @Inject constructor(
     private val householdRepository: HouseholdRepository,
     private val contactRepository: ContactRepository,
-    savedStateHandle: SavedStateHandle,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val householdId: String = run {
@@ -283,7 +312,11 @@ class HouseholdDetailViewModel @Inject constructor(
     fun load() {
         if (householdId.isBlank()) {
             _uiState.update {
-                it.copy(isLoading = false, errorRes = R.string.households_error_missing_id, error = null)
+                it.copy(
+                    isLoading = false,
+                    errorRes = R.string.households_error_missing_id,
+                    error = null
+                )
             }
             return
         }
@@ -292,13 +325,17 @@ class HouseholdDetailViewModel @Inject constructor(
             householdRepository.getWithMembers(householdId).foldApiError(
                 onSuccess = { detail ->
                     _uiState.update {
-                        it.copy(isLoading = false, household = detail.household, members = detail.members)
+                        it.copy(
+                            isLoading = false,
+                            household = detail.household,
+                            members = detail.members
+                        )
                     }
                     resolveMemberNames(detail.members)
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -329,7 +366,7 @@ class HouseholdDetailViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -348,14 +385,25 @@ class HouseholdDetailViewModel @Inject constructor(
                         state.copy(
                             updatingRoleUid = null,
                             members = state.members.map { member ->
-                                if (member.memberVCardUid == vcardUid) member.copy(role = normalizedRole) else member
-                            },
+                                if (member.memberVCardUid == vcardUid) {
+                                    member.copy(
+                                        role = normalizedRole
+                                    )
+                                } else {
+                                    member
+                                }
+                            }
                         )
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(updatingRoleUid = null, error = error.displayMessage) }
-                },
+                    _uiState.update {
+                        it.copy(
+                            updatingRoleUid = null,
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }
@@ -369,13 +417,13 @@ class HouseholdDetailViewModel @Inject constructor(
                     _uiState.update { state ->
                         state.copy(
                             removingUid = null,
-                            members = state.members.filterNot { it.memberVCardUid == vcardUid },
+                            members = state.members.filterNot { it.memberVCardUid == vcardUid }
                         )
                     }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(removingUid = null, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -397,13 +445,18 @@ class HouseholdDetailViewModel @Inject constructor(
                             } else {
                                 R.string.households_no_new_suggestions
                             },
-                            infoCount = if (count > 0) count else null,
+                            infoCount = if (count > 0) count else null
                         )
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isSuggestingRelationships = false, error = error.displayMessage) }
-                },
+                    _uiState.update {
+                        it.copy(
+                            isSuggestingRelationships = false,
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }
@@ -413,7 +466,12 @@ class HouseholdDetailViewModel @Inject constructor(
         _uiState.update { it.copy(memberSearchQuery = query) }
         searchJob?.cancel()
         if (query.isBlank()) {
-            _uiState.update { it.copy(memberSearchResults = emptyList(), memberSearchLoading = false) }
+            _uiState.update {
+                it.copy(
+                    memberSearchResults = emptyList(),
+                    memberSearchLoading = false
+                )
+            }
             return
         }
         searchJob = viewModelScope.launch {
@@ -424,14 +482,17 @@ class HouseholdDetailViewModel @Inject constructor(
                 onSuccess = { page ->
                     _uiState.update {
                         it.copy(
-                            memberSearchResults = page.contacts.filter { c -> c.uid != null && c.uid !in memberUids },
-                            memberSearchLoading = false,
+                            memberSearchResults = page.contacts.filter { c ->
+                                c.uid != null &&
+                                    c.uid !in memberUids
+                            },
+                            memberSearchLoading = false
                         )
                     }
                 },
                 onFailure = {
                     _uiState.update { it.copy(memberSearchLoading = false) }
-                },
+                }
             )
         }
     }
@@ -439,7 +500,11 @@ class HouseholdDetailViewModel @Inject constructor(
     fun clearContactSearch() {
         searchJob?.cancel()
         _uiState.update {
-            it.copy(memberSearchQuery = "", memberSearchResults = emptyList(), memberSearchLoading = false)
+            it.copy(
+                memberSearchQuery = "",
+                memberSearchResults = emptyList(),
+                memberSearchLoading = false
+            )
         }
     }
 

@@ -59,8 +59,8 @@ class CachedContactDaoTest {
         dao.upsertAll(
             listOf(
                 testContact(1, "Alice"),
-                testContact(2, "Bob").copy(deleted = true),
-            ),
+                testContact(2, "Bob").copy(deleted = true)
+            )
         )
 
         val result = dao.getAll()
@@ -73,8 +73,8 @@ class CachedContactDaoTest {
         dao.upsertAll(
             listOf(
                 testContact(1, "Alice Smith").copy(primaryEmail = "alice@example.com"),
-                testContact(2, "Bob Jones"),
-            ),
+                testContact(2, "Bob Jones")
+            )
         )
 
         val byName = dao.search("smith")
@@ -94,8 +94,8 @@ class CachedContactDaoTest {
             listOf(
                 testContact(1, "García Ruiz"),
                 testContact(2, "José"),
-                testContact(3, "Müller"),
-            ),
+                testContact(3, "Müller")
+            )
         )
 
         assertEquals(1, dao.searchFts("garcia").size)
@@ -113,8 +113,8 @@ class CachedContactDaoTest {
             listOf(
                 testContact(1, "Straße"),
                 testContact(2, "Istanbul"),
-                testContact(3, "İstanbul"),
-            ),
+                testContact(3, "İstanbul")
+            )
         )
 
         assertEquals(1, dao.searchFts("straße").size)
@@ -128,8 +128,8 @@ class CachedContactDaoTest {
         dao.upsertAll(
             listOf(
                 testContact(1, "David Smith").copy(primaryEmail = "david@example.com"),
-                testContact(2, "Bob Jones"),
-            ),
+                testContact(2, "Bob Jones")
+            )
         )
 
         // FTS MATCH is case-insensitive and prefix-expanded by the '*'.
@@ -147,8 +147,8 @@ class CachedContactDaoTest {
         dao.upsertAll(
             listOf(
                 testContact(1, "David Smith"),
-                testContact(2, "Dan").copy(deleted = true),
-            ),
+                testContact(2, "Dan").copy(deleted = true)
+            )
         )
 
         val result = dao.searchFts("da")
@@ -178,10 +178,10 @@ class CachedContactDaoTest {
             listOf(
                 testContact(1, "Dana White").copy(
                     primaryPhone = "(800) 555-1234",
-                    phonesNormalized = PhoneKey.flatten(listOf("(800) 555-1234")),
+                    phonesNormalized = PhoneKey.flatten(listOf("(800) 555-1234"))
                 ),
-                testContact(2, "Bob Jones"),
-            ),
+                testContact(2, "Bob Jones")
+            )
         )
 
         val result = dao.searchFtsMatch("phonesNormalized:8005551234*")
@@ -196,9 +196,9 @@ class CachedContactDaoTest {
             listOf(
                 testContact(1, "Dana White").copy(
                     primaryPhone = "(800) 555-1234",
-                    phonesNormalized = PhoneKey.flatten(listOf("(800) 555-1234", "555-0100")),
-                ),
-            ),
+                    phonesNormalized = PhoneKey.flatten(listOf("(800) 555-1234", "555-0100"))
+                )
+            )
         )
 
         val result = dao.searchFtsMatch("phonesNormalized:5550100*")
@@ -213,10 +213,10 @@ class CachedContactDaoTest {
             listOf(
                 testContact(1, "Dana White").copy(
                     primaryPhone = "(800) 555-1234",
-                    phonesNormalized = PhoneKey.flatten(listOf("(800) 555-1234")),
+                    phonesNormalized = PhoneKey.flatten(listOf("(800) 555-1234"))
                 ),
-                testContact(2, "Bob Jones"),
-            ),
+                testContact(2, "Bob Jones")
+            )
         )
 
         val result = dao.findByPhoneKey(PhoneKey.key("(800) 555-1234"))
@@ -232,30 +232,31 @@ class CachedContactDaoTest {
             listOf(
                 testContact(1, "Dana White").copy(
                     primaryPhone = "(800) 555-1234",
-                    phonesNormalized = PhoneKey.flatten(listOf("(800) 555-1234", "555-0100")),
-                ),
-            ),
+                    phonesNormalized = PhoneKey.flatten(listOf("(800) 555-1234", "555-0100"))
+                )
+            )
         )
 
         assertEquals("Dana White", dao.findByPhoneKey(PhoneKey.key("555-0100"))?.fn)
     }
 
     @Test
-    fun `findByPhoneKey reconciles an international vs local form via the key token`() = runBlocking {
-        // Issue #963's case: a CardDAV contact stored as "+49 (0) 151 12345678"
-        // must match a call-log sender shown as "+4915112345678" or "0151 12345678".
-        dao.upsertAll(
-            listOf(
-                testContact(1, "Klara Beispiel").copy(
-                    primaryPhone = "+49 (0) 151 12345678",
-                    phonesNormalized = PhoneKey.flatten(listOf("+49 (0) 151 12345678")),
-                ),
-            ),
-        )
+    fun `findByPhoneKey reconciles an international vs local form via the key token`() =
+        runBlocking {
+            // Issue #963's case: a CardDAV contact stored as "+49 (0) 151 12345678"
+            // must match a call-log sender shown as "+4915112345678" or "0151 12345678".
+            dao.upsertAll(
+                listOf(
+                    testContact(1, "Klara Beispiel").copy(
+                        primaryPhone = "+49 (0) 151 12345678",
+                        phonesNormalized = PhoneKey.flatten(listOf("+49 (0) 151 12345678"))
+                    )
+                )
+            )
 
-        assertEquals("Klara Beispiel", dao.findByPhoneKey(PhoneKey.key("+4915112345678"))?.fn)
-        assertEquals("Klara Beispiel", dao.findByPhoneKey(PhoneKey.key("0151 12345678"))?.fn)
-    }
+            assertEquals("Klara Beispiel", dao.findByPhoneKey(PhoneKey.key("+4915112345678"))?.fn)
+            assertEquals("Klara Beispiel", dao.findByPhoneKey(PhoneKey.key("0151 12345678"))?.fn)
+        }
 
     @Test
     fun `findByPhoneKey is token-exact and never matches a longer number's suffix`() = runBlocking {
@@ -265,13 +266,13 @@ class CachedContactDaoTest {
             listOf(
                 testContact(1, "Short").copy(
                     primaryPhone = "5551234",
-                    phonesNormalized = PhoneKey.flatten(listOf("5551234")),
+                    phonesNormalized = PhoneKey.flatten(listOf("5551234"))
                 ),
                 testContact(2, "Long").copy(
                     primaryPhone = "15551234",
-                    phonesNormalized = PhoneKey.flatten(listOf("15551234")),
-                ),
-            ),
+                    phonesNormalized = PhoneKey.flatten(listOf("15551234"))
+                )
+            )
         )
 
         val result = dao.findByPhoneKey("5551234")
@@ -292,9 +293,9 @@ class CachedContactDaoTest {
                 testContact(1, "Dana White").copy(
                     primaryPhone = "(800) 555-1234",
                     phonesNormalized = PhoneKey.flatten(listOf("(800) 555-1234")),
-                    deleted = true,
-                ),
-            ),
+                    deleted = true
+                )
+            )
         )
 
         assertNull(dao.findByPhoneKey("8005551234"))
@@ -328,8 +329,8 @@ class CachedContactDaoTest {
                 testContact(1, "Alice").copy(primaryPhone = "555-0100"),
                 testContact(2, "Bob").copy(primaryPhone = "555-0200", card = card),
                 testContact(3, "No Phone"),
-                testContact(4, "Deleted").copy(primaryPhone = "555-0400", deleted = true),
-            ),
+                testContact(4, "Deleted").copy(primaryPhone = "555-0400", deleted = true)
+            )
         )
 
         val result = dao.getIdsMissingPhoneIndex(limit = 10)
@@ -340,7 +341,7 @@ class CachedContactDaoTest {
     @Test
     fun `getIdsMissingPhoneIndex is bounded by limit and ordered by id`() = runBlocking {
         dao.upsertAll(
-            (1..5).map { id -> testContact(id, "Contact $id").copy(primaryPhone = "555-000$id") },
+            (1..5).map { id -> testContact(id, "Contact $id").copy(primaryPhone = "555-000$id") }
         )
 
         val result = dao.getIdsMissingPhoneIndex(limit = 3)
@@ -350,9 +351,15 @@ class CachedContactDaoTest {
 
     @Test
     fun `card and crm survive the round trip via converters`() = runBlocking {
-        val card = Card(name = com.mycorrhizal.crm.model.network.Name(full = "Alice"), emails = listOf(Email(address = "a@x.com")))
+        val card = Card(
+            name = com.mycorrhizal.crm.model.network.Name(full = "Alice"),
+            emails = listOf(Email(address = "a@x.com"))
+        )
         val crm = CRMEnvelope(circles = listOf("friends"))
-        val contact = testContact(1, "Alice").copy(card = card, crm = crm, circles = listOf("friends"))
+        val contact = testContact(
+            1,
+            "Alice"
+        ).copy(card = card, crm = crm, circles = listOf("friends"))
         dao.upsert(contact)
 
         val result = dao.getById(1)

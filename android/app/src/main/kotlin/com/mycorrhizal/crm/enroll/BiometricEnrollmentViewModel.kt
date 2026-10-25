@@ -8,6 +8,7 @@ import com.mycorrhizal.crm.domain.repository.BiometricEnrollmentStatus
 import com.mycorrhizal.crm.domain.repository.LocalAuthCapabilities
 import com.mycorrhizal.crm.domain.repository.LocalAuthSettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,13 +16,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /** UI state for the post-login biometric-enrollment prompt (issue #722). */
 data class BiometricEnrollmentUiState(
     val visible: Boolean = false,
     val isBusy: Boolean = false,
-    val error: Boolean = false,
+    val error: Boolean = false
 )
 
 sealed interface BiometricEnrollmentEvent {
@@ -42,7 +42,7 @@ class BiometricEnrollmentViewModel @Inject constructor(
     private val deviceGrantManager: DeviceGrantManager,
     private val localAuthSettings: LocalAuthSettingsRepository,
     private val localAuthCapabilities: LocalAuthCapabilities,
-    sessionManager: SessionManager,
+    sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BiometricEnrollmentUiState())
@@ -91,7 +91,7 @@ class BiometricEnrollmentViewModel @Inject constructor(
             },
             onFailure = {
                 _uiState.value = _uiState.value.copy(isBusy = false, error = true)
-            },
+            }
         )
     }
 

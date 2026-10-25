@@ -13,7 +13,7 @@ interface RelationshipEdgeRepository {
     suspend fun listForContact(
         contactId: String,
         status: String? = null,
-        cursor: String? = null,
+        cursor: String? = null
     ): Result<List<RelationshipEdge>>
 
     /** Create an edge (source/target by VCardUID, or thin-contact for unknown parties). */

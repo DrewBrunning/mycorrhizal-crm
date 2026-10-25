@@ -27,24 +27,23 @@ import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.MergeType
 import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Icon
-import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -69,6 +68,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -76,25 +76,25 @@ import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.res.stringResource
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.mycorrhizal.crm.model.network.BulkActions
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.SearchActivityHit
 import com.mycorrhizal.crm.model.network.SearchNoteHit
 import com.mycorrhizal.crm.model.network.SearchResult
-import com.mycorrhizal.crm.ui.components.BrandFab
-import com.mycorrhizal.crm.ui.components.FabListContentPadding
-import com.mycorrhizal.crm.ui.components.EmptyState
-import com.mycorrhizal.crm.ui.components.LoadingSkeleton
-import com.mycorrhizal.crm.ui.components.RefreshableContent
-import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.ui.LocalDateFormat
+import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.AccessibleIconButton
+import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
+import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.RefreshableContent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -113,7 +113,7 @@ fun ContactListScreen(
     // mode for share-to-CRM — see ContactListScreenContent.
     pickerTitle: String? = null,
     onPickerBack: () -> Unit = {},
-    viewModel: ContactListViewModel = hiltViewModel(),
+    viewModel: ContactListViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -161,7 +161,7 @@ fun ContactListScreen(
         onPickerBack = onPickerBack,
         onErrorShown = viewModel::onErrorShown,
         onLoadMore = viewModel::loadNextPage,
-        onRefresh = viewModel::refresh,
+        onRefresh = viewModel::refresh
     )
 }
 
@@ -199,7 +199,7 @@ fun ContactListScreenContent(
     onPickerBack: () -> Unit = {},
     onErrorShown: () -> Unit = {},
     onLoadMore: () -> Unit = {},
-    onRefresh: () -> Unit = {},
+    onRefresh: () -> Unit = {}
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     var search by rememberSaveable { mutableStateOf(uiState.searchQuery) }
@@ -229,7 +229,9 @@ fun ContactListScreenContent(
     val lastContactIndex = uiState.contacts.lastIndex
     val shouldLoadMore by remember(lastContactIndex) {
         derivedStateOf {
-            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: return@derivedStateOf false
+            val lastVisible =
+                listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
+                    ?: return@derivedStateOf false
             lastContactIndex >= 0 && lastVisible >= lastContactIndex - 5
         }
     }
@@ -244,16 +246,22 @@ fun ContactListScreenContent(
             TopAppBar(
                 navigationIcon = {
                     if (isPicker) {
-                        AccessibleIconButton(onClick = onPickerBack, modifier = Modifier.testTag("picker-back")) {
+                        AccessibleIconButton(
+                            onClick = onPickerBack,
+                            modifier = Modifier.testTag("picker-back")
+                        ) {
                             Icon(
                                 Icons.AutoMirrored.Outlined.ArrowBack,
-                                contentDescription = stringResource(R.string.cd_back),
+                                contentDescription = stringResource(R.string.cd_back)
                             )
                         }
                     } else {
                         onMenuClick?.let { onMenu ->
                             AccessibleIconButton(onClick = onMenu) {
-                                Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
+                                Icon(
+                                    Icons.Outlined.Menu,
+                                    contentDescription = stringResource(R.string.cd_menu)
+                                )
                             }
                         }
                     }
@@ -262,12 +270,17 @@ fun ContactListScreenContent(
                     when {
                         pickerTitle != null -> Text(
                             text = pickerTitle,
-                            style = MaterialTheme.typography.titleLarge,
+                            style = MaterialTheme.typography.titleLarge
                         )
+
                         selectMode -> Text(
-                            text = stringResource(R.string.contacts_selected_count, uiState.selected.size),
-                            style = MaterialTheme.typography.titleLarge,
+                            text = stringResource(
+                                R.string.contacts_selected_count,
+                                uiState.selected.size
+                            ),
+                            style = MaterialTheme.typography.titleLarge
                         )
+
                         // Issue #1762: the search bar lives in the app bar, not
                         // in a fixed block that steals a third of the viewport.
                         else -> OutlinedTextField(
@@ -293,8 +306,8 @@ fun ContactListScreenContent(
                                 unfocusedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
                                 cursorColor = MaterialTheme.colorScheme.onPrimary,
                                 focusedBorderColor = Color.Transparent,
-                                unfocusedBorderColor = Color.Transparent,
-                            ),
+                                unfocusedBorderColor = Color.Transparent
+                            )
                         )
                     }
                 },
@@ -304,18 +317,23 @@ fun ContactListScreenContent(
                     } else if (selectMode) {
                         TextButton(
                             onClick = onToggleSelectAll,
-                            modifier = Modifier.testTag("select-all"),
+                            modifier = Modifier.testTag("select-all")
                         ) {
-                            Text(stringResource(R.string.contacts_select_all), color = MaterialTheme.colorScheme.onPrimary)
+                            Text(
+                                stringResource(R.string.contacts_select_all),
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
                         }
                         AccessibleIconButton(
                             onClick = { selectMode = false },
-                            modifier = Modifier.testTag("exit-select-mode"),
+                            modifier = Modifier.testTag("exit-select-mode")
                         ) {
                             Icon(
                                 Icons.Outlined.Close,
-                                contentDescription = stringResource(R.string.contacts_exit_select_mode),
-                                tint = MaterialTheme.colorScheme.onPrimary,
+                                contentDescription = stringResource(
+                                    R.string.contacts_exit_select_mode
+                                ),
+                                tint = MaterialTheme.colorScheme.onPrimary
                             )
                         }
                     } else {
@@ -323,24 +341,24 @@ fun ContactListScreenContent(
                         // button) — only meaningful outside selection mode.
                         AccessibleIconButton(
                             onClick = onReviewDuplicates,
-                            modifier = Modifier.testTag("review-duplicates"),
+                            modifier = Modifier.testTag("review-duplicates")
                         ) {
                             Icon(
                                 // Issue #1762: ContentCopy read as "copy"; the
                                 // merge glyph names the action.
                                 Icons.Outlined.MergeType,
                                 contentDescription = stringResource(R.string.duplicates_title),
-                                tint = MaterialTheme.colorScheme.onPrimary,
+                                tint = MaterialTheme.colorScheme.onPrimary
                             )
                         }
                         AccessibleIconButton(
                             onClick = { selectMode = true },
-                            modifier = Modifier.testTag("enter-select-mode"),
+                            modifier = Modifier.testTag("enter-select-mode")
                         ) {
                             Icon(
                                 Icons.Outlined.Checklist,
                                 contentDescription = stringResource(R.string.contacts_select_mode),
-                                tint = MaterialTheme.colorScheme.onPrimary,
+                                tint = MaterialTheme.colorScheme.onPrimary
                             )
                         }
                     }
@@ -349,14 +367,20 @@ fun ContactListScreenContent(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
         floatingActionButton = {
             if (!selectMode && !isPicker) {
-                BrandFab(onClick = onCreateContact, modifier = Modifier.testTag("create-contact-fab")) {
-                    Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.contacts_new))
+                BrandFab(
+                    onClick = onCreateContact,
+                    modifier = Modifier.testTag("create-contact-fab")
+                ) {
+                    Icon(
+                        Icons.Outlined.Add,
+                        contentDescription = stringResource(R.string.contacts_new)
+                    )
                 }
             }
         },
@@ -368,18 +392,20 @@ fun ContactListScreenContent(
                     onUnarchive = { pendingAction = BulkActions.UNARCHIVE },
                     onDelete = { pendingAction = BulkActions.DELETE },
                     onAddCircle = { picker = BulkPickerTarget.CIRCLE to BulkActions.ADD_CIRCLE },
-                    onRemoveCircle = { picker = BulkPickerTarget.CIRCLE to BulkActions.REMOVE_CIRCLE },
+                    onRemoveCircle = {
+                        picker = BulkPickerTarget.CIRCLE to BulkActions.REMOVE_CIRCLE
+                    },
                     onAddTag = { picker = BulkPickerTarget.TAG to BulkActions.ADD_TAG },
-                    onRemoveTag = { picker = BulkPickerTarget.TAG to BulkActions.REMOVE_TAG },
+                    onRemoveTag = { picker = BulkPickerTarget.TAG to BulkActions.REMOVE_TAG }
                 )
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding),
+                .padding(padding)
         ) {
             // T87: the notes/activities section trails every state (loading/empty/error/
             // populated) as the LazyColumn's last item, so it's reachable regardless of
@@ -387,12 +413,12 @@ fun ContactListScreenContent(
             RefreshableContent(
                 isRefreshing = uiState.isLoading && uiState.contacts.isNotEmpty(),
                 onRefresh = onRefresh,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize()
             ) {
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize().testTag("contact-list"),
-                    contentPadding = FabListContentPadding,
+                    contentPadding = FabListContentPadding
                 ) {
                     // Issue #1762: one compact, horizontally-scrollable chip row
                     // as the list's first item — it scrolls away with the rows.
@@ -406,7 +432,7 @@ fun ContactListScreenContent(
                             onCircleFilterChange = onCircleFilterChange,
                             onIncludeArchivedChange = onIncludeArchivedChange,
                             onIncludeFavoritesChange = onIncludeFavoritesChange,
-                            onSortChange = onSortChange,
+                            onSortChange = onSortChange
                         )
                     }
                     val contactRow: @Composable (ContactSummary) -> Unit = { contact ->
@@ -418,30 +444,49 @@ fun ContactListScreenContent(
                                 contact.uid == uiState.selfContactVCardUid,
                             onToggleFavorite = { onToggleFavorite(contact) },
                             onClick = {
-                                if (selectMode) onToggleSelection(contact.id) else onContactClick(contact.id)
+                                if (selectMode) {
+                                    onToggleSelection(
+                                        contact.id
+                                    )
+                                } else {
+                                    onContactClick(contact.id)
+                                }
                             },
                             onLongClick = {
                                 if (!isPicker) {
                                     selectMode = true
                                     onToggleSelection(contact.id)
                                 }
-                            },
+                            }
                         )
                     }
                     when {
                         uiState.isLoading && uiState.contacts.isEmpty() -> item {
                             LoadingSkeleton(modifier = Modifier.testTag("contact-list-loading"))
                         }
+
                         uiState.contacts.isEmpty() && uiState.error == null -> item {
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.fillMaxWidth().padding(24.dp),
+                                modifier = Modifier.fillMaxWidth().padding(24.dp)
                             ) {
                                 EmptyState(
                                     title = stringResource(R.string.contacts_empty),
-                                    body = if (isPicker) null else stringResource(R.string.contacts_empty_body),
-                                    actionLabel = if (isPicker) null else stringResource(R.string.contacts_new),
-                                    onAction = if (isPicker) null else onCreateContact,
+                                    body = if (isPicker) {
+                                        null
+                                    } else {
+                                        stringResource(
+                                            R.string.contacts_empty_body
+                                        )
+                                    },
+                                    actionLabel = if (isPicker) {
+                                        null
+                                    } else {
+                                        stringResource(
+                                            R.string.contacts_new
+                                        )
+                                    },
+                                    onAction = if (isPicker) null else onCreateContact
                                 )
                                 if (!isPicker) {
                                     OutlinedButton(onClick = onImportContacts) {
@@ -450,22 +495,26 @@ fun ContactListScreenContent(
                                 }
                             }
                         }
+
                         uiState.contacts.isEmpty() && uiState.error != null -> item {
                             Box(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
                                 Text(
                                     text = uiState.error.orEmpty(),
                                     color = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.align(Alignment.Center),
+                                    modifier = Modifier.align(Alignment.Center)
                                 )
                             }
                         }
+
                         else -> {
                             if (uiState.sort == ContactSort.NAME) {
                                 // Issue #1762: sticky letter headers for the
                                 // default alphabetical order (grouped by the
                                 // same lastname-else-firstname key the server
                                 // sorts on).
-                                uiState.contacts.groupBy(::contactSectionLetter).forEach { (letter, rows) ->
+                                uiState.contacts.groupBy(
+                                    ::contactSectionLetter
+                                ).forEach { (letter, rows) ->
                                     stickyHeader(key = "header-$letter") {
                                         Text(
                                             text = letter,
@@ -475,19 +524,22 @@ fun ContactListScreenContent(
                                                 .fillMaxWidth()
                                                 .background(MaterialTheme.colorScheme.surface)
                                                 .padding(horizontal = 16.dp, vertical = 4.dp)
-                                                .testTag("contact-header-$letter"),
+                                                .testTag("contact-header-$letter")
                                         )
                                     }
                                     items(rows, key = { it.id }) { contact -> contactRow(contact) }
                                 }
                             } else {
-                                items(uiState.contacts, key = { it.id }) { contact -> contactRow(contact) }
+                                items(
+                                    uiState.contacts,
+                                    key = { it.id }
+                                ) { contact -> contactRow(contact) }
                             }
                             if (uiState.pagination.isLoadingMore) {
                                 item {
                                     Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                                         CircularProgressIndicator(
-                                            modifier = Modifier.size(32.dp).align(Alignment.Center),
+                                            modifier = Modifier.size(32.dp).align(Alignment.Center)
                                         )
                                     }
                                 }
@@ -498,7 +550,7 @@ fun ContactListScreenContent(
                         SearchNotesActivitiesSection(
                             query = uiState.searchQuery,
                             searchResult = uiState.searchResult,
-                            onContactClick = onContactClick,
+                            onContactClick = onContactClick
                         )
                     }
                 }
@@ -516,16 +568,28 @@ fun ContactListScreenContent(
             title = {
                 Text(
                     stringResource(
-                        if (target == BulkPickerTarget.CIRCLE) R.string.bulk_pick_circle else R.string.bulk_pick_tag,
-                    ),
+                        if (target ==
+                            BulkPickerTarget.CIRCLE
+                        ) {
+                            R.string.bulk_pick_circle
+                        } else {
+                            R.string.bulk_pick_tag
+                        }
+                    )
                 )
             },
             text = {
                 if (names.isEmpty()) {
                     Text(
                         stringResource(
-                            if (target == BulkPickerTarget.CIRCLE) R.string.bulk_no_circles else R.string.bulk_no_tags,
-                        ),
+                            if (target ==
+                                BulkPickerTarget.CIRCLE
+                            ) {
+                                R.string.bulk_no_circles
+                            } else {
+                                R.string.bulk_no_tags
+                            }
+                        )
                     )
                 } else {
                     LazyColumn(modifier = Modifier.heightIn(max = 320.dp)) {
@@ -543,7 +607,7 @@ fun ContactListScreenContent(
                                         pendingAction = action
                                         picker = null
                                     }
-                                    .padding(vertical = 12.dp),
+                                    .padding(vertical = 12.dp)
                             )
                         }
                     }
@@ -553,7 +617,7 @@ fun ContactListScreenContent(
                 TextButton(onClick = { picker = null }) {
                     Text(stringResource(R.string.action_cancel))
                 }
-            },
+            }
         )
     }
 
@@ -573,7 +637,7 @@ fun ContactListScreenContent(
                         pendingAction = null
                         pendingCircleId = null
                         pendingTagId = null
-                    },
+                    }
                 ) {
                     Text(stringResource(R.string.action_confirm))
                 }
@@ -584,11 +648,11 @@ fun ContactListScreenContent(
                         pendingAction = null
                         pendingCircleId = null
                         pendingTagId = null
-                    },
+                    }
                 ) {
                     Text(stringResource(R.string.action_cancel))
                 }
-            },
+            }
         )
     }
 
@@ -630,7 +694,7 @@ private fun ContactListFilterChips(
     onCircleFilterChange: (String?) -> Unit,
     onIncludeArchivedChange: (Boolean) -> Unit,
     onIncludeFavoritesChange: (Boolean) -> Unit,
-    onSortChange: (ContactSort) -> Unit,
+    onSortChange: (ContactSort) -> Unit
 ) {
     var circleExpanded by remember { mutableStateOf(false) }
     var sortExpanded by remember { mutableStateOf(false) }
@@ -639,7 +703,7 @@ private fun ContactListFilterChips(
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         FilterChip(
             selected = includeFavorites,
@@ -647,7 +711,7 @@ private fun ContactListFilterChips(
             label = { Text(stringResource(R.string.contacts_show_favorites)) },
             modifier = Modifier
                 .testTag("favorites-toggle")
-                .semantics { toggleableState = ToggleableState(includeFavorites) },
+                .semantics { toggleableState = ToggleableState(includeFavorites) }
         )
         FilterChip(
             selected = includeArchived,
@@ -655,7 +719,7 @@ private fun ContactListFilterChips(
             label = { Text(stringResource(R.string.contacts_show_archived)) },
             modifier = Modifier
                 .testTag("archived-toggle")
-                .semantics { toggleableState = ToggleableState(includeArchived) },
+                .semantics { toggleableState = ToggleableState(includeArchived) }
         )
         Box {
             FilterChip(
@@ -663,18 +727,18 @@ private fun ContactListFilterChips(
                 onClick = { circleExpanded = true },
                 label = { Text(circleFilter ?: stringResource(R.string.contacts_all_circles)) },
                 trailingIcon = { Icon(Icons.Outlined.ExpandMore, contentDescription = null) },
-                modifier = Modifier.testTag("circle-filter"),
+                modifier = Modifier.testTag("circle-filter")
             )
             DropdownMenu(
                 expanded = circleExpanded,
-                onDismissRequest = { circleExpanded = false },
+                onDismissRequest = { circleExpanded = false }
             ) {
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.contacts_all_circles)) },
                     onClick = {
                         circleExpanded = false
                         onCircleFilterChange(null)
-                    },
+                    }
                 )
                 circles.forEach { circle ->
                     DropdownMenuItem(
@@ -682,7 +746,7 @@ private fun ContactListFilterChips(
                         onClick = {
                             circleExpanded = false
                             onCircleFilterChange(circle.name)
-                        },
+                        }
                     )
                 }
             }
@@ -695,11 +759,11 @@ private fun ContactListFilterChips(
                     Text(stringResource(R.string.contacts_sort_label, sortLabel(sort)))
                 },
                 trailingIcon = { Icon(Icons.Outlined.ExpandMore, contentDescription = null) },
-                modifier = Modifier.testTag("sort-filter"),
+                modifier = Modifier.testTag("sort-filter")
             )
             DropdownMenu(
                 expanded = sortExpanded,
-                onDismissRequest = { sortExpanded = false },
+                onDismissRequest = { sortExpanded = false }
             ) {
                 ContactSort.entries.forEach { option ->
                     DropdownMenuItem(
@@ -708,7 +772,7 @@ private fun ContactListFilterChips(
                             sortExpanded = false
                             onSortChange(option)
                         },
-                        modifier = Modifier.testTag("sort-option-${option.preferenceValue}"),
+                        modifier = Modifier.testTag("sort-option-${option.preferenceValue}")
                     )
                 }
             }
@@ -752,38 +816,66 @@ private fun BulkActionBar(
     onAddCircle: () -> Unit,
     onRemoveCircle: () -> Unit,
     onAddTag: () -> Unit,
-    onRemoveTag: () -> Unit,
+    onRemoveTag: () -> Unit
 ) {
     Surface(
         tonalElevation = 3.dp,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
-            TextButton(onClick = onArchive, enabled = !isRunning, modifier = Modifier.testTag("bulk-archive")) {
+            TextButton(
+                onClick = onArchive,
+                enabled = !isRunning,
+                modifier = Modifier.testTag("bulk-archive")
+            ) {
                 Text(stringResource(R.string.bulk_archive))
             }
-            TextButton(onClick = onUnarchive, enabled = !isRunning, modifier = Modifier.testTag("bulk-unarchive")) {
+            TextButton(
+                onClick = onUnarchive,
+                enabled = !isRunning,
+                modifier = Modifier.testTag("bulk-unarchive")
+            ) {
                 Text(stringResource(R.string.bulk_unarchive))
             }
-            TextButton(onClick = onDelete, enabled = !isRunning, modifier = Modifier.testTag("bulk-delete")) {
+            TextButton(
+                onClick = onDelete,
+                enabled = !isRunning,
+                modifier = Modifier.testTag("bulk-delete")
+            ) {
                 Text(stringResource(R.string.action_delete))
             }
-            TextButton(onClick = onAddCircle, enabled = !isRunning, modifier = Modifier.testTag("bulk-add-circle")) {
+            TextButton(
+                onClick = onAddCircle,
+                enabled = !isRunning,
+                modifier = Modifier.testTag("bulk-add-circle")
+            ) {
                 Text(stringResource(R.string.bulk_add_circle))
             }
-            TextButton(onClick = onRemoveCircle, enabled = !isRunning, modifier = Modifier.testTag("bulk-remove-circle")) {
+            TextButton(
+                onClick = onRemoveCircle,
+                enabled = !isRunning,
+                modifier = Modifier.testTag("bulk-remove-circle")
+            ) {
                 Text(stringResource(R.string.bulk_remove_circle))
             }
-            TextButton(onClick = onAddTag, enabled = !isRunning, modifier = Modifier.testTag("bulk-add-tag")) {
+            TextButton(
+                onClick = onAddTag,
+                enabled = !isRunning,
+                modifier = Modifier.testTag("bulk-add-tag")
+            ) {
                 Text(stringResource(R.string.bulk_add_tag))
             }
-            TextButton(onClick = onRemoveTag, enabled = !isRunning, modifier = Modifier.testTag("bulk-remove-tag")) {
+            TextButton(
+                onClick = onRemoveTag,
+                enabled = !isRunning,
+                modifier = Modifier.testTag("bulk-remove-tag")
+            ) {
                 Text(stringResource(R.string.bulk_remove_tag))
             }
         }
@@ -806,7 +898,7 @@ fun ContactListItem(
     // handler consumes the tap before the row's combinedClickable sees it
     // (Compose's stopPropagation equivalent).
     onToggleFavorite: () -> Unit = {},
-    onLongClick: () -> Unit = onClick,
+    onLongClick: () -> Unit = onClick
 ) {
     Row(
         modifier = modifier
@@ -828,7 +920,7 @@ fun ContactListItem(
                     stringResource(R.string.contacts_open_contact)
                 },
                 onLongClick = onLongClick,
-                onLongClickLabel = stringResource(R.string.contacts_row_select_action),
+                onLongClickLabel = stringResource(R.string.contacts_row_select_action)
             )
             // #214: the row's own combinedClickable above carries no Role or
             // checked state, and the Checkbox below is decorative
@@ -844,11 +936,11 @@ fun ContactListItem(
                     }
                 } else {
                     Modifier
-                },
+                }
             )
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         if (selectMode) {
             // #214: a bare Checkbox has no text/contentDescription of its own,
@@ -861,22 +953,28 @@ fun ContactListItem(
             // unlabeled way to trigger the same action.
             Checkbox(
                 checked = selected,
-                onCheckedChange = null,
+                onCheckedChange = null
             )
         }
         ContactAvatar(
             photoUri = contact.photoThumbnail,
-            contentDescription = stringResource(R.string.contacts_photo_description, contact.displayName),
-            size = 40.dp,
+            contentDescription = stringResource(
+                R.string.contacts_photo_description,
+                contact.displayName
+            ),
+            size = 40.dp
         )
         Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 Text(
                     text = contact.displayName,
                     style = MaterialTheme.typography.bodyLarge,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
+                    modifier = Modifier.weight(1f, fill = false)
                 )
                 if (isMe) {
                     // T90 / issue #831: being yourself is not a status condition,
@@ -893,12 +991,12 @@ fun ContactListItem(
                         // the label away (and TalkBack reads it as part of the row).
                         modifier = Modifier
                             .semantics(mergeDescendants = true) {}
-                            .testTag("you-badge-${contact.id}"),
+                            .testTag("you-badge-${contact.id}")
                     ) {
                         Text(
                             text = stringResource(R.string.contact_you_badge),
                             style = MaterialTheme.typography.labelMedium,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                         )
                     }
                 }
@@ -908,7 +1006,7 @@ fun ContactListItem(
             // contact rendered a dangling " · ". Filter blanks before joining.
             val subtitle = listOfNotNull(
                 contact.primaryEmail?.takeIf { it.isNotBlank() },
-                contact.primaryPhone?.takeIf { it.isNotBlank() },
+                contact.primaryPhone?.takeIf { it.isNotBlank() }
             ).joinToString(" · ")
             if (subtitle.isNotBlank()) {
                 Text(
@@ -916,7 +1014,7 @@ fun ContactListItem(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -925,19 +1023,19 @@ fun ContactListItem(
         // announces who it acts on (web's aria-label does the same).
         AccessibleIconButton(
             onClick = onToggleFavorite,
-            modifier = Modifier.testTag("favorite-${contact.id}"),
+            modifier = Modifier.testTag("favorite-${contact.id}")
         ) {
             Icon(
                 imageVector = if (contact.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
                 contentDescription = stringResource(
                     if (contact.isFavorite) R.string.contacts_unfavorite_contact else R.string.contacts_favorite_contact,
-                    contact.displayName,
+                    contact.displayName
                 ),
                 tint = if (contact.isFavorite) {
                     MaterialTheme.colorScheme.tertiary
                 } else {
                     MaterialTheme.colorScheme.onSurfaceVariant
-                },
+                }
             )
         }
     }
@@ -954,7 +1052,7 @@ fun ContactListItem(
 private fun SearchNotesActivitiesSection(
     query: String,
     searchResult: SearchResult?,
-    onContactClick: (Int) -> Unit,
+    onContactClick: (Int) -> Unit
 ) {
     if (searchResult == null) return
     val notes = searchResult.notes
@@ -968,14 +1066,19 @@ private fun SearchNotesActivitiesSection(
     Column(modifier = Modifier.padding(top = 8.dp)) {
         if (!resolvedRelation.isNullOrBlank()) {
             Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                ),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
             ) {
                 Text(
-                    text = stringResource(R.string.contacts_search_resolved_relation, resolvedRelation),
+                    text = stringResource(
+                        R.string.contacts_search_resolved_relation,
+                        resolvedRelation
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier.padding(12.dp),
+                    modifier = Modifier.padding(12.dp)
                 )
             }
         }
@@ -987,22 +1090,22 @@ private fun SearchNotesActivitiesSection(
                         .clickable { expanded = !expanded }
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = stringResource(R.string.contacts_search_results_header, total),
-                            style = MaterialTheme.typography.titleSmall,
+                            style = MaterialTheme.typography.titleSmall
                         )
                         Text(
                             text = stringResource(R.string.contacts_search_results_hint),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Icon(
                         imageVector = if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
-                        contentDescription = null,
+                        contentDescription = null
                     )
                 }
                 if (expanded) {
@@ -1011,7 +1114,7 @@ private fun SearchNotesActivitiesSection(
                             Text(
                                 text = stringResource(R.string.contacts_search_notes_group),
                                 style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             notes.forEach { note ->
                                 SearchNoteRow(note = note, onContactClick = onContactClick)
@@ -1022,10 +1125,15 @@ private fun SearchNotesActivitiesSection(
                                 text = stringResource(R.string.contacts_search_activities_group),
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = if (notes.isNotEmpty()) 8.dp else 0.dp),
+                                modifier = Modifier.padding(
+                                    top = if (notes.isNotEmpty()) 8.dp else 0.dp
+                                )
                             )
                             activities.forEach { activity ->
-                                SearchActivityRow(activity = activity, onContactClick = onContactClick)
+                                SearchActivityRow(
+                                    activity = activity,
+                                    onContactClick = onContactClick
+                                )
                             }
                         }
                     }
@@ -1036,39 +1144,46 @@ private fun SearchNotesActivitiesSection(
 }
 
 @Composable
-private fun SearchNoteRow(
-    note: SearchNoteHit,
-    onContactClick: (Int) -> Unit,
-) {
+private fun SearchNoteRow(note: SearchNoteHit, onContactClick: (Int) -> Unit) {
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
         Text(text = note.content.orEmpty(), style = MaterialTheme.typography.bodyMedium)
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(top = 4.dp),
+            modifier = Modifier.padding(top = 4.dp)
         ) {
             val contactId = note.contactId
             val contactName = note.contactName
             if (contactId != null && !contactName.isNullOrBlank()) {
                 AssistChip(
                     onClick = { onContactClick(contactId) },
-                    label = { Text(contactName) },
+                    label = { Text(contactName) }
                 )
             } else {
-                AssistChip(onClick = {}, enabled = false, label = { Text(stringResource(R.string.contacts_search_unfiled)) })
+                AssistChip(
+                    onClick = {},
+                    enabled = false,
+                    label = { Text(stringResource(R.string.contacts_search_unfiled)) }
+                )
             }
-            note.date?.let { DateFormat.formatTimestamp(it, LocalDateFormat.current) }?.takeIf { it.isNotBlank() }?.let { date ->
-                Text(text = date, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            note.date?.let {
+                DateFormat.formatTimestamp(
+                    it,
+                    LocalDateFormat.current
+                )
+            }?.takeIf { it.isNotBlank() }?.let { date ->
+                Text(
+                    text = date,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
 }
 
 @Composable
-private fun SearchActivityRow(
-    activity: SearchActivityHit,
-    onContactClick: (Int) -> Unit,
-) {
+private fun SearchActivityRow(activity: SearchActivityHit, onContactClick: (Int) -> Unit) {
     // "Navigate to theirs" (T87 spec): an activity's own detail screen doesn't exist yet
     // (M9), so a hit navigates to its first participant's contact detail instead — the same
     // destination tapping that contact anywhere else in the app reaches.
@@ -1076,12 +1191,31 @@ private fun SearchActivityRow(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .let { if (firstContactId != null) it.clickable { onContactClick(firstContactId) } else it }
-            .padding(vertical = 6.dp),
+            .let {
+                if (firstContactId != null) {
+                    it.clickable {
+                        onContactClick(
+                            firstContactId
+                        )
+                    }
+                } else {
+                    it
+                }
+            }
+            .padding(vertical = 6.dp)
     ) {
         Text(text = activity.title.orEmpty(), style = MaterialTheme.typography.bodyMedium)
-        activity.date?.let { DateFormat.formatTimestamp(it, LocalDateFormat.current) }?.takeIf { it.isNotBlank() }?.let { date ->
-            Text(text = date, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        activity.date?.let {
+            DateFormat.formatTimestamp(
+                it,
+                LocalDateFormat.current
+            )
+        }?.takeIf { it.isNotBlank() }?.let { date ->
+            Text(
+                text = date,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

@@ -52,20 +52,20 @@ class CadencePolicyRepositoryImplTest {
         id: String = "p1",
         interval: Int = 30,
         qualifyingTypes: List<String> = emptyList(),
-        deleted: Boolean = false,
+        deleted: Boolean = false
     ) = CadencePolicy(
         id = id,
         entityId = uid,
         targetIntervalDays = interval,
         qualifyingTypes = qualifyingTypes,
         deleted = deleted,
-        health = CadenceHealth(hasQualifyingInteraction = true, overdueBy = 0),
+        health = CadenceHealth(hasQualifyingInteraction = true, overdueBy = 0)
     )
 
     @Test
     fun `listForContact mirrors the fetched policies into the cache`() = runTest {
         coEvery { apiClient.listCadencePolicies(uid) } returns Result.success(
-            CadencePoliciesResponse(cadencePolicies = listOf(policy("p1", 30), policy("p2", 45))),
+            CadencePoliciesResponse(cadencePolicies = listOf(policy("p1", 30), policy("p2", 45)))
         )
 
         val result = repository.listForContact(uid)
@@ -79,10 +79,10 @@ class CadencePolicyRepositoryImplTest {
     @Test
     fun `listForContact full-resyncs the cache for the contact`() = runTest {
         db.cachedCadencePolicyDao().upsert(
-            CachedCadencePolicy(id = "stale", entityId = uid, targetIntervalDays = 30),
+            CachedCadencePolicy(id = "stale", entityId = uid, targetIntervalDays = 30)
         )
         coEvery { apiClient.listCadencePolicies(uid) } returns Result.success(
-            CadencePoliciesResponse(cadencePolicies = listOf(policy("p1", 30))),
+            CadencePoliciesResponse(cadencePolicies = listOf(policy("p1", 30)))
         )
 
         val result = repository.listForContact(uid)
@@ -95,7 +95,7 @@ class CadencePolicyRepositoryImplTest {
     @Test
     fun `listForContact drops tombstones from the cache but returns the raw list`() = runTest {
         coEvery { apiClient.listCadencePolicies(uid) } returns Result.success(
-            CadencePoliciesResponse(cadencePolicies = listOf(policy("p1", 30, deleted = true))),
+            CadencePoliciesResponse(cadencePolicies = listOf(policy("p1", 30, deleted = true)))
         )
 
         val result = repository.listForContact(uid)
@@ -121,7 +121,7 @@ class CadencePolicyRepositoryImplTest {
     @Test
     fun `update replaces the cached policy`() = runTest {
         db.cachedCadencePolicyDao().upsert(
-            CachedCadencePolicy(id = "p1", entityId = uid, targetIntervalDays = 30),
+            CachedCadencePolicy(id = "p1", entityId = uid, targetIntervalDays = 30)
         )
         val updated = policy("p1", 90)
         coEvery { apiClient.updateCadencePolicy("p1", any()) } returns Result.success(updated)
@@ -135,7 +135,7 @@ class CadencePolicyRepositoryImplTest {
     @Test
     fun `delete removes the cached policy`() = runTest {
         db.cachedCadencePolicyDao().upsert(
-            CachedCadencePolicy(id = "p1", entityId = uid, targetIntervalDays = 30),
+            CachedCadencePolicy(id = "p1", entityId = uid, targetIntervalDays = 30)
         )
         coEvery { apiClient.deleteCadencePolicy("p1") } returns Result.success(Unit)
 
@@ -148,10 +148,10 @@ class CadencePolicyRepositoryImplTest {
     @Test
     fun `a failed delete keeps the cached policy`() = runTest {
         db.cachedCadencePolicyDao().upsert(
-            CachedCadencePolicy(id = "p1", entityId = uid, targetIntervalDays = 30),
+            CachedCadencePolicy(id = "p1", entityId = uid, targetIntervalDays = 30)
         )
         coEvery { apiClient.deleteCadencePolicy("p1") } returns Result.failure(
-            ApiError.Client(404, "Not found"),
+            ApiError.Client(404, "Not found")
         )
 
         val result = repository.delete("p1")

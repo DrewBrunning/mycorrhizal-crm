@@ -38,9 +38,12 @@ class RoleRefresher(
     // Monotonic: the debounce window measures elapsed time, and the wall
     // clock can jump (manual change, NTP sync, a time-zone travel fix), which
     // would either open a second window inside the first or never reopen one.
-    private val nowMillis: () -> Long = { System.nanoTime() / NANOS_PER_MILLI },
+    private val nowMillis: () -> Long = { System.nanoTime() / NANOS_PER_MILLI }
 ) {
-    private val _demotions = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    private val _demotions = MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
 
     /** Emits once each time a re-fetch finds the signed-in user is no longer an admin. */
     val demotions: SharedFlow<Unit> = _demotions.asSharedFlow()

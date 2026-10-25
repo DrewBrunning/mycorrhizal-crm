@@ -47,8 +47,9 @@ class TokenLabelsTest {
         return Regex("(?m)^\t\"([a-z_]+)\": \\{").findAll(body).map { it.groupValues[1] }.toList()
     }
 
-    private fun constTokens(file: String, prefix: String): List<String> =
-        Regex("$prefix\\w*\\s*=\\s*\"([a-z_]+)\"").findAll(backend(file)).map { it.groupValues[1] }.toList()
+    private fun constTokens(file: String, prefix: String): List<String> = Regex(
+        "$prefix\\w*\\s*=\\s*\"([a-z_]+)\""
+    ).findAll(backend(file)).map { it.groupValues[1] }.toList()
 
     @Test
     fun `backend token parsing finds the expected sets`() {
@@ -61,7 +62,11 @@ class TokenLabelsTest {
 
     @Test
     fun `every backend relationship type has a role label`() {
-        val missing = relationshipTokensFromBackend().filter { relationshipRoleLabelRes(it) == null }
+        val missing = relationshipTokensFromBackend().filter {
+            relationshipRoleLabelRes(
+                it
+            ) == null
+        }
         assertEquals("relationship tokens without a label", emptyList<String>(), missing)
         // And the Android mirror agrees with the backend registry.
         assertEquals(relationshipTokensFromBackend().toSet(), RelationshipEdgeTypes.ALL.keys)
@@ -79,23 +84,41 @@ class TokenLabelsTest {
     fun `every backend activity type has a label`() {
         val tokens = constTokens("models/activity.go", "InteractionType")
         assertEquals(emptyList<String>(), tokens.filter { activityTypeLabelRes(it) == null })
-        assertEquals(emptyList<String>(), CadenceQualifyingType.ALL.filter { activityTypeLabelRes(it) == null })
+        assertEquals(
+            emptyList<String>(),
+            CadenceQualifyingType.ALL.filter { activityTypeLabelRes(it) == null }
+        )
     }
 
     @Test
     fun `every phone feature and contact type option has a label`() {
-        assertEquals(emptyList<String>(), PhoneFeature.ALL.filter { typeOptionLabelRes(it) == null })
-        assertEquals(emptyList<String>(), CONTACT_TYPE_OPTIONS.filter { typeOptionLabelRes(it) == null })
+        assertEquals(
+            emptyList<String>(),
+            PhoneFeature.ALL.filter { typeOptionLabelRes(it) == null }
+        )
+        assertEquals(
+            emptyList<String>(),
+            CONTACT_TYPE_OPTIONS.filter { typeOptionLabelRes(it) == null }
+        )
         assertEquals(emptyList<String>(), CONTEXT_OPTIONS.filter { typeOptionLabelRes(it) == null })
-        assertEquals(emptyList<String>(), PERSONAL_INFO_KIND_OPTIONS.filter { typeOptionLabelRes(it) == null })
-        assertEquals(emptyList<String>(), ANNIVERSARY_KIND_OPTIONS.filter { typeOptionLabelRes(it) == null })
+        assertEquals(
+            emptyList<String>(),
+            PERSONAL_INFO_KIND_OPTIONS.filter { typeOptionLabelRes(it) == null }
+        )
+        assertEquals(
+            emptyList<String>(),
+            ANNIVERSARY_KIND_OPTIONS.filter { typeOptionLabelRes(it) == null }
+        )
     }
 
     @Test
     fun `every backend gift status has a label`() {
         val m = Regex("oneof=(idea purchased given received)").find(backend("models/gift.go"))
         assertNotNull(m)
-        assertEquals(emptyList<String>(), m!!.groupValues[1].split(" ").filter { giftStatusLabelRes(it) == null })
+        assertEquals(
+            emptyList<String>(),
+            m!!.groupValues[1].split(" ").filter { giftStatusLabelRes(it) == null }
+        )
     }
 
     @Test

@@ -21,7 +21,7 @@ interface ExportRepository {
     suspend fun exportContactsVcf(
         version: Int?,
         sections: List<String>? = null,
-        includeSensitive: Boolean = false,
+        includeSensitive: Boolean = false
     ): Result<ByteArray>
 
     /**
@@ -31,7 +31,7 @@ interface ExportRepository {
      */
     suspend fun exportContactsJsContact(
         sections: List<String>? = null,
-        includeSensitive: Boolean = false,
+        includeSensitive: Boolean = false
     ): Result<ByteArray>
 
     /** GET /audit/export — the caller's full audit trail as CSV. */
@@ -45,7 +45,7 @@ interface ExportRepository {
     suspend fun preflight(
         format: String,
         sections: List<String>,
-        includeSensitive: Boolean,
+        includeSensitive: Boolean
     ): Result<ExportLossPreflightResponse>
 
     /**

@@ -39,7 +39,7 @@ class AttachmentsScreenTest {
         id = 7,
         originalName = "scan.pdf",
         contentType = "application/pdf",
-        sizeBytes = 2048,
+        sizeBytes = 2048
     )
 
     private var added = 0
@@ -60,7 +60,7 @@ class AttachmentsScreenTest {
                     onAddClick = { added += 1 },
                     onDownload = { opened = it },
                     onDelete = { deleted = it },
-                    onDownloadHandled = { handled += 1 },
+                    onDownloadHandled = { handled += 1 }
                 )
             }
         }
@@ -78,7 +78,9 @@ class AttachmentsScreenTest {
     @Test
     fun `empty state action and the fab both open the picker`() {
         setContent(AttachmentUiState(attachments = emptyList(), total = 0, isLoading = false))
-        composeTestRule.onNodeWithText("Attach files such as scans, contracts or photos to this contact.")
+        composeTestRule.onNodeWithText(
+            "Attach files such as scans, contracts or photos to this contact."
+        )
             .assertIsDisplayed()
         composeTestRule.onNodeWithText("Add attachment").performClick()
         composeTestRule.onNodeWithTag("add-attachment").performClick()
@@ -104,7 +106,9 @@ class AttachmentsScreenTest {
     fun `delete asks for confirmation then fires`() {
         setContent(AttachmentUiState(attachments = listOf(scan), total = 1, isLoading = false))
         composeTestRule.onNodeWithTag("delete-attachment-7").performClick()
-        composeTestRule.onNodeWithText("Delete scan.pdf? This cannot be undone.").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Delete scan.pdf? This cannot be undone."
+        ).assertIsDisplayed()
         composeTestRule.onNodeWithText("Delete").performClick()
         assertEquals(7, deleted?.id)
     }
@@ -116,8 +120,8 @@ class AttachmentsScreenTest {
                 attachments = listOf(scan),
                 total = 1,
                 isLoading = false,
-                downloaded = scan to "bytes".toByteArray(),
-            ),
+                downloaded = scan to "bytes".toByteArray()
+            )
         )
         composeTestRule.waitForIdle()
         assertEquals(1, handled)
@@ -130,14 +134,19 @@ class AttachmentsScreenTest {
                 attachments = listOf(scan),
                 total = 1,
                 isLoading = false,
-                isUploading = true,
-            ),
+                isUploading = true
+            )
         )
         composeTestRule.waitForIdle()
         // The FAB keeps its label while the spinner shows, reads as busy and
         // disabled to TalkBack, and a tap does not start a second upload.
         composeTestRule.onNodeWithTag("add-attachment")
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription, listOf("Add attachment")))
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.ContentDescription,
+                    listOf("Add attachment")
+                )
+            )
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Saving"))
             .assertIsNotEnabled()
             .performClick()
@@ -162,7 +171,9 @@ class AttachmentsScreenTest {
         }
 
         composeTestRule.waitUntil(timeoutMillis = 5_000) {
-            composeTestRule.onAllNodesWithTag("attachments-loading").fetchSemanticsNodes().isNotEmpty()
+            composeTestRule.onAllNodesWithTag(
+                "attachments-loading"
+            ).fetchSemanticsNodes().isNotEmpty()
         }
         composeTestRule.onNodeWithTag("attachments-loading").assertIsDisplayed()
     }

@@ -37,11 +37,23 @@ class ActivitiesViewModelTest {
 
     @Test
     fun `loads the contact's activities on init`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { activityRepository.listForContact(5, null, null, null, null, null) } returns Result.success(
+        coEvery {
+            activityRepository.listForContact(
+                5,
+                null,
+                null,
+                null,
+                null,
+                null
+            )
+        } returns Result.success(
             ContactActivitiesPage(
-                activities = listOf(Activity(id = 1, title = "Coffee"), Activity(id = 2, title = "Call")),
-                nextCursor = null,
-            ),
+                activities = listOf(
+                    Activity(id = 1, title = "Coffee"),
+                    Activity(id = 2, title = "Call")
+                ),
+                nextCursor = null
+            )
         )
 
         val vm = viewModel()
@@ -64,8 +76,17 @@ class ActivitiesViewModelTest {
 
     @Test
     fun `failure surfaces the display message`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { activityRepository.listForContact(5, null, null, null, null, null) } returns Result.failure(
-            ApiError.Client(404, "Contact not found"),
+        coEvery {
+            activityRepository.listForContact(
+                5,
+                null,
+                null,
+                null,
+                null,
+                null
+            )
+        } returns Result.failure(
+            ApiError.Client(404, "Contact not found")
         )
 
         val vm = viewModel()
@@ -76,9 +97,20 @@ class ActivitiesViewModelTest {
     }
 
     @Test
-    fun `search change debounces and reloads with the query`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { activityRepository.listForContact(any(), any(), any(), any(), any(), any()) } returns Result.success(
-            ContactActivitiesPage(activities = emptyList(), nextCursor = null),
+    fun `search change debounces and reloads with the query`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery {
+            activityRepository.listForContact(
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any()
+            )
+        } returns Result.success(
+            ContactActivitiesPage(activities = emptyList(), nextCursor = null)
         )
 
         val vm = viewModel()
@@ -91,8 +123,17 @@ class ActivitiesViewModelTest {
 
     @Test
     fun `date filters reload with the bounds`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { activityRepository.listForContact(any(), any(), any(), any(), any(), any()) } returns Result.success(
-            ContactActivitiesPage(activities = emptyList(), nextCursor = null),
+        coEvery {
+            activityRepository.listForContact(
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any()
+            )
+        } returns Result.success(
+            ContactActivitiesPage(activities = emptyList(), nextCursor = null)
         )
 
         val vm = viewModel()
@@ -101,21 +142,61 @@ class ActivitiesViewModelTest {
         vm.onToDateChange("2026-08-10")
         advanceUntilIdle()
 
-        coVerify { activityRepository.listForContact(5, null, null, null, "2026-08-01", "2026-08-10") }
+        coVerify {
+            activityRepository.listForContact(
+                5,
+                null,
+                null,
+                null,
+                "2026-08-01",
+                "2026-08-10"
+            )
+        }
     }
 
     @Test
-    fun `a superseding load cancels the in-flight request so stale results never win`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a superseding load cancels the in-flight request so stale results never win`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val staleGate = CompletableDeferred<Unit>()
-        coEvery { activityRepository.listForContact(5, null, null, null, null, null) } returns Result.success(
-            ContactActivitiesPage(activities = listOf(Activity(id = 1, title = "all")), nextCursor = null),
+        coEvery {
+            activityRepository.listForContact(
+                5,
+                null,
+                null,
+                null,
+                null,
+                null
+            )
+        } returns Result.success(
+            ContactActivitiesPage(
+                activities = listOf(Activity(id = 1, title = "all")),
+                nextCursor = null
+            )
         )
         coEvery { activityRepository.listForContact(5, null, null, "a", null, null) } coAnswers {
             staleGate.await()
-            Result.success(ContactActivitiesPage(activities = listOf(Activity(id = 1, title = "stale")), nextCursor = null))
+            Result.success(
+                ContactActivitiesPage(
+                    activities = listOf(Activity(id = 1, title = "stale")),
+                    nextCursor = null
+                )
+            )
         }
-        coEvery { activityRepository.listForContact(5, null, null, "ab", null, null) } returns Result.success(
-            ContactActivitiesPage(activities = listOf(Activity(id = 2, title = "fresh")), nextCursor = null),
+        coEvery {
+            activityRepository.listForContact(
+                5,
+                null,
+                null,
+                "ab",
+                null,
+                null
+            )
+        } returns Result.success(
+            ContactActivitiesPage(
+                activities = listOf(Activity(id = 2, title = "fresh")),
+                nextCursor = null
+            )
         )
 
         val vm = viewModel()
@@ -132,15 +213,41 @@ class ActivitiesViewModelTest {
     }
 
     @Test
-    fun `load more appends the next page without duplicating`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { activityRepository.listForContact(5, null, null, null, null, null) } returns Result.success(
+    fun `load more appends the next page without duplicating`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery {
+            activityRepository.listForContact(
+                5,
+                null,
+                null,
+                null,
+                null,
+                null
+            )
+        } returns Result.success(
             ContactActivitiesPage(
-                activities = listOf(Activity(id = 1, title = "One"), Activity(id = 2, title = "Two")),
-                nextCursor = "cursor-1",
-            ),
+                activities = listOf(
+                    Activity(id = 1, title = "One"),
+                    Activity(id = 2, title = "Two")
+                ),
+                nextCursor = "cursor-1"
+            )
         )
-        coEvery { activityRepository.listForContact(5, "cursor-1", null, null, null, null) } returns Result.success(
-            ContactActivitiesPage(activities = listOf(Activity(id = 3, title = "Three")), nextCursor = null),
+        coEvery {
+            activityRepository.listForContact(
+                5,
+                "cursor-1",
+                null,
+                null,
+                null,
+                null
+            )
+        } returns Result.success(
+            ContactActivitiesPage(
+                activities = listOf(Activity(id = 3, title = "Three")),
+                nextCursor = null
+            )
         )
 
         val vm = viewModel()
@@ -154,15 +261,34 @@ class ActivitiesViewModelTest {
     }
 
     @Test
-    fun `delete removes the item on success and keeps it on failure`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { activityRepository.listForContact(5, null, null, null, null, null) } returns Result.success(
+    fun `delete removes the item on success and keeps it on failure`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery {
+            activityRepository.listForContact(
+                5,
+                null,
+                null,
+                null,
+                null,
+                null
+            )
+        } returns Result.success(
             ContactActivitiesPage(
-                activities = listOf(Activity(id = 1, title = "One"), Activity(id = 2, title = "Two")),
-                nextCursor = null,
-            ),
+                activities = listOf(
+                    Activity(id = 1, title = "One"),
+                    Activity(id = 2, title = "Two")
+                ),
+                nextCursor = null
+            )
         )
         coEvery { activityRepository.delete(1, any()) } returns Result.success(Unit)
-        coEvery { activityRepository.delete(2, any()) } returns Result.failure(ApiError.Client(500, "boom"))
+        coEvery {
+            activityRepository.delete(
+                2,
+                any()
+            )
+        } returns Result.failure(ApiError.Client(500, "boom"))
 
         val vm = viewModel()
         advanceUntilIdle()
@@ -191,13 +317,22 @@ class ActivityFormViewModelTest {
         // Create mode seeds the participant list with the route contact
         // (best-effort name resolution); the failure fallback is a bare
         // "#id" chip, which is all these tests need.
-        coEvery { contactRepository.getContact(any()) } returns Result.failure(RuntimeException("offline"))
+        coEvery {
+            contactRepository.getContact(
+                any()
+            )
+        } returns Result.failure(RuntimeException("offline"))
     }
 
-    private fun createViewModel(contactId: Int = 5, activityId: Int? = null): ActivityFormViewModel {
-        val handle = SavedStateHandle(mapOf("contactId" to contactId).toMutableMap().apply {
-            if (activityId != null) put("activityId", activityId)
-        })
+    private fun createViewModel(
+        contactId: Int = 5,
+        activityId: Int? = null
+    ): ActivityFormViewModel {
+        val handle = SavedStateHandle(
+            mapOf("contactId" to contactId).toMutableMap().apply {
+                if (activityId != null) put("activityId", activityId)
+            }
+        )
         return ActivityFormViewModel(activityRepository, contactRepository, handle)
     }
 
@@ -233,7 +368,9 @@ class ActivityFormViewModelTest {
     }
 
     @Test
-    fun `save in create mode calls create with the contact id`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `save in create mode calls create with the contact id`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val created = Activity(id = 7, title = "Lunch", type = "meal")
         coEvery { activityRepository.create(any()) } returns Result.success(created)
 
@@ -251,7 +388,7 @@ class ActivityFormViewModelTest {
                         input.type == "meal" &&
                         input.date == "2026-08-10T14:00:00Z" &&
                         input.contactIds == listOf(5)
-                },
+                }
             )
         }
         assertEquals(ActivityFormEvent.Saved, vm.events.value)
@@ -259,11 +396,19 @@ class ActivityFormViewModelTest {
     }
 
     @Test
-    fun `save in edit mode hydrates and calls update`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `save in edit mode hydrates and calls update`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { activityRepository.get(7) } returns Result.success(
-            Activity(id = 7, title = "Lunch", type = "meal", date = "2026-08-10T14:00:00Z"),
+            Activity(id = 7, title = "Lunch", type = "meal", date = "2026-08-10T14:00:00Z")
         )
-        coEvery { activityRepository.update(7, any(), any()) } returns Result.success(Activity(id = 7, title = "Lunch"))
+        coEvery {
+            activityRepository.update(
+                7,
+                any(),
+                any()
+            )
+        } returns Result.success(Activity(id = 7, title = "Lunch"))
 
         val vm = createViewModel(activityId = 7)
         advanceUntilIdle()
@@ -279,14 +424,16 @@ class ActivityFormViewModelTest {
             activityRepository.update(
                 7,
                 match<ActivityInput> { input -> input.title == "Dinner" },
-                any(),
+                any()
             )
         }
         assertEquals(ActivityFormEvent.Saved, vm.events.value)
     }
 
     @Test
-    fun `edit preserves participants and external ref`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `edit preserves participants and external ref`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         // An activity spanning two contacts, with an external ref (calendar link).
         coEvery { activityRepository.get(7) } returns Result.success(
             Activity(
@@ -296,12 +443,18 @@ class ActivityFormViewModelTest {
                 date = "2026-08-10T14:00:00Z",
                 contacts = listOf(
                     com.mycorrhizal.crm.model.network.ContactFlat(id = 5),
-                    com.mycorrhizal.crm.model.network.ContactFlat(id = 9),
+                    com.mycorrhizal.crm.model.network.ContactFlat(id = 9)
                 ),
-                externalRef = "cal-event-42",
-            ),
+                externalRef = "cal-event-42"
+            )
         )
-        coEvery { activityRepository.update(7, any(), any()) } returns Result.success(Activity(id = 7, title = "Lunch"))
+        coEvery {
+            activityRepository.update(
+                7,
+                any(),
+                any()
+            )
+        } returns Result.success(Activity(id = 7, title = "Lunch"))
 
         val vm = createViewModel(activityId = 7)
         advanceUntilIdle()
@@ -318,7 +471,7 @@ class ActivityFormViewModelTest {
                     input.contactIds == listOf(5, 9) &&
                         input.externalRef == "cal-event-42"
                 },
-                any(),
+                any()
             )
         }
     }
@@ -328,16 +481,27 @@ class ActivityFormViewModelTest {
     // dialog allows an activity with no participants, and the backend honors
     // `[]` as `Association.Replace(nil)`.
     @Test
-    fun `edit removing all participants clears the set`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `edit removing all participants clears the set`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { activityRepository.get(7) } returns Result.success(
             Activity(
                 id = 7,
                 title = "Lunch",
                 date = "2026-08-10T14:00:00Z",
-                contacts = listOf(ContactFlat(id = 5, firstname = "Dana"), ContactFlat(id = 9, firstname = "Bob")),
-            ),
+                contacts = listOf(
+                    ContactFlat(id = 5, firstname = "Dana"),
+                    ContactFlat(id = 9, firstname = "Bob")
+                )
+            )
         )
-        coEvery { activityRepository.update(7, any(), any()) } returns Result.success(Activity(id = 7, title = "Lunch"))
+        coEvery {
+            activityRepository.update(
+                7,
+                any(),
+                any()
+            )
+        } returns Result.success(Activity(id = 7, title = "Lunch"))
 
         val vm = createViewModel(activityId = 7)
         advanceUntilIdle()
@@ -354,16 +518,22 @@ class ActivityFormViewModelTest {
             activityRepository.update(
                 7,
                 match<ActivityInput> { input -> input.contactIds == emptyList<Int>() },
-                any(),
+                any()
             )
         }
     }
 
     // M19: the multi-participant fix — an activity can span more than one contact.
     @Test
-    fun `adding participants sends both on save and reloads with both`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `adding participants sends both on save and reloads with both`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { activityRepository.create(any()) } returns Result.success(
-            Activity(id = 7, title = "Lunch", contacts = listOf(ContactFlat(id = 5), ContactFlat(id = 9))),
+            Activity(
+                id = 7,
+                title = "Lunch",
+                contacts = listOf(ContactFlat(id = 5), ContactFlat(id = 9))
+            )
         )
 
         val vm = createViewModel()
@@ -378,7 +548,7 @@ class ActivityFormViewModelTest {
 
         coVerify {
             activityRepository.create(
-                match<ActivityInput> { input -> input.contactIds == listOf(5, 9) },
+                match<ActivityInput> { input -> input.contactIds == listOf(5, 9) }
             )
         }
         // The count is the point: one participant cannot detect the discard.
@@ -387,9 +557,11 @@ class ActivityFormViewModelTest {
     }
 
     @Test
-    fun `removing a participant drops it from the payload`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `removing a participant drops it from the payload`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { activityRepository.create(any()) } returns Result.success(
-            Activity(id = 7, title = "Lunch", contacts = listOf(ContactFlat(id = 5))),
+            Activity(id = 7, title = "Lunch", contacts = listOf(ContactFlat(id = 5)))
         )
 
         val vm = createViewModel()
@@ -405,13 +577,15 @@ class ActivityFormViewModelTest {
 
         coVerify {
             activityRepository.create(
-                match<ActivityInput> { input -> input.contactIds == listOf(5) },
+                match<ActivityInput> { input -> input.contactIds == listOf(5) }
             )
         }
     }
 
     @Test
-    fun `adding the same participant twice is a no-op`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `adding the same participant twice is a no-op`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = createViewModel()
         advanceUntilIdle() // let the route-contact participant seed finish
         vm.onAddParticipant(ContactSummary(id = 9, firstname = "Dana", lastname = "Lee"))
@@ -422,7 +596,7 @@ class ActivityFormViewModelTest {
     @Test
     fun `edit hydration failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { activityRepository.get(7) } returns Result.failure(
-            ApiError.Client(404, "Activity not found"),
+            ApiError.Client(404, "Activity not found")
         )
 
         val vm = createViewModel(activityId = 7)
@@ -433,10 +607,16 @@ class ActivityFormViewModelTest {
     }
 
     @Test
-    fun `a date-only value is sent as the UTC-midnight calendar day`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a date-only value is sent as the UTC-midnight calendar day`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         // #1726: the picker writes a bare day; Activity.Date is a Go time.Time,
         // so the form normalises it to the exact UTC-midnight instant.
-        coEvery { activityRepository.create(any()) } returns Result.success(Activity(id = 7, title = "Lunch"))
+        coEvery {
+            activityRepository.create(
+                any()
+            )
+        } returns Result.success(Activity(id = 7, title = "Lunch"))
 
         val vm = createViewModel()
         vm.onTitleChange("Lunch")
@@ -448,7 +628,9 @@ class ActivityFormViewModelTest {
     }
 
     @Test
-    fun `a date-time value round-trips with its time`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a date-time value round-trips with its time`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val created = Activity(id = 7, title = "Lunch")
         coEvery { activityRepository.create(any()) } returns Result.success(created)
 
@@ -465,7 +647,7 @@ class ActivityFormViewModelTest {
     @Test
     fun `failed save surfaces the error and stays`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { activityRepository.create(any()) } returns Result.failure(
-            ApiError.Client(409, "duplicate"),
+            ApiError.Client(409, "duplicate")
         )
 
         val vm = createViewModel()

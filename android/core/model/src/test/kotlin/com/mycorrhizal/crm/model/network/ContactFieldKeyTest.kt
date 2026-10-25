@@ -24,7 +24,7 @@ class ContactFieldKeyTest {
         val resolved = resolveEnabledFields(listOf("emails", "speakToAs", "cardNotes"))
         assertEquals(
             setOf(ContactFieldKey.EMAILS, ContactFieldKey.SPEAK_TO_AS, ContactFieldKey.CARD_NOTES),
-            resolved,
+            resolved
         )
     }
 
@@ -50,7 +50,10 @@ class ContactFieldKeyTest {
     fun `every key has exactly one group and groups cover the full render order`() {
         ContactFieldKey.entries.forEach { key ->
             assertTrue("$key must have a group", CONTACT_FIELD_GROUP.containsKey(key))
-            assertTrue("$key's group must be in the render order", CONTACT_FIELD_GROUP[key] in CONTACT_FIELD_GROUP_ORDER)
+            assertTrue(
+                "$key's group must be in the render order",
+                CONTACT_FIELD_GROUP[key] in CONTACT_FIELD_GROUP_ORDER
+            )
         }
     }
 
@@ -86,7 +89,7 @@ class ContactFieldKeyTest {
             ContactFieldKey.CARD_KIND to ContactFieldGroup.PERSONAL,
             ContactFieldKey.LANGUAGE to ContactFieldGroup.PERSONAL,
             ContactFieldKey.HOW_WE_MET to ContactFieldGroup.MYCORRHIZAL,
-            ContactFieldKey.CONTACT_INFORMATION to ContactFieldGroup.MYCORRHIZAL,
+            ContactFieldKey.CONTACT_INFORMATION to ContactFieldGroup.MYCORRHIZAL
         )
         assertEquals(expected, CONTACT_FIELD_GROUP)
     }

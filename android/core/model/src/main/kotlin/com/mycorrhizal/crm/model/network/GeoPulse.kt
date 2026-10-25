@@ -3,7 +3,7 @@ package com.mycorrhizal.crm.model.network
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
 
-/**
+/*
  * Issue #160 / ADR 0033: GeoPulse location-history correlation. Mirrors
  * `frontend/src/api/geopulse.ts` and the `GeoPulse*` schemas in
  * `backend/openapi.yaml`. The connection is per-user-global; the API token stays
@@ -14,7 +14,7 @@ import com.squareup.moshi.JsonClass
 @JsonClass(generateAdapter = true)
 data class GeoPulseConfigResponse(
     @Json(name = "base_url") val baseUrl: String? = null,
-    @Json(name = "has_api_key") val hasApiKey: Boolean = false,
+    @Json(name = "has_api_key") val hasApiKey: Boolean = false
 )
 
 /**
@@ -24,7 +24,7 @@ data class GeoPulseConfigResponse(
 @JsonClass(generateAdapter = true)
 data class GeoPulseConfigInput(
     @Json(name = "base_url") val baseUrl: String,
-    @Json(name = "api_key") val apiKey: String = "",
+    @Json(name = "api_key") val apiKey: String = ""
 )
 
 /** POST /geopulse/test-connection — 200 even when [ok] is false; [stage] is reachability|auth|ok. */
@@ -32,7 +32,7 @@ data class GeoPulseConfigInput(
 data class GeoPulseConnectionTestResult(
     val ok: Boolean = false,
     val stage: String? = null,
-    val message: String? = null,
+    val message: String? = null
 )
 
 /** Display-only: never persisted on the Activity. */
@@ -40,7 +40,7 @@ data class GeoPulseConnectionTestResult(
 data class GeoPulsePhotoSuggestion(
     val id: String = "",
     @Json(name = "file_name") val fileName: String = "",
-    @Json(name = "taken_at") val takenAt: String? = null,
+    @Json(name = "taken_at") val takenAt: String? = null
 )
 
 /** One ephemeral stay suggestion; confirming it is an ordinary POST /activities carrying [externalRef]. */
@@ -61,12 +61,12 @@ data class GeoPulseStaySuggestion(
     /** True when the photo lookup failed/was skipped: empty [photos] then means "could not check". */
     @Json(name = "photos_unavailable") val photosUnavailable: Boolean = false,
     /** Present when an Activity already carries this stay's external_ref. */
-    @Json(name = "existing_activity_id") val existingActivityId: Int? = null,
+    @Json(name = "existing_activity_id") val existingActivityId: Int? = null
 )
 
 /** GET /geopulse/suggestions?date=&timezone= */
 @JsonClass(generateAdapter = true)
 data class GeoPulseSuggestionsResponse(
     val date: String = "",
-    val suggestions: List<GeoPulseStaySuggestion> = emptyList(),
+    val suggestions: List<GeoPulseStaySuggestion> = emptyList()
 )

@@ -13,10 +13,13 @@ anything mirrored across clients; the Kotlin-specific rules are here.
   `distribution` dimension. Proprietary push code lives in the `obtainium`/`play` source sets and the
   shared `fcm` directory; the base code stays flavor-free. Flavor-qualified tasks are the norm —
   `./gradlew :app:connectedObtainiumDebugAndroidTest` for instrumented tests.
-- `detekt` is the Kotlin lint gate: `cd android && ./gradlew detekt` on any Kotlin change. detekt 2.x
-  supports the JDK 25 build JVM, so no JDK downgrade is needed; CI runs the same task in
-  `android-tests.yml`'s `Android (Gradle)` job. There is no Gradle step in the local pre-commit hook
-  (too slow to launch a build per commit).
+- `detekt` is the Kotlin lint **and formatting** gate: `cd android && ./gradlew detekt` on any
+  Kotlin change. The `ktlint` wrapper rule set enforces code style `android_studio` (mirrored in
+  `android/.editorconfig`; the wrapper reads `config/detekt/detekt.yml`, not the editorconfig).
+  Auto-correct formatting with `./gradlew detekt --auto-correct`; there is no detekt baseline, so
+  findings are fixed rather than grandfathered. detekt 2.x supports the JDK 25 build JVM, so no JDK
+  downgrade is needed; CI runs the same task in `android-tests.yml`'s `Android (Gradle)` job. There
+  is no Gradle step in the local pre-commit hook (too slow to launch a build per commit).
 - `lint` is the Android resource/manifest/framework gate and treats **warnings** as errors (issue
   #1902): `./gradlew lintDebug :app:lintObtainiumDebug :app:lintFossDebug`. The shared config is
   `android/lint.xml`, where every `ignore` carries a reason (dependency freshness is Renovate's).

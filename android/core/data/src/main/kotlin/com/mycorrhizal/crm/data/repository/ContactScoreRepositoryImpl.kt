@@ -10,9 +10,8 @@ import javax.inject.Inject
  * pass-through — the score is computed server-side, so there is nothing to
  * mirror locally.
  */
-class ContactScoreRepositoryImpl @Inject constructor(
-    private val apiClient: ApiClient,
-) : ContactScoreRepository {
+class ContactScoreRepositoryImpl @Inject constructor(private val apiClient: ApiClient) :
+    ContactScoreRepository {
 
     override suspend fun getScore(contactId: Int): Result<ContactScoreResponse> =
         apiClient.getContactScore(contactId)

@@ -30,7 +30,7 @@ class MobileLinkActionResolverTest {
         provider.mimeTypes = mimeTypes
         ShadowContentResolver.registerProviderInternal(
             ContactsContract.AUTHORITY,
-            provider,
+            provider
         )
     }
 
@@ -46,7 +46,7 @@ class MobileLinkActionResolverTest {
 
         val available = resolver.resolveAvailableActions(
             MobileLinkRegistry.forProtocol("signal")!!,
-            "alice.42",
+            "alice.42"
         )
 
         assertEquals(emptyList<MobileLinkAction>(), available)
@@ -60,7 +60,7 @@ class MobileLinkActionResolverTest {
 
         val available = resolver.resolveAvailableActions(
             MobileLinkRegistry.forProtocol("signal")!!,
-            "alice.42",
+            "alice.42"
         )
 
         assertEquals(listOf(MobileActionKind.MESSAGE), available.map { it.kind })
@@ -72,19 +72,23 @@ class MobileLinkActionResolverTest {
             listOf(
                 "vnd.android.cursor.item/vnd.org.thoughtcrime.securesms.contact",
                 "vnd.android.cursor.item/vnd.org.thoughtcrime.securesms.call",
-                "vnd.android.cursor.item/vnd.org.thoughtcrime.securesms.videocall",
-            ),
+                "vnd.android.cursor.item/vnd.org.thoughtcrime.securesms.videocall"
+            )
         )
         val resolver = MobileLinkActionResolver(contentResolver())
 
         val available = resolver.resolveAvailableActions(
             MobileLinkRegistry.forProtocol("signal")!!,
-            "alice.42",
+            "alice.42"
         )
 
         assertEquals(
-            listOf(MobileActionKind.MESSAGE, MobileActionKind.VOICE_CALL, MobileActionKind.VIDEO_CALL),
-            available.map { it.kind },
+            listOf(
+                MobileActionKind.MESSAGE,
+                MobileActionKind.VOICE_CALL,
+                MobileActionKind.VIDEO_CALL
+            ),
+            available.map { it.kind }
         )
     }
 
@@ -95,7 +99,7 @@ class MobileLinkActionResolverTest {
 
         val available = resolver.resolveAvailableActions(
             MobileLinkRegistry.forProtocol("whatsapp")!!,
-            "+1-555-0100",
+            "+1-555-0100"
         )
 
         assertEquals(emptyList<MobileLinkAction>(), available)
@@ -113,7 +117,7 @@ private class FakeContactsProvider : ContentProvider() {
         projection: Array<out String>?,
         selection: String?,
         selectionArgs: Array<out String>?,
-        sortOrder: String?,
+        sortOrder: String?
     ): Cursor {
         val cursor = MatrixCursor(arrayOf(ContactsContract.Data.MIMETYPE))
         val wanted = selectionArgs?.toSet() ?: emptySet()
@@ -133,6 +137,6 @@ private class FakeContactsProvider : ContentProvider() {
         uri: Uri,
         values: ContentValues?,
         selection: String?,
-        selectionArgs: Array<out String>?,
+        selectionArgs: Array<out String>?
     ): Int = 0
 }

@@ -43,7 +43,7 @@ class SmsInboxReconciliationWorker @AssistedInject constructor(
     @Assisted workerParams: WorkerParameters,
     private val pendingInteractionRepository: PendingInteractionRepository,
     private val contactRepository: ContactRepository,
-    private val trackingSettings: TrackingSettingsRepository,
+    private val trackingSettings: TrackingSettingsRepository
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {
@@ -78,7 +78,7 @@ class SmsInboxReconciliationWorker @AssistedInject constructor(
                     direction = InteractionCapture.DIR_INCOMING,
                     number = number,
                     timestampMillis = entry.timestampMillis,
-                    dedupe = true,
+                    dedupe = true
                 )
             }
 
@@ -91,11 +91,10 @@ class SmsInboxReconciliationWorker @AssistedInject constructor(
         return Result.success()
     }
 
-    private fun hasSmsPermission(): Boolean =
-        ContextCompat.checkSelfPermission(
-            applicationContext,
-            TrackingPermissions.READ_SMS,
-        ) == PackageManager.PERMISSION_GRANTED
+    private fun hasSmsPermission(): Boolean = ContextCompat.checkSelfPermission(
+        applicationContext,
+        TrackingPermissions.READ_SMS
+    ) == PackageManager.PERMISSION_GRANTED
 
     private companion object {
         const val TAG = "SmsInboxReconciliationWorker"

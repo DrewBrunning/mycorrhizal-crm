@@ -35,7 +35,9 @@ class AmbientLabelsTest {
         composeTestRule.setContent { MycorrhizalTheme { AmbientExplanation(reason = "household") } }
 
         composeTestRule.onNodeWithText("Lives with you (household)").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Counts as in regular contact without logging activities").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Counts as in regular contact without logging activities"
+        ).assertIsDisplayed()
     }
 
     @Test

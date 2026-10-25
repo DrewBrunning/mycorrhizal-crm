@@ -56,7 +56,12 @@ internal object ServerProfileCodec {
             KIND_LOCAL -> ServerProfileKind.Local
             else -> return null
         }
-        return ServerProfile(id = id, kind = kind, label = label, archived = parts.getOrNull(4) == ARCHIVED_FLAG)
+        return ServerProfile(
+            id = id,
+            kind = kind,
+            label = label,
+            archived = parts.getOrNull(4) == ARCHIVED_FLAG
+        )
     }
 
     private fun enc(value: String): String = URLEncoder.encode(value, Charsets.UTF_8.name())

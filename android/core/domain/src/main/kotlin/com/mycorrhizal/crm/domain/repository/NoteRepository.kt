@@ -4,17 +4,10 @@ import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.model.network.NoteInput
 
 /** A page of the N4 unfiled-notes inbox, with its T17 cursor-pagination state and queue depth. */
-data class UnfiledNotesPage(
-    val notes: List<Note>,
-    val nextCursor: String?,
-    val total: Int,
-)
+data class UnfiledNotesPage(val notes: List<Note>, val nextCursor: String?, val total: Int)
 
 /** A page of one contact's notes (M19), with its T17 cursor-pagination state. */
-data class ContactNotesPage(
-    val notes: List<Note>,
-    val nextCursor: String?,
-)
+data class ContactNotesPage(val notes: List<Note>, val nextCursor: String?)
 
 /**
  * Note data access. Online-first: writes go to the server and the returned
@@ -32,7 +25,7 @@ interface NoteRepository {
         limit: Int? = null,
         search: String? = null,
         fromDate: String? = null,
-        toDate: String? = null,
+        toDate: String? = null
     ): Result<ContactNotesPage>
 
     /** The unfiled-notes inbox (M9 Notes drawer entry) — `GET /notes`, not a contact's history. */

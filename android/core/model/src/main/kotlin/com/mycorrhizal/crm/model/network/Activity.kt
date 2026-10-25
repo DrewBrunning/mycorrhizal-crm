@@ -26,7 +26,7 @@ data class Activity(
     /** ADR 0006/0008: monotonic per-row write counter; the value an `If-Match` precondition echoes. */
     val revision: Int? = null,
     /** T17 change-feed tombstone marker. */
-    val deleted: Boolean = false,
+    val deleted: Boolean = false
 ) {
     val qualifying: Boolean get() = type != "photo"
 }
@@ -40,22 +40,19 @@ data class ActivityInput(
     val date: String? = null,
     @Json(name = "contact_ids") val contactIds: List<Int>? = null,
     val type: String? = null,
-    @Json(name = "external_ref") val externalRef: String? = null,
+    @Json(name = "external_ref") val externalRef: String? = null
 )
 
 /** POST /activities response — wrapped `{ message, activity }` (200, not 201). */
 @JsonClass(generateAdapter = true)
-data class CreateActivityResponse(
-    val message: String? = null,
-    val activity: Activity? = null,
-)
+data class CreateActivityResponse(val message: String? = null, val activity: Activity? = null)
 
 /** GET /contacts/{id}/activities — bare array under `activities` (M19: T17 cursor envelope). */
 @JsonClass(generateAdapter = true)
 data class ContactActivitiesResponse(
     val activities: List<Activity> = emptyList(),
     @Json(name = "next_cursor") val nextCursor: String? = null,
-    val limit: Int = 0,
+    val limit: Int = 0
 )
 
 /**
@@ -73,7 +70,7 @@ data class ActivitiesPage(
     @Json(name = "activities") val activitiesRaw: List<Activity>? = null,
     @Json(name = "next_cursor") val nextCursor: String? = null,
     val limit: Int = 0,
-    val sync: SyncInfo? = null,
+    val sync: SyncInfo? = null
 ) {
     val activities: List<Activity> get() = activitiesRaw.orEmpty()
 }
@@ -90,7 +87,7 @@ data class ContactFlat(
     val nickname: String? = null,
     val email: String? = null,
     val phone: String? = null,
-    val uid: String? = null,
+    val uid: String? = null
 ) {
     val displayName: String
         get() = listOfNotNull(firstname, lastname).joinToString(" ").ifBlank { "#$id" }

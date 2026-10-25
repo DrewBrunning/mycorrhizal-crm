@@ -22,7 +22,7 @@ import kotlinx.coroutines.launch
 enum class AppLockState {
     Resolving,
     Locked,
-    Unlocked,
+    Unlocked
 }
 
 /** Owns the app-lock gate decision; see [DefaultAppLockController]. */
@@ -69,23 +69,29 @@ interface AppLockController {
 class DefaultAppLockController(
     private val settings: LocalAuthSettingsRepository,
     private val sessionManager: SessionManager,
-    private val clock: () -> Long = System::currentTimeMillis,
+    private val clock: () -> Long = System::currentTimeMillis
 ) : AppLockController {
     private val _state = MutableStateFlow(AppLockState.Resolving)
     override val state: StateFlow<AppLockState> = _state.asStateFlow()
 
     @Volatile
     private var resolved = false
+
     @Volatile
     private var settingsKnown = false
+
     @Volatile
     private var sessionKnown = false
+
     @Volatile
     private var enabled = false
+
     @Volatile
     private var loggedIn = false
+
     @Volatile
     private var delay: AutoLockDelay = AutoLockDelay.DEFAULT
+
     @Volatile
     private var backgroundedAt: Long? = null
 

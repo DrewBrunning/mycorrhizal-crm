@@ -65,6 +65,16 @@ description = "Fake JWT secret literal in controllers tests (#1623)"
 regexTarget = "line"
 regexes = ['''test-jwt-secret-0123456789abcdef0123456789abcdef''']
 
+# Issue #1901: the Kotlin formatting commit moved two deliberately-fake API
+# token fixtures into added lines, so the staged-diff scan reported them on
+# entropy alone. The `mcrh_live_` prefix is test-only (the real formats are
+# `mycorrhizal_`/`mycorrhizal_feed_`) and these placeholder values never reach
+# a server; ApiTokensScreenTest.kt and ApiClientTest.kt both use them.
+[[allowlists]]
+description = "Fake mcrh_live_ API token fixtures in Android tests (#1901)"
+regexTarget = "line"
+regexes = ['''mcrh_live_[A-Za-z0-9]+''']
+
 # Issue #1909: backend/tools.mod is a separate Go module graph for the CI
 # tools, so its module hashes live in backend/tools.sum rather than go.sum.
 # Gitleaks' default pack allowlists go.sum by filename; without this scoped

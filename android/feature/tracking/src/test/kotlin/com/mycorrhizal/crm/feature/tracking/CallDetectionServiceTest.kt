@@ -53,7 +53,7 @@ class CallDetectionServiceTest {
     private fun buildService(
         contact: ContactSummary? = null,
         includeUnknown: Boolean = false,
-        lookupThrows: Boolean = false,
+        lookupThrows: Boolean = false
     ): Pair<CallDetectionService, TestCoroutineScheduler> {
         val service = Robolectric.buildService(CallDetectionService::class.java).get()
         val dispatcher = StandardTestDispatcher()
@@ -95,7 +95,9 @@ class CallDetectionServiceTest {
     @Test
     fun `a call-idle state from a known contact shows the overlay`() {
         val (service, scheduler) = buildService(contact = ContactSummary(id = 9))
-        Shadows.shadowOf(service.application).grantPermissions(android.Manifest.permission.SYSTEM_ALERT_WINDOW)
+        Shadows.shadowOf(
+            service.application
+        ).grantPermissions(android.Manifest.permission.SYSTEM_ALERT_WINDOW)
 
         service.handleCallStateChanged(TelephonyManager.CALL_STATE_IDLE, "+15551234567")
         scheduler.advanceUntilIdle()
@@ -106,7 +108,9 @@ class CallDetectionServiceTest {
     @Test
     fun `an unknown caller is suppressed by default (issue #1029)`() {
         val (service, scheduler) = buildService(contact = null, includeUnknown = false)
-        Shadows.shadowOf(service.application).grantPermissions(android.Manifest.permission.SYSTEM_ALERT_WINDOW)
+        Shadows.shadowOf(
+            service.application
+        ).grantPermissions(android.Manifest.permission.SYSTEM_ALERT_WINDOW)
 
         service.handleCallStateChanged(TelephonyManager.CALL_STATE_IDLE, "+15559876543")
         scheduler.advanceUntilIdle()
@@ -117,7 +121,9 @@ class CallDetectionServiceTest {
     @Test
     fun `an unknown caller shows the overlay when the include-unknown opt-in is on`() {
         val (service, scheduler) = buildService(contact = null, includeUnknown = true)
-        Shadows.shadowOf(service.application).grantPermissions(android.Manifest.permission.SYSTEM_ALERT_WINDOW)
+        Shadows.shadowOf(
+            service.application
+        ).grantPermissions(android.Manifest.permission.SYSTEM_ALERT_WINDOW)
 
         service.handleCallStateChanged(TelephonyManager.CALL_STATE_IDLE, "+15559876543")
         scheduler.advanceUntilIdle()
@@ -128,7 +134,9 @@ class CallDetectionServiceTest {
     @Test
     fun `a call-idle state with the overlay permission denied never creates the overlay`() {
         val (service, scheduler) = buildService(contact = ContactSummary(id = 9))
-        Shadows.shadowOf(service.application).denyPermissions(android.Manifest.permission.SYSTEM_ALERT_WINDOW)
+        Shadows.shadowOf(
+            service.application
+        ).denyPermissions(android.Manifest.permission.SYSTEM_ALERT_WINDOW)
 
         service.handleCallStateChanged(TelephonyManager.CALL_STATE_IDLE, "+15551234567")
         scheduler.advanceUntilIdle()
@@ -139,7 +147,9 @@ class CallDetectionServiceTest {
     @Test
     fun `a non-idle call state never creates the overlay`() {
         val (service, scheduler) = buildService(contact = ContactSummary(id = 9))
-        Shadows.shadowOf(service.application).grantPermissions(android.Manifest.permission.SYSTEM_ALERT_WINDOW)
+        Shadows.shadowOf(
+            service.application
+        ).grantPermissions(android.Manifest.permission.SYSTEM_ALERT_WINDOW)
 
         service.handleCallStateChanged(TelephonyManager.CALL_STATE_RINGING, "+15551234567")
         scheduler.advanceUntilIdle()

@@ -8,13 +8,13 @@ import com.mycorrhizal.crm.domain.repository.ReminderRepository
 import com.mycorrhizal.crm.model.network.TimelineBuckets
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class TimelineExplorerUiState(
     val contactId: Int = 0,
@@ -26,7 +26,7 @@ data class TimelineExplorerUiState(
     val bucket: String = TimelineBuckets.ALL,
     val isLoading: Boolean = false,
     val isLoadingMore: Boolean = false,
-    val error: String? = null,
+    val error: String? = null
 )
 
 /**
@@ -39,7 +39,7 @@ data class TimelineExplorerUiState(
 class TimelineExplorerViewModel @Inject constructor(
     private val timelineRepository: ContactTimelineRepository,
     private val reminderRepository: ReminderRepository,
-    savedStateHandle: SavedStateHandle,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val contactId: Int = run {
@@ -65,18 +65,31 @@ class TimelineExplorerViewModel @Inject constructor(
         val state = _uiState.value
         loadJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, isLoadingMore = false, error = null) }
-            timelineRepository.page(contactId, state.types, state.bucket, cursor = null, limit = PAGE_SIZE)
+            timelineRepository.page(
+                contactId,
+                state.types,
+                state.bucket,
+                cursor = null,
+                limit = PAGE_SIZE
+            )
                 .foldApiError(
                     onSuccess = { page ->
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
                                 items = page.items.mapNotNull { event -> event.toTimelineItem() },
-                                nextCursor = page.nextCursor,
+                                nextCursor = page.nextCursor
                             )
                         }
                     },
-                    onError = { error -> _uiState.update { it.copy(isLoading = false, error = error.displayMessage) } },
+                    onError = { error ->
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                error = error.displayMessage
+                            )
+                        }
+                    }
                 )
         }
     }
@@ -87,7 +100,13 @@ class TimelineExplorerViewModel @Inject constructor(
         if (state.nextCursor.isNullOrEmpty() || state.isLoading || state.isLoadingMore) return
         loadJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMore = true, error = null) }
-            timelineRepository.page(contactId, state.types, state.bucket, cursor = state.nextCursor, limit = PAGE_SIZE)
+            timelineRepository.page(
+                contactId,
+                state.types,
+                state.bucket,
+                cursor = state.nextCursor,
+                limit = PAGE_SIZE
+            )
                 .foldApiError(
                     onSuccess = { page ->
                         _uiState.update { current ->
@@ -95,15 +114,25 @@ class TimelineExplorerViewModel @Inject constructor(
                             current.copy(
                                 isLoadingMore = false,
                                 items = current.items +
-                                    page.items.mapNotNull { event -> event.toTimelineItem() }.filter { it.key !in seen },
-                                nextCursor = page.nextCursor,
+                                    page.items.mapNotNull { event ->
+                                        event.toTimelineItem()
+                                    }.filter {
+                                        it.key !in
+                                            seen
+                                    },
+                                nextCursor = page.nextCursor
                             )
                         }
                     },
                     // Keep the rows already shown; the Load more button stays available to retry.
                     onError = { error ->
-                        _uiState.update { it.copy(isLoadingMore = false, error = error.displayMessage) }
-                    },
+                        _uiState.update {
+                            it.copy(
+                                isLoadingMore = false,
+                                error = error.displayMessage
+                            )
+                        }
+                    }
                 )
         }
     }
@@ -125,7 +154,7 @@ class TimelineExplorerViewModel @Inject constructor(
         viewModelScope.launch {
             reminderRepository.deleteCompletion(id).foldApiError(
                 onSuccess = { refresh() },
-                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } },
+                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } }
             )
         }
     }

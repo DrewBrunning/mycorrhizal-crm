@@ -43,7 +43,7 @@ data class TimelineWireItem(
     val type: String = "",
     val id: String = "",
     val date: String = "",
-    val data: Map<String, Any?>? = null,
+    val data: Map<String, Any?>? = null
 )
 
 /** Wire shape of `TimelineResponse`. `items` is `[]` when empty; `next_cursor` is empty on the last page. */
@@ -51,7 +51,7 @@ data class TimelineWireItem(
 data class TimelineWirePage(
     val items: List<TimelineWireItem>? = null,
     @Json(name = "next_cursor") val nextCursor: String? = null,
-    val limit: Int = 0,
+    val limit: Int = 0
 )
 
 /**
@@ -68,12 +68,12 @@ data class TimelineEvent(
     val completion: ReminderCompletion? = null,
     val lifeEvent: LifeEvent? = null,
     val externalActivity: ExternalActivity? = null,
-    val gift: Gift? = null,
+    val gift: Gift? = null
 )
 
 /** A decoded page of the contact timeline. A null/empty [nextCursor] means no more rows. */
 data class ContactTimelinePage(
     val items: List<TimelineEvent>,
     val nextCursor: String?,
-    val limit: Int,
+    val limit: Int
 )

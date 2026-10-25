@@ -10,35 +10,25 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.util.DateFieldMode
 import com.mycorrhizal.crm.ui.R
@@ -51,7 +41,7 @@ import com.mycorrhizal.crm.ui.components.WriteConflictDialog
 fun ActivityFormScreen(
     onSaved: () -> Unit,
     onBack: () -> Unit,
-    viewModel: ActivityFormViewModel = hiltViewModel(),
+    viewModel: ActivityFormViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val events by viewModel.events.collectAsStateWithLifecycle()
@@ -65,15 +55,27 @@ fun ActivityFormScreen(
     }
 
     FormScaffold(
-        title = if (state.isEdit) stringResource(R.string.activity_edit) else stringResource(R.string.activity_new),
+        title = if (state.isEdit) {
+            stringResource(
+                R.string.activity_edit
+            )
+        } else {
+            stringResource(R.string.activity_new)
+        },
         onBack = onBack,
-        saveLabel = if (state.isEdit) stringResource(R.string.activity_save) else stringResource(R.string.activity_create),
+        saveLabel = if (state.isEdit) {
+            stringResource(
+                R.string.activity_save
+            )
+        } else {
+            stringResource(R.string.activity_create)
+        },
         isSaving = state.isSaving,
         onSave = viewModel::save,
         snackbarHostState = snackbarHostState,
         isDirty = state.isDirty,
         entityLabel = stringResource(R.string.entity_activity),
-        showSaveBar = true,
+        showSaveBar = true
     ) { padding ->
         ActivityFormContent(
             state = state,
@@ -85,14 +87,14 @@ fun ActivityFormScreen(
             onContactSearchChange = viewModel::searchContacts,
             onAddParticipant = viewModel::onAddParticipant,
             onRemoveParticipant = viewModel::onRemoveParticipant,
-            modifier = Modifier.padding(padding),
+            modifier = Modifier.padding(padding)
         )
     }
 
     if (state.conflict) {
         WriteConflictDialog(
             onLoadLatest = viewModel::onConflictLoadLatest,
-            onKeep = viewModel::onConflictKeepEditing,
+            onKeep = viewModel::onConflictKeepEditing
         )
     }
 
@@ -116,21 +118,21 @@ fun ActivityFormContent(
     onContactSearchChange: (String) -> Unit,
     onAddParticipant: (ContactSummary) -> Unit,
     onRemoveParticipant: (Int) -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         OutlinedTextField(
             value = state.title,
             onValueChange = onTitleChange,
             label = { Text(stringResource(R.string.activity_title)) },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
             value = state.type,
@@ -138,7 +140,7 @@ fun ActivityFormContent(
             label = { Text(stringResource(R.string.activity_type)) },
             placeholder = { Text(stringResource(R.string.activity_type_hint)) },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         )
         DateField(
             value = state.date,
@@ -146,21 +148,21 @@ fun ActivityFormContent(
             label = stringResource(R.string.activity_date),
             mode = DateFieldMode.DATE_TIME,
             testTag = "activity-date",
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
             value = state.location,
             onValueChange = onLocationChange,
             label = { Text(stringResource(R.string.activity_location)) },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
             value = state.description,
             onValueChange = onDescriptionChange,
             label = { Text(stringResource(R.string.activity_description)) },
             minLines = 3,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         )
 
         // M19: multi-contact picker. An activity may span several contacts;
@@ -171,11 +173,11 @@ fun ActivityFormContent(
         Text(
             text = stringResource(R.string.activity_participants),
             style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         ) {
             state.participants.forEach { participant ->
                 InputChip(
@@ -185,10 +187,12 @@ fun ActivityFormContent(
                     trailingIcon = {
                         Icon(
                             imageVector = Icons.Outlined.Close,
-                            contentDescription = stringResource(R.string.activity_remove_participant),
-                            modifier = Modifier.size(InputChipDefaults.IconSize),
+                            contentDescription = stringResource(
+                                R.string.activity_remove_participant
+                            ),
+                            modifier = Modifier.size(InputChipDefaults.IconSize)
                         )
-                    },
+                    }
                 )
             }
         }
@@ -198,7 +202,7 @@ fun ActivityFormContent(
             loading = state.contactSearchLoading,
             onQueryChange = onContactSearchChange,
             onPick = onAddParticipant,
-            labelRes = R.string.activity_search_contact,
+            labelRes = R.string.activity_search_contact
         )
     }
 }

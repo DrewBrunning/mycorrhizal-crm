@@ -1,39 +1,39 @@
 package com.mycorrhizal.crm.feature.settings
 
-import androidx.compose.ui.test.performTextInput
-import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.assertIsEnabled
 import android.content.Context
-import androidx.compose.ui.test.onNodeWithContentDescription
-import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.assertCountEquals
-import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import com.mikepenz.aboutlibraries.Libs
-import com.mikepenz.aboutlibraries.entity.License
 import com.mikepenz.aboutlibraries.entity.Library
-import com.mycorrhizal.crm.data.passkey.PasskeyAvailability
+import com.mikepenz.aboutlibraries.entity.License
 import com.mycorrhizal.crm.data.auth.DeviceGrantManager
+import com.mycorrhizal.crm.data.passkey.PasskeyAvailability
 import com.mycorrhizal.crm.domain.about.AppBuildInfo
 import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
-import com.mycorrhizal.crm.model.network.ServerHealth
+import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.AutoLockDelay
 import com.mycorrhizal.crm.domain.repository.BiometricEnrollmentStatus
-import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.LocalAuthCapabilities
 import com.mycorrhizal.crm.domain.repository.LocalAuthSettingsRepository
 import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.domain.repository.TrackingSettingsRepository
+import com.mycorrhizal.crm.model.network.ServerHealth
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
@@ -71,8 +71,14 @@ class SettingsScreenTest {
         show { SettingsRootContent(state = SettingsUiState(buildInfo = release), onLogout = {}) }
 
         listOf(
-            "Account", "Appearance", "Privacy & security", "Contacts & fields",
-            "Tracking & notifications", "Integrations", "About", "Log out",
+            "Account",
+            "Appearance",
+            "Privacy & security",
+            "Contacts & fields",
+            "Tracking & notifications",
+            "Integrations",
+            "About",
+            "Log out"
         ).forEach { composeTestRule.onNodeWithText(it).performScrollTo().assertIsDisplayed() }
         // No form fields live on the root any more.
         assertEquals(0, composeTestRule.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().size)
@@ -85,31 +91,49 @@ class SettingsScreenTest {
         val opened = mutableListOf<String>()
         show {
             SettingsRootContent(
-                state = SettingsUiState(session = SessionState(isAdmin = true), buildInfo = release),
+                state = SettingsUiState(
+                    session = SessionState(isAdmin = true),
+                    buildInfo = release
+                ),
                 onNavigate = { opened += it },
-                onLogout = {},
+                onLogout = {}
             )
         }
 
         listOf(
-            "settings-group-account", "settings-group-appearance", "settings-group-privacy",
-            "settings-group-contacts-fields", "settings-group-tracking", "settings-group-integrations",
-            "settings-group-administration", "settings-group-about",
+            "settings-group-account",
+            "settings-group-appearance",
+            "settings-group-privacy",
+            "settings-group-contacts-fields",
+            "settings-group-tracking",
+            "settings-group-integrations",
+            "settings-group-administration",
+            "settings-group-about"
         ).forEach { composeTestRule.onNodeWithTag(it).performScrollTo().performClick() }
 
         assertEquals(
             listOf(
-                SettingsRoutes.ACCOUNT, SettingsRoutes.APPEARANCE, SettingsRoutes.PRIVACY,
-                SettingsRoutes.CONTACTS_FIELDS, SettingsRoutes.TRACKING, SettingsRoutes.INTEGRATIONS,
-                SettingsRoutes.ADMINISTRATION, SettingsRoutes.ABOUT,
+                SettingsRoutes.ACCOUNT,
+                SettingsRoutes.APPEARANCE,
+                SettingsRoutes.PRIVACY,
+                SettingsRoutes.CONTACTS_FIELDS,
+                SettingsRoutes.TRACKING,
+                SettingsRoutes.INTEGRATIONS,
+                SettingsRoutes.ADMINISTRATION,
+                SettingsRoutes.ABOUT
             ),
-            opened,
+            opened
         )
     }
 
     @Test
     fun `the administration group is for admins only`() {
-        show { SettingsRootContent(state = SettingsUiState(session = SessionState(isAdmin = false)), onLogout = {}) }
+        show {
+            SettingsRootContent(
+                state = SettingsUiState(session = SessionState(isAdmin = false)),
+                onLogout = {}
+            )
+        }
         composeTestRule.onNodeWithText("Administration").assertDoesNotExist()
     }
 
@@ -145,7 +169,12 @@ class SettingsScreenTest {
     @Test
     fun `log out is inert and announces saving while in flight`() {
         var loggedOut = false
-        show { SettingsRootContent(state = SettingsUiState(isLoggingOut = true), onLogout = { loggedOut = true }) }
+        show {
+            SettingsRootContent(
+                state = SettingsUiState(isLoggingOut = true),
+                onLogout = { loggedOut = true }
+            )
+        }
 
         composeTestRule.onNodeWithTag("settings-log-out")
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Saving"))
@@ -162,8 +191,12 @@ class SettingsScreenTest {
         show {
             AccountSettingsContent(
                 state = SettingsUiState(
-                    session = SessionState(serverUrl = "https://crm.example.com", username = "alice", isAdmin = true),
-                ),
+                    session = SessionState(
+                        serverUrl = "https://crm.example.com",
+                        username = "alice",
+                        isAdmin = true
+                    )
+                )
             )
         }
 
@@ -185,11 +218,17 @@ class SettingsScreenTest {
                 onChangePassword = { opened += "password" },
                 onTwoFactor = { opened += "2fa" },
                 onPasskeys = { opened += "passkeys" },
-                onApiTokens = { opened += "tokens" },
+                onApiTokens = { opened += "tokens" }
             )
         }
 
-        listOf("Servers", "Change password", "Two-factor authentication", "Passkeys", "API tokens").forEach {
+        listOf(
+            "Servers",
+            "Change password",
+            "Two-factor authentication",
+            "Passkeys",
+            "API tokens"
+        ).forEach {
             composeTestRule.onNodeWithText(it).performScrollTo().performClick()
         }
         assertEquals(listOf("servers", "password", "2fa", "passkeys", "tokens"), opened)
@@ -207,7 +246,9 @@ class SettingsScreenTest {
         show { AccountSettingsContent(state = SettingsUiState(session = SessionState())) }
         // #208: TalkBack's heading navigation found nothing on the old page.
         listOf("Session", "Security").forEach {
-            composeTestRule.onNodeWithText(it).assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+            composeTestRule.onNodeWithText(
+                it
+            ).assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
         }
     }
 
@@ -219,19 +260,23 @@ class SettingsScreenTest {
         show { ChangePasswordContent(state = SettingsUiState()) }
 
         composeTestRule.onNodeWithText("Update password").assertIsNotEnabled()
-        composeTestRule.onNodeWithText("Enter your new password and confirm it to continue").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Enter your new password and confirm it to continue"
+        ).assertIsDisplayed()
         composeTestRule.onNodeWithText("Update password").assert(
             SemanticsMatcher.expectValue(
                 SemanticsProperties.StateDescription,
-                "Enter your new password and confirm it to continue",
-            ),
+                "Enter your new password and confirm it to continue"
+            )
         )
 
         composeTestRule.onNodeWithText("New password").performTextInput("hunter22")
         composeTestRule.onNodeWithText("Confirm new password").performTextInput("hunter22")
 
         composeTestRule.onNodeWithText("Update password").assertIsEnabled()
-        composeTestRule.onNodeWithText("Enter your new password and confirm it to continue").assertDoesNotExist()
+        composeTestRule.onNodeWithText(
+            "Enter your new password and confirm it to continue"
+        ).assertDoesNotExist()
     }
 
     @Test
@@ -240,7 +285,7 @@ class SettingsScreenTest {
         show {
             ChangePasswordContent(
                 state = SettingsUiState(),
-                onChangePassword = { c, n, cf -> submitted = Triple(c, n, cf) },
+                onChangePassword = { c, n, cf -> submitted = Triple(c, n, cf) }
             )
         }
 
@@ -255,16 +300,29 @@ class SettingsScreenTest {
 
     @Test
     fun `a password change error is announced as an assertive live region`() {
-        show { ChangePasswordContent(state = SettingsUiState(passwordError = "Current password is wrong")) }
+        show {
+            ChangePasswordContent(
+                state = SettingsUiState(passwordError = "Current password is wrong")
+            )
+        }
 
         composeTestRule.onNodeWithText("Current password is wrong")
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Assertive))
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.LiveRegion,
+                    LiveRegionMode.Assertive
+                )
+            )
     }
 
     @Test
     fun `a static password validation error is shown`() {
         show {
-            ChangePasswordContent(state = SettingsUiState(passwordErrorRes = com.mycorrhizal.crm.ui.R.string.settings_password_mismatch))
+            ChangePasswordContent(
+                state = SettingsUiState(
+                    passwordErrorRes = com.mycorrhizal.crm.ui.R.string.settings_password_mismatch
+                )
+            )
         }
         composeTestRule.onNodeWithText("New passwords do not match.").assertIsDisplayed()
     }
@@ -285,12 +343,19 @@ class SettingsScreenTest {
             AppearanceSettingsContent(
                 state = SettingsUiState(
                     session = SessionState(language = "en", dateFormat = "eu"),
-                    themePreference = AppSettingsRepository.THEME_SYSTEM,
-                ),
+                    themePreference = AppSettingsRepository.THEME_SYSTEM
+                )
             )
         }
 
-        listOf("Language", "English", "Date format", "European (DD.MM.YYYY)", "Theme", "Use system default")
+        listOf(
+            "Language",
+            "English",
+            "Date format",
+            "European (DD.MM.YYYY)",
+            "Theme",
+            "Use system default"
+        )
             .forEach { composeTestRule.onNodeWithText(it).assertIsDisplayed() }
     }
 
@@ -300,7 +365,7 @@ class SettingsScreenTest {
         show {
             AppearanceSettingsContent(
                 state = SettingsUiState(session = SessionState(language = "en")),
-                onLanguageChange = { changedTo = it },
+                onLanguageChange = { changedTo = it }
             )
         }
 
@@ -315,7 +380,7 @@ class SettingsScreenTest {
         show {
             AppearanceSettingsContent(
                 state = SettingsUiState(themePreference = AppSettingsRepository.THEME_SYSTEM),
-                onThemeChange = { changedTo = it },
+                onThemeChange = { changedTo = it }
             )
         }
 
@@ -330,7 +395,7 @@ class SettingsScreenTest {
         show {
             AppearanceSettingsContent(
                 state = SettingsUiState(session = SessionState(dateFormat = "eu")),
-                onDateFormatChange = { changedTo = it },
+                onDateFormatChange = { changedTo = it }
             )
         }
 
@@ -347,13 +412,15 @@ class SettingsScreenTest {
         show {
             PrivacySettingsContent(
                 state = SettingsUiState(localAuthSupported = true, requireLocalAuth = false),
-                onAppLockChange = { toggled = it },
+                onAppLockChange = { toggled = it }
             )
         }
 
         composeTestRule.onNodeWithText("Set up biometric sign-in").assertDoesNotExist()
         composeTestRule.onNodeWithText("Turn off biometric sign-in").assertDoesNotExist()
-        composeTestRule.onNodeWithText("Require biometric or device PIN to open the app").performClick()
+        composeTestRule.onNodeWithText(
+            "Require biometric or device PIN to open the app"
+        ).performClick()
         assertEquals(true, toggled)
     }
 
@@ -362,8 +429,11 @@ class SettingsScreenTest {
         var delay: AutoLockDelay? = null
         show {
             PrivacySettingsContent(
-                state = SettingsUiState(requireLocalAuth = true, autoLockDelay = AutoLockDelay.IMMEDIATELY),
-                onAutoLockDelayChange = { delay = it },
+                state = SettingsUiState(
+                    requireLocalAuth = true,
+                    autoLockDelay = AutoLockDelay.IMMEDIATELY
+                ),
+                onAutoLockDelayChange = { delay = it }
             )
         }
 
@@ -378,7 +448,9 @@ class SettingsScreenTest {
         show { PrivacySettingsContent(state = SettingsUiState(localAuthSupported = false)) }
 
         composeTestRule.onNodeWithText("Unavailable", substring = true).assertIsDisplayed()
-        composeTestRule.onNodeWithText("Require biometric or device PIN to open the app").assertIsNotEnabled()
+        composeTestRule.onNodeWithText(
+            "Require biometric or device PIN to open the app"
+        ).assertIsNotEnabled()
     }
 
     @Test
@@ -387,11 +459,13 @@ class SettingsScreenTest {
             PrivacySettingsContent(
                 state = SettingsUiState(
                     requireLocalAuth = true,
-                    biometricEnrollmentStatus = BiometricEnrollmentStatus.ENROLLED,
-                ),
+                    biometricEnrollmentStatus = BiometricEnrollmentStatus.ENROLLED
+                )
             )
         }
-        composeTestRule.onNodeWithText("Biometric sign-in is on for this device").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Biometric sign-in is on for this device"
+        ).assertIsDisplayed()
         // With the lock on, the lock switch itself is the way to turn biometric sign-in off.
         composeTestRule.onNodeWithTag("biometric-signin-remove").assertDoesNotExist()
     }
@@ -405,12 +479,14 @@ class SettingsScreenTest {
             PrivacySettingsContent(
                 state = SettingsUiState(
                     requireLocalAuth = false,
-                    biometricEnrollmentStatus = BiometricEnrollmentStatus.ENROLLED,
+                    biometricEnrollmentStatus = BiometricEnrollmentStatus.ENROLLED
                 ),
-                onRemoveBiometricSignIn = { removed++ },
+                onRemoveBiometricSignIn = { removed++ }
             )
         }
-        composeTestRule.onNodeWithText("Turn off biometric sign-in").performScrollTo().performClick()
+        composeTestRule.onNodeWithText(
+            "Turn off biometric sign-in"
+        ).performScrollTo().performClick()
         assertEquals(1, removed)
     }
 
@@ -421,13 +497,15 @@ class SettingsScreenTest {
                 state = SettingsUiState(
                     requireLocalAuth = true,
                     isBiometricBusy = true,
-                    biometricErrorRes = com.mycorrhizal.crm.ui.R.string.biometric_enroll_error,
-                ),
+                    biometricErrorRes = com.mycorrhizal.crm.ui.R.string.biometric_enroll_error
+                )
             )
         }
-        composeTestRule.onNodeWithText("Biometric sign-in is on for this device").assertDoesNotExist()
+        composeTestRule.onNodeWithText(
+            "Biometric sign-in is on for this device"
+        ).assertDoesNotExist()
         composeTestRule.onAllNodes(
-            SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Assertive),
+            SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Assertive)
         ).assertCountEquals(1)
     }
 
@@ -438,14 +516,17 @@ class SettingsScreenTest {
         show {
             PrivacySettingsContent(
                 state = SettingsUiState(blockScreenshots = false),
-                onBlockScreenshotsChange = { changed = it },
+                onBlockScreenshotsChange = { changed = it }
             )
         }
 
         composeTestRule.onNodeWithText("Block screenshots and screen recording").performClick()
         assertEquals(true, changed)
         composeTestRule
-            .onNodeWithText("Also hides this app in the recent-apps view on all Android versions.", substring = true)
+            .onNodeWithText(
+                "Also hides this app in the recent-apps view on all Android versions.",
+                substring = true
+            )
             .assertExists()
     }
 
@@ -453,7 +534,9 @@ class SettingsScreenTest {
     fun `privacy section titles are marked as headings`() {
         show { PrivacySettingsContent(state = SettingsUiState()) }
         listOf("App lock", "Screen privacy").forEach {
-            composeTestRule.onNodeWithText(it).assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+            composeTestRule.onNodeWithText(
+                it
+            ).assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
         }
     }
 
@@ -467,11 +550,16 @@ class SettingsScreenTest {
                 onCustomFields = { opened += "fields" },
                 onContactFieldSettings = { opened += "contact-fields" },
                 onCustomLinks = { opened += "links" },
-                onCircleTagTriage = { opened += "triage" },
+                onCircleTagTriage = { opened += "triage" }
             )
         }
 
-        listOf("Custom fields", "Contact field settings", "Custom link actions", "Circle & tag triage")
+        listOf(
+            "Custom fields",
+            "Contact field settings",
+            "Custom link actions",
+            "Circle & tag triage"
+        )
             .forEach { composeTestRule.onNodeWithText(it).performClick() }
         assertEquals(listOf("fields", "contact-fields", "links", "triage"), opened)
     }
@@ -486,7 +574,9 @@ class SettingsScreenTest {
         composeTestRule.onNodeWithText("Log calls as activities").assertDoesNotExist()
         composeTestRule.onNodeWithText("Log messages as activities").assertDoesNotExist()
         composeTestRule.onNodeWithText("Log unknown numbers too").assertDoesNotExist()
-        composeTestRule.onNodeWithText("Call and message logging is not available in this build.").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Call and message logging is not available in this build."
+        ).assertIsDisplayed()
         // Notifications are unrelated to capture and stay available.
         composeTestRule.onNodeWithText("Show notifications").assertIsDisplayed()
     }
@@ -500,7 +590,7 @@ class SettingsScreenTest {
                 onCallTrackingChange = { changes += "call=$it" },
                 onSmsTrackingChange = { changes += "sms=$it" },
                 onNotificationsChange = { changes += "notifications=$it" },
-                onIncludeUnknownChange = { changes += "unknown=$it" },
+                onIncludeUnknownChange = { changes += "unknown=$it" }
             )
         }
 
@@ -508,14 +598,24 @@ class SettingsScreenTest {
         composeTestRule.onNodeWithText("Log messages as activities").performClick()
         composeTestRule.onNodeWithText("Show notifications").performClick()
         composeTestRule.onNodeWithText("Log unknown numbers too").performClick()
-        assertEquals(listOf("call=true", "sms=true", "notifications=false", "unknown=true"), changes)
-        composeTestRule.onNodeWithText("Call and message logging is not available in this build.").assertDoesNotExist()
+        assertEquals(
+            listOf("call=true", "sms=true", "notifications=false", "unknown=true"),
+            changes
+        )
+        composeTestRule.onNodeWithText(
+            "Call and message logging is not available in this build."
+        ).assertDoesNotExist()
     }
 
     @Test
     fun `the notification channels row invokes its callback`() {
         var channels = false
-        show { TrackingSettingsContent(state = SettingsUiState(), onNotificationChannels = { channels = true }) }
+        show {
+            TrackingSettingsContent(
+                state = SettingsUiState(),
+                onNotificationChannels = { channels = true }
+            )
+        }
         composeTestRule.onNodeWithText("Notification channels").performClick()
         assertTrue(channels)
     }
@@ -535,10 +635,12 @@ class SettingsScreenTest {
         show {
             TrackingSettingsContent(
                 state = SettingsUiState(
-                    permissionDialog = TrackingPermissionDialog.Rationale(TrackingPermissionRequest.CALL_TRACKING),
+                    permissionDialog = TrackingPermissionDialog.Rationale(
+                        TrackingPermissionRequest.CALL_TRACKING
+                    )
                 ),
                 onPermissionDialogRetry = { retried = true },
-                onPermissionDialogDismiss = { dismissed = true },
+                onPermissionDialogDismiss = { dismissed = true }
             )
         }
 
@@ -556,10 +658,12 @@ class SettingsScreenTest {
         show {
             TrackingSettingsContent(
                 state = SettingsUiState(
-                    permissionDialog = TrackingPermissionDialog.AppSettings(TrackingPermissionRequest.SMS_TRACKING),
+                    permissionDialog = TrackingPermissionDialog.AppSettings(
+                        TrackingPermissionRequest.SMS_TRACKING
+                    )
                 ),
                 onPermissionDialogOpenSettings = { opened = true },
-                onPermissionDialogDismiss = { dismissed = true },
+                onPermissionDialogDismiss = { dismissed = true }
             )
         }
 
@@ -575,15 +679,17 @@ class SettingsScreenTest {
         show {
             TrackingSettingsContent(
                 state = SettingsUiState(
-                    permissionDialog = TrackingPermissionDialog.Rationale(TrackingPermissionRequest.NOTIFICATIONS),
-                ),
+                    permissionDialog = TrackingPermissionDialog.Rationale(
+                        TrackingPermissionRequest.NOTIFICATIONS
+                    )
+                )
             )
         }
 
         composeTestRule.onNodeWithText("Permission needed").assertIsDisplayed()
         composeTestRule
             .onNodeWithText(
-                "Notifications need permission to be shown. Allow notifications to receive reminders and alerts.",
+                "Notifications need permission to be shown. Allow notifications to receive reminders and alerts."
             )
             .assertIsDisplayed()
     }
@@ -593,15 +699,17 @@ class SettingsScreenTest {
         show {
             TrackingSettingsContent(
                 state = SettingsUiState(
-                    permissionDialog = TrackingPermissionDialog.AppSettings(TrackingPermissionRequest.NOTIFICATIONS),
-                ),
+                    permissionDialog = TrackingPermissionDialog.AppSettings(
+                        TrackingPermissionRequest.NOTIFICATIONS
+                    )
+                )
             )
         }
 
         composeTestRule.onNodeWithText("Permission blocked").assertIsDisplayed()
         composeTestRule
             .onNodeWithText(
-                "Notifications are blocked — enable them for Mycorrhizal in system settings, then switch the toggle back on.",
+                "Notifications are blocked — enable them for Mycorrhizal in system settings, then switch the toggle back on."
             )
             .assertIsDisplayed()
     }
@@ -619,16 +727,30 @@ class SettingsScreenTest {
                 onPaperlessSettings = { opened += "paperless" },
                 onSeafileSettings = { opened += "seafile" },
                 onNextcloudSettings = { opened += "nextcloud" },
-                onGeoPulseSettings = { opened += "geopulse" },
+                onGeoPulseSettings = { opened += "geopulse" }
             )
         }
 
         listOf(
-            "Calendar sync", "Webhooks", "Immich", "Paperless-ngx", "Seafile", "Nextcloud / ownCloud", "GeoPulse",
+            "Calendar sync",
+            "Webhooks",
+            "Immich",
+            "Paperless-ngx",
+            "Seafile",
+            "Nextcloud / ownCloud",
+            "GeoPulse"
         ).forEach { composeTestRule.onNodeWithText(it).performScrollTo().performClick() }
         assertEquals(
-            listOf("calendar", "webhooks", "immich", "paperless", "seafile", "nextcloud", "geopulse"),
-            opened,
+            listOf(
+                "calendar",
+                "webhooks",
+                "immich",
+                "paperless",
+                "seafile",
+                "nextcloud",
+                "geopulse"
+            ),
+            opened
         )
     }
 
@@ -638,7 +760,7 @@ class SettingsScreenTest {
         show {
             AdministrationSettingsContent(
                 onManageUsers = { opened += "users" },
-                onSystemEvents = { opened += "events" },
+                onSystemEvents = { opened += "events" }
             )
         }
 
@@ -665,9 +787,16 @@ class SettingsScreenTest {
         show {
             AboutSettingsContent(
                 state = SettingsUiState(
-                    buildInfo = release.copy(commit = "abc1234", buildDate = "2026-10-02T10:00:00Z"),
-                    serverHealth = ServerHealth(version = "1.3.1", commit = "def5678", buildDate = "2026-09-30"),
-                ),
+                    buildInfo = release.copy(
+                        commit = "abc1234",
+                        buildDate = "2026-10-02T10:00:00Z"
+                    ),
+                    serverHealth = ServerHealth(
+                        version = "1.3.1",
+                        commit = "def5678",
+                        buildDate = "2026-09-30"
+                    )
+                )
             )
         }
         composeTestRule.onNodeWithText("abc1234").assertIsDisplayed()
@@ -681,8 +810,11 @@ class SettingsScreenTest {
         show {
             AboutSettingsContent(
                 state = SettingsUiState(
-                    buildInfo = release.copy(buildType = "debug", applicationId = "com.mycorrhizal.crm.localtest"),
-                ),
+                    buildInfo = release.copy(
+                        buildType = "debug",
+                        applicationId = "com.mycorrhizal.crm.localtest"
+                    )
+                )
             )
         }
         composeTestRule.onNodeWithText("debug / obtainium .localtest").assertIsDisplayed()
@@ -690,7 +822,11 @@ class SettingsScreenTest {
 
     @Test
     fun `a failed server lookup shows a dash`() {
-        show { AboutSettingsContent(state = SettingsUiState(buildInfo = release, serverLookupFailed = true)) }
+        show {
+            AboutSettingsContent(
+                state = SettingsUiState(buildInfo = release, serverLookupFailed = true)
+            )
+        }
         composeTestRule.onNodeWithText("Server version").assertIsDisplayed()
         assertTrue(composeTestRule.onAllNodesWithText("—").fetchSemanticsNodes().isNotEmpty())
     }
@@ -698,7 +834,12 @@ class SettingsScreenTest {
     @Test
     fun `About opens the third-party licenses screen`() {
         var opened = false
-        show { AboutSettingsContent(state = SettingsUiState(buildInfo = release), onLicenses = { opened = true }) }
+        show {
+            AboutSettingsContent(
+                state = SettingsUiState(buildInfo = release),
+                onLicenses = { opened = true }
+            )
+        }
         composeTestRule.onNodeWithText("Third-party licenses").performScrollTo().performClick()
         assertTrue(opened)
     }
@@ -710,15 +851,22 @@ class SettingsScreenTest {
         composeTestRule.onNodeWithText("MIT").assertIsDisplayed()
         composeTestRule.onNodeWithTag("license-text", useUnmergedTree = true).assertDoesNotExist()
         composeTestRule.onNodeWithText("Example Lib 1.2.3").performClick()
-        composeTestRule.onNodeWithTag("license-text", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("Permission is hereby granted, free of charge.").assertExists()
+        composeTestRule.onNodeWithTag(
+            "license-text",
+            useUnmergedTree = true
+        ).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Permission is hereby granted, free of charge."
+        ).assertExists()
     }
 
     @Test
     fun `third-party licenses explains when the build has no data`() {
         show { ThirdPartyLicensesContent(libs = null) }
         composeTestRule.onNodeWithTag("licenses-empty").assertIsDisplayed()
-        composeTestRule.onNodeWithText("No license information is available in this build.").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "No license information is available in this build."
+        ).assertIsDisplayed()
     }
 
     private fun sampleLibs(): Libs {
@@ -727,7 +875,7 @@ class SettingsScreenTest {
             url = "https://opensource.org/license/mit",
             spdxId = "MIT",
             licenseContent = "Permission is hereby granted, free of charge.",
-            hash = "mit",
+            hash = "mit"
         )
         val library = Library(
             uniqueId = "com.example:lib",
@@ -738,7 +886,7 @@ class SettingsScreenTest {
             developers = emptyList(),
             organization = null,
             scm = null,
-            licenses = setOf(license),
+            licenses = setOf(license)
         )
         return Libs(libraries = listOf(library), licenses = setOf(license))
     }
@@ -751,14 +899,18 @@ class SettingsScreenTest {
 
     @Test
     fun `copy details puts the build details on the clipboard`() {
-        show { AboutSettingsContent(state = SettingsUiState(buildInfo = release.copy(commit = "abc1234"))) }
+        show {
+            AboutSettingsContent(
+                state = SettingsUiState(buildInfo = release.copy(commit = "abc1234"))
+            )
+        }
         composeTestRule.onNodeWithText("Copy build details").performClick()
 
         val clipboard = androidx.test.core.app.ApplicationProvider.getApplicationContext<Context>()
             .getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
         assertEquals(
             "version: 1.3.0\ncode: 1042\nbuild: release / obtainium\ncommit: abc1234",
-            clipboard.primaryClip?.getItemAt(0)?.text?.toString(),
+            clipboard.primaryClip?.getItemAt(0)?.text?.toString()
         )
     }
 
@@ -772,11 +924,14 @@ class SettingsScreenTest {
         val trackingSettings = mockk<TrackingSettingsRepository>()
         val appSettings = mockk<AppSettingsRepository>()
         val permissionChecker = mockk<com.mycorrhizal.crm.feature.tracking.PermissionChecker>()
-        val catchUpScheduler = mockk<com.mycorrhizal.crm.feature.tracking.TrackingCatchUpScheduler>(relaxed = true)
+        val catchUpScheduler = mockk<com.mycorrhizal.crm.feature.tracking.TrackingCatchUpScheduler>(
+            relaxed = true
+        )
         val localAuthSettings = mockk<LocalAuthSettingsRepository>()
         val localAuthCapabilities = mockk<LocalAuthCapabilities>()
         val deviceGrantManager = mockk<DeviceGrantManager>()
-        val callSmsTrackingCapability = mockk<com.mycorrhizal.crm.feature.tracking.CallSmsTrackingCapability>()
+        val callSmsTrackingCapability =
+            mockk<com.mycorrhizal.crm.feature.tracking.CallSmsTrackingCapability>()
         val appContext = mockk<Context>(relaxed = true)
         coEvery { trackingSettings.callTrackingEnabled() } returns false
         coEvery { trackingSettings.smsTrackingEnabled() } returns false
@@ -787,21 +942,33 @@ class SettingsScreenTest {
         every { localAuthSettings.requireLocalAuth() } returns MutableStateFlow(false)
         every { localAuthSettings.blockScreenshots() } returns MutableStateFlow(false)
         every { localAuthSettings.autoLockDelay() } returns MutableStateFlow(AutoLockDelay.DEFAULT)
-        every { localAuthSettings.biometricEnrollmentStatus() } returns MutableStateFlow(BiometricEnrollmentStatus.UNASKED)
+        every { localAuthSettings.biometricEnrollmentStatus() } returns MutableStateFlow(
+            BiometricEnrollmentStatus.UNASKED
+        )
         coEvery { localAuthSettings.setRequireLocalAuth(any()) } returns Unit
         coEvery { deviceGrantManager.enroll(any()) } returns Result.success(Unit)
         every { localAuthCapabilities.canEnableLocalAuth() } returns true
         every { callSmsTrackingCapability.isAvailable() } returns true
         every { permissionChecker.isGranted(any()) } returns false
         every {
-            permissionChecker.isGranted(com.mycorrhizal.crm.feature.tracking.TrackingPermissions.POST_NOTIFICATIONS)
+            permissionChecker.isGranted(
+                com.mycorrhizal.crm.feature.tracking.TrackingPermissions.POST_NOTIFICATIONS
+            )
         } returns true
         every { authRepository.observeSession() } returns MutableStateFlow(
-            SessionState(serverUrl = "https://crm.example.com", username = "alice", isAdmin = true, language = "en"),
+            SessionState(
+                serverUrl = "https://crm.example.com",
+                username = "alice",
+                isAdmin = true,
+                language = "en"
+            )
         )
         coEvery { appSettings.themePreference() } returns flowOf(AppSettingsRepository.THEME_SYSTEM)
-        val serverCompatibility = mockk<com.mycorrhizal.crm.domain.repository.ServerCompatibilityRepository>()
-        coEvery { serverCompatibility.getServerHealth() } returns Result.success(ServerHealth(version = "1.3.0"))
+        val serverCompatibility =
+            mockk<com.mycorrhizal.crm.domain.repository.ServerCompatibilityRepository>()
+        coEvery { serverCompatibility.getServerHealth() } returns Result.success(
+            ServerHealth(version = "1.3.0")
+        )
         return SettingsViewModel(
             authRepository,
             trackingSettings,
@@ -815,7 +982,7 @@ class SettingsScreenTest {
             PasskeyAvailability { false },
             release,
             serverCompatibility,
-            appContext,
+            appContext
         )
     }
 
@@ -839,7 +1006,9 @@ class SettingsScreenTest {
     @Test
     fun `the settings root shows the admin group for the signed-in admin and navigates`() {
         var route: String? = null
-        setScreen(darkTheme = false) { SettingsScreen(onLoggedOut = {}, onNavigate = { r -> route = r }, viewModel = it) }
+        setScreen(
+            darkTheme = false
+        ) { SettingsScreen(onLoggedOut = {}, onNavigate = { r -> route = r }, viewModel = it) }
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Administration").performScrollTo().performClick()
         assertEquals(SettingsRoutes.ADMINISTRATION, route)
@@ -866,7 +1035,9 @@ class SettingsScreenTest {
     fun `switching app lock on through the screen enables it`() {
         setScreen(darkTheme = false) { PrivacySettingsScreen(onBack = {}, viewModel = it) }
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("Require biometric or device PIN to open the app").performClick()
+        composeTestRule.onNodeWithText(
+            "Require biometric or device PIN to open the app"
+        ).performClick()
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Lock automatically after").assertIsDisplayed()
     }
@@ -890,7 +1061,9 @@ class SettingsScreenTest {
 
     @Test
     fun `change password screen renders its form`() {
-        setScreen(darkTheme = false) { ChangePasswordScreen(onBack = {}, onLoggedOut = {}, viewModel = it) }
+        setScreen(
+            darkTheme = false
+        ) { ChangePasswordScreen(onBack = {}, onLoggedOut = {}, viewModel = it) }
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Current password").assertIsDisplayed()
     }
@@ -927,7 +1100,13 @@ class SettingsScreenTest {
 
     @Test
     fun `administration screen renders its rows`() {
-        composeTestRule.setContent { MycorrhizalTheme { AdministrationSettingsScreen(onBack = {}) } }
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                AdministrationSettingsScreen(
+                    onBack = {}
+                )
+            }
+        }
         composeTestRule.onNodeWithText("User management").assertIsDisplayed()
     }
 }

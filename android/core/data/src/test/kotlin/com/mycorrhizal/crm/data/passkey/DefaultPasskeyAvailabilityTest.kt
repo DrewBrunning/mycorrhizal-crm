@@ -23,7 +23,11 @@ import org.junit.Test
  */
 class DefaultPasskeyAvailabilityTest {
 
-    private val remote = ServerProfile("p1", ServerProfileKind.Remote("https://crm.example.com"), "Home")
+    private val remote = ServerProfile(
+        "p1",
+        ServerProfileKind.Remote("https://crm.example.com"),
+        "Home"
+    )
     private val local = ServerProfile("p2", ServerProfileKind.Local, "On this device")
 
     private class Harness(
@@ -31,14 +35,17 @@ class DefaultPasskeyAvailabilityTest {
         val store: DefaultServerCapabilitiesStore,
         val sessions: SessionManager,
         val compat: ServerCompatibilityRepository,
-        val gate: DefaultPasskeyAvailability,
+        val gate: DefaultPasskeyAvailability
     )
 
     private fun harness(
         profile: ServerProfile? = remote,
         supported: Boolean = true,
-        recorded: ServerCapabilitiesInfo = ServerCapabilitiesInfo(deployment = "server", capabilities = setOf("contacts", "webauthn_android")),
-        health: Result<ServerHealth> = Result.failure(IllegalStateException("must not be asked")),
+        recorded: ServerCapabilitiesInfo = ServerCapabilitiesInfo(
+            deployment = "server",
+            capabilities = setOf("contacts", "webauthn_android")
+        ),
+        health: Result<ServerHealth> = Result.failure(IllegalStateException("must not be asked"))
     ): Harness {
         val client = FakePasskeyClient(supported)
         val store = DefaultServerCapabilitiesStore().also { it.record(recorded) }
@@ -46,7 +53,13 @@ class DefaultPasskeyAvailabilityTest {
         coEvery { sessions.activeProfile() } returns profile
         val compat = mockk<ServerCompatibilityRepository>()
         coEvery { compat.getServerHealth() } returns health
-        return Harness(client, store, sessions, compat, DefaultPasskeyAvailability(client, store, sessions, compat))
+        return Harness(
+            client,
+            store,
+            sessions,
+            compat,
+            DefaultPasskeyAvailability(client, store, sessions, compat)
+        )
     }
 
     @Test
@@ -56,21 +69,33 @@ class DefaultPasskeyAvailabilityTest {
 
     @Test
     fun `a server that does not declare the token is closed`() = runTest {
-        val h = harness(recorded = ServerCapabilitiesInfo(deployment = "server", capabilities = setOf("contacts", "two_factor")))
+        val h = harness(
+            recorded = ServerCapabilitiesInfo(
+                deployment = "server",
+                capabilities = setOf("contacts", "two_factor")
+            )
+        )
         assertFalse(h.gate.isAvailable())
     }
 
     @Test
     fun `an empty declared list is closed`() = runTest {
-        assertFalse(harness(recorded = ServerCapabilitiesInfo(deployment = "server", capabilities = emptySet())).gate.isAvailable())
+        assertFalse(
+            harness(
+                recorded = ServerCapabilitiesInfo(deployment = "server", capabilities = emptySet())
+            ).gate.isAvailable()
+        )
     }
 
     @Test
-    fun `an older server that omits the capability list is closed - the token is an opt-in`() = runTest {
-        // deployment set, capabilities null: the fail-open `supports` would say "everything"; this gate must not.
-        val h = harness(recorded = ServerCapabilitiesInfo(deployment = "server", capabilities = null))
-        assertFalse(h.gate.isAvailable())
-    }
+    fun `an older server that omits the capability list is closed - the token is an opt-in`() =
+        runTest {
+            // deployment set, capabilities null: the fail-open `supports` would say "everything"; this gate must not.
+            val h = harness(
+                recorded = ServerCapabilitiesInfo(deployment = "server", capabilities = null)
+            )
+            assertFalse(h.gate.isAvailable())
+        }
 
     @Test
     fun `the Local profile is never available even if a token were present`() = runTest {
@@ -81,7 +106,10 @@ class DefaultPasskeyAvailabilityTest {
     fun `an embedded deployment is closed even without a profile`() = runTest {
         val h = harness(
             profile = null,
-            recorded = ServerCapabilitiesInfo(deployment = "embedded", capabilities = setOf("webauthn_android")),
+            recorded = ServerCapabilitiesInfo(
+                deployment = "embedded",
+                capabilities = setOf("webauthn_android")
+            )
         )
         assertFalse(h.gate.isAvailable())
     }
@@ -94,27 +122,36 @@ class DefaultPasskeyAvailabilityTest {
     }
 
     @Test
-    fun `a pre-login gate with no active profile still opens from the typed server's capabilities`() = runTest {
-        assertTrue(harness(profile = null).gate.isAvailable())
-    }
+    fun `a pre-login gate with no active profile still opens from the typed server's capabilities`() =
+        runTest {
+            assertTrue(harness(profile = null).gate.isAvailable())
+        }
 
     @Test
-    fun `unknown capabilities ask the server directly and stay closed when it is unreachable`() = runTest {
-        val h = harness(recorded = ServerCapabilitiesInfo.Unknown, health = Result.failure(java.io.IOException("offline")))
-        assertFalse(h.gate.isAvailable())
-    }
+    fun `unknown capabilities ask the server directly and stay closed when it is unreachable`() =
+        runTest {
+            val h = harness(
+                recorded = ServerCapabilitiesInfo.Unknown,
+                health = Result.failure(java.io.IOException("offline"))
+            )
+            assertFalse(h.gate.isAvailable())
+        }
 
     @Test
     fun `unknown capabilities are resolved from health when it answers`() = runTest {
         val open = harness(
             recorded = ServerCapabilitiesInfo.Unknown,
-            health = Result.success(ServerHealth(deployment = "server", capabilities = listOf("webauthn_android"))),
+            health = Result.success(
+                ServerHealth(deployment = "server", capabilities = listOf("webauthn_android"))
+            )
         )
         assertTrue(open.gate.isAvailable())
 
         val closed = harness(
             recorded = ServerCapabilitiesInfo.Unknown,
-            health = Result.success(ServerHealth(deployment = "server", capabilities = listOf("contacts"))),
+            health = Result.success(
+                ServerHealth(deployment = "server", capabilities = listOf("contacts"))
+            )
         )
         assertFalse(closed.gate.isAvailable())
     }
@@ -123,24 +160,34 @@ class DefaultPasskeyAvailabilityTest {
     fun `resolving from health does not write into the shared store`() = runTest {
         val h = harness(
             recorded = ServerCapabilitiesInfo.Unknown,
-            health = Result.success(ServerHealth(deployment = "server", capabilities = listOf("webauthn_android"))),
+            health = Result.success(
+                ServerHealth(deployment = "server", capabilities = listOf("webauthn_android"))
+            )
         )
         h.gate.isAvailable()
         assertTrue(h.store.current() == ServerCapabilitiesInfo.Unknown)
     }
 
     @Test
-    fun `the gate follows a profile switch - the store reset closes it until the new server resolves`() = runTest {
-        val h = harness()
-        assertTrue(h.gate.isAvailable())
+    fun `the gate follows a profile switch - the store reset closes it until the new server resolves`() =
+        runTest {
+            val h = harness()
+            assertTrue(h.gate.isAvailable())
 
-        // MainViewModel resets the store to Unknown on a server/profile switch; the new server declares nothing.
-        h.store.record(ServerCapabilitiesInfo.Unknown)
-        coEvery { h.compat.getServerHealth() } returns Result.success(ServerHealth(deployment = "server", capabilities = listOf("contacts")))
-        assertFalse(h.gate.isAvailable())
+            // MainViewModel resets the store to Unknown on a server/profile switch; the new server declares nothing.
+            h.store.record(ServerCapabilitiesInfo.Unknown)
+            coEvery { h.compat.getServerHealth() } returns Result.success(
+                ServerHealth(deployment = "server", capabilities = listOf("contacts"))
+            )
+            assertFalse(h.gate.isAvailable())
 
-        // ... and it reopens once a server that declares the token is the one in the store.
-        h.store.record(ServerCapabilitiesInfo(deployment = "server", capabilities = setOf("webauthn_android")))
-        assertTrue(h.gate.isAvailable())
-    }
+            // ... and it reopens once a server that declares the token is the one in the store.
+            h.store.record(
+                ServerCapabilitiesInfo(
+                    deployment = "server",
+                    capabilities = setOf("webauthn_android")
+                )
+            )
+            assertTrue(h.gate.isAvailable())
+        }
 }

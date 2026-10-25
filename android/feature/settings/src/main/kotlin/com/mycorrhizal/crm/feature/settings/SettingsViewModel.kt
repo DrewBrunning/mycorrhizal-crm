@@ -7,8 +7,8 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.data.auth.DeviceGrantManager
-import com.mycorrhizal.crm.data.repository.AppLocale
 import com.mycorrhizal.crm.data.passkey.PasskeyAvailability
+import com.mycorrhizal.crm.data.repository.AppLocale
 import com.mycorrhizal.crm.domain.about.AppBuildInfo
 import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
@@ -27,18 +27,18 @@ import com.mycorrhizal.crm.model.network.ServerHealth
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /** Which opt-in a runtime-permission request belongs to. */
 enum class TrackingPermissionRequest {
     CALL_TRACKING,
     SMS_TRACKING,
-    NOTIFICATIONS,
+    NOTIFICATIONS
 }
 
 /**
@@ -107,7 +107,7 @@ data class SettingsUiState(
     /** Issue #1420: the active server's /health, once looked up (null while loading or on failure). */
     val serverHealth: ServerHealth? = null,
     /** Issue #1420: the /health lookup failed — About shows a dash. Never blocks the screen. */
-    val serverLookupFailed: Boolean = false,
+    val serverLookupFailed: Boolean = false
 )
 
 sealed interface SettingsEvent {
@@ -139,7 +139,7 @@ class SettingsViewModel @Inject constructor(
     // Issue #1420: the About section — build identity + the server's own /health.
     buildInfo: AppBuildInfo,
     private val serverCompatibility: ServerCompatibilityRepository,
-    @ApplicationContext private val appContext: Context,
+    @ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState(buildInfo = buildInfo))
@@ -162,7 +162,13 @@ class SettingsViewModel @Inject constructor(
         // Issue #1420: informational only — a failing (or throwing) lookup renders
         // a dash and must never block the rest of Settings.
         viewModelScope.launch {
-            val result = runCatching { serverCompatibility.getServerHealth() }.getOrElse { Result.failure(it) }
+            val result = runCatching {
+                serverCompatibility.getServerHealth()
+            }.getOrElse {
+                Result.failure(
+                    it
+                )
+            }
             result
                 .onSuccess { health -> _uiState.update { it.copy(serverHealth = health) } }
                 .onFailure { _uiState.update { it.copy(serverLookupFailed = true) } }
@@ -242,7 +248,7 @@ class SettingsViewModel @Inject constructor(
                     // diagnostics counter are plain reads (not flows), refreshed
                     // with the rest of the tracking state.
                     includeUnknownNumbers = trackingSettings.includeUnknownNumbers(),
-                    filteredUnknownCount = trackingSettings.filteredUnknownCount(),
+                    filteredUnknownCount = trackingSettings.filteredUnknownCount()
                 )
             }
         }
@@ -270,11 +276,13 @@ class SettingsViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     callTrackingEnabled = false,
-                    pendingPermissionRequest = if (_uiState.value.pendingPermissionRequest == TrackingPermissionRequest.CALL_TRACKING) {
+                    pendingPermissionRequest = if (_uiState.value.pendingPermissionRequest ==
+                        TrackingPermissionRequest.CALL_TRACKING
+                    ) {
                         null
                     } else {
                         _uiState.value.pendingPermissionRequest
-                    },
+                    }
                 )
             }
             viewModelScope.launch {
@@ -286,7 +294,11 @@ class SettingsViewModel @Inject constructor(
         if (callPermissionsGranted()) {
             enableCallTracking()
         } else {
-            _uiState.update { it.copy(pendingPermissionRequest = TrackingPermissionRequest.CALL_TRACKING) }
+            _uiState.update {
+                it.copy(
+                    pendingPermissionRequest = TrackingPermissionRequest.CALL_TRACKING
+                )
+            }
         }
     }
 
@@ -301,11 +313,13 @@ class SettingsViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     smsTrackingEnabled = false,
-                    pendingPermissionRequest = if (_uiState.value.pendingPermissionRequest == TrackingPermissionRequest.SMS_TRACKING) {
+                    pendingPermissionRequest = if (_uiState.value.pendingPermissionRequest ==
+                        TrackingPermissionRequest.SMS_TRACKING
+                    ) {
                         null
                     } else {
                         _uiState.value.pendingPermissionRequest
-                    },
+                    }
                 )
             }
             viewModelScope.launch { trackingSettings.setSmsTrackingEnabled(false) }
@@ -314,7 +328,11 @@ class SettingsViewModel @Inject constructor(
         if (smsPermissionsGranted()) {
             enableSmsTracking()
         } else {
-            _uiState.update { it.copy(pendingPermissionRequest = TrackingPermissionRequest.SMS_TRACKING) }
+            _uiState.update {
+                it.copy(
+                    pendingPermissionRequest = TrackingPermissionRequest.SMS_TRACKING
+                )
+            }
         }
     }
 
@@ -330,11 +348,13 @@ class SettingsViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     notificationsEnabled = false,
-                    pendingPermissionRequest = if (_uiState.value.pendingPermissionRequest == TrackingPermissionRequest.NOTIFICATIONS) {
+                    pendingPermissionRequest = if (_uiState.value.pendingPermissionRequest ==
+                        TrackingPermissionRequest.NOTIFICATIONS
+                    ) {
                         null
                     } else {
                         _uiState.value.pendingPermissionRequest
-                    },
+                    }
                 )
             }
             viewModelScope.launch { trackingSettings.setNotificationsEnabled(false) }
@@ -343,7 +363,11 @@ class SettingsViewModel @Inject constructor(
         if (notificationsPermissionGranted()) {
             enableNotifications()
         } else {
-            _uiState.update { it.copy(pendingPermissionRequest = TrackingPermissionRequest.NOTIFICATIONS) }
+            _uiState.update {
+                it.copy(
+                    pendingPermissionRequest = TrackingPermissionRequest.NOTIFICATIONS
+                )
+            }
         }
     }
 
@@ -384,13 +408,16 @@ class SettingsViewModel @Inject constructor(
      */
     fun setAppLock(enabled: Boolean, offerBiometricSignIn: Boolean) {
         if (enabled && !_uiState.value.localAuthSupported) return
-        val enrolled = _uiState.value.biometricEnrollmentStatus == BiometricEnrollmentStatus.ENROLLED
+        val enrolled =
+            _uiState.value.biometricEnrollmentStatus == BiometricEnrollmentStatus.ENROLLED
         when {
             enabled -> {
                 setRequireLocalAuth(true)
                 if (offerBiometricSignIn && !enrolled) enrollBiometricSignIn()
             }
+
             enrolled -> viewModelScope.launch { performAppLockOff() }
+
             else -> setRequireLocalAuth(false)
         }
     }
@@ -439,9 +466,12 @@ class SettingsViewModel @Inject constructor(
             onSuccess = { _uiState.update { it.copy(isBiometricBusy = false) } },
             onFailure = {
                 _uiState.update {
-                    it.copy(isBiometricBusy = false, biometricErrorRes = R.string.biometric_enroll_error)
+                    it.copy(
+                        isBiometricBusy = false,
+                        biometricErrorRes = R.string.biometric_enroll_error
+                    )
                 }
-            },
+            }
         )
     }
 
@@ -465,10 +495,13 @@ class SettingsViewModel @Inject constructor(
             },
             onFailure = {
                 _uiState.update {
-                    it.copy(isBiometricBusy = false, biometricErrorRes = R.string.biometric_remove_error)
+                    it.copy(
+                        isBiometricBusy = false,
+                        biometricErrorRes = R.string.biometric_remove_error
+                    )
                 }
                 false
-            },
+            }
         )
     }
 
@@ -508,7 +541,7 @@ class SettingsViewModel @Inject constructor(
                         TrackingPermissionDialog.AppSettings(request)
                     } else {
                         TrackingPermissionDialog.Rationale(request)
-                    },
+                    }
                 )
             }
         }
@@ -521,7 +554,9 @@ class SettingsViewModel @Inject constructor(
 
     /** "Try again" on a rationale dialog — re-request the same permission set. */
     fun onPermissionDialogRetry() {
-        val request = (_uiState.value.permissionDialog as? TrackingPermissionDialog.Rationale)?.request ?: return
+        val request =
+            (_uiState.value.permissionDialog as? TrackingPermissionDialog.Rationale)?.request
+                ?: return
         _uiState.update {
             it.copy(permissionDialog = null, pendingPermissionRequest = request)
         }
@@ -612,10 +647,21 @@ class SettingsViewModel @Inject constructor(
     fun changePassword(currentPassword: String, newPassword: String, confirmPassword: String) {
         if (_uiState.value.isChangingPassword) return
         if (newPassword != confirmPassword) {
-            _uiState.update { it.copy(passwordErrorRes = R.string.settings_password_mismatch, passwordError = null) }
+            _uiState.update {
+                it.copy(
+                    passwordErrorRes = R.string.settings_password_mismatch,
+                    passwordError = null
+                )
+            }
             return
         }
-        _uiState.update { it.copy(isChangingPassword = true, passwordErrorRes = null, passwordError = null) }
+        _uiState.update {
+            it.copy(
+                isChangingPassword = true,
+                passwordErrorRes = null,
+                passwordError = null
+            )
+        }
         viewModelScope.launch {
             authRepository.changePassword(currentPassword, newPassword)
                 .onSuccess {
@@ -640,13 +686,19 @@ class SettingsViewModel @Inject constructor(
         // minSdk is 26, so startForegroundService is always the correct path
         // (the pre-O branch could never be taken — M5 §7 cleanup).
         appContext.startForegroundService(
-            Intent(appContext, com.mycorrhizal.crm.feature.tracking.CallDetectionService::class.java),
+            Intent(
+                appContext,
+                com.mycorrhizal.crm.feature.tracking.CallDetectionService::class.java
+            )
         )
     }
 
     private fun stopCallDetectionService() {
         appContext.stopService(
-            Intent(appContext, com.mycorrhizal.crm.feature.tracking.CallDetectionService::class.java),
+            Intent(
+                appContext,
+                com.mycorrhizal.crm.feature.tracking.CallDetectionService::class.java
+            )
         )
     }
 

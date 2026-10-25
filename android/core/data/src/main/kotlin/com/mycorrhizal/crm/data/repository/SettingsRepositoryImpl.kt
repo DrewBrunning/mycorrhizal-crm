@@ -27,12 +27,10 @@ import javax.inject.Singleton
 
 /** M25: webhook CRUD + test + delivery history, thin over [ApiClient]. */
 @Singleton
-class WebhookRepositoryImpl @Inject constructor(
-    private val apiClient: ApiClient,
-) : WebhookRepository {
+class WebhookRepositoryImpl @Inject constructor(private val apiClient: ApiClient) :
+    WebhookRepository {
 
-    override suspend fun list(): Result<List<Webhook>> =
-        apiClient.listWebhooks().mapError()
+    override suspend fun list(): Result<List<Webhook>> = apiClient.listWebhooks().mapError()
 
     override suspend fun create(input: WebhookInput): Result<WebhookCreateResponse> =
         apiClient.createWebhook(input).mapError()
@@ -40,8 +38,7 @@ class WebhookRepositoryImpl @Inject constructor(
     override suspend fun update(id: Int, input: WebhookInput): Result<Webhook> =
         apiClient.updateWebhook(id, input).mapError()
 
-    override suspend fun delete(id: Int): Result<Unit> =
-        apiClient.deleteWebhook(id).mapError()
+    override suspend fun delete(id: Int): Result<Unit> = apiClient.deleteWebhook(id).mapError()
 
     override suspend fun test(id: Int): Result<WebhookDelivery> =
         apiClient.testWebhook(id).mapError()
@@ -55,18 +52,15 @@ class WebhookRepositoryImpl @Inject constructor(
 
 /** Issue #413 / #573: API token list/create/revoke/rotate, thin over [ApiClient]. */
 @Singleton
-class ApiTokenRepositoryImpl @Inject constructor(
-    private val apiClient: ApiClient,
-) : ApiTokenRepository {
+class ApiTokenRepositoryImpl @Inject constructor(private val apiClient: ApiClient) :
+    ApiTokenRepository {
 
-    override suspend fun list(): Result<List<ApiToken>> =
-        apiClient.listApiTokens().mapError()
+    override suspend fun list(): Result<List<ApiToken>> = apiClient.listApiTokens().mapError()
 
     override suspend fun create(input: ApiTokenInput): Result<ApiTokenCreateResponse> =
         apiClient.createApiToken(input).mapError()
 
-    override suspend fun revoke(id: Int): Result<Unit> =
-        apiClient.revokeApiToken(id).mapError()
+    override suspend fun revoke(id: Int): Result<Unit> = apiClient.revokeApiToken(id).mapError()
 
     override suspend fun revokeAll(): Result<RevokeAllApiTokensResponse> =
         apiClient.revokeAllApiTokens().mapError()
@@ -80,9 +74,8 @@ class ApiTokenRepositoryImpl @Inject constructor(
 
 /** Issue #390's Android follow-up (#628): calendar (CalDAV/iCal) subscription CRUD + sync-now, thin over [ApiClient]. */
 @Singleton
-class CalendarSubscriptionRepositoryImpl @Inject constructor(
-    private val apiClient: ApiClient,
-) : CalendarSubscriptionRepository {
+class CalendarSubscriptionRepositoryImpl @Inject constructor(private val apiClient: ApiClient) :
+    CalendarSubscriptionRepository {
 
     override suspend fun list(): Result<List<CalendarSubscription>> =
         apiClient.listCalendarSubscriptions().mapError()
@@ -90,8 +83,10 @@ class CalendarSubscriptionRepositoryImpl @Inject constructor(
     override suspend fun create(input: CalendarSubscriptionInput): Result<CalendarSubscription> =
         apiClient.createCalendarSubscription(input).mapError()
 
-    override suspend fun update(id: Int, input: CalendarSubscriptionInput): Result<CalendarSubscription> =
-        apiClient.updateCalendarSubscription(id, input).mapError()
+    override suspend fun update(
+        id: Int,
+        input: CalendarSubscriptionInput
+    ): Result<CalendarSubscription> = apiClient.updateCalendarSubscription(id, input).mapError()
 
     override suspend fun delete(id: Int): Result<Unit> =
         apiClient.deleteCalendarSubscription(id).mapError()
@@ -108,9 +103,8 @@ class CalendarSubscriptionRepositoryImpl @Inject constructor(
  * Android — web has no create/edit/delete UI for these either.
  */
 @Singleton
-class ContactSubscriptionRepositoryImpl @Inject constructor(
-    private val apiClient: ApiClient,
-) : ContactSubscriptionRepository {
+class ContactSubscriptionRepositoryImpl @Inject constructor(private val apiClient: ApiClient) :
+    ContactSubscriptionRepository {
 
     override suspend fun list(): Result<List<ContactSubscription>> =
         apiClient.listContactSubscriptions().mapError()
@@ -121,9 +115,8 @@ class ContactSubscriptionRepositoryImpl @Inject constructor(
 
 /** M25: ntfy/Gotify channel config + per-channel test, thin over [ApiClient]. */
 @Singleton
-class NotificationSettingsRepositoryImpl @Inject constructor(
-    private val apiClient: ApiClient,
-) : NotificationSettingsRepository {
+class NotificationSettingsRepositoryImpl @Inject constructor(private val apiClient: ApiClient) :
+    NotificationSettingsRepository {
 
     override suspend fun config(): Result<NotificationConfig> =
         apiClient.getNotificationConfig().mapError()

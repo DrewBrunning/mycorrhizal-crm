@@ -46,7 +46,11 @@ class HouseholdRepositoryImplTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).build()
         apiClient = mockk()
-        repository = HouseholdRepositoryImpl(apiClient, db.cachedHouseholdDao(), db.cachedHouseholdMemberDao())
+        repository = HouseholdRepositoryImpl(
+            apiClient,
+            db.cachedHouseholdDao(),
+            db.cachedHouseholdMemberDao()
+        )
     }
 
     @After
@@ -61,15 +65,15 @@ class HouseholdRepositoryImplTest {
             sourceId = "u1",
             targetId = "u2",
             type = RelationshipEdgeTypes.SPOUSE_OF,
-            status = "suggested",
+            status = "suggested"
         )
         coEvery { apiClient.suggestHouseholdRelationships("h1") } returns Result.success(
             SuggestRelationshipsResponse(
                 message = "Relationship suggestions generated",
                 householdId = "h1",
                 suggestedEdges = listOf(edge),
-                total = 1,
-            ),
+                total = 1
+            )
         )
 
         val result = repository.suggestRelationships("h1")
@@ -81,7 +85,7 @@ class HouseholdRepositoryImplTest {
     @Test
     fun `suggestRelationships failure propagates`() = runTest {
         coEvery { apiClient.suggestHouseholdRelationships("h1") } returns Result.failure(
-            ApiError.Client(404, "Household not found"),
+            ApiError.Client(404, "Household not found")
         )
 
         val result = repository.suggestRelationships("h1")
@@ -97,11 +101,11 @@ class HouseholdRepositoryImplTest {
                     AddressHouseholdSuggestion(
                         addressHash = "ah1",
                         memberHash = "mh1",
-                        memberVCardUids = listOf("u1", "u2"),
-                    ),
+                        memberVCardUids = listOf("u1", "u2")
+                    )
                 ),
-                total = 1,
-            ),
+                total = 1
+            )
         )
 
         val result = repository.suggestAddressHouseholds()
@@ -113,11 +117,15 @@ class HouseholdRepositoryImplTest {
 
     @Test
     fun `acceptAddressSuggestion upserts the household into the cache and returns it`() = runTest {
-        val household = Household(id = "h9", name = "Alice & Bob", type = HouseholdTypes.FAMILY_UNIT)
+        val household = Household(
+            id = "h9",
+            name = "Alice & Bob",
+            type = HouseholdTypes.FAMILY_UNIT
+        )
         coEvery { apiClient.acceptHouseholdSuggestion(any()) } returns Result.success(household)
 
         val result = repository.acceptAddressSuggestion(
-            AcceptHouseholdSuggestionInput(memberVCardUids = listOf("u1", "u2")),
+            AcceptHouseholdSuggestionInput(memberVCardUids = listOf("u1", "u2"))
         )
 
         assertTrue(result.isSuccess)
@@ -128,11 +136,11 @@ class HouseholdRepositoryImplTest {
     @Test
     fun `acceptAddressSuggestion failure leaves the cache untouched`() = runTest {
         coEvery { apiClient.acceptHouseholdSuggestion(any()) } returns Result.failure(
-            ApiError.Client(409, "already in a household"),
+            ApiError.Client(409, "already in a household")
         )
 
         val result = repository.acceptAddressSuggestion(
-            AcceptHouseholdSuggestionInput(memberVCardUids = listOf("u1", "u2")),
+            AcceptHouseholdSuggestionInput(memberVCardUids = listOf("u1", "u2"))
         )
 
         assertTrue(result.isFailure)
@@ -144,7 +152,7 @@ class HouseholdRepositoryImplTest {
         coEvery { apiClient.dismissHouseholdSuggestion(any()) } returns Result.success(Unit)
 
         val result = repository.dismissAddressSuggestion(
-            DismissHouseholdSuggestionInput(memberVCardUids = listOf("u1", "u2")),
+            DismissHouseholdSuggestionInput(memberVCardUids = listOf("u1", "u2"))
         )
 
         assertTrue(result.isSuccess)
@@ -168,8 +176,8 @@ class HouseholdRepositoryImplTest {
         coEvery { apiClient.getHousehold("h1") } returns Result.success(
             com.mycorrhizal.crm.model.network.HouseholdDetailResponse(
                 household = Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT),
-                members = emptyList(),
-            ),
+                members = emptyList()
+            )
         )
 
         repository.updateMember("h1", "u1", null)

@@ -3,6 +3,7 @@ package com.mycorrhizal.crm.feature.settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -10,7 +11,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.AlertDialog
@@ -33,8 +33,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -47,11 +47,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.data.attach.AttachProgress
 import com.mycorrhizal.crm.data.attach.AttachStage
-import com.mycorrhizal.crm.domain.profile.ServerProfile
-import com.mycorrhizal.crm.feature.imports.ImportReviewStep
 import com.mycorrhizal.crm.data.passkey.PasskeyIssue
 import com.mycorrhizal.crm.data.passkey.SecondFactorPrompt
 import com.mycorrhizal.crm.data.passkey.offersPasskey
+import com.mycorrhizal.crm.domain.profile.ServerProfile
+import com.mycorrhizal.crm.feature.imports.ImportReviewStep
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 
@@ -64,10 +64,7 @@ import com.mycorrhizal.crm.ui.components.AccessibleIconButton
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AttachToRemoteScreen(
-    onBack: () -> Unit,
-    viewModel: AttachToRemoteViewModel = hiltViewModel(),
-) {
+fun AttachToRemoteScreen(onBack: () -> Unit, viewModel: AttachToRemoteViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     // Issue #1293: Activity context for the passkey provider UI (handed over per call, not retained).
     val context = LocalContext.current
@@ -85,18 +82,23 @@ fun AttachToRemoteScreen(
                     AccessibleIconButton(onClick = leave) {
                         Icon(
                             Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = stringResource(R.string.cd_back),
+                            contentDescription = stringResource(R.string.cd_back)
                         )
                     }
                 },
-                title = { Text(stringResource(R.string.attach_title), style = MaterialTheme.typography.titleLarge) },
+                title = {
+                    Text(
+                        stringResource(R.string.attach_title),
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
-        },
+        }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             val errorText = state.errorRes?.let { stringResource(it) } ?: state.error
@@ -108,25 +110,32 @@ fun AttachToRemoteScreen(
                     modifier = Modifier
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                         .testTag("attach-error")
-                        .semantics { liveRegion = LiveRegionMode.Assertive },
+                        .semantics { liveRegion = LiveRegionMode.Assertive }
                 )
             }
             when (state.step) {
                 AttachStep.Loading -> Working(progress = null)
+
                 AttachStep.Blocked -> BlockedStep(onBack = leave)
+
                 AttachStep.SignIn -> SignInStep(
                     remoteProfiles = state.remoteProfiles,
-                    onSignIn = viewModel::signIn,
+                    onSignIn = viewModel::signIn
                 )
+
                 AttachStep.TwoFactor -> TwoFactorStep(
                     prompt = state.twoFactorPrompt,
                     passkeyIssue = state.passkeyIssue,
                     onSubmit = viewModel::submitTwoFactor,
-                    onUsePasskey = { viewModel.usePasskey(context) },
+                    onUsePasskey = { viewModel.usePasskey(context) }
                 )
+
                 AttachStep.Working -> Working(progress = state.progress)
+
                 AttachStep.PrepareFailed -> PrepareFailedStep(onRetry = viewModel::retryPrepare)
+
                 AttachStep.Review -> ReviewStep(state = state, viewModel = viewModel)
+
                 AttachStep.Done -> DoneStep(state = state, onDone = onBack)
             }
         }
@@ -143,8 +152,10 @@ fun AttachToRemoteScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = viewModel::dismissDiscard) { Text(stringResource(R.string.settings_cancel)) }
-            },
+                TextButton(
+                    onClick = viewModel::dismissDiscard
+                ) { Text(stringResource(R.string.settings_cancel)) }
+            }
         )
     }
 }
@@ -161,7 +172,13 @@ private fun BlockedStep(onBack: () -> Unit) {
 @Composable
 private fun SignInStep(
     remoteProfiles: List<ServerProfile>,
-    onSignIn: (existingProfileId: String?, label: String, url: String, identifier: String, password: String) -> Unit,
+    onSignIn: (
+        existingProfileId: String?,
+        label: String,
+        url: String,
+        identifier: String,
+        password: String
+    ) -> Unit
 ) {
     var selected by remember { mutableStateOf(remoteProfiles.firstOrNull()?.id) }
     var label by remember { mutableStateOf("") }
@@ -171,10 +188,13 @@ private fun SignInStep(
 
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(stringResource(R.string.attach_intro), style = MaterialTheme.typography.bodyMedium)
-        Text(stringResource(R.string.attach_server_heading), style = MaterialTheme.typography.titleMedium)
+        Text(
+            stringResource(R.string.attach_server_heading),
+            style = MaterialTheme.typography.titleMedium
+        )
         Column(Modifier.selectableGroup()) {
             remoteProfiles.forEach { profile ->
                 ServerChoice(
@@ -182,7 +202,7 @@ private fun SignInStep(
                     subtitle = profile.remoteUrl.orEmpty(),
                     selected = selected == profile.id,
                     tag = "attach-server-${profile.id}",
-                    onClick = { selected = profile.id },
+                    onClick = { selected = profile.id }
                 )
             }
             ServerChoice(
@@ -190,7 +210,7 @@ private fun SignInStep(
                 subtitle = null,
                 selected = selected == null,
                 tag = "attach-server-new",
-                onClick = { selected = null },
+                onClick = { selected = null }
             )
         }
         if (selected == null) {
@@ -199,7 +219,7 @@ private fun SignInStep(
                 onValueChange = { label = it },
                 label = { Text(stringResource(R.string.settings_servers_label)) },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth().testTag("attach-label"),
+                modifier = Modifier.fillMaxWidth().testTag("attach-label")
             )
             OutlinedTextField(
                 value = url,
@@ -207,7 +227,7 @@ private fun SignInStep(
                 label = { Text(stringResource(R.string.settings_servers_url)) },
                 placeholder = { Text(stringResource(R.string.login_server_url_hint)) },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth().testTag("attach-url"),
+                modifier = Modifier.fillMaxWidth().testTag("attach-url")
             )
         }
         OutlinedTextField(
@@ -215,7 +235,7 @@ private fun SignInStep(
             onValueChange = { identifier = it },
             label = { Text(stringResource(R.string.attach_identifier)) },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth().testTag("attach-identifier"),
+            modifier = Modifier.fillMaxWidth().testTag("attach-identifier")
         )
         OutlinedTextField(
             value = password,
@@ -223,11 +243,11 @@ private fun SignInStep(
             label = { Text(stringResource(R.string.attach_password)) },
             singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth().testTag("attach-password"),
+            modifier = Modifier.fillMaxWidth().testTag("attach-password")
         )
         Button(
             onClick = { onSignIn(selected, label, url, identifier, password) },
-            modifier = Modifier.fillMaxWidth().testTag("attach-sign-in"),
+            modifier = Modifier.fillMaxWidth().testTag("attach-sign-in")
         ) {
             Text(stringResource(R.string.attach_sign_in))
         }
@@ -240,7 +260,7 @@ private fun ServerChoice(
     subtitle: String?,
     selected: Boolean,
     tag: String,
-    onClick: () -> Unit,
+    onClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -249,7 +269,7 @@ private fun ServerChoice(
             .padding(vertical = 8.dp)
             .testTag(tag),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         RadioButton(selected = selected, onClick = null)
         Column {
@@ -258,7 +278,7 @@ private fun ServerChoice(
                 Text(
                     subtitle,
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -270,7 +290,7 @@ internal fun TwoFactorStep(
     prompt: SecondFactorPrompt = SecondFactorPrompt.STANDARD,
     passkeyIssue: PasskeyIssue? = null,
     onSubmit: (String) -> Unit,
-    onUsePasskey: () -> Unit = {},
+    onUsePasskey: () -> Unit = {}
 ) {
     var code by remember { mutableStateOf("") }
     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -283,7 +303,9 @@ internal fun TwoFactorStep(
                 PasskeyIssue.NO_PROVIDER -> R.string.login_two_factor_passkey_no_provider_only_description
                 null -> R.string.login_two_factor_passkey_only_description
             }
+
             SecondFactorPrompt.PASSKEY_OR_RECOVERY_CODE -> R.string.login_two_factor_passkey_or_recovery_description
+
             else -> R.string.attach_two_factor_prompt
         }
         Text(stringResource(descriptionRes), style = MaterialTheme.typography.bodyLarge)
@@ -294,15 +316,15 @@ internal fun TwoFactorStep(
                         PasskeyIssue.NOT_ASSOCIATED -> R.string.login_two_factor_passkey_not_associated_note
                         PasskeyIssue.NO_PROVIDER -> R.string.login_two_factor_passkey_no_provider_note
                         null -> R.string.login_two_factor_passkey_unavailable_note
-                    },
+                    }
                 ),
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodyMedium
             )
         }
         if (prompt.offersPasskey) {
             Button(
                 onClick = onUsePasskey,
-                modifier = Modifier.fillMaxWidth().testTag("attach-2fa-passkey"),
+                modifier = Modifier.fillMaxWidth().testTag("attach-2fa-passkey")
             ) {
                 Text(stringResource(R.string.login_two_factor_use_passkey))
             }
@@ -315,17 +337,17 @@ internal fun TwoFactorStep(
             label = {
                 Text(
                     stringResource(
-                        if (recoveryOnly) R.string.login_two_factor_recovery_code_label else R.string.attach_two_factor_code,
-                    ),
+                        if (recoveryOnly) R.string.login_two_factor_recovery_code_label else R.string.attach_two_factor_code
+                    )
                 )
             },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth().testTag("attach-2fa-code"),
+            modifier = Modifier.fillMaxWidth().testTag("attach-2fa-code")
         )
         Button(
             onClick = { onSubmit(code) },
             enabled = code.isNotBlank(),
-            modifier = Modifier.fillMaxWidth().testTag("attach-2fa-submit"),
+            modifier = Modifier.fillMaxWidth().testTag("attach-2fa-submit")
         ) {
             Text(stringResource(R.string.attach_two_factor_verify))
         }
@@ -335,18 +357,21 @@ internal fun TwoFactorStep(
 @Composable
 private fun Working(progress: AttachProgress?) {
     Box(Modifier.fillMaxSize().testTag("attach-working"), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
             CircularProgressIndicator()
             if (progress != null) {
                 Text(
                     text = stringResource(progress.stage.labelRes()),
                     style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
                 )
                 if (progress.total > 0) {
                     Text(
                         stringResource(R.string.attach_progress, progress.done, progress.total),
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.labelMedium
                     )
                 }
             }
@@ -364,7 +389,10 @@ private fun AttachStage.labelRes(): Int = when (this) {
 @Composable
 private fun PrepareFailedStep(onRetry: () -> Unit) {
     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(stringResource(R.string.attach_prepare_failed), style = MaterialTheme.typography.bodyLarge)
+        Text(
+            stringResource(R.string.attach_prepare_failed),
+            style = MaterialTheme.typography.bodyLarge
+        )
         Button(onClick = onRetry, modifier = Modifier.fillMaxWidth().testTag("attach-retry")) {
             Text(stringResource(R.string.attach_retry))
         }
@@ -381,10 +409,10 @@ private fun ReviewStep(state: AttachUiState, viewModel: AttachToRemoteViewModel)
                 R.string.attach_review_totals,
                 totals.contacts,
                 totals.notes,
-                totals.activities,
+                totals.activities
             ),
             style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
         val lossCount = attachPreview.preview.lossReport.size
         if (lossCount > 0) {
@@ -392,7 +420,7 @@ private fun ReviewStep(state: AttachUiState, viewModel: AttachToRemoteViewModel)
                 text = pluralStringResource(R.plurals.attach_review_loss, lossCount, lossCount),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp).testTag("attach-loss"),
+                modifier = Modifier.padding(horizontal = 16.dp).testTag("attach-loss")
             )
         }
         Box(Modifier.weight(1f)) {
@@ -401,7 +429,7 @@ private fun ReviewStep(state: AttachUiState, viewModel: AttachToRemoteViewModel)
                 rowActions = state.rowActions,
                 onRowActionChange = viewModel::setRowAction,
                 onResolveAll = viewModel::resolveAll,
-                onConfirm = viewModel::confirm,
+                onConfirm = viewModel::confirm
             )
         }
     }
@@ -414,16 +442,24 @@ private fun DoneStep(state: AttachUiState, onDone: () -> Unit) {
         Text(
             stringResource(R.string.attach_done_title),
             style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
         )
         if (result != null) {
             Text(
-                stringResource(R.string.attach_done_result, result.created, result.updated, result.skipped),
+                stringResource(
+                    R.string.attach_done_result,
+                    result.created,
+                    result.updated,
+                    result.skipped
+                ),
                 style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.testTag("attach-result"),
+                modifier = Modifier.testTag("attach-result")
             )
         }
-        Text(stringResource(R.string.attach_done_archive_note), style = MaterialTheme.typography.bodyMedium)
+        Text(
+            stringResource(R.string.attach_done_archive_note),
+            style = MaterialTheme.typography.bodyMedium
+        )
         Button(onClick = onDone, modifier = Modifier.fillMaxWidth().testTag("attach-done")) {
             Text(stringResource(R.string.attach_done_button))
         }

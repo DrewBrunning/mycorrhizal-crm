@@ -35,7 +35,7 @@ class CsvImportScreenTest {
         onSubmitMapping: () -> Unit = {},
         onRowActionChange: (Int, String) -> Unit = { _, _ -> },
         onConfirm: () -> Unit = {},
-        onDone: () -> Unit = {},
+        onDone: () -> Unit = {}
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -45,7 +45,7 @@ class CsvImportScreenTest {
                     onSubmitMapping = onSubmitMapping,
                     onRowActionChange = onRowActionChange,
                     onConfirm = onConfirm,
-                    onDone = onDone,
+                    onDone = onDone
                 )
             }
         }
@@ -67,13 +67,13 @@ class CsvImportScreenTest {
                     headers = listOf("Full Name", "Email Address"),
                     suggestedMappings = listOf(
                         ColumnMapping(csvColumn = "Full Name", contactField = "firstname"),
-                        ColumnMapping(csvColumn = "Email Address", contactField = "email"),
+                        ColumnMapping(csvColumn = "Email Address", contactField = "email")
                     ),
                     rowCount = 5,
-                    sampleData = listOf(listOf("Dana White", "dana@example.com")),
+                    sampleData = listOf(listOf("Dana White", "dana@example.com"))
                 ),
-                columnFields = mapOf("Full Name" to "firstname", "Email Address" to "email"),
-            ),
+                columnFields = mapOf("Full Name" to "firstname", "Email Address" to "email")
+            )
         )
         composeTestRule.onNodeWithText("Full Name").assertIsDisplayed()
         composeTestRule.onNodeWithText("Email Address").assertIsDisplayed()
@@ -89,11 +89,13 @@ class CsvImportScreenTest {
                 upload = ImportUploadResponse(
                     sessionId = "session-1",
                     headers = listOf("Notes"),
-                    suggestedMappings = listOf(ColumnMapping(csvColumn = "Notes", contactField = "")),
-                    rowCount = 1,
+                    suggestedMappings = listOf(
+                        ColumnMapping(csvColumn = "Notes", contactField = "")
+                    ),
+                    rowCount = 1
                 ),
-                columnFields = mapOf("Notes" to ""),
-            ),
+                columnFields = mapOf("Notes" to "")
+            )
         )
         composeTestRule.onNodeWithText("-- Ignore --").assertIsDisplayed()
     }
@@ -104,10 +106,14 @@ class CsvImportScreenTest {
         setContent(
             CsvImportUiState(
                 step = CsvImportStep.MAPPING,
-                upload = ImportUploadResponse(sessionId = "session-1", headers = listOf("Name"), rowCount = 1),
-                columnFields = mapOf("Name" to "firstname"),
+                upload = ImportUploadResponse(
+                    sessionId = "session-1",
+                    headers = listOf("Name"),
+                    rowCount = 1
+                ),
+                columnFields = mapOf("Name" to "firstname")
             ),
-            onSubmitMapping = { submitted = true },
+            onSubmitMapping = { submitted = true }
         )
         composeTestRule.onNodeWithTag("csv-mapping-continue").performClick()
         assertEquals(true, submitted)
@@ -121,11 +127,15 @@ class CsvImportScreenTest {
                 preview = ImportPreviewResponse(
                     sessionId = "session-1",
                     rows = listOf(
-                        ImportRowPreview(rowIndex = 0, parsedContact = mapOf("firstname" to "Dana", "lastname" to "White"), suggestedAction = "add"),
-                    ),
+                        ImportRowPreview(
+                            rowIndex = 0,
+                            parsedContact = mapOf("firstname" to "Dana", "lastname" to "White"),
+                            suggestedAction = "add"
+                        )
+                    )
                 ),
-                rowActions = mapOf(0 to "add"),
-            ),
+                rowActions = mapOf(0 to "add")
+            )
         )
         composeTestRule.onNodeWithText("Dana White").assertIsDisplayed()
         composeTestRule.onNodeWithText("Apply decisions (1)").assertIsDisplayed()
@@ -137,10 +147,13 @@ class CsvImportScreenTest {
         setContent(
             CsvImportUiState(
                 step = CsvImportStep.PREVIEW,
-                preview = ImportPreviewResponse(sessionId = "session-1", rows = listOf(ImportRowPreview(rowIndex = 0))),
-                rowActions = mapOf(0 to "add"),
+                preview = ImportPreviewResponse(
+                    sessionId = "session-1",
+                    rows = listOf(ImportRowPreview(rowIndex = 0))
+                ),
+                rowActions = mapOf(0 to "add")
             ),
-            onConfirm = { confirmed = true },
+            onConfirm = { confirmed = true }
         )
         composeTestRule.onNodeWithText("Apply decisions (1)").performClick()
         assertEquals(true, confirmed)
@@ -149,17 +162,25 @@ class CsvImportScreenTest {
     @Test
     fun `result step renders the created updated skipped counts`() {
         setContent(
-            CsvImportUiState(step = CsvImportStep.RESULT, result = ImportResult(totalProcessed = 3, created = 2, updated = 1, skipped = 0)),
+            CsvImportUiState(
+                step = CsvImportStep.RESULT,
+                result = ImportResult(totalProcessed = 3, created = 2, updated = 1, skipped = 0)
+            )
         )
-        composeTestRule.onNodeWithText("Import complete: 2 created, 1 updated, 0 skipped.").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Import complete: 2 created, 1 updated, 0 skipped."
+        ).assertIsDisplayed()
     }
 
     @Test
     fun `tapping done after the result invokes the done callback`() {
         var done = false
         setContent(
-            CsvImportUiState(step = CsvImportStep.RESULT, result = ImportResult(totalProcessed = 1, created = 1)),
-            onDone = { done = true },
+            CsvImportUiState(
+                step = CsvImportStep.RESULT,
+                result = ImportResult(totalProcessed = 1, created = 1)
+            ),
+            onDone = { done = true }
         )
         composeTestRule.onNodeWithText("Confirm").performClick()
         assertEquals(true, done)

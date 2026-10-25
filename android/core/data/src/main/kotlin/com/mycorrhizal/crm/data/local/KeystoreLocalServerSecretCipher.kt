@@ -28,7 +28,11 @@ class KeystoreLocalServerSecretCipher(private val alias: String) : LocalServerSe
     override fun unwrap(blob: ByteArray): ByteArray {
         require(blob.size > GCM_IV_BYTES) { "wrapped secret too short" }
         val cipher = Cipher.getInstance(TRANSFORMATION)
-        cipher.init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(GCM_TAG_BITS, blob, 0, GCM_IV_BYTES))
+        cipher.init(
+            Cipher.DECRYPT_MODE,
+            key(),
+            GCMParameterSpec(GCM_TAG_BITS, blob, 0, GCM_IV_BYTES)
+        )
         return cipher.doFinal(blob, GCM_IV_BYTES, blob.size - GCM_IV_BYTES)
     }
 
@@ -37,11 +41,14 @@ class KeystoreLocalServerSecretCipher(private val alias: String) : LocalServerSe
         (keyStore.getEntry(alias, null) as? KeyStore.SecretKeyEntry)?.let { return it.secretKey }
         val generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEYSTORE)
         generator.init(
-            KeyGenParameterSpec.Builder(alias, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
+            KeyGenParameterSpec.Builder(
+                alias,
+                KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
+            )
                 .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
                 .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
                 .setKeySize(256)
-                .build(),
+                .build()
         )
         return generator.generateKey()
     }

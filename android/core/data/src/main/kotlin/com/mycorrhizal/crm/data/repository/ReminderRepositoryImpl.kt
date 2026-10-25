@@ -14,7 +14,7 @@ import javax.inject.Inject
  */
 class ReminderRepositoryImpl @Inject constructor(
     private val apiClient: ApiClient,
-    private val dao: CachedReminderDao,
+    private val dao: CachedReminderDao
 ) : ReminderRepository {
 
     override suspend fun listForContact(contactId: Int): Result<List<Reminder>> {
@@ -74,6 +74,6 @@ class ReminderRepositoryImpl @Inject constructor(
         message = message,
         remindAt = remindAt,
         recurrence = recurrence,
-        completed = completed,
+        completed = completed
     )
 }

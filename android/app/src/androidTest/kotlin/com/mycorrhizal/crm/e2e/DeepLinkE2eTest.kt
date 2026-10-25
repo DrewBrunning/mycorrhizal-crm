@@ -4,14 +4,13 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.mycorrhizal.crm.domain.repository.AutoLockDelay
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import androidx.compose.ui.test.onAllNodesWithText
 
 /**
  * Issue #1269 (ADR 0029 §2/§4): the public `mycorrhizal://` VIEW deep links

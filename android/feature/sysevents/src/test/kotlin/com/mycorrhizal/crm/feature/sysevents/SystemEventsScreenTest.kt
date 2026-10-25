@@ -27,7 +27,6 @@ import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -52,7 +51,11 @@ class SystemEventsScreenTest {
     /** The three best-effort monitor panels — stubbed empty so only the timeline matters. */
     private fun stubPanels() {
         coEvery { repository.subsystemHealth() } returns Result.success(SubsystemHealthResponse())
-        coEvery { repository.errorAggregation(any()) } returns Result.success(ErrorAggregationResponse())
+        coEvery {
+            repository.errorAggregation(
+                any()
+            )
+        } returns Result.success(ErrorAggregationResponse())
         coEvery { repository.jobRunHealth() } returns Result.success(JobRunHealthResponse())
     }
 
@@ -64,7 +67,7 @@ class SystemEventsScreenTest {
                 eventType = any(),
                 correlationId = any(),
                 ids = any(),
-                limit = any(),
+                limit = any()
             )
         } returns Result.success(response)
     }
@@ -84,7 +87,7 @@ class SystemEventsScreenTest {
         eventType = type,
         severity = "error",
         component = "contact_sync",
-        correlationId = correlation,
+        correlationId = correlation
     )
 
     @Test
@@ -98,7 +101,7 @@ class SystemEventsScreenTest {
                 eventType = any(),
                 correlationId = any(),
                 ids = any(),
-                limit = any(),
+                limit = any()
             )
         } coAnswers { gate.await() }
 
@@ -117,7 +120,7 @@ class SystemEventsScreenTest {
                 eventType = any(),
                 correlationId = any(),
                 ids = any(),
-                limit = any(),
+                limit = any()
             )
         } returns Result.failure(ApiError.Client(500, "boom"))
 
@@ -172,7 +175,7 @@ class SystemEventsScreenTest {
                     canLoadMore = false,
                     isLoadingMore = false,
                     onLoadMore = {},
-                    onRowClick = { clicked = it.id },
+                    onRowClick = { clicked = it.id }
                 )
             }
         }
@@ -192,7 +195,7 @@ class SystemEventsScreenTest {
                     canLoadMore = true,
                     isLoadingMore = false,
                     onLoadMore = {},
-                    onRowClick = {},
+                    onRowClick = {}
                 )
             }
         }
@@ -213,7 +216,7 @@ class SystemEventsScreenTest {
                     onSeverityChange = {},
                     onEventTypeChange = {},
                     onCorrelationChange = {},
-                    onClearFilters = {},
+                    onClearFilters = {}
                 )
             }
         }
@@ -235,7 +238,7 @@ class SystemEventsScreenTest {
                     onSeverityChange = {},
                     onEventTypeChange = {},
                     onCorrelationChange = {},
-                    onClearFilters = { cleared = true },
+                    onClearFilters = { cleared = true }
                 )
             }
         }
@@ -255,12 +258,12 @@ class SystemEventsScreenTest {
                             status = "failing",
                             consecutiveFailures = 9,
                             incidentFirstFailureAt = "2026-08-27T17:19:00Z",
-                            lastError = "carddav auth rejected",
+                            lastError = "carddav auth rejected"
                         ),
-                        SubsystemHealth(subsystem = "backup", status = "healthy"),
+                        SubsystemHealth(subsystem = "backup", status = "healthy")
                     ),
                     onSelectSubsystem = { picked = it },
-                    onRefresh = {},
+                    onRefresh = {}
                 )
             }
         }
@@ -293,11 +296,15 @@ class SystemEventsScreenTest {
                             status = "failing",
                             consecutiveFailures = 4,
                             lastError = "2 notification send(s) failed",
-                            lastDurationMs = 40000,
+                            lastDurationMs = 40000
                         ),
-                        JobRunHealth(jobName = "calendar_sync", status = "healthy", lastDurationMs = 820),
+                        JobRunHealth(
+                            jobName = "calendar_sync",
+                            status = "healthy",
+                            lastDurationMs = 820
+                        )
                     ),
-                    onRefresh = {},
+                    onRefresh = {}
                 )
             }
         }
@@ -332,17 +339,19 @@ class SystemEventsScreenTest {
                             sampleError = "CardDAV authentication failed (HTTP 401)",
                             count = 17,
                             recurring = true,
-                            eventIds = listOf(1, 2, 3),
-                        ),
+                            eventIds = listOf(1, 2, 3)
+                        )
                     ),
                     onViewEvents = { viewed = it },
-                    onRefresh = {},
+                    onRefresh = {}
                 )
             }
         }
 
         composeTestRule.onNodeWithText("17").assertIsDisplayed()
-        composeTestRule.onNodeWithText("CardDAV authentication failed (HTTP 401)").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "CardDAV authentication failed (HTTP 401)"
+        ).assertIsDisplayed()
         composeTestRule.onNodeWithText("Recurring").assertIsDisplayed()
         composeTestRule.onNodeWithTag("error-bucket-view-contact_sync").performClick()
         assertEquals(listOf(1L, 2L, 3L), viewed)

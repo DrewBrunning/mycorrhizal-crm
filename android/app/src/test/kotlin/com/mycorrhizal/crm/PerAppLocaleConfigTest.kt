@@ -1,11 +1,11 @@
 package com.mycorrhizal.crm
 
+import java.io.File
+import javax.xml.parsers.DocumentBuilderFactory
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.w3c.dom.Element
-import java.io.File
-import javax.xml.parsers.DocumentBuilderFactory
 
 /**
  * Issue #1921: Android 13+ only offers the Settings -> Apps -> Mycorrhizal ->
@@ -22,7 +22,7 @@ class PerAppLocaleConfigTest {
         val manifest = File("src/main/AndroidManifest.xml").readText()
         assertTrue(
             "AndroidManifest.xml must declare android:localeConfig for the API 33+ per-app language picker",
-            manifest.contains("""android:localeConfig="@xml/locales_config""""),
+            manifest.contains("""android:localeConfig="@xml/locales_config"""")
         )
     }
 

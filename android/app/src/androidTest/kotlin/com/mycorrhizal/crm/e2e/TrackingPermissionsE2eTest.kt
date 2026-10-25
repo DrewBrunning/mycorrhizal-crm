@@ -64,7 +64,7 @@ class TrackingPermissionsE2eTest : E2eBaseTest() {
         // (UiAutomation.executeShellCommand is API 21+). Reading the output to
         // EOF blocks until the command has finished.
         AutoCloseInputStream(
-            uiAutomation.executeShellCommand("pm grant $packageName $permission"),
+            uiAutomation.executeShellCommand("pm grant $packageName $permission")
         ).use { it.readBytes() }
     }
 

@@ -25,7 +25,7 @@ const val OIDC_PENDING_REQUEST_TTL_MILLIS = 10 * 60 * 1000L
 data class OidcPendingRequest(
     val state: String,
     val codeVerifier: String,
-    val createdAtMillis: Long,
+    val createdAtMillis: Long
 ) {
     /** True once the request is older than [OIDC_PENDING_REQUEST_TTL_MILLIS]. */
     fun isExpired(nowMillis: Long = System.currentTimeMillis()): Boolean =
@@ -66,7 +66,7 @@ class EncryptedOidcPendingRequestStore(context: Context) : OidcPendingRequestSto
             FILE_NAME, // # pragma: no cover
             masterKey, // # pragma: no cover
             EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV, // # pragma: no cover
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM, // # pragma: no cover
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM // # pragma: no cover
         )
     }
 
@@ -84,7 +84,7 @@ class EncryptedOidcPendingRequestStore(context: Context) : OidcPendingRequestSto
         return OidcPendingRequest( // # pragma: no cover
             state = state, // # pragma: no cover
             codeVerifier = verifier, // # pragma: no cover
-            createdAtMillis = prefs.getLong(createdAtKey(profileId), 0L), // # pragma: no cover
+            createdAtMillis = prefs.getLong(createdAtKey(profileId), 0L) // # pragma: no cover
         )
     }
 
@@ -102,7 +102,7 @@ class EncryptedOidcPendingRequestStore(context: Context) : OidcPendingRequestSto
         return OidcPendingRequest( // # pragma: no cover
             state = state, // # pragma: no cover
             codeVerifier = verifier, // # pragma: no cover
-            createdAtMillis = prefs.getLong(KEY_LEGACY_CREATED_AT, 0L), // # pragma: no cover
+            createdAtMillis = prefs.getLong(KEY_LEGACY_CREATED_AT, 0L) // # pragma: no cover
         )
     }
 

@@ -28,7 +28,7 @@ fun interface ClientVersionProvider {
  */
 class ClientVersionInterceptor(
     private val versionProvider: ClientVersionProvider,
-    private val baseUrlProvider: BaseUrlProvider,
+    private val baseUrlProvider: BaseUrlProvider
 ) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
@@ -44,7 +44,7 @@ class ClientVersionInterceptor(
             return chain.proceed(request)
         }
         return chain.proceed(
-            request.newBuilder().header(CLIENT_VERSION_HEADER, version).build(),
+            request.newBuilder().header(CLIENT_VERSION_HEADER, version).build()
         )
     }
 

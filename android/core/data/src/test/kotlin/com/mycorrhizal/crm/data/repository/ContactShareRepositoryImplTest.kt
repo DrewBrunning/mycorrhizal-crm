@@ -28,7 +28,9 @@ class ContactShareRepositoryImplTest {
         val share = ContactShare(id = "s1", contactDisplayName = "Alice")
         coEvery {
             apiClient.listIncomingContactShares(cursor = "c1", limit = 10)
-        } returns Result.success(ContactSharesPage(contactShares = listOf(share), total = 1, limit = 10))
+        } returns Result.success(
+            ContactSharesPage(contactShares = listOf(share), total = 1, limit = 10)
+        )
 
         val result = repository.listIncoming(cursor = "c1", limit = 10)
 
@@ -51,7 +53,7 @@ class ContactShareRepositoryImplTest {
     fun `create forwards the input`() = runTest {
         val input = ContactShareInput(toUserId = 5, vcardUid = "u1", sections = listOf("emails"))
         coEvery { apiClient.createContactShare(input) } returns Result.success(
-            ContactShare(id = "s2", toUserId = 5),
+            ContactShare(id = "s2", toUserId = 5)
         )
 
         val result = repository.create(input)
@@ -62,7 +64,11 @@ class ContactShareRepositoryImplTest {
 
     @Test
     fun `accept returns the import preview`() = runTest {
-        coEvery { apiClient.acceptContactShare("s1") } returns Result.success(ImportPreviewResponse())
+        coEvery {
+            apiClient.acceptContactShare(
+                "s1"
+            )
+        } returns Result.success(ImportPreviewResponse())
 
         val result = repository.accept("s1")
 
@@ -73,14 +79,20 @@ class ContactShareRepositoryImplTest {
     fun `confirm wraps the session id and actions into the request`() = runTest {
         val actions = listOf(RowImportAction(rowIndex = 0, action = "import"))
         coEvery {
-            apiClient.confirmContactShare("s1", ImportConfirmRequest(sessionId = "sess1", actions = actions))
+            apiClient.confirmContactShare(
+                "s1",
+                ImportConfirmRequest(sessionId = "sess1", actions = actions)
+            )
         } returns Result.success(ImportResult())
 
         val result = repository.confirm("s1", "sess1", actions)
 
         assertTrue(result.isSuccess)
         coVerify {
-            apiClient.confirmContactShare("s1", ImportConfirmRequest(sessionId = "sess1", actions = actions))
+            apiClient.confirmContactShare(
+                "s1",
+                ImportConfirmRequest(sessionId = "sess1", actions = actions)
+            )
         }
     }
 
@@ -96,7 +108,7 @@ class ContactShareRepositoryImplTest {
     @Test
     fun `userDirectory returns the directory list`() = runTest {
         coEvery { apiClient.getUserDirectory() } returns Result.success(
-            listOf(UserDirectoryEntry(id = 1, username = "alice")),
+            listOf(UserDirectoryEntry(id = 1, username = "alice"))
         )
 
         val result = repository.userDirectory()

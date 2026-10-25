@@ -37,7 +37,7 @@ interface CachedContactDao {
               OR primaryPhone LIKE '%' || :query || '%'
           )
         ORDER BY fn COLLATE NOCASE ASC
-        """,
+        """
     )
     suspend fun search(query: String): List<CachedContact>
 
@@ -54,7 +54,7 @@ interface CachedContactDao {
         WHERE cached_contacts_fts MATCH :query || '*'
           AND c.deleted = 0
         ORDER BY c.fn COLLATE NOCASE ASC
-        """,
+        """
     )
     suspend fun searchFts(query: String): List<CachedContact>
 
@@ -71,7 +71,7 @@ interface CachedContactDao {
         WHERE cached_contacts_fts MATCH :matchExpr
           AND c.deleted = 0
         ORDER BY c.fn COLLATE NOCASE ASC
-        """,
+        """
     )
     suspend fun searchFtsMatch(matchExpr: String): List<CachedContact>
 
@@ -119,7 +119,7 @@ interface CachedContactDao {
         WHERE deleted = 0
           AND instr(' ' || phonesNormalized || ' ', ' ' || :phoneKey || ' ') > 0
         LIMIT 1
-        """,
+        """
     )
     suspend fun findByPhoneKey(phoneKey: String): CachedContact?
 
@@ -129,7 +129,7 @@ interface CachedContactDao {
         WHERE deleted = 0
           AND primaryEmail = :email COLLATE NOCASE
         LIMIT 1
-        """,
+        """
     )
     suspend fun findByEmail(email: String): CachedContact?
 
@@ -148,7 +148,7 @@ interface CachedContactDao {
         WHERE deleted = 0 AND card IS NULL AND primaryPhone IS NOT NULL
         ORDER BY id ASC
         LIMIT :limit
-        """,
+        """
     )
     suspend fun getIdsMissingPhoneIndex(limit: Int): List<Int>
 }

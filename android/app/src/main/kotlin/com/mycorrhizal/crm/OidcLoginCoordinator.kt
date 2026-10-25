@@ -17,7 +17,7 @@ internal enum class OidcCallbackOutcome {
     Failed,
 
     /** The session was redeemed and persisted. */
-    Succeeded,
+    Succeeded
 }
 
 /**
@@ -38,7 +38,7 @@ internal class OidcLoginCoordinator(
     private val authRepository: AuthRepository,
     private val pendingStore: OidcPendingRequestStore,
     private val launchBrowser: (String) -> Unit,
-    private val nowMillis: () -> Long = System::currentTimeMillis,
+    private val nowMillis: () -> Long = System::currentTimeMillis
 ) {
 
     /**
@@ -107,7 +107,7 @@ internal class OidcLoginCoordinator(
         sessionManager.setSession(
             serverUrl = serverUrl,
             token = token,
-            state = SessionState(language = result.language, dateFormat = result.dateFormat),
+            state = SessionState(language = result.language, dateFormat = result.dateFormat)
         )
 
         // Validate the JWT against the server and enrich the profile the way a
@@ -119,15 +119,15 @@ internal class OidcLoginCoordinator(
                     ProfileUpdate(
                         userId = user.id.takeIf { it != 0 },
                         username = user.username,
-                        isAdmin = user.isAdmin,
-                    ),
+                        isAdmin = user.isAdmin
+                    )
                 )
                 OidcCallbackOutcome.Succeeded
             },
             onFailure = {
                 sessionManager.clearSession()
                 OidcCallbackOutcome.Failed
-            },
+            }
         )
     }
 

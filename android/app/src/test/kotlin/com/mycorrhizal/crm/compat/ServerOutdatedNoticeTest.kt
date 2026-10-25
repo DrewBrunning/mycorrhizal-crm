@@ -39,7 +39,11 @@ class ServerOutdatedNoticeTest {
     fun `renders the message naming both versions`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                ServerOutdatedNotice(serverVersion = "0.6.10", currentVersion = "0.7.0", onDismiss = {})
+                ServerOutdatedNotice(
+                    serverVersion = "0.6.10",
+                    currentVersion = "0.7.0",
+                    onDismiss = {}
+                )
             }
         }
 
@@ -52,7 +56,11 @@ class ServerOutdatedNoticeTest {
         var dismissed = false
         composeTestRule.setContent {
             MycorrhizalTheme {
-                ServerOutdatedNotice(serverVersion = "0.6.10", currentVersion = "0.7.0", onDismiss = { dismissed = true })
+                ServerOutdatedNotice(
+                    serverVersion = "0.6.10",
+                    currentVersion = "0.7.0",
+                    onDismiss = { dismissed = true }
+                )
             }
         }
 
@@ -65,7 +73,11 @@ class ServerOutdatedNoticeTest {
     fun `notice is reachable by its test tag`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                ServerOutdatedNotice(serverVersion = "0.6.10", currentVersion = "0.7.0", onDismiss = {})
+                ServerOutdatedNotice(
+                    serverVersion = "0.6.10",
+                    currentVersion = "0.7.0",
+                    onDismiss = {}
+                )
             }
         }
 
@@ -92,7 +104,7 @@ class ServerOutdatedNoticeTest {
                         onDismiss = { dismissed = true },
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
-                            .padding(start = 16.dp, end = 16.dp, bottom = 48.dp),
+                            .padding(start = 16.dp, end = 16.dp, bottom = 48.dp)
                     )
                 }
             }
@@ -105,14 +117,14 @@ class ServerOutdatedNoticeTest {
         // edge, where the status bar would otherwise sit behind it.
         assertTrue(
             "expected the notice to float away from the top edge, but it started at ${noticeBounds.top}",
-            noticeBounds.top > rootBounds.top + 100.dp,
+            noticeBounds.top > rootBounds.top + 100.dp
         )
         // Anchored near the bottom, offset by the 48dp system-nav clearance
         // rather than touching the very bottom edge.
         assertTrue(
             "expected the notice's bottom edge to sit clear of the root's bottom edge, " +
                 "but it was at ${noticeBounds.bottom} of ${rootBounds.bottom}",
-            rootBounds.bottom - noticeBounds.bottom >= 48.dp,
+            rootBounds.bottom - noticeBounds.bottom >= 48.dp
         )
 
         composeTestRule.onNodeWithContentDescription("Dismiss").performClick()

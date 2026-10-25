@@ -13,6 +13,8 @@ import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.mockk
+import java.util.Locale
+import java.util.TimeZone
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -21,8 +23,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import java.util.Locale
-import java.util.TimeZone
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -48,8 +48,12 @@ class OccasionsScreenTest {
         Locale.setDefault(originalLocale)
     }
 
-    private fun event(id: String = "e1", title: String = "Summer BBQ") =
-        OccasionEvent(id = id, title = title, startsAt = "2026-07-04T15:00:00Z", location = "The park")
+    private fun event(id: String = "e1", title: String = "Summer BBQ") = OccasionEvent(
+        id = id,
+        title = title,
+        startsAt = "2026-07-04T15:00:00Z",
+        location = "The park"
+    )
 
     private fun render(events: List<OccasionEvent>) {
         coEvery { repository.list() } returns Result.success(events)
@@ -83,7 +87,9 @@ class OccasionsScreenTest {
     @Test
     fun `the empty state action opens the create dialog and explains events`() {
         render(emptyList())
-        composeTestRule.onNodeWithText("Create one to start planning who to invite.").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Create one to start planning who to invite."
+        ).assertIsDisplayed()
         composeTestRule.onNodeWithText("New event").performClick()
         composeTestRule.onNodeWithText("Create an event").assertIsDisplayed()
     }
@@ -131,6 +137,8 @@ class OccasionsScreenTest {
         render(listOf(event()))
         composeTestRule.onNodeWithContentDescription("Delete").performClick()
         composeTestRule.onNodeWithText("Delete event").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Delete “Summer BBQ”? This cannot be undone.").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Delete “Summer BBQ”? This cannot be undone."
+        ).assertIsDisplayed()
     }
 }

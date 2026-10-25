@@ -6,8 +6,8 @@ import com.mycorrhizal.crm.model.network.CRMEnvelope
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordInput
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
-import com.mycorrhizal.crm.model.network.Organization
 import com.mycorrhizal.crm.model.network.OrgUnit
+import com.mycorrhizal.crm.model.network.Organization
 import com.mycorrhizal.crm.model.network.PersonalInfo
 import com.mycorrhizal.crm.model.network.PersonalInfoMeta
 import com.mycorrhizal.crm.model.network.Title
@@ -33,28 +33,28 @@ data class PersonalInfoFormData(
     val label: String? = null,
     val notes: String? = null,
     val sensitivity: String = "normal",
-    val favorite: Boolean = false,
+    val favorite: Boolean = false
 )
 
 data class OrganizationFormData(
     val name: String = "",
     val department: String = "",
     val startYear: String = "",
-    val endYear: String = "",
+    val endYear: String = ""
 )
 
 data class TitleFormData(
     val name: String = "",
     val kind: String = "title",
     val startYear: String = "",
-    val endYear: String = "",
+    val endYear: String = ""
 )
 
 data class AnniversaryFormData(
     /** Non-birth kinds only; birthday stays in the contact edit form. */
     val kind: String = "wedding",
     /** Partial-date editor string: YYYY-MM-DD or --MM-DD. */
-    val date: String = "",
+    val date: String = ""
 )
 
 /** Expertise uses beginner/average/expert; hobby and interest use high/medium/low. */
@@ -86,7 +86,7 @@ fun personalInfoLevelLabelRes(level: String?): Int = when (level) {
 fun ContactRecordResponse.withPersonalInfo(
     editingId: String?,
     form: PersonalInfoFormData,
-    newId: String = UUID.randomUUID().toString(),
+    newId: String = UUID.randomUUID().toString()
 ): ContactRecordInput {
     val existing = editingId?.let { id -> card?.personalInfo?.firstOrNull { it.id == id } }
     val id = existing?.id ?: editingId ?: newId
@@ -95,7 +95,7 @@ fun ContactRecordResponse.withPersonalInfo(
         kind = form.kind,
         value = form.value.trim(),
         level = form.level?.trim()?.ifBlank { null },
-        label = form.label?.trim()?.ifBlank { null },
+        label = form.label?.trim()?.ifBlank { null }
     )
     val entries = card?.personalInfo.orEmpty()
     val next = if (existing != null) {
@@ -108,7 +108,7 @@ fun ContactRecordResponse.withPersonalInfo(
     val meta = (metaById[id] ?: PersonalInfoMeta()).copy(
         sensitivity = form.sensitivity.takeUnless { it == "normal" || it.isBlank() },
         favorite = form.favorite.takeIf { it },
-        notes = form.notes?.trim()?.ifBlank { null },
+        notes = form.notes?.trim()?.ifBlank { null }
     )
     if (meta.sensitivity == null && meta.favorite == null && meta.notes == null &&
         meta.source == null && meta.confidence == null && meta.lastConfirmed == null
@@ -120,7 +120,7 @@ fun ContactRecordResponse.withPersonalInfo(
 
     return withCardAndEnvelope(
         card = cardOrEmpty().copy(personalInfo = next.ifEmpty { null }),
-        crm = crmOrEmpty().copy(personalInfoMeta = metaById.ifEmpty { null }),
+        crm = crmOrEmpty().copy(personalInfoMeta = metaById.ifEmpty { null })
     )
 }
 
@@ -129,21 +129,25 @@ fun ContactRecordResponse.withoutPersonalInfo(id: String): ContactRecordInput {
     val metaById = crm?.personalInfoMeta.orEmpty() - id
     return withCardAndEnvelope(
         card = cardOrEmpty().copy(personalInfo = next.ifEmpty { null }),
-        crm = crmOrEmpty().copy(personalInfoMeta = metaById.ifEmpty { null }),
+        crm = crmOrEmpty().copy(personalInfoMeta = metaById.ifEmpty { null })
     )
 }
 
 fun ContactRecordResponse.withOrganization(
     editingId: String?,
     form: OrganizationFormData,
-    newId: String = UUID.randomUUID().toString(),
+    newId: String = UUID.randomUUID().toString()
 ): ContactRecordInput {
     val existing = editingId?.let { id -> card?.organizations?.firstOrNull { it.id == id } }
     val id = existing?.id ?: editingId ?: newId
     val entry = (existing ?: Organization()).copy(
         id = id,
         name = form.name.trim(),
-        units = form.department.trim().takeIf { it.isNotBlank() }?.let { listOf(OrgUnit(name = it)) },
+        units = form.department.trim().takeIf { it.isNotBlank() }?.let {
+            listOf(
+                OrgUnit(name = it)
+            )
+        }
     )
     val organizations = card?.organizations.orEmpty()
     val next = if (existing != null) {
@@ -155,11 +159,11 @@ fun ContactRecordResponse.withOrganization(
         crm?.periods.orEmpty(),
         "organization",
         id,
-        yearTemporalRange(form.startYear, form.endYear),
+        yearTemporalRange(form.startYear, form.endYear)
     )
     return withCardAndEnvelope(
         card = cardOrEmpty().copy(organizations = next.ifEmpty { null }),
-        crm = crmOrEmpty().copy(periods = periods.ifEmpty { null }),
+        crm = crmOrEmpty().copy(periods = periods.ifEmpty { null })
     )
 }
 
@@ -168,21 +172,21 @@ fun ContactRecordResponse.withoutOrganization(id: String): ContactRecordInput {
     val periods = upsertEntryPeriod(crm?.periods.orEmpty(), "organization", id, null)
     return withCardAndEnvelope(
         card = cardOrEmpty().copy(organizations = next.ifEmpty { null }),
-        crm = crmOrEmpty().copy(periods = periods.ifEmpty { null }),
+        crm = crmOrEmpty().copy(periods = periods.ifEmpty { null })
     )
 }
 
 fun ContactRecordResponse.withTitle(
     editingId: String?,
     form: TitleFormData,
-    newId: String = UUID.randomUUID().toString(),
+    newId: String = UUID.randomUUID().toString()
 ): ContactRecordInput {
     val existing = editingId?.let { id -> card?.titles?.firstOrNull { it.id == id } }
     val id = existing?.id ?: editingId ?: newId
     val entry = (existing ?: Title()).copy(
         id = id,
         name = form.name.trim(),
-        kind = form.kind.ifBlank { "title" },
+        kind = form.kind.ifBlank { "title" }
     )
     val titles = card?.titles.orEmpty()
     val next = if (existing != null) {
@@ -194,11 +198,11 @@ fun ContactRecordResponse.withTitle(
         crm?.periods.orEmpty(),
         "title",
         id,
-        yearTemporalRange(form.startYear, form.endYear),
+        yearTemporalRange(form.startYear, form.endYear)
     )
     return withCardAndEnvelope(
         card = cardOrEmpty().copy(titles = next.ifEmpty { null }),
-        crm = crmOrEmpty().copy(periods = periods.ifEmpty { null }),
+        crm = crmOrEmpty().copy(periods = periods.ifEmpty { null })
     )
 }
 
@@ -207,7 +211,7 @@ fun ContactRecordResponse.withoutTitle(id: String): ContactRecordInput {
     val periods = upsertEntryPeriod(crm?.periods.orEmpty(), "title", id, null)
     return withCardAndEnvelope(
         card = cardOrEmpty().copy(titles = next.ifEmpty { null }),
-        crm = crmOrEmpty().copy(periods = periods.ifEmpty { null }),
+        crm = crmOrEmpty().copy(periods = periods.ifEmpty { null })
     )
 }
 
@@ -215,7 +219,7 @@ fun ContactRecordResponse.withoutTitle(id: String): ContactRecordInput {
 fun ContactRecordResponse.withWorkInformation(text: String): ContactRecordInput =
     withCardAndEnvelope(
         card = cardOrEmpty(),
-        crm = crmOrEmpty().copy(workInformation = text.trim().ifBlank { null }),
+        crm = crmOrEmpty().copy(workInformation = text.trim().ifBlank { null })
     )
 
 /**
@@ -225,14 +229,14 @@ fun ContactRecordResponse.withWorkInformation(text: String): ContactRecordInput 
 fun ContactRecordResponse.withAnniversary(
     editingId: String?,
     form: AnniversaryFormData,
-    newId: String = UUID.randomUUID().toString(),
+    newId: String = UUID.randomUUID().toString()
 ): ContactRecordInput {
     val existing = editingId?.let { id -> card?.anniversaries?.firstOrNull { it.id == id } }
     val id = existing?.id ?: editingId ?: newId
     val entry = (existing ?: Anniversary()).copy(
         id = id,
         kind = form.kind,
-        date = AnniversaryDate(partial = parsePartialDateForEdit(form.date)),
+        date = AnniversaryDate(partial = parsePartialDateForEdit(form.date))
     )
     val entries = card?.anniversaries.orEmpty()
     val next = if (existing != null) {
@@ -258,5 +262,5 @@ private fun ContactRecordResponse.crmOrEmpty(): CRMEnvelope = crm ?: CRMEnvelope
 
 private fun ContactRecordResponse.withCardAndEnvelope(
     card: Card,
-    crm: CRMEnvelope = crmOrEmpty(),
+    crm: CRMEnvelope = crmOrEmpty()
 ): ContactRecordInput = ContactRecordInput(gender = gender, card = card, crm = crm)

@@ -1,6 +1,5 @@
 package com.mycorrhizal.crm.network
 
-import com.mycorrhizal.crm.model.network.ServerHealth
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import kotlinx.coroutines.runBlocking
@@ -27,7 +26,7 @@ class HealthEndpointTest {
         server.start()
         val okHttp = OkHttpClient.Builder()
             .addInterceptor(
-                BaseUrlInterceptor(BaseUrlProvider { server.url("/").toString().trimEnd('/') }),
+                BaseUrlInterceptor(BaseUrlProvider { server.url("/").toString().trimEnd('/') })
             )
             .build()
         val moshi = Moshi.Builder()
@@ -46,7 +45,7 @@ class HealthEndpointTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"status":"healthy","version":"0.6.10","api_contract_version":"v1"}"""),
+                .setBody("""{"status":"healthy","version":"0.6.10","api_contract_version":"v1"}""")
         )
 
         val result = client.getHealth()
@@ -62,8 +61,8 @@ class HealthEndpointTest {
                 .setResponseCode(200)
                 .setBody(
                     """{"status":"healthy","version":"0.6.10","commit":"abc1234","build_date":"2026-10-02T10:00:00Z",
-                        "api_contract_version":"v1","min_client_version":"0.6.0"}""",
-                ),
+                        "api_contract_version":"v1","min_client_version":"0.6.0"}"""
+                )
         )
 
         val health = client.getHealth().getOrThrow()
@@ -83,7 +82,7 @@ class HealthEndpointTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"status":"healthy","version":"0.5.0"}"""),
+                .setBody("""{"status":"healthy","version":"0.5.0"}""")
         )
 
         val health = client.getHealth().getOrThrow()

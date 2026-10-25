@@ -10,12 +10,12 @@ import com.mycorrhizal.crm.model.network.RowImportAction
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.network.toApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 enum class SharesTab { INCOMING, OUTGOING }
 
@@ -39,14 +39,14 @@ data class ContactSharesUiState(
     // --- Decline confirmation gate ---
     /** The pending share awaiting the user's decline confirmation; null when no dialog is up. */
     val declinePendingId: String? = null,
-    val declining: Boolean = false,
+    val declining: Boolean = false
 ) {
     val row: ImportRowPreview? get() = preview?.rows?.firstOrNull()
 }
 
 @HiltViewModel
 class ContactSharesViewModel @Inject constructor(
-    private val contactShareRepository: ContactShareRepository,
+    private val contactShareRepository: ContactShareRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ContactSharesUiState())
@@ -68,8 +68,11 @@ class ContactSharesViewModel @Inject constructor(
                 incoming == null && outgoing == null ->
                     (incomingResult.exceptionOrNull() ?: outgoingResult.exceptionOrNull())
                         ?.toApiError()?.displayMessage ?: "Failed to load shares"
+
                 incoming == null -> incomingResult.exceptionOrNull()?.toApiError()?.displayMessage
+
                 outgoing == null -> outgoingResult.exceptionOrNull()?.toApiError()?.displayMessage
+
                 else -> null
             }
             _uiState.update {
@@ -78,7 +81,7 @@ class ContactSharesViewModel @Inject constructor(
                     incoming = incoming?.contactShares ?: emptyList(),
                     outgoing = outgoing?.contactShares ?: emptyList(),
                     usernames = mergeUsernames(incoming?.usernames, outgoing?.usernames),
-                    error = errorMessage,
+                    error = errorMessage
                 )
             }
         }
@@ -104,7 +107,7 @@ class ContactSharesViewModel @Inject constructor(
                 previewError = null,
                 previewLoading = true,
                 confirmAction = "add",
-                confirming = false,
+                confirming = false
             )
         }
         viewModelScope.launch {
@@ -115,13 +118,20 @@ class ContactSharesViewModel @Inject constructor(
                         it.copy(
                             previewLoading = false,
                             preview = preview,
-                            confirmAction = row?.suggestedAction?.takeIf { a -> a == "update" || a == "skip" } ?: "add",
+                            confirmAction =
+                                row?.suggestedAction?.takeIf { a -> a == "update" || a == "skip" }
+                                    ?: "add"
                         )
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(previewLoading = false, previewError = error.displayMessage) }
-                },
+                    _uiState.update {
+                        it.copy(
+                            previewLoading = false,
+                            previewError = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }
@@ -141,7 +151,9 @@ class ContactSharesViewModel @Inject constructor(
             contactShareRepository.confirm(
                 share.id,
                 preview.sessionId,
-                listOf(RowImportAction(rowIndex = row.rowIndex, action = _uiState.value.confirmAction)),
+                listOf(
+                    RowImportAction(rowIndex = row.rowIndex, action = _uiState.value.confirmAction)
+                )
             ).foldApiError(
                 onSuccess = {
                     _uiState.update {
@@ -149,14 +161,19 @@ class ContactSharesViewModel @Inject constructor(
                             confirming = false,
                             acceptingShare = null,
                             preview = null,
-                            confirmAction = "add",
+                            confirmAction = "add"
                         )
                     }
                     load()
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(confirming = false, previewError = error.displayMessage) }
-                },
+                    _uiState.update {
+                        it.copy(
+                            confirming = false,
+                            previewError = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }
@@ -164,7 +181,12 @@ class ContactSharesViewModel @Inject constructor(
     fun closeAccept() {
         if (_uiState.value.confirming) return
         _uiState.update {
-            it.copy(acceptingShare = null, preview = null, previewError = null, previewLoading = false)
+            it.copy(
+                acceptingShare = null,
+                preview = null,
+                previewError = null,
+                previewLoading = false
+            )
         }
     }
 
@@ -195,8 +217,14 @@ class ContactSharesViewModel @Inject constructor(
                     load()
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(declining = false, declinePendingId = null, error = error.displayMessage) }
-                },
+                    _uiState.update {
+                        it.copy(
+                            declining = false,
+                            declinePendingId = null,
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }

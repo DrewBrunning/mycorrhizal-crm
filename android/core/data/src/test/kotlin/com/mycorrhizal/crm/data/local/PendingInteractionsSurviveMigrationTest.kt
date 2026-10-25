@@ -58,89 +58,96 @@ class PendingInteractionsSurviveMigrationTest {
         LocalDatabaseSchemaFixtures.createV13Tables(db)
         db.execSQL(
             "INSERT INTO cached_contacts (id, fn, primaryPhone, archived, deleted) " +
-                "VALUES (1, 'Dana White', '(800) 555-1234', 0, 0)",
+                "VALUES (1, 'Dana White', '(800) 555-1234', 0, 0)"
         )
         db.execSQL(
             "INSERT INTO pending_interactions " +
                 "(timestampMillis, kind, direction, phoneNumber, matchedContactId, synced, syncedAt) " +
-                "VALUES (1000, 'call', 'outgoing', '5551234', 1, 1, '2026-01-01T00:00:00Z')",
+                "VALUES (1000, 'call', 'outgoing', '5551234', 1, 1, '2026-01-01T00:00:00Z')"
         )
         db.execSQL(
             "INSERT INTO pending_interactions " +
                 "(timestampMillis, kind, direction, phoneNumber, matchedContactId, synced, syncedAt) " +
-                "VALUES (2000, 'call', 'incoming', '5559999', NULL, 0, NULL)",
+                "VALUES (2000, 'call', 'incoming', '5559999', NULL, 0, NULL)"
         )
         db.execSQL(
             "INSERT INTO pending_interactions " +
                 "(timestampMillis, kind, direction, phoneNumber, matchedContactId, synced, syncedAt) " +
-                "VALUES (3000, 'call', 'missed', '5558888', NULL, 0, NULL)",
+                "VALUES (3000, 'call', 'missed', '5558888', NULL, 0, NULL)"
         )
         db.execSQL(
             "INSERT INTO pending_interactions " +
                 "(timestampMillis, kind, direction, phoneNumber, matchedContactId, synced, syncedAt) " +
-                "VALUES (4000, 'message', NULL, '5557777', NULL, 0, NULL)",
+                "VALUES (4000, 'message', NULL, '5557777', NULL, 0, NULL)"
         )
         db.version = 13
         db.close()
     }
 
     @Test
-    fun `every outbox row and field survives the full v13 to current migration chain`() = runBlocking {
-        createV13DatabaseWithFullOutbox()
+    fun `every outbox row and field survives the full v13 to current migration chain`() =
+        runBlocking {
+            createV13DatabaseWithFullOutbox()
 
-        val db = Room.databaseBuilder(context, AppDatabase::class.java, dbFile.absolutePath)
-            .addMigrations(*REGISTERED_MIGRATIONS.toTypedArray())
-            .build()
+            val db = Room.databaseBuilder(context, AppDatabase::class.java, dbFile.absolutePath)
+                .addMigrations(*REGISTERED_MIGRATIONS.toTypedArray())
+                .build()
 
-        // countUnsynced/getUnsynced only see the three unsynced rows — the synced one is a real
-        // row too (assertRawCount below), just outside this query's WHERE clause.
-        assertEquals(3, db.pendingInteractionDao().countUnsynced())
-        val unsynced = db.pendingInteractionDao().getUnsynced()
-        assertEquals(3, unsynced.size)
+            // countUnsynced/getUnsynced only see the three unsynced rows — the synced one is a real
+            // row too (assertRawCount below), just outside this query's WHERE clause.
+            assertEquals(3, db.pendingInteractionDao().countUnsynced())
+            val unsynced = db.pendingInteractionDao().getUnsynced()
+            assertEquals(3, unsynced.size)
 
-        val incoming = unsynced.single { it.phoneNumber == "5559999" }
-        assertEquals("call", incoming.kind)
-        assertEquals("incoming", incoming.direction)
-        assertNull(incoming.matchedContactId)
-        assertTrue(!incoming.synced)
+            val incoming = unsynced.single { it.phoneNumber == "5559999" }
+            assertEquals("call", incoming.kind)
+            assertEquals("incoming", incoming.direction)
+            assertNull(incoming.matchedContactId)
+            assertTrue(!incoming.synced)
 
-        val missed = unsynced.single { it.phoneNumber == "5558888" }
-        assertEquals("missed", missed.direction)
+            val missed = unsynced.single { it.phoneNumber == "5558888" }
+            assertEquals("missed", missed.direction)
 
-        val message = unsynced.single { it.phoneNumber == "5557777" }
-        assertEquals("message", message.kind)
-        assertNull("messages carry no call direction", message.direction)
-        assertNull(message.matchedContactId)
+            val message = unsynced.single { it.phoneNumber == "5557777" }
+            assertEquals("message", message.kind)
+            assertNull("messages carry no call direction", message.direction)
+            assertNull(message.matchedContactId)
 
-        // The already-synced row isn't in getUnsynced()'s result set by design (it queries
-        // synced = 0), but it must still exist post-migration with every field intact — a
-        // migration silently losing only the "already synced" rows would pass a naive check
-        // that only ever calls getUnsynced().
-        val allRows = withContext(Dispatchers.IO) {
-            db.query("SELECT * FROM pending_interactions ORDER BY timestampMillis ASC", null)
-        }
-        allRows.use { cursor ->
-            assertEquals(4, cursor.count)
-            assertTrue(cursor.moveToFirst())
-            assertEquals(1, cursor.getInt(cursor.getColumnIndexOrThrow("synced")))
-            assertEquals("outgoing", cursor.getString(cursor.getColumnIndexOrThrow("direction")))
-            assertEquals(1, cursor.getInt(cursor.getColumnIndexOrThrow("matchedContactId")))
-            assertEquals("2026-01-01T00:00:00Z", cursor.getString(cursor.getColumnIndexOrThrow("syncedAt")))
-            // ANDROID-02 (issue #479): MIGRATION_16_17 backfills every migrated row with an
-            // idempotencyKey, so rows queued before the v17 upgrade are retry-safe immediately.
-            do {
-                val key = cursor.getString(cursor.getColumnIndexOrThrow("idempotencyKey"))
-                assertTrue(
-                    "every migrated row must have a backfilled 32-char hex idempotencyKey, was '$key'",
-                    Regex("[0-9a-f]{32}").matches(key),
+            // The already-synced row isn't in getUnsynced()'s result set by design (it queries
+            // synced = 0), but it must still exist post-migration with every field intact — a
+            // migration silently losing only the "already synced" rows would pass a naive check
+            // that only ever calls getUnsynced().
+            val allRows = withContext(Dispatchers.IO) {
+                db.query("SELECT * FROM pending_interactions ORDER BY timestampMillis ASC", null)
+            }
+            allRows.use { cursor ->
+                assertEquals(4, cursor.count)
+                assertTrue(cursor.moveToFirst())
+                assertEquals(1, cursor.getInt(cursor.getColumnIndexOrThrow("synced")))
+                assertEquals(
+                    "outgoing",
+                    cursor.getString(cursor.getColumnIndexOrThrow("direction"))
                 )
-            } while (cursor.moveToNext())
+                assertEquals(1, cursor.getInt(cursor.getColumnIndexOrThrow("matchedContactId")))
+                assertEquals(
+                    "2026-01-01T00:00:00Z",
+                    cursor.getString(cursor.getColumnIndexOrThrow("syncedAt"))
+                )
+                // ANDROID-02 (issue #479): MIGRATION_16_17 backfills every migrated row with an
+                // idempotencyKey, so rows queued before the v17 upgrade are retry-safe immediately.
+                do {
+                    val key = cursor.getString(cursor.getColumnIndexOrThrow("idempotencyKey"))
+                    assertTrue(
+                        "every migrated row must have a backfilled 32-char hex idempotencyKey, was '$key'",
+                        Regex("[0-9a-f]{32}").matches(key)
+                    )
+                } while (cursor.moveToNext())
+            }
+
+            // The matched contact itself also survived (a matchedContactId pointing at a row that
+            // got wiped would be a silent dangling reference, not caught by the outbox count alone).
+            assertEquals("Dana White", db.cachedContactDao().getById(1)?.fn)
+
+            db.close()
         }
-
-        // The matched contact itself also survived (a matchedContactId pointing at a row that
-        // got wiped would be a silent dangling reference, not caught by the outbox count alone).
-        assertEquals("Dana White", db.cachedContactDao().getById(1)?.fn)
-
-        db.close()
-    }
 }

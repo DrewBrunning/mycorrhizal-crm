@@ -47,7 +47,7 @@ abstract class LocalServerModule {
         @Provides
         @Singleton
         fun provideLocalServerBinaryProvider(
-            @ApplicationContext context: Context,
+            @ApplicationContext context: Context
         ): LocalServerBinaryProvider = LocalServerBinaryProvider {
             File(context.applicationInfo.nativeLibraryDir, LocalServerAvailability.BINARY_NAME)
                 .takeIf { it.exists() }
@@ -62,10 +62,10 @@ abstract class LocalServerModule {
         @Singleton
         fun provideLocalServerSecretStore(
             @ApplicationContext context: Context,
-            ciphers: LocalServerSecretCipherProvider,
+            ciphers: LocalServerSecretCipherProvider
         ): LocalServerSecretStore = LocalServerSecretStore(
             keyFile = File(context.filesDir, "local-server/keys.bin"),
-            ciphers = ciphers,
+            ciphers = ciphers
         )
 
         @Provides

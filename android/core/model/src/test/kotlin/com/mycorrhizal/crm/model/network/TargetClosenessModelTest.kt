@@ -21,7 +21,7 @@ class TargetClosenessModelTest {
               "default_interval_days": 30,
               "cadence_policy_offer": {"entity_id": "u12", "target_interval_days": 30}
             }
-            """.trimIndent(),
+            """.trimIndent()
         )!!
 
         assertEquals(12, response.contactId)
@@ -37,7 +37,7 @@ class TargetClosenessModelTest {
     @Test
     fun `target closeness response parses the all-null DELETE shape`() {
         val response = moshi.adapter(ContactTargetClosenessResponse::class.java).fromJson(
-            """{"contact_id":12,"target_closeness":null,"default_interval_days":null,"cadence_policy_offer":null}""",
+            """{"contact_id":12,"target_closeness":null,"default_interval_days":null,"cadence_policy_offer":null}"""
         )!!
 
         assertEquals(12, response.contactId)
@@ -51,7 +51,7 @@ class TargetClosenessModelTest {
         val adapter = moshi.adapter(ContactScoreResponse::class.java)
 
         val cleared = adapter.fromJson(
-            """{"contact_id":1,"score":50,"band":"chanterelle","target":null}""",
+            """{"contact_id":1,"score":50,"band":"chanterelle","target":null}"""
         )!!
         assertNull(cleared.target)
 
@@ -74,7 +74,7 @@ class TargetClosenessModelTest {
                 "reason": "Recency and frequency score 66 against a 30-day interval from the close target"
               }
             }
-            """.trimIndent(),
+            """.trimIndent()
         )!!
 
         val target = targeted.target!!
@@ -85,7 +85,7 @@ class TargetClosenessModelTest {
         assertEquals("target_tier", target.intervalSource)
         assertEquals(
             "Recency and frequency score 66 against a 30-day interval from the close target",
-            target.reason,
+            target.reason
         )
     }
 
@@ -97,7 +97,7 @@ class TargetClosenessModelTest {
             value = 65.9,
             intervalDays = 30,
             intervalSource = "target_tier",
-            reason = "reason",
+            reason = "reason"
         )
 
         // Pins copy/equals/hashCode/toString/componentN so the DTO behaves like

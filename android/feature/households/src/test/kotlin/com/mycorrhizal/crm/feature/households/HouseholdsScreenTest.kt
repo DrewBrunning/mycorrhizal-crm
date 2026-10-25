@@ -50,7 +50,10 @@ class HouseholdsScreenTest {
         val householdRepository = mockk<HouseholdRepository>()
         val contactRepository = mockk<ContactRepository>()
         coEvery { householdRepository.list(any(), any()) } returns Result.success(
-            listOf(Household(id = "h1", name = "The Smiths"), Household(id = "h2", name = "The Joneses")),
+            listOf(
+                Household(id = "h1", name = "The Smiths"),
+                Household(id = "h2", name = "The Joneses")
+            )
         )
         val viewModel = HouseholdsViewModel(householdRepository, contactRepository)
 
@@ -112,7 +115,7 @@ class HouseholdsScreenTest {
         setScreenWithList(Result.failure(ApiError.Client(500, "boom")))
 
         assertTrue(
-            composeTestRule.onAllNodesWithText("boom").fetchSemanticsNodes().isNotEmpty(),
+            composeTestRule.onAllNodesWithText("boom").fetchSemanticsNodes().isNotEmpty()
         )
     }
 
@@ -120,15 +123,17 @@ class HouseholdsScreenTest {
         suggestions: List<AddressHouseholdSuggestion>,
         onAccept: (() -> Unit)? = null,
         onDismiss: (() -> Unit)? = null,
-        resolve: Map<String, ContactSummary> = emptyMap(),
+        resolve: Map<String, ContactSummary> = emptyMap()
     ) {
         val householdRepository = mockk<HouseholdRepository>()
         val contactRepository = mockk<ContactRepository>()
         coEvery { householdRepository.list(any(), any()) } returns Result.success(emptyList())
-        coEvery { householdRepository.suggestAddressHouseholds() } returns Result.success(suggestions)
+        coEvery { householdRepository.suggestAddressHouseholds() } returns Result.success(
+            suggestions
+        )
         coEvery { contactRepository.resolveByUid(any()) } returns Result.success(resolve)
         coEvery { householdRepository.acceptAddressSuggestion(any()) } returns Result.success(
-            Household(id = "h9", name = "Alice & Bob", type = HouseholdTypes.FAMILY_UNIT),
+            Household(id = "h9", name = "Alice & Bob", type = HouseholdTypes.FAMILY_UNIT)
         )
         coEvery { householdRepository.dismissAddressSuggestion(any()) } returns Result.success(Unit)
         val viewModel = HouseholdsViewModel(householdRepository, contactRepository)
@@ -151,13 +156,17 @@ class HouseholdsScreenTest {
                 AddressHouseholdSuggestion(
                     addressHash = "ah1",
                     memberHash = "mh1",
-                    memberVCardUids = listOf("u1", "u2"),
-                ),
-            ),
+                    memberVCardUids = listOf("u1", "u2")
+                )
+            )
         )
 
-        composeTestRule.onNodeWithText(str(R.string.households_address_suggestions)).assertIsDisplayed()
-        composeTestRule.onNodeWithText(str(R.string.households_accept_suggestion)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            str(R.string.households_address_suggestions)
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            str(R.string.households_accept_suggestion)
+        ).assertIsDisplayed()
     }
 
     @Test
@@ -167,10 +176,10 @@ class HouseholdsScreenTest {
                 AddressHouseholdSuggestion(
                     addressHash = "ah1",
                     memberHash = "mh1",
-                    memberVCardUids = listOf("u1", "u2"),
-                ),
+                    memberVCardUids = listOf("u1", "u2")
+                )
             ),
-            resolve = mapOf("u1" to ContactSummary(id = 7, uid = "u1", firstname = "Alice")),
+            resolve = mapOf("u1" to ContactSummary(id = 7, uid = "u1", firstname = "Alice"))
         )
 
         composeTestRule.onNodeWithText("Alice · ${str(R.string.contact_unknown)}")
@@ -181,7 +190,9 @@ class HouseholdsScreenTest {
     fun `a scan with nothing to suggest renders the suggestion empty state`() {
         setScreenWithSuggestions(emptyList())
 
-        composeTestRule.onNodeWithText(str(R.string.households_no_address_suggestions)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            str(R.string.households_no_address_suggestions)
+        ).assertIsDisplayed()
     }
 
     @Test
@@ -189,19 +200,21 @@ class HouseholdsScreenTest {
         val suggestion = AddressHouseholdSuggestion(
             addressHash = "ah1",
             memberHash = "mh1",
-            memberVCardUids = listOf("u1", "u2"),
+            memberVCardUids = listOf("u1", "u2")
         )
         setScreenWithSuggestions(
             suggestions = listOf(suggestion),
             onAccept = {
-                composeTestRule.onNodeWithText(str(R.string.households_accept_suggestion)).performClick()
+                composeTestRule.onNodeWithText(
+                    str(R.string.households_accept_suggestion)
+                ).performClick()
                 composeTestRule.waitForIdle()
-            },
+            }
         )
 
         assertTrue(
             composeTestRule.onAllNodesWithText(str(R.string.households_accept_suggestion))
-                .fetchSemanticsNodes().isEmpty(),
+                .fetchSemanticsNodes().isEmpty()
         )
     }
 
@@ -210,19 +223,21 @@ class HouseholdsScreenTest {
         val suggestion = AddressHouseholdSuggestion(
             addressHash = "ah1",
             memberHash = "mh1",
-            memberVCardUids = listOf("u1", "u2"),
+            memberVCardUids = listOf("u1", "u2")
         )
         setScreenWithSuggestions(
             suggestions = listOf(suggestion),
             onDismiss = {
-                composeTestRule.onNodeWithText(str(R.string.households_dismiss_suggestion)).performClick()
+                composeTestRule.onNodeWithText(
+                    str(R.string.households_dismiss_suggestion)
+                ).performClick()
                 composeTestRule.waitForIdle()
-            },
+            }
         )
 
         assertTrue(
             composeTestRule.onAllNodesWithText(str(R.string.households_dismiss_suggestion))
-                .fetchSemanticsNodes().isEmpty(),
+                .fetchSemanticsNodes().isEmpty()
         )
     }
 }

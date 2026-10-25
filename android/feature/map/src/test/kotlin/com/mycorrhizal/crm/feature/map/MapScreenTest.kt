@@ -32,7 +32,13 @@ class MapScreenTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    private val ada = MapPoint(1, "Ada Lovelace", "a1", "10 Downing St, London", LatLng(51.5, -0.12))
+    private val ada = MapPoint(
+        1,
+        "Ada Lovelace",
+        "a1",
+        "10 Downing St, London",
+        LatLng(51.5, -0.12)
+    )
     private val grace = MapPoint(2, "Grace Hopper", "b1", "", LatLng(38.9, -77.1))
 
     private fun content(
@@ -42,7 +48,7 @@ class MapScreenTest {
         listToggles: MutableList<Boolean> = mutableListOf(),
         onMenuClick: (() -> Unit)? = {},
         onRetry: () -> Unit = {},
-        darkTheme: Boolean = false,
+        darkTheme: Boolean = false
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme(darkTheme = darkTheme) {
@@ -59,7 +65,7 @@ class MapScreenTest {
                         androidx.compose.foundation.layout.Box(modifier) {
                             Text("canvas:$styleUrl:${points.size}:${selectedKey.orEmpty()}")
                         }
-                    },
+                    }
                 )
             }
         }
@@ -69,14 +75,14 @@ class MapScreenTest {
         points: List<MapPoint> = listOf(ada, grace),
         selectedKey: String? = null,
         showList: Boolean = false,
-        truncated: Boolean = false,
+        truncated: Boolean = false
     ) = MapUiState(
         isLoading = false,
         styleUrl = "https://tiles.example/s",
         points = points,
         selectedKey = selectedKey,
         showList = showList,
-        truncated = truncated,
+        truncated = truncated
     )
 
     @Test
@@ -138,9 +144,11 @@ class MapScreenTest {
         content(loaded(points = emptyList()))
 
         composeTestRule.onNodeWithText(
-            "No mapped contacts yet",
+            "No mapped contacts yet"
         ).assertIsDisplayed()
-        composeTestRule.onNodeWithText("Add coordinates to a contact's address to see it here.").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Add coordinates to a contact's address to see it here."
+        ).assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription("Show as list").assertDoesNotExist()
     }
 
@@ -150,7 +158,9 @@ class MapScreenTest {
     @Test
     fun `the top-level screen renders the empty map from its view model`() {
         val repository = mockk<MapRepository>()
-        coEvery { repository.getMapConfig() } returns Result.success(MapConfig("https://tiles.example/s"))
+        coEvery { repository.getMapConfig() } returns Result.success(
+            MapConfig("https://tiles.example/s")
+        )
         coEvery { repository.getContactMap() } returns
             Result.success(ContactMapResponse(points = emptyList(), truncated = false))
         val viewModel = MapViewModel(repository)
@@ -170,7 +180,7 @@ class MapScreenTest {
         content(loaded(truncated = true))
 
         composeTestRule.onNodeWithText(
-            "Showing the first 2 addresses only; the map is limited to this many points.",
+            "Showing the first 2 addresses only; the map is limited to this many points."
         ).assertIsDisplayed()
     }
 

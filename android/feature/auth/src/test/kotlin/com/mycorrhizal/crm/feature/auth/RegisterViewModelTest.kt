@@ -16,7 +16,6 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -38,17 +37,31 @@ class RegisterViewModelTest {
         // AFTER calling viewModel() (before advanceUntilIdle()) so its
         // coEvery is the one still in effect when init's launch actually
         // runs — see "registration disabled" below.
-        coEvery { authRepository.getAuthConfig() } returns Result.success(AuthConfig(registrationDisabled = false))
+        coEvery { authRepository.getAuthConfig() } returns Result.success(
+            AuthConfig(registrationDisabled = false)
+        )
         return RegisterViewModel(authRepository, sessionManager)
     }
 
-    private fun weakStrength() = PasswordStrength(isValid = false, score = 1, feedback = "Password is too short")
-    private fun strongStrength() = PasswordStrength(isValid = true, score = 4, feedback = "Password is very strong")
+    private fun weakStrength() = PasswordStrength(
+        isValid = false,
+        score = 1,
+        feedback = "Password is too short"
+    )
+    private fun strongStrength() = PasswordStrength(
+        isValid = true,
+        score = 4,
+        feedback = "Password is very strong"
+    )
 
     @Test
     fun `a known-weak password blocks submit without calling register`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            coEvery { authRepository.checkPasswordStrength("short") } returns Result.success(weakStrength())
+            coEvery {
+                authRepository.checkPasswordStrength(
+                    "short"
+                )
+            } returns Result.success(weakStrength())
             val vm = viewModel()
             advanceUntilIdle()
 
@@ -86,10 +99,22 @@ class RegisterViewModelTest {
     @Test
     fun `a strong password submits register and then auto-logs-in`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            coEvery { authRepository.checkPasswordStrength("hunter2hunter2") } returns Result.success(strongStrength())
-            coEvery { authRepository.register("alice", "alice@example.com", "hunter2hunter2") } returns Result.success(Unit)
+            coEvery {
+                authRepository.checkPasswordStrength(
+                    "hunter2hunter2"
+                )
+            } returns Result.success(strongStrength())
+            coEvery {
+                authRepository.register(
+                    "alice",
+                    "alice@example.com",
+                    "hunter2hunter2"
+                )
+            } returns Result.success(Unit)
             coEvery { authRepository.login("alice@example.com", "hunter2hunter2") } returns
-                Result.success(com.mycorrhizal.crm.domain.repository.LoginOutcome.SessionEstablished)
+                Result.success(
+                    com.mycorrhizal.crm.domain.repository.LoginOutcome.SessionEstablished
+                )
             val vm = viewModel()
             advanceUntilIdle()
 
@@ -107,7 +132,11 @@ class RegisterViewModelTest {
     @Test
     fun `a duplicate account surfaces the server message and does not login`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            coEvery { authRepository.checkPasswordStrength("hunter2hunter2") } returns Result.success(strongStrength())
+            coEvery {
+                authRepository.checkPasswordStrength(
+                    "hunter2hunter2"
+                )
+            } returns Result.success(strongStrength())
             coEvery { authRepository.register(any(), any(), any()) } returns
                 Result.failure(ApiError.Client(409, "User already exists"))
             val vm = viewModel()
@@ -127,7 +156,11 @@ class RegisterViewModelTest {
     @Test
     fun `a failed auto-login after a successful register points the user at sign-in`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            coEvery { authRepository.checkPasswordStrength("hunter2hunter2") } returns Result.success(strongStrength())
+            coEvery {
+                authRepository.checkPasswordStrength(
+                    "hunter2hunter2"
+                )
+            } returns Result.success(strongStrength())
             coEvery { authRepository.register(any(), any(), any()) } returns Result.success(Unit)
             coEvery { authRepository.login(any(), any()) } returns
                 Result.failure(ApiError.Client(500, "boom"))
@@ -140,7 +173,10 @@ class RegisterViewModelTest {
             vm.submit("alice", "alice@example.com", "hunter2hunter2")
             advanceUntilIdle()
 
-            assertEquals(com.mycorrhizal.crm.ui.R.string.register_created_login_failed, vm.uiState.value.errorRes)
+            assertEquals(
+                com.mycorrhizal.crm.ui.R.string.register_created_login_failed,
+                vm.uiState.value.errorRes
+            )
             assertTrue(vm.uiState.value.isLoading.not())
         }
 
@@ -158,22 +194,28 @@ class RegisterViewModelTest {
         }
 
     @Test
-    fun `an invalid server url blocks submit`() =
-        runTest(mainDispatcherRule.testDispatcher) {
-            coEvery { authRepository.checkPasswordStrength(any()) } returns Result.success(strongStrength())
-            val vm = viewModel()
-            advanceUntilIdle()
-            vm.onServerUrlChange("not a url")
+    fun `an invalid server url blocks submit`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery {
+            authRepository.checkPasswordStrength(
+                any()
+            )
+        } returns Result.success(strongStrength())
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.onServerUrlChange("not a url")
 
-            vm.onPasswordChange("hunter2hunter2")
-            advanceUntilIdle()
+        vm.onPasswordChange("hunter2hunter2")
+        advanceUntilIdle()
 
-            vm.submit("alice", "alice@example.com", "hunter2hunter2")
-            advanceUntilIdle()
+        vm.submit("alice", "alice@example.com", "hunter2hunter2")
+        advanceUntilIdle()
 
-            assertEquals(com.mycorrhizal.crm.ui.R.string.login_error_valid_server_url, vm.uiState.value.errorRes)
-            coVerify(exactly = 0) { authRepository.register(any(), any(), any()) }
-        }
+        assertEquals(
+            com.mycorrhizal.crm.ui.R.string.login_error_valid_server_url,
+            vm.uiState.value.errorRes
+        )
+        coVerify(exactly = 0) { authRepository.register(any(), any(), any()) }
+    }
 
     // Android testing feedback: DISABLE_REGISTRATION was only ever enforced
     // by the eventual 403 on submit — RegisterScreen now checks up front.
@@ -182,7 +224,9 @@ class RegisterViewModelTest {
     fun `registration disabled on the server is reflected in ui state on load`() =
         runTest(mainDispatcherRule.testDispatcher) {
             val vm = viewModel()
-            coEvery { authRepository.getAuthConfig() } returns Result.success(AuthConfig(registrationDisabled = true))
+            coEvery { authRepository.getAuthConfig() } returns Result.success(
+                AuthConfig(registrationDisabled = true)
+            )
             advanceUntilIdle()
 
             assertTrue(vm.uiState.value.registrationDisabled)
@@ -201,7 +245,9 @@ class RegisterViewModelTest {
     fun `a failed availability check leaves the form usable`() =
         runTest(mainDispatcherRule.testDispatcher) {
             val vm = viewModel()
-            coEvery { authRepository.getAuthConfig() } returns Result.failure(ApiError.Client(500, "boom"))
+            coEvery { authRepository.getAuthConfig() } returns Result.failure(
+                ApiError.Client(500, "boom")
+            )
             advanceUntilIdle()
 
             assertFalse(vm.uiState.value.registrationDisabled)

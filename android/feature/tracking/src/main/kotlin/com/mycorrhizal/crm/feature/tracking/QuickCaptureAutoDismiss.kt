@@ -15,9 +15,7 @@ import android.os.Looper
  * unit-testable without the overlay's Compose window, which needs a
  * ViewTreeLifecycleOwner that plain Robolectric does not provide.
  */
-internal class QuickCaptureAutoDismiss(
-    private val onDismiss: () -> Unit,
-) {
+internal class QuickCaptureAutoDismiss(private val onDismiss: () -> Unit) {
     private val handler = Handler(Looper.getMainLooper())
 
     fun arm() {

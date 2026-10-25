@@ -1,14 +1,14 @@
 package com.mycorrhizal.crm.feature.occasions
 
 import com.mycorrhizal.crm.model.network.OccasionEvent
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
-import org.junit.Test
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
 import java.util.Locale
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
 
 /** Issue #1753: occasion times render in local time, with web's (#1789) range collapsing. */
 class OccasionsDateFormattingTest {
@@ -21,8 +21,12 @@ class OccasionsDateFormattingTest {
     private fun event(start: String, end: String? = null) =
         OccasionEvent(id = "e1", title = "BBQ", startsAt = start, endsAt = end)
 
-    private fun `when`(event: OccasionEvent, format: String = "eu", zone: ZoneId = chicago, is24Hour: Boolean = true) =
-        formatEventWhen(event, format, is24Hour, zone, locale)
+    private fun `when`(
+        event: OccasionEvent,
+        format: String = "eu",
+        zone: ZoneId = chicago,
+        is24Hour: Boolean = true
+    ) = formatEventWhen(event, format, is24Hour, zone, locale)
 
     @Test
     fun `a start is shown in the device zone, not UTC`() {
@@ -36,7 +40,15 @@ class OccasionsDateFormattingTest {
     @Test
     fun `times follow the 12-24 hour flag in an en-US or de locale`() {
         val e = event("2026-10-26T19:30:00Z", "2026-10-26T21:00:00Z") // 14:30 - 16:00 CDT
-        val us = { h: Boolean -> formatEventWhen(e, "eu", h, chicago, Locale.US).replace('\u202f', ' ') }
+        val us = { h: Boolean ->
+            formatEventWhen(
+                e,
+                "eu",
+                h,
+                chicago,
+                Locale.US
+            ).replace('\u202f', ' ')
+        }
         assertEquals("26.10.2026 14:30 – 16:00", us(true))
         assertEquals("26.10.2026 2:30 PM – 4:00 PM", us(false))
         val de = formatEventWhen(e, "eu", false, chicago, Locale.GERMANY).replace('\u202f', ' ')
@@ -59,15 +71,21 @@ class OccasionsDateFormattingTest {
 
     @Test
     fun `a zero-length event shows no range even with a different spelling of the same instant`() {
-        assertEquals("26.10.2026 13:06", `when`(event("2026-10-26T18:06:00Z", "2026-10-26T18:06:00Z")))
-        assertEquals("26.10.2026 13:06", `when`(event("2026-10-26T18:06:00Z", "2026-10-26T18:06:00.000Z")))
+        assertEquals(
+            "26.10.2026 13:06",
+            `when`(event("2026-10-26T18:06:00Z", "2026-10-26T18:06:00Z"))
+        )
+        assertEquals(
+            "26.10.2026 13:06",
+            `when`(event("2026-10-26T18:06:00Z", "2026-10-26T18:06:00.000Z"))
+        )
     }
 
     @Test
     fun `a same-day event shows date start to end time`() {
         assertEquals(
             "26.10.2026 13:06 – 15:00",
-            `when`(event("2026-10-26T18:06:00Z", "2026-10-26T20:00:00Z")),
+            `when`(event("2026-10-26T18:06:00Z", "2026-10-26T20:00:00Z"))
         )
     }
 
@@ -76,12 +94,12 @@ class OccasionsDateFormattingTest {
         // 23:30Z and 01:30Z the next UTC day are both the 26th in Chicago.
         assertEquals(
             "26.10.2026 18:30 – 20:30",
-            `when`(event("2026-10-26T23:30:00Z", "2026-10-27T01:30:00Z")),
+            `when`(event("2026-10-26T23:30:00Z", "2026-10-27T01:30:00Z"))
         )
         // The same two instants straddle midnight in UTC: two days.
         assertEquals(
             "26.10.2026 23:30 – 27.10.2026 01:30",
-            `when`(event("2026-10-26T23:30:00Z", "2026-10-27T01:30:00Z"), zone = utc),
+            `when`(event("2026-10-26T23:30:00Z", "2026-10-27T01:30:00Z"), zone = utc)
         )
     }
 
@@ -89,7 +107,7 @@ class OccasionsDateFormattingTest {
     fun `a multi-day event shows the full start and end`() {
         assertEquals(
             "26.10.2026 13:06 – 28.10.2026 12:00",
-            `when`(event("2026-10-26T18:06:00Z", "2026-10-28T17:00:00Z")),
+            `when`(event("2026-10-26T18:06:00Z", "2026-10-28T17:00:00Z"))
         )
     }
 
@@ -127,7 +145,11 @@ class OccasionsDateFormattingTest {
         for (zone in listOf(chicago, auckland, utc, ZoneOffset.ofHoursMinutes(5, 30))) {
             val original = Instant.parse("2026-10-27T02:30:00Z")
             val initial = pickerInitial(original, zone)
-            assertEquals(zone.toString(), original.toString(), toRfc3339(initial.dateMillis, initial.hour, initial.minute, zone))
+            assertEquals(
+                zone.toString(),
+                original.toString(),
+                toRfc3339(initial.dateMillis, initial.hour, initial.minute, zone)
+            )
         }
     }
 

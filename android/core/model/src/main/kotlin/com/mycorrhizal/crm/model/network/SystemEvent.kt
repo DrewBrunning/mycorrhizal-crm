@@ -36,7 +36,7 @@ object SystemEventTypes {
         SYNC_STARTED, SYNC_COMPLETED, SYNC_FAILED,
         NOTIFICATION_SENT, NOTIFICATION_FAILED,
         BACKUP_COMPLETED, BACKUP_FAILED, RESTORE_TEST_COMPLETED,
-        INTEGRATION_FAILED,
+        INTEGRATION_FAILED
     )
 }
 
@@ -57,9 +57,14 @@ object SystemEventSeverities {
  */
 object SystemEventComponents {
     val ALL: List<String> = listOf(
-        "app", "scheduler", "migration",
-        "contact_sync", "calendar_sync",
-        "notification", "webhook", "backup",
+        "app",
+        "scheduler",
+        "migration",
+        "contact_sync",
+        "calendar_sync",
+        "notification",
+        "webhook",
+        "backup"
     )
 }
 
@@ -83,14 +88,14 @@ data class SystemEvent(
     @Json(name = "correlation_id") val correlationId: String = "",
     val error: String? = null,
     val detail: String? = null,
-    @Json(name = "user_id") val userId: Long? = null,
+    @Json(name = "user_id") val userId: Long? = null
 )
 
 /** GET /admin/system-events response — `{ system_events, total }`. */
 @JsonClass(generateAdapter = true)
 data class SystemEventsResponse(
     @Json(name = "system_events") val systemEvents: List<SystemEvent> = emptyList(),
-    val total: Int = 0,
+    val total: Int = 0
 )
 
 /**
@@ -109,7 +114,12 @@ object Subsystems {
     const val WEBHOOK = "webhook"
 
     val ALL: List<String> = listOf(
-        CONTACT_SYNC, CALENDAR_SYNC, NOTIFICATION, BACKUP, SCHEDULER, WEBHOOK,
+        CONTACT_SYNC,
+        CALENDAR_SYNC,
+        NOTIFICATION,
+        BACKUP,
+        SCHEDULER,
+        WEBHOOK
     )
 }
 
@@ -137,14 +147,12 @@ data class SubsystemHealth(
     @Json(name = "last_failure_at") val lastFailureAt: String? = null,
     @Json(name = "incident_first_failure_at") val incidentFirstFailureAt: String? = null,
     @Json(name = "consecutive_failures") val consecutiveFailures: Int = 0,
-    @Json(name = "last_error") val lastError: String = "",
+    @Json(name = "last_error") val lastError: String = ""
 )
 
 /** GET /admin/subsystem-health response — `{ subsystems }`. */
 @JsonClass(generateAdapter = true)
-data class SubsystemHealthResponse(
-    val subsystems: List<SubsystemHealth> = emptyList(),
-)
+data class SubsystemHealthResponse(val subsystems: List<SubsystemHealth> = emptyList())
 
 /**
  * One aggregated operational-error cause from `GET /admin/error-aggregation`
@@ -167,7 +175,7 @@ data class ErrorBucket(
     @Json(name = "first_seen") val firstSeen: String = "",
     @Json(name = "last_seen") val lastSeen: String = "",
     @Json(name = "event_ids") val eventIds: List<Long> = emptyList(),
-    @Json(name = "event_ids_truncated") val eventIdsTruncated: Boolean = false,
+    @Json(name = "event_ids_truncated") val eventIdsTruncated: Boolean = false
 )
 
 /** GET /admin/error-aggregation response — `{ window_hours, since, until, total_events, buckets }`. */
@@ -177,7 +185,7 @@ data class ErrorAggregationResponse(
     val since: String = "",
     val until: String = "",
     @Json(name = "total_events") val totalEvents: Int = 0,
-    val buckets: List<ErrorBucket> = emptyList(),
+    val buckets: List<ErrorBucket> = emptyList()
 )
 
 /**
@@ -228,14 +236,14 @@ data class JobRun(
     val error: String? = null,
     @Json(name = "items_processed") val itemsProcessed: Long? = null,
     val detail: String? = null,
-    @Json(name = "correlation_id") val correlationId: String = "",
+    @Json(name = "correlation_id") val correlationId: String = ""
 )
 
 /** GET /admin/job-runs response — `{ job_runs, total }`. */
 @JsonClass(generateAdapter = true)
 data class JobRunsResponse(
     @Json(name = "job_runs") val jobRuns: List<JobRun> = emptyList(),
-    val total: Int = 0,
+    val total: Int = 0
 )
 
 /**
@@ -261,11 +269,9 @@ data class JobRunHealth(
     @Json(name = "consecutive_failures") val consecutiveFailures: Int = 0,
     @Json(name = "duration_sample_size") val durationSampleSize: Int = 0,
     @Json(name = "avg_duration_ms") val avgDurationMs: Long? = null,
-    @Json(name = "max_duration_ms") val maxDurationMs: Long? = null,
+    @Json(name = "max_duration_ms") val maxDurationMs: Long? = null
 )
 
 /** GET /admin/job-runs/health response — `{ jobs }`. */
 @JsonClass(generateAdapter = true)
-data class JobRunHealthResponse(
-    val jobs: List<JobRunHealth> = emptyList(),
-)
+data class JobRunHealthResponse(val jobs: List<JobRunHealth> = emptyList())

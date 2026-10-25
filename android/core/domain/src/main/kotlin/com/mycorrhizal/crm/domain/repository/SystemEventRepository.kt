@@ -26,7 +26,7 @@ interface SystemEventRepository {
         eventType: String? = null,
         correlationId: String? = null,
         ids: List<Long>? = null,
-        limit: Int = 100,
+        limit: Int = 100
     ): Result<SystemEventsResponse>
 
     /**
@@ -58,6 +58,6 @@ interface SystemEventRepository {
     suspend fun jobRuns(
         jobName: String? = null,
         result: String? = null,
-        limit: Int = 100,
+        limit: Int = 100
     ): Result<JobRunsResponse>
 }

@@ -15,15 +15,14 @@ import com.mycorrhizal.crm.data.repository.AppLocale
 import com.mycorrhizal.crm.data.repository.AppSettingsRepositoryImpl
 import com.mycorrhizal.crm.feature.tracking.MycorrhizalNotificationChannels
 import com.mycorrhizal.crm.feature.tracking.TrackingWorkerScheduler
-import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.android.HiltAndroidApp
-import okhttp3.OkHttpClient
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import okhttp3.OkHttpClient
 
 /**
  * Application implementing [Configuration.Provider] so WorkManager uses
@@ -31,7 +30,9 @@ import kotlinx.coroutines.runBlocking
  * Hilt + WorkManager wiring).
  */
 @HiltAndroidApp
-class MycorrhizalApplication : Application(), Configuration.Provider {
+class MycorrhizalApplication :
+    Application(),
+    Configuration.Provider {
 
     @Inject
     lateinit var workerFactory: HiltWorkerFactory

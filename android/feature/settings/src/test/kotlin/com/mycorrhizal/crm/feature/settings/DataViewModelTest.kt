@@ -3,16 +3,16 @@ package com.mycorrhizal.crm.feature.settings
 import com.mycorrhizal.crm.domain.backup.BundleBackupStatus
 import com.mycorrhizal.crm.domain.repository.BundleBackupRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
-import com.mycorrhizal.crm.domain.repository.RelationshipEdgeRepository
 import com.mycorrhizal.crm.domain.repository.ExportRepository
+import com.mycorrhizal.crm.domain.repository.RelationshipEdgeRepository
 import com.mycorrhizal.crm.model.network.ApplyContactAddressSuggestionInput
 import com.mycorrhizal.crm.model.network.ContactAddressSuggestion
 import com.mycorrhizal.crm.model.network.RelationshipEdge
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
 import com.mycorrhizal.crm.ui.R
-import io.mockk.coEvery
 import io.mockk.Runs
+import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.just
@@ -47,14 +47,21 @@ class DataViewModelTest {
         sourceId = "bob-uid",
         sourceName = "Bob",
         relationType = "spouse_of",
-        addressKey = "key1",
+        addressKey = "key1"
     )
 
     @Test
     fun `suggestRelationships records the count of newly created edges`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            coEvery { relationshipEdgeRepository.suggest() } returns Result.success(listOf(RelationshipEdge(id = "e1")))
-            val vm = DataViewModel(contactRepository, relationshipEdgeRepository, exportRepository, bundleBackupRepository)
+            coEvery { relationshipEdgeRepository.suggest() } returns Result.success(
+                listOf(RelationshipEdge(id = "e1"))
+            )
+            val vm = DataViewModel(
+                contactRepository,
+                relationshipEdgeRepository,
+                exportRepository,
+                bundleBackupRepository
+            )
 
             vm.suggestRelationships()
             advanceUntilIdle()
@@ -65,9 +72,18 @@ class DataViewModelTest {
         }
 
     @Test
-    fun `suggestRelationships failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { relationshipEdgeRepository.suggest() } returns Result.failure(ApiError.Client(500, "boom"))
-        val vm = DataViewModel(contactRepository, relationshipEdgeRepository, exportRepository, bundleBackupRepository)
+    fun `suggestRelationships failure surfaces the error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { relationshipEdgeRepository.suggest() } returns Result.failure(
+            ApiError.Client(500, "boom")
+        )
+        val vm = DataViewModel(
+            contactRepository,
+            relationshipEdgeRepository,
+            exportRepository,
+            bundleBackupRepository
+        )
 
         vm.suggestRelationships()
         advanceUntilIdle()
@@ -77,9 +93,18 @@ class DataViewModelTest {
     }
 
     @Test
-    fun `scanAddressSuggestions loads the suggestions`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { contactRepository.suggestContactAddresses() } returns Result.success(listOf(suggestion))
-        val vm = DataViewModel(contactRepository, relationshipEdgeRepository, exportRepository, bundleBackupRepository)
+    fun `scanAddressSuggestions loads the suggestions`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { contactRepository.suggestContactAddresses() } returns Result.success(
+            listOf(suggestion)
+        )
+        val vm = DataViewModel(
+            contactRepository,
+            relationshipEdgeRepository,
+            exportRepository,
+            bundleBackupRepository
+        )
 
         vm.scanAddressSuggestions()
         advanceUntilIdle()
@@ -90,9 +115,18 @@ class DataViewModelTest {
     }
 
     @Test
-    fun `scanAddressSuggestions failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { contactRepository.suggestContactAddresses() } returns Result.failure(ApiError.Client(500, "boom"))
-        val vm = DataViewModel(contactRepository, relationshipEdgeRepository, exportRepository, bundleBackupRepository)
+    fun `scanAddressSuggestions failure surfaces the error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { contactRepository.suggestContactAddresses() } returns Result.failure(
+            ApiError.Client(500, "boom")
+        )
+        val vm = DataViewModel(
+            contactRepository,
+            relationshipEdgeRepository,
+            exportRepository,
+            bundleBackupRepository
+        )
 
         vm.scanAddressSuggestions()
         advanceUntilIdle()
@@ -102,10 +136,23 @@ class DataViewModelTest {
     }
 
     @Test
-    fun `applySuggestion removes the row and reports success`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { contactRepository.suggestContactAddresses() } returns Result.success(listOf(suggestion))
-        coEvery { contactRepository.applyContactAddressSuggestion(any()) } returns Result.success(Unit)
-        val vm = DataViewModel(contactRepository, relationshipEdgeRepository, exportRepository, bundleBackupRepository)
+    fun `applySuggestion removes the row and reports success`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { contactRepository.suggestContactAddresses() } returns Result.success(
+            listOf(suggestion)
+        )
+        coEvery {
+            contactRepository.applyContactAddressSuggestion(
+                any()
+            )
+        } returns Result.success(Unit)
+        val vm = DataViewModel(
+            contactRepository,
+            relationshipEdgeRepository,
+            exportRepository,
+            bundleBackupRepository
+        )
 
         vm.scanAddressSuggestions()
         advanceUntilIdle()
@@ -120,8 +167,8 @@ class DataViewModelTest {
                     contactVCardUid = "alice-uid",
                     sourceKind = "relationship",
                     sourceId = "bob-uid",
-                    addressKey = "key1",
-                ),
+                    addressKey = "key1"
+                )
             )
         }
         assertTrue(vm.uiState.value.addressSuggestions.isEmpty())
@@ -131,10 +178,17 @@ class DataViewModelTest {
     @Test
     fun `applySuggestion failure keeps the row and surfaces the error`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            coEvery { contactRepository.suggestContactAddresses() } returns Result.success(listOf(suggestion))
+            coEvery { contactRepository.suggestContactAddresses() } returns Result.success(
+                listOf(suggestion)
+            )
             coEvery { contactRepository.applyContactAddressSuggestion(any()) } returns
                 Result.failure(ApiError.Client(409, "stale"))
-            val vm = DataViewModel(contactRepository, relationshipEdgeRepository, exportRepository, bundleBackupRepository)
+            val vm = DataViewModel(
+                contactRepository,
+                relationshipEdgeRepository,
+                exportRepository,
+                bundleBackupRepository
+            )
 
             vm.scanAddressSuggestions()
             advanceUntilIdle()
@@ -151,7 +205,12 @@ class DataViewModelTest {
     fun `export CSV fetches the csv bytes and exposes them once`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { exportRepository.exportDataCsv() } returns Result.success("csv".toByteArray())
-            val vm = DataViewModel(contactRepository, relationshipEdgeRepository, exportRepository, bundleBackupRepository)
+            val vm = DataViewModel(
+                contactRepository,
+                relationshipEdgeRepository,
+                exportRepository,
+                bundleBackupRepository
+            )
 
             vm.export(DataExportKind.CSV)
             advanceUntilIdle()
@@ -169,11 +228,24 @@ class DataViewModelTest {
     @Test
     fun `export routes each kind to the matching repository call`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            coEvery { exportRepository.exportContactsVcf(any()) } returns Result.success("vcf".toByteArray())
-            coEvery { exportRepository.exportContactsJsContact() } returns Result.success("[]".toByteArray())
-            coEvery { exportRepository.exportAuditLogCsv() } returns Result.success("a,b".toByteArray())
+            coEvery {
+                exportRepository.exportContactsVcf(
+                    any()
+                )
+            } returns Result.success("vcf".toByteArray())
+            coEvery { exportRepository.exportContactsJsContact() } returns Result.success(
+                "[]".toByteArray()
+            )
+            coEvery { exportRepository.exportAuditLogCsv() } returns Result.success(
+                "a,b".toByteArray()
+            )
 
-            val vm = DataViewModel(contactRepository, relationshipEdgeRepository, exportRepository, bundleBackupRepository)
+            val vm = DataViewModel(
+                contactRepository,
+                relationshipEdgeRepository,
+                exportRepository,
+                bundleBackupRepository
+            )
 
             vm.export(DataExportKind.VCF3)
             advanceUntilIdle()
@@ -201,7 +273,12 @@ class DataViewModelTest {
     fun `export failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { exportRepository.exportContactsVcf(any()) } returns
             Result.failure(ApiError.Client(500, "export failed"))
-        val vm = DataViewModel(contactRepository, relationshipEdgeRepository, exportRepository, bundleBackupRepository)
+        val vm = DataViewModel(
+            contactRepository,
+            relationshipEdgeRepository,
+            exportRepository,
+            bundleBackupRepository
+        )
 
         vm.export(DataExportKind.VCF4)
         advanceUntilIdle()
@@ -213,9 +290,13 @@ class DataViewModelTest {
 
     // --- Issue #1264: account bundle export + restore eligibility ---------------
 
-    private fun newVm() =
-        DataViewModel(contactRepository, relationshipEdgeRepository, exportRepository, bundleBackupRepository)
-            .also { it.nowMillis = { 1_800_000_000_000L } }
+    private fun newVm() = DataViewModel(
+        contactRepository,
+        relationshipEdgeRepository,
+        exportRepository,
+        bundleBackupRepository
+    )
+        .also { it.nowMillis = { 1_800_000_000_000L } }
 
     @Test
     fun `accountBundleFileName embeds the ISO date`() {
@@ -223,7 +304,10 @@ class DataViewModelTest {
         java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("UTC"))
         try {
             // 1_800_000_000 s == 2027-01-15T08:00:00Z.
-            assertEquals("mycorrhizal-account-2027-01-15.json", accountBundleFileName(1_800_000_000_000L))
+            assertEquals(
+                "mycorrhizal-account-2027-01-15.json",
+                accountBundleFileName(1_800_000_000_000L)
+            )
         } finally {
             java.util.TimeZone.setDefault(previous)
         }
@@ -237,7 +321,10 @@ class DataViewModelTest {
             var written: ByteArray? = null
             val vm = newVm()
 
-            vm.exportAccountBundle { written = it; Result.success(Unit) }
+            vm.exportAccountBundle {
+                written = it
+                Result.success(Unit)
+            }
             advanceUntilIdle()
 
             assertTrue(bytes.contentEquals(written))
@@ -247,7 +334,9 @@ class DataViewModelTest {
         }
 
     @Test
-    fun `a failed file write does not record the export`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a failed file write does not record the export`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { exportRepository.exportAccountBundle() } returns Result.success(byteArrayOf(1))
         val vm = newVm()
 
@@ -260,12 +349,19 @@ class DataViewModelTest {
     }
 
     @Test
-    fun `a failed fetch surfaces the error and never calls the writer`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { exportRepository.exportAccountBundle() } returns Result.failure(ApiError.Client(500, "boom"))
+    fun `a failed fetch surfaces the error and never calls the writer`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { exportRepository.exportAccountBundle() } returns Result.failure(
+            ApiError.Client(500, "boom")
+        )
         var wrote = false
         val vm = newVm()
 
-        vm.exportAccountBundle { wrote = true; Result.success(Unit) }
+        vm.exportAccountBundle {
+            wrote = true
+            Result.success(Unit)
+        }
         advanceUntilIdle()
 
         assertEquals(false, wrote)
@@ -274,22 +370,34 @@ class DataViewModelTest {
     }
 
     @Test
-    fun `a second export while one is in flight is ignored`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a second export while one is in flight is ignored`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { exportRepository.exportAccountBundle() } returns Result.success(byteArrayOf(1))
         val vm = newVm()
         var writes = 0
 
-        vm.exportAccountBundle { writes++; Result.success(Unit) }
-        vm.exportAccountBundle { writes++; Result.success(Unit) }
+        vm.exportAccountBundle {
+            writes++
+            Result.success(Unit)
+        }
+        vm.exportAccountBundle {
+            writes++
+            Result.success(Unit)
+        }
         advanceUntilIdle()
 
         assertEquals(1, writes)
     }
 
     @Test
-    fun `restore is offered only on an empty local profile`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `restore is offered only on an empty local profile`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { contactRepository.listContacts(limit = 1) } returns
-            Result.success(com.mycorrhizal.crm.domain.repository.ContactsPage(emptyList(), null, 1, null))
+            Result.success(
+                com.mycorrhizal.crm.domain.repository.ContactsPage(emptyList(), null, 1, null)
+            )
         backupStatus.value = BundleBackupStatus(isLocalProfile = true)
         val vm = newVm()
         advanceUntilIdle()
@@ -307,8 +415,11 @@ class DataViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { contactRepository.listContacts(limit = 1) } returns Result.success(
                 com.mycorrhizal.crm.domain.repository.ContactsPage(
-                    listOf(com.mycorrhizal.crm.model.network.ContactSummary(id = 1)), null, 1, null,
-                ),
+                    listOf(com.mycorrhizal.crm.model.network.ContactSummary(id = 1)),
+                    null,
+                    1,
+                    null
+                )
             )
             backupStatus.value = BundleBackupStatus(isLocalProfile = true)
             val vm = newVm()
@@ -318,8 +429,14 @@ class DataViewModelTest {
         }
 
     @Test
-    fun `restore stays hidden when the emptiness probe fails`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { contactRepository.listContacts(limit = 1) } returns Result.failure(ApiError.Client(500, "x"))
+    fun `restore stays hidden when the emptiness probe fails`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery {
+            contactRepository.listContacts(
+                limit = 1
+            )
+        } returns Result.failure(ApiError.Client(500, "x"))
         backupStatus.value = BundleBackupStatus(isLocalProfile = true)
         val vm = newVm()
         advanceUntilIdle()

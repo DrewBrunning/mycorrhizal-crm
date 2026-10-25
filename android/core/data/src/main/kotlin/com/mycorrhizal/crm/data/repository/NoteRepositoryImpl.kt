@@ -16,7 +16,7 @@ import javax.inject.Inject
  */
 class NoteRepositoryImpl @Inject constructor(
     private val apiClient: ApiClient,
-    private val dao: CachedNoteDao,
+    private val dao: CachedNoteDao
 ) : NoteRepository {
 
     override suspend fun listForContact(
@@ -25,20 +25,31 @@ class NoteRepositoryImpl @Inject constructor(
         limit: Int?,
         search: String?,
         fromDate: String?,
-        toDate: String?,
+        toDate: String?
     ): Result<ContactNotesPage> {
         val result = apiClient.listContactNotes(contactId, cursor, limit, search, fromDate, toDate)
         val response = result.getOrNull()
         if (response != null) {
             dao.upsertAll(response.notes.map { it.toCached() })
         }
-        return result.map { response -> ContactNotesPage(notes = response.notes, nextCursor = response.nextCursor) }
+        return result.map { response ->
+            ContactNotesPage(
+                notes = response.notes,
+                nextCursor = response.nextCursor
+            )
+        }
     }
 
     override suspend fun listUnfiled(cursor: String?, limit: Int?): Result<UnfiledNotesPage> {
         val result = apiClient.listNotes(cursor, limit)
         result.getOrNull()?.let { page -> dao.upsertAll(page.notes.map { it.toCached() }) }
-        return result.map { page -> UnfiledNotesPage(notes = page.notes, nextCursor = page.nextCursor, total = page.total) }
+        return result.map { page ->
+            UnfiledNotesPage(
+                notes = page.notes,
+                nextCursor = page.nextCursor,
+                total = page.total
+            )
+        }
     }
 
     override suspend fun get(id: Int): Result<Note> = apiClient.getNote(id)
@@ -71,6 +82,6 @@ class NoteRepositoryImpl @Inject constructor(
         id = id,
         content = content,
         date = date,
-        deleted = deleted,
+        deleted = deleted
     )
 }

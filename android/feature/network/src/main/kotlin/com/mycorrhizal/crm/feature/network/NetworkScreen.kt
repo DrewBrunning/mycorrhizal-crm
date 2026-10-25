@@ -1,6 +1,5 @@
 package com.mycorrhizal.crm.feature.network
 
-import com.mycorrhizal.crm.ui.components.relationshipRoleLabel
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,7 +22,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -53,12 +51,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.GraphChain
 import com.mycorrhizal.crm.ui.R
-import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.DeceasedDot
+import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.HealthScoreDot
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.components.healthBandLabel
+import com.mycorrhizal.crm.ui.components.relationshipRoleLabel
 
 /**
  * M14: the ego-centric network list over `GET /graph/connections` (the design
@@ -73,7 +73,7 @@ fun NetworkScreen(
     // Issue #150: null hides the hamburger — there is no drawer at Expanded.
     onMenuClick: (() -> Unit)? = {},
     onOpenContact: (Int) -> Unit = {},
-    viewModel: NetworkViewModel = hiltViewModel(),
+    viewModel: NetworkViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -92,7 +92,7 @@ fun NetworkScreen(
         onSearchContacts = viewModel::searchContacts,
         onSelectFrom = viewModel::selectFrom,
         onErrorShown = viewModel::onErrorShown,
-        onRefresh = viewModel::load,
+        onRefresh = viewModel::load
     )
 }
 
@@ -114,7 +114,7 @@ fun NetworkScreenContent(
     onSearchContacts: (String) -> Unit,
     onSelectFrom: (ContactSummary) -> Unit,
     onErrorShown: () -> Unit,
-    onRefresh: () -> Unit = {},
+    onRefresh: () -> Unit = {}
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -127,7 +127,7 @@ fun NetworkScreenContent(
                             AccessibleIconButton(onClick = onMenu) {
                                 Icon(
                                     imageVector = Icons.Outlined.Menu,
-                                    contentDescription = stringResource(R.string.cd_menu),
+                                    contentDescription = stringResource(R.string.cd_menu)
                                 )
                             }
                         }
@@ -135,21 +135,26 @@ fun NetworkScreenContent(
                         AccessibleIconButton(onClick = onBack) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                                contentDescription = stringResource(R.string.cd_back),
+                                contentDescription = stringResource(R.string.cd_back)
                             )
                         }
                     }
                 },
-                title = { Text(stringResource(R.string.nav_network), style = MaterialTheme.typography.titleLarge) },
+                title = {
+                    Text(
+                        stringResource(R.string.nav_network),
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             if (uiState.isLoading) {
@@ -162,23 +167,26 @@ fun NetworkScreenContent(
                 // No starting contact yet (drawer entry without a self contact)
                 // — or a hard start error like "no VCard UID", which is shown
                 // above the picker affordance so the user can recover.
-                Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.padding(24.dp),
+                        modifier = Modifier.padding(24.dp)
                     ) {
                         val startError = uiState.errorRes?.let { stringResource(it) }
                         if (startError != null) {
                             Text(
                                 text = startError,
                                 color = MaterialTheme.colorScheme.error,
-                                style = MaterialTheme.typography.bodyLarge,
+                                style = MaterialTheme.typography.bodyLarge
                             )
                         }
                         Text(
                             text = stringResource(R.string.network_pick_prompt),
-                            style = MaterialTheme.typography.bodyLarge,
+                            style = MaterialTheme.typography.bodyLarge
                         )
                         OutlinedButton(onClick = onOpenPicker) {
                             Text(stringResource(R.string.network_pick_button))
@@ -192,31 +200,34 @@ fun NetworkScreenContent(
                     onDepthChange = onDepthChange,
                     onRelationInputChange = onRelationInputChange,
                     onRelationApply = onRelationApply,
-                    onCircleSelect = onCircleSelect,
+                    onCircleSelect = onCircleSelect
                 )
                 Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     RefreshableContent(
                         isRefreshing = uiState.isLoading && uiState.allChains.isNotEmpty(),
                         onRefresh = onRefresh,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.fillMaxSize()
                     ) {
                         when {
                             uiState.isLoading && uiState.allChains.isEmpty() -> LoadingSkeleton()
+
                             uiState.groupedChains.isEmpty() && uiState.error == null ->
                                 EmptyState(
                                     title = stringResource(R.string.network_empty),
-                                    body = stringResource(R.string.network_empty_body),
+                                    body = stringResource(R.string.network_empty_body)
                                 )
+
                             uiState.groupedChains.isEmpty() && uiState.error != null -> {
                                 Text(
                                     text = uiState.error.orEmpty(),
                                     color = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.align(Alignment.Center),
+                                    modifier = Modifier.align(Alignment.Center)
                                 )
                             }
+
                             else -> NetworkList(
                                 uiState = uiState,
-                                onOpenContact = onOpenContact,
+                                onOpenContact = onOpenContact
                             )
                         }
                     }
@@ -242,7 +253,7 @@ fun NetworkScreenContent(
             uiState = uiState,
             onDismiss = onClosePicker,
             onSearch = onSearchContacts,
-            onSelect = onSelectFrom,
+            onSelect = onSelectFrom
         )
     }
 }
@@ -255,34 +266,36 @@ private fun NetworkControls(
     onDepthChange: (Int) -> Unit,
     onRelationInputChange: (String) -> Unit,
     onRelationApply: () -> Unit,
-    onCircleSelect: (String?) -> Unit,
+    onCircleSelect: (String?) -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         // Start from row.
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Icon(
                 imageVector = Icons.Outlined.Person,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = stringResource(R.string.network_start_from),
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     // Issue #1768: never show the raw vCard UID as a name.
-                    text = uiState.fromName.ifBlank { null } ?: stringResource(R.string.contact_unknown),
+                    text = uiState.fromName.ifBlank { null } ?: stringResource(
+                        R.string.contact_unknown
+                    ),
                     style = MaterialTheme.typography.bodyLarge,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
             TextButton(onClick = onOpenPicker) {
@@ -293,19 +306,19 @@ private fun NetworkControls(
         // Depth stepper (1..3, default 2 — the design's mobile range).
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
                 text = stringResource(R.string.network_depth),
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             DEPTHS.forEach { depth ->
                 FilterChip(
                     selected = uiState.depth == depth,
                     onClick = { onDepthChange(depth) },
                     label = { Text(depth.toString()) },
-                    modifier = Modifier.testTag("depth-$depth"),
+                    modifier = Modifier.testTag("depth-$depth")
                 )
             }
             if (uiState.circles.isNotEmpty()) {
@@ -317,7 +330,7 @@ private fun NetworkControls(
         // Relation filter (free text — token or synonym, passed straight through).
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             OutlinedTextField(
                 value = uiState.relationInput,
@@ -325,11 +338,11 @@ private fun NetworkControls(
                 label = { Text(stringResource(R.string.network_relation)) },
                 placeholder = { Text(stringResource(R.string.network_relation_hint)) },
                 singleLine = true,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f)
             )
             TextButton(
                 onClick = onRelationApply,
-                modifier = Modifier.testTag("relation-apply"),
+                modifier = Modifier.testTag("relation-apply")
             ) {
                 Text(stringResource(R.string.network_relation_apply))
             }
@@ -338,18 +351,18 @@ private fun NetworkControls(
 }
 
 @Composable
-private fun CircleFilter(
-    uiState: NetworkUiState,
-    onCircleSelect: (String?) -> Unit,
-) {
+private fun CircleFilter(uiState: NetworkUiState, onCircleSelect: (String?) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     val selectedName = uiState.circles.find { it.id == uiState.selectedCircleId }?.name
     Box {
-        OutlinedButton(onClick = { expanded = true }, modifier = Modifier.testTag("circle-filter")) {
+        OutlinedButton(
+            onClick = { expanded = true },
+            modifier = Modifier.testTag("circle-filter")
+        ) {
             Text(
                 text = selectedName ?: stringResource(R.string.network_all_circles),
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -358,7 +371,7 @@ private fun CircleFilter(
                 onClick = {
                     expanded = false
                     onCircleSelect(null)
-                },
+                }
             )
             uiState.circles.forEach { circle ->
                 DropdownMenuItem(
@@ -366,7 +379,7 @@ private fun CircleFilter(
                     onClick = {
                         expanded = false
                         onCircleSelect(circle.id)
-                    },
+                    }
                 )
             }
         }
@@ -374,10 +387,7 @@ private fun CircleFilter(
 }
 
 @Composable
-private fun NetworkList(
-    uiState: NetworkUiState,
-    onOpenContact: (Int) -> Unit,
-) {
+private fun NetworkList(uiState: NetworkUiState, onOpenContact: (Int) -> Unit) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         DEPTHS.forEach { depth ->
             val chains = uiState.groupedChains[depth].orEmpty()
@@ -391,10 +401,13 @@ private fun NetworkList(
                         },
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     )
                 }
-                items(chains, key = { it.targetVCardUid.ifBlank { it.targetId.toString() } }) { chain ->
+                items(
+                    chains,
+                    key = { it.targetVCardUid.ifBlank { it.targetId.toString() } }
+                ) { chain ->
                     NetworkRow(chain = chain, onOpenContact = onOpenContact)
                 }
             }
@@ -411,10 +424,7 @@ private fun NetworkList(
  * not tappable.
  */
 @Composable
-private fun NetworkRow(
-    chain: GraphChain,
-    onOpenContact: (Int) -> Unit,
-) {
+private fun NetworkRow(chain: GraphChain, onOpenContact: (Int) -> Unit) {
     // Issue #383 (ADR-0023): the target's server-computed health band, when
     // present, is spelled out in words as a third component of the row's
     // merged content description — the same rule the dot's color follows
@@ -428,7 +438,9 @@ private fun NetworkRow(
     // Issue #1763: omit the target's own name from the subtitle/label — the row
     // title already shows it, and a direct connection used to read
     // "Bea Fontaine — Bea Fontaine (related to)".
-    val readablePath = chain.readablePathToTarget(chain.stepsOrEmpty.map { relationshipRoleLabel(it.relation) })
+    val readablePath = chain.readablePathToTarget(
+        chain.stepsOrEmpty.map { relationshipRoleLabel(it.relation) }
+    )
     val band = chain.healthBand
     val statusLabel = if (chain.deceased) {
         stringResource(R.string.contact_deceased_badge)
@@ -440,13 +452,13 @@ private fun NetworkRow(
             R.string.network_row_description_with_health,
             chain.displayName,
             readablePath,
-            statusLabel,
+            statusLabel
         )
     } else {
         stringResource(
             R.string.network_row_description,
             chain.displayName,
-            readablePath,
+            readablePath
         )
     }
     val clickable = if (chain.targetId != 0) {
@@ -463,7 +475,7 @@ private fun NetworkRow(
             .then(clickable)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         if (chain.deceased) {
             DeceasedDot()
@@ -475,14 +487,14 @@ private fun NetworkRow(
                 text = chain.displayName,
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = readablePath,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -493,7 +505,7 @@ internal fun ContactPickerDialog(
     uiState: NetworkUiState,
     onDismiss: () -> Unit,
     onSearch: (String) -> Unit,
-    onSelect: (ContactSummary) -> Unit,
+    onSelect: (ContactSummary) -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -505,27 +517,29 @@ internal fun ContactPickerDialog(
                     onValueChange = onSearch,
                     label = { Text(stringResource(R.string.network_search_contacts)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth().testTag("picker-search"),
+                    modifier = Modifier.fillMaxWidth().testTag("picker-search")
                 )
                 if (uiState.contactSearchLoading) {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    )
                 } else if (uiState.contactSearchResults.isEmpty()) {
                     Text(
                         text = stringResource(R.string.network_pick_no_results),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 } else {
                     Column {
                         uiState.contactSearchResults.forEach { contact ->
                             TextButton(
                                 onClick = { onSelect(contact) },
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(
                                     text = contact.displayName,
                                     maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
@@ -538,7 +552,7 @@ internal fun ContactPickerDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
-        },
+        }
     )
 }
 

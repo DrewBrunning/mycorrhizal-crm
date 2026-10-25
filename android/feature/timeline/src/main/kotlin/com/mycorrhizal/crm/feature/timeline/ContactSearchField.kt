@@ -38,7 +38,7 @@ fun ContactSearchField(
     onPick: (ContactSummary) -> Unit,
     labelRes: Int,
     hiddenMatchCount: Int = 0,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
         OutlinedTextField(
@@ -51,14 +51,15 @@ fun ContactSearchField(
                     CircularProgressIndicator(modifier = Modifier.padding(4.dp), strokeWidth = 2.dp)
                 }
             },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         )
         when {
             query.isBlank() -> Text(
                 text = stringResource(R.string.timeline_type_to_search),
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+
             // "No contacts found" only when the server genuinely returned nothing.
             // If the caller's strict filter dropped every result, the caption
             // below explains it instead ("0 shown, N matched on other fields") —
@@ -66,8 +67,9 @@ fun ContactSearchField(
             !loading && results.isEmpty() && hiddenMatchCount == 0 -> Text(
                 text = stringResource(R.string.timeline_no_contacts_found),
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+
             else -> {
                 if (results.isNotEmpty()) {
                     LazyColumn(modifier = Modifier.heightIn(max = 200.dp)) {
@@ -78,7 +80,7 @@ fun ContactSearchField(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable { onPick(contact) }
-                                    .padding(vertical = 8.dp),
+                                    .padding(vertical = 8.dp)
                             )
                         }
                     }
@@ -91,10 +93,10 @@ fun ContactSearchField(
                         text = stringResource(
                             R.string.merge_hidden_matches,
                             results.size,
-                            hiddenMatchCount,
+                            hiddenMatchCount
                         ),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }

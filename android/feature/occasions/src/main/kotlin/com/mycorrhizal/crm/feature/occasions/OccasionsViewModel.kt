@@ -8,19 +8,19 @@ import com.mycorrhizal.crm.model.network.OccasionEvent
 import com.mycorrhizal.crm.model.network.OccasionEventInput
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class OccasionsUiState(
     val events: List<OccasionEvent> = emptyList(),
     val isLoading: Boolean = false,
     val isMutating: Boolean = false,
     @StringRes val errorRes: Int? = null,
-    val error: String? = null,
+    val error: String? = null
 )
 
 /**
@@ -29,9 +29,8 @@ data class OccasionsUiState(
  * [OccasionAttendeesViewModel], reached per event.
  */
 @HiltViewModel
-class OccasionsViewModel @Inject constructor(
-    private val repository: OccasionEventRepository,
-) : ViewModel() {
+class OccasionsViewModel @Inject constructor(private val repository: OccasionEventRepository) :
+    ViewModel() {
 
     private val _uiState = MutableStateFlow(OccasionsUiState())
     val uiState: StateFlow<OccasionsUiState> = _uiState.asStateFlow()
@@ -44,8 +43,22 @@ class OccasionsViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null, errorRes = null) }
             repository.list().foldApiError(
-                onSuccess = { events -> _uiState.update { it.copy(isLoading = false, events = events) } },
-                onError = { error -> _uiState.update { it.copy(isLoading = false, error = error.displayMessage) } },
+                onSuccess = { events ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            events = events
+                        )
+                    }
+                },
+                onError = { error ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }
@@ -57,18 +70,20 @@ class OccasionsViewModel @Inject constructor(
         endsAt: String?,
         location: String?,
         sensitivity: String,
-        notes: String?,
+        notes: String?
     ) {
         if (_uiState.value.isMutating) return
         viewModelScope.launch {
             _uiState.update { it.copy(isMutating = true, error = null) }
             var failed = false
-            repository.create(OccasionEventInput(title, startsAt, endsAt, location, sensitivity, notes)).foldApiError(
+            repository.create(
+                OccasionEventInput(title, startsAt, endsAt, location, sensitivity, notes)
+            ).foldApiError(
                 onSuccess = { _uiState.update { it.copy(isMutating = false) } },
                 onError = { error ->
                     failed = true
                     _uiState.update { it.copy(isMutating = false, error = error.displayMessage) }
-                },
+                }
             )
             if (!failed) reload()
         }
@@ -82,18 +97,21 @@ class OccasionsViewModel @Inject constructor(
         endsAt: String?,
         location: String?,
         sensitivity: String,
-        notes: String?,
+        notes: String?
     ) {
         if (_uiState.value.isMutating) return
         viewModelScope.launch {
             _uiState.update { it.copy(isMutating = true, error = null) }
             var failed = false
-            repository.update(id, OccasionEventInput(title, startsAt, endsAt, location, sensitivity, notes)).foldApiError(
+            repository.update(
+                id,
+                OccasionEventInput(title, startsAt, endsAt, location, sensitivity, notes)
+            ).foldApiError(
                 onSuccess = { _uiState.update { it.copy(isMutating = false) } },
                 onError = { error ->
                     failed = true
                     _uiState.update { it.copy(isMutating = false, error = error.displayMessage) }
-                },
+                }
             )
             if (!failed) reload()
         }
@@ -110,7 +128,7 @@ class OccasionsViewModel @Inject constructor(
                 onError = { error ->
                     failed = true
                     _uiState.update { it.copy(isMutating = false, error = error.displayMessage) }
-                },
+                }
             )
             if (!failed) reload()
         }
@@ -119,7 +137,7 @@ class OccasionsViewModel @Inject constructor(
     private suspend fun reload() {
         repository.list().foldApiError(
             onSuccess = { events -> _uiState.update { it.copy(events = events) } },
-            onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } },
+            onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } }
         )
     }
 

@@ -58,20 +58,20 @@ fun PinnedSaveBar(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    disabledHint: String? = null,
+    disabledHint: String? = null
 ) {
     val savingLabel = stringResource(R.string.a11y_state_saving)
     Surface(
         modifier = modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 3.dp,
-        shadowElevation = 3.dp,
+        shadowElevation = 3.dp
     ) {
         Column(
             modifier = Modifier
                 .navigationBarsPadding()
                 .imePadding()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
             // Issue #1773 / #1760: a button disabled until some input is present says
             // what enables it, as a line under the form and as its TalkBack state.
@@ -81,7 +81,7 @@ fun PinnedSaveBar(
                     text = it,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 4.dp),
+                    modifier = Modifier.padding(bottom = 4.dp)
                 )
             }
             Button(
@@ -95,7 +95,7 @@ fun PinnedSaveBar(
                         } else if (hint != null) {
                             stateDescription = hint
                         }
-                    },
+                    }
             ) {
                 if (isSaving) {
                     CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
@@ -132,7 +132,7 @@ fun FormScaffold(
     saveDisabledHint: String? = null,
     isDirty: Boolean = false,
     entityLabel: String = "",
-    content: @Composable (PaddingValues) -> Unit,
+    content: @Composable (PaddingValues) -> Unit
 ) {
     var showDiscardDialog by rememberSaveable { mutableStateOf(false) }
     // Issue #1772: on a phone in landscape (or a half-height split-screen window) the pinned
@@ -161,7 +161,10 @@ fun FormScaffold(
                 TopAppBar(
                     navigationIcon = {
                         AccessibleIconButton(onClick = requestBack) {
-                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                            Icon(
+                                Icons.AutoMirrored.Outlined.ArrowBack,
+                                contentDescription = stringResource(R.string.cd_back)
+                            )
                         }
                     },
                     title = { ScreenTitle(text = title) },
@@ -172,7 +175,9 @@ fun FormScaffold(
                                 enabled = saveEnabled && !isSaving,
                                 colors = ButtonDefaults.textButtonColors(
                                     contentColor = MaterialTheme.colorScheme.onPrimary,
-                                    disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.38f),
+                                    disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(
+                                        alpha = 0.38f
+                                    )
                                 ),
                                 modifier = Modifier
                                     .testTag("form-save-top-action")
@@ -182,14 +187,14 @@ fun FormScaffold(
                                         } else if (topBarHint != null) {
                                             stateDescription = topBarHint
                                         }
-                                    },
+                                    }
                             ) {
                                 if (isSaving) {
                                     CircularProgressIndicator(
                                         modifier = Modifier
                                             .padding(end = 8.dp)
                                             .size(16.dp),
-                                        strokeWidth = 2.dp,
+                                        strokeWidth = 2.dp
                                     )
                                 }
                                 Text(saveLabel)
@@ -200,8 +205,8 @@ fun FormScaffold(
                         containerColor = MaterialTheme.colorScheme.primary,
                         titleContentColor = MaterialTheme.colorScheme.onPrimary,
                         navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                        actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
+                        actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 )
                 if (topBarHint != null) {
                     Text(
@@ -210,7 +215,7 @@ fun FormScaffold(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                            .padding(horizontal = 16.dp, vertical = 4.dp)
                     )
                 }
             }
@@ -223,12 +228,12 @@ fun FormScaffold(
                     onClick = onSave,
                     enabled = saveEnabled,
                     disabledHint = saveDisabledHint,
-                    modifier = Modifier.testTag("form-save-bar"),
+                    modifier = Modifier.testTag("form-save-bar")
                 )
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        content = content,
+        content = content
     )
 
     if (showDiscardDialog) {
@@ -238,7 +243,7 @@ fun FormScaffold(
             onDiscard = {
                 showDiscardDialog = false
                 onBack()
-            },
+            }
         )
     }
 }

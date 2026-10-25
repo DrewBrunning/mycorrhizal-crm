@@ -1,9 +1,9 @@
 package com.mycorrhizal.crm.ui
 
+import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 /**
  * Issue #1760: headings, labels and buttons are sentence case (Material 3, and
@@ -21,13 +21,13 @@ class SentenceCaseStringsTest {
 
     private val properNouns = setOf(
         "Immich", "Paperless", "Seafile", "Nextcloud", "ownCloud", "GeoPulse",
-        "Gotify", "Mycorrhizal", "Android",
+        "Gotify", "Mycorrhizal", "Android"
     )
 
     /** key -> why it legitimately carries a capitalised non-initial word. */
     private val exceptions = mapOf(
         // The name of the Android system app, not a heading word.
-        "contact_open_in_contacts" to "names the Contacts app",
+        "contact_open_in_contacts" to "names the Contacts app"
     )
 
     private val word = Regex("""^[A-ZÀ-Ý][a-zà-ÿ]+[,:?!]?$""")
@@ -60,13 +60,21 @@ class SentenceCaseStringsTest {
 
     @Test
     fun `English strings carry no Title Case headings`() {
-        assertEquals("Title Case strings in values/strings.xml", emptyList<String>(), offenders("values"))
+        assertEquals(
+            "Title Case strings in values/strings.xml",
+            emptyList<String>(),
+            offenders("values")
+        )
     }
 
     @Test
     fun `Spanish French and Italian strings carry no Title Case headings`() {
         for (dir in listOf("values-es", "values-fr", "values-it")) {
-            assertEquals("Title Case strings in $dir/strings.xml", emptyList<String>(), offenders(dir))
+            assertEquals(
+                "Title Case strings in $dir/strings.xml",
+                emptyList<String>(),
+                offenders(dir)
+            )
         }
     }
 

@@ -1,9 +1,9 @@
 package com.mycorrhizal.crm.data.passkey
 
 import com.mycorrhizal.crm.data.session.SessionManager
-import com.mycorrhizal.crm.domain.compat.ServerCapability
 import com.mycorrhizal.crm.domain.compat.ServerCapabilitiesInfo
 import com.mycorrhizal.crm.domain.compat.ServerCapabilitiesStore
+import com.mycorrhizal.crm.domain.compat.ServerCapability
 import com.mycorrhizal.crm.domain.compat.toCapabilitiesInfo
 import com.mycorrhizal.crm.domain.profile.ServerProfileKind
 import com.mycorrhizal.crm.domain.repository.ServerCompatibilityRepository
@@ -41,7 +41,7 @@ class DefaultPasskeyAvailability @Inject constructor(
     private val client: PasskeyCredentialClient,
     private val capabilitiesStore: ServerCapabilitiesStore,
     private val sessionManager: SessionManager,
-    private val serverCompatibility: ServerCompatibilityRepository,
+    private val serverCompatibility: ServerCompatibilityRepository
 ) : PasskeyAvailability {
     override suspend fun isAvailable(): Boolean {
         if (!client.isSupported()) return false
@@ -66,5 +66,7 @@ abstract class PasskeyModule {
     abstract fun bindPasskeyAvailability(impl: DefaultPasskeyAvailability): PasskeyAvailability
 
     @Binds
-    abstract fun bindPasskeyCredentialClient(impl: CredentialManagerPasskeyClient): PasskeyCredentialClient
+    abstract fun bindPasskeyCredentialClient(
+        impl: CredentialManagerPasskeyClient
+    ): PasskeyCredentialClient
 }

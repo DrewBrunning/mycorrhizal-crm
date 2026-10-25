@@ -44,7 +44,11 @@ object RoomDatabaseRecovery {
     fun openOrRebuild(dbFile: File, build: () -> AppDatabase): AppDatabase { // # pragma: no cover — needs a real Room/SQLCipher database; see RoomDatabaseRecoveryTest (app/androidTest)
         val db = build() // # pragma: no cover
         try { // # pragma: no cover
-            db.openHelper.writableDatabase.query("SELECT count(*) FROM sqlite_master", emptyArray()).use { // # pragma: no cover
+            db.openHelper.writableDatabase.query(
+                "SELECT count(*) FROM sqlite_master",
+                emptyArray()
+            ).use {
+                // # pragma: no cover
                 it.moveToFirst() // # pragma: no cover
             } // # pragma: no cover
             return db // # pragma: no cover

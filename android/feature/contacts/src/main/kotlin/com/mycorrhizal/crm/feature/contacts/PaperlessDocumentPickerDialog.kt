@@ -3,11 +3,11 @@ package com.mycorrhizal.crm.feature.contacts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
@@ -43,7 +43,7 @@ fun PaperlessDocumentPickerDialog(
     documents: List<PaperlessDocument>,
     loading: Boolean,
     onSelect: (PaperlessDocument) -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     var query by remember { mutableStateOf("") }
     AlertDialog(
@@ -56,26 +56,30 @@ fun PaperlessDocumentPickerDialog(
                     onValueChange = { query = it },
                     label = { Text(stringResource(R.string.paperless_picker_search_placeholder)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(Modifier.height(8.dp))
                 when {
                     loading -> Box(
                         modifier = Modifier.fillMaxWidth().padding(24.dp),
-                        contentAlignment = Alignment.Center,
+                        contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator()
                     }
+
                     else -> {
                         val filtered = documents.filter {
-                            query.isBlank() || (it.title ?: "").contains(query.trim(), ignoreCase = true)
+                            query.isBlank() || (it.title ?: "").contains(
+                                query.trim(),
+                                ignoreCase = true
+                            )
                         }
                         if (filtered.isEmpty()) {
                             Text(
                                 text = stringResource(R.string.paperless_picker_no_matches),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(vertical = 8.dp),
+                                modifier = Modifier.padding(vertical = 8.dp)
                             )
                         } else {
                             LazyColumn(modifier = Modifier.heightIn(max = 320.dp)) {
@@ -84,17 +88,19 @@ fun PaperlessDocumentPickerDialog(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .clickable { onSelect(document) }
-                                            .padding(vertical = 10.dp),
+                                            .padding(vertical = 10.dp)
                                     ) {
                                         Text(
                                             text = document.title?.ifBlank { null }
-                                                ?: stringResource(R.string.paperless_picker_untitled),
-                                            style = MaterialTheme.typography.bodyLarge,
+                                                ?: stringResource(
+                                                    R.string.paperless_picker_untitled
+                                                ),
+                                            style = MaterialTheme.typography.bodyLarge
                                         )
                                         Text(
                                             text = document.fileName ?: "#${document.id}",
                                             style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
                                 }
@@ -107,6 +113,6 @@ fun PaperlessDocumentPickerDialog(
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
-        },
+        }
     )
 }

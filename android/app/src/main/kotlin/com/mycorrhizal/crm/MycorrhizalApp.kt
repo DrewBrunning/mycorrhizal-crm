@@ -1,14 +1,14 @@
 @file:OptIn(
     androidx.compose.material3.ExperimentalMaterial3Api::class,
-    androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi::class,
+    androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi::class
 )
 
 package com.mycorrhizal.crm
 
-import androidx.annotation.StringRes
-import android.view.accessibility.AccessibilityManager
 import android.net.Uri
 import android.os.Build
+import android.view.accessibility.AccessibilityManager
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -36,7 +36,6 @@ import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
@@ -67,7 +66,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -78,19 +76,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.mycorrhizal.crm.feature.contacts.ContactListViewModel
-import androidx.activity.compose.BackHandler
-import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavDestination
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
-import androidx.navigation.navArgument
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.mycorrhizal.crm.applock.AppLockScreen
 import com.mycorrhizal.crm.compat.ForceUpdateScreen
 import com.mycorrhizal.crm.compat.ServerOutdatedNotice
@@ -102,103 +96,104 @@ import com.mycorrhizal.crm.domain.compat.ServerCapabilitiesInfo
 import com.mycorrhizal.crm.domain.compat.ServerCapability
 import com.mycorrhizal.crm.domain.compat.ServerFeature
 import com.mycorrhizal.crm.enroll.BiometricEnrollmentPromptHost
-import com.mycorrhizal.crm.model.AppVersion
-import com.mycorrhizal.crm.model.util.DateFormat
-import com.mycorrhizal.crm.model.util.TimeFormatPreference
+import com.mycorrhizal.crm.feature.audit.AuditScreen
+import com.mycorrhizal.crm.feature.auth.ForgotPasswordScreen
 import com.mycorrhizal.crm.feature.auth.LoginScreen
 import com.mycorrhizal.crm.feature.auth.RegisterScreen
-import com.mycorrhizal.crm.feature.auth.ForgotPasswordScreen
-import com.mycorrhizal.crm.feature.audit.AuditScreen
-import com.mycorrhizal.crm.feature.sysevents.SystemEventsScreen
 import com.mycorrhizal.crm.feature.cadence.CadenceScreen
-import com.mycorrhizal.crm.feature.occasions.OccasionAttendeesScreen
-import com.mycorrhizal.crm.feature.occasions.OccasionsScreen
 import com.mycorrhizal.crm.feature.circles.CircleDetailScreen
 import com.mycorrhizal.crm.feature.circles.CirclesScreen
+import com.mycorrhizal.crm.feature.circles.TriageScreen
+import com.mycorrhizal.crm.feature.contacts.AttachmentsScreen
 import com.mycorrhizal.crm.feature.contacts.ContactAnniversariesScreen
 import com.mycorrhizal.crm.feature.contacts.ContactDetailScreen
-import com.mycorrhizal.crm.feature.contacts.ContactSkillsScreen
-import com.mycorrhizal.crm.feature.contacts.ContactWorkScreen
-import com.mycorrhizal.crm.feature.contacts.AttachmentsScreen
 import com.mycorrhizal.crm.feature.contacts.ContactFormScreen
 import com.mycorrhizal.crm.feature.contacts.ContactListScreen
+import com.mycorrhizal.crm.feature.contacts.ContactListViewModel
+import com.mycorrhizal.crm.feature.contacts.ContactSkillsScreen
+import com.mycorrhizal.crm.feature.contacts.ContactWorkScreen
 import com.mycorrhizal.crm.feature.contacts.DashboardScreen
 import com.mycorrhizal.crm.feature.contacts.DuplicatePairsScreen
-import com.mycorrhizal.crm.feature.contacts.PrepViewScreen
 import com.mycorrhizal.crm.feature.contacts.MergeContactsScreen
-import com.mycorrhizal.crm.feature.circles.TriageScreen
+import com.mycorrhizal.crm.feature.contacts.PrepViewScreen
 import com.mycorrhizal.crm.feature.households.HouseholdDetailScreen
 import com.mycorrhizal.crm.feature.households.HouseholdsScreen
+import com.mycorrhizal.crm.feature.imports.BundleRestoreScreen
 import com.mycorrhizal.crm.feature.imports.CsvImportScreen
 import com.mycorrhizal.crm.feature.imports.ImportContactsScreen
-import com.mycorrhizal.crm.feature.imports.BundleRestoreScreen
 import com.mycorrhizal.crm.feature.imports.ImportHistoryScreen
 import com.mycorrhizal.crm.feature.imports.VcfImportScreen
 import com.mycorrhizal.crm.feature.map.MapScreen
 import com.mycorrhizal.crm.feature.network.NetworkScreen
+import com.mycorrhizal.crm.feature.occasions.OccasionAttendeesScreen
+import com.mycorrhizal.crm.feature.occasions.OccasionsScreen
 import com.mycorrhizal.crm.feature.relationships.RelationshipsScreen
+import com.mycorrhizal.crm.feature.settings.AboutSettingsScreen
+import com.mycorrhizal.crm.feature.settings.AccountSettingsScreen
+import com.mycorrhizal.crm.feature.settings.AdministrationSettingsScreen
+import com.mycorrhizal.crm.feature.settings.ApiTokensScreen
+import com.mycorrhizal.crm.feature.settings.AppearanceSettingsScreen
+import com.mycorrhizal.crm.feature.settings.AttachToRemoteScreen
+import com.mycorrhizal.crm.feature.settings.CalendarSyncScreen
+import com.mycorrhizal.crm.feature.settings.ChangePasswordScreen
 import com.mycorrhizal.crm.feature.settings.ContactFieldSettingsScreen
+import com.mycorrhizal.crm.feature.settings.ContactsFieldsSettingsScreen
 import com.mycorrhizal.crm.feature.settings.CustomExportScreen
 import com.mycorrhizal.crm.feature.settings.CustomLinkActionsScreen
 import com.mycorrhizal.crm.feature.settings.DataScreen
 import com.mycorrhizal.crm.feature.settings.FieldDefinitionFormScreen
 import com.mycorrhizal.crm.feature.settings.FieldDefinitionsScreen
 import com.mycorrhizal.crm.feature.settings.GeoPulseSettingsScreen
-import com.mycorrhizal.crm.feature.timeline.GeoPulseSuggestionsScreen
 import com.mycorrhizal.crm.feature.settings.ImmichSettingsScreen
+import com.mycorrhizal.crm.feature.settings.IntegrationsSettingsScreen
 import com.mycorrhizal.crm.feature.settings.NextcloudSettingsScreen
 import com.mycorrhizal.crm.feature.settings.NotificationChannelsScreen
 import com.mycorrhizal.crm.feature.settings.PaperlessSettingsScreen
-import com.mycorrhizal.crm.feature.settings.SeafileSettingsScreen
-import com.mycorrhizal.crm.feature.settings.AttachToRemoteScreen
-import com.mycorrhizal.crm.feature.settings.ServersScreen
-import com.mycorrhizal.crm.feature.settings.AboutSettingsScreen
-import com.mycorrhizal.crm.feature.settings.ThirdPartyLicensesScreen
-import com.mycorrhizal.crm.feature.settings.AccountSettingsScreen
-import com.mycorrhizal.crm.feature.settings.AdministrationSettingsScreen
-import com.mycorrhizal.crm.feature.settings.AppearanceSettingsScreen
-import com.mycorrhizal.crm.feature.settings.ChangePasswordScreen
-import com.mycorrhizal.crm.feature.settings.ContactsFieldsSettingsScreen
-import com.mycorrhizal.crm.feature.settings.IntegrationsSettingsScreen
+import com.mycorrhizal.crm.feature.settings.PasskeysScreen
 import com.mycorrhizal.crm.feature.settings.PrivacySettingsScreen
+import com.mycorrhizal.crm.feature.settings.SeafileSettingsScreen
+import com.mycorrhizal.crm.feature.settings.ServersScreen
 import com.mycorrhizal.crm.feature.settings.SettingsRoutes
 import com.mycorrhizal.crm.feature.settings.SettingsScreen
+import com.mycorrhizal.crm.feature.settings.ThirdPartyLicensesScreen
 import com.mycorrhizal.crm.feature.settings.TrackingSettingsScreen
-import com.mycorrhizal.crm.feature.settings.PasskeysScreen
 import com.mycorrhizal.crm.feature.settings.TwoFactorScreen
-import com.mycorrhizal.crm.feature.settings.ApiTokensScreen
-import com.mycorrhizal.crm.feature.settings.CalendarSyncScreen
 import com.mycorrhizal.crm.feature.settings.WebhooksScreen
 import com.mycorrhizal.crm.feature.shares.ContactSharesScreen
 import com.mycorrhizal.crm.feature.shares.ShareContactScreen
-import com.mycorrhizal.crm.feature.timelineentities.ConversationAgendaScreen
-import com.mycorrhizal.crm.feature.timelineentities.GiftsScreen
-import com.mycorrhizal.crm.feature.timelineentities.LifeEventsScreen
-import com.mycorrhizal.crm.feature.timelineentities.PreferencesScreen
+import com.mycorrhizal.crm.feature.sysevents.SystemEventsScreen
 import com.mycorrhizal.crm.feature.tags.TagDetailScreen
 import com.mycorrhizal.crm.feature.tags.TagsScreen
-import com.mycorrhizal.crm.feature.users.UsersScreen
-import kotlinx.coroutines.launch
 import com.mycorrhizal.crm.feature.timeline.ActivitiesInboxScreen
 import com.mycorrhizal.crm.feature.timeline.ActivitiesScreen
 import com.mycorrhizal.crm.feature.timeline.ActivityFormScreen
+import com.mycorrhizal.crm.feature.timeline.GeoPulseSuggestionsScreen
 import com.mycorrhizal.crm.feature.timeline.NoteFormScreen
 import com.mycorrhizal.crm.feature.timeline.NotesInboxScreen
 import com.mycorrhizal.crm.feature.timeline.NotesScreen
 import com.mycorrhizal.crm.feature.timeline.ReminderFormScreen
 import com.mycorrhizal.crm.feature.timeline.RemindersScreen
 import com.mycorrhizal.crm.feature.timeline.TimelineExplorerScreen
+import com.mycorrhizal.crm.feature.timelineentities.ConversationAgendaScreen
+import com.mycorrhizal.crm.feature.timelineentities.GiftsScreen
+import com.mycorrhizal.crm.feature.timelineentities.LifeEventsScreen
+import com.mycorrhizal.crm.feature.timelineentities.PreferencesScreen
 import com.mycorrhizal.crm.feature.tracking.DeviceRegistrationViewModel
-import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.feature.users.UsersScreen
+import com.mycorrhizal.crm.model.AppVersion
+import com.mycorrhizal.crm.model.util.DateFormat
+import com.mycorrhizal.crm.model.util.TimeFormatPreference
 import com.mycorrhizal.crm.ui.LocalDarkTheme
-import com.mycorrhizal.crm.ui.LocalDrawerOpen
-import com.mycorrhizal.crm.ui.LocalServerCapabilities
 import com.mycorrhizal.crm.ui.LocalDateFormat
+import com.mycorrhizal.crm.ui.LocalDrawerOpen
 import com.mycorrhizal.crm.ui.LocalIs24Hour
+import com.mycorrhizal.crm.ui.LocalServerCapabilities
 import com.mycorrhizal.crm.ui.LocalServerUrl
 import com.mycorrhizal.crm.ui.LocalServerVersion
+import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.EmptyState
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.launch
 
 /**
  * Issue #1263 / ADR 0028 Decision 2: a nav entry is shown only when the
@@ -209,7 +204,7 @@ import kotlinx.coroutines.flow.filterNotNull
  */
 private fun isDestinationAvailable(
     item: TopLevelDestination,
-    capabilities: ServerCapabilitiesInfo,
+    capabilities: ServerCapabilitiesInfo
 ): Boolean = when (item.route) {
     "shares" -> capabilities.supports(ServerCapability.CONTACT_SHARES)
     else -> true
@@ -259,20 +254,18 @@ internal fun NavHostController.navigateToRoot(route: String) {
  * included because it is part of the contact workflow (reached from the detail
  * screen). Pure so the host-level width-class tests assert the boundary.
  */
-internal fun isInContactsSection(route: String?): Boolean =
-    route == "contacts" ||
-        route == "contacts?search={search}" ||
-        route == "merge" ||
-        route?.startsWith("contacts/") == true ||
-        route?.startsWith("merge/") == true
+internal fun isInContactsSection(route: String?): Boolean = route == "contacts" ||
+    route == "contacts?search={search}" ||
+    route == "merge" ||
+    route?.startsWith("contacts/") == true ||
+    route?.startsWith("merge/") == true
 
-private fun androidx.compose.ui.graphics.Color.toArgbCompat(): Int =
-    android.graphics.Color.argb(
-        (alpha * 255).toInt(),
-        (red * 255).toInt(),
-        (green * 255).toInt(),
-        (blue * 255).toInt(),
-    )
+private fun androidx.compose.ui.graphics.Color.toArgbCompat(): Int = android.graphics.Color.argb(
+    (alpha * 255).toInt(),
+    (red * 255).toInt(),
+    (green * 255).toInt(),
+    (blue * 255).toInt()
+)
 
 // Hilt-rooted root composable: hosts the full DI/nav graph plus the
 // OS BiometricPrompt/Keystore gate, none of which the JVM unit runner can
@@ -283,7 +276,9 @@ private fun androidx.compose.ui.graphics.Color.toArgbCompat(): Int =
 fun MycorrhizalApp(
     darkTheme: Boolean,
     mainViewModel: MainViewModel = hiltViewModel(),
-    deepLinks: kotlinx.coroutines.flow.Flow<PendingDeepLink?> = kotlinx.coroutines.flow.flowOf(null),
+    deepLinks: kotlinx.coroutines.flow.Flow<PendingDeepLink?> = kotlinx.coroutines.flow.flowOf(
+        null
+    ),
     onDeepLinkHandled: () -> Unit = {},
     // ADR 0029 §6 (issue #1271): shared text waiting for the contact picker.
     shares: kotlinx.coroutines.flow.Flow<PendingShare?> = kotlinx.coroutines.flow.flowOf(null),
@@ -298,7 +293,7 @@ fun MycorrhizalApp(
     // leave the session logged out, so this is only ever consumed by the
     // unauthenticated branch below, never MainScaffold.
     oidcError: kotlinx.coroutines.flow.Flow<String?> = kotlinx.coroutines.flow.flowOf(null),
-    onOidcErrorShown: () -> Unit = {},
+    onOidcErrorShown: () -> Unit = {}
 ) {
     val session by mainViewModel.session.collectAsStateWithLifecycle()
     // Issue #722: when a persisted session is resumed the authenticated tree
@@ -363,8 +358,8 @@ fun MycorrhizalApp(
             darkTheme = darkTheme,
             sdkInt = Build.VERSION.SDK_INT,
             surface = surfaceArgb,
-            primary = primaryArgb,
-        ),
+            primary = primaryArgb
+        )
     )
 
     // Issue #722: the root branches on where the user is in the session +
@@ -401,28 +396,33 @@ fun MycorrhizalApp(
                     localModeEnabled = localModeAvailable(),
                     onUseLocalOnly = mainViewModel::useLocalOnly,
                     oidcError = oidcErrorState,
-                    onOidcErrorShown = onOidcErrorShown,
+                    onOidcErrorShown = onOidcErrorShown
                 )
+
                 AuthScreen.REGISTER -> RegisterScreen(
                     onRegistered = {
                         // auto-login flips isLoggedIn; offer biometric sign-in.
                         showEnrollmentPrompt = true
                     },
-                    onBack = { authScreen = AuthScreen.LOGIN },
+                    onBack = { authScreen = AuthScreen.LOGIN }
                 )
+
                 AuthScreen.FORGOT_PASSWORD -> ForgotPasswordScreen(
-                    onBack = { authScreen = AuthScreen.LOGIN },
+                    onBack = { authScreen = AuthScreen.LOGIN }
                 )
             }
         }
+
         RootSurface.GateResolving -> {
             // Authenticated but the app-lock controller has not yet decided
             // whether the local check is due (its flows hydrate asynchronously
             // at startup). Compose nothing for the few milliseconds this takes.
         }
+
         RootSurface.AppLock -> {
             AppLockScreen()
         }
+
         // Issue #528/#692: the server declared this client version unsupported,
         // or (ServerTooOld) reports an older-than-baseline version. Both are
         // deliberately above the app-lock gate in the root ordering and above
@@ -439,9 +439,10 @@ fun MycorrhizalApp(
                 serverUrl = session.serverUrl,
                 loggedIn = loggedIn,
                 onLogout = mainViewModel::logout,
-                onBackToLogin = if (loggedIn) null else mainViewModel::dismissPreLoginGate,
+                onBackToLogin = if (loggedIn) null else mainViewModel::dismissPreLoginGate
             )
         }
+
         RootSurface.ServerTooOld -> {
             val loggedIn = session.isLoggedIn
             ServerTooOldScreen(
@@ -453,9 +454,10 @@ fun MycorrhizalApp(
                 serverUrl = session.serverUrl,
                 loggedIn = loggedIn,
                 onLogout = mainViewModel::logout,
-                onBackToLogin = if (loggedIn) null else mainViewModel::dismissPreLoginGate,
+                onBackToLogin = if (loggedIn) null else mainViewModel::dismissPreLoginGate
             )
         }
+
         RootSurface.Main -> {
             Box(Modifier.fillMaxSize()) {
                 MainScaffold(
@@ -469,7 +471,7 @@ fun MycorrhizalApp(
                     deepLinks = deepLinks,
                     onDeepLinkHandled = onDeepLinkHandled,
                     shares = shares,
-                    onShareHandled = onShareHandled,
+                    onShareHandled = onShareHandled
                 )
                 val outdatedVersion = serverOutdatedNoticeVersion
                 if (outdatedVersion != null) {
@@ -488,7 +490,7 @@ fun MycorrhizalApp(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .windowInsetsPadding(WindowInsets.navigationBars)
-                            .padding(start = 16.dp, end = 16.dp, bottom = 48.dp),
+                            .padding(start = 16.dp, end = 16.dp, bottom = 48.dp)
                     )
                 }
             }
@@ -527,7 +529,7 @@ internal enum class RootSurface { Auth, ForceUpdate, ServerTooOld, GateResolving
 internal fun rootSurface(
     isLoggedIn: Boolean,
     compatibilityGate: CompatibilityGate,
-    appLockState: AppLockState,
+    appLockState: AppLockState
 ): RootSurface = when {
     compatibilityGate is CompatibilityGate.ForceUpdate -> RootSurface.ForceUpdate
     compatibilityGate is CompatibilityGate.ServerTooOld -> RootSurface.ServerTooOld
@@ -549,10 +551,12 @@ private fun MainScaffold(
     username: String? = null,
     serverVersion: AppVersion? = null,
     serverCapabilities: ServerCapabilitiesInfo = ServerCapabilitiesInfo.Unknown,
-    deepLinks: kotlinx.coroutines.flow.Flow<PendingDeepLink?> = kotlinx.coroutines.flow.flowOf(null),
+    deepLinks: kotlinx.coroutines.flow.Flow<PendingDeepLink?> = kotlinx.coroutines.flow.flowOf(
+        null
+    ),
     onDeepLinkHandled: () -> Unit = {},
     shares: kotlinx.coroutines.flow.Flow<PendingShare?> = kotlinx.coroutines.flow.flowOf(null),
-    onShareHandled: () -> Unit = {},
+    onShareHandled: () -> Unit = {}
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -660,10 +664,10 @@ private fun MainScaffold(
         LocalServerUrl provides serverUrl,
         LocalDateFormat provides dateFormat,
         LocalIs24Hour provides TimeFormatPreference.AUTO.is24Hour(
-            android.text.format.DateFormat.is24HourFormat(LocalContext.current),
+            android.text.format.DateFormat.is24HourFormat(LocalContext.current)
         ),
         LocalServerVersion provides serverVersion,
-        LocalServerCapabilities provides serverCapabilities,
+        LocalServerCapabilities provides serverCapabilities
     ) {
         MainNavScaffold(
             currentRoute = currentRoute,
@@ -674,7 +678,7 @@ private fun MainScaffold(
             serverHost = serverHostOf(serverUrl),
             // Issue #1758: the header opens Servers, so which server you are on is also
             // where you switch it.
-            onHeaderClick = { onDestinationClick("servers") },
+            onHeaderClick = { onDestinationClick("servers") }
         ) {
             AdaptiveMainContent(
                 isTwoPane = isTwoPane,
@@ -689,12 +693,14 @@ private fun MainScaffold(
                             navController = navController,
                             isTwoPane = isTwoPane,
                             onMenuClick = onMenuClick,
-                            onLocaleChanged = recreateActivity,
+                            onLocaleChanged = recreateActivity
                         )
                         // Issue #1826: explains why an admin-only screen closed.
                         SnackbarHost(
                             hostState = permissionsSnackbar,
-                            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
+                            modifier = Modifier.align(
+                                Alignment.BottomCenter
+                            ).navigationBarsPadding()
                         )
                     }
                 },
@@ -709,9 +715,15 @@ private fun MainScaffold(
                     // deep-link search here instead (ADR 0029 §4, issue #1269).
                     val listViewModel: ContactListViewModel = hiltViewModel()
                     val entry by navController.currentBackStackEntryAsState()
-                    val deepLinkSearch = entry?.arguments?.getString(ContactListViewModel.SEARCH_ARG)
+                    val deepLinkSearch = entry?.arguments?.getString(
+                        ContactListViewModel.SEARCH_ARG
+                    )
                     LaunchedEffect(entry) {
-                        if (!deepLinkSearch.isNullOrBlank()) listViewModel.onSearchQueryChange(deepLinkSearch)
+                        if (!deepLinkSearch.isNullOrBlank()) {
+                            listViewModel.onSearchQueryChange(
+                                deepLinkSearch
+                            )
+                        }
                     }
                     ContactListScreen(
                         viewModel = listViewModel,
@@ -719,9 +731,9 @@ private fun MainScaffold(
                         onCreateContact = { navController.navigate("contacts/new") },
                         onImportContacts = { navController.navigate("import") },
                         onReviewDuplicates = { navController.navigate("duplicates") },
-                        onMenuClick = null,
+                        onMenuClick = null
                     )
-                },
+                }
             )
         }
     }
@@ -739,13 +751,14 @@ internal fun usesPermanentNavigation(windowSizeClass: WindowSizeClass): Boolean 
     windowSizeClass.widthSizeClass != WindowWidthSizeClass.Compact &&
         windowSizeClass.heightSizeClass != WindowHeightSizeClass.Compact
 
-/**
+/*
  * Issue #150/#1776: the app frame. Unless [usesPermanentNavigation] this is the
  * existing modal drawer wrapping [content]; at Medium/Expanded the drawer is
  * replaced by a [NavigationRail] whose "More" item re-opens the full grouped
  * drawer. Stateless so host-level width-class tests can drive it with a fake
  * [WindowSizeClass] and slot content.
  */
+
 /**
  * Issue #1923: whether a screen reader's touch exploration is active. While it
  * is, one-finger swipes belong to the reader's traversal, so the modal drawer's
@@ -785,7 +798,7 @@ internal fun MainNavScaffold(
     // Issue #1776: injected so the host-level test can prove the rail's content
     // is inset below the status bar; production always uses the real insets.
     railInsets: WindowInsets = WindowInsets.statusBars,
-    content: @Composable () -> Unit,
+    content: @Composable () -> Unit
 ) {
     val permanent = usesPermanentNavigation(windowSizeClass)
     val scope = rememberCoroutineScope()
@@ -804,9 +817,9 @@ internal fun MainNavScaffold(
                 onDestinationClick = onDestinationClick,
                 username = username,
                 serverHost = serverHost,
-                onHeaderClick = onHeaderClick,
+                onHeaderClick = onHeaderClick
             )
-        },
+        }
     ) {
         if (permanent) {
             Row(Modifier.fillMaxSize()) {
@@ -816,7 +829,7 @@ internal fun MainNavScaffold(
                     // Issue #1776: the rail shows only the primary destinations; "More"
                     // opens the full grouped drawer instead of scrolling a 15-item rail.
                     onMoreClick = { scope.launch { drawerState.open() } },
-                    insets = railInsets,
+                    insets = railInsets
                 )
                 VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Box(Modifier.weight(1f).fillMaxHeight()) { content() }
@@ -859,7 +872,7 @@ private fun MycorrhizalNavigationRail(
     currentRoute: String?,
     onDestinationClick: (String) -> Unit,
     onMoreClick: () -> Unit,
-    insets: WindowInsets,
+    insets: WindowInsets
 ) {
     // Issue #1263: hide entries the connected deployment does not offer.
     val capabilities = LocalServerCapabilities.current
@@ -871,27 +884,31 @@ private fun MycorrhizalNavigationRail(
         modifier = Modifier
             .width(NavigationRailWidth)
             .fillMaxHeight()
-            .background(MaterialTheme.colorScheme.primary),
+            .background(MaterialTheme.colorScheme.primary)
     ) {
         NavigationRail(
             modifier = Modifier
                 .fillMaxHeight()
                 .windowInsetsPadding(insets)
                 .testTag("navigation-rail"),
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ) {
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .verticalScroll(rememberScrollState()),
+                    .verticalScroll(rememberScrollState())
             ) {
                 items.forEach { item ->
-                    RailDestinationItem(item = item, currentRoute = currentRoute, onDestinationClick = onDestinationClick)
+                    RailDestinationItem(
+                        item = item,
+                        currentRoute = currentRoute,
+                        onDestinationClick = onDestinationClick
+                    )
                 }
                 Spacer(Modifier.height(8.dp))
                 HorizontalDivider(
                     modifier = Modifier.padding(horizontal = 12.dp),
-                    color = MaterialTheme.colorScheme.outlineVariant,
+                    color = MaterialTheme.colorScheme.outlineVariant
                 )
                 Spacer(Modifier.height(8.dp))
                 NavigationRailItem(
@@ -902,11 +919,11 @@ private fun MycorrhizalNavigationRail(
                         Text(
                             stringResource(R.string.nav_more),
                             maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
+                            overflow = TextOverflow.Ellipsis
                         )
                     },
                     alwaysShowLabel = true,
-                    modifier = Modifier.testTag("rail-more"),
+                    modifier = Modifier.testTag("rail-more")
                 )
             }
         }
@@ -917,7 +934,7 @@ private fun MycorrhizalNavigationRail(
 private fun RailDestinationItem(
     item: TopLevelDestination,
     currentRoute: String?,
-    onDestinationClick: (String) -> Unit,
+    onDestinationClick: (String) -> Unit
 ) {
     NavigationRailItem(
         selected = isSelected(currentRoute, item),
@@ -927,11 +944,11 @@ private fun RailDestinationItem(
             Text(
                 stringResource(item.labelRes),
                 maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
         },
         alwaysShowLabel = true,
-        modifier = Modifier.testTag("rail-${item.route}"),
+        modifier = Modifier.testTag("rail-${item.route}")
     )
 }
 
@@ -963,7 +980,7 @@ internal fun DrawerContent(
     onDestinationClick: (String) -> Unit,
     username: String? = null,
     serverHost: String? = null,
-    onHeaderClick: () -> Unit = {},
+    onHeaderClick: () -> Unit = {}
 ) {
     // Issue #1263: hide entries the connected deployment does not offer.
     val capabilities = LocalServerCapabilities.current
@@ -974,13 +991,17 @@ internal fun DrawerContent(
             modifier = Modifier
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
-                .testTag("drawer-list"),
+                .testTag("drawer-list")
         ) {
             NavGroup.entries.filter { it != NavGroup.FOOTER }.forEachIndexed { index, group ->
-                val items = navDestinationsIn(group).filter { isDestinationAvailable(it, capabilities) }
+                val items = navDestinationsIn(
+                    group
+                ).filter { isDestinationAvailable(it, capabilities) }
                 if (items.isEmpty()) return@forEachIndexed
                 if (index > 0) {
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 28.dp, vertical = 4.dp))
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 28.dp, vertical = 4.dp)
+                    )
                 }
                 group.labelRes?.let { label ->
                     Text(
@@ -990,14 +1011,16 @@ internal fun DrawerContent(
                         modifier = Modifier
                             .padding(start = 28.dp, end = 16.dp, top = 12.dp, bottom = 8.dp)
                             .testTag("drawer-group-${group.name.lowercase()}")
-                            .semantics { heading() },
+                            .semantics { heading() }
                     )
                 }
                 items.forEach { item -> DrawerItem(item, currentRoute, onDestinationClick) }
             }
         }
         // Settings (and any future footer entry) stays reachable without scrolling.
-        val footer = navDestinationsIn(NavGroup.FOOTER).filter { isDestinationAvailable(it, capabilities) }
+        val footer = navDestinationsIn(
+            NavGroup.FOOTER
+        ).filter { isDestinationAvailable(it, capabilities) }
         if (footer.isNotEmpty()) {
             HorizontalDivider()
             footer.forEach { item -> DrawerItem(item, currentRoute, onDestinationClick) }
@@ -1010,7 +1033,7 @@ internal fun DrawerContent(
 private fun DrawerItem(
     item: TopLevelDestination,
     currentRoute: String?,
-    onDestinationClick: (String) -> Unit,
+    onDestinationClick: (String) -> Unit
 ) {
     NavigationDrawerItem(
         // T100: labelLarge is 14sp -- Material's chip/button size, too small for the
@@ -1020,7 +1043,7 @@ private fun DrawerItem(
         label = {
             Text(
                 stringResource(item.labelRes),
-                style = MaterialTheme.typography.labelLarge.copy(fontSize = 16.sp),
+                style = MaterialTheme.typography.labelLarge.copy(fontSize = 16.sp)
             )
         },
         // Issue #1758: selected is tied to the current route; the M3 item exposes it to
@@ -1028,7 +1051,7 @@ private fun DrawerItem(
         selected = isSelected(currentRoute, item),
         onClick = { onDestinationClick(item.route) },
         icon = { Icon(item.icon, contentDescription = null) },
-        modifier = Modifier.padding(horizontal = 8.dp).testTag("drawer-${item.route}"),
+        modifier = Modifier.padding(horizontal = 8.dp).testTag("drawer-${item.route}")
     )
 }
 
@@ -1038,11 +1061,7 @@ private fun DrawerItem(
  * the app name when no session details are known.
  */
 @Composable
-private fun DrawerHeader(
-    username: String?,
-    serverHost: String?,
-    onClick: () -> Unit,
-) {
+private fun DrawerHeader(username: String?, serverHost: String?, onClick: () -> Unit) {
     val hasIdentity = !username.isNullOrBlank() || !serverHost.isNullOrBlank()
     if (!hasIdentity) {
         // #208: the sheet title carries heading semantics.
@@ -1052,7 +1071,7 @@ private fun DrawerHeader(
             modifier = Modifier
                 .padding(16.dp)
                 .testTag("drawer-header")
-                .semantics { heading() },
+                .semantics { heading() }
         )
         return
     }
@@ -1060,7 +1079,7 @@ private fun DrawerHeader(
     val description = stringResource(
         R.string.nav_header_description,
         username?.takeIf { it.isNotBlank() } ?: dash,
-        serverHost?.takeIf { it.isNotBlank() } ?: dash,
+        serverHost?.takeIf { it.isNotBlank() } ?: dash
     )
     Column(
         modifier = Modifier
@@ -1069,13 +1088,13 @@ private fun DrawerHeader(
             .padding(16.dp)
             .testTag("drawer-header")
             .semantics(mergeDescendants = true) { contentDescription = description },
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         Text(
             text = username?.takeIf { it.isNotBlank() } ?: stringResource(R.string.app_name),
             style = MaterialTheme.typography.titleLarge,
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+            overflow = TextOverflow.Ellipsis
         )
         serverHost?.takeIf { it.isNotBlank() }?.let {
             Text(
@@ -1083,7 +1102,7 @@ private fun DrawerHeader(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -1095,16 +1114,13 @@ private fun DrawerHeader(
  * host-level tests can assert both panes compose side by side.
  */
 @Composable
-internal fun ContactTwoPane(
-    listPane: @Composable () -> Unit,
-    detailPane: @Composable () -> Unit,
-) {
+internal fun ContactTwoPane(listPane: @Composable () -> Unit, detailPane: @Composable () -> Unit) {
     Row(Modifier.fillMaxSize()) {
         Box(
             modifier = Modifier
                 .weight(0.38f)
                 .fillMaxHeight()
-                .testTag("two-pane-list"),
+                .testTag("two-pane-list")
         ) {
             listPane()
         }
@@ -1113,7 +1129,7 @@ internal fun ContactTwoPane(
             modifier = Modifier
                 .weight(0.62f)
                 .fillMaxHeight()
-                .testTag("two-pane-detail"),
+                .testTag("two-pane-detail")
         ) {
             detailPane()
         }
@@ -1134,7 +1150,7 @@ internal fun AdaptiveMainContent(
     currentRoute: String?,
     constrainWidth: Boolean = false,
     content: @Composable () -> Unit,
-    listPane: @Composable () -> Unit = {},
+    listPane: @Composable () -> Unit = {}
 ) {
     when {
         isTwoPane && isInContactsSection(currentRoute) ->
@@ -1142,14 +1158,14 @@ internal fun AdaptiveMainContent(
 
         constrainWidth -> Box(
             modifier = Modifier.fillMaxSize().testTag("content-width-frame"),
-            contentAlignment = Alignment.TopCenter,
+            contentAlignment = Alignment.TopCenter
         ) {
             Box(
                 modifier = Modifier
                     .widthIn(max = ContentMaxWidth)
                     .fillMaxWidth()
                     .fillMaxHeight()
-                    .testTag("content-width-capped"),
+                    .testTag("content-width-capped")
             ) {
                 content()
             }
@@ -1172,19 +1188,19 @@ private fun ContactListPlaceholder() {
                 title = {
                     Text(
                         text = stringResource(R.string.nav_contacts),
-                        style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.titleLarge
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
-        },
+        }
     ) { padding ->
         EmptyState(
             title = stringResource(R.string.contacts_select_contact),
-            modifier = Modifier.fillMaxSize().padding(padding),
+            modifier = Modifier.fillMaxSize().padding(padding)
         )
     }
 }
@@ -1201,7 +1217,7 @@ private fun AppNavGraph(
     navController: NavHostController,
     isTwoPane: Boolean,
     onMenuClick: () -> Unit,
-    onLocaleChanged: () -> Unit,
+    onLocaleChanged: () -> Unit
 ) {
     // Issue #150: no drawer at Expanded — drawer-based screens hide their
     // hamburger when this is null.
@@ -1211,7 +1227,7 @@ private fun AppNavGraph(
 
     NavHost(
         navController = navController,
-        startDestination = "home",
+        startDestination = "home"
     ) {
         // ADR 0029 §4: optional `search` arg prefilled by mycorrhizal://search?q=…; every
         // plain navigate("contacts") still works because the arg is optional.
@@ -1222,8 +1238,8 @@ private fun AppNavGraph(
                     type = NavType.StringType
                     nullable = true
                     defaultValue = null
-                },
-            ),
+                }
+            )
         ) {
             if (isTwoPane) {
                 ContactListPlaceholder()
@@ -1233,7 +1249,7 @@ private fun AppNavGraph(
                     onCreateContact = { navController.navigate("contacts/new") },
                     onMenuClick = menu,
                     onImportContacts = { navController.navigate("import") },
-                    onReviewDuplicates = { navController.navigate("duplicates") },
+                    onReviewDuplicates = { navController.navigate("duplicates") }
                 )
             }
         }
@@ -1243,32 +1259,32 @@ private fun AppNavGraph(
                 onImported = {},
                 onImportVcf = { navController.navigate("import/vcf") },
                 onImportCsv = { navController.navigate("import/csv") },
-                onImportHistory = { navController.navigate("import/history") },
+                onImportHistory = { navController.navigate("import/history") }
             )
         }
         // M9 item 4: VCF-file import — a sibling path to this screen's device-contacts one.
         composable("import/vcf") {
             VcfImportScreen(
                 onBack = { navController.popBackStack() },
-                onDone = { navController.popBackStack() },
+                onDone = { navController.popBackStack() }
             )
         }
         // Issue #834: CSV-file import — web parity, a second sibling path.
         composable("import/csv") {
             CsvImportScreen(
                 onBack = { navController.popBackStack() },
-                onDone = { navController.popBackStack() },
+                onDone = { navController.popBackStack() }
             )
         }
         // Issue #834 (web parity, issue #651): the persisted import-run history.
         composable("import/history") {
             ImportHistoryScreen(
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
             )
         }
         composable(
             route = "merge/{keepId}",
-            arguments = listOf(navArgument("keepId") { type = NavType.LongType }),
+            arguments = listOf(navArgument("keepId") { type = NavType.LongType })
         ) { entry ->
             val keepId = entry.arguments?.getLong("keepId") ?: 0L
             val mergeId = entry.arguments?.getString("mergeId")?.toLongOrNull() ?: 0L
@@ -1277,7 +1293,7 @@ private fun AppNavGraph(
                 onBack = { navController.popBackStack() },
                 keepId = keepId,
                 mergeId = mergeId,
-                otherName = mergeName,
+                otherName = mergeName
             )
         }
         // T93 (issue #710): the duplicate-review surface, reachable from the
@@ -1288,14 +1304,14 @@ private fun AppNavGraph(
                 onBack = { navController.popBackStack() },
                 onMerge = { keepId, mergeId, mergeName ->
                     navController.navigate(
-                        "merge/$keepId?mergeId=$mergeId&mergeName=${Uri.encode(mergeName)}",
+                        "merge/$keepId?mergeId=$mergeId&mergeName=${Uri.encode(mergeName)}"
                     )
-                },
+                }
             )
         }
         composable(
             route = "contacts/{contactId}",
-            arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            arguments = listOf(navArgument("contactId") { type = NavType.IntType })
         ) { entry ->
             val contactId = entry.arguments?.getInt("contactId") ?: 0
             ContactDetailScreen(
@@ -1306,18 +1322,22 @@ private fun AppNavGraph(
                     val name = contact.card?.displayName.orEmpty()
                     val message = navController.context.getString(
                         R.string.contact_stay_in_touch_message,
-                        name,
+                        name
                     )
                     navController.navigate(
                         "contacts/$contactId/reminders/new" +
-                            "?message=${Uri.encode(message)}&recurrence=quarterly",
+                            "?message=${Uri.encode(message)}&recurrence=quarterly"
                     )
                 },
                 onViewActivities = { id -> navController.navigate("contacts/$id/activities") },
                 onViewNotes = { id -> navController.navigate("contacts/$id/notes") },
                 onViewReminders = { id -> navController.navigate("contacts/$id/reminders") },
                 onViewAttachments = { id -> navController.navigate("contacts/$id/attachments") },
-                onViewRelationships = { id -> navController.navigate("contacts/$id/relationships") },
+                onViewRelationships = { id ->
+                    navController.navigate(
+                        "contacts/$id/relationships"
+                    )
+                },
                 onViewCadence = { id -> navController.navigate("contacts/$id/cadence") },
                 onOpenInContacts = { lookupKey ->
                     openInContacts(navController.context, lookupKey)
@@ -1329,7 +1349,11 @@ private fun AppNavGraph(
                 onViewPreferences = { id -> navController.navigate("contacts/$id/preferences") },
                 onViewSkills = { id -> navController.navigate("contacts/$id/skills") },
                 onViewWork = { id -> navController.navigate("contacts/$id/work") },
-                onViewAnniversaries = { id -> navController.navigate("contacts/$id/anniversaries") },
+                onViewAnniversaries = { id ->
+                    navController.navigate(
+                        "contacts/$id/anniversaries"
+                    )
+                },
                 onViewAgenda = { id -> navController.navigate("contacts/$id/agenda") },
                 onViewPrep = { id -> navController.navigate("contacts/$id/prep") },
                 onExploreConnections = { id -> navController.navigate("contacts/$id/network") },
@@ -1338,31 +1362,39 @@ private fun AppNavGraph(
                         navController.navigate("contacts/$contactId/share?uid=${Uri.encode(uid)}")
                     }
                 },
-                onEditActivity = { id -> navController.navigate("contacts/$contactId/activities/$id/edit") },
+                onEditActivity = { id ->
+                    navController.navigate(
+                        "contacts/$contactId/activities/$id/edit"
+                    )
+                },
                 onEditNote = { id -> navController.navigate("contacts/$contactId/notes/$id/edit") },
-                onEditReminder = { id -> navController.navigate("contacts/$contactId/reminders/$id/edit") },
+                onEditReminder = { id ->
+                    navController.navigate(
+                        "contacts/$contactId/reminders/$id/edit"
+                    )
+                }
             )
         }
         composable(
-            route = "contacts/new",
+            route = "contacts/new"
         ) {
             ContactFormScreen(
                 onSaved = { navController.popBackStack() },
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
             )
         }
         composable(
             route = "contacts/{contactId}/edit",
-            arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            arguments = listOf(navArgument("contactId") { type = NavType.IntType })
         ) {
             ContactFormScreen(
                 onSaved = { navController.popBackStack() },
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
             )
         }
         composable(
             route = "contacts/{contactId}/activities",
-            arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            arguments = listOf(navArgument("contactId") { type = NavType.IntType })
         ) { entry ->
             val contactId = entry.arguments?.getInt("contactId") ?: 0
             ActivitiesScreen(
@@ -1373,7 +1405,7 @@ private fun AppNavGraph(
                 onEditActivity = { activityId ->
                     navController.navigate("contacts/$contactId/activities/$activityId/edit")
                 },
-                onContactClick = { id -> navController.navigate("contacts/$id") },
+                onContactClick = { id -> navController.navigate("contacts/$id") }
             )
         }
         composable(
@@ -1382,49 +1414,75 @@ private fun AppNavGraph(
             arguments = listOf(
                 navArgument("contactId") { type = NavType.IntType },
                 // Issue #160: optional create-mode prefill from a GeoPulse stay (read by ActivityFormViewModel).
-                navArgument("location") { type = NavType.StringType; nullable = true; defaultValue = null },
-                navArgument("date") { type = NavType.StringType; nullable = true; defaultValue = null },
-                navArgument("externalRef") { type = NavType.StringType; nullable = true; defaultValue = null },
-            ),
+                navArgument(
+                    "location"
+                ) {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument(
+                    "date"
+                ) {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument(
+                    "externalRef"
+                ) {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
         ) {
             ActivityFormScreen(
                 onSaved = { navController.popBackStack() },
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
             )
         }
         composable(
             route = "contacts/{contactId}/activities/{activityId}/edit",
             arguments = listOf(
                 navArgument("contactId") { type = NavType.IntType },
-                navArgument("activityId") { type = NavType.IntType },
-            ),
+                navArgument("activityId") { type = NavType.IntType }
+            )
         ) {
             ActivityFormScreen(
                 onSaved = { navController.popBackStack() },
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
             )
         }
         // Issue #1401: the full, paged contact timeline behind the contact page's "View all".
         composable(
             route = "contacts/{contactId}/timeline",
-            arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            arguments = listOf(navArgument("contactId") { type = NavType.IntType })
         ) { entry ->
             val contactId = entry.arguments?.getInt("contactId") ?: 0
             TimelineExplorerScreen(
                 onBack = { navController.popBackStack() },
-                onEditActivity = { id -> navController.navigate("contacts/$contactId/activities/$id/edit") },
-                onEditNote = { id -> navController.navigate("contacts/$contactId/notes/$id/edit") },
+                onEditActivity = { id ->
+                    navController.navigate(
+                        "contacts/$contactId/activities/$id/edit"
+                    )
+                },
+                onEditNote = { id -> navController.navigate("contacts/$contactId/notes/$id/edit") }
             )
         }
         composable(
             route = "contacts/{contactId}/notes",
-            arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            arguments = listOf(navArgument("contactId") { type = NavType.IntType })
         ) { entry ->
             val contactId = entry.arguments?.getInt("contactId") ?: 0
             NotesScreen(
                 onBack = { navController.popBackStack() },
                 onCreateNote = { navController.navigate("contacts/$contactId/notes/new") },
-                onEditNote = { noteId -> navController.navigate("contacts/$contactId/notes/$noteId/edit") },
+                onEditNote = { noteId ->
+                    navController.navigate(
+                        "contacts/$contactId/notes/$noteId/edit"
+                    )
+                }
             )
         }
         // ADR 0029 §6 (issue #1271): "Share to…" — pick the contact the shared text becomes a
@@ -1437,8 +1495,8 @@ private fun AppNavGraph(
                     type = NavType.StringType
                     nullable = true
                     defaultValue = null
-                },
-            ),
+                }
+            )
         ) { entry ->
             val key = entry.arguments?.getString("key")
             val shareIntake = hiltViewModel<ShareIntakeViewModel>()
@@ -1461,7 +1519,7 @@ private fun AppNavGraph(
                     }
                 },
                 pickerTitle = stringResource(R.string.share_pick_contact_title),
-                onPickerBack = discardAndBack,
+                onPickerBack = discardAndBack
             )
         }
         composable(
@@ -1473,29 +1531,29 @@ private fun AppNavGraph(
                     type = NavType.StringType
                     nullable = true
                     defaultValue = null
-                },
-            ),
+                }
+            )
         ) {
             NoteFormScreen(
                 onSaved = { navController.popBackStack() },
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
             )
         }
         composable(
             route = "contacts/{contactId}/notes/{noteId}/edit",
             arguments = listOf(
                 navArgument("contactId") { type = NavType.IntType },
-                navArgument("noteId") { type = NavType.IntType },
-            ),
+                navArgument("noteId") { type = NavType.IntType }
+            )
         ) {
             NoteFormScreen(
                 onSaved = { navController.popBackStack() },
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
             )
         }
         composable(
             route = "contacts/{contactId}/reminders",
-            arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            arguments = listOf(navArgument("contactId") { type = NavType.IntType })
         ) { entry ->
             val contactId = entry.arguments?.getInt("contactId") ?: 0
             RemindersScreen(
@@ -1503,114 +1561,124 @@ private fun AppNavGraph(
                 onCreateReminder = { navController.navigate("contacts/$contactId/reminders/new") },
                 onEditReminder = { reminderId ->
                     navController.navigate("contacts/$contactId/reminders/$reminderId/edit")
-                },
+                }
             )
         }
         // N7: the contact-attachments sub-screen (issue #710, web parity).
         composable(
             route = "contacts/{contactId}/attachments",
-            arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            arguments = listOf(navArgument("contactId") { type = NavType.IntType })
         ) { entry ->
             val contactId = entry.arguments?.getInt("contactId") ?: 0
             AttachmentsScreen(
                 onBack = { navController.popBackStack() },
-                contactId = contactId,
+                contactId = contactId
             )
         }
         composable(
             route = "contacts/{contactId}/reminders/new?message={message}&recurrence={recurrence}",
             arguments = listOf(
                 navArgument("contactId") { type = NavType.IntType },
-                navArgument("message") { type = NavType.StringType; defaultValue = "" },
-                navArgument("recurrence") { type = NavType.StringType; defaultValue = "" },
-            ),
+                navArgument("message") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                },
+                navArgument("recurrence") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                }
+            )
         ) {
             ReminderFormScreen(
                 onSaved = { navController.popBackStack() },
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
             )
         }
         composable(
             route = "contacts/{contactId}/reminders/{reminderId}/edit",
             arguments = listOf(
                 navArgument("contactId") { type = NavType.IntType },
-                navArgument("reminderId") { type = NavType.IntType },
-            ),
+                navArgument("reminderId") { type = NavType.IntType }
+            )
         ) {
             ReminderFormScreen(
                 onSaved = { navController.popBackStack() },
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
             )
         }
         composable(
             route = "contacts/{contactId}/relationships",
-            arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            arguments = listOf(navArgument("contactId") { type = NavType.IntType })
         ) {
             RelationshipsScreen(
                 onBack = { navController.popBackStack() },
-                onNavigateToContact = { id -> navController.navigate("contacts/$id") },
+                onNavigateToContact = { id -> navController.navigate("contacts/$id") }
             )
         }
         composable(
             route = "contacts/{contactId}/cadence",
-            arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            arguments = listOf(navArgument("contactId") { type = NavType.IntType })
         ) {
             CadenceScreen(
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
             )
         }
         composable("occasions") {
             OccasionsScreen(
                 onMenuClick = menu,
-                onOpenAttendees = { eventId -> navController.navigate("occasions/$eventId/attendees") },
+                onOpenAttendees = { eventId ->
+                    navController.navigate(
+                        "occasions/$eventId/attendees"
+                    )
+                }
             )
         }
         composable(
             route = "occasions/{eventId}/attendees",
-            arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
+            arguments = listOf(navArgument("eventId") { type = NavType.StringType })
         ) {
             OccasionAttendeesScreen(onBack = { navController.popBackStack() })
         }
         composable(
             route = "contacts/{contactId}/life-events",
-            arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            arguments = listOf(navArgument("contactId") { type = NavType.IntType })
         ) {
             LifeEventsScreen(onBack = { navController.popBackStack() })
         }
         composable(
             route = "contacts/{contactId}/gifts",
-            arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            arguments = listOf(navArgument("contactId") { type = NavType.IntType })
         ) {
             GiftsScreen(onBack = { navController.popBackStack() })
         }
         composable(
             route = "contacts/{contactId}/preferences",
-            arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            arguments = listOf(navArgument("contactId") { type = NavType.IntType })
         ) {
             PreferencesScreen(onBack = { navController.popBackStack() })
         }
         // Issue #1728: the three drill-downs moved out of the contact edit form.
         composable(
             route = "contacts/{contactId}/skills",
-            arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            arguments = listOf(navArgument("contactId") { type = NavType.IntType })
         ) {
             ContactSkillsScreen(onBack = { navController.popBackStack() })
         }
         composable(
             route = "contacts/{contactId}/work",
-            arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            arguments = listOf(navArgument("contactId") { type = NavType.IntType })
         ) {
             ContactWorkScreen(onBack = { navController.popBackStack() })
         }
         composable(
             route = "contacts/{contactId}/anniversaries",
-            arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            arguments = listOf(navArgument("contactId") { type = NavType.IntType })
         ) {
             ContactAnniversariesScreen(onBack = { navController.popBackStack() })
         }
         composable(
             route = "contacts/{contactId}/agenda",
-            arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            arguments = listOf(navArgument("contactId") { type = NavType.IntType })
         ) {
             ConversationAgendaScreen(onBack = { navController.popBackStack() })
         }
@@ -1618,19 +1686,19 @@ private fun AppNavGraph(
         // ⋮ action menu (web reaches it from ContactHeader.tsx).
         composable(
             route = "contacts/{contactId}/prep",
-            arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            arguments = listOf(navArgument("contactId") { type = NavType.IntType })
         ) { entry ->
             val contactId = entry.arguments?.getInt("contactId") ?: 0
             PrepViewScreen(
                 onBack = { navController.popBackStack() },
-                onOpenContact = { id -> navController.navigate("contacts/$id") },
+                onOpenContact = { id -> navController.navigate("contacts/$id") }
             )
         }
         // M15: the standalone contact-shares inbox/outbox (drawer-reachable,
         // mirroring web's ContactSharesPage.tsx).
         composable("shares") {
             ContactSharesScreen(
-                onMenuClick = menu,
+                onMenuClick = menu
             )
         }
         // M15: the "Share this contact" flow, reached from ContactDetailScreen's
@@ -1641,11 +1709,14 @@ private fun AppNavGraph(
             route = "contacts/{contactId}/share?uid={uid}",
             arguments = listOf(
                 navArgument("contactId") { type = NavType.IntType },
-                navArgument("uid") { type = NavType.StringType; defaultValue = "" },
-            ),
+                navArgument("uid") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                }
+            )
         ) {
             ShareContactScreen(
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
             )
         }
         // M9: contact-agnostic drawer entries — the N4 unfiled-notes inbox and the
@@ -1658,20 +1729,24 @@ private fun AppNavGraph(
                 onMenuClick = menu,
                 onNoteClick = { id -> navController.navigate("contacts/0/notes/$id/edit") },
                 // Issue #1757: contact id 0 = no contact, so the form creates an unassigned note.
-                onCreateNote = { navController.navigate("contacts/0/notes/new") },
+                onCreateNote = { navController.navigate("contacts/0/notes/new") }
             )
         }
         composable("activities") {
             ActivitiesInboxScreen(
                 onMenuClick = menu,
-                onActivityClick = { id -> navController.navigate("contacts/0/activities/$id/edit") },
+                onActivityClick = { id ->
+                    navController.navigate(
+                        "contacts/0/activities/$id/edit"
+                    )
+                },
                 onContactClick = { id -> navController.navigate("contacts/$id") },
                 // Issue #160: GeoPulse is an outbound integration — absent on embedded profiles.
                 onLogFromLocation = if (integrationsAvailable) {
                     { navController.navigate("activities/geopulse") }
                 } else {
                     null
-                },
+                }
             )
         }
         // Issue #160 (ADR 0033): pick a date → GeoPulse stays → tap one to open the pre-filled form.
@@ -1684,10 +1759,10 @@ private fun AppNavGraph(
                         "contacts/0/activities/new" +
                             "?location=${Uri.encode(stay.location.ifBlank { stay.city })}" +
                             "&date=${Uri.encode(prefillDate)}" +
-                            "&externalRef=${Uri.encode(stay.externalRef)}",
+                            "&externalRef=${Uri.encode(stay.externalRef)}"
                     )
                 },
-                onOpenSettings = { navController.navigate("geopulse-settings") },
+                onOpenSettings = { navController.navigate("geopulse-settings") }
             )
         }
         composable("home") {
@@ -1699,7 +1774,7 @@ private fun AppNavGraph(
                 // existing unassigned forms (contact id 0), matching the
                 // Activities/Notes/Reminders inbox screens.
                 onCreateNote = { navController.navigate("contacts/0/notes/new") },
-                onCreateReminder = { navController.navigate("contacts/0/reminders/new") },
+                onCreateReminder = { navController.navigate("contacts/0/reminders/new") }
             )
         }
 
@@ -1710,7 +1785,7 @@ private fun AppNavGraph(
             SettingsScreen(
                 onMenuClick = menu,
                 onLoggedOut = { navController.popBackStack() },
-                onNavigate = { route -> navController.navigate(route) },
+                onNavigate = { route -> navController.navigate(route) }
             )
         }
         composable(SettingsRoutes.ACCOUNT) {
@@ -1724,19 +1799,19 @@ private fun AppNavGraph(
                 // Issue #1293: passkey enrollment/management (entry shown only when the gate is open).
                 onPasskeys = { navController.navigate("passkeys") },
                 // Issue #413's Android follow-up (#573): API token management.
-                onApiTokens = { navController.navigate("api-tokens") },
+                onApiTokens = { navController.navigate("api-tokens") }
             )
         }
         composable(SettingsRoutes.CHANGE_PASSWORD) {
             ChangePasswordScreen(
                 onBack = { navController.popBackStack() },
-                onLoggedOut = { navController.popBackStack() },
+                onLoggedOut = { navController.popBackStack() }
             )
         }
         composable(SettingsRoutes.APPEARANCE) {
             AppearanceSettingsScreen(
                 onBack = { navController.popBackStack() },
-                onLocaleChanged = onLocaleChanged,
+                onLocaleChanged = onLocaleChanged
             )
         }
         composable(SettingsRoutes.PRIVACY) {
@@ -1751,13 +1826,13 @@ private fun AppNavGraph(
                 onContactFieldSettings = { navController.navigate("contact-field-settings") },
                 onCustomLinks = { navController.navigate("custom-links") },
                 // M26: the one-time legacy circle/tag cleanup tool.
-                onCircleTagTriage = { navController.navigate("circle-tag-triage") },
+                onCircleTagTriage = { navController.navigate("circle-tag-triage") }
             )
         }
         composable(SettingsRoutes.TRACKING) {
             TrackingSettingsScreen(
                 onBack = { navController.popBackStack() },
-                onNotificationChannels = { navController.navigate("notification-channels") },
+                onNotificationChannels = { navController.navigate("notification-channels") }
             )
         }
         composable(SettingsRoutes.INTEGRATIONS) {
@@ -1772,7 +1847,7 @@ private fun AppNavGraph(
                 onSeafileSettings = { navController.navigate("seafile-settings") },
                 onNextcloudSettings = { navController.navigate("nextcloud-settings") },
                 // Issue #160: GeoPulse location-history connection settings.
-                onGeoPulseSettings = { navController.navigate("geopulse-settings") },
+                onGeoPulseSettings = { navController.navigate("geopulse-settings") }
             )
         }
         composable(SettingsRoutes.ADMINISTRATION) {
@@ -1781,7 +1856,7 @@ private fun AppNavGraph(
                 // Issue #348: admin user management.
                 onManageUsers = { navController.navigate("admin/users") },
                 // Issue #424: the operational-event timeline.
-                onSystemEvents = { navController.navigate("admin/system-events") },
+                onSystemEvents = { navController.navigate("admin/system-events") }
             )
         }
         composable(SettingsRoutes.ABOUT) {
@@ -1789,7 +1864,7 @@ private fun AppNavGraph(
                 onBack = { navController.popBackStack() },
                 // Issue #1880: the attribution surface required by the licenses
                 // of the dependencies the APK/AAB distributes.
-                onLicenses = { navController.navigate(SettingsRoutes.ABOUT_LICENSES) },
+                onLicenses = { navController.navigate(SettingsRoutes.ABOUT_LICENSES) }
             )
         }
         composable(SettingsRoutes.ABOUT_LICENSES) {
@@ -1798,27 +1873,27 @@ private fun AppNavGraph(
         // ADR 0028 Decision 1: the server-profile list/add/rename/switch/remove
         // screen. The "Use on this device only" entry is behind the
         // BuildConfig.LOCAL_MODE_ENABLED flag.
-    composable("servers") {
-        // A hiltViewModel here shares the app singletons with the root's
-        // MainViewModel, so useLocalOnly starts the same embedded host.
-        val mainViewModel: MainViewModel = hiltViewModel()
-        ServersScreen(
-            onBack = { navController.popBackStack() },
-            localModeEnabled = localModeAvailable(),
-            onUseLocalOnly = mainViewModel::useLocalOnly,
-            // Issue #1265: one-time move of the on-device data to a server.
-            onAttachToServer = { navController.navigate("servers/attach") },
-        )
-    }
-    // ADR 0028 Decision 3 / issue #1265: the "Move this data to a server" wizard.
-    composable("servers/attach") {
-        AttachToRemoteScreen(onBack = { navController.popBackStack() })
-    }
+        composable("servers") {
+            // A hiltViewModel here shares the app singletons with the root's
+            // MainViewModel, so useLocalOnly starts the same embedded host.
+            val mainViewModel: MainViewModel = hiltViewModel()
+            ServersScreen(
+                onBack = { navController.popBackStack() },
+                localModeEnabled = localModeAvailable(),
+                onUseLocalOnly = mainViewModel::useLocalOnly,
+                // Issue #1265: one-time move of the on-device data to a server.
+                onAttachToServer = { navController.navigate("servers/attach") }
+            )
+        }
+        // ADR 0028 Decision 3 / issue #1265: the "Move this data to a server" wizard.
+        composable("servers/attach") {
+            AttachToRemoteScreen(onBack = { navController.popBackStack() })
+        }
         // Issue #348: admin user management, reached from Settings (gated on
         // SessionState.isAdmin there). The route lives outside the drawer set.
         composable("admin/users") {
             UsersScreen(
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
             )
         }
         // Issue #424: the operational-event timeline (web's /system-events),
@@ -1826,7 +1901,7 @@ private fun AppNavGraph(
         // instance-wide — the route lives outside the drawer set.
         composable("admin/system-events") {
             SystemEventsScreen(
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
             )
         }
         // T104 + address suggestions: the "propose data" review screen.
@@ -1834,21 +1909,21 @@ private fun AppNavGraph(
             DataScreen(
                 onMenuClick = menu,
                 onCustomExport = { navController.navigate("data/custom-export") },
-                onRestoreBundle = { navController.navigate("data/restore-bundle") },
+                onRestoreBundle = { navController.navigate("data/restore-bundle") }
             )
         }
         // Issue #1264: restore an account bundle into a fresh Local profile.
         composable("data/restore-bundle") {
             BundleRestoreScreen(
                 onBack = { navController.popBackStack() },
-                onDone = { navController.popBackStack() },
+                onDone = { navController.popBackStack() }
             )
         }
         // Issue #835 (T9 selective-export Android parity, web's
         // ExportFieldPickerDialog): pick sections + include-sensitive for one export.
         composable("data/custom-export") {
             CustomExportScreen(
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
             )
         }
         // M16: the read-only audit log (web's /audit), reachable from the
@@ -1857,80 +1932,80 @@ private fun AppNavGraph(
         composable("audit") {
             AuditScreen(
                 onMenuClick = menu,
-                onOpenContact = { id -> navController.navigate("contacts/$id") },
+                onOpenContact = { id -> navController.navigate("contacts/$id") }
             )
         }
         composable("custom-links") {
             CustomLinkActionsScreen(
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
             )
         }
         composable("webhooks") {
             WebhooksScreen(
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
             )
         }
         // Issue #413's Android follow-up (#573): API token management.
         composable("api-tokens") {
             ApiTokensScreen(
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
             )
         }
         // Issue #390's Android follow-up (#628): calendar/contact sync management.
         composable("calendar-sync") {
             CalendarSyncScreen(
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
             )
         }
         // Issue #814 Phase 2: TOTP two-factor enrollment/management.
         composable("two-factor") {
             TwoFactorScreen(
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
             )
         }
         // Issue #1293 / ADR 0034: passkey enrollment/management.
         composable("passkeys") {
             PasskeysScreen(
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
             )
         }
         composable("notification-channels") {
             NotificationChannelsScreen(
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
             )
         }
         // Issue #236: the Immich connection-config settings screen.
         composable("immich-settings") {
             ImmichSettingsScreen(
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
             )
         }
         // Issue #833: the Paperless/Seafile/Nextcloud connection-config settings screens.
         composable("paperless-settings") {
             PaperlessSettingsScreen(
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
             )
         }
         composable("seafile-settings") {
             SeafileSettingsScreen(
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
             )
         }
         composable("nextcloud-settings") {
             NextcloudSettingsScreen(
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
             )
         }
         // Issue #160: GeoPulse location-history connection settings.
         composable("geopulse-settings") {
             GeoPulseSettingsScreen(
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
             )
         }
         // Issue #832: per-field show/edit toggles for the contact detail/form screens.
         composable("contact-field-settings") {
             ContactFieldSettingsScreen(
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
             )
         }
         // Issue #830: the custom field-definition management screens.
@@ -1938,60 +2013,60 @@ private fun AppNavGraph(
             FieldDefinitionsScreen(
                 onBack = { navController.popBackStack() },
                 onCreate = { navController.navigate("custom-field-definitions/new") },
-                onEdit = { id -> navController.navigate("custom-field-definitions/$id/edit") },
+                onEdit = { id -> navController.navigate("custom-field-definitions/$id/edit") }
             )
         }
         composable("custom-field-definitions/new") {
             FieldDefinitionFormScreen(
                 onSaved = { navController.popBackStack() },
                 onBack = { navController.popBackStack() },
-                onDeleted = { navController.popBackStack() },
+                onDeleted = { navController.popBackStack() }
             )
         }
         composable(
             route = "custom-field-definitions/{fieldDefinitionId}/edit",
-            arguments = listOf(navArgument("fieldDefinitionId") { type = NavType.StringType }),
+            arguments = listOf(navArgument("fieldDefinitionId") { type = NavType.StringType })
         ) {
             FieldDefinitionFormScreen(
                 onSaved = { navController.popBackStack() },
                 onBack = { navController.popBackStack() },
-                onDeleted = { navController.popBackStack() },
+                onDeleted = { navController.popBackStack() }
             )
         }
         // M26: one-time legacy circle/tag cleanup (reached from Settings).
         composable("circle-tag-triage") {
             TriageScreen(
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
             )
         }
         composable("circles") {
             CirclesScreen(
                 onMenuClick = menu,
-                onOpenCircle = { id -> navController.navigate("circles/$id") },
+                onOpenCircle = { id -> navController.navigate("circles/$id") }
             )
         }
         composable(
             route = "circles/{circleId}",
-            arguments = listOf(navArgument("circleId") { type = NavType.StringType }),
+            arguments = listOf(navArgument("circleId") { type = NavType.StringType })
         ) {
             CircleDetailScreen(
                 onBack = { navController.popBackStack() },
-                onNavigateToContact = { id -> navController.navigate("contacts/$id") },
+                onNavigateToContact = { id -> navController.navigate("contacts/$id") }
             )
         }
         composable("tags") {
             TagsScreen(
                 onMenuClick = menu,
-                onOpenTag = { id -> navController.navigate("tags/$id") },
+                onOpenTag = { id -> navController.navigate("tags/$id") }
             )
         }
         composable(
             route = "tags/{tagId}",
-            arguments = listOf(navArgument("tagId") { type = NavType.StringType }),
+            arguments = listOf(navArgument("tagId") { type = NavType.StringType })
         ) {
             TagDetailScreen(
                 onBack = { navController.popBackStack() },
-                onNavigateToContact = { id -> navController.navigate("contacts/$id") },
+                onNavigateToContact = { id -> navController.navigate("contacts/$id") }
             )
         }
         // M14: the ego-centric network list (drawer entry — "start from"
@@ -2001,39 +2076,39 @@ private fun AppNavGraph(
             NetworkScreen(
                 showMenu = true,
                 onMenuClick = menu,
-                onOpenContact = { id -> navController.navigate("contacts/$id") },
+                onOpenContact = { id -> navController.navigate("contacts/$id") }
             )
         }
         composable(
             route = "contacts/{contactId}/network",
-            arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            arguments = listOf(navArgument("contactId") { type = NavType.IntType })
         ) {
             NetworkScreen(
                 showMenu = false,
                 onBack = { navController.popBackStack() },
-                onOpenContact = { id -> navController.navigate("contacts/$id") },
+                onOpenContact = { id -> navController.navigate("contacts/$id") }
             )
         }
         // ADR 0031 / issue #1287: the contact map (drawer entry).
         composable("map") {
             MapScreen(
                 onMenuClick = menu,
-                onOpenContact = { id -> navController.navigate("contacts/$id") },
+                onOpenContact = { id -> navController.navigate("contacts/$id") }
             )
         }
         composable("households") {
             HouseholdsScreen(
                 onMenuClick = menu,
-                onOpenHousehold = { id -> navController.navigate("households/$id") },
+                onOpenHousehold = { id -> navController.navigate("households/$id") }
             )
         }
         composable(
             route = "households/{householdId}",
-            arguments = listOf(navArgument("householdId") { type = NavType.StringType }),
+            arguments = listOf(navArgument("householdId") { type = NavType.StringType })
         ) {
             HouseholdDetailScreen(
                 onBack = { navController.popBackStack() },
-                onNavigateToContact = { id -> navController.navigate("contacts/$id") },
+                onNavigateToContact = { id -> navController.navigate("contacts/$id") }
             )
         }
     }
@@ -2041,9 +2116,13 @@ private fun AppNavGraph(
 
 /** Launches the native Contacts QuickContact card for an imported contact (§7.5.4). */
 private fun openInContacts(context: android.content.Context, lookupKey: String) {
-    val lookupUri = com.mycorrhizal.crm.feature.imports.DeviceContactLink.quickContactLookupUri(lookupKey)
+    val lookupUri = com.mycorrhizal.crm.feature.imports.DeviceContactLink.quickContactLookupUri(
+        lookupKey
+    )
         ?: return
-    val intent = android.content.Intent(android.provider.ContactsContract.QuickContact.ACTION_QUICK_CONTACT).apply {
+    val intent = android.content.Intent(
+        android.provider.ContactsContract.QuickContact.ACTION_QUICK_CONTACT
+    ).apply {
         data = lookupUri
     }
     try {

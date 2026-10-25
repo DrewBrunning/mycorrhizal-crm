@@ -8,23 +8,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -34,16 +24,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.util.DateFieldMode
-import com.mycorrhizal.crm.ui.components.DateField
-import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.DateField
 import com.mycorrhizal.crm.ui.components.FormScaffold
+import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.WriteConflictDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -51,7 +39,7 @@ import com.mycorrhizal.crm.ui.components.WriteConflictDialog
 fun NoteFormScreen(
     onSaved: () -> Unit,
     onBack: () -> Unit,
-    viewModel: NoteFormViewModel = hiltViewModel(),
+    viewModel: NoteFormViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val events by viewModel.events.collectAsStateWithLifecycle()
@@ -65,18 +53,31 @@ fun NoteFormScreen(
     }
 
     FormScaffold(
-        title = if (state.isEdit) stringResource(R.string.note_edit) else stringResource(R.string.note_new),
+        title = if (state.isEdit) {
+            stringResource(
+                R.string.note_edit
+            )
+        } else {
+            stringResource(R.string.note_new)
+        },
         onBack = onBack,
-        saveLabel = if (state.isEdit) stringResource(R.string.note_save) else stringResource(R.string.note_create),
+        saveLabel = if (state.isEdit) {
+            stringResource(
+                R.string.note_save
+            )
+        } else {
+            stringResource(R.string.note_create)
+        },
         isSaving = state.isSaving,
         onSave = viewModel::save,
         snackbarHostState = snackbarHostState,
         isDirty = state.isDirty,
         entityLabel = stringResource(R.string.entity_note),
-        showSaveBar = !state.isLoading,
+        showSaveBar = !state.isLoading
     ) { padding ->
         when {
             state.isLoading -> LoadingSkeleton(modifier = Modifier.padding(padding))
+
             else -> NoteFormContent(
                 state = state,
                 onContentChange = viewModel::onContentChange,
@@ -84,7 +85,7 @@ fun NoteFormScreen(
                 onContactSearchChange = viewModel::searchContacts,
                 onPickContact = viewModel::selectContact,
                 onClearContact = viewModel::clearContact,
-                modifier = Modifier.padding(padding),
+                modifier = Modifier.padding(padding)
             )
         }
     }
@@ -92,7 +93,7 @@ fun NoteFormScreen(
     if (state.conflict) {
         WriteConflictDialog(
             onLoadLatest = viewModel::onConflictLoadLatest,
-            onKeep = viewModel::onConflictKeepEditing,
+            onKeep = viewModel::onConflictKeepEditing
         )
     }
 
@@ -113,21 +114,21 @@ fun NoteFormContent(
     onContactSearchChange: (String) -> Unit,
     onPickContact: (com.mycorrhizal.crm.model.network.ContactSummary) -> Unit,
     onClearContact: () -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         OutlinedTextField(
             value = state.content,
             onValueChange = onContentChange,
             label = { Text(stringResource(R.string.note_content)) },
             minLines = 6,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         )
         DateField(
             value = state.date,
@@ -135,7 +136,7 @@ fun NoteFormContent(
             label = stringResource(R.string.note_date),
             mode = DateFieldMode.DATE_TIME,
             testTag = "note-date",
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         )
 
         // M19: contact reassignment (web's EditTimelineItemDialog) — the
@@ -145,7 +146,7 @@ fun NoteFormContent(
         Text(
             text = stringResource(R.string.note_assign_contact),
             style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         // Issue #1773: with a contact already assigned, the search stays hidden until
         // "Change" is tapped -- an empty "Search contacts" box under the assigned
@@ -156,7 +157,7 @@ fun NoteFormContent(
                 Text(
                     text = state.targetContactName,
                     style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f)
                 )
                 if (!changing) {
                     TextButton(onClick = { changing = true }) {
@@ -174,8 +175,11 @@ fun NoteFormContent(
                 results = state.contactSearchResults,
                 loading = state.contactSearchLoading,
                 onQueryChange = onContactSearchChange,
-                onPick = { changing = false; onPickContact(it) },
-                labelRes = R.string.note_search_contact,
+                onPick = {
+                    changing = false
+                    onPickContact(it)
+                },
+                labelRes = R.string.note_search_contact
             )
         }
     }

@@ -60,11 +60,11 @@ class Migration13To14Test {
         LocalDatabaseSchemaFixtures.createV13Tables(db)
         db.execSQL(
             "INSERT INTO cached_contacts (id, fn, primaryPhone, archived, deleted) " +
-                "VALUES (1, 'Dana White', '(800) 555-1234', 0, 0)",
+                "VALUES (1, 'Dana White', '(800) 555-1234', 0, 0)"
         )
         db.execSQL(
             "INSERT INTO pending_interactions (timestampMillis, kind, phoneNumber, synced) " +
-                "VALUES (1000, 'call', '5551234', 0)",
+                "VALUES (1000, 'call', '5551234', 0)"
         )
         db.version = 13
         db.close()
@@ -101,8 +101,8 @@ class Migration13To14Test {
                 id = 2,
                 fn = "New Contact",
                 primaryPhone = "555-0100",
-                phonesNormalized = PhoneKey.flatten(listOf("555-0100")),
-            ),
+                phonesNormalized = PhoneKey.flatten(listOf("555-0100"))
+            )
         )
         val found = db.cachedContactDao().searchFtsMatch("phonesNormalized:5550100*")
         assertEquals(1, found.size)

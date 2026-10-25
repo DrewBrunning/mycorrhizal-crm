@@ -13,7 +13,7 @@ package com.mycorrhizal.crm.model.util
 enum class TimeFormatPreference {
     AUTO,
     H12,
-    H24,
+    H24
     ;
 
     /** True when times render 24-hour; [deviceIs24Hour] is the platform setting, used only for [AUTO]. */

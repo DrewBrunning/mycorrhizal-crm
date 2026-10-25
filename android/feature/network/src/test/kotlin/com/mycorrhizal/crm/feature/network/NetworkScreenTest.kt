@@ -7,9 +7,9 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
@@ -55,7 +55,7 @@ class NetworkScreenTest {
         healthBand: String? = null,
         // Issue #1193: optional, same reasoning -- defaults to false so
         // every existing call site is unaffected.
-        deceased: Boolean = false,
+        deceased: Boolean = false
     ) = GraphChain(
         targetId = targetId,
         targetVCardUid = uid,
@@ -64,14 +64,14 @@ class NetworkScreenTest {
         steps = steps,
         healthScore = healthScore,
         healthBand = healthBand,
-        deceased = deceased,
+        deceased = deceased
     )
 
     private fun state(
         chains: List<GraphChain> = emptyList(),
         fromName: String = "Alice",
         circles: List<com.mycorrhizal.crm.domain.repository.CircleWithMembers> = emptyList(),
-        selectedCircleId: String? = null,
+        selectedCircleId: String? = null
     ) = NetworkUiState(
         fromContactId = 1,
         fromVCardUid = "uid-1",
@@ -79,7 +79,7 @@ class NetworkScreenTest {
         depth = 2,
         circles = circles,
         selectedCircleId = selectedCircleId,
-        allChains = chains,
+        allChains = chains
     )
 
     private fun setContent(
@@ -89,7 +89,7 @@ class NetworkScreenTest {
         onRelationApply: () -> Unit = {},
         onCircleSelect: (String?) -> Unit = {},
         showMenu: Boolean = false,
-        darkTheme: Boolean = false,
+        darkTheme: Boolean = false
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme(darkTheme = darkTheme) {
@@ -107,7 +107,7 @@ class NetworkScreenTest {
                     onClosePicker = {},
                     onSearchContacts = {},
                     onSelectFrom = {},
-                    onErrorShown = {},
+                    onErrorShown = {}
                 )
             }
         }
@@ -118,10 +118,22 @@ class NetworkScreenTest {
         setContent(
             uiState = state(
                 chains = listOf(
-                    chain(10, "t1", "Carol", depth = 1, steps = listOf(GraphChainStep(10, "t1", "Carol", "child_of"))),
-                    chain(30, "t3", "Eve", depth = 1, steps = listOf(GraphChainStep(30, "t3", "Eve", "sibling_of"))),
-                ),
-            ),
+                    chain(
+                        10,
+                        "t1",
+                        "Carol",
+                        depth = 1,
+                        steps = listOf(GraphChainStep(10, "t1", "Carol", "child_of"))
+                    ),
+                    chain(
+                        30,
+                        "t3",
+                        "Eve",
+                        depth = 1,
+                        steps = listOf(GraphChainStep(30, "t3", "Eve", "sibling_of"))
+                    )
+                )
+            )
         )
 
         // The depth headers + their rows render (the exact depth->chain mapping
@@ -150,10 +162,22 @@ class NetworkScreenTest {
         setContent(
             uiState = state(
                 chains = listOf(
-                    chain(10, "t1", "Carol", depth = 1, steps = listOf(GraphChainStep(10, "t1", "Carol", "child_of"))),
-                    chain(0, "t2", "Ghost", depth = 2, steps = listOf(GraphChainStep(0, "t2", "Ghost", "spouse_of"))),
-                ),
-            ),
+                    chain(
+                        10,
+                        "t1",
+                        "Carol",
+                        depth = 1,
+                        steps = listOf(GraphChainStep(10, "t1", "Carol", "child_of"))
+                    ),
+                    chain(
+                        0,
+                        "t2",
+                        "Ghost",
+                        depth = 2,
+                        steps = listOf(GraphChainStep(0, "t2", "Ghost", "spouse_of"))
+                    )
+                )
+            )
         )
 
         composeTestRule
@@ -161,7 +185,11 @@ class NetworkScreenTest {
             .assert(hasClickAction())
         composeTestRule
             .onNodeWithContentDescription("Ghost — Spouse")
-            .assert(SemanticsMatcher("has no click action") { node -> !node.config.contains(SemanticsActions.OnClick) })
+            .assert(
+                SemanticsMatcher(
+                    "has no click action"
+                ) { node -> !node.config.contains(SemanticsActions.OnClick) }
+            )
     }
 
     @Test
@@ -179,10 +207,10 @@ class NetworkScreenTest {
                         depth = 1,
                         steps = listOf(GraphChainStep(10, "t1", "Carol", "child_of")),
                         healthScore = 72,
-                        healthBand = "moss",
-                    ),
-                ),
-            ),
+                        healthBand = "moss"
+                    )
+                )
+            )
         )
 
         composeTestRule
@@ -195,9 +223,15 @@ class NetworkScreenTest {
         setContent(
             uiState = state(
                 chains = listOf(
-                    chain(10, "t1", "Carol", depth = 1, steps = listOf(GraphChainStep(10, "t1", "Carol", "child_of"))),
-                ),
-            ),
+                    chain(
+                        10,
+                        "t1",
+                        "Carol",
+                        depth = 1,
+                        steps = listOf(GraphChainStep(10, "t1", "Carol", "child_of"))
+                    )
+                )
+            )
         )
 
         composeTestRule.onNodeWithContentDescription("Carol — Child").assertIsDisplayed()
@@ -218,10 +252,10 @@ class NetworkScreenTest {
                         steps = listOf(GraphChainStep(10, "t1", "Carol", "child_of")),
                         healthScore = 72,
                         healthBand = "moss",
-                        deceased = true,
-                    ),
-                ),
-            ),
+                        deceased = true
+                    )
+                )
+            )
         )
 
         composeTestRule
@@ -240,10 +274,10 @@ class NetworkScreenTest {
                         "Carol",
                         depth = 1,
                         steps = listOf(GraphChainStep(10, "t1", "Carol", "child_of")),
-                        deceased = true,
-                    ),
-                ),
-            ),
+                        deceased = true
+                    )
+                )
+            )
         )
 
         composeTestRule
@@ -257,10 +291,16 @@ class NetworkScreenTest {
         setContent(
             uiState = state(
                 chains = listOf(
-                    chain(10, "t1", "Carol", depth = 1, steps = listOf(GraphChainStep(10, "t1", "Carol", "child_of"))),
-                ),
+                    chain(
+                        10,
+                        "t1",
+                        "Carol",
+                        depth = 1,
+                        steps = listOf(GraphChainStep(10, "t1", "Carol", "child_of"))
+                    )
+                )
             ),
-            onOpenContact = { openedId = it },
+            onOpenContact = { openedId = it }
         )
 
         composeTestRule.onNodeWithContentDescription("Carol — Child").performClick()
@@ -294,10 +334,14 @@ class NetworkScreenTest {
         setContent(
             uiState = state(
                 circles = listOf(
-                    com.mycorrhizal.crm.domain.repository.CircleWithMembers("c1", "Family", setOf("t1")),
-                ),
+                    com.mycorrhizal.crm.domain.repository.CircleWithMembers(
+                        "c1",
+                        "Family",
+                        setOf("t1")
+                    )
+                )
             ),
-            onCircleSelect = { selected = it },
+            onCircleSelect = { selected = it }
         )
 
         composeTestRule.onNodeWithTag("circle-filter").performClick()
@@ -312,11 +356,15 @@ class NetworkScreenTest {
         setContent(
             uiState = state(
                 circles = listOf(
-                    com.mycorrhizal.crm.domain.repository.CircleWithMembers("c1", "Family", setOf("t1")),
+                    com.mycorrhizal.crm.domain.repository.CircleWithMembers(
+                        "c1",
+                        "Family",
+                        setOf("t1")
+                    )
                 ),
-                selectedCircleId = "c1",
+                selectedCircleId = "c1"
             ),
-            onCircleSelect = { selected = it },
+            onCircleSelect = { selected = it }
         )
 
         composeTestRule.onNodeWithTag("circle-filter").performClick()
@@ -331,11 +379,13 @@ class NetworkScreenTest {
             uiState = NetworkUiState(
                 fromContactId = null,
                 fromVCardUid = "",
-                fromName = "",
-            ),
+                fromName = ""
+            )
         )
 
-        composeTestRule.onNodeWithText("Choose a starting contact to explore their network.").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Choose a starting contact to explore their network."
+        ).assertIsDisplayed()
         composeTestRule.onNodeWithText("Choose contact").assertIsDisplayed()
     }
 
@@ -359,8 +409,8 @@ class NetworkScreenTest {
                 fromContactId = 1,
                 fromVCardUid = "",
                 fromName = "",
-                errorRes = com.mycorrhizal.crm.ui.R.string.network_error_no_vcard_uid,
-            ),
+                errorRes = com.mycorrhizal.crm.ui.R.string.network_error_no_vcard_uid
+            )
         )
 
         composeTestRule.onNodeWithText("Contact has no VCard UID").assertIsDisplayed()
@@ -376,11 +426,13 @@ class NetworkScreenTest {
                 ContactPickerDialog(
                     uiState = NetworkUiState(
                         pickerOpen = true,
-                        contactSearchResults = listOf(ContactSummary(id = 2, uid = "uid-2", fn = "Bob")),
+                        contactSearchResults = listOf(
+                            ContactSummary(id = 2, uid = "uid-2", fn = "Bob")
+                        )
                     ),
                     onDismiss = {},
                     onSearch = { searched = it },
-                    onSelect = { selected = it },
+                    onSelect = { selected = it }
                 )
             }
         }
@@ -399,11 +451,11 @@ class NetworkScreenTest {
                     uiState = NetworkUiState(
                         pickerOpen = true,
                         contactSearchQuery = "zzz",
-                        contactSearchResults = emptyList(),
+                        contactSearchResults = emptyList()
                     ),
                     onDismiss = {},
                     onSearch = {},
-                    onSelect = {},
+                    onSelect = {}
                 )
             }
         }
@@ -423,9 +475,9 @@ class NetworkScreenTest {
                 steps = listOf(GraphChainStep(10, "t1", "Carol", "child_of")),
                 // Issue #383: exercise the health-score dot in the a11y sweep too.
                 healthScore = 72,
-                healthBand = "moss",
-            ),
-        ),
+                healthBand = "moss"
+            )
+        )
     )
 
     @Test
@@ -446,15 +498,13 @@ class NetworkScreenTest {
     // RefreshableContent onRefresh wrapper (line 91) and the inline error
     // branch only execute when the real screen wires the VM's callbacks.
 
-    private fun viewModel(
-        connections: Result<GraphConnectionsResponse>,
-    ): NetworkViewModel {
+    private fun viewModel(connections: Result<GraphConnectionsResponse>): NetworkViewModel {
         val graphRepository = mockk<GraphRepository>()
         val contactRepository = mockk<ContactRepository>()
         coEvery { graphRepository.circlesWithMembers() } returns Result.success(emptyList())
         coEvery { graphRepository.selfContactVCardUid() } returns Result.success("uid-self")
         coEvery { contactRepository.resolveByUid(listOf("uid-self")) } returns Result.success(
-            mapOf("uid-self" to ContactSummary(id = 1, uid = "uid-self", firstname = "Alice")),
+            mapOf("uid-self" to ContactSummary(id = 1, uid = "uid-self", firstname = "Alice"))
         )
         coEvery { graphRepository.getConnections("uid-self", 2, null) } returns connections
         return NetworkViewModel(graphRepository, contactRepository, SavedStateHandle())
@@ -466,10 +516,16 @@ class NetworkScreenTest {
             Result.success(
                 GraphConnectionsResponse(
                     chains = listOf(
-                        chain(10, "t1", "Carol", depth = 1, steps = listOf(GraphChainStep(10, "t1", "Carol", "child_of"))),
-                    ),
-                ),
-            ),
+                        chain(
+                            10,
+                            "t1",
+                            "Carol",
+                            depth = 1,
+                            steps = listOf(GraphChainStep(10, "t1", "Carol", "child_of"))
+                        )
+                    )
+                )
+            )
         )
         composeTestRule.setContent {
             MycorrhizalTheme { NetworkScreen(viewModel = vm) }
@@ -488,7 +544,7 @@ class NetworkScreenTest {
         composeTestRule.waitForIdle()
 
         assertTrue(
-            composeTestRule.onAllNodesWithText("boom").fetchSemanticsNodes().isNotEmpty(),
+            composeTestRule.onAllNodesWithText("boom").fetchSemanticsNodes().isNotEmpty()
         )
     }
 }

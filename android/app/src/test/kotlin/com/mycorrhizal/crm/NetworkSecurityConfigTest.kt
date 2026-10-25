@@ -1,10 +1,10 @@
 package com.mycorrhizal.crm
 
+import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 /**
  * Guard test for the production network security config (issue #367, MASVS-L1
@@ -30,7 +30,7 @@ class NetworkSecurityConfigTest {
     fun `production config forbids cleartext traffic with only the embedded sentinel exception`() {
         assertTrue(
             "The production base-config must set cleartextTrafficPermitted=\"false\"",
-            productionConfig.contains("cleartextTrafficPermitted=\"false\""),
+            productionConfig.contains("cleartextTrafficPermitted=\"false\"")
         )
         // Issue #1262 / ADR 0028 Decision 2: exactly one cleartext carve-out is
         // allowed, for the embedded local profile's sentinel host — whose bytes
@@ -44,7 +44,7 @@ class NetworkSecurityConfigTest {
         assertEquals(
             "The only cleartext host in the production config must be the embedded sentinel",
             setOf("embedded.invalid"),
-            cleartextDomains,
+            cleartextDomains
         )
     }
 
@@ -52,11 +52,11 @@ class NetworkSecurityConfigTest {
     fun `production config trusts only system CAs`() {
         assertTrue(
             "Trust anchors must be restricted to the system certificate store",
-            productionConfig.contains("<certificates src=\"system\" />"),
+            productionConfig.contains("<certificates src=\"system\" />")
         )
         assertFalse(
             "User-installed CAs must not be trusted in production",
-            productionConfig.contains("<certificates src=\"user\" />"),
+            productionConfig.contains("<certificates src=\"user\" />")
         )
     }
 
@@ -64,7 +64,7 @@ class NetworkSecurityConfigTest {
     fun `production config has no debug-only trust overrides`() {
         assertFalse(
             "The production config must not carry a <debug-overrides> block",
-            productionConfig.contains("<debug-overrides>"),
+            productionConfig.contains("<debug-overrides>")
         )
     }
 
@@ -83,12 +83,12 @@ class NetworkSecurityConfigTest {
             "The comment must not claim self-signed certs are trusted via a KeyChain " +
                 "import flow — no such flow exists, and this config's trust anchor is " +
                 "system CAs only",
-            rawProductionConfig.contains("handled via the KeyChain import flow"),
+            rawProductionConfig.contains("handled via the KeyChain import flow")
         )
         assertFalse(
             "The comment must not claim self-signed certs are handled/trusted at all — " +
                 "they are not, in a release build",
-            rawProductionConfig.contains("self-signed certs are handled"),
+            rawProductionConfig.contains("self-signed certs are handled")
         )
     }
 }

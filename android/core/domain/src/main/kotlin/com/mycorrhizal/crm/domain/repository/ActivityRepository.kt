@@ -5,10 +5,7 @@ import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ActivityInput
 
 /** A page of one contact's activities (M19), with its T17 cursor-pagination state. */
-data class ContactActivitiesPage(
-    val activities: List<Activity>,
-    val nextCursor: String?,
-)
+data class ContactActivitiesPage(val activities: List<Activity>, val nextCursor: String?)
 
 /**
  * Activity (Interaction) data access. Online-first: writes go to the server
@@ -27,7 +24,7 @@ interface ActivityRepository {
         limit: Int? = null,
         search: String? = null,
         fromDate: String? = null,
-        toDate: String? = null,
+        toDate: String? = null
     ): Result<ContactActivitiesPage>
 
     /**

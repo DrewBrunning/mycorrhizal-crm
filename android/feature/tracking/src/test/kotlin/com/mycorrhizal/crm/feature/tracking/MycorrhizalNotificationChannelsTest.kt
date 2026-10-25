@@ -17,7 +17,9 @@ import org.robolectric.annotation.Config
 class MycorrhizalNotificationChannelsTest {
 
     private val context = ApplicationProvider.getApplicationContext<Context>()
-    private val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    private val manager = context.getSystemService(
+        Context.NOTIFICATION_SERVICE
+    ) as NotificationManager
 
     @Test
     fun `reminders channel is high importance and vibrates`() {

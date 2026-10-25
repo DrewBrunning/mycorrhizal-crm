@@ -39,7 +39,9 @@ class FieldDefinitionFormViewModelTest {
         FieldDefinitionFormViewModel(repository, SavedStateHandle(mapOf("fieldDefinitionId" to id)))
 
     @Test
-    fun `create mode starts with the default form state and does not load`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `create mode starts with the default form state and does not load`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = createViewModel()
         advanceUntilIdle()
 
@@ -52,7 +54,9 @@ class FieldDefinitionFormViewModelTest {
     }
 
     @Test
-    fun `edit mode loads and prefills from the existing definition`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `edit mode loads and prefills from the existing definition`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.get("d1") } returns Result.success(
             FieldDefinition(
                 id = "d1",
@@ -61,8 +65,8 @@ class FieldDefinitionFormViewModelTest {
                 type = "enum",
                 constraints = FieldConstraints(values = listOf("Latte", "Espresso"), multi = true),
                 projection = "vcard:X-COFFEE",
-                sensitivity = "private",
-            ),
+                sensitivity = "private"
+            )
         )
 
         val vm = editViewModel()
@@ -82,7 +86,9 @@ class FieldDefinitionFormViewModelTest {
     }
 
     @Test
-    fun `blank label blocks save with the label-required error`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `blank label blocks save with the label-required error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = createViewModel()
         advanceUntilIdle()
 
@@ -90,12 +96,17 @@ class FieldDefinitionFormViewModelTest {
         vm.save()
         advanceUntilIdle()
 
-        assertEquals(R.string.settings_custom_fields_error_label_required, vm.uiState.value.errorRes)
+        assertEquals(
+            R.string.settings_custom_fields_error_label_required,
+            vm.uiState.value.errorRes
+        )
         coVerify(exactly = 0) { repository.create(any()) }
     }
 
     @Test
-    fun `blank key blocks save on create but not on edit`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `blank key blocks save on create but not on edit`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = createViewModel()
         advanceUntilIdle()
 
@@ -108,7 +119,9 @@ class FieldDefinitionFormViewModelTest {
     }
 
     @Test
-    fun `enum type with no allowed values blocks save`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `enum type with no allowed values blocks save`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = createViewModel()
         advanceUntilIdle()
 
@@ -123,7 +136,9 @@ class FieldDefinitionFormViewModelTest {
     }
 
     @Test
-    fun `vcard projection with a blank name blocks save`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `vcard projection with a blank name blocks save`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = createViewModel()
         advanceUntilIdle()
 
@@ -133,15 +148,25 @@ class FieldDefinitionFormViewModelTest {
         vm.save()
         advanceUntilIdle()
 
-        assertEquals(R.string.settings_custom_fields_error_vcard_name_required, vm.uiState.value.errorRes)
+        assertEquals(
+            R.string.settings_custom_fields_error_vcard_name_required,
+            vm.uiState.value.errorRes
+        )
         coVerify(exactly = 0) { repository.create(any()) }
     }
 
     @Test
-    fun `save on create builds the expected input and emits Saved`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `save on create builds the expected input and emits Saved`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val slot = slot<FieldDefinitionInput>()
         coEvery { repository.create(capture(slot)) } returns Result.success(
-            FieldDefinition(id = "d1", label = "Coffee order", key = "coffee_order", type = "number"),
+            FieldDefinition(
+                id = "d1",
+                label = "Coffee order",
+                key = "coffee_order",
+                type = "number"
+            )
         )
 
         val vm = createViewModel()
@@ -171,13 +196,25 @@ class FieldDefinitionFormViewModelTest {
     }
 
     @Test
-    fun `save on edit calls update and never sends a changed key`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `save on edit calls update and never sends a changed key`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.get("d1") } returns Result.success(
-            FieldDefinition(id = "d1", label = "Coffee order", key = "coffee_order", type = "string"),
+            FieldDefinition(
+                id = "d1",
+                label = "Coffee order",
+                key = "coffee_order",
+                type = "string"
+            )
         )
         val slot = slot<FieldDefinitionInput>()
         coEvery { repository.update("d1", capture(slot)) } returns Result.success(
-            FieldDefinition(id = "d1", label = "Coffee order (renamed)", key = "coffee_order", type = "string"),
+            FieldDefinition(
+                id = "d1",
+                label = "Coffee order (renamed)",
+                key = "coffee_order",
+                type = "string"
+            )
         )
 
         val vm = editViewModel()
@@ -195,8 +232,14 @@ class FieldDefinitionFormViewModelTest {
     }
 
     @Test
-    fun `save failure surfaces the error and does not emit Saved`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { repository.create(any()) } returns Result.failure(ApiError.Client(409, "already exists"))
+    fun `save failure surfaces the error and does not emit Saved`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery {
+            repository.create(
+                any()
+            )
+        } returns Result.failure(ApiError.Client(409, "already exists"))
 
         val vm = createViewModel()
         advanceUntilIdle()
@@ -212,7 +255,9 @@ class FieldDefinitionFormViewModelTest {
     }
 
     @Test
-    fun `enum values can be added updated and removed`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `enum values can be added updated and removed`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = createViewModel()
         advanceUntilIdle()
 
@@ -227,10 +272,12 @@ class FieldDefinitionFormViewModelTest {
     }
 
     @Test
-    fun `a successful enum save builds a non-empty values constraint`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a successful enum save builds a non-empty values constraint`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val slot = slot<FieldDefinitionInput>()
         coEvery { repository.create(capture(slot)) } returns Result.success(
-            FieldDefinition(id = "d1", label = "Milk", key = "milk", type = "enum"),
+            FieldDefinition(id = "d1", label = "Milk", key = "milk", type = "enum")
         )
 
         val vm = createViewModel()
@@ -255,7 +302,12 @@ class FieldDefinitionFormViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             val slot = slot<FieldDefinitionInput>()
             coEvery { repository.create(capture(slot)) } returns Result.success(
-                FieldDefinition(id = "d1", label = "Coffee order", key = "coffee_order", type = "string"),
+                FieldDefinition(
+                    id = "d1",
+                    label = "Coffee order",
+                    key = "coffee_order",
+                    type = "string"
+                )
             )
 
             val vm = createViewModel()
@@ -294,8 +346,8 @@ class FieldDefinitionFormViewModelTest {
                     label = "Rating",
                     key = "rating",
                     type = "number",
-                    constraints = FieldConstraints(min = 1.5, max = 10.0),
-                ),
+                    constraints = FieldConstraints(min = 1.5, max = 10.0)
+                )
             )
 
             val vm = editViewModel()
@@ -306,7 +358,9 @@ class FieldDefinitionFormViewModelTest {
         }
 
     @Test
-    fun `the remaining field setters update their own state slice`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `the remaining field setters update their own state slice`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = createViewModel()
         advanceUntilIdle()
 
@@ -327,14 +381,19 @@ class FieldDefinitionFormViewModelTest {
     }
 
     @Test
-    fun `onErrorShown clears both the resource and string error`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `onErrorShown clears both the resource and string error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = createViewModel()
         advanceUntilIdle()
 
         vm.onLabelChange("")
         vm.save()
         advanceUntilIdle()
-        assertEquals(R.string.settings_custom_fields_error_label_required, vm.uiState.value.errorRes)
+        assertEquals(
+            R.string.settings_custom_fields_error_label_required,
+            vm.uiState.value.errorRes
+        )
 
         vm.onErrorShown()
 
@@ -345,7 +404,12 @@ class FieldDefinitionFormViewModelTest {
     @Test
     fun `onEventShown clears the Saved event`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { repository.create(any()) } returns Result.success(
-            FieldDefinition(id = "d1", label = "Coffee order", key = "coffee_order", type = "string"),
+            FieldDefinition(
+                id = "d1",
+                label = "Coffee order",
+                key = "coffee_order",
+                type = "string"
+            )
         )
 
         val vm = createViewModel()
@@ -374,7 +438,11 @@ class FieldDefinitionFormViewModelTest {
     @Test
     fun `create sends the trimmed group`() = runTest(mainDispatcherRule.testDispatcher) {
         val slot = slot<FieldDefinitionInput>()
-        coEvery { repository.create(capture(slot)) } returns Result.success(FieldDefinition(id = "d1"))
+        coEvery {
+            repository.create(
+                capture(slot)
+            )
+        } returns Result.success(FieldDefinition(id = "d1"))
 
         val vm = createReady()
         vm.onGroupChange("  Travel profile  ")
@@ -389,7 +457,11 @@ class FieldDefinitionFormViewModelTest {
     fun `create with no group sends an empty string, never an omitted key`() =
         runTest(mainDispatcherRule.testDispatcher) {
             val slot = slot<FieldDefinitionInput>()
-            coEvery { repository.create(capture(slot)) } returns Result.success(FieldDefinition(id = "d1"))
+            coEvery {
+                repository.create(
+                    capture(slot)
+                )
+            } returns Result.success(FieldDefinition(id = "d1"))
 
             val vm = createReady()
             vm.save()
@@ -402,10 +474,21 @@ class FieldDefinitionFormViewModelTest {
     fun `edit prefills the existing group and saving it unchanged sends it back`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { repository.get("d1") } returns Result.success(
-                FieldDefinition(id = "d1", label = "Seat", key = "seat", type = "string", group = "Travel profile"),
+                FieldDefinition(
+                    id = "d1",
+                    label = "Seat",
+                    key = "seat",
+                    type = "string",
+                    group = "Travel profile"
+                )
             )
             val slot = slot<FieldDefinitionInput>()
-            coEvery { repository.update("d1", capture(slot)) } returns Result.success(FieldDefinition(id = "d1"))
+            coEvery {
+                repository.update(
+                    "d1",
+                    capture(slot)
+                )
+            } returns Result.success(FieldDefinition(id = "d1"))
 
             val vm = editViewModel()
             advanceUntilIdle()
@@ -421,10 +504,21 @@ class FieldDefinitionFormViewModelTest {
     fun `clearing the group on edit sends an empty string so the server clears it`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { repository.get("d1") } returns Result.success(
-                FieldDefinition(id = "d1", label = "Seat", key = "seat", type = "string", group = "Travel profile"),
+                FieldDefinition(
+                    id = "d1",
+                    label = "Seat",
+                    key = "seat",
+                    type = "string",
+                    group = "Travel profile"
+                )
             )
             val slot = slot<FieldDefinitionInput>()
-            coEvery { repository.update("d1", capture(slot)) } returns Result.success(FieldDefinition(id = "d1"))
+            coEvery {
+                repository.update(
+                    "d1",
+                    capture(slot)
+                )
+            } returns Result.success(FieldDefinition(id = "d1"))
 
             val vm = editViewModel()
             advanceUntilIdle()
@@ -439,13 +533,20 @@ class FieldDefinitionFormViewModelTest {
     fun `a group of exactly 100 characters is accepted and 101 is blocked before the request`() =
         runTest(mainDispatcherRule.testDispatcher) {
             val slot = slot<FieldDefinitionInput>()
-            coEvery { repository.create(capture(slot)) } returns Result.success(FieldDefinition(id = "d1"))
+            coEvery {
+                repository.create(
+                    capture(slot)
+                )
+            } returns Result.success(FieldDefinition(id = "d1"))
 
             val vm = createReady()
             vm.onGroupChange("é".repeat(101))
             vm.save()
             advanceUntilIdle()
-            assertEquals(R.string.settings_custom_fields_error_group_too_long, vm.uiState.value.errorRes)
+            assertEquals(
+                R.string.settings_custom_fields_error_group_too_long,
+                vm.uiState.value.errorRes
+            )
             coVerify(exactly = 0) { repository.create(any()) }
 
             vm.onGroupChange("é".repeat(100))
@@ -480,8 +581,8 @@ class FieldDefinitionFormViewModelTest {
                     FieldDefinition(id = "a", group = "Travel"),
                     FieldDefinition(id = "b", group = ""),
                     FieldDefinition(id = "c", group = "Health"),
-                    FieldDefinition(id = "d", group = "Travel"),
-                ),
+                    FieldDefinition(id = "d", group = "Travel")
+                )
             )
 
             val vm = createViewModel()
@@ -491,7 +592,9 @@ class FieldDefinitionFormViewModelTest {
         }
 
     @Test
-    fun `a failed suggestion load leaves free entry working`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a failed suggestion load leaves free entry working`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.list(any()) } returns Result.failure(ApiError.Client(500, "boom"))
 
         val vm = createViewModel()
@@ -506,9 +609,16 @@ class FieldDefinitionFormViewModelTest {
     // --- Issue #1775: delete moved from the list row into the edit screen ---
 
     @Test
-    fun `delete on an edit calls the repository and emits Deleted`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `delete on an edit calls the repository and emits Deleted`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.get("d1") } returns Result.success(
-            FieldDefinition(id = "d1", label = "Coffee order", key = "coffee_order", type = "string"),
+            FieldDefinition(
+                id = "d1",
+                label = "Coffee order",
+                key = "coffee_order",
+                type = "string"
+            )
         )
         coEvery { repository.delete("d1") } returns Result.success(Unit)
         val vm = editViewModel()
@@ -535,11 +645,22 @@ class FieldDefinitionFormViewModelTest {
     }
 
     @Test
-    fun `delete failure surfaces the error and does not emit Deleted`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `delete failure surfaces the error and does not emit Deleted`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.get("d1") } returns Result.success(
-            FieldDefinition(id = "d1", label = "Coffee order", key = "coffee_order", type = "string"),
+            FieldDefinition(
+                id = "d1",
+                label = "Coffee order",
+                key = "coffee_order",
+                type = "string"
+            )
         )
-        coEvery { repository.delete("d1") } returns Result.failure(ApiError.Client(500, "delete failed"))
+        coEvery {
+            repository.delete(
+                "d1"
+            )
+        } returns Result.failure(ApiError.Client(500, "delete failed"))
         val vm = editViewModel()
         advanceUntilIdle()
 
@@ -552,9 +673,16 @@ class FieldDefinitionFormViewModelTest {
     }
 
     @Test
-    fun `delete does not make an untouched edit form dirty`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `delete does not make an untouched edit form dirty`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.get("d1") } returns Result.success(
-            FieldDefinition(id = "d1", label = "Coffee order", key = "coffee_order", type = "string"),
+            FieldDefinition(
+                id = "d1",
+                label = "Coffee order",
+                key = "coffee_order",
+                type = "string"
+            )
         )
         coEvery { repository.delete("d1") } returns Result.success(Unit)
         val vm = editViewModel()

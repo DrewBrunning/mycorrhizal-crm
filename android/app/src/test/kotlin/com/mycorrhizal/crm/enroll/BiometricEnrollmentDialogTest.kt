@@ -1,9 +1,9 @@
 package com.mycorrhizal.crm.enroll
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.performClick
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertTrue
@@ -27,7 +27,7 @@ class BiometricEnrollmentDialogTest {
         isBusy: Boolean = false,
         onEnroll: () -> Unit = {},
         onNotNow: () -> Unit = {},
-        onNever: () -> Unit = {},
+        onNever: () -> Unit = {}
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -36,7 +36,7 @@ class BiometricEnrollmentDialogTest {
                     error = error,
                     onEnroll = onEnroll,
                     onNotNow = onNotNow,
-                    onNeverAskAgain = onNever,
+                    onNeverAskAgain = onNever
                 )
             }
         }
@@ -58,7 +58,11 @@ class BiometricEnrollmentDialogTest {
         var enroll = false
         var notNow = false
         var never = false
-        setDialog(onEnroll = { enroll = true }, onNotNow = { notNow = true }, onNever = { never = true })
+        setDialog(
+            onEnroll = { enroll = true },
+            onNotNow = { notNow = true },
+            onNever = { never = true }
+        )
 
         composeTestRule.onNodeWithText("Set up").performClick()
         assertTrue(enroll)
@@ -83,9 +87,10 @@ class BiometricEnrollmentDialogTest {
     fun `an error state is announced and the actions stay available`() {
         setDialog(error = true)
 
-        composeTestRule.onNodeWithText("Couldn't set up biometric sign-in. Please try again.").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Couldn't set up biometric sign-in. Please try again."
+        ).assertIsDisplayed()
         composeTestRule.onNodeWithText("Set up").assertIsDisplayed()
         composeTestRule.onNodeWithText("Not now").assertIsDisplayed()
     }
-
 }

@@ -15,7 +15,11 @@ class FcmFlavorPasskeyProviderTest {
     @Test
     fun `the Play services credential provider is bundled`() {
         assertNotNull(
-            runCatching { Class.forName("androidx.credentials.playservices.CredentialProviderPlayServicesImpl") }.getOrNull(),
+            runCatching {
+                Class.forName(
+                    "androidx.credentials.playservices.CredentialProviderPlayServicesImpl"
+                )
+            }.getOrNull()
         )
     }
 }

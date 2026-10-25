@@ -1,9 +1,9 @@
 package com.mycorrhizal.crm.feature.timeline
 
 import androidx.lifecycle.SavedStateHandle
+import com.mycorrhizal.crm.data.share.ShareDraftHolder
 import com.mycorrhizal.crm.domain.repository.ActivityRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
-import com.mycorrhizal.crm.data.share.ShareDraftHolder
 import com.mycorrhizal.crm.domain.repository.ContactActivitiesPage
 import com.mycorrhizal.crm.domain.repository.ContactNotesPage
 import com.mycorrhizal.crm.domain.repository.ContactRepository
@@ -45,25 +45,40 @@ class NoteIfMatchTest {
     private val contactRepository = mockk<ContactRepository>()
 
     private fun form(): NoteFormViewModel {
-        coEvery { contactRepository.getContact(any()) } returns Result.failure(RuntimeException("offline"))
+        coEvery {
+            contactRepository.getContact(
+                any()
+            )
+        } returns Result.failure(RuntimeException("offline"))
         return NoteFormViewModel(
             noteRepository,
             contactRepository,
             ShareDraftHolder(),
-            SavedStateHandle(mapOf("contactId" to 5, "noteId" to 3)),
+            SavedStateHandle(mapOf("contactId" to 5, "noteId" to 3))
         )
     }
 
     private fun list() = NotesViewModel(noteRepository, SavedStateHandle(mapOf("contactId" to 5)))
 
     private fun stubGet(revision: Int) = coEvery { noteRepository.get(3) } returns Result.success(
-        Note(id = 3, content = "Loves climbing", date = "2026-08-10T14:00:00Z", revision = revision),
+        Note(
+            id = 3,
+            content = "Loves climbing",
+            date = "2026-08-10T14:00:00Z",
+            revision = revision
+        )
     )
 
     @Test
     fun `edit save sends the loaded revision`() = runTest(mainDispatcherRule.testDispatcher) {
         stubGet(4)
-        coEvery { noteRepository.update(3, any(), 4) } returns Result.success(Note(id = 3, revision = 5))
+        coEvery {
+            noteRepository.update(
+                3,
+                any(),
+                4
+            )
+        } returns Result.success(Note(id = 3, revision = 5))
         val vm = form()
         advanceUntilIdle()
         vm.save()
@@ -77,7 +92,13 @@ class NoteIfMatchTest {
         runTest(mainDispatcherRule.testDispatcher) {
             stubGet(4)
             coEvery { noteRepository.update(3, any(), 4) } returns STALE
-            coEvery { noteRepository.update(3, any(), 6) } returns Result.success(Note(id = 3, revision = 7))
+            coEvery {
+                noteRepository.update(
+                    3,
+                    any(),
+                    6
+                )
+            } returns Result.success(Note(id = 3, revision = 7))
             val vm = form()
             advanceUntilIdle()
             vm.onContentChange("Edited")
@@ -94,7 +115,7 @@ class NoteIfMatchTest {
             assertEquals("Edited", vm.uiState.value.content)
 
             coEvery { noteRepository.get(3) } returns Result.success(
-                Note(id = 3, content = "Server copy", date = "2026-08-10T14:00:00Z", revision = 6),
+                Note(id = 3, content = "Server copy", date = "2026-08-10T14:00:00Z", revision = 6)
             )
             vm.onConflictLoadLatest()
             advanceUntilIdle()
@@ -108,8 +129,20 @@ class NoteIfMatchTest {
     @Test
     fun `delete sends the row's revision and a 412 raises conflict leaving the row`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            coEvery { noteRepository.listForContact(5, null, null, null, null, null) } returns Result.success(
-                ContactNotesPage(notes = listOf(Note(id = 3, content = "One", revision = 2)), nextCursor = null),
+            coEvery {
+                noteRepository.listForContact(
+                    5,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+                )
+            } returns Result.success(
+                ContactNotesPage(
+                    notes = listOf(Note(id = 3, content = "One", revision = 2)),
+                    nextCursor = null
+                )
             )
             coEvery { noteRepository.delete(3, 2) } returns STALE
             val vm = list()
@@ -123,8 +156,20 @@ class NoteIfMatchTest {
             assertNull(vm.uiState.value.deletingId)
             assertEquals(1, vm.uiState.value.notes.size)
 
-            coEvery { noteRepository.listForContact(5, null, null, null, null, null) } returns Result.success(
-                ContactNotesPage(notes = listOf(Note(id = 3, content = "One", revision = 9)), nextCursor = null),
+            coEvery {
+                noteRepository.listForContact(
+                    5,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+                )
+            } returns Result.success(
+                ContactNotesPage(
+                    notes = listOf(Note(id = 3, content = "One", revision = 9)),
+                    nextCursor = null
+                )
             )
             vm.onConflictLoadLatest()
             advanceUntilIdle()
@@ -146,12 +191,20 @@ class ActivityIfMatchTest {
     private fun form() = ActivityFormViewModel(
         activityRepository,
         contactRepository,
-        SavedStateHandle(mapOf("contactId" to 5, "activityId" to 7)),
+        SavedStateHandle(mapOf("contactId" to 5, "activityId" to 7))
     )
 
     @Test
-    fun `edit save sends the loaded revision and a 412 raises conflict`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { activityRepository.get(7) } returns Result.success(Activity(id = 7, title = "Lunch", date = "2026-08-10T14:00:00Z", revision = 3))
+    fun `edit save sends the loaded revision and a 412 raises conflict`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery {
+            activityRepository.get(
+                7
+            )
+        } returns Result.success(
+            Activity(id = 7, title = "Lunch", date = "2026-08-10T14:00:00Z", revision = 3)
+        )
         coEvery { activityRepository.update(7, any(), 3) } returns STALE
         val vm = form()
         advanceUntilIdle()
@@ -165,7 +218,13 @@ class ActivityIfMatchTest {
         assertNull(vm.events.value)
         assertEquals("Dinner", vm.uiState.value.title)
 
-        coEvery { activityRepository.get(7) } returns Result.success(Activity(id = 7, title = "Server", date = "2026-08-10T14:00:00Z", revision = 5))
+        coEvery {
+            activityRepository.get(
+                7
+            )
+        } returns Result.success(
+            Activity(id = 7, title = "Server", date = "2026-08-10T14:00:00Z", revision = 5)
+        )
         vm.onConflictLoadLatest()
         advanceUntilIdle()
         assertFalse(vm.uiState.value.conflict)
@@ -178,11 +237,23 @@ class ActivityIfMatchTest {
         runTest(mainDispatcherRule.testDispatcher) {
             val page = ContactActivitiesPage(
                 activities = listOf(Activity(id = 1, title = "A", revision = 2)),
-                nextCursor = null,
+                nextCursor = null
             )
-            coEvery { activityRepository.listForContact(any(), any(), any(), any(), any(), any()) } returns Result.success(page)
+            coEvery {
+                activityRepository.listForContact(
+                    any(),
+                    any(),
+                    any(),
+                    any(),
+                    any(),
+                    any()
+                )
+            } returns Result.success(page)
             coEvery { activityRepository.delete(1, 2) } returns STALE
-            val vm = ActivitiesViewModel(activityRepository, SavedStateHandle(mapOf("contactId" to 5)))
+            val vm = ActivitiesViewModel(
+                activityRepository,
+                SavedStateHandle(mapOf("contactId" to 5))
+            )
             advanceUntilIdle()
             vm.delete(1)
             advanceUntilIdle()
@@ -203,14 +274,21 @@ class ReminderIfMatchTest {
     private val authRepository = mockk<AuthRepository>()
 
     @Test
-    fun `edit save sends the loaded revision and a 412 raises conflict`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `edit save sends the loaded revision and a 412 raises conflict`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { reminderRepository.get(1) } returns Result.success(
-            Reminder(id = 1, message = "Call Dana", remindAt = "2026-08-10T14:00:00Z", revision = 6),
+            Reminder(
+                id = 1,
+                message = "Call Dana",
+                remindAt = "2026-08-10T14:00:00Z",
+                revision = 6
+            )
         )
         coEvery { reminderRepository.update(1, any(), 6) } returns STALE
         val vm = ReminderFormViewModel(
             reminderRepository,
-            SavedStateHandle(mapOf("contactId" to 5, "reminderId" to 1)),
+            SavedStateHandle(mapOf("contactId" to 5, "reminderId" to 1))
         )
         advanceUntilIdle()
         vm.onMessageChange("Call Dana today")
@@ -228,10 +306,14 @@ class ReminderIfMatchTest {
         runTest(mainDispatcherRule.testDispatcher) {
             every { authRepository.observeSession() } returns flowOf(SessionState())
             coEvery { reminderRepository.listForContact(5) } returns Result.success(
-                listOf(Reminder(id = 1, message = "x", revision = 4)),
+                listOf(Reminder(id = 1, message = "x", revision = 4))
             )
             coEvery { reminderRepository.delete(1, 4) } returns STALE
-            val vm = RemindersViewModel(reminderRepository, authRepository, SavedStateHandle(mapOf("contactId" to 5)))
+            val vm = RemindersViewModel(
+                reminderRepository,
+                authRepository,
+                SavedStateHandle(mapOf("contactId" to 5))
+            )
             advanceUntilIdle()
             vm.delete(1)
             advanceUntilIdle()
@@ -257,8 +339,8 @@ class ConflictResolutionViewModelsTest {
             coEvery { activityRepository.listAll() } returns Result.success(
                 com.mycorrhizal.crm.model.network.ActivitiesPage(
                     activitiesRaw = listOf(Activity(id = 1, title = "A", revision = 2)),
-                    nextCursor = null,
-                ),
+                    nextCursor = null
+                )
             )
             coEvery { activityRepository.delete(1, 2) } returns STALE
             val vm = ActivitiesInboxViewModel(activityRepository)
@@ -283,9 +365,23 @@ class ConflictResolutionViewModelsTest {
         }
 
     @Test
-    fun `activities list load latest reloads the list`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { activityRepository.listForContact(any(), any(), any(), any(), any(), any()) } returns Result.success(
-            ContactActivitiesPage(activities = listOf(Activity(id = 1, title = "A", revision = 2)), nextCursor = null),
+    fun `activities list load latest reloads the list`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery {
+            activityRepository.listForContact(
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any()
+            )
+        } returns Result.success(
+            ContactActivitiesPage(
+                activities = listOf(Activity(id = 1, title = "A", revision = 2)),
+                nextCursor = null
+            )
         )
         coEvery { activityRepository.delete(1, 2) } returns STALE
         val vm = ActivitiesViewModel(activityRepository, SavedStateHandle(mapOf("contactId" to 5)))
@@ -296,16 +392,23 @@ class ConflictResolutionViewModelsTest {
         advanceUntilIdle()
 
         assertFalse(vm.uiState.value.conflict)
-        coVerify(exactly = 2) { activityRepository.listForContact(any(), any(), any(), any(), any(), any()) }
+        coVerify(
+            exactly = 2
+        ) { activityRepository.listForContact(any(), any(), any(), any(), any(), any()) }
     }
 
     @Test
-    fun `reminder form keep editing and load latest resolve the conflict`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `reminder form keep editing and load latest resolve the conflict`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { reminderRepository.get(1) } returns Result.success(
-            Reminder(id = 1, message = "Call", remindAt = "2026-08-10T14:00:00Z", revision = 6),
+            Reminder(id = 1, message = "Call", remindAt = "2026-08-10T14:00:00Z", revision = 6)
         )
         coEvery { reminderRepository.update(1, any(), 6) } returns STALE
-        val vm = ReminderFormViewModel(reminderRepository, SavedStateHandle(mapOf("contactId" to 5, "reminderId" to 1)))
+        val vm = ReminderFormViewModel(
+            reminderRepository,
+            SavedStateHandle(mapOf("contactId" to 5, "reminderId" to 1))
+        )
         advanceUntilIdle()
         vm.save()
         advanceUntilIdle()
@@ -317,7 +420,7 @@ class ConflictResolutionViewModelsTest {
         vm.save()
         advanceUntilIdle()
         coEvery { reminderRepository.get(1) } returns Result.success(
-            Reminder(id = 1, message = "Server", remindAt = "2026-08-10T14:00:00Z", revision = 8),
+            Reminder(id = 1, message = "Server", remindAt = "2026-08-10T14:00:00Z", revision = 8)
         )
         vm.onConflictLoadLatest()
         advanceUntilIdle()
@@ -327,13 +430,19 @@ class ConflictResolutionViewModelsTest {
     }
 
     @Test
-    fun `reminders list load latest reloads and dismiss clears`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `reminders list load latest reloads and dismiss clears`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         every { authRepository.observeSession() } returns flowOf(SessionState())
         coEvery { reminderRepository.listForContact(5) } returns Result.success(
-            listOf(Reminder(id = 1, message = "x", revision = 4)),
+            listOf(Reminder(id = 1, message = "x", revision = 4))
         )
         coEvery { reminderRepository.delete(1, 4) } returns STALE
-        val vm = RemindersViewModel(reminderRepository, authRepository, SavedStateHandle(mapOf("contactId" to 5)))
+        val vm = RemindersViewModel(
+            reminderRepository,
+            authRepository,
+            SavedStateHandle(mapOf("contactId" to 5))
+        )
         advanceUntilIdle()
         vm.delete(1)
         advanceUntilIdle()

@@ -22,7 +22,10 @@ class SharedPrefsDeviceRegistrationStoreTest {
         context = ApplicationProvider.getApplicationContext()
         // SharedPreferences (unlike DataStore) is a direct, synchronous store with no
         // process-lifetime in-memory cache layer, but still clear explicitly for isolation.
-        context.getSharedPreferences("device_registration", Context.MODE_PRIVATE).edit().clear().apply()
+        context.getSharedPreferences(
+            "device_registration",
+            Context.MODE_PRIVATE
+        ).edit().clear().apply()
         store = SharedPrefsDeviceRegistrationStore(context)
     }
 

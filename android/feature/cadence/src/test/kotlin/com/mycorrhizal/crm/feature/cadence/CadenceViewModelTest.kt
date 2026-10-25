@@ -39,39 +39,48 @@ class CadenceViewModelTest {
 
     private fun viewModel(id: Int = 5): CadenceViewModel {
         stubSession()
-        return CadenceViewModel(policyRepository, contactRepository, authRepository, SavedStateHandle(mapOf("contactId" to id)))
+        return CadenceViewModel(
+            policyRepository,
+            contactRepository,
+            authRepository,
+            SavedStateHandle(mapOf("contactId" to id))
+        )
     }
 
     private val uid = "11111111-1111-1111-1111-111111111111"
 
     private fun stubContact() {
         coEvery { contactRepository.getContact(5) } returns Result.success(
-            ContactRecordResponse(id = 5, card = Card(uid = uid, name = Name(full = "Dana White"))),
+            ContactRecordResponse(id = 5, card = Card(uid = uid, name = Name(full = "Dana White")))
         )
     }
 
     private fun stubSession(dateFormat: String? = null) {
-        coEvery { authRepository.observeSession() } returns flowOf(SessionState(dateFormat = dateFormat))
+        coEvery { authRepository.observeSession() } returns flowOf(
+            SessionState(dateFormat = dateFormat)
+        )
     }
 
     private fun policy(
         id: String = "p1",
         interval: Int = 30,
         qualifyingTypes: List<String> = emptyList(),
-        health: CadenceHealth? = CadenceHealth(hasQualifyingInteraction = true, overdueBy = 0),
+        health: CadenceHealth? = CadenceHealth(hasQualifyingInteraction = true, overdueBy = 0)
     ) = CadencePolicy(
         id = id,
         entityId = uid,
         targetIntervalDays = interval,
         qualifyingTypes = qualifyingTypes,
-        health = health,
+        health = health
     )
 
     @Test
-    fun `load resolves the vcard uid and takes the first policy`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `load resolves the vcard uid and takes the first policy`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         stubContact()
         coEvery { policyRepository.listForContact(uid) } returns Result.success(
-            listOf(policy(interval = 45), policy(interval = 60)),
+            listOf(policy(interval = 45), policy(interval = 60))
         )
 
         val vm = viewModel()
@@ -84,7 +93,9 @@ class CadenceViewModelTest {
     }
 
     @Test
-    fun `load with no policies leaves the empty state`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `load with no policies leaves the empty state`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         stubContact()
         coEvery { policyRepository.listForContact(uid) } returns Result.success(emptyList())
 
@@ -107,7 +118,7 @@ class CadenceViewModelTest {
     @Test
     fun `contact with no vcard uid sets an error`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { contactRepository.getContact(5) } returns Result.success(
-            ContactRecordResponse(id = 5, card = Card(name = Name(full = "No Uid"))),
+            ContactRecordResponse(id = 5, card = Card(name = Name(full = "No Uid")))
         )
 
         val vm = viewModel()
@@ -120,7 +131,7 @@ class CadenceViewModelTest {
     fun `load failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
         stubContact()
         coEvery { policyRepository.listForContact(uid) } returns Result.failure(
-            ApiError.Client(500, "boom"),
+            ApiError.Client(500, "boom")
         )
 
         val vm = viewModel()
@@ -130,7 +141,9 @@ class CadenceViewModelTest {
     }
 
     @Test
-    fun `create sends the interval and qualifying types, preserving an empty selection`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `create sends the interval and qualifying types, preserving an empty selection`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         stubContact()
         coEvery { policyRepository.listForContact(uid) } returns Result.success(emptyList())
         coEvery {
@@ -139,7 +152,7 @@ class CadenceViewModelTest {
                     input.entityId == uid &&
                         input.targetIntervalDays == 14 &&
                         input.qualifyingTypes == emptyList<String>()
-                },
+                }
             )
         } returns Result.success(policy(interval = 14, qualifyingTypes = emptyList()))
 
@@ -152,19 +165,21 @@ class CadenceViewModelTest {
         assertEquals(14, vm.uiState.value.policy?.targetIntervalDays)
         coVerify {
             policyRepository.create(
-                CadencePolicyInput(uid, 14, emptyList()),
+                CadencePolicyInput(uid, 14, emptyList())
             )
         }
     }
 
     @Test
-    fun `create sends the selected qualifying types`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `create sends the selected qualifying types`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         stubContact()
         coEvery { policyRepository.listForContact(uid) } returns Result.success(emptyList())
         val selected = listOf(CadenceQualifyingType.CALL, CadenceQualifyingType.VISIT)
         coEvery {
             policyRepository.create(
-                match { it.qualifyingTypes == selected },
+                match { it.qualifyingTypes == selected }
             )
         } returns Result.success(policy(qualifyingTypes = selected))
 
@@ -178,13 +193,19 @@ class CadenceViewModelTest {
     }
 
     @Test
-    fun `update targets the policy id and resends entity_id`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `update targets the policy id and resends entity_id`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         stubContact()
-        coEvery { policyRepository.listForContact(uid) } returns Result.success(listOf(policy(id = "p1")))
+        coEvery {
+            policyRepository.listForContact(
+                uid
+            )
+        } returns Result.success(listOf(policy(id = "p1")))
         coEvery {
             policyRepository.update(
                 "p1",
-                match { input -> input.entityId == uid && input.targetIntervalDays == 90 },
+                match { input -> input.entityId == uid && input.targetIntervalDays == 90 }
             )
         } returns Result.success(policy(id = "p1", interval = 90))
 
@@ -196,14 +217,21 @@ class CadenceViewModelTest {
 
         assertEquals(90, vm.uiState.value.policy?.targetIntervalDays)
         coVerify {
-            policyRepository.update("p1", CadencePolicyInput(uid, 90, listOf(CadenceQualifyingType.MESSAGE)))
+            policyRepository.update(
+                "p1",
+                CadencePolicyInput(uid, 90, listOf(CadenceQualifyingType.MESSAGE))
+            )
         }
     }
 
     @Test
     fun `delete returns to the empty state`() = runTest(mainDispatcherRule.testDispatcher) {
         stubContact()
-        coEvery { policyRepository.listForContact(uid) } returns Result.success(listOf(policy(id = "p1")))
+        coEvery {
+            policyRepository.listForContact(
+                uid
+            )
+        } returns Result.success(listOf(policy(id = "p1")))
         coEvery { policyRepository.delete("p1") } returns Result.success(Unit)
 
         val vm = viewModel()
@@ -217,7 +245,9 @@ class CadenceViewModelTest {
     }
 
     @Test
-    fun `the server's health readout passes through untouched`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `the server's health readout passes through untouched`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         // The ticket pins "health is read, never recomputed": a server verdict
         // that contradicts what the local dates would imply must surface as-is.
         stubContact()
@@ -225,10 +255,10 @@ class CadenceViewModelTest {
             hasQualifyingInteraction = true,
             lastInteraction = "2026-07-01T10:00:00Z",
             nextDue = "2026-07-31T00:00:00Z",
-            overdueBy = 3,
+            overdueBy = 3
         )
         coEvery { policyRepository.listForContact(uid) } returns Result.success(
-            listOf(policy(interval = 30, health = verdict)),
+            listOf(policy(interval = 30, health = verdict))
         )
 
         val vm = viewModel()
@@ -242,11 +272,17 @@ class CadenceViewModelTest {
     }
 
     @Test
-    fun `write failure surfaces the error and keeps the current policy`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `write failure surfaces the error and keeps the current policy`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         stubContact()
-        coEvery { policyRepository.listForContact(uid) } returns Result.success(listOf(policy(id = "p1")))
+        coEvery {
+            policyRepository.listForContact(
+                uid
+            )
+        } returns Result.success(listOf(policy(id = "p1")))
         coEvery { policyRepository.update("p1", any()) } returns Result.failure(
-            ApiError.Client(409, "conflict"),
+            ApiError.Client(409, "conflict")
         )
 
         val vm = viewModel()
@@ -261,7 +297,9 @@ class CadenceViewModelTest {
     }
 
     @Test
-    fun `the session date format flows into the state`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `the session date format flows into the state`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         stubContact()
         coEvery { policyRepository.listForContact(uid) } returns Result.success(emptyList())
 
@@ -275,7 +313,9 @@ class CadenceViewModelTest {
     }
 
     @Test
-    fun `an absent session date format leaves the state default`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `an absent session date format leaves the state default`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         stubContact()
         coEvery { policyRepository.listForContact(uid) } returns Result.success(emptyList())
 

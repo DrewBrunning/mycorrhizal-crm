@@ -35,7 +35,7 @@ class ServerTooOldScreenTest {
                     serverVersion = "0.5.3",
                     requiredVersion = "0.6.0",
                     serverUrl = "https://crm.example.com",
-                    onLogout = {},
+                    onLogout = {}
                 )
             }
         }
@@ -56,7 +56,7 @@ class ServerTooOldScreenTest {
                     requiredVersion = "0.6.0",
                     serverUrl = null,
                     loggedIn = true,
-                    onLogout = { loggedOut = true },
+                    onLogout = { loggedOut = true }
                 )
             }
         }
@@ -77,7 +77,7 @@ class ServerTooOldScreenTest {
                     serverUrl = null,
                     loggedIn = false,
                     onLogout = { loggedOut = true },
-                    onBackToLogin = { backToLogin = true },
+                    onBackToLogin = { backToLogin = true }
                 )
             }
         }
@@ -96,7 +96,7 @@ class ServerTooOldScreenTest {
                     serverVersion = "0.5.3",
                     requiredVersion = "0.6.0",
                     serverUrl = null,
-                    onLogout = {},
+                    onLogout = {}
                 )
             }
         }

@@ -27,20 +27,30 @@ fun scoreReasonText(reasonCode: String?, params: ScoreReasonParams, fallback: St
         ScoreReasonCode.CLOSENESS_DIRECT -> params.relation?.let { relation ->
             stringResource(R.string.score_reason_closeness_direct, relationshipRoleLabel(relation))
         }
+
         ScoreReasonCode.CLOSENESS_HOPS -> params.hops?.let { hops ->
             pluralStringResource(R.plurals.score_reason_closeness_hops, hops, hops)
         }
+
         ScoreReasonCode.CLOSENESS_UNKNOWN -> stringResource(R.string.score_reason_closeness_unknown)
+
         ScoreReasonCode.RECENCY_NONE -> stringResource(R.string.score_reason_recency_none)
+
         ScoreReasonCode.RECENCY_DAYS -> {
             val days = params.days
             val interval = params.intervalDays
             if (days != null && interval != null) {
-                pluralStringResource(R.plurals.score_reason_recency_days, days, days, every(interval))
+                pluralStringResource(
+                    R.plurals.score_reason_recency_days,
+                    days,
+                    days,
+                    every(interval)
+                )
             } else {
                 null
             }
         }
+
         ScoreReasonCode.FREQUENCY_COUNT -> {
             val count = params.count
             val window = params.windowDays
@@ -57,19 +67,25 @@ fun scoreReasonText(reasonCode: String?, params: ScoreReasonParams, fallback: St
                     count,
                     count,
                     pluralStringResource(R.plurals.score_reason_last_days, window, window),
-                    expectedText,
+                    expectedText
                 )
             } else {
                 null
             }
         }
+
         ScoreReasonCode.REACH_OUT_PENDING -> stringResource(R.string.score_reason_reach_out_pending)
+
         ScoreReasonCode.REACH_OUT_NONE -> stringResource(R.string.score_reason_reach_out_none)
+
         ScoreReasonCode.LAST_UPDATED_DAYS -> params.days?.let { days ->
             pluralStringResource(R.plurals.score_reason_last_updated_days, days, days)
         }
+
         ScoreReasonCode.AMBIENT_HOUSEHOLD -> stringResource(R.string.score_reason_ambient_household)
+
         ScoreReasonCode.AMBIENT_FLAG -> stringResource(R.string.score_reason_ambient_flag)
+
         ScoreReasonCode.TARGET_CADENCE_POLICY -> {
             val score = params.score
             val interval = params.intervalDays
@@ -79,17 +95,25 @@ fun scoreReasonText(reasonCode: String?, params: ScoreReasonParams, fallback: St
                 null
             }
         }
+
         ScoreReasonCode.TARGET_TIER -> {
             val score = params.score
             val interval = params.intervalDays
             val tier = params.tier
             if (score != null && interval != null && tier != null) {
-                stringResource(R.string.score_reason_target_tier, score, targetTierLabel(tier), every(interval))
+                stringResource(
+                    R.string.score_reason_target_tier,
+                    score,
+                    targetTierLabel(tier),
+                    every(interval)
+                )
             } else {
                 null
             }
         }
+
         ScoreReasonCode.TARGET_AMBIENT -> stringResource(R.string.score_reason_target_ambient)
+
         else -> null
     }
     return text ?: fallback

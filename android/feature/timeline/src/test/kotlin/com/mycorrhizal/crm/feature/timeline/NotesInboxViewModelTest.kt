@@ -30,10 +30,13 @@ class NotesInboxViewModelTest {
     fun `loads the unfiled inbox on init`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { noteRepository.listUnfiled() } returns Result.success(
             UnfiledNotesPage(
-                notes = listOf(Note(id = 3, content = "Buy milk"), Note(id = 4, content = "Call mom")),
+                notes = listOf(
+                    Note(id = 3, content = "Buy milk"),
+                    Note(id = 4, content = "Call mom")
+                ),
                 nextCursor = null,
-                total = 2,
-            ),
+                total = 2
+            )
         )
 
         val vm = NotesInboxViewModel(noteRepository)
@@ -51,7 +54,11 @@ class NotesInboxViewModelTest {
     fun `onResumed reloads once a load has finished but not while the first one is running`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { noteRepository.listUnfiled() } returns Result.success(
-                UnfiledNotesPage(notes = listOf(Note(id = 1, content = "One")), nextCursor = null, total = 1),
+                UnfiledNotesPage(
+                    notes = listOf(Note(id = 1, content = "One")),
+                    nextCursor = null,
+                    total = 1
+                )
             )
 
             val vm = NotesInboxViewModel(noteRepository)
@@ -62,8 +69,8 @@ class NotesInboxViewModelTest {
                 UnfiledNotesPage(
                     notes = listOf(Note(id = 2, content = "Two"), Note(id = 1, content = "One")),
                     nextCursor = null,
-                    total = 2,
-                ),
+                    total = 2
+                )
             )
             vm.onResumed()
             advanceUntilIdle()
@@ -76,7 +83,7 @@ class NotesInboxViewModelTest {
     fun `onResumed during the initial load does not start a second request`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { noteRepository.listUnfiled() } returns Result.success(
-                UnfiledNotesPage(notes = emptyList(), nextCursor = null, total = 0),
+                UnfiledNotesPage(notes = emptyList(), nextCursor = null, total = 0)
             )
 
             val vm = NotesInboxViewModel(noteRepository)
@@ -88,7 +95,9 @@ class NotesInboxViewModelTest {
 
     @Test
     fun `failure surfaces the display message`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { noteRepository.listUnfiled() } returns Result.failure(ApiError.Client(500, "server error"))
+        coEvery { noteRepository.listUnfiled() } returns Result.failure(
+            ApiError.Client(500, "server error")
+        )
 
         val vm = NotesInboxViewModel(noteRepository)
         advanceUntilIdle()
@@ -100,12 +109,22 @@ class NotesInboxViewModelTest {
     // Ticket's pagination trap: a test that only asserts "more items appeared" would pass
     // against a re-fetch of page 1 — assert both pages are present with no duplicates.
     @Test
-    fun `loadMore appends the next page without duplicating`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `loadMore appends the next page without duplicating`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { noteRepository.listUnfiled() } returns Result.success(
-            UnfiledNotesPage(notes = listOf(Note(id = 1, content = "One")), nextCursor = "cursor-2", total = 3),
+            UnfiledNotesPage(
+                notes = listOf(Note(id = 1, content = "One")),
+                nextCursor = "cursor-2",
+                total = 3
+            )
         )
         coEvery { noteRepository.listUnfiled(cursor = "cursor-2") } returns Result.success(
-            UnfiledNotesPage(notes = listOf(Note(id = 2, content = "Two")), nextCursor = null, total = 3),
+            UnfiledNotesPage(
+                notes = listOf(Note(id = 2, content = "Two")),
+                nextCursor = null,
+                total = 3
+            )
         )
 
         val vm = NotesInboxViewModel(noteRepository)
@@ -122,7 +141,11 @@ class NotesInboxViewModelTest {
     @Test
     fun `loadMore is a no-op with no next cursor`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { noteRepository.listUnfiled() } returns Result.success(
-            UnfiledNotesPage(notes = listOf(Note(id = 1, content = "One")), nextCursor = null, total = 1),
+            UnfiledNotesPage(
+                notes = listOf(Note(id = 1, content = "One")),
+                nextCursor = null,
+                total = 1
+            )
         )
 
         val vm = NotesInboxViewModel(noteRepository)

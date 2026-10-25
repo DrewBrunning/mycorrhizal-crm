@@ -56,7 +56,10 @@ class ForceUpdateGateE2ETest {
     @Before
     fun setUp() {
         // Clean skip when the dedicated compat backend is not running.
-        assumeOrFailInCi("compat backend at $COMPAT_BACKEND_URL is not reachable", backend.isReachable())
+        assumeOrFailInCi(
+            "compat backend at $COMPAT_BACKEND_URL is not reachable",
+            backend.isReachable()
+        )
         backend.registerSeedUser()
         clearSession()
     }

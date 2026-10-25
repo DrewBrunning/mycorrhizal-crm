@@ -1,9 +1,9 @@
 package com.mycorrhizal.crm.ui
 
+import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 /**
  * Mirrors the frontend's `locales.test.ts`: every locale file must carry the
@@ -38,11 +38,10 @@ class LocalesConsistencyTest {
             assertEquals(
                 "Locale $locale must have the same keys as English",
                 english,
-                keysFor(locale),
+                keysFor(locale)
             )
         }
     }
-
 
     /** Plural resource names in one values dir — the `<plurals>` half of the key set. */
     private fun pluralKeysFor(valuesDir: String): Set<String> {
@@ -74,7 +73,7 @@ class LocalesConsistencyTest {
             assertEquals(
                 "Locale $locale must have the same plural keys as English",
                 english,
-                pluralKeysFor(locale),
+                pluralKeysFor(locale)
             )
         }
     }
@@ -86,11 +85,11 @@ class LocalesConsistencyTest {
                 val quantities = pluralQuantitiesFor(locale, name)
                 assertTrue(
                     "Locale $locale plural '$name' is missing the 'one' quantity",
-                    quantities.containsKey("one"),
+                    quantities.containsKey("one")
                 )
                 assertTrue(
                     "Locale $locale plural '$name' is missing the 'other' quantity",
-                    quantities.containsKey("other"),
+                    quantities.containsKey("other")
                 )
             }
         }
@@ -103,7 +102,7 @@ class LocalesConsistencyTest {
             assertTrue(
                 "Locale $locale still contains hand-rolled '(s)' pluralization at " +
                     matches.joinToString { it.range.toString() },
-                matches.isEmpty(),
+                matches.isEmpty()
             )
         }
     }
@@ -114,7 +113,7 @@ class LocalesConsistencyTest {
         for (locale in locales.drop(1)) {
             assertTrue(
                 "Locale $locale must not be byte-identical to English",
-                contentFor(locale) != english,
+                contentFor(locale) != english
             )
         }
     }
@@ -163,7 +162,7 @@ class LocalesConsistencyTest {
                     "Locale $locale: every key under the '$namespace' prefix " +
                         "($sortedKeys) is byte-identical to English — this namespace " +
                         "looks untranslated",
-                    englishGroup != localeGroup,
+                    englishGroup != localeGroup
                 )
             }
         }

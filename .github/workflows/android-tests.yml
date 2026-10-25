@@ -273,11 +273,12 @@ jobs:
         working-directory: android
         run: ./gradlew --warning-mode=fail lintDebug :app:lintObtainiumDebug :app:lintFossDebug
 
-      # Issue #358: detekt, the Kotlin correctness/smell analyzer
-      # complementing CodeQL + mobsfscan + Android Lint (shared config:
-      # android/config/detekt/detekt.yml, style rules disabled). detekt 2.x
-      # supports the JDK 25 build JVM (issue #1858), so no JDK downgrade is
-      # needed anymore.
+      # Issue #358/#1901: detekt, the Kotlin correctness/smell analyzer and
+      # formatter gate (the ktlint wrapper rule set enforces the android_studio
+      # code style), complementing CodeQL + mobsfscan + Android Lint. Shared
+      # config: android/config/detekt/detekt.yml; there is no detekt baseline.
+      # detekt 2.x supports the JDK 25 build JVM (issue #1858), so no JDK
+      # downgrade is needed anymore.
       - name: detekt
         working-directory: android
         run: ./gradlew --warning-mode=fail detekt

@@ -1,8 +1,8 @@
 package com.mycorrhizal.crm.feature.timeline
 
 import com.mycorrhizal.crm.domain.repository.ActivityRepository
-import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ActivitiesPage
+import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
 import io.mockk.coEvery
@@ -32,10 +32,10 @@ class ActivitiesInboxViewModelTest {
             ActivitiesPage(
                 activitiesRaw = listOf(
                     Activity(id = 1, title = "Coffee with Dana"),
-                    Activity(id = 2, title = "Call with Carol"),
+                    Activity(id = 2, title = "Call with Carol")
                 ),
-                nextCursor = null,
-            ),
+                nextCursor = null
+            )
         )
 
         val vm = ActivitiesInboxViewModel(activityRepository)
@@ -49,7 +49,9 @@ class ActivitiesInboxViewModelTest {
 
     @Test
     fun `failure surfaces the display message`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { activityRepository.listAll() } returns Result.failure(ApiError.Client(500, "server error"))
+        coEvery { activityRepository.listAll() } returns Result.failure(
+            ApiError.Client(500, "server error")
+        )
 
         val vm = ActivitiesInboxViewModel(activityRepository)
         advanceUntilIdle()
@@ -61,12 +63,20 @@ class ActivitiesInboxViewModelTest {
     // Ticket's pagination trap: a test that only asserts "more items appeared" would pass
     // against a re-fetch of page 1 — assert both pages are present with no duplicates.
     @Test
-    fun `loadMore appends the next page without duplicating`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `loadMore appends the next page without duplicating`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { activityRepository.listAll() } returns Result.success(
-            ActivitiesPage(activitiesRaw = listOf(Activity(id = 1, title = "One")), nextCursor = "cursor-2"),
+            ActivitiesPage(
+                activitiesRaw = listOf(Activity(id = 1, title = "One")),
+                nextCursor = "cursor-2"
+            )
         )
         coEvery { activityRepository.listAll(cursor = "cursor-2") } returns Result.success(
-            ActivitiesPage(activitiesRaw = listOf(Activity(id = 2, title = "Two")), nextCursor = null),
+            ActivitiesPage(
+                activitiesRaw = listOf(Activity(id = 2, title = "Two")),
+                nextCursor = null
+            )
         )
 
         val vm = ActivitiesInboxViewModel(activityRepository)
@@ -83,7 +93,10 @@ class ActivitiesInboxViewModelTest {
     @Test
     fun `loadMore is a no-op with no next cursor`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { activityRepository.listAll() } returns Result.success(
-            ActivitiesPage(activitiesRaw = listOf(Activity(id = 1, title = "One")), nextCursor = null),
+            ActivitiesPage(
+                activitiesRaw = listOf(Activity(id = 1, title = "One")),
+                nextCursor = null
+            )
         )
 
         val vm = ActivitiesInboxViewModel(activityRepository)
@@ -96,12 +109,17 @@ class ActivitiesInboxViewModelTest {
     }
 
     @Test
-    fun `delete removes the activity from the list on success`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `delete removes the activity from the list on success`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { activityRepository.listAll() } returns Result.success(
             ActivitiesPage(
-                activitiesRaw = listOf(Activity(id = 1, title = "One"), Activity(id = 2, title = "Two")),
-                nextCursor = null,
-            ),
+                activitiesRaw = listOf(
+                    Activity(id = 1, title = "One"),
+                    Activity(id = 2, title = "Two")
+                ),
+                nextCursor = null
+            )
         )
         coEvery { activityRepository.delete(1, any()) } returns Result.success(Unit)
 
@@ -116,11 +134,21 @@ class ActivitiesInboxViewModelTest {
     }
 
     @Test
-    fun `a failed delete keeps the row and surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a failed delete keeps the row and surfaces the error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { activityRepository.listAll() } returns Result.success(
-            ActivitiesPage(activitiesRaw = listOf(Activity(id = 1, title = "One")), nextCursor = null),
+            ActivitiesPage(
+                activitiesRaw = listOf(Activity(id = 1, title = "One")),
+                nextCursor = null
+            )
         )
-        coEvery { activityRepository.delete(1, any()) } returns Result.failure(ApiError.Client(500, "delete failed"))
+        coEvery {
+            activityRepository.delete(
+                1,
+                any()
+            )
+        } returns Result.failure(ApiError.Client(500, "delete failed"))
 
         val vm = ActivitiesInboxViewModel(activityRepository)
         advanceUntilIdle()

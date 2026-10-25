@@ -48,11 +48,11 @@ class Migration18To19Test {
         LocalDatabaseSchemaFixtures.createV18Tables(db)
         db.execSQL(
             "INSERT INTO cached_contacts (id, fn, primaryPhone, phonesNormalized, archived, deleted) " +
-                "VALUES (1, 'Dana White', '(800) 555-1234', '8005551234 5551234', 0, 0)",
+                "VALUES (1, 'Dana White', '(800) 555-1234', '8005551234 5551234', 0, 0)"
         )
         db.execSQL(
             "INSERT INTO pending_interactions (timestampMillis, kind, phoneNumber, synced) " +
-                "VALUES (1000, 'call', '5551234', 0)",
+                "VALUES (1000, 'call', '5551234', 0)"
         )
         db.version = 18
         db.close()
@@ -79,8 +79,8 @@ class Migration18To19Test {
                 id = "event-1",
                 title = "Summer BBQ",
                 startsAt = "2026-07-04T15:00:00Z",
-                sensitivity = "normal",
-            ),
+                sensitivity = "normal"
+            )
         )
         val events = db.cachedOccasionEventDao().getAll()
         assertEquals(1, events.size)

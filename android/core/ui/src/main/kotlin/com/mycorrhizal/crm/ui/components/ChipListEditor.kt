@@ -42,7 +42,7 @@ fun ChipListEditor(
     items: List<String>,
     onChange: (List<String>) -> Unit,
     label: String,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     var draft by remember { mutableStateOf("") }
 
@@ -57,12 +57,17 @@ fun ChipListEditor(
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelLarge.copy(fontFamily = com.mycorrhizal.crm.ui.theme.MycorrhizalFonts.mono),
+            style = MaterialTheme.typography.labelLarge.copy(
+                fontFamily = com.mycorrhizal.crm.ui.theme.MycorrhizalFonts.mono
+            ),
             color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(top = 8.dp),
+            modifier = Modifier.padding(top = 8.dp)
         )
         if (items.isNotEmpty()) {
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 items.forEachIndexed { index, item ->
                     InputChip(
                         selected = false,
@@ -71,9 +76,9 @@ fun ChipListEditor(
                         trailingIcon = {
                             Icon(
                                 Icons.Outlined.Close,
-                                contentDescription = stringResource(R.string.contact_remove),
+                                contentDescription = stringResource(R.string.contact_remove)
                             )
-                        },
+                        }
                     )
                 }
             }
@@ -86,7 +91,7 @@ fun ChipListEditor(
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { commitDraft() }),
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f)
             )
             IconButton(onClick = { commitDraft() }) {
                 Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.contact_add))

@@ -33,8 +33,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.feature.timeline.ContactSearchField
 import com.mycorrhizal.crm.model.network.ContactMergeAssociationCounts
 import com.mycorrhizal.crm.model.network.ContactMergeFieldConflict
@@ -48,7 +48,7 @@ fun MergeContactsScreen(
     keepId: Long,
     mergeId: Long = 0,
     otherName: String? = null,
-    viewModel: MergeContactsViewModel = hiltViewModel(),
+    viewModel: MergeContactsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -70,7 +70,7 @@ fun MergeContactsScreen(
         onPick = viewModel::selectOther,
         onResolve = viewModel::resolve,
         onCommit = viewModel::commit,
-        onErrorShown = viewModel::onErrorShown,
+        onErrorShown = viewModel::onErrorShown
     )
 }
 
@@ -88,7 +88,7 @@ fun MergeContactsScreenContent(
     onPick: (ContactSummary) -> Unit = {},
     onResolve: (String, String) -> Unit = { _, _ -> },
     onCommit: () -> Unit = {},
-    onErrorShown: () -> Unit = {},
+    onErrorShown: () -> Unit = {}
 ) {
     val state = uiState
     val snackbarHostState = remember { SnackbarHostState() }
@@ -101,31 +101,39 @@ fun MergeContactsScreenContent(
             TopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back)
+                        )
                     }
                 },
-                title = { Text(stringResource(R.string.merge_title), style = MaterialTheme.typography.titleLarge) },
+                title = {
+                    Text(
+                        stringResource(R.string.merge_title),
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(rememberScrollState())
         ) {
             Text(
                 text = stringResource(R.string.merge_keep_hint),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             // M23: search-based target picker — the reported gap was typing the target's
@@ -138,14 +146,14 @@ fun MergeContactsScreenContent(
                 onPick = onPick,
                 labelRes = R.string.merge_pick_other,
                 hiddenMatchCount = state.hiddenMatchCount,
-                modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)
             )
 
             state.pickedOther?.let { other ->
                 Text(
                     text = stringResource(R.string.merge_picked_other, other.displayName),
                     style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(bottom = 8.dp),
+                    modifier = Modifier.padding(bottom = 8.dp)
                 )
             } ?: otherName?.let { name ->
                 // T93: the merge arrived from duplicate review with both sides
@@ -154,7 +162,7 @@ fun MergeContactsScreenContent(
                 Text(
                     text = stringResource(R.string.merge_picked_other, name),
                     style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(bottom = 8.dp),
+                    modifier = Modifier.padding(bottom = 8.dp)
                 )
             }
 
@@ -165,7 +173,7 @@ fun MergeContactsScreenContent(
                     modifier = Modifier
                         .align(Alignment.CenterHorizontally)
                         .padding(vertical = 12.dp)
-                        .testTag("merge-preview-loading"),
+                        .testTag("merge-preview-loading")
                 )
             }
 
@@ -174,22 +182,26 @@ fun MergeContactsScreenContent(
                     Text(
                         stringResource(R.string.merge_no_conflicts),
                         style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(vertical = 8.dp),
+                        modifier = Modifier.padding(vertical = 8.dp)
                     )
                 } else {
                     conflicts.forEach { conflict ->
                         ConflictRow(
                             conflict = conflict,
                             chosen = state.resolutions[conflict.field],
-                            onChoose = { value -> onResolve(conflict.field, value) },
+                            onChoose = { value -> onResolve(conflict.field, value) }
                         )
                     }
                 }
                 AssociationCountsSection(counts = preview.associationCounts)
                 Button(
                     onClick = onCommit,
-                    enabled = !state.isCommitting && conflicts.all { state.resolutions.containsKey(it.field) },
-                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                    enabled = !state.isCommitting && conflicts.all {
+                        state.resolutions.containsKey(
+                            it.field
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
                 ) {
                     Text(stringResource(R.string.merge_commit))
                 }
@@ -218,44 +230,124 @@ fun MergeContactsScreenContent(
 private fun AssociationCountsSection(counts: ContactMergeAssociationCounts) {
     val lines = listOfNotNull(
         counts.notes.takeIf { it > 0 }?.let { stringResource(R.string.merge_count_notes, it) },
-        counts.activities.takeIf { it > 0 }?.let { stringResource(R.string.merge_count_activities, it) },
-        counts.reminders.takeIf { it > 0 }?.let { stringResource(R.string.merge_count_reminders, it) },
-        counts.reminderCompletions.takeIf { it > 0 }?.let { stringResource(R.string.merge_count_reminder_completions, it) },
-        counts.relationshipEdges.takeIf { it > 0 }?.let { stringResource(R.string.merge_count_edges, it) },
-        counts.householdMemberships.takeIf { it > 0 }?.let { stringResource(R.string.merge_count_household, it) },
-        counts.circleMemberships.takeIf { it > 0 }?.let { stringResource(R.string.merge_count_circles, it) },
+        counts.activities.takeIf { it > 0 }?.let {
+            stringResource(
+                R.string.merge_count_activities,
+                it
+            )
+        },
+        counts.reminders.takeIf { it > 0 }?.let {
+            stringResource(
+                R.string.merge_count_reminders,
+                it
+            )
+        },
+        counts.reminderCompletions.takeIf { it > 0 }?.let {
+            stringResource(
+                R.string.merge_count_reminder_completions,
+                it
+            )
+        },
+        counts.relationshipEdges.takeIf { it > 0 }?.let {
+            stringResource(
+                R.string.merge_count_edges,
+                it
+            )
+        },
+        counts.householdMemberships.takeIf { it > 0 }?.let {
+            stringResource(
+                R.string.merge_count_household,
+                it
+            )
+        },
+        counts.circleMemberships.takeIf { it > 0 }?.let {
+            stringResource(
+                R.string.merge_count_circles,
+                it
+            )
+        },
         counts.tags.takeIf { it > 0 }?.let { stringResource(R.string.merge_count_tags, it) },
-        counts.lifeEvents.takeIf { it > 0 }?.let { stringResource(R.string.merge_count_life_events, it) },
-        counts.lifeEventReferences.takeIf { it > 0 }?.let { stringResource(R.string.merge_count_life_event_references, it) },
-        counts.conversationAgendaItems.takeIf { it > 0 }?.let { stringResource(R.string.merge_count_agenda, it) },
+        counts.lifeEvents.takeIf { it > 0 }?.let {
+            stringResource(
+                R.string.merge_count_life_events,
+                it
+            )
+        },
+        counts.lifeEventReferences.takeIf { it > 0 }?.let {
+            stringResource(
+                R.string.merge_count_life_event_references,
+                it
+            )
+        },
+        counts.conversationAgendaItems.takeIf { it > 0 }?.let {
+            stringResource(
+                R.string.merge_count_agenda,
+                it
+            )
+        },
         counts.giftItems.takeIf { it > 0 }?.let { stringResource(R.string.merge_count_gifts, it) },
-        counts.fieldValues.takeIf { it > 0 }?.let { stringResource(R.string.merge_count_field_values, it) },
-        counts.contactSyncLinks.takeIf { it > 0 }?.let { stringResource(R.string.merge_count_sync_links, it) },
-        counts.attachments.takeIf { it > 0 }?.let { stringResource(R.string.merge_count_attachments, it) },
-        counts.preferences.takeIf { it > 0 }?.let { stringResource(R.string.merge_count_preferences, it) },
-        counts.externalIdentities.takeIf { it > 0 }?.let { stringResource(R.string.merge_count_external_identities, it) },
-        counts.externalActivities.takeIf { it > 0 }?.let { stringResource(R.string.merge_count_external_activities, it) },
-        counts.cadencePolicies.takeIf { it > 0 }?.let { stringResource(R.string.merge_count_cadence, it) },
+        counts.fieldValues.takeIf { it > 0 }?.let {
+            stringResource(
+                R.string.merge_count_field_values,
+                it
+            )
+        },
+        counts.contactSyncLinks.takeIf { it > 0 }?.let {
+            stringResource(
+                R.string.merge_count_sync_links,
+                it
+            )
+        },
+        counts.attachments.takeIf { it > 0 }?.let {
+            stringResource(
+                R.string.merge_count_attachments,
+                it
+            )
+        },
+        counts.preferences.takeIf { it > 0 }?.let {
+            stringResource(
+                R.string.merge_count_preferences,
+                it
+            )
+        },
+        counts.externalIdentities.takeIf { it > 0 }?.let {
+            stringResource(
+                R.string.merge_count_external_identities,
+                it
+            )
+        },
+        counts.externalActivities.takeIf { it > 0 }?.let {
+            stringResource(
+                R.string.merge_count_external_activities,
+                it
+            )
+        },
+        counts.cadencePolicies.takeIf { it > 0 }?.let {
+            stringResource(
+                R.string.merge_count_cadence,
+                it
+            )
+        }
     )
     if (lines.isEmpty()) {
         Text(
             stringResource(R.string.merge_nothing_to_move),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(vertical = 8.dp),
+            modifier = Modifier.padding(vertical = 8.dp)
         )
         return
     }
     Column(modifier = Modifier.padding(top = 8.dp)) {
         Text(
             text = stringResource(R.string.merge_move_header),
-            style = MaterialTheme.typography.titleSmall,
+            style = MaterialTheme.typography.titleSmall
         )
         lines.forEach { line ->
             Text(
                 text = line,
                 style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(top = 4.dp),
+                modifier = Modifier.padding(top = 4.dp)
             )
         }
     }
@@ -265,12 +357,12 @@ private fun AssociationCountsSection(counts: ContactMergeAssociationCounts) {
 private fun ConflictRow(
     conflict: ContactMergeFieldConflict,
     chosen: String?,
-    onChoose: (String) -> Unit,
+    onChoose: (String) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
         Text(
             text = conflict.label,
-            style = MaterialTheme.typography.titleSmall,
+            style = MaterialTheme.typography.titleSmall
         )
         val options = listOfNotNull(conflict.keeperValue, conflict.loserValue).distinct()
         options.forEach { option ->
@@ -290,8 +382,8 @@ private fun ConflictRow(
                     .toggleable(
                         value = chosen == option,
                         onValueChange = { onChoose(option) },
-                        role = Role.Checkbox,
-                    ),
+                        role = Role.Checkbox
+                    )
             ) {
                 Checkbox(checked = chosen == option, onCheckedChange = null)
                 Text(option, modifier = Modifier.weight(1f))

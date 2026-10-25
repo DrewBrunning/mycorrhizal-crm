@@ -23,7 +23,7 @@ data class CachedOccasionEvent(
     val sensitivity: String = "normal",
     val notes: String? = null,
     val updatedAt: String? = null,
-    val deleted: Boolean = false,
+    val deleted: Boolean = false
 )
 
 @Dao

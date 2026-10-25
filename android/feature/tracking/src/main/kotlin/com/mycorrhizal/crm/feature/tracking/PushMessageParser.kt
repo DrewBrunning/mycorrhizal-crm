@@ -13,7 +13,7 @@ data class PushMessage(
     val body: String,
     val channel: String,
     val idempotenceKey: String?,
-    val deepLink: String?,
+    val deepLink: String?
 )
 
 /** Data-payload keys — kept in step with the server's `fcmReminderData` in
@@ -39,7 +39,7 @@ object PushMessageParser {
     fun parse(
         data: Map<String, String>,
         title: String? = null,
-        body: String? = null,
+        body: String? = null
     ): PushMessage? {
         val type = data[KEY_TYPE]
         val pushTitle = data["title"] ?: title
@@ -48,7 +48,9 @@ object PushMessageParser {
 
         val channel = when (data[KEY_CHANNEL]) {
             MycorrhizalNotificationChannels.CADENCE -> MycorrhizalNotificationChannels.CADENCE
+
             MycorrhizalNotificationChannels.BIRTHDAYS -> MycorrhizalNotificationChannels.BIRTHDAYS
+
             // Reminders are the only FCM push the server sends today; anything
             // without an explicit channel lands on the reminders channel.
             else -> MycorrhizalNotificationChannels.REMINDERS
@@ -63,7 +65,7 @@ object PushMessageParser {
             body = pushBody.orEmpty(),
             channel = channel,
             idempotenceKey = idempotenceKey,
-            deepLink = data[KEY_DEEP_LINK]?.takeIf { it.isNotBlank() },
+            deepLink = data[KEY_DEEP_LINK]?.takeIf { it.isNotBlank() }
         )
     }
 }

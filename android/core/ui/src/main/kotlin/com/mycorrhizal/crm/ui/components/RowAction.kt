@@ -12,5 +12,5 @@ data class RowAction(
     val label: String,
     val onClick: () -> Unit,
     /** Draw the label in the error colour (destructive actions). */
-    val destructive: Boolean = false,
+    val destructive: Boolean = false
 )

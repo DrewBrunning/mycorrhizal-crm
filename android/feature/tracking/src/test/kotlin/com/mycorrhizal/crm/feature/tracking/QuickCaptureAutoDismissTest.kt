@@ -1,13 +1,13 @@
 package com.mycorrhizal.crm.feature.tracking
 
 import android.os.Looper
+import java.time.Duration
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
-import java.time.Duration
 
 /**
  * #201 (WCAG 2.2.1 Timing Adjustable): the quick-capture overlay must dismiss

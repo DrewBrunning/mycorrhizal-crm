@@ -51,7 +51,7 @@ fun SeafileFilePickerDialog(
     onEnterDir: (String) -> Unit,
     onBack: () -> Unit,
     onSelect: (SeafileItem) -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -62,7 +62,7 @@ fun SeafileFilePickerDialog(
                     Breadcrumbs(path = browsePath)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
+                        horizontalArrangement = Arrangement.End
                     ) {
                         TextButton(onClick = onBack) { Text(stringResource(R.string.action_back)) }
                     }
@@ -70,10 +70,11 @@ fun SeafileFilePickerDialog(
                 when {
                     loading -> Box(
                         modifier = Modifier.fillMaxWidth().padding(24.dp),
-                        contentAlignment = Alignment.Center,
+                        contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator()
                     }
+
                     browseRepoId == null -> {
                         if (libraries.isEmpty()) {
                             EmptyPickerText(stringResource(R.string.seafile_picker_no_libraries))
@@ -86,15 +87,19 @@ fun SeafileFilePickerDialog(
                                             .clickable { onEnterLibrary(library.id) }
                                             .padding(vertical = 10.dp),
                                         verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                                     ) {
                                         Icon(Icons.Outlined.Folder, contentDescription = null)
-                                        Text(library.name, style = MaterialTheme.typography.bodyLarge)
+                                        Text(
+                                            library.name,
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
                                     }
                                 }
                             }
                         }
                     }
+
                     else -> {
                         if (browseItems.isEmpty()) {
                             EmptyPickerText(stringResource(R.string.seafile_picker_empty_folder))
@@ -114,24 +119,24 @@ fun SeafileFilePickerDialog(
                                             }
                                             .padding(vertical = 10.dp),
                                         verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                                     ) {
                                         Icon(
                                             if (isDir) Icons.Outlined.Folder else Icons.Outlined.InsertDriveFile,
-                                            contentDescription = null,
+                                            contentDescription = null
                                         )
                                         Column {
                                             Text(
                                                 item.name,
                                                 style = MaterialTheme.typography.bodyLarge,
                                                 maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis,
+                                                overflow = TextOverflow.Ellipsis
                                             )
                                             if (!isDir) {
                                                 Text(
                                                     formatFileSize(item.size),
                                                     style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                                 )
                                             }
                                         }
@@ -146,7 +151,7 @@ fun SeafileFilePickerDialog(
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
-        },
+        }
     )
 }
 
@@ -160,7 +165,7 @@ internal fun Breadcrumbs(path: String) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.padding(bottom = 4.dp),
+        modifier = Modifier.padding(bottom = 4.dp)
     )
 }
 
@@ -170,7 +175,7 @@ internal fun EmptyPickerText(text: String) {
         text = text,
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(vertical = 8.dp),
+        modifier = Modifier.padding(vertical = 8.dp)
     )
 }
 

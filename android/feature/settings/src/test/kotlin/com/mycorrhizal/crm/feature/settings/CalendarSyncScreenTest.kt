@@ -34,7 +34,11 @@ class CalendarSyncScreenTest {
 
     @Test
     fun `shows a calendar row with sync edit and delete actions`() {
-        val calendar = CalendarSubscription(id = 1, name = "Personal", url = "https://example.com/a.ics")
+        val calendar = CalendarSubscription(
+            id = 1,
+            name = "Personal",
+            url = "https://example.com/a.ics"
+        )
         var synced = false
         var edited = false
         var deleted = false
@@ -45,7 +49,7 @@ class CalendarSyncScreenTest {
                     syncing = false,
                     onSync = { synced = true },
                     onEdit = { edited = true },
-                    onDelete = { deleted = true },
+                    onDelete = { deleted = true }
                 )
             }
         }
@@ -59,10 +63,21 @@ class CalendarSyncScreenTest {
 
     @Test
     fun `a disabled calendar shows the disabled label`() {
-        val calendar = CalendarSubscription(id = 1, name = "Personal", url = "https://example.com/a.ics", syncEnabled = false)
+        val calendar = CalendarSubscription(
+            id = 1,
+            name = "Personal",
+            url = "https://example.com/a.ics",
+            syncEnabled = false
+        )
         composeTestRule.setContent {
             MycorrhizalTheme {
-                CalendarSubscriptionRow(calendar = calendar, syncing = false, onSync = {}, onEdit = {}, onDelete = {})
+                CalendarSubscriptionRow(
+                    calendar = calendar,
+                    syncing = false,
+                    onSync = {},
+                    onEdit = {},
+                    onDelete = {}
+                )
             }
         }
 
@@ -77,11 +92,17 @@ class CalendarSyncScreenTest {
             url = "https://example.com/a.ics",
             lastSyncStatus = "error",
             consecutiveFailures = 3,
-            incidentFirstFailureAt = "2026-01-01T00:00:00Z",
+            incidentFirstFailureAt = "2026-01-01T00:00:00Z"
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
-                CalendarSubscriptionRow(calendar = calendar, syncing = false, onSync = {}, onEdit = {}, onDelete = {})
+                CalendarSubscriptionRow(
+                    calendar = calendar,
+                    syncing = false,
+                    onSync = {},
+                    onEdit = {},
+                    onDelete = {}
+                )
             }
         }
 
@@ -97,15 +118,23 @@ class CalendarSyncScreenTest {
             name = "Personal",
             url = "https://example.com/a.ics",
             lastSyncStatus = "success",
-            lastRunStats = mapOf("created" to 2, "updated" to 1, "skipped" to 0),
+            lastRunStats = mapOf("created" to 2, "updated" to 1, "skipped" to 0)
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
-                CalendarSubscriptionRow(calendar = calendar, syncing = false, onSync = {}, onEdit = {}, onDelete = {})
+                CalendarSubscriptionRow(
+                    calendar = calendar,
+                    syncing = false,
+                    onSync = {},
+                    onEdit = {},
+                    onDelete = {}
+                )
             }
         }
 
-        composeTestRule.onNodeWithText("Last sync: 2 created, 1 updated, 0 skipped").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Last sync: 2 created, 1 updated, 0 skipped"
+        ).assertIsDisplayed()
     }
 
     @Test
@@ -116,17 +145,29 @@ class CalendarSyncScreenTest {
             url = "https://example.com/a.ics",
             consecutiveFailures = 5,
             terminalFailureAt = "2026-01-01T00:00:00Z",
-            terminalReason = "auth-expiry",
+            terminalReason = "auth-expiry"
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
-                CalendarSubscriptionRow(calendar = calendar, syncing = false, onSync = {}, onEdit = {}, onDelete = {})
+                CalendarSubscriptionRow(
+                    calendar = calendar,
+                    syncing = false,
+                    onSync = {},
+                    onEdit = {},
+                    onDelete = {}
+                )
             }
         }
 
         composeTestRule.onNodeWithText("Sync stopped").assertIsDisplayed()
-        composeTestRule.onNodeWithText("credentials have expired", substring = true).assertIsDisplayed()
-        composeTestRule.onNodeWithText("consecutive failures", substring = true).assertDoesNotExist()
+        composeTestRule.onNodeWithText(
+            "credentials have expired",
+            substring = true
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "consecutive failures",
+            substring = true
+        ).assertDoesNotExist()
     }
 
     @Test
@@ -137,7 +178,7 @@ class CalendarSyncScreenTest {
             url = "https://example.com/carddav/",
             lastSyncStatus = "success",
             lastRunStats = mapOf("created" to 1, "updated" to 0, "archived" to 0, "skipped" to 0),
-            pendingConflicts = 2,
+            pendingConflicts = 2
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -146,7 +187,9 @@ class CalendarSyncScreenTest {
         }
 
         composeTestRule.onNodeWithText("Address Book").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Last sync: 1 created, 0 updated, 0 archived, 0 skipped").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Last sync: 1 created, 0 updated, 0 archived, 0 skipped"
+        ).assertIsDisplayed()
         composeTestRule.onNodeWithText("2 unreviewed conflicts").assertIsDisplayed()
     }
 
@@ -163,13 +206,15 @@ class CalendarSyncScreenTest {
                         confirmedName = input.name
                         confirmedUrl = input.url
                     },
-                    onDismiss = {},
+                    onDismiss = {}
                 )
             }
         }
 
         composeTestRule.onNodeWithText("Name").performTextInput("Personal")
-        composeTestRule.onNodeWithText("Calendar URL").performTextInput(" https://example.com/a.ics ")
+        composeTestRule.onNodeWithText(
+            "Calendar URL"
+        ).performTextInput(" https://example.com/a.ics ")
         composeTestRule.onNodeWithText("Save").performClick()
 
         assertEquals("Personal", confirmedName)
@@ -180,7 +225,12 @@ class CalendarSyncScreenTest {
     fun `an insecure url with credentials shows a warning`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                CalendarEditorDialog(initial = null, isSaving = false, onConfirm = {}, onDismiss = {})
+                CalendarEditorDialog(
+                    initial = null,
+                    isSaving = false,
+                    onConfirm = {},
+                    onDismiss = {}
+                )
             }
         }
 
@@ -203,7 +253,7 @@ class CalendarSyncScreenTest {
                     onBack = {},
                     onSync = {},
                     onSave = { _, _ -> },
-                    onDelete = {},
+                    onDelete = {}
                 )
             }
         }
@@ -220,7 +270,7 @@ class CalendarSyncScreenTest {
                     onBack = {},
                     onSync = {},
                     onSave = { _, _ -> },
-                    onDelete = {},
+                    onDelete = {}
                 )
             }
         }
@@ -235,12 +285,12 @@ class CalendarSyncScreenTest {
                 CalendarSyncContent(
                     state = CalendarSyncUiState(
                         calendars = listOf(CalendarSubscription(id = 1, name = "Personal")),
-                        error = "Server error (500)",
+                        error = "Server error (500)"
                     ),
                     onBack = {},
                     onSync = {},
                     onSave = { _, _ -> },
-                    onDelete = {},
+                    onDelete = {}
                 )
             }
         }
@@ -255,17 +305,19 @@ class CalendarSyncScreenTest {
                 CalendarSyncContent(
                     state = CalendarSyncUiState(
                         calendars = listOf(CalendarSubscription(id = 1, name = "Personal")),
-                        lastSyncResult = CalendarSyncResult(created = 2, updated = 1, skipped = 0),
+                        lastSyncResult = CalendarSyncResult(created = 2, updated = 1, skipped = 0)
                     ),
                     onBack = {},
                     onSync = {},
                     onSave = { _, _ -> },
-                    onDelete = {},
+                    onDelete = {}
                 )
             }
         }
 
-        composeTestRule.onNodeWithText("Synced: 2 created, 1 updated, 0 skipped").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Synced: 2 created, 1 updated, 0 skipped"
+        ).assertIsDisplayed()
     }
 
     @Test
@@ -274,12 +326,14 @@ class CalendarSyncScreenTest {
             MycorrhizalTheme {
                 CalendarSyncContent(
                     state = CalendarSyncUiState(
-                        contactSubscriptions = listOf(ContactSubscription(id = 1, name = "Address Book")),
+                        contactSubscriptions = listOf(
+                            ContactSubscription(id = 1, name = "Address Book")
+                        )
                     ),
                     onBack = {},
                     onSync = {},
                     onSave = { _, _ -> },
-                    onDelete = {},
+                    onDelete = {}
                 )
             }
         }
@@ -295,11 +349,13 @@ class CalendarSyncScreenTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 CalendarSyncContent(
-                    state = CalendarSyncUiState(calendars = listOf(CalendarSubscription(id = 1, name = "Personal"))),
+                    state = CalendarSyncUiState(
+                        calendars = listOf(CalendarSubscription(id = 1, name = "Personal"))
+                    ),
                     onBack = { backed = true },
                     onSync = {},
                     onSave = { _, _ -> },
-                    onDelete = {},
+                    onDelete = {}
                 )
             }
         }
@@ -319,7 +375,7 @@ class CalendarSyncScreenTest {
                     onBack = {},
                     onSync = { synced = it },
                     onSave = { _, _ -> },
-                    onDelete = {},
+                    onDelete = {}
                 )
             }
         }
@@ -335,18 +391,26 @@ class CalendarSyncScreenTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 CalendarSyncContent(
-                    state = CalendarSyncUiState(calendars = listOf(CalendarSubscription(id = 1, name = "Personal"))),
+                    state = CalendarSyncUiState(
+                        calendars = listOf(CalendarSubscription(id = 1, name = "Personal"))
+                    ),
                     onBack = {},
                     onSync = {},
-                    onSave = { input, editingId -> savedName = input.name; savedEditingId = editingId },
-                    onDelete = {},
+                    onSave = { input, editingId ->
+                        savedName = input.name
+                        savedEditingId =
+                            editingId
+                    },
+                    onDelete = {}
                 )
             }
         }
 
         composeTestRule.onNodeWithContentDescription("Add calendar").performClick()
         composeTestRule.onNodeWithText("Name").performTextInput("New Calendar")
-        composeTestRule.onNodeWithText("Calendar URL").performTextInput("https://example.com/new.ics")
+        composeTestRule.onNodeWithText(
+            "Calendar URL"
+        ).performTextInput("https://example.com/new.ics")
         composeTestRule.onNodeWithText("Save").performClick()
 
         assertEquals("New Calendar", savedName)
@@ -356,7 +420,11 @@ class CalendarSyncScreenTest {
     @Test
     fun `the edit button on a row opens a pre-filled dialog and confirming saves with that id`() {
         var savedEditingId: Int? = null
-        val calendar = CalendarSubscription(id = 7, name = "Personal", url = "https://example.com/a.ics")
+        val calendar = CalendarSubscription(
+            id = 7,
+            name = "Personal",
+            url = "https://example.com/a.ics"
+        )
         composeTestRule.setContent {
             MycorrhizalTheme {
                 CalendarSyncContent(
@@ -364,7 +432,7 @@ class CalendarSyncScreenTest {
                     onBack = {},
                     onSync = {},
                     onSave = { _, editingId -> savedEditingId = editingId },
-                    onDelete = {},
+                    onDelete = {}
                 )
             }
         }
@@ -387,7 +455,7 @@ class CalendarSyncScreenTest {
                     onBack = {},
                     onSync = {},
                     onSave = { _, _ -> },
-                    onDelete = { deleted = it },
+                    onDelete = { deleted = it }
                 )
             }
         }
@@ -410,7 +478,9 @@ class CalendarSyncScreenTest {
         val calendarRepository = mockk<CalendarSubscriptionRepository>()
         val contactSubscriptionRepository = mockk<ContactSubscriptionRepository>()
         coEvery { calendarRepository.list() } returns Result.success(
-            listOf(CalendarSubscription(id = 1, name = "Personal", url = "https://example.com/a.ics")),
+            listOf(
+                CalendarSubscription(id = 1, name = "Personal", url = "https://example.com/a.ics")
+            )
         )
         coEvery { contactSubscriptionRepository.list() } returns Result.success(emptyList())
         val viewModel = CalendarSyncViewModel(calendarRepository, contactSubscriptionRepository)

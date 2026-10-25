@@ -34,19 +34,19 @@ fun ambientReasonRes(reason: String?): Int = when (reason) {
 fun AmbientExplanation(
     reason: String?,
     modifier: Modifier = Modifier,
-    showExplainer: Boolean = true,
+    showExplainer: Boolean = true
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(
             text = stringResource(ambientReasonRes(reason)),
             style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.tertiary,
+            color = MaterialTheme.colorScheme.tertiary
         )
         if (showExplainer) {
             Text(
                 text = stringResource(R.string.ambient_explainer),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

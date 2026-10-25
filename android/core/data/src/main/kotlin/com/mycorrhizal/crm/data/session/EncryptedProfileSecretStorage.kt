@@ -8,7 +8,7 @@ package com.mycorrhizal.crm.data.session
  */
 class EncryptedProfileSecretStorage(
     private val deviceGrantStorage: DeviceGrantTokenStorage,
-    private val oidcPendingStore: OidcPendingRequestStore,
+    private val oidcPendingStore: OidcPendingRequestStore
 ) : ProfileSecretStorage {
 
     override suspend fun migrateLegacy(profileId: String) {

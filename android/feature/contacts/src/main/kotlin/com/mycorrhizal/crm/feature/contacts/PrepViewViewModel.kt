@@ -11,16 +11,15 @@ import com.mycorrhizal.crm.model.network.Gift
 import com.mycorrhizal.crm.model.network.GiftStatuses
 import com.mycorrhizal.crm.model.network.Preference
 import com.mycorrhizal.crm.network.ApiClient
-import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.network.toApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class PrepViewUiState(
     val briefing: ContactBriefing? = null,
@@ -36,7 +35,7 @@ data class PrepViewUiState(
      * renders.
      */
     val preferences: List<Preference> = emptyList(),
-    val giftIdeas: List<Gift> = emptyList(),
+    val giftIdeas: List<Gift> = emptyList()
 )
 
 /**
@@ -57,7 +56,7 @@ class PrepViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val preferenceRepository: PreferenceRepository,
     private val giftRepository: GiftRepository,
-    savedStateHandle: SavedStateHandle,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val contactId: Int = run {
@@ -100,7 +99,7 @@ class PrepViewModel @Inject constructor(
                         briefing = null,
                         preferences = emptyList(),
                         giftIdeas = emptyList(),
-                        error = error?.displayMessage,
+                        error = error?.displayMessage
                     )
                 }
                 return@launch
@@ -127,7 +126,7 @@ class PrepViewModel @Inject constructor(
                     isLoading = false,
                     briefing = briefing,
                     preferences = preferences,
-                    giftIdeas = giftIdeas,
+                    giftIdeas = giftIdeas
                 )
             }
         }

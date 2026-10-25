@@ -126,9 +126,9 @@ class DrawerScrollTest {
                         windowSizeClass = androidx.compose.material3.windowsizeclass.WindowSizeClass
                             .calculateFromSize(androidx.compose.ui.unit.DpSize(1000.dp, 480.dp)),
                         drawerState = androidx.compose.material3.rememberDrawerState(
-                            androidx.compose.material3.DrawerValue.Closed,
+                            androidx.compose.material3.DrawerValue.Closed
                         ),
-                        onDestinationClick = {},
+                        onDestinationClick = {}
                     ) {}
                 }
             }

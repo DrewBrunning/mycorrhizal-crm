@@ -16,11 +16,7 @@ package com.mycorrhizal.crm.model
  * garbage) parses to `null`. Callers treat `null` as "cannot decide, therefore
  * compatible" — the fail-open rule from docs/client-compatibility-policy.md.
  */
-data class AppVersion(
-    val major: Int,
-    val minor: Int,
-    val patch: Int,
-) : Comparable<AppVersion> {
+data class AppVersion(val major: Int, val minor: Int, val patch: Int) : Comparable<AppVersion> {
 
     override fun compareTo(other: AppVersion): Int =
         compareValuesBy(this, other, { it.major }, { it.minor }, { it.patch })
@@ -50,7 +46,7 @@ data class AppVersion(
             return AppVersion(
                 major = numbers[0],
                 minor = numbers.getOrElse(1) { 0 },
-                patch = numbers.getOrElse(2) { 0 },
+                patch = numbers.getOrElse(2) { 0 }
             )
         }
     }

@@ -10,7 +10,7 @@ data class CallLogEntry(
     val type: Int,
     val timestampMillis: Long,
     val durationSeconds: Long,
-    val cachedName: String?,
+    val cachedName: String?
 )
 
 object CallLogKinds {
@@ -41,7 +41,7 @@ class CallLogReader(private val contentResolver: ContentResolver) {
             CallLog.Calls.TYPE,
             CallLog.Calls.DATE,
             CallLog.Calls.DURATION,
-            CallLog.Calls.CACHED_NAME,
+            CallLog.Calls.CACHED_NAME
         )
         val cursor = try {
             contentResolver.query(
@@ -49,7 +49,7 @@ class CallLogReader(private val contentResolver: ContentResolver) {
                 projection,
                 "${CallLog.Calls.DATE} > ?",
                 arrayOf(sinceMillis.toString()),
-                "${CallLog.Calls.DATE} DESC LIMIT $limit",
+                "${CallLog.Calls.DATE} DESC LIMIT $limit"
             )
         } catch (e: SecurityException) {
             Log.w(TAG, "Call-log read denied (READ_CALL_LOG missing?); treating as empty", e)
@@ -68,8 +68,8 @@ class CallLogReader(private val contentResolver: ContentResolver) {
                         type = it.getInt(typeIdx),
                         timestampMillis = it.getLong(dateIdx),
                         durationSeconds = it.getLong(durIdx),
-                        cachedName = if (nameIdx >= 0) it.getString(nameIdx) else null,
-                    ),
+                        cachedName = if (nameIdx >= 0) it.getString(nameIdx) else null
+                    )
                 )
             }
         }

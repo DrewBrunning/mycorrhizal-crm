@@ -55,38 +55,69 @@ class RelationshipEdgeFormTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    private val isDropdown = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.DropdownList)
+    private val isDropdown = SemanticsMatcher.expectValue(
+        SemanticsProperties.Role,
+        Role.DropdownList
+    )
 
     private val edgeRepository = mockk<RelationshipEdgeRepository>()
     private val contactRepository = mockk<ContactRepository>()
 
     private fun edge(id: String, other: String = "u-other") = RelationshipEdge(
-        id = id, sourceId = other, targetId = "u-viewed",
-        type = RelationshipEdgeTypes.FRIEND_OF, status = RelationshipEdgeStatuses.CONFIRMED,
+        id = id,
+        sourceId = other,
+        targetId = "u-viewed",
+        type = RelationshipEdgeTypes.FRIEND_OF,
+        status = RelationshipEdgeStatuses.CONFIRMED
     )
 
     private fun viewModel(
         edges: List<RelationshipEdge> = emptyList(),
-        resolve: Map<String, ContactSummary> = emptyMap(),
+        resolve: Map<String, ContactSummary> = emptyMap()
     ): RelationshipsViewModel {
         coEvery { contactRepository.getContact(5) } returns Result.success(
-            ContactRecordResponse(id = 5, card = Card(uid = "u-viewed")),
+            ContactRecordResponse(id = 5, card = Card(uid = "u-viewed"))
         )
-        coEvery { edgeRepository.listForContact("u-viewed", null, null) } returns Result.success(edges)
+        coEvery {
+            edgeRepository.listForContact(
+                "u-viewed",
+                null,
+                null
+            )
+        } returns Result.success(edges)
         coEvery { contactRepository.resolveByUid(any()) } returns Result.success(resolve)
-        return RelationshipsViewModel(edgeRepository, contactRepository, SavedStateHandle(mapOf("contactId" to 5)))
+        return RelationshipsViewModel(
+            edgeRepository,
+            contactRepository,
+            SavedStateHandle(mapOf("contactId" to 5))
+        )
     }
 
     private fun show(vm: RelationshipsViewModel) = composeTestRule.setContent {
-        MycorrhizalTheme { RelationshipsScreen(onBack = {}, onNavigateToContact = {}, viewModel = vm) }
+        MycorrhizalTheme {
+            RelationshipsScreen(
+                onBack = {},
+                onNavigateToContact = {},
+                viewModel = vm
+            )
+        }
     }
 
     private fun stubAliceSearch() {
-        coEvery { contactRepository.listContacts(search = "Ali", limit = 25) } returns Result.success(
+        coEvery {
+            contactRepository.listContacts(
+                search = "Ali",
+                limit = 25
+            )
+        } returns Result.success(
             ContactsPage(
-                contacts = listOf(ContactSummary(id = 9, uid = "u-alice", firstname = "Alice", lastname = "Smith")),
-                nextCursor = "", limit = 25, sync = null,
-            ),
+                contacts = listOf(
+                    ContactSummary(id = 9, uid = "u-alice", firstname = "Alice", lastname = "Smith")
+                ),
+                nextCursor = "",
+                limit = 25,
+                sync = null
+            )
         )
     }
 
@@ -116,7 +147,10 @@ class RelationshipEdgeFormTest {
         coVerify(exactly = 0) { edgeRepository.create(any()) }
 
         composeTestRule.onNodeWithContentDescription("New relationship").performClick()
-        composeTestRule.onNodeWithText("Other contact name", substring = true).performTextReplacement("Casey")
+        composeTestRule.onNodeWithText(
+            "Other contact name",
+            substring = true
+        ).performTextReplacement("Casey")
         composeTestRule.onNodeWithText("Create").performClick()
 
         val input = slot<RelationshipEdgeInput>()
@@ -134,14 +168,18 @@ class RelationshipEdgeFormTest {
         show(
             viewModel(
                 edges = listOf(edge("e1")),
-                resolve = mapOf("u-other" to ContactSummary(id = 9, uid = "u-other", firstname = "Alice")),
-            ),
+                resolve = mapOf(
+                    "u-other" to ContactSummary(id = 9, uid = "u-other", firstname = "Alice")
+                )
+            )
         )
 
         composeTestRule.onNodeWithContentDescription("Edit Alice").performClick()
         composeTestRule.onNodeWithText("Edit relationship").assertIsDisplayed()
         composeTestRule.onNodeWithText("Alice").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("relationship-type").assert(hasContentDescription("Type, Friend"))
+        composeTestRule.onNodeWithTag(
+            "relationship-type"
+        ).assert(hasContentDescription("Type, Friend"))
         composeTestRule.onNodeWithText("Save").performClick()
 
         coVerify(exactly = 1) { edgeRepository.update("e1", any()) }
@@ -167,7 +205,11 @@ class RelationshipEdgeFormTest {
     @Test
     fun `contact search finds a contact, selecting it enables create and links the source`() {
         stubAliceSearch()
-        coEvery { edgeRepository.create(any()) } returns Result.success(edge("e-new", other = "u-alice"))
+        coEvery {
+            edgeRepository.create(
+                any()
+            )
+        } returns Result.success(edge("e-new", other = "u-alice"))
         show(viewModel())
 
         searchAndPickAlice()
@@ -183,11 +225,20 @@ class RelationshipEdgeFormTest {
         val vm = viewModel()
         val restoration = StateRestorationTester(composeTestRule)
         restoration.setContent {
-            MycorrhizalTheme { RelationshipsScreen(onBack = {}, onNavigateToContact = {}, viewModel = vm) }
+            MycorrhizalTheme {
+                RelationshipsScreen(
+                    onBack = {},
+                    onNavigateToContact = {},
+                    viewModel = vm
+                )
+            }
         }
 
         composeTestRule.onNodeWithContentDescription("New relationship").performClick()
-        composeTestRule.onNodeWithText("Other contact name", substring = true).performTextReplacement("Casey")
+        composeTestRule.onNodeWithText(
+            "Other contact name",
+            substring = true
+        ).performTextReplacement("Casey")
         restoration.emulateSavedInstanceStateRestore()
 
         composeTestRule.onNodeWithTag("relationship-type").assertIsDisplayed()
@@ -201,7 +252,13 @@ class RelationshipEdgeFormTest {
         val vm = viewModel()
         val restoration = StateRestorationTester(composeTestRule)
         restoration.setContent {
-            MycorrhizalTheme { RelationshipsScreen(onBack = {}, onNavigateToContact = {}, viewModel = vm) }
+            MycorrhizalTheme {
+                RelationshipsScreen(
+                    onBack = {},
+                    onNavigateToContact = {},
+                    viewModel = vm
+                )
+            }
         }
         searchAndPickAlice()
 
@@ -235,12 +292,17 @@ class RelationshipEdgeFormTest {
     fun `a dirty relationship form asks before discarding and keep editing keeps the name`() {
         show(viewModel())
         composeTestRule.onNodeWithContentDescription("New relationship").performClick()
-        composeTestRule.onNodeWithText("Other contact name", substring = true).performTextReplacement("Casey")
+        composeTestRule.onNodeWithText(
+            "Other contact name",
+            substring = true
+        ).performTextReplacement("Casey")
 
         composeTestRule.onNodeWithContentDescription("Back").performClick()
 
         composeTestRule.onNodeWithText("Discard changes?").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Your edits to this relationship haven't been saved.").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Your edits to this relationship haven't been saved."
+        ).assertIsDisplayed()
         composeTestRule.onNodeWithTag("relationship-type").assertIsDisplayed()
 
         composeTestRule.onNodeWithText("Keep editing").performClick()

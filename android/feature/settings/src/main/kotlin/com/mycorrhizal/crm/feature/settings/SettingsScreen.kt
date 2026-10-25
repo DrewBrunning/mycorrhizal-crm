@@ -1,7 +1,5 @@
 package com.mycorrhizal.crm.feature.settings
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Logout
@@ -75,10 +73,11 @@ internal data class SettingsGating(
     val apiTokensSupported: Boolean,
     val calendarSyncSupported: Boolean,
     val notificationChannelsSupported: Boolean,
-    val integrationsSupported: Boolean,
+    val integrationsSupported: Boolean
 ) {
     /** The Integrations group has at least one row on this deployment. */
-    val anyIntegration: Boolean get() = webhooksSupported || calendarSyncSupported || integrationsSupported
+    val anyIntegration: Boolean get() = webhooksSupported || calendarSyncSupported ||
+        integrationsSupported
 }
 
 @Composable
@@ -98,7 +97,10 @@ internal fun rememberSettingsGating(): SettingsGating {
     return SettingsGating(
         multiUserAdminSupported = multiUserAdminSupported,
         systemEventsSupported =
-            multiUserAdminSupported && ServerCapabilities.isSupported(serverVersion, ServerFeature.SYSTEM_EVENTS),
+            multiUserAdminSupported && ServerCapabilities.isSupported(
+                serverVersion,
+                ServerFeature.SYSTEM_EVENTS
+            ),
         deviceGrantSignInSupported =
             capabilities.supports(ServerCapability.DEVICE_GRANTS) &&
                 ServerCapabilities.isSupported(serverVersion, ServerFeature.DEVICE_GRANT_SIGNIN),
@@ -112,7 +114,7 @@ internal fun rememberSettingsGating(): SettingsGating {
         // token of their own (a token would make an older remote server that predates it look like
         // it lacked the feature), so the deployment shape is the gate. Backend counterpart:
         // routes.go's `!cfg.IsEmbedded()` guards.
-        integrationsSupported = !capabilities.isEmbedded,
+        integrationsSupported = !capabilities.isEmbedded
     )
 }
 
@@ -126,7 +128,7 @@ fun SettingsScreen(
     onMenuClick: (() -> Unit)? = {},
     onLoggedOut: () -> Unit,
     onNavigate: (String) -> Unit = {},
-    viewModel: SettingsViewModel = hiltViewModel(),
+    viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val events by viewModel.events.collectAsStateWithLifecycle()
@@ -137,16 +139,20 @@ fun SettingsScreen(
                 viewModel.onEventShown()
                 onLoggedOut()
             }
+
             else -> Unit
         }
     }
 
-    SettingsScaffold(title = stringResource(R.string.settings_title), onMenuClick = onMenuClick) { padding ->
+    SettingsScaffold(
+        title = stringResource(R.string.settings_title),
+        onMenuClick = onMenuClick
+    ) { padding ->
         SettingsRootContent(
             state = state,
             onNavigate = onNavigate,
             onLogout = viewModel::logout,
-            modifier = padding,
+            modifier = padding
         )
     }
 }
@@ -156,7 +162,7 @@ fun SettingsRootContent(
     state: SettingsUiState,
     onNavigate: (String) -> Unit = {},
     onLogout: () -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     var confirmLogout by remember { mutableStateOf(false) }
     val gating = rememberSettingsGating()
@@ -167,35 +173,35 @@ fun SettingsRootContent(
             supporting = stringResource(R.string.settings_group_account_summary),
             icon = Icons.Outlined.Person,
             onClick = { onNavigate(SettingsRoutes.ACCOUNT) },
-            modifier = Modifier.testTag("settings-group-account"),
+            modifier = Modifier.testTag("settings-group-account")
         )
         SettingsNavigationRow(
             title = stringResource(R.string.settings_appearance),
             supporting = stringResource(R.string.settings_group_appearance_summary),
             icon = Icons.Outlined.Palette,
             onClick = { onNavigate(SettingsRoutes.APPEARANCE) },
-            modifier = Modifier.testTag("settings-group-appearance"),
+            modifier = Modifier.testTag("settings-group-appearance")
         )
         SettingsNavigationRow(
             title = stringResource(R.string.settings_group_privacy),
             supporting = stringResource(R.string.settings_group_privacy_summary),
             icon = Icons.Outlined.Lock,
             onClick = { onNavigate(SettingsRoutes.PRIVACY) },
-            modifier = Modifier.testTag("settings-group-privacy"),
+            modifier = Modifier.testTag("settings-group-privacy")
         )
         SettingsNavigationRow(
             title = stringResource(R.string.settings_group_contacts_fields),
             supporting = stringResource(R.string.settings_group_contacts_fields_summary),
             icon = Icons.Outlined.Contacts,
             onClick = { onNavigate(SettingsRoutes.CONTACTS_FIELDS) },
-            modifier = Modifier.testTag("settings-group-contacts-fields"),
+            modifier = Modifier.testTag("settings-group-contacts-fields")
         )
         SettingsNavigationRow(
             title = stringResource(R.string.settings_tracking),
             supporting = stringResource(R.string.settings_group_tracking_summary),
             icon = Icons.Outlined.Notifications,
             onClick = { onNavigate(SettingsRoutes.TRACKING) },
-            modifier = Modifier.testTag("settings-group-tracking"),
+            modifier = Modifier.testTag("settings-group-tracking")
         )
         if (gating.anyIntegration) {
             SettingsNavigationRow(
@@ -203,7 +209,7 @@ fun SettingsRootContent(
                 supporting = stringResource(R.string.settings_group_integrations_summary),
                 icon = Icons.Outlined.Extension,
                 onClick = { onNavigate(SettingsRoutes.INTEGRATIONS) },
-                modifier = Modifier.testTag("settings-group-integrations"),
+                modifier = Modifier.testTag("settings-group-integrations")
             )
         }
         // Issue #348: admin-only, reachable only when the session is an admin (the backend also
@@ -215,7 +221,7 @@ fun SettingsRootContent(
                 supporting = stringResource(R.string.settings_group_administration_summary),
                 icon = Icons.Outlined.AdminPanelSettings,
                 onClick = { onNavigate(SettingsRoutes.ADMINISTRATION) },
-                modifier = Modifier.testTag("settings-group-administration"),
+                modifier = Modifier.testTag("settings-group-administration")
             )
         }
         if (state.buildInfo != null) {
@@ -224,7 +230,7 @@ fun SettingsRootContent(
                 supporting = stringResource(R.string.settings_group_about_summary),
                 icon = Icons.Outlined.Info,
                 onClick = { onNavigate(SettingsRoutes.ABOUT) },
-                modifier = Modifier.testTag("settings-group-about"),
+                modifier = Modifier.testTag("settings-group-about")
             )
         }
 
@@ -239,7 +245,7 @@ fun SettingsRootContent(
             onClick = { if (!state.isLoggingOut) confirmLogout = true },
             modifier = Modifier
                 .testTag("settings-log-out")
-                .semantics { if (state.isLoggingOut) stateDescription = loggingOutLabel },
+                .semantics { if (state.isLoggingOut) stateDescription = loggingOutLabel }
         )
         if (state.isLoggingOut) {
             CircularProgressIndicator(modifier = Modifier.padding(start = 40.dp))
@@ -252,7 +258,10 @@ fun SettingsRootContent(
             title = { Text(stringResource(R.string.settings_log_out_title)) },
             text = { Text(stringResource(R.string.settings_log_out_body)) },
             confirmButton = {
-                Button(onClick = { confirmLogout = false; onLogout() }) {
+                Button(onClick = {
+                    confirmLogout = false
+                    onLogout()
+                }) {
                     Text(stringResource(R.string.settings_log_out))
                 }
             },
@@ -260,7 +269,7 @@ fun SettingsRootContent(
                 TextButton(onClick = { confirmLogout = false }) {
                     Text(stringResource(R.string.settings_cancel))
                 }
-            },
+            }
         )
     }
 }
@@ -289,7 +298,11 @@ internal fun dateFormatName(format: String): String = when (format) {
 
 /** Issue #722: display label for an [AutoLockDelay] name (never a key string leaks to the UI). */
 @Composable
-internal fun lockDelayOptionLabel(delayName: String): String = when (AutoLockDelay.valueOf(delayName)) {
+internal fun lockDelayOptionLabel(delayName: String): String = when (
+    AutoLockDelay.valueOf(
+        delayName
+    )
+) {
     AutoLockDelay.IMMEDIATELY -> stringResource(R.string.settings_local_auth_delay_immediately)
     AutoLockDelay.ONE_MINUTE -> stringResource(R.string.settings_local_auth_delay_1m)
     AutoLockDelay.FIVE_MINUTES -> stringResource(R.string.settings_local_auth_delay_5m)

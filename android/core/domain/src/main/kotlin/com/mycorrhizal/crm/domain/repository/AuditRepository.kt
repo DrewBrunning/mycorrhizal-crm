@@ -18,7 +18,7 @@ interface AuditRepository {
     suspend fun list(
         entityType: String? = null,
         entityId: String? = null,
-        limit: Int = 100,
+        limit: Int = 100
     ): Result<AuditEventsResponse>
 
     /**

@@ -64,7 +64,7 @@ import kotlinx.coroutines.withContext
 fun CsvImportScreen(
     onBack: () -> Unit,
     onDone: () -> Unit,
-    viewModel: CsvImportViewModel = hiltViewModel(),
+    viewModel: CsvImportViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     CsvImportScreenContent(
@@ -78,7 +78,7 @@ fun CsvImportScreen(
         onRowActionChange = viewModel::setRowAction,
         onResolveAll = viewModel::resolveAll,
         onConfirm = viewModel::confirm,
-        onErrorShown = viewModel::onErrorShown,
+        onErrorShown = viewModel::onErrorShown
     )
 }
 
@@ -96,13 +96,15 @@ fun CsvImportScreenContent(
     onRowActionChange: (Int, String) -> Unit = { _, _ -> },
     onResolveAll: () -> Unit = {},
     onConfirm: () -> Unit = {},
-    onErrorShown: () -> Unit = {},
+    onErrorShown: () -> Unit = {}
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+    val filePicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
             val resolver = context.contentResolver
@@ -123,46 +125,63 @@ fun CsvImportScreenContent(
             TopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back)
+                        )
                     }
                 },
-                title = { Text(stringResource(R.string.import_csv_title), style = MaterialTheme.typography.titleLarge) },
+                title = {
+                    Text(
+                        stringResource(R.string.import_csv_title),
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when {
-                uiState.isLoading -> LoadingSkeleton(modifier = Modifier.testTag("csv-import-loading"))
-                uiState.step == CsvImportStep.PICK -> CsvPickStep(onPick = { filePicker.launch("*/*") })
+                uiState.isLoading -> LoadingSkeleton(
+                    modifier = Modifier.testTag("csv-import-loading")
+                )
+
+                uiState.step == CsvImportStep.PICK -> CsvPickStep(
+                    onPick = { filePicker.launch("*/*") }
+                )
+
                 uiState.step == CsvImportStep.MAPPING && uiState.upload != null ->
                     MappingStep(
                         upload = uiState.upload,
                         columnFields = uiState.columnFields,
                         onColumnFieldChange = onColumnFieldChange,
-                        onContinue = onSubmitMapping,
+                        onContinue = onSubmitMapping
                     )
+
                 uiState.step == CsvImportStep.PREVIEW && uiState.preview != null ->
                     ImportReviewStep(
                         rows = uiState.preview.rows,
                         rowActions = uiState.rowActions,
                         onRowActionChange = onRowActionChange,
                         onResolveAll = onResolveAll,
-                        onConfirm = onConfirm,
+                        onConfirm = onConfirm
                     )
+
                 uiState.step == CsvImportStep.RESULT && uiState.result != null ->
                     CsvResultStep(
                         created = uiState.result.created,
                         updated = uiState.result.updated,
                         skipped = uiState.result.skipped,
-                        onDone = onDone,
+                        onDone = onDone
                     )
+
                 else -> CsvPickStep(onPick = { filePicker.launch("*/*") })
             }
         }
@@ -181,17 +200,17 @@ fun CsvImportScreenContent(
 private fun CsvPickStep(onPick: () -> Unit) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.fillMaxSize().padding(24.dp),
+        modifier = Modifier.fillMaxSize().padding(24.dp)
     ) {
         Icon(
             Icons.Outlined.CloudUpload,
             contentDescription = null,
-            modifier = Modifier.padding(top = 48.dp),
+            modifier = Modifier.padding(top = 48.dp)
         )
         Text(
             text = stringResource(R.string.import_csv_pick_hint),
             style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(vertical = 16.dp),
+            modifier = Modifier.padding(vertical = 16.dp)
         )
         Button(onClick = onPick) {
             Text(stringResource(R.string.import_csv_pick))
@@ -204,28 +223,30 @@ private fun MappingStep(
     upload: ImportUploadResponse,
     columnFields: Map<String, String>,
     onColumnFieldChange: (String, String) -> Unit,
-    onContinue: () -> Unit,
+    onContinue: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         Text(
             text = stringResource(R.string.import_csv_mapping_hint, upload.rowCount),
             style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
         LazyColumn(modifier = Modifier.weight(1f).testTag("csv-mapping-list")) {
             items(upload.headers, key = { it }) { header ->
-                val sample = upload.sampleData.firstOrNull()?.getOrNull(upload.headers.indexOf(header)).orEmpty()
+                val sample = upload.sampleData.firstOrNull()?.getOrNull(
+                    upload.headers.indexOf(header)
+                ).orEmpty()
                 ColumnMappingRow(
                     header = header,
                     sample = sample,
                     selectedField = columnFields[header].orEmpty(),
-                    onFieldChange = { field -> onColumnFieldChange(header, field) },
+                    onFieldChange = { field -> onColumnFieldChange(header, field) }
                 )
             }
         }
         Button(
             onClick = onContinue,
-            modifier = Modifier.fillMaxWidth().padding(16.dp).testTag("csv-mapping-continue"),
+            modifier = Modifier.fillMaxWidth().padding(16.dp).testTag("csv-mapping-continue")
         ) {
             Text(stringResource(R.string.import_csv_mapping_continue))
         }
@@ -238,7 +259,7 @@ private fun ColumnMappingRow(
     header: String,
     sample: String,
     selectedField: String,
-    onFieldChange: (String) -> Unit,
+    onFieldChange: (String) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
@@ -247,7 +268,7 @@ private fun ColumnMappingRow(
             Text(
                 text = sample,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
@@ -257,17 +278,25 @@ private fun ColumnMappingRow(
                 readOnly = true,
                 singleLine = true,
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                modifier = Modifier.menuAnchor().fillMaxWidth().testTag("csv-mapping-field-$header"),
+                modifier = Modifier.menuAnchor().fillMaxWidth().testTag(
+                    "csv-mapping-field-$header"
+                )
             )
             ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.import_csv_mapping_ignore)) },
-                    onClick = { onFieldChange(""); expanded = false },
+                    onClick = {
+                        onFieldChange("")
+                        expanded = false
+                    }
                 )
                 ImportableContactFields.ALL.forEach { field ->
                     DropdownMenuItem(
                         text = { Text(fieldLabel(field)) },
-                        onClick = { onFieldChange(field); expanded = false },
+                        onClick = {
+                            onFieldChange(field)
+                            expanded = false
+                        }
                     )
                 }
             }
@@ -279,12 +308,12 @@ private fun ColumnMappingRow(
 private fun CsvResultStep(created: Int, updated: Int, skipped: Int, onDone: () -> Unit) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.fillMaxSize().padding(24.dp),
+        modifier = Modifier.fillMaxSize().padding(24.dp)
     ) {
         Text(
             text = stringResource(R.string.import_vcf_result, created, updated, skipped),
             style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(top = 48.dp, bottom = 16.dp),
+            modifier = Modifier.padding(top = 48.dp, bottom = 16.dp)
         )
         Button(onClick = onDone) {
             Text(stringResource(R.string.action_confirm))

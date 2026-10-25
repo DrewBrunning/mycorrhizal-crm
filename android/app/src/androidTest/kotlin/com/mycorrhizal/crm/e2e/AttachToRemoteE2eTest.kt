@@ -15,6 +15,7 @@ import com.mycorrhizal.crm.network.BaseUrlProvider
 import com.mycorrhizal.crm.network.ClientVersionProvider
 import com.mycorrhizal.crm.network.NetworkFactory
 import com.mycorrhizal.crm.network.TokenProvider
+import java.util.UUID
 import kotlinx.coroutines.runBlocking
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -25,7 +26,6 @@ import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.util.UUID
 
 /**
  * ADR 0028 Decision 3 / issue #1265, acceptance test: create data on the "local"
@@ -60,7 +60,11 @@ class AttachToRemoteE2eTest {
     @Before
     fun setUp() {
         localSide.registerSeedUser()
-        remoteSide.registerSeedUser(E2eConfig.SECOND_USERNAME, E2eConfig.SECOND_EMAIL, E2eConfig.SECOND_PASSWORD)
+        remoteSide.registerSeedUser(
+            E2eConfig.SECOND_USERNAME,
+            E2eConfig.SECOND_EMAIL,
+            E2eConfig.SECOND_PASSWORD
+        )
         localToken = localSide.login()
         remoteSide.login(E2eConfig.SECOND_USERNAME, E2eConfig.SECOND_PASSWORD)
         localSide.cleanupTestContacts()
@@ -79,9 +83,13 @@ class AttachToRemoteE2eTest {
 
     private class MemoryTokens : TokenStorage {
         val tokens = mutableMapOf<String, String>()
-        override suspend fun save(profileId: String, token: String) { tokens[profileId] = token }
+        override suspend fun save(profileId: String, token: String) {
+            tokens[profileId] = token
+        }
         override suspend fun load(profileId: String) = tokens[profileId]
-        override suspend fun clear(profileId: String) { tokens.remove(profileId) }
+        override suspend fun clear(profileId: String) {
+            tokens.remove(profileId)
+        }
         override suspend fun loadLegacy(): String? = null
         override suspend fun clearLegacy() = Unit
     }
@@ -90,9 +98,13 @@ class AttachToRemoteE2eTest {
         var snapshot = ProfilesSnapshot()
         override suspend fun save(serverUrl: String?) = Unit
         override suspend fun loadServerUrl(): String? = null
-        override suspend fun saveProfiles(snapshot: ProfilesSnapshot) { this.snapshot = snapshot }
+        override suspend fun saveProfiles(snapshot: ProfilesSnapshot) {
+            this.snapshot = snapshot
+        }
         override suspend fun loadProfiles() = snapshot
-        override suspend fun clear() { snapshot = ProfilesSnapshot() }
+        override suspend fun clear() {
+            snapshot = ProfilesSnapshot()
+        }
     }
 
     /** A session manager whose active profile is a genuine Local-kind one. */
@@ -105,11 +117,14 @@ class AttachToRemoteE2eTest {
 
     private fun coordinator(manager: DefaultSessionManager): AttachToRemoteCoordinator {
         // The "local server" export goes straight at the seed account's session.
-        val factory = DefaultAttachRemoteApiFactory(ClientVersionProvider { HARNESS_VERSION }, debug = false)
+        val factory = DefaultAttachRemoteApiFactory(
+            ClientVersionProvider { HARNESS_VERSION },
+            debug = false
+        )
         return AttachToRemoteCoordinator(
             sessionManager = manager,
             localApi = factory.create(E2eConfig.serverUrl, TokenProvider { localToken }),
-            remoteApiFactory = factory,
+            remoteApiFactory = factory
         )
     }
 
@@ -117,10 +132,19 @@ class AttachToRemoteE2eTest {
     private fun runWizard(manager: DefaultSessionManager): AttachFinishResult = runBlocking {
         val c = coordinator(manager)
         c.begin().getOrThrow()
-        c.signIn(null, "E2E remote", E2eConfig.serverUrl, E2eConfig.SECOND_USERNAME, E2eConfig.SECOND_PASSWORD)
+        c.signIn(
+            null,
+            "E2E remote",
+            E2eConfig.serverUrl,
+            E2eConfig.SECOND_USERNAME,
+            E2eConfig.SECOND_PASSWORD
+        )
             .getOrThrow()
         val prepared = c.prepare().getOrThrow()
-        assertTrue("the bundle carried the created contacts", prepared.totals.contacts >= names.size)
+        assertTrue(
+            "the bundle carried the created contacts",
+            prepared.totals.contacts >= names.size
+        )
         val actions = prepared.preview.rows.map { RowImportAction(it.rowIndex, it.suggestedAction) }
         c.confirm(actions).getOrThrow()
         c.finish()
@@ -144,7 +168,10 @@ class AttachToRemoteE2eTest {
         assertEquals(names.size, remoteNames().size)
         runBlocking {
             assertTrue(manager.activeProfile()?.kind is ServerProfileKind.Remote)
-            assertTrue("Local is a read-only archive", manager.profiles().single { it.id == localProfileId }.archived)
+            assertTrue(
+                "Local is a read-only archive",
+                manager.profiles().single { it.id == localProfileId }.archived
+            )
         }
         val countAfterFirst = remoteSide.countContactsWithMarker(marker)
         assertEquals(names.size, countAfterFirst)
@@ -153,14 +180,20 @@ class AttachToRemoteE2eTest {
         // ledger keys on the bundle's stable IDs, so nothing is created twice.
         val second = newSessionManager()
         assertEquals(AttachFinishResult.Done, runWizard(second))
-        assertEquals("re-running must not duplicate contacts", countAfterFirst, remoteSide.countContactsWithMarker(marker))
+        assertEquals(
+            "re-running must not duplicate contacts",
+            countAfterFirst,
+            remoteSide.countContactsWithMarker(marker)
+        )
     }
 
     @Test
     fun anArchivedLocalProfileCanBeReadButEveryWriteIsBlocked() {
         val manager = newSessionManager()
         runWizard(manager)
-        val localId = runBlocking { manager.profiles().first { it.kind is ServerProfileKind.Local }.id }
+        val localId = runBlocking {
+            manager.profiles().first { it.kind is ServerProfileKind.Local }.id
+        }
         // Browse the archive again: switch back to it, as the Servers list allows.
         runBlocking { manager.switchProfile(localId) }
         assertTrue(manager.isActiveProfileArchived())
@@ -171,23 +204,29 @@ class AttachToRemoteE2eTest {
             tokenProvider = TokenProvider { localToken },
             baseUrlProvider = BaseUrlProvider { E2eConfig.serverUrl },
             archivedProfileProvider = manager,
-            clientVersionProvider = ClientVersionProvider { HARNESS_VERSION },
+            clientVersionProvider = ClientVersionProvider { HARNESS_VERSION }
         )
 
-        client.newCall(Request.Builder().url("${E2eConfig.apiBaseUrl}/contacts?limit=1").get().build())
+        client.newCall(
+            Request.Builder().url("${E2eConfig.apiBaseUrl}/contacts?limit=1").get().build()
+        )
             .execute().use { assertEquals(200, it.code) }
 
         val before = localSide.contactsJson()
         try {
             client.newCall(
                 Request.Builder().url("${E2eConfig.apiBaseUrl}/contacts")
-                    .post("{}".toRequestBody()).build(),
+                    .post("{}".toRequestBody()).build()
             ).execute().close()
             fail("a write on the archived profile must be blocked")
         } catch (e: ArchivedProfileWriteException) {
             assertEquals("POST", e.method)
         }
-        assertEquals("the blocked write must not have reached the server", before, localSide.contactsJson())
+        assertEquals(
+            "the blocked write must not have reached the server",
+            before,
+            localSide.contactsJson()
+        )
     }
 
     private companion object {

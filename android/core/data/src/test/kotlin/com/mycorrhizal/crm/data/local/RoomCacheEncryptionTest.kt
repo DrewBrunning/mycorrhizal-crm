@@ -6,7 +6,6 @@ import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Before
@@ -50,7 +49,7 @@ class RoomCacheEncryptionTest {
     fun setUp() {
         dir = File(
             System.getProperty("java.io.tmpdir"),
-            "room-cache-encryption-test-${System.nanoTime()}",
+            "room-cache-encryption-test-${System.nanoTime()}"
         )
         assertTrue(dir.mkdirs())
     }
@@ -87,8 +86,8 @@ class RoomCacheEncryptionTest {
     fun `a file shorter than the 16-byte magic header is treated as encrypted`() {
         assertTrue(
             RoomCacheEncryption.isEncrypted(
-                fileWith(plaintextHeader.dropLast(1).toByteArray(Charsets.ISO_8859_1)),
-            ),
+                fileWith(plaintextHeader.dropLast(1).toByteArray(Charsets.ISO_8859_1))
+            )
         )
     }
 
@@ -96,8 +95,8 @@ class RoomCacheEncryptionTest {
     fun `a real plaintext SQLite header is not encrypted`() {
         assertFalse(
             RoomCacheEncryption.isEncrypted(
-                fileWith(plaintextHeader.toByteArray(Charsets.ISO_8859_1)),
-            ),
+                fileWith(plaintextHeader.toByteArray(Charsets.ISO_8859_1))
+            )
         )
     }
 
@@ -114,8 +113,8 @@ class RoomCacheEncryptionTest {
         // comparison must be over the whole 16 bytes.
         assertTrue(
             RoomCacheEncryption.isEncrypted(
-                fileWith("SQLite format 3\u0001".toByteArray(Charsets.ISO_8859_1)),
-            ),
+                fileWith("SQLite format 3\u0001".toByteArray(Charsets.ISO_8859_1))
+            )
         )
     }
 
@@ -131,7 +130,7 @@ class RoomCacheEncryptionTest {
         assertEquals(original.size.toLong(), file.length())
         assertFalse(
             "the overwrite must not reproduce the original bytes",
-            original.contentEquals(file.readBytes()),
+            original.contentEquals(file.readBytes())
         )
     }
 
@@ -167,7 +166,10 @@ class RoomCacheEncryptionTest {
         return file
     }
 
-    private fun encryptedSiblingOf(dbFile: File): File = File(dbFile.parentFile, dbFile.name + ".encrypted")
+    private fun encryptedSiblingOf(dbFile: File): File = File(
+        dbFile.parentFile,
+        dbFile.name + ".encrypted"
+    )
 
     @Test
     fun `runReencryption swaps in the exported content and rebuilds the FTS mirrors`() {
@@ -180,7 +182,7 @@ class RoomCacheEncryptionTest {
         RoomCacheEncryption.runReencryption(
             dbFile = dbFile,
             export = { encrypted -> encrypted.writeBytes("encrypted-content".toByteArray()) },
-            rebuildFts = { rebuildCalled = true },
+            rebuildFts = { rebuildCalled = true }
         )
 
         assertEquals("encrypted-content", dbFile.readText())
@@ -199,7 +201,7 @@ class RoomCacheEncryptionTest {
             RoomCacheEncryption.runReencryption(
                 dbFile = dbFile,
                 export = { throw IOException("disk full") },
-                rebuildFts = { rebuildCalled = true },
+                rebuildFts = { rebuildCalled = true }
             )
             fail("export failing with no recoverable .encrypted file must rethrow")
         } catch (expected: IllegalStateException) {
@@ -209,10 +211,13 @@ class RoomCacheEncryptionTest {
         assertArrayEquals(
             "the plaintext must survive an export failure untouched",
             original,
-            dbFile.readBytes(),
+            dbFile.readBytes()
         )
         assertFalse(encryptedSiblingOf(dbFile).exists())
-        assertFalse("the FTS rebuild must not run when the transition failed outright", rebuildCalled)
+        assertFalse(
+            "the FTS rebuild must not run when the transition failed outright",
+            rebuildCalled
+        )
     }
 
     @Test
@@ -228,7 +233,7 @@ class RoomCacheEncryptionTest {
         RoomCacheEncryption.runReencryption(
             dbFile = dbFile,
             export = { encrypted -> encrypted.writeBytes("encrypted-content".toByteArray()) },
-            rebuildFts = {},
+            rebuildFts = {}
         )
 
         assertTrue("the recovery swap must leave a regular file, not the directory", dbFile.isFile)
@@ -249,7 +254,7 @@ class RoomCacheEncryptionTest {
             RoomCacheEncryption.runReencryption(
                 dbFile = dbFile,
                 export = { encrypted -> encrypted.writeBytes("encrypted-content".toByteArray()) },
-                rebuildFts = {},
+                rebuildFts = {}
             )
             fail("a swap failure whose recovery also fails must rethrow")
         } catch (expected: IllegalStateException) {
@@ -259,7 +264,7 @@ class RoomCacheEncryptionTest {
 
         assertFalse(
             "the temp .encrypted file must be cleaned up, not left behind, when recovery fails",
-            encryptedSiblingOf(dbFile).exists(),
+            encryptedSiblingOf(dbFile).exists()
         )
         // The directory nobody could delete is exactly as it was — no data lost.
         assertTrue(dbFile.isDirectory)
@@ -282,14 +287,17 @@ class RoomCacheEncryptionTest {
             dbFile = dbFile,
             export = { encrypted -> encrypted.writeBytes("encrypted-content".toByteArray()) },
             rebuildFts = { rebuildCalled = true },
-            postSwap = { throw IOException("sidecar cleanup failed") },
+            postSwap = { throw IOException("sidecar cleanup failed") }
         )
 
         // The swap already completed: dbFile must hold the encrypted content,
         // and the transition must be reported as having succeeded (no thrown
         // exception) rather than "cache left untouched".
         assertEquals("encrypted-content", dbFile.readText())
-        assertTrue("the FTS rebuild must still run after a non-fatal post-swap failure", rebuildCalled)
+        assertTrue(
+            "the FTS rebuild must still run after a non-fatal post-swap failure",
+            rebuildCalled
+        )
     }
 
     @Test
@@ -299,7 +307,7 @@ class RoomCacheEncryptionTest {
         RoomCacheEncryption.runReencryption(
             dbFile = dbFile,
             export = { encrypted -> encrypted.writeBytes("encrypted-content".toByteArray()) },
-            rebuildFts = { throw IllegalStateException("FTS index corrupt") },
+            rebuildFts = { throw IllegalStateException("FTS index corrupt") }
         )
 
         // The swap itself still succeeded; only the (best-effort) search index

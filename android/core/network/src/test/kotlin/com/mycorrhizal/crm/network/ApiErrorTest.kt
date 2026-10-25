@@ -1,12 +1,12 @@
 package com.mycorrhizal.crm.network
 
 import com.squareup.moshi.JsonDataException
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
-import org.junit.Test
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
 
 class ApiErrorTest {
 
@@ -79,9 +79,18 @@ class ApiErrorTest {
     @Test
     fun `display message for the external-service code shows the server's message on any 5xx`() {
         val msg = "GeoPulse service error: Could not reach GeoPulse. Is the instance up?"
-        assertEquals(msg, ApiError.Server(503, msg, errorCode = "EXTERNAL_SERVICE_ERROR").displayMessage)
-        assertEquals("Server error (503)", ApiError.Server(503, "", errorCode = "EXTERNAL_SERVICE_ERROR").displayMessage)
-        assertEquals("Server error (500)", ApiError.Server(500, "db detail", errorCode = "DATABASE_ERROR").displayMessage)
+        assertEquals(
+            msg,
+            ApiError.Server(503, msg, errorCode = "EXTERNAL_SERVICE_ERROR").displayMessage
+        )
+        assertEquals(
+            "Server error (503)",
+            ApiError.Server(503, "", errorCode = "EXTERNAL_SERVICE_ERROR").displayMessage
+        )
+        assertEquals(
+            "Server error (500)",
+            ApiError.Server(500, "db detail", errorCode = "DATABASE_ERROR").displayMessage
+        )
     }
 
     @Test

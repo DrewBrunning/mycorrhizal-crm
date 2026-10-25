@@ -52,7 +52,7 @@ import com.mycorrhizal.crm.ui.R
 @Composable
 fun GeoPulseSettingsScreen(
     onBack: () -> Unit,
-    viewModel: GeoPulseSettingsViewModel = hiltViewModel(),
+    viewModel: GeoPulseSettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showRemoveConfirm by remember { mutableStateOf(false) }
@@ -62,18 +62,26 @@ fun GeoPulseSettingsScreen(
             TopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back)
+                        )
                     }
                 },
-                title = { Text(stringResource(R.string.settings_geopulse_title), style = MaterialTheme.typography.titleLarge) },
+                title = {
+                    Text(
+                        stringResource(R.string.settings_geopulse_title),
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
-        },
+        }
     ) { padding ->
         GeoPulseSettingsContent(
             state = state,
@@ -82,7 +90,7 @@ fun GeoPulseSettingsScreen(
             onTest = viewModel::test,
             onSave = viewModel::save,
             onRemove = { showRemoveConfirm = true },
-            modifier = Modifier.padding(padding),
+            modifier = Modifier.padding(padding)
         )
     }
 
@@ -97,12 +105,19 @@ fun GeoPulseSettingsScreen(
                     onClick = {
                         showRemoveConfirm = false
                         viewModel.remove()
-                    },
-                ) { Text(stringResource(R.string.geopulse_settings_remove), color = MaterialTheme.colorScheme.error) }
+                    }
+                ) {
+                    Text(
+                        stringResource(R.string.geopulse_settings_remove),
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
             },
             dismissButton = {
-                TextButton(onClick = { showRemoveConfirm = false }) { Text(stringResource(R.string.action_cancel)) }
-            },
+                TextButton(
+                    onClick = { showRemoveConfirm = false }
+                ) { Text(stringResource(R.string.action_cancel)) }
+            }
         )
     }
 }
@@ -116,14 +131,14 @@ fun GeoPulseSettingsContent(
     onTest: () -> Unit = {},
     onSave: () -> Unit = {},
     onRemove: () -> Unit = {},
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         if (state.isLoading) {
             Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
@@ -135,31 +150,35 @@ fun GeoPulseSettingsContent(
         Text(
             text = stringResource(R.string.geopulse_settings_description),
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         val errors = listOfNotNull(
             state.loadError,
             state.saveError,
-            state.saveErrorRes?.let { stringResource(it) },
+            state.saveErrorRes?.let { stringResource(it) }
         )
         errors.forEach {
             Text(
                 it,
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
             )
         }
 
         OutlinedTextField(
             value = state.baseUrl,
             onValueChange = onBaseUrlChange,
-            label = { Text(requiredFieldLabel(stringResource(R.string.geopulse_settings_base_url))) },
+            label = {
+                Text(
+                    requiredFieldLabel(stringResource(R.string.geopulse_settings_base_url))
+                )
+            },
             placeholder = { Text("http://geopulse:8080") },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
             value = state.apiKey,
@@ -167,7 +186,10 @@ fun GeoPulseSettingsContent(
             label = {
                 // Required marker: first connect or origin change (mirrors MUI's "API Token *").
                 Text(
-                    requiredFieldLabel(stringResource(R.string.geopulse_settings_api_key), state.tokenRequired),
+                    requiredFieldLabel(
+                        stringResource(R.string.geopulse_settings_api_key),
+                        state.tokenRequired
+                    )
                 )
             },
             singleLine = true,
@@ -177,29 +199,40 @@ fun GeoPulseSettingsContent(
                 Text(
                     when {
                         state.tokenRequiredByOriginChange ->
-                            stringResource(R.string.geopulse_settings_api_key_required_origin_change)
-                        state.hasApiKey -> stringResource(R.string.geopulse_settings_api_key_hint_existing)
+                            stringResource(
+                                R.string.geopulse_settings_api_key_required_origin_change
+                            )
+
+                        state.hasApiKey -> stringResource(
+                            R.string.geopulse_settings_api_key_hint_existing
+                        )
+
                         else -> stringResource(R.string.geopulse_settings_api_key_hint_new)
-                    },
+                    }
                 )
             },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         )
 
         if (state.hasApiKey) {
             Button(
                 onClick = onTest,
                 enabled = !state.isTesting,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 if (state.isTesting) {
-                    CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp), strokeWidth = 2.dp)
+                    CircularProgressIndicator(
+                        modifier = Modifier.padding(end = 8.dp),
+                        strokeWidth = 2.dp
+                    )
                 } else {
                     Icon(Icons.Outlined.PlayArrow, contentDescription = null)
                 }
                 Text(
-                    stringResource(if (state.isTesting) R.string.geopulse_settings_testing else R.string.geopulse_settings_test),
-                    modifier = Modifier.padding(start = 8.dp),
+                    stringResource(
+                        if (state.isTesting) R.string.geopulse_settings_testing else R.string.geopulse_settings_test
+                    ),
+                    modifier = Modifier.padding(start = 8.dp)
                 )
             }
         }
@@ -211,34 +244,41 @@ fun GeoPulseSettingsContent(
                 stringResource(
                     R.string.geopulse_settings_test_failed,
                     result.stage ?: "-",
-                    result.message ?: stringResource(R.string.geopulse_settings_test_unknown),
+                    result.message ?: stringResource(R.string.geopulse_settings_test_unknown)
                 )
             }
             Text(
                 text = text,
                 color = if (result.ok) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
             )
         }
 
         SettingsSaveButton(
-            canSave = state.baseUrl.isNotBlank() && (!state.tokenRequired || state.apiKey.isNotBlank()),
+            canSave =
+                state.baseUrl.isNotBlank() && (!state.tokenRequired || state.apiKey.isNotBlank()),
             isSaving = state.isSaving,
             onClick = onSave,
-            disabledHint = stringResource(R.string.settings_save_requires_fields),
+            disabledHint = stringResource(R.string.settings_save_requires_fields)
         )
 
         if (state.hasApiKey) {
             OutlinedButton(
                 onClick = onRemove,
                 enabled = !state.isRemoving,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 if (state.isRemoving) {
-                    CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp), strokeWidth = 2.dp)
+                    CircularProgressIndicator(
+                        modifier = Modifier.padding(end = 8.dp),
+                        strokeWidth = 2.dp
+                    )
                 }
-                Text(stringResource(R.string.geopulse_settings_remove), color = MaterialTheme.colorScheme.error)
+                Text(
+                    stringResource(R.string.geopulse_settings_remove),
+                    color = MaterialTheme.colorScheme.error
+                )
             }
         }
     }

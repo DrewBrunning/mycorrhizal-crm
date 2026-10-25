@@ -12,7 +12,6 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -46,18 +45,41 @@ class MultiValueEditorTest {
 
     @Test
     fun `typing a value copies the entry keeping id contexts and pref`() {
-        var items by mutableStateOf(listOf(Email(id = "e1", address = "a@b.c", contexts = listOf("work"), pref = 1, label = "work")))
+        var items by mutableStateOf(
+            listOf(
+                Email(
+                    id = "e1",
+                    address = "a@b.c",
+                    contexts = listOf("work"),
+                    pref = 1,
+                    label = "work"
+                )
+            )
+        )
         composeTestRule.setContent {
             MycorrhizalTheme {
-                MultiValueEditor(items = items, spec = EmailSpec, onChange = { items = it }, label = "Email")
+                MultiValueEditor(
+                    items = items,
+                    spec = EmailSpec,
+                    onChange = { items = it },
+                    label = "Email"
+                )
             }
         }
         // Issue #1724: the field is labelled with its meaning, not "Value 1".
         composeTestRule.onNodeWithContentDescription("Email").performTextReplacement("x@y.z")
         composeTestRule.onAllNodesWithText("Value 1").assertCountEquals(0)
         assertEquals(
-            listOf(Email(id = "e1", address = "x@y.z", contexts = listOf("work"), pref = 1, label = "work")),
-            items,
+            listOf(
+                Email(
+                    id = "e1",
+                    address = "x@y.z",
+                    contexts = listOf("work"),
+                    pref = 1,
+                    label = "work"
+                )
+            ),
+            items
         )
     }
 
@@ -67,12 +89,17 @@ class MultiValueEditorTest {
             listOf(
                 Phone(id = "p1", number = "+1", pref = 1),
                 Phone(id = "p2", number = "+2"),
-                Phone(id = "p3", number = "+3"),
-            ),
+                Phone(id = "p3", number = "+3")
+            )
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
-                MultiValueEditor(items = items, spec = PhoneSpec, onChange = { items = it }, label = "Phone")
+                MultiValueEditor(
+                    items = items,
+                    spec = PhoneSpec,
+                    onChange = { items = it },
+                    label = "Phone"
+                )
             }
         }
         // A selected FilterChip is distinct from the favourite-contact star and
@@ -90,10 +117,17 @@ class MultiValueEditorTest {
 
     @Test
     fun `selecting a type from the dropdown updates the context`() {
-        var items by mutableStateOf(listOf(Email(id = "e1", address = "a@b.c", contexts = listOf("work"))))
+        var items by mutableStateOf(
+            listOf(Email(id = "e1", address = "a@b.c", contexts = listOf("work")))
+        )
         composeTestRule.setContent {
             MycorrhizalTheme {
-                MultiValueEditor(items = items, spec = EmailSpec, onChange = { items = it }, label = "Email")
+                MultiValueEditor(
+                    items = items,
+                    spec = EmailSpec,
+                    onChange = { items = it },
+                    label = "Email"
+                )
             }
         }
         // The read-only field shows the localized current type ("Work"); clicking it opens
@@ -105,10 +139,17 @@ class MultiValueEditorTest {
 
     @Test
     fun `adding a new phone mints it via blank so it defaults to cell`() {
-        var items by mutableStateOf(listOf(Phone(id = "p1", number = "+1", contexts = listOf("work"))))
+        var items by mutableStateOf(
+            listOf(Phone(id = "p1", number = "+1", contexts = listOf("work")))
+        )
         composeTestRule.setContent {
             MycorrhizalTheme {
-                MultiValueEditor(items = items, spec = PhoneSpec, onChange = { items = it }, label = "Phone")
+                MultiValueEditor(
+                    items = items,
+                    spec = PhoneSpec,
+                    onChange = { items = it },
+                    label = "Phone"
+                )
             }
         }
         // Issue #1724: a visible, field-named add action (not a bare "Add" icon).
@@ -131,12 +172,17 @@ class MultiValueEditorTest {
         var items by mutableStateOf(
             listOf(
                 Phone(id = "p1", number = "+1"),
-                Phone(id = "p2", number = "+2"),
-            ),
+                Phone(id = "p2", number = "+2")
+            )
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
-                MultiValueEditor(items = items, spec = PhoneSpec, onChange = { items = it }, label = "Phone")
+                MultiValueEditor(
+                    items = items,
+                    spec = PhoneSpec,
+                    onChange = { items = it },
+                    label = "Phone"
+                )
             }
         }
         composeTestRule.onNodeWithContentDescription("Remove phone number 2").performClick()
@@ -148,7 +194,12 @@ class MultiValueEditorTest {
         var items by mutableStateOf(listOf(Email(id = "e1", address = "a@b.c", label = "home")))
         composeTestRule.setContent {
             MycorrhizalTheme {
-                MultiValueEditor(items = items, spec = EmailSpec, onChange = { items = it }, label = "Email")
+                MultiValueEditor(
+                    items = items,
+                    spec = EmailSpec,
+                    onChange = { items = it },
+                    label = "Email"
+                )
             }
         }
         // Legacy flat-Type data stores the type in `label`; the dropdown now
@@ -162,10 +213,23 @@ class MultiValueEditorTest {
 
     @Test
     fun `the service name field edits the online service name`() {
-        var items by mutableStateOf(listOf(com.mycorrhizal.crm.model.network.OnlineService(id = "s1", service = "Signal", uri = "@dana")))
+        var items by mutableStateOf(
+            listOf(
+                com.mycorrhizal.crm.model.network.OnlineService(
+                    id = "s1",
+                    service = "Signal",
+                    uri = "@dana"
+                )
+            )
+        )
         composeTestRule.setContent {
             MycorrhizalTheme {
-                MultiValueEditor(items = items, spec = com.mycorrhizal.crm.ui.components.OnlineServiceSpec, onChange = { items = it }, label = "Messaging")
+                MultiValueEditor(
+                    items = items,
+                    spec = com.mycorrhizal.crm.ui.components.OnlineServiceSpec,
+                    onChange = { items = it },
+                    label = "Messaging"
+                )
             }
         }
         composeTestRule.onNodeWithText("Signal").performTextReplacement("Telegram")
@@ -180,7 +244,12 @@ class MultiValueEditorTest {
         var items by mutableStateOf(listOf(Email(address = "")))
         composeTestRule.setContent {
             MycorrhizalTheme {
-                MultiValueEditor(items = items, spec = EmailSpec, onChange = { items = it }, label = "Email")
+                MultiValueEditor(
+                    items = items,
+                    spec = EmailSpec,
+                    onChange = { items = it },
+                    label = "Email"
+                )
             }
         }
         composeTestRule.onNodeWithContentDescription("Email").assertIsDisplayed().performClick()
@@ -199,7 +268,7 @@ class MultiValueEditorTest {
                     items = items,
                     spec = GrammaticalGenderSpec,
                     onChange = { items = it },
-                    label = "Grammatical gender",
+                    label = "Grammatical gender"
                 )
             }
         }
@@ -208,7 +277,7 @@ class MultiValueEditorTest {
         composeTestRule.onNodeWithContentDescription("Language").performClick()
         composeTestRule.onNodeWithText("de, fr, es").assertExists()
         composeTestRule.onNodeWithText(
-            "BCP-47 language tag; the dropdown is the gender.",
+            "BCP-47 language tag; the dropdown is the gender."
         ).assertExists()
         // The dropdown carries the gender value.
         composeTestRule.onNodeWithText("Feminine").assertIsDisplayed()
@@ -239,13 +308,18 @@ class MultiValueEditorTest {
                     value = text,
                     onValueChange = { text = it },
                     label = "Given name",
-                    contentType = ContentType.PersonFirstName,
+                    contentType = ContentType.PersonFirstName
                 )
             }
         }
 
         composeTestRule.onNodeWithText("Given name")
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.ContentType, ContentType.PersonFirstName))
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.ContentType,
+                    ContentType.PersonFirstName
+                )
+            )
     }
 
     @Test
@@ -256,7 +330,7 @@ class MultiValueEditorTest {
                     value = "",
                     onValueChange = {},
                     label = "No hint",
-                    contentType = null,
+                    contentType = null
                 )
             }
         }

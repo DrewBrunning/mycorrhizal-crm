@@ -18,13 +18,16 @@ interface PermissionChecker {
 }
 
 class AndroidPermissionChecker @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @ApplicationContext private val context: Context
 ) : PermissionChecker {
     override fun isGranted(permission: String): Boolean {
         // POST_NOTIFICATIONS only exists from API 33; below that every app can
         // post without asking, so report it granted rather than querying an
         // unknown permission (which returns DENIED) and forcing a bogus request.
         if (!isRuntimePermissionApplicable(permission, Build.VERSION.SDK_INT)) return true
-        return ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+        return ContextCompat.checkSelfPermission(
+            context,
+            permission
+        ) == PackageManager.PERMISSION_GRANTED
     }
 }

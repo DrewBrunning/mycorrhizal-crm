@@ -19,7 +19,7 @@ data class Note(
     /** ADR 0006/0008: monotonic per-row write counter; the value an `If-Match` precondition echoes. */
     val revision: Int? = null,
     /** T17 change-feed tombstone marker. */
-    val deleted: Boolean = false,
+    val deleted: Boolean = false
 )
 
 /** Request body for POST /contacts/{id}/notes and PUT /notes/{id}. */
@@ -27,7 +27,7 @@ data class Note(
 data class NoteInput(
     val content: String? = null,
     val date: String? = null,
-    @Json(name = "contact_id") val contactId: Int? = null,
+    @Json(name = "contact_id") val contactId: Int? = null
 )
 
 /** GET /contacts/{id}/notes — wrapped `{ notes }` array (M19: T17 cursor envelope). */
@@ -35,15 +35,12 @@ data class NoteInput(
 data class ContactNotesResponse(
     val notes: List<Note> = emptyList(),
     @Json(name = "next_cursor") val nextCursor: String? = null,
-    val limit: Int = 0,
+    val limit: Int = 0
 )
 
 /** POST /contacts/{id}/notes — wrapped `{ message, note }`. */
 @JsonClass(generateAdapter = true)
-data class CreateNoteResponse(
-    val message: String? = null,
-    val note: Note? = null,
-)
+data class CreateNoteResponse(val message: String? = null, val note: Note? = null)
 
 /**
  * GET /notes — the N4 unfiled-notes inbox, T17 cursor-paginated. `GetUnassignedNotes` does
@@ -60,7 +57,7 @@ data class NotesPage(
     val limit: Int = 0,
     /** N4 queue depth — total unfiled notes matching the filters, not just this page. */
     val total: Int = 0,
-    val sync: SyncInfo? = null,
+    val sync: SyncInfo? = null
 ) {
     val notes: List<Note> get() = notesRaw.orEmpty()
 }

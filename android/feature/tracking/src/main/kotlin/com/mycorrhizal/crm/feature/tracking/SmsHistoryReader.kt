@@ -5,10 +5,7 @@ import android.provider.Telephony
 import android.util.Log
 
 /** One outgoing-SMS entry as captured for tracking (§6.2). */
-data class SmsHistoryEntry(
-    val address: String?,
-    val timestampMillis: Long,
-)
+data class SmsHistoryEntry(val address: String?, val timestampMillis: Long)
 
 /**
  * Reads the *sent* SMS folder (§6.2, issue #721). The incoming-SMS broadcast
@@ -35,7 +32,7 @@ class SmsHistoryReader(private val contentResolver: ContentResolver) {
         val out = mutableListOf<SmsHistoryEntry>()
         val projection = arrayOf(
             Telephony.Sms.ADDRESS,
-            Telephony.Sms.DATE,
+            Telephony.Sms.DATE
         )
         val cursor = try {
             contentResolver.query(
@@ -49,7 +46,7 @@ class SmsHistoryReader(private val contentResolver: ContentResolver) {
                 // existed past the watermark, permanently skipping everything older
                 // than the newest `limit`. ASC lets the caller page forward through
                 // the backlog instead.
-                "${Telephony.Sms.DATE} ASC LIMIT $limit",
+                "${Telephony.Sms.DATE} ASC LIMIT $limit"
             )
         } catch (e: SecurityException) {
             // Issue #721: a missing READ_SMS grant is a logged no-op, never a crash.
@@ -63,8 +60,8 @@ class SmsHistoryReader(private val contentResolver: ContentResolver) {
                 out.add(
                     SmsHistoryEntry(
                         address = if (addressIdx >= 0) it.getString(addressIdx) else null,
-                        timestampMillis = it.getLong(dateIdx),
-                    ),
+                        timestampMillis = it.getLong(dateIdx)
+                    )
                 )
             }
         }

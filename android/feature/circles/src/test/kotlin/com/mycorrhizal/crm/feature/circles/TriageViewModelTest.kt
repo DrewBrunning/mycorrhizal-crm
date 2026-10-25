@@ -32,19 +32,37 @@ class TriageViewModelTest {
         TriageViewModel(contactRepository, circleRepository, tagRepository)
 
     private fun contactsPage(vararg uids: String): ContactsPage = ContactsPage(
-        contacts = uids.mapIndexed { i, uid -> ContactSummary(id = i + 1, uid = uid, fn = "Contact $i") },
+        contacts = uids.mapIndexed { i, uid ->
+            ContactSummary(
+                id = i + 1,
+                uid = uid,
+                fn = "Contact $i"
+            )
+        },
         nextCursor = null,
         limit = 500,
-        sync = null,
+        sync = null
     )
 
     @Test
     fun `load collects legacy strings with per-string counts sorted descending`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            coEvery { contactRepository.listLegacyCircles() } returns Result.success(listOf("Friends", "Ski club"))
-            coEvery { contactRepository.listContacts(circleLegacy = "Friends", limit = 500) } returns
+            coEvery { contactRepository.listLegacyCircles() } returns Result.success(
+                listOf("Friends", "Ski club")
+            )
+            coEvery {
+                contactRepository.listContacts(
+                    circleLegacy = "Friends",
+                    limit = 500
+                )
+            } returns
                 Result.success(contactsPage("u1", "u2", "u3"))
-            coEvery { contactRepository.listContacts(circleLegacy = "Ski club", limit = 500) } returns
+            coEvery {
+                contactRepository.listContacts(
+                    circleLegacy = "Ski club",
+                    limit = 500
+                )
+            } returns
                 Result.success(contactsPage("u4", "u5"))
 
             val vm = viewModel()
@@ -60,52 +78,80 @@ class TriageViewModelTest {
         }
 
     @Test
-    fun `a failed legacy fetch surfaces the error`() =
-        runTest(mainDispatcherRule.testDispatcher) {
-            coEvery { contactRepository.listLegacyCircles() } returns
-                Result.failure(com.mycorrhizal.crm.network.ApiError.Client(500, "boom"))
+    fun `a failed legacy fetch surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { contactRepository.listLegacyCircles() } returns
+            Result.failure(com.mycorrhizal.crm.network.ApiError.Client(500, "boom"))
 
-            val vm = viewModel()
-            advanceUntilIdle()
+        val vm = viewModel()
+        advanceUntilIdle()
 
-            assertFalse(vm.uiState.value.isLoading)
-            assertEquals("boom", vm.uiState.value.error)
-        }
+        assertFalse(vm.uiState.value.isLoading)
+        assertEquals("boom", vm.uiState.value.error)
+    }
 
     @Test
-    fun `classify and rename update the items`() =
-        runTest(mainDispatcherRule.testDispatcher) {
-            coEvery { contactRepository.listLegacyCircles() } returns Result.success(listOf("Friends"))
-            coEvery { contactRepository.listContacts(circleLegacy = "Friends", limit = 500) } returns
-                Result.success(contactsPage("u1"))
-            val vm = viewModel()
-            advanceUntilIdle()
+    fun `classify and rename update the items`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { contactRepository.listLegacyCircles() } returns Result.success(
+            listOf("Friends")
+        )
+        coEvery {
+            contactRepository.listContacts(
+                circleLegacy = "Friends",
+                limit = 500
+            )
+        } returns
+            Result.success(contactsPage("u1"))
+        val vm = viewModel()
+        advanceUntilIdle()
 
-            vm.setClassification(0, TriageClassification.TAG)
-            vm.setName(0, "Old friends")
+        vm.setClassification(0, TriageClassification.TAG)
+        vm.setName(0, "Old friends")
 
-            val item = vm.uiState.value.items[0]
-            assertEquals(TriageClassification.TAG, item.classification)
-            assertEquals("Old friends", item.name)
-        }
+        val item = vm.uiState.value.items[0]
+        assertEquals(TriageClassification.TAG, item.classification)
+        assertEquals("Old friends", item.name)
+    }
 
     @Test
     fun `apply creates circles and tags then adds their members`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            coEvery { contactRepository.listLegacyCircles() } returns Result.success(listOf("Friends", "Ski club"))
-            coEvery { contactRepository.listContacts(circleLegacy = "Friends", limit = 500) } returns
+            coEvery { contactRepository.listLegacyCircles() } returns Result.success(
+                listOf("Friends", "Ski club")
+            )
+            coEvery {
+                contactRepository.listContacts(
+                    circleLegacy = "Friends",
+                    limit = 500
+                )
+            } returns
                 Result.success(contactsPage("u1"))
-            coEvery { contactRepository.listContacts(circleLegacy = "Ski club", limit = 500) } returns
+            coEvery {
+                contactRepository.listContacts(
+                    circleLegacy = "Ski club",
+                    limit = 500
+                )
+            } returns
                 Result.success(contactsPage("u2"))
             coEvery { circleRepository.list(limit = 200) } returns Result.success(emptyList())
             coEvery { tagRepository.list(limit = 200) } returns Result.success(emptyList())
-            coEvery { circleRepository.create("Friends") } returns Result.success(Circle(id = "c1", name = "Friends"))
-            coEvery { tagRepository.create("Ski club") } returns Result.success(Tag(id = "t1", name = "Ski club"))
+            coEvery {
+                circleRepository.create(
+                    "Friends"
+                )
+            } returns Result.success(Circle(id = "c1", name = "Friends"))
+            coEvery {
+                tagRepository.create(
+                    "Ski club"
+                )
+            } returns Result.success(Tag(id = "t1", name = "Ski club"))
             coEvery { circleRepository.addMember("c1", "u1") } returns Result.success(
-                com.mycorrhizal.crm.model.network.CircleMember(circleId = "c1", memberVCardUid = "u1"),
+                com.mycorrhizal.crm.model.network.CircleMember(
+                    circleId = "c1",
+                    memberVCardUid = "u1"
+                )
             )
             coEvery { tagRepository.addContact("t1", "u2") } returns Result.success(
-                com.mycorrhizal.crm.model.network.ContactTag(tagId = "t1", contactVCardUid = "u2"),
+                com.mycorrhizal.crm.model.network.ContactTag(tagId = "t1", contactVCardUid = "u2")
             )
 
             val vm = viewModel()
@@ -129,14 +175,24 @@ class TriageViewModelTest {
     @Test
     fun `apply reuses an existing entity of the same name so a re-run cannot duplicate`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            coEvery { contactRepository.listLegacyCircles() } returns Result.success(listOf("Friends"))
-            coEvery { contactRepository.listContacts(circleLegacy = "Friends", limit = 500) } returns
+            coEvery { contactRepository.listLegacyCircles() } returns Result.success(
+                listOf("Friends")
+            )
+            coEvery {
+                contactRepository.listContacts(
+                    circleLegacy = "Friends",
+                    limit = 500
+                )
+            } returns
                 Result.success(contactsPage("u1"))
             coEvery { circleRepository.list(limit = 200) } returns
                 Result.success(listOf(Circle(id = "c9", name = "Friends")))
             coEvery { tagRepository.list(limit = 200) } returns Result.success(emptyList())
             coEvery { circleRepository.addMember("c9", "u1") } returns Result.success(
-                com.mycorrhizal.crm.model.network.CircleMember(circleId = "c9", memberVCardUid = "u1"),
+                com.mycorrhizal.crm.model.network.CircleMember(
+                    circleId = "c9",
+                    memberVCardUid = "u1"
+                )
             )
 
             val vm = viewModel()
@@ -149,39 +205,59 @@ class TriageViewModelTest {
         }
 
     @Test
-    fun `skipped items are never created`() =
-        runTest(mainDispatcherRule.testDispatcher) {
-            coEvery { contactRepository.listLegacyCircles() } returns Result.success(listOf("Obsolete"))
-            coEvery { contactRepository.listContacts(circleLegacy = "Obsolete", limit = 500) } returns
-                Result.success(contactsPage("u1"))
-            coEvery { circleRepository.list(limit = 200) } returns Result.success(emptyList())
-            coEvery { tagRepository.list(limit = 200) } returns Result.success(emptyList())
+    fun `skipped items are never created`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { contactRepository.listLegacyCircles() } returns Result.success(
+            listOf("Obsolete")
+        )
+        coEvery {
+            contactRepository.listContacts(
+                circleLegacy = "Obsolete",
+                limit = 500
+            )
+        } returns
+            Result.success(contactsPage("u1"))
+        coEvery { circleRepository.list(limit = 200) } returns Result.success(emptyList())
+        coEvery { tagRepository.list(limit = 200) } returns Result.success(emptyList())
 
-            val vm = viewModel()
-            advanceUntilIdle()
-            vm.setClassification(0, TriageClassification.SKIP)
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.setClassification(0, TriageClassification.SKIP)
 
-            assertFalse(vm.uiState.value.hasWork)
-            vm.apply()
-            advanceUntilIdle()
+        assertFalse(vm.uiState.value.hasWork)
+        vm.apply()
+        advanceUntilIdle()
 
-            // Nothing to do: apply returns early without creating or marking done.
-            assertFalse(vm.uiState.value.done)
-            coVerify(exactly = 0) { circleRepository.create(any()) }
-            coVerify(exactly = 0) { tagRepository.create(any()) }
-        }
+        // Nothing to do: apply returns early without creating or marking done.
+        assertFalse(vm.uiState.value.done)
+        coVerify(exactly = 0) { circleRepository.create(any()) }
+        coVerify(exactly = 0) { tagRepository.create(any()) }
+    }
 
     @Test
     fun `member-add failures are counted, not fatal`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            coEvery { contactRepository.listLegacyCircles() } returns Result.success(listOf("Friends"))
-            coEvery { contactRepository.listContacts(circleLegacy = "Friends", limit = 500) } returns
+            coEvery { contactRepository.listLegacyCircles() } returns Result.success(
+                listOf("Friends")
+            )
+            coEvery {
+                contactRepository.listContacts(
+                    circleLegacy = "Friends",
+                    limit = 500
+                )
+            } returns
                 Result.success(contactsPage("u1", "u2"))
             coEvery { circleRepository.list(limit = 200) } returns Result.success(emptyList())
             coEvery { tagRepository.list(limit = 200) } returns Result.success(emptyList())
-            coEvery { circleRepository.create("Friends") } returns Result.success(Circle(id = "c1", name = "Friends"))
+            coEvery {
+                circleRepository.create(
+                    "Friends"
+                )
+            } returns Result.success(Circle(id = "c1", name = "Friends"))
             coEvery { circleRepository.addMember("c1", "u1") } returns Result.success(
-                com.mycorrhizal.crm.model.network.CircleMember(circleId = "c1", memberVCardUid = "u1"),
+                com.mycorrhizal.crm.model.network.CircleMember(
+                    circleId = "c1",
+                    memberVCardUid = "u1"
+                )
             )
             coEvery { circleRepository.addMember("c1", "u2") } returns
                 Result.failure(com.mycorrhizal.crm.network.ApiError.Client(500, "boom"))
@@ -201,8 +277,15 @@ class TriageViewModelTest {
     @Test
     fun `a failed create falls back to a fresh name lookup before counting the item as failed`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            coEvery { contactRepository.listLegacyCircles() } returns Result.success(listOf("Friends"))
-            coEvery { contactRepository.listContacts(circleLegacy = "Friends", limit = 500) } returns
+            coEvery { contactRepository.listLegacyCircles() } returns Result.success(
+                listOf("Friends")
+            )
+            coEvery {
+                contactRepository.listContacts(
+                    circleLegacy = "Friends",
+                    limit = 500
+                )
+            } returns
                 Result.success(contactsPage("u1"))
             coEvery { circleRepository.list(limit = 200) } returns
                 Result.success(listOf(Circle(id = "c9", name = "Friends")))
@@ -213,7 +296,10 @@ class TriageViewModelTest {
             coEvery { circleRepository.create("Friends") } returns
                 Result.failure(com.mycorrhizal.crm.network.ApiError.Client(409, "exists"))
             coEvery { circleRepository.addMember("c9", "u1") } returns Result.success(
-                com.mycorrhizal.crm.model.network.CircleMember(circleId = "c9", memberVCardUid = "u1"),
+                com.mycorrhizal.crm.model.network.CircleMember(
+                    circleId = "c9",
+                    memberVCardUid = "u1"
+                )
             )
 
             val vm = viewModel()

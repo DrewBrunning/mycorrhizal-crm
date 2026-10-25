@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
@@ -21,7 +22,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -36,8 +36,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,7 +49,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -57,15 +56,16 @@ import com.mycorrhizal.crm.model.network.AdminUser
 import com.mycorrhizal.crm.model.network.AdminUserCreateInput
 import com.mycorrhizal.crm.model.network.AdminUserUpdateInput
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.BrandFab
-import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.RefreshableContent
-import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
+import kotlinx.coroutines.launch
 
 /**
  * Admin user management (issue #348): list all users, create/edit/delete them,
@@ -75,10 +75,7 @@ import java.time.format.FormatStyle
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UsersScreen(
-    onBack: () -> Unit,
-    viewModel: UsersViewModel = hiltViewModel(),
-) {
+fun UsersScreen(onBack: () -> Unit, viewModel: UsersViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var editorOpen by remember { mutableStateOf(false) }
@@ -93,18 +90,24 @@ fun UsersScreen(
             TopAppBar(
                 navigationIcon = {
                     AccessibleIconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back)
+                        )
                     }
                 },
                 title = {
-                    Text(stringResource(R.string.users_title), style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        stringResource(R.string.users_title),
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
         floatingActionButton = {
@@ -115,18 +118,19 @@ fun UsersScreen(
                 Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.users_add))
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             RefreshableContent(
                 isRefreshing = state.isLoading && state.users.isNotEmpty(),
                 onRefresh = viewModel::load,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize()
             ) {
                 when {
                     state.isLoading && state.users.isEmpty() -> {
                         CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                     }
+
                     state.users.isEmpty() ->
                         EmptyState(
                             title = stringResource(R.string.users_empty),
@@ -135,10 +139,14 @@ fun UsersScreen(
                             onAction = {
                                 editingUser = null
                                 editorOpen = true
-                            },
+                            }
                         )
+
                     else -> {
-                        LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = FabListContentPadding) {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = FabListContentPadding
+                        ) {
                             items(state.users, key = { it.id }) { user ->
                                 UserRow(
                                     user = user,
@@ -147,7 +155,7 @@ fun UsersScreen(
                                         editorOpen = true
                                     },
                                     onDelete = { deletingUser = user },
-                                    onResetTwoFactor = { resettingTwoFactorUser = user },
+                                    onResetTwoFactor = { resettingTwoFactorUser = user }
                                 )
                             }
                         }
@@ -182,9 +190,9 @@ fun UsersScreen(
                             username = username,
                             email = email,
                             password = password,
-                            isAdmin = isAdmin,
+                            isAdmin = isAdmin
                         ),
-                        onDone = { editorOpen = false },
+                        onDone = { editorOpen = false }
                     )
                 } else {
                     // Password is optional on edit; blank means "keep current".
@@ -194,16 +202,16 @@ fun UsersScreen(
                             username = username,
                             email = email,
                             password = password.takeIf { it.isNotBlank() },
-                            isAdmin = isAdmin,
+                            isAdmin = isAdmin
                         ),
-                        onDone = { editorOpen = false },
+                        onDone = { editorOpen = false }
                     )
                 }
             },
             onDismiss = {
                 editorOpen = false
                 if (state.error != null) viewModel.onErrorShown()
-            },
+            }
         )
     }
 
@@ -222,7 +230,7 @@ fun UsersScreen(
                             text = message,
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+                            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
                         )
                     }
                 }
@@ -235,10 +243,19 @@ fun UsersScreen(
                         deletingUser = null
                     },
                     enabled = state.deletingId != user.id,
-                    modifier = Modifier.semantics { if (state.deletingId == user.id) stateDescription = deletingLabel },
+                    modifier = Modifier.semantics {
+                        if (state.deletingId ==
+                            user.id
+                        ) {
+                            stateDescription = deletingLabel
+                        }
+                    }
                 ) {
                     if (state.deletingId == user.id) {
-                        CircularProgressIndicator(modifier = Modifier.padding(end = 4.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(
+                            modifier = Modifier.padding(end = 4.dp),
+                            strokeWidth = 2.dp
+                        )
                     }
                     Text(stringResource(R.string.action_delete))
                 }
@@ -250,7 +267,7 @@ fun UsersScreen(
                 }) {
                     Text(stringResource(R.string.action_cancel))
                 }
-            },
+            }
         )
     }
 
@@ -270,14 +287,14 @@ fun UsersScreen(
                     Text(
                         text = stringResource(R.string.users_reset_2fa_warning),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     state.error?.let { message ->
                         Text(
                             text = message,
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+                            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
                         )
                     }
                 }
@@ -292,10 +309,13 @@ fun UsersScreen(
                         }
                     },
                     enabled = !resetting,
-                    modifier = Modifier.semantics { if (resetting) stateDescription = savingLabel },
+                    modifier = Modifier.semantics { if (resetting) stateDescription = savingLabel }
                 ) {
                     if (resetting) {
-                        CircularProgressIndicator(modifier = Modifier.padding(end = 4.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(
+                            modifier = Modifier.padding(end = 4.dp),
+                            strokeWidth = 2.dp
+                        )
                     }
                     Text(stringResource(R.string.users_reset_2fa_confirm))
                 }
@@ -306,11 +326,11 @@ fun UsersScreen(
                         resettingTwoFactorUser = null
                         if (state.error != null) viewModel.onErrorShown()
                     },
-                    enabled = !resetting,
+                    enabled = !resetting
                 ) {
                     Text(stringResource(R.string.action_cancel))
                 }
-            },
+            }
         )
     }
 }
@@ -320,63 +340,74 @@ private fun UserRow(
     user: AdminUser,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
-    onResetTwoFactor: () -> Unit,
+    onResetTwoFactor: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Icon(
             imageVector = Icons.Outlined.Person,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = user.username.orEmpty(),
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyLarge
             )
             Text(
                 text = user.email.orEmpty(),
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = stringResource(if (user.isAdmin) R.string.users_role_admin else R.string.users_role_user),
+                    text = stringResource(
+                        if (user.isAdmin) R.string.users_role_admin else R.string.users_role_user
+                    ),
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (user.isAdmin) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (user.isAdmin) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     text = formatCreatedDate(user.createdAt),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
         AccessibleIconButton(onClick = onEdit) {
             Icon(
                 Icons.Outlined.Edit,
-                contentDescription = stringResource(R.string.users_edit_named, user.username.orEmpty()),
-                tint = MaterialTheme.colorScheme.primary,
+                contentDescription = stringResource(
+                    R.string.users_edit_named,
+                    user.username.orEmpty()
+                ),
+                tint = MaterialTheme.colorScheme.primary
             )
         }
         AccessibleIconButton(onClick = onResetTwoFactor) {
             Icon(
                 Icons.Outlined.LockReset,
-                contentDescription = stringResource(R.string.users_reset_2fa_named, user.username.orEmpty()),
+                contentDescription = stringResource(
+                    R.string.users_reset_2fa_named,
+                    user.username.orEmpty()
+                )
             )
         }
         AccessibleIconButton(onClick = onDelete) {
             Icon(
                 Icons.Outlined.Delete,
-                contentDescription = stringResource(R.string.users_delete_named, user.username.orEmpty()),
+                contentDescription = stringResource(
+                    R.string.users_delete_named,
+                    user.username.orEmpty()
+                )
             )
         }
     }
@@ -388,7 +419,7 @@ internal fun UserEditorDialog(
     isSaving: Boolean,
     error: String?,
     onConfirm: (username: String, email: String, password: String, isAdmin: Boolean) -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     var username by remember { mutableStateOf(initial?.username.orEmpty()) }
     var email by remember { mutableStateOf(initial?.email.orEmpty()) }
@@ -407,7 +438,7 @@ internal fun UserEditorDialog(
                         text = message,
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
                     )
                 }
                 OutlinedTextField(
@@ -415,7 +446,7 @@ internal fun UserEditorDialog(
                     onValueChange = { username = it },
                     label = { Text(stringResource(R.string.users_username)) },
                     singleLine = true,
-                    enabled = !isSaving,
+                    enabled = !isSaving
                 )
                 OutlinedTextField(
                     value = email,
@@ -423,7 +454,7 @@ internal fun UserEditorDialog(
                     label = { Text(stringResource(R.string.users_email)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                    enabled = !isSaving,
+                    enabled = !isSaving
                 )
                 OutlinedTextField(
                     value = password,
@@ -432,13 +463,13 @@ internal fun UserEditorDialog(
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    enabled = !isSaving,
+                    enabled = !isSaving
                 )
                 if (initial != null) {
                     Text(
                         text = stringResource(R.string.users_password_hint),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 // #199: the labeled-switch pattern — the label Text and the
@@ -446,11 +477,18 @@ internal fun UserEditorDialog(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .toggleable(value = isAdmin, onValueChange = { isAdmin = it }, role = Role.Switch),
+                        .toggleable(
+                            value = isAdmin,
+                            onValueChange = { isAdmin = it },
+                            role = Role.Switch
+                        ),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(stringResource(R.string.users_is_admin), style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        stringResource(R.string.users_is_admin),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
                     Switch(checked = isAdmin, onCheckedChange = null)
                 }
             }
@@ -461,10 +499,13 @@ internal fun UserEditorDialog(
                 onClick = { onConfirm(username.trim(), email.trim(), password, isAdmin) },
                 enabled = !isSaving && username.isNotBlank() && email.isNotBlank() &&
                     (initial != null || password.isNotBlank()),
-                modifier = Modifier.semantics { if (isSaving) stateDescription = savingLabel },
+                modifier = Modifier.semantics { if (isSaving) stateDescription = savingLabel }
             ) {
                 if (isSaving) {
-                    CircularProgressIndicator(modifier = Modifier.padding(end = 4.dp), strokeWidth = 2.dp)
+                    CircularProgressIndicator(
+                        modifier = Modifier.padding(end = 4.dp),
+                        strokeWidth = 2.dp
+                    )
                 }
                 Text(stringResource(R.string.action_save))
             }
@@ -473,7 +514,7 @@ internal fun UserEditorDialog(
             TextButton(onClick = onDismiss, enabled = !isSaving) {
                 Text(stringResource(R.string.action_cancel))
             }
-        },
+        }
     )
 }
 

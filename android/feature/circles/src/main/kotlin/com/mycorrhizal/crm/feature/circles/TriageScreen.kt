@@ -47,10 +47,7 @@ import com.mycorrhizal.crm.ui.components.RefreshableContent
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TriageScreen(
-    onBack: () -> Unit,
-    viewModel: TriageViewModel = hiltViewModel(),
-) {
+fun TriageScreen(onBack: () -> Unit, viewModel: TriageViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -59,43 +56,55 @@ fun TriageScreen(
             TopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back)
+                        )
                     }
                 },
-                title = { Text(stringResource(R.string.triage_title), style = MaterialTheme.typography.titleLarge) },
+                title = {
+                    Text(
+                        stringResource(R.string.triage_title),
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             RefreshableContent(
                 isRefreshing = state.isLoading && state.items.isNotEmpty(),
                 onRefresh = viewModel::load,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize()
             ) {
                 when {
                     state.isLoading && state.items.isEmpty() -> LoadingSkeleton()
+
                     state.done -> DoneContent(state = state, onBack = onBack)
+
                     state.items.isEmpty() && state.error == null ->
                         EmptyState(title = stringResource(R.string.triage_empty))
+
                     state.items.isEmpty() && state.error != null -> {
                         Text(
                             text = state.error.orEmpty(),
                             color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.align(Alignment.Center),
+                            modifier = Modifier.align(Alignment.Center)
                         )
                     }
+
                     else -> ClassifyContent(
                         state = state,
                         onSetClassification = viewModel::setClassification,
                         onSetName = viewModel::setName,
-                        onApply = viewModel::apply,
+                        onApply = viewModel::apply
                     )
                 }
             }
@@ -121,7 +130,7 @@ internal fun ClassifyContent(
     state: TriageUiState,
     onSetClassification: (Int, TriageClassification) -> Unit,
     onSetName: (Int, String) -> Unit,
-    onApply: () -> Unit,
+    onApply: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
@@ -129,63 +138,73 @@ internal fun ClassifyContent(
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
-                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
                         OutlinedTextField(
                             value = item.name,
                             onValueChange = { onSetName(index, it) },
                             label = { Text(stringResource(R.string.triage_name)) },
                             singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth()
                         )
                         Text(
                             text = pluralStringResource(
                                 R.plurals.triage_contacts_count,
                                 item.contactCount,
-                                item.contactCount,
+                                item.contactCount
                             ),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         FilterChip(
                             selected = item.classification == TriageClassification.CIRCLE,
                             onClick = { onSetClassification(index, TriageClassification.CIRCLE) },
-                            label = { Text(stringResource(R.string.triage_circle)) },
+                            label = { Text(stringResource(R.string.triage_circle)) }
                         )
                         FilterChip(
                             selected = item.classification == TriageClassification.TAG,
                             onClick = { onSetClassification(index, TriageClassification.TAG) },
-                            label = { Text(stringResource(R.string.triage_tag)) },
+                            label = { Text(stringResource(R.string.triage_tag)) }
                         )
                         FilterChip(
                             selected = item.classification == TriageClassification.SKIP,
                             onClick = { onSetClassification(index, TriageClassification.SKIP) },
-                            label = { Text(stringResource(R.string.triage_skip)) },
+                            label = { Text(stringResource(R.string.triage_skip)) }
                         )
                     }
                 }
             }
         }
         // Preview summary + Apply.
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             val circleCount = state.circleItems.size
             val tagCount = state.tagItems.size
             Text(
                 text = stringResource(
                     R.string.triage_summary_format,
-                    pluralStringResource(R.plurals.triage_summary_circles, circleCount, circleCount),
+                    pluralStringResource(
+                        R.plurals.triage_summary_circles,
+                        circleCount,
+                        circleCount
+                    ),
                     pluralStringResource(R.plurals.triage_summary_tags, tagCount, tagCount),
-                    stringResource(R.string.triage_summary_skipped, state.skippedCount),
+                    stringResource(R.string.triage_summary_skipped, state.skippedCount)
                 ),
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyLarge
             )
             Button(
                 onClick = onApply,
                 enabled = state.hasWork && !state.applying,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text(stringResource(R.string.triage_apply))
             }
@@ -198,11 +217,11 @@ internal fun DoneContent(state: TriageUiState, onBack: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
             text = stringResource(R.string.triage_done_title),
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.titleLarge
         )
         Text(
             text = stringResource(
@@ -210,15 +229,15 @@ internal fun DoneContent(state: TriageUiState, onBack: () -> Unit) {
                 pluralStringResource(
                     R.plurals.triage_done_circles,
                     state.appliedCircles,
-                    state.appliedCircles,
+                    state.appliedCircles
                 ),
                 pluralStringResource(
                     R.plurals.triage_done_tags,
                     state.appliedTags,
-                    state.appliedTags,
-                ),
+                    state.appliedTags
+                )
             ),
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.bodyLarge
         )
         if (state.failedItems > 0 || state.memberAddFailures > 0) {
             Text(
@@ -227,16 +246,16 @@ internal fun DoneContent(state: TriageUiState, onBack: () -> Unit) {
                     pluralStringResource(
                         R.plurals.triage_done_partial_items,
                         state.failedItems,
-                        state.failedItems,
+                        state.failedItems
                     ),
                     pluralStringResource(
                         R.plurals.triage_done_partial_members,
                         state.memberAddFailures,
-                        state.memberAddFailures,
-                    ),
+                        state.memberAddFailures
+                    )
                 ),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.error,
+                color = MaterialTheme.colorScheme.error
             )
         }
         Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) {

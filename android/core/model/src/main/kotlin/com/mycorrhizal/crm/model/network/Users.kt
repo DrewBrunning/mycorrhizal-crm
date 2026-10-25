@@ -16,7 +16,7 @@ data class AdminUser(
     @Json(name = "date_format") val dateFormat: String? = null,
     @Json(name = "is_admin") val isAdmin: Boolean = false,
     @Json(name = "created_at") val createdAt: String? = null,
-    @Json(name = "updated_at") val updatedAt: String? = null,
+    @Json(name = "updated_at") val updatedAt: String? = null
 )
 
 /** GET /api/v1/admin/users — the paginated user list response. */
@@ -26,7 +26,7 @@ data class AdminUsersListResponse(
     val total: Int = 0,
     val page: Int = 1,
     val limit: Int = 25,
-    @Json(name = "total_pages") val totalPages: Int = 0,
+    @Json(name = "total_pages") val totalPages: Int = 0
 )
 
 /** POST /api/v1/admin/users body — mirrors AdminUserCreateInput. */
@@ -35,7 +35,7 @@ data class AdminUserCreateInput(
     val username: String,
     val email: String,
     val password: String,
-    @Json(name = "is_admin") val isAdmin: Boolean = false,
+    @Json(name = "is_admin") val isAdmin: Boolean = false
 )
 
 /**
@@ -49,5 +49,5 @@ data class AdminUserUpdateInput(
     val username: String? = null,
     val email: String? = null,
     val password: String? = null,
-    @Json(name = "is_admin") val isAdmin: Boolean? = null,
+    @Json(name = "is_admin") val isAdmin: Boolean? = null
 )

@@ -41,6 +41,7 @@ interface ConversationAgendaRepository {
     suspend fun create(input: ConversationAgendaInput): Result<ConversationAgenda>
     suspend fun update(id: String, input: ConversationAgendaInput): Result<ConversationAgenda>
     suspend fun delete(id: String): Result<Unit>
+
     /**
      * Marks an item discussed (PATCH discuss). [activityId] links an existing
      * activity (web's MarkDiscussedDialog); null marks it discussed unlinked.

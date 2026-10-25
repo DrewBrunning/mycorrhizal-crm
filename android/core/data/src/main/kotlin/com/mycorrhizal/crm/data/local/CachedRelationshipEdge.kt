@@ -19,5 +19,5 @@ data class CachedRelationshipEdge(
     val status: String = "confirmed",
     val sensitivity: String = "normal",
     val updatedAt: String? = null,
-    val deleted: Boolean = false,
+    val deleted: Boolean = false
 )

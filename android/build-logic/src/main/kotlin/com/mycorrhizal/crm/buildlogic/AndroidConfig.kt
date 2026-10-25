@@ -143,6 +143,12 @@ internal fun Project.configureDetekt() {
         buildUponDefaultConfig.set(true)
         parallel.set(true)
     }
+    // Issue #1901: ktlint's rules ship as detekt's own wrapper rule set, so the
+    // formatting gate is the same `detekt` task with one config and one report
+    // (no standalone ktlint/Spotless analyzer). Version tracked with `detekt`.
+    dependencies {
+        "detektPlugins"(libs("detekt-rules-ktlint-wrapper"))
+    }
     // detekt's embedded Kotlin compiler derives its JVM target from the build
     // JVM, which on JDK 25 would default to target 25. The Android modules
     // compile to 17 (see configureAndroidCommon); pin detekt to the same value
@@ -150,6 +156,14 @@ internal fun Project.configureDetekt() {
     // JDK 25 build JVM, so this is a consistency pin, not a compatibility workaround.
     tasks.withType<dev.detekt.gradle.Detekt>().configureEach {
         jvmTarget.set("17")
+    }
+    // The base `detekt` task's default source is src/main + src/test only.
+    // Formatting applies to every hand-written Kotlin file, including the
+    // androidTest suite and the distribution/flavor source sets, so widen the
+    // gate's scope. (The variant-aware `detektDebug`/`detektMain` tasks keep
+    // their compilation-scoped inputs.)
+    tasks.withType<dev.detekt.gradle.Detekt>().matching { it.name == "detekt" }.configureEach {
+        setSource(fileTree("src") { include("**/*.kt") })
     }
 }
 

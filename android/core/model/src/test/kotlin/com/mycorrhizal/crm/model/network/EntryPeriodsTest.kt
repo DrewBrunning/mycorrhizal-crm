@@ -16,20 +16,24 @@ class EntryPeriodsTest {
         assertEquals(TemporalRange(end = PartialDate(year = 2024)), yearTemporalRange("", "2024"))
         assertEquals(
             TemporalRange(start = PartialDate(year = 2019), end = PartialDate(year = 2024)),
-            yearTemporalRange("2019", "2024"),
+            yearTemporalRange("2019", "2024")
         )
     }
 
     @Test
     fun `upsertEntryPeriod adds when absent and preserves other periods`() {
         val existing = listOf(
-            EntryPeriod(kind = "address", entryId = "addr-1", range = TemporalRange(start = PartialDate(year = 2000))),
+            EntryPeriod(
+                kind = "address",
+                entryId = "addr-1",
+                range = TemporalRange(start = PartialDate(year = 2000))
+            )
         )
         val result = upsertEntryPeriod(
             existing,
             "organization",
             "org-1",
-            TemporalRange(start = PartialDate(year = 2019)),
+            TemporalRange(start = PartialDate(year = 2019))
         )
         assertEquals(2, result.size)
         assertTrue(result.any { it.kind == "organization" && it.entryId == "org-1" })
@@ -39,13 +43,17 @@ class EntryPeriodsTest {
     @Test
     fun `upsertEntryPeriod replaces the matching period`() {
         val existing = listOf(
-            EntryPeriod(kind = "organization", entryId = "org-1", range = TemporalRange(start = PartialDate(year = 2010))),
+            EntryPeriod(
+                kind = "organization",
+                entryId = "org-1",
+                range = TemporalRange(start = PartialDate(year = 2010))
+            )
         )
         val result = upsertEntryPeriod(
             existing,
             "organization",
             "org-1",
-            TemporalRange(start = PartialDate(year = 2019)),
+            TemporalRange(start = PartialDate(year = 2019))
         )
         assertEquals(1, result.size)
         assertEquals(2019, result.first().range.start?.year)
@@ -54,7 +62,11 @@ class EntryPeriodsTest {
     @Test
     fun `upsertEntryPeriod removes the matching period for a null range`() {
         val existing = listOf(
-            EntryPeriod(kind = "organization", entryId = "org-1", range = TemporalRange(start = PartialDate(year = 2010))),
+            EntryPeriod(
+                kind = "organization",
+                entryId = "org-1",
+                range = TemporalRange(start = PartialDate(year = 2010))
+            )
         )
         assertTrue(upsertEntryPeriod(existing, "organization", "org-1", null).isEmpty())
     }
@@ -63,7 +75,11 @@ class EntryPeriodsTest {
     fun `entryPeriodOf finds by kind and entry`() {
         val periods = listOf(
             EntryPeriod(kind = "address", entryId = "addr-1", range = TemporalRange()),
-            EntryPeriod(kind = "organization", entryId = "org-1", range = TemporalRange(start = PartialDate(year = 2019))),
+            EntryPeriod(
+                kind = "organization",
+                entryId = "org-1",
+                range = TemporalRange(start = PartialDate(year = 2019))
+            )
         )
         assertEquals("org-1", entryPeriodOf(periods, "organization", "org-1")?.entryId)
         assertNull(entryPeriodOf(periods, "title", "title-1"))

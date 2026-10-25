@@ -51,7 +51,7 @@ class InteractionSyncWorkerLogicTest {
         workerParams = mockk(relaxed = true),
         pendingInteractionRepository = pendingRepo,
         trackingSettings = trackingSettings,
-        apiClient = apiClient,
+        apiClient = apiClient
     )
 
     private fun enabledTracking() {
@@ -70,13 +70,13 @@ class InteractionSyncWorkerLogicTest {
                 direction = InteractionCapture.DIR_INCOMING,
                 phoneNumber = "+15550100",
                 matchedContactId = 7,
-                idempotencyKey = "key-1",
-            ),
+                idempotencyKey = "key-1"
+            )
         )
         coEvery {
             apiClient.createActivity(
                 match { it.type == "call" && it.title == "Call" && it.contactIds == listOf(7) },
-                "key-1",
+                "key-1"
             )
         } returns Result.success(com.mycorrhizal.crm.model.network.Activity(id = 99))
         coEvery { pendingRepo.markSynced(1, any()) } returns Unit
@@ -98,13 +98,13 @@ class InteractionSyncWorkerLogicTest {
                 kind = InteractionCapture.KIND_CALL,
                 direction = InteractionCapture.DIR_MISSED,
                 phoneNumber = "+15550100",
-                idempotencyKey = "key-2",
-            ),
+                idempotencyKey = "key-2"
+            )
         )
         coEvery {
             apiClient.createActivity(
                 match { it.type == "call" && it.title == "Missed call" },
-                "key-2",
+                "key-2"
             )
         } returns Result.success(com.mycorrhizal.crm.model.network.Activity(id = 100))
         coEvery { pendingRepo.markSynced(2, any()) } returns Unit
@@ -125,8 +125,8 @@ class InteractionSyncWorkerLogicTest {
                 direction = InteractionCapture.DIR_INCOMING,
                 phoneNumber = "+15550100",
                 matchedContactId = 9,
-                idempotencyKey = "key-3",
-            ),
+                idempotencyKey = "key-3"
+            )
         )
         coEvery {
             apiClient.createActivity(
@@ -136,7 +136,7 @@ class InteractionSyncWorkerLogicTest {
                         it.contactIds == listOf(9) &&
                         it.description == null // privacy: body never sent
                 },
-                "key-3",
+                "key-3"
             )
         } returns Result.success(com.mycorrhizal.crm.model.network.Activity(id = 101))
         coEvery { pendingRepo.markSynced(3, any()) } returns Unit
@@ -155,8 +155,8 @@ class InteractionSyncWorkerLogicTest {
                 timestampMillis = 1_700_000_000_000,
                 kind = InteractionCapture.KIND_CALL,
                 matchedContactId = 7,
-                idempotencyKey = "row-uuid-4",
-            ),
+                idempotencyKey = "row-uuid-4"
+            )
         )
         // The key on the wire must be the row's stored key — exactly-once retry depends on a
         // stable per-row key (ANDROID-02/issue #479, CON-04/ADR-0010).
@@ -183,15 +183,15 @@ class InteractionSyncWorkerLogicTest {
                 timestampMillis = 1_700_000_000_000,
                 kind = InteractionCapture.KIND_CALL,
                 matchedContactId = 7,
-                idempotencyKey = null, // pre-v17 edge the migration backfill should prevent
-            ),
+                idempotencyKey = null // pre-v17 edge the migration backfill should prevent
+            )
         )
         coEvery { pendingRepo.setIdempotencyKey(5, any()) } returns Unit
         // Whatever key was generated + persisted must be the one sent.
         coEvery {
             apiClient.createActivity(
                 match { it.contactIds == listOf(7) },
-                match { it.length == 36 }, // a UUID
+                match { it.length == 36 } // a UUID
             )
         } returns Result.success(com.mycorrhizal.crm.model.network.Activity(id = 201))
         coEvery { pendingRepo.markSynced(5, any()) } returns Unit
@@ -214,8 +214,8 @@ class InteractionSyncWorkerLogicTest {
                 direction = InteractionCapture.DIR_INCOMING,
                 phoneNumber = "+15550100",
                 matchedContactId = 42,
-                idempotencyKey = "key-6",
-            ),
+                idempotencyKey = "key-6"
+            )
         )
         // First attempt references the now-deleted contact → 404 (ADR-0009: each queued write
         // resolves on its own; soft-deleted contacts are excluded from the create's lookup).
@@ -247,8 +247,8 @@ class InteractionSyncWorkerLogicTest {
                 timestampMillis = 1_700_000_000_000,
                 kind = InteractionCapture.KIND_CALL,
                 matchedContactId = 42,
-                idempotencyKey = "key-7",
-            ),
+                idempotencyKey = "key-7"
+            )
         )
         coEvery { apiClient.createActivity(any(), "key-7") } returns
             Result.failure(ApiError.Network(java.io.IOException("offline")))
@@ -269,8 +269,8 @@ class InteractionSyncWorkerLogicTest {
                 timestampMillis = 1_700_000_000_000,
                 kind = InteractionCapture.KIND_CALL,
                 matchedContactId = 42,
-                idempotencyKey = "key-8",
-            ),
+                idempotencyKey = "key-8"
+            )
         )
         coEvery { apiClient.createActivity(any(), "key-8") } returns
             Result.failure(ApiError.Client(400, "bad request"))
@@ -290,8 +290,8 @@ class InteractionSyncWorkerLogicTest {
                 id = 9,
                 timestampMillis = 1_700_000_000_000,
                 kind = "unknown-kind",
-                idempotencyKey = "key-9",
-            ),
+                idempotencyKey = "key-9"
+            )
         )
         coEvery { pendingRepo.deleteSynced() } returns Unit
 
@@ -316,7 +316,7 @@ class InteractionSyncWorkerLogicTest {
                 kind = InteractionCapture.KIND_CALL,
                 direction = InteractionCapture.DIR_INCOMING,
                 phoneNumber = "+15550100",
-                idempotencyKey = "key-10",
+                idempotencyKey = "key-10"
             ),
             PendingInteraction(
                 id = 11,
@@ -324,8 +324,8 @@ class InteractionSyncWorkerLogicTest {
                 kind = InteractionCapture.KIND_CALL,
                 direction = InteractionCapture.DIR_INCOMING,
                 phoneNumber = "+15550101",
-                idempotencyKey = "key-11",
-            ),
+                idempotencyKey = "key-11"
+            )
         )
         coEvery {
             apiClient.createActivity(match { it.externalRef == "device:10" }, "key-10")

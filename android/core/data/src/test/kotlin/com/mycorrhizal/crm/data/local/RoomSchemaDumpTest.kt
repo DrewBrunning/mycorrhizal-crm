@@ -69,7 +69,7 @@ class RoomSchemaDumpTest {
             "The committed Room schema dump is stale — regenerate it with " +
                 "`./gradlew :core:data:kspDebugKotlin --rerun` and commit the diff.",
             dumpedHash,
-            runtimeHash,
+            runtimeHash
         )
     }
 }

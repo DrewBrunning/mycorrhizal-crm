@@ -1,6 +1,5 @@
 package com.mycorrhizal.crm.network
 
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -38,12 +37,14 @@ class AuthInterceptorOrderingTest {
         // (sees the real host and attaches the token).
         val client = NetworkFactory.okHttpClient(
             tokenProvider = TokenProvider { "secret-jwt" },
-            baseUrlProvider = BaseUrlProvider { server.url("/").toString().trimEnd('/') },
+            baseUrlProvider = BaseUrlProvider { server.url("/").toString().trimEnd('/') }
         )
         server.enqueue(MockResponse().setResponseCode(200))
 
         // Built against the placeholder origin, as the ApiClient does.
-        client.newCall(Request.Builder().url("http://mycorrhizal.invalid/api/v1/contacts").build()).execute()
+        client.newCall(
+            Request.Builder().url("http://mycorrhizal.invalid/api/v1/contacts").build()
+        ).execute()
 
         val recorded = server.takeRequest()
         assertEquals("/api/v1/contacts", recorded.path)
@@ -58,7 +59,7 @@ class AuthInterceptorOrderingTest {
         // ordering exists to guarantee).
         val client = NetworkFactory.okHttpClient(
             tokenProvider = TokenProvider { "secret-jwt" },
-            baseUrlProvider = BaseUrlProvider { server.url("/").toString().trimEnd('/') },
+            baseUrlProvider = BaseUrlProvider { server.url("/").toString().trimEnd('/') }
         )
         server.enqueue(MockResponse().setResponseCode(200))
 
@@ -74,11 +75,15 @@ class AuthInterceptorOrderingTest {
     fun `login carries no token but the host is still rewritten`() {
         val client = NetworkFactory.okHttpClient(
             tokenProvider = TokenProvider { null },
-            baseUrlProvider = BaseUrlProvider { server.url("/").toString().trimEnd('/') },
+            baseUrlProvider = BaseUrlProvider { server.url("/").toString().trimEnd('/') }
         )
         server.enqueue(MockResponse().setResponseCode(200))
 
-        client.newCall(Request.Builder().url("http://mycorrhizal.invalid/api/v1/login").post(okhttp3.RequestBody.create(null, "{}")).build()).execute()
+        client.newCall(
+            Request.Builder().url(
+                "http://mycorrhizal.invalid/api/v1/login"
+            ).post(okhttp3.RequestBody.create(null, "{}")).build()
+        ).execute()
 
         val recorded = server.takeRequest()
         assertEquals("/api/v1/login", recorded.path)

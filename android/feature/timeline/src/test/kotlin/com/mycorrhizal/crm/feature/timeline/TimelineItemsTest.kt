@@ -1,7 +1,6 @@
 package com.mycorrhizal.crm.feature.timeline
 
 import com.mycorrhizal.crm.model.network.Activity
-import com.mycorrhizal.crm.model.network.CRMEnvelope
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ExternalActivity
@@ -23,12 +22,17 @@ class TimelineItemsTest {
             card = Card(name = Name(full = "Dana White")),
             activities = listOf(
                 Activity(id = 1, title = "Old call", date = "2026-08-01T10:00:00Z"),
-                Activity(id = 2, title = "New visit", date = "2026-08-05T10:00:00Z"),
+                Activity(id = 2, title = "New visit", date = "2026-08-05T10:00:00Z")
             ),
             notes = listOf(Note(id = 3, content = "Loves climbing", date = "2026-08-03T10:00:00Z")),
             reminders = listOf(
-                Reminder(id = 4, message = "Call Dana", remindAt = "2026-08-04T10:00:00Z", recurrence = ReminderRecurrence.WEEKLY),
-            ),
+                Reminder(
+                    id = 4,
+                    message = "Call Dana",
+                    remindAt = "2026-08-04T10:00:00Z",
+                    recurrence = ReminderRecurrence.WEEKLY
+                )
+            )
         )
 
         val items = contact.toTimelineItems()
@@ -48,9 +52,21 @@ class TimelineItemsTest {
             id = 5,
             card = Card(name = Name(full = "Dana White")),
             reminders = listOf(
-                Reminder(id = 1, message = "Done once", remindAt = "2026-08-04T10:00:00Z", recurrence = ReminderRecurrence.ONCE, completed = true),
-                Reminder(id = 2, message = "Pending once", remindAt = "2026-08-04T10:00:00Z", recurrence = ReminderRecurrence.ONCE, completed = false),
-            ),
+                Reminder(
+                    id = 1,
+                    message = "Done once",
+                    remindAt = "2026-08-04T10:00:00Z",
+                    recurrence = ReminderRecurrence.ONCE,
+                    completed = true
+                ),
+                Reminder(
+                    id = 2,
+                    message = "Pending once",
+                    remindAt = "2026-08-04T10:00:00Z",
+                    recurrence = ReminderRecurrence.ONCE,
+                    completed = false
+                )
+            )
         )
 
         val items = contact.toTimelineItems()
@@ -64,8 +80,17 @@ class TimelineItemsTest {
         val contact = ContactRecordResponse(
             id = 5,
             card = Card(name = Name(full = "Dana White")),
-            activities = listOf(Activity(id = 1, title = "Deleted", date = "2026-08-01T10:00:00Z", deleted = true)),
-            notes = listOf(Note(id = 2, content = "Deleted note", date = "2026-08-01T10:00:00Z", deleted = true)),
+            activities = listOf(
+                Activity(id = 1, title = "Deleted", date = "2026-08-01T10:00:00Z", deleted = true)
+            ),
+            notes = listOf(
+                Note(
+                    id = 2,
+                    content = "Deleted note",
+                    date = "2026-08-01T10:00:00Z",
+                    deleted = true
+                )
+            )
         )
 
         val items = contact.toTimelineItems()
@@ -79,7 +104,7 @@ class TimelineItemsTest {
             id = 5,
             card = Card(name = Name(full = "Dana White")),
             activities = listOf(Activity(id = 1, title = "Undated", date = "")),
-            notes = listOf(Note(id = 2, content = "Dated", date = "2026-08-01T10:00:00Z")),
+            notes = listOf(Note(id = 2, content = "Dated", date = "2026-08-01T10:00:00Z"))
         )
 
         val items = contact.toTimelineItems()
@@ -95,7 +120,7 @@ class TimelineItemsTest {
             id = 5,
             card = Card(name = Name(full = "Dana White")),
             activities = listOf(Activity(id = 7, title = "Call", date = "2026-08-01T10:00:00Z")),
-            notes = listOf(Note(id = 7, content = "Note", date = "2026-08-02T10:00:00Z")),
+            notes = listOf(Note(id = 7, content = "Note", date = "2026-08-02T10:00:00Z"))
         )
 
         val keys = contact.toTimelineItems().map { it.key }
@@ -108,11 +133,21 @@ class TimelineItemsTest {
         val contact = ContactRecordResponse(
             id = 5,
             card = Card(name = Name(full = "Dana White")),
-            notes = listOf(Note(id = 1, content = "Old note", date = "2026-08-01T10:00:00Z")),
+            notes = listOf(Note(id = 1, content = "Old note", date = "2026-08-01T10:00:00Z"))
         )
         val completions = listOf(
-            ReminderCompletion(id = 10, contactId = 5, message = "Done earlier", completedAt = "2026-08-02T10:00:00Z"),
-            ReminderCompletion(id = 11, contactId = 5, message = "Done later", completedAt = "2026-08-05T10:00:00Z"),
+            ReminderCompletion(
+                id = 10,
+                contactId = 5,
+                message = "Done earlier",
+                completedAt = "2026-08-02T10:00:00Z"
+            ),
+            ReminderCompletion(
+                id = 11,
+                contactId = 5,
+                message = "Done later",
+                completedAt = "2026-08-05T10:00:00Z"
+            )
         )
 
         val items = contact.toTimelineItems(completions)
@@ -131,11 +166,21 @@ class TimelineItemsTest {
             id = 5,
             card = Card(name = Name(full = "Dana White")),
             reminders = listOf(
-                Reminder(id = 7, message = "Call Dana", remindAt = "2026-08-04T10:00:00Z", recurrence = ReminderRecurrence.WEEKLY),
-            ),
+                Reminder(
+                    id = 7,
+                    message = "Call Dana",
+                    remindAt = "2026-08-04T10:00:00Z",
+                    recurrence = ReminderRecurrence.WEEKLY
+                )
+            )
         )
         val completions = listOf(
-            ReminderCompletion(id = 7, contactId = 5, message = "Done", completedAt = "2026-08-05T10:00:00Z"),
+            ReminderCompletion(
+                id = 7,
+                contactId = 5,
+                message = "Done",
+                completedAt = "2026-08-05T10:00:00Z"
+            )
         )
 
         val keys = contact.toTimelineItems(completions).map { it.key }
@@ -150,10 +195,15 @@ class TimelineItemsTest {
         val contact = ContactRecordResponse(
             id = 5,
             card = Card(name = Name(full = "Dana White")),
-            notes = listOf(Note(id = 1, content = "Old note", date = "2026-08-01T10:00:00Z")),
+            notes = listOf(Note(id = 1, content = "Old note", date = "2026-08-01T10:00:00Z"))
         )
         val externalActivities = listOf(
-            ExternalActivity(id = "a1", entityId = "u5", type = "photo-appearance", occurredAt = "2026-08-05T10:00:00Z"),
+            ExternalActivity(
+                id = "a1",
+                entityId = "u5",
+                type = "photo-appearance",
+                occurredAt = "2026-08-05T10:00:00Z"
+            )
         )
 
         val items = contact.toTimelineItems(externalActivities = externalActivities)
@@ -168,7 +218,12 @@ class TimelineItemsTest {
     fun `an external activity without occurred_at falls back to created_at`() {
         val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
         val externalActivities = listOf(
-            ExternalActivity(id = "a1", entityId = "u5", type = "photo-appearance", createdAt = "2026-08-02T10:00:00Z"),
+            ExternalActivity(
+                id = "a1",
+                entityId = "u5",
+                type = "photo-appearance",
+                createdAt = "2026-08-02T10:00:00Z"
+            )
         )
 
         val items = contact.toTimelineItems(externalActivities = externalActivities)
@@ -181,10 +236,15 @@ class TimelineItemsTest {
         val contact = ContactRecordResponse(
             id = 5,
             card = Card(name = Name(full = "Dana White")),
-            notes = listOf(Note(id = 7, content = "Note", date = "2026-08-01T10:00:00Z")),
+            notes = listOf(Note(id = 7, content = "Note", date = "2026-08-01T10:00:00Z"))
         )
         val externalActivities = listOf(
-            ExternalActivity(id = "7", entityId = "u5", type = "photo-appearance", occurredAt = "2026-08-02T10:00:00Z"),
+            ExternalActivity(
+                id = "7",
+                entityId = "u5",
+                type = "photo-appearance",
+                occurredAt = "2026-08-02T10:00:00Z"
+            )
         )
 
         val keys = contact.toTimelineItems(externalActivities = externalActivities).map { it.key }
@@ -194,25 +254,50 @@ class TimelineItemsTest {
 
     // --- Issue #1401: explorer events -> UI rows ---
 
-    private fun event(type: String, block: com.mycorrhizal.crm.model.network.TimelineEvent.() -> com.mycorrhizal.crm.model.network.TimelineEvent) =
-        com.mycorrhizal.crm.model.network.TimelineEvent(type, "1", "2026-09-01T10:00:00Z").block()
+    private fun event(
+        type: String,
+        block:
+        com.mycorrhizal.crm.model.network.TimelineEvent.() -> com.mycorrhizal.crm.model.network.TimelineEvent
+    ) = com.mycorrhizal.crm.model.network.TimelineEvent(type, "1", "2026-09-01T10:00:00Z").block()
 
     @Test
     fun `every event type maps to its row model`() {
-        assertTrue(event("note") { copy(note = Note(id = 1)) }.toTimelineItem() is TimelineItem.NoteItem)
-        assertTrue(event("activity") { copy(activity = Activity(id = 1)) }.toTimelineItem() is TimelineItem.ActivityItem)
         assertTrue(
-            event("completion") { copy(completion = ReminderCompletion(id = 1)) }.toTimelineItem() is TimelineItem.CompletionItem,
+            event("note") { copy(note = Note(id = 1)) }.toTimelineItem() is TimelineItem.NoteItem
         )
         assertTrue(
-            event("life_event") { copy(lifeEvent = com.mycorrhizal.crm.model.network.LifeEvent(id = "l")) }.toTimelineItem()
-                is TimelineItem.LifeEventItem,
+            event(
+                "activity"
+            ) { copy(activity = Activity(id = 1)) }.toTimelineItem() is TimelineItem.ActivityItem
         )
         assertTrue(
-            event("external_activity") { copy(externalActivity = ExternalActivity(id = "e")) }.toTimelineItem()
-                is TimelineItem.ExternalActivityItem,
+            event(
+                "completion"
+            ) {
+                copy(
+                    completion = ReminderCompletion(id = 1)
+                )
+            }.toTimelineItem() is TimelineItem.CompletionItem
         )
-        val gift = event("gift") { copy(gift = com.mycorrhizal.crm.model.network.Gift(id = "g")) }.toTimelineItem()
+        assertTrue(
+            event(
+                "life_event"
+            ) {
+                copy(
+                    lifeEvent = com.mycorrhizal.crm.model.network.LifeEvent(id = "l")
+                )
+            }.toTimelineItem()
+                is TimelineItem.LifeEventItem
+        )
+        assertTrue(
+            event(
+                "external_activity"
+            ) { copy(externalActivity = ExternalActivity(id = "e")) }.toTimelineItem()
+                is TimelineItem.ExternalActivityItem
+        )
+        val gift = event(
+            "gift"
+        ) { copy(gift = com.mycorrhizal.crm.model.network.Gift(id = "g")) }.toTimelineItem()
         assertTrue(gift is TimelineItem.GiftItem)
         assertEquals("2026-09-01T10:00:00Z", gift?.date)
     }

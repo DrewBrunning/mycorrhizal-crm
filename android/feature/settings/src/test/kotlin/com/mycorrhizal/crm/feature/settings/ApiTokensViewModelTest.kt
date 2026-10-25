@@ -31,8 +31,15 @@ class ApiTokensViewModelTest {
         name: String = "Token $id",
         scope: String = "full",
         revokedAt: String? = null,
-        expiresAt: String? = null,
-    ) = ApiToken(id = id, name = name, createdAt = "2026-01-01T00:00:00Z", scope = scope, revokedAt = revokedAt, expiresAt = expiresAt)
+        expiresAt: String? = null
+    ) = ApiToken(
+        id = id,
+        name = name,
+        createdAt = "2026-01-01T00:00:00Z",
+        scope = scope,
+        revokedAt = revokedAt,
+        expiresAt = expiresAt
+    )
 
     @Test
     fun `load populates the token list`() = runTest(mainDispatcherRule.testDispatcher) {
@@ -60,10 +67,10 @@ class ApiTokensViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { repository.list() } returnsMany listOf(
                 Result.success(emptyList()),
-                Result.success(listOf(token(9, name = "New"))),
+                Result.success(listOf(token(9, name = "New")))
             )
             coEvery { repository.create(any()) } returns Result.success(
-                ApiTokenCreateResponse(id = 9, name = "New", scope = "full", token = "s3cret"),
+                ApiTokenCreateResponse(id = 9, name = "New", scope = "full", token = "s3cret")
             )
             val vm = ApiTokensViewModel(repository)
             advanceUntilIdle()
@@ -95,7 +102,11 @@ class ApiTokensViewModelTest {
     fun `create failure surfaces the error and does not reveal a token`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { repository.list() } returns Result.success(emptyList())
-            coEvery { repository.create(any()) } returns Result.failure(ApiError.Server(400, "bad input"))
+            coEvery {
+                repository.create(
+                    any()
+                )
+            } returns Result.failure(ApiError.Server(400, "bad input"))
             val vm = ApiTokensViewModel(repository)
             advanceUntilIdle()
 
@@ -108,10 +119,12 @@ class ApiTokensViewModelTest {
         }
 
     @Test
-    fun `revoke calls the repository and reloads the list`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `revoke calls the repository and reloads the list`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.list() } returnsMany listOf(
             Result.success(listOf(token(1))),
-            Result.success(listOf(token(1, revokedAt = "2026-01-02T00:00:00Z"))),
+            Result.success(listOf(token(1, revokedAt = "2026-01-02T00:00:00Z")))
         )
         coEvery { repository.revoke(1) } returns Result.success(Unit)
         val vm = ApiTokensViewModel(repository)
@@ -146,11 +159,13 @@ class ApiTokensViewModelTest {
                 Result.success(
                     listOf(
                         token(1, revokedAt = "2026-01-02T00:00:00Z"),
-                        token(2, revokedAt = "2026-01-02T00:00:00Z"),
-                    ),
-                ),
+                        token(2, revokedAt = "2026-01-02T00:00:00Z")
+                    )
+                )
             )
-            coEvery { repository.revokeAll() } returns Result.success(RevokeAllApiTokensResponse(revoked = 2))
+            coEvery { repository.revokeAll() } returns Result.success(
+                RevokeAllApiTokensResponse(revoked = 2)
+            )
             val vm = ApiTokensViewModel(repository)
             advanceUntilIdle()
 
@@ -185,12 +200,17 @@ class ApiTokensViewModelTest {
                 Result.success(
                     listOf(
                         token(8, name = "Long runner"),
-                        token(4, name = "Long runner", revokedAt = "2026-01-02T00:00:00Z"),
-                    ),
-                ),
+                        token(4, name = "Long runner", revokedAt = "2026-01-02T00:00:00Z")
+                    )
+                )
             )
             coEvery { repository.rotate(4) } returns Result.success(
-                ApiTokenCreateResponse(id = 8, name = "Long runner", scope = "full", token = "rotated456"),
+                ApiTokenCreateResponse(
+                    id = 8,
+                    name = "Long runner",
+                    scope = "full",
+                    token = "rotated456"
+                )
             )
             val vm = ApiTokensViewModel(repository)
             advanceUntilIdle()
@@ -210,7 +230,11 @@ class ApiTokensViewModelTest {
     fun `rotate failure surfaces the error and does not reveal a token`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { repository.list() } returns Result.success(listOf(token(4)))
-            coEvery { repository.rotate(4) } returns Result.failure(ApiError.Server(409, "already revoked"))
+            coEvery {
+                repository.rotate(
+                    4
+                )
+            } returns Result.failure(ApiError.Server(409, "already revoked"))
             val vm = ApiTokensViewModel(repository)
             advanceUntilIdle()
 
@@ -227,7 +251,7 @@ class ApiTokensViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { repository.list() } returns Result.success(emptyList())
             coEvery { repository.create(any()) } returns Result.success(
-                ApiTokenCreateResponse(id = 1, name = "New", scope = "full", token = "s3cret"),
+                ApiTokenCreateResponse(id = 1, name = "New", scope = "full", token = "s3cret")
             )
             val vm = ApiTokensViewModel(repository)
             advanceUntilIdle()
@@ -270,8 +294,8 @@ class ApiTokensViewModelTest {
                 listOf(
                     token(1),
                     token(2, revokedAt = "2026-01-02T00:00:00Z"),
-                    token(3, expiresAt = "2020-01-01T00:00:00Z"),
-                ),
+                    token(3, expiresAt = "2020-01-01T00:00:00Z")
+                )
             )
             val vm = ApiTokensViewModel(repository)
             advanceUntilIdle()

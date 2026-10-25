@@ -32,12 +32,16 @@ import org.robolectric.annotation.Config
 class PushNotificationDispatcherTest {
 
     private val context = ApplicationProvider.getApplicationContext<Context>()
-    private val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    private val manager = context.getSystemService(
+        Context.NOTIFICATION_SERVICE
+    ) as NotificationManager
     private val shadow = Shadows.shadowOf(manager)
 
     @Before
     fun setUp() {
-        Shadows.shadowOf(context as Application).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
+        Shadows.shadowOf(
+            context as Application
+        ).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
     }
 
     @Test
@@ -49,8 +53,8 @@ class PushNotificationDispatcherTest {
                 body = "Jane: Call about dinner",
                 channel = MycorrhizalNotificationChannels.REMINDERS,
                 idempotenceKey = "42:2026-08-18T06:00:00Z",
-                deepLink = "mycorrhizal://contacts/7",
-            ),
+                deepLink = "mycorrhizal://contacts/7"
+            )
         )
 
         val notification = shadow.allNotifications.single()
@@ -60,7 +64,10 @@ class PushNotificationDispatcherTest {
         assertEquals(notification, shadow.getNotification(expectedId))
         assertEquals(MycorrhizalNotificationChannels.REMINDERS, notification.channelId)
         val savedIntent = Shadows.shadowOf(notification.contentIntent).savedIntent
-        assertEquals("mycorrhizal://contacts/7", savedIntent.getStringExtra(NotificationBuilder.EXTRA_DEEP_LINK))
+        assertEquals(
+            "mycorrhizal://contacts/7",
+            savedIntent.getStringExtra(NotificationBuilder.EXTRA_DEEP_LINK)
+        )
     }
 
     @Test
@@ -72,8 +79,8 @@ class PushNotificationDispatcherTest {
                 body = "Reach out to Jane",
                 channel = MycorrhizalNotificationChannels.CADENCE,
                 idempotenceKey = null,
-                deepLink = null,
-            ),
+                deepLink = null
+            )
         )
 
         val notification = shadow.allNotifications.single()
@@ -88,7 +95,7 @@ class PushNotificationDispatcherTest {
             body = "Jane: Call about dinner",
             channel = MycorrhizalNotificationChannels.REMINDERS,
             idempotenceKey = "42:2026-08-18T06:00:00Z",
-            deepLink = "mycorrhizal://contacts/7",
+            deepLink = "mycorrhizal://contacts/7"
         )
         dispatcher.dispatch(context, message)
         dispatcher.dispatch(context, message)
@@ -99,7 +106,9 @@ class PushNotificationDispatcherTest {
 
     @Test
     fun `a denied POST_NOTIFICATIONS permission is a silent no-op`() {
-        Shadows.shadowOf(context as Application).denyPermissions(Manifest.permission.POST_NOTIFICATIONS)
+        Shadows.shadowOf(
+            context as Application
+        ).denyPermissions(Manifest.permission.POST_NOTIFICATIONS)
 
         PushNotificationDispatcher().dispatch(
             context,
@@ -108,8 +117,8 @@ class PushNotificationDispatcherTest {
                 body = "Jane: Call about dinner",
                 channel = MycorrhizalNotificationChannels.REMINDERS,
                 idempotenceKey = "42:2026-08-18T06:00:00Z",
-                deepLink = "mycorrhizal://contacts/7",
-            ),
+                deepLink = "mycorrhizal://contacts/7"
+            )
         )
 
         assertTrue(shadow.allNotifications.isEmpty())

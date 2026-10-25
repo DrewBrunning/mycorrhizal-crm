@@ -40,9 +40,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -57,6 +57,7 @@ import com.mycorrhizal.crm.model.network.PartialDate
 import com.mycorrhizal.crm.model.network.Preference
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.model.util.DateFormat.display
+import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AmbientExplanation
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
@@ -65,7 +66,6 @@ import com.mycorrhizal.crm.ui.components.lifeEventTypeLabel
 import com.mycorrhizal.crm.ui.components.relationshipRoleLabel
 import com.mycorrhizal.crm.ui.theme.MycorrhizalFonts
 import java.time.LocalDate
-import com.mycorrhizal.crm.ui.R
 
 /**
  * M11 — the N2 prep-view briefing for Android (N2): "everything the user
@@ -85,7 +85,7 @@ fun PrepViewScreen(
     onBack: () -> Unit,
     /** Opens the given contact's detail record (relationship rows). */
     onOpenContact: (Int) -> Unit,
-    viewModel: PrepViewModel = hiltViewModel(),
+    viewModel: PrepViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -94,34 +94,42 @@ fun PrepViewScreen(
             TopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back)
+                        )
                     }
                 },
                 title = {
-                    Text(stringResource(R.string.prep_title), style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        stringResource(R.string.prep_title),
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
-        },
+        }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             RefreshableContent(
                 isRefreshing = state.isLoading && state.briefing != null,
                 onRefresh = viewModel::load,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize()
             ) {
                 when {
                     state.isLoading && state.briefing == null -> LoadingSkeleton()
+
                     state.error != null || state.briefing == null ->
                         PrepErrorState(
                             message = state.error ?: stringResource(R.string.prep_not_found),
-                            onRetry = viewModel::load,
+                            onRetry = viewModel::load
                         )
+
                     else -> PrepViewContent(
                         briefing = state.briefing!!,
                         // The session's date_format, like ContactDetailScreen threads
@@ -129,7 +137,7 @@ fun PrepViewScreen(
                         dateFormat = state.dateFormat ?: DateFormat.EU,
                         onOpenContact = onOpenContact,
                         preferences = state.preferences,
-                        giftIdeas = state.giftIdeas,
+                        giftIdeas = state.giftIdeas
                     )
                 }
             }
@@ -142,12 +150,12 @@ private fun PrepErrorState(message: String, onRetry: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize().padding(32.dp),
         verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = message,
             style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Button(onClick = onRetry, modifier = Modifier.padding(top = 16.dp)) {
             Text(stringResource(R.string.action_retry))
@@ -166,18 +174,21 @@ internal fun PrepViewContent(
     giftIdeas: List<Gift> = emptyList(),
     // Issue #1774: anchors "turns N" to the next occurrence. Optional so the
     // screen can default to today while tests pin a date.
-    today: LocalDate = LocalDate.now(),
+    today: LocalDate = LocalDate.now()
 ) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .testTag("prep-view-list"),
+            .testTag("prep-view-list")
     ) {
         item { PrepHeader(briefing) }
 
         briefing.cadence?.let { cadence ->
             item {
-                PrepCard(stringResource(R.string.prep_cadence_title), icon = Icons.Outlined.Warning) {
+                PrepCard(
+                    stringResource(R.string.prep_cadence_title),
+                    icon = Icons.Outlined.Warning
+                ) {
                     CadenceBlock(health = cadence.health, dateFormat = dateFormat)
                 }
             }
@@ -185,15 +196,18 @@ internal fun PrepViewContent(
 
         if (preferences.isNotEmpty()) {
             item {
-                PrepCard(stringResource(R.string.prep_preferences_title), icon = Icons.Outlined.Favorite) {
+                PrepCard(
+                    stringResource(R.string.prep_preferences_title),
+                    icon = Icons.Outlined.Favorite
+                ) {
                     preferences.forEach { preference ->
                         val value = preference.value.takeIf { it.isNotBlank() } ?: return@forEach
                         Bullet(
                             stringResource(
                                 R.string.prep_preference_line,
                                 humanizeToken(preference.category),
-                                value,
-                            ),
+                                value
+                            )
                         )
                     }
                 }
@@ -202,7 +216,10 @@ internal fun PrepViewContent(
 
         if (briefing.openAgendaItems.isNotEmpty()) {
             item {
-                PrepCard(stringResource(R.string.prep_agenda_title), icon = Icons.Outlined.ChatBubbleOutline) {
+                PrepCard(
+                    stringResource(R.string.prep_agenda_title),
+                    icon = Icons.Outlined.ChatBubbleOutline
+                ) {
                     briefing.openAgendaItems.forEach { item ->
                         Bullet(item.content)
                     }
@@ -212,9 +229,13 @@ internal fun PrepViewContent(
 
         if (giftIdeas.isNotEmpty()) {
             item {
-                PrepCard(stringResource(R.string.prep_gift_ideas_title), icon = Icons.Outlined.CardGiftcard) {
+                PrepCard(
+                    stringResource(R.string.prep_gift_ideas_title),
+                    icon = Icons.Outlined.CardGiftcard
+                ) {
                     giftIdeas.forEach { gift ->
-                        val description = gift.description.takeIf { it.isNotBlank() } ?: return@forEach
+                        val description =
+                            gift.description.takeIf { it.isNotBlank() } ?: return@forEach
                         val occasion = gift.occasion?.takeIf { it.isNotBlank() }
                         Bullet(if (occasion != null) "$description ($occasion)" else description)
                     }
@@ -223,14 +244,20 @@ internal fun PrepViewContent(
         }
 
         item {
-            PrepCard(stringResource(R.string.prep_last_interaction_title), icon = Icons.Outlined.Event) {
+            PrepCard(
+                stringResource(R.string.prep_last_interaction_title),
+                icon = Icons.Outlined.Event
+            ) {
                 LastInteractionBlock(briefing, dateFormat = dateFormat)
             }
         }
 
         if (briefing.relationships.isNotEmpty()) {
             item {
-                PrepCard(stringResource(R.string.prep_relationships_title), icon = Icons.Outlined.Favorite) {
+                PrepCard(
+                    stringResource(R.string.prep_relationships_title),
+                    icon = Icons.Outlined.Favorite
+                ) {
                     briefing.relationships.forEach { rel ->
                         RelationshipRow(rel, onOpenContact)
                     }
@@ -240,9 +267,18 @@ internal fun PrepViewContent(
 
         if (briefing.lifeEvents.isNotEmpty()) {
             item {
-                PrepCard(stringResource(R.string.prep_life_events_title), icon = Icons.Outlined.DateRange) {
+                PrepCard(
+                    stringResource(R.string.prep_life_events_title),
+                    icon = Icons.Outlined.DateRange
+                ) {
                     briefing.lifeEvents.forEach { event ->
-                        val label = event.type?.takeIf { it.isNotBlank() }?.let { lifeEventTypeLabel(it) }
+                        val label = event.type?.takeIf {
+                            it.isNotBlank()
+                        }?.let {
+                            lifeEventTypeLabel(
+                                it
+                            )
+                        }
                         val description = event.description?.takeIf { it.isNotBlank() }
                         val line = when {
                             label != null && description != null -> "$label — $description"
@@ -258,7 +294,10 @@ internal fun PrepViewContent(
 
         if (briefing.upcomingReminders.isNotEmpty()) {
             item {
-                PrepCard(stringResource(R.string.prep_reminders_title), icon = Icons.Outlined.Notifications) {
+                PrepCard(
+                    stringResource(R.string.prep_reminders_title),
+                    icon = Icons.Outlined.Notifications
+                ) {
                     briefing.upcomingReminders.forEach { reminder ->
                         val whenDue = formatTimestamp(reminder.remindAt, dateFormat)
                         val line = if (whenDue.isBlank()) {
@@ -274,7 +313,10 @@ internal fun PrepViewContent(
 
         if (briefing.upcomingDates.isNotEmpty()) {
             item {
-                PrepCard(stringResource(R.string.prep_upcoming_dates_title), icon = Icons.Outlined.Cake) {
+                PrepCard(
+                    stringResource(R.string.prep_upcoming_dates_title),
+                    icon = Icons.Outlined.Cake
+                ) {
                     briefing.upcomingDates.forEach { d ->
                         UpcomingDateRow(d, dateFormat, today)
                     }
@@ -290,17 +332,19 @@ internal fun PrepViewContent(
 private fun PrepHeader(briefing: ContactBriefing) {
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+        )
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             ContactAvatar(
                 photoUri = briefing.photoThumbnail,
                 contentDescription = null,
-                size = 56.dp,
+                size = 56.dp
             )
             Column(modifier = Modifier.weight(1f)) {
                 // #208: the contact name is the de facto page heading but
@@ -308,28 +352,34 @@ private fun PrepHeader(briefing: ContactBriefing) {
                 Text(
                     text = briefing.name.ifBlank { stringResource(R.string.prep_unknown_contact) },
                     style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.semantics { heading() },
+                    modifier = Modifier.semantics { heading() }
                 )
                 Text(
                     text = stringResource(R.string.prep_subtitle),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             if (briefing.kind == "animal") {
-                AssistChip(onClick = {}, label = { Text(stringResource(R.string.contact_kind_animal)) })
+                AssistChip(
+                    onClick = {},
+                    label = { Text(stringResource(R.string.contact_kind_animal)) }
+                )
             }
         }
     }
 }
 
 @Composable
-private fun CadenceBlock(health: com.mycorrhizal.crm.model.network.BriefingCadenceHealth, dateFormat: String) {
+private fun CadenceBlock(
+    health: com.mycorrhizal.crm.model.network.BriefingCadenceHealth,
+    dateFormat: String
+) {
     if (health.ambient) {
         // Issue #1734: ambient contacts are never overdue; explain why instead of a date readout.
         AmbientExplanation(
             reason = health.ambientReason,
-            modifier = Modifier.padding(vertical = 2.dp).testTag("prep-cadence-ambient"),
+            modifier = Modifier.padding(vertical = 2.dp).testTag("prep-cadence-ambient")
         )
     } else if (health.hasQualifyingInteraction) {
         if (health.isOverdue) {
@@ -341,14 +391,14 @@ private fun CadenceBlock(health: com.mycorrhizal.crm.model.network.BriefingCaden
                 // contact header; the words themselves use the page's own
                 // onSurface (web parity kept the amber as the *accent* only).
                 color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(vertical = 2.dp),
+                modifier = Modifier.padding(vertical = 2.dp)
             )
         } else {
             Text(
                 text = stringResource(R.string.prep_cadence_on_track),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.tertiary,
-                modifier = Modifier.padding(vertical = 2.dp),
+                modifier = Modifier.padding(vertical = 2.dp)
             )
         }
         val nextDue = formatTimestamp(health.nextDue, dateFormat)
@@ -356,14 +406,14 @@ private fun CadenceBlock(health: com.mycorrhizal.crm.model.network.BriefingCaden
             Text(
                 text = stringResource(R.string.prep_cadence_next_due, nextDue),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     } else {
         Text(
             text = stringResource(R.string.prep_cadence_no_interactions_yet),
             style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -379,14 +429,14 @@ private fun LastInteractionBlock(briefing: ContactBriefing, dateFormat: String) 
                 if (lastActivity.type?.isNotBlank() == true) append(" (${lastActivity.type})")
             },
             style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Medium,
+            fontWeight = FontWeight.Medium
         )
         val whenItHappened = formatTimestamp(lastActivity.date, dateFormat)
         if (whenItHappened.isNotBlank()) {
             Text(
                 text = whenItHappened,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         val description = lastActivity.description
@@ -394,14 +444,14 @@ private fun LastInteractionBlock(briefing: ContactBriefing, dateFormat: String) 
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(top = 4.dp),
+                modifier = Modifier.padding(top = 4.dp)
             )
         }
     } else {
         Text(
             text = stringResource(R.string.prep_last_interaction_none),
             style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 
@@ -409,15 +459,18 @@ private fun LastInteractionBlock(briefing: ContactBriefing, dateFormat: String) 
         androidx.compose.material3.HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Icon(
                 Icons.Outlined.Notes,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(18.dp)
             )
-            Text(stringResource(R.string.prep_recent_notes_title), style = MaterialTheme.typography.labelMedium)
+            Text(
+                stringResource(R.string.prep_recent_notes_title),
+                style = MaterialTheme.typography.labelMedium
+            )
         }
         briefing.recentNotes.forEach { note ->
             Bullet(note.content.orEmpty())
@@ -436,15 +489,17 @@ private fun RelationshipRow(rel: BriefingRelationship, onOpenContact: (Int) -> U
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .then(if (targetId != null) Modifier.clickable { onOpenContact(targetId) } else Modifier)
+            .then(
+                if (targetId != null) Modifier.clickable { onOpenContact(targetId) } else Modifier
+            )
             .padding(horizontal = 16.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
             text = text,
             style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f)
         )
         // Web renders a "View" chip here; on a phone a trailing chevron is the
         // conventional tap affordance, and it mirrors the contact-detail rows
@@ -454,7 +509,7 @@ private fun RelationshipRow(rel: BriefingRelationship, onOpenContact: (Int) -> U
                 imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
                 contentDescription = stringResource(R.string.cd_open_contact),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(18.dp)
             )
         }
     }
@@ -465,13 +520,19 @@ private fun UpcomingDateRow(d: BriefingUpcomingDate, dateFormat: String, today: 
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Icon(
-            imageVector = if (d.label == "birthday") Icons.Outlined.Cake else Icons.Outlined.Celebration,
+            imageVector = if (d.label ==
+                "birthday"
+            ) {
+                Icons.Outlined.Cake
+            } else {
+                Icons.Outlined.Celebration
+            },
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(18.dp),
+            modifier = Modifier.size(18.dp)
         )
         val dateText = formatNextOccurrence(d.date, dateFormat)
         val age = if (d.label == "birthday") upcomingAge(d, today) else null
@@ -488,11 +549,19 @@ private fun UpcomingDateRow(d: BriefingUpcomingDate, dateFormat: String, today: 
         Text(
             text = text,
             style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f)
         )
         AssistChip(
             onClick = {},
-            label = { Text(pluralStringResource(R.plurals.prep_upcoming_dates_in_days, d.daysUntil, d.daysUntil)) },
+            label = {
+                Text(
+                    pluralStringResource(
+                        R.plurals.prep_upcoming_dates_in_days,
+                        d.daysUntil,
+                        d.daysUntil
+                    )
+                )
+            }
         )
     }
 }
@@ -518,40 +587,40 @@ private fun Bullet(text: String) {
         style = MaterialTheme.typography.bodyLarge,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 3.dp),
+            .padding(horizontal = 16.dp, vertical = 3.dp)
     )
 }
 
 /** A prep-view section card: mono caption header + body content. */
 @Composable
-private fun PrepCard(
-    title: String,
-    icon: ImageVector,
-    content: @Composable () -> Unit,
-) {
+private fun PrepCard(title: String, icon: ImageVector, content: @Composable () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+        )
     ) {
         Column(modifier = Modifier.padding(vertical = 8.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Icon(
                     icon,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(18.dp),
+                    modifier = Modifier.size(18.dp)
                 )
                 Text(
                     text = title,
                     // T63 Android port: section captions get IBM Plex Mono,
                     // mirroring the web's caption treatment (SectionCard does
                     // the same on the contact detail screen).
-                    style = MaterialTheme.typography.labelLarge.copy(fontFamily = MycorrhizalFonts.mono),
-                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontFamily = MycorrhizalFonts.mono
+                    ),
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
             content()
@@ -576,25 +645,25 @@ private fun formatTimestamp(iso: String?, format: String): String =
  * ("25 December", not the raw "--12-25"). Falls back to the raw value when
  * the shape is unexpected.
  */
-private fun formatNextOccurrence(value: String, format: String): String {
-    return runCatching {
-        when {
-            value.startsWith("--") && value.length == 7 -> {
-                PartialDate(
-                    month = value.substring(2, 4).toInt(),
-                    day = value.substring(5, 7).toInt(),
-                ).display(format)
-            }
-            value.length == 10 && value[4] == '-' && value[7] == '-' -> {
-                // The upcoming date is the next occurrence, so its year is the
-                // birth year only on the very first one — render month/day and
-                // let the "Turns N" / "in N days" text carry the rest.
-                PartialDate(
-                    month = value.substring(5, 7).toInt(),
-                    day = value.substring(8, 10).toInt(),
-                ).display(format)
-            }
-            else -> value
+private fun formatNextOccurrence(value: String, format: String): String = runCatching {
+    when {
+        value.startsWith("--") && value.length == 7 -> {
+            PartialDate(
+                month = value.substring(2, 4).toInt(),
+                day = value.substring(5, 7).toInt()
+            ).display(format)
         }
-    }.getOrDefault(value)
-}
+
+        value.length == 10 && value[4] == '-' && value[7] == '-' -> {
+            // The upcoming date is the next occurrence, so its year is the
+            // birth year only on the very first one — render month/day and
+            // let the "Turns N" / "in N days" text carry the rest.
+            PartialDate(
+                month = value.substring(5, 7).toInt(),
+                day = value.substring(8, 10).toInt()
+            ).display(format)
+        }
+
+        else -> value
+    }
+}.getOrDefault(value)

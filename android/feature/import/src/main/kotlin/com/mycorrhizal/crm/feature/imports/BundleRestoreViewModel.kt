@@ -13,13 +13,13 @@ import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.toApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 enum class BundleRestoreStep { PICK, WORKING, REVIEW, RESULT }
 
@@ -35,7 +35,7 @@ data class BundleRestoreUiState(
     /** True while a server phase is running (mapping the bundle, or importing it). */
     val isImporting: Boolean = false,
     @StringRes val errorRes: Int? = null,
-    val error: String? = null,
+    val error: String? = null
 )
 
 /**
@@ -49,9 +49,7 @@ data class BundleRestoreUiState(
  * still lets the user override per row exactly like the VCF flow.
  */
 @HiltViewModel
-class BundleRestoreViewModel @Inject constructor(
-    private val apiClient: ApiClient,
-) : ViewModel() {
+class BundleRestoreViewModel @Inject constructor(private val apiClient: ApiClient) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BundleRestoreUiState())
     val uiState: StateFlow<BundleRestoreUiState> = _uiState.asStateFlow()
@@ -60,13 +58,23 @@ class BundleRestoreViewModel @Inject constructor(
     internal var pollIntervalMillis: Long = POLL_INTERVAL_MILLIS
 
     fun onFileTooLarge() {
-        _uiState.update { it.copy(errorRes = R.string.bundle_restore_error_too_large, error = null) }
+        _uiState.update {
+            it.copy(
+                errorRes = R.string.bundle_restore_error_too_large,
+                error = null
+            )
+        }
     }
 
     fun onFilePicked(fileName: String, bytes: ByteArray) {
         if (_uiState.value.step == BundleRestoreStep.WORKING) return
         if (bytes.isEmpty()) {
-            _uiState.update { it.copy(errorRes = R.string.bundle_restore_error_invalid_file, error = null) }
+            _uiState.update {
+                it.copy(
+                    errorRes = R.string.bundle_restore_error_invalid_file,
+                    error = null
+                )
+            }
             return
         }
         if (bytes.size > MAX_BUNDLE_SIZE_BYTES) {
@@ -81,7 +89,7 @@ class BundleRestoreViewModel @Inject constructor(
                 isImporting = true,
                 fileName = fileName,
                 errorRes = null,
-                error = null,
+                error = null
             )
         }
         viewModelScope.launch {
@@ -90,7 +98,7 @@ class BundleRestoreViewModel @Inject constructor(
                     _uiState.update { it.copy(totals = upload.totals) }
                     prepare(upload.sessionId)
                 },
-                onFailure = { error -> failToPick(error.toApiError().displayMessage) },
+                onFailure = { error -> failToPick(error.toApiError().displayMessage) }
             )
         }
     }
@@ -105,18 +113,19 @@ class BundleRestoreViewModel @Inject constructor(
         apiClient.getMycorrhizalImportPreview(sessionId).fold(
             onSuccess = { preview ->
                 val actions = preview.rows.associate { row ->
-                    row.rowIndex to if (row.validationErrors.isNotEmpty()) "skip" else row.suggestedAction
+                    row.rowIndex to
+                        if (row.validationErrors.isNotEmpty()) "skip" else row.suggestedAction
                 }
                 _uiState.update {
                     it.copy(
                         step = BundleRestoreStep.REVIEW,
                         isImporting = false,
                         preview = preview,
-                        rowActions = actions,
+                        rowActions = actions
                     )
                 }
             },
-            onFailure = { error -> failToPick(error.toApiError().displayMessage) },
+            onFailure = { error -> failToPick(error.toApiError().displayMessage) }
         )
     }
 
@@ -143,15 +152,36 @@ class BundleRestoreViewModel @Inject constructor(
         val state = _uiState.value
         val preview = state.preview ?: return
         if (state.step != BundleRestoreStep.REVIEW || state.isImporting) return
-        _uiState.update { it.copy(step = BundleRestoreStep.WORKING, isImporting = true, error = null) }
+        _uiState.update {
+            it.copy(
+                step = BundleRestoreStep.WORKING,
+                isImporting = true,
+                error = null
+            )
+        }
         viewModelScope.launch {
-            val actions = _uiState.value.rowActions.map { (index, action) -> RowImportAction(index, action) }
-            val started = apiClient.confirmMycorrhizalImport(ImportConfirmRequest(preview.sessionId, actions))
-            started.exceptionOrNull()?.let { return@launch failToReview(it.toApiError().displayMessage) }
+            val actions = _uiState.value.rowActions.map { (index, action) ->
+                RowImportAction(
+                    index,
+                    action
+                )
+            }
+            val started = apiClient.confirmMycorrhizalImport(
+                ImportConfirmRequest(preview.sessionId, actions)
+            )
+            started.exceptionOrNull()?.let {
+                return@launch failToReview(
+                    it.toApiError().displayMessage
+                )
+            }
             val status = pollUntil(preview.sessionId, terminal = FINISHED_PHASES)
             if (status?.phase == PHASE_DONE && status.result != null) {
                 _uiState.update {
-                    it.copy(step = BundleRestoreStep.RESULT, isImporting = false, result = status.result)
+                    it.copy(
+                        step = BundleRestoreStep.RESULT,
+                        isImporting = false,
+                        result = status.result
+                    )
                 }
             } else {
                 failToReview(status?.error)
@@ -178,7 +208,9 @@ class BundleRestoreViewModel @Inject constructor(
     private suspend fun pollUntil(sessionId: String, terminal: Set<String>): SourceImportStatus? {
         repeat(MAX_POLLS) {
             val status = apiClient.getMycorrhizalImportStatus(sessionId).getOrNull() ?: return null
-            if (status.phase in terminal || status.phase == PHASE_FAILED || status.phase == PHASE_CANCELLED) {
+            if (status.phase in terminal || status.phase == PHASE_FAILED ||
+                status.phase == PHASE_CANCELLED
+            ) {
                 return status
             }
             delay(pollIntervalMillis)
@@ -194,7 +226,7 @@ class BundleRestoreViewModel @Inject constructor(
                 preview = null,
                 totals = null,
                 errorRes = if (message.isNullOrBlank()) R.string.bundle_restore_error_failed else null,
-                error = message?.takeIf { m -> m.isNotBlank() },
+                error = message?.takeIf { m -> m.isNotBlank() }
             )
         }
     }
@@ -205,7 +237,7 @@ class BundleRestoreViewModel @Inject constructor(
                 step = BundleRestoreStep.REVIEW,
                 isImporting = false,
                 errorRes = if (message.isNullOrBlank()) R.string.bundle_restore_error_failed else null,
-                error = message?.takeIf { m -> m.isNotBlank() },
+                error = message?.takeIf { m -> m.isNotBlank() }
             )
         }
     }

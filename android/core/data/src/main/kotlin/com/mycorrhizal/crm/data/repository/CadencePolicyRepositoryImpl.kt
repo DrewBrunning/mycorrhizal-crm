@@ -16,14 +16,16 @@ import javax.inject.Inject
  */
 class CadencePolicyRepositoryImpl @Inject constructor(
     private val apiClient: ApiClient,
-    private val dao: CachedCadencePolicyDao,
+    private val dao: CachedCadencePolicyDao
 ) : CadencePolicyRepository {
     override suspend fun listForContact(entityId: String): Result<List<CadencePolicy>> {
         val result = apiClient.listCadencePolicies(entityId = entityId)
         val page = result.getOrNull()
         if (page != null) {
             dao.deleteForContact(entityId)
-            dao.upsertAll(page.cadencePolicies.filterNot { it.deleted }.map { it.toCached(entityId) })
+            dao.upsertAll(
+                page.cadencePolicies.filterNot { it.deleted }.map { it.toCached(entityId) }
+            )
         }
         return result.map { it.cadencePolicies }
     }
@@ -54,6 +56,6 @@ class CadencePolicyRepositoryImpl @Inject constructor(
         targetIntervalDays = targetIntervalDays,
         qualifyingTypes = qualifyingTypes,
         updatedAt = updatedAt,
-        deleted = deleted,
+        deleted = deleted
     )
 }

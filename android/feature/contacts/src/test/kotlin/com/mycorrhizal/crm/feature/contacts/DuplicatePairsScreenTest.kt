@@ -34,7 +34,7 @@ class DuplicatePairsScreenTest {
         a = ContactSummary(id = 1, uid = "u-a", firstname = "Dana", lastname = "White"),
         b = ContactSummary(id = 2, uid = "u-b", firstname = "Dan", lastname = "White"),
         reasons = listOf("email", "phone"),
-        confidence = 0.95,
+        confidence = 0.95
     )
 
     private var mergedKeep = 0L
@@ -58,7 +58,7 @@ class DuplicatePairsScreenTest {
                         mergedName = name
                     },
                     onDismiss = { dismissed = it },
-                    onLoad = {},
+                    onLoad = {}
                 )
             }
         }
@@ -76,7 +76,7 @@ class DuplicatePairsScreenTest {
     fun `the top-level screen shows the empty scan from its view model`() {
         val repository = mockk<DuplicateRepository>()
         coEvery { repository.listPairs(page = 1, limit = 100) } returns Result.success(
-            DuplicatePairsResponse(pairs = emptyList(), total = 0, page = 1, limit = 100),
+            DuplicatePairsResponse(pairs = emptyList(), total = 0, page = 1, limit = 100)
         )
         val viewModel = DuplicatePairsViewModel(repository)
         composeTestRule.setContent {
@@ -99,19 +99,32 @@ class DuplicatePairsScreenTest {
         composeTestRule.onNodeWithText("Not a duplicate").assertIsDisplayed()
     }
 
-
     @Test
     fun `contacts with blank identifier fields render no dangling separator`() {
         // Issue #1754: the same blank-filtering rule the contact list uses.
         val blankPair = pair.copy(
-            a = ContactSummary(id = 1, uid = "u-a", firstname = "Dana", lastname = "White", primaryEmail = "", primaryPhone = ""),
-            b = ContactSummary(id = 2, uid = "u-b", firstname = "Dan", lastname = "White", primaryEmail = "", primaryPhone = ""),
+            a = ContactSummary(
+                id = 1,
+                uid = "u-a",
+                firstname = "Dana",
+                lastname = "White",
+                primaryEmail = "",
+                primaryPhone = ""
+            ),
+            b = ContactSummary(
+                id = 2,
+                uid = "u-b",
+                firstname = "Dan",
+                lastname = "White",
+                primaryEmail = "",
+                primaryPhone = ""
+            )
         )
         setContent(DuplicatePairsUiState(pairs = listOf(blankPair), total = 1, isLoading = false))
 
         assertTrue(
             "a pair with no identifier fields must not render a lone separator",
-            composeTestRule.onAllNodesWithText("·").fetchSemanticsNodes().isEmpty(),
+            composeTestRule.onAllNodesWithText("·").fetchSemanticsNodes().isEmpty()
         )
     }
 
@@ -150,15 +163,22 @@ class DuplicatePairsScreenTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 DuplicatePairsScreenContent(
-                    uiState = DuplicatePairsUiState(pairs = emptyList(), total = 0, isLoading = false, error = "scan failed"),
+                    uiState = DuplicatePairsUiState(
+                        pairs = emptyList(),
+                        total = 0,
+                        isLoading = false,
+                        error = "scan failed"
+                    ),
                     onBack = {},
                     onMerge = { _, _, _ -> },
                     onDismiss = {},
-                    onLoad = { reloads += 1 },
+                    onLoad = { reloads += 1 }
                 )
             }
         }
-        assertTrue(composeTestRule.onAllNodesWithText("scan failed").fetchSemanticsNodes().isNotEmpty())
+        assertTrue(
+            composeTestRule.onAllNodesWithText("scan failed").fetchSemanticsNodes().isNotEmpty()
+        )
         composeTestRule.onNodeWithText("Retry").performClick()
         assertEquals(1, reloads)
     }

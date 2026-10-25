@@ -36,7 +36,7 @@ object DeviceContactMapper {
             CardPhone(
                 number = number,
                 features = features.ifEmpty { null },
-                label = label,
+                label = label
             )
         }
         val emails = device.emails.map { Email(address = it) }
@@ -53,10 +53,10 @@ object DeviceContactMapper {
                 listOf(
                     Anniversary(
                         kind = "birth",
-                        date = AnniversaryDate(partial = parsePartialDate(it)),
-                    ),
+                        date = AnniversaryDate(partial = parsePartialDate(it))
+                    )
                 )
-            },
+            }
         )
         return ContactRecordInput(card = card)
     }
@@ -69,8 +69,8 @@ object DeviceContactMapper {
                 full = full,
                 components = listOf(
                     NameComponent(kind = "given", value = full.substring(0, split)),
-                    NameComponent(kind = "surname", value = full.substring(split + 1)),
-                ),
+                    NameComponent(kind = "surname", value = full.substring(split + 1))
+                )
             )
         } else {
             Name(full = full, components = listOf(NameComponent(kind = "given", value = full)))
@@ -100,7 +100,7 @@ object DeviceContactMapper {
         return Address(
             components = components.ifEmpty { null },
             full = device.formattedAddress,
-            contexts = contexts,
+            contexts = contexts
         )
     }
 
@@ -109,7 +109,7 @@ object DeviceContactMapper {
         return PartialDate(
             year = m.groupValues[1].toInt(),
             month = m.groupValues[2].toInt(),
-            day = m.groupValues[3].toInt(),
+            day = m.groupValues[3].toInt()
         )
     }
 }

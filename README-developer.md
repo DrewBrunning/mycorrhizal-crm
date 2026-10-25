@@ -69,9 +69,10 @@
   ```
 - **Visual regression (issue #258):** `frontend/e2e/visual.spec.ts` snapshots the dashboard, contacts list, contact detail and the add-reminder dialog at desktop + phone widths and fails CI on any pixel diff. Baselines are committed under `frontend/e2e/visual.spec.ts-snapshots/`. Regenerate after an intentional visual change with `cd frontend && npx playwright test visual.spec.ts --update-snapshots`, then review the diff in the HTML report before committing. See the spec's header comment for why the shots are made deterministic (frozen clock, committed webfont, intercepted list/dashboard payloads).
 
-**Android static analysis (detekt)**
+**Android static analysis and formatting (detekt + ktlint)**
 
-- Run the Kotlin correctness/smell analyzer locally with `cd android && ./gradlew detekt` (shared config: [android/config/detekt/detekt.yml](android/config/detekt/detekt.yml)). detekt 2.x supports the JDK 25 build JVM the rest of the Android build uses, so no JDK downgrade is needed. Run it on any Android change before pushing — CI runs the same task in the `Android (Gradle)` job.
+- Run the Kotlin correctness/smell analyzer and formatter locally with `cd android && ./gradlew detekt` (shared config: [android/config/detekt/detekt.yml](android/config/detekt/detekt.yml)). The `ktlint` wrapper rule set enforces the `android_studio` code style, mirrored in [android/.editorconfig](android/.editorconfig); there is no detekt baseline. detekt 2.x supports the JDK 25 build JVM the rest of the Android build uses, so no JDK downgrade is needed. Run it on any Android change before pushing — CI runs the same task in the `Android (Gradle)` job.
+- Fix formatting findings with `cd android && ./gradlew detekt --auto-correct`. Keep that in a commit containing only formatting, then list its SHA in the root [.git-blame-ignore-revs](.git-blame-ignore-revs) so `git blame` skips it. Enable it for your clone with `git config blame.ignoreRevsFile .git-blame-ignore-revs` (GitHub applies the file automatically).
 - It is not part of `.githooks/pre-commit` because launching a Gradle build on every commit is too slow; that makes running it locally a deliberate step, not something the hook will catch for you.
 
 **Android E2E (instrumented, issue #238)**

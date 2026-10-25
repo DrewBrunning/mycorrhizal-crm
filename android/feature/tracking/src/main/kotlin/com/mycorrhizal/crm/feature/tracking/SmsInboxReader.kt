@@ -5,11 +5,7 @@ import android.provider.Telephony
 import android.util.Log
 
 /** One Inbox row as read during reconciliation (ADR 0019, issue #1127). */
-data class SmsInboxEntry(
-    val id: Long,
-    val address: String?,
-    val timestampMillis: Long,
-)
+data class SmsInboxEntry(val id: Long, val address: String?, val timestampMillis: Long)
 
 /**
  * Reads the Inbox folder for reconciliation (ADR 0019, issue #1127) — the
@@ -45,7 +41,7 @@ class SmsInboxReader(private val contentResolver: ContentResolver) {
                 projection,
                 "${Telephony.Sms.ADDRESS} = ? AND ${Telephony.Sms.DATE} = ?",
                 arrayOf(address, dateMillis.toString()),
-                null,
+                null
             )
         } catch (e: SecurityException) {
             Log.w(TAG, "SMS-inbox id lookup denied (READ_SMS missing?); skipping cursor advance", e)
@@ -74,7 +70,7 @@ class SmsInboxReader(private val contentResolver: ContentResolver) {
                 projection,
                 "${Telephony.Sms._ID} > ?",
                 arrayOf(sinceId.toString()),
-                "${Telephony.Sms._ID} ASC LIMIT $limit",
+                "${Telephony.Sms._ID} ASC LIMIT $limit"
             )
         } catch (e: SecurityException) {
             Log.w(TAG, "SMS-inbox read denied (READ_SMS missing?); treating as empty", e)
@@ -89,8 +85,8 @@ class SmsInboxReader(private val contentResolver: ContentResolver) {
                     SmsInboxEntry(
                         id = it.getLong(idIdx),
                         address = if (addressIdx >= 0) it.getString(addressIdx) else null,
-                        timestampMillis = it.getLong(dateIdx),
-                    ),
+                        timestampMillis = it.getLong(dateIdx)
+                    )
                 )
             }
         }

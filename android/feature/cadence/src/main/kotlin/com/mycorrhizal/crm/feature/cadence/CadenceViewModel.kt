@@ -12,12 +12,12 @@ import com.mycorrhizal.crm.model.network.CadencePolicyInput
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class CadenceUiState(
     val contactId: Int = 0,
@@ -30,7 +30,7 @@ data class CadenceUiState(
     val isLoading: Boolean = false,
     val isMutating: Boolean = false,
     @StringRes val errorRes: Int? = null,
-    val error: String? = null,
+    val error: String? = null
 )
 
 @HiltViewModel
@@ -38,7 +38,7 @@ class CadenceViewModel @Inject constructor(
     private val cadencePolicyRepository: CadencePolicyRepository,
     private val contactRepository: ContactRepository,
     private val authRepository: AuthRepository,
-    savedStateHandle: SavedStateHandle,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val contactId: Int = run {
@@ -62,7 +62,13 @@ class CadenceViewModel @Inject constructor(
 
     fun load() {
         if (contactId == 0) {
-            _uiState.update { it.copy(isLoading = false, errorRes = R.string.cadence_error_missing_contact_id, error = null) }
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    errorRes = R.string.cadence_error_missing_contact_id,
+                    error = null
+                )
+            }
             return
         }
         viewModelScope.launch {
@@ -72,7 +78,13 @@ class CadenceViewModel @Inject constructor(
             // uid (the canonical field; issue #693).
             val uid = contactRepository.getContact(contactId).getOrNull()?.vcardUid
             if (uid.isNullOrBlank()) {
-                _uiState.update { it.copy(isLoading = false, errorRes = R.string.cadence_error_no_vcard_uid, error = null) }
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorRes = R.string.cadence_error_no_vcard_uid,
+                        error = null
+                    )
+                }
                 return@launch
             }
             _uiState.update { it.copy(contactVCardUid = uid) }
@@ -82,7 +94,7 @@ class CadenceViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -97,9 +109,25 @@ class CadenceViewModel @Inject constructor(
         if (uid.isBlank() || _uiState.value.isMutating) return
         viewModelScope.launch {
             _uiState.update { it.copy(isMutating = true, error = null) }
-            cadencePolicyRepository.create(CadencePolicyInput(uid, intervalDays, qualifyingTypes)).foldApiError(
-                onSuccess = { policy -> _uiState.update { it.copy(isMutating = false, policy = policy) } },
-                onError = { error -> _uiState.update { it.copy(isMutating = false, error = error.displayMessage) } },
+            cadencePolicyRepository.create(
+                CadencePolicyInput(uid, intervalDays, qualifyingTypes)
+            ).foldApiError(
+                onSuccess = { policy ->
+                    _uiState.update {
+                        it.copy(
+                            isMutating = false,
+                            policy = policy
+                        )
+                    }
+                },
+                onError = { error ->
+                    _uiState.update {
+                        it.copy(
+                            isMutating = false,
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }
@@ -110,9 +138,26 @@ class CadenceViewModel @Inject constructor(
         if (_uiState.value.isMutating) return
         viewModelScope.launch {
             _uiState.update { it.copy(isMutating = true, error = null) }
-            cadencePolicyRepository.update(id, CadencePolicyInput(entityId, intervalDays, qualifyingTypes)).foldApiError(
-                onSuccess = { policy -> _uiState.update { it.copy(isMutating = false, policy = policy) } },
-                onError = { error -> _uiState.update { it.copy(isMutating = false, error = error.displayMessage) } },
+            cadencePolicyRepository.update(
+                id,
+                CadencePolicyInput(entityId, intervalDays, qualifyingTypes)
+            ).foldApiError(
+                onSuccess = { policy ->
+                    _uiState.update {
+                        it.copy(
+                            isMutating = false,
+                            policy = policy
+                        )
+                    }
+                },
+                onError = { error ->
+                    _uiState.update {
+                        it.copy(
+                            isMutating = false,
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }
@@ -124,7 +169,14 @@ class CadenceViewModel @Inject constructor(
             _uiState.update { it.copy(isMutating = true, error = null) }
             cadencePolicyRepository.delete(id).foldApiError(
                 onSuccess = { _uiState.update { it.copy(isMutating = false, policy = null) } },
-                onError = { error -> _uiState.update { it.copy(isMutating = false, error = error.displayMessage) } },
+                onError = { error ->
+                    _uiState.update {
+                        it.copy(
+                            isMutating = false,
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }

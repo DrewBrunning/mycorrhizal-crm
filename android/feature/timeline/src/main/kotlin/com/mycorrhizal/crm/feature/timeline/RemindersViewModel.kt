@@ -11,12 +11,12 @@ import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class RemindersUiState(
     val contactId: Int = 0,
@@ -29,14 +29,14 @@ data class RemindersUiState(
     /** ADR 0008: a delete was rejected with 412 — the record changed elsewhere since the list loaded. */
     val conflict: Boolean = false,
     /** The signed-in user's `date_format` preference (see `SessionState`); null until loaded. */
-    val dateFormat: String? = null,
+    val dateFormat: String? = null
 )
 
 @HiltViewModel
 class RemindersViewModel @Inject constructor(
     private val reminderRepository: ReminderRepository,
     private val authRepository: AuthRepository,
-    savedStateHandle: SavedStateHandle,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val contactId: Int = run {
@@ -58,7 +58,13 @@ class RemindersViewModel @Inject constructor(
 
     fun load() {
         if (contactId == 0) {
-            _uiState.update { it.copy(isLoading = false, errorRes = R.string.reminder_error_missing_id, error = null) }
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    errorRes = R.string.reminder_error_missing_id,
+                    error = null
+                )
+            }
             return
         }
         viewModelScope.launch {
@@ -69,7 +75,7 @@ class RemindersViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -85,7 +91,7 @@ class RemindersViewModel @Inject constructor(
                         _uiState.update { state ->
                             state.copy(
                                 completingId = null,
-                                reminders = state.reminders.filterNot { it.id == id },
+                                reminders = state.reminders.filterNot { it.id == id }
                             )
                         }
                     } else {
@@ -93,14 +99,22 @@ class RemindersViewModel @Inject constructor(
                         _uiState.update { state ->
                             state.copy(
                                 completingId = null,
-                                reminders = state.reminders.map { if (it.id == id) reminder else it },
+                                reminders = state.reminders.map {
+                                    if (it.id ==
+                                        id
+                                    ) {
+                                        reminder
+                                    } else {
+                                        it
+                                    }
+                                }
                             )
                         }
                     }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(completingId = null, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -120,7 +134,9 @@ class RemindersViewModel @Inject constructor(
         load()
     }
 
-    private fun revisionOf(id: Int): Int? = _uiState.value.reminders.firstOrNull { it.id == id }?.revision
+    private fun revisionOf(id: Int): Int? = _uiState.value.reminders.firstOrNull {
+        it.id == id
+    }?.revision
 
     fun delete(id: Int) {
         if (_uiState.value.deletingId != null) return
@@ -131,7 +147,7 @@ class RemindersViewModel @Inject constructor(
                     _uiState.update { state ->
                         state.copy(
                             deletingId = null,
-                            reminders = state.reminders.filterNot { it.id == id },
+                            reminders = state.reminders.filterNot { it.id == id }
                         )
                     }
                 },
@@ -143,7 +159,7 @@ class RemindersViewModel @Inject constructor(
                             it.copy(deletingId = null, error = error.displayMessage)
                         }
                     }
-                },
+                }
             )
         }
     }

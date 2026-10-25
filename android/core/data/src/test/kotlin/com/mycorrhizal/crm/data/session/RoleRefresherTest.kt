@@ -30,7 +30,7 @@ class RoleRefresherTest {
         loggedIn: Boolean = true,
         private val serverAdmin: Boolean? = false,
         throwOnFetch: Boolean = false,
-        profileIdAfterFetch: String = "p1",
+        profileIdAfterFetch: String = "p1"
     ) {
         val notifier = ForbiddenNotifier()
         var fetches = 0
@@ -38,9 +38,12 @@ class RoleRefresherTest {
         val demotions = mutableListOf<Unit>()
         private var profileReads = 0
         val manager = mockk<SessionManager>(relaxed = true) {
-            every { observeSession() } returns flowOf(SessionState(isLoggedIn = loggedIn, isAdmin = sessionAdmin))
+            every { observeSession() } returns flowOf(
+                SessionState(isLoggedIn = loggedIn, isAdmin = sessionAdmin)
+            )
             // First read is before the fetch, the second after it.
-            coEvery { activeProfileId() } answers { if (profileReads++ == 0) "p1" else profileIdAfterFetch }
+            coEvery { activeProfileId() } answers
+                { if (profileReads++ == 0) "p1" else profileIdAfterFetch }
         }
         val refresher = RoleRefresher(
             forbiddenNotifier = notifier,
@@ -51,7 +54,7 @@ class RoleRefresherTest {
                 serverAdmin
             },
             debounceMillis = 30_000L,
-            nowMillis = { now },
+            nowMillis = { now }
         )
 
         init {
@@ -172,10 +175,16 @@ class RoleRefresherTest {
     fun `cancellation during the fetch propagates instead of being swallowed`() = runTest {
         val notifier = ForbiddenNotifier()
         val manager = mockk<SessionManager>(relaxed = true) {
-            every { observeSession() } returns flowOf(SessionState(isLoggedIn = true, isAdmin = true))
+            every { observeSession() } returns flowOf(
+                SessionState(isLoggedIn = true, isAdmin = true)
+            )
         }
         // Default clock and debounce: also exercises the production defaults.
-        RoleRefresher(notifier, manager, fetchIsAdmin = { throw kotlinx.coroutines.CancellationException("cancelled") })
+        RoleRefresher(
+            notifier,
+            manager,
+            fetchIsAdmin = { throw kotlinx.coroutines.CancellationException("cancelled") }
+        )
             .start(this)
 
         notifier.onForbidden()

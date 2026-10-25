@@ -27,7 +27,7 @@ class InteractionCaptureTest {
 
     private suspend fun capture(
         number: String?,
-        dedupe: Boolean = false,
+        dedupe: Boolean = false
     ): InteractionCapture.Outcome = InteractionCapture.capture(
         contactRepository = contacts,
         pendingInteractionRepository = outbox,
@@ -36,7 +36,7 @@ class InteractionCaptureTest {
         direction = InteractionCapture.DIR_INCOMING,
         number = number,
         timestampMillis = 1234L,
-        dedupe = dedupe,
+        dedupe = dedupe
     )
 
     @Test
@@ -54,8 +54,8 @@ class InteractionCaptureTest {
                     kind = InteractionCapture.KIND_CALL,
                     direction = InteractionCapture.DIR_INCOMING,
                     phoneNumber = "+15551234567",
-                    matchedContactId = 9,
-                ),
+                    matchedContactId = 9
+                )
             )
         }
     }
@@ -99,8 +99,8 @@ class InteractionCaptureTest {
                     kind = InteractionCapture.KIND_CALL,
                     direction = InteractionCapture.DIR_INCOMING,
                     phoneNumber = "+15559876543",
-                    matchedContactId = null,
-                ),
+                    matchedContactId = null
+                )
             )
         }
         coVerify(exactly = 0) { settings.incrementFilteredUnknownCount() }

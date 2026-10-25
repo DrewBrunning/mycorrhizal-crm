@@ -15,7 +15,7 @@ object DeviceContactLink {
         resolver: ContentResolver,
         lookupKey: String? = null,
         phoneNumber: String? = null,
-        email: String? = null,
+        email: String? = null
     ): Long? {
         if (lookupKey != null) {
             resolver.query(
@@ -23,18 +23,22 @@ object DeviceContactLink {
                 arrayOf(ContactsContract.Contacts._ID),
                 "${ContactsContract.Contacts.LOOKUP_KEY} = ?",
                 arrayOf(lookupKey),
-                null,
+                null
             )?.use { cursor ->
                 if (cursor.moveToFirst()) return cursor.getLong(0)
             }
         }
         val selection = buildString {
             if (phoneNumber != null) {
-                append("${ContactsContract.Data.MIMETYPE} = ? AND ${ContactsContract.Data.DATA1} = ?")
+                append(
+                    "${ContactsContract.Data.MIMETYPE} = ? AND ${ContactsContract.Data.DATA1} = ?"
+                )
             }
             if (email != null) {
                 if (isNotEmpty()) append(" OR ")
-                append("${ContactsContract.Data.MIMETYPE} = ? AND ${ContactsContract.Data.DATA1} = ?")
+                append(
+                    "${ContactsContract.Data.MIMETYPE} = ? AND ${ContactsContract.Data.DATA1} = ?"
+                )
             }
         }
         val selectionArgs = buildList {
@@ -53,23 +57,21 @@ object DeviceContactLink {
             arrayOf(ContactsContract.Data.CONTACT_ID),
             selection,
             selectionArgs.toTypedArray(),
-            "${ContactsContract.Data.CONTACT_ID} ASC LIMIT 1",
+            "${ContactsContract.Data.CONTACT_ID} ASC LIMIT 1"
         )?.use { cursor ->
             if (cursor.moveToFirst()) return cursor.getLong(0)
         }
         return null
     }
 
-    fun quickContactLookupUri(lookupKey: String): android.net.Uri? {
-        return try {
-            // Contacts.CONTENT_LOOKUP_URI + the encoded key gives the
-            // stable lookup URI used by QuickContact.
-            android.net.Uri.withAppendedPath(
-                ContactsContract.Contacts.CONTENT_LOOKUP_URI,
-                android.net.Uri.encode(lookupKey),
-            )
-        } catch (_: Exception) {
-            null
-        }
+    fun quickContactLookupUri(lookupKey: String): android.net.Uri? = try {
+        // Contacts.CONTENT_LOOKUP_URI + the encoded key gives the
+        // stable lookup URI used by QuickContact.
+        android.net.Uri.withAppendedPath(
+            ContactsContract.Contacts.CONTENT_LOOKUP_URI,
+            android.net.Uri.encode(lookupKey)
+        )
+    } catch (_: Exception) {
+        null
     }
 }

@@ -9,7 +9,7 @@ data class CachedHousehold(
     @PrimaryKey val id: String,
     val name: String = "",
     val type: String = "family_unit",
-    val updatedAt: String? = null,
+    val updatedAt: String? = null
 )
 
 /**
@@ -23,5 +23,5 @@ data class CachedHouseholdMember(
     val memberVCardUid: String,
     val role: String? = null,
     val since: String? = null,
-    val until: String? = null,
+    val until: String? = null
 )

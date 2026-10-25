@@ -10,6 +10,7 @@ import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,7 +18,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class ActivitiesUiState(
     val contactId: Int = 0,
@@ -35,13 +35,13 @@ data class ActivitiesUiState(
     @StringRes val errorRes: Int? = null,
     val error: String? = null,
     /** ADR 0008: a delete was rejected with 412 — the record changed elsewhere since the list loaded. */
-    val conflict: Boolean = false,
+    val conflict: Boolean = false
 )
 
 @HiltViewModel
 class ActivitiesViewModel @Inject constructor(
     private val activityRepository: ActivityRepository,
-    savedStateHandle: SavedStateHandle,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val contactId: Int = run {
@@ -81,7 +81,13 @@ class ActivitiesViewModel @Inject constructor(
 
     fun load() {
         if (contactId == 0) {
-            _uiState.update { it.copy(isLoading = false, errorRes = R.string.activity_error_missing_id, error = null) }
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    errorRes = R.string.activity_error_missing_id,
+                    error = null
+                )
+            }
             return
         }
         // A superseding load cancels the previous one so an older, slower
@@ -94,14 +100,20 @@ class ActivitiesViewModel @Inject constructor(
                 contactId,
                 search = filters.searchQuery.ifBlank { null },
                 fromDate = filters.fromDate.ifBlank { null },
-                toDate = filters.toDate.ifBlank { null },
+                toDate = filters.toDate.ifBlank { null }
             ).foldApiError(
                 onSuccess = { page ->
-                    _uiState.update { it.copy(isLoading = false, activities = page.activities, nextCursor = page.nextCursor) }
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            activities = page.activities,
+                            nextCursor = page.nextCursor
+                        )
+                    }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -117,21 +129,26 @@ class ActivitiesViewModel @Inject constructor(
                 cursor = state.nextCursor,
                 search = state.searchQuery.ifBlank { null },
                 fromDate = state.fromDate.ifBlank { null },
-                toDate = state.toDate.ifBlank { null },
+                toDate = state.toDate.ifBlank { null }
             ).foldApiError(
                 onSuccess = { page ->
                     _uiState.update {
-                        it.copy(isLoadingMore = false, activities = it.activities + page.activities, nextCursor = page.nextCursor)
+                        it.copy(
+                            isLoadingMore = false,
+                            activities = it.activities + page.activities,
+                            nextCursor = page.nextCursor
+                        )
                     }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoadingMore = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
 
-    /** Delete an activity (M19). Confirmation is the screen's job — see M17's rule. */
+    /* Delete an activity (M19). Confirmation is the screen's job — see M17's rule. */
+
     /** Conflict dialog "Not now": nothing was deleted; the list stays as it is. */
     fun onConflictDismissed() {
         _uiState.update { it.copy(conflict = false) }
@@ -143,7 +160,9 @@ class ActivitiesViewModel @Inject constructor(
         load()
     }
 
-    private fun revisionOf(id: Int): Int? = _uiState.value.activities.firstOrNull { it.id == id }?.revision
+    private fun revisionOf(id: Int): Int? = _uiState.value.activities.firstOrNull {
+        it.id == id
+    }?.revision
 
     fun delete(id: Int) {
         if (_uiState.value.deletingId != null) return
@@ -152,7 +171,10 @@ class ActivitiesViewModel @Inject constructor(
             activityRepository.delete(id, revisionOf(id)).foldApiError(
                 onSuccess = {
                     _uiState.update { state ->
-                        state.copy(deletingId = null, activities = state.activities.filterNot { it.id == id })
+                        state.copy(
+                            deletingId = null,
+                            activities = state.activities.filterNot { it.id == id }
+                        )
                     }
                 },
                 onError = { error ->
@@ -163,7 +185,7 @@ class ActivitiesViewModel @Inject constructor(
                             it.copy(deletingId = null, error = error.displayMessage)
                         }
                     }
-                },
+                }
             )
         }
     }

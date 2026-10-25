@@ -1,6 +1,5 @@
 package com.mycorrhizal.crm.model.network
 
-import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
 
 /**
@@ -13,7 +12,7 @@ data class ContactRecordInput(
     val gender: String? = null,
     val card: Card? = null,
     val crm: CRMEnvelope? = null,
-    val passthrough: Passthrough? = null,
+    val passthrough: Passthrough? = null
 )
 
 /**
@@ -25,5 +24,5 @@ data class ContactRecordInput(
 @JsonClass(generateAdapter = true)
 data class CreateContactResponse(
     val message: String? = null,
-    val contact: ContactRecordResponse? = null,
+    val contact: ContactRecordResponse? = null
 )

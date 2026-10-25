@@ -23,7 +23,7 @@ data class CadenceHealth(
     /** Issue #1733: an ambient contact is never overdue (the server sends `overdue_by` 0). */
     val ambient: Boolean = false,
     /** [AMBIENT_REASON_HOUSEHOLD] or [AMBIENT_REASON_FLAG]; absent when [ambient] is false. */
-    @Json(name = "ambient_reason") val ambientReason: String? = null,
+    @Json(name = "ambient_reason") val ambientReason: String? = null
 ) {
     /**
      * Mirrors web's `isOverdue = health.overdue_by > 0` — due today is NOT overdue. Never true
@@ -49,7 +49,7 @@ data class CadencePolicy(
     @Json(name = "qualifying_types") val qualifyingTypes: List<String> = emptyList(),
     /** Change-feed tombstone marker (T17); only present via `?since=`. */
     val deleted: Boolean = false,
-    val health: CadenceHealth? = null,
+    val health: CadenceHealth? = null
 )
 
 /** POST /cadence-policies request body. `entity_id` is the Contact.VCardUID. */
@@ -57,7 +57,7 @@ data class CadencePolicy(
 data class CadencePolicyInput(
     @Json(name = "entity_id") val entityId: String,
     @Json(name = "target_interval_days") val targetIntervalDays: Int,
-    @Json(name = "qualifying_types") val qualifyingTypes: List<String> = emptyList(),
+    @Json(name = "qualifying_types") val qualifyingTypes: List<String> = emptyList()
 )
 
 /** GET /cadence-policies — cursor-paginated `{ cadence_policies, total, next_cursor, limit }`. */
@@ -66,7 +66,7 @@ data class CadencePoliciesResponse(
     @Json(name = "cadence_policies") val cadencePolicies: List<CadencePolicy> = emptyList(),
     val total: Int = 0,
     @Json(name = "next_cursor") val nextCursor: String? = null,
-    val limit: Int = 0,
+    val limit: Int = 0
 )
 
 /**
@@ -76,5 +76,5 @@ data class CadencePoliciesResponse(
  */
 @JsonClass(generateAdapter = true)
 data class CreateCadencePolicyResponse(
-    @Json(name = "cadence_policy") val cadencePolicy: CadencePolicy? = null,
+    @Json(name = "cadence_policy") val cadencePolicy: CadencePolicy? = null
 )

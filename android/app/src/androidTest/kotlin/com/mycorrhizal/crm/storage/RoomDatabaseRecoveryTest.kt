@@ -94,7 +94,10 @@ class RoomDatabaseRecoveryTest {
             // The recovery must produce a database that opens and is usable
             // under the new key...
             runBlocking {
-                assertNull("The wiped mirror must not carry over the old (now-unreadable) data", recovered.cachedContactDao().getById(1))
+                assertNull(
+                    "The wiped mirror must not carry over the old (now-unreadable) data",
+                    recovered.cachedContactDao().getById(1)
+                )
                 recovered.cachedContactDao().upsert(CachedContact(id = 2, fn = "Alex Rivera"))
                 assertEquals("Alex Rivera", recovered.cachedContactDao().getById(2)?.fn)
             }

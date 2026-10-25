@@ -48,7 +48,7 @@ import java.time.format.DateTimeFormatter
  */
 class QuickCaptureOverlay(
     private val contactRepository: ContactRepository,
-    private val activityRepository: ActivityRepository,
+    private val activityRepository: ActivityRepository
 ) {
 
     private var composeView: ComposeView? = null
@@ -65,7 +65,7 @@ class QuickCaptureOverlay(
                         contactRepository = contactRepository,
                         activityRepository = activityRepository,
                         onDismiss = { dismiss() },
-                        onFirstInteraction = autoDismiss::cancel,
+                        onFirstInteraction = autoDismiss::cancel
                     )
                 }
             }
@@ -77,7 +77,7 @@ class QuickCaptureOverlay(
             // The sheet holds editable text, so it must be focusable (a
             // NOT_FOCUSABLE overlay cannot receive the keyboard).
             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
-            PixelFormat.TRANSLUCENT,
+            PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.BOTTOM
             y = (BOTTOM_OFFSET_DP * context.resources.displayMetrics.density).toInt()
@@ -117,7 +117,7 @@ private fun QuickCaptureSheetHost(
     contactRepository: ContactRepository,
     activityRepository: ActivityRepository,
     onDismiss: () -> Unit,
-    onFirstInteraction: () -> Unit,
+    onFirstInteraction: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
     var contact by remember(phoneNumber) { mutableStateOf<ContactSummary?>(null) }
@@ -140,10 +140,10 @@ private fun QuickCaptureSheetHost(
             scope = scope,
             prefill = QuickCapturePrefillFactory.forCall(
                 contact = contact,
-                nowIso = nowIsoString(),
+                nowIso = nowIsoString()
             ),
             blankTitleMessage = blankTitleMessage,
-            onFirstInteraction = onFirstInteraction,
+            onFirstInteraction = onFirstInteraction
         )
     }
 
@@ -151,7 +151,7 @@ private fun QuickCaptureSheetHost(
         state = formState,
         onDismiss = onDismiss,
         onFirstInteraction = onFirstInteraction,
-        resolving = !resolved,
+        resolving = !resolved
     )
 }
 

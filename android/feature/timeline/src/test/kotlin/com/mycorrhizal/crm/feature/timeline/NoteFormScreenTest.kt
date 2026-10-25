@@ -4,18 +4,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import com.mycorrhizal.crm.ui.components.FormScaffold
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.swipeUp
-import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.performTextInput
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.ui.components.FormScaffold
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -41,7 +41,7 @@ class NoteFormScreenTest {
         onSearchChange: (String) -> Unit = {},
         onPickContact: (ContactSummary) -> Unit = {},
         onClearContact: () -> Unit = {},
-        onSave: () -> Unit = {},
+        onSave: () -> Unit = {}
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -51,7 +51,7 @@ class NoteFormScreenTest {
                     saveLabel = if (state.isEdit) "Save changes" else "Create note",
                     isSaving = state.isSaving,
                     onSave = onSave,
-                    snackbarHostState = remember { SnackbarHostState() },
+                    snackbarHostState = remember { SnackbarHostState() }
                 ) { padding ->
                     NoteFormContent(
                         state = state,
@@ -60,7 +60,7 @@ class NoteFormScreenTest {
                         onContactSearchChange = onSearchChange,
                         onPickContact = onPickContact,
                         onClearContact = onClearContact,
-                        modifier = Modifier.padding(padding),
+                        modifier = Modifier.padding(padding)
                     )
                 }
             }
@@ -72,7 +72,7 @@ class NoteFormScreenTest {
         var cleared = false
         setContent(
             NoteFormState(contactId = 5, targetContactId = 9, targetContactName = "Dana Lee"),
-            onClearContact = { cleared = true },
+            onClearContact = { cleared = true }
         )
         composeTestRule.onNodeWithText("Dana Lee").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Clear").performScrollTo().performClick()
@@ -84,7 +84,7 @@ class NoteFormScreenTest {
         var query = ""
         setContent(
             NoteFormState(contactId = 5),
-            onSearchChange = { query = it },
+            onSearchChange = { query = it }
         )
         composeTestRule.onNodeWithText("Search contacts").performScrollTo().performTextInput("dana")
         assertEquals("dana", query)
@@ -97,9 +97,11 @@ class NoteFormScreenTest {
             NoteFormState(
                 contactId = 5,
                 contactSearchQuery = "dana",
-                contactSearchResults = listOf(ContactSummary(id = 9, firstname = "Dana", lastname = "Lee")),
+                contactSearchResults = listOf(
+                    ContactSummary(id = 9, firstname = "Dana", lastname = "Lee")
+                )
             ),
-            onPickContact = { picked = it },
+            onPickContact = { picked = it }
         )
         composeTestRule.onNodeWithText("Dana Lee").performScrollTo().performClick()
         assertEquals(9, picked?.id)
@@ -110,7 +112,7 @@ class NoteFormScreenTest {
         var saved = false
         setContent(
             NoteFormState(contactId = 5, content = "Loves climbing"),
-            onSave = { saved = true },
+            onSave = { saved = true }
         )
         composeTestRule.onNodeWithText("Create note").performClick()
         assertEquals(true, saved)
@@ -122,12 +124,18 @@ class NoteFormScreenTest {
     @Config(qualifiers = "w360dp-h400dp")
     fun `save button stays displayed without scrolling and while the form scrolls`() {
         var saved = false
-        setContent(NoteFormState(contactId = 5, content = "Loves climbing"), onSave = { saved = true })
+        setContent(
+            NoteFormState(contactId = 5, content = "Loves climbing"),
+            onSave = { saved = true }
+        )
 
         composeTestRule.onNodeWithText("Create note").assertIsDisplayed()
         composeTestRule.onNode(hasScrollAction()).performTouchInput { swipeUp() }
         composeTestRule.onNodeWithText("Create note").assertIsDisplayed()
-        composeTestRule.onNode(hasScrollAction()).performTouchInput { swipeDown(); swipeDown() }
+        composeTestRule.onNode(hasScrollAction()).performTouchInput {
+            swipeDown()
+            swipeDown()
+        }
         composeTestRule.onNodeWithText("Create note").assertIsDisplayed()
         composeTestRule.onNodeWithText("Create note").performClick()
         assertEquals(true, saved)
@@ -137,7 +145,9 @@ class NoteFormScreenTest {
     // it; Change reveals the search, and picking a result hides it again.
     @Test
     fun `an assigned contact hides the search until Change is tapped`() {
-        setContent(NoteFormState(contactId = 5, targetContactId = 9, targetContactName = "Dana Lee"))
+        setContent(
+            NoteFormState(contactId = 5, targetContactId = 9, targetContactName = "Dana Lee")
+        )
         composeTestRule.onNodeWithText("Dana Lee").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Search contacts").assertDoesNotExist()
         composeTestRule.onNodeWithText("Change").performScrollTo().performClick()

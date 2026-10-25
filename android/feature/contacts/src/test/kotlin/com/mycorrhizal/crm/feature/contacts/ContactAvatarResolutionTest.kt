@@ -16,7 +16,10 @@ class ContactAvatarResolutionTest {
     fun `a relative photo path is prefixed with the configured server origin`() {
         assertEquals(
             "https://crm.example.com/api/v1/contacts/5/profile_picture?thumbnail=true",
-            resolvePhotoUri("/api/v1/contacts/5/profile_picture?thumbnail=true", "https://crm.example.com"),
+            resolvePhotoUri(
+                "/api/v1/contacts/5/profile_picture?thumbnail=true",
+                "https://crm.example.com"
+            )
         )
     }
 
@@ -25,11 +28,11 @@ class ContactAvatarResolutionTest {
         val path = "/api/v1/contacts/5/profile_picture"
         assertEquals(
             "https://a.example.com$path",
-            resolvePhotoUri(path, "https://a.example.com"),
+            resolvePhotoUri(path, "https://a.example.com")
         )
         assertEquals(
             "https://b.example.com$path",
-            resolvePhotoUri(path, "https://b.example.com"),
+            resolvePhotoUri(path, "https://b.example.com")
         )
     }
 
@@ -38,18 +41,24 @@ class ContactAvatarResolutionTest {
         // Previews/tests without a session: the interceptors still rewrite it.
         assertEquals(
             "http://mycorrhizal.invalid/api/v1/contacts/5/profile_picture",
-            resolvePhotoUri("/api/v1/contacts/5/profile_picture", ""),
+            resolvePhotoUri("/api/v1/contacts/5/profile_picture", "")
         )
     }
 
     @Test
     fun `an absolute http url passes through unchanged`() {
-        assertEquals("https://cdn.example.com/pic.jpg", resolvePhotoUri("https://cdn.example.com/pic.jpg", "https://crm.example.com"))
+        assertEquals(
+            "https://cdn.example.com/pic.jpg",
+            resolvePhotoUri("https://cdn.example.com/pic.jpg", "https://crm.example.com")
+        )
     }
 
     @Test
     fun `a data uri passes through unchanged`() {
-        assertEquals("data:image/png;base64,AAAA", resolvePhotoUri("data:image/png;base64,AAAA", "https://crm.example.com"))
+        assertEquals(
+            "data:image/png;base64,AAAA",
+            resolvePhotoUri("data:image/png;base64,AAAA", "https://crm.example.com")
+        )
     }
 
     @Test

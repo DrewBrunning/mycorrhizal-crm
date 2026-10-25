@@ -8,6 +8,7 @@ import com.mycorrhizal.crm.domain.profile.ServerProfileKind
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -20,7 +21,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import java.util.UUID
 
 /**
  * Issue #1264: the per-profile last-export / dismissal bookkeeping. The DataStore

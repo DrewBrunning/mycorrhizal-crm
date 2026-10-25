@@ -30,7 +30,9 @@ class GeoPulseSettingsViewModelTest {
         GeoPulseConfigResponse(baseUrl = url, hasApiKey = true)
 
     @Test
-    fun `load populates the config and never the token`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `load populates the config and never the token`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.getConfig() } returns Result.success(connected())
         val vm = GeoPulseSettingsViewModel(repository)
         advanceUntilIdle()
@@ -80,7 +82,11 @@ class GeoPulseSettingsViewModelTest {
             vm.save()
             advanceUntilIdle()
 
-            coVerify { repository.saveConfig(GeoPulseConfigInput("https://geo.example.com", "secret-token")) }
+            coVerify {
+                repository.saveConfig(
+                    GeoPulseConfigInput("https://geo.example.com", "secret-token")
+                )
+            }
             val state = vm.uiState.value
             assertTrue(state.hasApiKey)
             assertEquals("", state.apiKey)
@@ -91,8 +97,14 @@ class GeoPulseSettingsViewModelTest {
     @Test
     fun `same-origin path change keeps the stored token and sends an empty one`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            coEvery { repository.getConfig() } returns Result.success(connected("https://geo.example.com"))
-            coEvery { repository.saveConfig(any()) } returns Result.success(connected("https://GEO.example.com:443/app"))
+            coEvery { repository.getConfig() } returns Result.success(
+                connected("https://geo.example.com")
+            )
+            coEvery {
+                repository.saveConfig(
+                    any()
+                )
+            } returns Result.success(connected("https://GEO.example.com:443/app"))
             val vm = GeoPulseSettingsViewModel(repository)
             advanceUntilIdle()
 
@@ -102,13 +114,19 @@ class GeoPulseSettingsViewModelTest {
             vm.save()
             advanceUntilIdle()
 
-            coVerify { repository.saveConfig(GeoPulseConfigInput("https://GEO.example.com:443/app", "")) }
+            coVerify {
+                repository.saveConfig(
+                    GeoPulseConfigInput("https://GEO.example.com:443/app", "")
+                )
+            }
         }
 
     @Test
     fun `changing the origin requires re-entering the token (issue 1501)`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            coEvery { repository.getConfig() } returns Result.success(connected("https://geo.example.com"))
+            coEvery { repository.getConfig() } returns Result.success(
+                connected("https://geo.example.com")
+            )
             val vm = GeoPulseSettingsViewModel(repository)
             advanceUntilIdle()
 
@@ -117,7 +135,10 @@ class GeoPulseSettingsViewModelTest {
             vm.save()
             advanceUntilIdle()
 
-            assertEquals(R.string.geopulse_settings_api_key_required_origin_change, vm.uiState.value.saveErrorRes)
+            assertEquals(
+                R.string.geopulse_settings_api_key_required_origin_change,
+                vm.uiState.value.saveErrorRes
+            )
             coVerify(exactly = 0) { repository.saveConfig(any()) }
 
             // Scheme and port changes are origin changes too.
@@ -129,8 +150,14 @@ class GeoPulseSettingsViewModelTest {
 
     @Test
     fun `origin change with a fresh token is sent`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { repository.getConfig() } returns Result.success(connected("https://geo.example.com"))
-        coEvery { repository.saveConfig(any()) } returns Result.success(connected("https://new.example.com"))
+        coEvery { repository.getConfig() } returns Result.success(
+            connected("https://geo.example.com")
+        )
+        coEvery {
+            repository.saveConfig(
+                any()
+            )
+        } returns Result.success(connected("https://new.example.com"))
         val vm = GeoPulseSettingsViewModel(repository)
         advanceUntilIdle()
 
@@ -144,7 +171,9 @@ class GeoPulseSettingsViewModelTest {
     }
 
     @Test
-    fun `invalid and blank base urls are rejected client-side`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `invalid and blank base urls are rejected client-side`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.getConfig() } returns Result.success(GeoPulseConfigResponse())
         val vm = GeoPulseSettingsViewModel(repository)
         advanceUntilIdle()
@@ -164,7 +193,9 @@ class GeoPulseSettingsViewModelTest {
     fun `a server rejection of the token is shown`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { repository.getConfig() } returns Result.success(GeoPulseConfigResponse())
         coEvery { repository.saveConfig(any()) } returns
-            Result.failure(ApiError.Client(400, "re-enter the API token when changing the GeoPulse server"))
+            Result.failure(
+                ApiError.Client(400, "re-enter the API token when changing the GeoPulse server")
+            )
         val vm = GeoPulseSettingsViewModel(repository)
         advanceUntilIdle()
 
@@ -173,7 +204,10 @@ class GeoPulseSettingsViewModelTest {
         vm.save()
         advanceUntilIdle()
 
-        assertEquals("re-enter the API token when changing the GeoPulse server", vm.uiState.value.saveError)
+        assertEquals(
+            "re-enter the API token when changing the GeoPulse server",
+            vm.uiState.value.saveError
+        )
         assertFalse(vm.uiState.value.isSaving)
     }
 
@@ -182,7 +216,11 @@ class GeoPulseSettingsViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { repository.getConfig() } returns Result.success(connected())
             coEvery { repository.testConnection() } returns Result.success(
-                GeoPulseConnectionTestResult(ok = false, stage = "auth", message = "API token rejected"),
+                GeoPulseConnectionTestResult(
+                    ok = false,
+                    stage = "auth",
+                    message = "API token rejected"
+                )
             )
             val vm = GeoPulseSettingsViewModel(repository)
             advanceUntilIdle()
@@ -191,14 +229,21 @@ class GeoPulseSettingsViewModelTest {
             advanceUntilIdle()
 
             val result = vm.uiState.value.testResult
-            assertEquals(GeoPulseTestOutcome(ok = false, stage = "auth", message = "API token rejected"), result)
+            assertEquals(
+                GeoPulseTestOutcome(ok = false, stage = "auth", message = "API token rejected"),
+                result
+            )
             assertFalse(vm.uiState.value.isTesting)
         }
 
     @Test
-    fun `test connection transport failure is a failed outcome`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `test connection transport failure is a failed outcome`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.getConfig() } returns Result.success(connected())
-        coEvery { repository.testConnection() } returns Result.failure(ApiError.Client(400, "No GeoPulse connection"))
+        coEvery { repository.testConnection() } returns Result.failure(
+            ApiError.Client(400, "No GeoPulse connection")
+        )
         val vm = GeoPulseSettingsViewModel(repository)
         advanceUntilIdle()
 
@@ -210,7 +255,9 @@ class GeoPulseSettingsViewModelTest {
     }
 
     @Test
-    fun `disconnect resets to the unconnected state`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `disconnect resets to the unconnected state`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.getConfig() } returns Result.success(connected())
         coEvery { repository.deleteConfig() } returns Result.success(Unit)
         val vm = GeoPulseSettingsViewModel(repository)

@@ -15,7 +15,6 @@ import com.mycorrhizal.crm.model.network.ImmichPersonSummary
 import com.mycorrhizal.crm.model.network.NextcloudConfigInput
 import com.mycorrhizal.crm.model.network.NextcloudConfigResponse
 import com.mycorrhizal.crm.model.network.NextcloudConnectionTestResult
-import com.mycorrhizal.crm.model.network.NextcloudLinkRequest
 import com.mycorrhizal.crm.model.network.PaperlessConfigInput
 import com.mycorrhizal.crm.model.network.PaperlessConfigResponse
 import com.mycorrhizal.crm.model.network.PaperlessConnectionTestResult

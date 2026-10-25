@@ -1,6 +1,5 @@
 package com.mycorrhizal.crm.feature.timeline
 
-import com.mycorrhizal.crm.ui.components.activityTypeLabel
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,7 +19,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -42,19 +40,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ContactFlat
-import com.mycorrhizal.crm.ui.components.BrandFab
-import com.mycorrhizal.crm.ui.components.FabListContentPadding
-import com.mycorrhizal.crm.ui.components.EmptyState
-import com.mycorrhizal.crm.ui.components.LoadingSkeleton
-import com.mycorrhizal.crm.ui.components.RefreshableContent
-import com.mycorrhizal.crm.ui.R
-import com.mycorrhizal.crm.ui.components.WriteConflictDialog
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.ui.LocalDateFormat
+import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
+import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.RefreshableContent
+import com.mycorrhizal.crm.ui.components.WriteConflictDialog
+import com.mycorrhizal.crm.ui.components.activityTypeLabel
 
 /**
  * M19: per-contact activities list. Gained a search field + from/to-date
@@ -69,7 +68,7 @@ fun ActivitiesScreen(
     onCreateActivity: () -> Unit,
     onEditActivity: (Int) -> Unit,
     onContactClick: (Int) -> Unit,
-    viewModel: ActivitiesViewModel = hiltViewModel(),
+    viewModel: ActivitiesViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     ActivitiesScreenContent(
@@ -86,7 +85,7 @@ fun ActivitiesScreen(
         onRefresh = viewModel::load,
         onErrorShown = viewModel::onErrorShown,
         onConflictDismiss = viewModel::onConflictDismissed,
-        onConflictLoadLatest = viewModel::onConflictLoadLatest,
+        onConflictLoadLatest = viewModel::onConflictLoadLatest
     )
 }
 
@@ -110,39 +109,49 @@ fun ActivitiesScreenContent(
     onRefresh: () -> Unit = {},
     onErrorShown: () -> Unit = {},
     onConflictDismiss: () -> Unit = {},
-    onConflictLoadLatest: () -> Unit = {},
+    onConflictLoadLatest: () -> Unit = {}
 ) {
     val state = uiState
     val snackbarHostState = remember { SnackbarHostState() }
     var pendingDelete by remember { mutableStateOf<Activity?>(null) }
 
-    val hasFilters = state.searchQuery.isNotBlank() || state.fromDate.isNotBlank() || state.toDate.isNotBlank()
+    val hasFilters =
+        state.searchQuery.isNotBlank() || state.fromDate.isNotBlank() || state.toDate.isNotBlank()
 
     Scaffold(
         topBar = {
             TopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back)
+                        )
                     }
                 },
                 title = {
-                    Text(stringResource(R.string.nav_activities), style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        stringResource(R.string.nav_activities),
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
         floatingActionButton = {
             BrandFab(onClick = onCreateActivity) {
-                Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.cd_new_activity))
+                Icon(
+                    Icons.Outlined.Add,
+                    contentDescription = stringResource(R.string.cd_new_activity)
+                )
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             TimelineFilterRow(
@@ -152,31 +161,54 @@ fun ActivitiesScreenContent(
                 onFromDateChange = onFromDateChange,
                 toDate = state.toDate,
                 onToDateChange = onToDateChange,
-                searchLabelRes = R.string.activities_search,
+                searchLabelRes = R.string.activities_search
             )
             Box(modifier = Modifier.fillMaxSize()) {
                 RefreshableContent(
                     isRefreshing = state.isLoading && state.activities.isNotEmpty(),
                     onRefresh = onRefresh,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize()
                 ) {
                     when {
                         state.isLoading && state.activities.isEmpty() -> LoadingSkeleton()
+
                         // The error/errorRes branch must precede the generic empty
                         // branch: the missing-contact-id state sets errorRes with
                         // error == null, so the empty branch used to swallow it and
                         // show "No activities yet" instead of the real cause.
-                        state.activities.isEmpty() && (state.errorRes != null || state.error != null) ->
-                            EmptyState(state.errorRes?.let { stringResource(it) } ?: state.error.orEmpty())
+                        state.activities.isEmpty() &&
+                            (state.errorRes != null || state.error != null) ->
+                            EmptyState(
+                                state.errorRes?.let { stringResource(it) } ?: state.error.orEmpty()
+                            )
+
                         state.activities.isEmpty() && state.error == null ->
                             EmptyState(
-                                title = stringResource(if (hasFilters) R.string.activities_no_results else R.string.activities_empty),
-                                body = if (hasFilters) null else stringResource(R.string.activities_empty_body),
-                                actionLabel = if (hasFilters) null else stringResource(R.string.cd_new_activity),
-                                onAction = if (hasFilters) null else onCreateActivity,
+                                title = stringResource(
+                                    if (hasFilters) R.string.activities_no_results else R.string.activities_empty
+                                ),
+                                body = if (hasFilters) {
+                                    null
+                                } else {
+                                    stringResource(
+                                        R.string.activities_empty_body
+                                    )
+                                },
+                                actionLabel = if (hasFilters) {
+                                    null
+                                } else {
+                                    stringResource(
+                                        R.string.cd_new_activity
+                                    )
+                                },
+                                onAction = if (hasFilters) null else onCreateActivity
                             )
+
                         else -> {
-                            LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = FabListContentPadding) {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = FabListContentPadding
+                            ) {
                                 items(state.activities, key = { it.id }) { activity ->
                                     ActivityListItem(
                                         activity = activity,
@@ -186,13 +218,19 @@ fun ActivitiesScreenContent(
                                         isDeleting = state.deletingId == activity.id,
                                         // Issue #1763: this list is already scoped to one
                                         // contact, so repeating its chip on every row is noise.
-                                        showContactChips = false,
+                                        showContactChips = false
                                     )
                                 }
                                 if (!state.nextCursor.isNullOrEmpty()) {
                                     item {
-                                        Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                                            Button(onClick = onLoadMore, enabled = !state.isLoadingMore) {
+                                        Box(
+                                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Button(
+                                                onClick = onLoadMore,
+                                                enabled = !state.isLoadingMore
+                                            ) {
                                                 Text(stringResource(R.string.action_load_more))
                                             }
                                         }
@@ -210,7 +248,14 @@ fun ActivitiesScreenContent(
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
             title = { Text(stringResource(R.string.activities_delete_title)) },
-            text = { Text(stringResource(R.string.activities_delete_confirm, activity.title.orEmpty().take(80))) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.activities_delete_confirm,
+                        activity.title.orEmpty().take(80)
+                    )
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
                     onDelete(activity.id)
@@ -223,7 +268,7 @@ fun ActivitiesScreenContent(
                 TextButton(onClick = { pendingDelete = null }) {
                     Text(stringResource(R.string.action_cancel))
                 }
-            },
+            }
         )
     }
 
@@ -235,7 +280,7 @@ fun ActivitiesScreenContent(
             onLoadLatest = onConflictLoadLatest,
             onKeep = onConflictDismiss,
             messageRes = R.string.conflict_message_delete,
-            keepLabelRes = R.string.conflict_dismiss,
+            keepLabelRes = R.string.conflict_dismiss
         )
     }
 
@@ -258,7 +303,7 @@ fun ActivityListItem(
     modifier: Modifier = Modifier,
     // Issue #1763: hide the participant chips when the list is already scoped to
     // this contact (the per-contact Activities screen) instead of repeating it.
-    showContactChips: Boolean = true,
+    showContactChips: Boolean = true
 ) {
     val dateFormat = LocalDateFormat.current
     Row(
@@ -266,37 +311,42 @@ fun ActivityListItem(
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = activity.title.orEmpty(),
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
             val subtitle = listOfNotNull(
                 activity.type?.takeIf { it.isNotBlank() }?.let { activityTypeLabel(it) },
                 activity.location?.takeIf { it.isNotBlank() },
-                activity.date?.let { DateFormat.formatTimestamp(it, dateFormat) }?.takeIf { it.isNotBlank() },
+                activity.date?.let {
+                    DateFormat.formatTimestamp(
+                        it,
+                        dateFormat
+                    )
+                }?.takeIf { it.isNotBlank() }
             ).joinToString(" · ")
             if (subtitle.isNotBlank()) {
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             val contacts = if (showContactChips) activity.contacts.orEmpty() else emptyList()
             if (contacts.isNotEmpty()) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.padding(top = 6.dp),
+                    modifier = Modifier.padding(top = 6.dp)
                 ) {
                     contacts.forEach { contact: ContactFlat ->
                         AssistChip(
                             onClick = { onContactClick(contact.id) },
-                            label = { Text(contact.displayName) },
+                            label = { Text(contact.displayName) }
                         )
                     }
                 }
@@ -307,7 +357,7 @@ fun ActivityListItem(
         IconButton(onClick = onClick) {
             Icon(
                 Icons.Outlined.Edit,
-                contentDescription = stringResource(R.string.activity_edit),
+                contentDescription = stringResource(R.string.activity_edit)
             )
         }
         IconButton(onClick = onDelete, enabled = !isDeleting) {
@@ -315,7 +365,10 @@ fun ActivityListItem(
             // doesn't read a bare "Delete" on every row.
             Icon(
                 Icons.Outlined.Delete,
-                contentDescription = stringResource(R.string.activities_delete_named, activity.title.orEmpty()),
+                contentDescription = stringResource(
+                    R.string.activities_delete_named,
+                    activity.title.orEmpty()
+                )
             )
         }
     }

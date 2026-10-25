@@ -26,7 +26,7 @@ class CustomLinkActionsViewModelTest {
         label = "Open in MyApp",
         kind = "APP_OPEN",
         mimeType = "text/plain",
-        intentUriTemplate = "myapp://open?id={value}",
+        intentUriTemplate = "myapp://open?id={value}"
     )
 
     @Test
@@ -60,15 +60,17 @@ class CustomLinkActionsViewModelTest {
                     label = "Open in MyApp",
                     kind = "APP_OPEN",
                     mimeType = "text/plain",
-                    intentUriTemplate = "myapp://open?id={value}",
-                ),
+                    intentUriTemplate = "myapp://open?id={value}"
+                )
             )
         }
         assertEquals(1, vm.uiState.value.actions.size)
     }
 
     @Test
-    fun `add does nothing when any trimmed field is blank`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `add does nothing when any trimmed field is blank`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.getAll() } returns emptyList()
         val vm = CustomLinkActionsViewModel(repository)
         advanceUntilIdle()

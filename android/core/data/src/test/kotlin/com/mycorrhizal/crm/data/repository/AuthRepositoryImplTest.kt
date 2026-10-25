@@ -3,13 +3,13 @@ package com.mycorrhizal.crm.data.repository
 import com.mycorrhizal.crm.data.session.DefaultSessionManager
 import com.mycorrhizal.crm.data.session.FakeSessionPrefsStorage
 import com.mycorrhizal.crm.data.session.FakeTokenStorage
-import com.mycorrhizal.crm.domain.repository.SecondFactorProof
-import com.mycorrhizal.crm.model.network.TwoFactorSetupResponse
 import com.mycorrhizal.crm.domain.repository.LoginOutcome
+import com.mycorrhizal.crm.domain.repository.SecondFactorProof
 import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.model.network.EnabledContactFieldsResponse
 import com.mycorrhizal.crm.model.network.MessageResponse
 import com.mycorrhizal.crm.model.network.TwoFactorConfirmResponse
+import com.mycorrhizal.crm.model.network.TwoFactorSetupResponse
 import com.mycorrhizal.crm.model.network.UserProfile
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
@@ -40,10 +40,10 @@ class AuthRepositoryImplTest {
         val h = Harness()
         h.sessionManager.setServerUrl("https://crm.example.com")
         coEvery { h.apiClient.login(any(), any()) } returns Result.success(
-            LoginResult(token = "jwt-123", language = "en", dateFormat = "eu"),
+            LoginResult(token = "jwt-123", language = "en", dateFormat = "eu")
         )
         coEvery { h.apiClient.currentUser() } returns Result.success(
-            UserProfile(id = 7, username = "alice", isAdmin = true, language = "en"),
+            UserProfile(id = 7, username = "alice", isAdmin = true, language = "en")
         )
 
         val result = h.repository.login("alice", "secret")
@@ -63,7 +63,7 @@ class AuthRepositoryImplTest {
         val h = Harness()
         h.sessionManager.setServerUrl("https://crm.example.com")
         coEvery { h.apiClient.login(any(), any()) } returns Result.success(
-            LoginResult(token = "jwt-123", language = "en", dateFormat = "eu"),
+            LoginResult(token = "jwt-123", language = "en", dateFormat = "eu")
         )
         // The profile fetch must observe the token already in the session — the
         // AuthInterceptor reads bearerToken() synchronously, so if the token is
@@ -85,7 +85,7 @@ class AuthRepositoryImplTest {
     fun `login propagates failure when server rejects credentials`() = runTest {
         val h = Harness()
         coEvery { h.apiClient.login(any(), any()) } returns Result.failure(
-            ApiError.Client(401, "Invalid credentials"),
+            ApiError.Client(401, "Invalid credentials")
         )
 
         val result = h.repository.login("alice", "wrong")
@@ -98,7 +98,7 @@ class AuthRepositoryImplTest {
     fun `login fails when no token cookie is returned`() = runTest {
         val h = Harness()
         coEvery { h.apiClient.login(any(), any()) } returns Result.success(
-            LoginResult(token = null, language = "en", dateFormat = "eu"),
+            LoginResult(token = null, language = "en", dateFormat = "eu")
         )
 
         val result = h.repository.login("alice", "secret")
@@ -118,10 +118,10 @@ class AuthRepositoryImplTest {
         val h = Harness()
         h.sessionManager.setServerUrl("https://crm.example.com")
         coEvery { h.apiClient.login(any(), any()) } returns Result.success(
-            LoginResult(token = "jwt-123", language = "en", dateFormat = "eu"),
+            LoginResult(token = "jwt-123", language = "en", dateFormat = "eu")
         )
         coEvery { h.apiClient.currentUser() } returns Result.failure(
-            ApiError.Client(500, "Internal server error"),
+            ApiError.Client(500, "Internal server error")
         )
 
         val result = h.repository.login("alice", "secret")
@@ -139,13 +139,19 @@ class AuthRepositoryImplTest {
         val h = Harness()
         h.sessionManager.setServerUrl("https://crm.example.com")
         coEvery { h.apiClient.login(any(), any()) } returns Result.success(
-            LoginResult(token = null, language = null, dateFormat = null, twoFactorRequired = true, pending2faCookie = "challenge-jwt"),
+            LoginResult(
+                token = null,
+                language = null,
+                dateFormat = null,
+                twoFactorRequired = true,
+                pending2faCookie = "challenge-jwt"
+            )
         )
         coEvery { h.apiClient.complete2faLogin("123456", "challenge-jwt") } returns Result.success(
-            LoginResult(token = "jwt-2fa", language = "en", dateFormat = "eu"),
+            LoginResult(token = "jwt-2fa", language = "en", dateFormat = "eu")
         )
         coEvery { h.apiClient.currentUser() } returns Result.failure(
-            ApiError.Client(500, "Internal server error"),
+            ApiError.Client(500, "Internal server error")
         )
         h.repository.login("alice", "secret")
 
@@ -162,7 +168,7 @@ class AuthRepositoryImplTest {
     fun `loginWithApiToken clears the session when the profile fetch fails`() = runTest {
         val h = Harness()
         coEvery { h.apiClient.currentUser() } returns Result.failure(
-            ApiError.Client(401, "Authorization token required"),
+            ApiError.Client(401, "Authorization token required")
         )
 
         val result = h.repository.loginWithApiToken("mycorrhizal_bad")
@@ -178,7 +184,7 @@ class AuthRepositoryImplTest {
     fun `loginWithApiToken stores the token and fetches profile`() = runTest {
         val h = Harness()
         coEvery { h.apiClient.currentUser() } returns Result.success(
-            UserProfile(id = 3, username = "bot", isAdmin = false),
+            UserProfile(id = 3, username = "bot", isAdmin = false)
         )
 
         val result = h.repository.loginWithApiToken("mycorrhizal_abc123")
@@ -191,21 +197,22 @@ class AuthRepositoryImplTest {
     // --- Issue #965: Android OIDC native-return exchange ---
 
     @Test
-    fun `completeOidcNativeLogin returns the exchanged session token without persisting it`() = runTest {
-        val h = Harness()
-        coEvery { h.apiClient.exchangeOidcNativeCode("code-1", "verifier-1") } returns
-            Result.success("jwt-from-exchange")
+    fun `completeOidcNativeLogin returns the exchanged session token without persisting it`() =
+        runTest {
+            val h = Harness()
+            coEvery { h.apiClient.exchangeOidcNativeCode("code-1", "verifier-1") } returns
+                Result.success("jwt-from-exchange")
 
-        val result = h.repository.completeOidcNativeLogin("code-1", "verifier-1")
+            val result = h.repository.completeOidcNativeLogin("code-1", "verifier-1")
 
-        assertTrue(result.isSuccess)
-        assertEquals("jwt-from-exchange", result.getOrThrow())
-        // The Activity owns persistence for this flow; the repository must not
-        // flip the session before the caller stores the token.
-        assertNull(h.tokenStorage.stored)
-        assertFalse(h.sessionManager.observeSession().first().isLoggedIn)
-        coVerify(exactly = 1) { h.apiClient.exchangeOidcNativeCode("code-1", "verifier-1") }
-    }
+            assertTrue(result.isSuccess)
+            assertEquals("jwt-from-exchange", result.getOrThrow())
+            // The Activity owns persistence for this flow; the repository must not
+            // flip the session before the caller stores the token.
+            assertNull(h.tokenStorage.stored)
+            assertFalse(h.sessionManager.observeSession().first().isLoggedIn)
+            coVerify(exactly = 1) { h.apiClient.exchangeOidcNativeCode("code-1", "verifier-1") }
+        }
 
     @Test
     fun `completeOidcNativeLogin propagates a rejected code as a failure`() = runTest {
@@ -223,7 +230,7 @@ class AuthRepositoryImplTest {
     fun `logout clears the session`() = runTest {
         val h = Harness()
         coEvery { h.apiClient.login(any(), any()) } returns Result.success(
-            LoginResult(token = "jwt-123", language = null, dateFormat = null),
+            LoginResult(token = "jwt-123", language = null, dateFormat = null)
         )
         coEvery { h.apiClient.currentUser() } returns Result.success(UserProfile(id = 1))
         h.repository.login("alice", "secret")
@@ -241,7 +248,9 @@ class AuthRepositoryImplTest {
         val h = Harness()
         h.sessionManager.setSession("https://crm.example.com", "jwt", SessionState(language = "en"))
         coEvery { h.apiClient.updateLanguage("de") } returns Result.success(
-            com.mycorrhizal.crm.model.network.MessageResponse(message = "Language updated successfully"),
+            com.mycorrhizal.crm.model.network.MessageResponse(
+                message = "Language updated successfully"
+            )
         )
 
         val result = h.repository.updateLanguage("de")
@@ -255,21 +264,30 @@ class AuthRepositoryImplTest {
     fun `updateLanguage propagates a server rejection`() = runTest {
         val h = Harness()
         coEvery { h.apiClient.updateLanguage("xx") } returns Result.failure(
-            ApiError.Client(400, "Invalid value for field 'language'"),
+            ApiError.Client(400, "Invalid value for field 'language'")
         )
 
         val result = h.repository.updateLanguage("xx")
 
         assertTrue(result.isFailure)
-        assertEquals("Invalid value for field 'language'", (result.exceptionOrNull() as ApiError).displayMessage)
+        assertEquals(
+            "Invalid value for field 'language'",
+            (result.exceptionOrNull() as ApiError).displayMessage
+        )
     }
 
     @Test
     fun `updateDateFormat patches the server and merges the format into the session`() = runTest {
         val h = Harness()
-        h.sessionManager.setSession("https://crm.example.com", "jwt", SessionState(dateFormat = "eu"))
+        h.sessionManager.setSession(
+            "https://crm.example.com",
+            "jwt",
+            SessionState(dateFormat = "eu")
+        )
         coEvery { h.apiClient.updateDateFormat("us") } returns Result.success(
-            com.mycorrhizal.crm.model.network.MessageResponse(message = "Date format updated successfully"),
+            com.mycorrhizal.crm.model.network.MessageResponse(
+                message = "Date format updated successfully"
+            )
         )
 
         val result = h.repository.updateDateFormat("us")
@@ -282,72 +300,92 @@ class AuthRepositoryImplTest {
     // --- T90 / issue #831: Mark as Me / Unmark as Me (Android parity) ---
 
     @Test
-    fun `updateSelfContact patches the server and overwrites the pointer in the session`() = runTest {
-        val h = Harness()
-        h.sessionManager.setSession("https://crm.example.com", "jwt", SessionState(selfContactVCardUid = null))
-        coEvery { h.apiClient.updateSelfContact("uid-1") } returns Result.success(
-            MessageResponse(message = "Self contact updated"),
-        )
+    fun `updateSelfContact patches the server and overwrites the pointer in the session`() =
+        runTest {
+            val h = Harness()
+            h.sessionManager.setSession(
+                "https://crm.example.com",
+                "jwt",
+                SessionState(selfContactVCardUid = null)
+            )
+            coEvery { h.apiClient.updateSelfContact("uid-1") } returns Result.success(
+                MessageResponse(message = "Self contact updated")
+            )
 
-        val result = h.repository.updateSelfContact("uid-1")
+            val result = h.repository.updateSelfContact("uid-1")
 
-        assertTrue(result.isSuccess)
-        coVerify { h.apiClient.updateSelfContact("uid-1") }
-        assertEquals("uid-1", h.sessionManager.observeSession().first().selfContactVCardUid)
-    }
-
-    @Test
-    fun `updateSelfContact with null clears the pointer even though setProfile would have kept it`() = runTest {
-        val h = Harness()
-        h.sessionManager.setSession("https://crm.example.com", "jwt", SessionState(selfContactVCardUid = "uid-1"))
-        coEvery { h.apiClient.updateSelfContact(null) } returns Result.success(
-            MessageResponse(message = "Self contact cleared"),
-        )
-
-        val result = h.repository.updateSelfContact(null)
-
-        assertTrue(result.isSuccess)
-        assertNull(h.sessionManager.observeSession().first().selfContactVCardUid)
-    }
+            assertTrue(result.isSuccess)
+            coVerify { h.apiClient.updateSelfContact("uid-1") }
+            assertEquals("uid-1", h.sessionManager.observeSession().first().selfContactVCardUid)
+        }
 
     @Test
-    fun `updateSelfContact propagates a server rejection and leaves the session untouched`() = runTest {
-        val h = Harness()
-        h.sessionManager.setSession("https://crm.example.com", "jwt", SessionState(selfContactVCardUid = "uid-1"))
-        coEvery { h.apiClient.updateSelfContact("ghost") } returns Result.failure(
-            ApiError.Client(404, "Contact not found"),
-        )
+    fun `updateSelfContact with null clears the pointer even though setProfile would have kept it`() =
+        runTest {
+            val h = Harness()
+            h.sessionManager.setSession(
+                "https://crm.example.com",
+                "jwt",
+                SessionState(selfContactVCardUid = "uid-1")
+            )
+            coEvery { h.apiClient.updateSelfContact(null) } returns Result.success(
+                MessageResponse(message = "Self contact cleared")
+            )
 
-        val result = h.repository.updateSelfContact("ghost")
+            val result = h.repository.updateSelfContact(null)
 
-        assertTrue(result.isFailure)
-        assertEquals("Not found", (result.exceptionOrNull() as ApiError).displayMessage)
-        assertEquals("uid-1", h.sessionManager.observeSession().first().selfContactVCardUid)
-    }
+            assertTrue(result.isSuccess)
+            assertNull(h.sessionManager.observeSession().first().selfContactVCardUid)
+        }
+
+    @Test
+    fun `updateSelfContact propagates a server rejection and leaves the session untouched`() =
+        runTest {
+            val h = Harness()
+            h.sessionManager.setSession(
+                "https://crm.example.com",
+                "jwt",
+                SessionState(selfContactVCardUid = "uid-1")
+            )
+            coEvery { h.apiClient.updateSelfContact("ghost") } returns Result.failure(
+                ApiError.Client(404, "Contact not found")
+            )
+
+            val result = h.repository.updateSelfContact("ghost")
+
+            assertTrue(result.isFailure)
+            assertEquals("Not found", (result.exceptionOrNull() as ApiError).displayMessage)
+            assertEquals("uid-1", h.sessionManager.observeSession().first().selfContactVCardUid)
+        }
 
     // --- Issue #832: Contact field settings (Android parity) ---
 
     @Test
-    fun `getEnabledContactFields returns the raw stored list without touching the session`() = runTest {
-        val h = Harness()
-        h.sessionManager.setSession("https://crm.example.com", "jwt", SessionState(enabledContactFields = null))
-        coEvery { h.apiClient.getEnabledContactFields() } returns Result.success(
-            EnabledContactFieldsResponse(enabledContactFields = listOf("emails", "phones")),
-        )
+    fun `getEnabledContactFields returns the raw stored list without touching the session`() =
+        runTest {
+            val h = Harness()
+            h.sessionManager.setSession(
+                "https://crm.example.com",
+                "jwt",
+                SessionState(enabledContactFields = null)
+            )
+            coEvery { h.apiClient.getEnabledContactFields() } returns Result.success(
+                EnabledContactFieldsResponse(enabledContactFields = listOf("emails", "phones"))
+            )
 
-        val result = h.repository.getEnabledContactFields()
+            val result = h.repository.getEnabledContactFields()
 
-        assertTrue(result.isSuccess)
-        assertEquals(listOf("emails", "phones"), result.getOrThrow())
-        // A pure read — unlike updateEnabledContactFields, it must not merge into the session.
-        assertNull(h.sessionManager.observeSession().first().enabledContactFields)
-    }
+            assertTrue(result.isSuccess)
+            assertEquals(listOf("emails", "phones"), result.getOrThrow())
+            // A pure read — unlike updateEnabledContactFields, it must not merge into the session.
+            assertNull(h.sessionManager.observeSession().first().enabledContactFields)
+        }
 
     @Test
     fun `getEnabledContactFields returns null when the user has never configured it`() = runTest {
         val h = Harness()
         coEvery { h.apiClient.getEnabledContactFields() } returns Result.success(
-            EnabledContactFieldsResponse(enabledContactFields = null),
+            EnabledContactFieldsResponse(enabledContactFields = null)
         )
 
         val result = h.repository.getEnabledContactFields()
@@ -357,63 +395,89 @@ class AuthRepositoryImplTest {
     }
 
     @Test
-    fun `updateEnabledContactFields patches the server and stores the echoed list in the session`() = runTest {
-        val h = Harness()
-        h.sessionManager.setSession("https://crm.example.com", "jwt", SessionState(enabledContactFields = null))
-        coEvery { h.apiClient.updateEnabledContactFields(listOf("emails", "gender")) } returns Result.success(
-            EnabledContactFieldsResponse(enabledContactFields = listOf("emails", "gender")),
-        )
+    fun `updateEnabledContactFields patches the server and stores the echoed list in the session`() =
+        runTest {
+            val h = Harness()
+            h.sessionManager.setSession(
+                "https://crm.example.com",
+                "jwt",
+                SessionState(enabledContactFields = null)
+            )
+            coEvery {
+                h.apiClient.updateEnabledContactFields(
+                    listOf("emails", "gender")
+                )
+            } returns Result.success(
+                EnabledContactFieldsResponse(enabledContactFields = listOf("emails", "gender"))
+            )
 
-        val result = h.repository.updateEnabledContactFields(listOf("emails", "gender"))
+            val result = h.repository.updateEnabledContactFields(listOf("emails", "gender"))
 
-        assertTrue(result.isSuccess)
-        assertEquals(listOf("emails", "gender"), result.getOrThrow())
-        coVerify { h.apiClient.updateEnabledContactFields(listOf("emails", "gender")) }
-        assertEquals(listOf("emails", "gender"), h.sessionManager.observeSession().first().enabledContactFields)
-    }
-
-    @Test
-    fun `updateEnabledContactFields with an empty list overwrites a previously populated session value`() = runTest {
-        val h = Harness()
-        h.sessionManager.setSession(
-            "https://crm.example.com",
-            "jwt",
-            SessionState(enabledContactFields = listOf("emails", "phones")),
-        )
-        coEvery { h.apiClient.updateEnabledContactFields(emptyList()) } returns Result.success(
-            EnabledContactFieldsResponse(enabledContactFields = emptyList()),
-        )
-
-        val result = h.repository.updateEnabledContactFields(emptyList())
-
-        assertTrue(result.isSuccess)
-        assertEquals(emptyList<String>(), result.getOrThrow())
-        assertEquals(emptyList<String>(), h.sessionManager.observeSession().first().enabledContactFields)
-    }
+            assertTrue(result.isSuccess)
+            assertEquals(listOf("emails", "gender"), result.getOrThrow())
+            coVerify { h.apiClient.updateEnabledContactFields(listOf("emails", "gender")) }
+            assertEquals(
+                listOf("emails", "gender"),
+                h.sessionManager.observeSession().first().enabledContactFields
+            )
+        }
 
     @Test
-    fun `updateEnabledContactFields propagates a server failure and leaves the session untouched`() = runTest {
-        val h = Harness()
-        h.sessionManager.setSession(
-            "https://crm.example.com",
-            "jwt",
-            SessionState(enabledContactFields = listOf("emails")),
-        )
-        coEvery { h.apiClient.updateEnabledContactFields(listOf("phones")) } returns Result.failure(
-            ApiError.Client(500, "Server error"),
-        )
+    fun `updateEnabledContactFields with an empty list overwrites a previously populated session value`() =
+        runTest {
+            val h = Harness()
+            h.sessionManager.setSession(
+                "https://crm.example.com",
+                "jwt",
+                SessionState(enabledContactFields = listOf("emails", "phones"))
+            )
+            coEvery { h.apiClient.updateEnabledContactFields(emptyList()) } returns Result.success(
+                EnabledContactFieldsResponse(enabledContactFields = emptyList())
+            )
 
-        val result = h.repository.updateEnabledContactFields(listOf("phones"))
+            val result = h.repository.updateEnabledContactFields(emptyList())
 
-        assertTrue(result.isFailure)
-        assertEquals(listOf("emails"), h.sessionManager.observeSession().first().enabledContactFields)
-    }
+            assertTrue(result.isSuccess)
+            assertEquals(emptyList<String>(), result.getOrThrow())
+            assertEquals(
+                emptyList<String>(),
+                h.sessionManager.observeSession().first().enabledContactFields
+            )
+        }
+
+    @Test
+    fun `updateEnabledContactFields propagates a server failure and leaves the session untouched`() =
+        runTest {
+            val h = Harness()
+            h.sessionManager.setSession(
+                "https://crm.example.com",
+                "jwt",
+                SessionState(enabledContactFields = listOf("emails"))
+            )
+            coEvery {
+                h.apiClient.updateEnabledContactFields(
+                    listOf("phones")
+                )
+            } returns Result.failure(
+                ApiError.Client(500, "Server error")
+            )
+
+            val result = h.repository.updateEnabledContactFields(listOf("phones"))
+
+            assertTrue(result.isFailure)
+            assertEquals(
+                listOf("emails"),
+                h.sessionManager.observeSession().first().enabledContactFields
+            )
+        }
 
     @Test
     fun `changePassword delegates to the api client`() = runTest {
         val h = Harness()
         coEvery { h.apiClient.changePassword("old", "new") } returns Result.success(
-            com.mycorrhizal.crm.model.network.MessageResponse(message = "Password updated successfully"),
+            com.mycorrhizal.crm.model.network.MessageResponse(
+                message = "Password updated successfully"
+            )
         )
 
         val result = h.repository.changePassword("old", "new")
@@ -426,13 +490,16 @@ class AuthRepositoryImplTest {
     fun `changePassword surfaces a wrong current password as the server message`() = runTest {
         val h = Harness()
         coEvery { h.apiClient.changePassword("wrong", "new") } returns Result.failure(
-            ApiError.Client(400, "Invalid value for field 'current_password'"),
+            ApiError.Client(400, "Invalid value for field 'current_password'")
         )
 
         val result = h.repository.changePassword("wrong", "new")
 
         assertTrue(result.isFailure)
-        assertEquals("Invalid value for field 'current_password'", (result.exceptionOrNull() as ApiError).displayMessage)
+        assertEquals(
+            "Invalid value for field 'current_password'",
+            (result.exceptionOrNull() as ApiError).displayMessage
+        )
     }
 
     // --- M26: registration + password reset ---
@@ -440,8 +507,16 @@ class AuthRepositoryImplTest {
     @Test
     fun `register delegates to the api client and maps success to Unit`() = runTest {
         val h = Harness()
-        coEvery { h.apiClient.register("alice", "a@x.com", "hunter2hunter2") } returns Result.success(
-            com.mycorrhizal.crm.model.network.MessageResponse(message = "User registered successfully"),
+        coEvery {
+            h.apiClient.register(
+                "alice",
+                "a@x.com",
+                "hunter2hunter2"
+            )
+        } returns Result.success(
+            com.mycorrhizal.crm.model.network.MessageResponse(
+                message = "User registered successfully"
+            )
         )
 
         val result = h.repository.register("alice", "a@x.com", "hunter2hunter2")
@@ -454,7 +529,7 @@ class AuthRepositoryImplTest {
     fun `register propagates a duplicate-account rejection`() = runTest {
         val h = Harness()
         coEvery { h.apiClient.register(any(), any(), any()) } returns Result.failure(
-            ApiError.Client(409, "User already exists"),
+            ApiError.Client(409, "User already exists")
         )
 
         val result = h.repository.register("alice", "a@x.com", "hunter2hunter2")
@@ -467,7 +542,11 @@ class AuthRepositoryImplTest {
     fun `checkPasswordStrength returns the parsed verdict`() = runTest {
         val h = Harness()
         coEvery { h.apiClient.checkPasswordStrength("short") } returns Result.success(
-            com.mycorrhizal.crm.model.network.PasswordStrength(isValid = false, score = 1, feedback = "too weak"),
+            com.mycorrhizal.crm.model.network.PasswordStrength(
+                isValid = false,
+                score = 1,
+                feedback = "too weak"
+            )
         )
 
         val result = h.repository.checkPasswordStrength("short")
@@ -480,20 +559,32 @@ class AuthRepositoryImplTest {
     fun `requestPasswordReset returns the server message`() = runTest {
         val h = Harness()
         coEvery { h.apiClient.requestPasswordReset("a@x.com") } returns Result.success(
-            com.mycorrhizal.crm.model.network.MessageResponse(message = "If an account exists, password reset instructions were sent"),
+            com.mycorrhizal.crm.model.network.MessageResponse(
+                message = "If an account exists, password reset instructions were sent"
+            )
         )
 
         val result = h.repository.requestPasswordReset("a@x.com")
 
         assertTrue(result.isSuccess)
-        assertEquals("If an account exists, password reset instructions were sent", result.getOrThrow())
+        assertEquals(
+            "If an account exists, password reset instructions were sent",
+            result.getOrThrow()
+        )
     }
 
     @Test
     fun `confirmPasswordReset delegates to the api client`() = runTest {
         val h = Harness()
-        coEvery { h.apiClient.confirmPasswordReset("token-1", "newpass123") } returns Result.success(
-            com.mycorrhizal.crm.model.network.MessageResponse(message = "Password reset successful"),
+        coEvery {
+            h.apiClient.confirmPasswordReset(
+                "token-1",
+                "newpass123"
+            )
+        } returns Result.success(
+            com.mycorrhizal.crm.model.network.MessageResponse(
+                message = "Password reset successful"
+            )
         )
 
         val result = h.repository.confirmPasswordReset("token-1", "newpass123")
@@ -505,35 +596,52 @@ class AuthRepositoryImplTest {
     // --- N8 two-factor login (issue #814) ---
 
     @Test
-    fun `login on a 2fa account returns TwoFactorRequired and never establishes a session`() = runTest {
-        val h = Harness()
-        h.sessionManager.setServerUrl("https://crm.example.com")
-        coEvery { h.apiClient.login("alice", "secret") } returns Result.success(
-            LoginResult(token = null, language = null, dateFormat = null, twoFactorRequired = true, pending2faCookie = "challenge-jwt"),
-        )
-        coEvery { h.apiClient.currentUser() } returns Result.success(UserProfile(id = 7))
-
-        val result = h.repository.login("alice", "secret")
-
-        assertTrue(result.isSuccess)
-        assertEquals(LoginOutcome.TwoFactorRequired(), result.getOrThrow())
-        // No session, and the profile was never fetched (there is no token yet).
-        assertFalse(h.sessionManager.observeSession().first().isLoggedIn)
-        coVerify(exactly = 0) { h.apiClient.currentUser() }
-        assertNull(h.tokenStorage.stored)
-    }
-
-    // Issue #1293: `methods` flows through to the outcome; absent stays null (older server).
-    @Test
-    fun `login carries the enrolled methods into the TwoFactorRequired outcome`() = runTest {
-        for (methods in listOf(null, listOf("totp"), listOf("webauthn"), listOf("totp", "webauthn"), listOf("hwkey"))) {
+    fun `login on a 2fa account returns TwoFactorRequired and never establishes a session`() =
+        runTest {
             val h = Harness()
             h.sessionManager.setServerUrl("https://crm.example.com")
             coEvery { h.apiClient.login("alice", "secret") } returns Result.success(
                 LoginResult(
-                    token = null, language = null, dateFormat = null,
-                    twoFactorRequired = true, pending2faCookie = "challenge-jwt", methods = methods,
-                ),
+                    token = null,
+                    language = null,
+                    dateFormat = null,
+                    twoFactorRequired = true,
+                    pending2faCookie = "challenge-jwt"
+                )
+            )
+            coEvery { h.apiClient.currentUser() } returns Result.success(UserProfile(id = 7))
+
+            val result = h.repository.login("alice", "secret")
+
+            assertTrue(result.isSuccess)
+            assertEquals(LoginOutcome.TwoFactorRequired(), result.getOrThrow())
+            // No session, and the profile was never fetched (there is no token yet).
+            assertFalse(h.sessionManager.observeSession().first().isLoggedIn)
+            coVerify(exactly = 0) { h.apiClient.currentUser() }
+            assertNull(h.tokenStorage.stored)
+        }
+
+    // Issue #1293: `methods` flows through to the outcome; absent stays null (older server).
+    @Test
+    fun `login carries the enrolled methods into the TwoFactorRequired outcome`() = runTest {
+        for (methods in listOf(
+            null,
+            listOf("totp"),
+            listOf("webauthn"),
+            listOf("totp", "webauthn"),
+            listOf("hwkey")
+        )) {
+            val h = Harness()
+            h.sessionManager.setServerUrl("https://crm.example.com")
+            coEvery { h.apiClient.login("alice", "secret") } returns Result.success(
+                LoginResult(
+                    token = null,
+                    language = null,
+                    dateFormat = null,
+                    twoFactorRequired = true,
+                    pending2faCookie = "challenge-jwt",
+                    methods = methods
+                )
             )
 
             val outcome = h.repository.login("alice", "secret").getOrThrow()
@@ -547,13 +655,19 @@ class AuthRepositoryImplTest {
         val h = Harness()
         h.sessionManager.setServerUrl("https://crm.example.com")
         coEvery { h.apiClient.login(any(), any()) } returns Result.success(
-            LoginResult(token = null, language = null, dateFormat = null, twoFactorRequired = true, pending2faCookie = "challenge-jwt"),
+            LoginResult(
+                token = null,
+                language = null,
+                dateFormat = null,
+                twoFactorRequired = true,
+                pending2faCookie = "challenge-jwt"
+            )
         )
         coEvery { h.apiClient.complete2faLogin("123456", "challenge-jwt") } returns Result.success(
-            LoginResult(token = "jwt-2fa", language = "en", dateFormat = "eu"),
+            LoginResult(token = "jwt-2fa", language = "en", dateFormat = "eu")
         )
         coEvery { h.apiClient.currentUser() } returns Result.success(
-            UserProfile(id = 7, username = "alice", isAdmin = true, language = "en"),
+            UserProfile(id = 7, username = "alice", isAdmin = true, language = "en")
         )
 
         val first = h.repository.login("alice", "secret")
@@ -586,13 +700,19 @@ class AuthRepositoryImplTest {
     fun `complete2faLogin keeps the challenge on a wrong code so the user can retry`() = runTest {
         val h = Harness()
         coEvery { h.apiClient.login(any(), any()) } returns Result.success(
-            LoginResult(token = null, language = null, dateFormat = null, twoFactorRequired = true, pending2faCookie = "challenge-jwt"),
+            LoginResult(
+                token = null,
+                language = null,
+                dateFormat = null,
+                twoFactorRequired = true,
+                pending2faCookie = "challenge-jwt"
+            )
         )
         coEvery { h.apiClient.complete2faLogin("000000", "challenge-jwt") } returns Result.failure(
-            ApiError.Client(400, "Invalid value for field 'code'"),
+            ApiError.Client(400, "Invalid value for field 'code'")
         )
         coEvery { h.apiClient.complete2faLogin("123456", "challenge-jwt") } returns Result.success(
-            LoginResult(token = "jwt-2fa", language = null, dateFormat = null),
+            LoginResult(token = "jwt-2fa", language = null, dateFormat = null)
         )
         coEvery { h.apiClient.currentUser() } returns Result.success(UserProfile(id = 1))
 
@@ -611,10 +731,16 @@ class AuthRepositoryImplTest {
     fun `an expired challenge clears the pending state so a retry restarts at step 1`() = runTest {
         val h = Harness()
         coEvery { h.apiClient.login(any(), any()) } returns Result.success(
-            LoginResult(token = null, language = null, dateFormat = null, twoFactorRequired = true, pending2faCookie = "challenge-jwt"),
+            LoginResult(
+                token = null,
+                language = null,
+                dateFormat = null,
+                twoFactorRequired = true,
+                pending2faCookie = "challenge-jwt"
+            )
         )
         coEvery { h.apiClient.complete2faLogin("123456", "challenge-jwt") } returns Result.failure(
-            ApiError.Client(401, "Invalid or expired two-factor session. Please sign in again."),
+            ApiError.Client(401, "Invalid or expired two-factor session. Please sign in again.")
         )
 
         h.repository.login("alice", "secret")
@@ -634,35 +760,40 @@ class AuthRepositoryImplTest {
     // --- N8 two-factor management (issue #814) ---
 
     @Test
-    fun `confirmTwoFactor enables 2fa, returns the recovery codes and keeps the reissued token`() = runTest {
-        val h = Harness()
-        h.sessionManager.setSession("https://crm.example.com", "old-jwt", SessionState(isLoggedIn = true))
-        coEvery { h.apiClient.confirmTwoFactor("123456") } returns Result.success(
-            ReissuedTokenResult(
-                value = TwoFactorConfirmResponse(
-                    message = "Two-factor authentication enabled",
-                    recoveryCodes = listOf("ABCDE-FGHIJ-KLMNO"),
-                ),
-                reissuedToken = "reissued-jwt",
-            ),
-        )
+    fun `confirmTwoFactor enables 2fa, returns the recovery codes and keeps the reissued token`() =
+        runTest {
+            val h = Harness()
+            h.sessionManager.setSession(
+                "https://crm.example.com",
+                "old-jwt",
+                SessionState(isLoggedIn = true)
+            )
+            coEvery { h.apiClient.confirmTwoFactor("123456") } returns Result.success(
+                ReissuedTokenResult(
+                    value = TwoFactorConfirmResponse(
+                        message = "Two-factor authentication enabled",
+                        recoveryCodes = listOf("ABCDE-FGHIJ-KLMNO")
+                    ),
+                    reissuedToken = "reissued-jwt"
+                )
+            )
 
-        val result = h.repository.confirmTwoFactor("123456")
+            val result = h.repository.confirmTwoFactor("123456")
 
-        assertTrue(result.isSuccess)
-        assertEquals(listOf("ABCDE-FGHIJ-KLMNO"), result.getOrThrow().recoveryCodes)
-        // token_version was bumped — the re-issued token replaced the old JWT so
-        // this session survives the mutation.
-        assertEquals("reissued-jwt", h.sessionManager.bearerToken())
-        assertEquals("reissued-jwt", h.tokenStorage.stored)
-        assertTrue(h.sessionManager.observeSession().first().isLoggedIn)
-    }
+            assertTrue(result.isSuccess)
+            assertEquals(listOf("ABCDE-FGHIJ-KLMNO"), result.getOrThrow().recoveryCodes)
+            // token_version was bumped — the re-issued token replaced the old JWT so
+            // this session survives the mutation.
+            assertEquals("reissued-jwt", h.sessionManager.bearerToken())
+            assertEquals("reissued-jwt", h.tokenStorage.stored)
+            assertTrue(h.sessionManager.observeSession().first().isLoggedIn)
+        }
 
     @Test
     fun `confirmTwoFactor propagates an invalid code as Client 400`() = runTest {
         val h = Harness()
         coEvery { h.apiClient.confirmTwoFactor("000000") } returns Result.failure(
-            ApiError.Client(400, "Invalid value for field 'code'"),
+            ApiError.Client(400, "Invalid value for field 'code'")
         )
 
         val result = h.repository.confirmTwoFactor("000000")
@@ -676,9 +807,16 @@ class AuthRepositoryImplTest {
     @Test
     fun `disableTwoFactor keeps the reissued token and reports the server message`() = runTest {
         val h = Harness()
-        h.sessionManager.setSession("https://crm.example.com", "old-jwt", SessionState(isLoggedIn = true))
+        h.sessionManager.setSession(
+            "https://crm.example.com",
+            "old-jwt",
+            SessionState(isLoggedIn = true)
+        )
         coEvery { h.apiClient.disableTwoFactor("654321") } returns Result.success(
-            ReissuedTokenResult(value = MessageResponse(message = "Two-factor authentication disabled"), reissuedToken = "reissued-jwt-2"),
+            ReissuedTokenResult(
+                value = MessageResponse(message = "Two-factor authentication disabled"),
+                reissuedToken = "reissued-jwt-2"
+            )
         )
 
         val result = h.repository.disableTwoFactor("654321")
@@ -692,7 +830,10 @@ class AuthRepositoryImplTest {
     fun `setupTwoFactor surfaces the oidc 403 message for display`() = runTest {
         val h = Harness()
         coEvery { h.apiClient.setupTwoFactor() } returns Result.failure(
-            ApiError.Client(403, "Two-factor authentication is unavailable for accounts that sign in with SSO"),
+            ApiError.Client(
+                403,
+                "Two-factor authentication is unavailable for accounts that sign in with SSO"
+            )
         )
 
         val result = h.repository.setupTwoFactor()
@@ -706,7 +847,10 @@ class AuthRepositoryImplTest {
     fun `regenerateRecoveryCodes replaces the codes`() = runTest {
         val h = Harness()
         coEvery { h.apiClient.regenerateRecoveryCodes("123456") } returns Result.success(
-            ReissuedTokenResult(value = TwoFactorConfirmResponse(recoveryCodes = listOf("NEW-A")), reissuedToken = null),
+            ReissuedTokenResult(
+                value = TwoFactorConfirmResponse(recoveryCodes = listOf("NEW-A")),
+                reissuedToken = null
+            )
         )
 
         val result = h.repository.regenerateRecoveryCodes(SecondFactorProof.Code("123456"))
@@ -719,7 +863,7 @@ class AuthRepositoryImplTest {
     fun `getTwoFactorStatus reports the enabled flag`() = runTest {
         val h = Harness()
         coEvery { h.apiClient.getTwoFactorStatus() } returns Result.success(
-            com.mycorrhizal.crm.model.network.TwoFactorStatusResponse(enabled = true),
+            com.mycorrhizal.crm.model.network.TwoFactorStatusResponse(enabled = true)
         )
 
         val result = h.repository.getTwoFactorStatus()
@@ -733,23 +877,32 @@ class AuthRepositoryImplTest {
     private fun Harness.stubPasskeyPending() {
         coEvery { apiClient.login(any(), any()) } returns Result.success(
             LoginResult(
-                token = null, language = null, dateFormat = null, twoFactorRequired = true,
-                pending2faCookie = "challenge-jwt", methods = listOf("webauthn"),
-            ),
+                token = null,
+                language = null,
+                dateFormat = null,
+                twoFactorRequired = true,
+                pending2faCookie = "challenge-jwt",
+                methods = listOf("webauthn")
+            )
         )
     }
 
     @Test
-    fun `beginPasskeyLogin sends the private pending challenge and returns the options`() = runTest {
-        val h = Harness()
-        h.stubPasskeyPending()
-        coEvery { h.apiClient.webauthnLoginBegin("challenge-jwt") } returns Result.success("""{"publicKey":{}}""")
+    fun `beginPasskeyLogin sends the private pending challenge and returns the options`() =
+        runTest {
+            val h = Harness()
+            h.stubPasskeyPending()
+            coEvery {
+                h.apiClient.webauthnLoginBegin(
+                    "challenge-jwt"
+                )
+            } returns Result.success("""{"publicKey":{}}""")
 
-        h.repository.login("alice", "secret")
-        val options = h.repository.beginPasskeyLogin()
+            h.repository.login("alice", "secret")
+            val options = h.repository.beginPasskeyLogin()
 
-        assertEquals("""{"publicKey":{}}""", options.getOrThrow())
-    }
+            assertEquals("""{"publicKey":{}}""", options.getOrThrow())
+        }
 
     @Test
     fun `beginPasskeyLogin without an in-flight challenge fails fast with 401`() = runTest {
@@ -765,10 +918,17 @@ class AuthRepositoryImplTest {
     fun `an expired challenge at begin clears the pending state`() = runTest {
         val h = Harness()
         h.stubPasskeyPending()
-        coEvery { h.apiClient.webauthnLoginBegin("challenge-jwt") } returns Result.failure(ApiError.Client(401, "expired"))
+        coEvery {
+            h.apiClient.webauthnLoginBegin(
+                "challenge-jwt"
+            )
+        } returns Result.failure(ApiError.Client(401, "expired"))
 
         h.repository.login("alice", "secret")
-        assertEquals(401, ((h.repository.beginPasskeyLogin().exceptionOrNull() as ApiError) as ApiError.Client).code)
+        assertEquals(
+            401,
+            ((h.repository.beginPasskeyLogin().exceptionOrNull() as ApiError) as ApiError.Client).code
+        )
 
         // Gone for good: the next attempt never reaches the server, and a code can't use it either.
         assertTrue(h.repository.beginPasskeyLogin().isFailure)
@@ -781,14 +941,21 @@ class AuthRepositoryImplTest {
     fun `a non-401 begin failure keeps the pending challenge`() = runTest {
         val h = Harness()
         h.stubPasskeyPending()
-        coEvery { h.apiClient.webauthnLoginBegin("challenge-jwt") } returns Result.failure(ApiError.Client(409, "No passkey"))
+        coEvery {
+            h.apiClient.webauthnLoginBegin(
+                "challenge-jwt"
+            )
+        } returns Result.failure(ApiError.Client(409, "No passkey"))
         coEvery { h.apiClient.complete2faLogin("123456", "challenge-jwt") } returns Result.success(
-            LoginResult(token = "jwt-code", language = null, dateFormat = null),
+            LoginResult(token = "jwt-code", language = null, dateFormat = null)
         )
         coEvery { h.apiClient.currentUser() } returns Result.success(UserProfile(id = 1))
 
         h.repository.login("alice", "secret")
-        assertEquals(409, ((h.repository.beginPasskeyLogin().exceptionOrNull() as ApiError) as ApiError.Client).code)
+        assertEquals(
+            409,
+            ((h.repository.beginPasskeyLogin().exceptionOrNull() as ApiError) as ApiError.Client).code
+        )
 
         // The recovery-code path is still reachable after a passkey failure.
         assertTrue(h.repository.complete2faLogin("123456").isSuccess)
@@ -799,16 +966,32 @@ class AuthRepositoryImplTest {
         val viaPasskey = Harness()
         viaPasskey.sessionManager.setServerUrl("https://crm.example.com")
         viaPasskey.stubPasskeyPending()
-        coEvery { viaPasskey.apiClient.webauthnLoginFinish("{assertion}", "challenge-jwt") } returns Result.success(
-            LoginResult(token = "jwt-2fa", language = "en", dateFormat = "eu"),
+        coEvery {
+            viaPasskey.apiClient.webauthnLoginFinish(
+                "{assertion}",
+                "challenge-jwt"
+            )
+        } returns Result.success(
+            LoginResult(token = "jwt-2fa", language = "en", dateFormat = "eu")
         )
         val viaCode = Harness()
         viaCode.sessionManager.setServerUrl("https://crm.example.com")
         viaCode.stubPasskeyPending()
-        coEvery { viaCode.apiClient.complete2faLogin("123456", "challenge-jwt") } returns Result.success(
-            LoginResult(token = "jwt-2fa", language = "en", dateFormat = "eu"),
+        coEvery {
+            viaCode.apiClient.complete2faLogin(
+                "123456",
+                "challenge-jwt"
+            )
+        } returns Result.success(
+            LoginResult(token = "jwt-2fa", language = "en", dateFormat = "eu")
         )
-        val profile = UserProfile(id = 7, username = "alice", isAdmin = true, language = "en", dateFormat = "eu")
+        val profile = UserProfile(
+            id = 7,
+            username = "alice",
+            isAdmin = true,
+            language = "en",
+            dateFormat = "eu"
+        )
         coEvery { viaPasskey.apiClient.currentUser() } returns Result.success(profile)
         coEvery { viaCode.apiClient.currentUser() } returns Result.success(profile)
 
@@ -819,7 +1002,10 @@ class AuthRepositoryImplTest {
 
         assertEquals(viaCode.tokenStorage.stored, viaPasskey.tokenStorage.stored)
         assertEquals("jwt-2fa", viaPasskey.sessionManager.bearerToken())
-        assertEquals(viaCode.sessionManager.observeSession().first(), viaPasskey.sessionManager.observeSession().first())
+        assertEquals(
+            viaCode.sessionManager.observeSession().first(),
+            viaPasskey.sessionManager.observeSession().first()
+        )
         assertTrue(viaPasskey.sessionManager.observeSession().first().isLoggedIn)
     }
 
@@ -837,11 +1023,21 @@ class AuthRepositoryImplTest {
     fun `a rejected assertion keeps the challenge so the user can retry or use a code`() = runTest {
         val h = Harness()
         h.stubPasskeyPending()
-        coEvery { h.apiClient.webauthnLoginFinish("{bad}", "challenge-jwt") } returns Result.failure(
-            ApiError.Client(401, "Passkey could not be verified"),
+        coEvery {
+            h.apiClient.webauthnLoginFinish(
+                "{bad}",
+                "challenge-jwt"
+            )
+        } returns Result.failure(
+            ApiError.Client(401, "Passkey could not be verified")
         )
-        coEvery { h.apiClient.webauthnLoginFinish("{good}", "challenge-jwt") } returns Result.success(
-            LoginResult(token = "jwt-2fa", language = null, dateFormat = null),
+        coEvery {
+            h.apiClient.webauthnLoginFinish(
+                "{good}",
+                "challenge-jwt"
+            )
+        } returns Result.success(
+            LoginResult(token = "jwt-2fa", language = null, dateFormat = null)
         )
         coEvery { h.apiClient.currentUser() } returns Result.success(UserProfile(id = 1))
 
@@ -858,8 +1054,13 @@ class AuthRepositoryImplTest {
         val h = Harness()
         h.sessionManager.setServerUrl("https://crm.example.com")
         h.stubPasskeyPending()
-        coEvery { h.apiClient.webauthnLoginFinish("{assertion}", "challenge-jwt") } returns Result.success(
-            LoginResult(token = "jwt-2fa", language = null, dateFormat = null),
+        coEvery {
+            h.apiClient.webauthnLoginFinish(
+                "{assertion}",
+                "challenge-jwt"
+            )
+        } returns Result.success(
+            LoginResult(token = "jwt-2fa", language = null, dateFormat = null)
         )
         coEvery { h.apiClient.currentUser() } returns Result.failure(ApiError.Server(500, "boom"))
 
@@ -875,7 +1076,7 @@ class AuthRepositoryImplTest {
         val h = Harness()
         h.stubPasskeyPending()
         coEvery { h.apiClient.webauthnLoginFinish(any(), any()) } returns Result.success(
-            LoginResult(token = null, language = null, dateFormat = null),
+            LoginResult(token = null, language = null, dateFormat = null)
         )
 
         h.repository.login("alice", "secret")
@@ -891,7 +1092,10 @@ class AuthRepositoryImplTest {
         val response = TwoFactorSetupResponse(secret = "S", otpauthUrl = "otpauth://x")
         coEvery { h.apiClient.setupTwoFactor(any(), any()) } returns Result.success(response)
 
-        assertEquals(response, h.repository.setupTwoFactor(SecondFactorProof.Code(" AAAAA-BBBBB-CCCCC ")).getOrThrow())
+        assertEquals(
+            response,
+            h.repository.setupTwoFactor(SecondFactorProof.Code(" AAAAA-BBBBB-CCCCC ")).getOrThrow()
+        )
 
         coVerify { h.apiClient.setupTwoFactor("AAAAA-BBBBB-CCCCC", null) }
     }
@@ -910,7 +1114,12 @@ class AuthRepositoryImplTest {
     @Test
     fun `setupTwoFactor surfaces a rejected proof`() = runTest {
         val h = Harness()
-        coEvery { h.apiClient.setupTwoFactor(any(), any()) } returns Result.failure(ApiError.Client(400, "Invalid code"))
+        coEvery {
+            h.apiClient.setupTwoFactor(
+                any(),
+                any()
+            )
+        } returns Result.failure(ApiError.Client(400, "Invalid code"))
 
         val error = h.repository.setupTwoFactor(SecondFactorProof.Code("0")).exceptionOrNull()
 

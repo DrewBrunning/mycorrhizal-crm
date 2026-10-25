@@ -13,6 +13,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import java.time.LocalDate
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -22,7 +23,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import java.time.LocalDate
 
 class RemindersViewModelTest {
 
@@ -34,7 +34,11 @@ class RemindersViewModelTest {
 
     private fun viewModel(contactId: Int = 5): RemindersViewModel {
         every { authRepository.observeSession() } returns flowOf(SessionState())
-        return RemindersViewModel(reminderRepository, authRepository, SavedStateHandle(mapOf("contactId" to contactId)))
+        return RemindersViewModel(
+            reminderRepository,
+            authRepository,
+            SavedStateHandle(mapOf("contactId" to contactId))
+        )
     }
 
     @Test
@@ -42,8 +46,8 @@ class RemindersViewModelTest {
         coEvery { reminderRepository.listForContact(5) } returns Result.success(
             listOf(
                 Reminder(id = 1, message = "Call Dana", recurrence = ReminderRecurrence.WEEKLY),
-                Reminder(id = 2, message = "Gift", recurrence = ReminderRecurrence.ONCE),
-            ),
+                Reminder(id = 2, message = "Gift", recurrence = ReminderRecurrence.ONCE)
+            )
         )
 
         val vm = viewModel()
@@ -65,9 +69,11 @@ class RemindersViewModelTest {
     }
 
     @Test
-    fun `completing a once reminder removes it from the list`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `completing a once reminder removes it from the list`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { reminderRepository.listForContact(5) } returns Result.success(
-            listOf(Reminder(id = 2, message = "Gift", recurrence = ReminderRecurrence.ONCE)),
+            listOf(Reminder(id = 2, message = "Gift", recurrence = ReminderRecurrence.ONCE))
         )
         coEvery { reminderRepository.complete(2) } returns Result.success(null)
 
@@ -81,12 +87,19 @@ class RemindersViewModelTest {
     }
 
     @Test
-    fun `completing a recurring reminder keeps the rescheduled occurrence`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `completing a recurring reminder keeps the rescheduled occurrence`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { reminderRepository.listForContact(5) } returns Result.success(
-            listOf(Reminder(id = 1, message = "Call Dana", recurrence = ReminderRecurrence.WEEKLY)),
+            listOf(Reminder(id = 1, message = "Call Dana", recurrence = ReminderRecurrence.WEEKLY))
         )
         coEvery { reminderRepository.complete(1) } returns Result.success(
-            Reminder(id = 1, message = "Call Dana", recurrence = ReminderRecurrence.WEEKLY, completed = false),
+            Reminder(
+                id = 1,
+                message = "Call Dana",
+                recurrence = ReminderRecurrence.WEEKLY,
+                completed = false
+            )
         )
 
         val vm = viewModel()
@@ -99,34 +112,41 @@ class RemindersViewModelTest {
     }
 
     @Test
-    fun `completing a recurring reminder shows the server-returned next occurrence, not a locally computed date`() = runTest(mainDispatcherRule.testDispatcher) {
-        // M20 test case 3: the next occurrence's date must come from the server's
-        // rescheduled reminder, never from a client-side computation.
-        coEvery { reminderRepository.listForContact(5) } returns Result.success(
-            listOf(Reminder(id = 1, message = "Call Dana", recurrence = ReminderRecurrence.WEEKLY)),
-        )
-        coEvery { reminderRepository.complete(1) } returns Result.success(
-            Reminder(
-                id = 1,
-                message = "Call Dana",
-                recurrence = ReminderRecurrence.WEEKLY,
-                completed = false,
-                remindAt = "2026-09-01T00:00:00Z",
-            ),
-        )
+    fun `completing a recurring reminder shows the server-returned next occurrence, not a locally computed date`() =
+        runTest(
+            mainDispatcherRule.testDispatcher
+        ) {
+            // M20 test case 3: the next occurrence's date must come from the server's
+            // rescheduled reminder, never from a client-side computation.
+            coEvery { reminderRepository.listForContact(5) } returns Result.success(
+                listOf(
+                    Reminder(id = 1, message = "Call Dana", recurrence = ReminderRecurrence.WEEKLY)
+                )
+            )
+            coEvery { reminderRepository.complete(1) } returns Result.success(
+                Reminder(
+                    id = 1,
+                    message = "Call Dana",
+                    recurrence = ReminderRecurrence.WEEKLY,
+                    completed = false,
+                    remindAt = "2026-09-01T00:00:00Z"
+                )
+            )
 
-        val vm = viewModel()
-        advanceUntilIdle()
-        vm.complete(1)
-        advanceUntilIdle()
+            val vm = viewModel()
+            advanceUntilIdle()
+            vm.complete(1)
+            advanceUntilIdle()
 
-        assertEquals("2026-09-01T00:00:00Z", vm.uiState.value.reminders[0].remindAt)
-    }
+            assertEquals("2026-09-01T00:00:00Z", vm.uiState.value.reminders[0].remindAt)
+        }
 
     @Test
-    fun `delete removes the reminder from the list on success`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `delete removes the reminder from the list on success`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { reminderRepository.listForContact(5) } returns Result.success(
-            listOf(Reminder(id = 1, message = "Call Dana"), Reminder(id = 2, message = "Gift")),
+            listOf(Reminder(id = 1, message = "Call Dana"), Reminder(id = 2, message = "Gift"))
         )
         coEvery { reminderRepository.delete(1, any()) } returns Result.success(Unit)
 
@@ -141,12 +161,14 @@ class RemindersViewModelTest {
     }
 
     @Test
-    fun `delete failure keeps the reminder in the list`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `delete failure keeps the reminder in the list`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { reminderRepository.listForContact(5) } returns Result.success(
-            listOf(Reminder(id = 1, message = "Call Dana")),
+            listOf(Reminder(id = 1, message = "Call Dana"))
         )
         coEvery { reminderRepository.delete(1, any()) } returns Result.failure(
-            ApiError.Client(404, "Reminder not found"),
+            ApiError.Client(404, "Reminder not found")
         )
 
         val vm = viewModel()
@@ -162,10 +184,10 @@ class RemindersViewModelTest {
     @Test
     fun `complete failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { reminderRepository.listForContact(5) } returns Result.success(
-            listOf(Reminder(id = 1, message = "Call Dana")),
+            listOf(Reminder(id = 1, message = "Call Dana"))
         )
         coEvery { reminderRepository.complete(1) } returns Result.failure(
-            ApiError.Client(404, "Reminder not found"),
+            ApiError.Client(404, "Reminder not found")
         )
 
         val vm = viewModel()
@@ -186,10 +208,15 @@ class ReminderFormViewModelTest {
 
     private val reminderRepository = mockk<ReminderRepository>()
 
-    private fun createViewModel(contactId: Int = 5, reminderId: Int? = null): ReminderFormViewModel {
-        val handle = SavedStateHandle(mapOf("contactId" to contactId).toMutableMap().apply {
-            if (reminderId != null) put("reminderId", reminderId)
-        })
+    private fun createViewModel(
+        contactId: Int = 5,
+        reminderId: Int? = null
+    ): ReminderFormViewModel {
+        val handle = SavedStateHandle(
+            mapOf("contactId" to contactId).toMutableMap().apply {
+                if (reminderId != null) put("reminderId", reminderId)
+            }
+        )
         return ReminderFormViewModel(reminderRepository, handle)
     }
 
@@ -212,18 +239,23 @@ class ReminderFormViewModelTest {
     }
 
     @Test
-    fun `changing recurrence in create mode auto-fills the due date from the recurrence`() = runTest(mainDispatcherRule.testDispatcher) {
-        // M20 test case (auto-date-from-recurrence): mirrors web's getDateForRecurrence.
-        val vm = createViewModel()
-        vm.onRecurrenceChange(ReminderRecurrence.WEEKLY)
-        val state = vm.uiState.value
-        assertEquals(ReminderRecurrence.WEEKLY, state.recurrence)
-        val expected = ReminderFormState.dateForRecurrence(ReminderRecurrence.WEEKLY)
-        assertEquals("${expected}T00:00:00Z", state.remindAt)
-    }
+    fun `changing recurrence in create mode auto-fills the due date from the recurrence`() =
+        runTest(
+            mainDispatcherRule.testDispatcher
+        ) {
+            // M20 test case (auto-date-from-recurrence): mirrors web's getDateForRecurrence.
+            val vm = createViewModel()
+            vm.onRecurrenceChange(ReminderRecurrence.WEEKLY)
+            val state = vm.uiState.value
+            assertEquals(ReminderRecurrence.WEEKLY, state.recurrence)
+            val expected = ReminderFormState.dateForRecurrence(ReminderRecurrence.WEEKLY)
+            assertEquals("${expected}T00:00:00Z", state.remindAt)
+        }
 
     @Test
-    fun `changing recurrence to once in create mode auto-fills today`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `changing recurrence to once in create mode auto-fills today`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         // Web's handleRecurrenceChange sets the date for *every* recurrence, including
         // once (which resets to today). M20 matches that rather than leaving the date stale.
         val vm = createViewModel()
@@ -234,9 +266,16 @@ class ReminderFormViewModelTest {
     }
 
     @Test
-    fun `changing recurrence in edit mode never overwrites the existing date`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `changing recurrence in edit mode never overwrites the existing date`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { reminderRepository.get(1) } returns Result.success(
-            Reminder(id = 1, message = "Call Dana", recurrence = ReminderRecurrence.ONCE, remindAt = "2026-08-10T14:00:00Z"),
+            Reminder(
+                id = 1,
+                message = "Call Dana",
+                recurrence = ReminderRecurrence.ONCE,
+                remindAt = "2026-08-10T14:00:00Z"
+            )
         )
 
         val vm = createViewModel(reminderId = 1)
@@ -248,9 +287,11 @@ class ReminderFormViewModelTest {
     }
 
     @Test
-    fun `save sends reoccur from completion on the create payload`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `save sends reoccur from completion on the create payload`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { reminderRepository.create(5, any()) } returns Result.success(
-            Reminder(id = 1, message = "Call Dana"),
+            Reminder(id = 1, message = "Call Dana")
         )
 
         val vm = createViewModel()
@@ -264,7 +305,7 @@ class ReminderFormViewModelTest {
         coVerify {
             reminderRepository.create(
                 5,
-                match<Reminder> { reminder -> reminder.reoccurFromCompletion == false },
+                match<Reminder> { reminder -> reminder.reoccurFromCompletion == false }
             )
         }
         assertEquals(ReminderFormEvent.Saved, vm.events.value)
@@ -281,9 +322,11 @@ class ReminderFormViewModelTest {
     }
 
     @Test
-    fun `save in create mode calls create with the reminder fields`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `save in create mode calls create with the reminder fields`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { reminderRepository.create(5, any()) } returns Result.success(
-            Reminder(id = 1, message = "Call Dana"),
+            Reminder(id = 1, message = "Call Dana")
         )
 
         val vm = createViewModel()
@@ -301,18 +344,31 @@ class ReminderFormViewModelTest {
                         reminder.remindAt == "2026-08-10T14:00:00Z" &&
                         reminder.recurrence == ReminderRecurrence.WEEKLY &&
                         reminder.contactId == 5
-                },
+                }
             )
         }
         assertEquals(ReminderFormEvent.Saved, vm.events.value)
     }
 
     @Test
-    fun `save in edit mode hydrates and calls update`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `save in edit mode hydrates and calls update`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { reminderRepository.get(1) } returns Result.success(
-            Reminder(id = 1, message = "Call Dana", recurrence = ReminderRecurrence.WEEKLY, remindAt = "2026-08-10T14:00:00Z"),
+            Reminder(
+                id = 1,
+                message = "Call Dana",
+                recurrence = ReminderRecurrence.WEEKLY,
+                remindAt = "2026-08-10T14:00:00Z"
+            )
         )
-        coEvery { reminderRepository.update(1, any(), any()) } returns Result.success(Reminder(id = 1, message = "Call Dana"))
+        coEvery {
+            reminderRepository.update(
+                1,
+                any(),
+                any()
+            )
+        } returns Result.success(Reminder(id = 1, message = "Call Dana"))
 
         val vm = createViewModel(reminderId = 1)
         advanceUntilIdle()
@@ -328,7 +384,7 @@ class ReminderFormViewModelTest {
             reminderRepository.update(
                 1,
                 match<Reminder> { reminder -> reminder.message == "Call Dana today" },
-                any(),
+                any()
             )
         }
         assertEquals(ReminderFormEvent.Saved, vm.events.value)
@@ -341,7 +397,7 @@ class ReminderFormViewModelTest {
             // tested before. If save()'s create/update failure branch regressed,
             // isSaving could stay true forever and permanently disable Save.
             coEvery { reminderRepository.create(5, any()) } returns Result.failure(
-                ApiError.Client(400, "remind_at is required"),
+                ApiError.Client(400, "remind_at is required")
             )
 
             val vm = createViewModel()
@@ -350,7 +406,10 @@ class ReminderFormViewModelTest {
             vm.save()
             advanceUntilIdle()
 
-            assertFalse("a failed save must not leave isSaving stuck true", vm.uiState.value.isSaving)
+            assertFalse(
+                "a failed save must not leave isSaving stuck true",
+                vm.uiState.value.isSaving
+            )
             assertEquals("remind_at is required", vm.uiState.value.error)
             assertNull(vm.events.value)
         }
@@ -359,10 +418,15 @@ class ReminderFormViewModelTest {
     fun `an update failure clears isSaving and surfaces the error instead of blocking the button forever`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { reminderRepository.get(1) } returns Result.success(
-                Reminder(id = 1, message = "Call Dana", recurrence = ReminderRecurrence.WEEKLY, remindAt = "2026-08-10T14:00:00Z"),
+                Reminder(
+                    id = 1,
+                    message = "Call Dana",
+                    recurrence = ReminderRecurrence.WEEKLY,
+                    remindAt = "2026-08-10T14:00:00Z"
+                )
             )
             coEvery { reminderRepository.update(1, any(), any()) } returns Result.failure(
-                ApiError.Client(409, "Reminder was modified by another session"),
+                ApiError.Client(409, "Reminder was modified by another session")
             )
 
             val vm = createViewModel(reminderId = 1)
@@ -371,15 +435,25 @@ class ReminderFormViewModelTest {
             vm.save()
             advanceUntilIdle()
 
-            assertFalse("a failed save must not leave isSaving stuck true", vm.uiState.value.isSaving)
+            assertFalse(
+                "a failed save must not leave isSaving stuck true",
+                vm.uiState.value.isSaving
+            )
             assertEquals("Reminder was modified by another session", vm.uiState.value.error)
             assertNull(vm.events.value)
         }
 
     @Test
-    fun `a date-only reminder is normalised to the UTC-midnight calendar day`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a date-only reminder is normalised to the UTC-midnight calendar day`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { reminderRepository.create(5, any()) } returns Result.success(
-            Reminder(id = 1, message = "Call Dana", recurrence = ReminderRecurrence.ONCE, remindAt = "2026-08-10T00:00:00Z"),
+            Reminder(
+                id = 1,
+                message = "Call Dana",
+                recurrence = ReminderRecurrence.ONCE,
+                remindAt = "2026-08-10T00:00:00Z"
+            )
         )
 
         val vm = createViewModel()
@@ -396,7 +470,7 @@ class ReminderFormViewModelTest {
     @Test
     fun `edit hydration failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { reminderRepository.get(1) } returns Result.failure(
-            ApiError.Client(404, "Reminder not found"),
+            ApiError.Client(404, "Reminder not found")
         )
 
         val vm = createViewModel(reminderId = 1)

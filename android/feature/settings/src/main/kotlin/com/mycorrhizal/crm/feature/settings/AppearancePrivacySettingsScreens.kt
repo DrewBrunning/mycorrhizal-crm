@@ -32,7 +32,7 @@ import com.mycorrhizal.crm.ui.R
 fun AppearanceSettingsScreen(
     onBack: () -> Unit,
     onLocaleChanged: () -> Unit = {},
-    viewModel: SettingsViewModel = hiltViewModel(),
+    viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val events by viewModel.events.collectAsStateWithLifecycle()
@@ -44,17 +44,21 @@ fun AppearanceSettingsScreen(
                 viewModel.onEventShown()
                 onLocaleChanged()
             }
+
             else -> Unit
         }
     }
 
-    SettingsScaffold(title = stringResource(R.string.settings_appearance), onBack = onBack) { padding ->
+    SettingsScaffold(
+        title = stringResource(R.string.settings_appearance),
+        onBack = onBack
+    ) { padding ->
         AppearanceSettingsContent(
             state = state,
             onLanguageChange = viewModel::updateLanguage,
             onDateFormatChange = viewModel::updateDateFormat,
             onThemeChange = viewModel::setThemePreference,
-            modifier = padding,
+            modifier = padding
         )
     }
 }
@@ -65,7 +69,7 @@ fun AppearanceSettingsContent(
     onLanguageChange: (String) -> Unit = {},
     onDateFormatChange: (String) -> Unit = {},
     onThemeChange: (String) -> Unit = {},
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     SettingsColumn(modifier = modifier) {
         SettingsDropdown(
@@ -73,14 +77,14 @@ fun AppearanceSettingsContent(
             value = state.session.language.orEmpty(),
             options = listOf("en", "de", "it", "es", "fr"),
             optionLabel = { lang -> languageName(lang) },
-            onSelect = onLanguageChange,
+            onSelect = onLanguageChange
         )
         SettingsDropdown(
             label = stringResource(R.string.settings_date_format),
             value = state.session.dateFormat.orEmpty(),
             options = DATE_FORMAT_OPTIONS,
             optionLabel = { fmt -> dateFormatName(fmt) },
-            onSelect = onDateFormatChange,
+            onSelect = onDateFormatChange
         )
         SettingsDropdown(
             label = stringResource(R.string.settings_theme),
@@ -88,16 +92,20 @@ fun AppearanceSettingsContent(
             options = listOf(
                 AppSettingsRepository.THEME_SYSTEM,
                 AppSettingsRepository.THEME_LIGHT,
-                AppSettingsRepository.THEME_DARK,
+                AppSettingsRepository.THEME_DARK
             ),
             optionLabel = { pref ->
                 when (pref) {
-                    AppSettingsRepository.THEME_LIGHT -> stringResource(R.string.settings_theme_light)
+                    AppSettingsRepository.THEME_LIGHT -> stringResource(
+                        R.string.settings_theme_light
+                    )
+
                     AppSettingsRepository.THEME_DARK -> stringResource(R.string.settings_theme_dark)
+
                     else -> stringResource(R.string.settings_theme_system)
                 }
             },
-            onSelect = onThemeChange,
+            onSelect = onThemeChange
         )
     }
 }
@@ -107,20 +115,25 @@ fun AppearanceSettingsContent(
  * enrolled inline when it is switched on) and the screenshot block.
  */
 @Composable
-fun PrivacySettingsScreen(
-    onBack: () -> Unit,
-    viewModel: SettingsViewModel = hiltViewModel(),
-) {
+fun PrivacySettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val gating = rememberSettingsGating()
-    SettingsScaffold(title = stringResource(R.string.settings_group_privacy), onBack = onBack) { padding ->
+    SettingsScaffold(
+        title = stringResource(R.string.settings_group_privacy),
+        onBack = onBack
+    ) { padding ->
         PrivacySettingsContent(
             state = state,
-            onAppLockChange = { enabled -> viewModel.setAppLock(enabled, gating.deviceGrantSignInSupported) },
+            onAppLockChange = { enabled ->
+                viewModel.setAppLock(
+                    enabled,
+                    gating.deviceGrantSignInSupported
+                )
+            },
             onAutoLockDelayChange = viewModel::setAutoLockDelay,
             onBlockScreenshotsChange = viewModel::setBlockScreenshots,
             onRemoveBiometricSignIn = viewModel::removeBiometricSignIn,
-            modifier = padding,
+            modifier = padding
         )
     }
 }
@@ -132,7 +145,7 @@ fun PrivacySettingsContent(
     onAutoLockDelayChange: (AutoLockDelay) -> Unit = {},
     onBlockScreenshotsChange: (Boolean) -> Unit = {},
     onRemoveBiometricSignIn: () -> Unit = {},
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     SettingsColumn(modifier = modifier) {
         // Issue #722: the opt-in local app lock — a biometric / device-PIN check before a persisted
@@ -147,7 +160,7 @@ fun PrivacySettingsContent(
             label = stringResource(R.string.settings_local_auth_enable),
             checked = state.requireLocalAuth,
             enabled = state.localAuthSupported,
-            onCheckedChange = onAppLockChange,
+            onCheckedChange = onAppLockChange
         )
         if (state.requireLocalAuth) {
             SettingsHelperText(stringResource(R.string.settings_local_auth_enable_hint))
@@ -156,7 +169,7 @@ fun PrivacySettingsContent(
                 value = state.autoLockDelay.name,
                 options = AutoLockDelay.entries.map { it.name },
                 optionLabel = { lockDelayOptionLabel(it) },
-                onSelect = { name -> onAutoLockDelayChange(AutoLockDelay.valueOf(name)) },
+                onSelect = { name -> onAutoLockDelayChange(AutoLockDelay.valueOf(name)) }
             )
         }
         // Issue #722: fully biometric login. Enrollment happens inline when the lock is switched
@@ -174,7 +187,7 @@ fun PrivacySettingsContent(
                 OutlinedButton(
                     onClick = onRemoveBiometricSignIn,
                     enabled = !state.isBiometricBusy,
-                    modifier = Modifier.fillMaxWidth().testTag("biometric-signin-remove"),
+                    modifier = Modifier.fillMaxWidth().testTag("biometric-signin-remove")
                 ) {
                     Text(stringResource(R.string.settings_biometric_signin_remove))
                 }
@@ -184,7 +197,7 @@ fun PrivacySettingsContent(
             SettingsHelperText(
                 text = stringResource(res),
                 color = androidx.compose.material3.MaterialTheme.colorScheme.error,
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
             )
         }
 
@@ -195,7 +208,7 @@ fun PrivacySettingsContent(
         SettingsToggleRow(
             label = stringResource(R.string.settings_block_screenshots),
             checked = state.blockScreenshots,
-            onCheckedChange = onBlockScreenshotsChange,
+            onCheckedChange = onBlockScreenshotsChange
         )
         SettingsHelperText(
             stringResource(R.string.settings_block_screenshots_hint) +
@@ -203,7 +216,7 @@ fun PrivacySettingsContent(
                     " " + stringResource(R.string.settings_block_screenshots_hint_legacy)
                 } else {
                     ""
-                },
+                }
         )
     }
 }

@@ -34,5 +34,5 @@ data class PendingInteraction(
     val synced: Boolean = false,
     val syncedAt: String? = null,
     /** CON-04/ADR-0010 retry key (v17); null only pre-backfill. */
-    val idempotencyKey: String? = null,
+    val idempotencyKey: String? = null
 )

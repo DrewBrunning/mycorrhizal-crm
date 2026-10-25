@@ -8,14 +8,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
@@ -27,7 +27,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -55,33 +54,33 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.RelationshipEdge
 import com.mycorrhizal.crm.model.network.RelationshipEdgeSensitivities
 import com.mycorrhizal.crm.model.network.RelationshipEdgeStatuses
 import com.mycorrhizal.crm.model.network.RelationshipEdgeTypes
 import com.mycorrhizal.crm.model.util.DateFieldMode
-import com.mycorrhizal.crm.ui.components.BrandFab
-import com.mycorrhizal.crm.ui.components.FabListContentPadding
-import com.mycorrhizal.crm.ui.components.DateField
+import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
+import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.DateField
 import com.mycorrhizal.crm.ui.components.DropdownOption
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.FormScaffold
 import com.mycorrhizal.crm.ui.components.LabelledDropdown
-import com.mycorrhizal.crm.ui.components.relationshipRoleLabel
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
-import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.relationshipRoleLabel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RelationshipsScreen(
     onBack: () -> Unit,
     onNavigateToContact: (Int) -> Unit,
-    viewModel: RelationshipsViewModel = hiltViewModel(),
+    viewModel: RelationshipsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -100,7 +99,11 @@ fun RelationshipsScreen(
     fun displayName(edge: RelationshipEdge): String {
         val uid = otherPartyId(edge, state.contactVCardUid)
         val contact = state.contactsByUid[uid]
-        return contact?.let { displayNameFor(it) } ?: stringResource(R.string.relationships_unknown_contact)
+        return contact?.let {
+            displayNameFor(
+                it
+            )
+        } ?: stringResource(R.string.relationships_unknown_contact)
     }
 
     if (showCreateForm || editingEdge != null) {
@@ -122,7 +125,7 @@ fun RelationshipsScreen(
                 showCreateForm = false
                 editingEdgeId = null
                 viewModel.clearContactSearch()
-            },
+            }
         )
     } else {
         Scaffold(
@@ -130,18 +133,24 @@ fun RelationshipsScreen(
                 TopAppBar(
                     navigationIcon = {
                         AccessibleIconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                            Icon(
+                                Icons.AutoMirrored.Outlined.ArrowBack,
+                                contentDescription = stringResource(R.string.cd_back)
+                            )
                         }
                     },
                     title = {
-                        Text(stringResource(R.string.relationships_title), style = MaterialTheme.typography.titleLarge)
+                        Text(
+                            stringResource(R.string.relationships_title),
+                            style = MaterialTheme.typography.titleLarge
+                        )
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.primary,
                         titleContentColor = MaterialTheme.colorScheme.onPrimary,
                         navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                        actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
+                        actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 )
             },
             floatingActionButton = {
@@ -149,19 +158,23 @@ fun RelationshipsScreen(
                     viewModel.clearContactSearch()
                     showCreateForm = true
                 }) {
-                    Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.relationships_new))
+                    Icon(
+                        Icons.Outlined.Add,
+                        contentDescription = stringResource(R.string.relationships_new)
+                    )
                 }
             },
-            snackbarHost = { SnackbarHost(snackbarHostState) },
+            snackbarHost = { SnackbarHost(snackbarHostState) }
         ) { padding ->
             Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                 RefreshableContent(
                     isRefreshing = state.isLoading && state.edges.isNotEmpty(),
                     onRefresh = viewModel::load,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize()
                 ) {
                     when {
                         state.isLoading && state.edges.isEmpty() -> LoadingSkeleton()
+
                         state.edges.isEmpty() && errorMessage == null ->
                             EmptyState(
                                 title = stringResource(R.string.relationships_empty),
@@ -170,50 +183,73 @@ fun RelationshipsScreen(
                                 onAction = {
                                     viewModel.clearContactSearch()
                                     showCreateForm = true
-                                },
+                                }
                             )
+
                         state.edges.isEmpty() && errorMessage != null -> {
                             Text(
                                 text = errorMessage,
                                 color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.align(Alignment.Center),
+                                modifier = Modifier.align(Alignment.Center)
                             )
                         }
+
                         else -> {
-                            LazyColumn(state = listState, modifier = Modifier.fillMaxSize().testTag("relationship-list"), contentPadding = FabListContentPadding) {
+                            LazyColumn(
+                                state = listState,
+                                modifier = Modifier.fillMaxSize().testTag("relationship-list"),
+                                contentPadding = FabListContentPadding
+                            ) {
                                 items(state.confirmedEdges, key = { it.id }) { edge ->
                                     RelationshipEdgeRow(
                                         edge = edge,
                                         displayName = displayName(edge),
-                                        resolvedContactId = state.contactsByUid[otherPartyId(edge, state.contactVCardUid)]?.id,
+                                        resolvedContactId = state.contactsByUid[
+                                            otherPartyId(
+                                                edge,
+                                                state.contactVCardUid
+                                            )
+                                        ]?.id,
                                         viewedUid = state.contactVCardUid,
                                         onNavigateToContact = onNavigateToContact,
                                         onEdit = { editingEdgeId = edge.id },
-                                        onDelete = { pendingDelete = edge },
+                                        onDelete = { pendingDelete = edge }
                                     )
                                 }
                                 if (state.suggestedEdges.isNotEmpty()) {
                                     item {
                                         if (state.confirmedEdges.isNotEmpty()) {
-                                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                                            HorizontalDivider(
+                                                modifier = Modifier.padding(vertical = 8.dp)
+                                            )
                                         }
                                         Text(
-                                            text = stringResource(R.string.relationships_suggested_section),
+                                            text = stringResource(
+                                                R.string.relationships_suggested_section
+                                            ),
                                             style = MaterialTheme.typography.labelLarge,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                                            modifier = Modifier.padding(
+                                                horizontal = 16.dp,
+                                                vertical = 4.dp
+                                            )
                                         )
                                     }
                                     items(state.suggestedEdges, key = { it.id }) { edge ->
                                         RelationshipEdgeRow(
                                             edge = edge,
                                             displayName = displayName(edge),
-                                            resolvedContactId = state.contactsByUid[otherPartyId(edge, state.contactVCardUid)]?.id,
+                                            resolvedContactId = state.contactsByUid[
+                                                otherPartyId(
+                                                    edge,
+                                                    state.contactVCardUid
+                                                )
+                                            ]?.id,
                                             viewedUid = state.contactVCardUid,
                                             onNavigateToContact = onNavigateToContact,
                                             accepting = state.acceptingId == edge.id,
                                             onAccept = { viewModel.accept(edge.id) },
-                                            onReject = { pendingReject = edge },
+                                            onReject = { pendingReject = edge }
                                         )
                                     }
                                 }
@@ -229,7 +265,11 @@ fun RelationshipsScreen(
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
             title = { Text(stringResource(R.string.relationships_delete_title)) },
-            text = { Text(stringResource(R.string.relationships_delete_confirm, displayName(edge))) },
+            text = {
+                Text(
+                    stringResource(R.string.relationships_delete_confirm, displayName(edge))
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.delete(edge.id)
@@ -242,7 +282,7 @@ fun RelationshipsScreen(
                 TextButton(onClick = { pendingDelete = null }) {
                     Text(stringResource(R.string.action_cancel))
                 }
-            },
+            }
         )
     }
 
@@ -250,7 +290,11 @@ fun RelationshipsScreen(
         AlertDialog(
             onDismissRequest = { pendingReject = null },
             title = { Text(stringResource(R.string.relationships_reject_title)) },
-            text = { Text(stringResource(R.string.relationships_reject_confirm, displayName(edge))) },
+            text = {
+                Text(
+                    stringResource(R.string.relationships_reject_confirm, displayName(edge))
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.delete(edge.id)
@@ -263,7 +307,7 @@ fun RelationshipsScreen(
                 TextButton(onClick = { pendingReject = null }) {
                     Text(stringResource(R.string.action_cancel))
                 }
-            },
+            }
         )
     }
 
@@ -293,27 +337,37 @@ private fun RelationshipEdgeRow(
     onAccept: (() -> Unit)? = null,
     onReject: (() -> Unit)? = null,
     onEdit: (() -> Unit)? = null,
-    onDelete: (() -> Unit)? = null,
+    onDelete: (() -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .let { m -> if (resolvedContactId != null) m.clickable { onNavigateToContact(resolvedContactId) } else m }
+            .let { m ->
+                if (resolvedContactId != null) {
+                    m.clickable {
+                        onNavigateToContact(
+                            resolvedContactId
+                        )
+                    }
+                } else {
+                    m
+                }
+            }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Icon(
             imageVector = Icons.Outlined.Person,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = displayName,
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = relationshipLabel(edge.type, edge, viewedUid),
@@ -322,13 +376,13 @@ private fun RelationshipEdgeRow(
                     MaterialTheme.colorScheme.tertiary
                 } else {
                     MaterialTheme.colorScheme.onSurfaceVariant
-                },
+                }
             )
             if (edge.status == RelationshipEdgeStatuses.SUGGESTED) {
                 Text(
                     text = stringResource(R.string.relationships_suggested),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.tertiary,
+                    color = MaterialTheme.colorScheme.tertiary
                 )
             }
         }
@@ -336,14 +390,17 @@ private fun RelationshipEdgeRow(
             AssistChip(
                 onClick = { onAccept?.invoke() },
                 enabled = !accepting,
-                label = { Text(stringResource(R.string.relationships_accept)) },
+                label = { Text(stringResource(R.string.relationships_accept)) }
             )
             AccessibleIconButton(onClick = { onReject?.invoke() }) {
                 // #205: the row-action label carries the other party's name so
                 // TalkBack doesn't read a bare "Reject" on every row.
                 Icon(
                     Icons.Outlined.Close,
-                    contentDescription = stringResource(R.string.relationships_reject_named, displayName),
+                    contentDescription = stringResource(
+                        R.string.relationships_reject_named,
+                        displayName
+                    )
                 )
             }
         } else {
@@ -352,13 +409,19 @@ private fun RelationshipEdgeRow(
                 // TalkBack doesn't read a bare "Edit"/"Delete" on every row.
                 Icon(
                     Icons.Outlined.Edit,
-                    contentDescription = stringResource(R.string.relationships_edit_named, displayName),
+                    contentDescription = stringResource(
+                        R.string.relationships_edit_named,
+                        displayName
+                    )
                 )
             }
             AccessibleIconButton(onClick = { onDelete?.invoke() }) {
                 Icon(
                     Icons.Outlined.Delete,
-                    contentDescription = stringResource(R.string.relationships_delete_named, displayName),
+                    contentDescription = stringResource(
+                        R.string.relationships_delete_named,
+                        displayName
+                    )
                 )
             }
         }
@@ -367,14 +430,29 @@ private fun RelationshipEdgeRow(
 
 /** Human label for an edge's effective type token. */
 @Composable
-fun relationshipLabel(@Suppress("UnusedParameter") type: String, edge: RelationshipEdge, viewedUid: String): String {
-    return relationshipRoleLabel(effectiveType(edge, viewedUid))
-}
+fun relationshipLabel(
+    @Suppress(
+        "UnusedParameter"
+    ) type: String,
+    edge: RelationshipEdge,
+    viewedUid: String
+): String = relationshipRoleLabel(effectiveType(edge, viewedUid))
 
 /** Linked-contact selection survives rotation and process death (a plain data class is not Parcelable). */
 private val ContactSummarySaver = listSaver<ContactSummary?, Any?>(
     save = { c ->
-        if (c == null) emptyList() else listOf(c.id, c.uid, c.firstname, c.lastname, c.nickname, c.fn)
+        if (c == null) {
+            emptyList()
+        } else {
+            listOf(
+                c.id,
+                c.uid,
+                c.firstname,
+                c.lastname,
+                c.nickname,
+                c.fn
+            )
+        }
     },
     restore = { l ->
         if (l.isEmpty()) {
@@ -386,10 +464,10 @@ private val ContactSummarySaver = listSaver<ContactSummary?, Any?>(
                 firstname = l[2] as String?,
                 lastname = l[3] as String?,
                 nickname = l[4] as String?,
-                fn = l[5] as String?,
+                fn = l[5] as String?
             )
         }
-    },
+    }
 )
 
 /**
@@ -416,15 +494,20 @@ fun RelationshipEdgeForm(
         gender: String,
         birthday: String,
         sensitivity: String,
-        linkedContact: ContactSummary?,
+        linkedContact: ContactSummary?
     ) -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     val isEditing = edge != null
     var linkedMode by rememberSaveable(edge?.id) { mutableStateOf(false) }
     var type by rememberSaveable(edge?.id) {
         mutableStateOf(
-            edge?.let { effectiveType(it, state.contactVCardUid) } ?: RelationshipEdgeTypes.FRIEND_OF,
+            edge?.let {
+                effectiveType(
+                    it,
+                    state.contactVCardUid
+                )
+            } ?: RelationshipEdgeTypes.FRIEND_OF
         )
     }
     var sensitivity by rememberSaveable(edge?.id) {
@@ -444,7 +527,12 @@ fun RelationshipEdgeForm(
         (!linkedMode && name.isNotBlank()) ||
         (linkedMode && selectedContact != null)
     // Issue #1751: anything the user has changed from the form's opening state.
-    val initialType = edge?.let { effectiveType(it, state.contactVCardUid) } ?: RelationshipEdgeTypes.FRIEND_OF
+    val initialType = edge?.let {
+        effectiveType(
+            it,
+            state.contactVCardUid
+        )
+    } ?: RelationshipEdgeTypes.FRIEND_OF
     val initialSensitivity = edge?.sensitivity ?: RelationshipEdgeSensitivities.NORMAL
     val isDirty = linkedMode ||
         type != initialType ||
@@ -455,20 +543,30 @@ fun RelationshipEdgeForm(
         selectedContact != null
 
     FormScaffold(
-        title = stringResource(if (isEditing) R.string.relationships_edit_title else R.string.relationships_new),
+        title = stringResource(
+            if (isEditing) R.string.relationships_edit_title else R.string.relationships_new
+        ),
         onBack = onDismiss,
         saveLabel = stringResource(if (isEditing) R.string.action_save else R.string.action_create),
         isSaving = false,
         onSave = {
-            onConfirm(type, selectedContact?.uid.orEmpty(), name, gender, birthday, sensitivity, selectedContact)
+            onConfirm(
+                type,
+                selectedContact?.uid.orEmpty(),
+                name,
+                gender,
+                birthday,
+                sensitivity,
+                selectedContact
+            )
         },
         snackbarHostState = snackbarHostState,
         saveEnabled = canConfirm,
         saveDisabledHint = stringResource(
-            if (linkedMode) R.string.relationships_save_hint_contact else R.string.relationships_save_hint_name,
+            if (linkedMode) R.string.relationships_save_hint_contact else R.string.relationships_save_hint_name
         ),
         isDirty = isDirty,
-        entityLabel = stringResource(R.string.entity_relationship),
+        entityLabel = stringResource(R.string.entity_relationship)
     ) { padding ->
         Column(
             modifier = Modifier
@@ -476,18 +574,20 @@ fun RelationshipEdgeForm(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             if (isEditing) {
                 Column {
                     Text(
-                        text = otherPartyName ?: stringResource(R.string.relationships_unknown_contact),
-                        style = MaterialTheme.typography.bodyLarge,
+                        text = otherPartyName ?: stringResource(
+                            R.string.relationships_unknown_contact
+                        ),
+                        style = MaterialTheme.typography.bodyLarge
                     )
                     Text(
                         text = stringResource(R.string.relationships_other_party_readonly_hint),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             } else {
@@ -499,14 +599,17 @@ fun RelationshipEdgeForm(
                 // radio's accessible name; selectableGroup on the Column
                 // groups them for correct radio-group navigation.
                 Column(modifier = Modifier.selectableGroup()) {
-                    Text(stringResource(R.string.relationships_entry_mode), style = MaterialTheme.typography.labelMedium)
+                    Text(
+                        stringResource(R.string.relationships_entry_mode),
+                        style = MaterialTheme.typography.labelMedium
+                    )
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.selectable(
                             selected = !linkedMode,
                             onClick = { linkedMode = false },
-                            role = Role.RadioButton,
-                        ),
+                            role = Role.RadioButton
+                        )
                     ) {
                         RadioButton(selected = !linkedMode, onClick = null)
                         Text(text = stringResource(R.string.relationships_enter_manually))
@@ -516,8 +619,8 @@ fun RelationshipEdgeForm(
                         modifier = Modifier.selectable(
                             selected = linkedMode,
                             onClick = { linkedMode = true },
-                            role = Role.RadioButton,
-                        ),
+                            role = Role.RadioButton
+                        )
                     ) {
                         RadioButton(selected = linkedMode, onClick = null)
                         Text(text = stringResource(R.string.relationships_link_to_contact))
@@ -527,11 +630,14 @@ fun RelationshipEdgeForm(
                 if (linkedMode) {
                     val chosen = selectedContact
                     if (chosen != null) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
                             Text(
                                 text = displayNameFor(chosen),
                                 style = MaterialTheme.typography.bodyLarge,
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.weight(1f)
                             )
                             TextButton(onClick = {
                                 selectedContact = null
@@ -544,26 +650,37 @@ fun RelationshipEdgeForm(
                         OutlinedTextField(
                             value = state.contactSearchQuery,
                             onValueChange = onSearchChange,
-                            label = { Text(stringResource(R.string.relationships_search_contacts)) },
+                            label = {
+                                Text(
+                                    stringResource(R.string.relationships_search_contacts)
+                                )
+                            },
                             singleLine = true,
                             trailingIcon = {
                                 if (state.contactSearchLoading) {
-                                    CircularProgressIndicator(modifier = Modifier.padding(4.dp), strokeWidth = 2.dp)
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.padding(4.dp),
+                                        strokeWidth = 2.dp
+                                    )
                                 }
                             },
-                            modifier = Modifier.fillMaxWidth().testTag("relationship-contact-search"),
+                            modifier = Modifier.fillMaxWidth().testTag(
+                                "relationship-contact-search"
+                            )
                         )
                         when {
                             state.contactSearchQuery.isBlank() -> Text(
                                 text = stringResource(R.string.relationships_type_to_search),
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+
                             state.contactSearchResults.isEmpty() && !state.contactSearchLoading -> Text(
                                 text = stringResource(R.string.relationships_no_contacts_found),
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+
                             // A plain Column, not a LazyColumn: the form scrolls as a whole and
                             // the search returns at most a page (25) of results.
                             else -> Column {
@@ -574,8 +691,10 @@ fun RelationshipEdgeForm(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .heightIn(min = 48.dp)
-                                            .clickable(role = Role.Button) { selectedContact = contact }
-                                            .padding(vertical = 12.dp),
+                                            .clickable(
+                                                role = Role.Button
+                                            ) { selectedContact = contact }
+                                            .padding(vertical = 12.dp)
                                     )
                                 }
                             }
@@ -587,7 +706,7 @@ fun RelationshipEdgeForm(
                         onValueChange = { name = it },
                         label = { Text(stringResource(R.string.relationships_other_name)) },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
@@ -595,9 +714,14 @@ fun RelationshipEdgeForm(
             LabelledDropdown(
                 label = stringResource(R.string.relationships_type),
                 valueText = relationshipRoleLabel(type),
-                options = RelationshipEdgeTypes.TYPE_TOKENS.map { DropdownOption(it, relationshipRoleLabel(it)) },
+                options = RelationshipEdgeTypes.TYPE_TOKENS.map {
+                    DropdownOption(
+                        it,
+                        relationshipRoleLabel(it)
+                    )
+                },
                 onSelect = { type = it },
-                modifier = Modifier.testTag("relationship-type"),
+                modifier = Modifier.testTag("relationship-type")
             )
 
             if (!isEditing && !linkedMode) {
@@ -606,7 +730,7 @@ fun RelationshipEdgeForm(
                     onValueChange = { gender = it },
                     label = { Text(stringResource(R.string.relationships_gender)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
                 )
                 DateField(
                     value = birthday,
@@ -614,33 +738,39 @@ fun RelationshipEdgeForm(
                     label = stringResource(R.string.relationships_birthday),
                     mode = DateFieldMode.PARTIAL,
                     allowClear = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
 
             LabelledDropdown(
                 label = stringResource(R.string.relationships_sensitivity),
                 valueText = when (sensitivity) {
-                    RelationshipEdgeSensitivities.PRIVATE -> stringResource(R.string.relationships_sensitivity_private)
-                    RelationshipEdgeSensitivities.SECRET -> stringResource(R.string.relationships_sensitivity_secret)
+                    RelationshipEdgeSensitivities.PRIVATE -> stringResource(
+                        R.string.relationships_sensitivity_private
+                    )
+
+                    RelationshipEdgeSensitivities.SECRET -> stringResource(
+                        R.string.relationships_sensitivity_secret
+                    )
+
                     else -> stringResource(R.string.relationships_sensitivity_normal)
                 },
                 options = listOf(
                     DropdownOption(
                         RelationshipEdgeSensitivities.NORMAL,
-                        stringResource(R.string.relationships_sensitivity_normal),
+                        stringResource(R.string.relationships_sensitivity_normal)
                     ),
                     DropdownOption(
                         RelationshipEdgeSensitivities.PRIVATE,
-                        stringResource(R.string.relationships_sensitivity_private),
+                        stringResource(R.string.relationships_sensitivity_private)
                     ),
                     DropdownOption(
                         RelationshipEdgeSensitivities.SECRET,
-                        stringResource(R.string.relationships_sensitivity_secret),
-                    ),
+                        stringResource(R.string.relationships_sensitivity_secret)
+                    )
                 ),
                 onSelect = { sensitivity = it },
-                modifier = Modifier.testTag("relationship-sensitivity"),
+                modifier = Modifier.testTag("relationship-sensitivity")
             )
         }
     }

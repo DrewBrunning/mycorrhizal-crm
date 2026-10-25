@@ -37,12 +37,15 @@ class EntityFormsLabelsTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    private val isDropdown = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.DropdownList)
+    private val isDropdown = SemanticsMatcher.expectValue(
+        SemanticsProperties.Role,
+        Role.DropdownList
+    )
 
     private fun giftForm(
         initial: Gift? = null,
         onConfirm: (GiftFormData) -> Unit = {},
-        onDismiss: () -> Unit = {},
+        onDismiss: () -> Unit = {}
     ) = composeTestRule.setContent {
         MycorrhizalTheme {
             GiftForm(
@@ -50,7 +53,7 @@ class EntityFormsLabelsTest {
                 lifeEvents = emptyList(),
                 activities = emptyList(),
                 onConfirm = onConfirm,
-                onDismiss = onDismiss,
+                onDismiss = onDismiss
             )
         }
     }
@@ -93,7 +96,7 @@ class EntityFormsLabelsTest {
                     onAddRelated = {},
                     onRemoveRelated = {},
                     onConfirm = {},
-                    onDismiss = {},
+                    onDismiss = {}
                 )
             }
         }
@@ -111,7 +114,9 @@ class EntityFormsLabelsTest {
         preferenceForm()
         composeTestRule.onNodeWithText("Suggestions").assertIsDisplayed()
         composeTestRule.onNodeWithText("Kind").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Allergy").performScrollTo().assertIsDisplayed().performClick()
+        composeTestRule.onNodeWithText(
+            "Allergy"
+        ).performScrollTo().assertIsDisplayed().performClick()
         // Filled: the suggestions disappear and the field holds the choice.
         composeTestRule.onNodeWithText("Suggestions").assertDoesNotExist()
         composeTestRule.onNodeWithText("allergy").performScrollTo().assertIsDisplayed()

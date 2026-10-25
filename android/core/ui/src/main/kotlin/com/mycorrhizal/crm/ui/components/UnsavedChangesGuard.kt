@@ -20,7 +20,7 @@ fun DiscardChangesDialog(
     entityLabel: String,
     onKeepEditing: () -> Unit,
     onDiscard: () -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     AlertDialog(
         onDismissRequest = onKeepEditing,
@@ -31,7 +31,7 @@ fun DiscardChangesDialog(
             TextButton(onClick = onDiscard) {
                 Text(
                     text = stringResource(R.string.unsaved_changes_discard),
-                    color = MaterialTheme.colorScheme.error,
+                    color = MaterialTheme.colorScheme.error
                 )
             }
         },
@@ -39,6 +39,6 @@ fun DiscardChangesDialog(
             TextButton(onClick = onKeepEditing) {
                 Text(stringResource(R.string.unsaved_changes_keep_editing))
             }
-        },
+        }
     )
 }

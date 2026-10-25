@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.contacts
 
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.getValue
@@ -7,38 +8,37 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import com.mycorrhizal.crm.ui.components.FormScaffold
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.performScrollToNode
-import androidx.compose.ui.test.assertCountEquals
-import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsOff
-import androidx.compose.ui.test.assertIsOn
-import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.ContactFieldKey
 import com.mycorrhizal.crm.model.network.DEFAULT_ENABLED_CONTACT_FIELDS
 import com.mycorrhizal.crm.model.network.Tag
+import com.mycorrhizal.crm.ui.components.FormScaffold
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import androidx.activity.ComponentActivity
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
@@ -60,12 +60,18 @@ class ContactFormScreenTest {
         onTagToggle: (String) -> Unit = {},
         onCardNotesChange: (List<com.mycorrhizal.crm.model.network.CardNote>) -> Unit = {},
         onGenderChange: (String) -> Unit = {},
-        onPreferredLanguagesChange: (List<com.mycorrhizal.crm.model.network.LanguagePref>) -> Unit = {},
+        onPreferredLanguagesChange: (
+            List<com.mycorrhizal.crm.model.network.LanguagePref>
+        ) -> Unit = {
+        },
         onPronounsChange: (List<com.mycorrhizal.crm.model.network.Pronouns>) -> Unit = {},
-        onGrammaticalGendersChange: (List<com.mycorrhizal.crm.model.network.GrammaticalGender>) -> Unit = {},
+        onGrammaticalGendersChange: (
+            List<com.mycorrhizal.crm.model.network.GrammaticalGender>
+        ) -> Unit = {
+        },
         onKeywordsChange: (List<String>) -> Unit = {},
         onCardKindChange: (String) -> Unit = {},
-        onAmbientChange: (Boolean) -> Unit = {},
+        onAmbientChange: (Boolean) -> Unit = {}
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -77,7 +83,7 @@ class ContactFormScreenTest {
                     onSave = onSave,
                     snackbarHostState = remember { SnackbarHostState() },
                     isDirty = state.isDirty,
-                    entityLabel = "contact",
+                    entityLabel = "contact"
                 ) { padding ->
                     ContactFormContent(
                         state = state,
@@ -102,7 +108,7 @@ class ContactFormScreenTest {
                         onKeywordsChange = onKeywordsChange,
                         onCircleToggle = onCircleToggle,
                         onTagToggle = onTagToggle,
-                        modifier = Modifier.padding(padding),
+                        modifier = Modifier.padding(padding)
                     )
                 }
             }
@@ -115,7 +121,9 @@ class ContactFormScreenTest {
     fun `the ambient switch shows its label and supporting text, off when the flag is absent`() {
         setContent(state = ContactFormState(ambient = null))
 
-        composeTestRule.onNodeWithText("Ambient contact — I see them all the time").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Ambient contact — I see them all the time"
+        ).performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Counts as in regular contact without logging activities")
             .performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithTag("contact-ambient-toggle").performScrollTo().assertIsOff()
@@ -144,14 +152,17 @@ class ContactFormScreenTest {
                 addresses = listOf(
                     com.mycorrhizal.crm.model.network.Address(
                         components = listOf(
-                            com.mycorrhizal.crm.model.network.AddressComponent(kind = "name", value = "1 Main St"),
-                        ),
-                    ),
+                            com.mycorrhizal.crm.model.network.AddressComponent(
+                                kind = "name",
+                                value = "1 Main St"
+                            )
+                        )
+                    )
                 ),
                 // Issue #832: every field toggled on, so this test still proves every
                 // section CAN render — gating itself is covered by dedicated tests below.
-                enabledFields = com.mycorrhizal.crm.model.network.ContactFieldKey.entries.toSet(),
-            ),
+                enabledFields = com.mycorrhizal.crm.model.network.ContactFieldKey.entries.toSet()
+            )
         )
         composeTestRule.onNodeWithText("Given name").assertIsDisplayed()
         composeTestRule.onNodeWithText("Surname").assertIsDisplayed()
@@ -165,7 +176,9 @@ class ContactFormScreenTest {
         composeTestRule.onNodeWithText("Instant messaging").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Social profiles").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("How we met").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("Additional contact information").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Additional contact information"
+        ).performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Birthday").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Notes").performScrollTo().assertIsDisplayed()
         // Issue #832: fields with no prior Android UI.
@@ -229,7 +242,10 @@ class ContactFormScreenTest {
         // The last field is not hidden behind the pinned bar.
         val lastFieldBottom = composeTestRule.onNodeWithText("No tags yet").getBoundsInRoot().bottom
         val barTop = composeTestRule.onNodeWithText("Create contact").getBoundsInRoot().top
-        assertTrue("last field ($lastFieldBottom) overlaps the save bar ($barTop)", lastFieldBottom <= barTop)
+        assertTrue(
+            "last field ($lastFieldBottom) overlaps the save bar ($barTop)",
+            lastFieldBottom <= barTop
+        )
 
         form.performScrollToNode(hasText("Given name"))
         composeTestRule.onNodeWithText("Create contact").assertIsDisplayed()
@@ -249,9 +265,9 @@ class ContactFormScreenTest {
         setContent(
             state = ContactFormState(
                 circles = listOf("friends"),
-                allCircles = listOf(Circle(id = "c1", name = "friends")),
+                allCircles = listOf(Circle(id = "c1", name = "friends"))
             ),
-            onCircleToggle = { toggled = it },
+            onCircleToggle = { toggled = it }
         )
         composeTestRule.onNodeWithText("friends").performScrollTo().performClick()
         assertEquals("friends", toggled)
@@ -263,9 +279,9 @@ class ContactFormScreenTest {
         setContent(
             state = ContactFormState(
                 tags = listOf("close"),
-                allTags = listOf(Tag(id = "t1", name = "close")),
+                allTags = listOf(Tag(id = "t1", name = "close"))
             ),
-            onTagToggle = { toggled = it },
+            onTagToggle = { toggled = it }
         )
         composeTestRule.onNodeWithText("close").performScrollTo().performClick()
         assertEquals("close", toggled)
@@ -287,9 +303,9 @@ class ContactFormScreenTest {
         setContent(
             state = ContactFormState(
                 keywords = listOf("hiking"),
-                enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.KEYWORDS,
+                enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.KEYWORDS
             ),
-            onKeywordsChange = { keywords = it },
+            onKeywordsChange = { keywords = it }
         )
         composeTestRule.onNodeWithText("hiking").performScrollTo().performClick()
         assertEquals(emptyList<String>(), keywords)
@@ -300,10 +316,12 @@ class ContactFormScreenTest {
         var notes: List<com.mycorrhizal.crm.model.network.CardNote>? = null
         setContent(
             state = ContactFormState(
-                cardNotes = listOf(com.mycorrhizal.crm.model.network.CardNote(note = "met at conf")),
-                enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.CARD_NOTES,
+                cardNotes = listOf(
+                    com.mycorrhizal.crm.model.network.CardNote(note = "met at conf")
+                ),
+                enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.CARD_NOTES
             ),
-            onCardNotesChange = { notes = it },
+            onCardNotesChange = { notes = it }
         )
         composeTestRule.onNodeWithText("met at conf").performScrollTo().performTextInput("!")
         assertEquals("!met at conf", notes?.single()?.note)
@@ -313,9 +331,11 @@ class ContactFormScreenTest {
     fun `preferred languages editor shows the loaded language value`() {
         setContent(
             state = ContactFormState(
-                preferredLanguages = listOf(com.mycorrhizal.crm.model.network.LanguagePref(language = "en")),
-                enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.PREFERRED_LANGUAGES,
-            ),
+                preferredLanguages = listOf(
+                    com.mycorrhizal.crm.model.network.LanguagePref(language = "en")
+                ),
+                enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.PREFERRED_LANGUAGES
+            )
         )
         composeTestRule.onNodeWithText("Preferred languages").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("en").performScrollTo().assertIsDisplayed()
@@ -337,12 +357,16 @@ class ContactFormScreenTest {
                     com.mycorrhizal.crm.model.network.Anniversary(
                         kind = "wedding",
                         date = com.mycorrhizal.crm.model.network.AnniversaryDate(
-                            partial = com.mycorrhizal.crm.model.network.PartialDate(year = 2020, month = 6, day = 1),
-                        ),
-                    ),
+                            partial = com.mycorrhizal.crm.model.network.PartialDate(
+                                year = 2020,
+                                month = 6,
+                                day = 1
+                            )
+                        )
+                    )
                 ),
-                enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.ANNIVERSARIES,
-            ),
+                enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.ANNIVERSARIES
+            )
         )
         // Issue #1728: the birthday picker stays in the identity form; every
         // other anniversary moved to the Anniversaries drill-down.
@@ -355,7 +379,11 @@ class ContactFormScreenTest {
 
     @Test
     fun `a field absent from the enabled set does not render`() {
-        setContent(state = ContactFormState(enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS - ContactFieldKey.NICKNAME))
+        setContent(
+            state = ContactFormState(
+                enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS - ContactFieldKey.NICKNAME
+            )
+        )
         composeTestRule.onNodeWithText("Nickname").assertDoesNotExist()
     }
 
@@ -386,7 +414,9 @@ class ContactFormScreenTest {
     @Test
     fun `the real cardKind dropdown is gated and distinct from the kind dropdown`() {
         setContent(
-            state = ContactFormState(enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.CARD_KIND),
+            state = ContactFormState(
+                enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.CARD_KIND
+            )
         )
         composeTestRule.onNodeWithTag("contact-kind-field").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithTag("card-kind-field").performScrollTo().assertIsDisplayed()
@@ -402,8 +432,10 @@ class ContactFormScreenTest {
     fun `selecting a cardKind option forwards its token`() {
         var cardKind: String? = null
         setContent(
-            state = ContactFormState(enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.CARD_KIND),
-            onCardKindChange = { cardKind = it },
+            state = ContactFormState(
+                enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.CARD_KIND
+            ),
+            onCardKindChange = { cardKind = it }
         )
         composeTestRule.onNodeWithTag("card-kind-field").performScrollTo().performClick()
         composeTestRule.onNodeWithText("Organization").performClick()
@@ -415,8 +447,9 @@ class ContactFormScreenTest {
         setContent(
             state = ContactFormState(
                 enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS -
-                    ContactFieldKey.IMPP_ADDRESSES - ContactFieldKey.SOCIAL_PROFILES - ContactFieldKey.OTHER_ONLINE_SERVICES,
-            ),
+                    ContactFieldKey.IMPP_ADDRESSES - ContactFieldKey.SOCIAL_PROFILES -
+                    ContactFieldKey.OTHER_ONLINE_SERVICES
+            )
         )
         composeTestRule.onNodeWithText("Online services").assertDoesNotExist()
     }
@@ -424,7 +457,9 @@ class ContactFormScreenTest {
     @Test
     fun `the online services section header renders when only one of its three fields is enabled`() {
         setContent(
-            state = ContactFormState(enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.SOCIAL_PROFILES),
+            state = ContactFormState(
+                enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.SOCIAL_PROFILES
+            )
         )
         composeTestRule.onNodeWithText("Online services").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Social profiles").performScrollTo().assertIsDisplayed()
@@ -435,7 +470,10 @@ class ContactFormScreenTest {
     private fun formViewModel(state: ContactFormState): ContactFormViewModel {
         val viewModel = io.mockk.mockk<ContactFormViewModel>(relaxed = true)
         io.mockk.every { viewModel.uiState } returns kotlinx.coroutines.flow.MutableStateFlow(state)
-        io.mockk.every { viewModel.events } returns kotlinx.coroutines.flow.MutableStateFlow<ContactFormEvent?>(null)
+        io.mockk.every { viewModel.events } returns
+            kotlinx.coroutines.flow.MutableStateFlow<ContactFormEvent?>(
+                null
+            )
         return viewModel
     }
 
@@ -448,7 +486,10 @@ class ContactFormScreenTest {
         }
 
         composeTestRule.onNodeWithText("Changed elsewhere").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Your edit was not saved.", substring = true).assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Your edit was not saved.",
+            substring = true
+        ).assertIsDisplayed()
         composeTestRule.onNodeWithText("Load latest version").performClick()
         io.mockk.verify(exactly = 1) { viewModel.onConflictLoadLatest() }
         composeTestRule.onNodeWithText("Keep editing").performClick()
@@ -496,7 +537,7 @@ class ContactFormScreenTest {
                     onSave = {},
                     snackbarHostState = remember { SnackbarHostState() },
                     isDirty = state.isDirty,
-                    entityLabel = "contact",
+                    entityLabel = "contact"
                 ) { padding ->
                     ContactFormContent(
                         state = state,
@@ -511,7 +552,7 @@ class ContactFormScreenTest {
                         onOtherServicesChange = {},
                         onLinksChange = {},
                         onBirthdayChange = {},
-                        modifier = Modifier.padding(padding),
+                        modifier = Modifier.padding(padding)
                     )
                 }
             }
@@ -525,7 +566,9 @@ class ContactFormScreenTest {
         }
 
         composeTestRule.onNodeWithText("Discard changes?").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Your edits to this contact haven't been saved.").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Your edits to this contact haven't been saved."
+        ).assertIsDisplayed()
         assertEquals(false, back)
 
         composeTestRule.onNodeWithText("Keep editing").performClick()
@@ -548,7 +591,7 @@ class ContactFormScreenTest {
                     onSave = {},
                     snackbarHostState = remember { SnackbarHostState() },
                     isDirty = state.isDirty,
-                    entityLabel = "contact",
+                    entityLabel = "contact"
                 ) { padding ->
                     ContactFormContent(
                         state = state,
@@ -563,7 +606,7 @@ class ContactFormScreenTest {
                         onOtherServicesChange = {},
                         onLinksChange = {},
                         onBirthdayChange = {},
-                        modifier = Modifier.padding(padding),
+                        modifier = Modifier.padding(padding)
                     )
                 }
             }

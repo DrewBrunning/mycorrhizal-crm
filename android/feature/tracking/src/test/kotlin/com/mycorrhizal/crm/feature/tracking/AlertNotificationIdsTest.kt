@@ -11,7 +11,7 @@ class AlertNotificationIdsTest {
     fun `same reminder and due time map to the same id`() {
         assertEquals(
             AlertNotificationIds.forReminder(42, "2026-08-18T06:00:00Z"),
-            AlertNotificationIds.forReminder(42, "2026-08-18T06:00:00Z"),
+            AlertNotificationIds.forReminder(42, "2026-08-18T06:00:00Z")
         )
     }
 
@@ -19,7 +19,7 @@ class AlertNotificationIdsTest {
     fun `a different due time of the same reminder maps to a different id`() {
         assertNotEquals(
             AlertNotificationIds.forReminder(42, "2026-08-18T06:00:00Z"),
-            AlertNotificationIds.forReminder(42, "2026-08-19T06:00:00Z"),
+            AlertNotificationIds.forReminder(42, "2026-08-19T06:00:00Z")
         )
     }
 
@@ -27,7 +27,7 @@ class AlertNotificationIdsTest {
     fun `a different reminder maps to a different id`() {
         assertNotEquals(
             AlertNotificationIds.forReminder(1, "2026-08-18T06:00:00Z"),
-            AlertNotificationIds.forReminder(2, "2026-08-18T06:00:00Z"),
+            AlertNotificationIds.forReminder(2, "2026-08-18T06:00:00Z")
         )
     }
 
@@ -53,7 +53,7 @@ class AlertNotificationIdsTest {
     fun `a sub-second difference within the same second is still one id`() {
         assertEquals(
             AlertNotificationIds.forReminder(42, "2026-08-18T06:00:00.123456Z"),
-            AlertNotificationIds.forReminder(42, "2026-08-18T06:00:00Z"),
+            AlertNotificationIds.forReminder(42, "2026-08-18T06:00:00Z")
         )
     }
 
@@ -61,7 +61,7 @@ class AlertNotificationIdsTest {
     fun `an unparseable due time still hashes deterministically`() {
         assertEquals(
             AlertNotificationIds.forReminder(42, "not-a-timestamp"),
-            AlertNotificationIds.forReminder(42, "not-a-timestamp"),
+            AlertNotificationIds.forReminder(42, "not-a-timestamp")
         )
     }
 }

@@ -37,6 +37,8 @@ interface CachedHouseholdMemberDao {
     @Query("DELETE FROM cached_household_members WHERE householdId = :householdId")
     suspend fun deleteByHouseholdId(householdId: String)
 
-    @Query("DELETE FROM cached_household_members WHERE householdId = :householdId AND memberVCardUid = :vcardUid")
+    @Query(
+        "DELETE FROM cached_household_members WHERE householdId = :householdId AND memberVCardUid = :vcardUid"
+    )
     suspend fun deleteMember(householdId: String, vcardUid: String)
 }

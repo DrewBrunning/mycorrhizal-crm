@@ -40,7 +40,10 @@ fun ThirdPartyLicensesScreen(onBack: () -> Unit) {
     val libs = remember(context) {
         runCatching { Libs.Builder().withContext(context).build() }.getOrNull()
     }
-    SettingsScaffold(title = stringResource(R.string.settings_licenses_title), onBack = onBack) { padding ->
+    SettingsScaffold(
+        title = stringResource(R.string.settings_licenses_title),
+        onBack = onBack
+    ) { padding ->
         ThirdPartyLicensesContent(libs = libs, modifier = padding)
     }
 }
@@ -54,7 +57,7 @@ fun ThirdPartyLicensesContent(libs: Libs?, modifier: Modifier = Modifier) {
             modifier = modifier
                 .fillMaxSize()
                 .padding(16.dp)
-                .testTag("licenses-empty"),
+                .testTag("licenses-empty")
         )
         return
     }
@@ -63,7 +66,7 @@ fun ThirdPartyLicensesContent(libs: Libs?, modifier: Modifier = Modifier) {
             .fillMaxSize()
             .testTag("licenses-list"),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(libs.libraries, key = { it.artifactId }) { library ->
             LicenseEntry(library)
@@ -75,25 +78,25 @@ fun ThirdPartyLicensesContent(libs: Libs?, modifier: Modifier = Modifier) {
 private fun LicenseEntry(library: Library) {
     var expanded by remember(library.artifactId) { mutableStateOf(false) }
     val state = stringResource(
-        if (expanded) R.string.settings_licenses_expanded else R.string.settings_licenses_collapsed,
+        if (expanded) R.string.settings_licenses_expanded else R.string.settings_licenses_collapsed
     )
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(role = Role.Button) { expanded = !expanded }
             .semantics { stateDescription = state }
-            .padding(vertical = 4.dp),
+            .padding(vertical = 4.dp)
     ) {
         Text(
             text = listOfNotNull(library.name, library.artifactVersion).joinToString(" "),
-            style = MaterialTheme.typography.titleSmall,
+            style = MaterialTheme.typography.titleSmall
         )
         val licenseNames = library.licenses.joinToString { it.name }
         if (licenseNames.isNotBlank()) {
             Text(
                 text = licenseNames,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         if (expanded) {
@@ -102,7 +105,7 @@ private fun LicenseEntry(library: Library) {
                     Text(
                         text = url,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
                 license.licenseContent?.takeIf { it.isNotBlank() }?.let { content ->
@@ -111,7 +114,7 @@ private fun LicenseEntry(library: Library) {
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier
                             .padding(top = 8.dp)
-                            .testTag("license-text"),
+                            .testTag("license-text")
                     )
                 }
             }

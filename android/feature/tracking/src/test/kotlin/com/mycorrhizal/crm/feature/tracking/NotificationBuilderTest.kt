@@ -23,7 +23,9 @@ import org.robolectric.shadows.ShadowPackageManager
 class NotificationBuilderTest {
 
     private val context = ApplicationProvider.getApplicationContext<Context>()
-    private val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    private val manager = context.getSystemService(
+        Context.NOTIFICATION_SERVICE
+    ) as NotificationManager
     private val shadow = Shadows.shadowOf(manager)
 
     // Context.packageManager.getLaunchIntentForPackage(...) resolves via
@@ -76,17 +78,30 @@ class NotificationBuilderTest {
     fun `a deep link is carried on the content intent`() {
         stubLaunchIntent()
 
-        val notification = NotificationBuilder.reminder(context, "Call Jane", "Overdue", deepLink = "mycorrhizal://contacts/7")
+        val notification = NotificationBuilder.reminder(
+            context,
+            "Call Jane",
+            "Overdue",
+            deepLink = "mycorrhizal://contacts/7"
+        )
 
         val savedIntent = Shadows.shadowOf(notification.contentIntent).savedIntent
-        assertEquals("mycorrhizal://contacts/7", savedIntent.getStringExtra(NotificationBuilder.EXTRA_DEEP_LINK))
+        assertEquals(
+            "mycorrhizal://contacts/7",
+            savedIntent.getStringExtra(NotificationBuilder.EXTRA_DEEP_LINK)
+        )
     }
 
     @Test
     fun `a blank deep link carries no extra`() {
         stubLaunchIntent()
 
-        val notification = NotificationBuilder.reminder(context, "Call Jane", "Overdue", deepLink = null)
+        val notification = NotificationBuilder.reminder(
+            context,
+            "Call Jane",
+            "Overdue",
+            deepLink = null
+        )
 
         val savedIntent = Shadows.shadowOf(notification.contentIntent).savedIntent
         assertNull(savedIntent.getStringExtra(NotificationBuilder.EXTRA_DEEP_LINK))

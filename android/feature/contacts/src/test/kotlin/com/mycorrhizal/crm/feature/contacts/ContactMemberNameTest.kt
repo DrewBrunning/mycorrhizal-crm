@@ -18,7 +18,7 @@ class ContactMemberNameTest {
     fun `a resolved contact uses its derived display name`() {
         assertEquals(
             "Alice Smith",
-            memberDisplayName(ContactSummary(id = 1, firstname = "Alice", lastname = "Smith")),
+            memberDisplayName(ContactSummary(id = 1, firstname = "Alice", lastname = "Smith"))
         )
     }
 
@@ -26,7 +26,7 @@ class ContactMemberNameTest {
     fun `a nickname is rendered by the shared derivation`() {
         assertEquals(
             "\"Ally\"",
-            memberDisplayName(ContactSummary(id = 1, nickname = "Ally")),
+            memberDisplayName(ContactSummary(id = 1, nickname = "Ally"))
         )
     }
 

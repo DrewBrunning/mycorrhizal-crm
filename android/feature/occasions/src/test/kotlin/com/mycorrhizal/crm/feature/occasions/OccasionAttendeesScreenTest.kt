@@ -39,21 +39,25 @@ class OccasionAttendeesScreenTest {
     private fun render(attendees: List<OccasionEventAttendeeView> = listOf(attendee())) {
         coEvery { occasionRepository.get("e1") } returns Result.success(
             OccasionEventDetail(
-                occasionEvent = OccasionEvent(id = "e1", title = "BBQ", startsAt = "2026-07-04T15:00:00Z"),
-                attendees = attendees,
-            ),
+                occasionEvent = OccasionEvent(
+                    id = "e1",
+                    title = "BBQ",
+                    startsAt = "2026-07-04T15:00:00Z"
+                ),
+                attendees = attendees
+            )
         )
         coEvery { circleRepository.list(any(), any()) } returns Result.success(
-            listOf(Circle(id = "c1", name = "Friends")),
+            listOf(Circle(id = "c1", name = "Friends"))
         )
         coEvery { occasionRepository.suggestInvitees(listOf("c1"), "e1") } returns Result.success(
-            listOf(InviteeSuggestion(contactId = 5, contactName = "Bob", entityId = "uid-5")),
+            listOf(InviteeSuggestion(contactId = 5, contactName = "Bob", entityId = "uid-5"))
         )
         val viewModel = OccasionAttendeesViewModel(
             occasionRepository,
             circleRepository,
             contactRepository,
-            SavedStateHandle(mapOf("eventId" to "e1")),
+            SavedStateHandle(mapOf("eventId" to "e1"))
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -69,7 +73,7 @@ class OccasionAttendeesScreenTest {
         entityId = "uid-1",
         contactId = 3,
         contactName = "Alice",
-        rsvp = "pending",
+        rsvp = "pending"
     )
 
     @Test

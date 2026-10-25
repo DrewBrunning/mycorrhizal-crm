@@ -26,7 +26,7 @@ class DeviceRegistrationManager @Inject constructor(
     private val store: DeviceRegistrationStore,
     @ApplicationContext private val context: Context,
     private val fcmToken: FcmTokenSource,
-    private val serverCapabilities: ServerCapabilitiesStore,
+    private val serverCapabilities: ServerCapabilitiesStore
 ) {
 
     /**
@@ -37,7 +37,12 @@ class DeviceRegistrationManager @Inject constructor(
      * never attempts an FCM registration the server would 404.
      */
     suspend fun register(tokenOverride: String? = null): Result<Unit> {
-        if (!serverCapabilities.current().supports(ServerCapability.PUSH)) return Result.success(Unit)
+        if (!serverCapabilities.current().supports(
+                ServerCapability.PUSH
+            )
+        ) {
+            return Result.success(Unit)
+        }
         if (!availability.isAvailable(context)) return Result.success(Unit)
         val token = tokenOverride
             ?: runCatching { fcmToken.token() }.getOrElse {
@@ -47,7 +52,11 @@ class DeviceRegistrationManager @Inject constructor(
             }
         val previousId = store.loadDeviceId()
         val device = apiClient.registerDevice(
-            DeviceRegistrationInput(token = token, client = CLIENT_FCM, deviceLabel = deviceLabel()),
+            DeviceRegistrationInput(
+                token = token,
+                client = CLIENT_FCM,
+                deviceLabel = deviceLabel()
+            )
         ).getOrElse { return Result.failure(it) }
         store.saveDeviceId(device.id)
         // A rotated token registers as a brand-new server-side row (the unique

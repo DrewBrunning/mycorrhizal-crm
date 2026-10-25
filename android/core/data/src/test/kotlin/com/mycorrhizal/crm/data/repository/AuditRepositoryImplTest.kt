@@ -20,7 +20,12 @@ class AuditRepositoryImplTest {
 
     @Test
     fun `list forwards the filters and returns the response`() = runTest {
-        val event = AuditEvent(id = 1, entityType = "contact", entityId = "c1", operation = "update")
+        val event = AuditEvent(
+            id = 1,
+            entityType = "contact",
+            entityId = "c1",
+            operation = "update"
+        )
         coEvery {
             apiClient.getAuditEvents(entityType = "contact", entityId = "c1", limit = 20)
         } returns Result.success(AuditEventsResponse(auditEvents = listOf(event), total = 1))
@@ -45,7 +50,11 @@ class AuditRepositoryImplTest {
 
     @Test
     fun `undo discards the response message and returns Unit on success`() = runTest {
-        coEvery { apiClient.undoAuditEvent(42L) } returns Result.success(AuditUndoResponse(message = "undone"))
+        coEvery {
+            apiClient.undoAuditEvent(
+                42L
+            )
+        } returns Result.success(AuditUndoResponse(message = "undone"))
 
         val result = repository.undo(42L)
 
@@ -55,7 +64,11 @@ class AuditRepositoryImplTest {
 
     @Test
     fun `undo failure propagates`() = runTest {
-        coEvery { apiClient.undoAuditEvent(42L) } returns Result.failure(ApiError.Client(404, "not found"))
+        coEvery {
+            apiClient.undoAuditEvent(
+                42L
+            )
+        } returns Result.failure(ApiError.Client(404, "not found"))
 
         val result = repository.undo(42L)
 

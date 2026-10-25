@@ -49,20 +49,32 @@ class FormConflictScreenTest {
     fun `note form shows the prompt and both buttons resolve it`() {
         val noteRepository = mockk<NoteRepository>()
         val contactRepository = mockk<ContactRepository>()
-        coEvery { contactRepository.getContact(any()) } returns Result.failure(RuntimeException("offline"))
+        coEvery {
+            contactRepository.getContact(
+                any()
+            )
+        } returns Result.failure(RuntimeException("offline"))
         coEvery { noteRepository.get(3) } returns Result.success(
-            Note(id = 3, content = "Mine", date = "2026-08-10T14:00:00Z", revision = 1),
+            Note(id = 3, content = "Mine", date = "2026-08-10T14:00:00Z", revision = 1)
         )
         coEvery { noteRepository.update(3, any(), 1) } returns stale
         val vm = NoteFormViewModel(
             noteRepository,
             contactRepository,
             ShareDraftHolder(),
-            SavedStateHandle(mapOf("contactId" to 5, "noteId" to 3)),
+            SavedStateHandle(mapOf("contactId" to 5, "noteId" to 3))
         )
         vm.save()
 
-        composeTestRule.setContent { MycorrhizalTheme { NoteFormScreen(onSaved = {}, onBack = {}, viewModel = vm) } }
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                NoteFormScreen(
+                    onSaved = {},
+                    onBack = {},
+                    viewModel = vm
+                )
+            }
+        }
 
         composeTestRule.onNodeWithText("Changed elsewhere").assertIsDisplayed()
         composeTestRule.onNodeWithText("Keep editing").performClick()
@@ -73,23 +85,35 @@ class FormConflictScreenTest {
     fun `note form load latest refetches`() {
         val noteRepository = mockk<NoteRepository>()
         val contactRepository = mockk<ContactRepository>()
-        coEvery { contactRepository.getContact(any()) } returns Result.failure(RuntimeException("offline"))
+        coEvery {
+            contactRepository.getContact(
+                any()
+            )
+        } returns Result.failure(RuntimeException("offline"))
         coEvery { noteRepository.get(3) } returns Result.success(
-            Note(id = 3, content = "Mine", date = "2026-08-10T14:00:00Z", revision = 1),
+            Note(id = 3, content = "Mine", date = "2026-08-10T14:00:00Z", revision = 1)
         )
         coEvery { noteRepository.update(3, any(), 1) } returns stale
         val vm = NoteFormViewModel(
             noteRepository,
             contactRepository,
             ShareDraftHolder(),
-            SavedStateHandle(mapOf("contactId" to 5, "noteId" to 3)),
+            SavedStateHandle(mapOf("contactId" to 5, "noteId" to 3))
         )
         vm.save()
         coEvery { noteRepository.get(3) } returns Result.success(
-            Note(id = 3, content = "Theirs", date = "2026-08-10T14:00:00Z", revision = 2),
+            Note(id = 3, content = "Theirs", date = "2026-08-10T14:00:00Z", revision = 2)
         )
 
-        composeTestRule.setContent { MycorrhizalTheme { NoteFormScreen(onSaved = {}, onBack = {}, viewModel = vm) } }
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                NoteFormScreen(
+                    onSaved = {},
+                    onBack = {},
+                    viewModel = vm
+                )
+            }
+        }
         composeTestRule.onNodeWithText("Load latest version").performClick()
 
         assertFalse(vm.uiState.value.conflict)
@@ -99,16 +123,30 @@ class FormConflictScreenTest {
     @Test
     fun `activity form shows the prompt`() {
         val activityRepository = mockk<ActivityRepository>()
-        coEvery { activityRepository.get(7) } returns Result.success(Activity(id = 7, title = "Lunch", date = "2026-08-10T14:00:00Z", revision = 3))
+        coEvery {
+            activityRepository.get(
+                7
+            )
+        } returns Result.success(
+            Activity(id = 7, title = "Lunch", date = "2026-08-10T14:00:00Z", revision = 3)
+        )
         coEvery { activityRepository.update(7, any(), 3) } returns stale
         val vm = ActivityFormViewModel(
             activityRepository,
             mockk<ContactRepository>(),
-            SavedStateHandle(mapOf("contactId" to 5, "activityId" to 7)),
+            SavedStateHandle(mapOf("contactId" to 5, "activityId" to 7))
         )
         vm.save()
 
-        composeTestRule.setContent { MycorrhizalTheme { ActivityFormScreen(onSaved = {}, onBack = {}, viewModel = vm) } }
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ActivityFormScreen(
+                    onSaved = {},
+                    onBack = {},
+                    viewModel = vm
+                )
+            }
+        }
 
         composeTestRule.onNodeWithText("Changed elsewhere").assertIsDisplayed()
         composeTestRule.onNodeWithText("Keep editing").performClick()
@@ -119,16 +157,24 @@ class FormConflictScreenTest {
     fun `reminder form shows the prompt`() {
         val reminderRepository = mockk<ReminderRepository>()
         coEvery { reminderRepository.get(1) } returns Result.success(
-            Reminder(id = 1, message = "Call", remindAt = "2026-08-10T14:00:00Z", revision = 6),
+            Reminder(id = 1, message = "Call", remindAt = "2026-08-10T14:00:00Z", revision = 6)
         )
         coEvery { reminderRepository.update(1, any(), 6) } returns stale
         val vm = ReminderFormViewModel(
             reminderRepository,
-            SavedStateHandle(mapOf("contactId" to 5, "reminderId" to 1)),
+            SavedStateHandle(mapOf("contactId" to 5, "reminderId" to 1))
         )
         vm.save()
 
-        composeTestRule.setContent { MycorrhizalTheme { ReminderFormScreen(onSaved = {}, onBack = {}, viewModel = vm) } }
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ReminderFormScreen(
+                    onSaved = {},
+                    onBack = {},
+                    viewModel = vm
+                )
+            }
+        }
 
         composeTestRule.onNodeWithText("Changed elsewhere").assertIsDisplayed()
         composeTestRule.onNodeWithText("Keep editing").performClick()

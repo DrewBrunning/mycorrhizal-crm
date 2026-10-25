@@ -22,17 +22,19 @@ fun WriteConflictDialog(
     onLoadLatest: () -> Unit,
     onKeep: () -> Unit,
     @StringRes messageRes: Int = R.string.conflict_message_edit,
-    @StringRes keepLabelRes: Int = R.string.conflict_keep_editing,
+    @StringRes keepLabelRes: Int = R.string.conflict_keep_editing
 ) {
     AlertDialog(
         onDismissRequest = onKeep,
         title = { Text(stringResource(R.string.conflict_title)) },
         text = { Text(stringResource(messageRes)) },
         confirmButton = {
-            TextButton(onClick = onLoadLatest) { Text(stringResource(R.string.conflict_load_latest)) }
+            TextButton(
+                onClick = onLoadLatest
+            ) { Text(stringResource(R.string.conflict_load_latest)) }
         },
         dismissButton = {
             TextButton(onClick = onKeep) { Text(stringResource(keepLabelRes)) }
-        },
+        }
     )
 }

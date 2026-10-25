@@ -32,7 +32,11 @@ interface ContactShareRepository {
     suspend fun accept(id: String): Result<ImportPreviewResponse>
 
     /** Finalize an accepted share with the recipient's per-row choices. */
-    suspend fun confirm(id: String, sessionId: String, actions: List<RowImportAction>): Result<ImportResult>
+    suspend fun confirm(
+        id: String,
+        sessionId: String,
+        actions: List<RowImportAction>
+    ): Result<ImportResult>
 
     /** Decline a pending share (flips its status; the sender's offer survives). */
     suspend fun decline(id: String): Result<Unit>

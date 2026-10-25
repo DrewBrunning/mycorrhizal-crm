@@ -8,10 +8,7 @@ package com.mycorrhizal.crm.model.network
  * in sync by hand: adding a token backend-side requires updating this list).
  */
 object ShareFieldSections {
-    data class Section(
-        val token: String,
-        val sensitive: Boolean,
-    )
+    data class Section(val token: String, val sensitive: Boolean)
 
     val ALL: List<Section> = listOf(
         Section("emails", sensitive = false),
@@ -29,7 +26,7 @@ object ShareFieldSections {
         Section("speak_to_as", sensitive = false),
         Section("members", sensitive = false),
         Section("languages", sensitive = false),
-        Section("custom_fields", sensitive = true),
+        Section("custom_fields", sensitive = true)
     )
 
     /** Default selection: every non-sensitive section, matching the web dialog. */

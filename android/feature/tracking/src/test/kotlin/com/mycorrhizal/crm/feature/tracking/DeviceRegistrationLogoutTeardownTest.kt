@@ -70,17 +70,17 @@ class DeviceRegistrationLogoutTeardownTest {
             store,
             context,
             FcmTokenSource { "fetched-token" },
-            DefaultServerCapabilitiesStore(),
+            DefaultServerCapabilitiesStore()
         )
         sessionManager = DefaultSessionManager(
             InMemoryTokenStorage(),
             InMemorySessionPrefsStorage(),
-            sessionTeardown = SessionTeardown { deviceRegistration.delete() },
+            sessionTeardown = SessionTeardown { deviceRegistration.delete() }
         )
         sessionManager.setSession(
             serverUrl = "https://crm.example.com",
             token = "jwt-1",
-            state = SessionState(userId = 7),
+            state = SessionState(userId = 7)
         )
 
         sessionManager.clearSession()
@@ -89,7 +89,7 @@ class DeviceRegistrationLogoutTeardownTest {
             "deleteDevice must run while the session's own bearer is still live, not after clearSession " +
                 "has already nulled it (issue #957 finding #1)",
             "jwt-1",
-            tokenSeenByDeleteDevice,
+            tokenSeenByDeleteDevice
         )
         coVerify { store.clearDeviceId() }
         assertNull("the session must still end up cleared", sessionManager.bearerToken())
@@ -100,21 +100,34 @@ class DeviceRegistrationLogoutTeardownTest {
     private class InMemoryTokenStorage : TokenStorage {
         private val tokens = mutableMapOf<String, String>()
         private var legacy: String? = null
-        override suspend fun save(profileId: String, token: String) { tokens[profileId] = token }
+        override suspend fun save(profileId: String, token: String) {
+            tokens[profileId] = token
+        }
         override suspend fun load(profileId: String): String? = tokens[profileId]
-        override suspend fun clear(profileId: String) { tokens.remove(profileId) }
+        override suspend fun clear(profileId: String) {
+            tokens.remove(profileId)
+        }
         override suspend fun loadLegacy(): String? = legacy
-        override suspend fun clearLegacy() { legacy = null }
+        override suspend fun clearLegacy() {
+            legacy = null
+        }
     }
 
     /** Minimal in-memory [SessionPrefsStorage] — see [InMemoryTokenStorage]. */
     private class InMemorySessionPrefsStorage : SessionPrefsStorage {
         private var stored: String? = null
         private var snapshot = ProfilesSnapshot()
-        override suspend fun save(serverUrl: String?) { stored = serverUrl }
+        override suspend fun save(serverUrl: String?) {
+            stored = serverUrl
+        }
         override suspend fun loadServerUrl(): String? = stored
-        override suspend fun saveProfiles(snapshot: ProfilesSnapshot) { this.snapshot = snapshot }
+        override suspend fun saveProfiles(snapshot: ProfilesSnapshot) {
+            this.snapshot = snapshot
+        }
         override suspend fun loadProfiles(): ProfilesSnapshot = snapshot
-        override suspend fun clear() { stored = null; snapshot = ProfilesSnapshot() }
+        override suspend fun clear() {
+            stored = null
+            snapshot = ProfilesSnapshot()
+        }
     }
 }

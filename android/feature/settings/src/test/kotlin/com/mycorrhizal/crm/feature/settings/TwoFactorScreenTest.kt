@@ -42,7 +42,7 @@ class TwoFactorScreenTest {
         onSubmitPromptCode: (String) -> Unit = {},
         onPromptWithPasskey: () -> Unit = {},
         onDismissPrompt: () -> Unit = {},
-        onDismissRecoveryCodes: () -> Unit = {},
+        onDismissRecoveryCodes: () -> Unit = {}
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -59,7 +59,7 @@ class TwoFactorScreenTest {
                     onSubmitPromptCode = onSubmitPromptCode,
                     onPromptWithPasskey = onPromptWithPasskey,
                     onDismissPrompt = onDismissPrompt,
-                    onDismissRecoveryCodes = onDismissRecoveryCodes,
+                    onDismissRecoveryCodes = onDismissRecoveryCodes
                 )
             }
         }
@@ -70,9 +70,11 @@ class TwoFactorScreenTest {
         var enabled = false
         setContent(
             state = TwoFactorUiState(loading = false, enabled = false),
-            onEnable = { enabled = true },
+            onEnable = { enabled = true }
         )
-        composeTestRule.onNodeWithText("Enable two-factor authentication").performScrollTo().performClick()
+        composeTestRule.onNodeWithText(
+            "Enable two-factor authentication"
+        ).performScrollTo().performClick()
         assertTrue(enabled)
     }
 
@@ -83,9 +85,11 @@ class TwoFactorScreenTest {
         setContent(
             state = TwoFactorUiState(loading = false, enabled = true),
             onRegenerate = { regenerated = true },
-            onDisable = { disabled = true },
+            onDisable = { disabled = true }
         )
-        composeTestRule.onNodeWithText("Two-factor authentication is enabled").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Two-factor authentication is enabled"
+        ).performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Regenerate recovery codes").performScrollTo().performClick()
         composeTestRule.onNodeWithText("Disable").performScrollTo().performClick()
         assertTrue(regenerated && disabled)
@@ -103,10 +107,12 @@ class TwoFactorScreenTest {
             state = TwoFactorUiState(
                 loading = false,
                 enabled = false,
-                error = "Two-factor authentication is unavailable for accounts that sign in with SSO",
-            ),
+                error = "Two-factor authentication is unavailable for accounts that sign in with SSO"
+            )
         )
-        composeTestRule.onNodeWithText("Two-factor authentication is unavailable for accounts that sign in with SSO")
+        composeTestRule.onNodeWithText(
+            "Two-factor authentication is unavailable for accounts that sign in with SSO"
+        )
             .assertIsDisplayed()
     }
 
@@ -117,9 +123,12 @@ class TwoFactorScreenTest {
             state = TwoFactorUiState(
                 loading = false,
                 enabled = false,
-                setup = TwoFactorSetupResponse(secret = "JBSWY3DPEHPK3PXP", otpauthUrl = "otpauth://totp/x"),
+                setup = TwoFactorSetupResponse(
+                    secret = "JBSWY3DPEHPK3PXP",
+                    otpauthUrl = "otpauth://totp/x"
+                )
             ),
-            onConfirmSetup = { confirmed = it },
+            onConfirmSetup = { confirmed = it }
         )
         composeTestRule.onNodeWithText("Verification code").performTextInput("123456")
         composeTestRule.onNodeWithText("Enable and continue").performClick()
@@ -131,8 +140,12 @@ class TwoFactorScreenTest {
     fun `a prompt opens the code dialog inside the screen`() {
         var submitted: String? = null
         setContent(
-            state = TwoFactorUiState(loading = false, enabled = true, prompt = TwoFactorPrompt.DISABLE),
-            onSubmitPromptCode = { submitted = it },
+            state = TwoFactorUiState(
+                loading = false,
+                enabled = true,
+                prompt = TwoFactorPrompt.DISABLE
+            ),
+            onSubmitPromptCode = { submitted = it }
         )
         composeTestRule.onNodeWithText("Disable two-factor authentication").assertIsDisplayed()
         composeTestRule.onNodeWithText("Verification code").performTextInput("654321")
@@ -146,7 +159,7 @@ class TwoFactorScreenTest {
         var regenerate = false
         setContent(
             state = TwoFactorUiState(loading = false, enabled = false, hasPasskey = true),
-            onRegenerate = { regenerate = true },
+            onRegenerate = { regenerate = true }
         )
         composeTestRule.onNodeWithText("Regenerate recovery codes").performScrollTo().performClick()
         assertTrue(regenerate)
@@ -167,9 +180,9 @@ class TwoFactorScreenTest {
                 enabled = false,
                 hasPasskey = true,
                 passkeysAvailable = true,
-                prompt = TwoFactorPrompt.REGENERATE,
+                prompt = TwoFactorPrompt.REGENERATE
             ),
-            onPromptWithPasskey = { passkey = true },
+            onPromptWithPasskey = { passkey = true }
         )
         composeTestRule.onNodeWithText("Verify with a passkey instead").performClick()
         assertTrue(passkey)
@@ -183,8 +196,8 @@ class TwoFactorScreenTest {
                 enabled = true,
                 hasPasskey = true,
                 passkeysAvailable = true,
-                prompt = TwoFactorPrompt.DISABLE,
-            ),
+                prompt = TwoFactorPrompt.DISABLE
+            )
         )
         composeTestRule.onAllNodesWithText("Verify with a passkey instead").assertCountEquals(0)
     }
@@ -196,9 +209,9 @@ class TwoFactorScreenTest {
             state = TwoFactorUiState(
                 loading = false,
                 enabled = true,
-                recoveryCodes = listOf("AAAAA-BBBBB-CCCCC"),
+                recoveryCodes = listOf("AAAAA-BBBBB-CCCCC")
             ),
-            onDismissRecoveryCodes = { dismissed = true },
+            onDismissRecoveryCodes = { dismissed = true }
         )
         composeTestRule.onAllNodesWithText("AAAAA-BBBBB-CCCCC").assertCountEquals(1)
         composeTestRule.onNodeWithText("Done").performClick()
@@ -215,13 +228,13 @@ class TwoFactorScreenTest {
                 EnrollmentSetupDialog(
                     setup = TwoFactorSetupResponse(
                         secret = "JBSWY3DPEHPK3PXP",
-                        otpauthUrl = "otpauth://totp/Example:alice?secret=JBSWY3DPEHPK3PXP&issuer=Example",
+                        otpauthUrl = "otpauth://totp/Example:alice?secret=JBSWY3DPEHPK3PXP&issuer=Example"
                     ),
                     busy = false,
                     error = null,
                     errorRes = null,
                     onConfirm = { confirmed = it },
-                    onDismiss = {},
+                    onDismiss = {}
                 )
             }
         }
@@ -242,7 +255,7 @@ class TwoFactorScreenTest {
             MycorrhizalTheme {
                 RecoveryCodesDialog(
                     codes = listOf("AAAAA-BBBBB-CCCCC", "DDDDD-EEEEE-FFFFF"),
-                    onDone = { done = true },
+                    onDone = { done = true }
                 )
             }
         }
@@ -265,7 +278,7 @@ class TwoFactorScreenTest {
                     error = null,
                     errorRes = null,
                     onConfirm = { confirmed = it },
-                    onDismiss = {},
+                    onDismiss = {}
                 )
             }
         }
@@ -288,7 +301,7 @@ class TwoFactorScreenTest {
                     error = null,
                     errorRes = null,
                     onConfirm = { confirmed = it },
-                    onDismiss = {},
+                    onDismiss = {}
                 )
             }
         }
@@ -306,8 +319,13 @@ class TwoFactorScreenTest {
     fun `the proof dialog submits a typed code and needs one`() {
         var submitted: String? = null
         setContent(
-            state = TwoFactorUiState(loading = false, enabled = false, hasPasskey = true, proofPrompt = true),
-            onSubmitSetupProofCode = { submitted = it },
+            state = TwoFactorUiState(
+                loading = false,
+                enabled = false,
+                hasPasskey = true,
+                proofPrompt = true
+            ),
+            onSubmitSetupProofCode = { submitted = it }
         )
         composeTestRule.onNodeWithText("Verify it's you").assertIsDisplayed()
         composeTestRule.onNodeWithText("Verify and continue").assertIsNotEnabled()
@@ -325,9 +343,9 @@ class TwoFactorScreenTest {
                 enabled = false,
                 hasPasskey = true,
                 passkeysAvailable = true,
-                proofPrompt = true,
+                proofPrompt = true
             ),
-            onSetupProofWithPasskey = { used = true },
+            onSetupProofWithPasskey = { used = true }
         )
         composeTestRule.onNodeWithText("Verify with a passkey instead").performClick()
         assertTrue(used)
@@ -337,8 +355,13 @@ class TwoFactorScreenTest {
     fun `no passkey route without the gate and the proof dialog can be dismissed`() {
         var dismissed = false
         setContent(
-            state = TwoFactorUiState(loading = false, enabled = false, hasPasskey = true, proofPrompt = true),
-            onDismissSetupProof = { dismissed = true },
+            state = TwoFactorUiState(
+                loading = false,
+                enabled = false,
+                hasPasskey = true,
+                proofPrompt = true
+            ),
+            onDismissSetupProof = { dismissed = true }
         )
         composeTestRule.onNodeWithText("Verify with a passkey instead").assertDoesNotExist()
         composeTestRule.onNodeWithText("Cancel").performClick()
@@ -354,8 +377,8 @@ class TwoFactorScreenTest {
                 hasPasskey = true,
                 proofPrompt = true,
                 busy = true,
-                error = "Account temporarily locked",
-            ),
+                error = "Account temporarily locked"
+            )
         )
         composeTestRule.onNodeWithText("Account temporarily locked").assertIsDisplayed()
         composeTestRule.onNodeWithText("Please wait…").assertIsNotEnabled()

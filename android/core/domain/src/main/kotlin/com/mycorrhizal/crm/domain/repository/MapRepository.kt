@@ -21,5 +21,8 @@ interface MapRepository {
      * POST /contacts/{id}/addresses/geocode — one explicit, stateless lookup for
      * an address draft (saved or not). The coordinate is returned, never stored.
      */
-    suspend fun geocodeAddressDraft(contactId: Int, draft: GeocodeDraftRequest): Result<GeocodeDraftResponse>
+    suspend fun geocodeAddressDraft(
+        contactId: Int,
+        draft: GeocodeDraftRequest
+    ): Result<GeocodeDraftResponse>
 }

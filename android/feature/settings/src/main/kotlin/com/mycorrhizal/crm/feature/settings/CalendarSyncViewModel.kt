@@ -28,7 +28,7 @@ data class CalendarSyncUiState(
     /** The most recent sync's tallies, shown once and then cleared. */
     val lastSyncResult: CalendarSyncResult? = null,
     /** A transient action error (load/save/delete/sync), shown and then cleared. */
-    val error: String? = null,
+    val error: String? = null
 ) {
     val isEmpty: Boolean get() = calendars.isEmpty() && contactSubscriptions.isEmpty()
 }
@@ -46,7 +46,7 @@ data class CalendarSyncUiState(
 @HiltViewModel
 class CalendarSyncViewModel @Inject constructor(
     private val calendarRepository: CalendarSubscriptionRepository,
-    private val contactSubscriptionRepository: ContactSubscriptionRepository,
+    private val contactSubscriptionRepository: ContactSubscriptionRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CalendarSyncUiState())
@@ -61,14 +61,36 @@ class CalendarSyncViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             calendarRepository.list()
-                .onSuccess { list -> _uiState.update { it.copy(isLoading = false, calendars = list) } }
-                .onFailure { e -> _uiState.update { it.copy(isLoading = false, error = e.displayMessage()) } }
+                .onSuccess { list ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            calendars = list
+                        )
+                    }
+                }
+                .onFailure { e ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = e.displayMessage()
+                        )
+                    }
+                }
             contactSubscriptionRepository.list()
                 .onSuccess { list -> _uiState.update { it.copy(contactSubscriptions = list) } }
                 .onFailure { e ->
                     // Secondary surface (read-only): don't clobber a calendar-load
                     // error already on screen with this one.
-                    _uiState.update { if (it.error == null) it.copy(error = e.displayMessage()) else it }
+                    _uiState.update {
+                        if (it.error == null) {
+                            it.copy(
+                                error = e.displayMessage()
+                            )
+                        } else {
+                            it
+                        }
+                    }
                 }
         }
     }
@@ -80,22 +102,49 @@ class CalendarSyncViewModel @Inject constructor(
             if (editingId == null) {
                 calendarRepository.create(input)
                     .onSuccess { created ->
-                        _uiState.update { it.copy(isSaving = false, calendars = it.calendars + created) }
+                        _uiState.update {
+                            it.copy(
+                                isSaving = false,
+                                calendars = it.calendars + created
+                            )
+                        }
                         // Web: trigger the first sync right away so the user gets feedback.
                         sync(created)
                     }
-                    .onFailure { e -> _uiState.update { it.copy(isSaving = false, error = e.displayMessage()) } }
+                    .onFailure { e ->
+                        _uiState.update {
+                            it.copy(
+                                isSaving = false,
+                                error = e.displayMessage()
+                            )
+                        }
+                    }
             } else {
                 calendarRepository.update(editingId, input)
                     .onSuccess { updated ->
                         _uiState.update {
                             it.copy(
                                 isSaving = false,
-                                calendars = it.calendars.map { c -> if (c.id == editingId) updated else c },
+                                calendars = it.calendars.map { c ->
+                                    if (c.id ==
+                                        editingId
+                                    ) {
+                                        updated
+                                    } else {
+                                        c
+                                    }
+                                }
                             )
                         }
                     }
-                    .onFailure { e -> _uiState.update { it.copy(isSaving = false, error = e.displayMessage()) } }
+                    .onFailure { e ->
+                        _uiState.update {
+                            it.copy(
+                                isSaving = false,
+                                error = e.displayMessage()
+                            )
+                        }
+                    }
             }
         }
     }
@@ -105,7 +154,11 @@ class CalendarSyncViewModel @Inject constructor(
             _uiState.update { it.copy(error = null) }
             calendarRepository.delete(calendar.id)
                 .onSuccess {
-                    _uiState.update { it.copy(calendars = it.calendars.filterNot { c -> c.id == calendar.id }) }
+                    _uiState.update {
+                        it.copy(
+                            calendars = it.calendars.filterNot { c -> c.id == calendar.id }
+                        )
+                    }
                 }
                 .onFailure { e -> _uiState.update { it.copy(error = e.displayMessage()) } }
         }
@@ -113,14 +166,26 @@ class CalendarSyncViewModel @Inject constructor(
 
     fun sync(calendar: CalendarSubscription) {
         viewModelScope.launch {
-            _uiState.update { it.copy(syncingIds = it.syncingIds + calendar.id, error = null, lastSyncResult = null) }
+            _uiState.update {
+                it.copy(
+                    syncingIds = it.syncingIds + calendar.id,
+                    error = null,
+                    lastSyncResult = null
+                )
+            }
             calendarRepository.sync(calendar.id)
                 .onSuccess { result -> _uiState.update { it.copy(lastSyncResult = result) } }
                 .onFailure { e -> _uiState.update { it.copy(error = e.displayMessage()) } }
             _uiState.update { it.copy(syncingIds = it.syncingIds - calendar.id) }
             // Health fields (consecutive_failures, last_run_stats, ...) live on the
             // subscription, not the sync response -- refresh to pick them up.
-            calendarRepository.list().onSuccess { list -> _uiState.update { it.copy(calendars = list) } }
+            calendarRepository.list().onSuccess { list ->
+                _uiState.update {
+                    it.copy(
+                        calendars = list
+                    )
+                }
+            }
         }
     }
 

@@ -35,7 +35,7 @@ data class Household(
     @Json(name = "updated_at") val updatedAt: String? = null,
     val name: String = "",
     val type: String = HouseholdTypes.FAMILY_UNIT,
-    val address: Address? = null,
+    val address: Address? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -45,7 +45,7 @@ data class HouseholdMember(
     @Json(name = "member_vcard_uid") val memberVCardUid: String = "",
     val role: String? = null,
     val since: String? = null,
-    val until: String? = null,
+    val until: String? = null
 )
 
 /** GET /households response — cursor-paginated, members when include_members=true. */
@@ -56,36 +56,30 @@ data class HouseholdsPage(
     @Json(name = "next_cursor") val nextCursor: String? = null,
     val limit: Int = 0,
     val members: List<HouseholdMember>? = null,
-    val sync: SyncInfo? = null,
+    val sync: SyncInfo? = null
 )
 
 /** POST /households response — wrapped `{ message, household }` (ticket §2.6). */
 @JsonClass(generateAdapter = true)
-data class CreateHouseholdResponse(
-    val message: String? = null,
-    val household: Household? = null,
-)
+data class CreateHouseholdResponse(val message: String? = null, val household: Household? = null)
 
 /** GET /households/{id} response — `{ household, members }`. */
 @JsonClass(generateAdapter = true)
 data class HouseholdDetailResponse(
     val household: Household? = null,
-    val members: List<HouseholdMember>? = null,
+    val members: List<HouseholdMember>? = null
 )
 
 /** POST /households/{id}/members response — `{ message, member }`. */
 @JsonClass(generateAdapter = true)
 data class AddHouseholdMemberResponse(
     val message: String? = null,
-    val member: HouseholdMember? = null,
+    val member: HouseholdMember? = null
 )
 
 /** POST/PUT /households body. */
 @JsonClass(generateAdapter = true)
-data class HouseholdInput(
-    val name: String,
-    val type: String,
-)
+data class HouseholdInput(val name: String, val type: String)
 
 /** POST /households/{id}/members body. */
 @JsonClass(generateAdapter = true)
@@ -93,7 +87,7 @@ data class HouseholdMemberInput(
     @Json(name = "member_vcard_uid") val memberVCardUid: String,
     val role: String? = null,
     val since: String? = null,
-    val until: String? = null,
+    val until: String? = null
 )
 
 /** POST /households/{id}/suggest-relationships response — newly created suggested edges. */
@@ -102,7 +96,7 @@ data class SuggestRelationshipsResponse(
     val message: String? = null,
     @Json(name = "household_id") val householdId: String? = null,
     @Json(name = "suggested_edges") val suggestedEdges: List<RelationshipEdge> = emptyList(),
-    val total: Int = 0,
+    val total: Int = 0
 )
 
 /**
@@ -115,14 +109,14 @@ data class AddressHouseholdSuggestion(
     @Json(name = "address_hash") val addressHash: String = "",
     @Json(name = "member_hash") val memberHash: String = "",
     @Json(name = "member_vcard_uids") val memberVCardUids: List<String> = emptyList(),
-    val address: Address? = null,
+    val address: Address? = null
 )
 
 /** POST /households/suggest-addresses response. */
 @JsonClass(generateAdapter = true)
 data class AddressSuggestionsResponse(
     val suggestions: List<AddressHouseholdSuggestion> = emptyList(),
-    val total: Int = 0,
+    val total: Int = 0
 )
 
 /** POST /households/suggestions/accept body. */
@@ -130,19 +124,17 @@ data class AddressSuggestionsResponse(
 data class AcceptHouseholdSuggestionInput(
     @Json(name = "member_vcard_uids") val memberVCardUids: List<String>,
     val name: String? = null,
-    val type: String? = null,
+    val type: String? = null
 )
 
 /** POST /households/suggestions/accept response — wrapped `{ household }`, unwrapped in ApiClient. */
 @JsonClass(generateAdapter = true)
-data class AcceptHouseholdSuggestionResponse(
-    val household: Household? = null,
-)
+data class AcceptHouseholdSuggestionResponse(val household: Household? = null)
 
 /** POST /households/suggestions/dismiss body. */
 @JsonClass(generateAdapter = true)
 data class DismissHouseholdSuggestionInput(
-    @Json(name = "member_vcard_uids") val memberVCardUids: List<String>,
+    @Json(name = "member_vcard_uids") val memberVCardUids: List<String>
 )
 
 /**

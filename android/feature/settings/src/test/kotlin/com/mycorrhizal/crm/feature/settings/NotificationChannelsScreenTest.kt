@@ -41,7 +41,7 @@ class NotificationChannelsScreenTest {
                     onGotifyTokenChange = {},
                     onNotifyGotifyChange = {},
                     onTest = {},
-                    onSave = {},
+                    onSave = {}
                 )
             }
         }
@@ -66,12 +66,14 @@ class NotificationChannelsScreenTest {
                     onGotifyTokenChange = {},
                     onNotifyGotifyChange = {},
                     onTest = {},
-                    onSave = {},
+                    onSave = {}
                 )
             }
         }
 
-        composeTestRule.onNodeWithText("A token is already stored. Leave the field empty to keep it.")
+        composeTestRule.onNodeWithText(
+            "A token is already stored. Leave the field empty to keep it."
+        )
             .performScrollTo().assertIsDisplayed()
     }
 
@@ -82,7 +84,12 @@ class NotificationChannelsScreenTest {
                 NotificationChannelsContent(
                     state = NotificationChannelsUiState(
                         isLoading = false,
-                        testResult = mapOf("ntfy" to NotificationTestOutcome(ok = false, error = "ntfy is not configured")),
+                        testResult = mapOf(
+                            "ntfy" to NotificationTestOutcome(
+                                ok = false,
+                                error = "ntfy is not configured"
+                            )
+                        )
                     ),
                     onNtfyUrlChange = {},
                     onNtfyTopicChange = {},
@@ -91,12 +98,14 @@ class NotificationChannelsScreenTest {
                     onGotifyTokenChange = {},
                     onNotifyGotifyChange = {},
                     onTest = {},
-                    onSave = {},
+                    onSave = {}
                 )
             }
         }
 
-        composeTestRule.onNodeWithText("Test failed: ntfy is not configured").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Test failed: ntfy is not configured"
+        ).performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -113,7 +122,7 @@ class NotificationChannelsScreenTest {
                     onGotifyTokenChange = {},
                     onNotifyGotifyChange = {},
                     onTest = {},
-                    onSave = {},
+                    onSave = {}
                 )
             }
         }
@@ -134,7 +143,10 @@ class NotificationChannelsScreenTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 NotificationChannelsContent(
-                    state = NotificationChannelsUiState(isLoading = false, saveError = "Could not save"),
+                    state = NotificationChannelsUiState(
+                        isLoading = false,
+                        saveError = "Could not save"
+                    ),
                     onNtfyUrlChange = {},
                     onNtfyTopicChange = {},
                     onNotifyNtfyChange = {},
@@ -142,12 +154,17 @@ class NotificationChannelsScreenTest {
                     onGotifyTokenChange = {},
                     onNotifyGotifyChange = {},
                     onTest = {},
-                    onSave = {},
+                    onSave = {}
                 )
             }
         }
 
         composeTestRule.onNodeWithText("Could not save")
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Assertive))
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.LiveRegion,
+                    LiveRegionMode.Assertive
+                )
+            )
     }
 }

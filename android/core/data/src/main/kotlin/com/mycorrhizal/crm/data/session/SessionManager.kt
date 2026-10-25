@@ -36,7 +36,7 @@ interface TokenStorage {
  */
 data class ProfilesSnapshot(
     val profiles: List<ServerProfile> = emptyList(),
-    val activeProfileId: String? = null,
+    val activeProfileId: String? = null
 )
 
 /**
@@ -109,7 +109,7 @@ data class ProfileUpdate(
     val isAdmin: Boolean? = null,
     val language: String? = null,
     val dateFormat: String? = null,
-    val enabledContactFields: List<String>? = null,
+    val enabledContactFields: List<String>? = null
 )
 
 /**
@@ -117,7 +117,10 @@ data class ProfileUpdate(
  * from an in-memory cache so the synchronous OkHttp interceptors never touch
  * disk. The cache is hydrated at startup (see AppSessionManager).
  */
-interface SessionManager : TokenProvider, BaseUrlProvider, ArchivedProfileProvider {
+interface SessionManager :
+    TokenProvider,
+    BaseUrlProvider,
+    ArchivedProfileProvider {
     fun observeSession(): Flow<SessionState>
     suspend fun serverUrl(): String?
     suspend fun token(): String?

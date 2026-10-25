@@ -27,8 +27,10 @@ class PushNotificationDispatcher @Inject constructor() {
         val notification = when (message.channel) {
             MycorrhizalNotificationChannels.CADENCE ->
                 NotificationBuilder.cadence(context, message.title, message.body, message.deepLink)
+
             MycorrhizalNotificationChannels.BIRTHDAYS ->
                 NotificationBuilder.birthday(context, message.title, message.body, message.deepLink)
+
             else ->
                 NotificationBuilder.reminder(context, message.title, message.body, message.deepLink)
         }
@@ -50,6 +52,6 @@ class PushNotificationDispatcher @Inject constructor() {
     private fun hasNotificationPermission(context: Context): Boolean =
         ContextCompat.checkSelfPermission(
             context,
-            Manifest.permission.POST_NOTIFICATIONS,
+            Manifest.permission.POST_NOTIFICATIONS
         ) == PackageManager.PERMISSION_GRANTED
 }

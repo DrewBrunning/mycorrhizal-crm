@@ -36,20 +36,30 @@ class TimelineExplorerViewModelTest {
     private fun viewModel(contactId: Int = 5) = TimelineExplorerViewModel(
         timelineRepository,
         reminderRepository,
-        SavedStateHandle(mapOf("contactId" to contactId)),
+        SavedStateHandle(mapOf("contactId" to contactId))
     )
 
-    private fun note(id: Int, content: String = "note $id") =
-        TimelineEvent(TimelineTypes.NOTE, id.toString(), "2026-09-0${id}T10:00:00Z", note = Note(id = id, content = content))
+    private fun note(id: Int, content: String = "note $id") = TimelineEvent(
+        TimelineTypes.NOTE,
+        id.toString(),
+        "2026-09-0${id}T10:00:00Z",
+        note = Note(id = id, content = content)
+    )
 
-    private fun activity(id: Int) =
-        TimelineEvent(TimelineTypes.ACTIVITY, id.toString(), "2026-08-0${id}T10:00:00Z", activity = Activity(id = id, title = "act $id"))
+    private fun activity(id: Int) = TimelineEvent(
+        TimelineTypes.ACTIVITY,
+        id.toString(),
+        "2026-08-0${id}T10:00:00Z",
+        activity = Activity(id = id, title = "act $id")
+    )
 
     private fun page(vararg events: TimelineEvent, next: String? = null) =
         Result.success(ContactTimelinePage(events.toList(), next, 25))
 
     @Test
-    fun `nothing is fetched until refresh is called`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `nothing is fetched until refresh is called`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = viewModel()
         advanceUntilIdle()
 
@@ -58,7 +68,9 @@ class TimelineExplorerViewModelTest {
     }
 
     @Test
-    fun `refresh loads the first page with no filters and maps events to rows`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `refresh loads the first page with no filters and maps events to rows`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { timelineRepository.page(5, emptySet(), TimelineBuckets.ALL, null, 25) } returns
             page(note(2), activity(1), next = "cur-1")
 
@@ -74,7 +86,9 @@ class TimelineExplorerViewModelTest {
     }
 
     @Test
-    fun `load more appends the next page using the cursor and drops duplicates`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `load more appends the next page using the cursor and drops duplicates`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { timelineRepository.page(5, emptySet(), TimelineBuckets.ALL, null, 25) } returns
             page(note(3), note(2), next = "cur-1")
         coEvery { timelineRepository.page(5, emptySet(), TimelineBuckets.ALL, "cur-1", 25) } returns
@@ -93,8 +107,18 @@ class TimelineExplorerViewModelTest {
     }
 
     @Test
-    fun `load more is a no-op at the end of the timeline`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { timelineRepository.page(5, emptySet(), TimelineBuckets.ALL, null, 25) } returns page(note(1))
+    fun `load more is a no-op at the end of the timeline`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery {
+            timelineRepository.page(
+                5,
+                emptySet(),
+                TimelineBuckets.ALL,
+                null,
+                25
+            )
+        } returns page(note(1))
 
         val vm = viewModel()
         vm.refresh()
@@ -106,10 +130,20 @@ class TimelineExplorerViewModelTest {
     }
 
     @Test
-    fun `changing the type filter restarts from the first page with that filter`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `changing the type filter restarts from the first page with that filter`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { timelineRepository.page(5, emptySet(), TimelineBuckets.ALL, null, 25) } returns
             page(note(2), activity(1), next = "cur-1")
-        coEvery { timelineRepository.page(5, setOf(TimelineTypes.NOTE), TimelineBuckets.ALL, null, 25) } returns
+        coEvery {
+            timelineRepository.page(
+                5,
+                setOf(TimelineTypes.NOTE),
+                TimelineBuckets.ALL,
+                null,
+                25
+            )
+        } returns
             page(note(2))
 
         val vm = viewModel()
@@ -122,11 +156,21 @@ class TimelineExplorerViewModelTest {
         assertEquals(setOf(TimelineTypes.NOTE), state.types)
         assertEquals(listOf("NoteItem:2"), state.items.map { it.key })
         assertNull(state.nextCursor)
-        coVerify { timelineRepository.page(5, setOf(TimelineTypes.NOTE), TimelineBuckets.ALL, null, 25) }
+        coVerify {
+            timelineRepository.page(
+                5,
+                setOf(TimelineTypes.NOTE),
+                TimelineBuckets.ALL,
+                null,
+                25
+            )
+        }
     }
 
     @Test
-    fun `changing the recency bucket re-queries with that bucket`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `changing the recency bucket re-queries with that bucket`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { timelineRepository.page(5, emptySet(), any(), null, 25) } returns page(note(1))
 
         val vm = viewModel()
@@ -140,7 +184,9 @@ class TimelineExplorerViewModelTest {
     }
 
     @Test
-    fun `re-selecting the current filter does not refetch`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `re-selecting the current filter does not refetch`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { timelineRepository.page(any(), any(), any(), any(), any()) } returns page(note(1))
 
         val vm = viewModel()
@@ -156,9 +202,17 @@ class TimelineExplorerViewModelTest {
     @Test
     fun `refresh re-fetches the first page so an edit made elsewhere shows when the screen is revisited`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            coEvery { timelineRepository.page(5, emptySet(), TimelineBuckets.ALL, null, 25) } returnsMany listOf(
+            coEvery {
+                timelineRepository.page(
+                    5,
+                    emptySet(),
+                    TimelineBuckets.ALL,
+                    null,
+                    25
+                )
+            } returnsMany listOf(
                 page(note(1, "before edit")),
-                page(note(1, "after edit")),
+                page(note(1, "after edit"))
             )
 
             val vm = viewModel()
@@ -172,7 +226,9 @@ class TimelineExplorerViewModelTest {
         }
 
     @Test
-    fun `a failed first load surfaces the error and keeps no rows`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a failed first load surfaces the error and keeps no rows`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { timelineRepository.page(any(), any(), any(), any(), any()) } returns
             Result.failure(ApiError.Client(404, "Contact not found"))
 
@@ -188,9 +244,25 @@ class TimelineExplorerViewModelTest {
     @Test
     fun `a failed load more keeps the rows already shown and the cursor so it can be retried`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            coEvery { timelineRepository.page(5, emptySet(), TimelineBuckets.ALL, null, 25) } returns
+            coEvery {
+                timelineRepository.page(
+                    5,
+                    emptySet(),
+                    TimelineBuckets.ALL,
+                    null,
+                    25
+                )
+            } returns
                 page(note(2), next = "cur-1")
-            coEvery { timelineRepository.page(5, emptySet(), TimelineBuckets.ALL, "cur-1", 25) } returns
+            coEvery {
+                timelineRepository.page(
+                    5,
+                    emptySet(),
+                    TimelineBuckets.ALL,
+                    "cur-1",
+                    25
+                )
+            } returns
                 Result.failure(ApiError.Client(404, "Contact not found"))
 
             val vm = viewModel()
@@ -210,14 +282,26 @@ class TimelineExplorerViewModelTest {
         }
 
     @Test
-    fun `undoing a completion deletes it then reloads the timeline`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `undoing a completion deletes it then reloads the timeline`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val completion = TimelineEvent(
-            TimelineTypes.COMPLETION, "9", "2026-09-01T10:00:00Z",
-            completion = ReminderCompletion(id = 9, contactId = 5, message = "Done"),
+            TimelineTypes.COMPLETION,
+            "9",
+            "2026-09-01T10:00:00Z",
+            completion = ReminderCompletion(id = 9, contactId = 5, message = "Done")
         )
-        coEvery { timelineRepository.page(5, emptySet(), TimelineBuckets.ALL, null, 25) } returnsMany listOf(
+        coEvery {
+            timelineRepository.page(
+                5,
+                emptySet(),
+                TimelineBuckets.ALL,
+                null,
+                25
+            )
+        } returnsMany listOf(
             page(completion),
-            page(),
+            page()
         )
         coEvery { reminderRepository.deleteCompletion(9) } returns Result.success(Unit)
 
@@ -233,8 +317,14 @@ class TimelineExplorerViewModelTest {
     }
 
     @Test
-    fun `a failed completion undo reports the error without reloading`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { reminderRepository.deleteCompletion(9) } returns Result.failure(ApiError.Client(404, "gone"))
+    fun `a failed completion undo reports the error without reloading`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery {
+            reminderRepository.deleteCompletion(
+                9
+            )
+        } returns Result.failure(ApiError.Client(404, "gone"))
 
         val vm = viewModel()
         vm.undoCompletion(9)
@@ -245,7 +335,9 @@ class TimelineExplorerViewModelTest {
     }
 
     @Test
-    fun `a missing contact id never hits the network`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a missing contact id never hits the network`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = viewModel(contactId = 0)
         vm.refresh()
         advanceUntilIdle()

@@ -1,6 +1,6 @@
 package com.mycorrhizal.crm.feature.contacts
 
-/**
+/*
  * Issue #236: small path-string helpers shared by the Seafile/Nextcloud file
  * pickers' ViewModel navigation (`ContactDetailViewModel.enterSeafileDir`/
  * `backSeafileDir`/`linkSeafileItem`) and their breadcrumb composables. Paths
@@ -24,5 +24,4 @@ internal fun parentDirPath(path: String): String? {
 }
 
 /** The path's `/`-separated breadcrumb segments (empty for the root). */
-internal fun pathSegments(path: String): List<String> =
-    path.split('/').filter { it.isNotBlank() }
+internal fun pathSegments(path: String): List<String> = path.split('/').filter { it.isNotBlank() }

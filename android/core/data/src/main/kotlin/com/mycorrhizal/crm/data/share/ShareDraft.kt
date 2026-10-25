@@ -21,7 +21,13 @@ fun sanitizeSharedText(raw: String?): String? {
         type != Character.CONTROL.toInt() && type != Character.FORMAT.toInt()
     }
     if (cleaned.isBlank()) return null
-    return if (cleaned.length > SHARE_TEXT_MAX_CHARS) cleaned.take(SHARE_TEXT_MAX_CHARS) + "…" else cleaned
+    return if (cleaned.length > SHARE_TEXT_MAX_CHARS) {
+        cleaned.take(
+            SHARE_TEXT_MAX_CHARS
+        ) + "…"
+    } else {
+        cleaned
+    }
 }
 
 /**

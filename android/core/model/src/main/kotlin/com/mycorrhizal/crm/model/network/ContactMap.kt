@@ -9,9 +9,7 @@ import java.math.RoundingMode
 
 /** `GET /config/map` (public) — the MapLibre style JSON URL the instance serves. */
 @JsonClass(generateAdapter = true)
-data class MapConfig(
-    @Json(name = "tile_style_url") val tileStyleUrl: String = "",
-)
+data class MapConfig(@Json(name = "tile_style_url") val tileStyleUrl: String = "")
 
 /**
  * `GET /contacts/map` — one item per plottable address of the caller's own
@@ -26,7 +24,7 @@ data class MapConfig(
 @JsonClass(generateAdapter = true)
 data class ContactMapResponse(
     val points: List<ContactMapPoint>? = null,
-    val truncated: Boolean = false,
+    val truncated: Boolean = false
 ) {
     val pointsOrEmpty: List<ContactMapPoint> get() = points ?: emptyList()
 }
@@ -39,7 +37,7 @@ data class ContactMapPoint(
     @Json(name = "address_id") val addressId: String = "",
     val label: String = "",
     /** A `geo:` URI; see [parseGeoUri]. */
-    val coordinates: String = "",
+    val coordinates: String = ""
 )
 
 /**
@@ -54,15 +52,12 @@ data class GeocodeDraftRequest(
     val region: String = "",
     val postal: String = "",
     val country: String = "",
-    val sensitivity: String = "",
+    val sensitivity: String = ""
 )
 
 /** `POST /contacts/:id/addresses/geocode` response: the coordinate, NOT stored server-side. */
 @JsonClass(generateAdapter = true)
-data class GeocodeDraftResponse(
-    val coordinates: String = "",
-    val cached: Boolean = false,
-)
+data class GeocodeDraftResponse(val coordinates: String = "", val cached: Boolean = false)
 
 /** A validated WGS84 position. */
 data class LatLng(val latitude: Double, val longitude: Double)
@@ -104,11 +99,10 @@ fun parseGeoUri(uri: String?): LatLng? {
  * which [parseGeoUri]'s [DECIMAL] rejects, so a small coordinate would round-trip
  * into a value the UI flags invalid.
  */
-private fun formatCoord(value: Double): String =
-    BigDecimal(value)
-        .setScale(6, RoundingMode.HALF_UP)
-        .stripTrailingZeros()
-        .toPlainString()
+private fun formatCoord(value: Double): String = BigDecimal(value)
+    .setScale(6, RoundingMode.HALF_UP)
+    .stripTrailingZeros()
+    .toPlainString()
 
 /** Formats a position as the `geo:` URI the backend stores. */
 fun formatGeoUri(latitude: Double, longitude: Double): String =

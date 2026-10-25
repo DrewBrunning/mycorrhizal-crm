@@ -52,7 +52,9 @@ class OccasionEventDialogDirtyTest {
         composeTestRule.onNodeWithText("Cancel").performClick()
 
         composeTestRule.onNodeWithText("Discard changes?").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Your edits to this occasion haven't been saved.").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Your edits to this occasion haven't been saved."
+        ).assertIsDisplayed()
         assertEquals(false, dismissed)
 
         composeTestRule.onNodeWithText("Keep editing").performClick()

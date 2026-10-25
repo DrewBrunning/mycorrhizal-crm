@@ -7,16 +7,15 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -74,9 +73,11 @@ class DashboardScreenTest {
 
     private fun populatedState() = DashboardUiState(
         // Issue #212: the favorites quick-access block, rendered first.
-        favorites = listOf(DashboardRandomContact(id = 9, firstname = "Zebra", lastname = "Smith", nickname = "Z")),
+        favorites = listOf(
+            DashboardRandomContact(id = 9, firstname = "Zebra", lastname = "Smith", nickname = "Z")
+        ),
         birthdays = listOf(
-            Birthday(name = "Alice Wonder", birthday = "1990-12-25", contactId = 1L),
+            Birthday(name = "Alice Wonder", birthday = "1990-12-25", contactId = 1L)
         ),
         upcomingReminders = listOf(
             DashboardReminder(
@@ -86,8 +87,8 @@ class DashboardScreenTest {
                 recurrence = "weekly",
                 byMail = true,
                 contactId = 3,
-                contactName = "Bobby Smith",
-            ),
+                contactName = "Bobby Smith"
+            )
         ),
         randomContacts = listOf(
             DashboardRandomContact(
@@ -98,24 +99,28 @@ class DashboardScreenTest {
                 relationship = DashboardContactRelationship(
                     hasCadence = true,
                     daysUntilDue = 4,
-                    daysSinceLastInteraction = 10,
-                ),
-            ),
+                    daysSinceLastInteraction = 10
+                )
+            )
         ),
         overdueCadences = listOf(
             OverdueCadence(
                 policy = CadencePolicy(id = "c1", entityId = "u3"),
                 health = CadenceHealth(overdueBy = 3, nextDue = "2026-08-01T00:00:00Z"),
                 contactId = 3L,
-                contactName = "Carol Davis",
-            ),
+                contactName = "Carol Davis"
+            )
         ),
         // Issue #177: pending event-driven reach-out suggestions.
         reachOutSuggestions = listOf(
             ReachOutSuggestion(
-                id = "s1", kind = "organization", oldValue = "OldCo", newValue = "NewCo",
-                contactId = 5L, contactName = "Dana Prince",
-            ),
+                id = "s1",
+                kind = "organization",
+                oldValue = "OldCo",
+                newValue = "NewCo",
+                contactId = 5L,
+                contactName = "Dana Prince"
+            )
         ),
         // Issue #352: contacts whose info is due for re-verification.
         dataDecayOverdue = listOf(
@@ -123,9 +128,9 @@ class DashboardScreenTest {
                 policy = DataDecayPolicy(id = "d1", entityId = "u6"),
                 health = DataDecayHealth(overdueBy = 40, nextDue = "2026-08-01T00:00:00Z"),
                 contactId = 6L,
-                contactName = "Eve Stale",
-            ),
-        ),
+                contactName = "Eve Stale"
+            )
+        )
     )
 
     private fun setContent(
@@ -139,7 +144,7 @@ class DashboardScreenTest {
         onDismissBackupReminder: () -> Unit = {},
         onCreateReminder: () -> Unit = {},
         darkTheme: Boolean = false,
-        fontScale: Float = 1f,
+        fontScale: Float = 1f
     ) {
         composeTestRule.setContent {
             val density = LocalDensity.current
@@ -154,7 +159,7 @@ class DashboardScreenTest {
                         onVerifyDataDecay = onVerifyDataDecay,
                         onBackUpNow = onBackUpNow,
                         onDismissBackupReminder = onDismissBackupReminder,
-                        onCreateReminder = onCreateReminder,
+                        onCreateReminder = onCreateReminder
                     )
                 }
             }
@@ -168,7 +173,9 @@ class DashboardScreenTest {
 
     /** Scrolls to a content-description node (for the icon-button actions). */
     private fun scrollToContentDescription(description: String) {
-        composeTestRule.onNodeWithTag(listTag).performScrollToNode(hasContentDescription(description))
+        composeTestRule.onNodeWithTag(
+            listTag
+        ).performScrollToNode(hasContentDescription(description))
     }
 
     @Test
@@ -254,8 +261,22 @@ class DashboardScreenTest {
         // contact id, Compose throws "Key \"9\" was already used" the moment
         // that happens, which crashed the app on login in practice.
         val state = populatedState().copy(
-            favorites = listOf(DashboardRandomContact(id = 9, firstname = "Zebra", lastname = "Smith", nickname = "Z")),
-            randomContacts = listOf(DashboardRandomContact(id = 9, firstname = "Zebra", lastname = "Smith", nickname = "Z")),
+            favorites = listOf(
+                DashboardRandomContact(
+                    id = 9,
+                    firstname = "Zebra",
+                    lastname = "Smith",
+                    nickname = "Z"
+                )
+            ),
+            randomContacts = listOf(
+                DashboardRandomContact(
+                    id = 9,
+                    firstname = "Zebra",
+                    lastname = "Smith",
+                    nickname = "Z"
+                )
+            )
         )
 
         setContent(state)
@@ -327,7 +348,11 @@ class DashboardScreenTest {
     fun `dismissing a reach-out suggestion calls the callback and does not navigate`() {
         var opened: Int? = null
         var dismissed: String? = null
-        setContent(populatedState(), onOpenContact = { opened = it }, onDismissReachOutSuggestion = { dismissed = it })
+        setContent(
+            populatedState(),
+            onOpenContact = { opened = it },
+            onDismissReachOutSuggestion = { dismissed = it }
+        )
 
         scrollToContentDescription("Dismiss suggestion")
         composeTestRule.onNodeWithContentDescription("Dismiss suggestion").performClick()
@@ -346,7 +371,7 @@ class DashboardScreenTest {
             oldValue = "close",
             newValue = "2026-08-01T10:00:00Z",
             contactId = 5L,
-            contactName = "Dana Prince",
+            contactName = "Dana Prince"
         )
         setContent(populatedState().copy(reachOutSuggestions = listOf(suggestion)))
 
@@ -374,7 +399,11 @@ class DashboardScreenTest {
     fun `confirming a data decay policy calls the callback and does not navigate`() {
         var opened: Int? = null
         var verified: String? = null
-        setContent(populatedState(), onOpenContact = { opened = it }, onVerifyDataDecay = { verified = it })
+        setContent(
+            populatedState(),
+            onOpenContact = { opened = it },
+            onVerifyDataDecay = { verified = it }
+        )
 
         scrollToContentDescription("Confirm still current")
         composeTestRule.onNodeWithContentDescription("Confirm still current").performClick()
@@ -461,14 +490,14 @@ class DashboardScreenTest {
             randomContacts = state.randomContacts,
             upcomingReminders = state.upcomingReminders,
             overdue = state.overdueCadences,
-            favorites = state.favorites,
+            favorites = state.favorites
         )
     }
 
     private fun setScreenContent(
         darkTheme: Boolean,
         onCreateNote: () -> Unit = {},
-        onCreateReminder: () -> Unit = {},
+        onCreateReminder: () -> Unit = {}
     ) {
         val apiClient = mockk<ApiClient>()
         val authRepository = mockk<AuthRepository>()
@@ -478,9 +507,11 @@ class DashboardScreenTest {
             apiClient,
             authRepository,
             mockk<com.mycorrhizal.crm.domain.repository.BundleBackupRepository> {
-                every { observeStatus() } returns flowOf(com.mycorrhizal.crm.domain.backup.BundleBackupStatus())
+                every { observeStatus() } returns flowOf(
+                    com.mycorrhizal.crm.domain.backup.BundleBackupStatus()
+                )
             },
-            mockk<com.mycorrhizal.crm.domain.repository.ActivityRepository>(relaxed = true),
+            mockk<com.mycorrhizal.crm.domain.repository.ActivityRepository>(relaxed = true)
         )
 
         composeTestRule.setContent {
@@ -490,7 +521,7 @@ class DashboardScreenTest {
                     onMenuClick = {},
                     onCreateNote = onCreateNote,
                     onCreateReminder = onCreateReminder,
-                    viewModel = viewModel,
+                    viewModel = viewModel
                 )
             }
         }
@@ -553,7 +584,7 @@ class DashboardScreenTest {
         setContent(
             populatedState().copy(showBackupReminder = true),
             onBackUpNow = { backedUp++ },
-            onDismissBackupReminder = { dismissed++ },
+            onDismissBackupReminder = { dismissed++ }
         )
 
         composeTestRule.onNodeWithText("Back up now").performClick()
@@ -575,22 +606,35 @@ class DashboardScreenTest {
         setContent(
             populatedState().copy(
                 totals = DashboardTotals(
-                    birthdays = 40, upcomingReminders = 60, overdue = 26,
-                    reachOutSuggestions = 30, dataDecayOverdue = 27,
-                ),
-            ),
+                    birthdays = 40,
+                    upcomingReminders = 60,
+                    overdue = 26,
+                    reachOutSuggestions = 30,
+                    dataDecayOverdue = 27
+                )
+            )
         )
 
         scrollToTag("dashboard-truncated-cadence")
-        composeTestRule.onNodeWithTag("dashboard-truncated-cadence").assertIsDisplayed().assert(hasText("Showing 1 of 26"))
+        composeTestRule.onNodeWithTag(
+            "dashboard-truncated-cadence"
+        ).assertIsDisplayed().assert(hasText("Showing 1 of 26"))
         scrollToTag("dashboard-truncated-data-decay")
-        composeTestRule.onNodeWithTag("dashboard-truncated-data-decay").assertIsDisplayed().assert(hasText("Showing 1 of 27"))
+        composeTestRule.onNodeWithTag(
+            "dashboard-truncated-data-decay"
+        ).assertIsDisplayed().assert(hasText("Showing 1 of 27"))
         scrollToTag("dashboard-truncated-reach-out")
-        composeTestRule.onNodeWithTag("dashboard-truncated-reach-out").assertIsDisplayed().assert(hasText("Showing 1 of 30"))
+        composeTestRule.onNodeWithTag(
+            "dashboard-truncated-reach-out"
+        ).assertIsDisplayed().assert(hasText("Showing 1 of 30"))
         scrollToTag("dashboard-truncated-birthday")
-        composeTestRule.onNodeWithTag("dashboard-truncated-birthday").assertIsDisplayed().assert(hasText("Showing 1 of 40"))
+        composeTestRule.onNodeWithTag(
+            "dashboard-truncated-birthday"
+        ).assertIsDisplayed().assert(hasText("Showing 1 of 40"))
         scrollToTag("dashboard-truncated-reminder")
-        composeTestRule.onNodeWithTag("dashboard-truncated-reminder").assertIsDisplayed().assert(hasText("Showing 1 of 60"))
+        composeTestRule.onNodeWithTag(
+            "dashboard-truncated-reminder"
+        ).assertIsDisplayed().assert(hasText("Showing 1 of 60"))
     }
 
     @Test
@@ -607,8 +651,8 @@ class DashboardScreenTest {
         // total == shown: nothing hidden. Absent total (older server): unknown.
         setContent(
             populatedState().copy(
-                totals = DashboardTotals(birthdays = 1, upcomingReminders = null, overdue = 1),
-            ),
+                totals = DashboardTotals(birthdays = 1, upcomingReminders = null, overdue = 1)
+            )
         )
 
         scrollTo("Call Dana")
@@ -630,36 +674,54 @@ class DashboardScreenTest {
     fun `stay in touch rows explain why each contact is listed`() {
         val contacts = listOf(
             DashboardRandomContact(
-                id = 11, firstname = "Overdue", lastname = "Olive",
+                id = 11,
+                firstname = "Overdue",
+                lastname = "Olive",
                 relationship = DashboardContactRelationship(
-                    hasCadence = true, daysUntilDue = -5, daysSinceLastInteraction = 20,
-                ),
+                    hasCadence = true,
+                    daysUntilDue = -5,
+                    daysSinceLastInteraction = 20
+                )
             ),
             DashboardRandomContact(
-                id = 12, firstname = "Due", lastname = "Dana",
+                id = 12,
+                firstname = "Due",
+                lastname = "Dana",
                 relationship = DashboardContactRelationship(
-                    hasCadence = true, daysUntilDue = 4, daysSinceLastInteraction = 10,
-                ),
+                    hasCadence = true,
+                    daysUntilDue = 4,
+                    daysSinceLastInteraction = 10
+                )
             ),
             DashboardRandomContact(
-                id = 13, firstname = "Today", lastname = "Tara",
+                id = 13,
+                firstname = "Today",
+                lastname = "Tara",
                 relationship = DashboardContactRelationship(
-                    hasCadence = true, daysUntilDue = 0, daysSinceLastInteraction = 30,
-                ),
+                    hasCadence = true,
+                    daysUntilDue = 0,
+                    daysSinceLastInteraction = 30
+                )
             ),
             DashboardRandomContact(
-                id = 14, firstname = "Recent", lastname = "Rui",
-                relationship = DashboardContactRelationship(daysSinceLastInteraction = 0),
+                id = 14,
+                firstname = "Recent",
+                lastname = "Rui",
+                relationship = DashboardContactRelationship(daysSinceLastInteraction = 0)
             ),
             DashboardRandomContact(
-                id = 15, firstname = "Ago", lastname = "Ada",
-                relationship = DashboardContactRelationship(daysSinceLastInteraction = 3),
+                id = 15,
+                firstname = "Ago",
+                lastname = "Ada",
+                relationship = DashboardContactRelationship(daysSinceLastInteraction = 3)
             ),
             DashboardRandomContact(
-                id = 16, firstname = "Quiet", lastname = "Quinn",
-                relationship = DashboardContactRelationship(),
+                id = 16,
+                firstname = "Quiet",
+                lastname = "Quinn",
+                relationship = DashboardContactRelationship()
             ),
-            DashboardRandomContact(id = 17, firstname = "Legacy", lastname = "Lee"),
+            DashboardRandomContact(id = 17, firstname = "Legacy", lastname = "Lee")
         )
         setContent(DashboardUiState(randomContacts = contacts))
 
@@ -695,12 +757,18 @@ class DashboardScreenTest {
         setContent(populatedState())
 
         scrollTo("Overdue relationships")
-        val name = composeTestRule.onNodeWithText("Carol Davis", useUnmergedTree = true).getUnclippedBoundsInRoot()
-        val chip = composeTestRule.onNodeWithText("3 days overdue", useUnmergedTree = true).getUnclippedBoundsInRoot()
+        val name = composeTestRule.onNodeWithText(
+            "Carol Davis",
+            useUnmergedTree = true
+        ).getUnclippedBoundsInRoot()
+        val chip = composeTestRule.onNodeWithText(
+            "3 days overdue",
+            useUnmergedTree = true
+        ).getUnclippedBoundsInRoot()
 
         assertTrue(
             "the chip must be below the name, not share the row with it",
-            chip.top >= name.bottom,
+            chip.top >= name.bottom
         )
     }
 
@@ -709,8 +777,14 @@ class DashboardScreenTest {
         setContent(populatedState())
 
         scrollTo("Reasons to reach out")
-        val name = composeTestRule.onNodeWithText("Dana Prince", useUnmergedTree = true).getUnclippedBoundsInRoot()
-        val chip = composeTestRule.onNodeWithText("New employer", useUnmergedTree = true).getUnclippedBoundsInRoot()
+        val name = composeTestRule.onNodeWithText(
+            "Dana Prince",
+            useUnmergedTree = true
+        ).getUnclippedBoundsInRoot()
+        val chip = composeTestRule.onNodeWithText(
+            "New employer",
+            useUnmergedTree = true
+        ).getUnclippedBoundsInRoot()
 
         assertTrue("the chip must be below the name/change text", chip.top >= name.bottom)
     }
@@ -722,11 +796,11 @@ class DashboardScreenTest {
             policy = CadencePolicy(id = "c-line", entityId = "u-line"),
             health = CadenceHealth(overdueBy = 25, nextDue = "2026-09-21T00:00:00Z"),
             contactId = 21L,
-            contactName = "Line Test",
+            contactName = "Line Test"
         )
         setContent(
             DashboardUiState(overdueCadences = listOf(cadence)),
-            dateFormat = DateFormat.EU,
+            dateFormat = DateFormat.EU
         )
 
         scrollTo("Overdue relationships")
@@ -740,10 +814,9 @@ class DashboardScreenTest {
         assertEquals(
             "the date must not wrap at the acceptance width",
             1,
-            layouts.single().lineCount,
+            layouts.single().lineCount
         )
     }
-
 
     @Test
     @Config(qualifiers = "w360dp-h800dp")
@@ -756,12 +829,12 @@ class DashboardScreenTest {
             policy = CadencePolicy(id = "c-scale", entityId = "u-scale"),
             health = CadenceHealth(overdueBy = 25, nextDue = "2026-09-21T00:00:00Z"),
             contactId = 31L,
-            contactName = "Björk Guðmundsdóttir",
+            contactName = "Björk Guðmundsdóttir"
         )
         setContent(
             DashboardUiState(overdueCadences = listOf(cadence)),
             dateFormat = DateFormat.EU_MMMM,
-            fontScale = 2f,
+            fontScale = 2f
         )
 
         scrollTo("Overdue relationships")
@@ -772,7 +845,7 @@ class DashboardScreenTest {
 
         assertTrue(
             "the date column must keep a readable width at font scale 2.0, not be squeezed by the chip",
-            dateBounds.right - dateBounds.left > 200.dp,
+            dateBounds.right - dateBounds.left > 200.dp
         )
     }
 
@@ -783,7 +856,7 @@ class DashboardScreenTest {
         setScreenContent(
             darkTheme = false,
             onCreateNote = { note = true },
-            onCreateReminder = { reminder = true },
+            onCreateReminder = { reminder = true }
         )
 
         composeTestRule.onNodeWithTag("dashboard-quick-capture").performClick()

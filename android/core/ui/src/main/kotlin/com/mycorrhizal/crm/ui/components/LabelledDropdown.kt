@@ -3,8 +3,8 @@ package com.mycorrhizal.crm.ui.components
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -49,14 +49,14 @@ fun <T> LabelledDropdown(
     options: List<DropdownOption<T>>,
     onSelect: (T) -> Unit,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true,
+    enabled: Boolean = true
 ) {
     var expanded by remember { mutableStateOf(false) }
     val open = expanded && enabled
     ExposedDropdownMenuBox(
         expanded = open,
         onExpandedChange = { expanded = it && enabled },
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth()
     ) {
         // Review of #1773: the anchor is NOT an OutlinedTextField. A read-only text
         // field is still an EditText to accessibility services, and the description
@@ -88,7 +88,7 @@ fun <T> LabelledDropdown(
                 },
             // The decoration box sizes to its content; stretch it to the field width
             // (seen on the emulator: the outline hugged "Idea" instead of the row).
-            propagateMinConstraints = true,
+            propagateMinConstraints = true
         ) {
             OutlinedTextFieldDefaults.DecorationBox(
                 value = valueText,
@@ -102,7 +102,7 @@ fun <T> LabelledDropdown(
                             MaterialTheme.colorScheme.onSurface.copy(alpha = DISABLED_ALPHA)
                         },
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                        overflow = TextOverflow.Ellipsis
                     )
                 },
                 enabled = enabled,
@@ -110,7 +110,7 @@ fun <T> LabelledDropdown(
                 visualTransformation = VisualTransformation.None,
                 interactionSource = remember { MutableInteractionSource() },
                 label = { Text(label) },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = open) },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = open) }
             )
         }
         ExposedDropdownMenu(expanded = open, onDismissRequest = { expanded = false }) {
@@ -120,7 +120,7 @@ fun <T> LabelledDropdown(
                         text = header,
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                     )
                 }
                 DropdownMenuItem(
@@ -128,7 +128,7 @@ fun <T> LabelledDropdown(
                     onClick = {
                         expanded = false
                         onSelect(option.value)
-                    },
+                    }
                 )
             }
         }

@@ -59,8 +59,8 @@ import com.mycorrhizal.crm.ui.LocalServerVersion
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.BrandFab
-import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import java.time.Instant
 import java.time.ZoneId
@@ -75,10 +75,7 @@ import java.time.format.FormatStyle
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ApiTokensScreen(
-    onBack: () -> Unit,
-    viewModel: ApiTokensViewModel = hiltViewModel(),
-) {
+fun ApiTokensScreen(onBack: () -> Unit, viewModel: ApiTokensViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var createOpen by remember { mutableStateOf(false) }
     var revokingToken by remember { mutableStateOf<ApiToken?>(null) }
@@ -89,18 +86,27 @@ fun ApiTokensScreen(
     // Issue #692: create/list/revoke are v0.6.0; rotate + revoke-all need the
     // v0.6.1 endpoints, so those affordances are hidden on a v0.6.0 server.
     val advancedTokensSupported =
-        ServerCapabilities.isSupported(LocalServerVersion.current, ServerFeature.API_TOKENS_ADVANCED)
+        ServerCapabilities.isSupported(
+            LocalServerVersion.current,
+            ServerFeature.API_TOKENS_ADVANCED
+        )
 
     Scaffold(
         topBar = {
             TopAppBar(
                 navigationIcon = {
                     AccessibleIconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back)
+                        )
                     }
                 },
                 title = {
-                    Text(stringResource(R.string.settings_api_tokens_title), style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        stringResource(R.string.settings_api_tokens_title),
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 },
                 actions = {
                     // Issue #1775: destructive "Revoke all" belongs in an overflow, not
@@ -110,25 +116,25 @@ fun ApiTokensScreen(
                             AccessibleIconButton(onClick = { overflowOpen = true }) {
                                 Icon(
                                     Icons.Outlined.MoreVert,
-                                    contentDescription = stringResource(R.string.cd_more_options),
+                                    contentDescription = stringResource(R.string.cd_more_options)
                                 )
                             }
                             DropdownMenu(
                                 expanded = overflowOpen,
-                                onDismissRequest = { overflowOpen = false },
+                                onDismissRequest = { overflowOpen = false }
                             ) {
                                 DropdownMenuItem(
                                     text = {
                                         Text(
                                             stringResource(R.string.settings_api_tokens_revoke_all),
-                                            color = MaterialTheme.colorScheme.error,
+                                            color = MaterialTheme.colorScheme.error
                                         )
                                     },
                                     enabled = state.activeCount > 0 && !state.isRevokingAll,
                                     onClick = {
                                         overflowOpen = false
                                         revokeAllOpen = true
-                                    },
+                                    }
                                 )
                             }
                         }
@@ -138,26 +144,29 @@ fun ApiTokensScreen(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
         floatingActionButton = {
             BrandFab(onClick = { createOpen = true }) {
-                Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.settings_api_tokens_create))
+                Icon(
+                    Icons.Outlined.Add,
+                    contentDescription = stringResource(R.string.settings_api_tokens_create)
+                )
             }
-        },
+        }
     ) { padding ->
         RefreshableContent(
             isRefreshing = state.isLoading && state.tokens.isNotEmpty(),
             onRefresh = viewModel::load,
-            modifier = Modifier.fillMaxSize().padding(padding),
+            modifier = Modifier.fillMaxSize().padding(padding)
         ) {
             if (state.isLoading && state.tokens.isEmpty()) {
                 Column(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     CircularProgressIndicator()
                 }
@@ -166,10 +175,13 @@ fun ApiTokensScreen(
                     title = stringResource(R.string.settings_api_tokens_empty),
                     body = stringResource(R.string.settings_api_tokens_empty_body),
                     actionLabel = stringResource(R.string.settings_api_tokens_create),
-                    onAction = { createOpen = true },
+                    onAction = { createOpen = true }
                 )
             } else {
-                LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = FabListContentPadding) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = FabListContentPadding
+                ) {
                     if (state.error != null) {
                         item {
                             Text(
@@ -178,17 +190,20 @@ fun ApiTokensScreen(
                                 style = MaterialTheme.typography.bodySmall,
                                 modifier = Modifier
                                     .padding(horizontal = 16.dp, vertical = 4.dp)
-                                    .semantics { liveRegion = LiveRegionMode.Assertive },
+                                    .semantics { liveRegion = LiveRegionMode.Assertive }
                             )
                         }
                     }
                     state.revokedAllCount?.let { count ->
                         item {
                             Text(
-                                text = stringResource(R.string.settings_api_tokens_revoke_all_success, count),
+                                text = stringResource(
+                                    R.string.settings_api_tokens_revoke_all_success,
+                                    count
+                                ),
                                 color = MaterialTheme.colorScheme.tertiary,
                                 style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                             )
                         }
                     }
@@ -199,7 +214,7 @@ fun ApiTokensScreen(
                             revoking = state.revokingId == token.id,
                             rotateSupported = advancedTokensSupported,
                             onRotate = { rotatingToken = token },
-                            onRevoke = { revokingToken = token },
+                            onRevoke = { revokingToken = token }
                         )
                     }
                 }
@@ -214,7 +229,7 @@ fun ApiTokensScreen(
                 viewModel.create(name, expiresInDays, scope)
                 createOpen = false
             },
-            onDismiss = { createOpen = false },
+            onDismiss = { createOpen = false }
         )
     }
 
@@ -233,7 +248,7 @@ fun ApiTokensScreen(
                 TextButton(onClick = { revokingToken = null }) {
                     Text(stringResource(R.string.settings_cancel))
                 }
-            },
+            }
         )
     }
 
@@ -252,7 +267,7 @@ fun ApiTokensScreen(
                 TextButton(onClick = { rotatingToken = null }) {
                     Text(stringResource(R.string.settings_cancel))
                 }
-            },
+            }
         )
     }
 
@@ -260,7 +275,11 @@ fun ApiTokensScreen(
         AlertDialog(
             onDismissRequest = { revokeAllOpen = false },
             title = { Text(stringResource(R.string.settings_api_tokens_revoke_all_title)) },
-            text = { Text(stringResource(R.string.settings_api_tokens_revoke_all_body, state.activeCount)) },
+            text = {
+                Text(
+                    stringResource(R.string.settings_api_tokens_revoke_all_body, state.activeCount)
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.revokeAll()
@@ -271,7 +290,7 @@ fun ApiTokensScreen(
                 TextButton(onClick = { revokeAllOpen = false }) {
                     Text(stringResource(R.string.settings_cancel))
                 }
-            },
+            }
         )
     }
 
@@ -279,7 +298,7 @@ fun ApiTokensScreen(
         RevealedTokenDialog(
             revealed = revealed,
             isRotation = state.revealedIsRotation,
-            onDismiss = { viewModel.dismissRevealedToken() },
+            onDismiss = { viewModel.dismissRevealedToken() }
         )
     }
 }
@@ -291,47 +310,66 @@ internal fun ApiTokenRow(
     revoking: Boolean,
     onRotate: () -> Unit,
     onRevoke: () -> Unit,
-    rotateSupported: Boolean = true,
+    rotateSupported: Boolean = true
 ) {
     val active = token.isActive()
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(text = token.name, style = MaterialTheme.typography.bodyLarge)
                 Text(
                     text = stringResource(statusLabelRes(token)),
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (active) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
+                    color = if (active) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
                 )
             }
             Text(
                 text = stringResource(
-                    if (token.scope == "carddav") R.string.settings_api_tokens_scope_carddav else R.string.settings_api_tokens_scope_full,
+                    if (token.scope ==
+                        "carddav"
+                    ) {
+                        R.string.settings_api_tokens_scope_carddav
+                    } else {
+                        R.string.settings_api_tokens_scope_full
+                    }
                 ),
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                text = stringResource(R.string.settings_api_tokens_created, formatTokenTime(token.createdAt)),
+                text = stringResource(
+                    R.string.settings_api_tokens_created,
+                    formatTokenTime(token.createdAt)
+                ),
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            val lastUsed = token.lastUsedAt?.let { formatTokenTime(it) } ?: stringResource(R.string.settings_api_tokens_never_used)
+            val lastUsed = token.lastUsedAt?.let {
+                formatTokenTime(
+                    it
+                )
+            } ?: stringResource(R.string.settings_api_tokens_never_used)
             Text(
                 text = stringResource(R.string.settings_api_tokens_last_used, lastUsed),
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             token.expiresAt?.let { expiresAt ->
                 Text(
-                    text = stringResource(R.string.settings_api_tokens_expires, formatTokenTime(expiresAt)),
+                    text = stringResource(
+                        R.string.settings_api_tokens_expires,
+                        formatTokenTime(expiresAt)
+                    ),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -339,14 +377,20 @@ internal fun ApiTokenRow(
             if (rotateSupported) {
                 AccessibleIconButton(onClick = onRotate, enabled = !rotating) {
                     if (rotating) {
-                        CircularProgressIndicator(modifier = Modifier.padding(4.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(
+                            modifier = Modifier.padding(4.dp),
+                            strokeWidth = 2.dp
+                        )
                     } else {
                         // #205-equivalent: the row-action label carries the token
                         // name so TalkBack doesn't read a bare "Rotate"/"Revoke"
                         // on every row.
                         Icon(
                             Icons.Outlined.Autorenew,
-                            contentDescription = stringResource(R.string.settings_api_tokens_rotate_named, token.name),
+                            contentDescription = stringResource(
+                                R.string.settings_api_tokens_rotate_named,
+                                token.name
+                            )
                         )
                     }
                 }
@@ -357,7 +401,10 @@ internal fun ApiTokenRow(
                 } else {
                     Icon(
                         Icons.Outlined.Block,
-                        contentDescription = stringResource(R.string.settings_api_tokens_revoke_named, token.name),
+                        contentDescription = stringResource(
+                            R.string.settings_api_tokens_revoke_named,
+                            token.name
+                        )
                     )
                 }
             }
@@ -375,7 +422,7 @@ private fun statusLabelRes(token: ApiToken): Int = when {
 internal fun CreateApiTokenDialog(
     isSaving: Boolean,
     onConfirm: (name: String, expiresInDays: Int, scope: String) -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     var name by remember { mutableStateOf("") }
     var expiresInDays by remember { mutableIntStateOf(DEFAULT_API_TOKEN_EXPIRY_DAYS) }
@@ -390,12 +437,12 @@ internal fun CreateApiTokenDialog(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text(stringResource(R.string.settings_api_tokens_name_label)) },
-                    singleLine = true,
+                    singleLine = true
                 )
                 Text(
                     text = stringResource(R.string.settings_api_tokens_expiry_label),
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     API_TOKEN_EXPIRY_OPTIONS.forEach { days ->
@@ -405,16 +452,16 @@ internal fun CreateApiTokenDialog(
                             label = {
                                 Text(
                                     stringResource(R.string.settings_api_tokens_expiry_days, days),
-                                    style = MaterialTheme.typography.labelMedium,
+                                    style = MaterialTheme.typography.labelMedium
                                 )
-                            },
+                            }
                         )
                     }
                 }
                 Text(
                     text = stringResource(R.string.settings_api_tokens_scope_label),
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     API_TOKEN_SCOPES.forEach { option ->
@@ -424,35 +471,52 @@ internal fun CreateApiTokenDialog(
                             label = {
                                 Text(
                                     stringResource(
-                                        if (option == "carddav") R.string.settings_api_tokens_scope_carddav else R.string.settings_api_tokens_scope_full,
+                                        if (option ==
+                                            "carddav"
+                                        ) {
+                                            R.string.settings_api_tokens_scope_carddav
+                                        } else {
+                                            R.string.settings_api_tokens_scope_full
+                                        }
                                     ),
-                                    style = MaterialTheme.typography.labelMedium,
+                                    style = MaterialTheme.typography.labelMedium
                                 )
-                            },
+                            }
                         )
                     }
                 }
                 Text(
                     text = stringResource(
-                        if (scope == "carddav") R.string.settings_api_tokens_scope_carddav_help else R.string.settings_api_tokens_scope_full_help,
+                        if (scope ==
+                            "carddav"
+                        ) {
+                            R.string.settings_api_tokens_scope_carddav_help
+                        } else {
+                            R.string.settings_api_tokens_scope_full_help
+                        }
                     ),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         },
         confirmButton = {
             TextButton(
                 onClick = { onConfirm(name.trim(), expiresInDays, scope) },
-                enabled = !isSaving && name.isNotBlank(),
+                enabled = !isSaving && name.isNotBlank()
             ) {
-                if (isSaving) CircularProgressIndicator(modifier = Modifier.padding(end = 4.dp), strokeWidth = 2.dp)
+                if (isSaving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.padding(end = 4.dp),
+                        strokeWidth = 2.dp
+                    )
+                }
                 Text(stringResource(R.string.settings_api_tokens_create))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_cancel)) }
-        },
+        }
     )
 }
 
@@ -464,7 +528,7 @@ internal fun CreateApiTokenDialog(
 internal fun RevealedTokenDialog(
     revealed: ApiTokenCreateResponse,
     isRotation: Boolean,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     val clipboard = LocalClipboardManager.current
     AlertDialog(
@@ -472,34 +536,44 @@ internal fun RevealedTokenDialog(
         title = {
             Text(
                 stringResource(
-                    if (isRotation) R.string.settings_api_tokens_rotated_title else R.string.settings_api_tokens_created_title,
-                ),
+                    if (isRotation) R.string.settings_api_tokens_rotated_title else R.string.settings_api_tokens_created_title
+                )
             )
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     stringResource(
-                        if (isRotation) R.string.settings_api_tokens_rotated_warning else R.string.settings_api_tokens_created_warning,
-                    ),
+                        if (isRotation) R.string.settings_api_tokens_rotated_warning else R.string.settings_api_tokens_created_warning
+                    )
                 )
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     OutlinedTextField(
                         value = revealed.token.orEmpty(),
                         onValueChange = {},
                         readOnly = true,
                         singleLine = true,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f)
                     )
-                    AccessibleIconButton(onClick = { clipboard.setText(AnnotatedString(revealed.token.orEmpty())) }) {
-                        Icon(Icons.Outlined.ContentCopy, contentDescription = stringResource(R.string.settings_api_tokens_copy))
+                    AccessibleIconButton(
+                        onClick = { clipboard.setText(AnnotatedString(revealed.token.orEmpty())) }
+                    ) {
+                        Icon(
+                            Icons.Outlined.ContentCopy,
+                            contentDescription = stringResource(R.string.settings_api_tokens_copy)
+                        )
                     }
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_api_tokens_done)) }
-        },
+            TextButton(
+                onClick = onDismiss
+            ) { Text(stringResource(R.string.settings_api_tokens_done)) }
+        }
     )
 }
 

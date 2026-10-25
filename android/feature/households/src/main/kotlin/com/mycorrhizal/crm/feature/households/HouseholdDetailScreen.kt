@@ -24,7 +24,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -54,20 +53,20 @@ import com.mycorrhizal.crm.feature.contacts.FieldActions
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.HouseholdMember
 import com.mycorrhizal.crm.model.network.HouseholdRoles
-import com.mycorrhizal.crm.ui.components.BrandFab
-import com.mycorrhizal.crm.ui.components.FabListContentPadding
+import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
+import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
-import com.mycorrhizal.crm.ui.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HouseholdDetailScreen(
     onBack: () -> Unit,
     onNavigateToContact: (Int) -> Unit,
-    viewModel: HouseholdDetailViewModel = hiltViewModel(),
+    viewModel: HouseholdDetailViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -92,39 +91,48 @@ fun HouseholdDetailScreen(
             TopAppBar(
                 navigationIcon = {
                     AccessibleIconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back)
+                        )
                     }
                 },
                 title = {
                     Text(
                         text = state.household?.name ?: stringResource(R.string.households_title),
-                        style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.titleLarge
                     )
                 },
                 actions = {
                     AccessibleIconButton(
-                        onClick = { context.startActivity(FieldActions.groupSmsIntent(textablePhones, context)) },
-                        enabled = textablePhones.size >= 2,
+                        onClick = {
+                            context.startActivity(
+                                FieldActions.groupSmsIntent(textablePhones, context)
+                            )
+                        },
+                        enabled = textablePhones.size >= 2
                     ) {
                         Icon(
                             Icons.Outlined.Message,
-                            contentDescription = stringResource(R.string.households_text_everyone),
+                            contentDescription = stringResource(R.string.households_text_everyone)
                         )
                     }
                     AccessibleIconButton(
                         onClick = { viewModel.suggestRelationships() },
-                        enabled = state.members.size >= 2 && !state.isSuggestingRelationships,
+                        enabled = state.members.size >= 2 && !state.isSuggestingRelationships
                     ) {
                         if (state.isSuggestingRelationships) {
                             CircularProgressIndicator(
                                 modifier = Modifier.padding(6.dp),
                                 strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.onPrimary,
+                                color = MaterialTheme.colorScheme.onPrimary
                             )
                         } else {
                             Icon(
                                 Icons.Outlined.AutoAwesome,
-                                contentDescription = stringResource(R.string.households_suggest_relationships),
+                                contentDescription = stringResource(
+                                    R.string.households_suggest_relationships
+                                )
                             )
                         }
                     }
@@ -133,40 +141,49 @@ fun HouseholdDetailScreen(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
         floatingActionButton = {
             BrandFab(onClick = { showAddDialog = true }) {
-                Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.households_add_member))
+                Icon(
+                    Icons.Outlined.Add,
+                    contentDescription = stringResource(R.string.households_add_member)
+                )
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             RefreshableContent(
                 isRefreshing = state.isLoading && state.members.isNotEmpty(),
                 onRefresh = viewModel::load,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize()
             ) {
                 when {
                     state.isLoading && state.members.isEmpty() -> LoadingSkeleton()
+
                     state.members.isEmpty() && errorMessage == null ->
                         EmptyState(
                             title = stringResource(R.string.households_members_empty),
                             actionLabel = stringResource(R.string.households_add_member),
-                            onAction = { showAddDialog = true },
+                            onAction = { showAddDialog = true }
                         )
+
                     state.members.isEmpty() && errorMessage != null -> {
                         Text(
                             text = errorMessage,
                             color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.align(Alignment.Center),
+                            modifier = Modifier.align(Alignment.Center)
                         )
                     }
+
                     else -> {
-                        LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = FabListContentPadding) {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = FabListContentPadding
+                        ) {
                             items(state.members, key = { it.id }) { member ->
                                 val resolved = state.contactsByUid[member.memberVCardUid]
                                 HouseholdMemberRow(
@@ -176,9 +193,14 @@ fun HouseholdDetailScreen(
                                     resolvedContactId = resolved?.takeIf { it.id != 0 }?.id,
                                     removing = state.removingUid == member.memberVCardUid,
                                     updatingRole = state.updatingRoleUid == member.memberVCardUid,
-                                    onRoleChange = { role -> viewModel.updateMemberRole(member.memberVCardUid, role) },
+                                    onRoleChange = { role ->
+                                        viewModel.updateMemberRole(
+                                            member.memberVCardUid,
+                                            role
+                                        )
+                                    },
                                     onNavigateToContact = onNavigateToContact,
-                                    onRemove = { viewModel.removeMember(member.memberVCardUid) },
+                                    onRemove = { viewModel.removeMember(member.memberVCardUid) }
                                 )
                             }
                         }
@@ -204,7 +226,7 @@ fun HouseholdDetailScreen(
             onDismiss = {
                 showAddDialog = false
                 viewModel.clearContactSearch()
-            },
+            }
         )
     }
 
@@ -243,28 +265,38 @@ private fun HouseholdMemberRow(
     updatingRole: Boolean,
     onRoleChange: (String?) -> Unit,
     onNavigateToContact: (Int) -> Unit,
-    onRemove: () -> Unit,
+    onRemove: () -> Unit
 ) {
     var roleExpanded by remember { mutableStateOf(false) }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .then(if (resolvedContactId != null) Modifier.clickable { onNavigateToContact(resolvedContactId) } else Modifier)
+            .then(
+                if (resolvedContactId != null) {
+                    Modifier.clickable {
+                        onNavigateToContact(
+                            resolvedContactId
+                        )
+                    }
+                } else {
+                    Modifier
+                }
+            )
             .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             imageVector = Icons.Outlined.Person,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Column(modifier = Modifier.weight(1f).padding(horizontal = 8.dp)) {
             Text(
                 text = displayName,
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
             HouseholdRolePicker(
                 role = member.role,
@@ -274,7 +306,7 @@ private fun HouseholdMemberRow(
                 onSelect = { role ->
                     roleExpanded = false
                     onRoleChange(role)
-                },
+                }
             )
         }
         AccessibleIconButton(onClick = onRemove, enabled = !removing) {
@@ -282,7 +314,10 @@ private fun HouseholdMemberRow(
                 imageVector = Icons.Outlined.Remove,
                 // #205/#1768: the remove action carries the member's name (never the
                 // raw UID) so TalkBack doesn't read a bare "Remove member" on every row.
-                contentDescription = stringResource(R.string.households_remove_member_named, displayName),
+                contentDescription = stringResource(
+                    R.string.households_remove_member_named,
+                    displayName
+                )
             )
         }
     }
@@ -295,11 +330,11 @@ private fun HouseholdRolePicker(
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
     updating: Boolean,
-    onSelect: (String?) -> Unit,
+    onSelect: (String?) -> Unit
 ) {
     ExposedDropdownMenuBox(
         expanded = expanded,
-        onExpandedChange = onExpandedChange,
+        onExpandedChange = onExpandedChange
     ) {
         OutlinedTextField(
             value = HouseholdRoleLabels.label(role),
@@ -315,20 +350,20 @@ private fun HouseholdRolePicker(
                 }
             },
             textStyle = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.menuAnchor(),
+            modifier = Modifier.menuAnchor()
         )
         ExposedDropdownMenu(
             expanded = expanded,
-            onDismissRequest = { onExpandedChange(false) },
+            onDismissRequest = { onExpandedChange(false) }
         ) {
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.households_no_role)) },
-                onClick = { onSelect(null) },
+                onClick = { onSelect(null) }
             )
             HouseholdRoles.ALL.forEach { token ->
                 DropdownMenuItem(
                     text = { Text(HouseholdRoleLabels.label(token)) },
-                    onClick = { onSelect(token) },
+                    onClick = { onSelect(token) }
                 )
             }
         }
@@ -345,7 +380,7 @@ fun AddHouseholdMemberDialog(
     onQueryChange: (String) -> Unit,
     onClearSearch: () -> Unit,
     onConfirm: (String, String?) -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     var selectedContact by remember { mutableStateOf<ContactSummary?>(null) }
     var role by remember { mutableStateOf(HouseholdRoles.ADULT) }
@@ -361,7 +396,7 @@ fun AddHouseholdMemberDialog(
                         Text(
                             text = displayNameFor(selectedContact).orEmpty(),
                             style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f)
                         )
                         TextButton(onClick = {
                             selectedContact = null
@@ -378,22 +413,27 @@ fun AddHouseholdMemberDialog(
                         singleLine = true,
                         trailingIcon = {
                             if (searchLoading) {
-                                CircularProgressIndicator(modifier = Modifier.padding(4.dp), strokeWidth = 2.dp)
+                                CircularProgressIndicator(
+                                    modifier = Modifier.padding(4.dp),
+                                    strokeWidth = 2.dp
+                                )
                             }
                         },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth()
                     )
                     when {
                         query.isBlank() -> Text(
                             text = stringResource(R.string.households_type_to_search),
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+
                         results.isEmpty() && !searchLoading -> Text(
                             text = stringResource(R.string.households_no_contacts_found),
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+
                         else -> LazyColumn(modifier = Modifier.heightIn(max = 200.dp)) {
                             items(results, key = { it.id }) { contact ->
                                 Text(
@@ -402,7 +442,7 @@ fun AddHouseholdMemberDialog(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable { selectedContact = contact }
-                                        .padding(vertical = 8.dp),
+                                        .padding(vertical = 8.dp)
                                 )
                             }
                         }
@@ -410,26 +450,33 @@ fun AddHouseholdMemberDialog(
                 }
                 ExposedDropdownMenuBox(
                     expanded = roleExpanded,
-                    onExpandedChange = { roleExpanded = it },
+                    onExpandedChange = { roleExpanded = it }
                 ) {
                     OutlinedTextField(
                         value = HouseholdRoleLabels.label(role),
                         onValueChange = {},
                         readOnly = true,
                         label = { Text(stringResource(R.string.households_role)) },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = roleExpanded) },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(
+                                expanded = roleExpanded
+                            )
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .menuAnchor(),
+                            .menuAnchor()
                     )
                     ExposedDropdownMenu(
                         expanded = roleExpanded,
-                        onDismissRequest = { roleExpanded = false },
+                        onDismissRequest = { roleExpanded = false }
                     ) {
                         HouseholdRoles.ALL.forEach { token ->
                             DropdownMenuItem(
                                 text = { Text(HouseholdRoleLabels.label(token)) },
-                                onClick = { role = token; roleExpanded = false },
+                                onClick = {
+                                    role = token
+                                    roleExpanded = false
+                                }
                             )
                         }
                     }
@@ -442,7 +489,7 @@ fun AddHouseholdMemberDialog(
                 onClick = {
                     if (selectedUid != null) onConfirm(selectedUid, role)
                 },
-                enabled = selectedUid != null && selectedUid !in existingMemberUids,
+                enabled = selectedUid != null && selectedUid !in existingMemberUids
             ) {
                 Text(stringResource(R.string.action_add))
             }
@@ -451,7 +498,7 @@ fun AddHouseholdMemberDialog(
             TextButton(onClick = onDismiss) {
                 Text(stringResource(R.string.action_cancel))
             }
-        },
+        }
     )
 }
 

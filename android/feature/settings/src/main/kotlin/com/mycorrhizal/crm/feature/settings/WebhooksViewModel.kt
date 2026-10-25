@@ -9,12 +9,12 @@ import com.mycorrhizal.crm.model.network.WebhookDelivery
 import com.mycorrhizal.crm.model.network.WebhookInput
 import com.mycorrhizal.crm.network.ApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class WebhooksUiState(
     val webhooks: List<Webhook> = emptyList(),
@@ -31,13 +31,12 @@ data class WebhooksUiState(
     /** A transient action error (test/delete/save/load), shown and then cleared. */
     val error: String? = null,
     /** A transient action success message (test). */
-    val message: String? = null,
+    val message: String? = null
 )
 
 @HiltViewModel
-class WebhooksViewModel @Inject constructor(
-    private val repository: WebhookRepository,
-) : ViewModel() {
+class WebhooksViewModel @Inject constructor(private val repository: WebhookRepository) :
+    ViewModel() {
 
     private val _uiState = MutableStateFlow(WebhooksUiState())
     val uiState: StateFlow<WebhooksUiState> = _uiState.asStateFlow()
@@ -71,7 +70,7 @@ class WebhooksViewModel @Inject constructor(
                             it.copy(
                                 isSaving = false,
                                 webhooks = listOf(created.toWebhook()) + it.webhooks,
-                                createdWebhook = created,
+                                createdWebhook = created
                             )
                         }
                     }
@@ -84,7 +83,15 @@ class WebhooksViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 isSaving = false,
-                                webhooks = it.webhooks.map { w -> if (w.id == editingId) updated else w },
+                                webhooks = it.webhooks.map { w ->
+                                    if (w.id ==
+                                        editingId
+                                    ) {
+                                        updated
+                                    } else {
+                                        w
+                                    }
+                                }
                             )
                         }
                     }
@@ -104,7 +111,7 @@ class WebhooksViewModel @Inject constructor(
                         it.copy(
                             webhooks = it.webhooks.filterNot { w -> w.id == webhook.id },
                             deliveries = it.deliveries - webhook.id,
-                            expandedIds = it.expandedIds - webhook.id,
+                            expandedIds = it.expandedIds - webhook.id
                         )
                     }
                 }
@@ -125,15 +132,29 @@ class WebhooksViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             testingIds = it.testingIds - webhook.id,
-                            deliveries = it.deliveries + (webhook.id to listOf(delivery) + it.deliveries[webhook.id].orEmpty()),
+                            deliveries = it.deliveries + (
+                                webhook.id to listOf(
+                                    delivery
+                                ) + it.deliveries[webhook.id].orEmpty()
+                                ),
                             expandedIds = it.expandedIds + webhook.id,
                             message = if (success) delivery.statusCode?.toString() else null,
-                            error = if (success) null else delivery.error ?: "status ${delivery.statusCode ?: "unknown"}",
+                            error = if (success) {
+                                null
+                            } else {
+                                delivery.error
+                                    ?: "status ${delivery.statusCode ?: "unknown"}"
+                            }
                         )
                     }
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(testingIds = it.testingIds - webhook.id, error = e.displayMessage()) }
+                    _uiState.update {
+                        it.copy(
+                            testingIds = it.testingIds - webhook.id,
+                            error = e.displayMessage()
+                        )
+                    }
                 }
         }
     }
@@ -142,14 +163,23 @@ class WebhooksViewModel @Inject constructor(
         val expanded = _uiState.value.expandedIds.contains(webhookId)
         _uiState.update {
             it.copy(
-                expandedIds = if (expanded) it.expandedIds - webhookId else it.expandedIds + webhookId,
+                expandedIds = if (expanded) {
+                    it.expandedIds - webhookId
+                } else {
+                    it.expandedIds +
+                        webhookId
+                }
             )
         }
         if (!expanded && !_uiState.value.deliveries.containsKey(webhookId)) {
             viewModelScope.launch {
                 repository.deliveries(webhookId)
                     .onSuccess { list ->
-                        _uiState.update { it.copy(deliveries = it.deliveries + (webhookId to list)) }
+                        _uiState.update {
+                            it.copy(
+                                deliveries = it.deliveries + (webhookId to list)
+                            )
+                        }
                     }
                     .onFailure { e ->
                         // Delivery history is a secondary surface — a failed load
@@ -172,5 +202,11 @@ class WebhooksViewModel @Inject constructor(
         (this as? ApiError)?.displayMessage ?: message ?: "error"
 }
 
-private fun WebhookCreateResponse.toWebhook(): Webhook =
-    Webhook(id = id, name = name, url = url, events = events, isActive = isActive, createdAt = createdAt)
+private fun WebhookCreateResponse.toWebhook(): Webhook = Webhook(
+    id = id,
+    name = name,
+    url = url,
+    events = events,
+    isActive = isActive,
+    createdAt = createdAt
+)

@@ -63,7 +63,7 @@ object RoomCacheEncryption {
         runReencryption(
             dbFile = dbFile,
             export = { encrypted -> exportToEncrypted(dbFile, encrypted, passphrase) },
-            rebuildFts = { rebuildFtsMirrors(dbFile, passphrase) },
+            rebuildFts = { rebuildFtsMirrors(dbFile, passphrase) }
         )
     }
 
@@ -107,7 +107,7 @@ object RoomCacheEncryption {
         dbFile: File,
         export: (encrypted: File) -> Unit,
         rebuildFts: () -> Unit,
-        postSwap: (File) -> Unit = ::deleteSidecars,
+        postSwap: (File) -> Unit = ::deleteSidecars
     ) {
         val encrypted = File(dbFile.parentFile, dbFile.name + ".encrypted")
         encrypted.delete()
@@ -150,11 +150,17 @@ object RoomCacheEncryption {
                 } catch (recovery: Exception) {
                     Log.e(TAG, "Recovery swap also failed after export succeeded", recovery)
                     encrypted.delete()
-                    throw IllegalStateException("Failed to encrypt ${dbFile.name}; cache left untouched", e)
+                    throw IllegalStateException(
+                        "Failed to encrypt ${dbFile.name}; cache left untouched",
+                        e
+                    )
                 }
             } else {
                 // The export itself failed; the plaintext DB is untouched.
-                throw IllegalStateException("Failed to encrypt ${dbFile.name}; cache left untouched", e)
+                throw IllegalStateException(
+                    "Failed to encrypt ${dbFile.name}; cache left untouched",
+                    e
+                )
             }
         }
         // FTS rebuild is best-effort: the base rows survived the export, so a
@@ -178,7 +184,9 @@ object RoomCacheEncryption {
         // FTS4, and all rows) into it.
         val plain = SQLiteDatabase.openOrCreateDatabase(dbFile, "", null, null, null)
         try {
-            plain.rawExecSQL("ATTACH DATABASE '${encrypted.absolutePath}' AS encrypted KEY '$passphrase'")
+            plain.rawExecSQL(
+                "ATTACH DATABASE '${encrypted.absolutePath}' AS encrypted KEY '$passphrase'"
+            )
             plain.rawExecSQL("SELECT sqlcipher_export('encrypted')")
             plain.rawExecSQL("DETACH DATABASE encrypted")
         } finally {
@@ -200,7 +208,7 @@ object RoomCacheEncryption {
         try {
             val ftsTables = db.rawQuery(
                 "SELECT name FROM sqlite_master WHERE type = 'table' AND sql LIKE 'CREATE VIRTUAL TABLE%USING FTS%'",
-                null,
+                null
             ).use { cursor ->
                 val names = mutableListOf<String>()
                 while (cursor.moveToNext()) names += cursor.getString(0)

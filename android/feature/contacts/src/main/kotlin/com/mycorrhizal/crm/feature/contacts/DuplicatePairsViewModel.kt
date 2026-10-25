@@ -6,13 +6,13 @@ import com.mycorrhizal.crm.domain.repository.DuplicateRepository
 import com.mycorrhizal.crm.model.network.DuplicatePair
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /**
  * T93 duplicate review (web-parity for the "Review duplicates" surface).
@@ -27,7 +27,7 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class DuplicatePairsViewModel @Inject constructor(
-    private val duplicateRepository: DuplicateRepository,
+    private val duplicateRepository: DuplicateRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DuplicatePairsUiState())
@@ -49,7 +49,7 @@ class DuplicatePairsViewModel @Inject constructor(
                     isLoading = true,
                     error = null,
                     pairs = emptyList(),
-                    total = 0,
+                    total = 0
                 )
             }
             var exhausted = false
@@ -62,7 +62,7 @@ class DuplicatePairsViewModel @Inject constructor(
                     },
                     onError = { error ->
                         _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
-                    },
+                    }
                 )
                 // A failed page aborts the scan (error already surfaced); only
                 // keep pulling while more pairs remain.
@@ -93,13 +93,13 @@ class DuplicatePairsViewModel @Inject constructor(
                         state.copy(
                             dismissingKey = null,
                             pairs = remaining,
-                            total = (state.total - 1).coerceAtLeast(0),
+                            total = (state.total - 1).coerceAtLeast(0)
                         )
                     }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(dismissingKey = null, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -128,5 +128,5 @@ data class DuplicatePairsUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     /** The in-flight dismiss's [DuplicatePair.reviewKey]; null when none is running. */
-    val dismissingKey: String? = null,
+    val dismissingKey: String? = null
 )

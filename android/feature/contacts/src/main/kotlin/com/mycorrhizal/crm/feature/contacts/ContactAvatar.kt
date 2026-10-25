@@ -54,7 +54,7 @@ fun ContactAvatar(
     size: Dp,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
-    onClickLabel: String? = null,
+    onClickLabel: String? = null
 ) {
     val serverOrigin = LocalServerUrl.current
     val uri = photoUri?.trim()?.takeIf { it.isNotEmpty() }
@@ -70,7 +70,7 @@ fun ContactAvatar(
         } else {
             sized
         },
-        contentAlignment = Alignment.Center,
+        contentAlignment = Alignment.Center
     ) {
         val imageBitmap = dataBitmap
         when {
@@ -79,17 +79,19 @@ fun ContactAvatar(
                     bitmap = imageBitmap,
                     contentDescription = contentDescription,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(size).clip(CircleShape),
+                    modifier = Modifier.size(size).clip(CircleShape)
                 )
             }
+
             isHttp -> {
                 AsyncImage(
                     model = resolvedUri,
                     contentDescription = contentDescription,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(size).clip(CircleShape),
+                    modifier = Modifier.size(size).clip(CircleShape)
                 )
             }
+
             else -> PersonFallback(size, contentDescription)
         }
     }
@@ -135,18 +137,18 @@ private fun decodeDataUri(uri: String): ImageBitmap? {
 private fun PersonFallback(size: Dp, contentDescription: String?) {
     Box(
         modifier = Modifier.size(size).clip(CircleShape),
-        contentAlignment = Alignment.Center,
+        contentAlignment = Alignment.Center
     ) {
         Image(
             painter = ColorPainter(MaterialTheme.colorScheme.surfaceVariant),
             contentDescription = contentDescription,
-            modifier = Modifier.matchParentSize(),
+            modifier = Modifier.matchParentSize()
         )
         Icon(
             imageVector = Icons.Outlined.Person,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(size * 0.6f),
+            modifier = Modifier.size(size * 0.6f)
         )
     }
 }

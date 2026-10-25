@@ -24,7 +24,7 @@ object QrCodeEncoder {
                 BarcodeFormat.QR_CODE,
                 sizePx,
                 sizePx,
-                mapOf(EncodeHintType.MARGIN to 1),
+                mapOf(EncodeHintType.MARGIN to 1)
             )
             val width = matrix.width
             val height = matrix.height

@@ -1,23 +1,23 @@
 package com.mycorrhizal.crm.feature.settings
 
 import android.content.Context
-import com.mycorrhizal.crm.data.passkey.PasskeyAvailability
 import com.mycorrhizal.crm.data.auth.DeviceGrantManager
+import com.mycorrhizal.crm.data.passkey.PasskeyAvailability
 import com.mycorrhizal.crm.domain.about.AppBuildInfo
 import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
-import com.mycorrhizal.crm.domain.repository.ServerCompatibilityRepository
-import com.mycorrhizal.crm.model.network.ServerHealth
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.AutoLockDelay
 import com.mycorrhizal.crm.domain.repository.BiometricEnrollmentStatus
 import com.mycorrhizal.crm.domain.repository.LocalAuthCapabilities
 import com.mycorrhizal.crm.domain.repository.LocalAuthSettingsRepository
+import com.mycorrhizal.crm.domain.repository.ServerCompatibilityRepository
 import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.domain.repository.TrackingSettingsRepository
 import com.mycorrhizal.crm.feature.tracking.CallSmsTrackingCapability
 import com.mycorrhizal.crm.feature.tracking.PermissionChecker
 import com.mycorrhizal.crm.feature.tracking.TrackingCatchUpScheduler
 import com.mycorrhizal.crm.feature.tracking.TrackingPermissions
+import com.mycorrhizal.crm.model.network.ServerHealth
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
 import com.mycorrhizal.crm.ui.R
@@ -53,7 +53,13 @@ class SettingsViewModelTest {
     private val callSmsTrackingCapability = mockk<CallSmsTrackingCapability>()
     private val appContext = mockk<Context>(relaxed = true)
     private val serverCompatibility = mockk<ServerCompatibilityRepository>()
-    private val buildInfo = AppBuildInfo("1.3.0", 1042, "release", "obtainium", "com.mycorrhizal.crm")
+    private val buildInfo = AppBuildInfo(
+        "1.3.0",
+        1042,
+        "release",
+        "obtainium",
+        "com.mycorrhizal.crm"
+    )
 
     /** A factory defaulting to "no tracking permissions granted, nothing stored". */
     private fun viewModel(
@@ -72,7 +78,7 @@ class SettingsViewModelTest {
         healthThrows: Throwable? = null,
         enrollment: BiometricEnrollmentStatus = BiometricEnrollmentStatus.UNASKED,
         localAuthSupported: Boolean = true,
-        requireLocalAuth: Boolean = false,
+        requireLocalAuth: Boolean = false
     ): SettingsViewModel {
         if (healthThrows != null) {
             coEvery { serverCompatibility.getServerHealth() } throws healthThrows
@@ -125,13 +131,17 @@ class SettingsViewModelTest {
             PasskeyAvailability { false },
             buildInfo,
             serverCompatibility,
-            appContext,
+            appContext
         )
     }
 
     @Test
-    fun `exposes the build info and the server health for About`() = runTest(mainDispatcherRule.testDispatcher) {
-        val vm = viewModel(health = Result.success(ServerHealth(version = "1.3.0", commit = "abc1234")))
+    fun `exposes the build info and the server health for About`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val vm = viewModel(
+            health = Result.success(ServerHealth(version = "1.3.0", commit = "abc1234"))
+        )
         advanceUntilIdle()
 
         assertEquals(buildInfo, vm.uiState.value.buildInfo)
@@ -144,7 +154,7 @@ class SettingsViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             val vm = viewModel(
                 session = SessionState(username = "alice"),
-                health = Result.failure(java.io.IOException("offline")),
+                health = Result.failure(java.io.IOException("offline"))
             )
             advanceUntilIdle()
 
@@ -154,7 +164,9 @@ class SettingsViewModelTest {
         }
 
     @Test
-    fun `a throwing server lookup is treated as a failed lookup`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a throwing server lookup is treated as a failed lookup`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = viewModel(healthThrows = IllegalStateException("boom"))
         advanceUntilIdle()
 
@@ -165,7 +177,12 @@ class SettingsViewModelTest {
     @Test
     fun `exposes the current session`() = runTest(mainDispatcherRule.testDispatcher) {
         val vm = viewModel(
-            SessionState(serverUrl = "https://crm.example.com", username = "alice", isAdmin = true, language = "en"),
+            SessionState(
+                serverUrl = "https://crm.example.com",
+                username = "alice",
+                isAdmin = true,
+                language = "en"
+            )
         )
         advanceUntilIdle()
 
@@ -176,10 +193,16 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `logout clears the session and emits LoggedOut`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `logout clears the session and emits LoggedOut`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { authRepository.logout() } returns Unit
         val vm = viewModel(
-            SessionState(serverUrl = "https://crm.example.com", username = "alice", isLoggedIn = true),
+            SessionState(
+                serverUrl = "https://crm.example.com",
+                username = "alice",
+                isLoggedIn = true
+            )
         )
         advanceUntilIdle()
 
@@ -237,7 +260,7 @@ class SettingsViewModelTest {
             assertFalse(vm.uiState.value.callTrackingEnabled)
             assertEquals(
                 TrackingPermissionRequest.CALL_TRACKING,
-                vm.uiState.value.pendingPermissionRequest,
+                vm.uiState.value.pendingPermissionRequest
             )
             coVerify(exactly = 0) { trackingSettings.setCallTrackingEnabled(true) }
             verify(exactly = 0) { catchUpScheduler.enqueueCallLogCatchUp() }
@@ -255,7 +278,7 @@ class SettingsViewModelTest {
             assertFalse(vm.uiState.value.smsTrackingEnabled)
             assertEquals(
                 TrackingPermissionRequest.SMS_TRACKING,
-                vm.uiState.value.pendingPermissionRequest,
+                vm.uiState.value.pendingPermissionRequest
             )
             coVerify(exactly = 0) { trackingSettings.setSmsTrackingEnabled(true) }
         }
@@ -296,7 +319,10 @@ class SettingsViewModelTest {
             every { permissionChecker.isGranted(TrackingPermissions.READ_CALL_LOG) } returns true
             every { permissionChecker.isGranted(TrackingPermissions.READ_PHONE_STATE) } returns true
 
-            vm.onPermissionRequestResult(TrackingPermissionRequest.CALL_TRACKING, permanentlyDenied = false)
+            vm.onPermissionRequestResult(
+                TrackingPermissionRequest.CALL_TRACKING,
+                permanentlyDenied = false
+            )
             advanceUntilIdle()
 
             assertTrue(vm.uiState.value.callTrackingEnabled)
@@ -314,13 +340,16 @@ class SettingsViewModelTest {
             vm.setCallTrackingEnabled(true)
             advanceUntilIdle()
 
-            vm.onPermissionRequestResult(TrackingPermissionRequest.CALL_TRACKING, permanentlyDenied = false)
+            vm.onPermissionRequestResult(
+                TrackingPermissionRequest.CALL_TRACKING,
+                permanentlyDenied = false
+            )
             advanceUntilIdle()
 
             assertFalse(vm.uiState.value.callTrackingEnabled)
             assertEquals(
                 TrackingPermissionDialog.Rationale(TrackingPermissionRequest.CALL_TRACKING),
-                vm.uiState.value.permissionDialog,
+                vm.uiState.value.permissionDialog
             )
             coVerify(exactly = 0) { trackingSettings.setCallTrackingEnabled(true) }
         }
@@ -333,12 +362,15 @@ class SettingsViewModelTest {
             vm.setCallTrackingEnabled(true)
             advanceUntilIdle()
 
-            vm.onPermissionRequestResult(TrackingPermissionRequest.CALL_TRACKING, permanentlyDenied = true)
+            vm.onPermissionRequestResult(
+                TrackingPermissionRequest.CALL_TRACKING,
+                permanentlyDenied = true
+            )
             advanceUntilIdle()
 
             assertEquals(
                 TrackingPermissionDialog.AppSettings(TrackingPermissionRequest.CALL_TRACKING),
-                vm.uiState.value.permissionDialog,
+                vm.uiState.value.permissionDialog
             )
             assertNull(vm.uiState.value.pendingPermissionRequest)
         }
@@ -351,13 +383,16 @@ class SettingsViewModelTest {
             vm.setSmsTrackingEnabled(true)
             advanceUntilIdle()
 
-            vm.onPermissionRequestResult(TrackingPermissionRequest.SMS_TRACKING, permanentlyDenied = false)
+            vm.onPermissionRequestResult(
+                TrackingPermissionRequest.SMS_TRACKING,
+                permanentlyDenied = false
+            )
             advanceUntilIdle()
 
             assertFalse(vm.uiState.value.smsTrackingEnabled)
             assertEquals(
                 TrackingPermissionDialog.Rationale(TrackingPermissionRequest.SMS_TRACKING),
-                vm.uiState.value.permissionDialog,
+                vm.uiState.value.permissionDialog
             )
             coVerify(exactly = 0) { trackingSettings.setSmsTrackingEnabled(true) }
         }
@@ -369,7 +404,10 @@ class SettingsViewModelTest {
             advanceUntilIdle()
             vm.setCallTrackingEnabled(true)
             advanceUntilIdle()
-            vm.onPermissionRequestResult(TrackingPermissionRequest.CALL_TRACKING, permanentlyDenied = false)
+            vm.onPermissionRequestResult(
+                TrackingPermissionRequest.CALL_TRACKING,
+                permanentlyDenied = false
+            )
             advanceUntilIdle()
 
             vm.onPermissionDialogRetry()
@@ -378,17 +416,22 @@ class SettingsViewModelTest {
             assertNull(vm.uiState.value.permissionDialog)
             assertEquals(
                 TrackingPermissionRequest.CALL_TRACKING,
-                vm.uiState.value.pendingPermissionRequest,
+                vm.uiState.value.pendingPermissionRequest
             )
         }
 
     @Test
-    fun `dismissing the permission dialog clears it`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `dismissing the permission dialog clears it`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = viewModel(callGranted = false)
         advanceUntilIdle()
         vm.setCallTrackingEnabled(true)
         advanceUntilIdle()
-        vm.onPermissionRequestResult(TrackingPermissionRequest.CALL_TRACKING, permanentlyDenied = true)
+        vm.onPermissionRequestResult(
+            TrackingPermissionRequest.CALL_TRACKING,
+            permanentlyDenied = true
+        )
         advanceUntilIdle()
         assertTrue(vm.uiState.value.permissionDialog is TrackingPermissionDialog.AppSettings)
 
@@ -408,7 +451,7 @@ class SettingsViewModelTest {
             advanceUntilIdle()
             assertEquals(
                 TrackingPermissionRequest.CALL_TRACKING,
-                vm.uiState.value.pendingPermissionRequest,
+                vm.uiState.value.pendingPermissionRequest
             )
 
             vm.setCallTrackingEnabled(false)
@@ -423,7 +466,10 @@ class SettingsViewModelTest {
             // late/cancelled flow must not re-enable behind the user's back).
             every { permissionChecker.isGranted(TrackingPermissions.READ_CALL_LOG) } returns true
             every { permissionChecker.isGranted(TrackingPermissions.READ_PHONE_STATE) } returns true
-            vm.onPermissionRequestResult(TrackingPermissionRequest.CALL_TRACKING, permanentlyDenied = false)
+            vm.onPermissionRequestResult(
+                TrackingPermissionRequest.CALL_TRACKING,
+                permanentlyDenied = false
+            )
             advanceUntilIdle()
 
             assertFalse(vm.uiState.value.callTrackingEnabled)
@@ -444,7 +490,7 @@ class SettingsViewModelTest {
             // Exactly one pending request drives exactly one system dialog.
             assertEquals(
                 TrackingPermissionRequest.CALL_TRACKING,
-                vm.uiState.value.pendingPermissionRequest,
+                vm.uiState.value.pendingPermissionRequest
             )
         }
 
@@ -492,7 +538,11 @@ class SettingsViewModelTest {
             // The permission is revoked while the Settings screen stays open;
             // the resume-driven refresh must flip the toggle off.
             every { permissionChecker.isGranted(TrackingPermissions.READ_CALL_LOG) } returns false
-            every { permissionChecker.isGranted(TrackingPermissions.READ_PHONE_STATE) } returns false
+            every {
+                permissionChecker.isGranted(
+                    TrackingPermissions.READ_PHONE_STATE
+                )
+            } returns false
             vm.refreshPermissionState()
             advanceUntilIdle()
 
@@ -516,7 +566,7 @@ class SettingsViewModelTest {
             assertFalse(vm.uiState.value.notificationsEnabled)
             assertEquals(
                 TrackingPermissionRequest.NOTIFICATIONS,
-                vm.uiState.value.pendingPermissionRequest,
+                vm.uiState.value.pendingPermissionRequest
             )
             coVerify(exactly = 0) { trackingSettings.setNotificationsEnabled(true) }
         }
@@ -532,7 +582,10 @@ class SettingsViewModelTest {
             every {
                 permissionChecker.isGranted(TrackingPermissions.POST_NOTIFICATIONS)
             } returns true
-            vm.onPermissionRequestResult(TrackingPermissionRequest.NOTIFICATIONS, permanentlyDenied = false)
+            vm.onPermissionRequestResult(
+                TrackingPermissionRequest.NOTIFICATIONS,
+                permanentlyDenied = false
+            )
             advanceUntilIdle()
 
             assertTrue(vm.uiState.value.notificationsEnabled)
@@ -549,13 +602,16 @@ class SettingsViewModelTest {
             vm.setNotificationsEnabled(true)
             advanceUntilIdle()
 
-            vm.onPermissionRequestResult(TrackingPermissionRequest.NOTIFICATIONS, permanentlyDenied = false)
+            vm.onPermissionRequestResult(
+                TrackingPermissionRequest.NOTIFICATIONS,
+                permanentlyDenied = false
+            )
             advanceUntilIdle()
 
             assertFalse(vm.uiState.value.notificationsEnabled)
             assertEquals(
                 TrackingPermissionDialog.Rationale(TrackingPermissionRequest.NOTIFICATIONS),
-                vm.uiState.value.permissionDialog,
+                vm.uiState.value.permissionDialog
             )
             coVerify(exactly = 0) { trackingSettings.setNotificationsEnabled(true) }
         }
@@ -568,12 +624,15 @@ class SettingsViewModelTest {
             vm.setNotificationsEnabled(true)
             advanceUntilIdle()
 
-            vm.onPermissionRequestResult(TrackingPermissionRequest.NOTIFICATIONS, permanentlyDenied = true)
+            vm.onPermissionRequestResult(
+                TrackingPermissionRequest.NOTIFICATIONS,
+                permanentlyDenied = true
+            )
             advanceUntilIdle()
 
             assertEquals(
                 TrackingPermissionDialog.AppSettings(TrackingPermissionRequest.NOTIFICATIONS),
-                vm.uiState.value.permissionDialog,
+                vm.uiState.value.permissionDialog
             )
         }
 
@@ -681,7 +740,9 @@ class SettingsViewModelTest {
         }
 
     @Test
-    fun `updateLanguage to the current value is a no-op`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `updateLanguage to the current value is a no-op`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = viewModel(SessionState(language = "de"))
         advanceUntilIdle()
 
@@ -720,7 +781,12 @@ class SettingsViewModelTest {
     @Test
     fun `changePassword success logs out and emits PasswordChanged`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            coEvery { authRepository.changePassword("old", "new-pass") } returns Result.success(Unit)
+            coEvery {
+                authRepository.changePassword(
+                    "old",
+                    "new-pass"
+                )
+            } returns Result.success(Unit)
             coEvery { authRepository.logout() } returns Unit
             val vm = viewModel()
             advanceUntilIdle()
@@ -745,7 +811,10 @@ class SettingsViewModelTest {
             vm.changePassword("wrong", "new-pass", "new-pass")
             advanceUntilIdle()
 
-            assertEquals("Invalid value for field 'current_password'", vm.uiState.value.passwordError)
+            assertEquals(
+                "Invalid value for field 'current_password'",
+                vm.uiState.value.passwordError
+            )
             assertNull(vm.events.value)
         }
 
@@ -774,7 +843,9 @@ class SettingsViewModelTest {
     // --- Issue #722: fully biometric login ---
 
     @Test
-    fun `enrolling biometric sign-in calls the device grant manager`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `enrolling biometric sign-in calls the device grant manager`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { deviceGrantManager.enroll(any()) } returns Result.success(Unit)
         val vm = viewModel()
         advanceUntilIdle()
@@ -814,7 +885,9 @@ class SettingsViewModelTest {
         }
 
     @Test
-    fun `removing biometric sign-in calls the device grant manager`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `removing biometric sign-in calls the device grant manager`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { deviceGrantManager.removeEnrollment() } returns Result.success(Unit)
         val vm = viewModel()
         advanceUntilIdle()
@@ -858,7 +931,9 @@ class SettingsViewModelTest {
         }
 
     @Test
-    fun `switching app lock on does not enroll twice`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `switching app lock on does not enroll twice`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { localAuthSettings.setRequireLocalAuth(any()) } returns Unit
         val vm = viewModel(enrollment = BiometricEnrollmentStatus.ENROLLED)
         advanceUntilIdle()
@@ -912,8 +987,13 @@ class SettingsViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             // Offline / server error: the grant is still live server-side, so the lock in front of it
             // must not come off.
-            coEvery { deviceGrantManager.removeEnrollment() } returns Result.failure(Exception("offline"))
-            val vm = viewModel(enrollment = BiometricEnrollmentStatus.ENROLLED, requireLocalAuth = true)
+            coEvery { deviceGrantManager.removeEnrollment() } returns Result.failure(
+                Exception("offline")
+            )
+            val vm = viewModel(
+                enrollment = BiometricEnrollmentStatus.ENROLLED,
+                requireLocalAuth = true
+            )
             advanceUntilIdle()
 
             vm.setAppLock(enabled = false, offerBiometricSignIn = true)

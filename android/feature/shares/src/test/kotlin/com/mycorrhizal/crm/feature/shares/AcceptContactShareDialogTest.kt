@@ -36,7 +36,7 @@ class AcceptContactShareDialogTest {
         confirmAction: String = "add",
         confirming: Boolean = false,
         onActionChange: (String) -> Unit = {},
-        onConfirm: () -> Unit = {},
+        onConfirm: () -> Unit = {}
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -48,27 +48,28 @@ class AcceptContactShareDialogTest {
                     confirming = confirming,
                     onActionChange = onActionChange,
                     onConfirm = onConfirm,
-                    onDismiss = {},
+                    onDismiss = {}
                 )
             }
         }
     }
 
-    private fun preview(duplicate: DuplicateMatch? = null): ImportPreviewResponse = ImportPreviewResponse(
-        sessionId = "import-1",
-        rows = listOf(
-            ImportRowPreview(
-                rowIndex = 0,
-                parsedContact = mapOf("firstname" to "Dana", "lastname" to "White"),
-                duplicateMatch = duplicate,
-                suggestedAction = if (duplicate != null) "update" else "add",
+    private fun preview(duplicate: DuplicateMatch? = null): ImportPreviewResponse =
+        ImportPreviewResponse(
+            sessionId = "import-1",
+            rows = listOf(
+                ImportRowPreview(
+                    rowIndex = 0,
+                    parsedContact = mapOf("firstname" to "Dana", "lastname" to "White"),
+                    duplicateMatch = duplicate,
+                    suggestedAction = if (duplicate != null) "update" else "add"
+                )
             ),
-        ),
-        totalRows = 1,
-        validRows = 1,
-        duplicateCount = if (duplicate != null) 1 else 0,
-        errorCount = 0,
-    )
+            totalRows = 1,
+            validRows = 1,
+            duplicateCount = if (duplicate != null) 1 else 0,
+            errorCount = 0
+        )
 
     @Test
     fun `duplicate match renders its chip and the update action`() {
@@ -78,10 +79,10 @@ class AcceptContactShareDialogTest {
                     existingContactId = 3,
                     existingFirstname = "Dana",
                     existingLastname = "White",
-                    matchReason = "name",
-                ),
+                    matchReason = "name"
+                )
             ),
-            confirmAction = "update",
+            confirmAction = "update"
         )
 
         composeTestRule.onNodeWithText("Matches: Dana White (name)").assertIsDisplayed()
@@ -111,7 +112,7 @@ class AcceptContactShareDialogTest {
                     confirming = false,
                     onActionChange = {},
                     onConfirm = {},
-                    onDismiss = {},
+                    onDismiss = {}
                 )
             }
         }
@@ -130,7 +131,7 @@ class AcceptContactShareDialogTest {
                     confirming = false,
                     onActionChange = {},
                     onConfirm = {},
-                    onDismiss = {},
+                    onDismiss = {}
                 )
             }
         }
@@ -150,7 +151,7 @@ class AcceptContactShareDialogTest {
                     confirming = false,
                     onActionChange = {},
                     onConfirm = {},
-                    onDismiss = {},
+                    onDismiss = {}
                 )
             }
         }
@@ -165,7 +166,7 @@ class AcceptContactShareDialogTest {
         setContent(
             preview = preview(),
             onActionChange = { selected = it },
-            onConfirm = { confirmed = true },
+            onConfirm = { confirmed = true }
         )
 
         composeTestRule.onNodeWithText("Skip").performClick()

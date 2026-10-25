@@ -27,7 +27,7 @@ class ArchivedProfileWriteInterceptorTest {
     private fun client(): OkHttpClient = NetworkFactory.okHttpClient(
         tokenProvider = TokenProvider { null },
         baseUrlProvider = BaseUrlProvider { server.url("/").toString().trimEnd('/') },
-        archivedProfileProvider = ArchivedProfileProvider { archived },
+        archivedProfileProvider = ArchivedProfileProvider { archived }
     )
 
     private fun request(method: String): Request {
@@ -109,7 +109,7 @@ class ArchivedProfileWriteInterceptorTest {
         server.enqueue(MockResponse().setResponseCode(201))
         val unguarded = NetworkFactory.okHttpClient(
             tokenProvider = TokenProvider { null },
-            baseUrlProvider = BaseUrlProvider { server.url("/").toString().trimEnd('/') },
+            baseUrlProvider = BaseUrlProvider { server.url("/").toString().trimEnd('/') }
         )
 
         assertEquals(201, unguarded.newCall(request("POST")).execute().use { it.code })

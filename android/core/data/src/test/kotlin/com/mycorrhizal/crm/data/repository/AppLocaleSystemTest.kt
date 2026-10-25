@@ -58,7 +58,11 @@ class AppLocaleSystemTest {
     @Test
     fun `a context without the locale service degrades to null and a no-op`() {
         val withoutService = mockk<Context>(relaxed = true)
-        every { withoutService.getSystemService(android.app.LocaleManager::class.java) } returns null
+        every {
+            withoutService.getSystemService(
+                android.app.LocaleManager::class.java
+            )
+        } returns null
 
         assertNull(AppLocale.systemLanguageTag(withoutService))
         AppLocale.applyToSystem(withoutService, "de")

@@ -7,18 +7,18 @@ import com.mycorrhizal.crm.model.network.ExportLossPreflightResponse
 import com.mycorrhizal.crm.model.network.ShareFieldSections
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /** The three formats web's ExportFieldPickerDialog offers. */
 enum class ExportFormatChoice(val preflightToken: String) {
     VCF4("vcard4"),
     VCF3("vcard3"),
-    JSCONTACT("jscontact"),
+    JSCONTACT("jscontact")
 }
 
 /**
@@ -37,16 +37,15 @@ data class CustomExportUiState(
     val isCheckingLoss: Boolean = false,
     val lossReport: ExportLossPreflightResponse? = null,
     val exported: DataExport? = null,
-    val error: String? = null,
+    val error: String? = null
 ) {
     val canExport: Boolean
         get() = selected.isNotEmpty() && !isExporting
 }
 
 @HiltViewModel
-class CustomExportViewModel @Inject constructor(
-    private val exportRepository: ExportRepository,
-) : ViewModel() {
+class CustomExportViewModel @Inject constructor(private val exportRepository: ExportRepository) :
+    ViewModel() {
 
     private val _uiState = MutableStateFlow(CustomExportUiState())
     val uiState: StateFlow<CustomExportUiState> = _uiState.asStateFlow()
@@ -88,14 +87,19 @@ class CustomExportViewModel @Inject constructor(
             exportRepository.preflight(
                 state.format.preflightToken,
                 state.selected.toList(),
-                includeSensitive(state),
+                includeSensitive(state)
             ).foldApiError(
                 onSuccess = { report ->
                     _uiState.update { it.copy(isCheckingLoss = false, lossReport = report) }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isCheckingLoss = false, error = error.displayMessage) }
-                },
+                    _uiState.update {
+                        it.copy(
+                            isCheckingLoss = false,
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }
@@ -117,17 +121,35 @@ class CustomExportViewModel @Inject constructor(
         }
         viewModelScope.launch {
             val result = when (state.format) {
-                ExportFormatChoice.VCF4 -> exportRepository.exportContactsVcf(null, sections, includeSensitive)
-                ExportFormatChoice.VCF3 -> exportRepository.exportContactsVcf(3, sections, includeSensitive)
-                ExportFormatChoice.JSCONTACT -> exportRepository.exportContactsJsContact(sections, includeSensitive)
+                ExportFormatChoice.VCF4 -> exportRepository.exportContactsVcf(
+                    null,
+                    sections,
+                    includeSensitive
+                )
+
+                ExportFormatChoice.VCF3 -> exportRepository.exportContactsVcf(
+                    3,
+                    sections,
+                    includeSensitive
+                )
+
+                ExportFormatChoice.JSCONTACT -> exportRepository.exportContactsJsContact(
+                    sections,
+                    includeSensitive
+                )
             }
             result.foldApiError(
                 onSuccess = { bytes ->
-                    _uiState.update { it.copy(isExporting = false, exported = DataExport(kind, bytes)) }
+                    _uiState.update {
+                        it.copy(
+                            isExporting = false,
+                            exported = DataExport(kind, bytes)
+                        )
+                    }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isExporting = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }

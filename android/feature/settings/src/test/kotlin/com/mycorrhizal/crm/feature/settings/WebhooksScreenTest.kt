@@ -43,7 +43,7 @@ class WebhooksScreenTest {
         name = name,
         url = "https://example.com/$id",
         events = listOf("contact.created"),
-        isActive = true,
+        isActive = true
     )
 
     // --- Top-level WebhooksScreen: the RefreshableContent wrapper + its
@@ -89,7 +89,9 @@ class WebhooksScreenTest {
 
         setScreen(WebhooksViewModel(repository))
 
-        composeTestRule.onNodeWithText("Receive HTTP POST notifications when events occur in your CRM.").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Receive HTTP POST notifications when events occur in your CRM."
+        ).assertIsDisplayed()
         composeTestRule.onNodeWithText("Hook A").assertIsDisplayed()
     }
 
@@ -113,7 +115,7 @@ class WebhooksScreenTest {
         val repository = mockk<WebhookRepository>()
         coEvery { repository.list() } returns Result.success(listOf(webhook(1, name = "Hook A")))
         coEvery { repository.test(1) } returns Result.success(
-            WebhookDelivery(id = 10, webhookId = 1, eventType = "test", statusCode = 200),
+            WebhookDelivery(id = 10, webhookId = 1, eventType = "test", statusCode = 200)
         )
         val viewModel = WebhooksViewModel(repository)
         setScreen(viewModel)
@@ -142,7 +144,13 @@ class WebhooksScreenTest {
 
     @Test
     fun `shows a webhook row with test edit and delete actions`() {
-        val webhook = Webhook(id = 1, name = "Hook A", url = "https://example.com/a", events = listOf("contact.created"), isActive = true)
+        val webhook = Webhook(
+            id = 1,
+            name = "Hook A",
+            url = "https://example.com/a",
+            events = listOf("contact.created"),
+            isActive = true
+        )
         var tested = false
         var edited = false
         var deleted = false
@@ -156,7 +164,7 @@ class WebhooksScreenTest {
                     onTest = { tested = true },
                     onEdit = { edited = true },
                     onDelete = { deleted = true },
-                    onToggleDeliveries = {},
+                    onToggleDeliveries = {}
                 )
             }
         }
@@ -172,7 +180,13 @@ class WebhooksScreenTest {
 
     @Test
     fun `expanded deliveries render status and event type`() {
-        val webhook = Webhook(id = 1, name = "Hook A", url = "https://example.com/a", events = listOf("contact.created"), isActive = true)
+        val webhook = Webhook(
+            id = 1,
+            name = "Hook A",
+            url = "https://example.com/a",
+            events = listOf("contact.created"),
+            isActive = true
+        )
         composeTestRule.setContent {
             MycorrhizalTheme {
                 WebhookRow(
@@ -180,12 +194,17 @@ class WebhooksScreenTest {
                     testing = false,
                     expanded = true,
                     deliveries = listOf(
-                        WebhookDelivery(id = 1, webhookId = 1, eventType = "contact.created", statusCode = 200),
+                        WebhookDelivery(
+                            id = 1,
+                            webhookId = 1,
+                            eventType = "contact.created",
+                            statusCode = 200
+                        )
                     ),
                     onTest = {},
                     onEdit = {},
                     onDelete = {},
-                    onToggleDeliveries = {},
+                    onToggleDeliveries = {}
                 )
             }
         }
@@ -196,7 +215,13 @@ class WebhooksScreenTest {
 
     @Test
     fun `expanded deliveries show an empty message when none exist`() {
-        val webhook = Webhook(id = 1, name = "Hook A", url = "https://example.com/a", events = listOf("contact.created"), isActive = true)
+        val webhook = Webhook(
+            id = 1,
+            name = "Hook A",
+            url = "https://example.com/a",
+            events = listOf("contact.created"),
+            isActive = true
+        )
         composeTestRule.setContent {
             MycorrhizalTheme {
                 WebhookRow(
@@ -207,7 +232,7 @@ class WebhooksScreenTest {
                     onTest = {},
                     onEdit = {},
                     onDelete = {},
-                    onToggleDeliveries = {},
+                    onToggleDeliveries = {}
                 )
             }
         }
@@ -224,7 +249,7 @@ class WebhooksScreenTest {
                     initial = null,
                     isSaving = false,
                     onConfirm = { confirmed = it },
-                    onDismiss = {},
+                    onDismiss = {}
                 )
             }
         }
@@ -246,14 +271,20 @@ class WebhooksScreenTest {
 
     @Test
     fun `editor dialog pre-fills an existing webhook for editing`() {
-        val webhook = Webhook(id = 5, name = "Hook B", url = "https://example.com/b", events = listOf("note.created"), isActive = false)
+        val webhook = Webhook(
+            id = 5,
+            name = "Hook B",
+            url = "https://example.com/b",
+            events = listOf("note.created"),
+            isActive = false
+        )
         composeTestRule.setContent {
             MycorrhizalTheme {
                 WebhookEditorDialog(
                     initial = webhook,
                     isSaving = false,
                     onConfirm = {},
-                    onDismiss = {},
+                    onDismiss = {}
                 )
             }
         }
@@ -272,7 +303,7 @@ class WebhooksScreenTest {
                     initial = null,
                     isSaving = false,
                     onConfirm = {},
-                    onDismiss = {},
+                    onDismiss = {}
                 )
             }
         }

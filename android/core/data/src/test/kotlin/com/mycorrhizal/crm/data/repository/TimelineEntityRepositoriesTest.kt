@@ -67,15 +67,15 @@ class TimelineEntityRepositoriesTest {
     fun `lifeEvents listForContact resyncs the cache and drops deleted rows`() = runTest {
         val repository = LifeEventRepositoryImpl(apiClient, db.cachedLifeEventDao())
         db.cachedLifeEventDao().upsertAll(
-            listOf(CachedLifeEvent(id = "stale", entityId = "c1")),
+            listOf(CachedLifeEvent(id = "stale", entityId = "c1"))
         )
         coEvery { apiClient.listLifeEvents(entityId = "c1") } returns Result.success(
             LifeEventsPage(
                 lifeEvents = listOf(
                     LifeEvent(id = "le1", entityId = "c1", type = "graduation"),
-                    LifeEvent(id = "le2", entityId = "c1", type = "wedding", deleted = true),
-                ),
-            ),
+                    LifeEvent(id = "le2", entityId = "c1", type = "wedding", deleted = true)
+                )
+            )
         )
 
         val result = repository.listForContact("c1")
@@ -89,7 +89,11 @@ class TimelineEntityRepositoriesTest {
     @Test
     fun `lifeEvents listForContact failure propagates without touching the cache`() = runTest {
         val repository = LifeEventRepositoryImpl(apiClient, db.cachedLifeEventDao())
-        coEvery { apiClient.listLifeEvents(entityId = "c1") } returns Result.failure(ApiError.Server(500, "boom"))
+        coEvery {
+            apiClient.listLifeEvents(
+                entityId = "c1"
+            )
+        } returns Result.failure(ApiError.Server(500, "boom"))
 
         val result = repository.listForContact("c1")
 
@@ -102,7 +106,7 @@ class TimelineEntityRepositoriesTest {
         val repository = LifeEventRepositoryImpl(apiClient, db.cachedLifeEventDao())
         val input = LifeEventInput(entityId = "c1", type = "graduation")
         coEvery { apiClient.createLifeEvent(input) } returns Result.success(
-            LifeEvent(id = "le1", entityId = "c1", type = "graduation"),
+            LifeEvent(id = "le1", entityId = "c1", type = "graduation")
         )
 
         val result = repository.create(input)
@@ -114,15 +118,27 @@ class TimelineEntityRepositoriesTest {
     @Test
     fun `lifeEvents update mirrors into the cache`() = runTest {
         val repository = LifeEventRepositoryImpl(apiClient, db.cachedLifeEventDao())
-        val input = LifeEventInput(entityId = "c1", type = "graduation", description = "Class of 2026")
+        val input = LifeEventInput(
+            entityId = "c1",
+            type = "graduation",
+            description = "Class of 2026"
+        )
         coEvery { apiClient.updateLifeEvent("le1", input) } returns Result.success(
-            LifeEvent(id = "le1", entityId = "c1", type = "graduation", description = "Class of 2026"),
+            LifeEvent(
+                id = "le1",
+                entityId = "c1",
+                type = "graduation",
+                description = "Class of 2026"
+            )
         )
 
         val result = repository.update("le1", input, null)
 
         assertTrue(result.isSuccess)
-        assertEquals("Class of 2026", db.cachedLifeEventDao().getForContact("c1").single().description)
+        assertEquals(
+            "Class of 2026",
+            db.cachedLifeEventDao().getForContact("c1").single().description
+        )
     }
 
     @Test
@@ -141,7 +157,11 @@ class TimelineEntityRepositoriesTest {
     fun `lifeEvents delete failure leaves the cache untouched`() = runTest {
         val repository = LifeEventRepositoryImpl(apiClient, db.cachedLifeEventDao())
         db.cachedLifeEventDao().upsert(CachedLifeEvent(id = "le1", entityId = "c1"))
-        coEvery { apiClient.deleteLifeEvent("le1") } returns Result.failure(ApiError.Server(500, "boom"))
+        coEvery {
+            apiClient.deleteLifeEvent(
+                "le1"
+            )
+        } returns Result.failure(ApiError.Server(500, "boom"))
 
         val result = repository.delete("le1", null)
 
@@ -158,9 +178,9 @@ class TimelineEntityRepositoriesTest {
             GiftsPage(
                 gifts = listOf(
                     Gift(id = "g1", entityId = "c1", occasion = "birthday"),
-                    Gift(id = "g2", entityId = "c1", occasion = "holiday", deleted = true),
-                ),
-            ),
+                    Gift(id = "g2", entityId = "c1", occasion = "holiday", deleted = true)
+                )
+            )
         )
 
         val result = repository.listForContact("c1")
@@ -174,7 +194,7 @@ class TimelineEntityRepositoriesTest {
         val repository = GiftRepositoryImpl(apiClient, db.cachedGiftDao())
         val createInput = GiftInput(entityId = "c1", occasion = "birthday")
         coEvery { apiClient.createGift(createInput) } returns Result.success(
-            Gift(id = "g1", entityId = "c1", occasion = "birthday"),
+            Gift(id = "g1", entityId = "c1", occasion = "birthday")
         )
         val result = repository.create(createInput)
         assertTrue(result.isSuccess)
@@ -182,7 +202,7 @@ class TimelineEntityRepositoriesTest {
 
         val updateInput = GiftInput(entityId = "c1", occasion = "birthday", description = "Bought")
         coEvery { apiClient.updateGift("g1", updateInput) } returns Result.success(
-            Gift(id = "g1", entityId = "c1", occasion = "birthday", description = "Bought"),
+            Gift(id = "g1", entityId = "c1", occasion = "birthday", description = "Bought")
         )
         assertTrue(repository.update("g1", updateInput).isSuccess)
         assertEquals("Bought", db.cachedGiftDao().getForContact("c1").single().description)
@@ -201,9 +221,9 @@ class TimelineEntityRepositoriesTest {
             PreferencesPage(
                 preferences = listOf(
                     Preference(id = "p1", entityId = "c1", category = "food"),
-                    Preference(id = "p2", entityId = "c1", category = "music", deleted = true),
-                ),
-            ),
+                    Preference(id = "p2", entityId = "c1", category = "music", deleted = true)
+                )
+            )
         )
 
         val result = repository.listForContact("c1")
@@ -217,14 +237,14 @@ class TimelineEntityRepositoriesTest {
         val repository = PreferenceRepositoryImpl(apiClient, db.cachedPreferenceDao())
         val createInput = PreferenceInput(entityId = "c1", category = "food", value = "Italian")
         coEvery { apiClient.createPreference(createInput) } returns Result.success(
-            Preference(id = "p1", entityId = "c1", category = "food", value = "Italian"),
+            Preference(id = "p1", entityId = "c1", category = "food", value = "Italian")
         )
         assertTrue(repository.create(createInput).isSuccess)
         assertEquals("Italian", db.cachedPreferenceDao().getForContact("c1").single().value)
 
         val updateInput = PreferenceInput(entityId = "c1", category = "food", value = "Thai")
         coEvery { apiClient.updatePreference("p1", updateInput) } returns Result.success(
-            Preference(id = "p1", entityId = "c1", category = "food", value = "Thai"),
+            Preference(id = "p1", entityId = "c1", category = "food", value = "Thai")
         )
         assertTrue(repository.update("p1", updateInput).isSuccess)
         assertEquals("Thai", db.cachedPreferenceDao().getForContact("c1").single().value)
@@ -238,38 +258,58 @@ class TimelineEntityRepositoriesTest {
 
     @Test
     fun `conversationAgenda listForContact resyncs the cache and drops deleted rows`() = runTest {
-        val repository = ConversationAgendaRepositoryImpl(apiClient, db.cachedConversationAgendaDao())
+        val repository = ConversationAgendaRepositoryImpl(
+            apiClient,
+            db.cachedConversationAgendaDao()
+        )
         coEvery { apiClient.listConversationAgenda(entityId = "c1") } returns Result.success(
             ConversationAgendaPage(
                 conversationAgenda = listOf(
                     ConversationAgenda(id = "a1", entityId = "c1", content = "Ask about trip"),
-                    ConversationAgenda(id = "a2", entityId = "c1", content = "Old topic", deleted = true),
-                ),
-            ),
+                    ConversationAgenda(
+                        id = "a2",
+                        entityId = "c1",
+                        content = "Old topic",
+                        deleted = true
+                    )
+                )
+            )
         )
 
         val result = repository.listForContact("c1")
 
         assertTrue(result.isSuccess)
-        assertEquals(listOf("a1"), db.cachedConversationAgendaDao().getForContact("c1").map { it.id })
+        assertEquals(
+            listOf("a1"),
+            db.cachedConversationAgendaDao().getForContact("c1").map { it.id }
+        )
     }
 
     @Test
     fun `conversationAgenda create update delete round-trip through the cache`() = runTest {
-        val repository = ConversationAgendaRepositoryImpl(apiClient, db.cachedConversationAgendaDao())
+        val repository = ConversationAgendaRepositoryImpl(
+            apiClient,
+            db.cachedConversationAgendaDao()
+        )
         val createInput = ConversationAgendaInput(entityId = "c1", content = "Ask about trip")
         coEvery { apiClient.createConversationAgenda(createInput) } returns Result.success(
-            ConversationAgenda(id = "a1", entityId = "c1", content = "Ask about trip"),
+            ConversationAgenda(id = "a1", entityId = "c1", content = "Ask about trip")
         )
         assertTrue(repository.create(createInput).isSuccess)
-        assertEquals("Ask about trip", db.cachedConversationAgendaDao().getForContact("c1").single().content)
+        assertEquals(
+            "Ask about trip",
+            db.cachedConversationAgendaDao().getForContact("c1").single().content
+        )
 
         val updateInput = ConversationAgendaInput(entityId = "c1", content = "Ask about the trip")
         coEvery { apiClient.updateConversationAgenda("a1", updateInput) } returns Result.success(
-            ConversationAgenda(id = "a1", entityId = "c1", content = "Ask about the trip"),
+            ConversationAgenda(id = "a1", entityId = "c1", content = "Ask about the trip")
         )
         assertTrue(repository.update("a1", updateInput).isSuccess)
-        assertEquals("Ask about the trip", db.cachedConversationAgendaDao().getForContact("c1").single().content)
+        assertEquals(
+            "Ask about the trip",
+            db.cachedConversationAgendaDao().getForContact("c1").single().content
+        )
 
         coEvery { apiClient.deleteConversationAgenda("a1") } returns Result.success(Unit)
         assertTrue(repository.delete("a1").isSuccess)
@@ -278,21 +318,40 @@ class TimelineEntityRepositoriesTest {
 
     @Test
     fun `conversationAgenda discuss mirrors the linked activity into the cache`() = runTest {
-        val repository = ConversationAgendaRepositoryImpl(apiClient, db.cachedConversationAgendaDao())
+        val repository = ConversationAgendaRepositoryImpl(
+            apiClient,
+            db.cachedConversationAgendaDao()
+        )
         coEvery { apiClient.discussConversationAgenda("a1", 42) } returns Result.success(
-            ConversationAgenda(id = "a1", entityId = "c1", content = "Ask about trip", discussedAt = "2026-08-21"),
+            ConversationAgenda(
+                id = "a1",
+                entityId = "c1",
+                content = "Ask about trip",
+                discussedAt = "2026-08-21"
+            )
         )
 
         val result = repository.discuss("a1", 42)
 
         assertTrue(result.isSuccess)
-        assertEquals("2026-08-21", db.cachedConversationAgendaDao().getForContact("c1").single().discussedAt)
+        assertEquals(
+            "2026-08-21",
+            db.cachedConversationAgendaDao().getForContact("c1").single().discussedAt
+        )
     }
 
     @Test
     fun `conversationAgenda discuss failure propagates`() = runTest {
-        val repository = ConversationAgendaRepositoryImpl(apiClient, db.cachedConversationAgendaDao())
-        coEvery { apiClient.discussConversationAgenda("a1", null) } returns Result.failure(ApiError.Server(500, "boom"))
+        val repository = ConversationAgendaRepositoryImpl(
+            apiClient,
+            db.cachedConversationAgendaDao()
+        )
+        coEvery {
+            apiClient.discussConversationAgenda(
+                "a1",
+                null
+            )
+        } returns Result.failure(ApiError.Server(500, "boom"))
 
         val result = repository.discuss("a1", null)
 

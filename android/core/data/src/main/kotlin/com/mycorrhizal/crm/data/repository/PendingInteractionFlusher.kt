@@ -26,7 +26,7 @@ import javax.inject.Inject
  */
 class PendingInteractionFlusher @Inject constructor(
     private val pendingInteractionRepository: PendingInteractionRepository,
-    private val apiClient: ApiClient,
+    private val apiClient: ApiClient
 ) : OutboxDrainer {
 
     /** [OutboxDrainer]: true when the outbox is empty after the attempt. */
@@ -88,13 +88,15 @@ class PendingInteractionFlusher @Inject constructor(
     }
 
     /** A 404 on a create with a contact link means the referenced contact is gone. */
-    private fun shouldDropStaleContactLink(interaction: PendingInteraction, error: Throwable?): Boolean {
+    private fun shouldDropStaleContactLink(
+        interaction: PendingInteraction,
+        error: Throwable?
+    ): Boolean {
         if (interaction.matchedContactId == null) return false
         return error is ApiError.Client && error.code == 404
     }
 
-    private fun isSyncableKind(kind: String): Boolean =
-        kind == KIND_CALL || kind == KIND_MESSAGE
+    private fun isSyncableKind(kind: String): Boolean = kind == KIND_CALL || kind == KIND_MESSAGE
 
     private fun activityInput(interaction: PendingInteraction): ActivityInput {
         val type = when (interaction.kind) {
@@ -104,11 +106,13 @@ class PendingInteractionFlusher @Inject constructor(
         }
         val title = when (interaction.kind) {
             KIND_MESSAGE -> "Message"
+
             KIND_CALL ->
                 when (interaction.direction) {
                     DIR_MISSED -> "Missed call"
                     else -> "Call"
                 }
+
             else -> "Interaction"
         }
         return ActivityInput(
@@ -116,7 +120,7 @@ class PendingInteractionFlusher @Inject constructor(
             date = formatDate(interaction.timestampMillis),
             contactIds = interaction.matchedContactId?.let { listOf(it) },
             type = type,
-            externalRef = "device:${interaction.id}",
+            externalRef = "device:${interaction.id}"
         )
     }
 
@@ -125,9 +129,8 @@ class PendingInteractionFlusher @Inject constructor(
         const val KIND_MESSAGE = "message"
         const val DIR_MISSED = "missed"
 
-        fun formatDate(epochMillis: Long): String =
-            DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(
-                Instant.ofEpochMilli(epochMillis).atOffset(ZoneOffset.UTC),
-            )
+        fun formatDate(epochMillis: Long): String = DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(
+            Instant.ofEpochMilli(epochMillis).atOffset(ZoneOffset.UTC)
+        )
     }
 }

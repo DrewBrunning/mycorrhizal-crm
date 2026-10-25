@@ -1,9 +1,5 @@
 package com.mycorrhizal.crm.network
 
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
-import org.junit.Test
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.ServerSocket
@@ -11,6 +7,10 @@ import java.net.UnknownHostException
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
 
 /**
  * ADR 0028 Decision 2 transport routing. The critical invariant: the sentinel
@@ -26,7 +26,7 @@ class LocalServerTransportTest {
     fun `sentinel with a live socket path routes to the local socket`() {
         assertEquals(
             LocalTransport.LOCAL_SOCKET,
-            selectTransport(LOCAL_SERVER_SENTINEL_HOST, "/data/app/local-server/sock"),
+            selectTransport(LOCAL_SERVER_SENTINEL_HOST, "/data/app/local-server/sock")
         )
     }
 
@@ -81,7 +81,9 @@ class LocalServerTransportTest {
         }
         serverThread.start()
 
-        val socket = ProfileAwareSocketFactory(runningSocket).createSocket("127.0.0.1", server.localPort)
+        val socket = ProfileAwareSocketFactory(
+            runningSocket
+        ).createSocket("127.0.0.1", server.localPort)
         socket.connect(InetSocketAddress("127.0.0.1", server.localPort), 2_000)
         assertTrue(socket.isConnected)
         assertFalse(socket.isClosed)

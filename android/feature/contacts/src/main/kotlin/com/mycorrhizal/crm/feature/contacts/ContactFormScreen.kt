@@ -11,30 +11,24 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.InputChip
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,33 +37,28 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.mycorrhizal.crm.model.network.Circle
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.ContactFieldKey
 import com.mycorrhizal.crm.model.network.Email
 import com.mycorrhizal.crm.model.network.Phone
-import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.model.util.DateFieldMode
+import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AddressEditor
 import com.mycorrhizal.crm.ui.components.AddressGeocodeState
-import com.mycorrhizal.crm.ui.components.DateField
 import com.mycorrhizal.crm.ui.components.AutofillOutlinedTextField
+import com.mycorrhizal.crm.ui.components.DateField
 import com.mycorrhizal.crm.ui.components.EmailSpec
+import com.mycorrhizal.crm.ui.components.FormScaffold
 import com.mycorrhizal.crm.ui.components.LinkSpec
+import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.MultiValueEditor
 import com.mycorrhizal.crm.ui.components.OnlineServiceSpec
 import com.mycorrhizal.crm.ui.components.PhoneSpec
-import com.mycorrhizal.crm.ui.components.LoadingSkeleton
-import com.mycorrhizal.crm.ui.R
-import com.mycorrhizal.crm.ui.components.FormScaffold
 import com.mycorrhizal.crm.ui.components.WriteConflictDialog
 import com.mycorrhizal.crm.ui.theme.MycorrhizalFonts
 
@@ -78,7 +67,7 @@ import com.mycorrhizal.crm.ui.theme.MycorrhizalFonts
 fun ContactFormScreen(
     onSaved: () -> Unit,
     onBack: () -> Unit,
-    viewModel: ContactFormViewModel = hiltViewModel(),
+    viewModel: ContactFormViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val events by viewModel.events.collectAsStateWithLifecycle()
@@ -92,19 +81,32 @@ fun ContactFormScreen(
     }
 
     FormScaffold(
-        title = if (state.isEdit) stringResource(R.string.contact_edit_title) else stringResource(R.string.contact_new),
+        title = if (state.isEdit) {
+            stringResource(
+                R.string.contact_edit_title
+            )
+        } else {
+            stringResource(R.string.contact_new)
+        },
         onBack = onBack,
-        saveLabel = if (state.isEdit) stringResource(R.string.contact_save) else stringResource(R.string.contact_create),
+        saveLabel = if (state.isEdit) {
+            stringResource(
+                R.string.contact_save
+            )
+        } else {
+            stringResource(R.string.contact_create)
+        },
         isSaving = state.isSaving,
         onSave = viewModel::save,
         snackbarHostState = snackbarHostState,
         showSaveBar = !state.isLoading,
         isDirty = state.isDirty,
-        entityLabel = stringResource(R.string.entity_contact),
+        entityLabel = stringResource(R.string.entity_contact)
     ) { padding ->
         when {
             state.isLoading -> LoadingSkeleton()
-            else ->             ContactFormContent(
+
+            else -> ContactFormContent(
                 modifier = Modifier.padding(padding),
                 state = state,
                 onGivenNameChange = viewModel::onGivenNameChange,
@@ -136,7 +138,7 @@ fun ContactFormScreen(
                 onGrammaticalGendersChange = viewModel::onGrammaticalGendersChange,
                 onKeywordsChange = viewModel::onKeywordsChange,
                 onCircleToggle = viewModel::onCircleToggle,
-                onTagToggle = viewModel::onTagToggle,
+                onTagToggle = viewModel::onTagToggle
             )
         }
     }
@@ -144,7 +146,7 @@ fun ContactFormScreen(
     if (state.conflict) {
         WriteConflictDialog(
             onLoadLatest = viewModel::onConflictLoadLatest,
-            onKeep = viewModel::onConflictKeepEditing,
+            onKeep = viewModel::onConflictKeepEditing
         )
     }
 
@@ -190,18 +192,21 @@ fun ContactFormContent(
     onGenderChange: (String) -> Unit = {},
     onPreferredLanguagesChange: (List<com.mycorrhizal.crm.model.network.LanguagePref>) -> Unit = {},
     onPronounsChange: (List<com.mycorrhizal.crm.model.network.Pronouns>) -> Unit = {},
-    onGrammaticalGendersChange: (List<com.mycorrhizal.crm.model.network.GrammaticalGender>) -> Unit = {},
+    onGrammaticalGendersChange: (
+        List<com.mycorrhizal.crm.model.network.GrammaticalGender>
+    ) -> Unit = {
+    },
     onKeywordsChange: (List<String>) -> Unit = {},
     onCircleToggle: (String) -> Unit = {},
     onTagToggle: (String) -> Unit = {},
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         // Issue #832: which fields the settings screen has enabled — every gated block
         // below checks `ContactFieldKey.X in enabled`. givenName/surname are never gated
@@ -216,7 +221,7 @@ fun ContactFormContent(
                 value = state.prefix,
                 onValueChange = onPrefixChange,
                 label = stringResource(R.string.contact_prefix),
-                contentType = ContentType.PersonNamePrefix,
+                contentType = ContentType.PersonNamePrefix
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -225,14 +230,14 @@ fun ContactFormContent(
                 onValueChange = onGivenNameChange,
                 label = stringResource(R.string.contact_given_name),
                 contentType = ContentType.PersonFirstName,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f)
             )
             AutofillOutlinedTextField(
                 value = state.surname,
                 onValueChange = onSurnameChange,
                 label = stringResource(R.string.contact_surname),
                 contentType = ContentType.PersonLastName,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f)
             )
         }
         if (ContactFieldKey.MIDDLE_NAME in enabled) {
@@ -240,7 +245,7 @@ fun ContactFormContent(
                 value = state.middleName,
                 onValueChange = onMiddleNameChange,
                 label = stringResource(R.string.contact_middle_name),
-                contentType = ContentType.PersonMiddleName,
+                contentType = ContentType.PersonMiddleName
             )
         }
         if (ContactFieldKey.SUFFIX in enabled) {
@@ -248,7 +253,7 @@ fun ContactFormContent(
                 value = state.suffix,
                 onValueChange = onSuffixChange,
                 label = stringResource(R.string.contact_suffix),
-                contentType = ContentType.PersonNameSuffix,
+                contentType = ContentType.PersonNameSuffix
             )
         }
         if (ContactFieldKey.NICKNAME in enabled) {
@@ -257,7 +262,7 @@ fun ContactFormContent(
                 onValueChange = onNicknameChange,
                 label = { Text(stringResource(R.string.contact_nickname)) },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth()
             )
         }
         // Issue #832: crm.gender — free text, distinct from the standardized
@@ -268,7 +273,7 @@ fun ContactFormContent(
                 onValueChange = onGenderChange,
                 label = { Text(stringResource(R.string.contact_gender)) },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth()
             )
         }
 
@@ -293,25 +298,25 @@ fun ContactFormContent(
                         IconButton(onClick = { kindMenuExpanded = true }) {
                             Icon(Icons.Outlined.KeyboardArrowDown, contentDescription = null)
                         }
-                    },
+                    }
                 )
                 DropdownMenu(
                     expanded = kindMenuExpanded,
-                    onDismissRequest = { kindMenuExpanded = false },
+                    onDismissRequest = { kindMenuExpanded = false }
                 ) {
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.contact_kind_human)) },
                         onClick = {
                             kindMenuExpanded = false
                             onKindChange(ContactFormState.KIND_HUMAN)
-                        },
+                        }
                     )
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.contact_kind_animal)) },
                         onClick = {
                             kindMenuExpanded = false
                             onKindChange(ContactFormState.KIND_ANIMAL)
-                        },
+                        }
                     )
                 }
             }
@@ -326,11 +331,11 @@ fun ContactFormContent(
                 .toggleable(
                     value = state.ambient == true,
                     onValueChange = onAmbientChange,
-                    role = Role.Switch,
+                    role = Role.Switch
                 ),
             headlineContent = { Text(stringResource(R.string.contact_ambient_toggle)) },
             supportingContent = { Text(stringResource(R.string.ambient_explainer)) },
-            trailingContent = { Switch(checked = state.ambient == true, onCheckedChange = null) },
+            trailingContent = { Switch(checked = state.ambient == true, onCheckedChange = null) }
         )
 
         // Issue #832: Card.kind (RFC 9553 §2.1.4) — the real `cardKind` toggle key. An
@@ -341,7 +346,7 @@ fun ContactFormContent(
                 options = com.mycorrhizal.crm.ui.components.CARD_KIND_OPTIONS,
                 onTypeChange = { onCardKindChange(it.orEmpty()) },
                 modifier = Modifier.fillMaxWidth().testTag("card-kind-field"),
-                label = stringResource(R.string.contact_card_kind_label),
+                label = stringResource(R.string.contact_card_kind_label)
             )
         }
 
@@ -355,7 +360,7 @@ fun ContactFormContent(
                 placeholder = { Text(stringResource(R.string.contact_example_language_tag)) },
                 supportingText = { Text(stringResource(R.string.contact_language_hint)) },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth()
             )
         }
 
@@ -364,7 +369,7 @@ fun ContactFormContent(
                 items = state.emails,
                 spec = EmailSpec,
                 onChange = onEmailsChange,
-                label = stringResource(R.string.contact_email),
+                label = stringResource(R.string.contact_email)
             )
         }
 
@@ -373,7 +378,7 @@ fun ContactFormContent(
                 items = state.phones,
                 spec = PhoneSpec,
                 onChange = onPhonesChange,
-                label = stringResource(R.string.contact_phone),
+                label = stringResource(R.string.contact_phone)
             )
         }
 
@@ -389,9 +394,9 @@ fun ContactFormContent(
                     canGeocode = state.contactId != null,
                     localProfile = state.localProfile,
                     inFlight = state.geocodeInFlight,
-                    errors = state.geocodeErrors,
+                    errors = state.geocodeErrors
                 ),
-                onFindCoordinates = onFindCoordinates,
+                onFindCoordinates = onFindCoordinates
             )
         }
 
@@ -412,7 +417,7 @@ fun ContactFormContent(
                 items = state.imppAddresses,
                 spec = OnlineServiceSpec,
                 onChange = onImppChange,
-                label = stringResource(R.string.contact_impps),
+                label = stringResource(R.string.contact_impps)
             )
         }
         if (ContactFieldKey.SOCIAL_PROFILES in enabled) {
@@ -420,7 +425,7 @@ fun ContactFormContent(
                 items = state.socialProfiles,
                 spec = OnlineServiceSpec,
                 onChange = onSocialChange,
-                label = stringResource(R.string.contact_social_profiles),
+                label = stringResource(R.string.contact_social_profiles)
             )
         }
         if (ContactFieldKey.OTHER_ONLINE_SERVICES in enabled) {
@@ -428,7 +433,7 @@ fun ContactFormContent(
                 items = state.otherOnlineServices,
                 spec = OnlineServiceSpec,
                 onChange = onOtherServicesChange,
-                label = stringResource(R.string.contact_other_online_services),
+                label = stringResource(R.string.contact_other_online_services)
             )
         }
 
@@ -437,7 +442,7 @@ fun ContactFormContent(
                 items = state.links,
                 spec = LinkSpec,
                 onChange = onLinksChange,
-                label = stringResource(R.string.contact_links),
+                label = stringResource(R.string.contact_links)
             )
         }
 
@@ -449,13 +454,13 @@ fun ContactFormContent(
                 items = state.pronouns,
                 spec = com.mycorrhizal.crm.ui.components.PronounsSpec,
                 onChange = onPronounsChange,
-                label = stringResource(R.string.contact_pronouns),
+                label = stringResource(R.string.contact_pronouns)
             )
             MultiValueEditor(
                 items = state.grammaticalGenders,
                 spec = com.mycorrhizal.crm.ui.components.GrammaticalGenderSpec,
                 onChange = onGrammaticalGendersChange,
-                label = stringResource(R.string.contact_grammatical_gender),
+                label = stringResource(R.string.contact_grammatical_gender)
             )
         }
 
@@ -466,7 +471,7 @@ fun ContactFormContent(
             com.mycorrhizal.crm.ui.components.ChipListEditor(
                 items = state.keywords,
                 onChange = onKeywordsChange,
-                label = stringResource(R.string.contact_keywords),
+                label = stringResource(R.string.contact_keywords)
             )
         }
 
@@ -475,7 +480,7 @@ fun ContactFormContent(
                 items = state.preferredLanguages,
                 spec = com.mycorrhizal.crm.ui.components.LanguagePrefSpec,
                 onChange = onPreferredLanguagesChange,
-                label = stringResource(R.string.contact_preferred_languages),
+                label = stringResource(R.string.contact_preferred_languages)
             )
         }
 
@@ -487,7 +492,7 @@ fun ContactFormContent(
                 mode = DateFieldMode.PARTIAL,
                 allowClear = true,
                 testTag = "contact-birthday",
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth()
             )
         }
 
@@ -501,7 +506,7 @@ fun ContactFormContent(
                 onValueChange = onHowWeMetChange,
                 label = { Text(stringResource(R.string.contact_how_we_met)) },
                 minLines = 2,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth()
             )
         }
         // Issue #1728: work_information moved to the Work drill-down.
@@ -511,7 +516,7 @@ fun ContactFormContent(
                 onValueChange = onContactInformationChange,
                 label = { Text(stringResource(R.string.contact_contact_information)) },
                 minLines = 2,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth()
             )
         }
 
@@ -520,7 +525,7 @@ fun ContactFormContent(
             com.mycorrhizal.crm.ui.components.CardNotesEditor(
                 items = state.cardNotes,
                 onChange = onCardNotesChange,
-                label = stringResource(R.string.contact_notes),
+                label = stringResource(R.string.contact_notes)
             )
         }
 
@@ -532,7 +537,7 @@ fun ContactFormContent(
             available = state.allCircles.map { it.name },
             selectLabel = stringResource(R.string.contact_circles_select),
             emptyText = stringResource(R.string.contact_circles_empty),
-            onToggle = onCircleToggle,
+            onToggle = onCircleToggle
         )
 
         // M24: tags — entirely absent from the form before.
@@ -542,7 +547,7 @@ fun ContactFormContent(
             available = state.allTags.map { it.name },
             selectLabel = stringResource(R.string.contact_tags_select),
             emptyText = stringResource(R.string.contact_tags_empty),
-            onToggle = onTagToggle,
+            onToggle = onTagToggle
         )
     }
 }
@@ -556,7 +561,7 @@ private fun SectionLabel(text: String) {
         text = text,
         style = MaterialTheme.typography.labelLarge.copy(fontFamily = MycorrhizalFonts.mono),
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(top = 8.dp),
+        modifier = Modifier.padding(top = 8.dp)
     )
 }
 
@@ -564,7 +569,8 @@ private fun SectionLabel(text: String) {
  * A chip selector: selected entries render as removable chips, an add dropdown lists the
  * unselected ones. M24's replacement for the free-text comma-separated field — selection is
  * always from the existing set (no free text), mirroring web's AddContactDialog selectors.
- */@Composable
+*/
+@Composable
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 private fun SelectorChipEditor(
     label: String,
@@ -572,7 +578,7 @@ private fun SelectorChipEditor(
     available: List<String>,
     selectLabel: String,
     emptyText: String,
-    onToggle: (String) -> Unit,
+    onToggle: (String) -> Unit
 ) {
     SectionLabel(label)
     if (selected.isEmpty()) {
@@ -580,12 +586,12 @@ private fun SelectorChipEditor(
             text = emptyText,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(vertical = 4.dp),
+            modifier = Modifier.padding(vertical = 4.dp)
         )
     }
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth()
     ) {
         selected.forEach { name ->
             InputChip(
@@ -596,9 +602,9 @@ private fun SelectorChipEditor(
                     Icon(
                         Icons.Outlined.Close,
                         contentDescription = stringResource(R.string.contact_remove),
-                        modifier = Modifier.size(16.dp),
+                        modifier = Modifier.size(16.dp)
                     )
-                },
+                }
             )
         }
     }
@@ -613,14 +619,14 @@ private fun SelectorChipEditor(
                     Icon(
                         Icons.Outlined.Add,
                         contentDescription = null,
-                        modifier = Modifier.size(18.dp),
+                        modifier = Modifier.size(18.dp)
                     )
                 },
-                modifier = Modifier.height(32.dp),
+                modifier = Modifier.height(32.dp)
             )
             DropdownMenu(
                 expanded = menuExpanded,
-                onDismissRequest = { menuExpanded = false },
+                onDismissRequest = { menuExpanded = false }
             ) {
                 addable.forEach { name ->
                     DropdownMenuItem(
@@ -628,7 +634,7 @@ private fun SelectorChipEditor(
                         onClick = {
                             menuExpanded = false
                             onToggle(name)
-                        },
+                        }
                     )
                 }
             }

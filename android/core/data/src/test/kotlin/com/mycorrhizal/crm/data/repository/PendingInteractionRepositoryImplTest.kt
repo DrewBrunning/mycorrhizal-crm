@@ -43,14 +43,14 @@ class PendingInteractionRepositoryImplTest {
     private fun interaction(
         timestampMillis: Long,
         synced: Boolean = false,
-        idempotencyKey: String? = null,
+        idempotencyKey: String? = null
     ) = PendingInteraction(
         timestampMillis = timestampMillis,
         kind = "call",
         direction = "incoming",
         phoneNumber = "+15551234567",
         synced = synced,
-        idempotencyKey = idempotencyKey,
+        idempotencyKey = idempotencyKey
     )
 
     @Test
@@ -138,7 +138,7 @@ class PendingInteractionRepositoryImplTest {
     @Test
     fun `clearMatchedContact drops the contact link but keeps the row`() = runBlocking {
         repository.record(
-            interaction(1000L).copy(matchedContactId = 7),
+            interaction(1000L).copy(matchedContactId = 7)
         )
         val id = repository.unsynced().single().id
         assertEquals(7, repository.unsynced().single().matchedContactId)
@@ -188,7 +188,7 @@ class PendingInteractionRepositoryImplTest {
         assertEquals(
             "the synced row must remain alongside the capped unsynced set",
             OUTBOX_UNSYNCED_CAP + 1,
-            totalRows,
+            totalRows
         )
     }
 
@@ -221,16 +221,17 @@ class PendingInteractionRepositoryImplTest {
     }
 
     @Test
-    fun `recordIfNew skips an identical already-staged interaction and returns false`() = runBlocking {
-        repository.record(interaction(1000L))
+    fun `recordIfNew skips an identical already-staged interaction and returns false`() =
+        runBlocking {
+            repository.record(interaction(1000L))
 
-        // Same kind / phone / timestamp as the existing row — the signature an
-        // overlapping reader run yields for the same underlying message/call.
-        val inserted = repository.recordIfNew(interaction(1000L))
+            // Same kind / phone / timestamp as the existing row — the signature an
+            // overlapping reader run yields for the same underlying message/call.
+            val inserted = repository.recordIfNew(interaction(1000L))
 
-        assertEquals(false, inserted)
-        assertEquals(1, repository.unsynced().size)
-    }
+            assertEquals(false, inserted)
+            assertEquals(1, repository.unsynced().size)
+        }
 
     @Test
     fun `recordIfNew dedupe is exact - a different timestamp stages a new row`() = runBlocking {
@@ -247,10 +248,10 @@ class PendingInteractionRepositoryImplTest {
         repository.record(interaction(1000L))
 
         val differentPhone = repository.recordIfNew(
-            interaction(1000L).copy(phoneNumber = "+15559999999"),
+            interaction(1000L).copy(phoneNumber = "+15559999999")
         )
         val differentKind = repository.recordIfNew(
-            interaction(1000L).copy(kind = "message"),
+            interaction(1000L).copy(kind = "message")
         )
 
         assertTrue(differentPhone)

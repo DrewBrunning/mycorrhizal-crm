@@ -5,22 +5,15 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -62,7 +55,7 @@ import kotlinx.coroutines.withContext
 fun VcfImportScreen(
     onBack: () -> Unit,
     onDone: () -> Unit,
-    viewModel: VcfImportViewModel = hiltViewModel(),
+    viewModel: VcfImportViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     VcfImportScreenContent(
@@ -74,7 +67,7 @@ fun VcfImportScreen(
         onRowActionChange = viewModel::setRowAction,
         onResolveAll = viewModel::resolveAll,
         onConfirm = viewModel::confirm,
-        onErrorShown = viewModel::onErrorShown,
+        onErrorShown = viewModel::onErrorShown
     )
 }
 
@@ -95,13 +88,15 @@ fun VcfImportScreenContent(
     onRowActionChange: (Int, String) -> Unit = { _, _ -> },
     onResolveAll: () -> Unit = {},
     onConfirm: () -> Unit = {},
-    onErrorShown: () -> Unit = {},
+    onErrorShown: () -> Unit = {}
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+    val filePicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
             val resolver = context.contentResolver
@@ -126,34 +121,55 @@ fun VcfImportScreenContent(
             TopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back)
+                        )
                     }
                 },
-                title = { Text(stringResource(R.string.import_vcf_title), style = MaterialTheme.typography.titleLarge) },
+                title = {
+                    Text(
+                        stringResource(R.string.import_vcf_title),
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when {
-                uiState.isLoading -> LoadingSkeleton(modifier = Modifier.testTag("vcf-import-loading"))
-                uiState.step == VcfImportStep.PICK -> PickStep(onPick = { filePicker.launch("*/*") })
+                uiState.isLoading -> LoadingSkeleton(
+                    modifier = Modifier.testTag("vcf-import-loading")
+                )
+
+                uiState.step == VcfImportStep.PICK -> PickStep(
+                    onPick = { filePicker.launch("*/*") }
+                )
+
                 uiState.step == VcfImportStep.PREVIEW && uiState.preview != null ->
                     PreviewStep(
                         rows = uiState.preview.rows,
                         rowActions = uiState.rowActions,
                         onRowActionChange = onRowActionChange,
                         onResolveAll = onResolveAll,
-                        onConfirm = onConfirm,
+                        onConfirm = onConfirm
                     )
+
                 uiState.step == VcfImportStep.RESULT && uiState.result != null ->
-                    ResultStep(created = uiState.result.created, updated = uiState.result.updated, skipped = uiState.result.skipped, onDone = onDone)
+                    ResultStep(
+                        created = uiState.result.created,
+                        updated = uiState.result.updated,
+                        skipped = uiState.result.skipped,
+                        onDone = onDone
+                    )
+
                 else -> EmptyState(title = stringResource(R.string.import_vcf_error_invalid_file))
             }
         }
@@ -172,17 +188,17 @@ fun VcfImportScreenContent(
 private fun PickStep(onPick: () -> Unit) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.fillMaxSize().padding(24.dp),
+        modifier = Modifier.fillMaxSize().padding(24.dp)
     ) {
         Icon(
             Icons.Outlined.CloudUpload,
             contentDescription = null,
-            modifier = Modifier.padding(top = 48.dp),
+            modifier = Modifier.padding(top = 48.dp)
         )
         Text(
             text = stringResource(R.string.import_vcf_pick_hint),
             style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(vertical = 16.dp),
+            modifier = Modifier.padding(vertical = 16.dp)
         )
         Button(onClick = onPick) {
             Text(stringResource(R.string.import_vcf_pick))
@@ -196,14 +212,14 @@ private fun PreviewStep(
     rowActions: Map<Int, String>,
     onRowActionChange: (Int, String) -> Unit,
     onResolveAll: () -> Unit,
-    onConfirm: () -> Unit,
+    onConfirm: () -> Unit
 ) {
     ImportReviewStep(
         rows = rows,
         rowActions = rowActions,
         onRowActionChange = onRowActionChange,
         onResolveAll = onResolveAll,
-        onConfirm = onConfirm,
+        onConfirm = onConfirm
     )
 }
 
@@ -211,12 +227,12 @@ private fun PreviewStep(
 private fun ResultStep(created: Int, updated: Int, skipped: Int, onDone: () -> Unit) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.fillMaxSize().padding(24.dp),
+        modifier = Modifier.fillMaxSize().padding(24.dp)
     ) {
         Text(
             text = stringResource(R.string.import_vcf_result, created, updated, skipped),
             style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(top = 48.dp, bottom = 16.dp),
+            modifier = Modifier.padding(top = 48.dp, bottom = 16.dp)
         )
         Button(onClick = onDone) {
             Text(stringResource(R.string.action_confirm))
@@ -231,7 +247,11 @@ internal data class PickedFileMeta(val name: String, val size: Long?)
  * oversized pick can be rejected without allocating it. `size` is null when the provider omits
  * the column or reports it as null, which some do.
  */
-internal fun queryFileMeta(resolver: ContentResolver, uri: Uri, defaultName: String = "import.vcf"): PickedFileMeta {
+internal fun queryFileMeta(
+    resolver: ContentResolver,
+    uri: Uri,
+    defaultName: String = "import.vcf"
+): PickedFileMeta {
     var name = defaultName
     var size: Long? = null
     resolver.query(uri, null, null, null, null)?.use { cursor ->

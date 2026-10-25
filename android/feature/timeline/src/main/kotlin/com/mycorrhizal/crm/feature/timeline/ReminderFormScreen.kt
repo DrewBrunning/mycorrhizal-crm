@@ -25,17 +25,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.res.stringResource
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.ReminderRecurrence
 import com.mycorrhizal.crm.model.util.DateFieldMode
-import com.mycorrhizal.crm.ui.components.DateField
-import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.DateField
 import com.mycorrhizal.crm.ui.components.FormScaffold
+import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.WriteConflictDialog
 import java.time.LocalDate
 
@@ -44,7 +44,7 @@ import java.time.LocalDate
 fun ReminderFormScreen(
     onSaved: () -> Unit,
     onBack: () -> Unit,
-    viewModel: ReminderFormViewModel = hiltViewModel(),
+    viewModel: ReminderFormViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val events by viewModel.events.collectAsStateWithLifecycle()
@@ -58,18 +58,31 @@ fun ReminderFormScreen(
     }
 
     FormScaffold(
-        title = if (state.isEdit) stringResource(R.string.reminder_edit) else stringResource(R.string.reminder_new),
+        title = if (state.isEdit) {
+            stringResource(
+                R.string.reminder_edit
+            )
+        } else {
+            stringResource(R.string.reminder_new)
+        },
         onBack = onBack,
-        saveLabel = if (state.isEdit) stringResource(R.string.reminder_save) else stringResource(R.string.reminder_create),
+        saveLabel = if (state.isEdit) {
+            stringResource(
+                R.string.reminder_save
+            )
+        } else {
+            stringResource(R.string.reminder_create)
+        },
         isSaving = state.isSaving,
         onSave = viewModel::save,
         snackbarHostState = snackbarHostState,
         isDirty = state.isDirty,
         entityLabel = stringResource(R.string.entity_reminder),
-        showSaveBar = !state.isLoading,
+        showSaveBar = !state.isLoading
     ) { padding ->
         when {
             state.isLoading -> LoadingSkeleton(modifier = Modifier.padding(padding))
+
             else -> ReminderFormContent(
                 state = state,
                 onMessageChange = viewModel::onMessageChange,
@@ -77,7 +90,7 @@ fun ReminderFormScreen(
                 onRecurrenceChange = viewModel::onRecurrenceChange,
                 onByMailChange = viewModel::onByMailChange,
                 onReoccurFromCompletionChange = viewModel::onReoccurFromCompletionChange,
-                modifier = Modifier.padding(padding),
+                modifier = Modifier.padding(padding)
             )
         }
     }
@@ -85,7 +98,7 @@ fun ReminderFormScreen(
     if (state.conflict) {
         WriteConflictDialog(
             onLoadLatest = viewModel::onConflictLoadLatest,
-            onKeep = viewModel::onConflictKeepEditing,
+            onKeep = viewModel::onConflictKeepEditing
         )
     }
 
@@ -107,7 +120,7 @@ fun ReminderFormContent(
     onRecurrenceChange: (String) -> Unit,
     onByMailChange: (Boolean) -> Unit,
     onReoccurFromCompletionChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     var recurrenceExpanded by remember { mutableStateOf(false) }
 
@@ -116,14 +129,14 @@ fun ReminderFormContent(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         OutlinedTextField(
             value = state.message,
             onValueChange = onMessageChange,
             label = { Text(stringResource(R.string.reminder_message)) },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         )
         DateField(
             value = state.remindAt,
@@ -132,23 +145,27 @@ fun ReminderFormContent(
             mode = DateFieldMode.DATE_UTC_MIDNIGHT,
             selectableFrom = LocalDate.now(),
             testTag = "reminder-date",
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         )
         ExposedDropdownMenuBox(
             expanded = recurrenceExpanded,
-            onExpandedChange = { recurrenceExpanded = it },
+            onExpandedChange = { recurrenceExpanded = it }
         ) {
             OutlinedTextField(
                 value = stringResource(recurrenceLabelRes(state.recurrence)),
                 onValueChange = {},
                 readOnly = true,
                 label = { Text(stringResource(R.string.reminder_recurrence)) },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = recurrenceExpanded) },
-                modifier = Modifier.fillMaxWidth().menuAnchor(),
+                trailingIcon = {
+                    ExposedDropdownMenuDefaults.TrailingIcon(
+                        expanded = recurrenceExpanded
+                    )
+                },
+                modifier = Modifier.fillMaxWidth().menuAnchor()
             )
             ExposedDropdownMenu(
                 expanded = recurrenceExpanded,
-                onDismissRequest = { recurrenceExpanded = false },
+                onDismissRequest = { recurrenceExpanded = false }
             ) {
                 ReminderRecurrence.ALL.forEach { option ->
                     DropdownMenuItem(
@@ -156,7 +173,7 @@ fun ReminderFormContent(
                         onClick = {
                             onRecurrenceChange(option)
                             recurrenceExpanded = false
-                        },
+                        }
                     )
                 }
             }
@@ -170,29 +187,40 @@ fun ReminderFormContent(
                 modifier = Modifier.toggleable(
                     value = state.reoccurFromCompletion,
                     onValueChange = onReoccurFromCompletionChange,
-                    role = Role.Switch,
+                    role = Role.Switch
                 ),
                 headlineContent = {
-                    Text(stringResource(R.string.reminder_reoccur_from_completion), style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        stringResource(R.string.reminder_reoccur_from_completion),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
                 },
                 supportingContent = {
-                    Text(stringResource(R.string.reminder_reoccur_from_completion_hint), style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        stringResource(R.string.reminder_reoccur_from_completion_hint),
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 },
                 trailingContent = {
                     Switch(checked = state.reoccurFromCompletion, onCheckedChange = null)
-                },
+                }
             )
         }
         ListItem(
             modifier = Modifier.toggleable(
                 value = state.byMail,
                 onValueChange = onByMailChange,
-                role = Role.Switch,
+                role = Role.Switch
             ),
-            headlineContent = { Text(stringResource(R.string.reminder_email), style = MaterialTheme.typography.bodyLarge) },
+            headlineContent = {
+                Text(
+                    stringResource(R.string.reminder_email),
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            },
             trailingContent = {
                 Switch(checked = state.byMail, onCheckedChange = null)
-            },
+            }
         )
     }
 }

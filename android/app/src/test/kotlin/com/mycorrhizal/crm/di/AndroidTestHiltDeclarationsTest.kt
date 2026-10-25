@@ -1,10 +1,10 @@
 package com.mycorrhizal.crm.di
 
+import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
-import java.io.File
 
 // Issue #1374: a Hilt @EntryPoint / @InstallIn declared in a test APK is never aggregated into the
 // component generated for MycorrhizalApplication (that happens when the APP compiles), so
@@ -22,14 +22,22 @@ class AndroidTestHiltDeclarationsTest {
         val roots = System.getProperty("androidTestHilt.roots").orEmpty()
         assertTrue(
             "androidTestHilt.roots system property missing: run via Gradle (app/build.gradle.kts wires it)",
-            !roots.isNullOrBlank(),
+            !roots.isNullOrBlank()
         )
-        val files = roots.split(';').filter { it.isNotBlank() }.map(::File).filter { it.isDirectory }
+        val files = roots.split(
+            ';'
+        ).filter { it.isNotBlank() }.map(::File).filter { it.isDirectory }
             .flatMap { root ->
-                root.walkTopDown().filter { it.isFile && (it.extension == "kt" || it.extension == "java") }.toList()
+                root.walkTopDown().filter {
+                    it.isFile &&
+                        (it.extension == "kt" || it.extension == "java")
+                }.toList()
             }
             .associate { it.path to it.readText() }
-        assertTrue("expected to scan at least the app's androidTest sources, found none", files.isNotEmpty())
+        assertTrue(
+            "expected to scan at least the app's androidTest sources, found none",
+            files.isNotEmpty()
+        )
         val problems = violations(files)
         if (problems.isNotEmpty()) {
             fail(
@@ -38,7 +46,7 @@ class AndroidTestHiltDeclarationsTest {
                     "AndroidJUnitRunner), so EntryPointAccessors.fromApplication fails with a " +
                     "ClassCastException at runtime. Move the declaration into the app's main sources, like " +
                     "app/src/main/kotlin/com/mycorrhizal/crm/di/LocalServerHostEntryPoint.kt:\n" +
-                    problems.joinToString("\n"),
+                    problems.joinToString("\n")
             )
         }
     }

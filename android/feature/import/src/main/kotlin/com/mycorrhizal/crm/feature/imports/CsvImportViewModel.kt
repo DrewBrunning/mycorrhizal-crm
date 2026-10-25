@@ -14,12 +14,12 @@ import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 enum class CsvImportStep { PICK, MAPPING, PREVIEW, RESULT }
 
@@ -35,7 +35,7 @@ data class CsvImportUiState(
     val result: ImportResult? = null,
     val isLoading: Boolean = false,
     @StringRes val errorRes: Int? = null,
-    val error: String? = null,
+    val error: String? = null
 )
 
 /**
@@ -49,9 +49,7 @@ data class CsvImportUiState(
  * CSV branch of web's `ImportContactsDialog.tsx`.
  */
 @HiltViewModel
-class CsvImportViewModel @Inject constructor(
-    private val apiClient: ApiClient,
-) : ViewModel() {
+class CsvImportViewModel @Inject constructor(private val apiClient: ApiClient) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CsvImportUiState())
     val uiState: StateFlow<CsvImportUiState> = _uiState.asStateFlow()
@@ -65,23 +63,55 @@ class CsvImportViewModel @Inject constructor(
     fun onFilePicked(fileName: String, bytes: ByteArray) {
         if (_uiState.value.isLoading) return
         if (bytes.isEmpty()) {
-            _uiState.update { it.copy(errorRes = R.string.import_csv_error_invalid_file, error = null) }
+            _uiState.update {
+                it.copy(
+                    errorRes = R.string.import_csv_error_invalid_file,
+                    error = null
+                )
+            }
             return
         }
         if (bytes.size > MAX_CSV_SIZE_BYTES) {
-            _uiState.update { it.copy(errorRes = R.string.import_csv_error_too_large, error = null) }
+            _uiState.update {
+                it.copy(
+                    errorRes = R.string.import_csv_error_too_large,
+                    error = null
+                )
+            }
             return
         }
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorRes = null, error = null, fileName = fileName) }
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    errorRes = null,
+                    error = null,
+                    fileName = fileName
+                )
+            }
             apiClient.uploadCsvImport(bytes, fileName).foldApiError(
                 onSuccess = { upload ->
-                    val fields = upload.suggestedMappings.associate { it.csvColumn to it.contactField }
+                    val fields = upload.suggestedMappings.associate {
+                        it.csvColumn to
+                            it.contactField
+                    }
                     _uiState.update {
-                        it.copy(isLoading = false, step = CsvImportStep.MAPPING, upload = upload, columnFields = fields)
+                        it.copy(
+                            isLoading = false,
+                            step = CsvImportStep.MAPPING,
+                            upload = upload,
+                            columnFields = fields
+                        )
                     }
                 },
-                onError = { error -> _uiState.update { it.copy(isLoading = false, error = error.displayMessage) } },
+                onError = { error ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }
@@ -96,20 +126,43 @@ class CsvImportViewModel @Inject constructor(
         if (_uiState.value.isLoading) return
         val mappings = upload.suggestedMappings.mapNotNull { suggested ->
             val field = _uiState.value.columnFields[suggested.csvColumn].orEmpty()
-            if (field.isBlank()) null else ColumnMapping(csvColumn = suggested.csvColumn, contactField = field, group = suggested.group)
+            if (field.isBlank()) {
+                null
+            } else {
+                ColumnMapping(
+                    csvColumn = suggested.csvColumn,
+                    contactField = field,
+                    group = suggested.group
+                )
+            }
         }
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
-            apiClient.previewCsvImport(ImportPreviewRequest(sessionId = upload.sessionId, mappings = mappings)).foldApiError(
+            apiClient.previewCsvImport(
+                ImportPreviewRequest(sessionId = upload.sessionId, mappings = mappings)
+            ).foldApiError(
                 onSuccess = { preview ->
                     val actions = preview.rows.associate { row ->
-                        row.rowIndex to if (row.validationErrors.isNotEmpty()) "skip" else row.suggestedAction
+                        row.rowIndex to
+                            if (row.validationErrors.isNotEmpty()) "skip" else row.suggestedAction
                     }
                     _uiState.update {
-                        it.copy(isLoading = false, step = CsvImportStep.PREVIEW, preview = preview, rowActions = actions)
+                        it.copy(
+                            isLoading = false,
+                            step = CsvImportStep.PREVIEW,
+                            preview = preview,
+                            rowActions = actions
+                        )
                     }
                 },
-                onError = { error -> _uiState.update { it.copy(isLoading = false, error = error.displayMessage) } },
+                onError = { error ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }
@@ -138,12 +191,32 @@ class CsvImportViewModel @Inject constructor(
         if (_uiState.value.isLoading) return
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
-            val actions = _uiState.value.rowActions.map { (rowIndex, action) -> RowImportAction(rowIndex, action) }
-            apiClient.confirmImport(ImportConfirmRequest(sessionId = preview.sessionId, actions = actions)).foldApiError(
+            val actions = _uiState.value.rowActions.map { (rowIndex, action) ->
+                RowImportAction(
+                    rowIndex,
+                    action
+                )
+            }
+            apiClient.confirmImport(
+                ImportConfirmRequest(sessionId = preview.sessionId, actions = actions)
+            ).foldApiError(
                 onSuccess = { result ->
-                    _uiState.update { it.copy(isLoading = false, step = CsvImportStep.RESULT, result = result) }
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            step = CsvImportStep.RESULT,
+                            result = result
+                        )
+                    }
                 },
-                onError = { error -> _uiState.update { it.copy(isLoading = false, error = error.displayMessage) } },
+                onError = { error ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }

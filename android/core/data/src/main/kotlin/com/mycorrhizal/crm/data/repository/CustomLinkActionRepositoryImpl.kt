@@ -5,14 +5,12 @@ import com.mycorrhizal.crm.domain.repository.CustomLinkAction as DomainCustomLin
 import com.mycorrhizal.crm.domain.repository.CustomLinkActionRepository
 import javax.inject.Inject
 
-class CustomLinkActionRepositoryImpl @Inject constructor(
-    private val dao: CustomLinkActionDao,
-) : CustomLinkActionRepository {
+class CustomLinkActionRepositoryImpl @Inject constructor(private val dao: CustomLinkActionDao) :
+    CustomLinkActionRepository {
     override suspend fun getForProtocol(protocol: String): List<DomainCustomLinkAction> =
         dao.getForProtocol(protocol).map { it.toDomain() }
 
-    override suspend fun getAll(): List<DomainCustomLinkAction> =
-        dao.getAll().map { it.toDomain() }
+    override suspend fun getAll(): List<DomainCustomLinkAction> = dao.getAll().map { it.toDomain() }
 
     override suspend fun upsert(action: DomainCustomLinkAction) {
         dao.upsert(
@@ -22,8 +20,8 @@ class CustomLinkActionRepositoryImpl @Inject constructor(
                 label = action.label,
                 kind = action.kind,
                 mimeType = action.mimeType,
-                intentUriTemplate = action.intentUriTemplate,
-            ),
+                intentUriTemplate = action.intentUriTemplate
+            )
         )
     }
 
@@ -35,8 +33,8 @@ class CustomLinkActionRepositoryImpl @Inject constructor(
                 label = action.label,
                 kind = action.kind,
                 mimeType = action.mimeType,
-                intentUriTemplate = action.intentUriTemplate,
-            ),
+                intentUriTemplate = action.intentUriTemplate
+            )
         )
     }
 }
@@ -48,5 +46,5 @@ private fun com.mycorrhizal.crm.data.local.CustomLinkAction.toDomain(): DomainCu
         label = label,
         kind = kind,
         mimeType = mimeType,
-        intentUriTemplate = intentUriTemplate,
+        intentUriTemplate = intentUriTemplate
     )

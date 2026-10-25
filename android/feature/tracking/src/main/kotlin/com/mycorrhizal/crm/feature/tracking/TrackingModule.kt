@@ -20,7 +20,7 @@ abstract class TrackingModule {
 
     @Binds
     abstract fun bindDeviceRegistrationStore(
-        impl: SharedPrefsDeviceRegistrationStore,
+        impl: SharedPrefsDeviceRegistrationStore
     ): DeviceRegistrationStore
 
     // Issue #721: the OS-grant query seam and the grant-time catch-up enqueue
@@ -30,7 +30,7 @@ abstract class TrackingModule {
 
     @Binds
     abstract fun bindTrackingCatchUpScheduler(
-        impl: TrackingCatchUpSchedulerImpl,
+        impl: TrackingCatchUpSchedulerImpl
     ): TrackingCatchUpScheduler
 
     // Issue #1200: the distribution capability that gates the call/SMS capture
@@ -38,6 +38,6 @@ abstract class TrackingModule {
     // fun interface so tests can pin either build's behavior.
     @Binds
     abstract fun bindCallSmsTrackingCapability(
-        impl: ResourceCallSmsTrackingCapability,
+        impl: ResourceCallSmsTrackingCapability
     ): CallSmsTrackingCapability
 }

@@ -8,7 +8,7 @@ import com.squareup.moshi.JsonClass
 data class LoginRequest(
     val identifier: String? = null,
     val email: String? = null,
-    val password: String? = null,
+    val password: String? = null
 )
 
 /**
@@ -28,7 +28,7 @@ data class LoginResponse(
     // enrolled second factors ("totp" / "webauthn"). Null from an older server
     // that predates passkeys; callers must treat null/unknown as "prompt for a
     // TOTP or recovery code", exactly as before.
-    val methods: List<String>? = null,
+    val methods: List<String>? = null
 )
 
 /**
@@ -57,15 +57,11 @@ fun List<String>?.isPasskeyOnly(): Boolean =
 
 /** POST /api/v1/login/2fa request body — a 6-digit TOTP or XXXXX-XXXXX-XXXXX recovery code. */
 @JsonClass(generateAdapter = true)
-data class TwoFactorCodeInput(
-    val code: String,
-)
+data class TwoFactorCodeInput(val code: String)
 
 /** GET /api/v1/users/2fa/status — `{ enabled }`. */
 @JsonClass(generateAdapter = true)
-data class TwoFactorStatusResponse(
-    val enabled: Boolean = false,
-)
+data class TwoFactorStatusResponse(val enabled: Boolean = false)
 
 /**
  * POST /api/v1/users/2fa/setup — the pending TOTP secret and its otpauth://
@@ -75,7 +71,7 @@ data class TwoFactorStatusResponse(
 @JsonClass(generateAdapter = true)
 data class TwoFactorSetupResponse(
     val secret: String = "",
-    @Json(name = "otpauth_url") val otpauthUrl: String = "",
+    @Json(name = "otpauth_url") val otpauthUrl: String = ""
 )
 
 /**
@@ -85,7 +81,7 @@ data class TwoFactorSetupResponse(
 @JsonClass(generateAdapter = true)
 data class TwoFactorConfirmResponse(
     val message: String? = null,
-    @Json(name = "recovery_codes") val recoveryCodes: List<String> = emptyList(),
+    @Json(name = "recovery_codes") val recoveryCodes: List<String> = emptyList()
 )
 
 /**
@@ -107,7 +103,7 @@ data class UserProfile(
     // M14's network screen, which defaults its "start from" picker to the
     // self contact when one is set; the backend backfills it lazily on every
     // /users/me, so this is reliably populated for pre-000018 accounts too.
-    @Json(name = "self_contact_vcard_uid") val selfContactVCardUid: String? = null,
+    @Json(name = "self_contact_vcard_uid") val selfContactVCardUid: String? = null
 )
 
 /**
@@ -122,7 +118,7 @@ data class UserProfile(
 data class AuthConfig(
     val enabled: Boolean = false,
     @Json(name = "provider_name") val providerName: String? = null,
-    @Json(name = "registration_disabled") val registrationDisabled: Boolean = false,
+    @Json(name = "registration_disabled") val registrationDisabled: Boolean = false
 )
 
 // --- M26: account creation + password reset (all public, rate-limited) ---
@@ -133,14 +129,12 @@ data class RegisterRequest(
     val username: String,
     val email: String,
     val password: String,
-    val language: String? = null,
+    val language: String? = null
 )
 
 /** POST /check-password-strength body. */
 @JsonClass(generateAdapter = true)
-data class CheckPasswordStrengthRequest(
-    val password: String,
-)
+data class CheckPasswordStrengthRequest(val password: String)
 
 /**
  * POST /check-password-strength response — a raw, unwrapped PasswordStrength
@@ -155,21 +149,16 @@ data class PasswordStrength(
     val feedback: String? = null,
     @Json(name = "min_entropy") val minEntropy: Double? = null,
     @Json(name = "char_set_size") val charSetSize: Int? = null,
-    val length: Int? = null,
+    val length: Int? = null
 )
 
 /** POST /password-reset/request body. */
 @JsonClass(generateAdapter = true)
-data class PasswordResetRequest(
-    val email: String,
-)
+data class PasswordResetRequest(val email: String)
 
 /** POST /password-reset/confirm body. */
 @JsonClass(generateAdapter = true)
-data class PasswordResetConfirmRequest(
-    val token: String,
-    val password: String,
-)
+data class PasswordResetConfirmRequest(val token: String, val password: String)
 
 // --- Issue #965: Android OIDC native return ---
 
@@ -182,7 +171,7 @@ data class PasswordResetConfirmRequest(
 @JsonClass(generateAdapter = true)
 data class OidcNativeExchangeRequest(
     val code: String,
-    @Json(name = "code_verifier") val codeVerifier: String,
+    @Json(name = "code_verifier") val codeVerifier: String
 )
 
 /** POST /api/v1/auth/oidc/native/exchange success body — the session JWT. */
@@ -190,7 +179,7 @@ data class OidcNativeExchangeRequest(
 data class OidcNativeExchangeResponse(
     val token: String = "",
     val language: String? = null,
-    @Json(name = "date_format") val dateFormat: String? = null,
+    @Json(name = "date_format") val dateFormat: String? = null
 )
 
 // --- Issue #1293 WebAuthn / passkeys (backend #593, ADR 0034) ---
@@ -200,15 +189,11 @@ data class OidcNativeExchangeResponse(
 
 /** POST /api/v1/webauthn/register/begin body — optional credential label (max 100). */
 @JsonClass(generateAdapter = true)
-data class WebAuthnRegisterBeginInput(
-    val name: String? = null,
-)
+data class WebAuthnRegisterBeginInput(val name: String? = null)
 
 /** POST /api/v1/webauthn/assert/begin body — `exclude_id` is the passkey being removed (#1317). */
 @JsonClass(generateAdapter = true)
-data class WebAuthnProofBeginInput(
-    @Json(name = "exclude_id") val excludeId: String? = null,
-)
+data class WebAuthnProofBeginInput(@Json(name = "exclude_id") val excludeId: String? = null)
 
 /** POST /api/v1/webauthn/register/finish 201 body; [recoveryCodes] is empty when the account already had a set. */
 @JsonClass(generateAdapter = true)
@@ -216,7 +201,7 @@ data class WebAuthnRegisterResponse(
     val id: String = "",
     val name: String = "",
     @Json(name = "created_at") val createdAt: String = "",
-    @Json(name = "recovery_codes") val recoveryCodes: List<String> = emptyList(),
+    @Json(name = "recovery_codes") val recoveryCodes: List<String> = emptyList()
 )
 
 /** One enrolled passkey — never carries the public key or raw credential id. */
@@ -225,17 +210,13 @@ data class WebAuthnCredential(
     val id: String = "",
     val name: String = "",
     @Json(name = "created_at") val createdAt: String = "",
-    @Json(name = "last_used_at") val lastUsedAt: String? = null,
+    @Json(name = "last_used_at") val lastUsedAt: String? = null
 )
 
 /** GET /api/v1/webauthn/credentials. */
 @JsonClass(generateAdapter = true)
-data class WebAuthnCredentialListResponse(
-    val credentials: List<WebAuthnCredential> = emptyList(),
-)
+data class WebAuthnCredentialListResponse(val credentials: List<WebAuthnCredential> = emptyList())
 
 /** DELETE /api/v1/webauthn/credentials/{id} body for the TOTP/recovery-code proof. */
 @JsonClass(generateAdapter = true)
-data class WebAuthnDeleteCodeInput(
-    val code: String,
-)
+data class WebAuthnDeleteCodeInput(val code: String)

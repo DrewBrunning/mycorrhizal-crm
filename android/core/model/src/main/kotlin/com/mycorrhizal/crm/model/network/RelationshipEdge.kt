@@ -44,7 +44,7 @@ object RelationshipEdgeTypes {
         OWNS to Meta(OWNED_BY, false),
         GETS_ALONG_WITH to Meta(GETS_ALONG_WITH, true),
         CONFLICTS_WITH to Meta(CONFLICTS_WITH, true),
-        RELATED_TO to Meta(RELATED_TO, true),
+        RELATED_TO to Meta(RELATED_TO, true)
     )
 
     val TYPE_TOKENS: List<String> = ALL.keys.toList()
@@ -74,7 +74,7 @@ data class RelationshipEdge(
     val status: String = RelationshipEdgeStatuses.CONFIRMED,
     val sensitivity: String = RelationshipEdgeSensitivities.NORMAL,
     @Json(name = "created_at") val createdAt: String? = null,
-    @Json(name = "updated_at") val updatedAt: String? = null,
+    @Json(name = "updated_at") val updatedAt: String? = null
 )
 
 /** Thin contact for creating an edge to a contact that isn't in the CRM yet. */
@@ -82,7 +82,7 @@ data class RelationshipEdge(
 data class ThinContactInput(
     val name: String,
     val gender: String? = null,
-    val birthday: String? = null,
+    val birthday: String? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -93,7 +93,7 @@ data class RelationshipEdgeInput(
     @Json(name = "target_thin") val targetThin: ThinContactInput? = null,
     val type: String,
     val sensitivity: String? = null,
-    val metadata: Map<String, Any?>? = null,
+    val metadata: Map<String, Any?>? = null
 )
 
 /** GET /relationship-edges response — cursor-paginated. */
@@ -103,13 +103,13 @@ data class RelationshipEdgesPage(
     val total: Int = 0,
     @Json(name = "next_cursor") val nextCursor: String? = null,
     val limit: Int = 0,
-    val sync: SyncInfo? = null,
+    val sync: SyncInfo? = null
 )
 
 /** POST /relationship-edges response — wrapped `{ relationship_edge }` (§2.6). */
 @JsonClass(generateAdapter = true)
 data class CreateRelationshipEdgeResponse(
-    @Json(name = "relationship_edge") val relationshipEdge: RelationshipEdge? = null,
+    @Json(name = "relationship_edge") val relationshipEdge: RelationshipEdge? = null
 )
 
 /**
@@ -121,5 +121,5 @@ data class CreateRelationshipEdgeResponse(
 data class RelationshipSuggestionsResponse(
     val message: String? = null,
     @Json(name = "suggested_edges") val suggestedEdges: List<RelationshipEdge> = emptyList(),
-    val total: Int = 0,
+    val total: Int = 0
 )

@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.contacts
 
+import androidx.lifecycle.SavedStateHandle
 import com.mycorrhizal.crm.domain.repository.AttachmentRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.CadencePolicyRepository
@@ -22,10 +23,10 @@ import com.mycorrhizal.crm.domain.repository.SeafileRepository
 import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.model.network.AttachmentListResponse
+import com.mycorrhizal.crm.model.network.CRMEnvelope
 import com.mycorrhizal.crm.model.network.CadencePolicy
 import com.mycorrhizal.crm.model.network.CadencePolicyInput
 import com.mycorrhizal.crm.model.network.Card
-import com.mycorrhizal.crm.model.network.CRMEnvelope
 import com.mycorrhizal.crm.model.network.ContactFieldValuesInput
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactScoreResponse
@@ -35,7 +36,6 @@ import com.mycorrhizal.crm.model.network.ExternalActivity
 import com.mycorrhizal.crm.model.network.ExternalIdentity
 import com.mycorrhizal.crm.model.network.FieldDefinition
 import com.mycorrhizal.crm.model.network.FieldValue
-import com.mycorrhizal.crm.model.network.FieldValueInput
 import com.mycorrhizal.crm.model.network.Gift
 import com.mycorrhizal.crm.model.network.ImmichPerson
 import com.mycorrhizal.crm.model.network.LifeEvent
@@ -50,7 +50,6 @@ import com.mycorrhizal.crm.model.network.WebDAVItem
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
 import com.mycorrhizal.crm.ui.R
-import androidx.lifecycle.SavedStateHandle
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -97,7 +96,7 @@ class ContactDetailViewModelTest {
         id: Int,
         dateFormat: String? = null,
         selfContactVCardUid: String? = null,
-        enabledContactFields: List<String>? = null,
+        enabledContactFields: List<String>? = null
     ): ContactDetailViewModel {
         coEvery { contactRepository.getDeviceLookupKey(any()) } returns null
         every { authRepository.observeSession() } returns
@@ -105,11 +104,15 @@ class ContactDetailViewModelTest {
                 SessionState(
                     dateFormat = dateFormat,
                     selfContactVCardUid = selfContactVCardUid,
-                    enabledContactFields = enabledContactFields,
-                ),
+                    enabledContactFields = enabledContactFields
+                )
             )
         coEvery { fieldDefinitionRepository.list() } returns Result.success(emptyList())
-        coEvery { fieldDefinitionRepository.contactValues(any()) } returns Result.success(emptyList())
+        coEvery {
+            fieldDefinitionRepository.contactValues(
+                any()
+            )
+        } returns Result.success(emptyList())
         stubMemberships()
         stubCompletions()
         stubExternalLinks()
@@ -136,7 +139,7 @@ class ContactDetailViewModelTest {
             relationshipEdgeRepository,
             attachmentRepository,
             cadencePolicyRepository,
-            SavedStateHandle(mapOf("contactId" to id)),
+            SavedStateHandle(mapOf("contactId" to id))
         )
     }
 
@@ -146,10 +149,18 @@ class ContactDetailViewModelTest {
      * "configured" gates.
      */
     private fun stubExternalLinks() {
-        coEvery { externalIdentityRepository.listForContact(any()) } returns Result.success(emptyList())
+        coEvery {
+            externalIdentityRepository.listForContact(
+                any()
+            )
+        } returns Result.success(emptyList())
         coEvery { immichRepository.isConfigured() } returns Result.success(false)
         coEvery { immichRepository.getContactSummary(any()) } returns Result.success(null)
-        coEvery { externalActivityRepository.listForContact(any()) } returns Result.success(emptyList())
+        coEvery {
+            externalActivityRepository.listForContact(
+                any()
+            )
+        } returns Result.success(emptyList())
         coEvery { paperlessRepository.isConfigured() } returns Result.success(false)
         coEvery { seafileRepository.isConfigured() } returns Result.success(false)
         coEvery { nextcloudRepository.isConfigured() } returns Result.success(false)
@@ -184,10 +195,26 @@ class ContactDetailViewModelTest {
         coEvery { lifeEventRepository.listForContact(any()) } returns Result.success(emptyList())
         coEvery { giftRepository.listForContact(any()) } returns Result.success(emptyList())
         coEvery { preferenceRepository.listForContact(any()) } returns Result.success(emptyList())
-        coEvery { conversationAgendaRepository.listForContact(any()) } returns Result.success(emptyList())
-        coEvery { relationshipEdgeRepository.listForContact(any()) } returns Result.success(emptyList())
-        coEvery { attachmentRepository.list(any()) } returns Result.success(AttachmentListResponse())
-        coEvery { cadencePolicyRepository.listForContact(any()) } returns Result.success(emptyList())
+        coEvery {
+            conversationAgendaRepository.listForContact(
+                any()
+            )
+        } returns Result.success(emptyList())
+        coEvery {
+            relationshipEdgeRepository.listForContact(
+                any()
+            )
+        } returns Result.success(emptyList())
+        coEvery {
+            attachmentRepository.list(
+                any()
+            )
+        } returns Result.success(AttachmentListResponse())
+        coEvery {
+            cadencePolicyRepository.listForContact(
+                any()
+            )
+        } returns Result.success(emptyList())
     }
 
     @Test
@@ -206,19 +233,46 @@ class ContactDetailViewModelTest {
 
     @Test
     fun `loads the drill-down counts independently`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
         val vm = viewModel(5)
-        coEvery { lifeEventRepository.listForContact("u5") } returns Result.success(listOf(LifeEvent(), LifeEvent()))
+        coEvery {
+            lifeEventRepository.listForContact(
+                "u5"
+            )
+        } returns Result.success(listOf(LifeEvent(), LifeEvent()))
         coEvery { giftRepository.listForContact("u5") } returns Result.success(listOf(Gift()))
-        coEvery { preferenceRepository.listForContact("u5") } returns Result.success(listOf(Preference(), Preference(), Preference()))
+        coEvery {
+            preferenceRepository.listForContact(
+                "u5"
+            )
+        } returns Result.success(listOf(Preference(), Preference(), Preference()))
         coEvery { conversationAgendaRepository.listForContact("u5") } returns
             Result.success(listOf(ConversationAgenda(), ConversationAgenda()))
         coEvery { relationshipEdgeRepository.listForContact("u5") } returns
-            Result.success(listOf(RelationshipEdge(), RelationshipEdge(), RelationshipEdge(), RelationshipEdge()))
-        coEvery { cadencePolicyRepository.listForContact("u5") } returns Result.success(listOf(CadencePolicy()))
-        coEvery { attachmentRepository.list(5) } returns Result.success(AttachmentListResponse(total = 6))
+            Result.success(
+                listOf(
+                    RelationshipEdge(),
+                    RelationshipEdge(),
+                    RelationshipEdge(),
+                    RelationshipEdge()
+                )
+            )
+        coEvery {
+            cadencePolicyRepository.listForContact(
+                "u5"
+            )
+        } returns Result.success(listOf(CadencePolicy()))
+        coEvery {
+            attachmentRepository.list(
+                5
+            )
+        } returns Result.success(AttachmentListResponse(total = 6))
         advanceUntilIdle()
 
         val state = vm.uiState.value
@@ -232,13 +286,27 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `a failed count load leaves that count unknown without failing the screen`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+    fun `a failed count load leaves that count unknown without failing the screen`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
         val vm = viewModel(5)
-        coEvery { lifeEventRepository.listForContact("u5") } returns Result.failure(ApiError.Server(500, "boom"))
-        coEvery { attachmentRepository.list(5) } returns Result.failure(ApiError.Network(java.io.IOException("offline")))
+        coEvery {
+            lifeEventRepository.listForContact(
+                "u5"
+            )
+        } returns Result.failure(ApiError.Server(500, "boom"))
+        coEvery {
+            attachmentRepository.list(
+                5
+            )
+        } returns Result.failure(ApiError.Network(java.io.IOException("offline")))
         advanceUntilIdle()
 
         val state = vm.uiState.value
@@ -257,7 +325,9 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `string contact id from navigation is parsed as an int`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `string contact id from navigation is parsed as an int`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         // Navigation Compose stores route args as Strings unless NavType.IntType
         // is declared; the ViewModel must tolerate both shapes.
         val record = ContactRecordResponse(id = 9, card = Card(name = Name(full = "Erin")))
@@ -265,7 +335,11 @@ class ContactDetailViewModelTest {
         coEvery { contactRepository.getDeviceLookupKey(9) } returns null
         every { authRepository.observeSession() } returns flowOf(SessionState())
         coEvery { fieldDefinitionRepository.list() } returns Result.success(emptyList())
-        coEvery { fieldDefinitionRepository.contactValues(any()) } returns Result.success(emptyList())
+        coEvery {
+            fieldDefinitionRepository.contactValues(
+                any()
+            )
+        } returns Result.success(emptyList())
         coEvery { reminderRepository.listCompletions(any()) } returns Result.success(emptyList())
         stubExternalLinks()
         stubScore()
@@ -292,7 +366,7 @@ class ContactDetailViewModelTest {
             relationshipEdgeRepository,
             attachmentRepository,
             cadencePolicyRepository,
-            SavedStateHandle(mapOf("contactId" to "9")),
+            SavedStateHandle(mapOf("contactId" to "9"))
         )
         advanceUntilIdle()
 
@@ -300,7 +374,9 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `dateFormat reflects the signed-in user's date_format preference`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `dateFormat reflects the signed-in user's date_format preference`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
@@ -311,7 +387,9 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `dateFormat is null when the session carries no preference`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `dateFormat is null when the session carries no preference`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
@@ -324,7 +402,7 @@ class ContactDetailViewModelTest {
     @Test
     fun `server failure surfaces the error message`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { contactRepository.getContact(5) } returns Result.failure(
-            ApiError.Client(404, "Contact not found"),
+            ApiError.Client(404, "Contact not found")
         )
 
         val vm = viewModel(5)
@@ -340,7 +418,7 @@ class ContactDetailViewModelTest {
     @Test
     fun `onErrorShown clears the error`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { contactRepository.getContact(5) } returns Result.failure(
-            ApiError.Client(404, "Contact not found"),
+            ApiError.Client(404, "Contact not found")
         )
 
         val vm = viewModel(5)
@@ -368,11 +446,13 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `completeReminder failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `completeReminder failure surfaces the error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { reminderRepository.complete(7) } returns Result.failure(
-            ApiError.Client(404, "Reminder not found"),
+            ApiError.Client(404, "Reminder not found")
         )
 
         val vm = viewModel(5)
@@ -385,16 +465,18 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `custom field definitions and values load into state keyed by definition id`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `custom field definitions and values load into state keyed by definition id`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.getDeviceLookupKey(5) } returns null
         every { authRepository.observeSession() } returns flowOf(SessionState())
         coEvery { fieldDefinitionRepository.list() } returns Result.success(
-            listOf(FieldDefinition(id = "d1", label = "Coffee order", type = "string")),
+            listOf(FieldDefinition(id = "d1", label = "Coffee order", type = "string"))
         )
         coEvery { fieldDefinitionRepository.contactValues(5) } returns Result.success(
-            listOf(FieldValue(id = 1, fieldDefinitionId = "d1", value = "Latte")),
+            listOf(FieldValue(id = 1, fieldDefinitionId = "d1", value = "Latte"))
         )
         coEvery { reminderRepository.listCompletions(any()) } returns Result.success(emptyList())
 
@@ -402,7 +484,13 @@ class ContactDetailViewModelTest {
         stubScore()
         stubCounts()
 
-        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, lifeEventRepository, giftRepository, preferenceRepository, conversationAgendaRepository, relationshipEdgeRepository, attachmentRepository, cadencePolicyRepository, SavedStateHandle(mapOf("contactId" to 5)))
+        val vm =
+            ContactDetailViewModel(
+                contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, lifeEventRepository, giftRepository, preferenceRepository, conversationAgendaRepository, relationshipEdgeRepository, attachmentRepository, cadencePolicyRepository,
+                SavedStateHandle(
+                    mapOf("contactId" to 5)
+                )
+            )
         advanceUntilIdle()
 
         val state = vm.uiState.value
@@ -412,12 +500,16 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `a field-definitions fetch failure does not fail the contact load`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a field-definitions fetch failure does not fail the contact load`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.getDeviceLookupKey(5) } returns null
         every { authRepository.observeSession() } returns flowOf(SessionState())
-        coEvery { fieldDefinitionRepository.list() } returns Result.failure(ApiError.Server(500, "boom"))
+        coEvery { fieldDefinitionRepository.list() } returns Result.failure(
+            ApiError.Server(500, "boom")
+        )
         coEvery { fieldDefinitionRepository.contactValues(5) } returns Result.success(emptyList())
         coEvery { reminderRepository.listCompletions(any()) } returns Result.success(emptyList())
 
@@ -425,7 +517,13 @@ class ContactDetailViewModelTest {
         stubScore()
         stubCounts()
 
-        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, lifeEventRepository, giftRepository, preferenceRepository, conversationAgendaRepository, relationshipEdgeRepository, attachmentRepository, cadencePolicyRepository, SavedStateHandle(mapOf("contactId" to 5)))
+        val vm =
+            ContactDetailViewModel(
+                contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, lifeEventRepository, giftRepository, preferenceRepository, conversationAgendaRepository, relationshipEdgeRepository, attachmentRepository, cadencePolicyRepository,
+                SavedStateHandle(
+                    mapOf("contactId" to 5)
+                )
+            )
         advanceUntilIdle()
 
         val state = vm.uiState.value
@@ -435,22 +533,34 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `a field-values fetch failure does not fail the contact load`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a field-values fetch failure does not fail the contact load`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.getDeviceLookupKey(5) } returns null
         every { authRepository.observeSession() } returns flowOf(SessionState())
         coEvery { fieldDefinitionRepository.list() } returns Result.success(
-            listOf(FieldDefinition(id = "d1", label = "Coffee order", type = "string")),
+            listOf(FieldDefinition(id = "d1", label = "Coffee order", type = "string"))
         )
-        coEvery { fieldDefinitionRepository.contactValues(5) } returns Result.failure(ApiError.Network(java.io.IOException("offline")))
+        coEvery {
+            fieldDefinitionRepository.contactValues(
+                5
+            )
+        } returns Result.failure(ApiError.Network(java.io.IOException("offline")))
         coEvery { reminderRepository.listCompletions(any()) } returns Result.success(emptyList())
 
         stubExternalLinks()
         stubScore()
         stubCounts()
 
-        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, lifeEventRepository, giftRepository, preferenceRepository, conversationAgendaRepository, relationshipEdgeRepository, attachmentRepository, cadencePolicyRepository, SavedStateHandle(mapOf("contactId" to 5)))
+        val vm =
+            ContactDetailViewModel(
+                contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, lifeEventRepository, giftRepository, preferenceRepository, conversationAgendaRepository, relationshipEdgeRepository, attachmentRepository, cadencePolicyRepository,
+                SavedStateHandle(
+                    mapOf("contactId" to 5)
+                )
+            )
         advanceUntilIdle()
 
         val state = vm.uiState.value
@@ -461,40 +571,60 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `a value whose definition no longer exists is stored but never resolves without a matching definition`() = runTest(mainDispatcherRule.testDispatcher) {
-        // T84: definitions and values are fetched separately and can disagree (a definition
-        // deleted after the value was set). The ViewModel does no filtering — it stores exactly
-        // what the server returned; the render loop (which iterates definitions, not values,
-        // see ContactDetailScreen's CustomFieldsSection) is what makes an orphaned value
-        // unreachable, without needing special-case code or risking a crash.
-        val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
-        coEvery { contactRepository.getContact(5) } returns Result.success(record)
-        coEvery { contactRepository.getDeviceLookupKey(5) } returns null
-        every { authRepository.observeSession() } returns flowOf(SessionState())
-        coEvery { fieldDefinitionRepository.list() } returns Result.success(emptyList()) // zero definitions
-        coEvery { fieldDefinitionRepository.contactValues(5) } returns Result.success(
-            listOf(FieldValue(id = 1, fieldDefinitionId = "deleted-def", value = "orphaned")),
-        )
-        coEvery { reminderRepository.listCompletions(any()) } returns Result.success(emptyList())
+    fun `a value whose definition no longer exists is stored but never resolves without a matching definition`() =
+        runTest(
+            mainDispatcherRule.testDispatcher
+        ) {
+            // T84: definitions and values are fetched separately and can disagree (a definition
+            // deleted after the value was set). The ViewModel does no filtering — it stores exactly
+            // what the server returned; the render loop (which iterates definitions, not values,
+            // see ContactDetailScreen's CustomFieldsSection) is what makes an orphaned value
+            // unreachable, without needing special-case code or risking a crash.
+            val record =
+                ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+            coEvery { contactRepository.getContact(5) } returns Result.success(record)
+            coEvery { contactRepository.getDeviceLookupKey(5) } returns null
+            every { authRepository.observeSession() } returns flowOf(SessionState())
+            coEvery { fieldDefinitionRepository.list() } returns Result.success(emptyList()) // zero definitions
+            coEvery { fieldDefinitionRepository.contactValues(5) } returns Result.success(
+                listOf(FieldValue(id = 1, fieldDefinitionId = "deleted-def", value = "orphaned"))
+            )
+            coEvery {
+                reminderRepository.listCompletions(
+                    any()
+                )
+            } returns Result.success(emptyList())
 
-        stubExternalLinks()
-        stubScore()
-        stubCounts()
+            stubExternalLinks()
+            stubScore()
+            stubCounts()
 
-        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, lifeEventRepository, giftRepository, preferenceRepository, conversationAgendaRepository, relationshipEdgeRepository, attachmentRepository, cadencePolicyRepository, SavedStateHandle(mapOf("contactId" to 5)))
-        advanceUntilIdle()
+            val vm =
+                ContactDetailViewModel(
+                    contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, lifeEventRepository, giftRepository, preferenceRepository, conversationAgendaRepository, relationshipEdgeRepository, attachmentRepository, cadencePolicyRepository,
+                    SavedStateHandle(
+                        mapOf("contactId" to 5)
+                    )
+                )
+            advanceUntilIdle()
 
-        val state = vm.uiState.value
-        assertNull(state.error)
-        assertTrue(state.fieldDefinitions.isEmpty())
-        assertEquals("orphaned", state.fieldValuesByDefinitionId["deleted-def"]) // present but unreachable — no def to render it under
-    }
+            val state = vm.uiState.value
+            assertNull(state.error)
+            assertTrue(state.fieldDefinitions.isEmpty())
+            assertEquals("orphaned", state.fieldValuesByDefinitionId["deleted-def"]) // present but unreachable — no def to render it under
+        }
 
     // --- M24: delete / archive / unarchive / export ---
 
     @Test
-    fun `deleteContact emits ContactDeleted on success`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+    fun `deleteContact emits ContactDeleted on success`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.deleteContact(5, any()) } returns Result.success(Unit)
 
@@ -512,8 +642,15 @@ class ContactDetailViewModelTest {
     // --- Issue #1665 / ADR 0008: If-Match on delete, typed 412 -> conflict dialog ---
 
     @Test
-    fun `deleteContact sends the revision the loaded contact carries`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", revision = 3, card = Card(name = Name(full = "Dana White")))
+    fun `deleteContact sends the revision the loaded contact carries`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            revision = 3,
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.deleteContact(5, 3) } returns Result.success(Unit)
 
@@ -529,9 +666,19 @@ class ContactDetailViewModelTest {
     @Test
     fun `a 412 on delete raises the conflict state, keeps the screen and does not toast`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            val record = ContactRecordResponse(id = 5, uid = "u5", revision = 3, card = Card(name = Name(full = "Dana White")))
+            val record = ContactRecordResponse(
+                id = 5,
+                uid = "u5",
+                revision = 3,
+                card = Card(name = Name(full = "Dana White"))
+            )
             coEvery { contactRepository.getContact(5) } returns Result.success(record)
-            coEvery { contactRepository.deleteContact(5, 3) } returns Result.failure(ApiError.PreconditionFailed("stale"))
+            coEvery {
+                contactRepository.deleteContact(
+                    5,
+                    3
+                )
+            } returns Result.failure(ApiError.PreconditionFailed("stale"))
 
             val vm = viewModel(5)
             advanceUntilIdle()
@@ -550,9 +697,19 @@ class ContactDetailViewModelTest {
     @Test
     fun `load latest after a delete conflict refetches the contact with its new revision`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            val stale = ContactRecordResponse(id = 5, uid = "u5", revision = 3, card = Card(name = Name(full = "Dana White")))
+            val stale = ContactRecordResponse(
+                id = 5,
+                uid = "u5",
+                revision = 3,
+                card = Card(name = Name(full = "Dana White"))
+            )
             coEvery { contactRepository.getContact(5) } returns Result.success(stale)
-            coEvery { contactRepository.deleteContact(5, 3) } returns Result.failure(ApiError.PreconditionFailed("stale"))
+            coEvery {
+                contactRepository.deleteContact(
+                    5,
+                    3
+                )
+            } returns Result.failure(ApiError.PreconditionFailed("stale"))
             coEvery { contactRepository.deleteContact(5, 8) } returns Result.success(Unit)
 
             val vm = viewModel(5)
@@ -560,7 +717,11 @@ class ContactDetailViewModelTest {
             vm.deleteContact()
             advanceUntilIdle()
 
-            coEvery { contactRepository.getContact(5) } returns Result.success(stale.copy(revision = 8))
+            coEvery {
+                contactRepository.getContact(
+                    5
+                )
+            } returns Result.success(stale.copy(revision = 8))
             vm.onConflictLoadLatest()
             advanceUntilIdle()
             assertFalse(vm.uiState.value.conflict)
@@ -574,7 +735,12 @@ class ContactDetailViewModelTest {
     @Test
     fun `a successful favorite toggle re-reads the revision so a later delete is not spuriously stale`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            val record = ContactRecordResponse(id = 5, uid = "u5", revision = 3, card = Card(name = Name(full = "Dana White")))
+            val record = ContactRecordResponse(
+                id = 5,
+                uid = "u5",
+                revision = 3,
+                card = Card(name = Name(full = "Dana White"))
+            )
             coEvery { contactRepository.getContact(5) } returns Result.success(record)
             coEvery { contactRepository.favoriteContact(5) } returns Result.success(Unit)
             coEvery { contactRepository.deleteContact(5, 4) } returns Result.success(Unit)
@@ -582,7 +748,11 @@ class ContactDetailViewModelTest {
             val vm = viewModel(5)
             advanceUntilIdle()
             // The favorite write bumps the server revision to 4.
-            coEvery { contactRepository.getContact(5) } returns Result.success(record.copy(revision = 4, isFavorite = true))
+            coEvery {
+                contactRepository.getContact(
+                    5
+                )
+            } returns Result.success(record.copy(revision = 4, isFavorite = true))
             vm.toggleFavorite()
             advanceUntilIdle()
             vm.deleteContact()
@@ -592,10 +762,17 @@ class ContactDetailViewModelTest {
         }
 
     @Test
-    fun `deleteContact failure surfaces the error and keeps the screen alive`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `deleteContact failure surfaces the error and keeps the screen alive`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
-        coEvery { contactRepository.deleteContact(5, any()) } returns Result.failure(ApiError.Server(500, "boom"))
+        coEvery {
+            contactRepository.deleteContact(
+                5,
+                any()
+            )
+        } returns Result.failure(ApiError.Server(500, "boom"))
 
         val vm = viewModel(5)
         advanceUntilIdle()
@@ -609,7 +786,9 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `setArchived true calls archiveContact and reloads the contact`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `setArchived true calls archiveContact and reloads the contact`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.archiveContact(5) } returns Result.success(Unit)
@@ -643,10 +822,16 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `archive failure surfaces the error and does not reload`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `archive failure surfaces the error and does not reload`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
-        coEvery { contactRepository.archiveContact(5) } returns Result.failure(ApiError.Client(404, "Contact not found"))
+        coEvery {
+            contactRepository.archiveContact(
+                5
+            )
+        } returns Result.failure(ApiError.Client(404, "Contact not found"))
 
         val vm = viewModel(5)
         advanceUntilIdle()
@@ -661,8 +846,14 @@ class ContactDetailViewModelTest {
     // --- Issue #212: favorite toggle (web #173) ---
 
     @Test
-    fun `toggleFavorite flips the header star optimistically and calls the repository`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")), isFavorite = false)
+    fun `toggleFavorite flips the header star optimistically and calls the repository`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            card = Card(name = Name(full = "Dana White")),
+            isFavorite = false
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.favoriteContact(5) } returns Result.success(Unit)
 
@@ -679,8 +870,14 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `toggleFavorite on a favorite calls unfavorite and keeps the flip`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")), isFavorite = true)
+    fun `toggleFavorite on a favorite calls unfavorite and keeps the flip`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            card = Card(name = Name(full = "Dana White")),
+            isFavorite = true
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.unfavoriteContact(5) } returns Result.success(Unit)
 
@@ -698,11 +895,21 @@ class ContactDetailViewModelTest {
     // Issue #1567: a detail fetch that started before the star toggle must not
     // clobber the optimistic flip when its (stale) response lands afterwards.
     @Test
-    fun `a stale load response landing after a toggle does not undo the star`() = runTest(mainDispatcherRule.testDispatcher) {
-        val starred = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")), isFavorite = true)
+    fun `a stale load response landing after a toggle does not undo the star`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val starred = ContactRecordResponse(
+            id = 5,
+            card = Card(name = Name(full = "Dana White")),
+            isFavorite = true
+        )
         val slow = CompletableDeferred<Result<ContactRecordResponse>>()
         var calls = 0
-        coEvery { contactRepository.getContact(5) } coAnswers { if (calls++ == 0) Result.success(starred) else slow.await() }
+        coEvery {
+            contactRepository.getContact(
+                5
+            )
+        } coAnswers { if (calls++ == 0) Result.success(starred) else slow.await() }
         coEvery { contactRepository.unfavoriteContact(5) } returns Result.success(Unit)
         val vm = viewModel(5)
         advanceUntilIdle()
@@ -716,30 +923,54 @@ class ContactDetailViewModelTest {
 
         slow.complete(Result.success(starred)) // stale pre-toggle snapshot arrives late
         advanceUntilIdle()
-        assertFalse("stale load must not re-star the contact", vm.uiState.value.contact?.isFavorite!!)
+        assertFalse(
+            "stale load must not re-star the contact",
+            vm.uiState.value.contact?.isFavorite!!
+        )
     }
 
     @Test
-    fun `a load started after a settled toggle still reconciles the star from the server`() = runTest(mainDispatcherRule.testDispatcher) {
-        val starred = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")), isFavorite = true)
-        val unstarred = starred.copy(isFavorite = false)
-        coEvery { contactRepository.getContact(5) } returns Result.success(starred) andThen Result.success(unstarred)
-        coEvery { contactRepository.unfavoriteContact(5) } returns Result.success(Unit)
-        val vm = viewModel(5)
-        advanceUntilIdle()
-        vm.toggleFavorite()
-        advanceUntilIdle()
+    fun `a load started after a settled toggle still reconciles the star from the server`() =
+        runTest(
+            mainDispatcherRule.testDispatcher
+        ) {
+            val starred = ContactRecordResponse(
+                id = 5,
+                card = Card(name = Name(full = "Dana White")),
+                isFavorite = true
+            )
+            val unstarred = starred.copy(isFavorite = false)
+            coEvery {
+                contactRepository.getContact(
+                    5
+                )
+            } returns Result.success(starred) andThen Result.success(unstarred)
+            coEvery { contactRepository.unfavoriteContact(5) } returns Result.success(Unit)
+            val vm = viewModel(5)
+            advanceUntilIdle()
+            vm.toggleFavorite()
+            advanceUntilIdle()
 
-        vm.load()
-        advanceUntilIdle()
-        assertFalse(vm.uiState.value.contact?.isFavorite!!)
-    }
+            vm.load()
+            advanceUntilIdle()
+            assertFalse(vm.uiState.value.contact?.isFavorite!!)
+        }
 
     @Test
-    fun `toggleFavorite rolls back on failure so the star can't disagree with the DB`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")), isFavorite = false)
+    fun `toggleFavorite rolls back on failure so the star can't disagree with the DB`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            card = Card(name = Name(full = "Dana White")),
+            isFavorite = false
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
-        coEvery { contactRepository.favoriteContact(5) } returns Result.failure(ApiError.Server(500, "boom"))
+        coEvery {
+            contactRepository.favoriteContact(
+                5
+            )
+        } returns Result.failure(ApiError.Server(500, "boom"))
 
         val vm = viewModel(5)
         advanceUntilIdle()
@@ -763,7 +994,7 @@ class ContactDetailViewModelTest {
                 uid = "u5",
                 revision = 3,
                 card = Card(name = Name(full = "Dana White")),
-                crm = CRMEnvelope(),
+                crm = CRMEnvelope()
             )
             coEvery { contactRepository.getContact(5) } returns Result.success(record)
             coEvery { contactRepository.setTargetCloseness(5, "close") } returns Result.success(
@@ -771,8 +1002,8 @@ class ContactDetailViewModelTest {
                     contactId = 5,
                     targetCloseness = "close",
                     defaultIntervalDays = 30,
-                    cadencePolicyOffer = closenessOffer(),
-                ),
+                    cadencePolicyOffer = closenessOffer()
+                )
             )
 
             val vm = viewModel(5)
@@ -794,16 +1025,18 @@ class ContactDetailViewModelTest {
         }
 
     @Test
-    fun `setTargetCloseness null clears the target and the offer`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `setTargetCloseness null clears the target and the offer`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(
             id = 5,
             uid = "u5",
             card = Card(name = Name(full = "Dana White")),
-            crm = CRMEnvelope(targetCloseness = "close"),
+            crm = CRMEnvelope(targetCloseness = "close")
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.clearTargetCloseness(5) } returns Result.success(
-            ContactTargetClosenessResponse(contactId = 5),
+            ContactTargetClosenessResponse(contactId = 5)
         )
 
         val vm = viewModel(5)
@@ -825,7 +1058,7 @@ class ContactDetailViewModelTest {
                 id = 5,
                 uid = "u5",
                 card = Card(name = Name(full = "Dana White")),
-                crm = CRMEnvelope(targetCloseness = "close"),
+                crm = CRMEnvelope(targetCloseness = "close")
             )
             coEvery { contactRepository.getContact(5) } returns Result.success(record)
             coEvery { contactRepository.setTargetCloseness(5, "casual") } returns
@@ -852,7 +1085,7 @@ class ContactDetailViewModelTest {
                 id = 5,
                 uid = "u5",
                 card = Card(name = Name(full = "Dana White")),
-                crm = CRMEnvelope(targetCloseness = "close"),
+                crm = CRMEnvelope(targetCloseness = "close")
             )
             coEvery { contactRepository.getContact(5) } returns Result.success(record)
             coEvery { contactRepository.setTargetCloseness(5, "close") } returns Result.success(
@@ -860,11 +1093,11 @@ class ContactDetailViewModelTest {
                     contactId = 5,
                     targetCloseness = "close",
                     defaultIntervalDays = 30,
-                    cadencePolicyOffer = closenessOffer(),
-                ),
+                    cadencePolicyOffer = closenessOffer()
+                )
             )
             coEvery { cadencePolicyRepository.create(closenessOffer()) } returns Result.success(
-                CadencePolicy(id = "c1", entityId = "u5", targetIntervalDays = 30),
+                CadencePolicy(id = "c1", entityId = "u5", targetIntervalDays = 30)
             )
 
             val vm = viewModel(5)
@@ -884,16 +1117,22 @@ class ContactDetailViewModelTest {
         }
 
     @Test
-    fun `a failed cadence offer keeps it so the user can retry`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a failed cadence offer keeps it so the user can retry`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(
             id = 5,
             uid = "u5",
             card = Card(name = Name(full = "Dana White")),
-            crm = CRMEnvelope(targetCloseness = "close"),
+            crm = CRMEnvelope(targetCloseness = "close")
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.setTargetCloseness(5, "close") } returns Result.success(
-            ContactTargetClosenessResponse(contactId = 5, targetCloseness = "close", cadencePolicyOffer = closenessOffer()),
+            ContactTargetClosenessResponse(
+                contactId = 5,
+                targetCloseness = "close",
+                cadencePolicyOffer = closenessOffer()
+            )
         )
         coEvery { cadencePolicyRepository.create(any()) } returns
             Result.failure(ApiError.Server(500, "boom"))
@@ -911,16 +1150,22 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `dismissCadenceOffer clears it without any request`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `dismissCadenceOffer clears it without any request`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(
             id = 5,
             uid = "u5",
             card = Card(name = Name(full = "Dana White")),
-            crm = CRMEnvelope(targetCloseness = "close"),
+            crm = CRMEnvelope(targetCloseness = "close")
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.setTargetCloseness(5, "close") } returns Result.success(
-            ContactTargetClosenessResponse(contactId = 5, targetCloseness = "close", cadencePolicyOffer = closenessOffer()),
+            ContactTargetClosenessResponse(
+                contactId = 5,
+                targetCloseness = "close",
+                cadencePolicyOffer = closenessOffer()
+            )
         )
 
         val vm = viewModel(5)
@@ -941,19 +1186,30 @@ class ContactDetailViewModelTest {
     @Test
     fun `state resolves a never-configured session value to the default enabled set`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+            val record = ContactRecordResponse(
+                id = 5,
+                uid = "u5",
+                card = Card(name = Name(full = "Dana White"))
+            )
             coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
             val vm = viewModel(5, enabledContactFields = null)
             advanceUntilIdle()
 
-            assertEquals(com.mycorrhizal.crm.model.network.DEFAULT_ENABLED_CONTACT_FIELDS, vm.uiState.value.enabledFields)
+            assertEquals(
+                com.mycorrhizal.crm.model.network.DEFAULT_ENABLED_CONTACT_FIELDS,
+                vm.uiState.value.enabledFields
+            )
         }
 
     @Test
     fun `state resolves an explicit empty session value to no fields enabled`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+            val record = ContactRecordResponse(
+                id = 5,
+                uid = "u5",
+                card = Card(name = Name(full = "Dana White"))
+            )
             coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
             val vm = viewModel(5, enabledContactFields = emptyList())
@@ -963,24 +1219,39 @@ class ContactDetailViewModelTest {
         }
 
     @Test
-    fun `state resolves a populated session value to the matching keys`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+    fun `state resolves a populated session value to the matching keys`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
         val vm = viewModel(5, enabledContactFields = listOf("emails", "keywords"))
         advanceUntilIdle()
 
         assertEquals(
-            setOf(com.mycorrhizal.crm.model.network.ContactFieldKey.EMAILS, com.mycorrhizal.crm.model.network.ContactFieldKey.KEYWORDS),
-            vm.uiState.value.enabledFields,
+            setOf(
+                com.mycorrhizal.crm.model.network.ContactFieldKey.EMAILS,
+                com.mycorrhizal.crm.model.network.ContactFieldKey.KEYWORDS
+            ),
+            vm.uiState.value.enabledFields
         )
     }
 
     // --- T90 / issue #831: "Mark as Me" self-contact pointer (web parity) ---
 
     @Test
-    fun `state exposes the self contact vcard uid from the session`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+    fun `state exposes the self contact vcard uid from the session`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
         val vm = viewModel(5, selfContactVCardUid = "u5")
@@ -990,8 +1261,14 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `toggleMe marks the contact as me by sending its own uid`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+    fun `toggleMe marks the contact as me by sending its own uid`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { authRepository.updateSelfContact("u5") } returns Result.success(Unit)
 
@@ -1008,8 +1285,14 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `toggleMe unmarks the contact by sending a null uid`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+    fun `toggleMe unmarks the contact by sending a null uid`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { authRepository.updateSelfContact(null) } returns Result.success(Unit)
 
@@ -1025,9 +1308,17 @@ class ContactDetailViewModelTest {
 
     @Test
     fun `toggleMe surfaces an error on failure`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
-        coEvery { authRepository.updateSelfContact("u5") } returns Result.failure(ApiError.Server(500, "boom"))
+        coEvery {
+            authRepository.updateSelfContact(
+                "u5"
+            )
+        } returns Result.failure(ApiError.Server(500, "boom"))
 
         val vm = viewModel(5, selfContactVCardUid = null)
         advanceUntilIdle()
@@ -1040,7 +1331,9 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `toggleMe is a no-op without a loaded contact`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `toggleMe is a no-op without a loaded contact`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = viewModel(0)
         advanceUntilIdle()
 
@@ -1051,8 +1344,14 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `exportVcf emits ExportReady with the raw bytes`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+    fun `exportVcf emits ExportReady with the raw bytes`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         val bytes = "BEGIN:VCARD\r\nEND:VCARD\r\n".toByteArray()
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.exportContactVcf("u5", null) } returns Result.success(bytes)
@@ -1072,9 +1371,18 @@ class ContactDetailViewModelTest {
 
     @Test
     fun `exportVcf failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
-        coEvery { contactRepository.exportContactVcf("u5", 3) } returns Result.failure(ApiError.Client(400, "bad request"))
+        coEvery {
+            contactRepository.exportContactVcf(
+                "u5",
+                3
+            )
+        } returns Result.failure(ApiError.Client(400, "bad request"))
 
         val vm = viewModel(5)
         advanceUntilIdle()
@@ -1087,7 +1395,9 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `exportVcf without a contact uid is a no-op`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `exportVcf without a contact uid is a no-op`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
@@ -1104,7 +1414,9 @@ class ContactDetailViewModelTest {
     // --- Issue #219: profile-photo upload ---
 
     @Test
-    fun `uploadPhoto uploads the bytes and reloads the contact on success`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `uploadPhoto uploads the bytes and reloads the contact on success`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
@@ -1112,7 +1424,13 @@ class ContactDetailViewModelTest {
         advanceUntilIdle()
 
         val bytes = ByteArray(64) { it.toByte() }
-        coEvery { contactRepository.uploadPhoto(5, bytes, "image/jpeg") } returns Result.success(Unit)
+        coEvery {
+            contactRepository.uploadPhoto(
+                5,
+                bytes,
+                "image/jpeg"
+            )
+        } returns Result.success(Unit)
         vm.uploadPhoto(bytes, "image/jpeg")
         advanceUntilIdle()
 
@@ -1124,7 +1442,9 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `uploadPhoto failure surfaces the error and does not reload`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `uploadPhoto failure surfaces the error and does not reload`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
@@ -1148,7 +1468,9 @@ class ContactDetailViewModelTest {
     // concurrent call while one is in flight. ---
 
     @Test
-    fun `deleteContact ignores a second call while the first is in flight`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `deleteContact ignores a second call while the first is in flight`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         val gate = CompletableDeferred<Unit>()
@@ -1174,7 +1496,9 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `setArchived ignores a second call while the first is in flight`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `setArchived ignores a second call while the first is in flight`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         val gate = CompletableDeferred<Unit>()
@@ -1199,7 +1523,9 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `uploadPhoto ignores a second call while the first is in flight`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `uploadPhoto ignores a second call while the first is in flight`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         val bytes = ByteArray(8) { it.toByte() }
@@ -1227,7 +1553,11 @@ class ContactDetailViewModelTest {
     @Test
     fun `isMutating is shared across actions -- exportVcf is blocked while deleteContact is in flight`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+            val record = ContactRecordResponse(
+                id = 5,
+                uid = "u5",
+                card = Card(name = Name(full = "Dana White"))
+            )
             coEvery { contactRepository.getContact(5) } returns Result.success(record)
             val gate = CompletableDeferred<Unit>()
             coEvery { contactRepository.deleteContact(5, any()) } coAnswers {
@@ -1255,17 +1585,33 @@ class ContactDetailViewModelTest {
     // --- Issue #220: External Links panel + Immich ---
 
     @Test
-    fun `external links and the immich summary load alongside the contact`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+    fun `external links and the immich summary load alongside the contact`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
         val vm = viewModel(5)
         // Re-stub after the helper's defaults (mockk last-registered-wins).
         coEvery { externalIdentityRepository.listForContact("u5") } returns Result.success(
-            listOf(ExternalIdentity(id = "i1", entityId = "u5", system = "paperless", externalId = "doc-1")),
+            listOf(
+                ExternalIdentity(
+                    id = "i1",
+                    entityId = "u5",
+                    system = "paperless",
+                    externalId = "doc-1"
+                )
+            )
         )
         coEvery { immichRepository.getContactSummary("u5") } returns Result.success(
-            com.mycorrhizal.crm.model.network.ImmichPersonSummary(personName = "Alice", photoCount = 42),
+            com.mycorrhizal.crm.model.network.ImmichPersonSummary(
+                personName = "Alice",
+                photoCount = 42
+            )
         )
         advanceUntilIdle()
 
@@ -1277,7 +1623,9 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `a contact without a vcard uid never loads external links`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a contact without a vcard uid never loads external links`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
@@ -1289,8 +1637,14 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `immich configured flag reflects the user's connection`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+    fun `immich configured flag reflects the user's connection`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
         val vm = viewModel(5)
@@ -1301,8 +1655,14 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `deleteExternalIdentity reloads the panel on success`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+    fun `deleteExternalIdentity reloads the panel on success`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { externalIdentityRepository.delete("i1") } returns Result.success(Unit)
 
@@ -1320,10 +1680,20 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `deleteExternalIdentity failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+    fun `deleteExternalIdentity failure surfaces the error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
-        coEvery { externalIdentityRepository.delete("i1") } returns Result.failure(ApiError.Client(404, "External identity not found"))
+        coEvery {
+            externalIdentityRepository.delete(
+                "i1"
+            )
+        } returns Result.failure(ApiError.Client(404, "External identity not found"))
 
         val vm = viewModel(5)
         advanceUntilIdle()
@@ -1336,8 +1706,14 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `unlinkImmichPerson clears the summary and reloads the panel`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+    fun `unlinkImmichPerson clears the summary and reloads the panel`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { immichRepository.unlinkPerson("u5") } returns Result.success(Unit)
 
@@ -1355,8 +1731,14 @@ class ContactDetailViewModelTest {
     // --- Issue #836: external activities + Immich sync-now ---
 
     @Test
-    fun `external activities load alongside the contact`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+    fun `external activities load alongside the contact`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
         val vm = viewModel(5)
@@ -1368,9 +1750,9 @@ class ContactDetailViewModelTest {
                     sourceSystem = "immich",
                     externalId = "asset-1",
                     type = "photo-appearance",
-                    occurredAt = "2026-08-01T10:00:00Z",
-                ),
-            ),
+                    occurredAt = "2026-08-01T10:00:00Z"
+                )
+            )
         )
         advanceUntilIdle()
 
@@ -1381,7 +1763,11 @@ class ContactDetailViewModelTest {
 
     @Test
     fun `syncImmich syncs then reloads the panel`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { immichRepository.syncNow() } returns Result.success(Unit)
 
@@ -1401,9 +1787,15 @@ class ContactDetailViewModelTest {
 
     @Test
     fun `syncImmich failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
-        coEvery { immichRepository.syncNow() } returns Result.failure(ApiError.Server(503, "Immich unreachable"))
+        coEvery { immichRepository.syncNow() } returns Result.failure(
+            ApiError.Server(503, "Immich unreachable")
+        )
 
         val vm = viewModel(5)
         advanceUntilIdle()
@@ -1418,7 +1810,11 @@ class ContactDetailViewModelTest {
     @Test
     fun `syncImmich ignores a second call while the first is in flight`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+            val record = ContactRecordResponse(
+                id = 5,
+                uid = "u5",
+                card = Card(name = Name(full = "Dana White"))
+            )
             coEvery { contactRepository.getContact(5) } returns Result.success(record)
             val gate = CompletableDeferred<Unit>()
             coEvery { immichRepository.syncNow() } coAnswers {
@@ -1442,15 +1838,21 @@ class ContactDetailViewModelTest {
         }
 
     @Test
-    fun `loadImmichPeople populates the picker's person list`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+    fun `loadImmichPeople populates the picker's person list`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
         val vm = viewModel(5)
         advanceUntilIdle()
 
         coEvery { immichRepository.listPeople() } returns Result.success(
-            listOf(ImmichPerson(id = "p1", name = "Alice"), ImmichPerson(id = "p2", name = "Bob")),
+            listOf(ImmichPerson(id = "p1", name = "Alice"), ImmichPerson(id = "p2", name = "Bob"))
         )
         vm.loadImmichPeople()
         advanceUntilIdle()
@@ -1461,8 +1863,14 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `linkImmichPerson links and loads the person's assets`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+    fun `linkImmichPerson links and loads the person's assets`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
         val vm = viewModel(5)
@@ -1470,7 +1878,7 @@ class ContactDetailViewModelTest {
 
         coEvery { immichRepository.linkPerson("u5", any()) } returns Result.success(Unit)
         coEvery { immichRepository.listContactAssets("u5") } returns Result.success(
-            listOf(com.mycorrhizal.crm.model.network.ImmichAssetSummary(id = "a1")),
+            listOf(com.mycorrhizal.crm.model.network.ImmichAssetSummary(id = "a1"))
         )
         vm.linkImmichPerson(ImmichPerson(id = "p1", name = "Alice"))
         advanceUntilIdle()
@@ -1481,8 +1889,14 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `pickImmichAsset hands the fetched bytes to the callback`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+    fun `pickImmichAsset hands the fetched bytes to the callback`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
         val vm = viewModel(5)
@@ -1499,14 +1913,24 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `pickImmichAsset failure surfaces the error without a callback`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+    fun `pickImmichAsset failure surfaces the error without a callback`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
         val vm = viewModel(5)
         advanceUntilIdle()
 
-        coEvery { immichRepository.getThumbnailBytes("u5") } returns Result.failure(ApiError.Server(503, "boom"))
+        coEvery {
+            immichRepository.getThumbnailBytes(
+                "u5"
+            )
+        } returns Result.failure(ApiError.Server(503, "boom"))
         var handed = false
         vm.pickImmichAsset(null) { handed = true }
         advanceUntilIdle()
@@ -1522,7 +1946,11 @@ class ContactDetailViewModelTest {
     @Test
     fun `deleteExternalIdentity ignores a second call while the first is in flight`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+            val record = ContactRecordResponse(
+                id = 5,
+                uid = "u5",
+                card = Card(name = Name(full = "Dana White"))
+            )
             coEvery { contactRepository.getContact(5) } returns Result.success(record)
             val gate = CompletableDeferred<Unit>()
             coEvery { externalIdentityRepository.delete("i1") } coAnswers {
@@ -1548,7 +1976,11 @@ class ContactDetailViewModelTest {
     @Test
     fun `isExternalLinkMutating is shared -- unlinkImmichPerson is blocked while deleteExternalIdentity is in flight`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+            val record = ContactRecordResponse(
+                id = 5,
+                uid = "u5",
+                card = Card(name = Name(full = "Dana White"))
+            )
             coEvery { contactRepository.getContact(5) } returns Result.success(record)
             val gate = CompletableDeferred<Unit>()
             coEvery { externalIdentityRepository.delete("i1") } coAnswers {
@@ -1574,7 +2006,11 @@ class ContactDetailViewModelTest {
     @Test
     fun `loadImmichPeople ignores a second call while the first is in flight`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+            val record = ContactRecordResponse(
+                id = 5,
+                uid = "u5",
+                card = Card(name = Name(full = "Dana White"))
+            )
             coEvery { contactRepository.getContact(5) } returns Result.success(record)
             val gate = CompletableDeferred<Unit>()
             coEvery { immichRepository.listPeople() } coAnswers {
@@ -1600,24 +2036,36 @@ class ContactDetailViewModelTest {
     // --- M24: inline circle/tag editors ---
 
     @Test
-    fun `circles and tags load into the editors alongside the contact`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+    fun `circles and tags load into the editors alongside the contact`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
         val vm = viewModel(5)
         // Re-stub after the helper's defaults (mockk last-registered-wins) and before the
         // membership-load coroutines are scheduled to run.
         coEvery { circleRepository.circlesForContact("u5") } returns Result.success(
-            listOf(com.mycorrhizal.crm.model.network.Circle(id = "c1", name = "friends")),
+            listOf(com.mycorrhizal.crm.model.network.Circle(id = "c1", name = "friends"))
         )
         coEvery { circleRepository.list(any(), any()) } returns Result.success(
-            listOf(com.mycorrhizal.crm.model.network.Circle(id = "c1", name = "friends"), com.mycorrhizal.crm.model.network.Circle(id = "c2", name = "family")),
+            listOf(
+                com.mycorrhizal.crm.model.network.Circle(id = "c1", name = "friends"),
+                com.mycorrhizal.crm.model.network.Circle(id = "c2", name = "family")
+            )
         )
         coEvery { tagRepository.tagsForContact("u5") } returns Result.success(
-            listOf(com.mycorrhizal.crm.model.network.Tag(id = "t1", name = "close")),
+            listOf(com.mycorrhizal.crm.model.network.Tag(id = "t1", name = "close"))
         )
         coEvery { tagRepository.list(any(), any()) } returns Result.success(
-            listOf(com.mycorrhizal.crm.model.network.Tag(id = "t1", name = "close"), com.mycorrhizal.crm.model.network.Tag(id = "t2", name = "work")),
+            listOf(
+                com.mycorrhizal.crm.model.network.Tag(id = "t1", name = "close"),
+                com.mycorrhizal.crm.model.network.Tag(id = "t2", name = "work")
+            )
         )
         advanceUntilIdle()
 
@@ -1629,11 +2077,17 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `addCircle writes the membership and refreshes the derivations`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+    fun `addCircle writes the membership and refreshes the derivations`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { circleRepository.addMember("c2", "u5") } returns Result.success(
-            com.mycorrhizal.crm.model.network.CircleMember(circleId = "c2", memberVCardUid = "u5"),
+            com.mycorrhizal.crm.model.network.CircleMember(circleId = "c2", memberVCardUid = "u5")
         )
 
         val vm = viewModel(5)
@@ -1648,8 +2102,14 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `removeTag writes the untagging and refreshes the derivations`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+    fun `removeTag writes the untagging and refreshes the derivations`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { tagRepository.removeContact("t1", "u5") } returns Result.success(Unit)
 
@@ -1677,9 +2137,9 @@ class ContactDetailViewModelTest {
                     id = 1,
                     contactId = 5,
                     message = "Done with gift",
-                    completedAt = "2026-08-12T10:00:00Z",
-                ),
-            ),
+                    completedAt = "2026-08-12T10:00:00Z"
+                )
+            )
         )
         advanceUntilIdle()
 
@@ -1688,10 +2148,16 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `a completions fetch failure does not fail the contact load`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a completions fetch failure does not fail the contact load`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
-        coEvery { reminderRepository.listCompletions(5) } returns Result.failure(ApiError.Server(500, "boom"))
+        coEvery {
+            reminderRepository.listCompletions(
+                5
+            )
+        } returns Result.failure(ApiError.Server(500, "boom"))
 
         val vm = viewModel(5)
         advanceUntilIdle()
@@ -1703,7 +2169,9 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `undoCompletion deletes the completion and reloads the list`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `undoCompletion deletes the completion and reloads the list`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { reminderRepository.deleteCompletion(7) } returns Result.success(Unit)
@@ -1723,11 +2191,13 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `undoCompletion failure surfaces the error and keeps the completion`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `undoCompletion failure surfaces the error and keeps the completion`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { reminderRepository.deleteCompletion(7) } returns Result.failure(
-            ApiError.Client(404, "Reminder completion not found"),
+            ApiError.Client(404, "Reminder completion not found")
         )
 
         val vm = viewModel(5)
@@ -1742,8 +2212,14 @@ class ContactDetailViewModelTest {
     // --- Issue #236: Paperless/Seafile/Nextcloud create/link pickers ---
 
     @Test
-    fun `loadExternalLinks populates the three configured gates`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+    fun `loadExternalLinks populates the three configured gates`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
         // viewModel() applies its default (all-false) stubExternalLinks() stubs during
@@ -1760,15 +2236,21 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `loadPaperlessDocuments populates the picker's document list`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+    fun `loadPaperlessDocuments populates the picker's document list`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
         val vm = viewModel(5)
         advanceUntilIdle()
 
         coEvery { paperlessRepository.searchDocuments(null) } returns Result.success(
-            listOf(PaperlessDocument(id = 1, title = "Lease")),
+            listOf(PaperlessDocument(id = 1, title = "Lease"))
         )
         vm.loadPaperlessDocuments()
         advanceUntilIdle()
@@ -1779,8 +2261,14 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `linkPaperlessDocument links then reloads the panel`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+    fun `linkPaperlessDocument links then reloads the panel`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
         val vm = viewModel(5)
@@ -1795,15 +2283,21 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `linkPaperlessDocument failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+    fun `linkPaperlessDocument failure surfaces the error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
         val vm = viewModel(5)
         advanceUntilIdle()
 
         coEvery { paperlessRepository.linkDocument("u5", "1") } returns Result.failure(
-            ApiError.Client(409, "Already linked"),
+            ApiError.Client(409, "Already linked")
         )
         vm.linkPaperlessDocument(PaperlessDocument(id = 1, title = "Lease"))
         advanceUntilIdle()
@@ -1812,15 +2306,21 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `loadSeafileLibraries populates the picker's top level`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+    fun `loadSeafileLibraries populates the picker's top level`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
         val vm = viewModel(5)
         advanceUntilIdle()
 
         coEvery { seafileRepository.listLibraries() } returns Result.success(
-            listOf(SeafileLibrary(id = "r1", name = "Docs")),
+            listOf(SeafileLibrary(id = "r1", name = "Docs"))
         )
         vm.loadSeafileLibraries()
         advanceUntilIdle()
@@ -1830,14 +2330,22 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `loadSeafileLibraries failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+    fun `loadSeafileLibraries failure surfaces the error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
         val vm = viewModel(5)
         advanceUntilIdle()
 
-        coEvery { seafileRepository.listLibraries() } returns Result.failure(ApiError.Server(500, "boom"))
+        coEvery { seafileRepository.listLibraries() } returns Result.failure(
+            ApiError.Server(500, "boom")
+        )
         vm.loadSeafileLibraries()
         advanceUntilIdle()
 
@@ -1846,8 +2354,14 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `enterSeafileDir failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+    fun `enterSeafileDir failure surfaces the error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
         val vm = viewModel(5)
@@ -1866,18 +2380,24 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `enterSeafileDir then backSeafileDir returns to the library list`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+    fun `enterSeafileDir then backSeafileDir returns to the library list`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
         val vm = viewModel(5)
         advanceUntilIdle()
 
         coEvery { seafileRepository.listLibraries() } returns Result.success(
-            listOf(SeafileLibrary(id = "r1", name = "Docs")),
+            listOf(SeafileLibrary(id = "r1", name = "Docs"))
         )
         coEvery { seafileRepository.listDir("r1", "/") } returns Result.success(
-            listOf(SeafileItem(id = "f1", name = "doc.pdf", type = "file")),
+            listOf(SeafileItem(id = "f1", name = "doc.pdf", type = "file"))
         )
         vm.enterSeafileDir("r1")
         advanceUntilIdle()
@@ -1893,8 +2413,14 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `linkSeafileItem joins the browse path and reloads the panel`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+    fun `linkSeafileItem joins the browse path and reloads the panel`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
         val vm = viewModel(5)
@@ -1904,7 +2430,13 @@ class ContactDetailViewModelTest {
         vm.enterSeafileDir("r1")
         advanceUntilIdle()
 
-        val expectedRequest = SeafileLinkRequest(repoId = "r1", path = "/doc.pdf", name = "doc.pdf", type = "file", size = 1024)
+        val expectedRequest = SeafileLinkRequest(
+            repoId = "r1",
+            path = "/doc.pdf",
+            name = "doc.pdf",
+            type = "file",
+            size = 1024
+        )
         coEvery { seafileRepository.linkItem("u5", expectedRequest) } returns Result.success(Unit)
         vm.linkSeafileItem(SeafileItem(id = "f1", name = "doc.pdf", type = "file", size = 1024))
         advanceUntilIdle()
@@ -1914,8 +2446,14 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `linkSeafileItem failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+    fun `linkSeafileItem failure surfaces the error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
         val vm = viewModel(5)
@@ -1925,7 +2463,13 @@ class ContactDetailViewModelTest {
         vm.enterSeafileDir("r1")
         advanceUntilIdle()
 
-        val expectedRequest = SeafileLinkRequest(repoId = "r1", path = "/doc.pdf", name = "doc.pdf", type = "file", size = 1024)
+        val expectedRequest = SeafileLinkRequest(
+            repoId = "r1",
+            path = "/doc.pdf",
+            name = "doc.pdf",
+            type = "file",
+            size = 1024
+        )
         coEvery { seafileRepository.linkItem("u5", expectedRequest) } returns
             Result.failure(ApiError.Client(409, "Already linked"))
         vm.linkSeafileItem(SeafileItem(id = "f1", name = "doc.pdf", type = "file", size = 1024))
@@ -1935,15 +2479,21 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `loadNextcloudDir populates the browse list at the given path`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+    fun `loadNextcloudDir populates the browse list at the given path`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
         val vm = viewModel(5)
         advanceUntilIdle()
 
         coEvery { nextcloudRepository.listDir("/Photos") } returns Result.success(
-            listOf(WebDAVItem(name = "img.jpg", path = "/Photos/img.jpg", type = "file")),
+            listOf(WebDAVItem(name = "img.jpg", path = "/Photos/img.jpg", type = "file"))
         )
         vm.loadNextcloudDir("/Photos")
         advanceUntilIdle()
@@ -1954,14 +2504,24 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `loadNextcloudDir failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+    fun `loadNextcloudDir failure surfaces the error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
         val vm = viewModel(5)
         advanceUntilIdle()
 
-        coEvery { nextcloudRepository.listDir("/Photos") } returns Result.failure(ApiError.Server(500, "boom"))
+        coEvery {
+            nextcloudRepository.listDir(
+                "/Photos"
+            )
+        } returns Result.failure(ApiError.Server(500, "boom"))
         vm.loadNextcloudDir("/Photos")
         advanceUntilIdle()
 
@@ -1970,14 +2530,25 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `linkNextcloudItem links then reloads the panel`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+    fun `linkNextcloudItem links then reloads the panel`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
         val vm = viewModel(5)
         advanceUntilIdle()
 
-        val item = WebDAVItem(name = "img.jpg", path = "/Photos/img.jpg", type = "file", size = 2048)
+        val item = WebDAVItem(
+            name = "img.jpg",
+            path = "/Photos/img.jpg",
+            type = "file",
+            size = 2048
+        )
         coEvery { nextcloudRepository.linkItem("u5", item) } returns Result.success(Unit)
         vm.linkNextcloudItem(item)
         advanceUntilIdle()
@@ -1987,14 +2558,25 @@ class ContactDetailViewModelTest {
     }
 
     @Test
-    fun `linkNextcloudItem failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+    fun `linkNextcloudItem failure surfaces the error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
         val vm = viewModel(5)
         advanceUntilIdle()
 
-        val item = WebDAVItem(name = "img.jpg", path = "/Photos/img.jpg", type = "file", size = 2048)
+        val item = WebDAVItem(
+            name = "img.jpg",
+            path = "/Photos/img.jpg",
+            type = "file",
+            size = 2048
+        )
         coEvery { nextcloudRepository.linkItem("u5", item) } returns
             Result.failure(ApiError.Client(409, "Already linked"))
         vm.linkNextcloudItem(item)
@@ -2008,24 +2590,32 @@ class ContactDetailViewModelTest {
     @Test
     fun `saveFieldValue upserts the definition into the existing set and sends the full replace`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+            val record = ContactRecordResponse(
+                id = 5,
+                card = Card(name = Name(full = "Dana White"))
+            )
             coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
             val vm = viewModel(5)
             // Overrides the helper's default any()-matched empty-list stub — must be set after
             // viewModel(5) so this more specific stub wins for the id-5 call load() is about to make.
             coEvery { fieldDefinitionRepository.contactValues(5) } returns Result.success(
-                listOf(FieldValue(id = 1, fieldDefinitionId = "d1", value = "Latte")),
+                listOf(FieldValue(id = 1, fieldDefinitionId = "d1", value = "Latte"))
             )
             advanceUntilIdle()
             assertEquals("Latte", vm.uiState.value.fieldValuesByDefinitionId["d1"])
 
             val slot = slot<ContactFieldValuesInput>()
-            coEvery { fieldDefinitionRepository.replaceContactValues(5, capture(slot)) } returns Result.success(
+            coEvery {
+                fieldDefinitionRepository.replaceContactValues(
+                    5,
+                    capture(slot)
+                )
+            } returns Result.success(
                 listOf(
                     FieldValue(id = 1, fieldDefinitionId = "d1", value = "Latte"),
-                    FieldValue(id = 2, fieldDefinitionId = "d2", value = "M"),
-                ),
+                    FieldValue(id = 2, fieldDefinitionId = "d2", value = "M")
+                )
             )
 
             vm.saveFieldValue("d2", "M")
@@ -2040,17 +2630,25 @@ class ContactDetailViewModelTest {
     @Test
     fun `saveFieldValue with a null value omits the definition from the payload instead of sending null`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+            val record = ContactRecordResponse(
+                id = 5,
+                card = Card(name = Name(full = "Dana White"))
+            )
             coEvery { contactRepository.getContact(5) } returns Result.success(record)
             coEvery { fieldDefinitionRepository.contactValues(5) } returns Result.success(
-                listOf(FieldValue(id = 1, fieldDefinitionId = "d1", value = "Latte")),
+                listOf(FieldValue(id = 1, fieldDefinitionId = "d1", value = "Latte"))
             )
 
             val vm = viewModel(5)
             advanceUntilIdle()
 
             val slot = slot<ContactFieldValuesInput>()
-            coEvery { fieldDefinitionRepository.replaceContactValues(5, capture(slot)) } returns Result.success(emptyList())
+            coEvery {
+                fieldDefinitionRepository.replaceContactValues(
+                    5,
+                    capture(slot)
+                )
+            } returns Result.success(emptyList())
 
             vm.saveFieldValue("d1", null)
             advanceUntilIdle()
@@ -2060,7 +2658,9 @@ class ContactDetailViewModelTest {
         }
 
     @Test
-    fun `saveFieldValue ignores a second call while the first is in flight`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `saveFieldValue ignores a second call while the first is in flight`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
@@ -2088,12 +2688,15 @@ class ContactDetailViewModelTest {
     @Test
     fun `saveFieldValue failure surfaces the error and clears savingFieldDefinitionId without mutating values`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+            val record = ContactRecordResponse(
+                id = 5,
+                card = Card(name = Name(full = "Dana White"))
+            )
             coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
             val vm = viewModel(5)
             coEvery { fieldDefinitionRepository.contactValues(5) } returns Result.success(
-                listOf(FieldValue(id = 1, fieldDefinitionId = "d1", value = "Latte")),
+                listOf(FieldValue(id = 1, fieldDefinitionId = "d1", value = "Latte"))
             )
             advanceUntilIdle()
 
@@ -2111,7 +2714,9 @@ class ContactDetailViewModelTest {
     // --- Issue #383 (ADR-0023): relationship health score ---
 
     @Test
-    fun `score loads into state alongside the contact`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `score loads into state alongside the contact`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
@@ -2120,7 +2725,7 @@ class ContactDetailViewModelTest {
         // would otherwise win over a specific stub declared before it, since
         // mockk resolves overlapping matchers by declaration order.
         coEvery { contactScoreRepository.getScore(5) } returns Result.success(
-            ContactScoreResponse(contactId = 5, score = 42, band = "russula"),
+            ContactScoreResponse(contactId = 5, score = 42, band = "russula")
         )
         advanceUntilIdle()
 
@@ -2133,12 +2738,19 @@ class ContactDetailViewModelTest {
     @Test
     fun `a score fetch failure leaves score null without failing the contact load`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+            val record = ContactRecordResponse(
+                id = 5,
+                card = Card(name = Name(full = "Dana White"))
+            )
             coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
             val vm = viewModel(5)
             // Re-stub after viewModel(5) — see the note in the success test above.
-            coEvery { contactScoreRepository.getScore(5) } returns Result.failure(ApiError.Client(404, "not found"))
+            coEvery {
+                contactScoreRepository.getScore(
+                    5
+                )
+            } returns Result.failure(ApiError.Client(404, "not found"))
             advanceUntilIdle()
 
             val state = vm.uiState.value
@@ -2148,7 +2760,9 @@ class ContactDetailViewModelTest {
         }
 
     @Test
-    fun `score is never fetched for the missing-contact-id case`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `score is never fetched for the missing-contact-id case`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = viewModel(0)
         advanceUntilIdle()
 

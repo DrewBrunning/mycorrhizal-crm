@@ -40,7 +40,4 @@ interface TagRepository {
     suspend fun removeContact(tagId: String, vcardUid: String): Result<Unit>
 }
 
-data class TagDetail(
-    val tag: Tag,
-    val contacts: List<ContactTag>,
-)
+data class TagDetail(val tag: Tag, val contacts: List<ContactTag>)

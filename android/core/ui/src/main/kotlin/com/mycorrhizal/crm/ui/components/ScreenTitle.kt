@@ -35,7 +35,7 @@ fun ScreenTitle(
     modifier: Modifier = Modifier,
     style: TextStyle = MaterialTheme.typography.titleLarge,
     color: Color = Color.Unspecified,
-    textAlign: TextAlign? = null,
+    textAlign: TextAlign? = null
 ) {
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) {
@@ -50,6 +50,6 @@ fun ScreenTitle(
             .semantics { heading() },
         style = style,
         color = color,
-        textAlign = textAlign,
+        textAlign = textAlign
     )
 }

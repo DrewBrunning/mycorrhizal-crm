@@ -21,6 +21,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.slot
+import java.time.ZoneId
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -32,7 +33,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import java.time.ZoneId
 
 private fun stay(
     id: Long = 42,
@@ -40,7 +40,7 @@ private fun stay(
     timestamp: String = "2026-03-10T14:30:00Z",
     existing: Int? = null,
     photos: List<GeoPulsePhotoSuggestion> = emptyList(),
-    unavailable: Boolean = false,
+    unavailable: Boolean = false
 ) = GeoPulseStaySuggestion(
     stayId = id,
     externalRef = "geopulse:stay:$id",
@@ -51,7 +51,7 @@ private fun stay(
     durationSeconds = 5400,
     photos = photos,
     photosUnavailable = unavailable,
-    existingActivityId = existing,
+    existingActivityId = existing
 )
 
 class GeoPulseSuggestionsViewModelTest {
@@ -122,14 +122,17 @@ class GeoPulseSuggestionsViewModelTest {
         val rome = ZoneId.of("Europe/Rome")
         assertEquals(
             "2026-03-11T00:00:00+01:00",
-            stayPrefillDate("2026-03-10T23:30:00Z", rome, fallbackDate = "2026-03-10"),
+            stayPrefillDate("2026-03-10T23:30:00Z", rome, fallbackDate = "2026-03-10")
         )
         assertEquals(
             "2026-03-10T00:00:00-07:00",
-            stayPrefillDate("2026-03-10T14:30:00Z", ZoneId.of("America/Phoenix"), "1999-01-01"),
+            stayPrefillDate("2026-03-10T14:30:00Z", ZoneId.of("America/Phoenix"), "1999-01-01")
         )
         // Unparseable timestamps fall back to the lookup date, never crash.
-        assertEquals("2026-03-10T00:00:00Z", stayPrefillDate("garbage", ZoneId.of("UTC"), "2026-03-10"))
+        assertEquals(
+            "2026-03-10T00:00:00Z",
+            stayPrefillDate("garbage", ZoneId.of("UTC"), "2026-03-10")
+        )
     }
 
     @Test
@@ -151,14 +154,18 @@ class ActivityFormGeoPulsePrefillTest {
     fun `create form is pre-filled from nav args and saves the external_ref`() =
         runTest(mainDispatcherRule.testDispatcher) {
             val input = slot<ActivityInput>()
-            coEvery { activityRepository.create(capture(input)) } returns Result.success(Activity(id = 1))
+            coEvery {
+                activityRepository.create(
+                    capture(input)
+                )
+            } returns Result.success(Activity(id = 1))
             val handle = SavedStateHandle(
                 mapOf(
                     "contactId" to 0,
                     "location" to "Cafe Roma",
                     "date" to "2026-03-10T00:00:00+01:00",
-                    "externalRef" to "geopulse:stay:42",
-                ),
+                    "externalRef" to "geopulse:stay:42"
+                )
             )
             val vm = ActivityFormViewModel(activityRepository, contactRepository, handle)
 
@@ -181,7 +188,7 @@ class ActivityFormGeoPulsePrefillTest {
         val plain = ActivityFormViewModel(
             activityRepository,
             contactRepository,
-            SavedStateHandle(mapOf("contactId" to 0)),
+            SavedStateHandle(mapOf("contactId" to 0))
         )
         assertEquals("", plain.uiState.value.location)
         assertNull(plain.uiState.value.externalRef)
@@ -190,7 +197,9 @@ class ActivityFormGeoPulsePrefillTest {
         val edit = ActivityFormViewModel(
             activityRepository,
             contactRepository,
-            SavedStateHandle(mapOf("contactId" to 0, "activityId" to 7, "externalRef" to "geopulse:stay:1")),
+            SavedStateHandle(
+                mapOf("contactId" to 0, "activityId" to 7, "externalRef" to "geopulse:stay:1")
+            )
         )
         assertNull(edit.uiState.value.externalRef)
     }
@@ -204,22 +213,26 @@ class GeoPulseSuggestionsScreenTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    private fun state(
-        suggestions: List<GeoPulseStaySuggestion>? = null,
-        error: String? = null,
-    ) = GeoPulseSuggestionsUiState(
-        date = "2026-03-10",
-        suggestions = suggestions,
-        error = error,
-        timezone = "UTC",
-    )
+    private fun state(suggestions: List<GeoPulseStaySuggestion>? = null, error: String? = null) =
+        GeoPulseSuggestionsUiState(
+            date = "2026-03-10",
+            suggestions = suggestions,
+            error = error,
+            timezone = "UTC"
+        )
 
     private fun show(
         s: GeoPulseSuggestionsUiState,
         onLogStay: (GeoPulseStaySuggestion, String) -> Unit = { _, _ -> },
-        onOpenSettings: () -> Unit = {},
+        onOpenSettings: () -> Unit = {}
     ) = composeTestRule.setContent {
-        MycorrhizalTheme { GeoPulseSuggestionsContent(state = s, onLogStay = onLogStay, onOpenSettings = onOpenSettings) }
+        MycorrhizalTheme {
+            GeoPulseSuggestionsContent(
+                state = s,
+                onLogStay = onLogStay,
+                onOpenSettings = onOpenSettings
+            )
+        }
     }
 
     @Test
@@ -229,7 +242,9 @@ class GeoPulseSuggestionsScreenTest {
 
         composeTestRule.onNodeWithText("Cafe Roma").assertIsDisplayed()
         composeTestRule.onNodeWithText("14:30 · 1 h 30 min · Rome, Italy").assertIsDisplayed()
-        composeTestRule.onNodeWithContentDescription("Log activity at Cafe Roma, 14:30").performClick()
+        composeTestRule.onNodeWithContentDescription(
+            "Log activity at Cafe Roma, 14:30"
+        ).performClick()
 
         assertEquals("geopulse:stay:42", logged!!.first.externalRef)
         assertEquals("2026-03-10T00:00:00Z", logged.second)
@@ -245,7 +260,9 @@ class GeoPulseSuggestionsScreenTest {
     fun `an empty result says so`() {
         show(state(emptyList()))
         composeTestRule.onNodeWithText("No places found").assertIsDisplayed()
-        composeTestRule.onNodeWithText("GeoPulse has no recorded stays for this date.").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "GeoPulse has no recorded stays for this date."
+        ).assertIsDisplayed()
     }
 
     @Test
@@ -261,9 +278,9 @@ class GeoPulseSuggestionsScreenTest {
             state(
                 listOf(
                     stay(1, photos = listOf(GeoPulsePhotoSuggestion("p1", "IMG_1.jpg"))),
-                    stay(2, location = "Park", unavailable = true),
-                ),
-            ),
+                    stay(2, location = "Park", unavailable = true)
+                )
+            )
         )
         composeTestRule.onNodeWithText("Photos nearby (1)").assertIsDisplayed()
         composeTestRule.onNodeWithText("IMG_1.jpg").assertIsDisplayed()

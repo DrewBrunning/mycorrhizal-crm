@@ -32,8 +32,12 @@ class ForgotPasswordViewModelTest {
     @Test
     fun `requesting a reset advances to the confirm step with the server message`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            coEvery { authRepository.requestPasswordReset("alice@example.com") } returns Result.success(
-                "If an account exists, password reset instructions were sent",
+            coEvery {
+                authRepository.requestPasswordReset(
+                    "alice@example.com"
+                )
+            } returns Result.success(
+                "If an account exists, password reset instructions were sent"
             )
             val vm = viewModel()
             advanceUntilIdle()
@@ -43,22 +47,24 @@ class ForgotPasswordViewModelTest {
             advanceUntilIdle()
 
             assertEquals(PasswordResetStep.CONFIRM, vm.uiState.value.step)
-            assertEquals("If an account exists, password reset instructions were sent", vm.uiState.value.requestMessage)
+            assertEquals(
+                "If an account exists, password reset instructions were sent",
+                vm.uiState.value.requestMessage
+            )
             coVerify { authRepository.requestPasswordReset("alice@example.com") }
         }
 
     @Test
-    fun `a blank email blocks the request`() =
-        runTest(mainDispatcherRule.testDispatcher) {
-            val vm = viewModel()
-            advanceUntilIdle()
+    fun `a blank email blocks the request`() = runTest(mainDispatcherRule.testDispatcher) {
+        val vm = viewModel()
+        advanceUntilIdle()
 
-            vm.requestReset()
-            advanceUntilIdle()
+        vm.requestReset()
+        advanceUntilIdle()
 
-            assertTrue(vm.uiState.value.errorRes != null)
-            coVerify(exactly = 0) { authRepository.requestPasswordReset(any()) }
-        }
+        assertTrue(vm.uiState.value.errorRes != null)
+        coVerify(exactly = 0) { authRepository.requestPasswordReset(any()) }
+    }
 
     @Test
     fun `a failed request stays on the request step and is retryable`() =
@@ -80,7 +86,12 @@ class ForgotPasswordViewModelTest {
     fun `confirming a reset with a token and matching passwords completes the flow`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { authRepository.requestPasswordReset(any()) } returns Result.success("sent")
-            coEvery { authRepository.confirmPasswordReset("token-1", "newpass123") } returns Result.success(Unit)
+            coEvery {
+                authRepository.confirmPasswordReset(
+                    "token-1",
+                    "newpass123"
+                )
+            } returns Result.success(Unit)
             val vm = viewModel()
             advanceUntilIdle()
             vm.onEmailChange("alice@example.com")

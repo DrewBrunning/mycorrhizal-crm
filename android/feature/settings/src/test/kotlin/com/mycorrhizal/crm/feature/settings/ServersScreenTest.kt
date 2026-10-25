@@ -57,7 +57,7 @@ class ServersScreenTest {
                     localModeEnabled = localModeEnabled,
                     onUseLocalOnly = { localOnlyClicks++ },
                     onAttachToServer = { attachClicks++ },
-                    viewModel = viewModel,
+                    viewModel = viewModel
                 )
             }
         }
@@ -84,7 +84,9 @@ class ServersScreenTest {
 
         composeTestRule.onNodeWithContentDescription("Add server").performClick()
         composeTestRule.onNodeWithTag("servers-add-label").performTextInput("Work")
-        composeTestRule.onNodeWithTag("servers-add-url").performTextInput("https://work.example.com")
+        composeTestRule.onNodeWithTag(
+            "servers-add-url"
+        ).performTextInput("https://work.example.com")
         composeTestRule.onNodeWithTag("servers-add-confirm").performClick()
         composeTestRule.waitForIdle()
 
@@ -95,7 +97,12 @@ class ServersScreenTest {
     fun `a switch blocked by unsent activity names the count`() {
         profiles.value = listOf(profile("p1", "Home"), profile("p2", "Work"))
         active.value = profile("p1", "Home")
-        coEvery { session.switchProfile("p2", false) } returns SwitchProfileResult.NeedsConfirmation(5)
+        coEvery {
+            session.switchProfile(
+                "p2",
+                false
+            )
+        } returns SwitchProfileResult.NeedsConfirmation(5)
         setScreen()
 
         composeTestRule.onNodeWithTag("server-row-p2").performClick()
@@ -234,7 +241,9 @@ class ServersScreenTest {
         composeTestRule.onNodeWithTag("server-delete-archive-loc").performClick()
         composeTestRule.onNodeWithText("Delete local data?").assertIsDisplayed()
         coVerify(exactly = 0) { host.deleteLocalData() }
-        composeTestRule.onNodeWithTag("delete-local-data-confirm").performTextInput("On this device")
+        composeTestRule.onNodeWithTag(
+            "delete-local-data-confirm"
+        ).performTextInput("On this device")
         composeTestRule.onNodeWithText("Delete local data").performClick()
         composeTestRule.waitForIdle()
 
@@ -242,4 +251,3 @@ class ServersScreenTest {
         coVerify { session.removeProfile("loc") }
     }
 }
-

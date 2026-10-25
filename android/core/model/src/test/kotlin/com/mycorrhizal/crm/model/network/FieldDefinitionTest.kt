@@ -33,7 +33,10 @@ class FieldDefinitionTest {
 
     @Test
     fun `enum value renders as its plain string`() {
-        val def = FieldDefinition(type = "enum", constraints = FieldConstraints(values = listOf("small", "large")))
+        val def = FieldDefinition(
+            type = "enum",
+            constraints = FieldConstraints(values = listOf("small", "large"))
+        )
         assertEquals("large", fieldValueDisplay(def, "large"))
     }
 
@@ -59,8 +62,14 @@ class FieldDefinitionTest {
 
     @Test
     fun `isMulti reflects the multi constraint`() {
-        assertEquals(true, isMulti(FieldDefinition(type = "string", constraints = FieldConstraints(multi = true))))
-        assertEquals(false, isMulti(FieldDefinition(type = "string", constraints = FieldConstraints(multi = false))))
+        assertEquals(
+            true,
+            isMulti(FieldDefinition(type = "string", constraints = FieldConstraints(multi = true)))
+        )
+        assertEquals(
+            false,
+            isMulti(FieldDefinition(type = "string", constraints = FieldConstraints(multi = false)))
+        )
         assertEquals(false, isMulti(FieldDefinition(type = "string", constraints = null)))
     }
 
@@ -81,7 +90,9 @@ class FieldDefinitionTest {
     fun `emptyEditorValue is an empty list for multi`() {
         assertEquals(
             emptyList<String>(),
-            emptyEditorValue(FieldDefinition(type = "string", constraints = FieldConstraints(multi = true))),
+            emptyEditorValue(
+                FieldDefinition(type = "string", constraints = FieldConstraints(multi = true))
+            )
         )
     }
 
@@ -207,7 +218,10 @@ class FieldDefinitionTest {
     @Test
     fun `group parses from JSON and defaults to empty when the server predates it`() {
         val adapter = MoshiProvider.get().adapter(FieldDefinition::class.java)
-        assertEquals("Travel profile", adapter.fromJson("""{"id":"d1","group":"Travel profile"}""")?.group)
+        assertEquals(
+            "Travel profile",
+            adapter.fromJson("""{"id":"d1","group":"Travel profile"}""")?.group
+        )
         assertEquals("", adapter.fromJson("""{"id":"d1","group":""}""")?.group)
         // Older server: key absent entirely.
         assertEquals("", adapter.fromJson("""{"id":"d1","label":"Coffee order"}""")?.group)
@@ -218,9 +232,13 @@ class FieldDefinitionTest {
         val adapter = MoshiProvider.get().adapter(FieldDefinitionInput::class.java)
         val omitted = adapter.toJson(FieldDefinitionInput(label = "L", key = "k", type = "string"))
         assertEquals(false, omitted.contains("group"))
-        val cleared = adapter.toJson(FieldDefinitionInput(label = "L", key = "k", type = "string", group = ""))
+        val cleared = adapter.toJson(
+            FieldDefinitionInput(label = "L", key = "k", type = "string", group = "")
+        )
         assertEquals(true, cleared.contains(""""group":"""""))
-        val set = adapter.toJson(FieldDefinitionInput(label = "L", key = "k", type = "string", group = "Travel"))
+        val set = adapter.toJson(
+            FieldDefinitionInput(label = "L", key = "k", type = "string", group = "Travel")
+        )
         assertEquals(true, set.contains(""""group":"Travel""""))
     }
 }

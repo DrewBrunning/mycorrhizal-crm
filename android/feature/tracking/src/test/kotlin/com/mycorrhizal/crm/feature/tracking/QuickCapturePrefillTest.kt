@@ -15,7 +15,7 @@ class QuickCapturePrefillTest {
         uid = "urn:uuid:jane",
         firstname = "Jane",
         lastname = "Doe",
-        nickname = "Jay",
+        nickname = "Jay"
     )
 
     @Test

@@ -25,25 +25,27 @@ import com.mycorrhizal.crm.ui.R
  */
 object MycorrhizalColors {
     // Light
-    val bone = Color(0xFFFAF5EA)          // surface / background
-    val parchment = Color(0xFFEFE7D9)     // surfaceVariant
-    val paper = Color(0xFFFFFFFF)         // surfaceContainerHighest (dialogs)
-    val mycelium = Color(0xFF3E543E)      // primary
-    val lichen = Color(0xFF97A390)        // secondary
-    val bark = Color(0xFF30271F)          // onSurface / onBackground
-    val soil = Color(0xFF595148)          // onSurfaceVariant
+    val bone = Color(0xFFFAF5EA) // surface / background
+    val parchment = Color(0xFFEFE7D9) // surfaceVariant
+    val paper = Color(0xFFFFFFFF) // surfaceContainerHighest (dialogs)
+    val mycelium = Color(0xFF3E543E) // primary
+    val lichen = Color(0xFF97A390) // secondary
+    val bark = Color(0xFF30271F) // onSurface / onBackground
+    val soil = Color(0xFF595148) // onSurfaceVariant
+
     // #206: moss (#0D844C) and laccaria (#7B6B98) darkened so they clear
     // 4.5:1 as text on parchment, the app's standard card ground. #0A6E3F is
     // 4.94:1 on parchment; #655681 is 5.24:1. Both stay recognisably the
     // same hue (a deliberate Android-side divergence from the web tokens).
-    val moss = Color(0xFF0A6E3F)          // tertiary / success
-    val chanterelle = Color(0xFFD3A563)   // warning container (filled chip background)
+    val moss = Color(0xFF0A6E3F) // tertiary / success
+    val chanterelle = Color(0xFFD3A563) // warning container (filled chip background)
+
     // #200: the 3:1 non-text warning pair (borders, icon tints) on bone/parchment.
     // 4.62:1 on bone, 4.09:1 on parchment — the light chanterelle is only safe as
     // a background (see LocalWarningColors).
     val chanterelleForeground = Color(0xFFA9762B)
-    val russula = Color(0xFFAD5349)       // error
-    val laccaria = Color(0xFF655681)      // info
+    val russula = Color(0xFFAD5349) // error
+    val laccaria = Color(0xFF655681) // info
 
     // Dark
     val boneDark = Color(0xFF1E1A13)
@@ -53,6 +55,7 @@ object MycorrhizalColors {
     val lichenDark = Color(0xFF9BAA94)
     val barkDark = Color(0xFFEAE4DA)
     val soilDark = Color(0xFFB5ADA2)
+
     // #206: mossDark (#349D62) and russulaDark (#C4675D) lightened so they clear
     // 4.5:1 on paperDark (surfaceContainerHigh, i.e. dialogs). #4BB477 is
     // 4.88:1; the issue's suggested #D97F75 only reaches ~4.37:1 on #393226, so
@@ -71,18 +74,14 @@ object MycorrhizalColors {
  * overdue chip (light amber with dark `bark` content — 6.5:1); `foreground` is
  * the non-text pair (borders, icon tints) that clears 3:1 on the card surfaces.
  */
-data class WarningColors(
-    val container: Color,
-    val onContainer: Color,
-    val foreground: Color,
-)
+data class WarningColors(val container: Color, val onContainer: Color, val foreground: Color)
 
 /** Defaults to the light pair so previews that skip [MycorrhizalTheme] still resolve. */
 val LocalWarningColors = staticCompositionLocalOf {
     WarningColors(
         container = MycorrhizalColors.chanterelle,
         onContainer = MycorrhizalColors.bark,
-        foreground = MycorrhizalColors.chanterelleForeground,
+        foreground = MycorrhizalColors.chanterelleForeground
     )
 }
 
@@ -110,7 +109,7 @@ internal val LightColors = lightColorScheme(
     surfaceContainerLow = MycorrhizalColors.parchment,
     error = MycorrhizalColors.russula,
     onError = Color.White,
-    outline = MycorrhizalColors.soil,
+    outline = MycorrhizalColors.soil
 )
 
 internal val DarkColors = darkColorScheme(
@@ -135,7 +134,7 @@ internal val DarkColors = darkColorScheme(
     surfaceContainerLow = MycorrhizalColors.parchmentDark,
     error = MycorrhizalColors.russulaDark,
     onError = MycorrhizalColors.boneDark,
-    outline = MycorrhizalColors.soilDark,
+    outline = MycorrhizalColors.soilDark
 )
 
 /**
@@ -157,11 +156,11 @@ object MycorrhizalFonts {
     val sans = FontFamily(
         Font(R.font.ibm_plex_sans, weight = FontWeight.Normal),
         Font(R.font.ibm_plex_sans, weight = FontWeight.Medium),
-        Font(R.font.ibm_plex_sans, weight = FontWeight.SemiBold),
+        Font(R.font.ibm_plex_sans, weight = FontWeight.SemiBold)
     )
     val mono = FontFamily(
         Font(R.font.ibm_plex_mono_regular, weight = FontWeight.Normal),
-        Font(R.font.ibm_plex_mono_medium, weight = FontWeight.Medium),
+        Font(R.font.ibm_plex_mono_medium, weight = FontWeight.Medium)
     )
 }
 
@@ -186,26 +185,92 @@ val MycorrhizalTypography = Typography(
     // See titleLarge below for the brand-serif role -- display*/headline*
     // stay sans so AlertDialog titles (which default to headlineSmall)
     // don't inherit Garamond.
-    displayLarge = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 57.sp, fontWeight = FontWeight.Normal),
-    displayMedium = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 45.sp, fontWeight = FontWeight.Normal),
-    displaySmall = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 36.sp, fontWeight = FontWeight.Normal),
-    headlineLarge = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 32.sp, fontWeight = FontWeight.Normal),
-    headlineMedium = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 28.sp, fontWeight = FontWeight.Normal),
-    headlineSmall = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 24.sp, fontWeight = FontWeight.Normal),
+    displayLarge = TextStyle(
+        fontFamily = MycorrhizalFonts.sans,
+        fontSize = 57.sp,
+        fontWeight = FontWeight.Normal
+    ),
+    displayMedium = TextStyle(
+        fontFamily = MycorrhizalFonts.sans,
+        fontSize = 45.sp,
+        fontWeight = FontWeight.Normal
+    ),
+    displaySmall = TextStyle(
+        fontFamily = MycorrhizalFonts.sans,
+        fontSize = 36.sp,
+        fontWeight = FontWeight.Normal
+    ),
+    headlineLarge = TextStyle(
+        fontFamily = MycorrhizalFonts.sans,
+        fontSize = 32.sp,
+        fontWeight = FontWeight.Normal
+    ),
+    headlineMedium = TextStyle(
+        fontFamily = MycorrhizalFonts.sans,
+        fontSize = 28.sp,
+        fontWeight = FontWeight.Normal
+    ),
+    headlineSmall = TextStyle(
+        fontFamily = MycorrhizalFonts.sans,
+        fontSize = 24.sp,
+        fontWeight = FontWeight.Normal
+    ),
     // App bars and page titles. Carried EB Garamond as T63's one safe
     // brand-serif role until T99 dropped the serif from Android; every role in
     // this scale is now sans.
-    titleLarge = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 22.sp, fontWeight = FontWeight.Medium),
-    titleMedium = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 16.sp, fontWeight = FontWeight.Medium),
-    titleSmall = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 14.sp, fontWeight = FontWeight.Medium),
+    titleLarge = TextStyle(
+        fontFamily = MycorrhizalFonts.sans,
+        fontSize = 22.sp,
+        fontWeight = FontWeight.Medium
+    ),
+    titleMedium = TextStyle(
+        fontFamily = MycorrhizalFonts.sans,
+        fontSize = 16.sp,
+        fontWeight = FontWeight.Medium
+    ),
+    titleSmall = TextStyle(
+        fontFamily = MycorrhizalFonts.sans,
+        fontSize = 14.sp,
+        fontWeight = FontWeight.Medium
+    ),
     // Body — IBM Plex Sans.
-    bodyLarge = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 16.sp, fontWeight = FontWeight.Normal, lineHeight = 24.sp),
-    bodyMedium = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 14.sp, fontWeight = FontWeight.Normal, lineHeight = 20.sp),
-    bodySmall = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 12.sp, fontWeight = FontWeight.Normal, lineHeight = 16.sp),
+    bodyLarge = TextStyle(
+        fontFamily = MycorrhizalFonts.sans,
+        fontSize = 16.sp,
+        fontWeight = FontWeight.Normal,
+        lineHeight = 24.sp
+    ),
+    bodyMedium = TextStyle(
+        fontFamily = MycorrhizalFonts.sans,
+        fontSize = 14.sp,
+        fontWeight = FontWeight.Normal,
+        lineHeight = 20.sp
+    ),
+    bodySmall = TextStyle(
+        fontFamily = MycorrhizalFonts.sans,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Normal,
+        lineHeight = 16.sp
+    ),
     // Labels / buttons — IBM Plex Sans medium.
-    labelLarge = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 14.sp, fontWeight = FontWeight.Medium, lineHeight = 20.sp),
-    labelMedium = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 12.sp, fontWeight = FontWeight.Medium, lineHeight = 16.sp),
-    labelSmall = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 11.sp, fontWeight = FontWeight.Medium, lineHeight = 16.sp),
+    labelLarge = TextStyle(
+        fontFamily = MycorrhizalFonts.sans,
+        fontSize = 14.sp,
+        fontWeight = FontWeight.Medium,
+        lineHeight = 20.sp
+    ),
+    labelMedium = TextStyle(
+        fontFamily = MycorrhizalFonts.sans,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Medium,
+        lineHeight = 16.sp
+    ),
+    labelSmall = TextStyle(
+        fontFamily = MycorrhizalFonts.sans,
+        fontSize = 11.sp,
+        fontWeight = FontWeight.Medium,
+        lineHeight = 16.sp
+    )
 )
 
 /**
@@ -217,7 +282,11 @@ val MycorrhizalTypography = Typography(
  */
 object AppTypography {
     /** Data fields (phones, emails, IDs) — IBM Plex Mono. */
-    val mono = TextStyle(fontFamily = MycorrhizalFonts.mono, fontSize = 14.sp, fontWeight = FontWeight.Normal)
+    val mono = TextStyle(
+        fontFamily = MycorrhizalFonts.mono,
+        fontSize = 14.sp,
+        fontWeight = FontWeight.Normal
+    )
 }
 
 private val MycorrhizalShapes = Shapes(
@@ -231,27 +300,24 @@ private val MycorrhizalShapes = Shapes(
     // need this token: BrandFab.kt already sets shape = CircleShape on
     // itself explicitly, so this can just be the same rounded shape as the
     // rest of the scale.
-    extraLarge = RoundedCornerShape(10.dp),
+    extraLarge = RoundedCornerShape(10.dp)
 )
 
 @Composable
-fun MycorrhizalTheme(
-    darkTheme: Boolean = false,
-    content: @Composable () -> Unit,
-) {
+fun MycorrhizalTheme(darkTheme: Boolean = false, content: @Composable () -> Unit) {
     // #200: the warning role has no M3 slot, so it is resolved here per theme
     // (dark mode was previously borrowing the light chanterelle everywhere).
     val warningColors = if (darkTheme) {
         WarningColors(
             container = MycorrhizalColors.chanterelleDark,
             onContainer = MycorrhizalColors.bark,
-            foreground = MycorrhizalColors.chanterelleDark,
+            foreground = MycorrhizalColors.chanterelleDark
         )
     } else {
         WarningColors(
             container = MycorrhizalColors.chanterelle,
             onContainer = MycorrhizalColors.bark,
-            foreground = MycorrhizalColors.chanterelleForeground,
+            foreground = MycorrhizalColors.chanterelleForeground
         )
     }
     CompositionLocalProvider(LocalWarningColors provides warningColors) {
@@ -259,7 +325,7 @@ fun MycorrhizalTheme(
             colorScheme = if (darkTheme) DarkColors else LightColors,
             shapes = MycorrhizalShapes,
             typography = MycorrhizalTypography,
-            content = content,
+            content = content
         )
     }
 }

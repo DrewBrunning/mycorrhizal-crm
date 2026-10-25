@@ -1,6 +1,6 @@
 package com.mycorrhizal.crm.model.registry
 
-/**
+/*
  * Android mirrors of the backend's `oneof` validator token sets.
  *
  * These are hand-maintained Kotlin copies of the values in
@@ -31,7 +31,7 @@ object ImportableContactFields {
         "url", "url_label", "impp", "impp_label",
         "organization", "department", "job_title", "role",
         "how_we_met", "work_information", "contact_information",
-        "circles", "tags",
+        "circles", "tags"
     )
 }
 
@@ -43,7 +43,11 @@ object LifeEventCategory {
     const val FAMILY_RELATIONSHIPS = "family_relationships"
 
     val ALL = listOf(
-        HOME_LIVING, HEALTH_WELLNESS, WORK_EDUCATION, TRAVEL_EXPERIENCES, FAMILY_RELATIONSHIPS,
+        HOME_LIVING,
+        HEALTH_WELLNESS,
+        WORK_EDUCATION,
+        TRAVEL_EXPERIENCES,
+        FAMILY_RELATIONSHIPS
     )
 }
 
@@ -56,27 +60,37 @@ object LifeEventCategory {
 object LifeEventTypes {
     val BY_CATEGORY: Map<String, List<String>> = mapOf(
         LifeEventCategory.HOME_LIVING to listOf(
-            "moved", "bought_a_home", "made_a_home_improvement", "went_on_holidays",
-            "got_a_new_vehicle", "got_a_roommate",
+            "moved",
+            "bought_a_home",
+            "made_a_home_improvement",
+            "went_on_holidays",
+            "got_a_new_vehicle",
+            "got_a_roommate"
         ),
         LifeEventCategory.HEALTH_WELLNESS to listOf(
             "overcame_an_illness", "quit_a_habit", "started_new_eating_habits", "lost_weight",
             "started_wearing_glasses_or_contacts", "broke_a_bone", "removed_braces", "had_surgery",
-            "went_to_the_dentist",
+            "went_to_the_dentist"
         ),
         LifeEventCategory.WORK_EDUCATION to listOf(
-            "job_change", "retired", "started_school", "studied_abroad", "started_volunteering",
-            "published_a_paper", "started_military_service", "graduated",
+            "job_change",
+            "retired",
+            "started_school",
+            "studied_abroad",
+            "started_volunteering",
+            "published_a_paper",
+            "started_military_service",
+            "graduated"
         ),
         LifeEventCategory.TRAVEL_EXPERIENCES to listOf(
             "started_a_sport", "started_a_hobby", "learned_a_new_instrument", "learned_a_new_language",
             "got_a_tattoo_or_piercing", "got_a_license", "traveled", "got_an_achievement_or_award",
-            "changed_beliefs", "spoke_for_the_first_time", "kissed_for_the_first_time",
+            "changed_beliefs", "spoke_for_the_first_time", "kissed_for_the_first_time"
         ),
         LifeEventCategory.FAMILY_RELATIONSHIPS to listOf(
             "started_a_relationship", "got_engaged", "married", "anniversary", "expects_a_baby",
-            "had_child", "added_a_family_member", "adopted_pet", "ended_a_relationship", "lost_a_loved_one",
-        ),
+            "had_child", "added_a_family_member", "adopted_pet", "ended_a_relationship", "lost_a_loved_one"
+        )
     )
 
     fun forCategory(category: String): List<String> = BY_CATEGORY[category].orEmpty()
@@ -97,6 +111,7 @@ object PreferenceSection {
     const val JEWELRY = "jewelry"
     const val GIFT_PREFERENCES = "gift_preferences"
     const val GIFT_AVOID = "gift_avoid"
+
     // Catch-all for a category not in PreferenceCategory.CONFIG (legacy data,
     // or a future addition this build doesn't know about yet) — matches
     // web's PreferenceList "Other" bucket, so no data ever hides.
@@ -122,7 +137,7 @@ data class PreferenceCategoryConfig(
     /** True only for hobby/skill-shaped categories, where a proficiency level
      * (issue #246) is a meaningful third axis. Mirrors backend
      * models.PreferenceCategorySupportsLevel and web's config flag. */
-    val supportsLevel: Boolean = false,
+    val supportsLevel: Boolean = false
 )
 
 /**
@@ -143,6 +158,7 @@ object PreferenceCategory {
     const val FOOD = "food"
     const val DRINK = "drink"
     const val CLOTHING_SIZE = "clothing_size"
+
     /** Deprecated for new preferences (issue #1738): hobbies are created from the skills drill-down. */
     const val HOBBY = "hobby"
 
@@ -157,56 +173,183 @@ object PreferenceCategory {
     val CONFIG: List<PreferenceCategoryConfig> = listOf(
         // Food & Drink — presented as one merged section, kept as two
         // categories so food-vs-drink stays separately filterable/exportable.
-        PreferenceCategoryConfig(FOOD, PreferenceSection.FOOD_DRINK, PreferenceKeyMode.DISPOSITION, listOf("favorite", "dislike", "allergy")),
-        PreferenceCategoryConfig(DRINK, PreferenceSection.FOOD_DRINK, PreferenceKeyMode.DISPOSITION, listOf("favorite", "dislike", "allergy")),
+        PreferenceCategoryConfig(
+            FOOD,
+            PreferenceSection.FOOD_DRINK,
+            PreferenceKeyMode.DISPOSITION,
+            listOf("favorite", "dislike", "allergy")
+        ),
+        PreferenceCategoryConfig(
+            DRINK,
+            PreferenceSection.FOOD_DRINK,
+            PreferenceKeyMode.DISPOSITION,
+            listOf("favorite", "dislike", "allergy")
+        ),
 
         // Media — medium (and, for music/books, facet) lives in the category.
-        PreferenceCategoryConfig("media_movie", PreferenceSection.MEDIA, PreferenceKeyMode.DISPOSITION, DISPOSITION),
-        PreferenceCategoryConfig("media_tv", PreferenceSection.MEDIA, PreferenceKeyMode.DISPOSITION, DISPOSITION),
-        PreferenceCategoryConfig("media_game", PreferenceSection.MEDIA, PreferenceKeyMode.DISPOSITION, DISPOSITION),
-        PreferenceCategoryConfig("media_podcast", PreferenceSection.MEDIA, PreferenceKeyMode.DISPOSITION, DISPOSITION),
-        PreferenceCategoryConfig("media_music_artist", PreferenceSection.MEDIA, PreferenceKeyMode.DISPOSITION, DISPOSITION),
-        PreferenceCategoryConfig("media_music_album", PreferenceSection.MEDIA, PreferenceKeyMode.DISPOSITION, DISPOSITION),
-        PreferenceCategoryConfig("media_music_genre", PreferenceSection.MEDIA, PreferenceKeyMode.DISPOSITION, DISPOSITION),
-        PreferenceCategoryConfig("media_music_song", PreferenceSection.MEDIA, PreferenceKeyMode.DISPOSITION, DISPOSITION),
-        PreferenceCategoryConfig("media_book_author", PreferenceSection.MEDIA, PreferenceKeyMode.DISPOSITION, DISPOSITION),
-        PreferenceCategoryConfig("media_book_series", PreferenceSection.MEDIA, PreferenceKeyMode.DISPOSITION, DISPOSITION),
-        PreferenceCategoryConfig("media_book_title", PreferenceSection.MEDIA, PreferenceKeyMode.DISPOSITION, DISPOSITION),
+        PreferenceCategoryConfig(
+            "media_movie",
+            PreferenceSection.MEDIA,
+            PreferenceKeyMode.DISPOSITION,
+            DISPOSITION
+        ),
+        PreferenceCategoryConfig(
+            "media_tv",
+            PreferenceSection.MEDIA,
+            PreferenceKeyMode.DISPOSITION,
+            DISPOSITION
+        ),
+        PreferenceCategoryConfig(
+            "media_game",
+            PreferenceSection.MEDIA,
+            PreferenceKeyMode.DISPOSITION,
+            DISPOSITION
+        ),
+        PreferenceCategoryConfig(
+            "media_podcast",
+            PreferenceSection.MEDIA,
+            PreferenceKeyMode.DISPOSITION,
+            DISPOSITION
+        ),
+        PreferenceCategoryConfig(
+            "media_music_artist",
+            PreferenceSection.MEDIA,
+            PreferenceKeyMode.DISPOSITION,
+            DISPOSITION
+        ),
+        PreferenceCategoryConfig(
+            "media_music_album",
+            PreferenceSection.MEDIA,
+            PreferenceKeyMode.DISPOSITION,
+            DISPOSITION
+        ),
+        PreferenceCategoryConfig(
+            "media_music_genre",
+            PreferenceSection.MEDIA,
+            PreferenceKeyMode.DISPOSITION,
+            DISPOSITION
+        ),
+        PreferenceCategoryConfig(
+            "media_music_song",
+            PreferenceSection.MEDIA,
+            PreferenceKeyMode.DISPOSITION,
+            DISPOSITION
+        ),
+        PreferenceCategoryConfig(
+            "media_book_author",
+            PreferenceSection.MEDIA,
+            PreferenceKeyMode.DISPOSITION,
+            DISPOSITION
+        ),
+        PreferenceCategoryConfig(
+            "media_book_series",
+            PreferenceSection.MEDIA,
+            PreferenceKeyMode.DISPOSITION,
+            DISPOSITION
+        ),
+        PreferenceCategoryConfig(
+            "media_book_title",
+            PreferenceSection.MEDIA,
+            PreferenceKeyMode.DISPOSITION,
+            DISPOSITION
+        ),
 
         // Activities & Hobbies — a "get to know them" fact, stays with
         // Preferences. The only category carrying a proficiency level
         // (issue #246).
-        PreferenceCategoryConfig("hobby", PreferenceSection.HOBBY, PreferenceKeyMode.DISPOSITION, DISPOSITION, supportsLevel = true),
+        PreferenceCategoryConfig(
+            "hobby",
+            PreferenceSection.HOBBY,
+            PreferenceKeyMode.DISPOSITION,
+            DISPOSITION,
+            supportsLevel = true
+        ),
 
         // Dislikes (issue #1738) — activities the person dislikes. Its own
         // section (not Gifts, not Hobbies), free-solo key, no level, never
         // projected to a Card / synced.
-        PreferenceCategoryConfig("dislike_activity", PreferenceSection.DISLIKES, PreferenceKeyMode.FREE_SOLO, emptyList()),
+        PreferenceCategoryConfig(
+            "dislike_activity",
+            PreferenceSection.DISLIKES,
+            PreferenceKeyMode.FREE_SOLO,
+            emptyList()
+        ),
 
         // Jewelry & Style — aspect (metal/stone/style/type) lives in the category.
-        PreferenceCategoryConfig("jewelry_metal", PreferenceSection.JEWELRY, PreferenceKeyMode.DISPOSITION, DISPOSITION_WITH_ALLERGY),
-        PreferenceCategoryConfig("jewelry_stone", PreferenceSection.JEWELRY, PreferenceKeyMode.DISPOSITION, DISPOSITION),
-        PreferenceCategoryConfig("jewelry_style", PreferenceSection.JEWELRY, PreferenceKeyMode.DISPOSITION, DISPOSITION),
-        PreferenceCategoryConfig("jewelry_type", PreferenceSection.JEWELRY, PreferenceKeyMode.DISPOSITION, DISPOSITION),
+        PreferenceCategoryConfig(
+            "jewelry_metal",
+            PreferenceSection.JEWELRY,
+            PreferenceKeyMode.DISPOSITION,
+            DISPOSITION_WITH_ALLERGY
+        ),
+        PreferenceCategoryConfig(
+            "jewelry_stone",
+            PreferenceSection.JEWELRY,
+            PreferenceKeyMode.DISPOSITION,
+            DISPOSITION
+        ),
+        PreferenceCategoryConfig(
+            "jewelry_style",
+            PreferenceSection.JEWELRY,
+            PreferenceKeyMode.DISPOSITION,
+            DISPOSITION
+        ),
+        PreferenceCategoryConfig(
+            "jewelry_type",
+            PreferenceSection.JEWELRY,
+            PreferenceKeyMode.DISPOSITION,
+            DISPOSITION
+        ),
 
         // Gift Preferences — single-facet "tastes", each its own category chip.
-        PreferenceCategoryConfig("flowers", PreferenceSection.GIFT_PREFERENCES, PreferenceKeyMode.DISPOSITION, DISPOSITION_WITH_ALLERGY),
-        PreferenceCategoryConfig("color", PreferenceSection.GIFT_PREFERENCES, PreferenceKeyMode.DISPOSITION, DISPOSITION),
-        PreferenceCategoryConfig("fragrance", PreferenceSection.GIFT_PREFERENCES, PreferenceKeyMode.DISPOSITION, DISPOSITION_WITH_ALLERGY),
-        PreferenceCategoryConfig("cause", PreferenceSection.GIFT_PREFERENCES, PreferenceKeyMode.DISPOSITION, listOf("favorite", "like")),
+        PreferenceCategoryConfig(
+            "flowers",
+            PreferenceSection.GIFT_PREFERENCES,
+            PreferenceKeyMode.DISPOSITION,
+            DISPOSITION_WITH_ALLERGY
+        ),
+        PreferenceCategoryConfig(
+            "color",
+            PreferenceSection.GIFT_PREFERENCES,
+            PreferenceKeyMode.DISPOSITION,
+            DISPOSITION
+        ),
+        PreferenceCategoryConfig(
+            "fragrance",
+            PreferenceSection.GIFT_PREFERENCES,
+            PreferenceKeyMode.DISPOSITION,
+            DISPOSITION_WITH_ALLERGY
+        ),
+        PreferenceCategoryConfig(
+            "cause",
+            PreferenceSection.GIFT_PREFERENCES,
+            PreferenceKeyMode.DISPOSITION,
+            listOf("favorite", "like")
+        ),
 
         // Gift Avoid — general, non-domain-specific avoidance notes.
-        PreferenceCategoryConfig("dislike", PreferenceSection.GIFT_AVOID, PreferenceKeyMode.FREE_SOLO, emptyList()),
+        PreferenceCategoryConfig(
+            "dislike",
+            PreferenceSection.GIFT_AVOID,
+            PreferenceKeyMode.FREE_SOLO,
+            emptyList()
+        )
     )
 
     val ALL: List<String> = CONFIG.map { it.category }
 
-    private val BY_CATEGORY: Map<String, PreferenceCategoryConfig> = CONFIG.associateBy { it.category }
+    private val BY_CATEGORY: Map<String, PreferenceCategoryConfig> = CONFIG.associateBy {
+        it.category
+    }
 
     fun sectionOf(category: String): String? = BY_CATEGORY[category]?.section
-    fun keySuggestionsFor(category: String): List<String> = BY_CATEGORY[category]?.keySuggestions.orEmpty()
-    fun keyModeFor(category: String): PreferenceKeyMode = BY_CATEGORY[category]?.keyMode ?: PreferenceKeyMode.DISPOSITION
-    fun isGiftsTabCategory(category: String): Boolean = sectionOf(category) in PreferenceSection.GIFTS_TAB
+    fun keySuggestionsFor(category: String): List<String> =
+        BY_CATEGORY[category]?.keySuggestions.orEmpty()
+    fun keyModeFor(category: String): PreferenceKeyMode =
+        BY_CATEGORY[category]?.keyMode ?: PreferenceKeyMode.DISPOSITION
+    fun isGiftsTabCategory(category: String): Boolean = sectionOf(
+        category
+    ) in PreferenceSection.GIFTS_TAB
 
     /** True for categories where a proficiency level is meaningful (hobby/skill
      * only — issue #246). An unrecognized category returns false, so the dialog
@@ -217,7 +360,7 @@ object PreferenceCategory {
      * fact (which garment), not a disposition. */
     val CLOTHING_TYPE_SUGGESTIONS: List<String> = listOf(
         "shirt", "pants", "dress", "skirt", "undergarments", "outerwear",
-        "shoe", "hat", "glove", "belt", "ring", "socks",
+        "shoe", "hat", "glove", "belt", "ring", "socks"
     )
 }
 

@@ -15,7 +15,6 @@ import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -32,8 +31,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -41,6 +40,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.ContactShare
 import com.mycorrhizal.crm.model.network.ContactShareStatuses
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
@@ -55,7 +55,7 @@ import com.mycorrhizal.crm.ui.components.RefreshableContent
 fun ContactSharesScreen(
     // Issue #150: null hides the hamburger — there is no drawer at Expanded.
     onMenuClick: (() -> Unit)? = {},
-    viewModel: ContactSharesViewModel = hiltViewModel(),
+    viewModel: ContactSharesViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -66,61 +66,76 @@ fun ContactSharesScreen(
                 navigationIcon = {
                     onMenuClick?.let { onMenu ->
                         AccessibleIconButton(onClick = onMenu) {
-                            Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
+                            Icon(
+                                Icons.Outlined.Menu,
+                                contentDescription = stringResource(R.string.cd_menu)
+                            )
                         }
                     }
                 },
                 title = {
-                    Text(stringResource(R.string.shares_title), style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        stringResource(R.string.shares_title),
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             TabRow(selectedTabIndex = if (state.selectedTab == SharesTab.INCOMING) 0 else 1) {
                 Tab(
                     selected = state.selectedTab == SharesTab.INCOMING,
                     onClick = { viewModel.selectTab(SharesTab.INCOMING) },
-                    text = { Text(stringResource(R.string.shares_tab_incoming)) },
+                    text = { Text(stringResource(R.string.shares_tab_incoming)) }
                 )
                 Tab(
                     selected = state.selectedTab == SharesTab.OUTGOING,
                     onClick = { viewModel.selectTab(SharesTab.OUTGOING) },
-                    text = { Text(stringResource(R.string.shares_tab_outgoing)) },
+                    text = { Text(stringResource(R.string.shares_tab_outgoing)) }
                 )
             }
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                val list = if (state.selectedTab == SharesTab.INCOMING) state.incoming else state.outgoing
+                val list = if (state.selectedTab ==
+                    SharesTab.INCOMING
+                ) {
+                    state.incoming
+                } else {
+                    state.outgoing
+                }
                 RefreshableContent(
                     isRefreshing = state.isLoading && list.isNotEmpty(),
                     onRefresh = viewModel::load,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize()
                 ) {
                     when {
                         state.isLoading && list.isEmpty() -> LoadingSkeleton()
+
                         list.isEmpty() && state.error == null -> EmptyState(
                             title = stringResource(
                                 if (state.selectedTab == SharesTab.INCOMING) {
                                     R.string.shares_incoming_empty
                                 } else {
                                     R.string.shares_outgoing_empty
-                                },
-                            ),
+                                }
+                            )
                         )
+
                         list.isEmpty() && state.error != null -> {
                             Text(
                                 text = state.error.orEmpty(),
                                 color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.align(Alignment.Center),
+                                modifier = Modifier.align(Alignment.Center)
                             )
                         }
+
                         else -> {
                             LazyColumn(modifier = Modifier.fillMaxSize()) {
                                 items(list, key = { it.id }) { share ->
@@ -133,7 +148,7 @@ fun ContactSharesScreen(
                                         outgoing = outgoing,
                                         accepting = state.acceptingShare?.id == share.id,
                                         onAccept = { viewModel.openAccept(share) },
-                                        onDecline = { viewModel.requestDecline(share) },
+                                        onDecline = { viewModel.requestDecline(share) }
                                     )
                                 }
                             }
@@ -161,15 +176,15 @@ fun ContactSharesScreen(
                 Text(
                     stringResource(
                         R.string.shares_decline_confirm_message,
-                        decliningShare.contactDisplayName,
-                    ),
+                        decliningShare.contactDisplayName
+                    )
                 )
             },
             confirmButton = {
                 TextButton(
                     onClick = { viewModel.confirmDecline() },
                     enabled = !state.declining,
-                    modifier = Modifier.testTag("decline-confirm"),
+                    modifier = Modifier.testTag("decline-confirm")
                 ) {
                     Text(stringResource(R.string.shares_decline))
                 }
@@ -178,7 +193,7 @@ fun ContactSharesScreen(
                 TextButton(onClick = { viewModel.cancelDecline() }, enabled = !state.declining) {
                     Text(stringResource(R.string.action_cancel))
                 }
-            },
+            }
         )
     }
 
@@ -191,7 +206,7 @@ fun ContactSharesScreen(
             confirming = state.confirming,
             onActionChange = viewModel::setConfirmAction,
             onConfirm = viewModel::confirmAccept,
-            onDismiss = viewModel::closeAccept,
+            onDismiss = viewModel::closeAccept
         )
     }
 }
@@ -203,32 +218,32 @@ private fun ShareRow(
     outgoing: Boolean,
     accepting: Boolean,
     onAccept: () -> Unit,
-    onDecline: () -> Unit,
+    onDecline: () -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Icon(
             imageVector = Icons.Outlined.Share,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = share.contactDisplayName.ifBlank { share.id },
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = stringResource(
                     if (outgoing) R.string.shares_to else R.string.shares_from,
-                    otherUsername ?: (if (outgoing) share.toUserId else share.fromUserId).toString(),
+                    otherUsername ?: (if (outgoing) share.toUserId else share.fromUserId).toString()
                 ),
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         StatusLabel(share.status)
@@ -240,7 +255,7 @@ private fun ShareRow(
                 TextButton(onClick = onDecline) {
                     Text(
                         stringResource(R.string.shares_decline),
-                        color = MaterialTheme.colorScheme.error,
+                        color = MaterialTheme.colorScheme.error
                     )
                 }
             }
@@ -251,13 +266,19 @@ private fun ShareRow(
 @Composable
 private fun StatusLabel(status: String) {
     val (labelRes, color) = when (status) {
-        ContactShareStatuses.ACCEPTED -> R.string.shares_status_accepted to MaterialTheme.colorScheme.tertiary
-        ContactShareStatuses.DECLINED -> R.string.shares_status_declined to MaterialTheme.colorScheme.error
+        ContactShareStatuses.ACCEPTED ->
+            R.string.shares_status_accepted to
+                MaterialTheme.colorScheme.tertiary
+
+        ContactShareStatuses.DECLINED ->
+            R.string.shares_status_declined to
+                MaterialTheme.colorScheme.error
+
         else -> R.string.shares_status_pending to MaterialTheme.colorScheme.onSurfaceVariant
     }
     Text(
         text = stringResource(labelRes),
         style = MaterialTheme.typography.labelMedium,
-        color = color,
+        color = color
     )
 }

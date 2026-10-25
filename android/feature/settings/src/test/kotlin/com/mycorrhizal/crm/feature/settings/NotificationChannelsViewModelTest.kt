@@ -29,20 +29,29 @@ class NotificationChannelsViewModelTest {
         notifyNtfy: Boolean = false,
         gotifyUrl: String = "",
         gotifyHasToken: Boolean = false,
-        notifyGotify: Boolean = false,
+        notifyGotify: Boolean = false
     ) = NotificationConfig(
         ntfyUrl = ntfyUrl,
         ntfyTopic = ntfyTopic,
         notifyNtfy = notifyNtfy,
         gotifyUrl = gotifyUrl,
         gotifyHasToken = gotifyHasToken,
-        notifyGotify = notifyGotify,
+        notifyGotify = notifyGotify
     )
 
     @Test
-    fun `load populates the config into the editable state`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `load populates the config into the editable state`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.config() } returns Result.success(
-            config(ntfyUrl = "https://ntfy.sh", ntfyTopic = "reminders", notifyNtfy = true, gotifyUrl = "http://gotify:8080", gotifyHasToken = true, notifyGotify = true),
+            config(
+                ntfyUrl = "https://ntfy.sh",
+                ntfyTopic = "reminders",
+                notifyNtfy = true,
+                gotifyUrl = "http://gotify:8080",
+                gotifyHasToken = true,
+                notifyGotify = true
+            )
         )
         val vm = NotificationChannelsViewModel(repository)
         advanceUntilIdle()
@@ -70,7 +79,7 @@ class NotificationChannelsViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { repository.config() } returns Result.success(config())
             coEvery { repository.save(any()) } returns Result.success(
-                config(ntfyUrl = "https://ntfy.sh", ntfyTopic = "t", notifyNtfy = true),
+                config(ntfyUrl = "https://ntfy.sh", ntfyTopic = "t", notifyNtfy = true)
             )
             val vm = NotificationChannelsViewModel(repository)
             advanceUntilIdle()
@@ -91,11 +100,18 @@ class NotificationChannelsViewModelTest {
     @Test
     fun `a typed gotify token is sent on save and cleared from state afterwards`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            val captured = mutableListOf<com.mycorrhizal.crm.model.network.NotificationConfigInput>()
+            val captured =
+                mutableListOf<com.mycorrhizal.crm.model.network.NotificationConfigInput>()
             coEvery { repository.config() } returns Result.success(config())
             coEvery { repository.save(any()) } answers {
                 captured.add(firstArg())
-                Result.success(config(gotifyUrl = "http://gotify:8080", gotifyHasToken = true, notifyGotify = true))
+                Result.success(
+                    config(
+                        gotifyUrl = "http://gotify:8080",
+                        gotifyHasToken = true,
+                        notifyGotify = true
+                    )
+                )
             }
             val vm = NotificationChannelsViewModel(repository)
             advanceUntilIdle()
@@ -115,7 +131,11 @@ class NotificationChannelsViewModelTest {
     @Test
     fun `save failure surfaces the save error`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { repository.config() } returns Result.success(config())
-        coEvery { repository.save(any()) } returns Result.failure(ApiError.Client(400, "Invalid URL"))
+        coEvery {
+            repository.save(
+                any()
+            )
+        } returns Result.failure(ApiError.Client(400, "Invalid URL"))
         val vm = NotificationChannelsViewModel(repository)
         advanceUntilIdle()
 
@@ -130,7 +150,11 @@ class NotificationChannelsViewModelTest {
     fun `test reports success distinctly`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { repository.config() } returns Result.success(config())
         coEvery { repository.save(any()) } returns Result.success(config())
-        coEvery { repository.test("ntfy") } returns Result.success(NotificationTestResult(ok = true))
+        coEvery {
+            repository.test(
+                "ntfy"
+            )
+        } returns Result.success(NotificationTestResult(ok = true))
         val vm = NotificationChannelsViewModel(repository)
         advanceUntilIdle()
 
@@ -147,11 +171,13 @@ class NotificationChannelsViewModelTest {
     }
 
     @Test
-    fun `test reports a diagnosed failure distinctly`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `test reports a diagnosed failure distinctly`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.config() } returns Result.success(config())
         coEvery { repository.save(any()) } returns Result.success(config())
         coEvery { repository.test("gotify") } returns Result.success(
-            NotificationTestResult(ok = false, error = "gotify is not configured"),
+            NotificationTestResult(ok = false, error = "gotify is not configured")
         )
         val vm = NotificationChannelsViewModel(repository)
         advanceUntilIdle()
@@ -167,7 +193,9 @@ class NotificationChannelsViewModelTest {
     }
 
     @Test
-    fun `test surfaces a transport failure as a failed outcome`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `test surfaces a transport failure as a failed outcome`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.config() } returns Result.success(config())
         coEvery { repository.save(any()) } returns Result.success(config())
         coEvery { repository.test("ntfy") } returns Result.failure(ApiError.Server(500, "boom"))
@@ -188,7 +216,11 @@ class NotificationChannelsViewModelTest {
     fun `test never runs when the pre-test save fails - the save error is the test result`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { repository.config() } returns Result.success(config())
-            coEvery { repository.save(any()) } returns Result.failure(ApiError.Client(400, "Invalid URL"))
+            coEvery {
+                repository.save(
+                    any()
+                )
+            } returns Result.failure(ApiError.Client(400, "Invalid URL"))
             val vm = NotificationChannelsViewModel(repository)
             advanceUntilIdle()
 
@@ -204,10 +236,16 @@ class NotificationChannelsViewModelTest {
         }
 
     @Test
-    fun `editing a field clears a stale test result`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `editing a field clears a stale test result`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.config() } returns Result.success(config())
         coEvery { repository.save(any()) } returns Result.success(config())
-        coEvery { repository.test("ntfy") } returns Result.success(NotificationTestResult(ok = true))
+        coEvery {
+            repository.test(
+                "ntfy"
+            )
+        } returns Result.success(NotificationTestResult(ok = true))
         val vm = NotificationChannelsViewModel(repository)
         advanceUntilIdle()
 

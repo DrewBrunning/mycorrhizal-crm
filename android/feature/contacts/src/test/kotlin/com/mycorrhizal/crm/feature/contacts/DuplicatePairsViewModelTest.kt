@@ -28,7 +28,7 @@ class DuplicatePairsViewModelTest {
         a = ContactSummary(id = aId, uid = aUid, firstname = "Dana", lastname = "White"),
         b = ContactSummary(id = bId, uid = bUid, firstname = "Dan", lastname = "White"),
         reasons = listOf("email", "name"),
-        confidence = 0.85,
+        confidence = 0.85
     )
 
     @Test
@@ -38,10 +38,10 @@ class DuplicatePairsViewModelTest {
             val page1 = (1..100).map { pair(it, "u$it", it + 1000, "v$it") }
             val page2 = (101..150).map { pair(it, "u$it", it + 1000, "v$it") }
             coEvery { duplicateRepository.listPairs(page = 1, limit = 100) } returns Result.success(
-                DuplicatePairsResponse(pairs = page1, total = 150, page = 1, limit = 100),
+                DuplicatePairsResponse(pairs = page1, total = 150, page = 1, limit = 100)
             )
             coEvery { duplicateRepository.listPairs(page = 2, limit = 100) } returns Result.success(
-                DuplicatePairsResponse(pairs = page2, total = 150, page = 2, limit = 100),
+                DuplicatePairsResponse(pairs = page2, total = 150, page = 2, limit = 100)
             )
 
             val vm = DuplicatePairsViewModel(duplicateRepository)
@@ -60,7 +60,7 @@ class DuplicatePairsViewModelTest {
     fun `first-page failure surfaces the error and stops the scan`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { duplicateRepository.listPairs(any(), any()) } returns Result.failure(
-                ApiError.Client(500, "scan failed"),
+                ApiError.Client(500, "scan failed")
             )
 
             val vm = DuplicatePairsViewModel(duplicateRepository)
@@ -76,7 +76,7 @@ class DuplicatePairsViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             val candidate = pair(1, "u-a", 2, "u-b")
             coEvery { duplicateRepository.listPairs(any(), any()) } returns Result.success(
-                DuplicatePairsResponse(pairs = listOf(candidate), total = 1, page = 1, limit = 100),
+                DuplicatePairsResponse(pairs = listOf(candidate), total = 1, page = 1, limit = 100)
             )
             coEvery { duplicateRepository.dismiss("u-a", "u-b") } returns Result.success(Unit)
 
@@ -98,10 +98,10 @@ class DuplicatePairsViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             val candidate = pair(1, "u-a", 2, "u-b")
             coEvery { duplicateRepository.listPairs(any(), any()) } returns Result.success(
-                DuplicatePairsResponse(pairs = listOf(candidate), total = 1, page = 1, limit = 100),
+                DuplicatePairsResponse(pairs = listOf(candidate), total = 1, page = 1, limit = 100)
             )
             coEvery { duplicateRepository.dismiss("u-a", "u-b") } returns Result.failure(
-                ApiError.Client(404, "Pair not found"),
+                ApiError.Client(404, "Pair not found")
             )
 
             val vm = DuplicatePairsViewModel(duplicateRepository)
@@ -117,7 +117,7 @@ class DuplicatePairsViewModelTest {
     @Test
     fun `onErrorShown clears the error`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { duplicateRepository.listPairs(any(), any()) } returns Result.failure(
-            ApiError.Client(500, "boom"),
+            ApiError.Client(500, "boom")
         )
         val vm = DuplicatePairsViewModel(duplicateRepository)
         advanceUntilIdle()

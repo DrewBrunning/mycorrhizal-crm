@@ -58,13 +58,13 @@ class SmsBackfillWorkerTest {
     private fun worker(
         pendingInteractions: PendingInteractionRepository,
         contacts: ContactRepository,
-        settings: TrackingSettingsRepository,
+        settings: TrackingSettingsRepository
     ) = SmsBackfillWorker(
         appContext = context,
         workerParams = mockk(relaxed = true),
         pendingInteractionRepository = pendingInteractions,
         contactRepository = contacts,
-        trackingSettings = settings,
+        trackingSettings = settings
     )
 
     @Test
@@ -82,7 +82,9 @@ class SmsBackfillWorkerTest {
 
     @Test
     fun `a missing READ_SMS grant is a no-op success, not a worker failure`() = runTest {
-        Shadows.shadowOf(context as Application).denyPermissions(android.Manifest.permission.READ_SMS)
+        Shadows.shadowOf(
+            context as Application
+        ).denyPermissions(android.Manifest.permission.READ_SMS)
         val pendingInteractions = mockk<PendingInteractionRepository>(relaxed = true)
         val contacts = mockk<ContactRepository>(relaxed = true)
         val settings = mockk<TrackingSettingsRepository>()
@@ -111,43 +113,44 @@ class SmsBackfillWorkerTest {
     }
 
     @Test
-    fun `records a matched outgoing text, filters the unmatched one, and advances the watermark`() = runTest {
-        stubSentFolder(
-            listOf(
-                arrayOf<Any?>("+15551234567", 6000L),
-                arrayOf<Any?>("+15559876543", 8000L),
-            ),
-        )
-        val pendingInteractions = mockk<PendingInteractionRepository>(relaxed = true)
-        val contacts = mockk<ContactRepository>()
-        coEvery { contacts.findByPhone("+15551234567") } returns ContactSummary(id = 11)
-        coEvery { contacts.findByPhone("+15559876543") } returns null
-        val settings = mockk<TrackingSettingsRepository>(relaxed = true)
-        coEvery { settings.smsTrackingEnabled() } returns true
-        coEvery { settings.lastSmsTimestamp() } returns 0L
-
-        val result = worker(pendingInteractions, contacts, settings).doWork()
-
-        assertTrue(result is androidx.work.ListenableWorker.Result.Success)
-        coVerify {
-            pendingInteractions.recordIfNew(
-                PendingInteraction(
-                    timestampMillis = 6000L,
-                    kind = InteractionCapture.KIND_MESSAGE,
-                    direction = InteractionCapture.DIR_OUTGOING,
-                    phoneNumber = "+15551234567",
-                    matchedContactId = 11,
-                ),
+    fun `records a matched outgoing text, filters the unmatched one, and advances the watermark`() =
+        runTest {
+            stubSentFolder(
+                listOf(
+                    arrayOf<Any?>("+15551234567", 6000L),
+                    arrayOf<Any?>("+15559876543", 8000L)
+                )
             )
+            val pendingInteractions = mockk<PendingInteractionRepository>(relaxed = true)
+            val contacts = mockk<ContactRepository>()
+            coEvery { contacts.findByPhone("+15551234567") } returns ContactSummary(id = 11)
+            coEvery { contacts.findByPhone("+15559876543") } returns null
+            val settings = mockk<TrackingSettingsRepository>(relaxed = true)
+            coEvery { settings.smsTrackingEnabled() } returns true
+            coEvery { settings.lastSmsTimestamp() } returns 0L
+
+            val result = worker(pendingInteractions, contacts, settings).doWork()
+
+            assertTrue(result is androidx.work.ListenableWorker.Result.Success)
+            coVerify {
+                pendingInteractions.recordIfNew(
+                    PendingInteraction(
+                        timestampMillis = 6000L,
+                        kind = InteractionCapture.KIND_MESSAGE,
+                        direction = InteractionCapture.DIR_OUTGOING,
+                        phoneNumber = "+15551234567",
+                        matchedContactId = 11
+                    )
+                )
+            }
+            // The unmatched row is dropped (issue #1029), never staged.
+            coVerify(exactly = 0) {
+                pendingInteractions.recordIfNew(match { it.phoneNumber == "+15559876543" })
+            }
+            coVerify(exactly = 1) { settings.incrementFilteredUnknownCount() }
+            // The watermark still advances past everything seen, filtered or not.
+            coVerify { settings.setLastSmsTimestamp(8000L) }
         }
-        // The unmatched row is dropped (issue #1029), never staged.
-        coVerify(exactly = 0) {
-            pendingInteractions.recordIfNew(match { it.phoneNumber == "+15559876543" })
-        }
-        coVerify(exactly = 1) { settings.incrementFilteredUnknownCount() }
-        // The watermark still advances past everything seen, filtered or not.
-        coVerify { settings.setLastSmsTimestamp(8000L) }
-    }
 
     @Test
     fun `the include-unknown opt-in stages an unmatched outgoing text`() = runTest {
@@ -169,8 +172,8 @@ class SmsBackfillWorkerTest {
                     kind = InteractionCapture.KIND_MESSAGE,
                     direction = InteractionCapture.DIR_OUTGOING,
                     phoneNumber = "+15559876543",
-                    matchedContactId = null,
-                ),
+                    matchedContactId = null
+                )
             )
         }
         coVerify(exactly = 0) { settings.incrementFilteredUnknownCount() }
@@ -200,7 +203,8 @@ class SmsBackfillWorkerTest {
      * to `DATE DESC` makes this test fail (only the newest 50 of the 75 rows
      * get recorded, and the oldest row is never seen).
      */
-    private class FakeSentSmsProvider(private val data: List<Pair<String, Long>>) : ContentProvider() {
+    private class FakeSentSmsProvider(private val data: List<Pair<String, Long>>) :
+        ContentProvider() {
 
         override fun onCreate() = true
 
@@ -209,16 +213,24 @@ class SmsBackfillWorkerTest {
             projection: Array<out String>?,
             selection: String?,
             selectionArgs: Array<out String>?,
-            sortOrder: String?,
+            sortOrder: String?
         ): Cursor {
             // Honors ASC/DESC from sortOrder like a real SQL provider would, so this
             // fake is sensitive to a regression back to the old DESC query (which
             // would return the newest `limit` rows instead of the oldest).
             val since = selectionArgs?.firstOrNull()?.toLongOrNull() ?: 0L
             val descending = sortOrder?.contains("DESC") == true
-            val limit = sortOrder?.substringAfterLast("LIMIT ")?.trim()?.toIntOrNull() ?: Int.MAX_VALUE
+            val limit = sortOrder?.substringAfterLast(
+                "LIMIT "
+            )?.trim()?.toIntOrNull() ?: Int.MAX_VALUE
             val matching = data.filter { it.second > since }
-            val ordered = if (descending) matching.sortedByDescending { it.second } else matching.sortedBy { it.second }
+            val ordered = if (descending) {
+                matching.sortedByDescending {
+                    it.second
+                }
+            } else {
+                matching.sortedBy { it.second }
+            }
             val page = ordered.take(limit)
             return MatrixCursor(arrayOf(Telephony.Sms.ADDRESS, Telephony.Sms.DATE)).apply {
                 page.forEach { (address, date) -> addRow(arrayOf<Any?>(address, date)) }
@@ -227,37 +239,39 @@ class SmsBackfillWorkerTest {
 
         override fun getType(uri: Uri): String? = null
         override fun insert(uri: Uri, values: ContentValues?): Uri? = null
-        override fun delete(uri: Uri, selection: String?, selectionArgs: Array<out String>?): Int = 0
+        override fun delete(uri: Uri, selection: String?, selectionArgs: Array<out String>?): Int =
+            0
         override fun update(
             uri: Uri,
             values: ContentValues?,
             selection: String?,
-            selectionArgs: Array<out String>?,
+            selectionArgs: Array<out String>?
         ): Int = 0
     }
 
     @Test
-    fun `pages through a backlog of more than one page instead of skipping the older half`() = runTest {
-        // 75 rows, oldest at 1_000L, newest at 75_000L — more than the 50-row page size.
-        val rows = (1..75).map { i -> "+1555000${i.toString().padStart(4, '0')}" to i * 1_000L }
-        val provider = FakeSentSmsProvider(rows)
-        provider.onCreate()
-        ShadowContentResolver.registerProviderInternal("sms", provider)
+    fun `pages through a backlog of more than one page instead of skipping the older half`() =
+        runTest {
+            // 75 rows, oldest at 1_000L, newest at 75_000L — more than the 50-row page size.
+            val rows = (1..75).map { i -> "+1555000${i.toString().padStart(4, '0')}" to i * 1_000L }
+            val provider = FakeSentSmsProvider(rows)
+            provider.onCreate()
+            ShadowContentResolver.registerProviderInternal("sms", provider)
 
-        val pendingInteractions = mockk<PendingInteractionRepository>(relaxed = true)
-        val contacts = mockk<ContactRepository>(relaxed = true)
-        coEvery { contacts.findByPhone(any()) } returns ContactSummary(id = 1)
-        val settings = mockk<TrackingSettingsRepository>(relaxed = true)
-        coEvery { settings.smsTrackingEnabled() } returns true
-        coEvery { settings.lastSmsTimestamp() } returns 0L
+            val pendingInteractions = mockk<PendingInteractionRepository>(relaxed = true)
+            val contacts = mockk<ContactRepository>(relaxed = true)
+            coEvery { contacts.findByPhone(any()) } returns ContactSummary(id = 1)
+            val settings = mockk<TrackingSettingsRepository>(relaxed = true)
+            coEvery { settings.smsTrackingEnabled() } returns true
+            coEvery { settings.lastSmsTimestamp() } returns 0L
 
-        worker(pendingInteractions, contacts, settings).doWork()
+            worker(pendingInteractions, contacts, settings).doWork()
 
-        // Every row — including the oldest, which a DESC/newest-50 query would
-        // have permanently skipped — gets staged.
-        coVerify(exactly = 75) { pendingInteractions.recordIfNew(any()) }
-        coVerify { pendingInteractions.recordIfNew(match { it.timestampMillis == 1_000L }) }
-        coVerify { pendingInteractions.recordIfNew(match { it.timestampMillis == 75_000L }) }
-        coVerify { settings.setLastSmsTimestamp(75_000L) }
-    }
+            // Every row — including the oldest, which a DESC/newest-50 query would
+            // have permanently skipped — gets staged.
+            coVerify(exactly = 75) { pendingInteractions.recordIfNew(any()) }
+            coVerify { pendingInteractions.recordIfNew(match { it.timestampMillis == 1_000L }) }
+            coVerify { pendingInteractions.recordIfNew(match { it.timestampMillis == 75_000L }) }
+            coVerify { settings.setLastSmsTimestamp(75_000L) }
+        }
 }

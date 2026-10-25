@@ -8,16 +8,6 @@ import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.selection.toggleable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
-import androidx.core.content.ContextCompat
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material.icons.outlined.History
@@ -35,7 +26,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -45,11 +35,16 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -57,11 +52,16 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
-import com.mycorrhizal.crm.ui.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,7 +73,7 @@ fun ImportContactsScreen(
     // Issue #834: CSV-file import + import history, sibling entry points to onImportVcf.
     onImportCsv: () -> Unit = {},
     onImportHistory: () -> Unit = {},
-    viewModel: ImportContactsViewModel = hiltViewModel(),
+    viewModel: ImportContactsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -92,7 +92,7 @@ fun ImportContactsScreen(
     var permanentlyDenied by rememberSaveable { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
+        ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         granted = isGranted
         if (isGranted) {
@@ -101,7 +101,9 @@ fun ImportContactsScreen(
         } else {
             permanentlyDenied = isPermanentlyDenied(
                 shouldShowRationale = (context as? Activity)
-                    ?.shouldShowRequestPermissionRationale(Manifest.permission.READ_CONTACTS) == true,
+                    ?.shouldShowRequestPermissionRationale(
+                        Manifest.permission.READ_CONTACTS
+                    ) == true
             )
         }
     }
@@ -134,28 +136,37 @@ fun ImportContactsScreen(
                 navigationIcon = {
                     onMenuClick?.let { onMenu ->
                         AccessibleIconButton(onClick = onMenu) {
-                            Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
+                            Icon(
+                                Icons.Outlined.Menu,
+                                contentDescription = stringResource(R.string.cd_menu)
+                            )
                         }
                     }
                 },
                 title = {
-                    Text(stringResource(R.string.import_title), style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        stringResource(R.string.import_title),
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 },
                 actions = {
                     // Issue #834: web parity for the persisted import-run history (issue #651).
                     AccessibleIconButton(onClick = onImportHistory) {
-                        Icon(Icons.Outlined.History, contentDescription = stringResource(R.string.import_history_entry))
+                        Icon(
+                            Icons.Outlined.History,
+                            contentDescription = stringResource(R.string.import_history_entry)
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             val preview = state.preview
@@ -166,16 +177,24 @@ fun ImportContactsScreen(
                 // device has any contacts to list.
                 TextButton(
                     onClick = onImportVcf,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
                 ) {
-                    Icon(Icons.Outlined.FileUpload, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                    Icon(
+                        Icons.Outlined.FileUpload,
+                        contentDescription = null,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
                     Text(stringResource(R.string.import_vcf_entry))
                 }
                 TextButton(
                     onClick = onImportCsv,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
                 ) {
-                    Icon(Icons.Outlined.FileUpload, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                    Icon(
+                        Icons.Outlined.FileUpload,
+                        contentDescription = null,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
                     Text(stringResource(R.string.import_csv_entry))
                 }
             }
@@ -186,65 +205,74 @@ fun ImportContactsScreen(
                         onGrant = { permissionLauncher.launch(Manifest.permission.READ_CONTACTS) },
                         onOpenSettings = {
                             context.startActivity(
-                                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
-                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                                Intent(
+                                    Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                    Uri.fromParts("package", context.packageName, null)
+                                )
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             )
-                        },
+                        }
                     )
+
                 state.isLoading -> LoadingSkeleton()
+
                 state.step == ImportStep.REVIEW && preview != null ->
                     ImportReviewStep(
                         rows = preview.rows,
                         rowActions = state.rowActions,
                         onRowActionChange = viewModel::setRowAction,
                         onResolveAll = viewModel::resolveAll,
-                        onConfirm = viewModel::confirmImport,
+                        onConfirm = viewModel::confirmImport
                     )
+
                 state.step == ImportStep.RESULT -> {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.fillMaxSize().padding(24.dp),
+                        modifier = Modifier.fillMaxSize().padding(24.dp)
                     ) {
                         Text(
                             text = stringResource(R.string.import_done, state.importedCount),
                             style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(top = 48.dp, bottom = 16.dp),
+                            modifier = Modifier.padding(top = 48.dp, bottom = 16.dp)
                         )
                         Button(
                             onClick = {
                                 viewModel.startOver()
                                 onImported()
-                            },
+                            }
                         ) {
                             Text(stringResource(R.string.action_confirm))
                         }
                     }
                 }
+
                 state.contacts.isEmpty() && state.error == null ->
                     EmptyState(title = stringResource(R.string.import_empty))
+
                 state.contacts.isEmpty() && state.error != null -> {
                     Text(
                         text = state.error.orEmpty(),
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier
                             .padding(24.dp)
-                            .semantics { liveRegion = LiveRegionMode.Assertive },
+                            .semantics { liveRegion = LiveRegionMode.Assertive }
                     )
                 }
+
                 else -> {
                     LazyColumn(modifier = Modifier.weight(1f)) {
                         items(state.contacts, key = { it.device.contactId }) { candidate ->
                             DeviceContactRow(
                                 candidate = candidate,
                                 checked = candidate.device.contactId in state.selected,
-                                onToggle = { viewModel.toggle(candidate.device.contactId) },
+                                onToggle = { viewModel.toggle(candidate.device.contactId) }
                             )
                         }
                     }
                     Button(
                         onClick = { viewModel.submitSelected() },
                         enabled = state.selected.isNotEmpty() && !state.isImporting,
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        modifier = Modifier.fillMaxWidth().padding(16.dp)
                     ) {
                         Text(
                             if (state.selected.isEmpty()) {
@@ -253,9 +281,9 @@ fun ImportContactsScreen(
                                 stringResource(
                                     R.string.import_button,
                                     state.selected.size,
-                                    state.contacts.count { it.duplicateOf != null },
+                                    state.contacts.count { it.duplicateOf != null }
                                 )
-                            },
+                            }
                         )
                     }
                 }
@@ -284,19 +312,21 @@ internal fun isPermanentlyDenied(shouldShowRationale: Boolean): Boolean = !shoul
 private fun ContactsPermissionRationale(
     permanentlyDenied: Boolean,
     onGrant: () -> Unit,
-    onOpenSettings: () -> Unit,
+    onOpenSettings: () -> Unit
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp),
-        modifier = Modifier.fillMaxWidth().padding(24.dp),
+        modifier = Modifier.fillMaxWidth().padding(24.dp)
     ) {
         Text(
             text = stringResource(R.string.import_permission_rationale),
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.bodyLarge
         )
         if (permanentlyDenied) {
-            Button(onClick = onOpenSettings) { Text(stringResource(R.string.import_permission_open_settings)) }
+            Button(
+                onClick = onOpenSettings
+            ) { Text(stringResource(R.string.import_permission_open_settings)) }
         } else {
             Button(onClick = onGrant) { Text(stringResource(R.string.import_permission_grant)) }
         }
@@ -307,7 +337,7 @@ private fun ContactsPermissionRationale(
 private fun DeviceContactRow(
     candidate: DeviceContactCandidate,
     checked: Boolean,
-    onToggle: () -> Unit,
+    onToggle: () -> Unit
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -321,7 +351,7 @@ private fun DeviceContactRow(
         modifier = Modifier
             .fillMaxWidth()
             .toggleable(value = checked, onValueChange = { onToggle() }, role = Role.Checkbox)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         Checkbox(checked = checked, onCheckedChange = null)
         Column(modifier = Modifier.weight(1f)) {
@@ -329,7 +359,7 @@ private fun DeviceContactRow(
                 text = candidate.device.displayName ?: stringResource(R.string.import_unnamed),
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
             if (candidate.duplicateOf != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -337,12 +367,15 @@ private fun DeviceContactRow(
                         Icons.Outlined.Warning,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(end = 4.dp),
+                        modifier = Modifier.padding(end = 4.dp)
                     )
                     Text(
-                        text = stringResource(R.string.import_duplicate, candidate.duplicateOf.displayName),
+                        text = stringResource(
+                            R.string.import_duplicate,
+                            candidate.duplicateOf.displayName
+                        ),
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.error,
+                        color = MaterialTheme.colorScheme.error
                     )
                 }
             }

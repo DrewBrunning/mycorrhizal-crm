@@ -59,7 +59,12 @@ class LoginUseCaseTest {
 
     @Test
     fun `failure with no message falls back to a generic message`() = runTest {
-        coEvery { authRepository.login("alice", "wrong") } returns Result.failure(RuntimeException())
+        coEvery {
+            authRepository.login(
+                "alice",
+                "wrong"
+            )
+        } returns Result.failure(RuntimeException())
 
         val result = useCase("alice", "wrong")
 
@@ -75,7 +80,11 @@ class LoginWithApiTokenUseCaseTest {
 
     @Test
     fun `trims the token before delegating`() = runTest {
-        coEvery { authRepository.loginWithApiToken("mycorrhizal_abc123") } returns Result.success(Unit)
+        coEvery {
+            authRepository.loginWithApiToken(
+                "mycorrhizal_abc123"
+            )
+        } returns Result.success(Unit)
 
         val result = useCase(" mycorrhizal_abc123 ")
 
@@ -96,7 +105,11 @@ class LoginWithApiTokenUseCaseTest {
 
     @Test
     fun `failure with no message falls back to a generic message`() = runTest {
-        coEvery { authRepository.loginWithApiToken("bad-token") } returns Result.failure(RuntimeException())
+        coEvery {
+            authRepository.loginWithApiToken(
+                "bad-token"
+            )
+        } returns Result.failure(RuntimeException())
 
         val result = useCase("bad-token")
 

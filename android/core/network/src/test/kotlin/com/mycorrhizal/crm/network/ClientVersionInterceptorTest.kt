@@ -27,7 +27,7 @@ class ClientVersionInterceptorTest {
 
     private fun interceptor(version: String?): ClientVersionInterceptor = ClientVersionInterceptor(
         versionProvider = ClientVersionProvider { version },
-        baseUrlProvider = BaseUrlProvider { server.url("/").toString().trimEnd('/') },
+        baseUrlProvider = BaseUrlProvider { server.url("/").toString().trimEnd('/') }
     )
 
     @Test
@@ -84,7 +84,7 @@ class ClientVersionInterceptorTest {
         // must not leak to a host other than the configured server.
         val interceptor = ClientVersionInterceptor(
             versionProvider = ClientVersionProvider { "0.6.10" },
-            baseUrlProvider = BaseUrlProvider { "https://configured.example.com" },
+            baseUrlProvider = BaseUrlProvider { "https://configured.example.com" }
         )
         val client = OkHttpClient.Builder().addInterceptor(interceptor).build()
         server.enqueue(MockResponse().setResponseCode(200))
@@ -99,7 +99,7 @@ class ClientVersionInterceptorTest {
     fun `omits the header when the base url is not configured`() {
         val interceptor = ClientVersionInterceptor(
             versionProvider = ClientVersionProvider { "0.6.10" },
-            baseUrlProvider = BaseUrlProvider { "" },
+            baseUrlProvider = BaseUrlProvider { "" }
         )
         val client = OkHttpClient.Builder().addInterceptor(interceptor).build()
         server.enqueue(MockResponse().setResponseCode(200))
@@ -115,7 +115,7 @@ class ClientVersionInterceptorTest {
         val client = NetworkFactory.okHttpClient(
             tokenProvider = TokenProvider { null },
             baseUrlProvider = BaseUrlProvider { server.url("/").toString().trimEnd('/') },
-            clientVersionProvider = ClientVersionProvider { "0.6.10" },
+            clientVersionProvider = ClientVersionProvider { "0.6.10" }
         )
         server.enqueue(MockResponse().setResponseCode(200))
 

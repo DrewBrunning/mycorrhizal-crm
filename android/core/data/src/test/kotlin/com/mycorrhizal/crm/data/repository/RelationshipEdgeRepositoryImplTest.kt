@@ -48,14 +48,22 @@ class RelationshipEdgeRepositoryImplTest {
     @Test
     fun `update caches the updated edge`() = runTest {
         val updated = RelationshipEdge(
-            id = "e1", sourceId = "u1", targetId = "u2",
-            type = RelationshipEdgeTypes.SPOUSE_OF, sensitivity = "private",
+            id = "e1",
+            sourceId = "u1",
+            targetId = "u2",
+            type = RelationshipEdgeTypes.SPOUSE_OF,
+            sensitivity = "private"
         )
         coEvery { apiClient.updateRelationshipEdge("e1", any()) } returns Result.success(updated)
 
         val result = repository.update(
             "e1",
-            RelationshipEdgeInput(sourceId = "u1", targetId = "u2", type = RelationshipEdgeTypes.SPOUSE_OF, sensitivity = "private"),
+            RelationshipEdgeInput(
+                sourceId = "u1",
+                targetId = "u2",
+                type = RelationshipEdgeTypes.SPOUSE_OF,
+                sensitivity = "private"
+            )
         )
 
         assertTrue(result.isSuccess)
@@ -67,12 +75,16 @@ class RelationshipEdgeRepositoryImplTest {
     @Test
     fun `update failure leaves the cache untouched`() = runTest {
         coEvery { apiClient.updateRelationshipEdge("e1", any()) } returns Result.failure(
-            ApiError.Client(404, "Relationship edge not found"),
+            ApiError.Client(404, "Relationship edge not found")
         )
 
         val result = repository.update(
             "e1",
-            RelationshipEdgeInput(sourceId = "u1", targetId = "u2", type = RelationshipEdgeTypes.SPOUSE_OF),
+            RelationshipEdgeInput(
+                sourceId = "u1",
+                targetId = "u2",
+                type = RelationshipEdgeTypes.SPOUSE_OF
+            )
         )
 
         assertTrue(result.isFailure)
@@ -85,12 +97,21 @@ class RelationshipEdgeRepositoryImplTest {
     fun `suggest maps the response to its suggested edges`() = runTest {
         val edges = listOf(
             RelationshipEdge(
-                id = "e1", sourceId = "u1", targetId = "u2",
-                type = RelationshipEdgeTypes.PARENT_OF, status = "suggested", source = "graph-inferred",
-            ),
+                id = "e1",
+                sourceId = "u1",
+                targetId = "u2",
+                type = RelationshipEdgeTypes.PARENT_OF,
+                status = "suggested",
+                source = "graph-inferred"
+            )
         )
         coEvery { apiClient.suggestRelationshipEdges() } returns
-            Result.success(com.mycorrhizal.crm.model.network.RelationshipSuggestionsResponse(suggestedEdges = edges, total = 1))
+            Result.success(
+                com.mycorrhizal.crm.model.network.RelationshipSuggestionsResponse(
+                    suggestedEdges = edges,
+                    total = 1
+                )
+            )
 
         val result = repository.suggest()
 
@@ -101,7 +122,7 @@ class RelationshipEdgeRepositoryImplTest {
     @Test
     fun `suggest failure propagates`() = runTest {
         coEvery { apiClient.suggestRelationshipEdges() } returns Result.failure(
-            ApiError.Client(500, "boom"),
+            ApiError.Client(500, "boom")
         )
 
         val result = repository.suggest()

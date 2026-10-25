@@ -1,8 +1,8 @@
 package com.mycorrhizal.crm.feature.contacts
 
 import android.content.Intent
-import androidx.core.net.toUri
 import androidx.annotation.StringRes
+import androidx.core.net.toUri
 import com.mycorrhizal.crm.ui.R
 
 /**
@@ -36,7 +36,7 @@ data class MobileLinkAction(
     val kind: MobileActionKind,
     /** ContactsContract.Data MIMETYPEs that prove the app is installed. */
     val mimeTypes: List<String>,
-    val intentBuilder: (handle: String) -> Intent,
+    val intentBuilder: (handle: String) -> Intent
 )
 
 enum class MobileLinkCategory { MESSAGING, SOCIAL, MEETING, OTHER }
@@ -44,7 +44,7 @@ enum class MobileLinkCategory { MESSAGING, SOCIAL, MEETING, OTHER }
 data class MobileLinkType(
     val protocol: String,
     val category: MobileLinkCategory,
-    val actions: List<MobileLinkAction>,
+    val actions: List<MobileLinkAction>
 )
 
 /**
@@ -71,22 +71,36 @@ object MobileLinkRegistry {
             MobileLinkAction(
                 label = R.string.mobile_link_message,
                 kind = MobileActionKind.MESSAGE,
-                mimeTypes = listOf("vnd.android.cursor.item/vnd.org.thoughtcrime.securesms.contact"),
-                intentBuilder = { handle -> sendTo("smsto:$handle", "org.thoughtcrime.securesms") },
+                mimeTypes = listOf(
+                    "vnd.android.cursor.item/vnd.org.thoughtcrime.securesms.contact"
+                ),
+                intentBuilder = { handle -> sendTo("smsto:$handle", "org.thoughtcrime.securesms") }
             ),
             MobileLinkAction(
                 label = R.string.mobile_link_voice_call,
                 kind = MobileActionKind.VOICE_CALL,
                 mimeTypes = listOf("vnd.android.cursor.item/vnd.org.thoughtcrime.securesms.call"),
-                intentBuilder = { handle -> view("sgnl://signal.me/#p/$handle", "org.thoughtcrime.securesms") },
+                intentBuilder = { handle ->
+                    view(
+                        "sgnl://signal.me/#p/$handle",
+                        "org.thoughtcrime.securesms"
+                    )
+                }
             ),
             MobileLinkAction(
                 label = R.string.mobile_link_video_call,
                 kind = MobileActionKind.VIDEO_CALL,
-                mimeTypes = listOf("vnd.android.cursor.item/vnd.org.thoughtcrime.securesms.videocall"),
-                intentBuilder = { handle -> view("sgnl://video.call?recipient=$handle", "org.thoughtcrime.securesms") },
-            ),
-        ),
+                mimeTypes = listOf(
+                    "vnd.android.cursor.item/vnd.org.thoughtcrime.securesms.videocall"
+                ),
+                intentBuilder = { handle ->
+                    view(
+                        "sgnl://video.call?recipient=$handle",
+                        "org.thoughtcrime.securesms"
+                    )
+                }
+            )
+        )
     )
 
     private val whatsapp = MobileLinkType(
@@ -98,26 +112,35 @@ object MobileLinkRegistry {
                 kind = MobileActionKind.MESSAGE,
                 mimeTypes = listOf("vnd.android.cursor.item/vnd.com.whatsapp.profile"),
                 intentBuilder = { handle ->
-                    view("https://wa.me/${handle.filter { it.isDigit() || it == '+' }}", "com.whatsapp")
-                },
+                    view(
+                        "https://wa.me/${handle.filter { it.isDigit() || it == '+' }}",
+                        "com.whatsapp"
+                    )
+                }
             ),
             MobileLinkAction(
                 label = R.string.mobile_link_voice_call,
                 kind = MobileActionKind.VOICE_CALL,
                 mimeTypes = listOf("vnd.android.cursor.item/vnd.com.whatsapp.voip.call"),
                 intentBuilder = { handle ->
-                    view("https://wa.me/${handle.filter { it.isDigit() || it == '+' }}", "com.whatsapp")
-                },
+                    view(
+                        "https://wa.me/${handle.filter { it.isDigit() || it == '+' }}",
+                        "com.whatsapp"
+                    )
+                }
             ),
             MobileLinkAction(
                 label = R.string.mobile_link_video_call,
                 kind = MobileActionKind.VIDEO_CALL,
                 mimeTypes = listOf("vnd.android.cursor.item/vnd.com.whatsapp.video.call"),
                 intentBuilder = { handle ->
-                    view("https://wa.me/${handle.filter { it.isDigit() || it == '+' }}", "com.whatsapp")
-                },
-            ),
-        ),
+                    view(
+                        "https://wa.me/${handle.filter { it.isDigit() || it == '+' }}",
+                        "com.whatsapp"
+                    )
+                }
+            )
+        )
     )
 
     private val telegram = MobileLinkType(
@@ -127,16 +150,30 @@ object MobileLinkRegistry {
             MobileLinkAction(
                 label = R.string.mobile_link_message,
                 kind = MobileActionKind.MESSAGE,
-                mimeTypes = listOf("vnd.android.cursor.item/vnd.org.telegram.messenger.android.profile"),
-                intentBuilder = { handle -> view("tg://resolve?phone=$handle", "org.telegram.messenger") },
+                mimeTypes = listOf(
+                    "vnd.android.cursor.item/vnd.org.telegram.messenger.android.profile"
+                ),
+                intentBuilder = { handle ->
+                    view(
+                        "tg://resolve?phone=$handle",
+                        "org.telegram.messenger"
+                    )
+                }
             ),
             MobileLinkAction(
                 label = R.string.mobile_link_voice_call,
                 kind = MobileActionKind.VOICE_CALL,
-                mimeTypes = listOf("vnd.android.cursor.item/vnd.org.telegram.messenger.android.call"),
-                intentBuilder = { handle -> view("tg://call?phone=$handle", "org.telegram.messenger") },
-            ),
-        ),
+                mimeTypes = listOf(
+                    "vnd.android.cursor.item/vnd.org.telegram.messenger.android.call"
+                ),
+                intentBuilder = { handle ->
+                    view(
+                        "tg://call?phone=$handle",
+                        "org.telegram.messenger"
+                    )
+                }
+            )
+        )
     )
 
     private val googleMeet = MobileLinkType(
@@ -151,11 +188,11 @@ object MobileLinkRegistry {
                     // Data MIMETYPEs when a Meet handle is saved to a contact.
                     "vnd.android.cursor.item/com.google.android.apps.tachyon.phone.meet",
                     "vnd.android.cursor.item/com.google.android.apps.tachyon.phone.meet.audio",
-                    "vnd.android.cursor.item/com.google.android.apps.tachyon.email.meet",
+                    "vnd.android.cursor.item/com.google.android.apps.tachyon.email.meet"
                 ),
-                intentBuilder = { handle -> view("https://meet.google.com/$handle") },
-            ),
-        ),
+                intentBuilder = { handle -> view("https://meet.google.com/$handle") }
+            )
+        )
     )
 
     private val zoom = MobileLinkType(
@@ -166,9 +203,9 @@ object MobileLinkRegistry {
                 label = R.string.mobile_link_meeting,
                 kind = MobileActionKind.VIDEO_CALL,
                 mimeTypes = listOf("vnd.android.cursor.item/vnd.com.zoom.video.call"),
-                intentBuilder = { handle -> view("zoommtg://zoom.us/start?confno=$handle") },
-            ),
-        ),
+                intentBuilder = { handle -> view("zoommtg://zoom.us/start?confno=$handle") }
+            )
+        )
     )
 
     private val discord = MobileLinkType(
@@ -179,21 +216,35 @@ object MobileLinkRegistry {
                 label = R.string.mobile_link_message,
                 kind = MobileActionKind.MESSAGE,
                 mimeTypes = listOf("vnd.android.cursor.item/vnd.com.discord"),
-                intentBuilder = { handle -> view("discord://discord.com/users/$handle", "com.discord") },
+                intentBuilder = { handle ->
+                    view(
+                        "discord://discord.com/users/$handle",
+                        "com.discord"
+                    )
+                }
             ),
             MobileLinkAction(
                 label = R.string.mobile_link_voice_call,
                 kind = MobileActionKind.VOICE_CALL,
                 mimeTypes = listOf("vnd.android.cursor.item/vnd.com.discord.call"),
-                intentBuilder = { handle -> view("discord://discord.com/channels/$handle", "com.discord") },
-            ),
-        ),
+                intentBuilder = { handle ->
+                    view(
+                        "discord://discord.com/channels/$handle",
+                        "com.discord"
+                    )
+                }
+            )
+        )
     )
 
     val all: List<MobileLinkType> = listOf(signal, whatsapp, telegram, googleMeet, zoom, discord)
 
-    fun forProtocol(protocol: String?): MobileLinkType? =
-        protocol?.let { p ->
-            all.firstOrNull { it.protocol == p } ?: all.firstOrNull { it.protocol.equals(p, ignoreCase = true) }
+    fun forProtocol(protocol: String?): MobileLinkType? = protocol?.let { p ->
+        all.firstOrNull { it.protocol == p } ?: all.firstOrNull {
+            it.protocol.equals(
+                p,
+                ignoreCase = true
+            )
         }
+    }
 }

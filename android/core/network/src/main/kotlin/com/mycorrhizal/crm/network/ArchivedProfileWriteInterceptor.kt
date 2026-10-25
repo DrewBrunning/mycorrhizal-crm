@@ -1,8 +1,8 @@
 package com.mycorrhizal.crm.network
 
+import java.io.IOException
 import okhttp3.Interceptor
 import okhttp3.Response
-import java.io.IOException
 
 /**
  * Whether the active server profile is a read-only archive (ADR 0028 Decision
@@ -27,9 +27,8 @@ class ArchivedProfileWriteException(val method: String) :
  * is about to refuse. [ArchivedProfileProvider] is consulted per request, so a
  * profile switch takes effect on the very next call.
  */
-class ArchivedProfileWriteInterceptor(
-    private val provider: ArchivedProfileProvider,
-) : Interceptor {
+class ArchivedProfileWriteInterceptor(private val provider: ArchivedProfileProvider) :
+    Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
         if (provider.isActiveProfileArchived() && request.method !in READ_ONLY_METHODS) {

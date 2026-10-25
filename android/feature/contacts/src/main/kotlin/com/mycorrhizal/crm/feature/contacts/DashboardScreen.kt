@@ -2,7 +2,6 @@ package com.mycorrhizal.crm.feature.contacts
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -17,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -43,18 +43,17 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -75,6 +74,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mycorrhizal.crm.feature.tracking.QuickCaptureSheet
 import com.mycorrhizal.crm.model.network.Birthday
 import com.mycorrhizal.crm.model.network.DashboardContactRelationship
 import com.mycorrhizal.crm.model.network.DashboardRandomContact
@@ -84,12 +84,12 @@ import com.mycorrhizal.crm.model.network.OverdueDataDecayPolicy
 import com.mycorrhizal.crm.model.network.PartialDate
 import com.mycorrhizal.crm.model.network.ReachOutKind
 import com.mycorrhizal.crm.model.network.ReachOutSuggestion
-import com.mycorrhizal.crm.model.network.contactDisplayName
 import com.mycorrhizal.crm.model.network.ReminderRecurrence
+import com.mycorrhizal.crm.model.network.contactDisplayName
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.model.util.DateFormat.display
 import com.mycorrhizal.crm.ui.R
-import com.mycorrhizal.crm.feature.tracking.QuickCaptureSheet
+import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
@@ -123,7 +123,7 @@ fun DashboardScreen(
     // form itself is the existing QuickCaptureSheet).
     onCreateNote: () -> Unit = {},
     onCreateReminder: () -> Unit = {},
-    viewModel: DashboardViewModel = hiltViewModel(),
+    viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -153,19 +153,25 @@ fun DashboardScreen(
                         // pads the pointer-input hit region. An explicit outer
                         // size constrains the inner default down to 48dp.
                         AccessibleIconButton(onClick = onMenu) {
-                            Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
+                            Icon(
+                                Icons.Outlined.Menu,
+                                contentDescription = stringResource(R.string.cd_menu)
+                            )
                         }
                     }
                 },
                 title = {
-                    Text(stringResource(R.string.nav_dashboard), style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        stringResource(R.string.nav_dashboard),
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -175,21 +181,29 @@ fun DashboardScreen(
         floatingActionButton = {
             BrandFab(
                 onClick = { showQuickCapture = true },
-                modifier = Modifier.testTag("dashboard-quick-capture"),
+                modifier = Modifier.testTag("dashboard-quick-capture")
             ) {
-                Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.cd_quick_capture))
+                Icon(
+                    Icons.Outlined.Add,
+                    contentDescription = stringResource(R.string.cd_quick_capture)
+                )
             }
-        },
+        }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             RefreshableContent(
                 isRefreshing = state.isLoading && state.hasContent,
                 onRefresh = viewModel::load,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize()
             ) {
                 when {
                     state.isLoading && !state.hasContent -> LoadingSkeleton()
-                    state.error != null -> DashboardErrorState(state.error!!, onRetry = viewModel::load)
+
+                    state.error != null -> DashboardErrorState(
+                        state.error!!,
+                        onRetry = viewModel::load
+                    )
+
                     else -> DashboardContent(
                         state = state,
                         dateFormat = state.dateFormat ?: DateFormat.EU,
@@ -199,7 +213,7 @@ fun DashboardScreen(
                         onVerifyDataDecay = viewModel::verifyDataDecay,
                         onBackUpNow = onBackUp,
                         onDismissBackupReminder = viewModel::dismissBackupReminder,
-                        onCreateReminder = onCreateReminder,
+                        onCreateReminder = onCreateReminder
                     )
                 }
             }
@@ -216,36 +230,36 @@ fun DashboardScreen(
         }
         ModalBottomSheet(
             onDismissRequest = { showQuickCapture = false },
-            sheetState = quickCaptureSheetState,
+            sheetState = quickCaptureSheetState
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
-                    .padding(bottom = 16.dp),
+                    .padding(bottom = 16.dp)
             ) {
                 // The secondary capture types sit above the form so all three
                 // are reachable without scrolling past the activity fields.
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     TextButton(
                         onClick = {
                             showQuickCapture = false
                             onCreateNote()
-                        },
+                        }
                     ) { Text(stringResource(R.string.cd_new_note)) }
                     TextButton(
                         onClick = {
                             showQuickCapture = false
                             onCreateReminder()
-                        },
+                        }
                     ) { Text(stringResource(R.string.cd_new_reminder)) }
                 }
                 QuickCaptureSheet(
                     state = quickCaptureState,
-                    onDismiss = { showQuickCapture = false },
+                    onDismiss = { showQuickCapture = false }
                 )
             }
         }
@@ -283,7 +297,7 @@ internal fun DashboardContent(
     onVerifyDataDecay: (id: String) -> Unit = {},
     onBackUpNow: () -> Unit = {},
     onDismissBackupReminder: () -> Unit = {},
-    onCreateReminder: () -> Unit = {},
+    onCreateReminder: () -> Unit = {}
 ) {
     var pendingSkip by remember { mutableStateOf<DashboardReminder?>(null) }
     val onSkipRequested: (DashboardReminder) -> Unit = { pendingSkip = it }
@@ -307,7 +321,12 @@ internal fun DashboardContent(
         // section tag so a 6th section can't reintroduce this the way the
         // first five did: it fixed a real crash, "Key '<id>' was already
         // used", on login.
-        item { DashboardSectionHeader(stringResource(R.string.dashboard_favorites), Icons.Outlined.Star) }
+        item {
+            DashboardSectionHeader(
+                stringResource(R.string.dashboard_favorites),
+                Icons.Outlined.Star
+            )
+        }
         if (state.favorites.isEmpty()) {
             item { DashboardEmptyRow(stringResource(R.string.dashboard_no_favorites)) }
         } else {
@@ -316,8 +335,16 @@ internal fun DashboardContent(
             }
         }
         if (state.overdueCadences.isNotEmpty()) {
-            item { DashboardSectionHeader(stringResource(R.string.dashboard_overdue_cadences), Icons.Outlined.Warning) }
-            items(state.overdueCadences, key = { dashboardKey("cadence", it.sourceId) }) { cadence ->
+            item {
+                DashboardSectionHeader(
+                    stringResource(R.string.dashboard_overdue_cadences),
+                    Icons.Outlined.Warning
+                )
+            }
+            items(
+                state.overdueCadences,
+                key = { dashboardKey("cadence", it.sourceId) }
+            ) { cadence ->
                 OverdueRow(cadence, dateFormat, onClick = {
                     if (cadence.contactId > 0) onOpenContact(cadence.contactId.toInt())
                 })
@@ -327,38 +354,79 @@ internal fun DashboardContent(
         // Issue #352: contacts whose info is due for re-verification. Same
         // "hidden entirely when clear" treatment as overdue cadences above.
         if (state.dataDecayOverdue.isNotEmpty()) {
-            item { DashboardSectionHeader(stringResource(R.string.dashboard_data_decay_overdue), Icons.Outlined.Warning) }
-            items(state.dataDecayOverdue, key = { dashboardKey("data-decay", it.dataDecaySourceId) }) { overdue ->
+            item {
+                DashboardSectionHeader(
+                    stringResource(R.string.dashboard_data_decay_overdue),
+                    Icons.Outlined.Warning
+                )
+            }
+            items(
+                state.dataDecayOverdue,
+                key = { dashboardKey("data-decay", it.dataDecaySourceId) }
+            ) { overdue ->
                 DataDecayRow(
                     overdue = overdue,
                     dateFormat = dateFormat,
                     isVerifying = state.verifyingDataDecayId == overdue.policy?.id,
-                    onClick = { if (overdue.contactId > 0) onOpenContact(overdue.contactId.toInt()) },
-                    onVerify = { overdue.policy?.id?.let(onVerifyDataDecay) },
+                    onClick = {
+                        if (overdue.contactId > 0) {
+                            onOpenContact(
+                                overdue.contactId.toInt()
+                            )
+                        }
+                    },
+                    onVerify = { overdue.policy?.id?.let(onVerifyDataDecay) }
                 )
             }
-            dashboardTruncationCaption("data-decay", state.dataDecayOverdue.size, state.totals.dataDecayOverdue)
+            dashboardTruncationCaption(
+                "data-decay",
+                state.dataDecayOverdue.size,
+                state.totals.dataDecayOverdue
+            )
         }
         // Issue #177: event-driven reach-out suggestions — the change-driven
         // counterpart to overdue cadences above. Same "hidden entirely when
         // clear" treatment (web's OverdueCadenceList/ReachOutSuggestionsList
         // both skip rendering an empty-state card for this section).
         if (state.reachOutSuggestions.isNotEmpty()) {
-            item { DashboardSectionHeader(stringResource(R.string.dashboard_reach_out), Icons.Outlined.Lightbulb) }
-            items(state.reachOutSuggestions, key = { dashboardKey("reach-out", it.id) }) { suggestion ->
+            item {
+                DashboardSectionHeader(
+                    stringResource(R.string.dashboard_reach_out),
+                    Icons.Outlined.Lightbulb
+                )
+            }
+            items(
+                state.reachOutSuggestions,
+                key = { dashboardKey("reach-out", it.id) }
+            ) { suggestion ->
                 ReachOutRow(
                     suggestion = suggestion,
                     dateFormat = dateFormat,
-                    onClick = { if (suggestion.contactId > 0) onOpenContact(suggestion.contactId.toInt()) },
-                    onDismiss = { onDismissReachOutSuggestion(suggestion.id) },
+                    onClick = {
+                        if (suggestion.contactId > 0) {
+                            onOpenContact(
+                                suggestion.contactId.toInt()
+                            )
+                        }
+                    },
+                    onDismiss = { onDismissReachOutSuggestion(suggestion.id) }
                 )
             }
-            dashboardTruncationCaption("reach-out", state.reachOutSuggestions.size, state.totals.reachOutSuggestions)
+            dashboardTruncationCaption(
+                "reach-out",
+                state.reachOutSuggestions.size,
+                state.totals.reachOutSuggestions
+            )
         }
     }
 
     fun LazyListScope.bottomSections() {
-        item { DashboardSectionHeader(stringResource(R.string.dashboard_birthdays), Icons.Outlined.Cake) }
+        item {
+            DashboardSectionHeader(
+                stringResource(R.string.dashboard_birthdays),
+                Icons.Outlined.Cake
+            )
+        }
         if (state.birthdays.isEmpty()) {
             item { DashboardEmptyRow(stringResource(R.string.dashboard_no_birthdays)) }
         } else {
@@ -369,7 +437,12 @@ internal fun DashboardContent(
             }
             dashboardTruncationCaption("birthday", state.birthdays.size, state.totals.birthdays)
         }
-        item { DashboardSectionHeader(stringResource(R.string.dashboard_reminders), Icons.Outlined.Notifications) }
+        item {
+            DashboardSectionHeader(
+                stringResource(R.string.dashboard_reminders),
+                Icons.Outlined.Notifications
+            )
+        }
         if (state.upcomingReminders.isEmpty()) {
             // Issue #1761: the empty reminders card is an action, not a dead
             // end — the shared EmptyState (#1760) carries the create button.
@@ -378,7 +451,7 @@ internal fun DashboardContent(
                     title = stringResource(R.string.dashboard_no_reminders),
                     icon = Icons.Outlined.Notifications,
                     actionLabel = stringResource(R.string.dashboard_add_reminder),
-                    onAction = onCreateReminder,
+                    onAction = onCreateReminder
                 )
             }
         } else {
@@ -389,12 +462,21 @@ internal fun DashboardContent(
                     isCompleting = state.completingId == reminder.id,
                     onComplete = { onCompleteReminder(reminder.id, false) },
                     onSkip = { onSkipRequested(reminder) },
-                    onClick = { reminder.contactId?.takeIf { it > 0 }?.let(onOpenContact) },
+                    onClick = { reminder.contactId?.takeIf { it > 0 }?.let(onOpenContact) }
                 )
             }
-            dashboardTruncationCaption("reminder", state.upcomingReminders.size, state.totals.upcomingReminders)
+            dashboardTruncationCaption(
+                "reminder",
+                state.upcomingReminders.size,
+                state.totals.upcomingReminders
+            )
         }
-        item { DashboardSectionHeader(stringResource(R.string.dashboard_random_contacts), Icons.Outlined.Shuffle) }
+        item {
+            DashboardSectionHeader(
+                stringResource(R.string.dashboard_random_contacts),
+                Icons.Outlined.Shuffle
+            )
+        }
         if (state.randomContacts.isEmpty()) {
             item { DashboardEmptyRow(stringResource(R.string.dashboard_no_contacts)) }
         } else {
@@ -409,15 +491,25 @@ internal fun DashboardContent(
             Row(Modifier.fillMaxSize()) {
                 LazyColumn(
                     modifier = Modifier.weight(1f).fillMaxHeight().testTag("dashboard-column-one"),
-                    contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 8.dp, bottom = DashboardListBottomPadding),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(
+                        start = 16.dp,
+                        top = 16.dp,
+                        end = 8.dp,
+                        bottom = DashboardListBottomPadding
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     topSections()
                 }
                 LazyColumn(
                     modifier = Modifier.weight(1f).fillMaxHeight().testTag("dashboard-column-two"),
-                    contentPadding = PaddingValues(start = 8.dp, top = 16.dp, end = 16.dp, bottom = DashboardListBottomPadding),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(
+                        start = 8.dp,
+                        top = 16.dp,
+                        end = 16.dp,
+                        bottom = DashboardListBottomPadding
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     bottomSections()
                 }
@@ -425,8 +517,13 @@ internal fun DashboardContent(
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().testTag("dashboard-list"),
-                contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = DashboardListBottomPadding),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    top = 16.dp,
+                    end = 16.dp,
+                    bottom = DashboardListBottomPadding
+                ),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 topSections()
                 bottomSections()
@@ -444,7 +541,7 @@ internal fun DashboardContent(
                     onClick = {
                         onCompleteReminder(reminder.id, true)
                         pendingSkip = null
-                    },
+                    }
                 ) {
                     Text(stringResource(R.string.reminder_skip))
                 }
@@ -453,7 +550,7 @@ internal fun DashboardContent(
                 TextButton(onClick = { pendingSkip = null }) {
                     Text(stringResource(R.string.action_cancel))
                 }
-            },
+            }
         )
     }
 }
@@ -474,7 +571,7 @@ private fun LazyListScope.dashboardTruncationCaption(section: String, shown: Int
             text = pluralStringResource(R.plurals.dashboard_showing_of_total, total, shown, total),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.testTag("dashboard-truncated-$section"),
+            modifier = Modifier.testTag("dashboard-truncated-$section")
         )
     }
 }
@@ -502,28 +599,38 @@ private val OverdueCadence.sourceId: String
 private val OverdueDataDecayPolicy.dataDecaySourceId: String
     get() = policy?.id ?: "contact-$contactId"
 
-/** Full-screen load failure with retry — replaces the widgets, never shows alongside them. */
+/* Full-screen load failure with retry — replaces the widgets, never shows alongside them. */
+
 /** Issue #1264: the dismissible "back up your local data" nudge for `Local` profiles. */
 @Composable
 private fun BackupReminderBanner(onBackUpNow: () -> Unit, onDismiss: () -> Unit) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
-        modifier = Modifier.fillMaxWidth().testTag("backup-reminder-banner"),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer
+        ),
+        modifier = Modifier.fillMaxWidth().testTag("backup-reminder-banner")
     ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             Text(
                 text = stringResource(R.string.dashboard_backup_reminder_title),
                 style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                color = MaterialTheme.colorScheme.onTertiaryContainer
             )
             Text(
                 text = stringResource(R.string.dashboard_backup_reminder_body),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                color = MaterialTheme.colorScheme.onTertiaryContainer
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = onBackUpNow) { Text(stringResource(R.string.dashboard_backup_reminder_action)) }
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.dashboard_backup_reminder_dismiss)) }
+                TextButton(
+                    onClick = onBackUpNow
+                ) { Text(stringResource(R.string.dashboard_backup_reminder_action)) }
+                TextButton(
+                    onClick = onDismiss
+                ) { Text(stringResource(R.string.dashboard_backup_reminder_dismiss)) }
             }
         }
     }
@@ -534,13 +641,13 @@ private fun DashboardErrorState(message: String, onRetry: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize().padding(32.dp),
         verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = message,
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
+            textAlign = TextAlign.Center
         )
         Button(onClick = onRetry, modifier = Modifier.padding(top = 16.dp)) {
             Text(stringResource(R.string.action_retry))
@@ -550,8 +657,16 @@ private fun DashboardErrorState(message: String, onRetry: () -> Unit) {
 
 @Composable
 private fun DashboardSectionHeader(text: String, icon: ImageVector) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(18.dp)
+        )
         // #208: section titles carried no heading semantics, so TalkBack's
         // heading navigation found nothing on the dashboard. One fix here
         // covers every section header (favorites — issue #212 — birthdays,
@@ -561,7 +676,7 @@ private fun DashboardSectionHeader(text: String, icon: ImageVector) {
             text,
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.semantics { heading() },
+            modifier = Modifier.semantics { heading() }
         )
     }
 }
@@ -573,7 +688,7 @@ private fun DashboardEmptyRow(text: String) {
             text = text,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(12.dp)
         )
     }
 }
@@ -584,32 +699,42 @@ private fun OverdueRow(cadence: OverdueCadence, dateFormat: String, onClick: () 
     val nextDue = DateFormat.formatTimestamp(cadence.health?.nextDue, dateFormat)
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        border = BorderStroke(1.dp, LocalWarningColors.current.foreground),
+        border = BorderStroke(1.dp, LocalWarningColors.current.foreground)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            ContactAvatar(photoUri = cadence.photoThumbnail, contentDescription = null, size = 40.dp)
+            ContactAvatar(
+                photoUri = cadence.photoThumbnail,
+                contentDescription = null,
+                size = 40.dp
+            )
             // Issue #1761: the status chip lives under the name, not beside it.
             // Sharing the width with a fixed chip squeezed the name/date column
             // to a few characters at font scale 2.0, breaking words mid-word.
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 Text(name, style = MaterialTheme.typography.bodyLarge)
                 if (nextDue.isNotBlank()) {
                     Text(
                         text = stringResource(R.string.cadence_next_due, nextDue),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 // #200: white-on-amber was 2.25:1; bark on the amber container is 6.5:1.
                 DashboardChip(
-                    text = stringResource(R.string.cadence_overdue_by, cadence.health?.overdueBy ?: 0),
+                    text = stringResource(
+                        R.string.cadence_overdue_by,
+                        cadence.health?.overdueBy ?: 0
+                    ),
                     leadingIcon = Icons.Outlined.Warning,
                     containerColor = LocalWarningColors.current.container,
-                    contentColor = LocalWarningColors.current.onContainer,
+                    contentColor = LocalWarningColors.current.onContainer
                 )
             }
         }
@@ -626,41 +751,48 @@ private fun DataDecayRow(
     dateFormat: String,
     isVerifying: Boolean,
     onClick: () -> Unit,
-    onVerify: () -> Unit,
+    onVerify: () -> Unit
 ) {
     val name = overdue.contactName.ifBlank { stringResource(R.string.dashboard_unknown_contact) }
     val nextDue = DateFormat.formatTimestamp(overdue.health?.nextDue, dateFormat)
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        border = BorderStroke(1.dp, LocalWarningColors.current.foreground),
+        border = BorderStroke(1.dp, LocalWarningColors.current.foreground)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            ContactAvatar(photoUri = overdue.photoThumbnail, contentDescription = null, size = 40.dp)
+            ContactAvatar(
+                photoUri = overdue.photoThumbnail,
+                contentDescription = null,
+                size = 40.dp
+            )
             Column(modifier = Modifier.weight(1f)) {
                 Text(name, style = MaterialTheme.typography.bodyLarge)
                 if (nextDue.isNotBlank()) {
                     Text(
                         text = stringResource(R.string.data_decay_due_on, nextDue),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
             DashboardChip(
-                text = stringResource(R.string.data_decay_overdue_by, overdue.health?.overdueBy ?: 0),
+                text = stringResource(
+                    R.string.data_decay_overdue_by,
+                    overdue.health?.overdueBy ?: 0
+                ),
                 leadingIcon = Icons.Outlined.Warning,
                 containerColor = LocalWarningColors.current.container,
-                contentColor = LocalWarningColors.current.onContainer,
+                contentColor = LocalWarningColors.current.onContainer
             )
             AccessibleIconButton(onClick = onVerify, enabled = !isVerifying) {
                 Icon(
                     Icons.Outlined.CheckCircle,
                     contentDescription = stringResource(R.string.cd_confirm_data_decay_current),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -675,7 +807,7 @@ private fun ReachOutRow(
     suggestion: ReachOutSuggestion,
     dateFormat: String,
     onClick: () -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     val name = suggestion.contactName.ifBlank { stringResource(R.string.dashboard_unknown_contact) }
     val kindIcon = when (suggestion.kind) {
@@ -698,45 +830,57 @@ private fun ReachOutRow(
         ReachOutKind.TARGET_BEHIND -> stringResource(
             R.string.reach_out_behind_target,
             targetTierLabel(suggestion.oldValue),
-            DateFormat.formatTimestamp(suggestion.newValue, dateFormat),
+            DateFormat.formatTimestamp(suggestion.newValue, dateFormat)
         )
+
         else -> if (suggestion.oldValue.isNotBlank()) {
-            stringResource(R.string.reach_out_changed_from_to, suggestion.oldValue, suggestion.newValue)
+            stringResource(
+                R.string.reach_out_changed_from_to,
+                suggestion.oldValue,
+                suggestion.newValue
+            )
         } else {
             stringResource(R.string.reach_out_changed_to, suggestion.newValue)
         }
     }
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            ContactAvatar(photoUri = suggestion.photoThumbnail, contentDescription = null, size = 40.dp)
+            ContactAvatar(
+                photoUri = suggestion.photoThumbnail,
+                contentDescription = null,
+                size = 40.dp
+            )
             // Issue #1761: same reflow as OverdueRow — the chip under the text
             // keeps the name/change column wide enough at font scale 2.0.
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 Text(name, style = MaterialTheme.typography.bodyLarge)
                 Text(
                     text = changeText,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 DashboardChip(
                     text = kindLabel,
                     leadingIcon = kindIcon,
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
             AccessibleIconButton(onClick = onDismiss) {
                 Icon(
                     Icons.Outlined.Close,
                     contentDescription = stringResource(R.string.cd_dismiss_reach_out_suggestion),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -748,20 +892,24 @@ private fun BirthdayRow(birthday: Birthday, dateFormat: String, onClick: () -> U
     val today = isBirthdayToday(birthday.birthday)
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        border = if (today) BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary) else null,
+        border = if (today) BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary) else null
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            ContactAvatar(photoUri = birthday.photoThumbnail, contentDescription = null, size = 40.dp)
+            ContactAvatar(
+                photoUri = birthday.photoThumbnail,
+                contentDescription = null,
+                size = 40.dp
+            )
             Column {
                 Text(birthday.name, style = MaterialTheme.typography.bodyLarge)
                 Text(
                     text = birthdayLine(birthday, dateFormat),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -775,38 +923,38 @@ private fun ReminderRow(
     isCompleting: Boolean,
     onComplete: () -> Unit,
     onSkip: () -> Unit,
-    onClick: () -> Unit,
+    onClick: () -> Unit
 ) {
     val overdue = isOverdue(reminder.remindAt)
     val dateText = DateFormat.formatTimestamp(reminder.remindAt, dateFormat)
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        border = if (overdue) BorderStroke(1.dp, LocalWarningColors.current.foreground) else null,
+        border = if (overdue) BorderStroke(1.dp, LocalWarningColors.current.foreground) else null
     ) {
         Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.Top) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = reminder.message ?: stringResource(R.string.reminder_title_fallback),
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.bodyLarge
                 )
                 if (reminder.contactName.isNotBlank()) {
                     Text(
                         text = reminder.contactName,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Row(
                     modifier = Modifier.padding(top = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (dateText.isNotBlank()) {
                         DashboardChip(
                             text = dateText,
                             leadingIcon = if (overdue) Icons.Outlined.Warning else null,
                             containerColor = if (overdue) LocalWarningColors.current.container else MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = if (overdue) LocalWarningColors.current.onContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                            contentColor = if (overdue) LocalWarningColors.current.onContainer else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     val recurrence = reminder.recurrence
@@ -816,7 +964,7 @@ private fun ReminderRow(
                                 text = label,
                                 leadingIcon = Icons.Outlined.Repeat,
                                 containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -825,7 +973,7 @@ private fun ReminderRow(
                             text = stringResource(R.string.reminder_email_chip),
                             leadingIcon = Icons.Outlined.Email,
                             containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -835,14 +983,14 @@ private fun ReminderRow(
                     Icon(
                         Icons.Outlined.SkipNext,
                         contentDescription = stringResource(R.string.cd_skip_reminder),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 AccessibleIconButton(onClick = onComplete, enabled = !isCompleting) {
                     Icon(
                         Icons.Outlined.CheckCircle,
                         contentDescription = stringResource(R.string.cd_complete_reminder),
-                        tint = MaterialTheme.colorScheme.tertiary,
+                        tint = MaterialTheme.colorScheme.tertiary
                     )
                 }
             }
@@ -856,9 +1004,13 @@ private fun RandomContactRow(contact: DashboardRandomContact, onClick: () -> Uni
         Row(
             modifier = Modifier.fillMaxWidth().padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            ContactAvatar(photoUri = contact.photoThumbnail, contentDescription = null, size = 40.dp)
+            ContactAvatar(
+                photoUri = contact.photoThumbnail,
+                contentDescription = null,
+                size = 40.dp
+            )
             Column(modifier = Modifier.weight(1f)) {
                 Text(randomContactName(contact), style = MaterialTheme.typography.bodyLarge)
                 // Issue #1761: a one-line reason the person is listed, from
@@ -866,7 +1018,7 @@ private fun RandomContactRow(contact: DashboardRandomContact, onClick: () -> Uni
                 Text(
                     text = stayInTouchReason(contact.relationship),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -889,11 +1041,13 @@ private fun stayInTouchReason(relationship: DashboardContactRelationship?): Stri
                 val overdue = -daysUntilDue
                 pluralStringResource(R.plurals.dashboard_stay_in_touch_overdue, overdue, overdue)
             }
+
             daysUntilDue == 0 -> stringResource(R.string.dashboard_stay_in_touch_due_today)
+
             else -> pluralStringResource(
                 R.plurals.dashboard_stay_in_touch_due_in,
                 daysUntilDue,
-                daysUntilDue,
+                daysUntilDue
             )
         }
     }
@@ -919,9 +1073,13 @@ private fun FavoriteContactRow(contact: DashboardRandomContact, onClick: () -> U
         Row(
             modifier = Modifier.fillMaxWidth().padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            ContactAvatar(photoUri = contact.photoThumbnail, contentDescription = null, size = 40.dp)
+            ContactAvatar(
+                photoUri = contact.photoThumbnail,
+                contentDescription = null,
+                size = 40.dp
+            )
             Text(randomContactName(contact), style = MaterialTheme.typography.bodyLarge)
         }
     }
@@ -932,13 +1090,13 @@ private fun DashboardChip(
     text: String,
     leadingIcon: ImageVector? = null,
     containerColor: Color,
-    contentColor: Color,
+    contentColor: Color
 ) {
     Surface(shape = RoundedCornerShape(8.dp), color = containerColor, contentColor = contentColor) {
         Row(
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             if (leadingIcon != null) {
                 Icon(leadingIcon, contentDescription = null, modifier = Modifier.size(12.dp))
@@ -957,13 +1115,15 @@ private fun birthdayLine(birthday: Birthday, dateFormat: String): String {
         when {
             raw.startsWith("--") && raw.length == 7 -> PartialDate(
                 month = raw.substring(2, 4).toInt(),
-                day = raw.substring(5, 7).toInt(),
+                day = raw.substring(5, 7).toInt()
             ).display(dateFormat)
+
             raw.length == 10 && raw[4] == '-' && raw[7] == '-' -> {
                 val month = raw.substring(5, 7).toInt()
                 val day = raw.substring(8, 10).toInt()
                 PartialDate(month = month, day = day).display(dateFormat)
             }
+
             else -> null
         }
     }.getOrNull()
@@ -972,7 +1132,9 @@ private fun birthdayLine(birthday: Birthday, dateFormat: String): String {
         // than a negative one (web computes the same raw subtraction, but renders it).
         age != null && age >= 0 && monthDay != null ->
             "$monthDay ${stringResource(R.string.dashboard_years_old, age)}"
+
         monthDay != null -> monthDay
+
         else -> raw
     }
 }
@@ -1008,13 +1170,12 @@ private fun isOverdue(remindAt: String?): Boolean {
  * components-first rule, not a nickname-only variant, so the same person
  * reads identically on the dashboard and the list.
  */
-private fun randomContactName(contact: DashboardRandomContact): String =
-    contactDisplayName(
-        firstname = contact.firstname,
-        nickname = contact.nickname,
-        lastname = contact.lastname,
-        fallbackId = "#${contact.id}",
-    )
+private fun randomContactName(contact: DashboardRandomContact): String = contactDisplayName(
+    firstname = contact.firstname,
+    nickname = contact.nickname,
+    lastname = contact.lastname,
+    fallbackId = "#${contact.id}"
+)
 
 /** Localized recurrence label, mirroring the web `reminders.recurrence.*` keys; null for unknown. */
 @Composable

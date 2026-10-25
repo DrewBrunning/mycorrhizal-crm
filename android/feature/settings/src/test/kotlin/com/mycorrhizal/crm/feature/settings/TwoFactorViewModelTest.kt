@@ -5,15 +5,15 @@ import com.mycorrhizal.crm.data.passkey.PasskeyResult
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.PasskeyRepository
 import com.mycorrhizal.crm.domain.repository.SecondFactorProof
-import com.mycorrhizal.crm.model.network.WebAuthnCredential
-import com.mycorrhizal.crm.testing.FakePasskeyClient
-import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.model.network.MessageResponse
 import com.mycorrhizal.crm.model.network.TwoFactorConfirmResponse
 import com.mycorrhizal.crm.model.network.TwoFactorSetupResponse
 import com.mycorrhizal.crm.model.network.TwoFactorStatusResponse
+import com.mycorrhizal.crm.model.network.WebAuthnCredential
 import com.mycorrhizal.crm.network.ApiError
+import com.mycorrhizal.crm.testing.FakePasskeyClient
 import com.mycorrhizal.crm.testing.MainDispatcherRule
+import com.mycorrhizal.crm.ui.R
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -42,7 +42,7 @@ class TwoFactorViewModelTest {
     private fun enabledVm(
         enabled: Boolean,
         passkeys: List<WebAuthnCredential> = emptyList(),
-        available: Boolean = true,
+        available: Boolean = true
     ): TwoFactorViewModel {
         coEvery { authRepository.getTwoFactorStatus() } returns
             Result.success(TwoFactorStatusResponse(enabled = enabled))
@@ -70,7 +70,9 @@ class TwoFactorViewModelTest {
     }
 
     @Test
-    fun `load failure surfaces the error and leaves enabled unknown`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `load failure surfaces the error and leaves enabled unknown`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { authRepository.getTwoFactorStatus() } returns
             Result.failure(ApiError.Server(500, "boom"))
         coEvery { passkeyRepository.listPasskeys() } returns Result.success(emptyList())
@@ -84,11 +86,16 @@ class TwoFactorViewModelTest {
     }
 
     @Test
-    fun `startSetup surfaces the pending secret and otpauth url`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `startSetup surfaces the pending secret and otpauth url`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = enabledVm(false)
         advanceUntilIdle()
         coEvery { authRepository.setupTwoFactor() } returns Result.success(
-            TwoFactorSetupResponse(secret = "JBSWY3DPEHPK3PXP", otpauthUrl = "otpauth://totp/x?secret=JBSWY3DPEHPK3PXP"),
+            TwoFactorSetupResponse(
+                secret = "JBSWY3DPEHPK3PXP",
+                otpauthUrl = "otpauth://totp/x?secret=JBSWY3DPEHPK3PXP"
+            )
         )
 
         vm.startSetup()
@@ -100,30 +107,43 @@ class TwoFactorViewModelTest {
     }
 
     @Test
-    fun `setup on an oidc account surfaces the server's 403 message`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `setup on an oidc account surfaces the server's 403 message`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = enabledVm(false)
         advanceUntilIdle()
         coEvery { authRepository.setupTwoFactor() } returns Result.failure(
-            ApiError.Client(403, "Two-factor authentication is unavailable for accounts that sign in with SSO"),
+            ApiError.Client(
+                403,
+                "Two-factor authentication is unavailable for accounts that sign in with SSO"
+            )
         )
 
         vm.startSetup()
         advanceUntilIdle()
 
         val state = vm.uiState.value
-        assertEquals("Two-factor authentication is unavailable for accounts that sign in with SSO", state.error)
+        assertEquals(
+            "Two-factor authentication is unavailable for accounts that sign in with SSO",
+            state.error
+        )
         assertNull(state.setup)
     }
 
     @Test
-    fun `confirmSetup enables 2fa and shows the recovery codes exactly once`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `confirmSetup enables 2fa and shows the recovery codes exactly once`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = enabledVm(false)
         advanceUntilIdle()
         coEvery { authRepository.setupTwoFactor() } returns Result.success(
-            TwoFactorSetupResponse(secret = "JBSWY3DPEHPK3PXP", otpauthUrl = "otpauth://totp/x"),
+            TwoFactorSetupResponse(secret = "JBSWY3DPEHPK3PXP", otpauthUrl = "otpauth://totp/x")
         )
         coEvery { authRepository.confirmTwoFactor("123456") } returns Result.success(
-            TwoFactorConfirmResponse(message = "Two-factor authentication enabled", recoveryCodes = listOf("AAAAA-BBBBB-CCCCC")),
+            TwoFactorConfirmResponse(
+                message = "Two-factor authentication enabled",
+                recoveryCodes = listOf("AAAAA-BBBBB-CCCCC")
+            )
         )
 
         vm.startSetup()
@@ -139,14 +159,16 @@ class TwoFactorViewModelTest {
     }
 
     @Test
-    fun `a wrong code while confirming keeps the wizard open with a localized error`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a wrong code while confirming keeps the wizard open with a localized error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = enabledVm(false)
         advanceUntilIdle()
         coEvery { authRepository.setupTwoFactor() } returns Result.success(
-            TwoFactorSetupResponse(secret = "JBSWY3DPEHPK3PXP", otpauthUrl = "otpauth://totp/x"),
+            TwoFactorSetupResponse(secret = "JBSWY3DPEHPK3PXP", otpauthUrl = "otpauth://totp/x")
         )
         coEvery { authRepository.confirmTwoFactor(any()) } returns Result.failure(
-            ApiError.Client(400, "Invalid value for field 'code'"),
+            ApiError.Client(400, "Invalid value for field 'code'")
         )
 
         vm.startSetup()
@@ -156,7 +178,10 @@ class TwoFactorViewModelTest {
 
         val state = vm.uiState.value
         assertNotNull(state.setup)
-        assertEquals(com.mycorrhizal.crm.ui.R.string.settings_two_factor_invalid_code, state.errorRes)
+        assertEquals(
+            com.mycorrhizal.crm.ui.R.string.settings_two_factor_invalid_code,
+            state.errorRes
+        )
         assertFalse(state.busy)
     }
 
@@ -165,7 +190,7 @@ class TwoFactorViewModelTest {
         val vm = enabledVm(true)
         advanceUntilIdle()
         coEvery { authRepository.disableTwoFactor("654321") } returns Result.success(
-            MessageResponse(message = "Two-factor authentication disabled"),
+            MessageResponse(message = "Two-factor authentication disabled")
         )
 
         vm.requestDisable()
@@ -181,11 +206,17 @@ class TwoFactorViewModelTest {
     }
 
     @Test
-    fun `regenerating recovery codes shows the fresh set exactly once`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `regenerating recovery codes shows the fresh set exactly once`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = enabledVm(true)
         advanceUntilIdle()
-        coEvery { authRepository.regenerateRecoveryCodes(SecondFactorProof.Code("123456")) } returns Result.success(
-            TwoFactorConfirmResponse(recoveryCodes = listOf("NEWAA-BBBBB-CCCCC")),
+        coEvery {
+            authRepository.regenerateRecoveryCodes(
+                SecondFactorProof.Code("123456")
+            )
+        } returns Result.success(
+            TwoFactorConfirmResponse(recoveryCodes = listOf("NEWAA-BBBBB-CCCCC"))
         )
 
         vm.requestRegenerate()
@@ -199,14 +230,24 @@ class TwoFactorViewModelTest {
     }
 
     @Test
-    fun `a passkey-only account regenerates recovery codes with a passkey assertion`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a passkey-only account regenerates recovery codes with a passkey assertion`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = enabledVm(false, passkeys = listOf(phone))
         advanceUntilIdle()
-        coEvery { passkeyRepository.beginProof(null) } returns Result.success("""{"publicKey":{}}""")
+        coEvery {
+            passkeyRepository.beginProof(
+                null
+            )
+        } returns Result.success("""{"publicKey":{}}""")
         passkeyClient.getResult = PasskeyResult.Success("""{"id":"asserted"}""")
         coEvery {
-            authRepository.regenerateRecoveryCodes(SecondFactorProof.Assertion("""{"id":"asserted"}"""))
-        } returns Result.success(TwoFactorConfirmResponse(recoveryCodes = listOf("NEWAA-BBBBB-CCCCC")))
+            authRepository.regenerateRecoveryCodes(
+                SecondFactorProof.Assertion("""{"id":"asserted"}""")
+            )
+        } returns Result.success(
+            TwoFactorConfirmResponse(recoveryCodes = listOf("NEWAA-BBBBB-CCCCC"))
+        )
 
         vm.requestRegenerate()
         vm.submitRegenerateWithPasskey(context)
@@ -219,24 +260,27 @@ class TwoFactorViewModelTest {
     }
 
     @Test
-    fun `a locked-out regenerate proof surfaces the server message and keeps the prompt`() = runTest(mainDispatcherRule.testDispatcher) {
-        val vm = enabledVm(false, passkeys = listOf(phone))
-        advanceUntilIdle()
-        coEvery { passkeyRepository.beginProof(null) } returns Result.success("{}")
-        passkeyClient.getResult = PasskeyResult.Success("""{"id":"asserted"}""")
-        coEvery { authRepository.regenerateRecoveryCodes(any()) } returns
-            Result.failure(ApiError.Client(429, "Too many failed verification attempts."))
+    fun `a locked-out regenerate proof surfaces the server message and keeps the prompt`() =
+        runTest(
+            mainDispatcherRule.testDispatcher
+        ) {
+            val vm = enabledVm(false, passkeys = listOf(phone))
+            advanceUntilIdle()
+            coEvery { passkeyRepository.beginProof(null) } returns Result.success("{}")
+            passkeyClient.getResult = PasskeyResult.Success("""{"id":"asserted"}""")
+            coEvery { authRepository.regenerateRecoveryCodes(any()) } returns
+                Result.failure(ApiError.Client(429, "Too many failed verification attempts."))
 
-        vm.requestRegenerate()
-        vm.submitRegenerateWithPasskey(context)
-        advanceUntilIdle()
+            vm.requestRegenerate()
+            vm.submitRegenerateWithPasskey(context)
+            advanceUntilIdle()
 
-        val state = vm.uiState.value
-        assertEquals(TwoFactorPrompt.REGENERATE, state.prompt)
-        assertNull(state.errorRes)
-        assertNotNull(state.error)
-        assertFalse(state.busy)
-    }
+            val state = vm.uiState.value
+            assertEquals(TwoFactorPrompt.REGENERATE, state.prompt)
+            assertNull(state.errorRes)
+            assertNotNull(state.error)
+            assertFalse(state.busy)
+        }
 
     @Test
     fun `regenerate with a passkey is ignored without a passkey, without the prompt, or when unavailable`() =
@@ -261,27 +305,32 @@ class TwoFactorViewModelTest {
         }
 
     @Test
-    fun `a cancelled passkey prompt during regenerate keeps the prompt without an error`() = runTest(mainDispatcherRule.testDispatcher) {
-        val vm = enabledVm(false, passkeys = listOf(phone))
-        advanceUntilIdle()
-        coEvery { passkeyRepository.beginProof(null) } returns Result.success("{}")
-        passkeyClient.getResult = PasskeyResult.Cancelled
+    fun `a cancelled passkey prompt during regenerate keeps the prompt without an error`() =
+        runTest(
+            mainDispatcherRule.testDispatcher
+        ) {
+            val vm = enabledVm(false, passkeys = listOf(phone))
+            advanceUntilIdle()
+            coEvery { passkeyRepository.beginProof(null) } returns Result.success("{}")
+            passkeyClient.getResult = PasskeyResult.Cancelled
 
-        vm.requestRegenerate()
-        vm.submitRegenerateWithPasskey(context)
-        advanceUntilIdle()
+            vm.requestRegenerate()
+            vm.submitRegenerateWithPasskey(context)
+            advanceUntilIdle()
 
-        assertEquals(TwoFactorPrompt.REGENERATE, vm.uiState.value.prompt)
-        assertNull(vm.uiState.value.errorRes)
-        coVerify(exactly = 0) { authRepository.regenerateRecoveryCodes(any()) }
-    }
+            assertEquals(TwoFactorPrompt.REGENERATE, vm.uiState.value.prompt)
+            assertNull(vm.uiState.value.errorRes)
+            coVerify(exactly = 0) { authRepository.regenerateRecoveryCodes(any()) }
+        }
 
     @Test
-    fun `a wrong code while disabling keeps the prompt with a localized error`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a wrong code while disabling keeps the prompt with a localized error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = enabledVm(true)
         advanceUntilIdle()
         coEvery { authRepository.disableTwoFactor(any()) } returns Result.failure(
-            ApiError.Client(400, "Invalid value for field 'code'"),
+            ApiError.Client(400, "Invalid value for field 'code'")
         )
 
         vm.requestDisable()
@@ -290,7 +339,10 @@ class TwoFactorViewModelTest {
 
         val state = vm.uiState.value
         assertEquals(TwoFactorPrompt.DISABLE, state.prompt)
-        assertEquals(com.mycorrhizal.crm.ui.R.string.settings_two_factor_invalid_code, state.errorRes)
+        assertEquals(
+            com.mycorrhizal.crm.ui.R.string.settings_two_factor_invalid_code,
+            state.errorRes
+        )
         assertFalse(state.busy)
     }
 
@@ -299,7 +351,7 @@ class TwoFactorViewModelTest {
         val vm = enabledVm(true)
         advanceUntilIdle()
         coEvery { authRepository.regenerateRecoveryCodes(any()) } returns Result.success(
-            TwoFactorConfirmResponse(recoveryCodes = listOf("NEWAA-BBBBB-CCCCC")),
+            TwoFactorConfirmResponse(recoveryCodes = listOf("NEWAA-BBBBB-CCCCC"))
         )
 
         vm.requestRegenerate()
@@ -313,11 +365,13 @@ class TwoFactorViewModelTest {
     }
 
     @Test
-    fun `closing the setup wizard drops the pending secret`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `closing the setup wizard drops the pending secret`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = enabledVm(false)
         advanceUntilIdle()
         coEvery { authRepository.setupTwoFactor() } returns Result.success(
-            TwoFactorSetupResponse(secret = "JBSWY3DPEHPK3PXP", otpauthUrl = "otpauth://totp/x"),
+            TwoFactorSetupResponse(secret = "JBSWY3DPEHPK3PXP", otpauthUrl = "otpauth://totp/x")
         )
 
         vm.startSetup()
@@ -344,7 +398,9 @@ class TwoFactorViewModelTest {
     }
 
     @Test
-    fun `a blank prompt code is ignored without calling the repository`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a blank prompt code is ignored without calling the repository`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = enabledVm(true)
         advanceUntilIdle()
 
@@ -362,7 +418,10 @@ class TwoFactorViewModelTest {
         val vm = enabledVm(false)
         advanceUntilIdle()
         coEvery { authRepository.setupTwoFactor() } returns Result.failure(
-            ApiError.Client(403, "Two-factor authentication is unavailable for accounts that sign in with SSO"),
+            ApiError.Client(
+                403,
+                "Two-factor authentication is unavailable for accounts that sign in with SSO"
+            )
         )
 
         vm.startSetup()
@@ -377,7 +436,10 @@ class TwoFactorViewModelTest {
 
     // --- issue #1337: enabling TOTP on a passkey-only account needs a live proof ---
 
-    private val setupResponse = TwoFactorSetupResponse(secret = "JBSWY3DPEHPK3PXP", otpauthUrl = "otpauth://totp/x")
+    private val setupResponse = TwoFactorSetupResponse(
+        secret = "JBSWY3DPEHPK3PXP",
+        otpauthUrl = "otpauth://totp/x"
+    )
 
     @Test
     fun `load records a passkey and the gate`() = runTest(mainDispatcherRule.testDispatcher) {
@@ -389,9 +451,15 @@ class TwoFactorViewModelTest {
     }
 
     @Test
-    fun `a failed passkey lookup leaves setup proof-free`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { authRepository.getTwoFactorStatus() } returns Result.success(TwoFactorStatusResponse(enabled = false))
-        coEvery { passkeyRepository.listPasskeys() } returns Result.failure(ApiError.Server(500, "boom"))
+    fun `a failed passkey lookup leaves setup proof-free`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { authRepository.getTwoFactorStatus() } returns Result.success(
+            TwoFactorStatusResponse(enabled = false)
+        )
+        coEvery { passkeyRepository.listPasskeys() } returns Result.failure(
+            ApiError.Server(500, "boom")
+        )
         val vm = TwoFactorViewModel(authRepository, passkeyRepository, passkeyClient) { true }
         advanceUntilIdle()
         assertFalse(vm.uiState.value.hasPasskey)
@@ -416,7 +484,11 @@ class TwoFactorViewModelTest {
     fun `a recovery code proves setup`() = runTest(mainDispatcherRule.testDispatcher) {
         val vm = enabledVm(false, passkeys = listOf(phone))
         advanceUntilIdle()
-        coEvery { authRepository.setupTwoFactor(SecondFactorProof.Code("AAAAA-BBBBB-CCCCC")) } returns
+        coEvery {
+            authRepository.setupTwoFactor(
+                SecondFactorProof.Code("AAAAA-BBBBB-CCCCC")
+            )
+        } returns
             Result.success(setupResponse)
 
         vm.startSetup()
@@ -433,7 +505,11 @@ class TwoFactorViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             val vm = enabledVm(false, passkeys = listOf(phone))
             advanceUntilIdle()
-            coEvery { authRepository.setupTwoFactor(any()) } returns Result.failure(ApiError.Client(400, "Invalid code"))
+            coEvery {
+                authRepository.setupTwoFactor(
+                    any()
+                )
+            } returns Result.failure(ApiError.Client(400, "Invalid code"))
 
             vm.startSetup()
             vm.submitSetupProofCode("000000")
@@ -447,10 +523,16 @@ class TwoFactorViewModelTest {
         }
 
     @Test
-    fun `a locked-out proof shows the server message`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a locked-out proof shows the server message`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = enabledVm(false, passkeys = listOf(phone))
         advanceUntilIdle()
-        coEvery { authRepository.setupTwoFactor(any()) } returns Result.failure(ApiError.Client(429, "locked"))
+        coEvery {
+            authRepository.setupTwoFactor(
+                any()
+            )
+        } returns Result.failure(ApiError.Client(429, "locked"))
 
         vm.startSetup()
         vm.submitSetupProofCode("000000")
@@ -461,7 +543,9 @@ class TwoFactorViewModelTest {
     }
 
     @Test
-    fun `a blank code or a call outside the proof dialog is ignored`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a blank code or a call outside the proof dialog is ignored`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = enabledVm(false, passkeys = listOf(phone))
         advanceUntilIdle()
 
@@ -481,9 +565,17 @@ class TwoFactorViewModelTest {
     fun `an existing passkey proves setup`() = runTest(mainDispatcherRule.testDispatcher) {
         val vm = enabledVm(false, passkeys = listOf(phone))
         advanceUntilIdle()
-        coEvery { passkeyRepository.beginProof(null) } returns Result.success("""{"publicKey":{}}""")
+        coEvery {
+            passkeyRepository.beginProof(
+                null
+            )
+        } returns Result.success("""{"publicKey":{}}""")
         passkeyClient.getResult = PasskeyResult.Success("""{"id":"asserted"}""")
-        coEvery { authRepository.setupTwoFactor(SecondFactorProof.Assertion("""{"id":"asserted"}""")) } returns
+        coEvery {
+            authRepository.setupTwoFactor(
+                SecondFactorProof.Assertion("""{"id":"asserted"}""")
+            )
+        } returns
             Result.success(setupResponse)
 
         vm.startSetup()
@@ -496,7 +588,9 @@ class TwoFactorViewModelTest {
     }
 
     @Test
-    fun `a passkey proof that yields nothing stops before setup`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a passkey proof that yields nothing stops before setup`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = enabledVm(false, passkeys = listOf(phone))
         advanceUntilIdle()
         coEvery { passkeyRepository.beginProof(null) } returns Result.success("{}")
@@ -538,10 +632,16 @@ class TwoFactorViewModelTest {
     }
 
     @Test
-    fun `a failed proof begin surfaces the server message`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a failed proof begin surfaces the server message`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = enabledVm(false, passkeys = listOf(phone))
         advanceUntilIdle()
-        coEvery { passkeyRepository.beginProof(null) } returns Result.failure(ApiError.Client(409, "No passkey is registered"))
+        coEvery {
+            passkeyRepository.beginProof(
+                null
+            )
+        } returns Result.failure(ApiError.Client(409, "No passkey is registered"))
 
         vm.startSetup()
         vm.submitSetupProofWithPasskey(context)
@@ -552,7 +652,9 @@ class TwoFactorViewModelTest {
     }
 
     @Test
-    fun `the passkey route is a no-op when the ceremony gate is closed`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `the passkey route is a no-op when the ceremony gate is closed`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = enabledVm(false, passkeys = listOf(phone), available = false)
         advanceUntilIdle()
         assertFalse(vm.uiState.value.canProveWithPasskey)
@@ -565,10 +667,16 @@ class TwoFactorViewModelTest {
     }
 
     @Test
-    fun `dismissing the proof dialog clears it and its error`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `dismissing the proof dialog clears it and its error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = enabledVm(false, passkeys = listOf(phone))
         advanceUntilIdle()
-        coEvery { authRepository.setupTwoFactor(any()) } returns Result.failure(ApiError.Client(400, "bad"))
+        coEvery {
+            authRepository.setupTwoFactor(
+                any()
+            )
+        } returns Result.failure(ApiError.Client(400, "bad"))
         vm.startSetup()
         vm.submitSetupProofCode("000000")
         advanceUntilIdle()

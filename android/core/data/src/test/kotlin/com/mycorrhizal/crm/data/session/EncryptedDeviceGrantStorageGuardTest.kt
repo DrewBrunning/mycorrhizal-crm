@@ -1,9 +1,9 @@
 package com.mycorrhizal.crm.data.session
 
+import java.io.File
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 /**
  * Guard test for the device-grant storage backend (issue #722, MASVS-L1
@@ -17,7 +17,9 @@ import java.io.File
 class EncryptedDeviceGrantStorageGuardTest {
 
     private val storageSource =
-        File("src/main/kotlin/com/mycorrhizal/crm/data/session/DeviceGrantTokenStorage.kt").readText()
+        File(
+            "src/main/kotlin/com/mycorrhizal/crm/data/session/DeviceGrantTokenStorage.kt"
+        ).readText()
 
     private val diSource =
         File("src/main/kotlin/com/mycorrhizal/crm/data/di/DataModule.kt").readText()
@@ -26,11 +28,11 @@ class EncryptedDeviceGrantStorageGuardTest {
     fun `the grant is stored via EncryptedSharedPreferences, not plain SharedPreferences`() {
         assertTrue(
             "EncryptedDeviceGrantTokenStorage must use EncryptedSharedPreferences.create",
-            storageSource.contains("EncryptedSharedPreferences.create"),
+            storageSource.contains("EncryptedSharedPreferences.create")
         )
         assertFalse(
             "EncryptedDeviceGrantTokenStorage must not fall back to a plain getSharedPreferences",
-            storageSource.contains("getSharedPreferences"),
+            storageSource.contains("getSharedPreferences")
         )
     }
 
@@ -50,7 +52,7 @@ class EncryptedDeviceGrantStorageGuardTest {
     fun `the DI graph wires the encrypted store as the DeviceGrantTokenStorage implementation`() {
         assertTrue(
             "provideDeviceGrantTokenStorage must return an EncryptedDeviceGrantTokenStorage",
-            diSource.contains("EncryptedDeviceGrantTokenStorage(context)"),
+            diSource.contains("EncryptedDeviceGrantTokenStorage(context)")
         )
     }
 }

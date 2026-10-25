@@ -8,7 +8,6 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ApplicationProvider
 import com.mycorrhizal.crm.domain.repository.CircleRepository
@@ -48,8 +47,16 @@ class TriageScreenTest {
     private fun str(@StringRes res: Int, vararg args: Any): String =
         ApplicationProvider.getApplicationContext<Context>().getString(res, *args)
 
-    private fun item(name: String, classification: TriageClassification = TriageClassification.CIRCLE, count: Int = 1) =
-        TriageItem(original = name, name = name, classification = classification, contactCount = count)
+    private fun item(
+        name: String,
+        classification: TriageClassification = TriageClassification.CIRCLE,
+        count: Int = 1
+    ) = TriageItem(
+        original = name,
+        name = name,
+        classification = classification,
+        contactCount = count
+    )
 
     private fun screen(viewModel: TriageViewModel) {
         composeTestRule.setContent {
@@ -67,7 +74,7 @@ class TriageScreenTest {
                     state = TriageUiState(items = listOf(item("Friends", count = 3))),
                     onSetClassification = { _, _ -> },
                     onSetName = { _, _ -> },
-                    onApply = {},
+                    onApply = {}
                 )
             }
         }
@@ -85,10 +92,12 @@ class TriageScreenTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 ClassifyContent(
-                    state = TriageUiState(items = listOf(item("Obsolete", TriageClassification.SKIP))),
+                    state = TriageUiState(
+                        items = listOf(item("Obsolete", TriageClassification.SKIP))
+                    ),
                     onSetClassification = { _, _ -> },
                     onSetName = { _, _ -> },
-                    onApply = {},
+                    onApply = {}
                 )
             }
         }
@@ -106,9 +115,17 @@ class TriageScreenTest {
                     state = TriageUiState(items = items),
                     onSetClassification = { _, _ -> },
                     onSetName = { index, name ->
-                        items = items.mapIndexed { i, it -> if (i == index) it.copy(name = name) else it }
+                        items = items.mapIndexed { i, it ->
+                            if (i == index) {
+                                it.copy(
+                                    name = name
+                                )
+                            } else {
+                                it
+                            }
+                        }
                     },
-                    onApply = {},
+                    onApply = {}
                 )
             }
         }
@@ -124,7 +141,7 @@ class TriageScreenTest {
             MycorrhizalTheme {
                 DoneContent(
                     state = TriageUiState(done = true, appliedCircles = 1, appliedTags = 2),
-                    onBack = {},
+                    onBack = {}
                 )
             }
         }
@@ -141,7 +158,9 @@ class TriageScreenTest {
 
         screen(TriageViewModel(contactRepository, mockk(), mockk()))
 
-        composeTestRule.onNodeWithContentDescription(str(R.string.a11y_state_loading)).assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(
+            str(R.string.a11y_state_loading)
+        ).assertIsDisplayed()
     }
 
     @Test
@@ -171,7 +190,9 @@ class TriageScreenTest {
         coEvery { contactRepository.listLegacyCircles() } returns Result.success(listOf("Friends"))
         coEvery {
             contactRepository.listContacts(any(), any(), any(), any(), any(), any(), any())
-        } returns Result.success(ContactsPage(contacts = emptyList(), nextCursor = null, limit = 500, sync = null))
+        } returns Result.success(
+            ContactsPage(contacts = emptyList(), nextCursor = null, limit = 500, sync = null)
+        )
 
         screen(TriageViewModel(contactRepository, mockk(), mockk()))
 
@@ -186,7 +207,9 @@ class TriageScreenTest {
         coEvery { contactRepository.listLegacyCircles() } returns Result.success(listOf("Friends"))
         coEvery {
             contactRepository.listContacts(any(), any(), any(), any(), any(), any(), any())
-        } returns Result.success(ContactsPage(contacts = emptyList(), nextCursor = null, limit = 500, sync = null))
+        } returns Result.success(
+            ContactsPage(contacts = emptyList(), nextCursor = null, limit = 500, sync = null)
+        )
         coEvery { circleRepository.list(any(), any()) } returns Result.success(emptyList())
         coEvery { tagRepository.list(any(), any()) } returns Result.success(emptyList())
         coEvery { circleRepository.create("Friends") } returns

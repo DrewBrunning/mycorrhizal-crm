@@ -3,7 +3,7 @@ package com.mycorrhizal.crm.model.network
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
 
-/**
+/*
  * M25 settings-surface DTOs: user profile prefs (language/date-format/
  * password), webhooks, and ntfy/Gotify notification channels. Mirrors
  * `backend/models/dtos.go` and `backend/models/notification.go` by hand —
@@ -15,21 +15,17 @@ import com.squareup.moshi.JsonClass
 
 /** PATCH /users/language request body — `{ language: "en" }`. */
 @JsonClass(generateAdapter = true)
-data class UpdateLanguageRequest(
-    val language: String,
-)
+data class UpdateLanguageRequest(val language: String)
 
 /** PATCH /users/date-format request body — `{ date_format: "eu" }`. */
 @JsonClass(generateAdapter = true)
-data class UpdateDateFormatRequest(
-    @Json(name = "date_format") val dateFormat: String,
-)
+data class UpdateDateFormatRequest(@Json(name = "date_format") val dateFormat: String)
 
 /** POST /users/change-password request body. */
 @JsonClass(generateAdapter = true)
 data class ChangePasswordRequest(
     @Json(name = "current_password") val currentPassword: String,
-    @Json(name = "new_password") val newPassword: String,
+    @Json(name = "new_password") val newPassword: String
 )
 
 /**
@@ -41,15 +37,11 @@ data class ChangePasswordRequest(
  * string, so both land on the same "clear" outcome.
  */
 @JsonClass(generateAdapter = true)
-data class SelfContactRequest(
-    @Json(name = "vcard_uid") val vcardUid: String?,
-)
+data class SelfContactRequest(@Json(name = "vcard_uid") val vcardUid: String?)
 
 /** Generic `{ message: "…" }` envelope used by the PATCH/POST user endpoints. */
 @JsonClass(generateAdapter = true)
-data class MessageResponse(
-    val message: String? = null,
-)
+data class MessageResponse(val message: String? = null)
 
 /**
  * PATCH /users/enabled-contact-fields request body (issue #832, web parity with
@@ -59,9 +51,7 @@ data class MessageResponse(
  * something the server returns, never something a client explicitly requests.
  */
 @JsonClass(generateAdapter = true)
-data class EnabledContactFieldsInput(
-    val fields: List<String>,
-)
+data class EnabledContactFieldsInput(val fields: List<String>)
 
 /**
  * GET /users/enabled-contact-fields response, and the shape of the same field
@@ -72,7 +62,7 @@ data class EnabledContactFieldsInput(
  */
 @JsonClass(generateAdapter = true)
 data class EnabledContactFieldsResponse(
-    @Json(name = "enabled_contact_fields") val enabledContactFields: List<String>? = null,
+    @Json(name = "enabled_contact_fields") val enabledContactFields: List<String>? = null
 )
 
 /** Notification-channel test endpoints accept `ntfy | gotify | push` — never `email`. */
@@ -92,7 +82,7 @@ data class NotificationConfig(
     @Json(name = "notify_ntfy") val notifyNtfy: Boolean = false,
     @Json(name = "notify_gotify") val notifyGotify: Boolean = false,
     @Json(name = "notify_push") val notifyPush: Boolean = false,
-    @Json(name = "vapid_public_key") val vapidPublicKey: String = "",
+    @Json(name = "vapid_public_key") val vapidPublicKey: String = ""
 )
 
 /**
@@ -110,14 +100,12 @@ data class NotificationConfigInput(
     @Json(name = "gotify_url") val gotifyUrl: String? = null,
     @Json(name = "gotify_token") val gotifyToken: String? = null,
     @Json(name = "notify_ntfy") val notifyNtfy: Boolean? = null,
-    @Json(name = "notify_gotify") val notifyGotify: Boolean? = null,
+    @Json(name = "notify_gotify") val notifyGotify: Boolean? = null
 )
 
 /** POST /notifications/config/test request body. */
 @JsonClass(generateAdapter = true)
-data class NotificationTestChannelRequest(
-    val channel: String,
-)
+data class NotificationTestChannelRequest(val channel: String)
 
 /**
  * POST /notifications/config/test response. A diagnosed failure (unconfigured
@@ -125,10 +113,7 @@ data class NotificationTestChannelRequest(
  * `ok:false` — only transport/parse errors surface as Result.failure.
  */
 @JsonClass(generateAdapter = true)
-data class NotificationTestResult(
-    val ok: Boolean = false,
-    val error: String? = null,
-)
+data class NotificationTestResult(val ok: Boolean = false, val error: String? = null)
 
 /** A single webhook — the `GET/PUT /webhooks` response shape (never contains a secret). */
 @JsonClass(generateAdapter = true)
@@ -138,7 +123,7 @@ data class Webhook(
     val url: String = "",
     val events: List<String> = emptyList(),
     @Json(name = "is_active") val isActive: Boolean = false,
-    @Json(name = "created_at") val createdAt: String? = null,
+    @Json(name = "created_at") val createdAt: String? = null
 )
 
 /** POST /webhooks request/response body. [isActive] is a non-pointer bool server-side — always send it. */
@@ -147,7 +132,7 @@ data class WebhookInput(
     val name: String,
     val url: String,
     val events: List<String>,
-    @Json(name = "is_active") val isActive: Boolean,
+    @Json(name = "is_active") val isActive: Boolean
 )
 
 /** POST /webhooks (201) response — the only response that carries the plaintext [secret]. */
@@ -159,7 +144,7 @@ data class WebhookCreateResponse(
     val events: List<String> = emptyList(),
     @Json(name = "is_active") val isActive: Boolean = false,
     @Json(name = "created_at") val createdAt: String? = null,
-    val secret: String? = null,
+    val secret: String? = null
 )
 
 /** A single webhook delivery record (test or event-triggered). */
@@ -172,26 +157,20 @@ data class WebhookDelivery(
     val error: String? = null,
     val attempts: Int = 0,
     @Json(name = "next_retry_at") val nextRetryAt: String? = null,
-    @Json(name = "created_at") val createdAt: String? = null,
+    @Json(name = "created_at") val createdAt: String? = null
 )
 
 /** GET /webhooks — `{ webhooks: [...] }`. */
 @JsonClass(generateAdapter = true)
-data class WebhooksResponse(
-    val webhooks: List<Webhook> = emptyList(),
-)
+data class WebhooksResponse(val webhooks: List<Webhook> = emptyList())
 
 /** GET /webhooks/:id/deliveries — `{ deliveries: [...] }`, most recent 50. */
 @JsonClass(generateAdapter = true)
-data class WebhookDeliveriesResponse(
-    val deliveries: List<WebhookDelivery> = emptyList(),
-)
+data class WebhookDeliveriesResponse(val deliveries: List<WebhookDelivery> = emptyList())
 
 /** POST /webhooks/:id/test — `{ delivery: {...} }`. */
 @JsonClass(generateAdapter = true)
-data class WebhookTestResponse(
-    val delivery: WebhookDelivery? = null,
-)
+data class WebhookTestResponse(val delivery: WebhookDelivery? = null)
 
 /**
  * API token lifecycle (issue #413's Android follow-up, #573). Mirrors web's
@@ -218,7 +197,7 @@ data class ApiToken(
     @Json(name = "revoked_at") val revokedAt: String? = null,
     /** Null only for tokens created before expiry was introduced. */
     @Json(name = "expires_at") val expiresAt: String? = null,
-    val scope: String = DEFAULT_API_TOKEN_SCOPE,
+    val scope: String = DEFAULT_API_TOKEN_SCOPE
 )
 
 /** POST /api-tokens request body. [expiresInDays]/[scope] omitted apply the backend defaults. */
@@ -226,7 +205,7 @@ data class ApiToken(
 data class ApiTokenInput(
     val name: String,
     @Json(name = "expires_in_days") val expiresInDays: Int? = null,
-    val scope: String? = null,
+    val scope: String? = null
 )
 
 /**
@@ -242,17 +221,13 @@ data class ApiTokenCreateResponse(
     @Json(name = "revoked_at") val revokedAt: String? = null,
     @Json(name = "expires_at") val expiresAt: String? = null,
     val scope: String = DEFAULT_API_TOKEN_SCOPE,
-    val token: String? = null,
+    val token: String? = null
 )
 
 /** GET /api-tokens — `{ tokens: [...] }`. */
 @JsonClass(generateAdapter = true)
-data class ApiTokensResponse(
-    val tokens: List<ApiToken> = emptyList(),
-)
+data class ApiTokensResponse(val tokens: List<ApiToken> = emptyList())
 
 /** POST /api-tokens/revoke-all — `{ revoked: N }`, the count of tokens actually revoked. */
 @JsonClass(generateAdapter = true)
-data class RevokeAllApiTokensResponse(
-    val revoked: Int = 0,
-)
+data class RevokeAllApiTokensResponse(val revoked: Int = 0)

@@ -11,7 +11,6 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.AlertDialog
@@ -22,18 +21,14 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
-import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -50,8 +45,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.FIELD_TYPES
 import com.mycorrhizal.crm.ui.R
-import com.mycorrhizal.crm.ui.components.FormScaffold
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
+import com.mycorrhizal.crm.ui.components.FormScaffold
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 
 /**
@@ -66,7 +61,7 @@ fun FieldDefinitionFormScreen(
     onSaved: () -> Unit,
     onBack: () -> Unit,
     onDeleted: () -> Unit = onSaved,
-    viewModel: FieldDefinitionFormViewModel = hiltViewModel(),
+    viewModel: FieldDefinitionFormViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val events by viewModel.events.collectAsStateWithLifecycle()
@@ -78,24 +73,38 @@ fun FieldDefinitionFormScreen(
                 viewModel.onEventShown()
                 onSaved()
             }
+
             FieldDefinitionFormEvent.Deleted -> {
                 viewModel.onEventShown()
                 onDeleted()
             }
+
             null -> Unit
         }
     }
 
     FormScaffold(
-        title = if (state.isEdit) stringResource(R.string.settings_custom_fields_edit_title) else stringResource(R.string.settings_custom_fields_new_title),
+        title = if (state.isEdit) {
+            stringResource(
+                R.string.settings_custom_fields_edit_title
+            )
+        } else {
+            stringResource(R.string.settings_custom_fields_new_title)
+        },
         onBack = onBack,
-        saveLabel = if (state.isEdit) stringResource(R.string.action_save) else stringResource(R.string.action_create),
+        saveLabel = if (state.isEdit) {
+            stringResource(
+                R.string.action_save
+            )
+        } else {
+            stringResource(R.string.action_create)
+        },
         isSaving = state.isSaving,
         onSave = viewModel::save,
         snackbarHostState = snackbarHostState,
         isDirty = state.isDirty,
         entityLabel = stringResource(R.string.entity_custom_field),
-        showSaveBar = true,
+        showSaveBar = true
     ) { padding ->
         FieldDefinitionFormContent(
             state = state,
@@ -115,7 +124,7 @@ fun FieldDefinitionFormScreen(
             onSensitivityChange = viewModel::onSensitivityChange,
             onGroupChange = viewModel::onGroupChange,
             onDelete = viewModel::delete,
-            modifier = Modifier.padding(padding),
+            modifier = Modifier.padding(padding)
         )
     }
 
@@ -148,7 +157,7 @@ fun FieldDefinitionFormContent(
     onSensitivityChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     onGroupChange: (String) -> Unit = {},
-    onDelete: () -> Unit = {},
+    onDelete: () -> Unit = {}
 ) {
     if (state.isLoading) {
         LoadingSkeleton(modifier = modifier.fillMaxSize())
@@ -173,14 +182,14 @@ fun FieldDefinitionFormContent(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         OutlinedTextField(
             value = state.label,
             onValueChange = onLabelChange,
             label = { Text(stringResource(R.string.settings_custom_fields_label)) },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
             value = state.key,
@@ -189,7 +198,7 @@ fun FieldDefinitionFormContent(
             label = { Text(stringResource(R.string.settings_custom_fields_key)) },
             supportingText = { Text(stringResource(R.string.settings_custom_fields_key_hint)) },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         )
 
         GroupField(
@@ -197,7 +206,7 @@ fun FieldDefinitionFormContent(
             suggestions = state.groupSuggestions,
             expanded = groupExpanded,
             onExpandedChange = { groupExpanded = it },
-            onValueChange = onGroupChange,
+            onValueChange = onGroupChange
         )
 
         ExposedDropdownMenuBox(expanded = typeExpanded, onExpandedChange = { typeExpanded = it }) {
@@ -206,17 +215,24 @@ fun FieldDefinitionFormContent(
                 onValueChange = {},
                 readOnly = true,
                 label = { Text(stringResource(R.string.settings_custom_fields_type)) },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeExpanded) },
-                modifier = Modifier.fillMaxWidth().menuAnchor(),
+                trailingIcon = {
+                    ExposedDropdownMenuDefaults.TrailingIcon(
+                        expanded = typeExpanded
+                    )
+                },
+                modifier = Modifier.fillMaxWidth().menuAnchor()
             )
             ExposedDropdownMenu(
                 expanded = typeExpanded,
-                onDismissRequest = { typeExpanded = false },
+                onDismissRequest = { typeExpanded = false }
             ) {
                 FIELD_TYPES.forEach { option ->
                     DropdownMenuItem(
                         text = { Text(stringResource(fieldTypeLabelRes(option))) },
-                        onClick = { onTypeChange(option); typeExpanded = false },
+                        onClick = {
+                            onTypeChange(option)
+                            typeExpanded = false
+                        }
                     )
                 }
             }
@@ -226,10 +242,10 @@ fun FieldDefinitionFormContent(
             modifier = Modifier.toggleable(
                 value = state.multi,
                 onValueChange = onMultiChange,
-                role = Role.Switch,
+                role = Role.Switch
             ),
             headlineContent = { Text(stringResource(R.string.settings_custom_fields_multi)) },
-            trailingContent = { Switch(checked = state.multi, onCheckedChange = null) },
+            trailingContent = { Switch(checked = state.multi, onCheckedChange = null) }
         )
 
         when (state.type) {
@@ -240,16 +256,17 @@ fun FieldDefinitionFormContent(
                     label = { Text(stringResource(R.string.settings_custom_fields_max_length)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f)
                 )
                 OutlinedTextField(
                     value = state.pattern,
                     onValueChange = onPatternChange,
                     label = { Text(stringResource(R.string.settings_custom_fields_pattern)) },
                     singleLine = true,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f)
                 )
             }
+
             "number" -> Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = state.min,
@@ -257,7 +274,7 @@ fun FieldDefinitionFormContent(
                     label = { Text(stringResource(R.string.settings_custom_fields_min)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f)
                 )
                 OutlinedTextField(
                     value = state.max,
@@ -265,26 +282,39 @@ fun FieldDefinitionFormContent(
                     label = { Text(stringResource(R.string.settings_custom_fields_max)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f)
                 )
             }
+
             "enum" -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(R.string.settings_custom_fields_enum_values), style = MaterialTheme.typography.titleSmall)
+                Text(
+                    stringResource(R.string.settings_custom_fields_enum_values),
+                    style = MaterialTheme.typography.titleSmall
+                )
                 state.enumValues.forEachIndexed { index, value ->
                     Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                         OutlinedTextField(
                             value = value,
                             onValueChange = { onUpdateEnumValue(index, it) },
                             singleLine = true,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f)
                         )
                         AccessibleIconButton(onClick = { onRemoveEnumValue(index) }) {
-                            Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.settings_custom_fields_remove_value))
+                            Icon(
+                                Icons.Outlined.Delete,
+                                contentDescription = stringResource(
+                                    R.string.settings_custom_fields_remove_value
+                                )
+                            )
                         }
                     }
                 }
                 TextButton(onClick = onAddEnumValue) {
-                    Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.padding(end = 4.dp))
+                    Icon(
+                        Icons.Outlined.Add,
+                        contentDescription = null,
+                        modifier = Modifier.padding(end = 4.dp)
+                    )
                     Text(stringResource(R.string.settings_custom_fields_add_value))
                 }
             }
@@ -293,10 +323,13 @@ fun FieldDefinitionFormContent(
         SettingsNavigationRow(
             title = stringResource(R.string.settings_custom_fields_advanced),
             onClick = { advancedExpanded = !advancedExpanded },
-            supporting = stringResource(R.string.settings_custom_fields_advanced_hint),
+            supporting = stringResource(R.string.settings_custom_fields_advanced_hint)
         )
         if (advancedExpanded) {
-            ExposedDropdownMenuBox(expanded = projectionExpanded, onExpandedChange = { projectionExpanded = it }) {
+            ExposedDropdownMenuBox(
+                expanded = projectionExpanded,
+                onExpandedChange = { projectionExpanded = it }
+            ) {
                 OutlinedTextField(
                     value = if (state.projectionMode == "vcard") {
                         stringResource(R.string.settings_custom_fields_projection_vcard)
@@ -306,20 +339,40 @@ fun FieldDefinitionFormContent(
                     onValueChange = {},
                     readOnly = true,
                     label = { Text(stringResource(R.string.settings_custom_fields_projection)) },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = projectionExpanded) },
-                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                    trailingIcon = {
+                        ExposedDropdownMenuDefaults.TrailingIcon(
+                            expanded = projectionExpanded
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth().menuAnchor()
                 )
                 ExposedDropdownMenu(
                     expanded = projectionExpanded,
-                    onDismissRequest = { projectionExpanded = false },
+                    onDismissRequest = { projectionExpanded = false }
                 ) {
                     DropdownMenuItem(
-                        text = { Text(stringResource(R.string.settings_custom_fields_projection_internal)) },
-                        onClick = { onProjectionModeChange("internal"); projectionExpanded = false },
+                        text = {
+                            Text(
+                                stringResource(R.string.settings_custom_fields_projection_internal)
+                            )
+                        },
+                        onClick = {
+                            onProjectionModeChange(
+                                "internal"
+                            )
+                            projectionExpanded = false
+                        }
                     )
                     DropdownMenuItem(
-                        text = { Text(stringResource(R.string.settings_custom_fields_projection_vcard)) },
-                        onClick = { onProjectionModeChange("vcard"); projectionExpanded = false },
+                        text = {
+                            Text(
+                                stringResource(R.string.settings_custom_fields_projection_vcard)
+                            )
+                        },
+                        onClick = {
+                            onProjectionModeChange("vcard")
+                            projectionExpanded = false
+                        }
                     )
                 }
             }
@@ -329,28 +382,38 @@ fun FieldDefinitionFormContent(
                     onValueChange = onVcardNameChange,
                     label = { Text(stringResource(R.string.settings_custom_fields_vcard_name)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         }
 
-        ExposedDropdownMenuBox(expanded = sensitivityExpanded, onExpandedChange = { sensitivityExpanded = it }) {
+        ExposedDropdownMenuBox(
+            expanded = sensitivityExpanded,
+            onExpandedChange = { sensitivityExpanded = it }
+        ) {
             OutlinedTextField(
                 value = stringResource(sensitivityLabelRes(state.sensitivity)),
                 onValueChange = {},
                 readOnly = true,
                 label = { Text(stringResource(R.string.settings_custom_fields_sensitivity)) },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = sensitivityExpanded) },
-                modifier = Modifier.fillMaxWidth().menuAnchor(),
+                trailingIcon = {
+                    ExposedDropdownMenuDefaults.TrailingIcon(
+                        expanded = sensitivityExpanded
+                    )
+                },
+                modifier = Modifier.fillMaxWidth().menuAnchor()
             )
             ExposedDropdownMenu(
                 expanded = sensitivityExpanded,
-                onDismissRequest = { sensitivityExpanded = false },
+                onDismissRequest = { sensitivityExpanded = false }
             ) {
                 listOf("normal", "private", "secret").forEach { option ->
                     DropdownMenuItem(
                         text = { Text(stringResource(sensitivityLabelRes(option))) },
-                        onClick = { onSensitivityChange(option); sensitivityExpanded = false },
+                        onClick = {
+                            onSensitivityChange(option)
+                            sensitivityExpanded = false
+                        }
                     )
                 }
             }
@@ -361,16 +424,23 @@ fun FieldDefinitionFormContent(
                 enabled = !state.isDeleting,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .testTag("delete-field-definition"),
+                    .testTag("delete-field-definition")
             ) {
                 if (state.isDeleting) {
-                    CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp), strokeWidth = 2.dp)
+                    CircularProgressIndicator(
+                        modifier = Modifier.padding(end = 8.dp),
+                        strokeWidth = 2.dp
+                    )
                 } else {
-                    Icon(Icons.Outlined.Delete, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                    Icon(
+                        Icons.Outlined.Delete,
+                        contentDescription = null,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
                 }
                 Text(
                     stringResource(R.string.settings_custom_fields_delete_button),
-                    color = MaterialTheme.colorScheme.error,
+                    color = MaterialTheme.colorScheme.error
                 )
             }
         }
@@ -389,16 +459,19 @@ fun FieldDefinitionFormContent(
                     onClick = {
                         confirmingDelete = false
                         onDelete()
-                    },
+                    }
                 ) {
-                    Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error)
+                    Text(
+                        stringResource(R.string.action_delete),
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
             },
             dismissButton = {
                 TextButton(onClick = { confirmingDelete = false }) {
                     Text(stringResource(R.string.action_cancel))
                 }
-            },
+            }
         )
     }
 }
@@ -415,12 +488,12 @@ private fun GroupField(
     suggestions: List<String>,
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
-    onValueChange: (String) -> Unit,
+    onValueChange: (String) -> Unit
 ) {
     val matches = suggestions.filter { it != value && it.contains(value.trim(), ignoreCase = true) }
     ExposedDropdownMenuBox(
         expanded = expanded && matches.isNotEmpty(),
-        onExpandedChange = onExpandedChange,
+        onExpandedChange = onExpandedChange
     ) {
         OutlinedTextField(
             value = value,
@@ -431,11 +504,11 @@ private fun GroupField(
             label = { Text(stringResource(R.string.settings_custom_fields_group)) },
             supportingText = { Text(stringResource(R.string.settings_custom_fields_group_hint)) },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryEditable),
+            modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryEditable)
         )
         ExposedDropdownMenu(
             expanded = expanded && matches.isNotEmpty(),
-            onDismissRequest = { onExpandedChange(false) },
+            onDismissRequest = { onExpandedChange(false) }
         ) {
             matches.forEach { option ->
                 DropdownMenuItem(
@@ -443,7 +516,7 @@ private fun GroupField(
                     onClick = {
                         onValueChange(option)
                         onExpandedChange(false)
-                    },
+                    }
                 )
             }
         }

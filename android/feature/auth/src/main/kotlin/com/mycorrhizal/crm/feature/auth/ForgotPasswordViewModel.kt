@@ -9,12 +9,12 @@ import com.mycorrhizal.crm.model.util.Validators
 import com.mycorrhizal.crm.network.toApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /** Mirrors web's ForgotPasswordDialog ResetStep = 'request' | 'confirm' | 'done'. */
 enum class PasswordResetStep { REQUEST, CONFIRM, DONE }
@@ -33,13 +33,13 @@ data class ForgotPasswordUiState(
     val error: String? = null,
     @StringRes val errorRes: Int? = null,
     /** The anti-enumeration request message (identical for known and unknown emails). */
-    val requestMessage: String? = null,
+    val requestMessage: String? = null
 )
 
 @HiltViewModel
 class ForgotPasswordViewModel @Inject constructor(
     private val authRepository: AuthRepository,
-    private val sessionManager: SessionManager,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ForgotPasswordUiState())
@@ -74,14 +74,31 @@ class ForgotPasswordViewModel @Inject constructor(
         if (state.isLoading) return
         val trimmedUrl = state.serverUrl.trim().trimEnd('/')
         if (!Validators.isValidServerUrl(trimmedUrl)) {
-            _uiState.update { it.copy(errorRes = R.string.login_error_valid_server_url, error = null) }
+            _uiState.update {
+                it.copy(
+                    errorRes = R.string.login_error_valid_server_url,
+                    error = null
+                )
+            }
             return
         }
         if (state.email.isBlank()) {
-            _uiState.update { it.copy(errorRes = R.string.forgot_password_error_email_required, error = null) }
+            _uiState.update {
+                it.copy(
+                    errorRes = R.string.forgot_password_error_email_required,
+                    error = null
+                )
+            }
             return
         }
-        _uiState.update { it.copy(isLoading = true, error = null, errorRes = null, requestMessage = null) }
+        _uiState.update {
+            it.copy(
+                isLoading = true,
+                error = null,
+                errorRes = null,
+                requestMessage = null
+            )
+        }
         viewModelScope.launch {
             sessionManager.setServerUrl(trimmedUrl)
             authRepository.requestPasswordReset(state.email.trim()).fold(
@@ -90,13 +107,18 @@ class ForgotPasswordViewModel @Inject constructor(
                         it.copy(
                             isLoading = false,
                             step = PasswordResetStep.CONFIRM,
-                            requestMessage = message,
+                            requestMessage = message
                         )
                     }
                 },
                 onFailure = { e ->
-                    _uiState.update { it.copy(isLoading = false, error = e.toApiError().displayMessage) }
-                },
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = e.toApiError().displayMessage
+                        )
+                    }
+                }
             )
         }
     }
@@ -106,15 +128,30 @@ class ForgotPasswordViewModel @Inject constructor(
         val state = _uiState.value
         if (state.isLoading) return
         if (token.isBlank()) {
-            _uiState.update { it.copy(errorRes = R.string.forgot_password_error_token_required, error = null) }
+            _uiState.update {
+                it.copy(
+                    errorRes = R.string.forgot_password_error_token_required,
+                    error = null
+                )
+            }
             return
         }
         if (newPassword.isBlank()) {
-            _uiState.update { it.copy(errorRes = R.string.forgot_password_error_password_required, error = null) }
+            _uiState.update {
+                it.copy(
+                    errorRes = R.string.forgot_password_error_password_required,
+                    error = null
+                )
+            }
             return
         }
         if (newPassword != confirmPassword) {
-            _uiState.update { it.copy(errorRes = R.string.settings_password_mismatch, error = null) }
+            _uiState.update {
+                it.copy(
+                    errorRes = R.string.settings_password_mismatch,
+                    error = null
+                )
+            }
             return
         }
         _uiState.update { it.copy(isLoading = true, error = null, errorRes = null) }
@@ -124,8 +161,13 @@ class ForgotPasswordViewModel @Inject constructor(
                     _uiState.update { it.copy(isLoading = false, step = PasswordResetStep.DONE) }
                 },
                 onFailure = { e ->
-                    _uiState.update { it.copy(isLoading = false, error = e.toApiError().displayMessage) }
-                },
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = e.toApiError().displayMessage
+                        )
+                    }
+                }
             )
         }
     }

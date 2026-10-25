@@ -47,8 +47,8 @@ import com.mycorrhizal.crm.domain.profile.ServerProfileKind
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.BrandFab
-import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
 
 /**
  * ADR 0028 Decision 1: the "Servers" screen — list, add (Remote), rename,
@@ -65,7 +65,7 @@ fun ServersScreen(
     onUseLocalOnly: () -> Unit = {},
     // Issue #1265: opens the "Move this data to a server" wizard.
     onAttachToServer: () -> Unit = {},
-    viewModel: ServersViewModel = hiltViewModel(),
+    viewModel: ServersViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var addOpen by remember { mutableStateOf(false) }
@@ -87,33 +87,36 @@ fun ServersScreen(
                     AccessibleIconButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = stringResource(R.string.cd_back),
+                            contentDescription = stringResource(R.string.cd_back)
                         )
                     }
                 },
                 title = {
                     Text(
                         stringResource(R.string.settings_servers_title),
-                        style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.titleLarge
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
         floatingActionButton = {
             BrandFab(onClick = { addOpen = true }) {
-                Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.settings_servers_add))
+                Icon(
+                    Icons.Outlined.Add,
+                    contentDescription = stringResource(R.string.settings_servers_add)
+                )
             }
-        },
+        }
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding),
+                .padding(padding)
         ) {
             state.errorRes?.let { res ->
                 Text(
@@ -122,7 +125,7 @@ fun ServersScreen(
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier
                         .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .semantics { liveRegion = LiveRegionMode.Assertive },
+                        .semantics { liveRegion = LiveRegionMode.Assertive }
                 )
             }
             if (state.profiles.isEmpty()) {
@@ -130,12 +133,15 @@ fun ServersScreen(
                     title = stringResource(R.string.settings_servers_empty),
                     body = stringResource(R.string.settings_servers_empty_body),
                     actionLabel = stringResource(R.string.settings_servers_add),
-                    onAction = { addOpen = true },
+                    onAction = { addOpen = true }
                 )
             } else {
                 // Issue #1398: weight(1f), not fillMaxSize() — a full-height list leaves the
                 // "Use on this device only" button below it with zero height.
-                LazyColumn(modifier = Modifier.weight(1f).testTag("servers-list"), contentPadding = FabListContentPadding) {
+                LazyColumn(
+                    modifier = Modifier.weight(1f).testTag("servers-list"),
+                    contentPadding = FabListContentPadding
+                ) {
                     items(state.profiles, key = { it.id }) { profile ->
                         ServerProfileRow(
                             profile = profile,
@@ -144,7 +150,7 @@ fun ServersScreen(
                             onSelect = { viewModel.select(profile.id) },
                             onRename = { renaming = profile },
                             onRemove = { removing = profile },
-                            onAttach = onAttachToServer,
+                            onAttach = onAttachToServer
                         )
                     }
                 }
@@ -154,7 +160,7 @@ fun ServersScreen(
                     onClick = onUseLocalOnly,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .padding(16.dp)
                 ) {
                     Text(stringResource(R.string.login_use_local_only))
                 }
@@ -169,7 +175,7 @@ fun ServersScreen(
                 viewModel.addRemote(label, url)
                 addOpen = false
             },
-            onDismiss = { addOpen = false },
+            onDismiss = { addOpen = false }
         )
     }
 
@@ -180,7 +186,7 @@ fun ServersScreen(
                 viewModel.rename(profile.id, label)
                 renaming = null
             },
-            onDismiss = { renaming = null },
+            onDismiss = { renaming = null }
         )
     }
 
@@ -194,13 +200,17 @@ fun ServersScreen(
                     viewModel.deleteLocalData(profile.id)
                     removing = null
                 },
-                onDismiss = { removing = null },
+                onDismiss = { removing = null }
             )
         } else {
             AlertDialog(
                 onDismissRequest = { removing = null },
                 title = { Text(stringResource(R.string.settings_servers_remove_title)) },
-                text = { Text(stringResource(R.string.settings_servers_remove_body, profile.label)) },
+                text = {
+                    Text(
+                        stringResource(R.string.settings_servers_remove_body, profile.label)
+                    )
+                },
                 confirmButton = {
                     TextButton(onClick = {
                         viewModel.remove(profile.id)
@@ -211,7 +221,7 @@ fun ServersScreen(
                     TextButton(onClick = { removing = null }) {
                         Text(stringResource(R.string.settings_cancel))
                     }
-                },
+                }
             )
         }
     }
@@ -221,7 +231,16 @@ fun ServersScreen(
         AlertDialog(
             onDismissRequest = viewModel::dismissPendingSwitch,
             title = { Text(stringResource(R.string.settings_servers_switch_title)) },
-            text = { Text(pluralStringResource(R.plurals.settings_servers_switch_body, pending.count, pending.count, label)) },
+            text = {
+                Text(
+                    pluralStringResource(
+                        R.plurals.settings_servers_switch_body,
+                        pending.count,
+                        pending.count,
+                        label
+                    )
+                )
+            },
             confirmButton = {
                 TextButton(onClick = viewModel::confirmDiscard) {
                     Text(stringResource(R.string.settings_servers_switch_confirm))
@@ -231,7 +250,7 @@ fun ServersScreen(
                 TextButton(onClick = viewModel::dismissPendingSwitch) {
                     Text(stringResource(R.string.settings_cancel))
                 }
-            },
+            }
         )
     }
 }
@@ -244,85 +263,109 @@ internal fun ServerProfileRow(
     onSelect: () -> Unit,
     onRename: () -> Unit,
     onRemove: () -> Unit,
-    onAttach: () -> Unit = {},
+    onAttach: () -> Unit = {}
 ) {
     // ADR 0028 Decision 3: the wizard starts from the ACTIVE, writable Local
     // profile (it exports from the running local server).
     val canAttach = isActive && profile.kind is ServerProfileKind.Local && !profile.archived
     Column {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = !isBusy && !isActive) { onSelect() }
-            .padding(horizontal = 16.dp, vertical = 12.dp)
-            .testTag("server-row-${profile.id}"),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(profile.label, style = MaterialTheme.typography.bodyLarge)
-                if (isActive) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(enabled = !isBusy && !isActive) { onSelect() }
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .testTag("server-row-${profile.id}"),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(profile.label, style = MaterialTheme.typography.bodyLarge)
+                    if (isActive) {
+                        Text(
+                            text = stringResource(R.string.settings_servers_active),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.tertiary
+                        )
+                    }
+                }
+                Text(
+                    text = profile.remoteUrl ?: stringResource(
+                        R.string.settings_servers_local_kind
+                    ),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (profile.archived) {
                     Text(
-                        text = stringResource(R.string.settings_servers_active),
-                        style = MaterialTheme.typography.labelSmall,
+                        text = stringResource(R.string.attach_archived_badge),
+                        style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.tertiary,
+                        modifier = Modifier.testTag("server-archived-${profile.id}")
+                    )
+                    Text(
+                        text = stringResource(R.string.attach_archived_hint),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
-            Text(
-                text = profile.remoteUrl ?: stringResource(R.string.settings_servers_local_kind),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            if (profile.archived) {
-                Text(
-                    text = stringResource(R.string.attach_archived_badge),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.tertiary,
-                    modifier = Modifier.testTag("server-archived-${profile.id}"),
+            if (isActive) {
+                Icon(
+                    Icons.Outlined.Check,
+                    contentDescription = stringResource(R.string.settings_servers_active),
+                    tint = MaterialTheme.colorScheme.tertiary
                 )
-                Text(
-                    text = stringResource(R.string.attach_archived_hint),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+            }
+            AccessibleIconButton(onClick = onRename, enabled = !isBusy) {
+                Icon(
+                    Icons.Outlined.Edit,
+                    contentDescription = stringResource(
+                        R.string.settings_servers_rename_named,
+                        profile.label
+                    )
+                )
+            }
+            AccessibleIconButton(onClick = onRemove, enabled = !isBusy) {
+                Icon(
+                    Icons.Outlined.Delete,
+                    contentDescription = stringResource(
+                        R.string.settings_servers_remove_named,
+                        profile.label
+                    )
                 )
             }
         }
-        if (isActive) {
-            Icon(
-                Icons.Outlined.Check,
-                contentDescription = stringResource(R.string.settings_servers_active),
-                tint = MaterialTheme.colorScheme.tertiary,
-            )
+        if (canAttach) {
+            TextButton(
+                onClick = onAttach,
+                enabled = !isBusy,
+                modifier = Modifier.padding(
+                    horizontal = 8.dp
+                ).testTag("server-attach-${profile.id}")
+            ) {
+                Text(stringResource(R.string.attach_button))
+            }
         }
-        AccessibleIconButton(onClick = onRename, enabled = !isBusy) {
-            Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.settings_servers_rename_named, profile.label))
+        if (profile.archived) {
+            // Persistent (not buried in the row's icon): the archive holds the only
+            // on-device copy, so its deletion is an explicit, typed-confirmation act.
+            TextButton(
+                onClick = onRemove,
+                enabled = !isBusy,
+                modifier = Modifier.padding(
+                    horizontal = 8.dp
+                ).testTag("server-delete-archive-${profile.id}")
+            ) {
+                Text(
+                    stringResource(R.string.attach_archived_delete),
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
         }
-        AccessibleIconButton(onClick = onRemove, enabled = !isBusy) {
-            Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.settings_servers_remove_named, profile.label))
-        }
-    }
-    if (canAttach) {
-        TextButton(
-            onClick = onAttach,
-            enabled = !isBusy,
-            modifier = Modifier.padding(horizontal = 8.dp).testTag("server-attach-${profile.id}"),
-        ) {
-            Text(stringResource(R.string.attach_button))
-        }
-    }
-    if (profile.archived) {
-        // Persistent (not buried in the row's icon): the archive holds the only
-        // on-device copy, so its deletion is an explicit, typed-confirmation act.
-        TextButton(
-            onClick = onRemove,
-            enabled = !isBusy,
-            modifier = Modifier.padding(horizontal = 8.dp).testTag("server-delete-archive-${profile.id}"),
-        ) {
-            Text(stringResource(R.string.attach_archived_delete), color = MaterialTheme.colorScheme.error)
-        }
-    }
     }
 }
 
@@ -330,7 +373,7 @@ internal fun ServerProfileRow(
 internal fun AddServerDialog(
     isBusy: Boolean,
     onConfirm: (label: String, url: String) -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     var label by remember { mutableStateOf("") }
     var url by remember { mutableStateOf("") }
@@ -345,7 +388,7 @@ internal fun AddServerDialog(
                     onValueChange = { label = it },
                     label = { Text(stringResource(R.string.settings_servers_label)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth().testTag("servers-add-label"),
+                    modifier = Modifier.fillMaxWidth().testTag("servers-add-label")
                 )
                 OutlinedTextField(
                     value = url,
@@ -353,7 +396,7 @@ internal fun AddServerDialog(
                     label = { Text(stringResource(R.string.settings_servers_url)) },
                     placeholder = { Text(stringResource(R.string.login_server_url_hint)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth().testTag("servers-add-url"),
+                    modifier = Modifier.fillMaxWidth().testTag("servers-add-url")
                 )
             }
         },
@@ -361,14 +404,14 @@ internal fun AddServerDialog(
             TextButton(
                 onClick = { onConfirm(label, url) },
                 enabled = !isBusy && url.isNotBlank(),
-                modifier = Modifier.testTag("servers-add-confirm"),
+                modifier = Modifier.testTag("servers-add-confirm")
             ) {
                 Text(stringResource(R.string.settings_servers_add))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_cancel)) }
-        },
+        }
     )
 }
 
@@ -376,7 +419,7 @@ internal fun AddServerDialog(
 internal fun RenameServerDialog(
     initialLabel: String,
     onConfirm: (String) -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     var label by remember { mutableStateOf(initialLabel) }
 
@@ -389,7 +432,7 @@ internal fun RenameServerDialog(
                 onValueChange = { label = it },
                 label = { Text(stringResource(R.string.settings_servers_label)) },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth()
             )
         },
         confirmButton = {
@@ -399,7 +442,7 @@ internal fun RenameServerDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_cancel)) }
-        },
+        }
     )
 }
 
@@ -408,11 +451,7 @@ internal fun RenameServerDialog(
  * typed word must equal the profile label, so the action cannot be a stray tap.
  */
 @Composable
-internal fun DeleteLocalDataDialog(
-    label: String,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-) {
+internal fun DeleteLocalDataDialog(label: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     var typed by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -423,9 +462,13 @@ internal fun DeleteLocalDataDialog(
                 OutlinedTextField(
                     value = typed,
                     onValueChange = { typed = it },
-                    label = { Text(stringResource(R.string.settings_delete_local_data_hint, label)) },
+                    label = {
+                        Text(
+                            stringResource(R.string.settings_delete_local_data_hint, label)
+                        )
+                    },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth().testTag("delete-local-data-confirm"),
+                    modifier = Modifier.fillMaxWidth().testTag("delete-local-data-confirm")
                 )
             }
         },
@@ -436,6 +479,6 @@ internal fun DeleteLocalDataDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_cancel)) }
-        },
+        }
     )
 }

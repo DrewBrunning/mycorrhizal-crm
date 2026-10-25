@@ -29,7 +29,11 @@ interface HouseholdRepository {
     suspend fun delete(id: String): Result<Unit>
 
     /** Add a member (by contact VCard UID) to a household. */
-    suspend fun addMember(id: String, vcardUid: String, role: String? = null): Result<HouseholdMember>
+    suspend fun addMember(
+        id: String,
+        vcardUid: String,
+        role: String? = null
+    ): Result<HouseholdMember>
 
     /** Remove a member from a household (hard delete join row). */
     suspend fun removeMember(id: String, vcardUid: String): Result<Unit>
@@ -50,7 +54,4 @@ interface HouseholdRepository {
     suspend fun dismissAddressSuggestion(input: DismissHouseholdSuggestionInput): Result<Unit>
 }
 
-data class HouseholdDetail(
-    val household: Household,
-    val members: List<HouseholdMember>,
-)
+data class HouseholdDetail(val household: Household, val members: List<HouseholdMember>)

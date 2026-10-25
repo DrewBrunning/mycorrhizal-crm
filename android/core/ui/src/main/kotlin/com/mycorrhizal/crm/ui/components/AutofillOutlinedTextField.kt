@@ -37,7 +37,7 @@ fun AutofillOutlinedTextField(
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     visualTransformation: VisualTransformation = VisualTransformation.None,
     placeholder: String? = null,
-    supportingText: String? = null,
+    supportingText: String? = null
 ) {
     OutlinedTextField(
         value = value,
@@ -55,7 +55,7 @@ fun AutofillOutlinedTextField(
                     Modifier.semantics { this.contentType = contentType }
                 } else {
                     Modifier
-                },
-            ),
+                }
+            )
     )
 }

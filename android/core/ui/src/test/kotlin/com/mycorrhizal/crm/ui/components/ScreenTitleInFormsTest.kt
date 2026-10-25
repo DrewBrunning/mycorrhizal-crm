@@ -37,8 +37,13 @@ class ScreenTitleInFormsTest {
                     saveLabel = "Create",
                     isSaving = false,
                     onSave = {},
-                    snackbarHostState = snackbar,
-                ) { padding: PaddingValues -> Text("Form body", modifier = Modifier.padding(padding)) }
+                    snackbarHostState = snackbar
+                ) { padding: PaddingValues ->
+                    Text(
+                        "Form body",
+                        modifier = Modifier.padding(padding)
+                    )
+                }
             }
         }
         composeTestRule.waitForIdle()

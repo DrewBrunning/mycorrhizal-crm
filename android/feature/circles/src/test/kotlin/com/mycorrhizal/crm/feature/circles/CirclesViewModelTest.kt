@@ -34,8 +34,8 @@ class CirclesViewModelTest {
         coEvery { circleRepository.list(any(), any()) } returns Result.success(
             listOf(
                 Circle(id = "c1", name = "Friends"),
-                Circle(id = "c2", name = "Family"),
-            ),
+                Circle(id = "c2", name = "Family")
+            )
         )
 
         val vm = CirclesViewModel(circleRepository)
@@ -51,7 +51,7 @@ class CirclesViewModelTest {
     @Test
     fun `load failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { circleRepository.list(any(), any()) } returns Result.failure(
-            ApiError.Client(500, "boom"),
+            ApiError.Client(500, "boom")
         )
 
         val vm = CirclesViewModel(circleRepository)
@@ -64,7 +64,11 @@ class CirclesViewModelTest {
     @Test
     fun `create adds the circle to the list`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { circleRepository.list(any(), any()) } returns Result.success(emptyList())
-        coEvery { circleRepository.create("Friends") } returns Result.success(Circle(id = "c9", name = "Friends"))
+        coEvery {
+            circleRepository.create(
+                "Friends"
+            )
+        } returns Result.success(Circle(id = "c9", name = "Friends"))
 
         val vm = CirclesViewModel(circleRepository)
         advanceUntilIdle()
@@ -93,7 +97,7 @@ class CirclesViewModelTest {
     @Test
     fun `rename updates the circle in place`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { circleRepository.list(any(), any()) } returns Result.success(
-            listOf(Circle(id = "c1", name = "Friends")),
+            listOf(Circle(id = "c1", name = "Friends"))
         )
         coEvery { circleRepository.rename("c1", "Close Friends") } returns
             Result.success(Circle(id = "c1", name = "Close Friends"))
@@ -110,7 +114,7 @@ class CirclesViewModelTest {
     @Test
     fun `delete removes the circle`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { circleRepository.list(any(), any()) } returns Result.success(
-            listOf(Circle(id = "c1", name = "Friends"), Circle(id = "c2", name = "Family")),
+            listOf(Circle(id = "c1", name = "Friends"), Circle(id = "c2", name = "Family"))
         )
         coEvery { circleRepository.delete("c1") } returns Result.success(Unit)
 
@@ -138,16 +142,19 @@ class CircleDetailViewModelTest {
         coEvery { contactRepository.resolveByUid(any()) } returns Result.success(emptyMap())
     }
 
-    private fun viewModel(id: String = "c1"): CircleDetailViewModel =
-        CircleDetailViewModel(circleRepository, contactRepository, SavedStateHandle(mapOf("circleId" to id)))
+    private fun viewModel(id: String = "c1"): CircleDetailViewModel = CircleDetailViewModel(
+        circleRepository,
+        contactRepository,
+        SavedStateHandle(mapOf("circleId" to id))
+    )
 
     @Test
     fun `loads circle and members on init`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { circleRepository.getWithMembers("c1") } returns Result.success(
             CircleDetail(
                 circle = Circle(id = "c1", name = "Friends"),
-                members = listOf(CircleMember(id = 1, circleId = "c1", memberVCardUid = "uid-1")),
-            ),
+                members = listOf(CircleMember(id = 1, circleId = "c1", memberVCardUid = "uid-1"))
+            )
         )
 
         val vm = viewModel()
@@ -161,15 +168,24 @@ class CircleDetailViewModelTest {
     }
 
     @Test
-    fun `load resolves member names and phones via contact resolution`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `load resolves member names and phones via contact resolution`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { circleRepository.getWithMembers("c1") } returns Result.success(
             CircleDetail(
                 circle = Circle(id = "c1", name = "Friends"),
-                members = listOf(CircleMember(id = 1, circleId = "c1", memberVCardUid = "uid-1")),
-            ),
+                members = listOf(CircleMember(id = 1, circleId = "c1", memberVCardUid = "uid-1"))
+            )
         )
         coEvery { contactRepository.resolveByUid(listOf("uid-1")) } returns Result.success(
-            mapOf("uid-1" to ContactSummary(id = 7, uid = "uid-1", firstname = "Alice", primaryPhone = "+1-555-0100")),
+            mapOf(
+                "uid-1" to ContactSummary(
+                    id = 7,
+                    uid = "uid-1",
+                    firstname = "Alice",
+                    primaryPhone = "+1-555-0100"
+                )
+            )
         )
 
         val vm = viewModel()
@@ -180,18 +196,27 @@ class CircleDetailViewModelTest {
     }
 
     @Test
-    fun `addMember appends to the members list and resolves its name`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `addMember appends to the members list and resolves its name`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { circleRepository.getWithMembers("c1") } returns Result.success(
             CircleDetail(
                 circle = Circle(id = "c1", name = "Friends"),
-                members = emptyList(),
-            ),
+                members = emptyList()
+            )
         )
         coEvery { circleRepository.addMember("c1", "uid-2") } returns Result.success(
-            CircleMember(id = 2, circleId = "c1", memberVCardUid = "uid-2"),
+            CircleMember(id = 2, circleId = "c1", memberVCardUid = "uid-2")
         )
         coEvery { contactRepository.resolveByUid(listOf("uid-2")) } returns Result.success(
-            mapOf("uid-2" to ContactSummary(id = 8, uid = "uid-2", firstname = "Bob", primaryPhone = "+1-555-0101")),
+            mapOf(
+                "uid-2" to ContactSummary(
+                    id = 8,
+                    uid = "uid-2",
+                    firstname = "Bob",
+                    primaryPhone = "+1-555-0101"
+                )
+            )
         )
 
         val vm = viewModel()
@@ -211,9 +236,9 @@ class CircleDetailViewModelTest {
                 circle = Circle(id = "c1", name = "Friends"),
                 members = listOf(
                     CircleMember(id = 1, circleId = "c1", memberVCardUid = "uid-1"),
-                    CircleMember(id = 2, circleId = "c1", memberVCardUid = "uid-2"),
-                ),
-            ),
+                    CircleMember(id = 2, circleId = "c1", memberVCardUid = "uid-2")
+                )
+            )
         )
         coEvery { circleRepository.removeMember("c1", "uid-1") } returns Result.success(Unit)
 

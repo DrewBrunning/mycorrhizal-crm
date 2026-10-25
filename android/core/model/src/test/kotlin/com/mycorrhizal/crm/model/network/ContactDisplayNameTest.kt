@@ -16,13 +16,13 @@ class ContactDisplayNameTest {
             id = 1,
             firstname = "Aoife",
             nickname = "Eefa",
-            lastname = "Ó Conaill",
+            lastname = "Ó Conaill"
         )
 
         assertEquals("Aoife \"Eefa\" Ó Conaill", contact.displayName)
         assertEquals(
             "Aoife \"Eefa\" Ó Conaill",
-            contactDisplayName("Aoife", "Eefa", "Ó Conaill"),
+            contactDisplayName("Aoife", "Eefa", "Ó Conaill")
         )
     }
 
@@ -34,7 +34,7 @@ class ContactDisplayNameTest {
             firstname = "Pinky",
             nickname = null,
             lastname = "शर्मा",
-            fallbackId = "#7",
+            fallbackId = "#7"
         )
 
         assertEquals("Pinky शर्मा", rendered)
@@ -42,7 +42,10 @@ class ContactDisplayNameTest {
 
     @Test
     fun `blank components are skipped and fn is the fallback`() {
-        assertEquals("Elizabeth Brunning", contactDisplayName("Elizabeth", "", "Brunning", fn = "Liz"))
+        assertEquals(
+            "Elizabeth Brunning",
+            contactDisplayName("Elizabeth", "", "Brunning", fn = "Liz")
+        )
         assertEquals("Liz", contactDisplayName("", " ", null, fn = "Liz"))
         assertEquals("#9", contactDisplayName(null, null, "", fn = null, fallbackId = "#9"))
     }

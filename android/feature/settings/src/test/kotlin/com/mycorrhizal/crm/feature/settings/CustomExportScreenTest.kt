@@ -54,10 +54,15 @@ class CustomExportScreenTest {
         R.string.shares_section_keywords,
         R.string.shares_section_speak_to_as,
         R.string.shares_section_members,
-        R.string.shares_section_languages,
+        R.string.shares_section_languages
     )
 
-    private fun screen(repo: ExportRepository, vm: CustomExportViewModel = CustomExportViewModel(repo)) {
+    private fun screen(
+        repo: ExportRepository,
+        vm: CustomExportViewModel = CustomExportViewModel(
+            repo
+        )
+    ) {
         composeTestRule.setContent {
             MycorrhizalTheme { CustomExportScreen(onBack = {}, viewModel = vm) }
         }
@@ -69,11 +74,21 @@ class CustomExportScreenTest {
         screen(repo)
 
         composeTestRule.onNodeWithText(str(R.string.data_custom_export_title)).assertIsDisplayed()
-        composeTestRule.onNodeWithText(str(R.string.data_custom_export_format_vcf4)).assertIsDisplayed()
-        composeTestRule.onNodeWithText(str(R.string.data_custom_export_format_vcf3)).performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText(str(R.string.data_custom_export_format_jscontact)).performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText(str(R.string.shares_fields_label)).performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText(str(R.string.data_custom_export_button)).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            str(R.string.data_custom_export_format_vcf4)
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            str(R.string.data_custom_export_format_vcf3)
+        ).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            str(R.string.data_custom_export_format_jscontact)
+        ).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            str(R.string.shares_fields_label)
+        ).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            str(R.string.data_custom_export_button)
+        ).performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -109,7 +124,9 @@ class CustomExportScreenTest {
         val repo = mockk<ExportRepository>()
         screen(repo)
 
-        composeTestRule.onNodeWithText(str(R.string.shares_reveal_button)).performScrollTo().performClick()
+        composeTestRule.onNodeWithText(
+            str(R.string.shares_reveal_button)
+        ).performScrollTo().performClick()
         composeTestRule.onNodeWithText(str(R.string.shares_reveal_title)).assertIsDisplayed()
 
         composeTestRule.onNodeWithText(str(R.string.shares_reveal_confirm_button)).performClick()
@@ -122,7 +139,13 @@ class CustomExportScreenTest {
     @Test
     fun `tapping export calls the repository for the selected format`() {
         val repo = mockk<ExportRepository>()
-        coEvery { repo.exportContactsVcf(any(), any(), any()) } returns Result.success("vcf".toByteArray())
+        coEvery {
+            repo.exportContactsVcf(
+                any(),
+                any(),
+                any()
+            )
+        } returns Result.success("vcf".toByteArray())
         screen(repo)
 
         composeTestRule.onNodeWithText(str(R.string.data_custom_export_button))

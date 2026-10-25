@@ -5,11 +5,13 @@ data class DeviceContact(
     val contactId: Long,
     val lookupKey: String,
     val displayName: String?,
-    val phones: List<Pair<String, Int>>,   // number -> type (TYPE_MOBILE etc.)
+    // number -> type (TYPE_MOBILE etc.)
+    val phones: List<Pair<String, Int>>,
     val emails: List<String>,
     val addresses: List<DeviceAddress>,
     val organization: String?,
-    val birthday: String?,                 // "YYYY-MM-DD" if present
+    // "YYYY-MM-DD" if present
+    val birthday: String?
 )
 
 /**
@@ -24,10 +26,11 @@ data class DeviceAddress(
     val postcode: String?,
     val country: String?,
     val formattedAddress: String?, // DATA1 (FORMATTED_ADDRESS); display-only fallback, never parsed
-    val customLabel: String?,      // DATA3 (LABEL); user-entered type name when type == TYPE_CUSTOM.
-                                    // Not surfaced yet — the neutral Address model has no free-text
-                                    // label field (unlike Phone/Email/OnlineService's `label`).
-    val type: Int,                 // StructuredPostal.TYPE_HOME / TYPE_WORK / TYPE_CUSTOM / TYPE_OTHER
+    val customLabel: String?, // DATA3 (LABEL); user-entered type name when type == TYPE_CUSTOM.
+    // Not surfaced yet — the neutral Address model has no free-text
+    // label field (unlike Phone/Email/OnlineService's `label`).
+    // StructuredPostal.TYPE_HOME / TYPE_WORK / TYPE_CUSTOM / TYPE_OTHER
+    val type: Int
 )
 
 /** One generic ContactsContract.Data row (§7.5.1). */
@@ -42,5 +45,5 @@ data class DeviceDataRow(
     val data7: String?,
     val data8: String?,
     val data9: String?,
-    val data10: String?,
+    val data10: String?
 )

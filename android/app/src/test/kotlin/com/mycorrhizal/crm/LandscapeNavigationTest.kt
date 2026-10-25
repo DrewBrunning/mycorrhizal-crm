@@ -41,14 +41,17 @@ class LandscapeNavigationTest {
 
     private fun size(w: Int, h: Int) = WindowSizeClass.calculateFromSize(DpSize(w.dp, h.dp))
 
-    private fun setScaffold(windowSizeClass: WindowSizeClass, drawerValue: DrawerValue = DrawerValue.Closed) {
+    private fun setScaffold(
+        windowSizeClass: WindowSizeClass,
+        drawerValue: DrawerValue = DrawerValue.Closed
+    ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 MainNavScaffold(
                     currentRoute = "home",
                     windowSizeClass = windowSizeClass,
                     drawerState = rememberDrawerState(drawerValue),
-                    onDestinationClick = {},
+                    onDestinationClick = {}
                 ) {}
             }
         }
@@ -80,7 +83,12 @@ class LandscapeNavigationTest {
         allRoutes.forEach { route ->
             val node = composeTestRule.onNodeWithTag("drawer-$route")
             // Issue #1758: the footer destination (Settings) is pinned below the scrolling list.
-            if (navDestinationsIn(NavGroup.FOOTER).none { it.route == route }) node.performScrollTo()
+            if (navDestinationsIn(
+                    NavGroup.FOOTER
+                ).none { it.route == route }
+            ) {
+                node.performScrollTo()
+            }
             node.assertIsDisplayed().assertHeightIsAtLeast(48.dp)
         }
     }

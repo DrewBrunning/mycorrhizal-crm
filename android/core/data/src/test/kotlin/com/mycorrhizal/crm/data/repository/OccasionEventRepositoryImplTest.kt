@@ -55,7 +55,9 @@ class OccasionEventRepositoryImplTest {
     @Test
     fun `list replaces the cache and drops tombstones`() = runTest {
         coEvery { apiClient.listOccasionEvents() } returns Result.success(
-            OccasionEventsResponse(occasionEvents = listOf(event("e1"), event("e2"), event("e3", deleted = true))),
+            OccasionEventsResponse(
+                occasionEvents = listOf(event("e1"), event("e2"), event("e3", deleted = true))
+            )
         )
 
         val result = repository.list()
@@ -70,8 +72,12 @@ class OccasionEventRepositoryImplTest {
 
     @Test
     fun `list on failure leaves the cache untouched`() = runTest {
-        db.cachedOccasionEventDao().upsert(com.mycorrhizal.crm.data.local.CachedOccasionEvent(id = "e1", title = "old"))
-        coEvery { apiClient.listOccasionEvents() } returns Result.failure(RuntimeException("offline"))
+        db.cachedOccasionEventDao().upsert(
+            com.mycorrhizal.crm.data.local.CachedOccasionEvent(id = "e1", title = "old")
+        )
+        coEvery { apiClient.listOccasionEvents() } returns Result.failure(
+            RuntimeException("offline")
+        )
 
         val result = repository.list()
 
@@ -92,19 +98,30 @@ class OccasionEventRepositoryImplTest {
     @Test
     fun `create and update mirror the returned event`() = runTest {
         val input = OccasionEventInput(title = "Party", startsAt = "2026-07-04T15:00:00Z")
-        coEvery { apiClient.createOccasionEvent(input) } returns Result.success(event("e1", "Party"))
+        coEvery {
+            apiClient.createOccasionEvent(
+                input
+            )
+        } returns Result.success(event("e1", "Party"))
 
         repository.create(input)
         assertEquals(1, db.cachedOccasionEventDao().getAll().size)
 
-        coEvery { apiClient.updateOccasionEvent("e1", input) } returns Result.success(event("e1", "Renamed"))
+        coEvery {
+            apiClient.updateOccasionEvent(
+                "e1",
+                input
+            )
+        } returns Result.success(event("e1", "Renamed"))
         repository.update("e1", input)
         assertEquals("Renamed", db.cachedOccasionEventDao().getAll().first().title)
     }
 
     @Test
     fun `delete removes the cached row`() = runTest {
-        db.cachedOccasionEventDao().upsert(com.mycorrhizal.crm.data.local.CachedOccasionEvent(id = "e1", title = "x"))
+        db.cachedOccasionEventDao().upsert(
+            com.mycorrhizal.crm.data.local.CachedOccasionEvent(id = "e1", title = "x")
+        )
         coEvery { apiClient.deleteOccasionEvent("e1") } returns Result.success(Unit)
 
         repository.delete("e1")
@@ -114,8 +131,14 @@ class OccasionEventRepositoryImplTest {
 
     @Test
     fun `failed delete keeps the cached row`() = runTest {
-        db.cachedOccasionEventDao().upsert(com.mycorrhizal.crm.data.local.CachedOccasionEvent(id = "e1", title = "x"))
-        coEvery { apiClient.deleteOccasionEvent("e1") } returns Result.failure(RuntimeException("boom"))
+        db.cachedOccasionEventDao().upsert(
+            com.mycorrhizal.crm.data.local.CachedOccasionEvent(id = "e1", title = "x")
+        )
+        coEvery {
+            apiClient.deleteOccasionEvent(
+                "e1"
+            )
+        } returns Result.failure(RuntimeException("boom"))
 
         repository.delete("e1")
 
@@ -125,11 +148,30 @@ class OccasionEventRepositoryImplTest {
     @Test
     fun `attendee operations pass straight through`() = runTest {
         val attendee = OccasionEventAttendee(id = "a1", eventId = "e1", entityId = "uid-1")
-        coEvery { apiClient.addOccasionEventAttendee("e1", OccasionEventAttendeeInput("uid-1")) } returns Result.success(attendee)
-        coEvery { apiClient.updateOccasionEventAttendee("e1", "uid-1", "accepted") } returns Result.success(attendee)
-        coEvery { apiClient.removeOccasionEventAttendee("e1", "uid-1") } returns Result.success(Unit)
+        coEvery {
+            apiClient.addOccasionEventAttendee(
+                "e1",
+                OccasionEventAttendeeInput("uid-1")
+            )
+        } returns Result.success(attendee)
+        coEvery {
+            apiClient.updateOccasionEventAttendee(
+                "e1",
+                "uid-1",
+                "accepted"
+            )
+        } returns Result.success(attendee)
+        coEvery {
+            apiClient.removeOccasionEventAttendee(
+                "e1",
+                "uid-1"
+            )
+        } returns Result.success(Unit)
 
-        assertEquals(attendee, repository.addAttendee("e1", OccasionEventAttendeeInput("uid-1")).getOrNull())
+        assertEquals(
+            attendee,
+            repository.addAttendee("e1", OccasionEventAttendeeInput("uid-1")).getOrNull()
+        )
         assertEquals(attendee, repository.updateAttendee("e1", "uid-1", "accepted").getOrNull())
         assertTrue(repository.removeAttendee("e1", "uid-1").isSuccess)
         coVerify { apiClient.removeOccasionEventAttendee("e1", "uid-1") }
@@ -137,9 +179,11 @@ class OccasionEventRepositoryImplTest {
 
     @Test
     fun `suggestInvitees unwraps the suggestions`() = runTest {
-        val suggestions = listOf(InviteeSuggestion(contactId = 1, contactName = "Alice", entityId = "uid-1"))
+        val suggestions = listOf(
+            InviteeSuggestion(contactId = 1, contactName = "Alice", entityId = "uid-1")
+        )
         coEvery { apiClient.suggestInvitees(listOf("c1"), "e1") } returns Result.success(
-            InviteeSuggestionsResponse(suggestions = suggestions),
+            InviteeSuggestionsResponse(suggestions = suggestions)
         )
 
         assertEquals(suggestions, repository.suggestInvitees(listOf("c1"), "e1").getOrNull())

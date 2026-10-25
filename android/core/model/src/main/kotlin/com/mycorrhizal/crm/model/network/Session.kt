@@ -21,11 +21,9 @@ data class SessionInfo(
     @Json(name = "expires_at") val expiresAt: String? = null,
     @Json(name = "user_agent") val userAgent: String = "",
     val ip: String = "",
-    val current: Boolean = false,
+    val current: Boolean = false
 )
 
 /** GET /api/v1/sessions — `{ sessions: [...] }`. */
 @JsonClass(generateAdapter = true)
-data class SessionsResponse(
-    val sessions: List<SessionInfo> = emptyList(),
-)
+data class SessionsResponse(val sessions: List<SessionInfo> = emptyList())

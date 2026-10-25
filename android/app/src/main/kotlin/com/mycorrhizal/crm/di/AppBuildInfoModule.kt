@@ -19,7 +19,7 @@ object AppBuildInfoModule {
         flavor = BuildConfig.FLAVOR,
         applicationId = BuildConfig.APPLICATION_ID,
         commit = BuildConfig.GIT_COMMIT,
-        buildDate = BuildConfig.BUILD_DATE,
+        buildDate = BuildConfig.BUILD_DATE
     )
 }
 
@@ -31,7 +31,7 @@ internal fun appBuildInfo(
     flavor: String,
     applicationId: String,
     commit: String,
-    buildDate: String,
+    buildDate: String
 ) = AppBuildInfo(
     versionName = versionName,
     versionCode = versionCode,
@@ -39,5 +39,5 @@ internal fun appBuildInfo(
     flavor = flavor,
     applicationId = applicationId,
     commit = commit.takeIf { it.isNotBlank() },
-    buildDate = buildDate.takeIf { it.isNotBlank() },
+    buildDate = buildDate.takeIf { it.isNotBlank() }
 )
