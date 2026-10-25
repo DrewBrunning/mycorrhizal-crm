@@ -130,83 +130,60 @@ Run this before you commit. It is the same list a reviewer will use.
 ## Pre-PR gate and flake stress
 
 The pre-commit hook is a fast subset, not the full suite. Before opening a PR, run the pre-PR gate
-for the areas you touched. Select those areas from `.github/filters.yaml` using the branch diff:
+for the paths the branch touches:
 
 ```bash
-git diff --name-only origin/main...HEAD
+scripts/pre-pr.sh --fast
+scripts/pre-pr.sh --full
 ```
 
-**Backend**
+The wrapper resolves the repository root (it works from the root, from `backend/`, and from a
+worktree) and delegates selection and execution to `cmd/prepr`. Both modes compute the branch diff
+with `git diff --name-only origin/main...HEAD` and map it through `.github/filters.yaml`; the
+area-to-command table lives in `backend/internal/prepr/areas.go`, and a drift test fails if a filter
+is added without an entry. `--dry-run` prints the selected areas and exact commands without running
+anything.
 
-```bash
-cd backend
-go test ./...
-go test ./... -coverpkg=./... -covermode=atomic -p 4 -coverprofile=coverage-cross.out
-go run ./cmd/coverageratchet
-```
+- **`--fast`** runs the lint/build/drift checks for the touched areas: Go
+  `gofmt`/build/vet/golangci-lint plus the generated-artifact drift tests,
+  `tsc`/biome/eslint/knip, and `detekt` plus Android lint. It always runs the unconditional
+  docs/governance gates (`docscheck`, `citecheck`, `governancecheck`, and the rest of
+  `unit-tests.yml`'s docs-citations job), so a docs-only diff still has a real gate.
+- **`--full`** adds the area suites and ratchets: `go test ./...` plus the cross-package profile and
+  `cmd/coverageratchet`; vitest with coverage and `yarn coverage:ratchet`; the aggregated JaCoCo
+  report and `cmd/androidcoverageratchet`. It also warns (never fails) on changed-line Go coverage
+  below 95% via `cmd/patchcov`; Codecov remains the authoritative patch gate.
+- **Flake stress** runs only the tests the branch added or changed, not the whole suite:
+  `go test -race -count=10 -shuffle=on <pkg>`, vitest looped with `--sequence.shuffle`, Playwright
+  with `--repeat-each=5`, and Android unit classes repeated through Gradle. A changed instrumented
+  Android class is reported as an emulator/CI-only reminder.
+- **CI-only areas** (real-server suites, chaos, differential, reproducibility, container images) are
+  listed as skipped with the reason. A failing step exits nonzero and the summary names the exact
+  command to reproduce.
 
-When tests were added, regenerate and commit the baseline diff in the same PR:
+When `--full` sees added or changed tests it prints the baseline-update commands; run the relevant
+one and commit the diff, because the baseline diff is the review:
 
 ```bash
 cd backend && make gen-coverage-baseline
-```
-
-**Frontend**
-
-```bash
-cd frontend
-npx tsc --noEmit && npx vitest run --coverage && yarn coverage:ratchet
-```
-
-When tests were added, update the baseline in the same PR:
-
-```bash
 cd frontend && yarn coverage:ratchet:update
-```
-
-Run the relevant Playwright specs for any e2e-affecting change.
-
-**Android**
-
-```bash
-cd android
-./gradlew detekt
-./gradlew --warning-mode=fail jacocoTestReportAggregated
-cd ../backend && go run ./cmd/androidcoverageratchet
-```
-
-Run the relevant unit tests alongside `detekt`. When tests were added, update the baseline in the
-same PR:
-
-```bash
 cd backend && go run ./cmd/androidcoverageratchet -update
 ```
 
-**Docs:** the docs-citations checks already run in the pre-commit hook (`docs/AGENTS.md`).
-
-### Flake stress (new/changed tests only)
-
-Stress only the tests you added or changed, not the whole suite:
-
-- **Go:** `go test -race -count=10 -shuffle=on ./pkg`, or `-run '^TestX$' -count=20` for one test.
-- **Playwright:** `npx playwright test <spec> --repeat-each=5`.
-- **Vitest:** run the new file in a loop (and/or `--sequence.shuffle`).
-- **Android:** repeat the new instrumented class on the emulator.
+The gate does not update a baseline automatically, run a migration down, or run `git clean`.
 
 Determinism rules: injected clock, no `time.Sleep`, `dbtest.New` for persistence, unique temp
 directories, no shared globals, stable ordering, `t.Cleanup`, and no network. Do not mask a flake
 with retries — PR/push retries once and records passed-on-retry, and the flake ledger opens a
 `flaky-test` p1 after three events.
 
-Codecov patch coverage is computed server-side; the local proxy is the area coverage run plus the
-per-file ratchet. If failures persist, a future `cmd/patchcov` can intersect the profile with
-`git diff -U0` and warn on changed-line coverage below the area target (95/90/80), but it is not a
-second gate today.
+Codecov patch coverage is computed server-side; the local proxy is the area coverage run, the
+per-file ratchet, and `cmd/patchcov`'s non-blocking changed-line warning.
 
 **No polling:** open the PR and stop. GitHub notifies on a check failure. If CI fails, start a new
-session with the failing job link and the exact local command that should have caught it. A future
-`pr-failure-alert.yml` (modelled on `main-failure-alert.yml`, which currently only alerts on pushes
-to `main`) can post that comment; do not have an agent watch `gh pr checks`.
+session with the failing job link and the exact local command that should have caught it; do not
+have an agent watch `gh pr checks`. A `pr-failure-alert.yml` run can post that failing job, its log
+link, and the local repro command as a PR comment, but it is a convenience, not a reason to wait.
 
 If a gate is too slow or needs a tool you do not have, say exactly that in the PR — **report checks
 you could not run; never imply they passed.**
