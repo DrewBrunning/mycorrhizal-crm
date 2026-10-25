@@ -29,9 +29,6 @@ import com.mikepenz.aboutlibraries.entity.Library
 import com.mikepenz.aboutlibraries.util.withContext
 import com.mycorrhizal.crm.ui.R
 
-/** Issue #1880 follow-up: a notice packaged into the APK/AAB, not read from Gradle metadata. */
-data class BundledNotice(val title: String, val content: String)
-
 /**
  * Issue #1880: the GMS-free attribution surface required by the licenses of the
  * dependencies the APK/AAB distributes. The dependency list and license texts

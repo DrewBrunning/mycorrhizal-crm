@@ -868,7 +868,10 @@ class SettingsScreenTest {
         )
         show { ThirdPartyLicensesContent(libs = sampleLibs(), bundledNotices = notices) }
 
-        composeTestRule.onNodeWithText("Go server and standard library").performScrollTo().performClick()
+        composeTestRule
+            .onNodeWithText("Go server and standard library")
+            .performScrollTo()
+            .performClick()
         composeTestRule.onNodeWithText("Go standard library BSD-3-Clause").assertExists()
 
         composeTestRule.onNodeWithText("Bundled fonts").performScrollTo().performClick()
