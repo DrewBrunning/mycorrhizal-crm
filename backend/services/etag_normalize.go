@@ -15,10 +15,11 @@ import (
 // (abc) and the weak form (W/"abc"); either one fails the whole sync with
 // "webdav: failed to unquote ETag" (emersion/go-webdav#118, #165; issue #2003).
 //
-// The transport wrapper below rewrites every response ETag — the ETag header
-// and every <DAV:getetag> element in a multistatus body — into the quoted form
-// the library expects. Our own CardDAV server's emitted ETags are untouched;
-// this only affects responses consumed by the CardDAV/CalDAV sync clients.
+// The transport wrapper below rewrites response ETags — the ETag header and
+// every <DAV:getetag> element in a multistatus body, including empty and
+// self-closing elements — into the quoted form the library expects. Our own
+// CardDAV server's emitted ETags are untouched; this only affects responses
+// consumed by the CardDAV/CalDAV sync clients.
 //
 // The ETag is only a stored transport token for us: change detection uses the
 // content hash (see contactContentHash), so dropping a weak marker does not
@@ -83,9 +84,12 @@ func responseBodyMayCarryETags(req *http.Request, resp *http.Response) bool {
 
 // normalizeGetETagXML rewrites the character data of every getetag element
 // while leaving all other bytes (including entity escaping in address-data
-// and calendar-data) untouched. It parses with encoding/xml to locate the
-// text ranges, then splices replacements back into the original body; an
-// unparseable body is returned unchanged so the library's own error surfaces.
+// and calendar-data) untouched. An empty text element (<getetag/> or
+// <getetag></getetag>) has no CharData token to rewrite, so it is expanded to
+// a quoted empty value here; otherwise go-webdav's strconv.Unquote("") fails
+// the sync. It parses with encoding/xml to locate the text ranges, then
+// splices replacements back into the original body; an unparseable body is
+// returned unchanged so the library's own error surfaces.
 func normalizeGetETagXML(body []byte) []byte {
 	if !bytes.Contains(body, []byte("getetag")) {
 		return body
@@ -96,10 +100,16 @@ func normalizeGetETagXML(body []byte) []byte {
 		end   int
 		text  []byte
 	}
+	type openETag struct {
+		start    int
+		startEnd int
+		name     string
+		sawText  bool
+	}
 	var edits []edit
+	var open []openETag
 
 	dec := xml.NewDecoder(bytes.NewReader(body))
-	depth := 0
 	for {
 		start := dec.InputOffset()
 		tok, err := dec.Token()
@@ -113,14 +123,38 @@ func normalizeGetETagXML(body []byte) []byte {
 		switch t := tok.(type) {
 		case xml.StartElement:
 			if t.Name.Local == "getetag" {
-				depth++
+				open = append(open, openETag{
+					start:    int(start),
+					startEnd: int(end),
+					name:     xmlElementName(body[start:end]),
+				})
 			}
 		case xml.EndElement:
-			if t.Name.Local == "getetag" && depth > 0 {
-				depth--
+			if t.Name.Local != "getetag" || len(open) == 0 {
+				continue
 			}
+			el := open[len(open)-1]
+			open = open[:len(open)-1]
+			if el.sawText {
+				continue
+			}
+			text := escapeXMLText(normalizeETagValue(""))
+			if int(start) == int(end) {
+				// Self-closing element: there is no content range to insert
+				// into, so rewrite the start tag as a paired element.
+				edits = append(edits, edit{
+					start: el.start,
+					end:   el.startEnd,
+					text:  expandEmptyGetETag(body[el.start:el.startEnd], el.name, text),
+				})
+				continue
+			}
+			edits = append(edits, edit{start: int(start), end: int(start), text: text})
 		case xml.CharData:
-			if depth > 0 {
+			for i := range open {
+				open[i].sawText = true
+			}
+			if len(open) > 0 {
 				text := escapeXMLText(normalizeETagValue(string(t)))
 				edits = append(edits, edit{start: int(start), end: int(end), text: text})
 			}
@@ -141,6 +175,37 @@ func normalizeGetETagXML(body []byte) []byte {
 		last = e.end
 	}
 	return append(out, body[last:]...)
+}
+
+// xmlElementName extracts the lexical qualified name from a raw start tag.
+func xmlElementName(startTag []byte) string {
+	i := 1
+	for i < len(startTag) && isXMLSpace(startTag[i]) {
+		i++
+	}
+	j := i
+	for j < len(startTag) && !isXMLSpace(startTag[j]) && startTag[j] != '/' && startTag[j] != '>' {
+		j++
+	}
+	return string(startTag[i:j])
+}
+
+func isXMLSpace(c byte) bool {
+	return c == ' ' || c == '\t' || c == '\r' || c == '\n'
+}
+
+// expandEmptyGetETag turns a self-closing getetag start tag into a paired
+// element carrying text, preserving its name and any attributes.
+func expandEmptyGetETag(startTag []byte, name string, text []byte) []byte {
+	base := bytes.TrimSuffix(startTag, []byte("/>"))
+	out := make([]byte, 0, len(base)+len(text)+len(name)+3)
+	out = append(out, base...)
+	out = append(out, '>')
+	out = append(out, text...)
+	out = append(out, '<', '/')
+	out = append(out, name...)
+	out = append(out, '>')
+	return out
 }
 
 func escapeXMLText(s string) []byte {

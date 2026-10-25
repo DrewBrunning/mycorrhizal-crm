@@ -55,6 +55,39 @@ func TestNormalizeGetETagXML(t *testing.T) {
 	assert.Equal(t, []string{"bare-in-cdata", "weak-in-cdata", "a&b"}, decodedGetETags(t, normalized))
 }
 
+func TestNormalizeGetETagXMLEmptyElements(t *testing.T) {
+	const body = `<?xml version="1.0" encoding="utf-8"?>
+<d:multistatus xmlns:d="DAV:" xmlns:card="urn:ietf:params:xml:ns:carddav">
+<d:response><d:href>/addressbooks/test/self-closing.vcf</d:href><d:propstat><d:prop>
+<d:getetag/>
+</d:prop></d:propstat></d:response>
+<d:response><d:href>/addressbooks/test/paired-empty.vcf</d:href><d:propstat><d:prop>
+<d:getetag></d:getetag>
+</d:prop></d:propstat></d:response>
+<d:response><d:href>/addressbooks/test/empty-cdata.vcf</d:href><d:propstat><d:prop>
+<d:getetag><![CDATA[]]></d:getetag>
+</d:prop></d:propstat></d:response>
+<d:response><d:href>/addressbooks/test/weak.vcf</d:href><d:propstat><d:prop>
+<d:getetag>W/"weak"</d:getetag>
+</d:prop></d:propstat></d:response>
+</d:multistatus>`
+
+	normalized := normalizeGetETagXML([]byte(body))
+	require.NotEqual(t, body, normalized, "empty getetag elements must have been rewritten")
+
+	assert.Equal(t, []string{"", "", "", "weak"}, decodedGetETags(t, normalized),
+		"empty elements must normalize to an empty quoted value the library can unquote")
+	assert.NotContains(t, string(normalized), "<d:getetag/>", "a self-closing getetag must become a text element")
+	for _, href := range []string{
+		"/addressbooks/test/self-closing.vcf",
+		"/addressbooks/test/paired-empty.vcf",
+		"/addressbooks/test/empty-cdata.vcf",
+		"/addressbooks/test/weak.vcf",
+	} {
+		assert.Contains(t, string(normalized), "<d:href>"+href+"</d:href>", "surrounding XML must be preserved")
+	}
+}
+
 func TestNormalizeGetETagXMLLeavesMalformedBodyUntouched(t *testing.T) {
 	body := []byte(`<d:multistatus><d:getetag>bare</d:main></d:multistatus>`)
 	assert.Equal(t, body, normalizeGetETagXML(body))

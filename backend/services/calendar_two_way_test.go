@@ -62,10 +62,10 @@ func newMockCalendarServer(event, etag string) *mockCalendarServer {
 			w.WriteHeader(status)
 			return
 		}
-		// REPORT (calendar-query). getetag is emitted in the strong quoted
-		// form here; the sync transport normalizes unquoted/weak server forms
-		// before go-webdav unquotes them (issue #2003). An empty event means
-		// an empty collection (the remote event vanished).
+		// REPORT (calendar-query). The getetag is emitted exactly as the test
+		// supplied it (strong, weak W/"..." or bare); the sync transport
+		// normalizes the wire form before go-webdav unquotes it (issue #2003).
+		// An empty event means an empty collection (the remote event vanished).
 		w.Header().Set("Content-Type", "application/xml; charset=utf-8")
 		w.WriteHeader(http.StatusMultiStatus)
 		if m.event == "" {
@@ -78,7 +78,7 @@ func newMockCalendarServer(event, etag string) *mockCalendarServer {
 		fmt.Fprintf(w, `<?xml version="1.0" encoding="utf-8"?>`+"\n"+
 			`<d:multistatus xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">`+"\n"+
 			`<d:response><d:href>/calendars/test/event1.ics</d:href>`+"\n"+
-			`<d:propstat><d:prop><c:calendar-data>%s</c:calendar-data><d:getetag>"%s"</d:getetag></d:prop>`+"\n"+
+			`<d:propstat><d:prop><c:calendar-data>%s</c:calendar-data><d:getetag>%s</d:getetag></d:prop>`+"\n"+
 			`<d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>`+"\n"+
 			`</d:multistatus>`, escaped, m.etag)
 	}))
@@ -222,6 +222,127 @@ func TestTwoWay_PushRetryReusesRemoteUIDNoDuplicate(t *testing.T) {
 	for i, p := range mock.puts {
 		assert.Contains(t, p.body, "UID:event-1", "PUT %d must target the remote event's own UID", i)
 		assert.Equal(t, `"etag-remote-1"`, p.ifMatch, "PUT %d must carry the stored If-Match so it updates in place", i)
+	}
+}
+
+// TestTwoWay_WeakAndBareETagsImportAndPush guards the issue #2003 acceptance
+// case: a REPORT carrying a weak or bare getetag imports cleanly, an unchanged
+// rerun is a no-op, and a local edit pushes with the normalized strong
+// If-Match. (If-Match compares strong entity-tags per RFC 9110; a server whose
+// stored validator is weak or bare may not match it — the next test pins that
+// 412/local-wins path.)
+func TestTwoWay_WeakAndBareETagsImportAndPush(t *testing.T) {
+	cases := map[string]struct {
+		wire   string
+		stored string
+	}{
+		"weak": {wire: `W/"weak-etag-1"`, stored: "weak-etag-1"},
+		"bare": {wire: `bare-etag-1`, stored: "bare-etag-1"},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			db := setupCalendarSyncTestDB(t)
+			cfg := twoWayConfig()
+			user := createCalendarTestUser(t, db)
+
+			mock := newMockCalendarServer(vcalendarWith(importedVEvent("Original")), tc.wire)
+			defer mock.Close()
+
+			sub := newTestSubscription(t, db, cfg, user.ID, mock.server.URL+"/calendars/test/", "", "")
+			service := NewCalendarSyncService(false)
+
+			stats, err := service.SyncSubscription(context.Background(), db, cfg, sub)
+			require.NoError(t, err)
+			assert.Equal(t, CalendarSyncStats{Created: 1}, stats)
+
+			link, activity := loadLinkAndActivity(t, db, sub)
+			assert.Equal(t, tc.stored, link.RemoteETag,
+				"the weak/bare wire ETag must be stored in the normalized strong form")
+
+			// A second run with no local edit is a no-op.
+			_, err = service.SyncSubscription(context.Background(), db, cfg, sub)
+			require.NoError(t, err)
+			assert.Equal(t, 0, mock.putCount(), "an unchanged imported event must not be pushed")
+
+			// A local edit pushes one PUT with the normalized If-Match.
+			time.Sleep(1100 * time.Millisecond)
+			activity.Title = "Local rename"
+			require.NoError(t, db.Save(&activity).Error)
+
+			_, err = service.SyncSubscription(context.Background(), db, cfg, sub)
+			require.NoError(t, err)
+			require.Equal(t, 1, mock.putCount(), "the local edit must be pushed exactly once when accepted")
+			put := mock.lastPut()
+			require.NotNil(t, put)
+			assert.Equal(t, `"`+tc.stored+`"`, put.ifMatch,
+				"the push must send the normalized strong If-Match, not the weak/bare wire form")
+			assert.Contains(t, put.body, "Local rename")
+
+			// The pushed state must not be pushed again.
+			_, err = service.SyncSubscription(context.Background(), db, cfg, sub)
+			require.NoError(t, err)
+			assert.Equal(t, 1, mock.putCount(), "the pushed content must converge and not re-push")
+		})
+	}
+}
+
+// TestTwoWay_WeakAndBareETagsWireFormMismatchUsesLocalWins pins the other
+// branch: a server that only accepts its own weak/bare wire form rejects the
+// normalized strong If-Match with 412. The documented local-wins policy must
+// retry without If-Match, so the local edit still lands (two PUTs) rather than
+// failing the sync or losing data.
+func TestTwoWay_WeakAndBareETagsWireFormMismatchUsesLocalWins(t *testing.T) {
+	cases := map[string]struct {
+		wire   string
+		stored string
+	}{
+		"weak": {wire: `W/"weak-etag-1"`, stored: "weak-etag-1"},
+		"bare": {wire: `bare-etag-1`, stored: "bare-etag-1"},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			db := setupCalendarSyncTestDB(t)
+			cfg := twoWayConfig()
+			user := createCalendarTestUser(t, db)
+
+			mock := newMockCalendarServer(vcalendarWith(importedVEvent("Original")), tc.wire)
+			defer mock.Close()
+
+			// Emulate a server that string-compares If-Match against the exact
+			// validator it issued: our normalized strong form does not match.
+			mock.putStatus = func(ifMatch string) int {
+				if ifMatch == "" || ifMatch == tc.wire {
+					return http.StatusOK
+				}
+				return http.StatusPreconditionFailed
+			}
+
+			sub := newTestSubscription(t, db, cfg, user.ID, mock.server.URL+"/calendars/test/", "", "")
+			service := NewCalendarSyncService(false)
+
+			_, err := service.SyncSubscription(context.Background(), db, cfg, sub)
+			require.NoError(t, err)
+
+			_, activity := loadLinkAndActivity(t, db, sub)
+			time.Sleep(1100 * time.Millisecond)
+			activity.Title = "Local edit wins"
+			require.NoError(t, db.Save(&activity).Error)
+
+			_, err = service.SyncSubscription(context.Background(), db, cfg, sub)
+			require.NoError(t, err)
+
+			require.Equal(t, 2, mock.putCount(),
+				"the strong If-Match must get 412 and the local-wins retry must run")
+			assert.Equal(t, `"`+tc.stored+`"`, mock.puts[0].ifMatch,
+				"the first PUT carries the normalized strong ETag")
+			assert.Equal(t, "", mock.puts[1].ifMatch,
+				"the 412 retry drops If-Match (documented local-wins policy)")
+			assert.Contains(t, mock.puts[1].body, "Local edit wins",
+				"the retry must send the local content, not the rejected remote state")
+
+			_, activity = loadLinkAndActivity(t, db, sub)
+			assert.Equal(t, "Local edit wins", activity.Title, "the local edit must not be lost")
+		})
 	}
 }
 
