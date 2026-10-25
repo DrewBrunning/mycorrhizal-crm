@@ -1,0 +1,17 @@
+# Mycorrhizal CRM Docker Compose - source-build override
+#
+# The shipped docker-compose.yml pulls the published image, so an operator only
+# needs to download it and .env.example. Use this override for development and
+# CI, where the checked-out tree itself must be built and tested:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+#
+# The local image tag deliberately differs from the published tag: a local
+# build must not overwrite the cached release image that a later
+# `docker compose pull` would otherwise reuse.
+services:
+  mycorrhizal:
+    image: mycorrhizal-crm-local:latest
+    build:
+      context: .
+      dockerfile: Dockerfile

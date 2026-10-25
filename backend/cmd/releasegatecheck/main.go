@@ -30,21 +30,26 @@
 //     of rebuilding, and docker-publish.yml re-tags it and asserts published ==
 //     tested.
 //
-//  6. The release battery's flake-exposure wiring holds (issue #1487,
+//  6. The operator/source-build compose split holds
+//     (releaseworkflow.CheckComposeImages): the canonical docker-compose.yml
+//     pulls the published image and never builds, while the build override is
+//     the only file that builds the checked-out tree.
+//
+//  7. The release battery's flake-exposure wiring holds (issue #1487,
 //     releaseworkflow.CheckResilience): every composed gate honours the
 //     composer's skip_gates input, the results job records the per-gate
 //     ledger, release.yml's rerun_gates and docker-publish.yml's tag-time reuse
 //     are wired through `cmd/releaseplan`, and the DAST and Go-floor bounded
 //     retries run through their scripts (whose exit codes agree with zapgate).
 //
-//  7. The manual-gate attestation ledger holds (issue #1486): .github/manual-gates.json
+//  8. The manual-gate attestation ledger holds (issue #1486): .github/manual-gates.json
 //     is structurally valid, every attestation proves the test RAN (and any
 //     retained JUnit evidence hashes to what it claims), and release.yml's
 //     required `attest_manual_gates` input is enforced by an unconditional
 //     preflight step, recorded in release-readiness.json, and passed by the
 //     dry-run rehearsal (releaseworkflow.CheckManualGates).
 //
-//  8. No mandatory release-internal gate of docker-publish.yml is push-only
+//  9. No mandatory release-internal gate of docker-publish.yml is push-only
 //     (issue #1396): a `github.event_name == 'push'` guard skips the job on the
 //     workflow_dispatch fallback while the run still concludes success, unless
 //     the gate is allowlisted with a reason and a defined failing check on the
@@ -159,6 +164,19 @@ func runAt(w io.Writer, root string) int {
 		gateTexts[name] = string(b)
 	}
 	findings = append(findings, releaseworkflow.CheckCandidate(string(composerBytes), string(publishBytes), gateTexts)...)
+	// The operator/source-build split: the canonical compose file pulls the
+	// published image, and only the build override builds the checked-out tree.
+	composeTexts := make([]string, 0, 2)
+	for _, name := range []string{releaseworkflow.CanonicalComposeFile, releaseworkflow.BuildComposeFile} {
+		// #nosec G304 -- fixed repo-relative paths under the repository root
+		b, readErr := os.ReadFile(filepath.Join(root, name))
+		if readErr != nil {
+			fmt.Fprintln(os.Stderr, "releasegatecheck: read", name, readErr)
+			return 2
+		}
+		composeTexts = append(composeTexts, string(b))
+	}
+	findings = append(findings, releaseworkflow.CheckComposeImages(composeTexts[0], composeTexts[1])...)
 	// Issue #1487: the flake-exposure wiring (per-gate ledger + skip conditions,
 	// rerun_gates, tag-time reuse, the two bounded retries).
 	res := releaseworkflow.ResilienceFiles{Composer: string(composerBytes), Release: string(releaseBytes), Publish: string(publishBytes)}

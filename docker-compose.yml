@@ -2,13 +2,13 @@
 #
 # Single-container with bundled frontend and backend (+ nginx)
 #
-# USAGE:
+# USAGE (published image):
 #   cp .env.example .env && edit .env, then:
-#   docker compose up -d --build
+#   docker compose up -d
 
 services:
   mycorrhizal:
-    build: .
+    image: ghcr.io/drewbrunning/mycorrhizal-crm:${IMAGE_TAG:-latest}
     container_name: mycorrhizal
     restart: unless-stopped
     env_file:

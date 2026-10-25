@@ -284,6 +284,7 @@
     "internal/releaseplan/releaseplan.go": 100,
     "internal/releaseworkflow/candidate.go": 100,
     "internal/releaseworkflow/candidate_reuse.go": 96.43,
+    "internal/releaseworkflow/compose.go": 100,
     "internal/releaseworkflow/manual.go": 100,
     "internal/releaseworkflow/paperwork.go": 100,
     "internal/releaseworkflow/releaseworkflow.go": 100,

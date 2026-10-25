@@ -323,6 +323,9 @@ func checkImageGate(comp anyMap, file string, gates map[string]string) []string 
 		if !strings.Contains(text, candidateComp) {
 			findings = append(findings, file+" must boot the candidate through "+candidateComp+" (COMPOSE_FILE), or Compose rebuilds from source")
 		}
+		if !strings.Contains(text, BuildComposeFile) {
+			findings = append(findings, file+" must select "+BuildComposeFile+" for non-candidate runs, or the per-PR source-build gate would pull the published image instead of testing the commit")
+		}
 		smoke := jobOf(doc, "smoke")
 		if !strings.Contains(asStr(smoke["if"]), "inputs.image_digest != ''") {
 			findings = append(findings, file+" `smoke` job must run whenever image_digest is set (composed into the release battery there is no diff to gate on)")

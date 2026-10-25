@@ -26,8 +26,9 @@
 **Docker (All-in-one Image)**
 - The whole app ships as a single container built from the root [Dockerfile](Dockerfile): the React bundle and the Go backend served together by nginx (which proxies `/api` same-origin), managed by supervisord.
 - Copy `.env.example` to `.env` and configure `JWT_SECRET_KEY`, `FRONTEND_URL`, and optionally `DATA_PATH`/`PHOTOS_PATH` for volume locations.
-- [docker-compose.yml](docker-compose.yml) builds the image locally from source (`build: .`) — deliberately, since the meerkat -> mycorrhizal rebrand fixed this file away from pulling the wrong upstream (`fbuchner/meerkat-crm`) image: `docker compose up -d --build` (or plain `docker build -t mycorrhizal-crm .`). There is no `image:`/`IMAGE_TAG` wiring in the compose file to uncomment — a compose-based pre-built-image deploy does not exist today (see [getting-started.md](docs/getting-started.md)).
-- CI still publishes real, signed images to GHCR (`ghcr.io/drewbrunning/mycorrhizal-crm[-backend|-frontend]:<version>`, plus `latest` on a final release) for direct `docker pull` / verification — see [docs/security/release-verification.md](docs/security/release-verification.md). Wiring that into `docker-compose.yml` as an alternative to building locally is a possible future change, not the current default.
+- [docker-compose.yml](docker-compose.yml) is the operator file: it pulls the published, signed image from GHCR (`ghcr.io/drewbrunning/mycorrhizal-crm:${IMAGE_TAG:-latest}`) and must not contain `build:`, since Compose builds whenever a build section is present. A fresh install is `docker compose up -d`; upgrade with `docker compose pull && docker compose up -d`.
+- [docker-compose.build.yml](docker-compose.build.yml) is the source-build override and the only compose file that declares `build:`. Use it for local development and CI: `docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build`. Its `image:` is a local tag (`mycorrhizal-crm-local:latest`), deliberately not the published tag, so a build cannot overwrite the cached release image.
+- CI keeps testing the checked-out tree through that build override on every PR, `push: main`, and nightly. Release composition instead swaps in [docker-compose.candidate.yml](docker-compose.candidate.yml), which boots the one candidate image by digest ([docs/development/release-gates.md](docs/development/release-gates.md)); the post-publish smoke pulls the published digest. See [docs/security/release-verification.md](docs/security/release-verification.md).
 - The frontend build stage is **yarn-only**: `frontend/yarn.lock` must be present in the build context (it is committed and not `.dockerignore`d). There is no `npm` fallback — `yarn install --frozen-lockfile` and `yarn build` run unconditionally — so a trimmed build context that omits the lockfile will fail at the install step. Same for the split [frontend/Dockerfile](frontend/Dockerfile).
 - Container defaults (`PORT`, `SQLITE_DB_PATH`, `PROFILE_PHOTO_DIR`) are set in the root [Dockerfile](Dockerfile); override via `.env` if needed. `PORT` is the backend's internal bind port (8081) — nginx listens on 8080, which is what's actually exposed from the container.
 - The frontend bundle is built with an empty `VITE_API_URL` so it calls the API on relative paths; nginx (see [docker/nginx.conf](docker/nginx.conf)) proxies `/api`, `/health`, and `/carddav` to the backend on `127.0.0.1:8081`.
@@ -290,9 +291,9 @@ One-time setup (already done for this repo; re-do only if the App is rotated):
 
 Downstream:
 
-- Operators deploy a new version by pulling the tag and re-running `docker compose up -d --build`
-  ([docker-compose.yml](docker-compose.yml) builds locally from source; see the Docker section above
-  — there is no `IMAGE_TAG`/pre-built-image path through the compose file).
+- Operators deploy a new version with `docker compose pull && docker compose up -d`, pinning
+  `IMAGE_TAG` to the release (or `1.5.0@sha256:…` for an exact image) when they need reproducibility.
+  Source builds use the `docker-compose.build.yml` override; see the Docker section above.
 - Each published GHCR image (still built and signed here, for direct-pull/verification use) carries
   an SBOM and SLSA provenance attestation and is keylessly signed with `cosign`; the release APK
   carries GitHub-native SLSA build provenance plus an additive cosign co-signature. Full

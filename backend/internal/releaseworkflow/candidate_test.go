@@ -153,6 +153,9 @@ func TestCheckCandidateCatchesEachRegression(t *testing.T) {
 		{"deploy-smoke loses the candidate override", func(t *testing.T, w *wf) {
 			w.gates["deploy-smoke.yml"] = replaceAll(t, w.gates["deploy-smoke.yml"], "docker-compose.candidate.yml", "docker-compose.yml")
 		}, "must boot the candidate through docker-compose.candidate.yml"},
+		{"deploy-smoke loses the source-build override", func(t *testing.T, w *wf) {
+			w.gates["deploy-smoke.yml"] = replaceAll(t, w.gates["deploy-smoke.yml"], "docker-compose.build.yml", "docker-compose.yml")
+		}, "must select docker-compose.build.yml"},
 		{"deploy-smoke skips when composed", func(t *testing.T, w *wf) {
 			w.gates["deploy-smoke.yml"] = replaceOnce(t, w.gates["deploy-smoke.yml"], "inputs.image_digest != '' || github.event_name == 'schedule'", "github.event_name == 'schedule'")
 		}, "`smoke` job must run whenever image_digest is set"},
