@@ -192,7 +192,7 @@ func (m *ImportSessionManager) get(sessionID string, userID uint) (*importSessio
 	m.mu.RUnlock()
 
 	if !exists {
-		return nil, apperrors.ErrNotFound("Import session expired or not found")
+		return nil, apperrors.ErrNotFoundMessage("Import session expired or not found")
 	}
 
 	if sessionData.session.UserID != userID {
@@ -203,7 +203,7 @@ func (m *ImportSessionManager) get(sessionID string, userID uint) (*importSessio
 		m.mu.Lock()
 		delete(m.sessions, sessionID)
 		m.mu.Unlock()
-		return nil, apperrors.ErrNotFound("Import session expired")
+		return nil, apperrors.ErrNotFoundMessage("Import session expired")
 	}
 
 	return sessionData, nil

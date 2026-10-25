@@ -149,7 +149,7 @@ func (m *MycorrhizalImportManager) get(sessionID string, userID uint) (*mycorrhi
 	s, exists := m.sessions[sessionID]
 	m.mu.RUnlock()
 	if !exists {
-		return nil, apperrors.ErrNotFound("Import session expired or not found")
+		return nil, apperrors.ErrNotFoundMessage("Import session expired or not found")
 	}
 	if s.userID != userID {
 		return nil, apperrors.ErrUnauthorized("Session does not belong to current user")
@@ -166,7 +166,7 @@ func (m *MycorrhizalImportManager) get(sessionID string, userID uint) (*mycorrhi
 	s.mu.Unlock()
 	if expired {
 		m.Delete(sessionID)
-		return nil, apperrors.ErrNotFound("Import session expired")
+		return nil, apperrors.ErrNotFoundMessage("Import session expired")
 	}
 	return s, nil
 }

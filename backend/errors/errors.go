@@ -188,6 +188,16 @@ func ErrNotFound(resource string) *AppError {
 	return NewError(ErrCodeNotFound, message, http.StatusNotFound)
 }
 
+// ErrNotFoundMessage returns a 404 whose message is already fully worded.
+// Use it instead of ErrNotFound when the caller's message is a complete
+// sentence, since ErrNotFound appends " not found" to its resource argument.
+func ErrNotFoundMessage(message string) *AppError {
+	if message == "" {
+		message = "Resource not found"
+	}
+	return NewError(ErrCodeNotFound, message, http.StatusNotFound)
+}
+
 // ErrAlreadyExists returns an already exists error
 func ErrAlreadyExists(resource string) *AppError {
 	message := "Resource already exists"

@@ -198,8 +198,9 @@ func TestGet_Expired_DeletesAndDistinguishesFromUnknown(t *testing.T) {
 	require.NotNil(t, appErr2)
 	assert.Equal(t, apperrors.ErrCodeNotFound, appErr2.Code)
 
-	// The two paths produce distinguishable messages ("expired" vs
-	// "expired or not found"), proving different code was executed.
+	// The two paths produce distinguishable messages ("Import session
+	// expired" vs "Import session expired or not found"), proving different
+	// code was executed without doubling the "not found" suffix (#2008).
 	assert.NotEqual(t, firstMessage, appErr2.Message, "expiry-delete path and already-gone path should report different messages")
 }
 
