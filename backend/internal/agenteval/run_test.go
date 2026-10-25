@@ -190,6 +190,71 @@ func TestApplySeedPatch(t *testing.T) {
 	}
 }
 
+func TestRunLinksNodeModulesForSuites(t *testing.T) {
+	root, _ := initRepo(t)
+	writeRepoFile(t, root, ".gitignore", "node_modules/\n")
+	writeRepoFile(t, root, "frontend/node_modules/.bin/marker", "x\n")
+	runGit(t, root, "add", ".gitignore")
+	runGit(t, root, "commit", "-q", "-m", "ignore node_modules")
+	sha := strings.TrimSpace(runGit(t, root, "rev-parse", "HEAD"))
+
+	artifact, err := Run(context.Background(), Options{
+		Root:         root,
+		Spec:         baseSpec(t, root, sha),
+		Suites:       []Suite{{Name: "demo", Commands: []string{"cd frontend && test -e node_modules/.bin/marker"}}},
+		AgentCommand: "true",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifact.Status != "passed" || artifact.Context == nil || !artifact.Context.Success {
+		t.Fatalf("artifact = %+v", artifact)
+	}
+	if len(artifact.Context.ChangedFiles) != 0 {
+		t.Fatalf("changed files = %v", artifact.Context.ChangedFiles)
+	}
+}
+
+func TestRunFailsWhenNoChangeTaskChangesFiles(t *testing.T) {
+	root, sha := initRepo(t)
+	spec := baseSpec(t, root, sha)
+	spec.ExpectNoChange = true
+	spec.ExpectPaths = nil
+	artifact, err := Run(context.Background(), Options{
+		Root:         root,
+		Spec:         spec,
+		Suites:       []Suite{{Name: "demo", Commands: []string{"true"}}},
+		AgentCommand: `printf 'x\n' > backend/x.go`,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifact.Status != "failed" || len(artifact.Context.UnexpectedChanges) == 0 {
+		t.Fatalf("artifact = %+v", artifact)
+	}
+	if !strings.Contains(artifact.Context.UnexpectedChanges[0], "task requires no changes: backend/x.go") {
+		t.Fatalf("unexpected changes = %v", artifact.Context.UnexpectedChanges)
+	}
+}
+
+func TestRunPassesWhenNoChangeTaskDoesNothing(t *testing.T) {
+	root, sha := initRepo(t)
+	spec := baseSpec(t, root, sha)
+	spec.ExpectNoChange = true
+	spec.ExpectPaths = nil
+	artifact, err := Run(context.Background(), Options{
+		Root:   root,
+		Spec:   spec,
+		Suites: []Suite{{Name: "demo", Commands: []string{"true"}}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifact.Status != "passed" || artifact.Context == nil || !artifact.Context.Success {
+		t.Fatalf("artifact = %+v", artifact)
+	}
+}
+
 func TestRunFailsWhenSuiteCommandFails(t *testing.T) {
 	root, sha := initRepo(t)
 	artifact, err := Run(context.Background(), Options{

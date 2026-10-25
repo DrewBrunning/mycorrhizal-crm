@@ -121,6 +121,9 @@ func runWorktree(ctx context.Context, opts Options, wt string, control bool, com
 		return result, nil, err
 	}
 	defer removeWorktree(opts.Root, wt)
+	if err := linkNodeModules(opts.Root, wt); err != nil {
+		return result, nil, err
+	}
 
 	if opts.Spec.SeedPatch != "" {
 		patch := filepath.Join(opts.Spec.TaskDir, filepath.FromSlash(opts.Spec.SeedPatch))
@@ -148,6 +151,11 @@ func runWorktree(ctx context.Context, opts Options, wt string, control bool, com
 		return result, stripped, err
 	}
 	result.ChangedFiles = subtract(changed, baseline)
+	if opts.Spec.ExpectNoChange {
+		for _, path := range result.ChangedFiles {
+			result.UnexpectedChanges = append(result.UnexpectedChanges, "task requires no changes: "+path)
+		}
+	}
 	result.ScopeViolations = ClassifyPaths(result.ChangedFiles, opts.Spec.ExpectPaths, opts.Spec.ForbidPaths)
 	result.HandEditedGenerated = DetectHandEdits(result.ChangedFiles, GeneratedArtifacts)
 	if len(opts.Spec.ExpectedFindings) > 0 {
@@ -210,6 +218,31 @@ func applySeedPatch(ctx context.Context, wt, patch string) error {
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("seed patch does not apply (%s): %v: %s", filepath.Base(patch), err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
+// linkNodeModules points the disposable worktree at the caller's installed
+// frontend dependencies. A worktree does not inherit node_modules, and suites
+// such as localization run npx; linking avoids a network install per task. The
+// path is gitignored, so it never appears in the changed-file set.
+func linkNodeModules(root, wt string) error {
+	src := filepath.Join(root, "frontend", "node_modules")
+	if _, err := os.Stat(src); err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	dst := filepath.Join(wt, "frontend", "node_modules")
+	if _, err := os.Lstat(dst); err == nil { // #nosec G703 -- dst is inside our disposable worktree
+		return nil
+	}
+	if err := os.MkdirAll(filepath.Dir(dst), 0o750); err != nil {
+		return err
+	}
+	if err := os.Symlink(src, dst); err != nil { // #nosec G703 -- src/dst are controlled paths
+		return fmt.Errorf("link frontend node_modules: %w", err)
 	}
 	return nil
 }

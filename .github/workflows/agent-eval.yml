@@ -24,6 +24,13 @@ on:
           - api-contract-change
           - security-sensitive-change
           - release-readiness
+          - localization-change
+          - dependency-update-review
+          - documentation-maintenance
+          - performance-investigation
+          - add-quality-gate
+          - database-migration-refuse
+          - api-contract-change-refuse
       agent_command:
         description: 'Pinned agent command template ({prompt} is substituted). Keep the version pinned.'
         type: string

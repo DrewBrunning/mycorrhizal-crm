@@ -1,0 +1,20 @@
+name: dependency-update-review
+base_ref: 64585cbe63430b3491516e56a65d195d73988e46
+suite: dependency-update-review
+timeout: 20m
+requires: [go]
+agent_command: "true"
+agent_name: dry-run
+agent_model: none
+agent_version: "0"
+expect_paths:
+  - docs/security/dependency-exceptions.ignore
+  - THIRD_PARTY_NOTICES.md
+  - backend/go.mod
+  - backend/go.sum
+  - frontend/package.json
+  - frontend/yarn.lock
+forbid_paths:
+  - .github/**
+  - android/**
+  - backend/controllers/**

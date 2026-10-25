@@ -1,0 +1,15 @@
+name: localization-change
+base_ref: 64585cbe63430b3491516e56a65d195d73988e46
+suite: localization-change
+timeout: 20m
+requires: [node]
+agent_command: "true"
+agent_name: dry-run
+agent_model: none
+agent_version: "0"
+expect_paths:
+  - frontend/src/**
+forbid_paths:
+  - backend/**
+  - android/**
+  - .github/**

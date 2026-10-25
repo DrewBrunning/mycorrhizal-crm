@@ -1,0 +1,17 @@
+name: add-quality-gate
+base_ref: 64585cbe63430b3491516e56a65d195d73988e46
+suite: add-quality-gate
+timeout: 25m
+requires: [go]
+agent_command: "true"
+agent_name: dry-run
+agent_model: none
+agent_version: "0"
+expect_paths:
+  - .github/**
+  - docs/**
+forbid_paths:
+  - backend/controllers/**
+  - backend/services/**
+  - frontend/**
+  - android/**

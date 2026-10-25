@@ -77,6 +77,18 @@ func TestParseSpecErrors(t *testing.T) {
 	}
 }
 
+func TestParseSpecAllowsNoChangeWithoutExpectPaths(t *testing.T) {
+	dir := t.TempDir()
+	body := "name: demo\nprompt: x\nbase_ref: " + sha + "\nsuite: database-migration\nagent_command: true\nexpect_no_change: true\n"
+	spec, err := parseSpec([]byte(body), dir, "demo", []string{"database-migration"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !spec.ExpectNoChange {
+		t.Fatal("expect_no_change not parsed")
+	}
+}
+
 func TestParseSpecChecksSeedAndControlFiles(t *testing.T) {
 	dir := t.TempDir()
 	base := "name: demo\nprompt: x\nbase_ref: " + sha + "\nsuite: database-migration\nagent_command: true\nexpect_paths: [backend/**]\n"
@@ -189,6 +201,47 @@ func TestCommittedTasksLoad(t *testing.T) {
 		}
 		if _, err := LoadTask(root, "testdata/agent-eval", e.Name(), names); err != nil {
 			t.Errorf("%s: %v", e.Name(), err)
+		}
+	}
+}
+
+func TestRepositoryTasksCoverEverySuite(t *testing.T) {
+	root, err := filepath.Abs("../../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	suites := agentcontext.Suites()
+	names := make([]string, 0, len(suites))
+	for _, s := range suites {
+		names = append(names, s.Name)
+	}
+	entries, err := os.ReadDir(filepath.Join(root, "testdata", "agent-eval"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	covered := map[string]bool{}
+	tasks := 0
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		if _, err := os.Stat(filepath.Join(root, "testdata", "agent-eval", e.Name(), "spec.yaml")); err != nil {
+			continue
+		}
+		spec, err := LoadTask(root, "testdata/agent-eval", e.Name(), names)
+		if err != nil {
+			t.Errorf("%s: %v", e.Name(), err)
+			continue
+		}
+		tasks++
+		covered[spec.Suite] = true
+	}
+	if tasks == 0 {
+		t.Fatal("no eval tasks found")
+	}
+	for _, s := range suites {
+		if !covered[s.Name] {
+			t.Errorf("suite %q has no eval task", s.Name)
 		}
 	}
 }

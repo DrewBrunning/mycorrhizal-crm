@@ -1,0 +1,16 @@
+name: documentation-maintenance
+base_ref: 64585cbe63430b3491516e56a65d195d73988e46
+suite: documentation-maintenance
+timeout: 20m
+requires: [go]
+agent_command: "true"
+agent_name: dry-run
+agent_model: none
+agent_version: "0"
+expect_paths:
+  - docs/**
+forbid_paths:
+  - backend/**
+  - frontend/**
+  - android/**
+  - .github/**
