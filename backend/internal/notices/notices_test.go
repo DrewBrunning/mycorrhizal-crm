@@ -594,14 +594,23 @@ func TestParseNPMReportsALicenseFileError(t *testing.T) {
 
 func TestRenderDescribesAndroidCoverageTruthfully(t *testing.T) {
 	out := Render(nil)
-	if strings.Contains(out, "carries the same attribution") {
-		t.Fatalf("the notice still claims the Android app carries the same attribution:\n%s", out)
+	for _, unwanted := range []string{
+		"carries the same attribution",
+		// The F-Droid build does not ship the on-device Go server
+		// (docs/development/fdroid.md), so the notice may not claim every APK
+		// embeds it.
+		"Android APK/AAB embeds this Go server",
+	} {
+		if strings.Contains(out, unwanted) {
+			t.Fatalf("the notice makes the unconditional claim %q:\n%s", unwanted, out)
+		}
 	}
 	for _, want := range []string{
 		"Go standard library",
 		"Settings > About > Third-party licenses",
 		"THIRD_PARTY_SOURCES.md",
 		"npm packages are",
+		"Builds that ship the on-device",
 	} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("the notice does not describe %q:\n%s", want, out)
