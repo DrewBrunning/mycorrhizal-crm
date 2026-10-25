@@ -74,8 +74,7 @@ var Areas = []Area{
 	}},
 
 	{Name: "go-manifests", Fast: []Command{
-		{Label: "go-manifests: go mod verify", Dir: "backend", Argv: []string{"go", "mod", "verify"}},
-		{Label: "go-manifests: go mod tidy drift", Dir: "backend", Argv: []string{"go", "mod", "tidy", "-diff"}},
+		{Label: "go-manifests: module graph tidy + verify (issue #1905)", Dir: "", Argv: []string{"bash", ".github/scripts/check-go-modules.sh"}},
 	}},
 
 	{Name: "npm-manifests", Note: "lockfile/licence compliance is CI-only (license-compliance.yml); run `cd frontend && yarn install --frozen-lockfile` after changing a manifest"},
@@ -92,6 +91,9 @@ var Areas = []Area{
 	{Name: "carddav", Note: "the real-server CardDAV suite is CI-only and nightly (carddav-e2e.yml)"},
 	{Name: "realservers", Note: "the real-server integration contract suite is CI-only and nightly (integration-real-servers.yml)"},
 	{Name: "reference-clients", Note: "the third-party reference-client suite is CI-only and nightly (reference-clients-e2e.yml)"},
+	{Name: "shell", Fast: []Command{
+		{Label: "shell: shellcheck tracked scripts (issue #1904)", Dir: "", Argv: []string{"bash", ".github/scripts/shellcheck-scripts.sh"}},
+	}},
 	{Name: "workflows", Note: "a .github change re-runs every CI suite; workflow linters (actionlint, zizmor) and the suite matrix are CI-only"},
 }
 

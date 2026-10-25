@@ -156,6 +156,19 @@ just by habit:
   (`.github/workflows/sast.yml`) lints all three Dockerfiles on every
   relevant change and flags an unpinned `FROM`.
 
+**The Go module graph must stay tidy (issue #1905).** A dependency bump — or
+the deletion of its last import — must leave both Go manifests tidy:
+`unit-tests.yml`'s required `Backend (Go)` job and the pre-commit hook run
+`go mod tidy -diff` for `go.mod` and the separate `tools.mod` graph, then
+`go mod verify` for both. An unused `require` therefore fails CI instead of
+lingering in the SBOM, the licence scan, and the govulncheck/Grype/Trivy
+surface; a missing `go.sum` entry fails before a package CI never built hits
+it. `tools.mod` has no packages of its own, so the check uses
+`.github/scripts/check-go-modules.sh`, which tidies it in a scratch module
+directory; run that script with `--write` (or `go get -modfile=tools.mod -tool`
+for the bump itself) to regenerate `tools.mod`/`tools.sum`, then commit the
+result.
+
 **Known gap:** Scorecard's Pinned-Dependencies check still flags the
 `npm install` fallback branch in the root and frontend Dockerfiles' dependency-install
 conditional (`if [ -f yarn.lock ]; then yarn install --frozen-lockfile; elif …;
