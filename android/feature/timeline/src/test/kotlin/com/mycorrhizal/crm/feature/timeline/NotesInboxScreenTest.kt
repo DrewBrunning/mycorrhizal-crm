@@ -41,6 +41,7 @@ class NotesInboxScreenTest {
         onNoteClick: (Int) -> Unit = {},
         onLoadMore: () -> Unit = {},
         onCreateNote: () -> Unit = {},
+        onErrorShown: () -> Unit = {},
         darkTheme: Boolean = false
     ) {
         composeTestRule.setContent {
@@ -49,7 +50,8 @@ class NotesInboxScreenTest {
                     uiState = uiState,
                     onNoteClick = onNoteClick,
                     onLoadMore = onLoadMore,
-                    onCreateNote = onCreateNote
+                    onCreateNote = onCreateNote,
+                    onErrorShown = onErrorShown
                 )
             }
         }
@@ -175,6 +177,37 @@ class NotesInboxScreenTest {
             )
         )
         assertEquals(0, composeTestRule.onAllNodesWithText("Load more").fetchSemanticsNodes().size)
+    }
+
+    @Test
+    fun `a populated list with an error shows the snackbar and reports it shown`() {
+        var errorShown = 0
+        setContent(
+            NotesInboxUiState(
+                isLoading = false,
+                notes = listOf(Note(id = 3, content = "Buy milk")),
+                error = "boom"
+            ),
+            onErrorShown = { errorShown++ }
+        )
+
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("boom").assertIsDisplayed()
+        composeTestRule.mainClock.advanceTimeBy(5_000)
+        composeTestRule.waitForIdle()
+        assertEquals(1, errorShown)
+    }
+
+    @Test
+    fun `a note with a date shows the formatted date`() {
+        setContent(
+            NotesInboxUiState(
+                isLoading = false,
+                notes = listOf(Note(id = 3, content = "Buy milk", date = "2026-01-02"))
+            )
+        )
+
+        composeTestRule.onNodeWithText("02.01.2026").assertIsDisplayed()
     }
 
     @Test
