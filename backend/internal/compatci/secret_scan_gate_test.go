@@ -116,4 +116,22 @@ func TestAppTokenHistoryScanRunsInRequiredJob(t *testing.T) {
 			t.Errorf("%s does not contain %q", appTokenScanScriptRel, want)
 		}
 	}
+
+	// Review routing: a human should look at a diff that changes the rule, the
+	// scanner, the required workflow step, or the pinned tool.
+	codeowners, err := os.ReadFile(filepath.Join(workflowsDirRel, "..", "..", ".github", "CODEOWNERS"))
+	if err != nil {
+		t.Fatalf("reading .github/CODEOWNERS: %v", err)
+	}
+	for _, want := range []string{
+		"/.gitleaks.toml",
+		"/.github/scripts/secret-scan-app-tokens.sh",
+		"/.github/workflows/unit-tests.yml",
+		"/backend/tools.mod",
+		"/backend/tools.sum",
+	} {
+		if !strings.Contains(string(codeowners), want) {
+			t.Errorf(".github/CODEOWNERS does not route %q", want)
+		}
+	}
 }
