@@ -512,6 +512,20 @@ jobs:
         working-directory: backend
         run: go run ./cmd/rawtimecheck ./...
 
+      # Issue #1909: the OpenAPI spec is the source for the contract fixtures,
+      # generated TS types, the breaking-change baseline and the Schemathesis
+      # gate. The Go validator (openapi_test.go) proves well-formedness; this
+      # adds the design-consistency rules it cannot express (operation tags,
+      # unique operationIds, error-envelope shape, unused components, ...).
+      # vacuum is a tools.mod tool, so it is version-pinned by tools.mod +
+      # tools.sum; no registry fetch happens at run time. The only output is a
+      # non-fatal circular-reference warning for the deliberate
+      # ContactFlat <-> Reminder recursion (vacuum reports it at warning
+      # severity, and every project rule is promoted to error).
+      - name: Lint the OpenAPI spec (vacuum)
+        working-directory: backend
+        run: go tool -modfile=tools.mod vacuum lint -r vacuum.yaml -b -q --no-update-check openapi.yaml
+
   # Issues #1625/#1626: the nightly fuzz pass now covers 21 native targets.
   # At the full 2m budget that overruns the single `backend-checks` job, so the
   # nightly schedule shards by package — one matrix leg per package running

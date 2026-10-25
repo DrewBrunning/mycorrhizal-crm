@@ -2481,7 +2481,7 @@ export type SystemEvent = {
   id?: number;
   occurred_at?: string;
   operation?: string;
-  result?: 'success' | 'failure' | 'skipped' | null;
+  result?: 'success' | 'failure' | 'skipped';
   severity?: 'info' | 'warn' | 'error';
   user_id?: number | null;
 };

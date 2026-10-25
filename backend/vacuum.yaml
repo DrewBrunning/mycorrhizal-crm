@@ -1,0 +1,91 @@
+# Project ruleset for backend/openapi.yaml (issue #1909).
+#
+# Adopted vacuum, a Go OpenAPI linter, rather than Spectral: the backend job
+# already resolves its tools from backend/tools.mod, so this adds no Node
+# runtime to the API-contract job and the version is pinned by tools.mod +
+# tools.sum. The spike (findings per rule, the rejected alternative, and the
+# overlap with the existing drift tests/authorization matrix) is recorded in
+# docs/development/openapi-linting.md.
+#
+# Extend vacuum's recommended set, disable the style rules this spec answers
+# differently, promote the contract rules to errors so `--fail-severity error`
+# (the default) fails on any finding, and add the project-specific rules.
+extends: [[vacuum:oas, recommended]]
+
+rules:
+  # --- Contract consistency (promoted from warning to error) ---
+  operation-tags: error
+  operation-tag-defined: error
+  operation-success-response: error
+  operation-parameters: error
+  path-keys-no-trailing-slash: error
+  path-item-refs: error
+  no-http-verbs-in-path: error
+  oas3-api-servers: error
+  oas3-unused-component: error
+  oas3-valid-schema-example: error
+  oas3-example-external-check: error
+  typed-enum: error
+
+  # --- Project-specific contract rules ---
+  # Every operation has a summary or a description. This replaces
+  # operation-description (see the disabled list): summaries are the project's
+  # documented form and the spec has one on every operation.
+  operation-summary-or-description:
+    description: Every operation has a summary or description.
+    given: $..[?(@.operationId)]
+    severity: error
+    then:
+      field: summary
+      function: truthy
+
+  # Every documented JSON 4xx/5xx body is the shared apperrors envelope. A
+  # response with no JSON body is out of scope; deliberate body exceptions
+  # carry a local `x-lint-ignore: [error-envelope]` with the reason.
+  error-envelope:
+    description: Every documented JSON error body uses the shared Error envelope.
+    given: $.paths.*.*.responses[?(@property >= '400')]
+    resolved: false
+    severity: error
+    then:
+      field: content.application/json.schema
+      function: schema
+      functionOptions:
+        schema:
+          type: object
+          required: ["$ref"]
+          properties:
+            $ref:
+              const: "#/components/schemas/Error"
+
+  # --- Deliberately disabled (reasons in docs/development/openapi-linting.md) ---
+  # operation-description: replaced by operation-summary-or-description above.
+  # oas3-parameter-description (170 occurrences / 32 names) and
+  #   component-description (150 schemas): boilerplate one-liners add no
+  #   contract information; the parameter, schema, and example prose already
+  #   documents the shapes that matter.
+  # camel-case-properties: deliberately conflicts with the RFC 9553/9554/9555
+  #   neutral model (Card, JCardProp, Passthrough) and the legacy ContactFlat
+  #   DTO, which use the RFC's own camelCase/PascalCase names. The CRM DTOs are
+  #   already snake_case.
+  # oas3-missing-example (1,299) and description-duplication (478): example and
+  #   prose coverage, not contract consistency; the spec's own validator and
+  #   the response spot-check pin the examples that do exist.
+  # no-request-body (2): DELETE /account and DELETE /webauthn/credentials/{id}
+  #   carry the caller's re-authentication proof in the body by design.
+  # oas-missing-type (6): FieldValue.value, FieldValueInput.value and
+  #   JCardProp.value are intentionally any-JSON (a scalar or an array);
+  #   OAS 3.0's empty schema is the correct spelling.
+  # paths-kebab-case (1): /contacts/{id}/profile_picture is an existing public
+  #   path; renaming it is a breaking API change, not a lint fix.
+  # migrate-zally-ignore: this project has no Zally annotations to migrate.
+  operation-description: off
+  oas3-parameter-description: off
+  component-description: off
+  camel-case-properties: off
+  oas3-missing-example: off
+  description-duplication: off
+  no-request-body: off
+  oas-missing-type: off
+  paths-kebab-case: off
+  migrate-zally-ignore: off
