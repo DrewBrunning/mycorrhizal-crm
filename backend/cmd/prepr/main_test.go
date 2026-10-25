@@ -99,12 +99,40 @@ func TestRunDryRunFullPrintsRatchetAndStress(t *testing.T) {
 	}
 }
 
+func TestRunDryRunFix(t *testing.T) {
+	dir := newRepo(t)
+	var out, errOut bytes.Buffer
+	code := run([]string{"--focused", "--fix", "--dry-run", "--root", dir, "--base", "HEAD~1"}, &out, &errOut)
+	if code != 0 {
+		t.Fatalf("run = %d, want 0\nstderr: %s", code, errOut.String())
+	}
+	for _, want := range []string{
+		"cd backend && gofmt -w .",
+		"golangci-lint run --fix ./...",
+		"fix mode: formatters may modify the working tree",
+	} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("output missing %q:\n%s", want, out.String())
+		}
+	}
+}
+
 func TestRunRejectsConflictingModes(t *testing.T) {
 	var out, errOut bytes.Buffer
 	if code := run([]string{"--fast", "--full"}, &out, &errOut); code != 2 {
 		t.Fatalf("run = %d, want 2", code)
 	}
-	if !strings.Contains(errOut.String(), "choose --fast or --full") {
+	if !strings.Contains(errOut.String(), "choose exactly one of --fast, --focused, or --full") {
+		t.Errorf("stderr = %q", errOut.String())
+	}
+}
+
+func TestRunRejectsFocusedAndFull(t *testing.T) {
+	var out, errOut bytes.Buffer
+	if code := run([]string{"--focused", "--full"}, &out, &errOut); code != 2 {
+		t.Fatalf("run = %d, want 2", code)
+	}
+	if !strings.Contains(errOut.String(), "choose exactly one of") {
 		t.Errorf("stderr = %q", errOut.String())
 	}
 }

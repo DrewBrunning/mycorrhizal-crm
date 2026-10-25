@@ -141,8 +141,8 @@ func TestEveryAreaDoesSomething(t *testing.T) {
 		if len(area.Fast) == 0 && len(area.Full) == 0 && len(area.Implies) == 0 && area.Note == "" {
 			t.Errorf("area %q has no commands, implications, or note", area.Name)
 		}
-		if len(area.Fast) == 0 && len(area.Full) > 0 {
-			t.Errorf("area %q has full-only commands; fast must be a subset of full", area.Name)
+		if len(area.Fast) == 0 && (len(area.Focused) > 0 || len(area.Full) > 0) {
+			t.Errorf("area %q has focused/full-only commands; fast must be the base subset", area.Name)
 		}
 	}
 }
@@ -192,8 +192,14 @@ func TestBuildFullStressesChangedGoTestAndPrintsBaseline(t *testing.T) {
 	plan := Build(f, []string{"backend/services/foo_test.go"}, ModeFull, "origin/main")
 
 	labels := labelsFor(plan, "backend")
-	if !contains(labels, "backend: go test ./...") {
-		t.Errorf("full plan missing go test ./...; got %v", labels)
+	if contains(labels, "backend: go test ./...") {
+		t.Errorf("full plan should use the coverage suite, not a duplicate go test ./...; got %v", labels)
+	}
+	if !contains(labels, "backend: tests with cross-package coverage") {
+		t.Errorf("full plan missing coverage suite; got %v", labels)
+	}
+	if !contains(labels, "backend: schemafixture suite") {
+		t.Errorf("full plan missing schemafixture suite; got %v", labels)
 	}
 	if !contains(labels, "backend: per-file coverage ratchet") {
 		t.Errorf("full plan missing coverage ratchet; got %v", labels)
@@ -204,12 +210,12 @@ func TestBuildFullStressesChangedGoTestAndPrintsBaseline(t *testing.T) {
 	if len(plan.Hints) != 1 || plan.Hints[0] != BaselineHints["backend"] {
 		t.Errorf("Hints = %v, want [%s]", plan.Hints, BaselineHints["backend"])
 	}
-	patch := stepByLabel(plan, "backend: changed-line coverage warning (non-blocking)")
+	patch := stepByLabel(plan, "backend: changed-line coverage (patchcov)")
 	if patch == nil {
-		t.Fatal("patchcov warning step not found")
+		t.Fatal("patchcov step not found")
 	}
-	if !patch.Command.Warn {
-		t.Error("patchcov step must be non-blocking")
+	if patch.Command.Warn {
+		t.Error("patchcov step must be blocking")
 	}
 	if !contains(patch.Command.Argv, "origin/main") {
 		t.Errorf("patchcov argv = %v, want the selected base", patch.Command.Argv)
@@ -222,6 +228,88 @@ func TestBuildFullStressesChangedGoTestAndPrintsBaseline(t *testing.T) {
 	want := []string{"go", "test", "-race", "-count=10", "-shuffle=on", "./services"}
 	if strings.Join(stress.Command.Argv, " ") != strings.Join(want, " ") {
 		t.Errorf("stress argv = %v, want %v", stress.Command.Argv, want)
+	}
+}
+
+func TestBuildFocusedRunsTestsAndCoverageWithoutStress(t *testing.T) {
+	f := loadFixture(t)
+	plan := Build(f, []string{"backend/services/foo_test.go"}, ModeFocused, "origin/main")
+
+	if strings.Join(plan.Selected, ",") != "backend" {
+		t.Fatalf("Selected = %v, want [backend]", plan.Selected)
+	}
+	labels := labelsFor(plan, "backend")
+	for _, want := range []string{
+		"backend: go build",
+		"backend: tests with cross-package coverage",
+		"backend: schemafixture suite",
+		"backend: per-file coverage ratchet",
+		"backend: changed-line coverage (patchcov)",
+	} {
+		if !contains(labels, want) {
+			t.Errorf("focused plan missing %q; got %v", want, labels)
+		}
+	}
+	for _, unwanted := range []string{
+		"backend: go test ./...",
+		"stress: go test ./services",
+	} {
+		if contains(labels, unwanted) {
+			t.Errorf("focused plan must not run %q", unwanted)
+		}
+	}
+	if len(plan.Hints) != 1 || plan.Hints[0] != BaselineHints["backend"] {
+		t.Errorf("Hints = %v, want [%s]", plan.Hints, BaselineHints["backend"])
+	}
+}
+
+func TestPrependFixSteps(t *testing.T) {
+	f := loadFixture(t)
+	plan := PrependFixSteps(Build(f, []string{"backend/services/foo.go"}, ModeFocused, "origin/main"))
+
+	labels := []string{}
+	for _, step := range plan.Steps {
+		labels = append(labels, step.Command.Label)
+	}
+	if len(labels) < 2 || labels[0] != "fix: gofmt" || labels[1] != "fix: golangci-lint --fix" {
+		t.Fatalf("fix steps not prepended first: %v", labels)
+	}
+	if !contains(plan.Notes, "fix mode: formatters may modify the working tree; review `git diff` before committing.") {
+		t.Errorf("Notes = %v, missing fix-mode warning", plan.Notes)
+	}
+
+	docs := PrependFixSteps(Build(f, []string{"docs/development/workflow.md"}, ModeFocused, "origin/main"))
+	if len(docs.Steps) != len(GovernanceSteps) {
+		t.Errorf("docs-only fix plan changed the step count: got %d, want %d", len(docs.Steps), len(GovernanceSteps))
+	}
+}
+
+func TestBuildFocusedClientSuitesWithoutStress(t *testing.T) {
+	f := loadFixture(t)
+	plan := Build(f, []string{
+		"frontend/src/App.test.tsx",
+		"android/app/src/test/kotlin/com/x/ContactTest.kt",
+	}, ModeFocused, "origin/main")
+
+	labels := labelsFor(plan, "frontend")
+	for _, want := range []string{"frontend: vitest with coverage", "frontend: per-file coverage ratchet"} {
+		if !contains(labels, want) {
+			t.Errorf("focused frontend plan missing %q; got %v", want, labels)
+		}
+	}
+	labels = labelsFor(plan, "android")
+	for _, want := range []string{"android: aggregated jacoco report", "android: coverage ratchet"} {
+		if !contains(labels, want) {
+			t.Errorf("focused android plan missing %q; got %v", want, labels)
+		}
+	}
+	for _, step := range plan.Steps {
+		if strings.HasPrefix(step.Command.Label, "stress:") {
+			t.Errorf("focused plan must not include stress step %q", step.Command.Label)
+		}
+	}
+	if len(plan.Hints) != 2 {
+		t.Errorf("Hints = %v, want frontend and android baseline hints", plan.Hints)
 	}
 }
 
@@ -411,6 +499,7 @@ func TestParseMode(t *testing.T) {
 		ok   bool
 	}{
 		{"fast", ModeFast, true},
+		{"focused", ModeFocused, true},
 		{"FULL", ModeFull, true},
 		{"", "", false},
 		{"slow", "", false},

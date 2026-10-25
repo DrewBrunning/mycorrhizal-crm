@@ -14,19 +14,24 @@ const (
 	// ModeFast is the lint/build/drift subset: the same class as the
 	// pre-commit hook, run over the areas the branch touches.
 	ModeFast Mode = "fast"
-	// ModeFull adds the area suites, coverage ratchets, and flake stress.
+	// ModeFocused adds tests, coverage, and per-file ratchets, but not the
+	// exhaustive flake-stress pass.
+	ModeFocused Mode = "focused"
+	// ModeFull adds the exhaustive flake-stress pass on top of Focused.
 	ModeFull Mode = "full"
 )
 
-// ParseMode validates a --fast/--full selection.
+// ParseMode validates a --fast/--focused/--full selection.
 func ParseMode(s string) (Mode, error) {
 	switch strings.ToLower(s) {
 	case "fast":
 		return ModeFast, nil
+	case "focused":
+		return ModeFocused, nil
 	case "full":
 		return ModeFull, nil
 	default:
-		return "", fmt.Errorf("unknown mode %q (want fast or full)", s)
+		return "", fmt.Errorf("unknown mode %q (want fast, focused, or full)", s)
 	}
 }
 
@@ -95,9 +100,12 @@ func Build(f *Filters, changed []string, mode Mode, base string) *Plan {
 			p.Notes = append(p.Notes, fmt.Sprintf("%s implies %s", name, strings.Join(area.Implies, ", ")))
 			continue
 		}
-		commands := area.Fast
+		commands := append([]Command{}, area.Fast...)
+		if mode == ModeFocused || mode == ModeFull {
+			commands = append(commands, area.Focused...)
+		}
 		if mode == ModeFull {
-			commands = append(append([]Command{}, commands...), area.Full...)
+			commands = append(commands, area.Full...)
 		}
 		if len(commands) == 0 {
 			reason := area.Note
@@ -112,17 +120,18 @@ func Build(f *Filters, changed []string, mode Mode, base string) *Plan {
 		}
 	}
 
-	if mode == ModeFull {
+	if mode == ModeFocused || mode == ModeFull {
 		if selectedSet["backend"] && base != "" {
 			p.Steps = append(p.Steps, Step{Area: "backend", Command: Command{
-				Label: "backend: changed-line coverage warning (non-blocking)",
+				Label: "backend: changed-line coverage (patchcov)",
 				Dir:   "backend",
 				Argv:  []string{"go", "run", "./cmd/patchcov", "-profile", "coverage-cross.out", "-base", base, "-target", "95"},
-				Warn:  true,
 			}})
 		}
-		p.Steps = append(p.Steps, stressSteps(changed)...)
 		p.Hints = baselineHints(changed, selectedSet)
+	}
+	if mode == ModeFull {
+		p.Steps = append(p.Steps, stressSteps(changed)...)
 	}
 
 	for _, cmd := range GovernanceSteps {
@@ -316,4 +325,26 @@ func androidTestTarget(file string) (module, class string) {
 	}
 	class = strings.TrimSuffix(strings.ReplaceAll(rest, "/", "."), path.Ext(rest))
 	return module, class
+}
+
+// PrependFixSteps moves each selected area's write-mode formatter/linter
+// commands ahead of the normal plan. It is opt-in (--fix): the commands mutate
+// the working tree, and the developer must review the resulting diff.
+func PrependFixSteps(p *Plan) *Plan {
+	var fix []Step
+	for _, name := range p.Selected {
+		area, ok := Lookup(name)
+		if !ok {
+			continue
+		}
+		for _, cmd := range area.Fix {
+			fix = append(fix, Step{Area: name, Command: cmd})
+		}
+	}
+	if len(fix) == 0 {
+		return p
+	}
+	p.Steps = append(fix, p.Steps...)
+	p.Notes = append(p.Notes, "fix mode: formatters may modify the working tree; review `git diff` before committing.")
+	return p
 }

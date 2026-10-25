@@ -10,7 +10,9 @@
 // Usage:
 //
 //	scripts/pre-pr.sh --fast          # lint/build/drift checks for touched areas
-//	scripts/pre-pr.sh --full          # + area suites, coverage ratchets, flake stress
+//	scripts/pre-pr.sh --focused       # + tests, coverage, and per-file ratchets
+//	scripts/pre-pr.sh --focused --fix # write-mode formatters/linters, then checks
+//	scripts/pre-pr.sh --full          # + exhaustive flake stress
 //	scripts/pre-pr.sh --full --dry-run
 //
 // Exit status: 0 every executed step passed; 1 a step failed; 2 the gate could
@@ -38,19 +40,30 @@ func run(args []string, out, errOut io.Writer) int {
 	fs := flag.NewFlagSet("prepr", flag.ContinueOnError)
 	fs.SetOutput(errOut)
 	fast := fs.Bool("fast", false, "lint/build/drift checks for the touched areas")
-	full := fs.Bool("full", false, "fast checks plus area suites, coverage ratchets, and flake stress")
+	focused := fs.Bool("focused", false, "fast checks plus tests, coverage, and per-file ratchets")
+	full := fs.Bool("full", false, "focused checks plus exhaustive flake stress")
+	fix := fs.Bool("fix", false, "run selected-area formatters/linters in write mode before the checks")
 	base := fs.String("base", "origin/main", "git ref to diff against")
 	root := fs.String("root", "", "repository root (default: locate it from the working directory)")
 	dryRun := fs.Bool("dry-run", false, "print the selected areas and commands without running them")
 	if err := fs.Parse(args); err != nil {
 		return 2 // # pragma: no cover — flag.ContinueOnError already prints the usage error itself
 	}
-	if *fast && *full {
-		fmt.Fprintln(errOut, "prepr: choose --fast or --full, not both")
+	selectedModes := 0
+	for _, v := range []bool{*fast, *focused, *full} {
+		if v {
+			selectedModes++
+		}
+	}
+	if selectedModes > 1 {
+		fmt.Fprintln(errOut, "prepr: choose exactly one of --fast, --focused, or --full")
 		return 2
 	}
 	mode := prepr.ModeFast
-	if *full {
+	switch {
+	case *focused:
+		mode = prepr.ModeFocused
+	case *full:
 		mode = prepr.ModeFull
 	}
 	if strings.HasPrefix(*base, "-") {
@@ -92,6 +105,9 @@ func run(args []string, out, errOut io.Writer) int {
 	}
 
 	plan := prepr.Build(filters, changed, mode, *base)
+	if *fix {
+		plan = prepr.PrependFixSteps(plan)
+	}
 	fmt.Fprintf(out, "pre-pr gate (%s) against %s\n", mode, *base)
 	if len(changed) == 0 {
 		fmt.Fprintln(out, "no changed paths — running the unconditional docs/governance checks only")
