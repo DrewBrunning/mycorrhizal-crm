@@ -120,6 +120,31 @@ func TestNewError(t *testing.T) {
 	}
 }
 
+func TestErrNotFoundMessage(t *testing.T) {
+	tests := []struct {
+		name    string
+		message string
+		want    string
+	}{
+		{"complete message", "Import session expired", "Import session expired"},
+		{"default message", "", "Resource not found"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := ErrNotFoundMessage(tt.message)
+			if e.Code != ErrCodeNotFound {
+				t.Errorf("Code = %q, want %q", e.Code, ErrCodeNotFound)
+			}
+			if e.HTTPStatus != http.StatusNotFound {
+				t.Errorf("HTTPStatus = %d, want %d", e.HTTPStatus, http.StatusNotFound)
+			}
+			if e.Message != tt.want {
+				t.Errorf("Message = %q, want %q", e.Message, tt.want)
+			}
+		})
+	}
+}
+
 func TestErrNotFound_WithDetails(t *testing.T) {
 	e := ErrNotFound("Contact").WithDetails("id", "abc")
 	if e.Details["id"] != "abc" {
