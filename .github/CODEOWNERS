@@ -31,6 +31,9 @@
 /frontend/eslint.config.js                         @DrewBrunning
 /frontend/stryker.conf.json                        @DrewBrunning
 /frontend/bundle-budget.json                       @DrewBrunning
+# npm supply-chain scan: the ignore list is the accepted-findings allowlist.
+/frontend/guarddog.ignore                          @DrewBrunning
+/.github/workflows/npm-supply-chain.yml            @DrewBrunning
 
 # Generated contracts and baselines whose committed diff *is* the review.
 /backend/internal/apibaseline/testdata/v1.json                    @DrewBrunning

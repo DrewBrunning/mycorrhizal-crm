@@ -79,6 +79,7 @@ var Areas = []Area{
 	}},
 
 	{Name: "npm-manifests", Note: "lockfile/licence compliance is CI-only (license-compliance.yml); run `cd frontend && yarn install --frozen-lockfile` after changing a manifest"},
+	{Name: "npm-supply-chain", Note: "the installed-tree GuardDog scan is CI-only (npm-supply-chain.yml); its local command is in docs/security/npm-supply-chain.md and needs `uv tool install guarddog==3.2.0 semgrep==1.174.0`"},
 	{Name: "gradle-manifests", Note: "dependency locking/licence compliance is CI-only (license-compliance.yml); run `cd android && ./gradlew dependencies --write-locks` after changing a manifest"},
 
 	{Name: "changelog-relevant", Fast: []Command{

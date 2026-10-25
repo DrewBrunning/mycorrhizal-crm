@@ -1,0 +1,77 @@
+# Accepted npm supply-chain scan findings (issue #1878).
+#
+# Consumed by frontend/scripts/guarddog-scan.mjs. Format, one entry per line:
+#
+#   <rule> | <package> | <justification>
+#
+# `<rule>` is a GuardDog rule id; a trailing `*` matches by prefix.
+# `<package>` is the npm package name; `*` matches any package. The
+# justification is required and is the review record: do not add a line without
+# saying why the finding is not malicious.
+#
+# Baseline: main @ 4a447a252 (post-#1907 dependency cleanup), GuardDog 3.2.0,
+# scanning the tree installed from frontend/yarn.lock with --ignore-scripts:
+# 932 packages, 663 findings (574 capability, 89 threat). Every threat finding
+# below was read against its source; they are behaviour of well-known build/test
+# tooling, not install-time or runtime malware. A new package, a new rule, or a
+# new behaviour in an existing package does not match this list and turns the
+# advisory job red.
+#
+# GuardDog's capability-* rules report API reachability (network, spawn,
+# filesystem), not intent -- every real app and every build tool has them. The
+# threat-* rules carry the malware signal; those are reviewed individually.
+capability-* | * | Capability rules report API use, not malicious intent; threat-* rules carry the malware signal and are reviewed below.
+
+# package.json "http://" metadata (repository/homepage/funding URLs), not HTTP
+# dependency specifiers: the rule's regex is broader than its description.
+threat-npm-http-dependency | @axe-core/playwright | Nested axe-core package.json contributor/funding URLs; no HTTP dependency specifier.
+threat-npm-http-dependency | @types/react | DefinitelyTyped contributor URLs in package.json; no HTTP dependency specifier.
+threat-npm-http-dependency | @types/react-dom | DefinitelyTyped contributor URLs in package.json; no HTTP dependency specifier.
+threat-npm-http-dependency | axe-core | Deque contributor/funding URLs in package.json; no HTTP dependency specifier.
+threat-npm-http-dependency | tinycolor2 | Project homepage URL in package.json; no HTTP dependency specifier.
+threat-npm-http-dependency | tree-kill | Contributor URLs in package.json; no HTTP dependency specifier.
+threat-npm-http-dependency | treeify | License URL in package.json; no HTTP dependency specifier.
+
+# Babel decorator transform names a local helper "createLocalsAssignment"; the
+# memory-scraping rule matches the identifier pair, not credential access.
+threat-process-memory | @babel/helper-create-class-features-plugin | False positive on the decorator transform's local createLocalsAssignment helper.
+threat-process-memory | @stryker-mutator/instrumenter | Same nested Babel decorator-transform false positive as @babel/helper-create-class-features-plugin.
+threat-process-memory | msw | Bundled service-worker code contains the domain table the detector reads as memory scraping.
+threat-process-memory | playwright | Bundled Babel/expect transform code, not process-memory access.
+threat-process-memory | tldts | Generated public-suffix data table, not process-memory access.
+
+# Minified/bundled distributions contain long embedded strings and unicode
+# data tables; GuardDog reads the density as obfuscation/homoglyphs.
+threat-runtime-obfuscation* | d3-scale-chromatic | Generated color-scale data table, not packed/obfuscated code.
+threat-runtime-obfuscation* | jiti | Bundled Babel distribution embeds the standard unicode identifier table.
+threat-runtime-obfuscation* | knip | The delta symbol in a performance table, not a homoglyph obfuscation.
+threat-runtime-obfuscation* | lz-string | Compression test vector fixture, not packed code.
+threat-runtime-obfuscation* | msw | Service-worker IIFE bundle carries its domain/unicode tables intact.
+threat-runtime-obfuscation* | playwright | Bundled Babel/expect distributions embed the standard unicode identifier table.
+threat-runtime-obfuscation* | playwright-core | Bundled Babel/expect distributions embed the standard unicode identifier table.
+threat-runtime-obfuscation* | set-cookie-parser | Header-name lookup via Object.keys/find, not reflection obfuscation.
+threat-runtime-obfuscation* | terser | The minifier's own bundled/minified distribution.
+threat-runtime-obfuscation* | tldts | Generated public-suffix/unicode data table, not packed code.
+threat-runtime-obfuscation* | vite | Bundled node runner/import-meta handling, not packed code.
+
+# Build/test tooling legitimately reads .env/process.env and probes the host.
+threat-filesystem-read | jiti | Babel transform replaces import.meta.env; no credential-file read.
+threat-filesystem-read | knip | Its .env plugin enumerates .env files to report unused keys.
+threat-filesystem-read | playwright-core | Test runner loads playwright.env/.env and documents file paths.
+threat-filesystem-read | vite | Dev server/build tool transforms import.meta.env and reads project env files.
+threat-filesystem-read | vitest | Test runner rewrites define["process.env"] in the Vite config it owns.
+threat-runtime-environment-read | playwright-core | Reads documented PLAYWRIGHT_* test configuration variables.
+threat-runtime-environment-read | vite | Reads the documented COPILOT_*/editor environment variables.
+threat-runtime-environment-read | yaml | Opt-in LOG_TOKENS debug flag in the YAML parser.
+
+# Browser automation / dev-server discovery of the host, by design.
+threat-filesystem-autostart | playwright-core | Writes its own CPU profile in the browser bootstrap path; no autostart persistence.
+threat-process-download-exec | playwright-core | Downloads and executes the browser binary the test runner manages.
+threat-process-spawn-silent | playwright-core | Spawns the browser/daemon with stdio ignored, which is how it detaches.
+threat-runtime-enumeration | playwright-core | Detects WSL/container environments to choose a browser launch path.
+threat-runtime-enumeration | vite | Detects WSL/container networking for the dev server.
+threat-runtime-keylogging | maplibre-gl | Only matches the DOM sanitizer test's hostile input fixture.
+
+# Documentation/error-message URLs shortened with bit.ly.
+threat-network-outbound-shady-links | workbox-build | The error string links to https://bit.ly/wb-precache, Workbox's own docs shortlink.
+threat-network-outbound-shady-links | workbox-precaching | The warning string links to https://bit.ly/wb-precache, Workbox's own docs shortlink.
