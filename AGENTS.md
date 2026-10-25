@@ -50,6 +50,11 @@ cd backend && go run ./cmd/contextcheck
 cd frontend && npx tsc --noEmit && npx vitest run
 ```
 
+```bash
+scripts/pre-pr.sh --fast    # touched areas: lint/build/drift + docs gates
+scripts/pre-pr.sh --full    # + area suites, coverage ratchets, flake stress
+```
+
 Run once per clone **and once per worktree**, before your first commit there (idempotent; also
 repairs the `CLAUDE.md` and `.claude/skills` symlink aliases):
 

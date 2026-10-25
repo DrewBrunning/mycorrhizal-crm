@@ -1,0 +1,120 @@
+name: PR failure alert
+
+# Issue #1964, optional half. A failed per-PR workflow run is visible on the PR
+# checks tab but easy to miss, and an agent must not sit in `gh pr checks
+# --watch`. This workflow reacts to the completion of the mandatory per-PR
+# workflows and posts one comment on the PR naming the failing job, its log
+# URL, and the local command that should have caught it. Repeated failures
+# update that comment instead of adding more.
+#
+# The mandatory workflows listed below mirror main-failure-alert.yml's set
+# (derived from .github/release-gates.json); `go run ./cmd/mainalertcheck`
+# governs that list for the main alarm, and this one is deliberately the same
+# subset so the two cannot disagree about which gates exist.
+#
+# Security posture: the `workflow_run` job runs only for a `pull_request` run
+# and executes no code from that run. It checks out the default branch (a
+# workflow_run checkout resolves there, never to the triggering run's
+# head_sha), reads the Actions API for the run's own id/conclusion/jobs, and
+# writes one comment through `gh api`. Its job-level token is scoped to
+# pull-requests: write plus actions: read; top-level contents stays read-only.
+on:
+  # zizmor: ignore[dangerous-triggers] workflow_run is the point of this
+  # workflow, same rationale as main-failure-alert.yml and
+  # nightly-failure-alert.yml. The job below admits only `pull_request` runs,
+  # executes no PR code, and the checkout resolves to this workflow's own
+  # default-branch content. Event-derived values are passed through env, never
+  # inlined into a script.
+  workflow_run:
+    workflows:
+      - Unit Tests
+      - E2E Tests
+      - Migration Tests
+      - Android Tests
+      - Container Hardening (CIS)
+      - GitHub Actions Security (zizmor)
+      - SAST (mobsfscan + hadolint + semgrep)
+      - Reproducible builds
+    types: [completed]
+
+  # Manual test path (issue #1964 acceptance): dispatch this workflow against a
+  # real completed run id to exercise the same script. `dry_run` defaults to
+  # true, so it logs the comment it would write and mutates nothing.
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'A real Actions run id belonging to a PR'
+        required: true
+      dry_run:
+        description: 'Log the intended comment without writing it'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  comment:
+    name: Comment on the failed PR run
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      contains(fromJSON('["failure","timed_out","startup_failure"]'), github.event.workflow_run.conclusion)
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+      actions: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Post or update the PR failure comment
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
+        run: .github/scripts/pr-alert/ensure-comment.sh
+
+  manual-test:
+    name: Manual PR-failure comment test (workflow_dispatch)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+      actions: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Resolve the run and exercise the comment script
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+          RUN_ID: ${{ inputs.run_id }}
+        run: |
+          set -euo pipefail
+          run_json="$(gh api "repos/${GH_REPO}/actions/runs/${RUN_ID}")"
+          {
+            echo "WORKFLOW_NAME=$(jq -r '.name' <<<"$run_json")"
+            echo "RUN_URL=$(jq -r '.html_url' <<<"$run_json")"
+            echo "CONCLUSION=$(jq -r '.conclusion' <<<"$run_json")"
+            echo "RUN_ATTEMPT=$(jq -r '.run_attempt' <<<"$run_json")"
+            echo "HEAD_SHA=$(jq -r '.head_sha' <<<"$run_json")"
+            echo "PR_NUMBER=$(jq -r '.pull_requests[0].number // empty' <<<"$run_json")"
+          } >> "$GITHUB_ENV"
+          .github/scripts/pr-alert/ensure-comment.sh
