@@ -75,6 +75,23 @@ func TestUnifiedDiffIncludesUntrackedWithoutTouchingIndex(t *testing.T) {
 	}
 }
 
+// TestUnifiedDiffTreatsUntrackedPathsLiterally pins that the names from
+// `git ls-files -z` are passed to `git add -N` as literal filenames, not
+// pathspecs. A leading ':' is git pathspec magic; without literal pathspecs the
+// add fails and patchcov silently sees no diff for that file.
+func TestUnifiedDiffTreatsUntrackedPathsLiterally(t *testing.T) {
+	dir := newRepo(t)
+	write(t, filepath.Join(dir, ":colon.go"), "package backend\n\nvar Colon = 1\n")
+
+	diff, err := UnifiedDiff(dir, "HEAD", "*.go")
+	if err != nil {
+		t.Fatalf("UnifiedDiff: %v", err)
+	}
+	if !strings.Contains(string(diff), "+++ b/:colon.go") {
+		t.Errorf("diff missing the literal untracked path:\n%s", diff)
+	}
+}
+
 func TestChangedFilesCombinesTrackedAndUntracked(t *testing.T) {
 	dir := newRepo(t)
 	write(t, filepath.Join(dir, "backend", "a.go"), "package backend\n\nvar A = 1\n")

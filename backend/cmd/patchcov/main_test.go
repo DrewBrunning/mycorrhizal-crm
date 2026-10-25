@@ -217,7 +217,16 @@ func TestRunResolvesRootFromCwd(t *testing.T) {
 
 func TestRunMalformedGitDiff(t *testing.T) {
 	bin := t.TempDir()
-	script := "#!/bin/sh\nprintf '%s\\n' '+++ b/x.go' '@@ nope @@'\n"
+	// Answer the plumbing calls so the malformed unified diff -- not merge-base
+	// or temporary-index setup -- is what fails.
+	script := `#!/bin/sh
+case "$*" in
+  *" merge-base "*) echo 0123456789abcdef0123456789abcdef01234567 ;;
+  *" rev-parse "*) echo .git/missing-index ;;
+  *" ls-files "*) : ;;
+  *" diff "*) printf '%s\n' '+++ b/x.go' '@@ nope @@' ;;
+esac
+`
 	if err := os.WriteFile(filepath.Join(bin, "git"), []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -225,6 +234,9 @@ func TestRunMalformedGitDiff(t *testing.T) {
 	var out, errOut bytes.Buffer
 	if code := run([]string{"--root", t.TempDir(), "--base", "origin/main"}, &out, &errOut); code != 2 {
 		t.Fatalf("run = %d, want 2", code)
+	}
+	if !strings.Contains(errOut.String(), "malformed hunk header") {
+		t.Errorf("stderr = %q, want the malformed-diff parse error", errOut.String())
 	}
 }
 

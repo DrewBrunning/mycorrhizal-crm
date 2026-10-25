@@ -84,7 +84,11 @@ func UnifiedDiff(root, base string, pathspecs ...string) ([]byte, error) {
 	}
 	if paths := splitNUL(untracked); len(paths) > 0 {
 		input := []byte(strings.Join(paths, "\x00") + "\x00")
-		if _, stderr, err := runGit(root, env, input, "add", "-N", "--pathspec-from-file=-", "--pathspec-file-nul"); err != nil {
+		// These are literal file names from `ls-files -z`, not pathspecs: a
+		// leading ':' is git magic and '*'/'[' would glob, which can fail or
+		// intent-to-add files that were never listed.
+		addEnv := append(append([]string{}, env...), "GIT_LITERAL_PATHSPECS=1")
+		if _, stderr, err := runGit(root, addEnv, input, "add", "-N", "--pathspec-from-file=-", "--pathspec-file-nul"); err != nil {
 			return nil, diffFailed(base, stderr, err)
 		}
 	}
