@@ -1552,6 +1552,8 @@ paths:
     patch:
       summary: Allow or disallow account-password authentication on CardDAV/CalDAV
       operationId: updateDAVPasswordPolicy
+      tags:
+        - Users
       description: >
         Issue #2010. When enabled, the account password may authenticate
         CardDAV/CalDAV for a user with no enrolled second factor. The password

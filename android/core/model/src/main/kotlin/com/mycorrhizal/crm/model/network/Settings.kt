@@ -178,8 +178,9 @@ data class WebhookTestResponse(val delivery: WebhookDelivery? = null)
  * only ever present on [ApiTokenCreateResponse] (create and rotate) — never
  * on the plain list/detail [ApiToken] shape, and never logged or persisted
  * beyond the one-shot reveal dialog.
+ *
+ * Create-dialog presets; each maps to the explicit scope set sent to the backend.
  */
-/** Create-dialog presets; each maps to the explicit scope set sent to the backend. */
 val API_TOKEN_PRESETS: List<String> = listOf("full", "contacts", "calendar", "both", "api", "mcp")
 
 val API_TOKEN_PRESET_SCOPES: Map<String, List<String>> = mapOf(
@@ -188,7 +189,7 @@ val API_TOKEN_PRESET_SCOPES: Map<String, List<String>> = mapOf(
     "calendar" to listOf("caldav"),
     "both" to listOf("carddav", "caldav"),
     "api" to listOf("api:read", "api:write"),
-    "mcp" to listOf("mcp"),
+    "mcp" to listOf("mcp")
 )
 
 /** Selectable lifetimes; the backend caps this at 365 days ([MAX_API_TOKEN_EXPIRY_DAYS]). */

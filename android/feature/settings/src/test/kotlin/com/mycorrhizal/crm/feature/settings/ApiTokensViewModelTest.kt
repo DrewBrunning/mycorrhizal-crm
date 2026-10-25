@@ -92,7 +92,7 @@ class ApiTokensViewModelTest {
             coEvery { repository.list() } returns Result.success(emptyList())
             val captured = slot<com.mycorrhizal.crm.model.network.ApiTokenInput>()
             coEvery { repository.create(capture(captured)) } returns Result.success(
-                ApiTokenCreateResponse(id = 9, name = "New", scope = "custom", token = "s3cret"),
+                ApiTokenCreateResponse(id = 9, name = "New", scope = "custom", token = "s3cret")
             )
             val vm = ApiTokensViewModel(repository)
             advanceUntilIdle()

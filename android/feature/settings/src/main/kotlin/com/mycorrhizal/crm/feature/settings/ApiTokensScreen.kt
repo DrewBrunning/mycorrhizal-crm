@@ -50,7 +50,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.domain.compat.ServerCapabilities
 import com.mycorrhizal.crm.domain.compat.ServerFeature
 import com.mycorrhizal.crm.model.network.API_TOKEN_EXPIRY_OPTIONS
-import com.mycorrhizal.crm.model.network.API_TOKEN_PRESETS
 import com.mycorrhizal.crm.model.network.API_TOKEN_PRESET_SCOPES
 import com.mycorrhizal.crm.model.network.ApiToken
 import com.mycorrhizal.crm.model.network.ApiTokenCreateResponse

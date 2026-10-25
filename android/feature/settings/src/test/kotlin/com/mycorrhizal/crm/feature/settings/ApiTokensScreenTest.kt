@@ -148,7 +148,7 @@ class ApiTokensScreenTest {
                     rotating = false,
                     revoking = false,
                     onRotate = {},
-                    onRevoke = {},
+                    onRevoke = {}
                 )
             }
         }
