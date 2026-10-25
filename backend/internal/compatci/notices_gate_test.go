@@ -154,13 +154,30 @@ func TestThirdPartyNoticesDriftRunsInRequiredJob(t *testing.T) {
 		t.Errorf("setup-node condition %q != notices check condition %q", node.If, check.If)
 	}
 	install, ok := findStep(job, func(s ciStep) bool {
-		return strings.Contains(s.Run, "yarn install --frozen-lockfile") && s.WorkingDirectory == "frontend"
+		return strings.Contains(s.Run, "yarn install") && s.WorkingDirectory == "frontend"
 	})
 	if !ok {
-		t.Fatal("docs-citations has no `yarn install --frozen-lockfile` step in frontend/")
+		t.Fatal("docs-citations has no `yarn install` step in frontend/")
 	}
 	if install.If != check.If {
 		t.Errorf("yarn install condition %q != notices check condition %q", install.If, check.If)
+	}
+	// license-checker only reads installed package metadata, so the notices
+	// install must never execute dependency lifecycle scripts -- the same
+	// supply-chain boundary npm-supply-chain.yml's GuardDog job enforces.
+	// Removing the flag would let an install hook run with the job's token.
+	installArgs := strings.Fields(install.Run)
+	for _, want := range []string{"yarn", "install", "--frozen-lockfile", "--ignore-scripts"} {
+		foundArg := false
+		for _, arg := range installArgs {
+			if arg == want {
+				foundArg = true
+				break
+			}
+		}
+		if !foundArg {
+			t.Errorf("notices install step is missing %q; install hooks are untrusted supply-chain surface (run: %q)", want, install.Run)
+		}
 	}
 
 	// The gate is only merge-blocking if its job name is a required context.
