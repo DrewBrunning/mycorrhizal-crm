@@ -107,7 +107,10 @@ shipped broken at least once. Test against the real migrated schema, never `Auto
   pinned by a test: the flat CSV export (`GET /api/v1/export`, "the user's own backup"), the account
   bundle (`GET /api/v1/export/account`, moving data between the user's own instances), and the
   contact map (`GET /api/v1/contacts/map`, the owner's own in-app view). Filtering any of them is a
-  policy change, not a bug fix.
+  policy change, not a bug fix. Every call site that builds a `Record` or feeds a Card exporter is
+  enumerated by `models/contact_record_outward_census_test.go`; a new one fails until it is
+  classified (filtered / owner-backup / internal) with a written reason, and a "filtered" row may
+  not call the unfiltered builder.
 - **Domain notes:** a `RelationshipEdge.Type` describes the source's role relative to the target
   (`parent_of` from A to B means A is B's parent); only one direction is stored, the inverse is
   derived from `models/relationship_type_registry.go`. Only `status: confirmed` edges are fact —
