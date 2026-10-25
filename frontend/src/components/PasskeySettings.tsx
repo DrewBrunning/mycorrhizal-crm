@@ -97,6 +97,7 @@ export default function PasskeySettings() {
         setRecoveryCodes(result.recovery_codes);
         setCopied(false);
       }
+      window.dispatchEvent(new Event('mycorrhizal:second-factor-changed'));
       showSuccess(t('settings.passkeys.addSuccess'));
     } finally {
       setAdding(false);
@@ -189,6 +190,7 @@ export default function PasskeySettings() {
       await remove(removing.id, proof);
       setRemoving(null);
       setProofCode('');
+      window.dispatchEvent(new Event('mycorrhizal:second-factor-changed'));
       showSuccess(t('settings.passkeys.removeSuccess'));
     } catch (err) {
       setRemoveError(
@@ -257,6 +259,9 @@ export default function PasskeySettings() {
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
               {t('settings.passkeys.description')}
             </Typography>
+            <Alert severity="info" sx={{ py: 0 }}>
+              {t('settings.passkeys.davWarning')}
+            </Alert>
 
             {loadError && <LoadError message={loadError} onRetry={() => void refresh()} />}
 

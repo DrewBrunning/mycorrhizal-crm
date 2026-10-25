@@ -706,6 +706,12 @@
     <string name="settings_api_tokens_revoked">Revocado</string>
     <string name="settings_api_tokens_expired">Caducado</string>
     <string name="settings_api_tokens_scope_full">Acceso completo</string>
+    <string name="settings_api_tokens_scope_calendar">Calendario (CalDAV)</string>
+    <string name="settings_api_tokens_scope_both">Contactos + calendario</string>
+    <string name="settings_api_tokens_scope_api">API / automatización</string>
+    <string name="settings_api_tokens_scope_mcp">MCP / asistente de IA</string>
+    <string name="settings_api_tokens_scope_preset_help">Solo los ámbitos seleccionados. La gestión de credenciales siempre requiere una sesión iniciada.</string>
+    <string name="settings_api_tokens_scope_custom">Acceso personalizado</string>
     <string name="settings_api_tokens_scope_carddav">Solo CardDAV</string>
     <string name="settings_api_tokens_created">Creado %1$s</string>
     <string name="settings_api_tokens_last_used">Último uso: %1$s</string>
@@ -718,7 +724,7 @@
     <string name="settings_api_tokens_expiry_label">Caduca en</string>
     <string name="settings_api_tokens_expiry_days">%1$d días</string>
     <string name="settings_api_tokens_scope_label">Acceso</string>
-    <string name="settings_api_tokens_scope_full_help">Se puede usar en cualquier lugar donde la API acepte un token, incluida la sincronización de CardDAV.</string>
+    <string name="settings_api_tokens_scope_full_help">Se puede usar para acceder a los datos, incluida la sincronización de CardDAV. La gestión de credenciales requiere una sesión iniciada.</string>
     <string name="settings_api_tokens_scope_carddav_help">Solo funciona para la sincronización de contactos CardDAV. Una credencial de dispositivo filtrada no se puede usar contra el resto de la API.</string>
     <string name="settings_api_tokens_created_title">Token creado</string>
     <string name="settings_api_tokens_created_warning">Este token no se mostrará de nuevo. Cópialo ahora y guárdalo de forma segura.</string>

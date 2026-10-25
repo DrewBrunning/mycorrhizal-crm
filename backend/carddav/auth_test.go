@@ -44,6 +44,38 @@ func newAuthTestRouter(t *testing.T) (*gorm.DB, *gin.Engine) {
 	return db, router
 }
 
+func newDAVPathTestRouter(t *testing.T) (*gorm.DB, *gin.Engine) {
+	t.Helper()
+	gin.SetMode(gin.ReleaseMode)
+
+	db := dbtest.New(t)
+
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("db", db)
+		c.Next()
+	})
+	router.Use(BasicAuthMiddleware())
+	probe := func(c *gin.Context) {
+		userID, _ := c.Get("userID")
+		c.JSON(http.StatusOK, gin.H{"userID": userID})
+	}
+	for _, path := range []string{"/carddav/*path", "/caldav/*path"} {
+		router.GET(path, probe)
+		router.Handle("PROPFIND", path, probe)
+	}
+
+	return db, router
+}
+
+func doDAVRequest(router *gin.Engine, method, path, username, password string) *httptest.ResponseRecorder {
+	req, _ := http.NewRequest(method, path, http.NoBody)
+	req.SetBasicAuth(username, password)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	return w
+}
+
 func createTestToken(t *testing.T, db *gorm.DB, userID uint, scope string, opts ...func(*models.ApiToken)) string {
 	t.Helper()
 	rawBytes := make([]byte, 32)
@@ -74,11 +106,28 @@ func TestBasicAuthMiddleware_PasswordStillWorks(t *testing.T) {
 
 	hashed, err := bcrypt.GenerateFromPassword([]byte("correct-password"), bcrypt.DefaultCost)
 	require.NoError(t, err)
-	user := models.User{Username: "pw-user", Email: "pw-user@example.com", Password: string(hashed)}
+	user := models.User{Username: "pw-user", Email: "pw-user@example.com", Password: string(hashed), AllowDAVPassword: true}
 	require.NoError(t, db.Create(&user).Error)
 
 	w := doBasicAuthRequest(router, "pw-user", "correct-password")
 	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestBasicAuthMiddleware_PasswordRejectedWhenSettingOff(t *testing.T) {
+	db, router := newAuthTestRouter(t)
+
+	hashed, err := bcrypt.GenerateFromPassword([]byte("correct-password"), bcrypt.DefaultCost)
+	require.NoError(t, err)
+	user := models.User{Username: "pw-off", Email: "pw-off@example.com", Password: string(hashed)}
+	require.NoError(t, db.Create(&user).Error)
+
+	w := doBasicAuthRequest(router, "pw-off", "correct-password")
+	assert.Equal(t, http.StatusForbidden, w.Code)
+	assert.Equal(t, "account-password-not-allowed-for-dav", w.Header().Get("X-Mycorrhizal-Auth-Error"))
+	assert.Contains(t, w.Body.String(), "app password")
+
+	plaintext := createTestToken(t, db, user.ID, "carddav")
+	assert.Equal(t, http.StatusOK, doBasicAuthRequest(router, "pw-off", plaintext).Code)
 }
 
 func TestBasicAuthMiddleware_FullScopeTokenAuthenticates(t *testing.T) {
@@ -103,30 +152,50 @@ func TestBasicAuthMiddleware_CardDAVScopeTokenAuthenticates(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 
-func TestBasicAuthMiddleware_UnaffectedByEnabledTwoFactor(t *testing.T) {
+func TestBasicAuthMiddleware_TwoFactorRejectsAccountPassword(t *testing.T) {
 	db, router := newAuthTestRouter(t)
 
-	// N8: 2FA gates INTERACTIVE login only. CardDAV authenticates with the
-	// account password or a scoped API token — neither path runs the
-	// two-step login, so a user with 2FA enabled must still sync CardDAV
-	// unchanged (otherwise enabling 2FA would silently break every synced
-	// device).
 	hashed, err := bcrypt.GenerateFromPassword([]byte("correct-password"), bcrypt.DefaultCost)
 	require.NoError(t, err)
 	user := models.User{
 		Username:            "twofa-sync-user",
 		Email:               "twofa-sync-user@example.com",
 		Password:            string(hashed),
+		AllowDAVPassword:    true,
 		TOTPEnabled:         true,
 		TOTPSecretEncrypted: &[]string{"encrypted-secret-blob"}[0],
 	}
 	require.NoError(t, db.Create(&user).Error)
 
-	// Password path still works.
-	assert.Equal(t, http.StatusOK, doBasicAuthRequest(router, "twofa-sync-user", "correct-password").Code)
-	// CardDAV-scoped token path still works.
+	w := doBasicAuthRequest(router, "twofa-sync-user", "correct-password")
+	assert.Equal(t, http.StatusForbidden, w.Code)
+	assert.Equal(t, "account-password-not-allowed-for-dav", w.Header().Get("X-Mycorrhizal-Auth-Error"))
+	assert.Contains(t, w.Body.String(), "app password")
+
 	plaintext := createTestToken(t, db, user.ID, "carddav")
 	assert.Equal(t, http.StatusOK, doBasicAuthRequest(router, "twofa-sync-user", plaintext).Code)
+}
+
+func TestBasicAuthMiddleware_DAVScopesAreSeparate(t *testing.T) {
+	db, router := newDAVPathTestRouter(t)
+
+	user := models.User{Username: "dav-scope-user", Email: "dav-scope@example.com", Password: "unused"}
+	require.NoError(t, db.Create(&user).Error)
+
+	cardOnly := createTestToken(t, db, user.ID, "carddav")
+	assert.Equal(t, http.StatusOK, doDAVRequest(router, "PROPFIND", "/carddav/probe", "dav-scope-user", cardOnly).Code)
+
+	explicitCardOnly := createTestToken(t, db, user.ID, "carddav", func(tok *models.ApiToken) {
+		tok.Scopes = []string{"carddav"}
+	})
+	assert.Equal(t, http.StatusOK, doDAVRequest(router, "PROPFIND", "/carddav/probe", "dav-scope-user", explicitCardOnly).Code)
+	assert.Equal(t, http.StatusForbidden, doDAVRequest(router, "PROPFIND", "/caldav/probe", "dav-scope-user", explicitCardOnly).Code)
+
+	explicitCalOnly := createTestToken(t, db, user.ID, "custom", func(tok *models.ApiToken) {
+		tok.Scopes = []string{"caldav"}
+	})
+	assert.Equal(t, http.StatusOK, doDAVRequest(router, "PROPFIND", "/caldav/probe", "dav-scope-user", explicitCalOnly).Code)
+	assert.Equal(t, http.StatusForbidden, doDAVRequest(router, "PROPFIND", "/carddav/probe", "dav-scope-user", explicitCalOnly).Code)
 }
 
 func TestBasicAuthMiddleware_SSOUserWithEmptyPasswordAuthenticatesViaToken(t *testing.T) {
@@ -215,7 +284,7 @@ func TestBasicAuthMiddleware_Griefing_DoesNotLockLegitimateIP(t *testing.T) {
 
 	hashed, err := bcrypt.GenerateFromPassword([]byte("correct-password"), bcrypt.DefaultCost)
 	require.NoError(t, err)
-	require.NoError(t, db.Create(&models.User{Username: "dav-grief", Email: "dav-grief@example.com", Password: string(hashed)}).Error)
+	require.NoError(t, db.Create(&models.User{Username: "dav-grief", Email: "dav-grief@example.com", Password: string(hashed), AllowDAVPassword: true}).Error)
 
 	req := func(ip, pw string) *httptest.ResponseRecorder {
 		r, _ := http.NewRequest("GET", "/probe", nil)
