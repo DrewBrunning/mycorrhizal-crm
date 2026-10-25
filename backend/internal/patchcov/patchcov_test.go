@@ -1,6 +1,7 @@
 package patchcov
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -80,5 +81,44 @@ func TestChangedLineCoverage(t *testing.T) {
 	}
 	if exec, cov := Totals(got); exec != 3 || cov != 2 {
 		t.Errorf("Totals = (%d, %d), want (3, 2)", exec, cov)
+	}
+}
+
+func TestParseUnifiedDiffEmptyHunkAndScannerError(t *testing.T) {
+	got, err := ParseUnifiedDiff(strings.NewReader("+++ b/x.go\n"))
+	if err != nil {
+		t.Fatalf("ParseUnifiedDiff: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("result = %v, want no files with changed lines", got)
+	}
+
+	_, err = ParseUnifiedDiff(strings.NewReader("+++ b/x.go\n@@ -1 +999999999999999999999 @@\n"))
+	if err == nil {
+		t.Fatal("expected an error for an out-of-range hunk start")
+	}
+	_, err = ParseUnifiedDiff(strings.NewReader("+++ b/x.go\n@@ -1 +1,999999999999999999999 @@\n"))
+	if err == nil {
+		t.Fatal("expected an error for an out-of-range hunk count")
+	}
+	if _, err := ParseUnifiedDiff(errorReader{}); err == nil {
+		t.Fatal("expected a scanner error")
+	}
+}
+
+type errorReader struct{}
+
+func (errorReader) Read([]byte) (int, error) { return 0, errors.New("boom") }
+
+func TestChangedLineCoverageSkipsNonExecutableAndEmpty(t *testing.T) {
+	blocks := []coverageratchet.Block{
+		{File: "mycorrhizal/services/foo.go", StartLine: 10, EndLine: 12, NumStmt: 1, Count: 1},
+	}
+	got := ChangedLineCoverage(blocks, map[string][]int{"backend/services/foo.go": {99}}, "mycorrhizal/", "backend")
+	if len(got) != 0 {
+		t.Errorf("results = %v, want none", got)
+	}
+	if pct := Percent(nil); pct != 100 {
+		t.Errorf("Percent(nil) = %v, want 100", pct)
 	}
 }

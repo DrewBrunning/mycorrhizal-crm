@@ -348,6 +348,16 @@ func TestExecuteAllPass(t *testing.T) {
 	}
 }
 
+func countStress(plan *Plan, area string) int {
+	n := 0
+	for _, step := range plan.Steps {
+		if step.Area == area && strings.HasPrefix(step.Command.Label, "stress:") {
+			n++
+		}
+	}
+	return n
+}
+
 func labelsFor(plan *Plan, area string) []string {
 	var out []string
 	for _, step := range plan.Steps {
@@ -391,5 +401,192 @@ func repoRoot(t *testing.T) string {
 			t.Fatalf("repo root not found from %s", dir)
 		}
 		dir = parent
+	}
+}
+
+func TestParseMode(t *testing.T) {
+	for _, tt := range []struct {
+		in   string
+		want Mode
+		ok   bool
+	}{
+		{"fast", ModeFast, true},
+		{"FULL", ModeFull, true},
+		{"", "", false},
+		{"slow", "", false},
+	} {
+		got, err := ParseMode(tt.in)
+		if tt.ok && (err != nil || got != tt.want) {
+			t.Errorf("ParseMode(%q) = (%v, %v), want %v", tt.in, got, err, tt.want)
+		}
+		if !tt.ok && err == nil {
+			t.Errorf("ParseMode(%q) succeeded, want error", tt.in)
+		}
+	}
+}
+
+func TestMatchingPaths(t *testing.T) {
+	f := loadFixture(t)
+	changed := []string{"frontend/src/b.tsx", "backend/a.go", "backend/b.go", "README.md"}
+	got := f.MatchingPaths("backend", changed)
+	want := []string{"backend/a.go", "backend/b.go"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Errorf("MatchingPaths = %v, want %v", got, want)
+	}
+}
+
+func TestLookupMissing(t *testing.T) {
+	if _, ok := Lookup("nope"); ok {
+		t.Fatal("Lookup(nope) = ok")
+	}
+}
+
+func TestStepDisplay(t *testing.T) {
+	cases := []struct {
+		step Step
+		want string
+	}{
+		{Step{Command: Command{Argv: []string{"go", "build", "./..."}}}, "go build ./..."},
+		{Step{Command: Command{Shell: "echo hi"}}, "echo hi"},
+		{Step{Command: Command{Reminder: "do the thing"}}, "do the thing"},
+	}
+	for _, tc := range cases {
+		if got := tc.step.Display(); got != tc.want {
+			t.Errorf("Display() = %q, want %q", got, tc.want)
+		}
+	}
+}
+
+func TestBuildAndroidTests(t *testing.T) {
+	f := loadFixture(t)
+	plan := Build(f, []string{
+		"android/feature/contacts/src/test/kotlin/com/x/ContactTest.kt",
+		"android/app/src/androidTest/kotlin/com/x/ScreenTest.kt",
+	}, ModeFull, "origin/main")
+
+	unit := stepByLabel(plan, "stress: gradle com.x.ContactTest")
+	if unit == nil {
+		t.Fatalf("Android unit stress step missing; got %v", labelsFor(plan, "android"))
+	}
+	if unit.Command.Repeat != 5 {
+		t.Errorf("Android unit Repeat = %d, want 5", unit.Command.Repeat)
+	}
+	if !contains(unit.Command.Argv, ":feature:contacts:testDebugUnitTest") {
+		t.Errorf("Android unit argv = %v", unit.Command.Argv)
+	}
+
+	inst := stepByLabel(plan, "stress: Android instrumented test android/app/src/androidTest/kotlin/com/x/ScreenTest.kt")
+	if inst == nil || inst.Command.Reminder == "" {
+		t.Fatalf("Android instrumented reminder missing; got %v", labelsFor(plan, "android"))
+	}
+	if !contains(plan.Hints, BaselineHints["android"]) {
+		t.Errorf("Hints = %v, want android baseline", plan.Hints)
+	}
+}
+
+func TestBuildStressRootGoTest(t *testing.T) {
+	f := loadFixture(t)
+	plan := Build(f, []string{"backend/root_test.go"}, ModeFull, "origin/main")
+	if stepByLabel(plan, "stress: go test ./") == nil {
+		t.Fatalf("root package stress step missing; got %v", labelsFor(plan, "backend"))
+	}
+}
+
+func TestAndroidTestTargetFallbacks(t *testing.T) {
+	if module, class := androidTestTarget("android/app/src/test/java/com/x/A.java"); module != ":app" || class != "com.x.A" {
+		t.Errorf("java target = (%q, %q)", module, class)
+	}
+	if module, class := androidTestTarget("android/app/src/test/kotlin/A.kt"); module != ":app" || class != "A" {
+		t.Errorf("file without package dirs = (%q, %q)", module, class)
+	}
+	if module, class := androidTestTarget("android/src/test/kotlin/A.kt"); module != "" || class != "" {
+		t.Errorf("missing module = (%q, %q)", module, class)
+	}
+	if module, class := androidTestTarget("android/app/src/test/resources/A.kt"); module != ":app" || class != "" {
+		t.Errorf("no kotlin/java dir = (%q, %q)", module, class)
+	}
+}
+
+func TestExecutePrintsReminderNotesAndHints(t *testing.T) {
+	plan := &Plan{
+		Mode:      ModeFast,
+		Steps:     []Step{{Area: "android", Command: Command{Label: "reminder", Reminder: "run it on an emulator"}}},
+		Skipped:   []Skip{{Area: "infra", Reason: "CI-only"}},
+		Notes:     []string{"openapi implies backend"},
+		Unmatched: []string{"frontend", "android"},
+		Hints:     []string{"cd backend && make gen-coverage-baseline"},
+	}
+	var out bytes.Buffer
+	if code := Execute(plan, &out, func(Step) error { return nil }); code != 0 {
+		t.Fatalf("Execute = %d, want 0", code)
+	}
+	for _, want := range []string{"run it on an emulator", "skipped infra: CI-only", "openapi implies backend", "no changed paths: frontend, android", "make gen-coverage-baseline"} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("output missing %q:\n%s", want, out.String())
+		}
+	}
+}
+
+func TestLoadFiltersMoreMalformed(t *testing.T) {
+	for _, doc := range []string{
+		"backend:\n  - [a]\n",
+		"? [a, b]\n: [x]\n",
+		"{}\n",
+	} {
+		if _, err := LoadFilters(strings.NewReader(doc)); err == nil {
+			t.Errorf("LoadFilters(%q) succeeded, want error", doc)
+		}
+	}
+}
+
+func TestMatchQuestionMark(t *testing.T) {
+	if !Match("a?c", "abc") {
+		t.Error("? should match one non-slash character")
+	}
+	if Match("a?c", "a/c") {
+		t.Error("? must not match a slash")
+	}
+}
+
+func TestBuildUnknownFilterIsSkipped(t *testing.T) {
+	f, err := LoadFilters(strings.NewReader("unknown:\n  - 'unknown/**'\n"))
+	if err != nil {
+		t.Fatalf("LoadFilters: %v", err)
+	}
+	plan := Build(f, []string{"unknown/x.txt"}, ModeFast, "origin/main")
+	if len(plan.Skipped) != 1 || plan.Skipped[0].Area != "unknown" {
+		t.Fatalf("Skipped = %v, want the unknown filter", plan.Skipped)
+	}
+}
+
+func TestBuildAndroidTestWithoutModuleIsIgnored(t *testing.T) {
+	f := loadFixture(t)
+	plan := Build(f, []string{"android/src/test/kotlin/A.kt"}, ModeFull, "origin/main")
+	if got := countStress(plan, "android"); got != 0 {
+		t.Errorf("stress steps = %d, want 0", got)
+	}
+}
+
+func TestBuildDeduplicatesChangedTests(t *testing.T) {
+	f := loadFixture(t)
+	plan := Build(f, []string{
+		"frontend/e2e/auth.spec.ts",
+		"frontend/e2e/auth.spec.ts",
+	}, ModeFull, "origin/main")
+	if got := countStress(plan, "frontend"); got != 1 {
+		t.Errorf("frontend stress steps = %d, want 1", got)
+	}
+}
+
+func TestExecuteFailureWithRootDir(t *testing.T) {
+	plan := &Plan{Mode: ModeFast, Steps: []Step{
+		{Area: "docs", Command: Command{Label: "fail", Argv: []string{"false"}}},
+	}}
+	var out bytes.Buffer
+	if code := Execute(plan, &out, func(Step) error { return os.ErrNotExist }); code != 1 {
+		t.Fatalf("Execute = %d, want 1", code)
+	}
+	if !strings.Contains(out.String(), "(cd . && false)") {
+		t.Errorf("output missing root-dir command:\n%s", out.String())
 	}
 }

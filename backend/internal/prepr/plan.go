@@ -314,6 +314,6 @@ func androidTestTarget(file string) (module, class string) {
 	default:
 		return module, ""
 	}
-	class = strings.TrimSuffix(strings.ReplaceAll(rest, "/", "."), ".kt")
+	class = strings.TrimSuffix(strings.ReplaceAll(rest, "/", "."), path.Ext(rest))
 	return module, class
 }
