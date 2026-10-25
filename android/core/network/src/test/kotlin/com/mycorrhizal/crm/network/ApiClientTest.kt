@@ -3067,7 +3067,7 @@ class ApiClientTest {
         assertTrue(body.contains("\"action\":\"update\""))
     }
 
-    // Issue #834: previewCsvImport was previously (mis)typed to take an
+    // Issue #834: previewCsvImport was previously mistyped to take an
     // ImportConfirmRequest ({session_id, actions}) — the backend's
     // /contacts/import/preview route validates {session_id, mappings} and
     // would have 400'd on the very first real call. Pins the corrected

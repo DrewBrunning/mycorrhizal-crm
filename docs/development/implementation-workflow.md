@@ -34,7 +34,7 @@ Test-first is mandatory for any functional or behavioural change, bug fix, new r
 path. Three categories replace it with their own verification — not with no verification:
 
 - **Documentation-only** (`docs/`, `*.md`, context files): no test is expected; run the unconditional
-  gates listed in [`docs/AGENTS.md`](../AGENTS.md) (`docscheck`, `citecheck`, `depexceptions`,
+  gates listed in [`docs/AGENTS.md`](../AGENTS.md) (`docscheck`, `citecheck`, `typos`, `depexceptions`,
   `deprecations`, `releasegatecheck`, `governancecheck`, `pragmacheck`, `nightlyalertcheck`).
 - **Generated artifacts:** regenerate with the owning area's command, commit the diff, and run the
   named drift test. Never hand-edit.

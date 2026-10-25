@@ -273,9 +273,9 @@ func TestAccountBundle_SelfContact_ReimportIsNoOp(t *testing.T) {
 func TestAccountBundle_SelfContact_ExplicitSkipHonoured(t *testing.T) {
 	srcDB := dbtest.New(t)
 	dstDB := dbtest.New(t)
-	owner := bundleTestUser(t, srcDB, "selfs-src")
+	owner := bundleTestUser(t, srcDB, "self-src")
 	seed := seedFullAccount(t, srcDB, owner, "SKIP")
-	dest, me := selfDestination(t, dstDB, "selfs-dst")
+	dest, me := selfDestination(t, dstDB, "self-dst")
 
 	exported, _, err := BuildAccountBundle(srcDB, owner.ID, seed.PhotoDir)
 	require.NoError(t, err)

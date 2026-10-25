@@ -89,7 +89,7 @@ test('a failed search sets the error, drops the previous result, logs, and stops
   });
   expect(result.current.result).toBe(hit);
   await act(async () => {
-    await result.current.runSearch('abd');
+    await result.current.runSearch('xyz');
   });
   expect(result.current.error).toBe('timeout');
   expect(result.current.result).toBeNull();

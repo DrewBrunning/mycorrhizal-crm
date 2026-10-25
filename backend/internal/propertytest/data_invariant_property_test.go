@@ -277,7 +277,7 @@ func namedRecord(i int) *contactmodel.Record {
 	return &contactmodel.Record{Card: contactmodel.Card{
 		Name: &contactmodel.Name{Components: []contactmodel.NameComponent{
 			{Kind: "given", Value: fmt.Sprintf("Given%d", i)},
-			{Kind: "surname", Value: fmt.Sprintf("Sur%d", i)},
+			{Kind: "surname", Value: fmt.Sprintf("Surname%d", i)},
 		}},
 	}}
 }

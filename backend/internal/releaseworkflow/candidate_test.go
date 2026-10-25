@@ -203,7 +203,7 @@ func TestCheckCandidateCatchesEachRegression(t *testing.T) {
 			w.publish = replaceAfter(t, w.publish, "  build-and-push:\n", "uses: docker/build-push-action@", "uses: docker/xbuild-push-action@")
 		}, "lost its from-source build step"},
 		{"signing no longer keyed to the published digest", func(t *testing.T, w *wf) {
-			w.publish = replaceOnce(t, w.publish, "        id: published\n", "        id: publishd\n")
+			w.publish = replaceOnce(t, w.publish, "        id: published\n", "        id: publish-id\n")
 		}, "must resolve the published digest"},
 		{"verify-release-assets stops needing the gate", func(t *testing.T, w *wf) {
 			w.publish = replaceOnce(t, w.publish, "needs: [create-release, build-and-push, build-android-apk, apk-provenance, scan, release-gate, reuse-decision]", "needs: [create-release, build-and-push, build-android-apk, apk-provenance, scan, reuse-decision]")

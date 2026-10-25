@@ -19,7 +19,8 @@ governance change. The three jobs that carry the load:
 - **`Frontend (Vitest)`** — `tsc --noEmit` (picks up `src/api/contractConformance.ts`), type-aware
   `yarn lint`, `yarn knip` (unused files/exports/dependencies), and the per-file coverage ratchet.
 - **`Docs & security-doc citations`** — runs **unconditionally**, so a repo-wide analyzer or
-  docs/citation gate goes here (`pragmacheck`, `nightlyalertcheck`, `codecovcheck`, `docscheck`, …).
+  docs/citation gate goes here (`pragmacheck`, `nightlyalertcheck`, `codecovcheck`, `docscheck`,
+  `typos`, …).
 
 Only create a new job/context when the check genuinely cannot live in one of those. Then, in the
 same PR: (1) add a `tier: "per-pr"`, `mandatory: true` entry with a real `check_context` to
@@ -44,6 +45,9 @@ deterministic gates. Install per clone **and per worktree** as described in the 
 shadows the shared setting, and repairs the `CLAUDE.md` aliases).
 
 - **Always:** client-side `gitleaks` secret scan (fail-closed on a missing binary).
+- **Always:** `typos` spelling check over the whole tree (issue #1910), pinned to the same version
+  `unit-tests.yml` runs; fail-closed on a missing or mismatched binary. Excludes/allowlist:
+  `_typos.toml`.
 - **Staged shell scripts:** `shellcheck` (issue #1904) over the same discovery CI uses — every tracked
   `*.sh` plus extension-less files whose shebang is `sh`/`bash` (`.githooks/*`, `android/gradlew`) —
   fail-closed on a missing binary. The single implementation is

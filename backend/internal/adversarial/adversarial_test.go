@@ -51,7 +51,7 @@ func TestEveryManifestEntryResolves(t *testing.T) {
 }
 
 // TestDeclaredTierVocabulary: the tier strings are exactly the ADR-0002
-// vocabulary; a typo like "presrve" would silently never be asserted.
+// vocabulary; a misspelled tier string would silently never be asserted.
 func TestDeclaredTierVocabulary(t *testing.T) {
 	t.Parallel()
 	require.NotEmpty(t, Manifest)

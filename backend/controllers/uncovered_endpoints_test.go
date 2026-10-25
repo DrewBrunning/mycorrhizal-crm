@@ -274,7 +274,7 @@ func TestGetExternalActivity_ScopedToOwner(t *testing.T) {
 	db, router := setupRouter(t)
 	router.GET("/external-activities/:id", GetExternalActivity)
 
-	other := models.User{Username: "other-extact", Email: "other-extact@example.com", Password: "x"}
+	other := models.User{Username: "other-exact", Email: "other-exact@example.com", Password: "x"}
 	require.NoError(t, db.Create(&other).Error)
 	theirContact := models.Contact{UserID: other.ID, Firstname: "Theirs"}
 	require.NoError(t, db.Create(&theirContact).Error)
