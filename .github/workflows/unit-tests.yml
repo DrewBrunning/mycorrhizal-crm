@@ -140,6 +140,15 @@ jobs:
         with:
           persist-credentials: false
 
+      # Issue #1910: repo-wide spelling gate. This job runs unconditionally
+      # (docs/** maps to no path filter), so it is the right home for a check
+      # that covers code, docs, and the English UI strings alike. The action
+      # is pinned by commit SHA; _typos.toml owns the excludes and allowlist.
+      - name: Check spelling (typos)
+        uses: crate-ci/typos@7f9d0819ca1c008ade73f4b41fa9d258d48f605b # v1.51.1
+        with:
+          config: ./_typos.toml
+
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:

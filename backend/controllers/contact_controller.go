@@ -410,7 +410,7 @@ func GetContacts(c *gin.Context) {
 
 	// Issue #173: ?favorites=true narrows the list to the caller's favorite
 	// contacts. Composes with search/circle/archived/sort/cursor exactly like
-	// the other predicates (all ANDed Wheres). Not applied to the ?since=
+	// the other predicates (all ANDed WHERE clauses). Not applied to the ?since=
 	// change feed — that path returns before this point (sync state must
 	// carry every row regardless of filters).
 	if c.Query("favorites") == "true" {

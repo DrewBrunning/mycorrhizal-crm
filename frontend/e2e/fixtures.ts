@@ -632,7 +632,7 @@ export async function stableClick(locator: Locator): Promise<void> {
  * query's rows. The caller still asserts whatever it needs is visible.
  */
 export async function searchContact(page: Page, query: string): Promise<void> {
-  const searchInput = page.locator('input[placeholder*="earch"]').first();
+  const searchInput = page.locator('input[placeholder*="Search" i]').first();
   const term = query.trim();
   const alreadyCommitted = new URL(page.url()).searchParams.get('search') === term;
 

@@ -84,7 +84,40 @@ run_gitleaks() {
   fi
 }
 
+# Issue #1910: repo-wide spelling check, pinned to the same version CI's
+# action runs. Fail-closed: a missing or mismatched binary blocks the commit
+# rather than silently skipping the check.
+TYPOS_VERSION="1.51.1"
+run_typos() {
+  echo "${BOLD}==> spelling (typos)${RESET}"
+  if ! command -v typos >/dev/null 2>&1; then
+    echo "${RED}    FAILED: typos is not installed.${RESET}"
+    echo "    Install the pinned version:"
+    echo "      cargo install typos-cli --version $TYPOS_VERSION --locked"
+    echo "      or a release binary from https://github.com/crate-ci/typos/releases/tag/v$TYPOS_VERSION"
+    overall=1
+    return
+  fi
+  local have
+  have="$(typos --version 2>/dev/null | awk '{print $2}')"
+  if [ "$have" != "$TYPOS_VERSION" ]; then
+    echo "${RED}    FAILED: typos $have is installed; this repo pins $TYPOS_VERSION.${RESET}"
+    echo "    Install the pinned version:"
+    echo "      cargo install typos-cli --version $TYPOS_VERSION --locked"
+    echo "      or a release binary from https://github.com/crate-ci/typos/releases/tag/v$TYPOS_VERSION"
+    overall=1
+    return
+  fi
+  if typos --config "$repo_root/_typos.toml"; then
+    echo "${GREEN}    ok${RESET}"
+  else
+    echo "${RED}    FAILED: typos found a misspelling (see _typos.toml for exclusions).${RESET}"
+    overall=1
+  fi
+}
+
 run_gitleaks
+run_typos
 
 staged_files="$(git diff --cached --name-only --diff-filter=ACMR)"
 

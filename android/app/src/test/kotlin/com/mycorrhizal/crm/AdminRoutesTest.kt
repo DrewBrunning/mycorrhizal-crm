@@ -65,7 +65,7 @@ class AdminRoutesTest {
         assertTrue(isAdminOnlyRoute("settings/administration"))
         assertFalse(isAdminOnlyRoute("settings"))
         assertFalse(isAdminOnlyRoute("contacts"))
-        // A prefix match must not catch look-alikes.
+        // A prefix match must not catch look-alike routes.
         assertFalse(isAdminOnlyRoute("administrators"))
         assertFalse(isAdminOnlyRoute(null))
     }

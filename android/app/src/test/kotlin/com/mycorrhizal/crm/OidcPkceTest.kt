@@ -48,7 +48,7 @@ class OidcPkceTest {
     @Test
     fun `verifyState accepts only an exact match`() {
         assertTrue(OidcPkce.verifyState("state-abc", "state-abc"))
-        assertFalse(OidcPkce.verifyState("state-abc", "state-abd"))
+        assertFalse(OidcPkce.verifyState("state-abc", "state-xyz"))
         assertFalse(OidcPkce.verifyState("state-abc", "state-abc-longer"))
     }
 
