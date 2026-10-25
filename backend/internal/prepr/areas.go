@@ -45,7 +45,7 @@ var Areas = []Area{
 			{Label: "fix: golangci-lint --fix", Dir: "backend", Argv: []string{"go", "tool", "-modfile=tools.mod", "golangci-lint", "run", "--fix", "./..."}},
 		},
 		Fast: []Command{
-			{Label: "backend: gofmt", Dir: "backend", Shell: `unformatted="$(gofmt -l .)"; if [ -n "$unformatted" ]; then echo "gofmt found unformatted files:"; echo "$unformatted"; exit 1; fi`},
+			{Label: "backend: gofmt", Dir: "backend", Shell: `set -euo pipefail; unformatted="$(gofmt -l .)"; if [ -n "$unformatted" ]; then echo "gofmt found unformatted files:"; echo "$unformatted"; exit 1; fi`},
 			{Label: "backend: go build", Dir: "backend", Argv: []string{"go", "build", "./..."}},
 			{Label: "backend: go vet", Dir: "backend", Argv: []string{"go", "vet", "./..."}},
 			{Label: "backend: golangci-lint", Dir: "backend", Argv: []string{"go", "tool", "-modfile=tools.mod", "golangci-lint", "run", "./..."}},
@@ -59,7 +59,7 @@ var Areas = []Area{
 			// The coverage run is the suite: it executes every package except the
 			// slow schemafixture suite, which is run separately below. Keeping a
 			// second plain `go test ./...` would double the most expensive step.
-			{Label: "backend: tests with cross-package coverage", Dir: "backend", Env: []string{"RAPID_CHECKS=200", "ADDRESS_PROPERTY_ITERATIONS=200"}, Shell: `pkgs="$(go list ./... | grep -v 'mycorrhizal/internal/schemafixture$' | tr '\n' ' ')"; go test $pkgs -coverpkg=./... -covermode=atomic -p 4 -timeout=30m -coverprofile=coverage-cross.out`},
+			{Label: "backend: tests with cross-package coverage", Dir: "backend", Env: []string{"RAPID_CHECKS=200", "ADDRESS_PROPERTY_ITERATIONS=200"}, Shell: `set -euo pipefail; pkgs="$(go list ./... | grep -v 'mycorrhizal/internal/schemafixture$' | tr '\n' ' ')"; go test $pkgs -coverpkg=./... -covermode=atomic -p 4 -timeout=30m -coverprofile=coverage-cross.out`},
 			{Label: "backend: schemafixture suite", Dir: "backend", Argv: []string{"go", "test", "./internal/schemafixture/..."}},
 			{Label: "backend: per-file coverage ratchet", Dir: "backend", Argv: []string{"go", "run", "./cmd/coverageratchet", "-profile", "coverage-cross.out"}},
 		}},
@@ -88,14 +88,20 @@ var Areas = []Area{
 		Fast: []Command{
 			{Label: "android: detekt + lint", Dir: "android", Argv: []string{"./gradlew", "--warning-mode=fail", "detekt", "lintDebug", ":app:lintObtainiumDebug", ":app:lintFossDebug"}},
 		}, Focused: []Command{
+			// Match the CI job's test selection exactly: bare testDebugUnitTest
+			// covers the unflavored library modules, and :app is flavor-qualified.
+			// The aggregated report below depends on the obtainium/debug tasks, so
+			// these are up-to-date by the time it runs.
+			{Label: "android: unit tests", Dir: "android", Argv: []string{"./gradlew", "--warning-mode=fail", "testDebugUnitTest", ":app:testObtainiumDebugUnitTest", ":app:testFossDebugUnitTest"}},
 			{Label: "android: aggregated jacoco report", Dir: "android", Argv: []string{"./gradlew", "--warning-mode=fail", "jacocoTestReportAggregated"}},
 			{Label: "android: coverage ratchet", Dir: "backend", Argv: []string{"go", "run", "./cmd/androidcoverageratchet"}},
 		}},
 
 	// backend/openapi.yaml also matches the backend filter, so the backend
 	// Fast checks still run. Keep this area cheap: an openapi-only local run
-	// must not pull in the full frontend or Android client suites.
-	{Name: "openapi", Note: "openapi.yaml also matches the backend filter; frontend/Android clients are not implied", Fast: []Command{
+	// must not pull in the full frontend or Android client suites, but CI does
+	// re-test them, so the plan surfaces that caveat.
+	{Name: "openapi", Note: "CI re-tests frontend and Android on an openapi change; this local plan runs only the backend/OpenAPI checks", Fast: []Command{
 		{Label: "openapi: vacuum lint", Dir: "backend", Argv: []string{"go", "tool", "-modfile=tools.mod", "vacuum", "lint", "-r", "vacuum.yaml", "-b", "-q", "--no-update-check", "openapi.yaml"}},
 		{Label: "openapi: spec validation tests", Dir: "backend", Argv: []string{"go", "test", "-run", "^TestOpenAPISpecValidates$|^TestOpenAPINullableRequiresType$", "."}},
 	}},

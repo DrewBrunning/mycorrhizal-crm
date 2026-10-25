@@ -220,6 +220,9 @@ func TestBuildFullStressesChangedGoTestAndPrintsBaseline(t *testing.T) {
 	if !contains(patch.Command.Argv, "origin/main") {
 		t.Errorf("patchcov argv = %v, want the selected base", patch.Command.Argv)
 	}
+	if !contains(patch.Command.Argv, "-fail-under") {
+		t.Errorf("patchcov argv = %v, want -fail-under so the step can fail", patch.Command.Argv)
+	}
 
 	stress := stepByLabel(plan, "stress: go test ./services")
 	if stress == nil {
@@ -261,6 +264,16 @@ func TestBuildFocusedRunsTestsAndCoverageWithoutStress(t *testing.T) {
 	if len(plan.Hints) != 1 || plan.Hints[0] != BaselineHints["backend"] {
 		t.Errorf("Hints = %v, want [%s]", plan.Hints, BaselineHints["backend"])
 	}
+	patch := stepByLabel(plan, "backend: changed-line coverage (patchcov)")
+	if patch == nil {
+		t.Fatal("patchcov step not found")
+	}
+	if patch.Command.Warn {
+		t.Error("focused patchcov step must be blocking")
+	}
+	if !contains(patch.Command.Argv, "-fail-under") {
+		t.Errorf("patchcov argv = %v, want -fail-under so the step can fail", patch.Command.Argv)
+	}
 }
 
 func TestPrependFixSteps(t *testing.T) {
@@ -298,9 +311,18 @@ func TestBuildFocusedClientSuitesWithoutStress(t *testing.T) {
 		}
 	}
 	labels = labelsFor(plan, "android")
-	for _, want := range []string{"android: aggregated jacoco report", "android: coverage ratchet"} {
+	for _, want := range []string{"android: unit tests", "android: aggregated jacoco report", "android: coverage ratchet"} {
 		if !contains(labels, want) {
 			t.Errorf("focused android plan missing %q; got %v", want, labels)
+		}
+	}
+	unit := stepByLabel(plan, "android: unit tests")
+	if unit == nil {
+		t.Fatal("focused android unit-test step not found")
+	}
+	for _, task := range []string{"testDebugUnitTest", ":app:testObtainiumDebugUnitTest", ":app:testFossDebugUnitTest"} {
+		if !contains(unit.Command.Argv, task) {
+			t.Errorf("android unit-test argv = %v, missing %q", unit.Command.Argv, task)
 		}
 	}
 	for _, step := range plan.Steps {
@@ -351,6 +373,15 @@ func TestBuildOpenAPIRunsCheapBackendChecksOnly(t *testing.T) {
 		if contains(plan.Selected, unwanted) {
 			t.Errorf("Selected = %v, must not pull in %q for an openapi-only change", plan.Selected, unwanted)
 		}
+	}
+	foundNote := false
+	for _, note := range plan.Notes {
+		if strings.Contains(note, "CI re-tests frontend and Android") {
+			foundNote = true
+		}
+	}
+	if !foundNote {
+		t.Errorf("Notes = %v, want the openapi client-suite caveat", plan.Notes)
 	}
 	labels := labelsFor(plan, "openapi")
 	for _, want := range []string{"openapi: vacuum lint", "openapi: spec validation tests"} {

@@ -51,9 +51,10 @@ cd frontend && npx tsc --noEmit && npx vitest run
 ```
 
 ```bash
-scripts/pre-pr.sh --fast      # touched areas: lint/build/drift + docs gates
-scripts/pre-pr.sh --focused   # + tests, coverage, per-file ratchets (recommended pre-PR)
-scripts/pre-pr.sh --full      # + exhaustive flake stress
+scripts/pre-pr.sh --fast          # touched areas: lint/build/drift + docs gates
+scripts/pre-pr.sh --focused       # + tests, coverage, per-file ratchets (recommended pre-PR)
+scripts/pre-pr.sh --focused --fix # write-mode formatters/linters first
+scripts/pre-pr.sh --full          # + exhaustive flake stress
 ```
 
 Run once per clone **and once per worktree**, before your first commit there (idempotent; also

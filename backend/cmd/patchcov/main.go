@@ -1,13 +1,14 @@
-// Command patchcov is the local, non-blocking changed-line coverage warning
-// (issue #1964). It intersects the same cross-package Go coverprofile the
-// per-file ratchet reads with `git diff -U0` and reports the percentage of
-// changed executable lines covered.
+// Command patchcov is the local changed-line coverage check (issue #1964). It
+// intersects the same cross-package Go coverprofile the per-file ratchet reads
+// with `git diff -U0` and reports the percentage of changed executable lines
+// covered.
 //
-// Codecov remains the authoritative patch gate; this command warns and always
-// exits 0 on a low percentage. It exits 2 when it cannot run (bad flags,
-// missing profile, git failure).
+// Codecov remains the authoritative patch gate. By default this command warns
+// and exits 0 on a low percentage; -fail-under makes it exit 1 so the focused
+// pre-PR gate can block on a local patch-coverage regression. It exits 2 when
+// it cannot run (bad flags, missing profile, git failure).
 //
-//	cd backend && go run ./cmd/patchcov -profile coverage-cross.out -base origin/main -target 95
+//	cd backend && go run ./cmd/patchcov -profile coverage-cross.out -base origin/main -target 95 -fail-under
 package main
 
 import (
@@ -37,6 +38,7 @@ func run(args []string, out, errOut io.Writer) int {
 	base := fs.String("base", "origin/main", "git ref to diff against")
 	root := fs.String("root", "", "repository root (default: locate it from the working directory)")
 	target := fs.Float64("target", 95, "area patch-coverage target to warn below (backend: 95, frontend: 90, android: 80)")
+	failUnder := fs.Bool("fail-under", false, "exit 1 when changed-line coverage is below -target")
 	if err := fs.Parse(args); err != nil {
 		return 2 // # pragma: no cover — flag.ContinueOnError already prints the usage error itself
 	}
@@ -77,7 +79,7 @@ func run(args []string, out, errOut io.Writer) int {
 		}
 	}
 	if len(changedGo) == 0 {
-		fmt.Fprintln(out, "patchcov: no changed backend Go lines; nothing to warn about")
+		fmt.Fprintln(out, "patchcov: no changed backend Go lines; nothing to check")
 		return 0
 	}
 
@@ -105,9 +107,14 @@ func run(args []string, out, errOut io.Writer) int {
 
 	total, covered := patchcov.Totals(results)
 	pct := patchcov.Percent(results)
+	belowTarget := pct < *target
 	status := "ok"
-	if pct < *target {
-		status = fmt.Sprintf("WARN (below the %.0f%% target; Codecov remains the gate)", *target)
+	if belowTarget {
+		if *failUnder {
+			status = fmt.Sprintf("FAIL (below the %.0f%% target)", *target)
+		} else {
+			status = fmt.Sprintf("WARN (below the %.0f%% target; Codecov remains the gate)", *target)
+		}
 	}
 	fmt.Fprintf(out, "patchcov: changed-line coverage %.1f%% (%d/%d lines), target %.0f%% — %s\n",
 		pct, covered, total, *target, status)
@@ -117,6 +124,9 @@ func run(args []string, out, errOut io.Writer) int {
 			filePct = float64(result.Covered) / float64(result.Executable) * 100
 		}
 		fmt.Fprintf(out, "  %s: %.1f%% (%d/%d)\n", result.File, filePct, result.Covered, result.Executable)
+	}
+	if belowTarget && *failUnder {
+		return 1
 	}
 	return 0
 }

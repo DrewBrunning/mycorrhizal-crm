@@ -151,8 +151,9 @@ anything.
   `tsc`/biome/eslint/knip plus `yarn build` and `yarn budget`; `detekt` plus both Android lint
   flavors with `--warning-mode=fail` (`lintDebug :app:lintObtainiumDebug :app:lintFossDebug`);
   and, for an `openapi.yaml` change, `vacuum lint` and the OpenAPI spec tests. An openapi-only
-  change also matches the backend filter, so the backend Fast checks run too, but the full
-  frontend/Android client suites are not pulled in. It always runs the unconditional
+  change also matches the backend filter, so the backend Fast checks run too; the full
+  frontend/Android client suites are not pulled in, and the plan prints a note that CI re-tests
+  both clients. It always runs the unconditional
   docs/governance gates (`typos`, `docscheck`, `citecheck`, `governancecheck`, and the rest of
   `unit-tests.yml`'s docs-citations job), so a docs-only diff still has a real gate. These are
   cheap CI mirrors, not substitutes for the CI-only fuzz, real-server, E2E, or full client suites.
@@ -163,8 +164,10 @@ anything.
 - **`--focused`** adds the checks that catch broken tests, low changed-line coverage, and
   per-file coverage regressions: one cross-package Go coverage run (the suite itself) plus the
   schemafixture suite and `cmd/coverageratchet`; vitest with coverage and `yarn coverage:ratchet`;
-  the aggregated JaCoCo report and `cmd/androidcoverageratchet`. `cmd/patchcov` is blocking here.
-  It does not run flake stress. This is the recommended pre-PR mode when iterating.
+  the Android unit suites for both flavors, the aggregated JaCoCo report, and
+  `cmd/androidcoverageratchet`. `cmd/patchcov -fail-under` blocks a changed-line regression below
+  95% (Codecov remains the authoritative patch gate). It does not run flake stress. This is the
+  recommended pre-PR mode when iterating.
 - **`--full`** adds the exhaustive flake-stress pass on top of `--focused`. It is the slow,
   pre-merge/major-change gate, not the default iteration loop.
 - **Flake stress (`--full` only)** runs only the tests the branch added or changed, not the whole suite:
@@ -175,8 +178,8 @@ anything.
   listed as skipped with the reason. A failing step exits nonzero and the summary names the exact
   command to reproduce.
 
-When `--focused` or `--full` sees added or changed tests it prints the baseline-update commands; run the relevant
-one and commit the diff, because the baseline diff is the review:
+When `--focused` or `--full` sees added or changed tests it prints the baseline-update commands;
+run the relevant one and commit the diff, because the baseline diff is the review:
 
 ```bash
 cd backend && make gen-coverage-baseline
@@ -192,7 +195,8 @@ with retries — PR/push retries once and records passed-on-retry, and the flake
 `flaky-test` p1 after three events.
 
 Codecov patch coverage is computed server-side; the local proxy is the area coverage run, the
-per-file ratchet, and `cmd/patchcov`'s blocking changed-line check in `--focused`/`--full`.
+per-file ratchet, and `cmd/patchcov -fail-under`'s blocking changed-line check in
+`--focused`/`--full`.
 
 **No polling:** open the PR and stop. GitHub notifies on a check failure. If CI fails, start a new
 session with the failing job link and the exact local command that should have caught it; do not

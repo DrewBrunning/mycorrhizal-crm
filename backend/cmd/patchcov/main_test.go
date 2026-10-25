@@ -68,6 +68,32 @@ func TestRunReportsChangedLineCoverage(t *testing.T) {
 	}
 }
 
+func TestRunFailUnderExitsNonZeroBelowTarget(t *testing.T) {
+	dir := newRepo(t)
+	write(t, filepath.Join(dir, "backend", "coverage.out"), coveredProfile)
+	var out, errOut bytes.Buffer
+	code := run([]string{"--profile", "coverage.out", "--base", "HEAD~1", "--root", dir, "--fail-under"}, &out, &errOut)
+	if code != 1 {
+		t.Fatalf("run = %d, want 1\nstderr: %s\nout: %s", code, errOut.String(), out.String())
+	}
+	for _, want := range []string{"patchcov: changed-line coverage", "FAIL", "below the 95% target"} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("output missing %q:\n%s", want, out.String())
+		}
+	}
+}
+
+func TestRunFailUnderPassesWhenNothingChanged(t *testing.T) {
+	dir := newRepo(t)
+	var out, errOut bytes.Buffer
+	if code := run([]string{"--base", "HEAD", "--root", dir, "--fail-under"}, &out, &errOut); code != 0 {
+		t.Fatalf("run = %d, want 0\nstderr: %s", code, errOut.String())
+	}
+	if !strings.Contains(out.String(), "no changed backend Go lines") {
+		t.Errorf("output = %s", out.String())
+	}
+}
+
 func TestRunUsesAbsoluteProfilePath(t *testing.T) {
 	dir := newRepo(t)
 	profile := filepath.Join(dir, "prof.out")

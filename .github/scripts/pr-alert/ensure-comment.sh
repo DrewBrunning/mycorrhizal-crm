@@ -43,11 +43,14 @@ fi
 local_command() {
 	local job="$1"
 	case "$job" in
+	"Android E2E"* | "Android macrobenchmark"*)
+		echo "no local equivalent; this check needs an emulator and is CI-only"
+		;;
 	Backend* | Frontend* | Android* | "Docs & security-doc citations" | "Changelog note"*)
 		echo "scripts/pre-pr.sh --focused"
 		;;
 	"Run E2E"*)
-		echo "no local equivalent; E2E is CI-only (run the failing Playwright spec directly against the test stack)"
+		echo "no single pre-PR command reproduces this; E2E is CI-only (run the failing Playwright spec directly against the test stack)"
 		;;
 	"Container Hardening"* | "SAST"* | "Reproducible builds" | "GitHub Actions Security"*)
 		echo "no local equivalent; this check is CI-only (see .github/AGENTS.md)"
@@ -60,9 +63,14 @@ local_command() {
 
 jobs_json="$(gh api "repos/${GH_REPO}/actions/runs/${RUN_ID}/jobs?per_page=100")"
 failed_jobs=""
+has_ci_only=0
 while IFS=$'\t' read -r job_name job_url; do
 	[ -z "$job_name" ] && continue
-	failed_jobs+="- **${job_name}** — [job log](${job_url})"$'\n'"  - run locally: \`$(local_command "$job_name")\`"$'\n'
+	local_cmd="$(local_command "$job_name")"
+	case "$local_cmd" in
+	"no local equivalent"* | "no single pre-PR command"*) has_ci_only=1 ;;
+	esac
+	failed_jobs+="- **${job_name}** — [job log](${job_url})"$'\n'"  - run locally: \`${local_cmd}\`"$'\n'
 done < <(jq -r '
 	[.jobs[] | select(.conclusion == "failure" or .conclusion == "timed_out")]
 	| .[]
@@ -70,6 +78,23 @@ done < <(jq -r '
 
 if [ -z "$failed_jobs" ]; then
 	failed_jobs="_No individual job reported a failure (workflow conclusion: ${CONCLUSION})._"
+fi
+
+if [ "$has_ci_only" -eq 1 ]; then
+	run_local_section="### Run locally
+
+No single local command reproduces this run; use each failing job's command
+above."
+else
+	run_local_section="### Run locally
+
+\`\`\`bash
+scripts/pre-pr.sh --focused
+\`\`\`
+
+The pre-PR gate selects the areas this branch touches and runs their suites,
+coverage runs, and per-file ratchets. Open the PR and stop; this comment is
+updated in place on the next failure rather than duplicated."
 fi
 
 body="$marker
@@ -82,15 +107,7 @@ body="$marker
 
 ${failed_jobs}
 
-### Run locally
-
-\`\`\`bash
-scripts/pre-pr.sh --focused
-\`\`\`
-
-The pre-PR gate selects the areas this branch touches and runs their suites,
-coverage runs, and per-file ratchets. Open the PR and stop; this comment is
-updated in place on the next failure rather than duplicated."
+${run_local_section}"
 
 existing="$(gh api "repos/${GH_REPO}/issues/${pr_number}/comments?per_page=100" --paginate \
 	--jq ".[] | select(.body | contains(\"${marker}\")) | .id" | head -n1 || true)"

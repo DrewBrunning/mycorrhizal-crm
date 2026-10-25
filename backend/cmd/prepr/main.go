@@ -2,10 +2,12 @@
 // areas a branch touches from .github/filters.yaml and runs the corresponding
 // checks.
 //
-// The pre-commit hook is deliberately a fast subset. This command adds the two
-// things it leaves out -- the full area suites with their coverage ratchets,
-// and a flake-stress pass over the tests the branch added or changed -- so the
-// failure classes that used to surface only after a PR opened are caught first.
+// The pre-commit hook is deliberately a fast subset. This command adds what it
+// leaves out: --focused runs the area suites with their coverage ratchets, and
+// --full adds a flake-stress pass over the tests the branch added or changed,
+// so the failure classes that used to surface only after a PR opened are caught
+// first. --fix runs the selected areas' write-mode formatters/linters ahead of
+// the checks.
 //
 // Usage:
 //

@@ -115,6 +115,12 @@ func Build(f *Filters, changed []string, mode Mode, base string) *Plan {
 			p.Skipped = append(p.Skipped, Skip{Area: name, Reason: reason})
 			continue
 		}
+		// A Note on an area that still has commands is a caveat about what the
+		// local plan does not cover (openapi: the clients are CI-only here), so
+		// surface it instead of leaving it unreachable.
+		if area.Note != "" {
+			p.Notes = append(p.Notes, area.Note)
+		}
 		for _, cmd := range commands {
 			p.Steps = append(p.Steps, Step{Area: name, Command: cmd})
 		}
@@ -125,7 +131,7 @@ func Build(f *Filters, changed []string, mode Mode, base string) *Plan {
 			p.Steps = append(p.Steps, Step{Area: "backend", Command: Command{
 				Label: "backend: changed-line coverage (patchcov)",
 				Dir:   "backend",
-				Argv:  []string{"go", "run", "./cmd/patchcov", "-profile", "coverage-cross.out", "-base", base, "-target", "95"},
+				Argv:  []string{"go", "run", "./cmd/patchcov", "-profile", "coverage-cross.out", "-base", base, "-target", "95", "-fail-under"},
 			}})
 		}
 		p.Hints = baselineHints(changed, selectedSet)

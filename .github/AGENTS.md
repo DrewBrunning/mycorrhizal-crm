@@ -60,10 +60,10 @@ shadows the shared setting, and repairs the `CLAUDE.md` aliases).
 - **Staged `frontend/`:** `tsc --noEmit`, `biome ci`, `eslint` (`yarn lint`, type-aware;
   `no-floating-promises`/`no-misused-promises`/`await-thenable` are errors), and `knip` (issue
   #1907).
-- **Staged `android/`:** no Gradle step (too slow); run `cd android && ./gradlew detekt lintDebug
-  :app:lintObtainiumDebug` locally. `detekt` includes the ktlint formatting gate (no baseline);
-  `./gradlew detekt --auto-correct` fixes formatting. Lint warnings are errors; `android/lint.xml`
-  lists the reasoned exceptions.
+- **Staged `android/`:** no Gradle step (too slow); run `cd android && ./gradlew --warning-mode=fail
+  detekt lintDebug :app:lintObtainiumDebug :app:lintFossDebug` locally. `detekt` includes the ktlint
+  formatting gate (no baseline); `./gradlew detekt --auto-correct` fixes formatting. Lint warnings
+  are errors; `android/lint.xml` lists the reasoned exceptions.
 - **Always:** `citecheck`, `depexceptions`, `deprecations`, `docscheck`, `contextcheck`,
   `releasegatecheck`, `governancecheck`, `pragmacheck`, `nightlyalertcheck`.
 - **`pre-merge-commit`:** reruns the pre-commit checks on a clean merge commit (git skips
@@ -72,8 +72,10 @@ shadows the shared setting, and repairs the `CLAUDE.md` aliases).
 - **Reminder only:** staging a migration, `backend/config/config.go`, or `.env.example` prints a
   reminder to add an `## Upgrade notes` block (or `no-changelog:`) to the PR body.
 
-Deliberately CI-only: `govulncheck`, benchmarks/fuzz targets, and any full suite (`go test ./...`,
-`vitest run`, Playwright, `yarn build`).
+Deliberately CI-only: `govulncheck`, benchmarks/fuzz targets, the full Playwright E2E suite
+(`--full` only stress-runs a changed spec), and the instrumented Android suites. The pre-PR gate's
+`--focused` mode runs the Go suite and Vitest with coverage locally (and `--fast` builds the
+production frontend bundle); `--full` adds flake stress. None of these replaces CI.
 
 ## Scheduled workflows and alerting
 

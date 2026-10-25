@@ -138,16 +138,37 @@ seed
 printf '{"jobs":[]}\n' > "$work/jobs.json"
 scenario "no failed job still posts an explanation" 0 "" mutate -- DRY_RUN=0 CONCLUSION=startup_failure
 
-# E2E is CI-only: do not tell the contributor that the pre-PR gate can run it.
+# E2E is CI-only: the comment must name that boundary and must not also
+# recommend the pre-PR gate as a repro for the failing run.
 seed
 printf '{"jobs":[{"name":"Run E2E Tests","conclusion":"failure","html_url":"https://example.test/job/9"}]}\n' > "$work/jobs.json"
-scenario "E2E failure names the CI-only boundary" 0 "" mutate -- DRY_RUN=0
-if grep -qF 'no local equivalent; E2E is CI-only' "$work/gh.log"; then
+scenario "E2E failure posts the failure comment" 0 "" mutate -- DRY_RUN=0
+if grep -qF 'E2E is CI-only' "$work/gh.log" && grep -qF 'run the failing Playwright spec' "$work/gh.log"; then
   pass=$((pass + 1))
-  echo "PASS: E2E failure does not claim a pre-PR repro"
+  echo "PASS: E2E failure names the CI-only boundary"
 else
   fail=$((fail + 1))
   echo "FAIL: E2E failure did not name the CI-only boundary"
+fi
+if grep -qF 'scripts/pre-pr.sh --focused' "$work/gh.log"; then
+  fail=$((fail + 1))
+  echo "FAIL: E2E failure still recommends the pre-PR gate as a repro"
+else
+  pass=$((pass + 1))
+  echo "PASS: E2E failure does not claim a pre-PR repro"
+fi
+
+# Android E2E/macrobenchmark are emulator-only; the broad Android* prefix must
+# not route them to the pre-PR gate.
+seed
+printf '{"jobs":[{"name":"Android E2E (emulator)","conclusion":"failure","html_url":"https://example.test/job/10"}]}\n' > "$work/jobs.json"
+scenario "Android E2E failure names the emulator boundary" 0 "" mutate -- DRY_RUN=0
+if grep -qF 'needs an emulator and is CI-only' "$work/gh.log" && ! grep -qF 'scripts/pre-pr.sh --focused' "$work/gh.log"; then
+  pass=$((pass + 1))
+  echo "PASS: Android E2E failure does not claim a pre-PR repro"
+else
+  fail=$((fail + 1))
+  echo "FAIL: Android E2E failure recommends the pre-PR gate or omits the boundary"
 fi
 
 echo
