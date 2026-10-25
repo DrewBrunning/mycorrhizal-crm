@@ -87,7 +87,7 @@ scenario() {
   # Every scenario whose run has a failed job must carry the marker, the job,
   # its log URL, and the local repro command.
   if [ "$ok" -eq 1 ] && [ "$mutation" = "mutate" ] && grep -qF 'Backend (Go)' "$work/jobs.json"; then
-    for want in '<!-- pr-failure-alert -->' 'Backend (Go)' 'https://example.test/job/7' 'scripts/pre-pr.sh --full'; do
+    for want in '<!-- pr-failure-alert -->' 'Backend (Go)' 'https://example.test/job/7' 'scripts/pre-pr.sh --focused'; do
       if ! grep -qF -- "$want" "$work/gh.log"; then
         ok=0; reason="mutation body missing '$want'"
       fi

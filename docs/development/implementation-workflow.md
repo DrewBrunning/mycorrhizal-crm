@@ -146,11 +146,16 @@ area-to-command table lives in `backend/internal/prepr/areas.go`, and a drift te
 is added without an entry. `--dry-run` prints the selected areas and exact commands without running
 anything.
 
-- **`--fast`** runs the lint/build/drift checks for the touched areas: Go
-  `gofmt`/build/vet/golangci-lint plus the generated-artifact drift tests,
-  `tsc`/biome/eslint/knip, and `detekt` plus Android lint. It always runs the unconditional
-  docs/governance gates (`docscheck`, `citecheck`, `governancecheck`, and the rest of
-  `unit-tests.yml`'s docs-citations job), so a docs-only diff still has a real gate.
+- **`--fast`** runs the cheap lint/build/drift checks for the touched areas: Go
+  `gofmt`/build/vet/golangci-lint plus the generated-artifact drift tests; frontend
+  `tsc`/biome/eslint/knip plus `yarn build` and `yarn budget`; `detekt` plus both Android lint
+  flavors with `--warning-mode=fail` (`lintDebug :app:lintObtainiumDebug :app:lintFossDebug`);
+  and, for an `openapi.yaml` change, `vacuum lint` and the OpenAPI spec tests. An openapi-only
+  change also matches the backend filter, so the backend Fast checks run too, but the full
+  frontend/Android client suites are not pulled in. It always runs the unconditional
+  docs/governance gates (`typos`, `docscheck`, `citecheck`, `governancecheck`, and the rest of
+  `unit-tests.yml`'s docs-citations job), so a docs-only diff still has a real gate. These are
+  cheap CI mirrors, not substitutes for the CI-only fuzz, real-server, E2E, or full client suites.
 - **`--fix`** (any mode) first runs the selected area's write-mode formatters/linters:
   `gofmt -w`, `golangci-lint run --fix`, `biome check --write`, `eslint --fix`, and
   `detekt --auto-correct`. It modifies the working tree; review `git diff` before committing.

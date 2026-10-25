@@ -74,6 +74,8 @@ var Areas = []Area{
 			{Label: "frontend: biome ci", Dir: "frontend", Argv: []string{"./node_modules/.bin/biome", "ci", "."}},
 			{Label: "frontend: eslint", Dir: "frontend", Argv: []string{"yarn", "lint"}},
 			{Label: "frontend: knip", Dir: "frontend", Argv: []string{"./node_modules/.bin/knip"}},
+			{Label: "frontend: build", Dir: "frontend", Argv: []string{"yarn", "build"}},
+			{Label: "frontend: bundle budget", Dir: "frontend", Argv: []string{"yarn", "budget"}},
 		}, Focused: []Command{
 			{Label: "frontend: vitest with coverage", Dir: "frontend", Argv: []string{"yarn", "test:coverage"}, Env: []string{"CI=true"}},
 			{Label: "frontend: per-file coverage ratchet", Dir: "frontend", Argv: []string{"yarn", "coverage:ratchet"}},
@@ -84,13 +86,19 @@ var Areas = []Area{
 			{Label: "fix: detekt --auto-correct", Dir: "android", Argv: []string{"./gradlew", "detekt", "--auto-correct"}},
 		},
 		Fast: []Command{
-			{Label: "android: detekt + lint", Dir: "android", Argv: []string{"./gradlew", "detekt", "lintDebug", ":app:lintObtainiumDebug"}},
+			{Label: "android: detekt + lint", Dir: "android", Argv: []string{"./gradlew", "--warning-mode=fail", "detekt", "lintDebug", ":app:lintObtainiumDebug", ":app:lintFossDebug"}},
 		}, Focused: []Command{
 			{Label: "android: aggregated jacoco report", Dir: "android", Argv: []string{"./gradlew", "--warning-mode=fail", "jacocoTestReportAggregated"}},
 			{Label: "android: coverage ratchet", Dir: "backend", Argv: []string{"go", "run", "./cmd/androidcoverageratchet"}},
 		}},
 
-	{Name: "openapi", Note: "the API contract change re-tests every client", Implies: []string{"backend", "frontend", "android"}},
+	// backend/openapi.yaml also matches the backend filter, so the backend
+	// Fast checks still run. Keep this area cheap: an openapi-only local run
+	// must not pull in the full frontend or Android client suites.
+	{Name: "openapi", Note: "openapi.yaml also matches the backend filter; frontend/Android clients are not implied", Fast: []Command{
+		{Label: "openapi: vacuum lint", Dir: "backend", Argv: []string{"go", "tool", "-modfile=tools.mod", "vacuum", "lint", "-r", "vacuum.yaml", "-b", "-q", "--no-update-check", "openapi.yaml"}},
+		{Label: "openapi: spec validation tests", Dir: "backend", Argv: []string{"go", "test", "-run", "^TestOpenAPISpecValidates$|^TestOpenAPINullableRequiresType$", "."}},
+	}},
 
 	{Name: "notices", Fast: []Command{
 		{Label: "notices: third-party notice drift (needs frontend/node_modules)", Dir: "backend", Argv: []string{"go", "run", "./cmd/gennotices", "-check"}},
@@ -125,6 +133,7 @@ var Areas = []Area{
 // docs-citations job. They are the unconditional class of check in CI, so a
 // docs-only branch still gets a meaningful local gate.
 var GovernanceSteps = []Command{
+	{Label: "docs: typos", Dir: "", Argv: []string{"typos", "--config", "_typos.toml"}},
 	{Label: "docs: citecheck", Dir: "backend", Argv: []string{"go", "run", "./cmd/citecheck"}},
 	{Label: "docs: ASVS/MASVS census", Dir: "backend", Argv: []string{"go", "test", "./cmd/citecheck", "-run", "^TestVerificationReportClaimsMatchCensus$", "-count=1"}},
 	{Label: "docs: depexceptions", Dir: "backend", Argv: []string{"go", "run", "./cmd/depexceptions"}},

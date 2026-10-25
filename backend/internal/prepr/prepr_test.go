@@ -340,20 +340,98 @@ func TestBuildStressPlaywrightAndVitest(t *testing.T) {
 	}
 }
 
-func TestBuildOpenAPIImpliesClients(t *testing.T) {
+func TestBuildOpenAPIRunsCheapBackendChecksOnly(t *testing.T) {
 	f := loadFixture(t)
 	plan := Build(f, []string{"backend/openapi.yaml"}, ModeFast, "origin/main")
 
-	for _, want := range []string{"android", "backend", "frontend", "openapi"} {
-		if !contains(plan.Selected, want) {
-			t.Errorf("Selected = %v, missing implied area %q", plan.Selected, want)
+	if strings.Join(plan.Selected, ",") != "backend,openapi" {
+		t.Fatalf("Selected = %v, want [backend openapi]", plan.Selected)
+	}
+	for _, unwanted := range []string{"frontend", "android"} {
+		if contains(plan.Selected, unwanted) {
+			t.Errorf("Selected = %v, must not pull in %q for an openapi-only change", plan.Selected, unwanted)
 		}
 	}
-	if len(labelsFor(plan, "openapi")) != 0 {
-		t.Error("openapi area itself should not run commands")
+	labels := labelsFor(plan, "openapi")
+	for _, want := range []string{"openapi: vacuum lint", "openapi: spec validation tests"} {
+		if !contains(labels, want) {
+			t.Errorf("openapi plan missing %q; got %v", want, labels)
+		}
 	}
-	if !contains(plan.Notes, "openapi implies backend, frontend, android") {
-		t.Errorf("Notes = %v, missing openapi implication", plan.Notes)
+	vacuum := stepByLabel(plan, "openapi: vacuum lint")
+	if vacuum == nil {
+		t.Fatal("openapi vacuum step not found")
+	}
+	wantVacuum := []string{"go", "tool", "-modfile=tools.mod", "vacuum", "lint", "-r", "vacuum.yaml", "-b", "-q", "--no-update-check", "openapi.yaml"}
+	if strings.Join(vacuum.Command.Argv, " ") != strings.Join(wantVacuum, " ") {
+		t.Errorf("vacuum argv = %v, want %v", vacuum.Command.Argv, wantVacuum)
+	}
+	if vacuum.Command.Dir != "backend" {
+		t.Errorf("vacuum Dir = %q, want backend", vacuum.Command.Dir)
+	}
+	tests := stepByLabel(plan, "openapi: spec validation tests")
+	if tests == nil {
+		t.Fatal("openapi spec-test step not found")
+	}
+	wantTests := []string{"go", "test", "-run", "^TestOpenAPISpecValidates$|^TestOpenAPINullableRequiresType$", "."}
+	if strings.Join(tests.Command.Argv, " ") != strings.Join(wantTests, " ") {
+		t.Errorf("spec-test argv = %v, want %v", tests.Command.Argv, wantTests)
+	}
+	if tests.Command.Dir != "backend" {
+		t.Errorf("spec-test Dir = %q, want backend", tests.Command.Dir)
+	}
+}
+
+func TestGovernanceStepsIncludeTypos(t *testing.T) {
+	for _, step := range GovernanceSteps {
+		if step.Label == "docs: typos" {
+			want := []string{"typos", "--config", "_typos.toml"}
+			if strings.Join(step.Argv, " ") != strings.Join(want, " ") {
+				t.Errorf("typos argv = %v, want %v", step.Argv, want)
+			}
+			if step.Dir != "" {
+				t.Errorf("typos Dir = %q, want repo root", step.Dir)
+			}
+			return
+		}
+	}
+	t.Errorf("GovernanceSteps missing docs: typos; got %v", labelsOf(GovernanceSteps))
+}
+
+func TestAndroidFastUsesFailWarningAndBothLintFlavors(t *testing.T) {
+	area, ok := Lookup("android")
+	if !ok {
+		t.Fatal("android area missing")
+	}
+	var got []string
+	for _, cmd := range area.Fast {
+		if cmd.Label == "android: detekt + lint" {
+			got = cmd.Argv
+		}
+	}
+	if len(got) == 0 {
+		t.Fatal("android: detekt + lint step not found")
+	}
+	for _, want := range []string{"--warning-mode=fail", "detekt", "lintDebug", ":app:lintObtainiumDebug", ":app:lintFossDebug"} {
+		if !contains(got, want) {
+			t.Errorf("android Fast argv = %v, missing %q", got, want)
+		}
+	}
+}
+
+func TestFrontendFastIncludesBuildAndBundleBudget(t *testing.T) {
+	area, ok := Lookup("frontend")
+	if !ok {
+		t.Fatal("frontend area missing")
+	}
+	var labels []string
+	for _, cmd := range area.Fast {
+		labels = append(labels, cmd.Label)
+	}
+	for _, want := range []string{"frontend: build", "frontend: bundle budget"} {
+		if !contains(labels, want) {
+			t.Errorf("frontend Fast missing %q; got %v", want, labels)
+		}
 	}
 }
 
@@ -463,6 +541,14 @@ func stepByLabel(plan *Plan, label string) *Step {
 		}
 	}
 	return nil
+}
+
+func labelsOf(commands []Command) []string {
+	out := make([]string, 0, len(commands))
+	for _, cmd := range commands {
+		out = append(out, cmd.Label)
+	}
+	return out
 }
 
 func contains(items []string, want string) bool {

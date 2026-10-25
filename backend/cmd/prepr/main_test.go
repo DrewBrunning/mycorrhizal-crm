@@ -269,7 +269,7 @@ func TestRunMalformedFilters(t *testing.T) {
 	}
 }
 
-func TestRunDryRunShowsReminderSkipAndNote(t *testing.T) {
+func TestRunDryRunShowsReminderSkipAndOpenAPIChecks(t *testing.T) {
 	dir := t.TempDir()
 	git(t, dir, "init", "-q")
 	git(t, dir, "config", "user.email", "test@example.com")
@@ -298,7 +298,7 @@ changelog-relevant:
 	if code := run([]string{"--fast", "--dry-run", "--root", dir, "--base", "HEAD~1"}, &out, &errOut); code != 0 {
 		t.Fatalf("run = %d, want 0\nstderr: %s", code, errOut.String())
 	}
-	for _, want := range []string{"reminder:", "-- skipped infra:", "-- note: openapi implies"} {
+	for _, want := range []string{"reminder:", "-- skipped infra:", "[openapi] (cd backend && go tool"} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("output missing %q:\n%s", want, out.String())
 		}

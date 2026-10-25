@@ -44,13 +44,13 @@ local_command() {
 	local job="$1"
 	case "$job" in
 	Backend* | Frontend* | Android* | "Run E2E"* | "Docs & security-doc citations" | "Changelog note"*)
-		echo "scripts/pre-pr.sh --full"
+		echo "scripts/pre-pr.sh --focused"
 		;;
 	"Container Hardening"* | "SAST"* | "Reproducible builds" | "GitHub Actions Security"*)
 		echo "no local equivalent; this check is CI-only (see .github/AGENTS.md)"
 		;;
 	*)
-		echo "scripts/pre-pr.sh --full"
+		echo "scripts/pre-pr.sh --focused"
 		;;
 	esac
 }
@@ -82,11 +82,11 @@ ${failed_jobs}
 ### Run locally
 
 \`\`\`bash
-scripts/pre-pr.sh --full
+scripts/pre-pr.sh --focused
 \`\`\`
 
 The pre-PR gate selects the areas this branch touches and runs their suites,
-coverage ratchets, and flake stress. Open the PR and stop; this comment is
+coverage runs, and per-file ratchets. Open the PR and stop; this comment is
 updated in place on the next failure rather than duplicated."
 
 existing="$(gh api "repos/${GH_REPO}/issues/${pr_number}/comments?per_page=100" --paginate \
