@@ -179,7 +179,17 @@ data class WebhookTestResponse(val delivery: WebhookDelivery? = null)
  * on the plain list/detail [ApiToken] shape, and never logged or persisted
  * beyond the one-shot reveal dialog.
  */
-val API_TOKEN_SCOPES: List<String> = listOf("full", "carddav")
+/** Create-dialog presets; each maps to the explicit scope set sent to the backend. */
+val API_TOKEN_PRESETS: List<String> = listOf("full", "contacts", "calendar", "both", "api", "mcp")
+
+val API_TOKEN_PRESET_SCOPES: Map<String, List<String>> = mapOf(
+    "full" to listOf("carddav", "caldav", "api:read", "api:write", "mcp"),
+    "contacts" to listOf("carddav"),
+    "calendar" to listOf("caldav"),
+    "both" to listOf("carddav", "caldav"),
+    "api" to listOf("api:read", "api:write"),
+    "mcp" to listOf("mcp"),
+)
 
 /** Selectable lifetimes; the backend caps this at 365 days ([MAX_API_TOKEN_EXPIRY_DAYS]). */
 val API_TOKEN_EXPIRY_OPTIONS: List<Int> = listOf(30, 60, 90, 180, 365)
@@ -205,7 +215,8 @@ data class ApiToken(
 data class ApiTokenInput(
     val name: String,
     @Json(name = "expires_in_days") val expiresInDays: Int? = null,
-    val scope: String? = null
+    val scope: String? = null,
+    val scopes: List<String>? = null
 )
 
 /**

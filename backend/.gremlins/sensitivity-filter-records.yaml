@@ -7,6 +7,7 @@ unleash:
         - ^activity\.go$
         - ^alert_state\.go$
         - ^api_token\.go$
+        - ^api_token_scope\.go$
         - ^atrest\.go$
         - ^attachment\.go$
         - ^audit\.go$

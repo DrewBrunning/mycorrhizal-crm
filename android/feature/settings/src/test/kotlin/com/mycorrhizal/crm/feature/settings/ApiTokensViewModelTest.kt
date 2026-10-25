@@ -9,6 +9,7 @@ import com.mycorrhizal.crm.testing.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import io.mockk.slot
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -83,6 +84,24 @@ class ApiTokensViewModelTest {
             assertFalse(state.revealedIsRotation)
             assertEquals(1, state.tokens.size)
             assertFalse(state.isSaving)
+        }
+
+    @Test
+    fun `create sends an explicit scope set when a preset is chosen`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { repository.list() } returns Result.success(emptyList())
+            val captured = slot<com.mycorrhizal.crm.model.network.ApiTokenInput>()
+            coEvery { repository.create(capture(captured)) } returns Result.success(
+                ApiTokenCreateResponse(id = 9, name = "New", scope = "custom", token = "s3cret"),
+            )
+            val vm = ApiTokensViewModel(repository)
+            advanceUntilIdle()
+
+            vm.create("New", expiresInDays = 90, scopes = listOf("carddav", "caldav"))
+            advanceUntilIdle()
+
+            assertEquals(listOf("carddav", "caldav"), captured.captured.scopes)
+            assertNull(captured.captured.scope)
         }
 
     @Test

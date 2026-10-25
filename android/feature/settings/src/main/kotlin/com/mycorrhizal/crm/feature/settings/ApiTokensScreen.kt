@@ -50,11 +50,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.domain.compat.ServerCapabilities
 import com.mycorrhizal.crm.domain.compat.ServerFeature
 import com.mycorrhizal.crm.model.network.API_TOKEN_EXPIRY_OPTIONS
-import com.mycorrhizal.crm.model.network.API_TOKEN_SCOPES
+import com.mycorrhizal.crm.model.network.API_TOKEN_PRESETS
+import com.mycorrhizal.crm.model.network.API_TOKEN_PRESET_SCOPES
 import com.mycorrhizal.crm.model.network.ApiToken
 import com.mycorrhizal.crm.model.network.ApiTokenCreateResponse
 import com.mycorrhizal.crm.model.network.DEFAULT_API_TOKEN_EXPIRY_DAYS
-import com.mycorrhizal.crm.model.network.DEFAULT_API_TOKEN_SCOPE
 import com.mycorrhizal.crm.ui.LocalServerVersion
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
@@ -225,8 +225,8 @@ fun ApiTokensScreen(onBack: () -> Unit, viewModel: ApiTokensViewModel = hiltView
     if (createOpen) {
         CreateApiTokenDialog(
             isSaving = state.isSaving,
-            onConfirm = { name, expiresInDays, scope ->
-                viewModel.create(name, expiresInDays, scope)
+            onConfirm = { name, expiresInDays, scopes ->
+                viewModel.create(name, expiresInDays, scopes = scopes)
                 createOpen = false
             },
             onDismiss = { createOpen = false }
@@ -333,12 +333,10 @@ internal fun ApiTokenRow(
             }
             Text(
                 text = stringResource(
-                    if (token.scope ==
-                        "carddav"
-                    ) {
-                        R.string.settings_api_tokens_scope_carddav
-                    } else {
-                        R.string.settings_api_tokens_scope_full
+                    when (token.scope) {
+                        "carddav" -> R.string.settings_api_tokens_scope_carddav
+                        "custom" -> R.string.settings_api_tokens_scope_custom
+                        else -> R.string.settings_api_tokens_scope_full
                     }
                 ),
                 style = MaterialTheme.typography.labelMedium,
@@ -412,6 +410,15 @@ internal fun ApiTokenRow(
     }
 }
 
+private fun presetLabelRes(preset: String): Int = when (preset) {
+    "contacts" -> R.string.settings_api_tokens_scope_carddav
+    "calendar" -> R.string.settings_api_tokens_scope_calendar
+    "both" -> R.string.settings_api_tokens_scope_both
+    "api" -> R.string.settings_api_tokens_scope_api
+    "mcp" -> R.string.settings_api_tokens_scope_mcp
+    else -> R.string.settings_api_tokens_scope_full
+}
+
 private fun statusLabelRes(token: ApiToken): Int = when {
     token.revokedAt != null -> R.string.settings_api_tokens_revoked
     token.isExpired() -> R.string.settings_api_tokens_expired
@@ -421,12 +428,12 @@ private fun statusLabelRes(token: ApiToken): Int = when {
 @Composable
 internal fun CreateApiTokenDialog(
     isSaving: Boolean,
-    onConfirm: (name: String, expiresInDays: Int, scope: String) -> Unit,
+    onConfirm: (name: String, expiresInDays: Int, scopes: List<String>) -> Unit,
     onDismiss: () -> Unit
 ) {
     var name by remember { mutableStateOf("") }
     var expiresInDays by remember { mutableIntStateOf(DEFAULT_API_TOKEN_EXPIRY_DAYS) }
-    var scope by remember { mutableStateOf(DEFAULT_API_TOKEN_SCOPE) }
+    var preset by remember { mutableStateOf("full") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -463,36 +470,33 @@ internal fun CreateApiTokenDialog(
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    API_TOKEN_SCOPES.forEach { option ->
-                        FilterChip(
-                            selected = scope == option,
-                            onClick = { scope = option },
-                            label = {
-                                Text(
-                                    stringResource(
-                                        if (option ==
-                                            "carddav"
-                                        ) {
-                                            R.string.settings_api_tokens_scope_carddav
-                                        } else {
-                                            R.string.settings_api_tokens_scope_full
-                                        }
-                                    ),
-                                    style = MaterialTheme.typography.labelMedium
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    listOf(
+                        listOf("full", "contacts", "calendar"),
+                        listOf("both", "api", "mcp")
+                    ).forEach { row ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            row.forEach { option ->
+                                FilterChip(
+                                    selected = preset == option,
+                                    onClick = { preset = option },
+                                    label = {
+                                        Text(
+                                            stringResource(presetLabelRes(option)),
+                                            style = MaterialTheme.typography.labelMedium
+                                        )
+                                    }
                                 )
                             }
-                        )
+                        }
                     }
                 }
                 Text(
                     text = stringResource(
-                        if (scope ==
-                            "carddav"
-                        ) {
-                            R.string.settings_api_tokens_scope_carddav_help
-                        } else {
-                            R.string.settings_api_tokens_scope_full_help
+                        when (preset) {
+                            "full" -> R.string.settings_api_tokens_scope_full_help
+                            "contacts" -> R.string.settings_api_tokens_scope_carddav_help
+                            else -> R.string.settings_api_tokens_scope_preset_help
                         }
                     ),
                     style = MaterialTheme.typography.labelSmall,
@@ -502,7 +506,13 @@ internal fun CreateApiTokenDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onConfirm(name.trim(), expiresInDays, scope) },
+                onClick = {
+                    onConfirm(
+                        name.trim(),
+                        expiresInDays,
+                        API_TOKEN_PRESET_SCOPES.getValue(preset)
+                    )
+                },
                 enabled = !isSaving && name.isNotBlank()
             ) {
                 if (isSaving) {

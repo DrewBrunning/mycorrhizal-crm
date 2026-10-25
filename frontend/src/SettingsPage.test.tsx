@@ -6,7 +6,7 @@ import { AppThemeProvider } from './AppThemeProvider';
 import { getCurrentUser } from './api/admin';
 import {
   type ApiToken,
-  createApiToken,
+  createApiTokenWithScopes,
   getApiTokens,
   revokeAllApiTokens,
   revokeApiToken,
@@ -14,7 +14,12 @@ import {
 } from './api/apiTokens';
 import { changePassword } from './api/auth';
 import { type Contact, getContacts, getContactsByUid } from './api/contacts';
-import { updateSelfContact, updateTimeFormat } from './api/users';
+import {
+  getTwoFactorStatus,
+  updateDAVPasswordPolicy,
+  updateSelfContact,
+  updateTimeFormat,
+} from './api/users';
 import { fetchAndCacheUserInfo, isAdmin } from './auth';
 import { SnackbarProvider } from './context/SnackbarContext';
 import { DateFormatProvider } from './DateFormatProvider';
@@ -57,7 +62,7 @@ vi.mock('./api/apiTokens', async (importOriginal) => {
   return {
     ...actual,
     getApiTokens: vi.fn(),
-    createApiToken: vi.fn(),
+    createApiTokenWithScopes: vi.fn(),
     revokeApiToken: vi.fn(),
     revokeAllApiTokens: vi.fn(),
     rotateApiToken: vi.fn(),
@@ -70,7 +75,13 @@ vi.mock('./api/contacts', async (importOriginal) => {
 });
 vi.mock('./api/users', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/users')>();
-  return { ...actual, updateSelfContact: vi.fn(), updateTimeFormat: vi.fn() };
+  return {
+    ...actual,
+    updateSelfContact: vi.fn(),
+    updateTimeFormat: vi.fn(),
+    getTwoFactorStatus: vi.fn(),
+    updateDAVPasswordPolicy: vi.fn(),
+  };
 });
 vi.mock('./api/admin', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/admin')>();
@@ -97,11 +108,14 @@ beforeEach(() => {
 
   vi.mocked(changePassword).mockReset();
   vi.mocked(getApiTokens).mockReset();
-  vi.mocked(createApiToken).mockReset();
+  vi.mocked(createApiTokenWithScopes).mockReset();
   vi.mocked(revokeApiToken).mockReset();
   vi.mocked(revokeAllApiTokens).mockReset();
   vi.mocked(rotateApiToken).mockReset();
   vi.mocked(getApiTokens).mockResolvedValue({ tokens: [] });
+  vi.mocked(getTwoFactorStatus).mockReset();
+  vi.mocked(getTwoFactorStatus).mockResolvedValue({ enabled: false });
+  vi.mocked(updateDAVPasswordPolicy).mockReset();
 
   // T90: reset the picker mocks. Default /users/me has no self contact and
   // no contacts resolve.
@@ -134,6 +148,7 @@ function apiToken(overrides: Partial<ApiToken> = {}): ApiToken {
     revoked_at: null,
     expires_at: null,
     scope: 'full',
+    scopes: ['carddav', 'caldav', 'api:read', 'api:write', 'mcp'],
     ...overrides,
   };
 }
@@ -284,7 +299,7 @@ test('lists an existing token with its scope and status', async () => {
   renderPage();
 
   await waitFor(() => expect(screen.getByText('Sync script')).toBeInTheDocument());
-  expect(screen.getByText('CardDAV only')).toBeInTheDocument();
+  expect(screen.getByText('Contacts sync (CardDAV)')).toBeInTheDocument();
   expect(screen.getByText('Active')).toBeInTheDocument();
 });
 
@@ -304,18 +319,49 @@ test('a revoked token is labeled and has no revoke action', async () => {
 
 test('creating a token shows the secret exactly once and refreshes the list', async () => {
   const created = { ...apiToken({ id: 5, name: 'New token' }), token: 'mcrh_live_abc123' };
-  vi.mocked(createApiToken).mockResolvedValue(created);
+  vi.mocked(createApiTokenWithScopes).mockResolvedValue(created);
 
   renderPage();
   await waitFor(() => expect(screen.getByText(/no api tokens/i)).toBeInTheDocument());
 
   fireEvent.click(screen.getByRole('button', { name: /create token/i }));
-  fireEvent.change(screen.getByLabelText(/token name/i), { target: { value: 'New token' } });
+  fireEvent.change(screen.getByLabelText(/description/i), { target: { value: 'New token' } });
   fireEvent.click(screen.getByRole('button', { name: /^create$/i }));
 
-  await waitFor(() => expect(createApiToken).toHaveBeenCalledWith('New token', 90, 'full'));
+  await waitFor(() =>
+    expect(createApiTokenWithScopes).toHaveBeenCalledWith(
+      'New token',
+      90,
+      ['carddav', 'caldav', 'api:read', 'api:write', 'mcp'],
+      false,
+    ),
+  );
   await waitFor(() => expect(screen.getByDisplayValue('mcrh_live_abc123')).toBeInTheDocument());
   await waitFor(() => expect(getApiTokens).toHaveBeenCalledTimes(2));
+});
+
+test('the created-token dialog shows only the DAV URLs for its scopes', async () => {
+  const created = {
+    ...apiToken({
+      id: 6,
+      name: 'Contacts only',
+      scope: 'custom',
+      scopes: ['carddav'],
+    }),
+    token: 'mcrh_live_carddav_only',
+  };
+  vi.mocked(createApiTokenWithScopes).mockResolvedValue(created);
+
+  renderPage();
+  await waitFor(() => expect(screen.getByText(/no api tokens/i)).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: /create token/i }));
+  fireEvent.change(screen.getByLabelText(/description/i), { target: { value: 'Contacts only' } });
+  fireEvent.click(screen.getByRole('button', { name: /^create$/i }));
+
+  await screen.findByDisplayValue('mcrh_live_carddav_only');
+  expect(screen.getByLabelText('CardDAV server URL')).toBeInTheDocument();
+  expect(screen.queryByLabelText('CalDAV server URL')).not.toBeInTheDocument();
 });
 
 test('revoking a token requires confirmation before calling the API', async () => {

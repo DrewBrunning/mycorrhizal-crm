@@ -4,6 +4,7 @@
 unleash:
     exclude-files:
         - ^account_limiter_reset\.go$
+        - ^api_scope\.go$
         - ^auth_velocity\.go$
         - ^body_limit\.go$
         - ^client_version\.go$

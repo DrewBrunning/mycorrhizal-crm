@@ -707,19 +707,21 @@ func TestMCP_RealAuthMiddlewareCredentialMatrix(t *testing.T) {
 	db := dbtest.New(t)
 	user := models.User{Username: "alice", Password: "password123", Email: "alice@example.com"}
 	require.NoError(t, db.Create(&user).Error)
-	mint := func(scope, raw string) string {
+	mint := func(scope, raw string, scopes ...string) string {
 		sum := sha256.Sum256([]byte(raw))
 		expires := time.Now().Add(time.Hour)
-		require.NoError(t, db.Create(&models.ApiToken{UserID: user.ID, Name: scope, TokenHash: hex.EncodeToString(sum[:]), Scope: scope, ExpiresAt: &expires}).Error)
+		require.NoError(t, db.Create(&models.ApiToken{UserID: user.ID, Name: scope, TokenHash: hex.EncodeToString(sum[:]), Scope: scope, Scopes: scopes, ExpiresAt: &expires}).Error)
 		return raw
 	}
 	full := mint("full", "mycorrhizal_full_mcp_test")
 	dav := mint("carddav", "mycorrhizal_carddav_mcp_test")
+	mcpOnly := mint("custom", "mycorrhizal_mcp_only_test", models.TokenScopeMCP)
+	apiReadOnly := mint("custom", "mycorrhizal_api_read_only_test", models.TokenScopeAPIRead)
 
 	cfg := config.Config{ReminderTimezone: "UTC", JWTSecretKey: "test-secret"}
 	router := gin.New()
 	router.Use(func(c *gin.Context) { c.Set("db", db); c.Set("cfg", cfg); c.Next() })
-	router.POST("/mcp", middleware.AuthMiddleware(&cfg), MCPHandler())
+	router.POST("/mcp", middleware.AuthMiddleware(&cfg), middleware.RequireAPIScope(models.TokenScopeMCP), MCPHandler())
 
 	post := func(mutate func(*http.Request)) int {
 		body := []byte(`{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}`)
@@ -734,6 +736,8 @@ func TestMCP_RealAuthMiddlewareCredentialMatrix(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, post(func(*http.Request) {}), "no credential")
 	assert.Equal(t, http.StatusUnauthorized, post(func(r *http.Request) { r.SetBasicAuth("alice", "password123") }), "Basic credential")
 	assert.Equal(t, http.StatusForbidden, post(func(r *http.Request) { r.Header.Set("Authorization", "Bearer "+dav) }), "carddav-scoped token")
+	assert.Equal(t, http.StatusForbidden, post(func(r *http.Request) { r.Header.Set("Authorization", "Bearer "+apiReadOnly) }), "token without the mcp scope")
+	assert.Equal(t, http.StatusOK, post(func(r *http.Request) { r.Header.Set("Authorization", "Bearer "+mcpOnly) }), "mcp-scoped token")
 	assert.Equal(t, http.StatusOK, post(func(r *http.Request) { r.Header.Set("Authorization", "Bearer "+full) }), "full-scope bearer token")
 	assert.Equal(t, http.StatusOK, post(func(r *http.Request) { r.AddCookie(&http.Cookie{Name: "auth_token", Value: full}) }), "the auth_token session cookie is also a credential source")
 }

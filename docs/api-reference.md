@@ -26,7 +26,7 @@ Alternatively, API tokens can be used in the `Authorization` header:
 Authorization: Bearer mycorrhizal_<token>
 ```
 
-API tokens are created and managed by each user under Settings → API Tokens (`/api/v1/api-tokens`); a token always has the rights of the user who created it, never admin rights. The plaintext token is only returned once at creation time.
+App passwords / API tokens are created and managed by each user under Settings → API tokens (`/api/v1/api-tokens`); a token is limited to its explicit scopes (`carddav`, `caldav`, `api:read`, `api:write`, `mcp`), never has admin rights, and cannot manage credentials or enroll a second factor. Credential and identity management require an interactive session. The plaintext token is only returned once at creation time.
 
 ## Error Responses
 
@@ -251,21 +251,32 @@ Private Atom feeds ([ADR 0030](adrs/0030-feeds-atom-emission.md)). Feed manageme
 |---|---|---|
 | `GET` | `/dashboard` | The dashboard composite. Each list block (`birthdays`, `upcoming_reminders`, `overdue`, `reach_out_suggestions`, `contact_sync_conflicts`, `data_decay_overdue`) holds at most 25 rows, most urgent first; the matching `*_total` field carries the uncapped count |
 
-### API Tokens
+### App passwords / API tokens
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/admin/api-tokens` | List all API tokens for the current user |
-| `POST` | `/admin/api-tokens` | Create an API token — returns the plaintext token once |
-| `DELETE` | `/admin/api-tokens/:id` | Revoke an API token |
+| `GET` | `/api-tokens` | List all tokens for the current user |
+| `POST` | `/api-tokens` | Create a token — returns the plaintext token once |
+| `POST` | `/api-tokens/:id/rotate` | Revoke and reissue with the same scopes |
+| `POST` | `/api-tokens/revoke-all` | Revoke every active token for the caller |
+| `DELETE` | `/api-tokens/:id` | Revoke one token |
 
-`POST /admin/api-tokens` body:
+`POST /api-tokens` body:
 
 ```json
-{ "name": "my token" }
+{ "name": "Thunderbird CardDAV", "expires_in_days": 90, "scopes": ["carddav"] }
 ```
 
-Response includes `token` (the `mycorrhizal_…` plaintext value) only on creation. Subsequent list responses omit it.
+`scopes` is an explicit set of `carddav`, `caldav`, `api:read`, `api:write`, `mcp`. The legacy
+`scope: "full" | "carddav"` field is still accepted when `scopes` is absent. A DAV-only scope set may
+send `never_expires: true` instead of `expires_in_days`; API/MCP tokens must expire. Response includes
+`token` (the `mycorrhizal_…` plaintext value) only on creation. Subsequent list responses omit it.
+
+### CardDAV/CalDAV account password
+
+`PATCH /users/dav-password-policy` with `{ "allow": true | false }` controls whether the account
+password may authenticate DAV clients when no second factor is enrolled. It is always rejected once
+TOTP or a passkey is enrolled; use an app password with the `carddav` and/or `caldav` scope.
 
 ### Admin
 

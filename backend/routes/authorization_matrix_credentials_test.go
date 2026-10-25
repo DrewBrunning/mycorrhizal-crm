@@ -253,17 +253,25 @@ func TestAuthorizationMatrixNonJWTCredentials(t *testing.T) {
 			path = row.probe
 		}
 
-		// --- full-token: must match the cookie-JWT owner persona exactly -----
-		// (public routes included: owner's verdict there is "admitted", and a
-		// full token hitting a public handler is admitted too.)
-		wantOwner := expect(row, r.Method, personaOwner)
-		if got := probeFull(r.Method, path); !wantOwner(got) {
-			// Cross-check what the owner JWT itself returns, so a failure
-			// message points at the divergence, not just the number.
-			ownerGot := dispatch(router, r.Method, path, ownerJWT)
-			failures++
-			t.Errorf("full-token     %-6s %s -> %d, owner-JWT -> %d (must match owner persona)",
-				r.Method, path, got, ownerGot)
+		// --- full-token: matches the cookie-JWT owner persona on the data
+		// surface, but is refused on credential/identity management (issue
+		// #2010) ------------------------------------------------
+		if middleware.IsCredentialManagementRoute(r.Path) {
+			if got := probeFull(r.Method, path); got != http.StatusForbidden {
+				failures++
+				t.Errorf("full-token     %-6s %s -> %d (credential management must be 403 for API tokens)",
+					r.Method, path, got)
+			}
+		} else {
+			wantOwner := expect(row, r.Method, personaOwner)
+			if got := probeFull(r.Method, path); !wantOwner(got) {
+				// Cross-check what the owner JWT itself returns, so a failure
+				// message points at the divergence, not just the number.
+				ownerGot := dispatch(router, r.Method, path, ownerJWT)
+				failures++
+				t.Errorf("full-token     %-6s %s -> %d, owner-JWT -> %d (must match owner persona)",
+					r.Method, path, got, ownerGot)
+			}
 		}
 
 		// Public routes have no auth boundary — the DAV credentials pass
@@ -366,7 +374,7 @@ func TestDAVSurfaceCredentialBoundary(t *testing.T) {
 	// through B's session (the "own collections only" assertion).
 	pwHash, err := bcrypt.GenerateFromPassword([]byte("dav-a-password"), bcrypt.DefaultCost)
 	require.NoError(t, err)
-	userA := models.User{Username: "dav-alpha", Email: "dav-alpha@example.com", Password: string(pwHash)}
+	userA := models.User{Username: "dav-alpha", Email: "dav-alpha@example.com", Password: string(pwHash), AllowDAVPassword: true}
 	require.NoError(t, db.Create(&userA).Error)
 	userB := models.User{Username: "dav-bravo", Email: "dav-bravo@example.com", Password: "unused-placeholder"}
 	require.NoError(t, db.Create(&userB).Error)
