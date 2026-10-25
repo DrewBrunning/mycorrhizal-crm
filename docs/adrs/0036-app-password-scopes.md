@@ -77,6 +77,12 @@ telling the user to create an app password.
   surfaces and MCP. Existing `carddav` tokens keep both DAV surfaces.
 - Existing users keep account-password DAV access until they enroll 2FA or
   disable the setting. New users must opt in or create an app password.
+- **Downgrade is fail-closed.** Migration 000078's down migration drops the
+  explicit scope set, and the pre-000078 auth rule treats every non-`carddav`
+  `scope` as full REST access. A token minted with a narrower set carries
+  `scope = 'custom'` and has no faithful legacy representation, so the down
+  migration revokes it rather than silently broadening it. Operators rolling
+  back must reissue those credentials after the downgrade.
 - Tests: `backend/models/api_token_scope_test.go`,
   `backend/carddav/auth_test.go`, `backend/middleware/api_scope_test.go`,
   `backend/controllers/api_token_controller_test.go`,
