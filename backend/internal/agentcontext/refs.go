@@ -240,7 +240,8 @@ func checkYarnCommand(root string, fields []string) string {
 
 func yarnBuiltin(sub string) bool {
 	switch sub {
-	case "install", "add", "remove", "upgrade", "why", "info", "list", "config", "cache", "run":
+	case "install", "add", "remove", "up", "upgrade", "why", "info", "list", "config", "cache", "run",
+		"audit", "outdated", "licenses", "version", "workspace", "workspaces", "exec", "init":
 		return true
 	}
 	return false

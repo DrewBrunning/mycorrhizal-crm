@@ -103,7 +103,7 @@ registry shared by skills, CI and (in #1959) the eval harness. Each row carries:
 - `CIJobs` — job ids in `.github/workflows/` that run the suite.
 - `CICommand` — a literal token that must appear in at least one listed job.
 
-The six Tier 1 suites are registered in #1956; Tier 2 is added in #1958. Every
+The six Tier 1 suites landed in #1956 and the five Tier 2 suites in #1958. Every
 command fence under a skill's `## DoD` heading must belong to a registered suite
 (after normalizing `cd <dir> &&` prefixes and `&&` chains), and every suite's
 jobs must exist and contain its `CICommand`. This check is static: it parses
