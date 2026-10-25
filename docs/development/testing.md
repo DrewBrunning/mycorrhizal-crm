@@ -209,7 +209,10 @@ time-based rule.
     and `android/core/network/.../ContractFixtureTest.kt` (issue #257; the
     spec-derived shared fixture is issue #266);
   - property-based spec fuzzing of the running app (Schemathesis + `cmd/schemagate`,
-    issue #369) and the deterministic cross-account BOLA sweep (`cmd/bolacheck`).
+    issue #369) and the deterministic cross-account BOLA sweep (`cmd/bolacheck`);
+  - design consistency of the spec itself — operation tags, unique operationIds, the error
+    envelope, unused components — via `backend/vacuum.yaml` in the `Backend checks` job
+    ([OpenAPI linting](openapi-linting.md), issue #1909).
 - **Must not be used for** business logic, persistence, or UI behavior.
 - **Runs via** `go test ./...` (drift tests), `npx vitest run` + `./gradlew
   testDebugUnitTest` plus :app’s flavor-qualified tests (fixture consumers), and the `schemathesis.yml` workflow
