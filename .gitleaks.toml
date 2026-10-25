@@ -33,6 +33,19 @@ regex = '''mycorrhizal_(?:feed_)?[A-Za-z0-9_-]{43}'''
 entropy = 4.0
 keywords = ["mycorrhizal_"]
 
+# Issue #1938: the app also mints two unprefixed 32-byte base64url secrets —
+# webhook signing secrets (backend/controllers/webhook_controller.go#generateSecret)
+# and device-grant tokens (backend/services/device_grant_service.go#generateDeviceGrantToken).
+# Deliberately no bespoke rule here. A bare 43-character base64url value is
+# indistinguishable from any other 32-byte base64url value (SHA-256 digests,
+# PKCE verifiers, random IDs), so an unanchored rule cannot be low-noise, and a
+# context-scoped rule would only duplicate the default pack's generic-api-key
+# rule, which already catches the labelled/assigned forms (`WEBHOOK_SECRET=…`,
+# `"device_token":"…"`, `Secret: "…"`). Bare/unlabelled values are accepted
+# residual risk; a recognizable prefix would make them detectable but is a
+# credential-format change deferred out of the v1.5.1 patch scope. See
+# docs/security/asvs-l2.md V1.1.1 and the verification report row 2.38.
+
 # Issue #1293 / ADR 0034: an Android passkey ceremony origin is
 # "android:apk-key-hash:" + base64url of the SHA-256 of an app's PUBLIC signing
 # certificate — the same value published in /.well-known/assetlinks.json. It is

@@ -71,8 +71,10 @@ a self-hosted instance you don't control.
 For context, this repo already runs: CodeQL static analysis, Trivy
 container scanning, GitHub secret scanning (provider patterns), a
 `gitleaks` pre-commit scan that also knows this app's own `mycorrhizal_`
-token format, and dependency review on every pull request, and pins its Go
-toolchain and container base images. See
+token format and catches its labelled webhook-signing/device-grant secrets via
+the default generic rule (an unlabelled unprefixed value remains
+indistinguishable — see ASVS V1.1.1), and dependency review on every pull
+request, and pins its Go toolchain and container base images. See
 [README-developer.md](README-developer.md) for the full CI posture.
 
 ## Security Documentation
