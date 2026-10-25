@@ -103,6 +103,42 @@ func TestRunTestOnlyDiffIsIgnored(t *testing.T) {
 	}
 }
 
+// TestRunIncludesUncommittedAndUntrackedGoLines is the regression test for the
+// pre-commit false green: the changed-line diff must include staged, unstaged,
+// and untracked Go files, not only commits.
+func TestRunIncludesUncommittedAndUntrackedGoLines(t *testing.T) {
+	dir := newRepo(t)
+
+	write(t, filepath.Join(dir, "backend", "services", "foo.go"), "package services\n\nfunc Foo() {\n\tprintln(\"foo\")\n}\n\nfunc Bar() {\n}\n")
+	write(t, filepath.Join(dir, "backend", "services", "baz.go"), "package services\n\nfunc Baz() {\n}\n")
+	git(t, dir, "add", "backend/services/baz.go")
+	write(t, filepath.Join(dir, "backend", "services", "bar.go"), "package services\n\nfunc Bar() {\n}\n")
+
+	write(t, filepath.Join(dir, "backend", "coverage.out"), `mode: atomic
+mycorrhizal/services/foo.go:4.2,4.15 1 1
+mycorrhizal/services/baz.go:3.15,4.2 1 1
+mycorrhizal/services/bar.go:3.15,4.2 1 1
+`)
+	var out, errOut bytes.Buffer
+	code := run([]string{"--profile", "coverage.out", "--base", "HEAD", "--root", dir}, &out, &errOut)
+	if code != 0 {
+		t.Fatalf("run = %d, want 0\nstderr: %s", code, errOut.String())
+	}
+	if strings.Contains(out.String(), "no changed backend Go lines") {
+		t.Fatalf("uncommitted changes were not seen:\n%s", out.String())
+	}
+	for _, want := range []string{
+		"backend/services/foo.go",
+		"backend/services/baz.go",
+		"backend/services/bar.go",
+		"changed-line coverage 100.0%",
+	} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("output missing %q:\n%s", want, out.String())
+		}
+	}
+}
+
 func TestRunMissingProfile(t *testing.T) {
 	dir := newRepo(t)
 	var out, errOut bytes.Buffer
