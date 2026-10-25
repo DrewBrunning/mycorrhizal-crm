@@ -327,3 +327,58 @@ func TestLicenseAttributionRecordsDockerManualReviewBoundary(t *testing.T) {
 		}
 	}
 }
+
+// TestContainerShipsBundledContentNotices pins the issue #1880 follow-up: the
+// image must carry THIRD_PARTY_SOURCES.md (bundled content and full OFL texts)
+// as well as THIRD_PARTY_NOTICES.md, both in /app and served over HTTP. The
+// root .dockerignore ignores every markdown file, so the source file needs an
+// explicit negation or it never reaches the build context.
+func TestContainerShipsBundledContentNotices(t *testing.T) {
+	dockerfileData, err := os.ReadFile("../../../Dockerfile")
+	if err != nil {
+		t.Fatalf("reading Dockerfile: %v", err)
+	}
+	dockerfile := string(dockerfileData)
+	for _, want := range []string{
+		"COPY THIRD_PARTY_NOTICES.md /app/THIRD_PARTY_NOTICES.md",
+		"COPY THIRD_PARTY_NOTICES.md /usr/share/nginx/html/third-party-notices.txt",
+		"COPY THIRD_PARTY_SOURCES.md /app/THIRD_PARTY_SOURCES.md",
+		"COPY THIRD_PARTY_SOURCES.md /usr/share/nginx/html/third-party-sources.txt",
+	} {
+		if !strings.Contains(dockerfile, want) {
+			t.Errorf("Dockerfile is missing %q", want)
+		}
+	}
+
+	ignoreData, err := os.ReadFile("../../../.dockerignore")
+	if err != nil {
+		t.Fatalf("reading .dockerignore: %v", err)
+	}
+	if !strings.Contains(string(ignoreData), "!THIRD_PARTY_SOURCES.md") {
+		t.Error(".dockerignore does not un-ignore THIRD_PARTY_SOURCES.md; it would never reach the build context")
+	}
+}
+
+// TestAndroidPackagesGoAndFontNotices pins the app-side half: :app copies the
+// two notices and both font OFL files into asset/thirdparty so the licenses
+// screen can show the Go standard library and fonts that AboutLibraries cannot
+// see in the Gradle graph.
+func TestAndroidPackagesGoAndFontNotices(t *testing.T) {
+	data, err := os.ReadFile("../../../android/app/build.gradle.kts")
+	if err != nil {
+		t.Fatalf("reading app/build.gradle.kts: %v", err)
+	}
+	build := string(data)
+	for _, want := range []string{
+		"copyThirdPartyAttribution",
+		"../THIRD_PARTY_NOTICES.md",
+		"../THIRD_PARTY_SOURCES.md",
+		"../assets/fonts/eb-garamond/OFL.txt",
+		"../assets/fonts/ibm-plex/OFL.txt",
+		`assets.directories.add(thirdPartyAttributionAssets.get().asFile.absolutePath)`,
+	} {
+		if !strings.Contains(build, want) {
+			t.Errorf("android/app/build.gradle.kts is missing %q", want)
+		}
+	}
+}

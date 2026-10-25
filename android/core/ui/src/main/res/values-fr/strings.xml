@@ -928,6 +928,8 @@
     <string name="settings_licenses_empty">Aucune information de licence n\'est disponible dans cette build.</string>
     <string name="settings_licenses_expanded">Développé</string>
     <string name="settings_licenses_collapsed">Réduit</string>
+    <string name="settings_licenses_bundled_go">Serveur Go et bibliothèque standard</string>
+    <string name="settings_licenses_bundled_fonts">Polices incluses</string>
     <string name="settings_cancel">Annuler</string>
 
     <!-- Activities -->

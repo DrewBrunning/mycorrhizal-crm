@@ -928,6 +928,8 @@
     <string name="settings_licenses_empty">No hay información de licencias disponible en esta compilación.</string>
     <string name="settings_licenses_expanded">Expandido</string>
     <string name="settings_licenses_collapsed">Contraído</string>
+    <string name="settings_licenses_bundled_go">Servidor Go y biblioteca estándar</string>
+    <string name="settings_licenses_bundled_fonts">Fuentes incluidas</string>
     <string name="settings_cancel">Cancelar</string>
 
     <!-- Actividades -->

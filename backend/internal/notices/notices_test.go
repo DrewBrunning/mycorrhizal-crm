@@ -62,6 +62,7 @@ func TestModuleLicenseTextReadsAllTopLevelLicenseFiles(t *testing.T) {
 		"licence":      "british spelling",
 		"UNLICENSE":    "public domain",
 		"NOTLICENSE.x": "ignored",
+		"license.go":   "package main",
 	} {
 		path := filepath.Join(dir, name)
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -80,13 +81,48 @@ func TestModuleLicenseTextReadsAllTopLevelLicenseFiles(t *testing.T) {
 			t.Fatalf("license file list %q is missing %q", files, want)
 		}
 	}
-	for _, unwanted := range []string{"README", "NOTLICENSE", "nested"} {
+	for _, unwanted := range []string{"README", "NOTLICENSE", "nested", "package main"} {
 		if strings.Contains(text, unwanted) {
 			t.Fatalf("license text unexpectedly contains %q:\n%s", unwanted, text)
 		}
 	}
+	if strings.Contains(files, "license.go") {
+		t.Fatalf("a source file named license.go was treated as a license file: %q", files)
+	}
 	if strings.Contains(text, "\r") {
 		t.Fatal("license text should be normalized to LF")
+	}
+}
+
+func TestModuleLicenseTextReadsReuseLicensesDirectory(t *testing.T) {
+	dir := t.TempDir()
+	licenses := filepath.Join(dir, "LICENSES")
+	if err := os.MkdirAll(licenses, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for name, content := range map[string]string{
+		"MIT.txt":        "MIT license text",
+		"Apache-2.0.txt": "Apache license text",
+	} {
+		if err := os.WriteFile(filepath.Join(licenses, name), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(licenses, "notes.go"), []byte("package licenses"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	text, files, err := moduleLicenseText(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"LICENSES/MIT.txt", "LICENSES/Apache-2.0.txt", "MIT license text", "Apache license text"} {
+		if !strings.Contains(files+"\n"+text, want) {
+			t.Fatalf("REUSE license tree is missing %q (files %q):\n%s", want, files, text)
+		}
+	}
+	if strings.Contains(text, "package licenses") || strings.Contains(files, "notes.go") {
+		t.Fatalf("a source file in LICENSES/ was treated as a license file: %q\n%s", files, text)
 	}
 }
 
@@ -115,7 +151,7 @@ func TestParseGoList(t *testing.T) {
 	input = strings.ReplaceAll(input, "DIRECT", filepath.Join(dir, "DIRECT"))
 	input = strings.ReplaceAll(input, "REPLACED", filepath.Join(dir, "REPLACED"))
 
-	deps, err := parseGoList(strings.NewReader(input))
+	deps, _, err := parseGoList(strings.NewReader(input))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,6 +163,114 @@ func TestParseGoList(t *testing.T) {
 	}
 	if deps[1].Name != "example.org/fork" || deps[1].Version != "v1.1.0" {
 		t.Fatalf("replacement was not applied: %+v", deps[1])
+	}
+}
+
+func TestParseGoListReportsTheStandardLibrary(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "LICENSE"), []byte("MIT"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	input := `{"Module":{"Path":"mycorrhizal","Main":true}}
+{"ImportPath":"fmt","Standard":true}
+{"ImportPath":"internal/abi","Standard":true}
+{"Module":{"Path":"example.org/lib","Version":"v1.0.0","Dir":"` + dir + `"}}
+`
+
+	deps, hasStdlib, err := parseGoList(strings.NewReader(input))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasStdlib {
+		t.Fatal("standard-library packages were not reported")
+	}
+	if len(deps) != 1 || deps[0].Name != "example.org/lib" {
+		t.Fatalf("unexpected module deps: %+v", deps)
+	}
+}
+
+func TestCollectGoIncludesThePinnedStandardLibrary(t *testing.T) {
+	root := t.TempDir()
+	moduleDir := filepath.Join(root, "module")
+	if err := os.MkdirAll(moduleDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(moduleDir, "go.mod"), []byte("module example.org/app\n\ngo 1.26.0\n\ntoolchain go1.27.3\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(moduleDir, "LICENSE"), []byte("MIT"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	goroot := filepath.Join(root, "goroot")
+	if err := os.MkdirAll(goroot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	const goLicense = "Copyright 2009 The Go Authors.\n\nRedistribution and use in source and binary forms..."
+	if err := os.WriteFile(filepath.Join(goroot, "LICENSE"), []byte(goLicense), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	bin := filepath.Join(root, "bin")
+	if err := os.MkdirAll(bin, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	script := "#!/bin/sh\n" +
+		"if [ \"$1\" = env ]; then printf '%s\\n' '" + goroot + "'; exit 0; fi\n" +
+		"printf '%s\\n' '{\"Module\":{\"Path\":\"example.org/lib\",\"Version\":\"v1.2.3\",\"Dir\":\"" + moduleDir + "\"}}' '{\"ImportPath\":\"fmt\",\"Standard\":true}'\n"
+	if err := os.WriteFile(filepath.Join(bin, "go"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	deps, err := CollectGo(t.Context(), moduleDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(deps) != 2 {
+		t.Fatalf("got %d deps, want module + standard library: %+v", len(deps), deps)
+	}
+	var stdlib *Dependency
+	for i := range deps {
+		if deps[i].Name == "Go standard library" {
+			stdlib = &deps[i]
+		}
+	}
+	if stdlib == nil {
+		t.Fatalf("the Go standard library is missing: %+v", deps)
+	}
+	if stdlib.Version != "go1.27.3" {
+		t.Errorf("standard library version = %q, want the pinned toolchain go1.27.3", stdlib.Version)
+	}
+	if stdlib.License != "BSD-3-Clause" || stdlib.Source != "https://go.dev/LICENSE" {
+		t.Errorf("unexpected standard library metadata: %+v", *stdlib)
+	}
+	if stdlib.Text != goLicense {
+		t.Errorf("standard library text = %q, want $GOROOT/LICENSE", stdlib.Text)
+	}
+}
+
+func TestCollectGoFailsWithoutTheStandardLibraryLicense(t *testing.T) {
+	root := t.TempDir()
+	moduleDir := filepath.Join(root, "module")
+	if err := os.MkdirAll(moduleDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(moduleDir, "go.mod"), []byte("module example.org/app\n\ngo 1.26.0\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	bin := filepath.Join(root, "bin")
+	if err := os.MkdirAll(bin, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	script := "#!/bin/sh\n" +
+		"if [ \"$1\" = env ]; then printf '%s\\n' '" + filepath.Join(root, "missing-goroot") + "'; exit 0; fi\n" +
+		"printf '%s\\n' '{\"ImportPath\":\"fmt\",\"Standard\":true}'\n"
+	if err := os.WriteFile(filepath.Join(bin, "go"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	if _, err := CollectGo(t.Context(), moduleDir); err == nil {
+		t.Fatal("expected a missing standard-library license error")
 	}
 }
 
@@ -346,7 +490,7 @@ func TestRenderSectionsAreIndependent(t *testing.T) {
 }
 
 func TestParseGoListRejectsInvalidJSON(t *testing.T) {
-	if _, err := parseGoList(strings.NewReader("{not json")); err == nil {
+	if _, _, err := parseGoList(strings.NewReader("{not json")); err == nil {
 		t.Fatal("expected a decode error")
 	}
 }
@@ -415,7 +559,7 @@ func TestCollectGoReportsUnparseableOutput(t *testing.T) {
 func TestParseGoListReportsAModuleWithoutALicense(t *testing.T) {
 	moduleDir := t.TempDir()
 	input := `{"Module":{"Path":"example.org/nolicense","Version":"v1.0.0","Dir":"` + moduleDir + `"}}`
-	if _, err := parseGoList(strings.NewReader(input)); err == nil {
+	if _, _, err := parseGoList(strings.NewReader(input)); err == nil {
 		t.Fatal("expected a missing-license error")
 	}
 }
@@ -426,7 +570,7 @@ func TestParseGoListFallsBackToTheLicenseFilename(t *testing.T) {
 		t.Fatal(err)
 	}
 	input := `{"Module":{"Path":"example.org/custom","Version":"v1.0.0","Dir":"` + moduleDir + `"}}`
-	deps, err := parseGoList(strings.NewReader(input))
+	deps, _, err := parseGoList(strings.NewReader(input))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -445,6 +589,23 @@ func TestParseNPMReportsALicenseFileError(t *testing.T) {
 	input := `{"pkg@1.0.0":{"licenses":"MIT","licenseFile":"/definitely/missing","path":"/tmp/pkg"}}`
 	if _, err := parseNPM([]byte(input), t.TempDir(), t.TempDir()); err == nil {
 		t.Fatal("expected a license-file error")
+	}
+}
+
+func TestRenderDescribesAndroidCoverageTruthfully(t *testing.T) {
+	out := Render(nil)
+	if strings.Contains(out, "carries the same attribution") {
+		t.Fatalf("the notice still claims the Android app carries the same attribution:\n%s", out)
+	}
+	for _, want := range []string{
+		"Go standard library",
+		"Settings > About > Third-party licenses",
+		"THIRD_PARTY_SOURCES.md",
+		"npm packages are",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("the notice does not describe %q:\n%s", want, out)
+		}
 	}
 }
 

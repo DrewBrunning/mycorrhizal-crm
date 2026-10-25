@@ -928,6 +928,8 @@
     <string name="settings_licenses_empty">Nessuna informazione sulle licenze è disponibile in questa build.</string>
     <string name="settings_licenses_expanded">Espanso</string>
     <string name="settings_licenses_collapsed">Compresso</string>
+    <string name="settings_licenses_bundled_go">Server Go e libreria standard</string>
+    <string name="settings_licenses_bundled_fonts">Font inclusi</string>
     <string name="settings_cancel">Annulla</string>
 
     <!-- Activities -->

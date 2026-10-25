@@ -927,6 +927,8 @@
     <string name="settings_licenses_empty">In diesem Build sind keine Lizenzinformationen verfügbar.</string>
     <string name="settings_licenses_expanded">Erweitert</string>
     <string name="settings_licenses_collapsed">Reduziert</string>
+    <string name="settings_licenses_bundled_go">Go-Server und Standardbibliothek</string>
+    <string name="settings_licenses_bundled_fonts">Gebündelte Schriftarten</string>
     <string name="settings_cancel">Abbrechen</string>
 
     <!-- Aktivitäten -->

@@ -861,6 +861,21 @@ class SettingsScreenTest {
     }
 
     @Test
+    fun `third-party licenses shows bundled Go and font notices`() {
+        val notices = listOf(
+            BundledNotice("Go server and standard library", "Go standard library BSD-3-Clause"),
+            BundledNotice("Bundled fonts", "SIL OPEN FONT LICENSE Version 1.1")
+        )
+        show { ThirdPartyLicensesContent(libs = sampleLibs(), bundledNotices = notices) }
+
+        composeTestRule.onNodeWithText("Go server and standard library").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("Go standard library BSD-3-Clause").assertExists()
+
+        composeTestRule.onNodeWithText("Bundled fonts").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("SIL OPEN FONT LICENSE Version 1.1").assertExists()
+    }
+
+    @Test
     fun `third-party licenses explains when the build has no data`() {
         show { ThirdPartyLicensesContent(libs = null) }
         composeTestRule.onNodeWithTag("licenses-empty").assertIsDisplayed()

@@ -618,6 +618,8 @@
     <string name="settings_licenses_empty">No license information is available in this build.</string>
     <string name="settings_licenses_expanded">Expanded</string>
     <string name="settings_licenses_collapsed">Collapsed</string>
+    <string name="settings_licenses_bundled_go">Go server and standard library</string>
+    <string name="settings_licenses_bundled_fonts">Bundled fonts</string>
     <string name="custom_links_title">Custom link actions</string>
     <string name="custom_links_new">New action</string>
     <string name="custom_links_empty">No custom link actions yet</string>

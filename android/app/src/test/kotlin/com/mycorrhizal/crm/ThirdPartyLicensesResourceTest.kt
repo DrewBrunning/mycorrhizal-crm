@@ -32,5 +32,53 @@ class ThirdPartyLicensesResourceTest {
                 library.licenses.any { it.licenseContent?.isNotBlank() == true }
             }
         )
+        assertTrue(
+            "an embedded library has no declared license",
+            libs.libraries.all { library -> library.licenses.isNotEmpty() }
+        )
+        assertTrue(
+            "an embedded license has no name",
+            libs.libraries.flatMap { it.licenses }.all { license -> license.name.isNotBlank() }
+        )
+    }
+
+    @Test
+    fun `the app packages the Go and font attribution`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+
+        val notices = context.assets
+            .open("thirdparty/THIRD_PARTY_NOTICES.md")
+            .bufferedReader()
+            .use { it.readText() }
+        assertTrue(
+            "the packaged notice does not attribute the Go standard library",
+            notices.contains("Go standard library")
+        )
+
+        val sources = context.assets
+            .open("thirdparty/THIRD_PARTY_SOURCES.md")
+            .bufferedReader()
+            .use { it.readText() }
+        assertTrue(
+            "the packaged sources notice does not carry the SIL OFL text",
+            sources.contains("SIL OPEN FONT LICENSE Version 1.1")
+        )
+        assertTrue(
+            "the packaged sources notice does not identify IBM Plex",
+            sources.contains("IBM Plex Sans and IBM Plex Mono")
+        )
+        assertTrue(
+            "the packaged sources notice does not identify EB Garamond",
+            sources.contains("EB Garamond")
+        )
+
+        val ibmOfl = context.assets
+            .open("thirdparty/IBMPlex-OFL.txt")
+            .bufferedReader()
+            .use { it.readText() }
+        assertTrue(
+            "the IBM Plex license asset is not the OFL text",
+            ibmOfl.contains("Copyright © 2017 IBM Corp.")
+        )
     }
 }
