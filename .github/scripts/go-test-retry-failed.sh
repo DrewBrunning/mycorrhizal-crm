@@ -55,7 +55,7 @@ fi
 tests="$(grep -E '^--- FAIL: ' "$out" | awk '{print $3}' | sort -u | paste -sd, -)"
 echo "::warning::retrying once the ${#failed[@]} failed package(s): ${failed[*]} (failed tests: ${tests:-none recorded, e.g. a timeout}) (issue #1487)"
 
-# shellcheck disable=SC2086
+# shellcheck disable=SC2086 # flags is a deliberately word-split argument list
 if go test $flags -count=1 "${failed[@]}"; then
   echo "::warning::FLAKE: ${failed[*]} failed once and passed on retry (tests: ${tests:-none recorded}). Triage; the leg is not blocked (issue #1487)."
   exit 0

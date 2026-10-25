@@ -169,7 +169,7 @@ dismiss_anr_if_present() {
 	coords="$(find_center "$button")"
 	[ -n "$coords" ] || return 0
 	log "WARNING: ANR dialog ($title), tapping '$button' to clear it"
-	# shellcheck disable=SC2086
+	# shellcheck disable=SC2086 # $coords is "x y", split into two adb arguments
 	adb shell input tap $coords
 	sleep 2
 	dump_ui
@@ -188,7 +188,7 @@ tap() {
 		capture_failure_diagnostics "tap-$1"
 		return 1
 	fi
-	# shellcheck disable=SC2086
+	# shellcheck disable=SC2086 # $coords is "x y", split into two adb arguments
 	adb shell input tap $coords
 	sleep 1
 }
@@ -207,7 +207,7 @@ tap_until_visible() {
 		local coords
 		coords="$(find_center "$tap_target")"
 		if [ -n "$coords" ]; then
-			# shellcheck disable=SC2086
+			# shellcheck disable=SC2086 # $coords is "x y", split into two adb arguments
 			adb shell input tap $coords
 		fi
 		sleep 1
@@ -345,11 +345,11 @@ type_login_field() {
 		log "WARNING: login field #$field_index not on screen"
 		return 0
 	fi
-	# shellcheck disable=SC2086
+	# shellcheck disable=SC2086 # $coords is "x y", split into two adb arguments
 	adb shell input tap $coords
 	sleep 1
 	adb shell input keyevent KEYCODE_MOVE_END
-	# shellcheck disable=SC2046
+	# shellcheck disable=SC2046 # every KEYCODE_DEL is a separate adb argument
 	adb shell input keyevent $(printf 'KEYCODE_DEL %.0s' $(seq 1 80))
 	adb shell input text "$text"
 	sleep 1
@@ -510,7 +510,7 @@ nudge_collection_list() {
 	dump_ui
 	local refresh
 	refresh="$(find_center "Refresh list")"
-	# shellcheck disable=SC2086
+	# shellcheck disable=SC2086 # $refresh is "x y", split into two adb arguments
 	[ -z "$refresh" ] || adb shell input tap $refresh
 }
 for current_tab in CardDAV CalDAV; do

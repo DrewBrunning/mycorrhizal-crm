@@ -417,6 +417,18 @@ jobs:
           done
           exit 1
 
+      # Issue #1905: the module graph must be tidy and its checksums verified.
+      # `go mod tidy -diff` (Go 1.23+) prints the diff and exits non-zero
+      # without rewriting, so a dependency left in go.mod after its last import
+      # was deleted fails here instead of silently staying in the SBOM, the
+      # licence scan, and the govulncheck/Grype/Trivy surface. tools.mod is a
+      # separate graph with no packages of its own, so the shared script tidies
+      # it in a scratch module directory; `go mod verify` then checks both
+      # graphs against the module cache. The pre-commit hook runs the same
+      # script for staged Go/module files.
+      - name: Verify Go module graphs are tidy and checksums match
+        run: bash .github/scripts/check-go-modules.sh
+
       - name: Check formatting and vet
         working-directory: backend
         run: |

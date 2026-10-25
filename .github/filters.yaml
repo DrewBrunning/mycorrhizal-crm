@@ -20,6 +20,9 @@
 #                binary + all-in-one image reproducibility check)
 #   workflows -> any change under .github/ (including this file) re-runs
 #                everything, because a workflow change can affect any check
+#   shell     -> the standalone shell scripts actionlint's `run:`-block
+#                shellcheck pass cannot see (issue #1904); a script change
+#                only needs the workflow-lint job, not the whole stack
 #
 # docs/** intentionally maps to nothing here: docs changes trigger only the
 # docs job (docs.yml), which is already path-filtered to docs/**.
@@ -42,6 +45,10 @@
 go-manifests:
   - 'backend/go.mod'
   - 'backend/go.sum'
+  # Issue #1905: the CI-tool module graph is a dependency manifest too; its
+  # tidy/verify gate (unit-tests.yml) and the Go licence scan follow it.
+  - 'backend/tools.mod'
+  - 'backend/tools.sum'
 
 npm-manifests:
   - 'frontend/package.json'
@@ -286,3 +293,13 @@ workflows:
   # .github/ but are linted/tested by actionlint.yml.
   - 'scripts/android-local-mode-device-test.sh'
   - 'scripts/tests/**'
+
+# shell (issue #1904): actionlint's own shellcheck pass sees only workflow
+# `run:` blocks, so every standalone shell script needs its own gate. This
+# filter selects the actionlint job's shellcheck discovery (all `*.sh` plus
+# the extension-less .githooks and android/gradlew) without re-running the
+# whole workflow stack that `workflows` triggers.
+shell:
+  - '**/*.sh'
+  - '.githooks/**'
+  - 'android/gradlew'

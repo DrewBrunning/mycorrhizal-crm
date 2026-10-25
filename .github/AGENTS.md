@@ -44,9 +44,15 @@ deterministic gates. Install per clone **and per worktree** as described in the 
 shadows the shared setting, and repairs the `CLAUDE.md` aliases).
 
 - **Always:** client-side `gitleaks` secret scan (fail-closed on a missing binary).
+- **Staged shell scripts:** `shellcheck` (issue #1904) over the same discovery CI uses — every tracked
+  `*.sh` plus extension-less files whose shebang is `sh`/`bash` (`.githooks/*`, `android/gradlew`) —
+  fail-closed on a missing binary. The single implementation is
+  `.github/scripts/shellcheck-scripts.sh` (`--staged` locally).
 - **Staged `backend/`:** `gofmt -l`, `go build ./...`, `go vet ./...`, `golangci-lint` (pinned to the
   version `unit-tests.yml` uses), `gormerrcheck`, `rawtimecheck`, the contract-fixtures/DATA-01/
   INT-01/API-baseline/generated-TS drift tests, and the mutation-scope config drift test.
+- **Staged Go or module files:** `go mod tidy -diff` for `go.mod` and `tools.mod`, and `go mod verify`
+  on both graphs (issue #1905) via `.github/scripts/check-go-modules.sh`.
 - **Staged `frontend/`:** `tsc --noEmit`, `biome ci`, `eslint` (`yarn lint`, type-aware;
   `no-floating-promises`/`no-misused-promises`/`await-thenable` are errors), and `knip` (issue
   #1907).

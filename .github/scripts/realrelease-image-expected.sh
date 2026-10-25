@@ -50,7 +50,7 @@ emit() {
 }
 
 manifest_cmd="${REALRELEASE_MANIFEST_CMD:-docker manifest inspect}"
-# shellcheck disable=SC2086
+# shellcheck disable=SC2086 # manifest_cmd is a command plus flags, word-split on purpose
 if out="$($manifest_cmd "$image" 2>&1)"; then
   emit RUN
   exit 0

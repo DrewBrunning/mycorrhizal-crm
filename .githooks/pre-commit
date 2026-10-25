@@ -24,7 +24,7 @@
 set -u
 
 repo_root="$(git rev-parse --show-toplevel)"
-cd "$repo_root"
+cd "$repo_root" || exit 1
 
 overall=0
 RED=$'\033[31m'
@@ -57,7 +57,7 @@ run_gofmt() {
     echo "${GREEN}    ok${RESET}"
   else
     echo "${RED}    FAILED: gofmt found unformatted files:${RESET}"
-    echo "$out" | sed 's/^/      /'
+    printf '%s\n' "      ${out//$'\n'/$'\n'      }"
     echo "    fix with: cd backend && gofmt -w <file>"
     overall=1
   fi
@@ -91,6 +91,7 @@ staged_files="$(git diff --cached --name-only --diff-filter=ACMR)"
 backend_changed=false
 frontend_changed=false
 changelog_relevant=false
+go_modules_changed=false
 
 while IFS= read -r f; do
   [ -z "$f" ] && continue
@@ -101,11 +102,24 @@ while IFS= read -r f; do
     frontend/*) frontend_changed=true ;;
   esac
   case "$f" in
+    backend/*.go|backend/go.mod|backend/go.sum|backend/tools.mod|backend/tools.sum)
+      go_modules_changed=true
+      ;;
+  esac
+  case "$f" in
     backend/database/migrations/*|backend/config/config.go|.env.example)
       changelog_relevant=true
       ;;
   esac
 done <<< "$staged_files"
+
+# Issue #1904: shellcheck every staged shell script (CI discovers all tracked
+# scripts; this is the same implementation for the staged subset). The script
+# exits 0 when nothing is staged, and fails closed on a missing shellcheck
+# only when there is a script to check.
+echo ""
+echo "${BOLD}## Shell scripts (staged shell files)${RESET}"
+run "shellcheck (staged shell scripts)" . bash .github/scripts/shellcheck-scripts.sh --staged
 
 if [ "$backend_changed" = true ]; then
   echo ""
@@ -127,6 +141,16 @@ if [ "$backend_changed" = true ]; then
     go test -run '^TestContractBaselineHolds$|^TestContractBaselineIsCurrent$' ./internal/apibaseline/...
   run "backend: mutation-scope generated configs drift (issue #915)" backend \
     bash -c "go test ./internal/mutationscope -run 'TestGeneratedConfigsAreCurrent|TestWorkflowMatrixMatchesScopes' -count=1 || { echo '    fix: cd backend && go run ./cmd/genmutationscope'; exit 1; }"
+fi
+
+if [ "$go_modules_changed" = true ]; then
+  echo ""
+  echo "${BOLD}## Go module graph (staged Go/module files)${RESET}"
+  # Issue #1905: both go.mod and the separate tools.mod graph must be tidy,
+  # and both must verify against the module cache. Same script as CI; run it
+  # with --write to regenerate tools.sum when a tool bump changes the graph.
+  run "backend: go mod tidy -diff + go mod verify (issue #1905)" . \
+    bash .github/scripts/check-go-modules.sh
 fi
 
 if [ "$frontend_changed" = true ]; then

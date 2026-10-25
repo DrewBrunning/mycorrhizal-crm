@@ -210,6 +210,8 @@
   - `backend/openapi.yaml` → backend + frontend + Android (the API contract).
   - `Dockerfile`, `docker-compose*.yml`, `docker/**` (nginx.conf etc.) → the e2e suites, which build and run the deployed artifact.
   - `.github/**` → everything (a workflow change can affect any check; this includes `filters.yaml` itself).
+  - any `*.sh` script, the extension-less `.githooks/*`, or `android/gradlew` → the `shell` filter runs
+    actionlint's shellcheck discovery over every tracked shell script (issue #1904).
   - `docs/**` → nothing here; the docs deploy job is already path-filtered to `docs/**`.
 - **Why a skipped job is safe to require.** A job skipped by its `if:` conditional reports **Success** (GitHub's current behavior) and satisfies a required status check — unlike a whole workflow skipped by `on: paths:`, which leaves its checks pending and blocks merges. So we gate at the job level, never at the workflow `paths:` level, and every suite check below can be marked required without unrelated pre-existing failures blocking a PR.
 - **Required checks on `main`:** `Backend (Go)`, `Frontend (Vitest)`, `Run E2E Tests`, `Android (Gradle)`, `Android E2E (emulator)`. `enforce_admins` is on, so the checks apply to admins too. Set from Settings → Branches (or the REST API, e.g. `gh api`).
@@ -229,7 +231,9 @@
 - This is local-only and doesn't replace server-side scanning. GitHub secret scanning and **push protection** are enabled, but only for provider-known formats: non-provider/generic patterns, validity checks and custom patterns are unavailable on this user-owned public repository (verified 2026-10-24, recorded in [`docs/security/asvs-l2.md` V1.1.1](docs/security/asvs-l2.md)), so GitHub does not know the `mycorrhizal_…` format (or the unprefixed webhook/device-grant formats). The local `.gitleaks.toml` rules/default pack are the layer that does, within the limits above.
 - **Same hook, more checks:** `.githooks/pre-commit` also runs local mirrors of CI's linters and a
   few governance/drift checks (path-scoped to what's staged), and `.githooks/commit-msg` enforces
-  DCO sign-off. **One-time setup per clone** (and once more in every linked worktree — see the
+  DCO sign-off. Staged shell scripts are shellchecked (issue #1904), which requires the
+  `shellcheck` binary on `PATH` (`apt install shellcheck`, `brew install shellcheck`; fail-closed,
+  like gitleaks). **One-time setup per clone** (and once more in every linked worktree — see the
   script's own comments for why):
   ```bash
   bash scripts/install-git-hooks.sh
