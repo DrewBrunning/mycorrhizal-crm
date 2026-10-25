@@ -166,10 +166,14 @@ jobs:
           cache: 'yarn'
           cache-dependency-path: frontend/yarn.lock
 
+      # license-checker reads package metadata only, so the tree is installed
+      # without lifecycle scripts: an install hook is untrusted code and must
+      # not execute in a job that holds a token (same rule as
+      # npm-supply-chain.yml's GuardDog job).
       - name: Install frontend dependencies (third-party notices)
         if: env.RUN_NOTICES == 'true'
         working-directory: frontend
-        run: yarn install --frozen-lockfile
+        run: yarn install --frozen-lockfile --ignore-scripts
 
       # Issue #1880: regenerate from the actual shipped dependency graph and
       # compare with the committed notice. A dependency bump (or a new
