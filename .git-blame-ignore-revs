@@ -1,0 +1,6 @@
+# Mechanical formatting commits ignored by `git blame`.
+# Enable locally with: git config blame.ignoreRevsFile .git-blame-ignore-revs
+# GitHub applies this file automatically.
+
+# Issue #1901: ./gradlew detekt --auto-correct (android_studio ktlint style).
+c9653875864d701378bc36f06fa20fb568ea30cb
