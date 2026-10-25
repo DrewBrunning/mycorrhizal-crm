@@ -17,6 +17,7 @@ package services
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -361,6 +362,34 @@ func TestSyncSubscription_OversizedResponse_RejectedNotSilentlyAccepted(t *testi
 
 	require.NoError(t, db.First(sub, sub.ID).Error)
 	assert.Equal(t, models.ContactSyncStatusError, sub.LastSyncStatus)
+}
+
+// TestContactLimitedBodyEnforcesLimit covers the streaming guard directly.
+// XML/REPORT bodies now take the buffered normalizeETagResponse path (which
+// enforces the same limit), but non-XML bodies still stream through this
+// wrapper, so its too-large and clean-EOF branches each need a pin.
+func TestContactLimitedBodyEnforcesLimit(t *testing.T) {
+	t.Run("too large", func(t *testing.T) {
+		body := &contactLimitedBody{inner: io.NopCloser(strings.NewReader("0123456789")), remaining: 5}
+		buf := make([]byte, 10)
+		n, err := body.Read(buf)
+		require.NoError(t, err)
+		assert.Equal(t, 5, n)
+		_, err = body.Read(buf)
+		assert.ErrorIs(t, err, ErrContactSyncTooLarge)
+		assert.NoError(t, body.Close())
+	})
+
+	t.Run("exact size then EOF", func(t *testing.T) {
+		body := &contactLimitedBody{inner: io.NopCloser(strings.NewReader("01234")), remaining: 5}
+		buf := make([]byte, 10)
+		n, err := body.Read(buf)
+		require.NoError(t, err)
+		assert.Equal(t, 5, n)
+		_, err = body.Read(buf)
+		assert.ErrorIs(t, err, io.EOF)
+		assert.NoError(t, body.Close())
+	})
 }
 
 // writeOversizedMultistatus writes a minimal multistatus response embedding a

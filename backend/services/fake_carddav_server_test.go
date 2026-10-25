@@ -34,12 +34,13 @@ import (
 // bookkeeping is where a server CAN disagree and therefore where the
 // deterministic suite concentrates its assertions.
 //
-// The ETag/token degradation knobs exist so the "missing or malformed ETag /
+// The ETag/token degradation knobs exist so the "missing ETag or malformed
 // token must degrade to a defined behavior" half of issue #496 item 2 is
 // exercised explicitly instead of assumed:
 //
 //   - suppressETags   — omit getetag from REPORT/GET responses
-//   - malformedETags  — emit an unquoted, unparseable getetag
+//   - etagForm        — emit the RFC 7232 quoted form (default), an unquoted
+//     value, or a weak W/"…" value (issue #2003)
 //   - emptySyncToken  — omit the sync-token from sync-collection responses
 type fakeCardDAVServer struct {
 	t *testing.T
@@ -57,7 +58,7 @@ type fakeCardDAVServer struct {
 	changeLog []fakeCardDAVChange
 
 	suppressETags  bool
-	malformedETags bool
+	etagForm       fakeETagForm
 	emptySyncToken bool
 	// failRequests makes every request return 503 — the "server is down"
 	// mode the offline-window/reconnection test toggles.
@@ -79,6 +80,32 @@ type fakeCardDAVChange struct {
 	token   int
 	href    string
 	deleted bool
+}
+
+// fakeETagForm selects the wire form of the server's ETags. Servers in the
+// wild (Mailbox.org is the reported one) emit unquoted or weak ETags even
+// though go-webdav v0.7.0 only accepts the strong quoted form; issue #2003
+// makes the sync client normalize all three.
+type fakeETagForm int
+
+const (
+	// The zero value is the default strong quoted form (RFC 7232).
+	fakeETagUnquoted fakeETagForm = iota + 1
+	fakeETagWeak
+)
+
+// wireETag renders etag in the currently selected wire form. The default
+// strong quoted form matches RFC 7232; the other two reproduce the server
+// behaviour the sync client has to tolerate.
+func (f *fakeCardDAVServer) wireETag(etag string) string {
+	switch f.etagForm {
+	case fakeETagUnquoted:
+		return etag
+	case fakeETagWeak:
+		return `W/"` + etag + `"`
+	default:
+		return fmt.Sprintf("%q", etag)
+	}
 }
 
 // fakeCardDAVCounts tallies requests by kind so a test can assert that an
@@ -196,11 +223,7 @@ func xmlEscape(s string) string {
 func (f *fakeCardDAVServer) cardResponse(sb *strings.Builder, href string, card *fakeCardDAVCard) {
 	etag := ""
 	if !f.suppressETags {
-		if f.malformedETags {
-			etag = "<d:getetag>etag-without-quotes</d:getetag>"
-		} else {
-			etag = "<d:getetag>" + fmt.Sprintf("%q", card.etag) + "</d:getetag>"
-		}
+		etag = "<d:getetag>" + xmlEscape(f.wireETag(card.etag)) + "</d:getetag>"
 	}
 	modified := "<d:getlastmodified>" + card.modTime.UTC().Format(http.TimeFormat) + "</d:getlastmodified>"
 	fmt.Fprintf(sb, `  <d:response>
@@ -249,7 +272,7 @@ func (f *fakeCardDAVServer) serveGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/vcard; charset=utf-8")
-	w.Header().Set("ETag", fmt.Sprintf("%q", card.etag))
+	w.Header().Set("ETag", f.wireETag(card.etag))
 	w.Header().Set("Last-Modified", card.modTime.UTC().Format(http.TimeFormat))
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(card.raw))
@@ -271,7 +294,7 @@ func (f *fakeCardDAVServer) servePut(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.WriteHeader(http.StatusNoContent)
 	}
-	w.Header().Set("ETag", fmt.Sprintf("%q", etag))
+	w.Header().Set("ETag", f.wireETag(etag))
 }
 
 func (f *fakeCardDAVServer) serveDelete(w http.ResponseWriter, r *http.Request) {

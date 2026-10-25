@@ -150,7 +150,18 @@ func (t *calendarRoundTripper) RoundTrip(req *http.Request) (*http.Response, err
 		resp.Body.Close()
 		return nil, errCalendarQueryUnsupported
 	}
-	resp.Body = &limitedBody{inner: resp.Body, remaining: maxCalendarResponseBytes}
+	// Issue #2003: the CalDAV client has the same strconv.Unquote-only ETag
+	// handling as CardDAV, and the push path stores the PUT response ETag, so
+	// normalize both here. A buffered XML body has already had the size limit
+	// enforced; everything else keeps the streaming limit.
+	buffered, err := normalizeETagResponse(req, resp, maxCalendarResponseBytes, ErrCalendarTooLarge)
+	if err != nil {
+		resp.Body.Close()
+		return nil, err
+	}
+	if !buffered {
+		resp.Body = &limitedBody{inner: resp.Body, remaining: maxCalendarResponseBytes}
+	}
 	return resp, nil
 }
 

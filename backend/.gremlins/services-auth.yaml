@@ -33,6 +33,7 @@ unleash:
         - ^duplicate_service\.go$
         - ^email_renderer\.go$
         - ^error_aggregation\.go$
+        - ^etag_normalize\.go$
         - ^geocoder\.go$
         - ^geocoder_client\.go$
         - ^geopulse_client\.go$
