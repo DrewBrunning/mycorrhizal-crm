@@ -195,6 +195,18 @@ A completeness test (`TestTriggerPromptSetIsComplete` in
 2–3 prompts, every named skill exists, and the ambiguous pairs are declared. It
 does **not** prove selection; that is the manual run.
 
+## Agent evaluation
+
+`cmd/agenteval` runs one representative task per suite in a disposable worktree
+and scores it against the same `Suites` commands a skill declares; it is
+dispatch-only and never a merge or release gate. Beyond command exit codes it
+records scope violations, generated-artifact hand-edits, expected findings, and
+gate-integrity findings: added test skips, lint/coverage suppressions, removed
+test declarations, and deleted test files. Integrity findings fail the run
+because a green suite that was earned by weakening the gate is not evidence the
+task was completed. A finding can be a legitimate choice for a specific task;
+read the artifact before treating it as a defect.
+
 ## Milestone-gate audit
 
 At every milestone gate, do the context truth audit and record it in the gate

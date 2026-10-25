@@ -190,6 +190,31 @@ func TestApplySeedPatch(t *testing.T) {
 	}
 }
 
+func TestRunRecordsIntegrityViolations(t *testing.T) {
+	root, sha := initRepo(t)
+	artifact, err := Run(context.Background(), Options{
+		Root:         root,
+		Spec:         baseSpec(t, root, sha),
+		Suites:       []Suite{{Name: "demo", Commands: []string{"true"}}},
+		AgentCommand: `printf 'package x\n\nimport "testing"\n\nfunc TestX(t *testing.T) { t.Skip("x") }\n' > backend/x_test.go`,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifact.Context == nil {
+		t.Fatal("missing context run")
+	}
+	if artifact.Status != "failed" || artifact.Context.Success {
+		t.Fatalf("artifact = %+v context = %+v", artifact, artifact.Context)
+	}
+	if len(artifact.Context.IntegrityViolations) == 0 {
+		t.Fatalf("integrity findings = %v", artifact.Context.IntegrityViolations)
+	}
+	if !strings.Contains(strings.Join(artifact.Context.IntegrityViolations, "\n"), "added test skip: backend/x_test.go") {
+		t.Fatalf("integrity findings = %v", artifact.Context.IntegrityViolations)
+	}
+}
+
 func TestRunFailsWhenSuiteCommandFails(t *testing.T) {
 	root, sha := initRepo(t)
 	artifact, err := Run(context.Background(), Options{

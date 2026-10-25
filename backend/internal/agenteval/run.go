@@ -150,6 +150,15 @@ func runWorktree(ctx context.Context, opts Options, wt string, control bool, com
 	result.ChangedFiles = subtract(changed, baseline)
 	result.ScopeViolations = ClassifyPaths(result.ChangedFiles, opts.Spec.ExpectPaths, opts.Spec.ForbidPaths)
 	result.HandEditedGenerated = DetectHandEdits(result.ChangedFiles, GeneratedArtifacts)
+	patch, err := worktreePatch(ctx, wt)
+	if err != nil {
+		return result, stripped, err
+	}
+	deleted, err := deletedFiles(ctx, wt)
+	if err != nil {
+		return result, stripped, err
+	}
+	result.IntegrityViolations = DetectIntegrityViolations(patch, deleted)
 	if len(opts.Spec.ExpectedFindings) > 0 {
 		result.ExpectedFindingsOK, result.MissingFindings = FindingsSatisfied(opts.Spec.ExpectedFindings, agent.Output)
 	}
