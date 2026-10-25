@@ -40,6 +40,24 @@ func normalizeETagValue(raw string) string {
 	return strconv.Quote(value)
 }
 
+// decodeNormalizedETag recovers the opaque ETag value from a response header
+// that normalizeETagResponse rewrote with strconv.Quote. Callers that need the
+// raw value (notably to reuse it as an If-Match validator) must decode it:
+// trimming the surrounding quotes alone would leave a valid backslash or
+// other escape doubled, so the next conditional request could never match.
+func decodeNormalizedETag(header string) string {
+	value := strings.TrimSpace(header)
+	if value == "" {
+		return ""
+	}
+	if unquoted, err := strconv.Unquote(value); err == nil {
+		return unquoted
+	}
+	// A response that bypassed the sync transport is not Go-quoted; fall back
+	// to the historical quote-trimming behaviour rather than dropping it.
+	return strings.Trim(value, `"`)
+}
+
 // normalizeETagResponse normalizes the ETag header and, for XML responses
 // (REPORT/multistatus and anything served as XML), the getetag elements in
 // the body. It reports whether it buffered and replaced the body, so callers

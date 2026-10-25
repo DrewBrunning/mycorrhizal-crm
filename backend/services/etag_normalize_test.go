@@ -37,6 +37,24 @@ func TestNormalizeETagValue(t *testing.T) {
 	}
 }
 
+func TestDecodeNormalizedETag(t *testing.T) {
+	cases := map[string]struct {
+		header string
+		want   string
+	}{
+		"empty":             {header: "", want: ""},
+		"bare fallback":     {header: "bare", want: "bare"},
+		"quoted":            {header: `"quoted"`, want: "quoted"},
+		"escaped backslash": {header: `"a\\b"`, want: `a\b`},
+		"escaped quote":     {header: `"a\"b"`, want: `a"b`},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, tc.want, decodeNormalizedETag(tc.header))
+		})
+	}
+}
+
 func TestNormalizeGetETagXML(t *testing.T) {
 	const body = `<?xml version="1.0" encoding="utf-8"?>
 <d:multistatus xmlns:d="DAV:" xmlns:card="urn:ietf:params:xml:ns:carddav">

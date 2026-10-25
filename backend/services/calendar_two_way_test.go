@@ -9,6 +9,7 @@ import (
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"sync"
 	"testing"
@@ -131,7 +132,7 @@ func TestTwoWay_LocalOnlyChangePushesWithIfMatch(t *testing.T) {
 	cfg := twoWayConfig()
 	user := createCalendarTestUser(t, db)
 
-	mock := newMockCalendarServer(vcalendarWith(importedVEvent("Original")), "etag-remote-1")
+	mock := newMockCalendarServer(vcalendarWith(importedVEvent("Original")), `"etag-remote-1"`)
 	defer mock.Close()
 
 	sub := newTestSubscription(t, db, cfg, user.ID, mock.server.URL+"/calendars/test/", "", "")
@@ -179,7 +180,7 @@ func TestTwoWay_PushRetryReusesRemoteUIDNoDuplicate(t *testing.T) {
 	cfg := twoWayConfig()
 	user := createCalendarTestUser(t, db)
 
-	mock := newMockCalendarServer(vcalendarWith(importedVEvent("Original")), "etag-remote-1")
+	mock := newMockCalendarServer(vcalendarWith(importedVEvent("Original")), `"etag-remote-1"`)
 	defer mock.Close()
 
 	sub := newTestSubscription(t, db, cfg, user.ID, mock.server.URL+"/calendars/test/", "", "")
@@ -346,12 +347,68 @@ func TestTwoWay_WeakAndBareETagsWireFormMismatchUsesLocalWins(t *testing.T) {
 	}
 }
 
+// TestTwoWay_EmptyETagImportsAndPushesWithoutIfMatch is the issue #2003
+// follow-up acceptance case: an empty <getetag> must not fail the whole sync
+// in go-webdav's strconv.Unquote(""), and a later local edit is pushed
+// without a precondition because there is no validator to compare.
+func TestTwoWay_EmptyETagImportsAndPushesWithoutIfMatch(t *testing.T) {
+	db := setupCalendarSyncTestDB(t)
+	cfg := twoWayConfig()
+	user := createCalendarTestUser(t, db)
+
+	// An empty string renders a paired-empty <d:getetag></d:getetag>.
+	mock := newMockCalendarServer(vcalendarWith(importedVEvent("Original")), "")
+	defer mock.Close()
+
+	sub := newTestSubscription(t, db, cfg, user.ID, mock.server.URL+"/calendars/test/", "", "")
+	service := NewCalendarSyncService(false)
+
+	stats, err := service.SyncSubscription(context.Background(), db, cfg, sub)
+	require.NoError(t, err, "an empty getetag must not fail the sync")
+	assert.Equal(t, CalendarSyncStats{Created: 1}, stats)
+
+	link, activity := loadLinkAndActivity(t, db, sub)
+	assert.Empty(t, link.RemoteETag, "an empty wire ETag degrades to an empty stored validator")
+
+	time.Sleep(1100 * time.Millisecond)
+	activity.Title = "Local rename"
+	require.NoError(t, db.Save(&activity).Error)
+
+	_, err = service.SyncSubscription(context.Background(), db, cfg, sub)
+	require.NoError(t, err)
+	require.Equal(t, 1, mock.putCount(), "the local edit must still be pushed")
+	assert.Equal(t, "", mock.lastPut().ifMatch, "without a validator the push must not invent one")
+	assert.Contains(t, mock.lastPut().body, "Local rename")
+}
+
+// TestPutCalendarObjectPreservesEscapedResponseETag pins the write-path
+// counterpart of the transport normalization: the ETag stored after a PUT is
+// the server's opaque value, not the intermediate strconv.Quote escaping. A
+// backslash is valid in an RFC 9110 opaque-tag, and keeping the extra escape
+// would make every later If-Match miss (spurious 412 on each push).
+func TestPutCalendarObjectPreservesEscapedResponseETag(t *testing.T) {
+	base := &cannedRoundTripper{resp: &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{"Etag": []string{`"a\b"`}},
+		Body:       io.NopCloser(strings.NewReader("")),
+	}}
+	client := &http.Client{Transport: &calendarRoundTripper{base: base}}
+	remoteURL, err := url.Parse("https://remote.example/calendars/test/event1.ics")
+	require.NoError(t, err)
+
+	cal := activityToICalendar("event-1", &models.Activity{Title: "Pushed", Date: Now()})
+	etag, status, err := putCalendarObject(client, remoteURL, cal, "")
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, status)
+	assert.Equal(t, `a\b`, etag, "the stored ETag must be the opaque value the server issued")
+}
+
 func TestTwoWay_RemoteOnlyChangePullsWithoutPush(t *testing.T) {
 	db := setupCalendarSyncTestDB(t)
 	cfg := twoWayConfig()
 	user := createCalendarTestUser(t, db)
 
-	mock := newMockCalendarServer(vcalendarWith(importedVEvent("Original")), "etag-remote-1")
+	mock := newMockCalendarServer(vcalendarWith(importedVEvent("Original")), `"etag-remote-1"`)
 	defer mock.Close()
 
 	sub := newTestSubscription(t, db, cfg, user.ID, mock.server.URL+"/calendars/test/", "", "")
@@ -363,7 +420,7 @@ func TestTwoWay_RemoteOnlyChangePullsWithoutPush(t *testing.T) {
 	// Remote changes; local stays untouched.
 	mock.mu.Lock()
 	mock.event = vcalendarWith(importedVEvent("Remote change"))
-	mock.etag = "etag-remote-2"
+	mock.etag = `"etag-remote-2"`
 	mock.mu.Unlock()
 
 	stats, err := service.SyncSubscription(context.Background(), db, cfg, sub)
@@ -380,7 +437,7 @@ func TestTwoWay_BothChanged_LocalWins(t *testing.T) {
 	cfg := twoWayConfig()
 	user := createCalendarTestUser(t, db)
 
-	mock := newMockCalendarServer(vcalendarWith(importedVEvent("Original")), "etag-remote-1")
+	mock := newMockCalendarServer(vcalendarWith(importedVEvent("Original")), `"etag-remote-1"`)
 	defer mock.Close()
 
 	// The remote moved on after our last fetch: the If-Match PUT gets a 412,
@@ -406,7 +463,7 @@ func TestTwoWay_BothChanged_LocalWins(t *testing.T) {
 
 	mock.mu.Lock()
 	mock.event = vcalendarWith(importedVEvent("Remote edit"))
-	mock.etag = "etag-remote-2"
+	mock.etag = `"etag-remote-2"`
 	mock.mu.Unlock()
 
 	_, err = service.SyncSubscription(context.Background(), db, cfg, sub)
@@ -426,7 +483,7 @@ func TestTwoWay_LocalDeleteIsRespectedAndNotPushed(t *testing.T) {
 	cfg := twoWayConfig()
 	user := createCalendarTestUser(t, db)
 
-	mock := newMockCalendarServer(vcalendarWith(importedVEvent("Original")), "etag-remote-1")
+	mock := newMockCalendarServer(vcalendarWith(importedVEvent("Original")), `"etag-remote-1"`)
 	defer mock.Close()
 
 	sub := newTestSubscription(t, db, cfg, user.ID, mock.server.URL+"/calendars/test/", "", "")
@@ -450,7 +507,7 @@ func TestTwoWay_RemoteDeleteDoesNotDeleteLocalActivity(t *testing.T) {
 	cfg := twoWayConfig()
 	user := createCalendarTestUser(t, db)
 
-	mock := newMockCalendarServer(vcalendarWith(importedVEvent("Original")), "etag-remote-1")
+	mock := newMockCalendarServer(vcalendarWith(importedVEvent("Original")), `"etag-remote-1"`)
 	defer mock.Close()
 
 	sub := newTestSubscription(t, db, cfg, user.ID, mock.server.URL+"/calendars/test/", "", "")
@@ -479,7 +536,7 @@ func TestTwoWay_DisabledConfigNeverPushes(t *testing.T) {
 	cfg := calendarTestConfig() // CalDAVTwoWayEnabled = false
 	user := createCalendarTestUser(t, db)
 
-	mock := newMockCalendarServer(vcalendarWith(importedVEvent("Original")), "etag-remote-1")
+	mock := newMockCalendarServer(vcalendarWith(importedVEvent("Original")), `"etag-remote-1"`)
 	defer mock.Close()
 
 	sub := newTestSubscription(t, db, cfg, user.ID, mock.server.URL+"/calendars/test/", "", "")

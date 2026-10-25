@@ -928,7 +928,7 @@ func putCalendarObject(httpClient webdav.HTTPClient, remoteURL *url.URL, cal *ic
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusNoContent {
 		return "", resp.StatusCode, nil
 	}
-	return strings.Trim(resp.Header.Get("ETag"), `"`), resp.StatusCode, nil
+	return decodeNormalizedETag(resp.Header.Get("ETag")), resp.StatusCode, nil
 }
 
 // pushLocalEdits propagates local CRM edits on imported activities back out
