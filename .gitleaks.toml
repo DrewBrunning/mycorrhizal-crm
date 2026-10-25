@@ -74,3 +74,13 @@ regexes = ['''test-jwt-secret-0123456789abcdef0123456789abcdef''']
 description = "Fake mcrh_live_ API token fixtures in Android tests (#1901)"
 regexTarget = "line"
 regexes = ['''mcrh_live_[A-Za-z0-9]+''']
+
+# Issue #1909: backend/tools.mod is a separate Go module graph for the CI
+# tools, so its module hashes live in backend/tools.sum rather than go.sum.
+# Gitleaks' default pack allowlists go.sum by filename; without this scoped
+# allowlist, adding a tool (vacuum) reports its public module checksums as
+# generic API keys on entropy alone. The file contains only module paths,
+# versions and h1: checksums.
+[[allowlists]]
+description = "Go CI-tool module checksums (backend/tools.sum) are public hashes"
+paths = ['''backend/tools\.sum$''']

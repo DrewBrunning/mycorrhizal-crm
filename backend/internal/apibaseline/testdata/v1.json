@@ -262,11 +262,11 @@
         },
         {
           "status": "401",
-          "schema": ""
+          "schema": "ref:Error"
         },
         {
           "status": "403",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -291,11 +291,11 @@
         },
         {
           "status": "401",
-          "schema": ""
+          "schema": "ref:Error"
         },
         {
           "status": "403",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -310,11 +310,11 @@
         },
         {
           "status": "401",
-          "schema": ""
+          "schema": "ref:Error"
         },
         {
           "status": "403",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -359,11 +359,11 @@
         },
         {
           "status": "401",
-          "schema": ""
+          "schema": "ref:Error"
         },
         {
           "status": "403",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -378,11 +378,11 @@
         },
         {
           "status": "401",
-          "schema": ""
+          "schema": "ref:Error"
         },
         {
           "status": "403",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -397,11 +397,11 @@
         },
         {
           "status": "401",
-          "schema": ""
+          "schema": "ref:Error"
         },
         {
           "status": "403",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -443,11 +443,11 @@
         },
         {
           "status": "401",
-          "schema": ""
+          "schema": "ref:Error"
         },
         {
           "status": "403",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -507,11 +507,11 @@
         },
         {
           "status": "401",
-          "schema": ""
+          "schema": "ref:Error"
         },
         {
           "status": "403",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -526,11 +526,11 @@
         },
         {
           "status": "401",
-          "schema": ""
+          "schema": "ref:Error"
         },
         {
           "status": "403",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -572,7 +572,7 @@
         },
         {
           "status": "500",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -598,11 +598,11 @@
         },
         {
           "status": "401",
-          "schema": ""
+          "schema": "ref:Error"
         },
         {
           "status": "403",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -622,11 +622,11 @@
         },
         {
           "status": "401",
-          "schema": ""
+          "schema": "ref:Error"
         },
         {
           "status": "403",
-          "schema": ""
+          "schema": "ref:Error"
         },
         {
           "status": "409",
@@ -1063,11 +1063,11 @@
         },
         {
           "status": "403",
-          "schema": ""
+          "schema": "ref:Error"
         },
         {
           "status": "429",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -1141,7 +1141,7 @@
         },
         {
           "status": "500",
-          "schema": ""
+          "schema": "object"
         }
       ]
     },
@@ -1163,11 +1163,11 @@
         },
         {
           "status": "400",
-          "schema": ""
+          "schema": "ref:Error"
         },
         {
           "status": "401",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -1458,7 +1458,7 @@
         },
         {
           "status": "400",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -2272,7 +2272,7 @@
         },
         {
           "status": "400",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -2287,7 +2287,7 @@
         },
         {
           "status": "401",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -2302,7 +2302,7 @@
         },
         {
           "status": "400",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -2323,11 +2323,11 @@
         },
         {
           "status": "400",
-          "schema": ""
+          "schema": "ref:Error"
         },
         {
           "status": "404",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -2343,7 +2343,7 @@
         },
         {
           "status": "400",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -2359,11 +2359,11 @@
         },
         {
           "status": "400",
-          "schema": ""
+          "schema": "ref:Error"
         },
         {
           "status": "409",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -2384,11 +2384,11 @@
         },
         {
           "status": "400",
-          "schema": ""
+          "schema": "ref:Error"
         },
         {
           "status": "404",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -2409,11 +2409,11 @@
         },
         {
           "status": "400",
-          "schema": ""
+          "schema": "ref:Error"
         },
         {
           "status": "404",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -2428,11 +2428,11 @@
         },
         {
           "status": "400",
-          "schema": ""
+          "schema": "ref:Error"
         },
         {
           "status": "429",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -2453,11 +2453,11 @@
         },
         {
           "status": "400",
-          "schema": ""
+          "schema": "ref:Error"
         },
         {
           "status": "404",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -2473,7 +2473,7 @@
         },
         {
           "status": "400",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -2489,11 +2489,11 @@
         },
         {
           "status": "400",
-          "schema": ""
+          "schema": "ref:Error"
         },
         {
           "status": "429",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -2509,11 +2509,11 @@
         },
         {
           "status": "400",
-          "schema": ""
+          "schema": "ref:Error"
         },
         {
           "status": "409",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -2534,11 +2534,11 @@
         },
         {
           "status": "400",
-          "schema": ""
+          "schema": "ref:Error"
         },
         {
           "status": "404",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -2559,11 +2559,11 @@
         },
         {
           "status": "400",
-          "schema": ""
+          "schema": "ref:Error"
         },
         {
           "status": "404",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -2579,7 +2579,7 @@
         },
         {
           "status": "400",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -2595,7 +2595,7 @@
         },
         {
           "status": "400",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -2610,7 +2610,7 @@
         },
         {
           "status": "400",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -2626,7 +2626,7 @@
         },
         {
           "status": "400",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -2641,7 +2641,7 @@
         },
         {
           "status": "400",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -3276,7 +3276,7 @@
         },
         {
           "status": "403",
-          "schema": ""
+          "schema": "ref:Error"
         },
         {
           "status": "404",
@@ -3914,7 +3914,7 @@
         },
         {
           "status": "507",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -3940,7 +3940,7 @@
         },
         {
           "status": "400",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -3976,7 +3976,7 @@
         },
         {
           "status": "400",
-          "schema": ""
+          "schema": "ref:Error"
         },
         {
           "status": "401",
@@ -4011,7 +4011,7 @@
         },
         {
           "status": "400",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -4806,7 +4806,7 @@
         },
         {
           "status": "500",
-          "schema": "object"
+          "schema": "ref:Error"
         }
       ]
     },
@@ -5506,15 +5506,15 @@
         },
         {
           "status": "400",
-          "schema": ""
+          "schema": "ref:Error"
         },
         {
           "status": "422",
-          "schema": ""
+          "schema": "ref:Error"
         },
         {
           "status": "429",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -5852,11 +5852,11 @@
         },
         {
           "status": "403",
-          "schema": ""
+          "schema": "ref:Error"
         },
         {
           "status": "429",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -5886,11 +5886,11 @@
         },
         {
           "status": "403",
-          "schema": ""
+          "schema": "ref:Error"
         },
         {
           "status": "429",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -7001,7 +7001,7 @@
         },
         {
           "status": "403",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -7021,7 +7021,7 @@
         },
         {
           "status": "403",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -7241,7 +7241,7 @@
         },
         {
           "status": "403",
-          "schema": ""
+          "schema": "ref:Error"
         },
         {
           "status": "409",
@@ -8104,7 +8104,7 @@
         },
         {
           "status": "429",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -8136,7 +8136,7 @@
         },
         {
           "status": "429",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -8171,7 +8171,7 @@
         },
         {
           "status": "403",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -8444,7 +8444,7 @@
         },
         {
           "status": "403",
-          "schema": ""
+          "schema": "ref:Error"
         },
         {
           "status": "409",
@@ -8452,7 +8452,7 @@
         },
         {
           "status": "429",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
@@ -8484,7 +8484,7 @@
         },
         {
           "status": "429",
-          "schema": ""
+          "schema": "ref:Error"
         }
       ]
     },
