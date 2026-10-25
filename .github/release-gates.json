@@ -145,7 +145,7 @@
       "tier": "per-pr",
       "mandatory": true,
       "release_gate": true,
-      "criterion": "citecheck + depexceptions + deprecations + docscheck + releasegatecheck all exit 0, plus the path-gated third-party notices drift check on a dependency-manifest/generator/notice change (issue #1944). Runs on every PR and nightly, is composed by the release-gate job (release-validate.yml), and the REL-06 workflow (release.yml) additionally runs `go run ./cmd/citecheck` directly as a hard gate (issue #608)."
+      "criterion": "citecheck + depexceptions + deprecations + docscheck + releasegatecheck all exit 0, the app-token full-history gitleaks scan (base-branch .gitleaks.toml, only the mycorrhizal-app-token rule, issue #1877) is clean, plus the path-gated third-party notices drift check on a dependency-manifest/generator/notice change (issue #1944). Runs on every PR and nightly, is composed by the release-gate job (release-validate.yml), and the REL-06 workflow (release.yml) additionally runs `go run ./cmd/citecheck` directly as a hard gate (issue #608)."
     },
     {
       "name": "Migration Tests",
