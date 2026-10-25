@@ -8,7 +8,7 @@
 
 services:
   mycorrhizal:
-    build: .
+    image: ghcr.io/drewbrunning/mycorrhizal-crm:${IMAGE_TAG:?set IMAGE_TAG, e.g. latest}
     container_name: mycorrhizal
     restart: unless-stopped
     env_file:
