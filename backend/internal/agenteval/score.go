@@ -49,21 +49,23 @@ type ControlDelta struct {
 
 // Artifact is the JSON contract the workflow uploads.
 type Artifact struct {
-	Task         string        `json:"task"`
-	BaseRef      string        `json:"base_ref"`
-	AgentName    string        `json:"agent_name,omitempty"`
-	AgentModel   string        `json:"agent_model,omitempty"`
-	AgentVersion string        `json:"agent_version,omitempty"`
-	AgentCommand string        `json:"agent_command"`
-	Status       string        `json:"status"` // passed | failed | skipped | error
-	Reason       string        `json:"reason,omitempty"`
-	StartedAt    time.Time     `json:"started_at"`
-	FinishedAt   time.Time     `json:"finished_at"`
-	DurationMS   int64         `json:"duration_ms"`
-	Stripped     []string      `json:"stripped,omitempty"`
-	Context      *RunResult    `json:"context,omitempty"`
-	Control      *RunResult    `json:"control,omitempty"`
-	Delta        *ControlDelta `json:"delta,omitempty"`
+	Task         string              `json:"task"`
+	BaseRef      string              `json:"base_ref"`
+	Profile      string              `json:"profile,omitempty"`
+	AgentName    string              `json:"agent_name,omitempty"`
+	AgentModel   string              `json:"agent_model,omitempty"`
+	AgentVersion string              `json:"agent_version,omitempty"`
+	AgentCommand string              `json:"agent_command"`
+	Status       string              `json:"status"` // passed | failed | skipped | error
+	Reason       string              `json:"reason,omitempty"`
+	StartedAt    time.Time           `json:"started_at"`
+	FinishedAt   time.Time           `json:"finished_at"`
+	DurationMS   int64               `json:"duration_ms"`
+	Stripped     []string            `json:"stripped,omitempty"`
+	Context      *RunResult          `json:"context,omitempty"`
+	Control      *RunResult          `json:"control,omitempty"`
+	Delta        *ControlDelta       `json:"delta,omitempty"`
+	Baseline     *BaselineComparison `json:"baseline,omitempty"`
 }
 
 // GeneratedArtifact is one committed artifact and the editable sources it is
@@ -267,6 +269,9 @@ func Markdown(a Artifact) string {
 		fmt.Fprintf(&b, "- Reason: %s\n", a.Reason)
 	}
 	fmt.Fprintf(&b, "- Base ref: `%s`\n", a.BaseRef)
+	if a.Profile != "" {
+		fmt.Fprintf(&b, "- Profile: `%s`\n", a.Profile)
+	}
 	fmt.Fprintf(&b, "- Agent: %s / %s / %s\n", a.AgentName, a.AgentModel, a.AgentVersion)
 	fmt.Fprintf(&b, "- Command: `%s`\n", a.AgentCommand)
 	fmt.Fprintf(&b, "- Duration: %dms\n\n", a.DurationMS)
@@ -281,6 +286,17 @@ func Markdown(a Artifact) string {
 	if a.Delta != nil {
 		fmt.Fprintf(&b, "\n## Delta\n\n- %s\n- command pass delta: %d\n- scope violation delta: %d\n- hand-edit delta: %d\n- changed-file delta: %d\n",
 			a.Delta.Summary, a.Delta.CommandPassDelta, a.Delta.ScopeViolationDelta, a.Delta.HandEditDelta, a.Delta.ChangedFileDelta)
+	}
+	if a.Baseline != nil {
+		fmt.Fprintf(&b, "\n## Baseline\n\n- Profile/task: %s / %s\n", a.Baseline.Profile, a.Baseline.Task)
+		if !a.Baseline.Present {
+			b.WriteString("- No committed baseline entry\n")
+		} else {
+			b.WriteString("- Committed baseline present\n")
+		}
+		for _, r := range a.Baseline.Regressions {
+			fmt.Fprintf(&b, "- Regression: %s\n", r)
+		}
 	}
 	if len(a.Stripped) > 0 {
 		fmt.Fprintf(&b, "\nStripped for control: %s\n", strings.Join(a.Stripped, ", "))

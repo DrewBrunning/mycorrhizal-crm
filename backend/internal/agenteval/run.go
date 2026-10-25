@@ -19,6 +19,7 @@ type Options struct {
 	Spec          Spec
 	Suites        []Suite
 	AgentCommand  string
+	AgentProfile  string
 	AgentName     string
 	AgentModel    string
 	AgentVersion  string
@@ -51,6 +52,7 @@ func Run(ctx context.Context, opts Options) (Artifact, error) {
 	artifact := Artifact{
 		Task:         opts.Spec.Name,
 		BaseRef:      opts.Spec.BaseRef,
+		Profile:      opts.AgentProfile,
 		AgentName:    firstNonEmpty(opts.AgentName, opts.Spec.AgentName),
 		AgentModel:   firstNonEmpty(opts.AgentModel, opts.Spec.AgentModel),
 		AgentVersion: firstNonEmpty(opts.AgentVersion, opts.Spec.AgentVersion),

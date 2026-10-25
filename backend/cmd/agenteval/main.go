@@ -1,7 +1,8 @@
-// Command agenteval runs one representative task per Tier 1 suite in a
-// disposable worktree and scores it against the same Suites commands the
-// skills and CI declare (issue #1959). It is dispatch-only, never a merge or
-// release gate.
+// Command agenteval runs one representative task per suite in a disposable
+// worktree and scores it against the same Suites commands the skills and CI
+// declare (issue #1959). It is never a merge or release gate: a dispatch run is
+// an experiment, and the weekly collector compares a pinned profile against the
+// committed testdata/agent-eval/baseline.json (issue #2030).
 //
 // Usage:
 //
@@ -36,9 +37,13 @@ func main() { // # pragma: no cover — thin os.Exit wrapper over run
 func run(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("agenteval", flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	var task, tasksDir, rootFlag, outDir, agentCommand, agentName, agentModel, agentVersion, baseRef string
+	var task, tasksDir, rootFlag, outDir, agentCommand, agentName, agentModel, agentVersion, baseRef, profileName, profilesPath, baselinePath, baselineOut string
 	var noControl bool
 	fs.StringVar(&task, "task", "", "task name under testdata/agent-eval (required)")
+	fs.StringVar(&profileName, "profile", "", "pinned agent profile from testdata/agent-eval/agents.yaml")
+	fs.StringVar(&profilesPath, "profiles", "testdata/agent-eval/agents.yaml", "agent profile file, repo-relative")
+	fs.StringVar(&baselinePath, "baseline", "", "committed baseline to compare against (requires -profile)")
+	fs.StringVar(&baselineOut, "write-baseline", "", "write this run into the named baseline file (requires -profile)")
 	fs.StringVar(&tasksDir, "tasks-dir", "testdata/agent-eval", "task directory, repo-relative")
 	fs.StringVar(&rootFlag, "root", "", "repository root (default: walk up to .git and AGENTS.md)")
 	fs.StringVar(&outDir, "out", "agent-eval-results", "artifact directory, repo-relative or absolute")
@@ -62,6 +67,14 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "agenteval: -task is required")
 		return 2
 	}
+	if (baselinePath != "" || baselineOut != "") && profileName == "" {
+		fmt.Fprintln(stderr, "agenteval: -baseline and -write-baseline require -profile (results are only comparable per pinned profile)")
+		return 2
+	}
+	if profileName != "" && (agentCommand != "" || agentName != "" || agentModel != "" || agentVersion != "") {
+		fmt.Fprintln(stderr, "agenteval: explicit agent flags cannot be combined with -profile; edit the profile instead")
+		return 2
+	}
 	root := rootFlag
 	if root == "" {
 		found, err := agentcontext.FindRepoRoot(".")
@@ -75,6 +88,25 @@ func run(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		fmt.Fprintln(stderr, "agenteval:", err) // # pragma: no cover — Abs fails only if cwd was deleted
 		return 1                                // # pragma: no cover
+	}
+	if profileName != "" {
+		profile, err := agenteval.LoadProfile(abs, profilesPath, profileName)
+		if err != nil {
+			fmt.Fprintln(stderr, "agenteval:", err)
+			return 1
+		}
+		if agentCommand == "" {
+			agentCommand = profile.Command
+		}
+		if agentName == "" {
+			agentName = profile.Name
+		}
+		if agentModel == "" {
+			agentModel = profile.Model
+		}
+		if agentVersion == "" {
+			agentVersion = profile.Version
+		}
 	}
 	if missing, err := agenteval.VerifyGeneratorTargets(abs, agenteval.GeneratedArtifacts); err != nil {
 		fmt.Fprintln(stderr, "agenteval:", err)
@@ -109,11 +141,35 @@ func run(args []string, stdout, stderr io.Writer) int {
 		Spec:         spec,
 		Suites:       local,
 		AgentCommand: agentCommand,
+		AgentProfile: profileName,
 		AgentName:    agentName,
 		AgentModel:   agentModel,
 		AgentVersion: agentVersion,
 		RunControl:   !noControl,
 	})
+	current := agenteval.SummarizeRun(artifact.Status, artifact.Context)
+	if baselinePath != "" {
+		base, err := agenteval.LoadBaseline(resolvePath(abs, baselinePath))
+		if err != nil {
+			fmt.Fprintln(stderr, "agenteval: baseline:", err)
+			return 1
+		}
+		comparison := agenteval.CompareBaseline(base, profileName, task, current)
+		artifact.Baseline = &comparison
+	}
+	if baselineOut != "" {
+		out := resolvePath(abs, baselineOut)
+		base, err := agenteval.LoadBaseline(out)
+		if err != nil {
+			fmt.Fprintln(stderr, "agenteval: baseline:", err)
+			return 1
+		}
+		agenteval.RecordBaseline(&base, profileName, task, current)
+		if err := agenteval.WriteBaseline(out, base); err != nil {
+			fmt.Fprintln(stderr, "agenteval: write baseline:", err)
+			return 1
+		}
+	}
 	jsonPath, mdPath, writeErr := writeArtifact(abs, outDir, artifact)
 	if writeErr != nil {
 		fmt.Fprintln(stderr, "agenteval: write artifact:", writeErr)
@@ -128,12 +184,22 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "agenteval:", runErr)
 		return 1
 	}
+	if artifact.Baseline != nil && artifact.Baseline.Regressed() {
+		return 1
+	}
 	switch artifact.Status {
 	case "passed", "skipped":
 		return 0
 	default:
 		return 1
 	}
+}
+
+func resolvePath(root, path string) string {
+	if filepath.IsAbs(path) {
+		return path
+	}
+	return filepath.Join(root, filepath.FromSlash(path))
 }
 
 func writeArtifact(root, outDir string, artifact agenteval.Artifact) (string, string, error) {

@@ -158,8 +158,8 @@ parsed; free prose is not. Tokens such as `user_id`, `suggested`,
 
 The check runs in `.githooks/pre-commit` and in `unit-tests.yml`'s
 `docs-citations` job, unconditionally, so a context-only change cannot merge
-with a broken hierarchy. It does not run the dispatch-only agent eval harness
-(#1959) and it does not execute any documented command; it proves the target
+with a broken hierarchy. It does not run the agent eval harness (#1959, #2030)
+and it does not execute any documented command; it proves the target
 exists and the command is registered, not that the command passes.
 
 ## Trigger tests

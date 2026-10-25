@@ -114,6 +114,65 @@ func TestRunWritesArtifactAndFails(t *testing.T) {
 	}
 }
 
+func TestRunWithDryRunProfile(t *testing.T) {
+	root, sha := fixtureRepo(t)
+	writeFile(t, root, "testdata/agent-eval/agents.yaml", "version: 1\nprofiles:\n  dry-run:\n    command: \"true\"\n    name: dry-run\n    model: none\n    version: \"0\"\n    dry_run: true\n")
+	out := t.TempDir()
+	code, stdout, stderr := runCLI(t, "-root", root, "-task", "demo", "-base-ref", sha, "-profile", "dry-run", "-out", out, "-no-control")
+	if code != 1 {
+		t.Fatalf("run = %d, stderr %q stdout %q", code, stderr, stdout)
+	}
+	if !strings.Contains(stdout, "- Profile: `dry-run`") {
+		t.Fatalf("stdout = %q", stdout)
+	}
+}
+
+func TestRunBaselineRequiresProfile(t *testing.T) {
+	root, _ := fixtureRepo(t)
+	code, _, stderr := runCLI(t, "-root", root, "-task", "demo", "-baseline", "testdata/agent-eval/baseline.json")
+	if code != 2 || !strings.Contains(stderr, "require -profile") {
+		t.Fatalf("run = %d, stderr = %q", code, stderr)
+	}
+}
+
+func TestRunWritesAndComparesBaseline(t *testing.T) {
+	root, sha := fixtureRepo(t)
+	writeFile(t, root, "testdata/agent-eval/agents.yaml", "version: 1\nprofiles:\n  dry-run:\n    command: \"true\"\n    name: dry-run\n    model: none\n    version: \"0\"\n    dry_run: true\n")
+	out := t.TempDir()
+	args := []string{"-root", root, "-task", "demo", "-base-ref", sha, "-profile", "dry-run", "-out", out, "-no-control"}
+	if code, _, stderr := runCLI(t, append(args, "-write-baseline", "testdata/agent-eval/baseline.json")...); code != 1 {
+		t.Fatalf("write baseline run = %d, stderr %q", code, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(root, "testdata/agent-eval/baseline.json")); err != nil {
+		t.Fatal(err)
+	}
+	code, stdout, stderr := runCLI(t, append(args, "-baseline", "testdata/agent-eval/baseline.json")...)
+	if code != 1 {
+		t.Fatalf("compare run = %d, stderr %q", code, stderr)
+	}
+	if !strings.Contains(stdout, "Committed baseline present") {
+		t.Fatalf("stdout = %q", stdout)
+	}
+}
+
+func TestRunRejectsProfileOverrides(t *testing.T) {
+	root, _ := fixtureRepo(t)
+	writeFile(t, root, "testdata/agent-eval/agents.yaml", "version: 1\nprofiles:\n  dry-run:\n    command: \"true\"\n    name: dry-run\n    model: none\n    version: \"0\"\n    dry_run: true\n")
+	code, _, stderr := runCLI(t, "-root", root, "-task", "demo", "-profile", "dry-run", "-agent-model", "other")
+	if code != 2 || !strings.Contains(stderr, "cannot be combined") {
+		t.Fatalf("run = %d, stderr = %q", code, stderr)
+	}
+}
+
+func TestRunRejectsUnknownProfile(t *testing.T) {
+	root, _ := fixtureRepo(t)
+	writeFile(t, root, "testdata/agent-eval/agents.yaml", "version: 1\nprofiles: {}\n")
+	code, _, stderr := runCLI(t, "-root", root, "-task", "demo", "-profile", "missing")
+	if code != 1 || !strings.Contains(stderr, "not defined") {
+		t.Fatalf("run = %d, stderr = %q", code, stderr)
+	}
+}
+
 func TestRunMissingTask(t *testing.T) {
 	root, _ := fixtureRepo(t)
 	code, _, stderr := runCLI(t, "-root", root, "-task", "missing")

@@ -1,0 +1,21 @@
+# Pinned agent profiles for cmd/agenteval (issue #2030).
+#
+# A baseline is only comparable when the agent, model and CLI version are
+# fixed, so a profile with a moving version or a command that omits {prompt}
+# fails validation. The dry-run profile is the only committed profile; add a
+# real one here and select it with the AGENT_EVAL_PROFILE repository variable.
+#
+# Example pinned profile:
+#   pinned:
+#     command: "opencode run {prompt}"
+#     name: opencode
+#     model: deepseek-flash
+#     version: "1.2.3"
+version: 1
+profiles:
+  dry-run:
+    command: "true"
+    name: dry-run
+    model: none
+    version: "0"
+    dry_run: true

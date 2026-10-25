@@ -1,0 +1,114 @@
+name: Agent eval collector
+
+# Weekly trend collector for cmd/agenteval (issue #2030). It runs every
+# discovered task against the trusted main tree with a pinned profile and
+# compares each run to testdata/agent-eval/baseline.json. A regression fails the
+# matrix leg, so the nightly failure alarm opens an issue instead of letting the
+# trend rot silently.
+#
+# Disabled until the AGENT_EVAL_PROFILE repository variable names a profile in
+# testdata/agent-eval/agents.yaml and AGENT_EVAL_MODEL_KEY is available to the
+# agent subprocess. A skipped schedule is not a failure. Never add a
+# pull_request/pull_request_target trigger: the agent executes code and receives
+# a model credential.
+on:
+  schedule:
+    - cron: '0 4 * * 0' # Sundays, 04:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agent-eval-collect
+  cancel-in-progress: false
+
+jobs:
+  discover:
+    name: Discover eval tasks
+    if: github.ref == 'refs/heads/main' && vars.AGENT_EVAL_PROFILE != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      tasks: ${{ steps.list.outputs.tasks }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: List task directories
+        id: list
+        run: |
+          set -euo pipefail
+          tasks=$(find testdata/agent-eval -mindepth 2 -maxdepth 2 -name spec.yaml -printf '%h\n' \
+            | sed 's#testdata/agent-eval/##' | sort \
+            | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "tasks=$tasks" >> "$GITHUB_OUTPUT"
+
+  collect:
+    name: Collect ${{ matrix.task }}
+    needs: discover
+    if: needs.discover.result == 'success' && needs.discover.outputs.tasks != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        task: ${{ fromJSON(needs.discover.outputs.tasks) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Task specs pin a base commit; a shallow checkout would not contain it.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: frontend/package.json
+          cache: 'yarn'
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: yarn install --frozen-lockfile
+
+      - name: Run one eval task against the baseline
+        env:
+          TASK: ${{ matrix.task }}
+          PROFILE: ${{ vars.AGENT_EVAL_PROFILE }}
+          # Only the model credential is exposed to the agent subprocess; the
+          # workflow token is read-only and no unrelated repo secrets are set.
+          AGENT_EVAL_MODEL_KEY: ${{ secrets.AGENT_EVAL_MODEL_KEY }}
+        run: |
+          set -euo pipefail
+          (
+            cd backend
+            go run ./cmd/agenteval \
+              -task "$TASK" \
+              -profile "$PROFILE" \
+              -baseline testdata/agent-eval/baseline.json \
+              -out "agent-eval-results/$TASK" \
+              -no-control
+          )
+
+      - name: Upload eval artifact
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: agent-eval-baseline-${{ matrix.task }}
+          path: agent-eval-results/
+          retention-days: 30
+          if-no-files-found: warn
