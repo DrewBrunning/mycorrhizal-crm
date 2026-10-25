@@ -5,14 +5,17 @@ name: Clean-install Smoke Test
 # stranger's *first* boot is usable: empty database, no reused volumes, config
 # set only from what docs/getting-started.md tells a new operator.
 #
-# This job starts from nothing, follows the documented install path verbatim
-# (cp .env.example .env, inject a real JWT_SECRET_KEY, `docker compose up -d
-# --build`), then asserts the workflow rather than the boot: register the
-# first user, log in, create a contact with several field types, relate it to
-# a second contact, attach a file, upload a profile photo, search, export, and
+# This job starts from nothing with the documented .env template, but builds
+# the checked-out tree through docker-compose.build.yml rather than pulling the
+# published image: the per-PR/push/nightly gate must test the commit under
+# test. It then asserts the workflow rather than the boot: register the first
+# user, log in, create a contact with several field types, relate it to a
+# second contact, attach a file, upload a profile photo, search, export, and
 # read every field back (backend/cmd/deploysmoke). It also asserts startup
 # ordering (config validated -> migrations on the empty DB -> serving) and the
-# three misconfiguration failures a real operator hits.
+# three misconfiguration failures a real operator hits. Release composition
+# replaces the build override with docker-compose.candidate.yml and tests the
+# published-image path by digest.
 #
 # Path-gated on `infra` (the deployed artifact: Dockerfile, docker-compose*,
 # docker/, .env.example, and the smoke harness) using the issue #264 pattern;
@@ -112,11 +115,10 @@ jobs:
           go-version-file: backend/go.mod
 
       # Issue #1484: composed into the release battery, boot the candidate image
-      # (pulled by digest; docker-compose.candidate.yml swaps docker-compose.yml's
-      # `build: .` for it via MYCORRHIZAL_IMAGE/COMPOSE_FILE, which the pull step
-      # exports for every later step, including the misconfig script's own
-      # `docker compose` calls). Everything below is otherwise the documented
-      # path, unchanged.
+      # (pulled by digest; docker-compose.candidate.yml replaces the canonical
+      # published-image reference via MYCORRHIZAL_IMAGE/COMPOSE_FILE, which the
+      # pull step exports for every later step, including the misconfig
+      # script's own `docker compose` calls).
       - name: Log in to Container Registry (candidate image)
         if: ${{ inputs.image_digest != '' }}
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
@@ -134,6 +136,13 @@ jobs:
           bash .github/scripts/candidate-image.sh pull "$IMAGE_DIGEST" mycorrhizal-crm-candidate:pulled
           echo "COMPOSE_FILE=docker-compose.yml:docker-compose.candidate.yml" >> "$GITHUB_ENV"
 
+      # Per-PR/push/nightly: test the checked-out tree, not the last published
+      # image. The candidate path above sets COMPOSE_FILE itself and this step
+      # is skipped there.
+      - name: Select the source-build compose override
+        if: ${{ inputs.image_digest == '' }}
+        run: echo "COMPOSE_FILE=docker-compose.yml:docker-compose.build.yml" >> "$GITHUB_ENV"
+
       # --- Clean-install setup: exactly what docs/getting-started.md tells a
       # new operator to do. No reused volumes (fresh checkout), no config
       # beyond the two values the docs call out.
@@ -149,17 +158,44 @@ jobs:
           # matches docker-compose.yml's default port mapping — left as-is.
           echo "Prepared .env (JWT_SECRET_KEY randomized, FRONTEND_URL unchanged)."
 
-      - name: Bring up the stack via the documented path
+      - name: Bring up the stack from source (or the candidate by digest)
         run: |
           set -euo pipefail
-          # `docker compose up -d --build` is the command in the docs. --wait
-          # blocks on the image HEALTHCHECK (/health/live), which the server
-          # only answers after InitDB's migrations and route registration
-          # complete (backend/main.go) — so a healthy container already
-          # implies migrations ran on the empty database. With the candidate
-          # override (COMPOSE_FILE) there is no `build:` left, so --build is a
-          # no-op and Compose boots the pulled image by digest.
+          # COMPOSE_FILE is docker-compose.yml + the source-build override on
+          # the per-PR path, or + docker-compose.candidate.yml in the release
+          # battery. --build builds the source path; with the candidate
+          # override there is no `build:`, so it is a no-op and Compose boots
+          # the pulled image by digest. --wait blocks on the image HEALTHCHECK
+          # (/health/live), which the server only answers after InitDB's
+          # migrations and route registration complete (backend/main.go) — so a
+          # healthy container already implies migrations ran on the empty DB.
           docker compose up -d --build --wait --wait-timeout 240
+
+      - name: Assert the intended image is under test
+        env:
+          IMAGE_DIGEST: ${{ inputs.image_digest }}
+        run: |
+          set -euo pipefail
+          container="$(docker compose ps -q mycorrhizal)"
+          running="$(docker inspect "$container" --format '{{.Config.Image}}')"
+          echo "running image: ${running}"
+          if [ -z "$IMAGE_DIGEST" ]; then
+            if [ "$running" != "mycorrhizal-crm-local:latest" ]; then
+              echo "::error::source-build smoke is running '${running}', not the local build; it may have pulled a published image"
+              exit 1
+            fi
+            echo "OK: the source-build override built the checked-out tree."
+          else
+            case "$running" in
+              *"$IMAGE_DIGEST")
+                echo "OK: the candidate digest is under test."
+                ;;
+              *)
+                echo "::error::candidate smoke is running '${running}', not ${IMAGE_DIGEST}"
+                exit 1
+                ;;
+            esac
+          fi
 
       - name: Assert startup ordering (config + empty-DB migrations precede serving)
         run: |

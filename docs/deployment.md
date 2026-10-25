@@ -241,6 +241,12 @@ docker compose pull
 docker compose up -d
 ```
 
+The shipped compose file pulls the published image. `IMAGE_TAG` defaults to
+`latest`; pin a release (e.g. `IMAGE_TAG=1.5.0`) or an exact image
+(`IMAGE_TAG=1.5.0@sha256:…`) for reproducible upgrades. To build the
+checked-out tree instead, use the source-build override:
+`docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build`.
+
 Database migrations run automatically on startup. **Before applying any pending
 migration the server writes a verified pre-migration snapshot** of the database
 into a `pre-migration/` directory beside `SQLITE_DB_PATH` (issue #530), and

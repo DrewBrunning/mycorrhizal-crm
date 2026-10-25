@@ -34,6 +34,8 @@ func copyRepoTree(t *testing.T) string {
 	copyFile(t, filepath.Join(root, registryFile), filepath.Join(dst, registryFile))
 	copyFile(t, filepath.Join(root, docFile), filepath.Join(dst, docFile))
 	copyDir(t, filepath.Join(root, workflowsDir), filepath.Join(dst, workflowsDir))
+	copyFile(t, filepath.Join(root, releaseworkflow.CanonicalComposeFile), filepath.Join(dst, releaseworkflow.CanonicalComposeFile))
+	copyFile(t, filepath.Join(root, releaseworkflow.BuildComposeFile), filepath.Join(dst, releaseworkflow.BuildComposeFile))
 	// Issue #1487: the retry script and zapgate source CheckResilience reads.
 	copyFile(t, filepath.Join(root, releaseworkflow.ZapScript), filepath.Join(dst, releaseworkflow.ZapScript))
 	copyFile(t, filepath.Join(root, releaseworkflow.ZapgateSource), filepath.Join(dst, releaseworkflow.ZapgateSource))
@@ -238,6 +240,31 @@ func TestRunAtFailsOnMissingDockerPublish(t *testing.T) {
 
 	var out bytes.Buffer
 	assert.Equal(t, 2, runAt(&out, dst))
+}
+
+// TestRunAtFailsOnMissingBuildCompose: the build override is part of the
+// release wiring now, so a missing file is a checker failure (exit 2), not a
+// silent pass.
+func TestRunAtFailsOnMissingBuildCompose(t *testing.T) {
+	dst := copyRepoTree(t)
+	require.NoError(t, os.Remove(filepath.Join(dst, releaseworkflow.BuildComposeFile)))
+
+	var out bytes.Buffer
+	assert.Equal(t, 2, runAt(&out, dst))
+}
+
+// TestRunAtFailsOnComposeImageDrift proves the operator/source-build split is
+// enforced by the same CI check: a canonical compose file that builds is a
+// finding, not a silent regression to the "install instructions need a
+// checkout" failure this split replaces.
+func TestRunAtFailsOnComposeImageDrift(t *testing.T) {
+	dst := copyRepoTree(t)
+	p := filepath.Join(dst, releaseworkflow.CanonicalComposeFile)
+	require.NoError(t, os.WriteFile(p, []byte("services:\n  mycorrhizal:\n    build: .\n"), 0o644))
+
+	var out bytes.Buffer
+	assert.Equal(t, 1, runAt(&out, dst))
+	assert.Contains(t, out.String(), "must not declare `build:`")
 }
 
 // TestRunAtFailsOnPushOnlyMandatoryGate is the #1396 regression gate end to

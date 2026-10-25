@@ -198,8 +198,9 @@ and troubleshooting: [docs/notifications.md](docs/notifications.md).
 ### Docker (Recommended)
 
 Mycorrhizal CRM ships as a single all-in-one image that bundles the frontend and
-backend into one container, built locally from source (no published registry
-image is required). The easiest way to run it is with Docker Compose:
+backend into one container. Released images are published (and signed) on GHCR,
+so the two-file download below needs no source checkout or build. The easiest
+way to run it is with Docker Compose:
 
 1. **Download the Docker Compose file:**
     ```sh
@@ -216,13 +217,17 @@ image is required). The easiest way to run it is with Docker Compose:
     nano .env
     ```
 
-3. **Build and start the container:**
+3. **Pull and start the container:**
     ```sh
-    docker compose up -d --build
+    docker compose pull
+    docker compose up -d
     ```
 
 4. **Access the application:**
     Open http://localhost:7300 in your browser.
+
+To build the image from source instead of pulling it, see the
+[developer README](README-developer.md).
 
 Want to see it running with realistic sample data before committing your own? See the
 [pen-test / demo environment](docs/development/pentest-environment.md) - one command

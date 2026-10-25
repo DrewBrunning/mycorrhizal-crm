@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # DEPLOY-01 (issue #450) misconfiguration case. Rebuilds a fresh .env from the
-# documented template with a single broken value, brings the shipped
-# docker-compose stack up, and asserts:
+# documented template with a single broken value, brings the stack up through
+# the COMPOSE_FILE the caller selected (the source-build override on the
+# per-PR path, the candidate override in the release battery), and asserts:
 #   1. the app never becomes usable (/health/live never answers), and
 #   2. the container log names the offending environment variable.
 #

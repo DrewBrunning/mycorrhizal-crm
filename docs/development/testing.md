@@ -672,8 +672,9 @@ smoke leg's service-worker test is verified to fail when registration breaks
 - **Responsible for** a clean install that proves the **workflow**, not the boot.
   `.github/workflows/deploy-smoke.yml` starts from nothing (fresh checkout, no
   volumes, no DB, only the config `docs/getting-started.md` tells a new operator
-  to set), brings the stack up via the documented `docker compose up -d --build`,
-  then runs `backend/cmd/deploysmoke` against it: register the first user, log in,
+  to set), builds and boots the checked-out tree through
+  `docker-compose.yml` + `docker-compose.build.yml`, then runs
+  `backend/cmd/deploysmoke` against it: register the first user, log in,
   create a contact with several field types, relate it to a second contact,
   attach a file, upload a profile photo, search, export, and read every field
   back — each step touching a different subsystem a fresh install gets wrong
@@ -702,8 +703,8 @@ smoke leg's service-worker test is verified to fail when registration breaks
 ### Post-publish functional smoke (DEPLOY-04, issue #996)
 
 - **Responsible for** proving the *published artifact* boots, not a from-source
-  build of the release commit. Everything above tests a `docker compose up -d
-  --build` of the checked-out tree; `docker-publish.yml`'s own
+  build of the release commit. Everything above builds the checked-out tree
+  through the `docker-compose.build.yml` override; `docker-publish.yml`'s own
   `verify-release-assets` job only proves the pushed image **resolves** in the
   registry (`docker buildx imagetools inspect` — presence, not behavior). A
   release-path-only defect (a broken entrypoint, a bad baked-in env default, a

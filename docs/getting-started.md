@@ -20,20 +20,28 @@ including what "supported" means and what happens on an unsupported version.
 
 ### Docker compose
 
-Mycorrhizal CRM ships as a single all-in-one image that bundles the frontend and backend into one container, built locally from source via the repository's `Dockerfile` (no published registry image is required).
+Mycorrhizal CRM ships as a single all-in-one image that bundles the frontend and backend into one container. The default compose file pulls the published, signed image from GHCR, so a fresh install needs only the compose file and the env template — no checkout or build.
 
-Clone the repository, copy the [sample docker compose file](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/docker-compose.yml) as well as [sample env file](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/.env.example) and rename the env file to `.env`.
+Download the [sample docker compose file](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/docker-compose.yml) as well as [sample env file](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/.env.example) and rename the env file to `.env`.
 
 After adjusting the environment variables as needed you can run:
 
 ```sh
-docker compose up -d --build
+docker compose up -d
+```
+
+To upgrade later, run `docker compose pull` first and then `docker compose up -d`. To build the checked-out tree from source instead, clone the repository and use the source-build override:
+
+```sh
+docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 ```
 
 These steps are exercised on every infra change (and nightly) by the
-`deploy-smoke` CI job, which follows this page from an empty state and then runs
-a full register → create contact → attach → search → export workflow against the
-fresh instance (issue #450).
+`deploy-smoke` CI job, which starts from the same empty-state `.env` but uses the
+source-build override so it tests the checked-out tree. It then runs a full
+register → create contact → attach → search → export workflow against the fresh
+instance (issue #450). The published-image path is exercised against the release
+candidate and post-publish digests.
 
 ### Environment variables
 
@@ -53,6 +61,7 @@ fresh instance (issue #450).
 | `DISABLE_REGISTRATION` | When set to `true`, new user registration is disabled (existing users can still log in). Default is `false`. **Recommended for any multi-user instance** — see [Supported versions → The deployment shape](supported-versions.html#the-deployment-shape) |
 | `DATA_PATH` | Host directory where the database file should be stored |
 | `PHOTOS_PATH` | Host directory where the contact photos should be stored |
+| `IMAGE_TAG` | Published image tag to run (default `latest`). Pin a release such as `1.5.0`, or `1.5.0@sha256:<digest>` for an exact image, for reproducible upgrades |
 | `JWT_EXPIRY_HOURS` | Token expiry, i.e. after how many hours you will need to sign into the application again. Default is 96 hours (4 days) |
 | `OIDC_PROVIDER_URL` | Issuer URL of your OIDC provider (i.e. endpoint URI for your provider). Required to enable SSO |
 | `OIDC_CLIENT_ID` | OAuth2 client ID registered with your OIDC provider |

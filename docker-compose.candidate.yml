@@ -3,11 +3,12 @@
 # Layered over docker-compose.yml by deploy-smoke.yml when it is composed into
 # the release battery (release-validate.yml): the image the gates exercise is
 # the ONE candidate image that release-validate.yml built and pushed, pulled by
-# digest -- not a from-source rebuild. `!reset null` drops docker-compose.yml's
-# `build: .`, because Compose otherwise builds anyway whenever a `build:` is
-# present anywhere in the effective file set (the same trap
-# docker-compose.published-smoke.yml documents), which would silently put the
-# test back on a from-source build.
+# digest -- not a from-source rebuild. `!reset null` stays as defence in depth:
+# the canonical file no longer has a `build:`, but Compose builds anyway
+# whenever a `build:` is present anywhere in the effective file set (the same
+# trap docker-compose.published-smoke.yml documents), which would silently put
+# the test back on a from-source build if the source-build override were
+# layered in by mistake.
 #
 # USAGE (CI; COMPOSE_FILE makes every `docker compose` call, including
 # .github/scripts/deploy-smoke-misconfig.sh's, pick the override up):

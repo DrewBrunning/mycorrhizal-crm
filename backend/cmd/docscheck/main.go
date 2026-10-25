@@ -37,9 +37,10 @@
 //     without a documentation section fails the build.
 //
 //  6. CI follows the documented commands. deploy-smoke CI and
-//     docs/getting-started.md must state the same bring-up command, and
-//     docs/deployment.md's upgrade block must state the same command pair the
-//     operator is told to run.
+//     docs/getting-started.md must state the same source-build bring-up
+//     command (the docker-compose.build.yml override), and docs/deployment.md's
+//     upgrade block must state the same command pair the operator is told to
+//     run.
 //
 //  7. PII-inventory ↔ schema drift (issue #1316). Every table in a freshly
 //     migrated database appears in docs/security/pii-inventory.md (a code span
@@ -423,12 +424,20 @@ func checkIntegrationOwnership(root string) []string {
 // 6. CI follows the documented commands
 // ---------------------------------------------------------------------------
 
+const (
+	sourceBuildOverride = "docker-compose.build.yml"
+	sourceBuildBringUp  = "up -d --build"
+)
+
 func checkCICommandBinding(root string) []string {
 	var findings []string
 	// #nosec G304 -- root is the repo root from findRepoRoot, the leaf is a constant
 	gettingStarted, err := os.ReadFile(filepath.Join(root, "docs", "getting-started.md"))
-	if err == nil && !strings.Contains(string(gettingStarted), "docker compose up -d --build") {
-		findings = append(findings, "docs/getting-started.md no longer contains the bring-up command `docker compose up -d --build` that deploy-smoke CI runs")
+	if err == nil {
+		gt := string(gettingStarted)
+		if !strings.Contains(gt, sourceBuildOverride) || !strings.Contains(gt, sourceBuildBringUp) {
+			findings = append(findings, "docs/getting-started.md no longer contains the source-build bring-up command (`"+sourceBuildOverride+"` + `"+sourceBuildBringUp+"`) that deploy-smoke CI runs")
+		}
 	}
 	// #nosec G304 -- root is the repo root from findRepoRoot, the leaf is a constant
 	deployment, err := os.ReadFile(filepath.Join(root, "docs", "deployment.md"))
@@ -440,8 +449,11 @@ func checkCICommandBinding(root string) []string {
 	}
 	// #nosec G304 -- root is the repo root from findRepoRoot, the leaf is a constant
 	workflow, err := os.ReadFile(filepath.Join(root, ".github", "workflows", "deploy-smoke.yml"))
-	if err == nil && !strings.Contains(string(workflow), "docker compose up -d --build") {
-		findings = append(findings, "deploy-smoke.yml no longer runs the bring-up command `docker compose up -d --build` documented in docs/getting-started.md (issue #489)")
+	if err == nil {
+		wf := string(workflow)
+		if !strings.Contains(wf, sourceBuildOverride) || !strings.Contains(wf, sourceBuildBringUp) {
+			findings = append(findings, "deploy-smoke.yml no longer runs the source-build bring-up command (`"+sourceBuildOverride+"` + `"+sourceBuildBringUp+"`) documented in docs/getting-started.md (issue #489)")
+		}
 	}
 	return findings
 }

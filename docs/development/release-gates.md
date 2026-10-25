@@ -132,9 +132,11 @@ later, so a green battery said nothing about the bytes published. Now:
    `.github/scripts/candidate-image.sh pull` (which refuses anything but a `sha256:` digest and
    verifies the pulled image carries it) and skips its from-source build; every gate's log shows the
    same digest. Per-PR, `push: main`, nightly and dispatch runs pass nothing and keep building from
-   source. `deploy-smoke.yml` boots it through `docker-compose.yml` + `docker-compose.candidate.yml`
-   (`build: !reset null`, so Compose cannot silently rebuild). `chaos-tests.yml` does not run the
-   container image (Go tests only) and is unaffected.
+   source: `deploy-smoke.yml` selects `docker-compose.yml` + `docker-compose.build.yml` (the
+   source-build override) and asserts the running container is the local build. Release composition
+   replaces that with `docker-compose.yml` + `docker-compose.candidate.yml` (`build: !reset null`, so
+   Compose cannot silently rebuild). `chaos-tests.yml` does not run the container image (Go tests
+   only) and is unaffected.
 3. **`docker-publish.yml`'s `build-and-push`** receives the digest from its `release-gate` job and,
    for the all-in-one image, **re-tags it by digest** (`docker buildx imagetools create`, the
    `promote-rc.yml` pattern) instead of rebuilding; each resulting tag is resolved back and asserted

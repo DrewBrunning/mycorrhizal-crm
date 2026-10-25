@@ -183,6 +183,10 @@ echo "$DIGEST"   # ghcr.io/drewbrunning/mycorrhizal-crm@sha256:...
 (For the split images, use `ghcr.io/drewbrunning/mycorrhizal-crm-backend:<TAG>` or
 `...-frontend:<TAG>` instead.)
 
+To make the deployed compose stack run exactly the image you verified, set
+`IMAGE_TAG=<TAG>` in `.env`, or pin the digest with
+`IMAGE_TAG=<TAG>@sha256:...` and run `docker compose pull && docker compose up -d`.
+
 **2. Verify the cosign signature:**
 
 ```sh
