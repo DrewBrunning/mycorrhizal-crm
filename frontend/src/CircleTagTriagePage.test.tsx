@@ -369,7 +369,7 @@ test('stacks the stepper vertically on narrow viewports', async () => {
 
 // Issue #1790: the page was titled "Circle/Tag Migration" on web while
 // Android shipped "Circle & tag triage", and its fixed-width table columns
-// squeezed the name field down to "legac" at 320px.
+// squeezed the name field down to a truncated "legacy" at 320px.
 test('uses the same name as Android and renders the plural summary', async () => {
   mockFetchRoutes([
     { pattern: '/contacts/circles?legacy=true', handler: { body: ['legacy'] } },

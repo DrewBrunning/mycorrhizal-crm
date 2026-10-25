@@ -91,23 +91,23 @@ func TestAddressToPlaceValue(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name          string
-		addr          *contactmodel.Address
-		wantValue     string
-		wantValueParm string
+		name           string
+		addr           *contactmodel.Address
+		wantValue      string
+		wantValueParam string
 	}{
-		{name: "nil_address", addr: nil, wantValue: "", wantValueParm: ""},
+		{name: "nil_address", addr: nil, wantValue: "", wantValueParam: ""},
 		{
-			name:          "full_takes_priority",
-			addr:          &contactmodel.Address{Full: "City Hospital", Coordinates: "geo:1,2"},
-			wantValue:     "City Hospital",
-			wantValueParm: "",
+			name:           "full_takes_priority",
+			addr:           &contactmodel.Address{Full: "City Hospital", Coordinates: "geo:1,2"},
+			wantValue:      "City Hospital",
+			wantValueParam: "",
 		},
 		{
-			name:          "coordinates_when_no_full",
-			addr:          &contactmodel.Address{Coordinates: "geo:41.7325,-49.9469"},
-			wantValue:     "geo:41.7325,-49.9469",
-			wantValueParm: "uri",
+			name:           "coordinates_when_no_full",
+			addr:           &contactmodel.Address{Coordinates: "geo:41.7325,-49.9469"},
+			wantValue:      "geo:41.7325,-49.9469",
+			wantValueParam: "uri",
 		},
 		{
 			name: "components_joined_lossily_when_no_full_or_coordinates",
@@ -115,8 +115,8 @@ func TestAddressToPlaceValue(t *testing.T) {
 				{Kind: "locality", Value: "Southampton"},
 				{Kind: "country", Value: "UK"},
 			}},
-			wantValue:     "Southampton, UK",
-			wantValueParm: "",
+			wantValue:      "Southampton, UK",
+			wantValueParam: "",
 		},
 		{
 			name: "components_skip_empty_values",
@@ -124,23 +124,23 @@ func TestAddressToPlaceValue(t *testing.T) {
 				{Kind: "locality", Value: ""},
 				{Kind: "country", Value: "UK"},
 			}},
-			wantValue:     "UK",
-			wantValueParm: "",
+			wantValue:      "UK",
+			wantValueParam: "",
 		},
 		{
-			name:          "nothing_set",
-			addr:          &contactmodel.Address{},
-			wantValue:     "",
-			wantValueParm: "",
+			name:           "nothing_set",
+			addr:           &contactmodel.Address{},
+			wantValue:      "",
+			wantValueParam: "",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			gotValue, gotParm := addressToPlaceValue(tt.addr)
-			if gotValue != tt.wantValue || gotParm != tt.wantValueParm {
+			gotValue, gotParam := addressToPlaceValue(tt.addr)
+			if gotValue != tt.wantValue || gotParam != tt.wantValueParam {
 				t.Errorf("addressToPlaceValue(%+v) = (%q, %q), want (%q, %q)",
-					tt.addr, gotValue, gotParm, tt.wantValue, tt.wantValueParm)
+					tt.addr, gotValue, gotParam, tt.wantValue, tt.wantValueParam)
 			}
 		})
 	}

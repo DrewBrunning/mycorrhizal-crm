@@ -1,0 +1,122 @@
+# Spell-check configuration for crate-ci/typos (issue #1910).
+#
+# typos flags known misspellings rather than unknown words, so identifiers and
+# project jargon do not drown the signal. Exclusions below are sources we must
+# never "correct": generated/vendored files, verbatim RFC excerpts, the
+# golden-fixture oracle, and prose in languages other than English. Everything
+# an author wrote in English is in scope.
+
+[files]
+extend-exclude = [
+  # Generated frontend client/types; regenerate rather than edit.
+  "frontend/src/generated/**",
+
+  # Verbatim RFC excerpts (docs/specs) and the ADR-0003 golden-fixture oracle:
+  # external ground truth, not prose we may rewrite.
+  "docs/specs/**",
+  "docs/golden-fixtures/**",
+
+  # Test fixtures and seed data: deliberately malformed, near-miss, or copied
+  # values, not authored documentation.
+  "**/testdata/**",
+
+  # Vendored third-party license texts (issues #1880/#1942). The authored
+  # attribution docs (THIRD_PARTY_SOURCES.md, docs/security/license-attribution.md)
+  # stay in scope.
+  "THIRD_PARTY_NOTICES.md",
+  "thirdparty/licenses/**",
+  "android/config/licenses/**",
+
+  # Dependency lockfiles and generated module files: hashes and version
+  # strings, not prose.
+  "**/yarn.lock",
+  "**/package-lock.json",
+  "**/go.sum",
+  "**/gradle.lockfile",
+  "backend/tools.mod",
+  "backend/tools.sum",
+
+  # Non-English translations. The English sources (en.json, values/strings.xml)
+  # remain in scope; only the translated copies are skipped.
+  "frontend/src/i18n/locales/de.json",
+  "frontend/src/i18n/locales/es.json",
+  "frontend/src/i18n/locales/fr.json",
+  "frontend/src/i18n/locales/it.json",
+  "backend/i18n/locales/de.json",
+  "backend/i18n/locales/es.json",
+  "backend/i18n/locales/fr.json",
+  "backend/i18n/locales/it.json",
+  "android/core/ui/src/main/res/values-de/strings.xml",
+  "android/core/ui/src/main/res/values-es/strings.xml",
+  "android/core/ui/src/main/res/values-fr/strings.xml",
+  "android/core/ui/src/main/res/values-it/strings.xml",
+]
+
+[default]
+extend-ignore-re = [
+  # SQL/DAV keywords inflected as plurals or verbs (DELETE(s), UPDATE(d),
+  # INSERT(ed), SELECT(s), COALESCE(d), REPORT(s)): valid English, not typos.
+  "(?i)\\b(DELETE|UPDATE|INSERT|SELECT|COALESCE|REPORT)(s|d|ed|ing)?\\b",
+  # Acronyms used as past-tense verbs (ANDed, ORed, PATCHed, ...).
+  "(?i)\\b(AND|OR|NOT|PATCH)ed\\b",
+  # Hyphenated "mis-" compounds (mis-splice, mis-gate, mis-orders, ...).
+  "(?i)\\bmis-",
+  # Gradle's unflavored/flavored release classpath suffix, matched this way on
+  # purpose in android/build.gradle.kts.
+  "elease(Runtime|Compile)Classpath",
+  # Short git commit hashes quoted in docs (e.g. `194ded9e`).
+  "\\b[0-9a-f]{7,40}\\b",
+]
+
+[default.extend-words]
+# Valid English variant that typos prefers to "unparsable".
+unparseable = "unparseable"
+# SLSA in-toto attestation format.
+intoto = "intoto"
+# Recovery Time Objective / Recovery Point Objective.
+rto = "rto"
+# Linux password-age command.
+chage = "chage"
+# Common spelling of "invocable".
+invokable = "invokable"
+# Percentage points (coverage delta).
+fpt = "fpt"
+# APPn JPEG segments and PNGs.
+pn = "pn"
+# CBOR Object Signing and Encryption (WebAuthn) keys.
+cose = "cose"
+# SMTP EHLO/HELO greetings.
+helo = "helo"
+# Short local names (Go `ue *url.Error`; URL-safe base64 test keys).
+ue = "ue"
+# BCP 47 language codes (Bashkir, Faroese, North Ndebele) and local test names.
+ba = "ba"
+fo = "fo"
+nd = "nd"
+# "Café" split by a combining accent in NFC/NFD fixtures.
+caf = "caf"
+# Language-detection keys: German/French "adresse".
+adresse = "adresse"
+# Non-English fixture strings in tests (German, Spanish, Italian, French).
+titel = "titel"
+juni = "juni"
+oktober = "oktober"
+interaktion = "interaktion"
+vor = "vor"
+alle = "alle"
+tage = "tage"
+contactos = "contactos"
+posible = "posible"
+possibile = "possibile"
+bord = "bord"
+# Project vocabulary typos does not ship in its dictionary.
+mycorrhizal = "mycorrhizal"
+vcard = "vcard"
+jscontact = "jscontact"
+carddav = "carddav"
+caldav = "caldav"
+webdav = "webdav"
+icalendar = "icalendar"
+jscalendar = "jscalendar"
+asvs = "asvs"
+masvs = "masvs"

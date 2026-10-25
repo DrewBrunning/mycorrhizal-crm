@@ -26,6 +26,7 @@
 /.github/filters.yaml        @DrewBrunning
 
 # Gate definitions: the analyzer / lint / budget configuration itself.
+/_typos.toml                                       @DrewBrunning
 /backend/.golangci.yml                             @DrewBrunning
 /backend/internal/perfbench/testdata/budgets.json  @DrewBrunning
 /frontend/eslint.config.js                         @DrewBrunning

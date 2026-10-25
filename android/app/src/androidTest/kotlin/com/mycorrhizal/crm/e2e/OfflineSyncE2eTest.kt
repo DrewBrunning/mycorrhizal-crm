@@ -332,7 +332,7 @@ class OfflineSyncE2eTest : E2eBaseTest() {
      *  staying stuck in the queue (the CON-03 conflict policy, not a second Android-only one). */
     @Test
     fun staleContactLinkOnReconnect_isDroppedAndTheInteractionStillSyncs() = runBlocking {
-        val contact = createTestContact(uniqueName("Conflic"), "Target")
+        val contact = createTestContact(uniqueName("Conflict"), "Target")
         queue(
             kind = InteractionCapture.KIND_CALL,
             direction = InteractionCapture.DIR_OUTGOING,

@@ -242,6 +242,9 @@
   already reviewed) — full list of what runs, and what's deliberately excluded, in `.github/AGENTS.md`'s
   "Local pre-commit checks" section.
 
+**Spelling (typos, issue #1910)**
+- The same pre-commit hook runs [`typos`](https://github.com/crate-ci/typos) over the whole tree, using the committed [`_typos.toml`](_typos.toml) excludes/allowlist. CI runs the same pinned version in the `Docs & security-doc citations` job, so a typo in a doc, comment, or English UI string fails before review. Requires the pinned `typos` binary on `PATH` (`cargo install typos-cli --version 1.51.1 --locked`, or a release binary); fail-closed on a missing or mismatched version.
+
 **Commit sign-off (DCO, OSPS-LE-01.01)**
 - Every commit must carry a `Signed-off-by:` trailer matching its author (`git commit -s`) — the [Developer Certificate of Origin](DCO) 1.1. [.github/workflows/dco.yml](.github/workflows/dco.yml) checks every non-merge commit in a PR and fails on a missing or non-matching sign-off; fix a branch with `git rebase --signoff origin/main` then `git push --force-with-lease`. It is not path-gated (it runs on every PR). Add it to the `main` ruleset's required checks alongside the suites listed above. Contributor-facing copy: [docs/development/contributing.md](docs/development/contributing.md#sign-your-commits-dco); project roles and sensitive-resource access: [GOVERNANCE.md](GOVERNANCE.md). [.githooks/commit-msg](.githooks/commit-msg) (installed by the same `scripts/install-git-hooks.sh` above) catches a missing/non-matching sign-off locally, before the commit exists.
 

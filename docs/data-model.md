@@ -10,7 +10,7 @@ has_children: false
 
 Contacts are the core of Mycorrhizal CRM and represent people from your network. Use **circles** to group your contacts (e.g. Business, Friends, Bowling Group). 
 
-When creating a contact you can optionally create a birthday reminder. This simply adds a reminder for this contact's birthday. Indepenently of that you will receive emails (if set up) for all birthdays anyway. 
+When creating a contact you can optionally create a birthday reminder. This simply adds a reminder for this contact's birthday. Independently of that you will receive emails (if set up) for all birthdays anyway. 
 
 You can add **custom fields** through the settings menu. These will appear on every contact and can hold any text value. When deleting a custom field the information will still be stored in the database but not be visible. It will reappear when you add the same custom field again.
 
@@ -38,14 +38,14 @@ Unassigned notes are not attached to any contact. They are accessible from the N
 ## Reminders
 
 Reminders help you stay on top of important dates and follow-ups. 
-Reminders can be one-time or recur on a schedule. Reminders are tied to a specific contact and appear on both the contact's detail page and the dashboard. You can decide wether the reminder should reschule from the completion date (e.g. for a catch-up) or from the original date (e.g. for an anniversary).
+Reminders can be one-time or recur on a schedule. Reminders are tied to a specific contact and appear on both the contact's detail page and the dashboard. You can decide whether the reminder should reschedule from the completion date (e.g. for a catch-up) or from the original date (e.g. for an anniversary).
 The **Stay in Touch** button on a contact's detail page opens a prefilled reminder creation dialog for a quarterly catch-up.
 
 If you enable **Send email notification** on a reminder, you will receive an email when the reminder is due. This requires a valid email address on your account and a configured email channel (Resend or SMTP) on the server.
 
 Reminders can also be delivered by ntfy, Gotify or browser push. Those channels are enabled once for your account rather than per reminder, so they notify you about every due reminder regardless of the **Send email notification** checkbox — see [Notifications](notifications.html).
 
-When a reminder is due, you can complete or skip it. The difference is that selecting **Complete** creates a completion entry on the related contact's timeline while the **Skip** option directly schedules the next reminder occurence (if there is one) without creating a timeline entry. Overdue reminders remain visible until they are completed or skipped though they will not show up in the reminder emails  again.
+When a reminder is due, you can complete or skip it. The difference is that selecting **Complete** creates a completion entry on the related contact's timeline while the **Skip** option directly schedules the next reminder occurrence (if there is one) without creating a timeline entry. Overdue reminders remain visible until they are completed or skipped though they will not show up in the reminder emails  again.
 
 
 ## Relationships

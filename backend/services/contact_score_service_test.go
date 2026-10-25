@@ -272,8 +272,8 @@ func TestComputeContactScore_DismissedReachOutDoesNotCount(t *testing.T) {
 // computation.
 func TestComputeAllContactScores_CrossUserIsolation(t *testing.T) {
 	db := setupContactScoreTestDB(t)
-	userA := createScoreTestUser(t, db, "score-usera")
-	userB := createScoreTestUser(t, db, "score-userb")
+	userA := createScoreTestUser(t, db, "score-user-a")
+	userB := createScoreTestUser(t, db, "score-user-b")
 	contactA := createScoreTestContact(t, db, userA.ID, "AliceA")
 	contactB := createScoreTestContact(t, db, userB.ID, "AliceB")
 

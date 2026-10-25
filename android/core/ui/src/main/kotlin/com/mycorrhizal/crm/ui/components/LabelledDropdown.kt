@@ -66,7 +66,7 @@ fun <T> LabelledDropdown(
         // filter (#209): one merged Box node carrying the menu-anchor click, the
         // drop-down role and the "<label>, <value>" description, with the outlined
         // chrome drawn by OutlinedTextFieldDefaults.DecorationBox and the value by a
-        // plain Text, which also ellipsises a long value instead of clipping it.
+        // plain Text, which also ellipsizes a long value instead of clipping it.
         Box(
             modifier = modifier
                 .fillMaxWidth()

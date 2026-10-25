@@ -959,7 +959,7 @@ func TestSendRemindersAt_DayBoundaryUsesReminderZone(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			db, _ := setupRouter(t)
-			user := models.User{Username: "ist-boundary", Password: "password123", Email: "ist@example.com"}
+			user := models.User{Username: "instant-boundary", Password: "password123", Email: "instant@example.com"}
 			require.NoError(t, db.Create(&user).Error)
 			contact := models.Contact{UserID: user.ID, Firstname: "Due", Lastname: "Boundary"}
 			require.NoError(t, db.Create(&contact).Error)

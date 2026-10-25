@@ -148,17 +148,17 @@ func run(args []string, stdout, stderr io.Writer, read readFileFn, write writeFi
 				in[g.ID] = manualgates.Input{}
 			}
 		}
-		records, fnd := manualgates.Check(ledger, *kind, in, clock, facts, "")
+		records, findings := manualgates.Check(ledger, *kind, in, clock, facts, "")
 		for _, r := range records {
 			fmt.Fprintf(stdout, "%s: %s\n", r.ID, r.LedgerState)
 		}
-		return report(stdout, fnd)
+		return report(stdout, findings)
 	}
 
-	in, fnd := manualgates.ParseAttest(*attest)
+	in, findings := manualgates.ParseAttest(*attest)
 	records, more := manualgates.Check(ledger, *kind, in, clock, facts, *actor)
-	if fnd = append(fnd, more...); len(fnd) > 0 {
-		return report(stdout, fnd)
+	if findings = append(findings, more...); len(findings) > 0 {
+		return report(stdout, findings)
 	}
 	js, _ := json.Marshal(records) // Record holds only marshalable fields
 	for _, r := range records {

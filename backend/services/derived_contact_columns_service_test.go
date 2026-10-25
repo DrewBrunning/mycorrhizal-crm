@@ -94,7 +94,7 @@ func TestRebuildDerivedContactColumns_ConvergesToProbeClean(t *testing.T) {
 	db := dbtest.New(t)
 	u := derivedRebuildUser(t, db)
 	for _, name := range []string{"Ada", "Bob", "Cy", "Dee"} {
-		c := mkRichContact(t, db, u.ID, name, "Sur", name+"@x.com")
+		c := mkRichContact(t, db, u.ID, name, "Surname", name+"@x.com")
 		require.NoError(t, db.Exec(
 			`UPDATE contacts SET sort_name = 'x', addresses_flat = 'x', fn = 'x' WHERE id = ?`, c.ID).Error)
 	}
