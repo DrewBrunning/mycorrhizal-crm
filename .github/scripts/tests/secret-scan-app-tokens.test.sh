@@ -4,9 +4,11 @@
 #
 # Pins the contract the required `Docs & security-doc citations` job relies on:
 # the scan walks every commit (`--log-opts=--all`), uses the *base branch's*
-# `.gitleaks.toml` (not the PR's copy), enables only the app-token rule, and
+# `.gitleaks.toml` (not the PR's copy) with only the app-token rule extracted,
+# scans the git directory with no `.gitleaksignore` and no inline allows, and
 # redacts findings. It also fails closed on a shallow checkout, an unreadable
-# base config, a missing rule, a missing gitleaks binary, and a finding.
+# base config, a missing/unextractable rule, a missing gitleaks binary, and a
+# finding.
 #
 # `git` and `gitleaks` are stubs on PATH: the git stub answers the shallow/config
 # probes and records every invocation; the gitleaks stub copies the config it was
@@ -22,7 +24,7 @@ fail=0
 
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
-mkdir -p "$work/bin" "$work/repo"
+mkdir -p "$work/bin" "$work/repo" "$work/gitdir"
 
 cat > "$work/bin/git" <<'STUB'
 #!/usr/bin/env bash
@@ -30,6 +32,10 @@ printf 'git %s\n' "$*" >> "$GIT_LOG"
 case "$*" in
   *"rev-parse --is-shallow-repository"*)
     printf '%s\n' "${GIT_SHALLOW:-false}"
+    exit 0
+    ;;
+  *"rev-parse --absolute-git-dir"*)
+    printf '%s\n' "${GIT_ABS_DIR:-}"
     exit 0
     ;;
   fetch\ *|*" fetch "*)
@@ -65,6 +71,18 @@ valid_config='title = "test"
 [[rules]]
 id = "mycorrhizal-app-token"
 regex = "mycorrhizal_(?:feed_)?[A-Za-z0-9_-]{43}"
+entropy = 4.0
+keywords = ["mycorrhizal_"]
+
+[[rules.allowlists]]
+description = "rule-scoped allowlist is intentionally retained"
+regexes = ["intentional-fixture"]
+
+# A global allowlist from the base config must not reach the scan: gitleaks
+# applies these to every rule, so they would hide a real finding.
+[[allowlists]]
+description = "global path allowlist must not be inherited"
+paths = ["backend/tools\\.sum$"]
 '
 
 indent() { printf "    | %s\n" "${1//$'\n'/$'\n    | '}"; }
@@ -78,7 +96,7 @@ run() {
     GIT_LOG="$work/git.log" GITLEAKS_LOG="$work/gitleaks.log" \
     GITLEAKS_CONFIG_COPY="$work/config.copy" \
     REPO_ROOT="$work/repo" DEFAULT_BRANCH="main" GITLEAKS_BIN="$work/bin/gitleaks" \
-    GIT_CONFIG_CONTENT="$valid_config" \
+    GIT_CONFIG_CONTENT="$valid_config" GIT_ABS_DIR="$work/gitdir" \
     "$@" bash "$SCRIPT" > "$work/out" 2>&1
 }
 
@@ -108,6 +126,18 @@ check_contains() {
   fi
 }
 
+check_not_contains() {
+  local name="$1" file="$2" unwanted="$3"
+  if grep -qF -- "$unwanted" "$file"; then
+    fail=$((fail + 1))
+    echo "FAIL: $name (unexpected '$unwanted')"
+    indent "$(cat "$file")"
+  else
+    pass=$((pass + 1))
+    echo "PASS: $name"
+  fi
+}
+
 # Success: full history, base config fetched from origin/main, one rule, redacted.
 run
 rc=$?
@@ -119,12 +149,31 @@ fi
 check_contains "the scan walks all commits" "$work/gitleaks.log" "--log-opts=--all"
 check_contains "the scan enables only the app-token rule" "$work/gitleaks.log" "--enable-rule mycorrhizal-app-token"
 check_contains "the scan redacts findings" "$work/gitleaks.log" "--redact"
+check_contains "the scan ignores PR-supplied .gitleaksignore files" "$work/gitleaks.log" "--gitleaks-ignore-path "
+check_not_contains "the ignore path is not the PR checkout" "$work/gitleaks.log" "--gitleaks-ignore-path $work/repo"
+check_contains "the scan ignores inline gitleaks:allow comments" "$work/gitleaks.log" "--ignore-gitleaks-allow"
+check_contains "the scan scans the git directory, not the worktree" "$work/gitleaks.log" "git $work/gitdir "
 check_contains "the scan fetches the default branch" "$work/git.log" "fetch --quiet origin main"
 check_contains "the scan reads the base branch config" "$work/git.log" "show origin/main:.gitleaks.toml"
-check_contains "the base config reaches gitleaks" "$work/config.copy" 'id = "mycorrhizal-app-token"'
+check_contains "the extracted rule reaches gitleaks" "$work/config.copy" 'id = "mycorrhizal-app-token"'
+check_contains "the extracted config keeps the rule regex" "$work/config.copy" 'regex = "mycorrhizal_(?:feed_)?[A-Za-z0-9_-]{43}"'
+check_contains "the extracted config keeps rule-scoped allowlists" "$work/config.copy" "[[rules.allowlists]]"
+check_not_contains "the extracted config drops global allowlists" "$work/config.copy" "[[allowlists]]"
+check_not_contains "the extracted config drops allowlist contents" "$work/config.copy" "global path allowlist must not be inherited"
 
 scenario "a missing app-token rule fails closed" 1 GIT_CONFIG_CONTENT='title = "no rules"
 '
+
+scenario "an unextractable app-token rule fails closed" 1 GIT_CONFIG_CONTENT='title = "id in a comment only"
+# id = "mycorrhizal-app-token"
+'
+
+scenario "an extracted rule without a regex fails closed" 1 GIT_CONFIG_CONTENT='title = "no regex"
+[[rules]]
+id = "mycorrhizal-app-token"
+'
+
+scenario "a missing git directory fails closed" 1 GIT_ABS_DIR=
 
 scenario "a shallow checkout fails closed" 1 GIT_SHALLOW=true
 

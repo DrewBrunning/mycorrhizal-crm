@@ -176,12 +176,23 @@ jobs:
         working-directory: backend
         env:
           GITLEAKS_BIN: ${{ runner.temp }}/gitleaks
-        run: go build -modfile=tools.mod -o "$GITLEAKS_BIN" github.com/zricethezav/gitleaks/v8
+        # Issue #1551: this job takes no tools.mod `go tool` path, so the
+        # shared retried-download convention does not cover it. Retry the build
+        # (which performs the module-proxy fetch) so a transient proxy/sumdb
+        # failure cannot redden this required, always-on job.
+        run: |
+          for attempt in 1 2 3; do
+            go build -modfile=tools.mod -o "$GITLEAKS_BIN" github.com/zricethezav/gitleaks/v8 && exit 0
+            echo "::warning::gitleaks build attempt $attempt failed; retrying"
+            sleep 10
+          done
+          exit 1
 
       # The script reads `.gitleaks.toml` from origin/<default branch>, not the
-      # PR's copy, enables only `mycorrhizal-app-token`, and fails closed on a
-      # shallow checkout, missing/unreadable base config, missing rule, missing
-      # binary, or any finding.
+      # PR's copy, extracts only `mycorrhizal-app-token` (so no global allowlist
+      # is inherited), scans the git directory with no `.gitleaksignore` or
+      # inline allows, and fails closed on a shallow checkout, missing/unreadable
+      # base config, unextractable rule, missing binary, or any finding.
       - name: Scan full git history for app-minted tokens
         env:
           REPO_ROOT: ${{ github.workspace }}

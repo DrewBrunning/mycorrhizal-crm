@@ -63,6 +63,11 @@ func TestAppTokenHistoryScanRunsInRequiredJob(t *testing.T) {
 	if !(checkoutIndex < buildIndex && buildIndex < scanIndex) {
 		t.Fatalf("expected checkout (%d) < gitleaks build (%d) < scan (%d)", checkoutIndex, buildIndex, scanIndex)
 	}
+	// The build fetches tools.mod modules inside a required job; a transient
+	// proxy/sumdb failure must not redden it (issue #1551's retry convention).
+	if !strings.Contains(job.Steps[buildIndex].Run, "for attempt in 1 2 3") {
+		t.Fatal("docs-citations gitleaks build has no retry; a transient module fetch would fail the required job")
+	}
 
 	checkout := job.Steps[checkoutIndex]
 	if got := fmt.Sprint(checkout.With["fetch-depth"]); got != "0" {
@@ -107,7 +112,11 @@ func TestAppTokenHistoryScanRunsInRequiredJob(t *testing.T) {
 	for _, want := range []string{
 		"origin/$DEFAULT_BRANCH:.gitleaks.toml",
 		"is-shallow-repository",
+		"rev-parse --absolute-git-dir",
 		"--log-opts=--all",
+		`--config "$scan_config"`,
+		"--gitleaks-ignore-path",
+		"--ignore-gitleaks-allow",
 		"--enable-rule " + appTokenRuleID,
 		"--redact",
 		`id = "` + appTokenRuleID + `"`,
@@ -118,7 +127,7 @@ func TestAppTokenHistoryScanRunsInRequiredJob(t *testing.T) {
 	}
 
 	// Review routing: a human should look at a diff that changes the rule, the
-	// scanner, the required workflow step, or the pinned tool.
+	// scanner or its tests, the workflow steps, or the pinned tool.
 	codeowners, err := os.ReadFile(filepath.Join(workflowsDirRel, "..", "..", ".github", "CODEOWNERS"))
 	if err != nil {
 		t.Fatalf("reading .github/CODEOWNERS: %v", err)
@@ -126,7 +135,9 @@ func TestAppTokenHistoryScanRunsInRequiredJob(t *testing.T) {
 	for _, want := range []string{
 		"/.gitleaks.toml",
 		"/.github/scripts/secret-scan-app-tokens.sh",
+		"/.github/scripts/tests/secret-scan-app-tokens.test.sh",
 		"/.github/workflows/unit-tests.yml",
+		"/.github/workflows/actionlint.yml",
 		"/backend/tools.mod",
 		"/backend/tools.sum",
 	} {
@@ -134,4 +145,21 @@ func TestAppTokenHistoryScanRunsInRequiredJob(t *testing.T) {
 			t.Errorf(".github/CODEOWNERS does not route %q", want)
 		}
 	}
+}
+
+// The script's own tests only guard the gate if CI runs them. Pin that
+// invocation too: dropping the step would leave every shell assertion unrun
+// while the structural test above still passed.
+func TestAppTokenScanScriptTestsRunInLintJob(t *testing.T) {
+	wf := loadCIWorkflow(t, "actionlint.yml")
+	job, ok := wf.Jobs["actionlint"]
+	if !ok {
+		t.Fatal("actionlint.yml has no actionlint job")
+	}
+	for _, step := range job.Steps {
+		if strings.Contains(step.Run, ".github/scripts/tests/secret-scan-app-tokens.test.sh") {
+			return
+		}
+	}
+	t.Fatal("actionlint.yml does not run .github/scripts/tests/secret-scan-app-tokens.test.sh")
 }
