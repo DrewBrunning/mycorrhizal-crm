@@ -122,7 +122,7 @@ jobs:
       # actionlint's own shellcheck pass can see into. `-x` follows the
       # alert scripts' `source` of alert-lib/issues.sh (SC1091 otherwise).
       - name: Shellcheck repo scripts
-        run: shellcheck -x .github/scripts/run-fuzz-targets.sh .github/scripts/tests/run-fuzz-targets.test.sh .github/scripts/playwright-install-retry.sh .github/scripts/min-browser-check.sh .github/scripts/assert-below-min-sdk-install.sh .github/scripts/release-register-decide.sh .github/scripts/tests/release-register-decide.test.sh .github/scripts/realrelease-image-expected.sh .github/scripts/tests/realrelease-image-expected.test.sh .github/scripts/release-obligations.sh .github/scripts/tests/release-obligations.test.sh .github/scripts/reference-client-davx5/run.sh .github/scripts/tests/reference-client-davx5.test.sh .github/scripts/candidate-image.sh .github/scripts/release-image-stamp.sh .github/scripts/tests/candidate-image.test.sh .github/scripts/zap-scan-gate.sh .github/scripts/tests/zap-scan-gate.test.sh .github/scripts/go-test-retry-failed.sh .github/scripts/tests/go-test-retry-failed.test.sh .github/scripts/manual-gate-facts.sh .github/scripts/tests/manual-gate-facts.test.sh .github/scripts/main-alert/ensure-alert.sh .github/scripts/tests/main-alert.test.sh .github/scripts/alert-lib/issues.sh .github/scripts/nightly-alert/ensure-alert.sh .github/scripts/nightly-alert/already-reported.sh .github/scripts/tests/nightly-alert.test.sh .github/scripts/bypassed-check-alert/ensure-alert.sh .github/scripts/tests/bypassed-check-alert.test.sh scripts/android-local-mode-device-test.sh scripts/tests/android-local-mode-device-test.test.sh scripts/install-agent-links.sh scripts/tests/install-agent-links.test.sh
+        run: shellcheck -x .github/scripts/run-fuzz-targets.sh .github/scripts/tests/run-fuzz-targets.test.sh .github/scripts/playwright-install-retry.sh .github/scripts/min-browser-check.sh .github/scripts/assert-below-min-sdk-install.sh .github/scripts/release-register-decide.sh .github/scripts/tests/release-register-decide.test.sh .github/scripts/realrelease-image-expected.sh .github/scripts/tests/realrelease-image-expected.test.sh .github/scripts/release-obligations.sh .github/scripts/tests/release-obligations.test.sh .github/scripts/reference-client-davx5/run.sh .github/scripts/tests/reference-client-davx5.test.sh .github/scripts/candidate-image.sh .github/scripts/release-image-stamp.sh .github/scripts/tests/candidate-image.test.sh .github/scripts/zap-scan-gate.sh .github/scripts/tests/zap-scan-gate.test.sh .github/scripts/go-test-retry-failed.sh .github/scripts/tests/go-test-retry-failed.test.sh .github/scripts/manual-gate-facts.sh .github/scripts/tests/manual-gate-facts.test.sh .github/scripts/main-alert/ensure-alert.sh .github/scripts/tests/main-alert.test.sh .github/scripts/alert-lib/issues.sh .github/scripts/nightly-alert/ensure-alert.sh .github/scripts/nightly-alert/already-reported.sh .github/scripts/tests/nightly-alert.test.sh .github/scripts/bypassed-check-alert/ensure-alert.sh .github/scripts/tests/bypassed-check-alert.test.sh .github/scripts/pr-alert/ensure-comment.sh .github/scripts/tests/pr-alert.test.sh scripts/pre-pr.sh scripts/android-local-mode-device-test.sh scripts/tests/android-local-mode-device-test.test.sh scripts/install-agent-links.sh scripts/tests/install-agent-links.test.sh
 
       # Issue #712: exercise the fuzz runner's hardening against a stubbed
       # `go` binary (pass / deadline-race / crash / seed-replay), asserting
@@ -193,6 +193,12 @@ jobs:
       # "cancelled (not superseded)"; failure is unchanged; success still closes.
       - name: Test main-failure alert script
         run: bash .github/scripts/tests/main-alert.test.sh
+
+      # Issue #1964: pins the PR-failure comment contract -- one marker-tagged
+      # comment per PR, updated in place instead of duplicated, the failing job
+      # and log URL in the body, and no mutation in dry-run mode.
+      - name: Test PR-failure alert script
+        run: bash .github/scripts/tests/pr-alert.test.sh
 
       # Pins the nightly alarm's issue lookups: no Search API call (its
       # 30/min budget 403'd the reconcile matrix and the alert for it,
