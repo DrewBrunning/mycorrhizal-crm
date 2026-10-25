@@ -29,23 +29,21 @@ case "${1:-}" in
     ;;
 esac
 
-diff_flag=(-diff)
 if [ "$write" = true ]; then
-  diff_flag=()
+  go mod tidy
+else
+  go mod tidy -diff
 fi
-
-go mod tidy "${diff_flag[@]}"
 
 scratch="$(mktemp -d)"
 trap 'rm -rf "$scratch"' EXIT
 cp go.mod tools.mod tools.sum "$scratch/"
-(
-  cd "$scratch"
-  go mod tidy -modfile=tools.mod "${diff_flag[@]}"
-)
 if [ "$write" = true ]; then
+  (cd "$scratch" && go mod tidy -modfile=tools.mod)
   cp "$scratch/tools.mod" tools.mod
   cp "$scratch/tools.sum" tools.sum
+else
+  (cd "$scratch" && go mod tidy -modfile=tools.mod -diff)
 fi
 
 go mod verify
