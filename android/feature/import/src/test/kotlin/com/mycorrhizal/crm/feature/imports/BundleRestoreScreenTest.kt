@@ -31,11 +31,16 @@ class BundleRestoreScreenTest {
         uiState: BundleRestoreUiState,
         onConfirm: () -> Unit = {},
         onDone: () -> Unit = {},
-        onBack: () -> Unit = {},
+        onBack: () -> Unit = {}
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                BundleRestoreScreenContent(uiState = uiState, onConfirm = onConfirm, onDone = onDone, onBack = onBack)
+                BundleRestoreScreenContent(
+                    uiState = uiState,
+                    onConfirm = onConfirm,
+                    onDone = onDone,
+                    onBack = onBack
+                )
             }
         }
     }
@@ -48,14 +53,14 @@ class BundleRestoreScreenTest {
                 ImportRowPreview(
                     rowIndex = 0,
                     parsedContact = mapOf("firstname" to "Ada", "lastname" to "Lovelace"),
-                    suggestedAction = "add",
-                ),
+                    suggestedAction = "add"
+                )
             ),
             totalRows = 1,
             validRows = 1,
-            lossReport = loss,
+            lossReport = loss
         ),
-        rowActions = mapOf(0 to "add"),
+        rowActions = mapOf(0 to "add")
     )
 
     @Test
@@ -84,7 +89,11 @@ class BundleRestoreScreenTest {
 
     @Test
     fun `review step surfaces the loss report count`() {
-        setContent(reviewState(loss = listOf(SourceImportIssue(message = "a"), SourceImportIssue(message = "b"))))
+        setContent(
+            reviewState(
+                loss = listOf(SourceImportIssue(message = "a"), SourceImportIssue(message = "b"))
+            )
+        )
 
         composeTestRule.onNodeWithText("2 items cannot be restored exactly").assertIsDisplayed()
     }
@@ -105,12 +114,14 @@ class BundleRestoreScreenTest {
         setContent(
             BundleRestoreUiState(
                 step = BundleRestoreStep.RESULT,
-                result = SourceImportResult(created = 5, updated = 1, skipped = 2),
+                result = SourceImportResult(created = 5, updated = 1, skipped = 2)
             ),
-            onDone = { done++ },
+            onDone = { done++ }
         )
 
-        composeTestRule.onNodeWithText("Restored: 5 created, 1 updated, 2 skipped").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Restored: 5 created, 1 updated, 2 skipped"
+        ).assertIsDisplayed()
         composeTestRule.onNodeWithText("Confirm").performClick()
 
         assertEquals(1, done)

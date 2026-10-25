@@ -6,8 +6,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import com.mycorrhizal.crm.domain.profile.defaultProfileLabel
-import org.junit.Test
 import java.util.UUID
+import org.junit.Test
 
 /**
  * ADR 0028 Decision 1, acceptance test: a second Remote profile pointed at the
@@ -26,7 +26,7 @@ class ServerProfileSwitchE2eTest : E2eBaseTest() {
         backend.registerSeedUser(
             E2eConfig.SECOND_USERNAME,
             E2eConfig.SECOND_EMAIL,
-            E2eConfig.SECOND_PASSWORD,
+            E2eConfig.SECOND_PASSWORD
         )
 
         val token = UUID.randomUUID().toString().replace("-", "").take(8)

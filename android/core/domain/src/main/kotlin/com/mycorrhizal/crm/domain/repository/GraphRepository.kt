@@ -17,7 +17,7 @@ interface GraphRepository {
     suspend fun getConnections(
         from: String,
         depth: Int? = null,
-        relation: String? = null,
+        relation: String? = null
     ): Result<GraphConnectionsResponse>
 
     /**
@@ -37,8 +37,4 @@ interface GraphRepository {
 }
 
 /** A circle plus the VCardUIDs of its members, for a client-side membership filter. */
-data class CircleWithMembers(
-    val id: String,
-    val name: String,
-    val memberVCardUids: Set<String>,
-)
+data class CircleWithMembers(val id: String, val name: String, val memberVCardUids: Set<String>)

@@ -31,7 +31,7 @@ class CallLogSyncWorker @AssistedInject constructor(
     @Assisted workerParams: WorkerParameters,
     private val pendingInteractionRepository: PendingInteractionRepository,
     private val contactRepository: ContactRepository,
-    private val trackingSettings: TrackingSettingsRepository,
+    private val trackingSettings: TrackingSettingsRepository
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {
@@ -71,7 +71,7 @@ class CallLogSyncWorker @AssistedInject constructor(
                 direction = direction,
                 number = number,
                 timestampMillis = entry.timestampMillis,
-                dedupe = true,
+                dedupe = true
             )
         }
 
@@ -81,11 +81,10 @@ class CallLogSyncWorker @AssistedInject constructor(
         return Result.success()
     }
 
-    private fun hasCallLogPermission(): Boolean =
-        ContextCompat.checkSelfPermission(
-            applicationContext,
-            TrackingPermissions.READ_CALL_LOG,
-        ) == PackageManager.PERMISSION_GRANTED
+    private fun hasCallLogPermission(): Boolean = ContextCompat.checkSelfPermission(
+        applicationContext,
+        TrackingPermissions.READ_CALL_LOG
+    ) == PackageManager.PERMISSION_GRANTED
 
     private companion object {
         const val TAG = "CallLogSyncWorker"

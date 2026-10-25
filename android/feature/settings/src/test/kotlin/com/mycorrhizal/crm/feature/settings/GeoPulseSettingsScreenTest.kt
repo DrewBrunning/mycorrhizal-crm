@@ -26,11 +26,16 @@ class GeoPulseSettingsScreenTest {
         state: GeoPulseSettingsUiState,
         onSave: () -> Unit = {},
         onTest: () -> Unit = {},
-        onRemove: () -> Unit = {},
+        onRemove: () -> Unit = {}
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                GeoPulseSettingsContent(state = state, onSave = onSave, onTest = onTest, onRemove = onRemove)
+                GeoPulseSettingsContent(
+                    state = state,
+                    onSave = onSave,
+                    onTest = onTest,
+                    onRemove = onRemove
+                )
             }
         }
     }
@@ -39,9 +44,13 @@ class GeoPulseSettingsScreenTest {
     fun `first connect marks the token required and offers neither test nor disconnect`() {
         setContent(GeoPulseSettingsUiState(isLoading = false, baseUrl = "https://geo.example.com"))
 
-        composeTestRule.onNodeWithText("GeoPulse server URL *").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "GeoPulse server URL *"
+        ).performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("API token *").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("Create a token in GeoPulse (Profile → Security) and paste it here.")
+        composeTestRule.onNodeWithText(
+            "Create a token in GeoPulse (Profile → Security) and paste it here."
+        )
             .performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Test connection").assertDoesNotExist()
         composeTestRule.onNodeWithText("Disconnect").assertDoesNotExist()
@@ -54,12 +63,14 @@ class GeoPulseSettingsScreenTest {
                 isLoading = false,
                 baseUrl = "https://geo.example.com",
                 storedBaseUrl = "https://geo.example.com",
-                hasApiKey = true,
-            ),
+                hasApiKey = true
+            )
         )
 
         composeTestRule.onNodeWithText("API token").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("A token is already stored. Leave the field empty to keep it.")
+        composeTestRule.onNodeWithText(
+            "A token is already stored. Leave the field empty to keep it."
+        )
             .performScrollTo().assertIsDisplayed()
     }
 
@@ -70,13 +81,13 @@ class GeoPulseSettingsScreenTest {
                 isLoading = false,
                 baseUrl = "https://other.example.com",
                 storedBaseUrl = "https://geo.example.com",
-                hasApiKey = true,
-            ),
+                hasApiKey = true
+            )
         )
 
         composeTestRule.onNodeWithText("API token *").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText(
-            "The server address changed, so re-enter the API token. The stored token is never sent to a different server.",
+            "The server address changed, so re-enter the API token. The stored token is never sent to a different server."
         ).performScrollTo().assertIsDisplayed()
     }
 
@@ -91,11 +102,15 @@ class GeoPulseSettingsScreenTest {
                 baseUrl = "https://geo.example.com",
                 storedBaseUrl = "https://geo.example.com",
                 hasApiKey = true,
-                testResult = GeoPulseTestOutcome(ok = false, stage = "reachability", message = "connection refused"),
+                testResult = GeoPulseTestOutcome(
+                    ok = false,
+                    stage = "reachability",
+                    message = "connection refused"
+                )
             ),
             onSave = { saved++ },
             onTest = { tested++ },
-            onRemove = { removed++ },
+            onRemove = { removed++ }
         )
 
         composeTestRule.onNodeWithText("Test failed (reachability): connection refused")
@@ -112,11 +127,13 @@ class GeoPulseSettingsScreenTest {
             GeoPulseSettingsUiState(
                 isLoading = false,
                 baseUrl = "https://geo.example.com",
-                saveErrorRes = com.mycorrhizal.crm.ui.R.string.geopulse_settings_api_key_required,
-            ),
+                saveErrorRes = com.mycorrhizal.crm.ui.R.string.geopulse_settings_api_key_required
+            )
         )
 
-        composeTestRule.onNodeWithText("The API token is required to connect.").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "The API token is required to connect."
+        ).performScrollTo().assertIsDisplayed()
     }
 
     @Test

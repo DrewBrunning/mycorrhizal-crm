@@ -16,5 +16,5 @@ data class CustomLinkAction(
     val kind: String,
     val mimeType: String,
     /** Intent URI template, `{handle}` placeholder substituted at runtime. */
-    val intentUriTemplate: String,
+    val intentUriTemplate: String
 )

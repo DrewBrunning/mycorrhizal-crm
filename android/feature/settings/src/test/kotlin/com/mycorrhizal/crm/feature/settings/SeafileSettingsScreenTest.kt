@@ -43,11 +43,15 @@ class SeafileSettingsScreenTest {
     fun `shows the stored-token hint when a token is already configured`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                SeafileSettingsContent(state = SeafileSettingsUiState(isLoading = false, hasApiToken = true))
+                SeafileSettingsContent(
+                    state = SeafileSettingsUiState(isLoading = false, hasApiToken = true)
+                )
             }
         }
 
-        composeTestRule.onNodeWithText("A token is already stored. Leave the field empty to keep it.")
+        composeTestRule.onNodeWithText(
+            "A token is already stored. Leave the field empty to keep it."
+        )
             .performScrollTo().assertIsDisplayed()
     }
 
@@ -55,7 +59,9 @@ class SeafileSettingsScreenTest {
     fun `the test button only appears once a token is stored`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                SeafileSettingsContent(state = SeafileSettingsUiState(isLoading = false, hasApiToken = false))
+                SeafileSettingsContent(
+                    state = SeafileSettingsUiState(isLoading = false, hasApiToken = false)
+                )
             }
         }
 
@@ -68,8 +74,12 @@ class SeafileSettingsScreenTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 SeafileSettingsContent(
-                    state = SeafileSettingsUiState(isLoading = false, hasApiToken = true, baseUrl = "http://seafile:8000"),
-                    onTest = { tested = true },
+                    state = SeafileSettingsUiState(
+                        isLoading = false,
+                        hasApiToken = true,
+                        baseUrl = "http://seafile:8000"
+                    ),
+                    onTest = { tested = true }
                 )
             }
         }
@@ -86,20 +96,24 @@ class SeafileSettingsScreenTest {
                     state = SeafileSettingsUiState(
                         isLoading = false,
                         hasApiToken = true,
-                        testResult = SeafileTestOutcome(ok = false, message = "invalid API token"),
-                    ),
+                        testResult = SeafileTestOutcome(ok = false, message = "invalid API token")
+                    )
                 )
             }
         }
 
-        composeTestRule.onNodeWithText("Test failed: invalid API token").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Test failed: invalid API token"
+        ).performScrollTo().assertIsDisplayed()
     }
 
     @Test
     fun `remove connection only appears once a token is stored`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                SeafileSettingsContent(state = SeafileSettingsUiState(isLoading = false, hasApiToken = false))
+                SeafileSettingsContent(
+                    state = SeafileSettingsUiState(isLoading = false, hasApiToken = false)
+                )
             }
         }
 
@@ -113,7 +127,7 @@ class SeafileSettingsScreenTest {
             MycorrhizalTheme {
                 SeafileSettingsContent(
                     state = SeafileSettingsUiState(isLoading = false, hasApiToken = true),
-                    onRemove = { removed = true },
+                    onRemove = { removed = true }
                 )
             }
         }
@@ -126,7 +140,9 @@ class SeafileSettingsScreenTest {
     fun `save is disabled until a base url is entered`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                SeafileSettingsContent(state = SeafileSettingsUiState(isLoading = false, baseUrl = ""))
+                SeafileSettingsContent(
+                    state = SeafileSettingsUiState(isLoading = false, baseUrl = "")
+                )
             }
         }
 
@@ -137,12 +153,19 @@ class SeafileSettingsScreenTest {
     fun `save error is announced as an assertive live region`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                SeafileSettingsContent(state = SeafileSettingsUiState(isLoading = false, saveError = "Could not save"))
+                SeafileSettingsContent(
+                    state = SeafileSettingsUiState(isLoading = false, saveError = "Could not save")
+                )
             }
         }
 
         composeTestRule.onNodeWithText("Could not save")
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Assertive))
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.LiveRegion,
+                    LiveRegionMode.Assertive
+                )
+            )
     }
 
     @Test

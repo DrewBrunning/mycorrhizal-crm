@@ -15,7 +15,7 @@ class LocalSessionReminterTest {
 
     private class FakeHost(
         private val startResult: Result<LocalServerEndpoint>,
-        private val runningToken: String? = null,
+        private val runningToken: String? = null
     ) : LocalServerHost {
         val calls = mutableListOf<String>()
 
@@ -51,21 +51,28 @@ class LocalSessionReminterTest {
     }
 
     @Test
-    fun `a running server whose token differs from the stored one is adopted without a restart`() = runTest {
-        val manager = manager()
-        manager.activateLocalProfile("stale-token")
-        val host = FakeHost(Result.success(LocalServerEndpoint("/sock", "unused")), runningToken = "running-token")
+    fun `a running server whose token differs from the stored one is adopted without a restart`() =
+        runTest {
+            val manager = manager()
+            manager.activateLocalProfile("stale-token")
+            val host = FakeHost(
+                Result.success(LocalServerEndpoint("/sock", "unused")),
+                runningToken = "running-token"
+            )
 
-        assertEquals(true, LocalSessionReminter(host, manager).remint())
-        assertTrue(host.calls.isEmpty())
-        assertEquals("running-token", manager.bearerToken())
-    }
+            assertEquals(true, LocalSessionReminter(host, manager).remint())
+            assertTrue(host.calls.isEmpty())
+            assertEquals("running-token", manager.bearerToken())
+        }
 
     @Test
     fun `a running server whose token is the rejected one is restarted`() = runTest {
         val manager = manager()
         manager.activateLocalProfile("same-token")
-        val host = FakeHost(Result.success(LocalServerEndpoint("/sock", "fresh-token")), runningToken = "same-token")
+        val host = FakeHost(
+            Result.success(LocalServerEndpoint("/sock", "fresh-token")),
+            runningToken = "same-token"
+        )
 
         assertEquals(true, LocalSessionReminter(host, manager).remint())
         assertEquals(listOf("stop", "start"), host.calls)
@@ -107,7 +114,10 @@ class LocalSessionReminterTest {
     fun `a stale-token 401 after adoption does not restart the host`() = runTest {
         val manager = manager()
         manager.activateLocalProfile("t2") // already adopted
-        val host = FakeHost(Result.success(LocalServerEndpoint("/sock", "unused")), runningToken = "t2")
+        val host = FakeHost(
+            Result.success(LocalServerEndpoint("/sock", "unused")),
+            runningToken = "t2"
+        )
 
         assertEquals(true, LocalSessionReminter(host, manager).remint(rejectedBearer = "t1"))
         assertTrue("no stop/start for a stale token", host.calls.isEmpty())
@@ -115,15 +125,19 @@ class LocalSessionReminterTest {
     }
 
     @Test
-    fun `a stale-token 401 with an unadopted running token adopts it without a restart`() = runTest {
-        val manager = manager()
-        manager.activateLocalProfile("t1")
-        val host = FakeHost(Result.success(LocalServerEndpoint("/sock", "unused")), runningToken = "t2")
+    fun `a stale-token 401 with an unadopted running token adopts it without a restart`() =
+        runTest {
+            val manager = manager()
+            manager.activateLocalProfile("t1")
+            val host = FakeHost(
+                Result.success(LocalServerEndpoint("/sock", "unused")),
+                runningToken = "t2"
+            )
 
-        assertEquals(true, LocalSessionReminter(host, manager).remint(rejectedBearer = "t1"))
-        assertTrue(host.calls.isEmpty())
-        assertEquals("t2", manager.bearerToken())
-    }
+            assertEquals(true, LocalSessionReminter(host, manager).remint(rejectedBearer = "t1"))
+            assertTrue(host.calls.isEmpty())
+            assertEquals("t2", manager.bearerToken())
+        }
 
     @Test
     fun `a 401 carrying the running token restarts exactly once`() = runTest {

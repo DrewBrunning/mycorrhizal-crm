@@ -28,7 +28,7 @@ class SessionExpiryWiringTest {
         manager.setSession(
             serverUrl = "https://crm.example.com",
             token = "jwt-1",
-            state = SessionState(userId = 7, username = "alice"),
+            state = SessionState(userId = 7, username = "alice")
         )
 
         SessionExpiryWiring(notifier, manager).start(this)
@@ -37,7 +37,10 @@ class SessionExpiryWiringTest {
 
         assertNull("the bearer token must be dropped", manager.bearerToken())
         assertNull("the persisted token must be dropped", tokenStorage.stored)
-        assertFalse("the session must flip to logged-out", manager.observeSession().first().isLoggedIn)
+        assertFalse(
+            "the session must flip to logged-out",
+            manager.observeSession().first().isLoggedIn
+        )
         assertEquals("local PII must be wiped on session end", 1, cleaner.clearCount)
         // Issue #723: a 401-driven logout goes through the same clearSession as
         // an explicit logout — the server URL survives it too, so the login
@@ -155,25 +158,32 @@ class SessionExpiryWiringTest {
     // token) and must neither clear the session nor fall through to the grant
     // refresher.
     @Test
-    fun `a successful local re-mint on 401 keeps the session and skips the grant refresher`() = runTest {
-        val notifier = SessionExpiryNotifier()
-        val manager = DefaultSessionManager(FakeTokenStorage(), FakeSessionPrefsStorage())
-        manager.activateLocalProfile("old-token")
-        var grantTried = false
+    fun `a successful local re-mint on 401 keeps the session and skips the grant refresher`() =
+        runTest {
+            val notifier = SessionExpiryNotifier()
+            val manager = DefaultSessionManager(FakeTokenStorage(), FakeSessionPrefsStorage())
+            manager.activateLocalProfile("old-token")
+            var grantTried = false
 
-        SessionExpiryWiring(
-            notifier,
-            manager,
-            refresher = { grantTried = true; true },
-            localRemint = { manager.activateLocalProfile("new-token"); true },
-        ).start(this)
-        notifier.onSessionExpired()
-        advanceUntilIdle()
+            SessionExpiryWiring(
+                notifier,
+                manager,
+                refresher = {
+                    grantTried = true
+                    true
+                },
+                localRemint = {
+                    manager.activateLocalProfile("new-token")
+                    true
+                }
+            ).start(this)
+            notifier.onSessionExpired()
+            advanceUntilIdle()
 
-        assertEquals("new-token", manager.bearerToken())
-        assertTrue(manager.observeSession().first().isLoggedIn)
-        assertFalse("a Local profile has no grant to exchange", grantTried)
-    }
+            assertEquals("new-token", manager.bearerToken())
+            assertTrue(manager.observeSession().first().isLoggedIn)
+            assertFalse("a Local profile has no grant to exchange", grantTried)
+        }
 
     @Test
     fun `a failed local re-mint on 401 clears the session`() = runTest {
@@ -191,24 +201,28 @@ class SessionExpiryWiringTest {
 
     // A Remote profile (localRemint returns null) keeps the existing behavior.
     @Test
-    fun `a null local re-mint falls through to the grant refresher for a Remote profile`() = runTest {
-        val notifier = SessionExpiryNotifier()
-        val manager = DefaultSessionManager(FakeTokenStorage(), FakeSessionPrefsStorage())
-        manager.setSession("https://crm.example.com", "jwt-1", SessionState(userId = 7))
-        var grantTried = false
+    fun `a null local re-mint falls through to the grant refresher for a Remote profile`() =
+        runTest {
+            val notifier = SessionExpiryNotifier()
+            val manager = DefaultSessionManager(FakeTokenStorage(), FakeSessionPrefsStorage())
+            manager.setSession("https://crm.example.com", "jwt-1", SessionState(userId = 7))
+            var grantTried = false
 
-        SessionExpiryWiring(
-            notifier,
-            manager,
-            refresher = { grantTried = true; false },
-            localRemint = { null },
-        ).start(this)
-        notifier.onSessionExpired()
-        advanceUntilIdle()
+            SessionExpiryWiring(
+                notifier,
+                manager,
+                refresher = {
+                    grantTried = true
+                    false
+                },
+                localRemint = { null }
+            ).start(this)
+            notifier.onSessionExpired()
+            advanceUntilIdle()
 
-        assertTrue(grantTried)
-        assertNull(manager.bearerToken())
-    }
+            assertTrue(grantTried)
+            assertNull(manager.bearerToken())
+        }
 
     private class RecordingCleaner : SessionDataCleaner {
         var clearCount = 0
@@ -232,17 +246,24 @@ class SessionExpiryWiringTest {
         manager = DefaultSessionManager(
             FakeTokenStorage(),
             FakeSessionPrefsStorage(),
-            sessionTeardown = SessionTeardown { notifier.onSessionExpired() },
+            sessionTeardown = SessionTeardown { notifier.onSessionExpired() }
         )
         manager.setSession("https://crm.example.com", "jwt-1", SessionState(userId = 7))
         // No grant to exchange -- the outer 401 falls through to clearSession,
         // which is where the re-entrant signal from teardown fires.
-        SessionExpiryWiring(notifier, manager, refresher = { refreshAttempts++; false }).start(this)
+        SessionExpiryWiring(notifier, manager, refresher = {
+            refreshAttempts++
+            false
+        }).start(this)
 
         notifier.onSessionExpired()
         advanceUntilIdle()
 
-        assertEquals("only the original 401 may attempt a refresh, not the re-entrant one", 1, refreshAttempts)
+        assertEquals(
+            "only the original 401 may attempt a refresh, not the re-entrant one",
+            1,
+            refreshAttempts
+        )
         assertNull("the session must still end up cleared", manager.bearerToken())
     }
 
@@ -254,34 +275,38 @@ class SessionExpiryWiringTest {
     // chose to log out. The guard must stop that regardless of whether a
     // refresh WOULD have succeeded.
     @Test
-    fun `an explicit logout's teardown 401 cannot silently resurrect the session via a working grant`() = runTest {
-        val notifier = SessionExpiryNotifier()
-        var grantExchangeCalled = false
-        lateinit var manager: DefaultSessionManager
-        manager = DefaultSessionManager(
-            FakeTokenStorage(),
-            FakeSessionPrefsStorage(),
-            sessionTeardown = SessionTeardown { notifier.onSessionExpired() },
-        )
-        manager.setSession("https://crm.example.com", "jwt-1", SessionState(userId = 7))
-        // A grant exchange that would succeed if ever attempted -- the guard
-        // must prevent it from being attempted at all here, not rely on it
-        // failing.
-        SessionExpiryWiring(notifier, manager, refresher = {
-            grantExchangeCalled = true
-            manager.setToken("resurrected-jwt")
-            true
-        }).start(this)
+    fun `an explicit logout's teardown 401 cannot silently resurrect the session via a working grant`() =
+        runTest {
+            val notifier = SessionExpiryNotifier()
+            var grantExchangeCalled = false
+            lateinit var manager: DefaultSessionManager
+            manager = DefaultSessionManager(
+                FakeTokenStorage(),
+                FakeSessionPrefsStorage(),
+                sessionTeardown = SessionTeardown { notifier.onSessionExpired() }
+            )
+            manager.setSession("https://crm.example.com", "jwt-1", SessionState(userId = 7))
+            // A grant exchange that would succeed if ever attempted -- the guard
+            // must prevent it from being attempted at all here, not rely on it
+            // failing.
+            SessionExpiryWiring(notifier, manager, refresher = {
+                grantExchangeCalled = true
+                manager.setToken("resurrected-jwt")
+                true
+            }).start(this)
 
-        // The explicit logout path: AuthRepositoryImpl.logout() calls this
-        // directly, never through SessionExpiryWiring.
-        manager.clearSession()
-        advanceUntilIdle()
+            // The explicit logout path: AuthRepositoryImpl.logout() calls this
+            // directly, never through SessionExpiryWiring.
+            manager.clearSession()
+            advanceUntilIdle()
 
-        assertFalse("teardown's own 401 must never reach the grant exchange", grantExchangeCalled)
-        assertNull("the session must end up logged out, not resurrected", manager.bearerToken())
-        assertFalse(manager.observeSession().first().isLoggedIn)
-    }
+            assertFalse(
+                "teardown's own 401 must never reach the grant exchange",
+                grantExchangeCalled
+            )
+            assertNull("the session must end up logged out, not resurrected", manager.bearerToken())
+            assertFalse(manager.observeSession().first().isLoggedIn)
+        }
 
     // Issue #967: a burst of concurrent 401s -- or the grant exchange's own
     // 401 re-firing this listener recursively -- must collapse into exactly
@@ -322,7 +347,10 @@ class SessionExpiryWiringTest {
         manager.setSession("https://crm.example.com", "jwt-1", SessionState(userId = 7))
         var refreshStarts = 0
 
-        SessionExpiryWiring(notifier, manager, refresher = { refreshStarts++; true }).start(this)
+        SessionExpiryWiring(notifier, manager, refresher = {
+            refreshStarts++
+            true
+        }).start(this)
 
         notifier.onSessionExpired()
         advanceUntilIdle()
@@ -340,7 +368,10 @@ class SessionExpiryWiringTest {
         manager.setSession("https://crm.example.com", "jwt-1", SessionState(userId = 7))
         val seen = mutableListOf<String?>()
 
-        SessionExpiryWiring(notifier, manager, localRemint = { seen += it; true }).start(this)
+        SessionExpiryWiring(notifier, manager, localRemint = {
+            seen += it
+            true
+        }).start(this)
         notifier.onSessionExpired("stale-token")
         advanceUntilIdle()
         notifier.onSessionExpired()
@@ -397,56 +428,68 @@ class SessionExpiryWiringTest {
     // Cold start: stored T1, the freshly started server minted T2. A 401 for T1
     // adopts T2 with no restart.
     @Test
-    fun `cold start with a stale stored token adopts the running token without a restart`() = runTest {
-        val notifier = SessionExpiryNotifier()
-        val manager = DefaultSessionManager(FakeTokenStorage(), FakeSessionPrefsStorage())
-        manager.activateLocalProfile("t1")
-        val host = CountingHost(runningToken = "t2")
-        val reminter = com.mycorrhizal.crm.data.local.LocalSessionReminter(host, manager)
+    fun `cold start with a stale stored token adopts the running token without a restart`() =
+        runTest {
+            val notifier = SessionExpiryNotifier()
+            val manager = DefaultSessionManager(FakeTokenStorage(), FakeSessionPrefsStorage())
+            manager.activateLocalProfile("t1")
+            val host = CountingHost(runningToken = "t2")
+            val reminter = com.mycorrhizal.crm.data.local.LocalSessionReminter(host, manager)
 
-        SessionExpiryWiring(notifier, manager, localRemint = { reminter.remint(it) }).start(this)
-        notifier.onSessionExpired("t1")
-        advanceUntilIdle()
+            SessionExpiryWiring(
+                notifier,
+                manager,
+                localRemint = { reminter.remint(it) }
+            ).start(this)
+            notifier.onSessionExpired("t1")
+            advanceUntilIdle()
 
-        assertEquals(0, host.stops)
-        assertEquals(0, host.starts)
-        assertEquals("t2", manager.bearerToken())
-    }
+            assertEquals(0, host.stops)
+            assertEquals(0, host.starts)
+            assertEquals("t2", manager.bearerToken())
+        }
 
     // Remote profile: the bearer plumbing changes nothing -- the grant refresh
     // still runs and a failed refresh still clears.
     @Test
-    fun `a remote profile still refreshes then clears regardless of the rejected bearer`() = runTest {
-        val notifier = SessionExpiryNotifier()
-        val manager = DefaultSessionManager(FakeTokenStorage(), FakeSessionPrefsStorage())
-        manager.setSession("https://crm.example.com", "jwt-1", SessionState(userId = 7))
-        var refreshes = 0
-        val host = CountingHost(runningToken = null)
-        val reminter = com.mycorrhizal.crm.data.local.LocalSessionReminter(host, manager)
+    fun `a remote profile still refreshes then clears regardless of the rejected bearer`() =
+        runTest {
+            val notifier = SessionExpiryNotifier()
+            val manager = DefaultSessionManager(FakeTokenStorage(), FakeSessionPrefsStorage())
+            manager.setSession("https://crm.example.com", "jwt-1", SessionState(userId = 7))
+            var refreshes = 0
+            val host = CountingHost(runningToken = null)
+            val reminter = com.mycorrhizal.crm.data.local.LocalSessionReminter(host, manager)
 
-        SessionExpiryWiring(
-            notifier,
-            manager,
-            refresher = { refreshes++; false },
-            localRemint = { reminter.remint(it) },
-        ).start(this)
-        notifier.onSessionExpired("jwt-1")
-        advanceUntilIdle()
+            SessionExpiryWiring(
+                notifier,
+                manager,
+                refresher = {
+                    refreshes++
+                    false
+                },
+                localRemint = { reminter.remint(it) }
+            ).start(this)
+            notifier.onSessionExpired("jwt-1")
+            advanceUntilIdle()
 
-        assertEquals(1, refreshes)
-        assertEquals(0, host.starts + host.stops)
-        assertNull(manager.bearerToken())
-    }
+            assertEquals(1, refreshes)
+            assertEquals(0, host.starts + host.stops)
+            assertNull(manager.bearerToken())
+        }
 
     private class CountingHost(
         private val runningToken: String?,
-        private val mintsOnStart: String = "minted",
+        private val mintsOnStart: String = "minted"
     ) : com.mycorrhizal.crm.data.local.LocalServerHost {
         var starts = 0
         var stops = 0
 
         override suspend fun ensureStarted() = Result.success(
-            com.mycorrhizal.crm.data.local.LocalServerEndpoint("/sock", mintsOnStart).also { starts++ },
+            com.mycorrhizal.crm.data.local.LocalServerEndpoint(
+                "/sock",
+                mintsOnStart
+            ).also { starts++ }
         )
 
         override suspend fun stop() {

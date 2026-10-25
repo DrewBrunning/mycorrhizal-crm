@@ -14,8 +14,8 @@ import com.mycorrhizal.crm.domain.repository.RelationshipEdgeRepository
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.coVerify
-import io.mockk.mockk
 import io.mockk.every
+import io.mockk.mockk
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -47,14 +47,19 @@ class DataScreenTest {
     }
 
     private fun setScreen(onCustomExport: () -> Unit = {}, onRestoreBundle: () -> Unit = {}) {
-        val viewModel = DataViewModel(contactRepository, relationshipEdgeRepository, exportRepository, bundleBackupRepository)
+        val viewModel = DataViewModel(
+            contactRepository,
+            relationshipEdgeRepository,
+            exportRepository,
+            bundleBackupRepository
+        )
         composeTestRule.setContent {
             MycorrhizalTheme {
                 DataScreen(
                     onMenuClick = {},
                     onCustomExport = onCustomExport,
                     onRestoreBundle = onRestoreBundle,
-                    viewModel = viewModel,
+                    viewModel = viewModel
                 )
             }
         }
@@ -119,7 +124,9 @@ class DataScreenTest {
     fun `the account bundle export row is offered`() {
         setScreen()
 
-        composeTestRule.onNodeWithText("Account bundle (full backup)").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Account bundle (full backup)"
+        ).performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -132,13 +139,17 @@ class DataScreenTest {
     @Test
     fun `restore from bundle is offered on an empty local profile and navigates`() {
         coEvery { contactRepository.listContacts(limit = 1) } returns
-            Result.success(com.mycorrhizal.crm.domain.repository.ContactsPage(emptyList(), null, 1, null))
+            Result.success(
+                com.mycorrhizal.crm.domain.repository.ContactsPage(emptyList(), null, 1, null)
+            )
         backupStatus.value = BundleBackupStatus(isLocalProfile = true)
         var navigated = false
         setScreen(onRestoreBundle = { navigated = true })
         composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithText("Restore from bundle").performScrollTo().assertIsDisplayed().performClick()
+        composeTestRule.onNodeWithText(
+            "Restore from bundle"
+        ).performScrollTo().assertIsDisplayed().performClick()
 
         assertTrue(navigated)
     }
@@ -147,8 +158,11 @@ class DataScreenTest {
     fun `restore from bundle is hidden on a local profile that already has contacts`() {
         coEvery { contactRepository.listContacts(limit = 1) } returns Result.success(
             com.mycorrhizal.crm.domain.repository.ContactsPage(
-                listOf(com.mycorrhizal.crm.model.network.ContactSummary(id = 1)), null, 1, null,
-            ),
+                listOf(com.mycorrhizal.crm.model.network.ContactSummary(id = 1)),
+                null,
+                1,
+                null
+            )
         )
         backupStatus.value = BundleBackupStatus(isLocalProfile = true)
         setScreen()

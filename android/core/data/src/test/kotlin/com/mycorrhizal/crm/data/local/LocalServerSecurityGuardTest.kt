@@ -1,9 +1,9 @@
 package com.mycorrhizal.crm.data.local
 
+import java.io.File
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 /**
  * Issue #1262 / ADR 0028 Decision 2 and 4. The real Keystore cipher cannot be
@@ -19,7 +19,7 @@ class LocalServerSecurityGuardTest {
     // properties.
     private val secretsSource = listOf(
         "src/main/kotlin/com/mycorrhizal/crm/data/local/LocalServerSecrets.kt",
-        "src/main/kotlin/com/mycorrhizal/crm/data/local/KeystoreLocalServerSecretCipher.kt",
+        "src/main/kotlin/com/mycorrhizal/crm/data/local/KeystoreLocalServerSecretCipher.kt"
     ).joinToString("\n") { File(it).readText() }
     private val hostSource =
         File("src/main/kotlin/com/mycorrhizal/crm/data/local/LocalServerHost.kt").readText()
@@ -54,7 +54,10 @@ class LocalServerSecurityGuardTest {
         // Only non-secret values (HOME/TMPDIR) are passed; secrets go on stdin.
         assertTrue(hostSource.contains("\"HOME\""))
         assertTrue(hostSource.contains("\"TMPDIR\""))
-        assertFalse("no JWT secret may be passed through the environment", hostSource.contains("\"JWT_SECRET"))
+        assertFalse(
+            "no JWT secret may be passed through the environment",
+            hostSource.contains("\"JWT_SECRET")
+        )
     }
 
     @Test

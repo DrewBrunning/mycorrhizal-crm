@@ -64,7 +64,7 @@ class ServersViewModelTest {
     fun `deleteLocalData stops the host, removes the profile, and emits Removed`() =
         runTest(mainDispatcherRule.testDispatcher) {
             profiles.value = listOf(
-                ServerProfile(id = "loc", kind = ServerProfileKind.Local, label = "On this device"),
+                ServerProfile(id = "loc", kind = ServerProfileKind.Local, label = "On this device")
             )
             val host = mockk<LocalServerHost>(relaxed = true)
             val backup = mockk<BundleBackupRepository>(relaxed = true)
@@ -84,7 +84,12 @@ class ServersViewModelTest {
     fun `select surfaces the confirmation without switching when the outbox is non-empty`() =
         runTest(mainDispatcherRule.testDispatcher) {
             profiles.value = listOf(profile("p1", "One"), profile("p2", "Two"))
-            coEvery { session.switchProfile("p2", false) } returns SwitchProfileResult.NeedsConfirmation(4)
+            coEvery {
+                session.switchProfile(
+                    "p2",
+                    false
+                )
+            } returns SwitchProfileResult.NeedsConfirmation(4)
             val vm = ServersViewModel(session, mockk(relaxed = true), mockk(relaxed = true))
 
             vm.select("p2")
@@ -95,9 +100,16 @@ class ServersViewModelTest {
         }
 
     @Test
-    fun `confirmDiscard switches with discardPending true`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `confirmDiscard switches with discardPending true`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         profiles.value = listOf(profile("p1", "One"), profile("p2", "Two"))
-        coEvery { session.switchProfile("p2", false) } returns SwitchProfileResult.NeedsConfirmation(4)
+        coEvery {
+            session.switchProfile(
+                "p2",
+                false
+            )
+        } returns SwitchProfileResult.NeedsConfirmation(4)
         coEvery { session.switchProfile("p2", true) } returns SwitchProfileResult.Switched
         val vm = ServersViewModel(session, mockk(relaxed = true), mockk(relaxed = true))
 
@@ -111,9 +123,16 @@ class ServersViewModelTest {
     }
 
     @Test
-    fun `dismissPendingSwitch clears the dialog without switching`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `dismissPendingSwitch clears the dialog without switching`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         profiles.value = listOf(profile("p1", "One"), profile("p2", "Two"))
-        coEvery { session.switchProfile("p2", false) } returns SwitchProfileResult.NeedsConfirmation(4)
+        coEvery {
+            session.switchProfile(
+                "p2",
+                false
+            )
+        } returns SwitchProfileResult.NeedsConfirmation(4)
         val vm = ServersViewModel(session, mockk(relaxed = true), mockk(relaxed = true))
 
         vm.select("p2")
@@ -136,7 +155,9 @@ class ServersViewModelTest {
     }
 
     @Test
-    fun `addRemote creates the profile and activates it`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `addRemote creates the profile and activates it`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { session.addRemoteProfile("Work", "https://work.example.com") } returns
             profile("p9", "Work", "https://work.example.com")
         coEvery { session.switchProfile("p9", false) } returns SwitchProfileResult.Switched
@@ -172,7 +193,9 @@ class ServersViewModelTest {
     }
 
     @Test
-    fun `removing a remote profile forgets its backup bookkeeping`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `removing a remote profile forgets its backup bookkeeping`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val backup = mockk<BundleBackupRepository>(relaxed = true)
         val vm = ServersViewModel(session, mockk(relaxed = true), backup)
 

@@ -133,12 +133,7 @@ fun deceasedColor(): Color = MaterialTheme.colorScheme.onSurfaceVariant
  * `"health-score-badge"` per the ticket's UI-test contract.
  */
 @Composable
-fun HealthScoreBadge(
-    score: Int,
-    band: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+fun HealthScoreBadge(score: Int, band: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val color = healthBandColor(band)
     val bandLabel = healthBandLabel(band)
     val description = stringResource(R.string.health_score_badge_description, score, bandLabel)
@@ -154,13 +149,13 @@ fun HealthScoreBadge(
             .padding(horizontal = 10.dp, vertical = 6.dp)
             .testTag("health-score-badge"),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         HealthScoreDot(band = band)
         Text(
             text = score.toString(),
             style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }
@@ -179,7 +174,7 @@ fun HealthScoreDot(band: String, modifier: Modifier = Modifier) {
         modifier = modifier
             .size(10.dp)
             .clip(CircleShape)
-            .background(color),
+            .background(color)
     )
 }
 
@@ -195,6 +190,6 @@ fun DeceasedDot(modifier: Modifier = Modifier) {
         modifier = modifier
             .size(10.dp)
             .clip(CircleShape)
-            .background(deceasedColor()),
+            .background(deceasedColor())
     )
 }

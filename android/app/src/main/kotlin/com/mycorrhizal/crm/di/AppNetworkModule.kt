@@ -1,10 +1,10 @@
 package com.mycorrhizal.crm.di
 
 import com.mycorrhizal.crm.BuildConfig
-import com.mycorrhizal.crm.data.local.LocalServerHost
-import com.mycorrhizal.crm.network.ArchivedProfileProvider
 import com.mycorrhizal.crm.data.attach.AttachRemoteApiFactory
 import com.mycorrhizal.crm.data.attach.DefaultAttachRemoteApiFactory
+import com.mycorrhizal.crm.data.local.LocalServerHost
+import com.mycorrhizal.crm.network.ArchivedProfileProvider
 import com.mycorrhizal.crm.network.BaseUrlProvider
 import com.mycorrhizal.crm.network.ClientVersionProvider
 import com.mycorrhizal.crm.network.ForbiddenInterceptor
@@ -19,8 +19,8 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
-import okhttp3.OkHttpClient
 import javax.inject.Singleton
+import okhttp3.OkHttpClient
 
 /**
  * Provides the application-scoped OkHttpClient with the ticket §2.2
@@ -46,7 +46,7 @@ object AppNetworkModule {
         sessionExpiryNotifier: SessionExpiryNotifier,
         forbiddenNotifier: ForbiddenNotifier,
         localServerHost: LocalServerHost,
-        archivedProfileProvider: ArchivedProfileProvider,
+        archivedProfileProvider: ArchivedProfileProvider
     ): OkHttpClient = NetworkFactory.okHttpClient(
         tokenProvider = tokenProvider,
         baseUrlProvider = baseUrlProvider,
@@ -72,7 +72,7 @@ object AppNetworkModule {
         // so the server can log it and enforce its MIN_CLIENT_VERSION floor at
         // authentication. BuildConfig is readable here because this module is
         // in :app; the interceptor keeps the header off non-API hosts.
-        clientVersionProvider = ClientVersionProvider { BuildConfig.VERSION_NAME },
+        clientVersionProvider = ClientVersionProvider { BuildConfig.VERSION_NAME }
     ).newBuilder()
         // Appended last, so it sees the rewritten (sentinel) URL and runs before
         // the socket transport: the first Local request starts the embedded
@@ -82,9 +82,8 @@ object AppNetworkModule {
 
     /** ADR 0028 Decision 3 / issue #1265: the attach wizard's client to the chosen Remote server. */
     @Provides
-    fun provideAttachRemoteApiFactory(): AttachRemoteApiFactory =
-        DefaultAttachRemoteApiFactory(
-            clientVersionProvider = ClientVersionProvider { BuildConfig.VERSION_NAME },
-            debug = BuildConfig.DEBUG,
-        )
+    fun provideAttachRemoteApiFactory(): AttachRemoteApiFactory = DefaultAttachRemoteApiFactory(
+        clientVersionProvider = ClientVersionProvider { BuildConfig.VERSION_NAME },
+        debug = BuildConfig.DEBUG
+    )
 }

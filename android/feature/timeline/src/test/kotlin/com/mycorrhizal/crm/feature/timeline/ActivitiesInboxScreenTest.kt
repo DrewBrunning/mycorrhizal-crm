@@ -42,7 +42,7 @@ class ActivitiesInboxScreenTest {
         onDelete: (Int) -> Unit = {},
         onRefresh: () -> Unit = {},
         darkTheme: Boolean = false,
-        onLogFromLocation: (() -> Unit)? = null,
+        onLogFromLocation: (() -> Unit)? = null
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme(darkTheme = darkTheme) {
@@ -53,7 +53,7 @@ class ActivitiesInboxScreenTest {
                     onLoadMore = onLoadMore,
                     onDelete = onDelete,
                     onRefresh = onRefresh,
-                    onLogFromLocation = onLogFromLocation,
+                    onLogFromLocation = onLogFromLocation
                 )
             }
         }
@@ -70,7 +70,9 @@ class ActivitiesInboxScreenTest {
     @Test
     fun `no location-history entry point when GeoPulse is unavailable (embedded profile)`() {
         setContent(ActivitiesInboxUiState(isLoading = false), onLogFromLocation = null)
-        composeTestRule.onNodeWithContentDescription("Log from location history").assertDoesNotExist()
+        composeTestRule.onNodeWithContentDescription(
+            "Log from location history"
+        ).assertDoesNotExist()
     }
 
     @Test
@@ -81,7 +83,9 @@ class ActivitiesInboxScreenTest {
 
     @Test
     fun `an empty list with an error renders the error message`() {
-        setContent(ActivitiesInboxUiState(isLoading = false, activities = emptyList(), error = "boom"))
+        setContent(
+            ActivitiesInboxUiState(isLoading = false, activities = emptyList(), error = "boom")
+        )
         composeTestRule.onNodeWithText("boom").assertIsDisplayed()
     }
 
@@ -96,10 +100,10 @@ class ActivitiesInboxScreenTest {
                         title = "Coffee with Dana",
                         type = "visit",
                         location = "Berlin",
-                        date = "2026-08-14T10:00:00Z",
-                    ),
-                ),
-            ),
+                        date = "2026-08-14T10:00:00Z"
+                    )
+                )
+            )
         )
         composeTestRule.onNodeWithText("Visit · Berlin · 14.08.2026").assertIsDisplayed()
     }
@@ -109,8 +113,11 @@ class ActivitiesInboxScreenTest {
         setContent(
             ActivitiesInboxUiState(
                 isLoading = false,
-                activities = listOf(Activity(id = 1, title = "Coffee with Dana"), Activity(id = 2, title = "Call with Carol")),
-            ),
+                activities = listOf(
+                    Activity(id = 1, title = "Coffee with Dana"),
+                    Activity(id = 2, title = "Call with Carol")
+                )
+            )
         )
         composeTestRule.onNodeWithText("Coffee with Dana").assertIsDisplayed()
         composeTestRule.onNodeWithText("Call with Carol").assertIsDisplayed()
@@ -120,8 +127,11 @@ class ActivitiesInboxScreenTest {
     fun `tapping an activity row invokes the click callback`() {
         var clickedId: Int? = null
         setContent(
-            ActivitiesInboxUiState(isLoading = false, activities = listOf(Activity(id = 1, title = "Coffee with Dana"))),
-            onActivityClick = { clickedId = it },
+            ActivitiesInboxUiState(
+                isLoading = false,
+                activities = listOf(Activity(id = 1, title = "Coffee with Dana"))
+            ),
+            onActivityClick = { clickedId = it }
         )
         composeTestRule.onNodeWithText("Coffee with Dana").performClick()
         assertEquals(1, clickedId)
@@ -135,11 +145,15 @@ class ActivitiesInboxScreenTest {
             ActivitiesInboxUiState(
                 isLoading = false,
                 activities = listOf(
-                    Activity(id = 1, title = "Coffee with Dana", contacts = listOf(ContactFlat(id = 5, firstname = "Dana"))),
-                ),
+                    Activity(
+                        id = 1,
+                        title = "Coffee with Dana",
+                        contacts = listOf(ContactFlat(id = 5, firstname = "Dana"))
+                    )
+                )
             ),
             onActivityClick = { clickedActivityId = it },
-            onContactClick = { clickedContactId = it },
+            onContactClick = { clickedContactId = it }
         )
         composeTestRule.onNodeWithText("Dana").performClick()
         assertEquals(5, clickedContactId)
@@ -150,8 +164,12 @@ class ActivitiesInboxScreenTest {
     fun `a load more button appears with a next cursor and calls back on tap`() {
         var loadMoreCalls = 0
         setContent(
-            ActivitiesInboxUiState(isLoading = false, activities = listOf(Activity(id = 1, title = "Coffee")), nextCursor = "cursor-2"),
-            onLoadMore = { loadMoreCalls++ },
+            ActivitiesInboxUiState(
+                isLoading = false,
+                activities = listOf(Activity(id = 1, title = "Coffee")),
+                nextCursor = "cursor-2"
+            ),
+            onLoadMore = { loadMoreCalls++ }
         )
         composeTestRule.onNodeWithText("Load more").performClick()
         assertEquals(1, loadMoreCalls)
@@ -167,8 +185,11 @@ class ActivitiesInboxScreenTest {
     fun `delete asks first -- tapping delete shows a confirmation and does not call onDelete`() {
         var deletedId: Int? = null
         setContent(
-            ActivitiesInboxUiState(isLoading = false, activities = listOf(Activity(id = 7, title = "Coffee"))),
-            onDelete = { deletedId = it },
+            ActivitiesInboxUiState(
+                isLoading = false,
+                activities = listOf(Activity(id = 7, title = "Coffee"))
+            ),
+            onDelete = { deletedId = it }
         )
         composeTestRule.onNodeWithContentDescription("Delete Coffee").performClick()
         composeTestRule.onNodeWithText("Delete activity?").assertIsDisplayed()
@@ -179,8 +200,11 @@ class ActivitiesInboxScreenTest {
     fun `confirming the delete dialog calls onDelete with the activity id`() {
         var deletedId: Int? = null
         setContent(
-            ActivitiesInboxUiState(isLoading = false, activities = listOf(Activity(id = 7, title = "Coffee"))),
-            onDelete = { deletedId = it },
+            ActivitiesInboxUiState(
+                isLoading = false,
+                activities = listOf(Activity(id = 7, title = "Coffee"))
+            ),
+            onDelete = { deletedId = it }
         )
         composeTestRule.onNodeWithContentDescription("Delete Coffee").performClick()
         composeTestRule.onNodeWithText("Delete").performClick()
@@ -191,8 +215,11 @@ class ActivitiesInboxScreenTest {
     fun `pulling down on the list invokes onRefresh`() {
         var refreshCalls = 0
         setContent(
-            ActivitiesInboxUiState(isLoading = false, activities = listOf(Activity(id = 1, title = "Coffee"))),
-            onRefresh = { refreshCalls++ },
+            ActivitiesInboxUiState(
+                isLoading = false,
+                activities = listOf(Activity(id = 1, title = "Coffee"))
+            ),
+            onRefresh = { refreshCalls++ }
         )
         composeTestRule.onNodeWithTag("activities-inbox-list").performTouchInput { swipeDown() }
         composeTestRule.waitForIdle()
@@ -204,8 +231,12 @@ class ActivitiesInboxScreenTest {
     private fun populatedState() = ActivitiesInboxUiState(
         isLoading = false,
         activities = listOf(
-            Activity(id = 1, title = "Coffee with Dana", contacts = listOf(ContactFlat(id = 5, firstname = "Dana"))),
-        ),
+            Activity(
+                id = 1,
+                title = "Coffee with Dana",
+                contacts = listOf(ContactFlat(id = 5, firstname = "Dana"))
+            )
+        )
     )
 
     @Test
@@ -233,8 +264,8 @@ class ActivitiesInboxScreenTest {
         coEvery { repository.listAll() } returns Result.success(
             ActivitiesPage(
                 activitiesRaw = listOf(Activity(id = 1, title = "Coffee with Dana")),
-                nextCursor = null,
-            ),
+                nextCursor = null
+            )
         )
         val viewModel = ActivitiesInboxViewModel(repository)
 
@@ -243,7 +274,7 @@ class ActivitiesInboxScreenTest {
                 ActivitiesInboxScreen(
                     onActivityClick = {},
                     onContactClick = {},
-                    viewModel = viewModel,
+                    viewModel = viewModel
                 )
             }
         }

@@ -25,9 +25,11 @@ class PaperlessSettingsViewModelTest {
     private val repository = mockk<PaperlessRepository>()
 
     @Test
-    fun `load populates the config into the editable state`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `load populates the config into the editable state`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.getConfig() } returns Result.success(
-            PaperlessConfigResponse(baseUrl = "http://paperless:8000", hasApiToken = true),
+            PaperlessConfigResponse(baseUrl = "http://paperless:8000", hasApiToken = true)
         )
         val vm = PaperlessSettingsViewModel(repository)
         advanceUntilIdle()
@@ -48,10 +50,12 @@ class PaperlessSettingsViewModelTest {
     }
 
     @Test
-    fun `save round-trips the config and clears the token field`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `save round-trips the config and clears the token field`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.getConfig() } returns Result.success(PaperlessConfigResponse())
         coEvery { repository.saveConfig(any()) } returns Result.success(
-            PaperlessConfigResponse(baseUrl = "http://paperless:8000", hasApiToken = true),
+            PaperlessConfigResponse(baseUrl = "http://paperless:8000", hasApiToken = true)
         )
         val vm = PaperlessSettingsViewModel(repository)
         advanceUntilIdle()
@@ -70,12 +74,16 @@ class PaperlessSettingsViewModelTest {
     }
 
     @Test
-    fun `a typed api token is sent on save exactly once`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a typed api token is sent on save exactly once`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val captured = mutableListOf<com.mycorrhizal.crm.model.network.PaperlessConfigInput>()
         coEvery { repository.getConfig() } returns Result.success(PaperlessConfigResponse())
         coEvery { repository.saveConfig(any()) } answers {
             captured.add(firstArg())
-            Result.success(PaperlessConfigResponse(baseUrl = "http://paperless:8000", hasApiToken = true))
+            Result.success(
+                PaperlessConfigResponse(baseUrl = "http://paperless:8000", hasApiToken = true)
+            )
         }
         val vm = PaperlessSettingsViewModel(repository)
         advanceUntilIdle()
@@ -92,7 +100,11 @@ class PaperlessSettingsViewModelTest {
     @Test
     fun `save failure surfaces the save error`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { repository.getConfig() } returns Result.success(PaperlessConfigResponse())
-        coEvery { repository.saveConfig(any()) } returns Result.failure(ApiError.Client(400, "Invalid URL"))
+        coEvery {
+            repository.saveConfig(
+                any()
+            )
+        } returns Result.failure(ApiError.Client(400, "Invalid URL"))
         val vm = PaperlessSettingsViewModel(repository)
         advanceUntilIdle()
 
@@ -107,9 +119,11 @@ class PaperlessSettingsViewModelTest {
     fun `test reports success distinctly`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { repository.getConfig() } returns Result.success(PaperlessConfigResponse())
         coEvery { repository.saveConfig(any()) } returns Result.success(
-            PaperlessConfigResponse(baseUrl = "http://paperless:8000", hasApiToken = true),
+            PaperlessConfigResponse(baseUrl = "http://paperless:8000", hasApiToken = true)
         )
-        coEvery { repository.testConnection() } returns Result.success(PaperlessConnectionTestResult(ok = true))
+        coEvery { repository.testConnection() } returns Result.success(
+            PaperlessConnectionTestResult(ok = true)
+        )
         val vm = PaperlessSettingsViewModel(repository)
         advanceUntilIdle()
 
@@ -124,13 +138,15 @@ class PaperlessSettingsViewModelTest {
     }
 
     @Test
-    fun `test reports a diagnosed failure distinctly`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `test reports a diagnosed failure distinctly`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.getConfig() } returns Result.success(PaperlessConfigResponse())
         coEvery { repository.saveConfig(any()) } returns Result.success(
-            PaperlessConfigResponse(baseUrl = "http://paperless:8000", hasApiToken = true),
+            PaperlessConfigResponse(baseUrl = "http://paperless:8000", hasApiToken = true)
         )
         coEvery { repository.testConnection() } returns Result.success(
-            PaperlessConnectionTestResult(ok = false, message = "invalid API token"),
+            PaperlessConnectionTestResult(ok = false, message = "invalid API token")
         )
         val vm = PaperlessSettingsViewModel(repository)
         advanceUntilIdle()
@@ -145,9 +161,15 @@ class PaperlessSettingsViewModelTest {
     }
 
     @Test
-    fun `test never calls test-connection when the pre-test save fails`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `test never calls test-connection when the pre-test save fails`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.getConfig() } returns Result.success(PaperlessConfigResponse())
-        coEvery { repository.saveConfig(any()) } returns Result.failure(ApiError.Client(400, "Invalid URL"))
+        coEvery {
+            repository.saveConfig(
+                any()
+            )
+        } returns Result.failure(ApiError.Client(400, "Invalid URL"))
         val vm = PaperlessSettingsViewModel(repository)
         advanceUntilIdle()
 
@@ -162,9 +184,11 @@ class PaperlessSettingsViewModelTest {
     }
 
     @Test
-    fun `remove clears the connection back to a fresh state`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `remove clears the connection back to a fresh state`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.getConfig() } returns Result.success(
-            PaperlessConfigResponse(baseUrl = "http://paperless:8000", hasApiToken = true),
+            PaperlessConfigResponse(baseUrl = "http://paperless:8000", hasApiToken = true)
         )
         coEvery { repository.deleteConfig() } returns Result.success(Unit)
         val vm = PaperlessSettingsViewModel(repository)
@@ -180,9 +204,11 @@ class PaperlessSettingsViewModelTest {
     }
 
     @Test
-    fun `remove failure surfaces the save error and keeps the connection`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `remove failure surfaces the save error and keeps the connection`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.getConfig() } returns Result.success(
-            PaperlessConfigResponse(baseUrl = "http://paperless:8000", hasApiToken = true),
+            PaperlessConfigResponse(baseUrl = "http://paperless:8000", hasApiToken = true)
         )
         coEvery { repository.deleteConfig() } returns Result.failure(ApiError.Server(500, "boom"))
         val vm = PaperlessSettingsViewModel(repository)
@@ -196,12 +222,16 @@ class PaperlessSettingsViewModelTest {
     }
 
     @Test
-    fun `editing a field clears a stale test result`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `editing a field clears a stale test result`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.getConfig() } returns Result.success(PaperlessConfigResponse())
         coEvery { repository.saveConfig(any()) } returns Result.success(
-            PaperlessConfigResponse(baseUrl = "http://paperless:8000", hasApiToken = true),
+            PaperlessConfigResponse(baseUrl = "http://paperless:8000", hasApiToken = true)
         )
-        coEvery { repository.testConnection() } returns Result.success(PaperlessConnectionTestResult(ok = true))
+        coEvery { repository.testConnection() } returns Result.success(
+            PaperlessConnectionTestResult(ok = true)
+        )
         val vm = PaperlessSettingsViewModel(repository)
         advanceUntilIdle()
 

@@ -49,22 +49,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.ContactAttachment
-import com.mycorrhizal.crm.ui.components.BrandFab
-import com.mycorrhizal.crm.ui.components.FabListBottomPadding
-import com.mycorrhizal.crm.ui.components.EmptyState
-import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.FabListBottomPadding
+import com.mycorrhizal.crm.ui.components.RefreshableContent
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -80,7 +80,7 @@ import kotlinx.coroutines.withContext
 fun AttachmentsScreen(
     contactId: Int,
     onBack: () -> Unit,
-    viewModel: AttachmentsViewModel = hiltViewModel(),
+    viewModel: AttachmentsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -91,7 +91,7 @@ fun AttachmentsScreen(
     }
 
     val pickLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument(),
+        ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
@@ -101,13 +101,21 @@ fun AttachmentsScreen(
             // size check ever ran (mirrors ContactDetailScreen's photo picker
             // and VcfImportScreen).
             val meta = withContext(Dispatchers.IO) { queryAttachmentMeta(resolver, uri) }
-            if (exceedsAttachmentSizeLimit(meta.size, AttachmentsViewModel.MAX_ATTACHMENT_SIZE_BYTES)) {
+            if (exceedsAttachmentSizeLimit(
+                    meta.size,
+                    AttachmentsViewModel.MAX_ATTACHMENT_SIZE_BYTES
+                )
+            ) {
                 viewModel.rejectUpload()
                 return@launch
             }
             val bytes = withContext(Dispatchers.IO) { readAttachmentBytes(resolver, uri) }
             // Backstop for providers that report no size.
-            if (exceedsAttachmentSizeLimit(bytes.size.toLong(), AttachmentsViewModel.MAX_ATTACHMENT_SIZE_BYTES)) {
+            if (exceedsAttachmentSizeLimit(
+                    bytes.size.toLong(),
+                    AttachmentsViewModel.MAX_ATTACHMENT_SIZE_BYTES
+                )
+            ) {
                 viewModel.rejectUpload()
                 return@launch
             }
@@ -116,7 +124,7 @@ fun AttachmentsScreen(
             viewModel.upload(
                 fileName = upload.fileName,
                 mimeType = upload.mimeType,
-                bytes = upload.bytes,
+                bytes = upload.bytes
             )
         }
     }
@@ -129,7 +137,7 @@ fun AttachmentsScreen(
         onDelete = viewModel::delete,
         onErrorShown = viewModel::onErrorShown,
         onDownloadHandled = viewModel::onDownloadHandled,
-        onRefresh = viewModel::load,
+        onRefresh = viewModel::load
     )
 }
 
@@ -149,7 +157,7 @@ fun AttachmentsScreenContent(
     onDelete: (ContactAttachment) -> Unit = {},
     onErrorShown: () -> Unit = {},
     onDownloadHandled: () -> Unit = {},
-    onRefresh: () -> Unit = {},
+    onRefresh: () -> Unit = {}
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
@@ -160,16 +168,24 @@ fun AttachmentsScreenContent(
             TopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back)
+                        )
                     }
                 },
-                title = { Text(stringResource(R.string.contact_attachments), style = MaterialTheme.typography.titleLarge) },
+                title = {
+                    Text(
+                        stringResource(R.string.contact_attachments),
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
         // #1760: the same FAB add affordance every other list uses (this screen
@@ -190,33 +206,39 @@ fun AttachmentsScreenContent(
                             stateDescription = savingLabel
                             disabled()
                         }
-                    },
+                    }
             ) {
                 if (uiState.isUploading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
                         strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onPrimary,
+                        color = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
-                    Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.attachments_upload))
+                    Icon(
+                        Icons.Outlined.Add,
+                        contentDescription = stringResource(R.string.attachments_upload)
+                    )
                 }
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             RefreshableContent(
                 isRefreshing = uiState.isLoading && uiState.attachments.isNotEmpty(),
                 onRefresh = onRefresh,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize()
             ) {
                 when {
                     uiState.isLoading && uiState.attachments.isEmpty() -> {
                         CircularProgressIndicator(
-                            modifier = Modifier.align(Alignment.Center).testTag("attachments-loading"),
+                            modifier = Modifier.align(
+                                Alignment.Center
+                            ).testTag("attachments-loading")
                         )
                     }
+
                     uiState.attachments.isEmpty() && uiState.error == null -> {
                         EmptyState(
                             title = stringResource(R.string.attachments_empty),
@@ -224,13 +246,19 @@ fun AttachmentsScreenContent(
                             icon = Icons.Outlined.AttachFile,
                             actionLabel = stringResource(R.string.attachments_upload),
                             onAction = onAddClick,
-                            modifier = Modifier.align(Alignment.Center).testTag("attachments-empty"),
+                            modifier = Modifier.align(
+                                Alignment.Center
+                            ).testTag("attachments-empty")
                         )
                     }
+
                     else -> {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize().testTag("attachments-list"),
-                            contentPadding = PaddingValues(top = 8.dp, bottom = FabListBottomPadding),
+                            contentPadding = PaddingValues(
+                                top = 8.dp,
+                                bottom = FabListBottomPadding
+                            )
                         ) {
                             items(uiState.attachments, key = { it.id }) { attachment ->
                                 AttachmentRow(
@@ -238,7 +266,7 @@ fun AttachmentsScreenContent(
                                     downloading = uiState.downloadingId == attachment.id,
                                     deleting = uiState.deletingId == attachment.id,
                                     onOpen = { onDownload(attachment) },
-                                    onDelete = { pendingDelete = attachment },
+                                    onDelete = { pendingDelete = attachment }
                                 )
                             }
                         }
@@ -274,13 +302,17 @@ fun AttachmentsScreenContent(
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
             title = { Text(stringResource(R.string.attachments_delete_title)) },
-            text = { Text(stringResource(R.string.attachments_delete_body, attachment.originalName)) },
+            text = {
+                Text(
+                    stringResource(R.string.attachments_delete_body, attachment.originalName)
+                )
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
                         pendingDelete = null
                         onDelete(attachment)
-                    },
+                    }
                 ) {
                     Text(stringResource(R.string.attachments_delete))
                 }
@@ -289,7 +321,7 @@ fun AttachmentsScreenContent(
                 TextButton(onClick = { pendingDelete = null }) {
                     Text(stringResource(R.string.action_cancel))
                 }
-            },
+            }
         )
     }
 }
@@ -300,7 +332,7 @@ private fun AttachmentRow(
     downloading: Boolean,
     deleting: Boolean,
     onOpen: () -> Unit,
-    onDelete: () -> Unit,
+    onDelete: () -> Unit
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -308,7 +340,7 @@ private fun AttachmentRow(
             .fillMaxWidth()
             .clickable(enabled = !downloading && !deleting, onClick = onOpen)
             .padding(horizontal = 16.dp, vertical = 12.dp)
-            .testTag("attachment-${attachment.id}"),
+            .testTag("attachment-${attachment.id}")
     ) {
         Icon(
             if (downloading) {
@@ -317,29 +349,32 @@ private fun AttachmentRow(
                 Icons.Outlined.InsertDriveFile
             },
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
+            tint = MaterialTheme.colorScheme.primary
         )
         Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
             Text(
                 text = attachment.originalName,
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = attachmentMetaLine(attachment.sizeBytes),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         if (deleting) {
             CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
         } else {
-            IconButton(onClick = onDelete, modifier = Modifier.testTag("delete-attachment-${attachment.id}")) {
+            IconButton(
+                onClick = onDelete,
+                modifier = Modifier.testTag("delete-attachment-${attachment.id}")
+            ) {
                 Icon(
                     Icons.Outlined.Delete,
                     contentDescription = stringResource(R.string.attachments_delete),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -374,7 +409,11 @@ internal fun attachmentSizeText(sizeBytes: Long): String? =
  * behavior needs its own regression test rather than relying on it never
  * throwing in practice.
  */
-internal fun openDownloadedAttachment(context: Context, attachment: ContactAttachment, bytes: ByteArray) {
+internal fun openDownloadedAttachment(
+    context: Context,
+    attachment: ContactAttachment,
+    bytes: ByteArray
+) {
     val dir = File(context.cacheDir, "attachments").apply { mkdirs() }
     val safeName = attachment.originalName
         .replace(Regex("""[^A-Za-z0-9._-]"""), "_")
@@ -388,7 +427,9 @@ internal fun openDownloadedAttachment(context: Context, attachment: ContactAttac
             setDataAndType(uri, attachment.contentType.ifBlank { "application/octet-stream" })
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        context.startActivity(Intent.createChooser(intent, context.getString(R.string.attachments_open)))
+        context.startActivity(
+            Intent.createChooser(intent, context.getString(R.string.attachments_open))
+        )
     } catch (_: Exception) {
         // No activity can open this type — the download stays in the cache;
         // nothing actionable to do here.
@@ -396,11 +437,7 @@ internal fun openDownloadedAttachment(context: Context, attachment: ContactAttac
 }
 
 /** `internal`: [resolveAttachmentUpload] and the [AttachmentsScreenLogicTest] tests need direct access. */
-internal data class AttachmentPick(
-    val name: String?,
-    val mimeType: String?,
-    val size: Long?,
-)
+internal data class AttachmentPick(val name: String?, val mimeType: String?, val size: Long?)
 
 /**
  * `internal` (rather than `private`) so [AttachmentsScreenLogicTest] can drive
@@ -440,7 +477,7 @@ internal fun exceedsAttachmentSizeLimit(size: Long?, maxSizeBytes: Long): Boolea
 internal data class AttachmentUpload(
     val fileName: String,
     val mimeType: String,
-    val bytes: ByteArray,
+    val bytes: ByteArray
 )
 
 /**
@@ -449,8 +486,9 @@ internal data class AttachmentUpload(
  * that reports neither. Pure — no I/O, no Compose — so it is unit-tested
  * directly.
  */
-internal fun resolveAttachmentUpload(meta: AttachmentPick, bytes: ByteArray): AttachmentUpload = AttachmentUpload(
-    fileName = meta.name?.takeIf { it.isNotBlank() } ?: "attachment",
-    mimeType = meta.mimeType ?: "application/octet-stream",
-    bytes = bytes,
-)
+internal fun resolveAttachmentUpload(meta: AttachmentPick, bytes: ByteArray): AttachmentUpload =
+    AttachmentUpload(
+        fileName = meta.name?.takeIf { it.isNotBlank() } ?: "attachment",
+        mimeType = meta.mimeType ?: "application/octet-stream",
+        bytes = bytes
+    )

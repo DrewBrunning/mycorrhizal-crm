@@ -29,7 +29,9 @@ class CsvImportViewModelTest {
     private val apiClient = mockk<ApiClient>()
 
     @Test
-    fun `a file over 20MB is rejected client-side without calling the API`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a file over 20MB is rejected client-side without calling the API`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = CsvImportViewModel(apiClient)
 
         vm.onFilePicked("big.csv", ByteArray(CsvImportViewModel.MAX_CSV_SIZE_BYTES + 1))
@@ -54,7 +56,9 @@ class CsvImportViewModelTest {
         }
 
     @Test
-    fun `an empty file is rejected client-side without calling the API`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `an empty file is rejected client-side without calling the API`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = CsvImportViewModel(apiClient)
 
         vm.onFilePicked("empty.csv", ByteArray(0))
@@ -73,11 +77,11 @@ class CsvImportViewModelTest {
                     headers = listOf("Name", "Email"),
                     suggestedMappings = listOf(
                         ColumnMapping(csvColumn = "Name", contactField = "firstname", group = 0),
-                        ColumnMapping(csvColumn = "Email", contactField = "email", group = 0),
+                        ColumnMapping(csvColumn = "Email", contactField = "email", group = 0)
                     ),
                     rowCount = 2,
-                    sampleData = listOf(listOf("Dana White", "dana@example.com")),
-                ),
+                    sampleData = listOf(listOf("Dana White", "dana@example.com"))
+                )
             )
 
             val vm = CsvImportViewModel(apiClient)
@@ -91,8 +95,15 @@ class CsvImportViewModelTest {
         }
 
     @Test
-    fun `upload failure surfaces the error and stays on the pick step`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { apiClient.uploadCsvImport(any(), any()) } returns Result.failure(ApiError.Client(400, "bad csv"))
+    fun `upload failure surfaces the error and stays on the pick step`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery {
+            apiClient.uploadCsvImport(
+                any(),
+                any()
+            )
+        } returns Result.failure(ApiError.Client(400, "bad csv"))
 
         val vm = CsvImportViewModel(apiClient)
         vm.onFilePicked("contacts.csv", byteArrayOf(1))
@@ -103,14 +114,18 @@ class CsvImportViewModelTest {
     }
 
     @Test
-    fun `changing a column field overrides the suggested mapping`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `changing a column field overrides the suggested mapping`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { apiClient.uploadCsvImport(any(), any()) } returns Result.success(
             ImportUploadResponse(
                 sessionId = "session-1",
                 headers = listOf("Name"),
-                suggestedMappings = listOf(ColumnMapping(csvColumn = "Name", contactField = "firstname", group = 0)),
-                rowCount = 1,
-            ),
+                suggestedMappings = listOf(
+                    ColumnMapping(csvColumn = "Name", contactField = "firstname", group = 0)
+                ),
+                rowCount = 1
+            )
         )
 
         val vm = CsvImportViewModel(apiClient)
@@ -131,20 +146,23 @@ class CsvImportViewModelTest {
                     headers = listOf("Name", "Notes"),
                     suggestedMappings = listOf(
                         ColumnMapping(csvColumn = "Name", contactField = "firstname", group = 0),
-                        ColumnMapping(csvColumn = "Notes", contactField = "", group = 0),
+                        ColumnMapping(csvColumn = "Notes", contactField = "", group = 0)
                     ),
-                    rowCount = 1,
-                ),
+                    rowCount = 1
+                )
             )
             coEvery {
                 apiClient.previewCsvImport(
-                    match { it.sessionId == "session-1" && it.mappings.size == 1 && it.mappings[0].csvColumn == "Name" },
+                    match {
+                        it.sessionId == "session-1" && it.mappings.size == 1 &&
+                            it.mappings[0].csvColumn == "Name"
+                    }
                 )
             } returns Result.success(
                 ImportPreviewResponse(
                     sessionId = "session-1",
-                    rows = listOf(ImportRowPreview(rowIndex = 0, suggestedAction = "add")),
-                ),
+                    rows = listOf(ImportRowPreview(rowIndex = 0, suggestedAction = "add"))
+                )
             )
 
             val vm = CsvImportViewModel(apiClient)
@@ -161,7 +179,7 @@ class CsvImportViewModelTest {
                 apiClient.previewCsvImport(
                     match { request ->
                         request.mappings.none { it.csvColumn == "Notes" }
-                    },
+                    }
                 )
             }
         }
@@ -173,17 +191,27 @@ class CsvImportViewModelTest {
                 ImportUploadResponse(
                     sessionId = "session-1",
                     headers = listOf("Name"),
-                    suggestedMappings = listOf(ColumnMapping(csvColumn = "Name", contactField = "firstname", group = 0)),
-                    rowCount = 1,
-                ),
+                    suggestedMappings = listOf(
+                        ColumnMapping(csvColumn = "Name", contactField = "firstname", group = 0)
+                    ),
+                    rowCount = 1
+                )
             )
-            coEvery { apiClient.previewCsvImport(any<ImportPreviewRequest>()) } returns Result.success(
+            coEvery {
+                apiClient.previewCsvImport(
+                    any<ImportPreviewRequest>()
+                )
+            } returns Result.success(
                 ImportPreviewResponse(
                     sessionId = "session-1",
                     rows = listOf(
-                        ImportRowPreview(rowIndex = 0, suggestedAction = "add", validationErrors = listOf("missing name")),
-                    ),
-                ),
+                        ImportRowPreview(
+                            rowIndex = 0,
+                            suggestedAction = "add",
+                            validationErrors = listOf("missing name")
+                        )
+                    )
+                )
             )
 
             val vm = CsvImportViewModel(apiClient)
@@ -201,9 +229,17 @@ class CsvImportViewModelTest {
     fun `mapping preview failure surfaces the error and stays on the mapping step`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { apiClient.uploadCsvImport(any(), any()) } returns Result.success(
-                ImportUploadResponse(sessionId = "session-1", headers = listOf("Name"), rowCount = 1),
+                ImportUploadResponse(
+                    sessionId = "session-1",
+                    headers = listOf("Name"),
+                    rowCount = 1
+                )
             )
-            coEvery { apiClient.previewCsvImport(any<ImportPreviewRequest>()) } returns Result.failure(ApiError.Client(400, "bad mapping"))
+            coEvery {
+                apiClient.previewCsvImport(
+                    any<ImportPreviewRequest>()
+                )
+            } returns Result.failure(ApiError.Client(400, "bad mapping"))
 
             val vm = CsvImportViewModel(apiClient)
             vm.onFilePicked("contacts.csv", byteArrayOf(1))
@@ -219,17 +255,29 @@ class CsvImportViewModelTest {
     fun `resolveAll sets every valid row to its suggested action and leaves errored rows skipped`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { apiClient.uploadCsvImport(any(), any()) } returns Result.success(
-                ImportUploadResponse(sessionId = "session-1", headers = listOf("Name"), rowCount = 3),
+                ImportUploadResponse(
+                    sessionId = "session-1",
+                    headers = listOf("Name"),
+                    rowCount = 3
+                )
             )
-            coEvery { apiClient.previewCsvImport(any<ImportPreviewRequest>()) } returns Result.success(
+            coEvery {
+                apiClient.previewCsvImport(
+                    any<ImportPreviewRequest>()
+                )
+            } returns Result.success(
                 ImportPreviewResponse(
                     sessionId = "session-1",
                     rows = listOf(
                         ImportRowPreview(rowIndex = 0, suggestedAction = "update"),
                         ImportRowPreview(rowIndex = 1, suggestedAction = "add"),
-                        ImportRowPreview(rowIndex = 2, validationErrors = listOf("missing name"), suggestedAction = "skip"),
-                    ),
-                ),
+                        ImportRowPreview(
+                            rowIndex = 2,
+                            validationErrors = listOf("missing name"),
+                            suggestedAction = "skip"
+                        )
+                    )
+                )
             )
 
             val vm = CsvImportViewModel(apiClient)
@@ -252,19 +300,29 @@ class CsvImportViewModelTest {
     fun `confirm sends the session id and every row's chosen action via confirmImport, moving to the result step`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { apiClient.uploadCsvImport(any(), any()) } returns Result.success(
-                ImportUploadResponse(sessionId = "session-1", headers = listOf("Name"), rowCount = 2),
+                ImportUploadResponse(
+                    sessionId = "session-1",
+                    headers = listOf("Name"),
+                    rowCount = 2
+                )
             )
-            coEvery { apiClient.previewCsvImport(any<ImportPreviewRequest>()) } returns Result.success(
+            coEvery {
+                apiClient.previewCsvImport(
+                    any<ImportPreviewRequest>()
+                )
+            } returns Result.success(
                 ImportPreviewResponse(
                     sessionId = "session-1",
                     rows = listOf(
                         ImportRowPreview(rowIndex = 0, suggestedAction = "add"),
-                        ImportRowPreview(rowIndex = 1, suggestedAction = "update"),
-                    ),
-                ),
+                        ImportRowPreview(rowIndex = 1, suggestedAction = "update")
+                    )
+                )
             )
             coEvery {
-                apiClient.confirmImport(match { it.sessionId == "session-1" && it.actions.size == 2 })
+                apiClient.confirmImport(
+                    match { it.sessionId == "session-1" && it.actions.size == 2 }
+                )
             } returns Result.success(ImportResult(totalProcessed = 2, created = 1, updated = 1))
 
             val vm = CsvImportViewModel(apiClient)
@@ -283,14 +341,23 @@ class CsvImportViewModelTest {
         }
 
     @Test
-    fun `confirm failure surfaces the error and stays on the preview step`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `confirm failure surfaces the error and stays on the preview step`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { apiClient.uploadCsvImport(any(), any()) } returns Result.success(
-            ImportUploadResponse(sessionId = "session-1", headers = listOf("Name"), rowCount = 1),
+            ImportUploadResponse(sessionId = "session-1", headers = listOf("Name"), rowCount = 1)
         )
         coEvery { apiClient.previewCsvImport(any<ImportPreviewRequest>()) } returns Result.success(
-            ImportPreviewResponse(sessionId = "session-1", rows = listOf(ImportRowPreview(rowIndex = 0, suggestedAction = "add"))),
+            ImportPreviewResponse(
+                sessionId = "session-1",
+                rows = listOf(ImportRowPreview(rowIndex = 0, suggestedAction = "add"))
+            )
         )
-        coEvery { apiClient.confirmImport(any()) } returns Result.failure(ApiError.Client(500, "server error"))
+        coEvery {
+            apiClient.confirmImport(
+                any()
+            )
+        } returns Result.failure(ApiError.Client(500, "server error"))
 
         val vm = CsvImportViewModel(apiClient)
         vm.onFilePicked("contacts.csv", byteArrayOf(1))
@@ -311,9 +378,11 @@ class CsvImportViewModelTest {
                 ImportUploadResponse(
                     sessionId = "session-1",
                     headers = listOf("Unknown Column"),
-                    suggestedMappings = listOf(ColumnMapping(csvColumn = "Unknown Column", contactField = "", group = 0)),
-                    rowCount = 1,
-                ),
+                    suggestedMappings = listOf(
+                        ColumnMapping(csvColumn = "Unknown Column", contactField = "", group = 0)
+                    ),
+                    rowCount = 1
+                )
             )
 
             val vm = CsvImportViewModel(apiClient)

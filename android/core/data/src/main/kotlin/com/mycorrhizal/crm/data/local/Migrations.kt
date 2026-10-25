@@ -29,9 +29,11 @@ val MIGRATION_13_14: Migration = object : Migration(startVersion = 13, endVersio
         connection.execSQL(
             "CREATE VIRTUAL TABLE IF NOT EXISTS `cached_contacts_fts` USING FTS4(`fn` TEXT, " +
                 "`firstname` TEXT, `lastname` TEXT, `primaryEmail` TEXT, `primaryPhone` TEXT, " +
-                "`phonesNormalized` TEXT, `org` TEXT, content=`cached_contacts`)",
+                "`phonesNormalized` TEXT, `org` TEXT, content=`cached_contacts`)"
         )
-        connection.execSQL("INSERT INTO `cached_contacts_fts`(`cached_contacts_fts`) VALUES('rebuild')")
+        connection.execSQL(
+            "INSERT INTO `cached_contacts_fts`(`cached_contacts_fts`) VALUES('rebuild')"
+        )
     }
 }
 
@@ -50,7 +52,7 @@ val MIGRATION_14_15: Migration = object : Migration(startVersion = 14, endVersio
             "CREATE TABLE IF NOT EXISTS `cached_cadence_policies` (`id` TEXT NOT NULL, " +
                 "`entityId` TEXT NOT NULL, `targetIntervalDays` INTEGER NOT NULL, " +
                 "`qualifyingTypes` TEXT NOT NULL, `updatedAt` TEXT, `deleted` INTEGER NOT NULL, " +
-                "PRIMARY KEY(`id`))",
+                "PRIMARY KEY(`id`))"
         )
     }
 }
@@ -68,7 +70,9 @@ val MIGRATION_14_15: Migration = object : Migration(startVersion = 14, endVersio
  */
 val MIGRATION_15_16: Migration = object : Migration(startVersion = 15, endVersion = 16) {
     override fun migrate(connection: SQLiteConnection) {
-        connection.execSQL("ALTER TABLE `cached_contacts` ADD COLUMN `isFavorite` INTEGER NOT NULL DEFAULT 0")
+        connection.execSQL(
+            "ALTER TABLE `cached_contacts` ADD COLUMN `isFavorite` INTEGER NOT NULL DEFAULT 0"
+        )
     }
 }
 
@@ -93,7 +97,7 @@ val MIGRATION_16_17: Migration = object : Migration(startVersion = 16, endVersio
         connection.execSQL("ALTER TABLE `pending_interactions` ADD COLUMN `idempotencyKey` TEXT")
         connection.execSQL(
             "UPDATE `pending_interactions` SET `idempotencyKey` = lower(hex(randomblob(16))) " +
-                "WHERE `idempotencyKey` IS NULL",
+                "WHERE `idempotencyKey` IS NULL"
         )
     }
 }
@@ -121,9 +125,11 @@ val MIGRATION_17_18: Migration = object : Migration(startVersion = 17, endVersio
             "CREATE VIRTUAL TABLE IF NOT EXISTS `cached_contacts_fts` USING FTS4(" +
                 "`fn` TEXT, `firstname` TEXT, `lastname` TEXT, `primaryEmail` TEXT, " +
                 "`primaryPhone` TEXT, `phonesNormalized` TEXT, `org` TEXT, " +
-                "content=`cached_contacts`, tokenize=unicode61)",
+                "content=`cached_contacts`, tokenize=unicode61)"
         )
-        connection.execSQL("INSERT INTO `cached_contacts_fts`(`cached_contacts_fts`) VALUES('rebuild')")
+        connection.execSQL(
+            "INSERT INTO `cached_contacts_fts`(`cached_contacts_fts`) VALUES('rebuild')"
+        )
     }
 }
 
@@ -141,7 +147,7 @@ val MIGRATION_18_19: Migration = object : Migration(startVersion = 18, endVersio
             "CREATE TABLE IF NOT EXISTS `cached_occasion_events` (`id` TEXT NOT NULL, " +
                 "`title` TEXT NOT NULL, `startsAt` TEXT NOT NULL, `endsAt` TEXT, " +
                 "`location` TEXT, `sensitivity` TEXT NOT NULL, `notes` TEXT, " +
-                "`updatedAt` TEXT, `deleted` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+                "`updatedAt` TEXT, `deleted` INTEGER NOT NULL, PRIMARY KEY(`id`))"
         )
     }
 }
@@ -175,7 +181,7 @@ val REGISTERED_MIGRATIONS: List<Migration> = listOf(
     MIGRATION_15_16,
     MIGRATION_16_17,
     MIGRATION_17_18,
-    MIGRATION_18_19,
+    MIGRATION_18_19
 )
 
 /**

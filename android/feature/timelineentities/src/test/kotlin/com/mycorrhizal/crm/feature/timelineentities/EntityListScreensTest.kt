@@ -29,8 +29,8 @@ import com.mycorrhizal.crm.domain.repository.LifeEventRepository
 import com.mycorrhizal.crm.domain.repository.PreferenceRepository
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
-import com.mycorrhizal.crm.model.network.ConversationAgenda
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.model.network.ConversationAgenda
 import com.mycorrhizal.crm.model.network.Gift
 import com.mycorrhizal.crm.model.network.GiftStatuses
 import com.mycorrhizal.crm.model.network.LifeEvent
@@ -74,7 +74,7 @@ class EntityListScaffoldTest {
         sectionLabel: (@Composable (String) -> String)? = null,
         onItemClick: (String) -> Unit = {},
         onDelete: (String) -> Unit = {},
-        onAdd: () -> Unit = {},
+        onAdd: () -> Unit = {}
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -90,7 +90,7 @@ class EntityListScaffoldTest {
                     onErrorShown = {},
                     onBack = {},
                     sectionLabel = sectionLabel,
-                    dialog = {},
+                    dialog = {}
                 )
             }
         }
@@ -112,7 +112,7 @@ class EntityListScaffoldTest {
         var clickedId: String? = null
         setContent(
             items = listOf(EntityItem(id = "e1", label = "Moved to Madison")),
-            onItemClick = { clickedId = it },
+            onItemClick = { clickedId = it }
         )
         composeTestRule.onNodeWithText("Moved to Madison").performClick()
         assertEquals("e1", clickedId)
@@ -123,12 +123,14 @@ class EntityListScaffoldTest {
         var deletedId: String? = null
         setContent(
             items = listOf(EntityItem(id = "e1", label = "Moved to Madison")),
-            onDelete = { deletedId = it },
+            onDelete = { deletedId = it }
         )
         composeTestRule.onNodeWithContentDescription("Delete Moved to Madison").performClick()
 
         composeTestRule.onNodeWithText("Delete item?").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Delete “Moved to Madison”? This cannot be undone.").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Delete “Moved to Madison”? This cannot be undone."
+        ).assertIsDisplayed()
         assertNull(deletedId)
     }
 
@@ -137,7 +139,7 @@ class EntityListScaffoldTest {
         var deletedId: String? = null
         setContent(
             items = listOf(EntityItem(id = "e1", label = "Moved to Madison")),
-            onDelete = { deletedId = it },
+            onDelete = { deletedId = it }
         )
         composeTestRule.onNodeWithContentDescription("Delete Moved to Madison").performClick()
         composeTestRule.onNodeWithText("Delete").performClick()
@@ -158,19 +160,27 @@ class EntityListScaffoldTest {
                     uiState = EntityListUiState(
                         items = listOf(
                             EntityItem(id = "a1", label = "Open item", sectionKey = "open"),
-                            EntityItem(id = "a2", label = "Done item", sectionKey = "discussed"),
-                        ),
+                            EntityItem(id = "a2", label = "Done item", sectionKey = "discussed")
+                        )
                     ),
                     onAdd = {},
                     onItemClick = {},
                     onDelete = {},
                     onErrorShown = {},
                     onBack = {},
-                    sectionLabel = { section -> if (section == "discussed") "Discussed" else "Open" },
+                    sectionLabel = { section ->
+                        if (section ==
+                            "discussed"
+                        ) {
+                            "Discussed"
+                        } else {
+                            "Open"
+                        }
+                    },
                     extraAction = {
                         extraActionCount++
                     },
-                    dialog = {},
+                    dialog = {}
                 )
             }
         }
@@ -195,7 +205,13 @@ class EntityListScaffoldTest {
                     emptyTitle = "No items yet",
                     emptyBody = "Add the first one.",
                     uiState = EntityListUiState(
-                        items = listOf(EntityItem(id = "p1", label = "food: Peanuts", sectionKey = "food_drink")),
+                        items = listOf(
+                            EntityItem(
+                                id = "p1",
+                                label = "food: Peanuts",
+                                sectionKey = "food_drink"
+                            )
+                        )
                     ),
                     onAdd = {},
                     onItemClick = {},
@@ -205,7 +221,7 @@ class EntityListScaffoldTest {
                     rowContent = { item ->
                         Text("Rich row ${item.id}")
                     },
-                    dialog = {},
+                    dialog = {}
                 )
             }
         }
@@ -234,8 +250,8 @@ class EntityListScaffoldTest {
                         items = listOf(
                             EntityItem(id = "g1", label = "First gift"),
                             EntityItem(id = "g2", label = "Second gift"),
-                            EntityItem(id = "g3", label = "Third gift"),
-                        ),
+                            EntityItem(id = "g3", label = "Third gift")
+                        )
                     ),
                     onAdd = {},
                     onItemClick = {},
@@ -252,7 +268,7 @@ class EntityListScaffoldTest {
                             (1..30).forEach { i -> Text("Shopping note row $i") }
                         }
                     },
-                    dialog = {},
+                    dialog = {}
                 )
             }
         }
@@ -278,7 +294,7 @@ class LifeEventFormTest {
     private fun setContent(
         initial: LifeEvent? = null,
         onConfirm: (LifeEventFormData) -> Unit = {},
-        onDismiss: () -> Unit = {},
+        onDismiss: () -> Unit = {}
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -292,7 +308,7 @@ class LifeEventFormTest {
                     onAddRelated = {},
                     onRemoveRelated = {},
                     onConfirm = onConfirm,
-                    onDismiss = onDismiss,
+                    onDismiss = onDismiss
                 )
             }
         }
@@ -329,9 +345,9 @@ class LifeEventFormTest {
                 entityId = "uid",
                 type = "anniversary",
                 category = "family_relationships",
-                date = com.mycorrhizal.crm.model.network.PartialDate(month = 6, day = 15),
+                date = com.mycorrhizal.crm.model.network.PartialDate(month = 6, day = 15)
             ),
-            onConfirm = { confirmed = it },
+            onConfirm = { confirmed = it }
         )
 
         // Issue #1726: the partial date is one picker field, rendered in the
@@ -363,9 +379,9 @@ class LifeEventFormTest {
                 entityId = "uid",
                 type = "anniversary",
                 category = "family_relationships",
-                date = com.mycorrhizal.crm.model.network.PartialDate(year = 2019),
+                date = com.mycorrhizal.crm.model.network.PartialDate(year = 2019)
             ),
-            onConfirm = { confirmed = it },
+            onConfirm = { confirmed = it }
         )
 
         composeTestRule.onNodeWithText("2019").assertIsDisplayed()
@@ -388,9 +404,13 @@ class LifeEventFormTest {
                 type = "job_change",
                 category = "work_education",
                 description = "Started at Acme",
-                date = com.mycorrhizal.crm.model.network.PartialDate(year = 2024, month = 3, day = 1),
+                date = com.mycorrhizal.crm.model.network.PartialDate(
+                    year = 2024,
+                    month = 3,
+                    day = 1
+                )
             ),
-            onConfirm = { confirmed = it },
+            onConfirm = { confirmed = it }
         )
 
         composeTestRule.onNodeWithText("Edit life event").assertIsDisplayed()
@@ -410,9 +430,9 @@ class LifeEventFormTest {
                 id = "e1",
                 entityId = "uid",
                 type = "went to the lake",
-                description = "Summer trip",
+                description = "Summer trip"
             ),
-            onConfirm = { confirmed = it },
+            onConfirm = { confirmed = it }
         )
 
         composeTestRule.onNodeWithText("Other / uncategorized").assertIsDisplayed()
@@ -441,12 +461,14 @@ class LifeEventFormTest {
                     onAddRelated = {},
                     onRemoveRelated = { removed = it },
                     onConfirm = {},
-                    onDismiss = {},
+                    onDismiss = {}
                 )
             }
         }
 
-        composeTestRule.onNodeWithContentDescription("Remove Alice").performScrollTo().performClick()
+        composeTestRule.onNodeWithContentDescription(
+            "Remove Alice"
+        ).performScrollTo().performClick()
 
         assertEquals("u1", removed)
     }
@@ -495,7 +517,7 @@ class GiftFormTest {
     private fun setContent(
         initial: Gift? = null,
         onConfirm: (GiftFormData) -> Unit = {},
-        onDismiss: () -> Unit = {},
+        onDismiss: () -> Unit = {}
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -504,7 +526,7 @@ class GiftFormTest {
                     lifeEvents = emptyList(),
                     activities = emptyList(),
                     onConfirm = onConfirm,
-                    onDismiss = onDismiss,
+                    onDismiss = onDismiss
                 )
             }
         }
@@ -530,7 +552,9 @@ class GiftFormTest {
         // Amount without currency blocks save (backend pair rule).
         composeTestRule.onNodeWithText("Description").performTextReplacement("Socks")
         composeTestRule.onNodeWithText("Amount").performScrollTo().performTextReplacement("25")
-        composeTestRule.onNodeWithText("Amount and currency must be set together").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Amount and currency must be set together"
+        ).performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Create").assertIsNotEnabled()
 
         composeTestRule.onNodeWithText("Currency").performScrollTo().performTextReplacement("EUR")
@@ -543,7 +567,9 @@ class GiftFormTest {
         setContent(onConfirm = { confirmed = it })
 
         composeTestRule.onNodeWithText("Description").performTextReplacement("Socks")
-        composeTestRule.onNodeWithText("URL").performScrollTo().performTextReplacement("example.com/socks")
+        composeTestRule.onNodeWithText(
+            "URL"
+        ).performScrollTo().performTextReplacement("example.com/socks")
         composeTestRule.onNodeWithText("Create").performClick()
 
         assertEquals("https://example.com/socks", confirmed?.url)
@@ -554,8 +580,12 @@ class GiftFormTest {
         setContent()
 
         composeTestRule.onNodeWithText("Description").performTextReplacement("Socks")
-        composeTestRule.onNodeWithText("URL").performScrollTo().performTextReplacement("javascript:alert(1)")
-        composeTestRule.onNodeWithText("Enter a valid HTTP or HTTPS URL").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "URL"
+        ).performScrollTo().performTextReplacement("javascript:alert(1)")
+        composeTestRule.onNodeWithText(
+            "Enter a valid HTTP or HTTPS URL"
+        ).performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Create").assertIsNotEnabled()
     }
 
@@ -568,8 +598,8 @@ class GiftFormTest {
                 status = "given",
                 description = "Socks",
                 valueCents = 2500,
-                currency = "EUR",
-            ),
+                currency = "EUR"
+            )
         )
         composeTestRule.onNodeWithText("Edit gift").assertIsDisplayed()
         composeTestRule.onNodeWithText("25").performScrollTo().assertIsDisplayed()
@@ -614,7 +644,7 @@ class PreferenceFormTest {
         initial: Preference? = null,
         sections: Set<String> = PreferenceSection.OVERVIEW_TAB + PreferenceSection.GIFTS_TAB,
         onConfirm: (PreferenceFormData) -> Unit = {},
-        onDismiss: () -> Unit = {},
+        onDismiss: () -> Unit = {}
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -622,7 +652,7 @@ class PreferenceFormTest {
                     initial = initial,
                     sections = sections,
                     onConfirm = onConfirm,
-                    onDismiss = onDismiss,
+                    onDismiss = onDismiss
                 )
             }
         }
@@ -675,7 +705,9 @@ class PreferenceFormTest {
         setContent(onConfirm = { confirmed = it })
 
         composeTestRule.onNodeWithText("Value").performTextReplacement("spicy")
-        composeTestRule.onNodeWithText("Notes").performScrollTo().performTextReplacement("Doesn't drink alcohol")
+        composeTestRule.onNodeWithText(
+            "Notes"
+        ).performScrollTo().performTextReplacement("Doesn't drink alcohol")
         composeTestRule.onNodeWithText("Create").performClick()
 
         assertEquals("Doesn't drink alcohol", confirmed?.notes)
@@ -706,10 +738,10 @@ class PreferenceFormTest {
                         key = "favorite",
                         value = "matcha",
                         notes = "Iced only",
-                        sensitivity = "private",
+                        sensitivity = "private"
                     ),
                     onConfirm = {},
-                    onDismiss = {},
+                    onDismiss = {}
                 )
             }
         }
@@ -747,9 +779,9 @@ class PreferenceFormTest {
                 entityId = "uid",
                 category = "hobby",
                 value = "Piano",
-                sensitivity = "normal",
+                sensitivity = "normal"
             ),
-            onConfirm = { confirmed = it },
+            onConfirm = { confirmed = it }
         )
 
         composeTestRule.onNodeWithTag("preference-level").performScrollTo().assertIsDisplayed()
@@ -771,9 +803,9 @@ class PreferenceFormTest {
                 category = "hobby",
                 value = "Piano",
                 level = "high",
-                sensitivity = "normal",
+                sensitivity = "normal"
             ),
-            onConfirm = { confirmed = it },
+            onConfirm = { confirmed = it }
         )
 
         composeTestRule.onNodeWithTag("preference-category").performScrollTo().performClick()
@@ -795,10 +827,10 @@ class PreferenceFormTest {
                         category = "hobby",
                         value = "Piano",
                         level = "medium",
-                        sensitivity = "normal",
+                        sensitivity = "normal"
                     ),
                     onConfirm = {},
-                    onDismiss = {},
+                    onDismiss = {}
                 )
             }
         }
@@ -848,8 +880,8 @@ class PreferencesRowTest {
                 category = "media_tv",
                 key = "favorite",
                 value = "Severance",
-                notes = "Season 1 only",
-            ),
+                notes = "Season 1 only"
+            )
         )
         composeTestRule.onNodeWithText("TV show").assertIsDisplayed()
         composeTestRule.onNodeWithText("Favorite").assertIsDisplayed()
@@ -865,8 +897,8 @@ class PreferencesRowTest {
                 entityId = "uid",
                 category = "food",
                 value = "Peanuts",
-                sensitivity = PreferenceSensitivities.SECRET,
-            ),
+                sensitivity = PreferenceSensitivities.SECRET
+            )
         )
         composeTestRule.onNodeWithText("Secret").assertIsDisplayed()
     }
@@ -879,8 +911,8 @@ class PreferencesRowTest {
                 entityId = "uid",
                 category = "food",
                 value = "Vegetarian",
-                sensitivity = PreferenceSensitivities.NORMAL,
-            ),
+                sensitivity = PreferenceSensitivities.NORMAL
+            )
         )
         composeTestRule.onNodeWithText("Normal").assertDoesNotExist()
         composeTestRule.onNodeWithText("Secret").assertDoesNotExist()
@@ -893,8 +925,8 @@ class PreferencesRowTest {
                 id = "p1",
                 entityId = "uid",
                 category = "food",
-                value = "Vegetarian",
-            ),
+                value = "Vegetarian"
+            )
         )
         composeTestRule.onNodeWithText("Vegetarian").assertIsDisplayed()
         composeTestRule.onNodeWithText("Favorite").assertDoesNotExist()
@@ -910,8 +942,8 @@ class PreferencesRowTest {
                 category = "hobby",
                 key = "favorite",
                 value = "Piano",
-                level = "high",
-            ),
+                level = "high"
+            )
         )
         composeTestRule.onNodeWithText("Advanced").assertIsDisplayed()
     }
@@ -923,8 +955,8 @@ class PreferencesRowTest {
                 id = "p1",
                 entityId = "uid",
                 category = "hobby",
-                value = "Chess",
-            ),
+                value = "Chess"
+            )
         )
         composeTestRule.onNodeWithText("Advanced").assertDoesNotExist()
         composeTestRule.onNodeWithText("No level").assertDoesNotExist()
@@ -949,10 +981,13 @@ class AgendaDialogTest {
                         id = "a1",
                         entityId = "uid",
                         content = "Ask about the move",
-                        referenceUrl = "https://example.com/listing",
+                        referenceUrl = "https://example.com/listing"
                     ),
-                    onConfirm = { content, url -> confirmedContent = content; confirmedUrl = url },
-                    onDismiss = {},
+                    onConfirm = { content, url ->
+                        confirmedContent = content
+                        confirmedUrl = url
+                    },
+                    onDismiss = {}
                 )
             }
         }
@@ -960,7 +995,9 @@ class AgendaDialogTest {
         composeTestRule.onNodeWithText("Ask about the move").assertIsDisplayed()
         composeTestRule.onNodeWithText("https://example.com/listing").assertIsDisplayed()
 
-        composeTestRule.onNodeWithText("Ask about the move").performTextReplacement("Ask about the new place")
+        composeTestRule.onNodeWithText(
+            "Ask about the move"
+        ).performTextReplacement("Ask about the new place")
         composeTestRule.onNodeWithText("Save").performClick()
 
         assertEquals("Ask about the new place", confirmedContent)
@@ -975,12 +1012,14 @@ class AgendaDialogTest {
                 AgendaDialog(
                     initial = null,
                     onConfirm = { _, url -> confirmedUrl = url },
-                    onDismiss = {},
+                    onDismiss = {}
                 )
             }
         }
         composeTestRule.onNodeWithText("Content").performTextReplacement("Read the article")
-        composeTestRule.onNodeWithText("Reference URL").performTextReplacement("example.com/article")
+        composeTestRule.onNodeWithText(
+            "Reference URL"
+        ).performTextReplacement("example.com/article")
         composeTestRule.onNodeWithText("Create").performClick()
 
         assertEquals("https://example.com/article", confirmedUrl)
@@ -996,7 +1035,7 @@ class AgendaDialogTest {
                 AgendaDialog(
                     initial = null,
                     onConfirm = { _, _ -> },
-                    onDismiss = { dismissed = true },
+                    onDismiss = { dismissed = true }
                 )
             }
         }
@@ -1005,7 +1044,9 @@ class AgendaDialogTest {
         composeTestRule.onNodeWithText("Cancel").performClick()
 
         composeTestRule.onNodeWithText("Discard changes?").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Your edits to this agenda item haven't been saved.").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Your edits to this agenda item haven't been saved."
+        ).assertIsDisplayed()
         assertEquals(false, dismissed)
 
         composeTestRule.onNodeWithText("Keep editing").performClick()
@@ -1032,11 +1073,18 @@ class MarkDiscussedFormTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 MarkDiscussedForm(
-                    item = ConversationAgenda(id = "a1", entityId = "uid", content = "Ask about the move"),
+                    item = ConversationAgenda(
+                        id = "a1",
+                        entityId = "uid",
+                        content = "Ask about the move"
+                    ),
                     activities = emptyList(),
                     confirming = false,
-                    onConfirm = { confirmed = it; confirmedCalled = true },
-                    onDismiss = {},
+                    onConfirm = {
+                        confirmed = it
+                        confirmedCalled = true
+                    },
+                    onDismiss = {}
                 )
             }
         }
@@ -1054,14 +1102,18 @@ class MarkDiscussedFormTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 MarkDiscussedForm(
-                    item = ConversationAgenda(id = "a1", entityId = "uid", content = "Ask about the move"),
+                    item = ConversationAgenda(
+                        id = "a1",
+                        entityId = "uid",
+                        content = "Ask about the move"
+                    ),
                     activities = listOf(
                         com.mycorrhizal.crm.model.network.Activity(id = 7, title = "Coffee chat"),
-                        com.mycorrhizal.crm.model.network.Activity(id = 8, title = "Dinner"),
+                        com.mycorrhizal.crm.model.network.Activity(id = 8, title = "Dinner")
                     ),
                     confirming = false,
                     onConfirm = { confirmed = it },
-                    onDismiss = {},
+                    onDismiss = {}
                 )
             }
         }
@@ -1082,11 +1134,17 @@ class MarkDiscussedFormTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 MarkDiscussedForm(
-                    item = ConversationAgenda(id = "a1", entityId = "uid", content = "Ask about the move"),
-                    activities = listOf(com.mycorrhizal.crm.model.network.Activity(id = 7, title = "Coffee chat")),
+                    item = ConversationAgenda(
+                        id = "a1",
+                        entityId = "uid",
+                        content = "Ask about the move"
+                    ),
+                    activities = listOf(
+                        com.mycorrhizal.crm.model.network.Activity(id = 7, title = "Coffee chat")
+                    ),
                     confirming = false,
                     onConfirm = {},
-                    onDismiss = { dismissed = true },
+                    onDismiss = { dismissed = true }
                 )
             }
         }
@@ -1124,7 +1182,7 @@ class EntityListScreensTopLevelTest {
 
     private fun stubContact(contacts: ContactRepository) {
         coEvery { contacts.getContact(5) } returns Result.success(
-            ContactRecordResponse(id = 5, card = Card(uid = uid, name = Name(full = "Dana White"))),
+            ContactRecordResponse(id = 5, card = Card(uid = uid, name = Name(full = "Dana White")))
         )
     }
 
@@ -1145,7 +1203,9 @@ class EntityListScreensTopLevelTest {
         // The error text renders in the list body (the snackbar may render the
         // same message too, so match any occurrence).
         assertTrue(
-            composeTestRule.onAllNodesWithText("Server error (500)").fetchSemanticsNodes().isNotEmpty(),
+            composeTestRule.onAllNodesWithText(
+                "Server error (500)"
+            ).fetchSemanticsNodes().isNotEmpty()
         )
         composeTestRule.onNodeWithContentDescription("New life event").assertIsDisplayed()
     }
@@ -1157,7 +1217,14 @@ class EntityListScreensTopLevelTest {
         val contacts = mockk<ContactRepository>()
         stubContact(contacts)
         coEvery { repo.listForContact(uid) } returns Result.success(
-            listOf(LifeEvent(id = "e1", entityId = uid, type = "moved", description = "Moved to Madison")),
+            listOf(
+                LifeEvent(
+                    id = "e1",
+                    entityId = uid,
+                    type = "moved",
+                    description = "Moved to Madison"
+                )
+            )
         )
         val vm = LifeEventsViewModel(repo, contacts, SavedStateHandle(mapOf("contactId" to 5)))
 
@@ -1176,7 +1243,14 @@ class EntityListScreensTopLevelTest {
         val contacts = mockk<ContactRepository>()
         stubContact(contacts)
         coEvery { repo.listForContact(uid) } returns Result.success(
-            listOf(LifeEvent(id = "e1", entityId = uid, type = "moved", description = "Moved to Madison")),
+            listOf(
+                LifeEvent(
+                    id = "e1",
+                    entityId = uid,
+                    type = "moved",
+                    description = "Moved to Madison"
+                )
+            )
         )
         val vm = LifeEventsViewModel(repo, contacts, SavedStateHandle(mapOf("contactId" to 5)))
 
@@ -1207,9 +1281,9 @@ class EntityListScreensTopLevelTest {
                     id = "g1",
                     entityId = uid,
                     description = "Socks",
-                    url = "https://example.com/socks",
-                ),
-            ),
+                    url = "https://example.com/socks"
+                )
+            )
         )
         coEvery { lifeRepo.listForContact(uid) } returns Result.success(emptyList())
         coEvery { activityRepo.listForContact(5, any(), any(), any(), any(), any()) } returns
@@ -1221,7 +1295,7 @@ class EntityListScreensTopLevelTest {
             activityRepo,
             prefRepo,
             contacts,
-            SavedStateHandle(mapOf("contactId" to 5)),
+            SavedStateHandle(mapOf("contactId" to 5))
         )
 
         composeTestRule.setContent {
@@ -1244,7 +1318,15 @@ class EntityListScreensTopLevelTest {
         val contacts = mockk<ContactRepository>()
         stubContact(contacts)
         coEvery { repo.listForContact(uid) } returns Result.success(
-            listOf(Preference(id = "p1", entityId = uid, category = "food", key = "allergy", value = "peanuts")),
+            listOf(
+                Preference(
+                    id = "p1",
+                    entityId = uid,
+                    category = "food",
+                    key = "allergy",
+                    value = "peanuts"
+                )
+            )
         )
         val vm = PreferencesViewModel(repo, contacts, SavedStateHandle(mapOf("contactId" to 5)))
 
@@ -1264,9 +1346,20 @@ class EntityListScreensTopLevelTest {
         stubContact(contacts)
         coEvery { repo.listForContact(uid) } returns Result.success(
             listOf(
-                Preference(id = "p1", entityId = uid, category = "hobby", value = "Piano", level = "high"),
-                Preference(id = "p2", entityId = uid, category = "dislike_activity", value = "Crowds"),
-            ),
+                Preference(
+                    id = "p1",
+                    entityId = uid,
+                    category = "hobby",
+                    value = "Piano",
+                    level = "high"
+                ),
+                Preference(
+                    id = "p2",
+                    entityId = uid,
+                    category = "dislike_activity",
+                    value = "Crowds"
+                )
+            )
         )
         val vm = PreferencesViewModel(repo, contacts, SavedStateHandle(mapOf("contactId" to 5)))
 
@@ -1294,9 +1387,9 @@ class EntityListScreensTopLevelTest {
                     id = "a1",
                     entityId = uid,
                     content = "Ask about the move",
-                    referenceUrl = "https://example.com/listing",
-                ),
-            ),
+                    referenceUrl = "https://example.com/listing"
+                )
+            )
         )
         coEvery { activityRepo.listForContact(5, any(), any(), any(), any(), any()) } returns
             Result.success(ContactActivitiesPage(activities = emptyList(), nextCursor = null))
@@ -1304,7 +1397,7 @@ class EntityListScreensTopLevelTest {
             repo,
             activityRepo,
             contacts,
-            SavedStateHandle(mapOf("contactId" to 5)),
+            SavedStateHandle(mapOf("contactId" to 5))
         )
 
         composeTestRule.setContent {
@@ -1323,21 +1416,44 @@ class EntityListScreensTopLevelTest {
         return LifeEventsViewModel(repo, contacts, SavedStateHandle(mapOf("contactId" to 5)))
     }
 
-    private val staleLifeEvent = LifeEvent(id = "e1", entityId = uid, type = "moved", description = "Moved to Madison", revision = 4)
+    private val staleLifeEvent = LifeEvent(
+        id = "e1",
+        entityId = uid,
+        type = "moved",
+        description = "Moved to Madison",
+        revision = 4
+    )
 
     @Test
     fun `a life event delete conflict shows the not-deleted prompt and load latest refetches`() {
         val repo = mockk<LifeEventRepository>()
         coEvery { repo.listForContact(uid) } returns Result.success(listOf(staleLifeEvent))
-        coEvery { repo.delete("e1", 4) } returns Result.failure(ApiError.PreconditionFailed("stale"))
+        coEvery {
+            repo.delete(
+                "e1",
+                4
+            )
+        } returns Result.failure(ApiError.PreconditionFailed("stale"))
         val vm = lifeEventsVm(repo)
-        composeTestRule.setContent { MycorrhizalTheme { LifeEventsScreen(onBack = {}, viewModel = vm) } }
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                LifeEventsScreen(
+                    onBack = {},
+                    viewModel = vm
+                )
+            }
+        }
 
-        composeTestRule.onNode(androidx.compose.ui.test.hasContentDescription("Delete", substring = true)).performClick()
+        composeTestRule.onNode(
+            androidx.compose.ui.test.hasContentDescription("Delete", substring = true)
+        ).performClick()
         composeTestRule.onNodeWithText("Delete").performClick()
 
         composeTestRule.onNodeWithText("Changed elsewhere").assertIsDisplayed()
-        composeTestRule.onNodeWithText("so it was not deleted", substring = true).assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "so it was not deleted",
+            substring = true
+        ).assertIsDisplayed()
         composeTestRule.onNodeWithText("Load latest version").performClick()
         composeTestRule.onNodeWithText("Changed elsewhere").assertDoesNotExist()
         io.mockk.coVerify(exactly = 2) { repo.listForContact(uid) }
@@ -1347,15 +1463,31 @@ class EntityListScreensTopLevelTest {
     fun `a life event edit conflict shows the closed-form prompt and not now dismisses it`() {
         val repo = mockk<LifeEventRepository>()
         coEvery { repo.listForContact(uid) } returns Result.success(listOf(staleLifeEvent))
-        coEvery { repo.update("e1", any(), 4) } returns Result.failure(ApiError.PreconditionFailed("stale"))
+        coEvery {
+            repo.update(
+                "e1",
+                any(),
+                4
+            )
+        } returns Result.failure(ApiError.PreconditionFailed("stale"))
         val vm = lifeEventsVm(repo)
-        composeTestRule.setContent { MycorrhizalTheme { LifeEventsScreen(onBack = {}, viewModel = vm) } }
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                LifeEventsScreen(
+                    onBack = {},
+                    viewModel = vm
+                )
+            }
+        }
 
         composeTestRule.onNodeWithText("Moved to Madison", substring = true).performClick()
         composeTestRule.onNodeWithText("Save").performClick()
 
         composeTestRule.onNodeWithText("Changed elsewhere").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Your edit was not saved.", substring = true).assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Your edit was not saved.",
+            substring = true
+        ).assertIsDisplayed()
         composeTestRule.onNodeWithText("Keep editing").assertDoesNotExist()
         composeTestRule.onNodeWithText("Not now").performClick()
         composeTestRule.onNodeWithText("Changed elsewhere").assertDoesNotExist()
@@ -1369,16 +1501,38 @@ class EntityListScreensTopLevelTest {
         val shown = mutableListOf<String>()
         composeTestRule.setContent {
             MycorrhizalTheme {
-                shown += EntityItem("1", "job_change — Acme", labelFamily = EntityLabelFamily.LIFE_EVENT, labelToken = "job_change", labelDetail = "Acme").displayLabel()
-                shown += EntityItem("2", "x", labelFamily = EntityLabelFamily.LIFE_EVENT, labelToken = "brand_new_event").displayLabel()
-                shown += EntityItem("3", "hobby: favorite = pottery", labelFamily = EntityLabelFamily.PREFERENCE, labelToken = "hobby", labelDetail = "pottery").displayLabel()
+                shown += EntityItem(
+                    "1",
+                    "job_change — Acme",
+                    labelFamily = EntityLabelFamily.LIFE_EVENT,
+                    labelToken = "job_change",
+                    labelDetail = "Acme"
+                ).displayLabel()
+                shown += EntityItem(
+                    "2",
+                    "x",
+                    labelFamily = EntityLabelFamily.LIFE_EVENT,
+                    labelToken = "brand_new_event"
+                ).displayLabel()
+                shown += EntityItem(
+                    "3",
+                    "hobby: favorite = pottery",
+                    labelFamily = EntityLabelFamily.PREFERENCE,
+                    labelToken = "hobby",
+                    labelDetail = "pottery"
+                ).displayLabel()
                 shown += EntityItem("4", "plain").displayLabel()
             }
         }
         composeTestRule.waitForIdle()
         assertEquals(
-            listOf("Started a new job — Acme", "Brand new event", "Activity/hobby: pottery", "plain"),
-            shown,
+            listOf(
+                "Started a new job — Acme",
+                "Brand new event",
+                "Activity/hobby: pottery",
+                "plain"
+            ),
+            shown
         )
     }
 }

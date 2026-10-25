@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.network
 
+import java.util.concurrent.TimeUnit
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.mockwebserver.MockResponse
@@ -8,7 +9,6 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
-import java.util.concurrent.TimeUnit
 
 class RetryInterceptorTest {
 
@@ -46,7 +46,9 @@ class RetryInterceptorTest {
         server.enqueue(MockResponse().setResponseCode(500))
 
         val response = client.newCall(
-            Request.Builder().url(server.url("/x")).post(okhttp3.RequestBody.create(null, "{}")).build(),
+            Request.Builder().url(
+                server.url("/x")
+            ).post(okhttp3.RequestBody.create(null, "{}")).build()
         ).execute()
 
         assertEquals(500, response.code)

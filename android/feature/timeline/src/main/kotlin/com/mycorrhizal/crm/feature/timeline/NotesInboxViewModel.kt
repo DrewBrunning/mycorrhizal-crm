@@ -6,12 +6,12 @@ import com.mycorrhizal.crm.domain.repository.NoteRepository
 import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /**
  * M9: the unassigned-notes drawer entry — the N4 unfiled-notes inbox (`GET /notes`,
@@ -27,13 +27,12 @@ data class NotesInboxUiState(
     val nextCursor: String? = null,
     val isLoading: Boolean = false,
     val isLoadingMore: Boolean = false,
-    val error: String? = null,
+    val error: String? = null
 )
 
 @HiltViewModel
-class NotesInboxViewModel @Inject constructor(
-    private val noteRepository: NoteRepository,
-) : ViewModel() {
+class NotesInboxViewModel @Inject constructor(private val noteRepository: NoteRepository) :
+    ViewModel() {
 
     private val _uiState = MutableStateFlow(NotesInboxUiState())
     val uiState: StateFlow<NotesInboxUiState> = _uiState.asStateFlow()
@@ -52,13 +51,18 @@ class NotesInboxViewModel @Inject constructor(
                 onSuccess = { page ->
                     hasLoaded = true
                     _uiState.update {
-                        it.copy(isLoading = false, notes = page.notes, total = page.total, nextCursor = page.nextCursor)
+                        it.copy(
+                            isLoading = false,
+                            notes = page.notes,
+                            total = page.total,
+                            nextCursor = page.nextCursor
+                        )
                     }
                 },
                 onError = { error ->
                     hasLoaded = true
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -85,13 +89,13 @@ class NotesInboxViewModel @Inject constructor(
                             isLoadingMore = false,
                             notes = it.notes + page.notes,
                             total = page.total,
-                            nextCursor = page.nextCursor,
+                            nextCursor = page.nextCursor
                         )
                     }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoadingMore = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }

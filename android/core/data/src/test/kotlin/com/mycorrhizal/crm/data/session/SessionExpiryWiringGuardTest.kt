@@ -1,8 +1,8 @@
 package com.mycorrhizal.crm.data.session
 
+import java.io.File
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 /**
  * Guard test for the 401/session-expiry wiring (issue #678). The DI graph
@@ -32,25 +32,27 @@ class SessionExpiryWiringGuardTest {
     fun `the session manager is wired to the session-expiry notifier`() {
         assertTrue(
             "DataModule must provide a SessionExpiryNotifier",
-            dataModuleSource.contains("fun provideSessionExpiryNotifier"),
+            dataModuleSource.contains("fun provideSessionExpiryNotifier")
         )
         assertTrue(
             "provideSessionManager must start SessionExpiryWiring",
             dataModuleSource.contains("SessionExpiryWiring(") &&
-                dataModuleSource.contains(".start(scope)"),
+                dataModuleSource.contains(".start(scope)")
         )
         // Issue #722: the wiring must first try a device-grant exchange so an
         // expired-but-valid session resumes on a biometric-enrolled device.
         assertTrue(
             "the 401 path must attempt a device-grant refresh before clearing",
-            dataModuleSource.contains("refresher = { deviceGrantManager.get().refreshSessionFromStoredGrant() }"),
+            dataModuleSource.contains(
+                "refresher = { deviceGrantManager.get().refreshSessionFromStoredGrant() }"
+            )
         )
         // Issue #1312: a Local profile re-mints instead of clearing.
         assertTrue(
             "the 401 path must wire the Local re-mint before clearing",
             dataModuleSource.contains("localRemint = { rejectedBearer ->") &&
                 dataModuleSource.contains("LocalSessionReminter(localServerHost.get(), manager)") &&
-                dataModuleSource.contains(".remint(rejectedBearer)"),
+                dataModuleSource.contains(".remint(rejectedBearer)")
         )
         // Issue #957: DefaultSessionManager must actually receive the
         // Hilt-bound SessionTeardown, not silently fall back to the Noop
@@ -62,11 +64,13 @@ class SessionExpiryWiringGuardTest {
         // pins the Provider indirection.
         assertTrue(
             "provideSessionManager must take a Provider<SessionTeardown>, not SessionTeardown directly",
-            dataModuleSource.contains("sessionTeardown: javax.inject.Provider<SessionTeardown>"),
+            dataModuleSource.contains("sessionTeardown: javax.inject.Provider<SessionTeardown>")
         )
         assertTrue(
             "provideSessionManager must pass the resolved SessionTeardown into DefaultSessionManager",
-            dataModuleSource.contains("sessionTeardown = SessionTeardown { sessionTeardown.get().beforeClear() }"),
+            dataModuleSource.contains(
+                "sessionTeardown = SessionTeardown { sessionTeardown.get().beforeClear() }"
+            )
         )
     }
 
@@ -74,11 +78,11 @@ class SessionExpiryWiringGuardTest {
     fun `a session-expiry signal clears the session`() {
         assertTrue(
             "SessionExpiryWiring must register a listener on the notifier",
-            wiringSource.contains("sessionExpiryNotifier.register"),
+            wiringSource.contains("sessionExpiryNotifier.register")
         )
         assertTrue(
             "the registered listener must clear the session",
-            wiringSource.contains("sessionManager.clearSession()"),
+            wiringSource.contains("sessionManager.clearSession()")
         )
         // Issue #957/#967: the two guards found by the same review pass --
         // re-entrancy (a 401 from clearSession's own teardown call must not
@@ -86,11 +90,11 @@ class SessionExpiryWiringGuardTest {
         // each launch their own refresh).
         assertTrue(
             "the listener must skip a refresh attempt while a clearSession call is already tearing down",
-            wiringSource.contains("sessionManager.isClearingSession()"),
+            wiringSource.contains("sessionManager.isClearingSession()")
         )
         assertTrue(
             "the listener must guard against more than one refresh in flight at a time",
-            wiringSource.contains("refreshInFlight"),
+            wiringSource.contains("refreshInFlight")
         )
     }
 
@@ -98,11 +102,13 @@ class SessionExpiryWiringGuardTest {
     fun `the app's OkHttp chain carries the session-expiry interceptor`() {
         assertTrue(
             "AppNetworkModule must build a SessionExpiryInterceptor with the base-url host check",
-            appNetworkModuleSource.contains("SessionExpiryInterceptor(sessionExpiryNotifier, baseUrlProvider)"),
+            appNetworkModuleSource.contains(
+                "SessionExpiryInterceptor(sessionExpiryNotifier, baseUrlProvider)"
+            )
         )
         assertTrue(
             "AppNetworkModule must pass the interceptor into NetworkFactory",
-            appNetworkModuleSource.contains("sessionExpiryInterceptor ="),
+            appNetworkModuleSource.contains("sessionExpiryInterceptor =")
         )
     }
 
@@ -117,15 +123,15 @@ class SessionExpiryWiringGuardTest {
         assertTrue(
             "SessionTeardownModule must bind SessionTeardown to a real implementation",
             sessionTeardownModuleSource.contains("abstract fun bindSessionTeardown(") &&
-                sessionTeardownModuleSource.contains(": SessionTeardown"),
+                sessionTeardownModuleSource.contains(": SessionTeardown")
         )
         assertTrue(
             "the implementation must deregister the FCM device",
-            sessionTeardownModuleSource.contains("deviceRegistration.delete()"),
+            sessionTeardownModuleSource.contains("deviceRegistration.delete()")
         )
         assertTrue(
             "the implementation must revoke the server-side session",
-            sessionTeardownModuleSource.contains("sessionRevoker.revoke()"),
+            sessionTeardownModuleSource.contains("sessionRevoker.revoke()")
         )
     }
 }

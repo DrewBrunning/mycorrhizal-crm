@@ -1,6 +1,5 @@
 package com.mycorrhizal.crm.feature.tracking
 
-import android.content.ContentResolver
 import android.provider.Telephony
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.PendingInteraction
@@ -8,11 +7,7 @@ import com.mycorrhizal.crm.domain.repository.PendingInteractionRepository
 import com.mycorrhizal.crm.domain.repository.TrackingSettingsRepository
 
 /** One SMS as captured by the SMS_RECEIVED broadcast (§6.2). */
-data class SmsEntry(
-    val address: String?,
-    val body: String?,
-    val timestampMillis: Long,
-)
+data class SmsEntry(val address: String?, val body: String?, val timestampMillis: Long)
 
 /**
  * Parses an SMS_RECEIVED broadcast into a [SmsEntry]. Only the address and
@@ -27,7 +22,7 @@ object SmsReader {
         return SmsEntry(
             address = first.originatingAddress,
             body = first.messageBody,
-            timestampMillis = first.timestampMillis,
+            timestampMillis = first.timestampMillis
         )
     }
 }
@@ -82,7 +77,7 @@ object InteractionCapture {
         direction: String?,
         number: String?,
         timestampMillis: Long,
-        dedupe: Boolean,
+        dedupe: Boolean
     ): Outcome {
         val contact = number?.let {
             runCatching { contactRepository.findByPhone(it) }.getOrNull()
@@ -96,7 +91,7 @@ object InteractionCapture {
             kind = kind,
             direction = direction,
             phoneNumber = number,
-            matchedContactId = contact?.id,
+            matchedContactId = contact?.id
         )
         if (!dedupe) {
             pendingInteractionRepository.record(interaction)

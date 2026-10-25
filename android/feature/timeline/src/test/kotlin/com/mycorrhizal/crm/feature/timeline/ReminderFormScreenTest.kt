@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import com.mycorrhizal.crm.ui.components.FormScaffold
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertIsToggleable
@@ -13,13 +12,15 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.swipeUp
-import androidx.compose.ui.test.performScrollTo
 import com.mycorrhizal.crm.model.network.ReminderRecurrence
 import com.mycorrhizal.crm.model.util.DateFormat
+import com.mycorrhizal.crm.ui.components.FormScaffold
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
+import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -27,7 +28,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import java.time.LocalDate
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "w480dp-h2000dp")
@@ -42,7 +42,7 @@ class ReminderFormScreenTest {
         onRemindAtChange: (String) -> Unit = {},
         onRecurrenceChange: (String) -> Unit = {},
         onReoccurFromCompletionChange: (Boolean) -> Unit = {},
-        onSave: () -> Unit = {},
+        onSave: () -> Unit = {}
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -52,7 +52,7 @@ class ReminderFormScreenTest {
                     saveLabel = if (state.isEdit) "Save changes" else "Create reminder",
                     isSaving = state.isSaving,
                     onSave = onSave,
-                    snackbarHostState = remember { SnackbarHostState() },
+                    snackbarHostState = remember { SnackbarHostState() }
                 ) { padding ->
                     ReminderFormContent(
                         state = state,
@@ -61,7 +61,7 @@ class ReminderFormScreenTest {
                         onRecurrenceChange = onRecurrenceChange,
                         onByMailChange = {},
                         onReoccurFromCompletionChange = onReoccurFromCompletionChange,
-                        modifier = Modifier.padding(padding),
+                        modifier = Modifier.padding(padding)
                     )
                 }
             }
@@ -74,7 +74,9 @@ class ReminderFormScreenTest {
         setContent(ReminderFormState(contactId = 5, remindAt = "${today}T00:00:00Z"))
         // #1726: the date is rendered through the user's date-format
         // preference (EU by default), not as the raw stored ISO prefix.
-        composeTestRule.onNodeWithText(DateFormat.formatTimestamp("${today}T00:00:00Z", DateFormat.EU))
+        composeTestRule.onNodeWithText(
+            DateFormat.formatTimestamp("${today}T00:00:00Z", DateFormat.EU)
+        )
             .assertIsDisplayed()
     }
 
@@ -84,7 +86,7 @@ class ReminderFormScreenTest {
         var picked: String? = null
         setContent(
             ReminderFormState(contactId = 5, remindAt = "${today}T00:00:00Z"),
-            onRemindAtChange = { picked = it },
+            onRemindAtChange = { picked = it }
         )
 
         composeTestRule.onNodeWithTag("reminder-date").performClick()
@@ -99,10 +101,12 @@ class ReminderFormScreenTest {
             ReminderFormState(
                 contactId = 5,
                 recurrence = ReminderRecurrence.WEEKLY,
-                remindAt = "${LocalDate.now()}T00:00:00Z",
-            ),
+                remindAt = "${LocalDate.now()}T00:00:00Z"
+            )
         )
-        composeTestRule.onNodeWithText("Reschedule from completion date").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Reschedule from completion date"
+        ).performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -111,8 +115,8 @@ class ReminderFormScreenTest {
             ReminderFormState(
                 contactId = 5,
                 recurrence = ReminderRecurrence.ONCE,
-                remindAt = "${LocalDate.now()}T00:00:00Z",
-            ),
+                remindAt = "${LocalDate.now()}T00:00:00Z"
+            )
         )
         composeTestRule.onNodeWithText("Reschedule from completion date").assertIsNotDisplayed()
     }
@@ -124,9 +128,9 @@ class ReminderFormScreenTest {
             ReminderFormState(
                 contactId = 5,
                 recurrence = ReminderRecurrence.WEEKLY,
-                remindAt = "${LocalDate.now()}T00:00:00Z",
+                remindAt = "${LocalDate.now()}T00:00:00Z"
             ),
-            onReoccurFromCompletionChange = { value = it },
+            onReoccurFromCompletionChange = { value = it }
         )
         // #199: Modifier.toggleable on the ListItem merges the "Reschedule from
         // completion date" headline into the same node as the toggle state, so
@@ -145,9 +149,9 @@ class ReminderFormScreenTest {
         setContent(
             ReminderFormState(
                 contactId = 5,
-                remindAt = "${LocalDate.now()}T00:00:00Z",
+                remindAt = "${LocalDate.now()}T00:00:00Z"
             ),
-            onSave = { saved = true },
+            onSave = { saved = true }
         )
         composeTestRule.onNodeWithText("Create reminder").performClick()
         assertEquals(true, saved)
@@ -159,12 +163,18 @@ class ReminderFormScreenTest {
     @Config(qualifiers = "w360dp-h400dp")
     fun `save button stays displayed without scrolling and while the form scrolls`() {
         var saved = false
-        setContent(ReminderFormState(contactId = 5, remindAt = "${LocalDate.now()}T00:00:00Z"), onSave = { saved = true })
+        setContent(
+            ReminderFormState(contactId = 5, remindAt = "${LocalDate.now()}T00:00:00Z"),
+            onSave = { saved = true }
+        )
 
         composeTestRule.onNodeWithText("Create reminder").assertIsDisplayed()
         composeTestRule.onNode(hasScrollAction()).performTouchInput { swipeUp() }
         composeTestRule.onNodeWithText("Create reminder").assertIsDisplayed()
-        composeTestRule.onNode(hasScrollAction()).performTouchInput { swipeDown(); swipeDown() }
+        composeTestRule.onNode(hasScrollAction()).performTouchInput {
+            swipeDown()
+            swipeDown()
+        }
         composeTestRule.onNodeWithText("Create reminder").assertIsDisplayed()
         composeTestRule.onNodeWithText("Create reminder").performClick()
         assertEquals(true, saved)

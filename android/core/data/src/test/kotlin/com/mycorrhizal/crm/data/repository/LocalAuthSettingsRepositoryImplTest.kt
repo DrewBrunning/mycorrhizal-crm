@@ -69,16 +69,25 @@ class LocalAuthSettingsRepositoryImplTest {
     @Test
     fun `biometricEnrollmentStatus defaults to unasked`() = runTest {
         repository.setBiometricEnrollmentStatus(BiometricEnrollmentStatus.UNASKED)
-        assertEquals(BiometricEnrollmentStatus.UNASKED, repository.biometricEnrollmentStatus().first())
+        assertEquals(
+            BiometricEnrollmentStatus.UNASKED,
+            repository.biometricEnrollmentStatus().first()
+        )
     }
 
     @Test
     fun `setBiometricEnrollmentStatus persists the value`() = runTest {
         repository.setBiometricEnrollmentStatus(BiometricEnrollmentStatus.ENROLLED)
-        assertEquals(BiometricEnrollmentStatus.ENROLLED, repository.biometricEnrollmentStatus().first())
+        assertEquals(
+            BiometricEnrollmentStatus.ENROLLED,
+            repository.biometricEnrollmentStatus().first()
+        )
 
         repository.setBiometricEnrollmentStatus(BiometricEnrollmentStatus.OPTED_OUT)
-        assertEquals(BiometricEnrollmentStatus.OPTED_OUT, repository.biometricEnrollmentStatus().first())
+        assertEquals(
+            BiometricEnrollmentStatus.OPTED_OUT,
+            repository.biometricEnrollmentStatus().first()
+        )
     }
 
     @Test

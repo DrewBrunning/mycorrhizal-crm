@@ -41,7 +41,4 @@ interface CircleRepository {
     suspend fun removeMember(circleId: String, vcardUid: String): Result<Unit>
 }
 
-data class CircleDetail(
-    val circle: Circle,
-    val members: List<CircleMember>,
-)
+data class CircleDetail(val circle: Circle, val members: List<CircleMember>)

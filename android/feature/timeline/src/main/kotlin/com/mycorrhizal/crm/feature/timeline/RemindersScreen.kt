@@ -21,11 +21,9 @@ import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -44,22 +42,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.res.stringResource
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.Reminder
 import com.mycorrhizal.crm.model.network.ReminderRecurrence
 import com.mycorrhizal.crm.model.util.DateFormat
+import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.BrandFab
-import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.components.WriteConflictDialog
 import com.mycorrhizal.crm.ui.theme.LocalWarningColors
-import com.mycorrhizal.crm.ui.R
 
 /**
  * M20: per-contact reminders list. The hilt-backed wrapper; the stateful UI
@@ -72,7 +70,7 @@ fun RemindersScreen(
     onBack: () -> Unit,
     onCreateReminder: () -> Unit,
     onEditReminder: (Int) -> Unit,
-    viewModel: RemindersViewModel = hiltViewModel(),
+    viewModel: RemindersViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     RemindersScreenContent(
@@ -85,7 +83,7 @@ fun RemindersScreen(
         onRefresh = viewModel::load,
         onErrorShown = viewModel::onErrorShown,
         onConflictDismiss = viewModel::onConflictDismissed,
-        onConflictLoadLatest = viewModel::onConflictLoadLatest,
+        onConflictLoadLatest = viewModel::onConflictLoadLatest
     )
 }
 
@@ -101,7 +99,7 @@ fun RemindersScreenContent(
     onRefresh: () -> Unit = {},
     onErrorShown: () -> Unit = {},
     onConflictDismiss: () -> Unit = {},
-    onConflictLoadLatest: () -> Unit = {},
+    onConflictLoadLatest: () -> Unit = {}
 ) {
     val state = uiState
     val snackbarHostState = remember { SnackbarHostState() }
@@ -112,50 +110,67 @@ fun RemindersScreenContent(
             TopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back)
+                        )
                     }
                 },
                 title = {
-                    Text(stringResource(R.string.reminders_title), style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        stringResource(R.string.reminders_title),
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
         floatingActionButton = {
             BrandFab(onClick = onCreateReminder) {
-                Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.cd_new_reminder))
+                Icon(
+                    Icons.Outlined.Add,
+                    contentDescription = stringResource(R.string.cd_new_reminder)
+                )
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             RefreshableContent(
                 isRefreshing = state.isLoading && state.reminders.isNotEmpty(),
                 onRefresh = onRefresh,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize()
             ) {
                 when {
                     state.isLoading && state.reminders.isEmpty() -> LoadingSkeleton()
+
                     // The error/errorRes branch must precede the generic empty
                     // branch: the missing-contact-id state sets errorRes with
                     // error == null, so the empty branch used to swallow it and
                     // show "No reminders yet" instead of the real cause.
                     state.reminders.isEmpty() && (state.errorRes != null || state.error != null) ->
-                        EmptyState(state.errorRes?.let { stringResource(it) } ?: state.error.orEmpty())
+                        EmptyState(
+                            state.errorRes?.let { stringResource(it) } ?: state.error.orEmpty()
+                        )
+
                     state.reminders.isEmpty() && state.error == null ->
                         EmptyState(
                             title = stringResource(R.string.reminders_empty),
                             body = stringResource(R.string.reminders_empty_body),
                             actionLabel = stringResource(R.string.cd_new_reminder),
-                            onAction = onCreateReminder,
+                            onAction = onCreateReminder
                         )
+
                     else -> {
-                        LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = FabListContentPadding) {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = FabListContentPadding
+                        ) {
                             items(state.reminders, key = { it.id }) { reminder ->
                                 ReminderListItem(
                                     reminder = reminder,
@@ -164,7 +179,7 @@ fun RemindersScreenContent(
                                     onComplete = { onComplete(reminder.id) },
                                     onDelete = { pendingDelete = reminder },
                                     isCompleting = state.completingId == reminder.id,
-                                    isDeleting = state.deletingId == reminder.id,
+                                    isDeleting = state.deletingId == reminder.id
                                 )
                             }
                         }
@@ -178,7 +193,14 @@ fun RemindersScreenContent(
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
             title = { Text(stringResource(R.string.reminder_delete_title)) },
-            text = { Text(stringResource(R.string.reminder_delete_confirm, reminder.message.orEmpty().take(80))) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.reminder_delete_confirm,
+                        reminder.message.orEmpty().take(80)
+                    )
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
                     onDelete(reminder.id)
@@ -191,7 +213,7 @@ fun RemindersScreenContent(
                 TextButton(onClick = { pendingDelete = null }) {
                     Text(stringResource(R.string.action_cancel))
                 }
-            },
+            }
         )
     }
 
@@ -203,7 +225,7 @@ fun RemindersScreenContent(
             onLoadLatest = onConflictLoadLatest,
             onKeep = onConflictDismiss,
             messageRes = R.string.conflict_message_delete,
-            keepLabelRes = R.string.conflict_dismiss,
+            keepLabelRes = R.string.conflict_dismiss
         )
     }
 
@@ -225,7 +247,7 @@ fun ReminderListItem(
     isCompleting: Boolean,
     isDeleting: Boolean = false,
     dateFormat: String? = null,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     val overdue = reminder.isOverdue()
     val dateText = DateFormat.formatTimestamp(reminder.remindAt, dateFormat ?: DateFormat.EU)
@@ -240,30 +262,38 @@ fun ReminderListItem(
                 width = 2.dp,
                 // #200: the light amber fails 3:1 as a border; the darkened
                 // non-text token (4.09:1 on the parchment card) replaces it.
-                color = LocalWarningColors.current.foreground,
+                color = LocalWarningColors.current.foreground
             )
         } else {
             null
         },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, top = 12.dp, end = 4.dp, bottom = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().padding(
+                start = 16.dp,
+                top = 12.dp,
+                end = 4.dp,
+                bottom = 12.dp
+            ),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = reminder.message.orEmpty(),
                     style = MaterialTheme.typography.bodyLarge,
                     maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
+                    overflow = TextOverflow.Ellipsis
                 )
-                val recurrence = reminder.recurrence?.takeIf { it.isNotBlank() && it != ReminderRecurrence.ONCE }
+                val recurrence = reminder.recurrence?.takeIf {
+                    it.isNotBlank() &&
+                        it != ReminderRecurrence.ONCE
+                }
                 if (recurrence != null) {
                     Text(
                         text = stringResource(reminder.recurrenceLabel()),
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -276,14 +306,14 @@ fun ReminderListItem(
                             // #200: white on the amber was 2.25:1; bark on the
                             // amber container is 6.5:1 (theme-independent).
                             containerColor = if (overdue) LocalWarningColors.current.container else MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = if (overdue) LocalWarningColors.current.onContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                            contentColor = if (overdue) LocalWarningColors.current.onContainer else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     if (overdue) {
                         ReminderBadge(
                             text = stringResource(R.string.reminder_overdue),
                             containerColor = MaterialTheme.colorScheme.errorContainer,
-                            contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
                         )
                     }
                     if (reminder.byMail == true) {
@@ -291,7 +321,7 @@ fun ReminderListItem(
                             text = stringResource(R.string.reminder_email_chip),
                             leadingIcon = Icons.Outlined.Email,
                             containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     if (reminder.reoccurFromCompletion == true && recurrence != null) {
@@ -299,21 +329,24 @@ fun ReminderListItem(
                             text = stringResource(R.string.reminder_flexible),
                             leadingIcon = Icons.Outlined.Repeat,
                             containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
             }
             if (!reminder.completed) {
                 IconButton(onClick = onComplete, enabled = !isCompleting) {
-                    Icon(Icons.Outlined.Check, contentDescription = stringResource(R.string.cd_complete_reminder))
+                    Icon(
+                        Icons.Outlined.Check,
+                        contentDescription = stringResource(R.string.cd_complete_reminder)
+                    )
                 }
             }
             IconButton(onClick = onDelete, enabled = !isDeleting) {
                 Icon(
                     Icons.Outlined.Delete,
                     contentDescription = stringResource(R.string.cd_delete_reminder),
-                    tint = if (isDeleting) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.error,
+                    tint = if (isDeleting) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.error
                 )
             }
         }
@@ -348,17 +381,17 @@ private fun ReminderBadge(
     text: String,
     leadingIcon: androidx.compose.ui.graphics.vector.ImageVector? = null,
     containerColor: androidx.compose.ui.graphics.Color,
-    contentColor: androidx.compose.ui.graphics.Color,
+    contentColor: androidx.compose.ui.graphics.Color
 ) {
     androidx.compose.material3.Surface(
         shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
         color = containerColor,
-        contentColor = contentColor,
+        contentColor = contentColor
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             if (leadingIcon != null) {
                 Icon(leadingIcon, contentDescription = null, modifier = Modifier.size(12.dp))

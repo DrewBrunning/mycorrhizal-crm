@@ -14,12 +14,12 @@ import com.mycorrhizal.crm.model.network.resolveEnabledFields
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /**
  * Issue #1728: shared state for the three contact-page drill-downs that moved
@@ -43,14 +43,14 @@ data class ContactSectionsUiState(
     /** The signed-in user's date-format preference for the anniversary list. */
     val dateFormat: String? = null,
     /** Issue #832: which extended fields the settings screen has enabled. */
-    val enabledFields: Set<ContactFieldKey> = DEFAULT_ENABLED_CONTACT_FIELDS,
+    val enabledFields: Set<ContactFieldKey> = DEFAULT_ENABLED_CONTACT_FIELDS
 )
 
 @HiltViewModel
 class ContactSectionsViewModel @Inject constructor(
     private val contactRepository: ContactRepository,
     authRepository: AuthRepository,
-    savedStateHandle: SavedStateHandle,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val contactId: Int = run {
@@ -68,7 +68,7 @@ class ContactSectionsViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         dateFormat = session.dateFormat,
-                        enabledFields = resolveEnabledFields(session.enabledContactFields),
+                        enabledFields = resolveEnabledFields(session.enabledContactFields)
                     )
                 }
             }
@@ -85,14 +85,18 @@ class ContactSectionsViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
 
     fun savePersonalInfo(editingId: String?, form: PersonalInfoFormData) {
         if (form.value.isBlank()) {
-            _uiState.update { it.copy(errorRes = com.mycorrhizal.crm.ui.R.string.contact_section_value_required) }
+            _uiState.update {
+                it.copy(
+                    errorRes = com.mycorrhizal.crm.ui.R.string.contact_section_value_required
+                )
+            }
             return
         }
         mutate { it.withPersonalInfo(editingId, form) }
@@ -102,7 +106,11 @@ class ContactSectionsViewModel @Inject constructor(
 
     fun saveOrganization(editingId: String?, form: OrganizationFormData) {
         if (form.name.isBlank()) {
-            _uiState.update { it.copy(errorRes = com.mycorrhizal.crm.ui.R.string.contact_section_value_required) }
+            _uiState.update {
+                it.copy(
+                    errorRes = com.mycorrhizal.crm.ui.R.string.contact_section_value_required
+                )
+            }
             return
         }
         mutate { it.withOrganization(editingId, form) }
@@ -112,7 +120,11 @@ class ContactSectionsViewModel @Inject constructor(
 
     fun saveTitle(editingId: String?, form: TitleFormData) {
         if (form.name.isBlank()) {
-            _uiState.update { it.copy(errorRes = com.mycorrhizal.crm.ui.R.string.contact_section_value_required) }
+            _uiState.update {
+                it.copy(
+                    errorRes = com.mycorrhizal.crm.ui.R.string.contact_section_value_required
+                )
+            }
             return
         }
         mutate { it.withTitle(editingId, form) }
@@ -124,7 +136,11 @@ class ContactSectionsViewModel @Inject constructor(
 
     fun saveAnniversary(editingId: String?, form: AnniversaryFormData) {
         if (form.date.isBlank()) {
-            _uiState.update { it.copy(errorRes = com.mycorrhizal.crm.ui.R.string.contact_section_date_required) }
+            _uiState.update {
+                it.copy(
+                    errorRes = com.mycorrhizal.crm.ui.R.string.contact_section_date_required
+                )
+            }
             return
         }
         mutate { it.withAnniversary(editingId, form) }
@@ -155,7 +171,7 @@ class ContactSectionsViewModel @Inject constructor(
                             it.copy(isSaving = false, error = error.displayMessage)
                         }
                     }
-                },
+                }
             )
         }
     }

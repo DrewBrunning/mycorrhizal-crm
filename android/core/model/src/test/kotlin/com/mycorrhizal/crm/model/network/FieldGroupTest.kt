@@ -1,34 +1,50 @@
 package com.mycorrhizal.crm.model.network
 
+import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.util.Locale
 
 class FieldGroupTest {
 
-    private fun def(id: String, group: String = "") = FieldDefinition(id = id, label = id, type = "string", group = group)
+    private fun def(id: String, group: String = "") = FieldDefinition(
+        id = id,
+        label = id,
+        type = "string",
+        group = group
+    )
 
     @Test
     fun `buckets by exact trimmed label and keeps definition order inside a group`() {
         val groups = groupFieldDefinitions(
             listOf(def("a", "Travel"), def("b", ""), def("c", "Travel"), def("d", "  Food  ")),
             mapOf("a" to "x", "b" to "y", "c" to "z", "d" to "w"),
-            Locale.ENGLISH,
+            Locale.ENGLISH
         )
         assertEquals(listOf("Food", "Travel", ""), groups.map { it.label })
-        assertEquals(listOf("a", "c"), groups.first { it.label == "Travel" }.definitions.map { it.id })
+        assertEquals(
+            listOf("a", "c"),
+            groups.first { it.label == "Travel" }.definitions.map { it.id }
+        )
     }
 
     @Test
     fun `labels differing only by case are separate buckets`() {
         val values = mapOf("a" to "x", "b" to "y")
-        val groups = groupFieldDefinitions(listOf(def("a", "Travel"), def("b", "travel")), values, Locale.ENGLISH)
+        val groups = groupFieldDefinitions(
+            listOf(def("a", "Travel"), def("b", "travel")),
+            values,
+            Locale.ENGLISH
+        )
         assertEquals(2, groups.size)
         assertEquals(setOf("Travel", "travel"), groups.map { it.label }.toSet())
         // Deterministic regardless of input order.
-        val reversed = groupFieldDefinitions(listOf(def("b", "travel"), def("a", "Travel")), values, Locale.ENGLISH)
+        val reversed = groupFieldDefinitions(
+            listOf(def("b", "travel"), def("a", "Travel")),
+            values,
+            Locale.ENGLISH
+        )
         assertEquals(groups.map { it.label }, reversed.map { it.label })
     }
 
@@ -38,7 +54,7 @@ class FieldGroupTest {
         val groups = groupFieldDefinitions(
             listOf(def("1", "zeta"), def("2", ""), def("3", "Álpha"), def("4", "beta")),
             values,
-            Locale.ENGLISH,
+            Locale.ENGLISH
         )
         assertEquals(listOf("Álpha", "beta", "zeta", ""), groups.map { it.label })
     }
@@ -48,7 +64,7 @@ class FieldGroupTest {
         val groups = groupFieldDefinitions(
             listOf(def("a", "Alpha"), def("b", "Beta"), def("c", ""), def("d", "Delta")),
             mapOf("b" to "x", "c" to "y"),
-            Locale.ENGLISH,
+            Locale.ENGLISH
         )
         // Filled tier: Beta, then ungrouped. Muted tier: Alpha, Delta.
         assertEquals(listOf("Beta", "", "Alpha", "Delta"), groups.map { it.label })
@@ -60,7 +76,7 @@ class FieldGroupTest {
         val groups = groupFieldDefinitions(
             listOf(def("a", "G"), def("b", "G"), def("c", "G"), def("d", "G")),
             mapOf("a" to "x", "b" to "  ", "c" to null, "d" to false),
-            Locale.ENGLISH,
+            Locale.ENGLISH
         )
         assertEquals(1, groups.size)
         assertEquals(2, groups[0].filledCount) // "x" and the explicit false
@@ -69,14 +85,23 @@ class FieldGroupTest {
 
     @Test
     fun `no definitions means no groups`() {
-        assertEquals(emptyList<FieldGroup>(), groupFieldDefinitions(emptyList(), emptyMap(), Locale.ENGLISH))
+        assertEquals(
+            emptyList<FieldGroup>(),
+            groupFieldDefinitions(emptyList(), emptyMap(), Locale.ENGLISH)
+        )
     }
 
     @Test
     fun `ungrouped flag follows a blank label`() {
         val groups = groupFieldDefinitions(listOf(def("a", "   ")), emptyMap(), Locale.ENGLISH)
         assertTrue(groups.single().isUngrouped)
-        assertFalse(groupFieldDefinitions(listOf(def("a", "X")), emptyMap(), Locale.ENGLISH).single().isUngrouped)
+        assertFalse(
+            groupFieldDefinitions(
+                listOf(def("a", "X")),
+                emptyMap(),
+                Locale.ENGLISH
+            ).single().isUngrouped
+        )
     }
 
     @Test
@@ -92,8 +117,14 @@ class FieldGroupTest {
     @Test
     fun `suggestions are distinct, non-blank, case-sensitive and sorted`() {
         val s = fieldGroupSuggestions(
-            listOf(def("a", "Travel"), def("b", ""), def("c", "Food"), def("d", "Travel"), def("e", "travel")),
-            Locale.ENGLISH,
+            listOf(
+                def("a", "Travel"),
+                def("b", ""),
+                def("c", "Food"),
+                def("d", "Travel"),
+                def("e", "travel")
+            ),
+            Locale.ENGLISH
         )
         assertEquals(setOf("Food", "Travel", "travel"), s.toSet())
         assertEquals(3, s.size)

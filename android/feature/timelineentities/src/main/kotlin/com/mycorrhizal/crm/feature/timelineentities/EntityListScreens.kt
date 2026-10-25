@@ -4,6 +4,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -27,17 +31,9 @@ import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material3.AlertDialog
-import com.mycorrhizal.crm.ui.components.DropdownOption
-import com.mycorrhizal.crm.ui.components.LabelledDropdown
-import com.mycorrhizal.crm.ui.components.FormScaffold
-import androidx.compose.material3.SuggestionChip
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -45,6 +41,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -57,18 +54,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.platform.testTag
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.ConversationAgenda
@@ -88,15 +84,18 @@ import com.mycorrhizal.crm.model.util.DateFieldMode
 import com.mycorrhizal.crm.model.util.DateFieldValue
 import com.mycorrhizal.crm.model.util.Validators
 import com.mycorrhizal.crm.model.util.parsePartialDateForEdit
+import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.BrandFab
-import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.DateField
 import com.mycorrhizal.crm.ui.components.DiscardChangesDialog
+import com.mycorrhizal.crm.ui.components.DropdownOption
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
+import com.mycorrhizal.crm.ui.components.FormScaffold
+import com.mycorrhizal.crm.ui.components.LabelledDropdown
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
-import com.mycorrhizal.crm.ui.components.ScreenTitle
 import com.mycorrhizal.crm.ui.components.RefreshableContent
-import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.ScreenTitle
 import com.mycorrhizal.crm.ui.components.WriteConflictDialog
 import com.mycorrhizal.crm.ui.components.humanizeToken
 import com.mycorrhizal.crm.ui.components.lifeEventTypeLabel
@@ -158,7 +157,7 @@ internal fun EntityListScaffold(
     // Issue #1773 review: a screen whose full-screen form replaces the list (gifts, life
     // events) hoists this so the scroll position survives the round trip to the form.
     listState: LazyListState = rememberLazyListState(),
-    dialog: @Composable () -> Unit,
+    dialog: @Composable () -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val errorMessage = uiState.errorRes?.let { stringResource(it) } ?: uiState.error
@@ -169,7 +168,10 @@ internal fun EntityListScaffold(
             TopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back)
+                        )
                     }
                 },
                 title = { ScreenTitle(text = title) },
@@ -177,8 +179,8 @@ internal fun EntityListScaffold(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
         floatingActionButton = {
@@ -186,13 +188,13 @@ internal fun EntityListScaffold(
                 Icon(Icons.Outlined.Add, contentDescription = addLabel)
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             RefreshableContent(
                 isRefreshing = uiState.isLoading && uiState.items.isNotEmpty(),
                 onRefresh = onRefresh,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize()
             ) {
                 // #347: the header (GiftsScreen's clothing-sizes + gift-preferences
                 // shopping-notes panel) lives inside the LazyColumn as a leading
@@ -203,7 +205,11 @@ internal fun EntityListScaffold(
                 // it. Every state (loading/empty/error/populated) is an item too,
                 // so the header stays reachable regardless of list contents.
                 val uriHandler = LocalUriHandler.current
-                LazyColumn(state = listState, modifier = Modifier.fillMaxSize().testTag("entity-list"), contentPadding = FabListContentPadding) {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize().testTag("entity-list"),
+                    contentPadding = FabListContentPadding
+                ) {
                     if (header != null) {
                         item(key = "scaffold-header") { header() }
                     }
@@ -211,23 +217,26 @@ internal fun EntityListScaffold(
                         uiState.isLoading && uiState.items.isEmpty() -> item {
                             LoadingSkeleton()
                         }
+
                         uiState.items.isEmpty() && errorMessage == null -> item {
                             EmptyState(
                                 title = emptyTitle,
                                 body = emptyBody,
                                 actionLabel = addLabel,
-                                onAction = onAdd,
+                                onAction = onAdd
                             )
                         }
+
                         uiState.items.isEmpty() && errorMessage != null -> item {
                             Box(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
                                 Text(
                                     text = errorMessage,
                                     color = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.align(Alignment.Center),
+                                    modifier = Modifier.align(Alignment.Center)
                                 )
                             }
                         }
+
                         else -> {
                             // M18: flatten section headers into the row stream so the
                             // generic scaffold can render grouped lists (preferences,
@@ -240,9 +249,13 @@ internal fun EntityListScaffold(
                                             text = sectionLabel?.invoke(row.sectionKey).orEmpty(),
                                             style = MaterialTheme.typography.titleSmall,
                                             color = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                            modifier = Modifier.padding(
+                                                horizontal = 16.dp,
+                                                vertical = 8.dp
+                                            )
                                         )
                                     }
+
                                     is SectionRow.Item -> {
                                         val item = row.item
                                         Row(
@@ -251,7 +264,7 @@ internal fun EntityListScaffold(
                                                 .clickable(onClick = { onItemClick(item.id) })
                                                 .padding(horizontal = 16.dp, vertical = 12.dp),
                                             verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                                         ) {
                                             if (rowContent != null) {
                                                 Box(modifier = Modifier.weight(1f)) {
@@ -263,7 +276,7 @@ internal fun EntityListScaffold(
                                                         text = item.displayLabel(),
                                                         style = MaterialTheme.typography.bodyLarge,
                                                         maxLines = 2,
-                                                        overflow = TextOverflow.Ellipsis,
+                                                        overflow = TextOverflow.Ellipsis
                                                     )
                                                     if (!item.url.isNullOrBlank()) {
                                                         Text(
@@ -271,31 +284,38 @@ internal fun EntityListScaffold(
                                                             style = MaterialTheme.typography.bodyMedium,
                                                             color = MaterialTheme.colorScheme.primary,
                                                             maxLines = 1,
-                                                            overflow = TextOverflow.Ellipsis,
+                                                            overflow = TextOverflow.Ellipsis
                                                         )
                                                     }
                                                 }
                                             }
                                             if (!item.url.isNullOrBlank()) {
-                                                IconButton(onClick = { uriHandler.openUri(item.url) }) {
+                                                IconButton(
+                                                    onClick = { uriHandler.openUri(item.url) }
+                                                ) {
                                                     Icon(
                                                         Icons.Outlined.OpenInNew,
-                                                        contentDescription = stringResource(R.string.cd_open_link),
-                                                        tint = MaterialTheme.colorScheme.primary,
+                                                        contentDescription = stringResource(
+                                                            R.string.cd_open_link
+                                                        ),
+                                                        tint = MaterialTheme.colorScheme.primary
                                                     )
                                                 }
                                             }
                                             extraAction?.invoke(item)
                                             IconButton(
                                                 onClick = { pendingDeleteId = item.id },
-                                                enabled = uiState.deletingId != item.id,
+                                                enabled = uiState.deletingId != item.id
                                             ) {
                                                 // #205: the row-action label carries
                                                 // the item's label so TalkBack doesn't
                                                 // read a bare "Delete" on every row.
                                                 Icon(
                                                     Icons.Outlined.Delete,
-                                                    contentDescription = stringResource(R.string.entities_delete_named, item.displayLabel()),
+                                                    contentDescription = stringResource(
+                                                        R.string.entities_delete_named,
+                                                        item.displayLabel()
+                                                    )
                                                 )
                                             }
                                         }
@@ -319,11 +339,14 @@ internal fun EntityListScaffold(
             text = {
                 Text(
                     label?.let { stringResource(R.string.entities_delete_confirm, it) }
-                        ?: stringResource(R.string.entities_delete_title),
+                        ?: stringResource(R.string.entities_delete_title)
                 )
             },
             confirmButton = {
-                TextButton(onClick = { onDelete(id); pendingDeleteId = null }) {
+                TextButton(onClick = {
+                    onDelete(id)
+                    pendingDeleteId = null
+                }) {
                     Text(stringResource(R.string.action_delete))
                 }
             },
@@ -331,7 +354,7 @@ internal fun EntityListScaffold(
                 TextButton(onClick = { pendingDeleteId = null }) {
                     Text(stringResource(R.string.action_cancel))
                 }
-            },
+            }
         )
     }
 
@@ -362,7 +385,7 @@ internal fun EntityFormScreen(
     entityLabel: String = "",
     errorMessage: String? = null,
     onErrorShown: () -> Unit = {},
-    content: @Composable ColumnScope.() -> Unit,
+    content: @Composable ColumnScope.() -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     // A form that stays open on a failed save (mark discussed, #1723) replaces the list,
@@ -383,7 +406,7 @@ internal fun EntityFormScreen(
         saveEnabled = saveEnabled,
         saveDisabledHint = saveDisabledHint,
         isDirty = isDirty,
-        entityLabel = entityLabel,
+        entityLabel = entityLabel
     ) { padding ->
         Column(
             modifier = Modifier
@@ -392,7 +415,7 @@ internal fun EntityFormScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
-            content = content,
+            content = content
         )
     }
 }
@@ -446,7 +469,7 @@ internal fun LifeEventForm(
     onAddRelated: (ContactSummary) -> Unit,
     onRemoveRelated: (String) -> Unit,
     onConfirm: (LifeEventFormData) -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     val isEditing = initial != null
     // Category state: a real token, "" (nothing chosen yet), or the
@@ -459,7 +482,7 @@ internal fun LifeEventForm(
         mutableStateOf(
             initial?.category
                 ?.takeIf { it in LifeEventCategory.ALL }
-                ?: (if (initial != null) LIFE_EVENT_UNCATEGORIZED else ""),
+                ?: (if (initial != null) LIFE_EVENT_UNCATEGORIZED else "")
         )
     }
     var type by rememberSaveable(initial?.id) { mutableStateOf(initial?.type ?: "") }
@@ -467,13 +490,19 @@ internal fun LifeEventForm(
         mutableStateOf(
             initial?.type != null &&
                 category in LifeEventCategory.ALL &&
-                initial.type !in LifeEventTypes.forCategory(category),
+                initial.type !in LifeEventTypes.forCategory(category)
         )
     }
     var description by rememberSaveable(initial?.id) { mutableStateOf(initial?.description ?: "") }
-    var year by rememberSaveable(initial?.id) { mutableStateOf(initial?.date?.year?.toString() ?: "") }
-    var month by rememberSaveable(initial?.id) { mutableStateOf(initial?.date?.month?.toString() ?: "") }
-    var day by rememberSaveable(initial?.id) { mutableStateOf(initial?.date?.day?.toString() ?: "") }
+    var year by rememberSaveable(
+        initial?.id
+    ) { mutableStateOf(initial?.date?.year?.toString() ?: "") }
+    var month by rememberSaveable(
+        initial?.id
+    ) { mutableStateOf(initial?.date?.month?.toString() ?: "") }
+    var day by rememberSaveable(
+        initial?.id
+    ) { mutableStateOf(initial?.date?.day?.toString() ?: "") }
     var remind by rememberSaveable(initial?.id) { mutableStateOf(initial?.remind == true) }
 
     val canRemind = month.toIntOrNull() != null && day.toIntOrNull() != null
@@ -485,15 +514,15 @@ internal fun LifeEventForm(
         PartialDate(
             year = year.toIntOrNull(),
             month = month.toIntOrNull(),
-            day = day.toIntOrNull(),
-        ),
+            day = day.toIntOrNull()
+        )
     )
 
     val onSave: () -> Unit = {
         val date = PartialDate(
             year = year.toIntOrNull(),
             month = month.toIntOrNull(),
-            day = day.toIntOrNull(),
+            day = day.toIntOrNull()
         ).takeIf { it.year != null || it.month != null || it.day != null }
         onConfirm(
             LifeEventFormData(
@@ -502,8 +531,8 @@ internal fun LifeEventForm(
                 description = description,
                 date = date,
                 relatedEntityIds = relatedContacts.mapNotNull { it.uid },
-                remind = (date?.hasMonthDay == true) && remind,
-            ),
+                remind = (date?.hasMonthDay == true) && remind
+            )
         )
     }
 
@@ -520,14 +549,16 @@ internal fun LifeEventForm(
         relatedContacts.mapNotNull { it.uid }.toSet() != initial?.relatedEntityIds.orEmpty().toSet()
 
     EntityFormScreen(
-        title = stringResource(if (isEditing) R.string.life_events_edit else R.string.life_events_new),
+        title = stringResource(
+            if (isEditing) R.string.life_events_edit else R.string.life_events_new
+        ),
         saveLabel = stringResource(if (isEditing) R.string.action_save else R.string.action_create),
         saveEnabled = canSave,
         saveDisabledHint = stringResource(R.string.life_events_save_hint),
         onSave = onSave,
         onBack = onDismiss,
         isDirty = isDirty,
-        entityLabel = stringResource(R.string.entity_life_event),
+        entityLabel = stringResource(R.string.entity_life_event)
     ) {
         // Category select. Issue #1773: a labelled dropdown, not a bare value button.
         val categoryOptions = buildList {
@@ -535,7 +566,12 @@ internal fun LifeEventForm(
                 add(DropdownOption(token, stringResource(categoryLabelRes(token))))
             }
             if (category == LIFE_EVENT_UNCATEGORIZED) {
-                add(DropdownOption(LIFE_EVENT_UNCATEGORIZED, stringResource(R.string.life_events_category_uncategorized)))
+                add(
+                    DropdownOption(
+                        LIFE_EVENT_UNCATEGORIZED,
+                        stringResource(R.string.life_events_category_uncategorized)
+                    )
+                )
             }
         }
         LabelledDropdown(
@@ -548,7 +584,7 @@ internal fun LifeEventForm(
                 customType = token in LifeEventCategory.ALL &&
                     type.isNotBlank() && type !in LifeEventTypes.forCategory(token)
             },
-            modifier = Modifier.testTag("life-event-category"),
+            modifier = Modifier.testTag("life-event-category")
         )
 
         // Type: disabled until a category is chosen; free text for
@@ -556,22 +592,35 @@ internal fun LifeEventForm(
         // hatch for real categories.
         if (category == LIFE_EVENT_UNCATEGORIZED || customType) {
             OutlinedTextField(
-                value = type, onValueChange = { type = it },
-                label = { Text(stringResource(R.string.life_events_custom_type_label)) }, singleLine = true,
+                value = type,
+                onValueChange = { type = it },
+                label = { Text(stringResource(R.string.life_events_custom_type_label)) },
+                singleLine = true,
                 enabled = typeEnabled,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth()
             )
         } else {
             val customTypeToken = "\u0000custom"
             val typeOptions = if (category in LifeEventCategory.ALL) {
-                LifeEventTypes.forCategory(category).map { DropdownOption(it, lifeEventTypeLabel(it)) } +
-                    DropdownOption(customTypeToken, stringResource(R.string.life_events_custom_type))
+                LifeEventTypes.forCategory(
+                    category
+                ).map { DropdownOption(it, lifeEventTypeLabel(it)) } +
+                    DropdownOption(
+                        customTypeToken,
+                        stringResource(R.string.life_events_custom_type)
+                    )
             } else {
                 emptyList()
             }
             LabelledDropdown(
                 label = stringResource(R.string.life_events_type_label),
-                valueText = if (type.isBlank()) stringResource(R.string.life_events_select_category_first) else lifeEventTypeLabel(type),
+                valueText = if (type.isBlank()) {
+                    stringResource(
+                        R.string.life_events_select_category_first
+                    )
+                } else {
+                    lifeEventTypeLabel(type)
+                },
                 options = typeOptions,
                 onSelect = { token ->
                     if (token == customTypeToken) {
@@ -582,7 +631,7 @@ internal fun LifeEventForm(
                     }
                 },
                 enabled = typeEnabled,
-                modifier = Modifier.testTag("life-event-type"),
+                modifier = Modifier.testTag("life-event-type")
             )
         }
 
@@ -598,53 +647,63 @@ internal fun LifeEventForm(
             mode = DateFieldMode.PARTIAL,
             allowClear = true,
             testTag = "life-event-date",
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         )
 
         OutlinedTextField(
-            value = description, onValueChange = { description = it },
-            label = { Text(stringResource(R.string.life_events_description)) }, singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            value = description,
+            onValueChange = { description = it },
+            label = { Text(stringResource(R.string.life_events_description)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
         )
 
         // Related contacts: selected chips + a search to add more.
         Text(
             text = stringResource(R.string.life_events_related),
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         relatedContacts.forEach { contact ->
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 Text(
                     text = contact.displayName,
                     style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f)
                 )
                 IconButton(onClick = { contact.uid?.let(onRemoveRelated) }) {
                     Icon(
                         Icons.Outlined.Delete,
-                        contentDescription = stringResource(R.string.life_events_remove_related, contact.displayName),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        contentDescription = stringResource(
+                            R.string.life_events_remove_related,
+                            contact.displayName
+                        ),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
         }
         OutlinedTextField(
-            value = contactSearchQuery, onValueChange = onSearchContacts,
-            label = { Text(stringResource(R.string.life_events_search_related)) }, singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            value = contactSearchQuery,
+            onValueChange = onSearchContacts,
+            label = { Text(stringResource(R.string.life_events_search_related)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
         )
         if (contactSearchLoading) {
             Text(
                 text = "…",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         } else {
             contactSearchResults.forEach { contact ->
                 TextButton(
                     onClick = { onAddRelated(contact) },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(contact.displayName, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
@@ -664,19 +723,19 @@ internal fun LifeEventForm(
                     value = remind,
                     onValueChange = { remind = it },
                     enabled = canRemind,
-                    role = Role.Checkbox,
+                    role = Role.Checkbox
                 )
-                .testTag("life-event-remind"),
+                .testTag("life-event-remind")
         ) {
             Checkbox(
                 checked = remind,
                 onCheckedChange = null,
-                enabled = canRemind,
+                enabled = canRemind
             )
             Text(
                 text = stringResource(R.string.life_events_remind),
                 style = MaterialTheme.typography.bodyMedium,
-                color = if (canRemind) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (canRemind) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -685,7 +744,11 @@ internal fun LifeEventForm(
 @Composable
 private fun categoryLabel(category: String): String = when {
     category in LifeEventCategory.ALL -> stringResource(categoryLabelRes(category))
-    category == LIFE_EVENT_UNCATEGORIZED -> stringResource(R.string.life_events_category_uncategorized)
+
+    category == LIFE_EVENT_UNCATEGORIZED -> stringResource(
+        R.string.life_events_category_uncategorized
+    )
+
     else -> stringResource(R.string.life_events_select_category)
 }
 
@@ -701,10 +764,7 @@ private fun categoryLabelRes(token: String): Int = when (token) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LifeEventsScreen(
-    onBack: () -> Unit,
-    viewModel: LifeEventsViewModel = hiltViewModel(),
-) {
+fun LifeEventsScreen(onBack: () -> Unit, viewModel: LifeEventsViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val relatedContacts by viewModel.relatedContacts.collectAsStateWithLifecycle()
     val relatedQuery by viewModel.relatedSearchQuery.collectAsStateWithLifecycle()
@@ -715,7 +775,13 @@ fun LifeEventsScreen(
     // scroll position while the form is up.
     var showAdd by rememberSaveable { mutableStateOf(false) }
     var editingId by rememberSaveable { mutableStateOf<String?>(null) }
-    val editingItem = editingId?.let { id -> state.items.firstOrNull { it.id == id }?.let { viewModel.findById(id) } }
+    val editingItem = editingId?.let { id ->
+        state.items.firstOrNull { it.id == id }?.let {
+            viewModel.findById(
+                id
+            )
+        }
+    }
     val listState = rememberLazyListState()
 
     if (showAdd || editingItem != null) {
@@ -740,7 +806,7 @@ fun LifeEventsScreen(
                 viewModel.onFormClosed()
                 showAdd = false
                 editingId = null
-            },
+            }
         )
     } else {
         EntityListScaffold(
@@ -759,13 +825,15 @@ fun LifeEventsScreen(
             // Issue #1763: an explicit pencil, matching preferences/relationships.
             // The row tap already opens the same edit form.
             extraAction = { item ->
-                IconButton(onClick = { if (viewModel.findById(item.id) != null) editingId = item.id }) {
+                IconButton(
+                    onClick = { if (viewModel.findById(item.id) != null) editingId = item.id }
+                ) {
                     Icon(
                         Icons.Outlined.Edit,
-                        contentDescription = stringResource(R.string.life_events_edit),
+                        contentDescription = stringResource(R.string.life_events_edit)
                     )
                 }
-            },
+            }
         ) {}
     }
 
@@ -780,7 +848,7 @@ fun LifeEventsScreen(
             } else {
                 R.string.conflict_message_delete
             },
-            keepLabelRes = R.string.conflict_dismiss,
+            keepLabelRes = R.string.conflict_dismiss
         )
     }
 }
@@ -799,16 +867,20 @@ internal fun GiftForm(
     lifeEvents: List<LifeEvent>,
     activities: List<Activity>,
     onConfirm: (GiftFormData) -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     val isEditing = initial != null
-    var status by rememberSaveable(initial?.id) { mutableStateOf(initial?.status ?: GiftStatuses.IDEA) }
+    var status by rememberSaveable(
+        initial?.id
+    ) { mutableStateOf(initial?.status ?: GiftStatuses.IDEA) }
     var description by rememberSaveable(initial?.id) { mutableStateOf(initial?.description ?: "") }
     var url by rememberSaveable(initial?.id) { mutableStateOf(initial?.url ?: "") }
     var notes by rememberSaveable(initial?.id) { mutableStateOf(initial?.notes ?: "") }
     var occasion by rememberSaveable(initial?.id) { mutableStateOf(initial?.occasion ?: "") }
     var date by rememberSaveable(initial?.id) { mutableStateOf(giftDateFromIso(initial?.date)) }
-    var amount by rememberSaveable(initial?.id) { mutableStateOf(initial?.valueCents?.let(::centsToAmountText) ?: "") }
+    var amount by rememberSaveable(
+        initial?.id
+    ) { mutableStateOf(initial?.valueCents?.let(::centsToAmountText) ?: "") }
     var currency by rememberSaveable(initial?.id) { mutableStateOf(initial?.currency ?: "") }
     var lifeEventId by rememberSaveable(initial?.id) { mutableStateOf(initial?.lifeEventId) }
     var activityId by rememberSaveable(initial?.id) { mutableStateOf(initial?.activityId) }
@@ -824,26 +896,26 @@ internal fun GiftForm(
     val canSave = description.isNotBlank() && pairValid && currencyLengthValid && urlValid
 
     val onSave: () -> Unit = {
-            onConfirm(
-                GiftFormData(
-                    status = status,
-                    description = description,
-                    url = normalizedUrl,
-                    notes = notes,
-                    occasion = occasion,
-                    date = date,
-                    // Only a non-negative amount is a real amount; a
-                    // negative/zero-blank entry sends null (review-pass
-                    // fix — web rejects negatives client-side).
-                    valueCents = if (hasAmount) parsedAmount.movePointRight(2).toLong() else null,
-                    currency = currency,
-                    lifeEventId = lifeEventId,
-                    activityId = activityId,
-                ),
+        onConfirm(
+            GiftFormData(
+                status = status,
+                description = description,
+                url = normalizedUrl,
+                notes = notes,
+                occasion = occasion,
+                date = date,
+                // Only a non-negative amount is a real amount; a
+                // negative/zero-blank entry sends null (review-pass
+                // fix — web rejects negatives client-side).
+                valueCents = if (hasAmount) parsedAmount.movePointRight(2).toLong() else null,
+                currency = currency,
+                lifeEventId = lifeEventId,
+                activityId = activityId
             )
+        )
     }
     val saveHint = stringResource(
-        if (description.isBlank()) R.string.gifts_save_hint_description else R.string.form_save_hint_fix_fields,
+        if (description.isBlank()) R.string.gifts_save_hint_description else R.string.form_save_hint_fix_fields
     )
     val isDirty = status != (initial?.status ?: GiftStatuses.IDEA) ||
         description != (initial?.description ?: "") ||
@@ -864,30 +936,46 @@ internal fun GiftForm(
         onSave = onSave,
         onBack = onDismiss,
         isDirty = isDirty,
-        entityLabel = stringResource(R.string.entity_gift),
+        entityLabel = stringResource(R.string.entity_gift)
     ) {
         StatusField(status = status, onStatusChange = { status = it })
         OutlinedTextField(
-            value = description, onValueChange = { description = it },
-            label = { Text(stringResource(R.string.gifts_description)) }, singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            value = description,
+            onValueChange = { description = it },
+            label = { Text(stringResource(R.string.gifts_description)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
-            value = url, onValueChange = { url = it },
-            label = { Text(stringResource(R.string.gifts_url)) }, singleLine = true,
+            value = url,
+            onValueChange = { url = it },
+            label = { Text(stringResource(R.string.gifts_url)) },
+            singleLine = true,
             isError = !urlValid,
-            supportingText = if (urlValid) null else { { Text(stringResource(R.string.gifts_url_invalid)) } },
-            modifier = Modifier.fillMaxWidth(),
+            supportingText = if (urlValid) {
+                null
+            } else {
+                {
+                    Text(
+                        stringResource(R.string.gifts_url_invalid)
+                    )
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
-            value = notes, onValueChange = { notes = it },
-            label = { Text(stringResource(R.string.gifts_notes)) }, singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            value = notes,
+            onValueChange = { notes = it },
+            label = { Text(stringResource(R.string.gifts_notes)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
-            value = occasion, onValueChange = { occasion = it },
-            label = { Text(stringResource(R.string.gifts_occasion)) }, singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            value = occasion,
+            onValueChange = { occasion = it },
+            label = { Text(stringResource(R.string.gifts_occasion)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
         )
         DateField(
             value = date,
@@ -896,29 +984,33 @@ internal fun GiftForm(
             mode = DateFieldMode.DATE_ONLY,
             allowClear = true,
             testTag = "gift-date",
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
-                value = amount, onValueChange = { amount = it },
-                label = { Text(stringResource(R.string.gifts_amount)) }, singleLine = true,
+                value = amount,
+                onValueChange = { amount = it },
+                label = { Text(stringResource(R.string.gifts_amount)) },
+                singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 isError = amount.isNotBlank() && !hasAmount,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f)
             )
             OutlinedTextField(
-                value = currency, onValueChange = { currency = it.filter { c -> c.isLetter() }.uppercase().take(3) },
-                label = { Text(stringResource(R.string.gifts_currency)) }, singleLine = true,
+                value = currency,
+                onValueChange = { currency = it.filter { c -> c.isLetter() }.uppercase().take(3) },
+                label = { Text(stringResource(R.string.gifts_currency)) },
+                singleLine = true,
                 placeholder = { Text("EUR") },
                 isError = currency.isNotBlank() && currency.length != 3,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f)
             )
         }
         if (!pairValid) {
             Text(
                 text = stringResource(R.string.gifts_value_currency_required),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
+                color = MaterialTheme.colorScheme.error
             )
         }
         if (lifeEvents.isNotEmpty()) {
@@ -928,8 +1020,15 @@ internal fun GiftForm(
                 value = lifeEventId,
                 placeholder = stringResource(R.string.gifts_none),
                 options = lifeEvents.map { it.id },
-                optionLabel = { id -> lifeEvents.firstOrNull { it.id == id }?.type?.let { lifeEventTypeLabelText(lifeEventCtx, it) } ?: id },
-                onSelect = { lifeEventId = it },
+                optionLabel = { id ->
+                    lifeEvents.firstOrNull { it.id == id }?.type?.let {
+                        lifeEventTypeLabelText(
+                            lifeEventCtx,
+                            it
+                        )
+                    } ?: id
+                },
+                onSelect = { lifeEventId = it }
             )
         }
         if (activities.isNotEmpty()) {
@@ -938,8 +1037,11 @@ internal fun GiftForm(
                 value = activityId?.toString(),
                 placeholder = stringResource(R.string.gifts_none),
                 options = activities.map { it.id.toString() },
-                optionLabel = { id -> activities.firstOrNull { a -> a.id.toString() == id }?.title ?: id },
-                onSelect = { activityId = it?.toIntOrNull() },
+                optionLabel = { id ->
+                    activities.firstOrNull { a -> a.id.toString() == id }?.title
+                        ?: id
+                },
+                onSelect = { activityId = it?.toIntOrNull() }
             )
         }
     }
@@ -952,7 +1054,7 @@ private fun StatusField(status: String, onStatusChange: (String) -> Unit) {
         valueText = statusLabel(status),
         options = GiftStatuses.ALL.map { DropdownOption(it, statusLabel(it)) },
         onSelect = onStatusChange,
-        modifier = Modifier.testTag("gift-status"),
+        modifier = Modifier.testTag("gift-status")
     )
 }
 
@@ -976,14 +1078,14 @@ private fun SelectField(
     placeholder: String,
     options: List<String>,
     optionLabel: (String) -> String,
-    onSelect: (String?) -> Unit,
+    onSelect: (String?) -> Unit
 ) {
     LabelledDropdown(
         label = label,
         valueText = value?.let(optionLabel) ?: placeholder,
         options = listOf(DropdownOption<String?>(null, placeholder)) +
             options.map { DropdownOption<String?>(it, optionLabel(it)) },
-        onSelect = onSelect,
+        onSelect = onSelect
     )
 }
 
@@ -1009,10 +1111,7 @@ internal fun normalizeHttpUrl(value: String): String? {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GiftsScreen(
-    onBack: () -> Unit,
-    viewModel: GiftsViewModel = hiltViewModel(),
-) {
+fun GiftsScreen(onBack: () -> Unit, viewModel: GiftsViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val lifeEvents by viewModel.lifeEvents.collectAsStateWithLifecycle()
     val activities by viewModel.activities.collectAsStateWithLifecycle()
@@ -1022,7 +1121,13 @@ fun GiftsScreen(
     // and process death, and the list keeps its scroll position under it.
     var showAdd by rememberSaveable { mutableStateOf(false) }
     var editingId by rememberSaveable { mutableStateOf<String?>(null) }
-    val editingItem = editingId?.let { id -> state.items.firstOrNull { it.id == id }?.let { viewModel.findById(id) } }
+    val editingItem = editingId?.let { id ->
+        state.items.firstOrNull { it.id == id }?.let {
+            viewModel.findById(
+                id
+            )
+        }
+    }
     val listState = rememberLazyListState()
     var editingClothingItem by remember { mutableStateOf<Preference?>(null) }
     var newClothingKey by rememberSaveable { mutableStateOf("") }
@@ -1031,7 +1136,12 @@ fun GiftsScreen(
     var shoppingNotesExpanded by rememberSaveable { mutableStateOf(false) }
     var showAddGiftPreference by rememberSaveable { mutableStateOf(false) }
     var editingGiftPreferenceId by rememberSaveable { mutableStateOf<String?>(null) }
-    val editingGiftPreference = editingGiftPreferenceId?.let { id -> giftPreferences.firstOrNull { it.id == id } }
+    val editingGiftPreference = editingGiftPreferenceId?.let { id ->
+        giftPreferences.firstOrNull {
+            it.id ==
+                id
+        }
+    }
 
     if (showAdd || editingItem != null) {
         GiftForm(
@@ -1044,7 +1154,10 @@ fun GiftsScreen(
                 showAdd = false
                 editingId = null
             },
-            onDismiss = { showAdd = false; editingId = null },
+            onDismiss = {
+                showAdd = false
+                editingId = null
+            }
         )
     } else if (showAddGiftPreference || editingGiftPreference != null) {
         PreferenceForm(
@@ -1056,7 +1169,10 @@ fun GiftsScreen(
                 showAddGiftPreference = false
                 editingGiftPreferenceId = null
             },
-            onDismiss = { showAddGiftPreference = false; editingGiftPreferenceId = null },
+            onDismiss = {
+                showAddGiftPreference = false
+                editingGiftPreferenceId = null
+            }
         )
     } else {
         EntityListScaffold(
@@ -1074,12 +1190,14 @@ fun GiftsScreen(
             listState = listState,
             extraAction = { item ->
                 val gift = viewModel.findById(item.id)
-                if (gift != null && gift.status != GiftStatuses.GIVEN && gift.status != GiftStatuses.RECEIVED) {
+                if (gift != null && gift.status != GiftStatuses.GIVEN &&
+                    gift.status != GiftStatuses.RECEIVED
+                ) {
                     IconButton(onClick = { viewModel.markGiven(item.id) }) {
                         Icon(
                             Icons.Outlined.CheckCircle,
                             contentDescription = stringResource(R.string.gifts_mark_given),
-                            tint = MaterialTheme.colorScheme.primary,
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -1124,10 +1242,10 @@ fun GiftsScreen(
                         onDeleteClothingSize = viewModel::deleteClothingSize,
                         onAddGiftPreference = { showAddGiftPreference = true },
                         onEditGiftPreference = { item -> editingGiftPreferenceId = item.id },
-                        onDeleteGiftPreference = viewModel::deleteGiftPreference,
+                        onDeleteGiftPreference = viewModel::deleteGiftPreference
                     )
                 }
-            },
+            }
         ) {}
     }
 }
@@ -1154,7 +1272,7 @@ internal fun PreferenceForm(
     // `sections` prop). Defaults to every section.
     sections: Set<String> = PreferenceSection.OVERVIEW_TAB + PreferenceSection.GIFTS_TAB,
     onConfirm: (PreferenceFormData) -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     // Issue #1738: the add-preference dialog no longer offers `hobby` (hobbies
     // are created from the contact's Skills & interests drill-down). An
@@ -1168,7 +1286,9 @@ internal fun PreferenceForm(
     }
     val defaultCategory = availableCategories.firstOrNull()?.category ?: PreferenceCategory.FOOD
     val isEditing = initial != null
-    var category by rememberSaveable(initial?.id) { mutableStateOf(initial?.category ?: defaultCategory) }
+    var category by rememberSaveable(
+        initial?.id
+    ) { mutableStateOf(initial?.category ?: defaultCategory) }
     var key by rememberSaveable(initial?.id) { mutableStateOf(initial?.key ?: "") }
     var value by rememberSaveable(initial?.id) { mutableStateOf(initial?.value ?: "") }
     var level by rememberSaveable(initial?.id) { mutableStateOf(initial?.level) }
@@ -1184,7 +1304,9 @@ internal fun PreferenceForm(
         sensitivity != (initial?.sensitivity ?: PreferenceSensitivities.NORMAL)
 
     EntityFormScreen(
-        title = stringResource(if (isEditing) R.string.preferences_edit else R.string.preferences_new),
+        title = stringResource(
+            if (isEditing) R.string.preferences_edit else R.string.preferences_new
+        ),
         saveLabel = stringResource(if (isEditing) R.string.action_save else R.string.action_create),
         saveEnabled = category.isNotBlank() && value.isNotBlank(),
         saveDisabledHint = stringResource(R.string.preferences_save_hint),
@@ -1199,11 +1321,11 @@ internal fun PreferenceForm(
                     // Only for hobby/skill categories; null otherwise.
                     level = level?.takeIf { PreferenceCategory.supportsLevelFor(category) },
                     notes = notes,
-                    sensitivity = sensitivity,
-                ),
+                    sensitivity = sensitivity
+                )
             )
         },
-        onBack = onDismiss,
+        onBack = onDismiss
     ) {
         CategoryField(
             category = category,
@@ -1214,31 +1336,36 @@ internal fun PreferenceForm(
                 // categories (issue #246) — clear it when switching
                 // away rather than stranding it.
                 if (!PreferenceCategory.supportsLevelFor(it)) level = null
-            },
+            }
         )
         OutlinedTextField(
-            value = key, onValueChange = { key = it },
-            label = { Text(stringResource(R.string.preferences_key)) }, singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            value = key,
+            onValueChange = { key = it },
+            label = { Text(stringResource(R.string.preferences_key)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
         )
         if (key.isBlank()) {
             KeySuggestions(
                 suggestions = PreferenceCategory.keySuggestionsFor(category),
-                onPick = { key = it },
+                onPick = { key = it }
             )
         }
         OutlinedTextField(
-            value = value, onValueChange = { value = it },
-            label = { Text(stringResource(R.string.preferences_value)) }, singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            value = value,
+            onValueChange = { value = it },
+            label = { Text(stringResource(R.string.preferences_value)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
         )
         if (PreferenceCategory.supportsLevelFor(category)) {
             LevelField(level = level, onLevelChange = { level = it })
         }
         OutlinedTextField(
-            value = notes, onValueChange = { notes = it },
+            value = notes,
+            onValueChange = { notes = it },
             label = { Text(stringResource(R.string.preferences_notes)) },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         )
         SensitivityField(sensitivity = sensitivity, onSensitivityChange = { sensitivity = it })
     }
@@ -1248,7 +1375,7 @@ internal fun PreferenceForm(
 private fun CategoryField(
     category: String,
     categories: List<PreferenceCategoryConfig>,
-    onCategoryChange: (String) -> Unit,
+    onCategoryChange: (String) -> Unit
 ) {
     // Grouped by section (Food & Drink, Media, Jewelry & Style, ...), mirroring
     // web's ListSubheader-grouped select. `categories` is already contiguous by
@@ -1256,7 +1383,13 @@ private fun CategoryField(
     // filtering preserves that.
     var lastSection: String? = null
     val options = categories.map { cfg ->
-        val header = if (cfg.section != lastSection) stringResource(preferenceSectionLabelRes(cfg.section)) else null
+        val header = if (cfg.section != lastSection) {
+            stringResource(
+                preferenceSectionLabelRes(cfg.section)
+            )
+        } else {
+            null
+        }
         lastSection = cfg.section
         DropdownOption(cfg.category, preferenceCategoryText(cfg.category), header)
     }
@@ -1265,7 +1398,7 @@ private fun CategoryField(
         valueText = preferenceCategoryText(category),
         options = options,
         onSelect = onCategoryChange,
-        modifier = Modifier.testTag("preference-category"),
+        modifier = Modifier.testTag("preference-category")
     )
 }
 
@@ -1276,10 +1409,17 @@ private fun LevelField(level: String?, onLevelChange: (String?) -> Unit) {
     LabelledDropdown(
         label = stringResource(R.string.preferences_level),
         valueText = stringResource(preferenceLevelLabelRes(level)),
-        options = listOf(DropdownOption<String?>(null, stringResource(R.string.preferences_level_none))) +
-            PreferenceLevels.ALL.map { DropdownOption<String?>(it, stringResource(preferenceLevelLabelRes(it))) },
+        options = listOf(
+            DropdownOption<String?>(null, stringResource(R.string.preferences_level_none))
+        ) +
+            PreferenceLevels.ALL.map {
+                DropdownOption<String?>(
+                    it,
+                    stringResource(preferenceLevelLabelRes(it))
+                )
+            },
         onSelect = onLevelChange,
-        modifier = Modifier.testTag("preference-level"),
+        modifier = Modifier.testTag("preference-level")
     )
 }
 
@@ -1292,7 +1432,7 @@ private fun SensitivityField(sensitivity: String, onSensitivityChange: (String) 
             DropdownOption(it, stringResource(preferenceSensitivityLabelRes(it)))
         },
         onSelect = onSensitivityChange,
-        modifier = Modifier.testTag("preference-sensitivity"),
+        modifier = Modifier.testTag("preference-sensitivity")
     )
 }
 
@@ -1307,22 +1447,22 @@ internal fun KeySuggestions(suggestions: List<String>, onPick: (String) -> Unit)
     if (suggestions.isEmpty()) return
     Column(
         verticalArrangement = Arrangement.spacedBy(4.dp),
-        modifier = Modifier.testTag("preference-key-suggestions"),
+        modifier = Modifier.testTag("preference-key-suggestions")
     ) {
         Text(
             text = stringResource(R.string.preferences_key_suggestions),
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             suggestions.forEach { suggestion ->
                 val label = stringResource(preferenceKeyLabelRes(suggestion))
                 SuggestionChip(
                     onClick = { onPick(suggestion) },
-                    label = { Text(label) },
+                    label = { Text(label) }
                 )
             }
         }
@@ -1400,10 +1540,7 @@ private fun preferenceKeyLabelRes(key: String): Int = when (key) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PreferencesScreen(
-    onBack: () -> Unit,
-    viewModel: PreferencesViewModel = hiltViewModel(),
-) {
+fun PreferencesScreen(onBack: () -> Unit, viewModel: PreferencesViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showAdd by rememberSaveable { mutableStateOf(false) }
     var editingId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -1421,7 +1558,10 @@ fun PreferencesScreen(
                 showAdd = false
                 editingId = null
             },
-            onDismiss = { showAdd = false; editingId = null },
+            onDismiss = {
+                showAdd = false
+                editingId = null
+            }
         )
         return
     }
@@ -1453,10 +1593,10 @@ fun PreferencesScreen(
             IconButton(onClick = { editingId = item.id }) {
                 Icon(
                     Icons.Outlined.Edit,
-                    contentDescription = stringResource(R.string.action_edit),
+                    contentDescription = stringResource(R.string.action_edit)
                 )
             }
-        },
+        }
     ) {}
 }
 
@@ -1486,25 +1626,25 @@ internal fun PreferenceRow(preference: Preference) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
                 text = preferenceCategoryText(preference.category),
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
+                color = MaterialTheme.colorScheme.primary
             )
             preference.key?.takeIf { it.isNotBlank() }?.let { key ->
                 Text(
                     text = stringResource(preferenceKeyLabelRes(key)),
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             preference.level?.takeIf { it.isNotBlank() }?.let { level ->
                 Text(
                     text = stringResource(preferenceLevelLabelRes(level)),
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             if (preference.sensitivity != PreferenceSensitivities.NORMAL) {
@@ -1513,13 +1653,13 @@ internal fun PreferenceRow(preference: Preference) {
         }
         Text(
             text = preference.value,
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.bodyLarge
         )
         preference.notes?.takeIf { it.isNotBlank() }?.let { notes ->
             Text(
                 text = notes,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -1535,12 +1675,12 @@ private fun SensitivityBadge(sensitivity: String) {
     }
     Surface(
         color = containerColor,
-        shape = RoundedCornerShape(4.dp),
+        shape = RoundedCornerShape(4.dp)
     ) {
         Text(
             text = stringResource(preferenceSensitivityLabelRes(sensitivity)),
             style = MaterialTheme.typography.labelSmall,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
         )
     }
 }
@@ -1571,7 +1711,7 @@ private fun GiftShoppingNotesSection(
     onDeleteClothingSize: (String) -> Unit,
     onAddGiftPreference: () -> Unit,
     onEditGiftPreference: (Preference) -> Unit,
-    onDeleteGiftPreference: (String) -> Unit,
+    onDeleteGiftPreference: (String) -> Unit
 ) {
     val total = clothingSizes.size + giftPreferences.size
 
@@ -1582,17 +1722,17 @@ private fun GiftShoppingNotesSection(
                 .clickable { onExpandedChange(!expanded) }
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
                 text = stringResource(R.string.gifts_shopping_notes_header, total),
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.titleSmall
             )
             Icon(
                 imageVector = if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
                 contentDescription = stringResource(
-                    if (expanded) R.string.a11y_state_expanded else R.string.a11y_state_collapsed,
-                ),
+                    if (expanded) R.string.a11y_state_expanded else R.string.a11y_state_collapsed
+                )
             )
         }
         if (expanded) {
@@ -1608,13 +1748,13 @@ private fun GiftShoppingNotesSection(
                     onStartEdit = onStartEditClothingSize,
                     onEditConfirm = onEditConfirmClothingSize,
                     onEditCancel = onEditCancelClothingSize,
-                    onDelete = onDeleteClothingSize,
+                    onDelete = onDeleteClothingSize
                 )
                 GiftPreferencesPanel(
                     items = giftPreferences,
                     onAdd = onAddGiftPreference,
                     onEdit = onEditGiftPreference,
-                    onDelete = onDeleteGiftPreference,
+                    onDelete = onDeleteGiftPreference
                 )
             }
         }
@@ -1634,20 +1774,20 @@ private fun ClothingSizesPanel(
     onStartEdit: (Preference) -> Unit,
     onEditConfirm: (Preference, String, String) -> Unit,
     onEditCancel: () -> Unit,
-    onDelete: (String) -> Unit,
+    onDelete: (String) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
         Text(
             text = stringResource(R.string.preferences_clothing_sizes),
             style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.primary,
+            color = MaterialTheme.colorScheme.primary
         )
         if (items.isEmpty()) {
             Text(
                 text = stringResource(R.string.preferences_clothing_empty),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(vertical = 4.dp),
+                modifier = Modifier.padding(vertical = 4.dp)
             )
         }
         items.forEach { item ->
@@ -1656,49 +1796,68 @@ private fun ClothingSizesPanel(
                 var editValue by remember(item.id) { mutableStateOf(item.value) }
                 Column(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
                     OutlinedTextField(
-                        value = editKey, onValueChange = { editKey = it },
+                        value = editKey,
+                        onValueChange = { editKey = it },
                         label = { Text(stringResource(R.string.gifts_clothing_type)) },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth()
                     )
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         OutlinedTextField(
-                            value = editValue, onValueChange = { editValue = it },
+                            value = editValue,
+                            onValueChange = { editValue = it },
                             singleLine = true,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f)
                         )
-                        TextButton(onClick = { onEditConfirm(item, editKey, editValue) }) { Text(stringResource(R.string.action_save)) }
-                        TextButton(onClick = onEditCancel) { Text(stringResource(R.string.action_cancel)) }
+                        TextButton(
+                            onClick = { onEditConfirm(item, editKey, editValue) }
+                        ) { Text(stringResource(R.string.action_save)) }
+                        TextButton(
+                            onClick = onEditCancel
+                        ) { Text(stringResource(R.string.action_cancel)) }
                     }
                 }
             } else {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
                 ) {
                     Text(
-                        text = item.key?.let { "${stringResource(preferenceKeyLabelRes(it))}: ${item.value}" } ?: item.value,
+                        text = item.key?.let {
+                            "${stringResource(
+                                preferenceKeyLabelRes(it)
+                            )}: ${item.value}"
+                        } ?: item.value,
                         style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f)
                     )
-                    TextButton(onClick = { onStartEdit(item) }) { Text(stringResource(R.string.action_edit)) }
+                    TextButton(
+                        onClick = { onStartEdit(item) }
+                    ) { Text(stringResource(R.string.action_edit)) }
                     IconButton(onClick = { onDelete(item.id) }) {
                         // #205: the row-action label carries the item's value so
                         // TalkBack doesn't read a bare "Delete" on every row.
                         Icon(
                             Icons.Outlined.Delete,
-                            contentDescription = stringResource(R.string.entities_delete_named, item.value),
+                            contentDescription = stringResource(
+                                R.string.entities_delete_named,
+                                item.value
+                            )
                         )
                     }
                 }
             }
         }
         OutlinedTextField(
-            value = newKey, onValueChange = onNewKeyChange,
+            value = newKey,
+            onValueChange = onNewKeyChange,
             label = { Text(stringResource(R.string.gifts_clothing_type)) },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         )
         if (newKey.isBlank()) {
             Row(modifier = Modifier.fillMaxWidth()) {
@@ -1709,12 +1868,16 @@ private fun ClothingSizesPanel(
                 }
             }
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             OutlinedTextField(
-                value = newValue, onValueChange = onNewValueChange,
+                value = newValue,
+                onValueChange = onNewValueChange,
                 label = { Text(stringResource(R.string.preferences_clothing_hint)) },
                 singleLine = true,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f)
             )
             TextButton(onClick = { onAdd(newKey, newValue) }, enabled = newValue.isNotBlank()) {
                 Text(stringResource(R.string.preferences_clothing_add))
@@ -1735,18 +1898,18 @@ private fun GiftPreferencesPanel(
     items: List<Preference>,
     onAdd: () -> Unit,
     onEdit: (Preference) -> Unit,
-    onDelete: (String) -> Unit,
+    onDelete: (String) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         ) {
             Text(
                 text = stringResource(R.string.gifts_preferences_heading),
                 style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
+                color = MaterialTheme.colorScheme.primary
             )
             TextButton(onClick = onAdd) { Text(stringResource(R.string.preferences_new)) }
         }
@@ -1755,7 +1918,7 @@ private fun GiftPreferencesPanel(
                 text = stringResource(R.string.gifts_preferences_empty),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(vertical = 4.dp),
+                modifier = Modifier.padding(vertical = 4.dp)
             )
         }
         PreferenceSection.GIFTS_TAB_ORDERED.forEach { section ->
@@ -1765,19 +1928,29 @@ private fun GiftPreferencesPanel(
                     text = stringResource(preferenceSectionLabelRes(section)),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp),
+                    modifier = Modifier.padding(top = 4.dp)
                 )
                 sectionItems.forEach { item ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth().clickable { onEdit(item) }.padding(vertical = 4.dp),
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            onEdit(
+                                item
+                            )
+                        }.padding(vertical = 4.dp)
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(text = preferenceLabel(item), style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                text = preferenceLabel(item),
+                                style = MaterialTheme.typography.bodyLarge
+                            )
                         }
                         IconButton(onClick = { onDelete(item.id) }) {
-                            Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.action_delete))
+                            Icon(
+                                Icons.Outlined.Delete,
+                                contentDescription = stringResource(R.string.action_delete)
+                            )
                         }
                     }
                 }
@@ -1794,7 +1967,7 @@ private fun GiftPreferencesPanel(
 internal fun AgendaDialog(
     initial: ConversationAgenda?,
     onConfirm: (content: String, referenceUrl: String?) -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     var content by remember(initial) { mutableStateOf(initial?.content ?: "") }
     var referenceUrl by remember(initial) { mutableStateOf(initial?.referenceUrl ?: "") }
@@ -1802,38 +1975,59 @@ internal fun AgendaDialog(
     val isEditing = initial != null
     val normalizedUrl = normalizeHttpUrl(referenceUrl)
     val urlValid = referenceUrl.isBlank() || normalizedUrl != null
-    val isDirty = content != (initial?.content ?: "") || referenceUrl != (initial?.referenceUrl ?: "")
+    val isDirty =
+        content != (initial?.content ?: "") || referenceUrl != (initial?.referenceUrl ?: "")
     val requestDismiss = { if (isDirty) showDiscardDialog = true else onDismiss() }
 
     AlertDialog(
         onDismissRequest = requestDismiss,
-        title = { Text(stringResource(if (isEditing) R.string.agenda_edit else R.string.agenda_new)) },
+        title = {
+            Text(
+                stringResource(if (isEditing) R.string.agenda_edit else R.string.agenda_new)
+            )
+        },
         text = {
             Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.verticalScroll(rememberScrollState()),
+                modifier = Modifier.verticalScroll(rememberScrollState())
             ) {
                 OutlinedTextField(
-                    value = content, onValueChange = { content = it },
-                    label = { Text(stringResource(R.string.agenda_content)) }, singleLine = true,
+                    value = content,
+                    onValueChange = { content = it },
+                    label = { Text(stringResource(R.string.agenda_content)) },
+                    singleLine = true
                 )
                 OutlinedTextField(
-                    value = referenceUrl, onValueChange = { referenceUrl = it },
-                    label = { Text(stringResource(R.string.agenda_reference_url)) }, singleLine = true,
+                    value = referenceUrl,
+                    onValueChange = { referenceUrl = it },
+                    label = { Text(stringResource(R.string.agenda_reference_url)) },
+                    singleLine = true,
                     isError = !urlValid,
-                    supportingText = if (urlValid) null else { { Text(stringResource(R.string.gifts_url_invalid)) } },
+                    supportingText = if (urlValid) {
+                        null
+                    } else {
+                        {
+                            Text(
+                                stringResource(R.string.gifts_url_invalid)
+                            )
+                        }
+                    }
                 )
             }
         },
         confirmButton = {
             TextButton(
                 onClick = { onConfirm(content, normalizedUrl) },
-                enabled = content.isNotBlank() && urlValid,
-            ) { Text(stringResource(if (isEditing) R.string.action_save else R.string.action_create)) }
+                enabled = content.isNotBlank() && urlValid
+            ) {
+                Text(
+                    stringResource(if (isEditing) R.string.action_save else R.string.action_create)
+                )
+            }
         },
         dismissButton = {
             TextButton(onClick = requestDismiss) { Text(stringResource(R.string.action_cancel)) }
-        },
+        }
     )
 
     if (showDiscardDialog) {
@@ -1843,7 +2037,7 @@ internal fun AgendaDialog(
             onDiscard = {
                 showDiscardDialog = false
                 onDismiss()
-            },
+            }
         )
     }
 }
@@ -1852,7 +2046,7 @@ internal fun AgendaDialog(
 @Composable
 fun ConversationAgendaScreen(
     onBack: () -> Unit,
-    viewModel: ConversationAgendaViewModel = hiltViewModel(),
+    viewModel: ConversationAgendaViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val activities by viewModel.activities.collectAsStateWithLifecycle()
@@ -1877,7 +2071,7 @@ fun ConversationAgendaScreen(
             onConfirm = { activityId -> viewModel.markDiscussed(discussItem.id, activityId) },
             onDismiss = viewModel::dismissDiscuss,
             errorMessage = state.errorRes?.let { stringResource(it) } ?: state.error,
-            onErrorShown = viewModel::onErrorShown,
+            onErrorShown = viewModel::onErrorShown
         )
         return
     }
@@ -1909,11 +2103,11 @@ fun ConversationAgendaScreen(
                     Icon(
                         Icons.Outlined.Done,
                         contentDescription = stringResource(R.string.agenda_mark_discussed),
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }
-        },
+        }
     ) {
         if (showAdd || editingItem != null) {
             AgendaDialog(
@@ -1924,7 +2118,10 @@ fun ConversationAgendaScreen(
                     showAdd = false
                     editingItem = null
                 },
-                onDismiss = { showAdd = false; editingItem = null },
+                onDismiss = {
+                    showAdd = false
+                    editingItem = null
+                }
             )
         }
     }
@@ -1944,7 +2141,7 @@ internal fun MarkDiscussedForm(
     onConfirm: (Int?) -> Unit,
     onDismiss: () -> Unit,
     errorMessage: String? = null,
-    onErrorShown: () -> Unit = {},
+    onErrorShown: () -> Unit = {}
 ) {
     // rememberSaveable: the picked activity survives rotation (issue #1723 review).
     var activityId by rememberSaveable(item.id) { mutableStateOf<Int?>(null) }
@@ -1958,11 +2155,11 @@ internal fun MarkDiscussedForm(
         onSave = { onConfirm(activityId) },
         onBack = { if (!confirming) onDismiss() },
         errorMessage = errorMessage,
-        onErrorShown = onErrorShown,
+        onErrorShown = onErrorShown
     ) {
         Text(
             text = item.content,
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.bodyLarge
         )
         if (activities.isNotEmpty()) {
             SelectField(
@@ -1970,8 +2167,11 @@ internal fun MarkDiscussedForm(
                 value = activityId?.toString(),
                 placeholder = stringResource(R.string.gifts_none),
                 options = activities.map { it.id.toString() },
-                optionLabel = { id -> activities.firstOrNull { a -> a.id.toString() == id }?.title ?: id },
-                onSelect = { activityId = it?.toIntOrNull() },
+                optionLabel = { id ->
+                    activities.firstOrNull { a -> a.id.toString() == id }?.title
+                        ?: id
+                },
+                onSelect = { activityId = it?.toIntOrNull() }
             )
         }
     }
@@ -1991,10 +2191,12 @@ internal fun EntityItem.displayLabel(): String {
             val type = lifeEventTypeLabel(token)
             labelDetail?.let { "$type — $it" } ?: type
         }
+
         EntityLabelFamily.PREFERENCE -> {
             val category = preferenceCategoryText(token)
             labelDetail?.let { "$category: $it" } ?: category
         }
+
         null -> label
     }
 }

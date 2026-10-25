@@ -7,12 +7,12 @@ import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /**
  * M9: the "Activities" drawer entry — every activity across every contact (`GET
@@ -28,12 +28,12 @@ data class ActivitiesInboxUiState(
     val deletingId: Int? = null,
     val error: String? = null,
     /** ADR 0008: a delete was rejected with 412 — the record changed elsewhere since the list loaded. */
-    val conflict: Boolean = false,
+    val conflict: Boolean = false
 )
 
 @HiltViewModel
 class ActivitiesInboxViewModel @Inject constructor(
-    private val activityRepository: ActivityRepository,
+    private val activityRepository: ActivityRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ActivitiesInboxUiState())
@@ -49,12 +49,16 @@ class ActivitiesInboxViewModel @Inject constructor(
             activityRepository.listAll().foldApiError(
                 onSuccess = { page ->
                     _uiState.update {
-                        it.copy(isLoading = false, activities = page.activities, nextCursor = page.nextCursor)
+                        it.copy(
+                            isLoading = false,
+                            activities = page.activities,
+                            nextCursor = page.nextCursor
+                        )
                     }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -70,13 +74,13 @@ class ActivitiesInboxViewModel @Inject constructor(
                         it.copy(
                             isLoadingMore = false,
                             activities = it.activities + page.activities,
-                            nextCursor = page.nextCursor,
+                            nextCursor = page.nextCursor
                         )
                     }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoadingMore = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -96,7 +100,9 @@ class ActivitiesInboxViewModel @Inject constructor(
         load()
     }
 
-    private fun revisionOf(id: Int): Int? = _uiState.value.activities.firstOrNull { it.id == id }?.revision
+    private fun revisionOf(id: Int): Int? = _uiState.value.activities.firstOrNull {
+        it.id == id
+    }?.revision
 
     fun delete(id: Int) {
         if (_uiState.value.deletingId != null) return
@@ -105,7 +111,10 @@ class ActivitiesInboxViewModel @Inject constructor(
             activityRepository.delete(id, revisionOf(id)).foldApiError(
                 onSuccess = {
                     _uiState.update { state ->
-                        state.copy(deletingId = null, activities = state.activities.filterNot { it.id == id })
+                        state.copy(
+                            deletingId = null,
+                            activities = state.activities.filterNot { it.id == id }
+                        )
                     }
                 },
                 onError = { error ->
@@ -116,7 +125,7 @@ class ActivitiesInboxViewModel @Inject constructor(
                             it.copy(deletingId = null, error = error.displayMessage)
                         }
                     }
-                },
+                }
             )
         }
     }

@@ -40,8 +40,8 @@ private fun openAppSettings(context: android.content.Context) {
     activity.startActivity(
         Intent(
             Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-            Uri.fromParts("package", activity.packageName, null),
-        ),
+            Uri.fromParts("package", activity.packageName, null)
+        )
     )
 }
 
@@ -53,7 +53,7 @@ private fun openAppSettings(context: android.content.Context) {
 fun TrackingSettingsScreen(
     onBack: () -> Unit,
     onNotificationChannels: () -> Unit = {},
-    viewModel: SettingsViewModel = hiltViewModel(),
+    viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -70,7 +70,7 @@ fun TrackingSettingsScreen(
     var launchedRequest by remember { mutableStateOf<TrackingPermissionRequest?>(null) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions(),
+        ActivityResultContracts.RequestMultiplePermissions()
     ) { grantResults ->
         val request = launchedRequest
         launchedRequest = null
@@ -105,7 +105,10 @@ fun TrackingSettingsScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    SettingsScaffold(title = stringResource(R.string.settings_tracking), onBack = onBack) { padding ->
+    SettingsScaffold(
+        title = stringResource(R.string.settings_tracking),
+        onBack = onBack
+    ) { padding ->
         TrackingSettingsContent(
             state = state,
             onCallTrackingChange = viewModel::setCallTrackingEnabled,
@@ -119,7 +122,7 @@ fun TrackingSettingsScreen(
                 viewModel.onPermissionDialogDismiss()
                 openAppSettings(context)
             },
-            modifier = padding,
+            modifier = padding
         )
     }
 }
@@ -137,7 +140,7 @@ fun TrackingSettingsContent(
     onPermissionDialogDismiss: () -> Unit = {},
     onPermissionDialogRetry: () -> Unit = {},
     onPermissionDialogOpenSettings: () -> Unit = {},
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     val gating = rememberSettingsGating()
     SettingsColumn(modifier = modifier) {
@@ -149,12 +152,12 @@ fun TrackingSettingsContent(
             SettingsToggleRow(
                 label = stringResource(R.string.settings_call_tracking),
                 checked = state.callTrackingEnabled,
-                onCheckedChange = onCallTrackingChange,
+                onCheckedChange = onCallTrackingChange
             )
             SettingsToggleRow(
                 label = stringResource(R.string.settings_sms_tracking),
                 checked = state.smsTrackingEnabled,
-                onCheckedChange = onSmsTrackingChange,
+                onCheckedChange = onSmsTrackingChange
             )
         } else {
             SettingsHelperText(stringResource(R.string.settings_call_sms_unavailable))
@@ -162,7 +165,7 @@ fun TrackingSettingsContent(
         SettingsToggleRow(
             label = stringResource(R.string.settings_notifications),
             checked = state.notificationsEnabled,
-            onCheckedChange = onNotificationsChange,
+            onCheckedChange = onNotificationsChange
         )
         if (state.callSmsTrackingAvailable) {
             // Issue #1029: by default only interactions whose number maps to a contact are logged;
@@ -170,15 +173,23 @@ fun TrackingSettingsContent(
             SettingsToggleRow(
                 label = stringResource(R.string.settings_include_unknown_numbers),
                 checked = state.includeUnknownNumbers,
-                onCheckedChange = onIncludeUnknownChange,
+                onCheckedChange = onIncludeUnknownChange
             )
             if (state.filteredUnknownCount > 0) {
-                SettingsHelperText(stringResource(R.string.settings_filtered_unknown_count, state.filteredUnknownCount))
+                SettingsHelperText(
+                    stringResource(
+                        R.string.settings_filtered_unknown_count,
+                        state.filteredUnknownCount
+                    )
+                )
             }
         }
         // Issue #1263: hidden when the deployment does not declare push.
         if (gating.notificationChannelsSupported) {
-            SettingsNavigationRow(stringResource(R.string.settings_notifications_title), onClick = onNotificationChannels)
+            SettingsNavigationRow(
+                stringResource(R.string.settings_notifications_title),
+                onClick = onNotificationChannels
+            )
         }
     }
 
@@ -192,30 +203,45 @@ fun TrackingSettingsContent(
             is TrackingPermissionDialog.AppSettings -> dialog.request
         }
         val title = when (dialog) {
-            is TrackingPermissionDialog.Rationale -> stringResource(R.string.settings_permission_rationale_title)
-            is TrackingPermissionDialog.AppSettings -> stringResource(R.string.settings_permission_settings_title)
+            is TrackingPermissionDialog.Rationale -> stringResource(
+                R.string.settings_permission_rationale_title
+            )
+
+            is TrackingPermissionDialog.AppSettings -> stringResource(
+                R.string.settings_permission_settings_title
+            )
         }
         val body = when (dialog) {
             is TrackingPermissionDialog.Rationale -> when (request) {
                 TrackingPermissionRequest.CALL_TRACKING ->
                     stringResource(R.string.settings_call_permission_rationale)
+
                 TrackingPermissionRequest.SMS_TRACKING ->
                     stringResource(R.string.settings_sms_permission_rationale)
+
                 TrackingPermissionRequest.NOTIFICATIONS ->
                     stringResource(R.string.settings_notification_permission_rationale)
             }
+
             is TrackingPermissionDialog.AppSettings -> when (request) {
                 TrackingPermissionRequest.CALL_TRACKING ->
                     stringResource(R.string.settings_call_permission_settings)
+
                 TrackingPermissionRequest.SMS_TRACKING ->
                     stringResource(R.string.settings_sms_permission_settings)
+
                 TrackingPermissionRequest.NOTIFICATIONS ->
                     stringResource(R.string.settings_notification_permission_settings)
             }
         }
         val confirmLabel = when (dialog) {
-            is TrackingPermissionDialog.Rationale -> stringResource(R.string.settings_permission_try_again)
-            is TrackingPermissionDialog.AppSettings -> stringResource(R.string.settings_permission_open_settings)
+            is TrackingPermissionDialog.Rationale -> stringResource(
+                R.string.settings_permission_try_again
+            )
+
+            is TrackingPermissionDialog.AppSettings -> stringResource(
+                R.string.settings_permission_open_settings
+            )
         }
         val confirmAction = when (dialog) {
             is TrackingPermissionDialog.Rationale -> onPermissionDialogRetry
@@ -232,7 +258,7 @@ fun TrackingSettingsContent(
                 TextButton(onClick = onPermissionDialogDismiss) {
                     Text(stringResource(R.string.settings_permission_not_now))
                 }
-            },
+            }
         )
     }
 }

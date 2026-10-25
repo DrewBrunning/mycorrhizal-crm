@@ -1,14 +1,14 @@
 package com.mycorrhizal.crm.model.util
 
 import com.mycorrhizal.crm.model.network.PartialDate
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
-import org.junit.Test
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.util.Locale
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
 
 /**
  * Issue #1726's value-mapping contract: date-only -> `YYYY-MM-DD`, date+time ->
@@ -31,7 +31,10 @@ class DateFieldValueTest {
         val state = DateFieldValue.parse("2026-08-10", DateFieldMode.DATE_ONLY)
         assertEquals(date, state.date)
         assertNull(state.time)
-        assertEquals("2026-08-10", DateFieldValue.display("2026-08-10", DateFieldMode.DATE_ONLY, DateFormat.ISO, true))
+        assertEquals(
+            "2026-08-10",
+            DateFieldValue.display("2026-08-10", DateFieldMode.DATE_ONLY, DateFormat.ISO, true)
+        )
     }
 
     @Test
@@ -50,7 +53,7 @@ class DateFieldValueTest {
         // the no-time shape is the exact UTC midnight the API already stores.
         assertEquals(
             "2026-08-10T00:00:00Z",
-            DateFieldValue.pick(date, null, DateFieldMode.DATE_TIME, zone = berlin),
+            DateFieldValue.pick(date, null, DateFieldMode.DATE_TIME, zone = berlin)
         )
     }
 
@@ -58,10 +61,14 @@ class DateFieldValueTest {
     fun `date-time with a time writes a full RFC 3339 instant with the device offset`() {
         assertEquals(
             "2026-08-10T14:30:00+02:00",
-            DateFieldValue.pick(date, LocalTime.of(14, 30), DateFieldMode.DATE_TIME, zone = berlin),
+            DateFieldValue.pick(date, LocalTime.of(14, 30), DateFieldMode.DATE_TIME, zone = berlin)
         )
 
-        val state = DateFieldValue.parse("2026-08-10T14:30:00+02:00", DateFieldMode.DATE_TIME, berlin)
+        val state = DateFieldValue.parse(
+            "2026-08-10T14:30:00+02:00",
+            DateFieldMode.DATE_TIME,
+            berlin
+        )
         assertEquals(date, state.date)
         assertEquals(LocalTime.of(14, 30), state.time)
     }
@@ -77,7 +84,11 @@ class DateFieldValueTest {
 
     @Test
     fun `an instant at exactly UTC midnight has no time`() {
-        val state = DateFieldValue.parse("2026-08-10T00:00:00.000Z", DateFieldMode.DATE_TIME, berlin)
+        val state = DateFieldValue.parse(
+            "2026-08-10T00:00:00.000Z",
+            DateFieldMode.DATE_TIME,
+            berlin
+        )
         assertEquals(date, state.date)
         assertNull(state.time)
     }
@@ -86,7 +97,14 @@ class DateFieldValueTest {
     fun `date-time display includes the time only when a time is stored`() {
         assertEquals(
             "2026-08-10",
-            DateFieldValue.display("2026-08-10T00:00:00Z", DateFieldMode.DATE_TIME, DateFormat.ISO, true, berlin, english),
+            DateFieldValue.display(
+                "2026-08-10T00:00:00Z",
+                DateFieldMode.DATE_TIME,
+                DateFormat.ISO,
+                true,
+                berlin,
+                english
+            )
         )
         assertEquals(
             "2026-08-10 14:30",
@@ -96,8 +114,8 @@ class DateFieldValueTest {
                 DateFormat.ISO,
                 true,
                 berlin,
-                english,
-            ),
+                english
+            )
         )
         assertEquals(
             "2026-08-10 2:30 PM",
@@ -107,8 +125,8 @@ class DateFieldValueTest {
                 DateFormat.ISO,
                 false,
                 berlin,
-                english,
-            ),
+                english
+            )
         )
     }
 
@@ -116,11 +134,16 @@ class DateFieldValueTest {
     fun `an opaque datetime field keeps a bare date when no time is picked`() {
         assertEquals(
             "2026-08-10",
-            DateFieldValue.pick(date, null, DateFieldMode.DATE_TIME_OPTIONAL, zone = berlin),
+            DateFieldValue.pick(date, null, DateFieldMode.DATE_TIME_OPTIONAL, zone = berlin)
         )
         assertEquals(
             "2026-08-10T09:05:00+02:00",
-            DateFieldValue.pick(date, LocalTime.of(9, 5), DateFieldMode.DATE_TIME_OPTIONAL, zone = berlin),
+            DateFieldValue.pick(
+                date,
+                LocalTime.of(9, 5),
+                DateFieldMode.DATE_TIME_OPTIONAL,
+                zone = berlin
+            )
         )
     }
 
@@ -128,7 +151,10 @@ class DateFieldValueTest {
 
     @Test
     fun `a reminder date writes UTC midnight and reads it back as a day`() {
-        assertEquals("2026-08-10T00:00:00Z", DateFieldValue.pick(date, null, DateFieldMode.DATE_UTC_MIDNIGHT))
+        assertEquals(
+            "2026-08-10T00:00:00Z",
+            DateFieldValue.pick(date, null, DateFieldMode.DATE_UTC_MIDNIGHT)
+        )
         val state = DateFieldValue.parse("2026-08-10T00:00:00Z", DateFieldMode.DATE_UTC_MIDNIGHT)
         assertEquals(date, state.date)
         assertNull(state.time)
@@ -138,8 +164,14 @@ class DateFieldValueTest {
     fun `date-only values are normalised to the UTC-midnight wire shape`() {
         // Go's time.Time cannot unmarshal a bare date, so every date-only path
         // that reaches Activity/Note/reminder storage is normalised here.
-        assertEquals("2026-08-10T00:00:00Z", DateFieldValue.normalizeCalendarDayInstant("2026-08-10"))
-        assertEquals("2026-08-10T14:00:00Z", DateFieldValue.normalizeCalendarDayInstant("2026-08-10T14:00:00Z"))
+        assertEquals(
+            "2026-08-10T00:00:00Z",
+            DateFieldValue.normalizeCalendarDayInstant("2026-08-10")
+        )
+        assertEquals(
+            "2026-08-10T14:00:00Z",
+            DateFieldValue.normalizeCalendarDayInstant("2026-08-10T14:00:00Z")
+        )
         assertNull(DateFieldValue.normalizeCalendarDayInstant("  "))
         assertNull(DateFieldValue.normalizeCalendarDayInstant(null))
     }
@@ -160,8 +192,14 @@ class DateFieldValueTest {
         val state = DateFieldValue.parse("--02-29", DateFieldMode.PARTIAL)
         assertEquals(LocalDate.of(DateFieldValue.PARTIAL_PLACEHOLDER_YEAR, 2, 29), state.date)
         assertTrue(state.yearUnknown)
-        assertEquals("--02-29", DateFieldValue.pick(state.date!!, null, DateFieldMode.PARTIAL, yearUnknown = true))
-        assertEquals("29.02.", DateFieldValue.display("--02-29", DateFieldMode.PARTIAL, DateFormat.EU, true))
+        assertEquals(
+            "--02-29",
+            DateFieldValue.pick(state.date!!, null, DateFieldMode.PARTIAL, yearUnknown = true)
+        )
+        assertEquals(
+            "29.02.",
+            DateFieldValue.display("--02-29", DateFieldMode.PARTIAL, DateFormat.EU, true)
+        )
     }
 
     @Test
@@ -169,9 +207,17 @@ class DateFieldValueTest {
         val picked = DateFieldValue.pick(date, null, DateFieldMode.PARTIAL, yearUnknown = true)
         assertEquals("--08-10", picked)
         // The year of the picker is deliberately discarded.
-        assertEquals("--08-10", DateFieldValue.parse(picked, DateFieldMode.PARTIAL).let {
-            DateFieldValue.pick(it.date!!, null, DateFieldMode.PARTIAL, yearUnknown = it.yearUnknown)
-        })
+        assertEquals(
+            "--08-10",
+            DateFieldValue.parse(picked, DateFieldMode.PARTIAL).let {
+                DateFieldValue.pick(
+                    it.date!!,
+                    null,
+                    DateFieldMode.PARTIAL,
+                    yearUnknown = it.yearUnknown
+                )
+            }
+        )
     }
 
     @Test
@@ -179,7 +225,10 @@ class DateFieldValueTest {
         val state = DateFieldValue.parse("2024", DateFieldMode.PARTIAL)
         assertEquals(2024, state.yearOnly)
         assertEquals(LocalDate.of(2024, 1, 1), state.date)
-        assertEquals("2024", DateFieldValue.display("2024", DateFieldMode.PARTIAL, DateFormat.EU, true))
+        assertEquals(
+            "2024",
+            DateFieldValue.display("2024", DateFieldMode.PARTIAL, DateFormat.EU, true)
+        )
     }
 
     @Test
@@ -187,7 +236,10 @@ class DateFieldValueTest {
         val state = DateFieldValue.parse("2024-03", DateFieldMode.PARTIAL)
         assertEquals("2024-03", state.yearMonth)
         assertEquals(LocalDate.of(2024, 3, 1), state.date)
-        assertEquals("2024-03", DateFieldValue.display("2024-03", DateFieldMode.PARTIAL, DateFormat.EU, true))
+        assertEquals(
+            "2024-03",
+            DateFieldValue.display("2024-03", DateFieldMode.PARTIAL, DateFormat.EU, true)
+        )
     }
 
     @Test
@@ -203,6 +255,9 @@ class DateFieldValueTest {
     fun `blank and unparseable values yield an empty state and display`() {
         assertEquals(DateFieldState(), DateFieldValue.parse("", DateFieldMode.DATE_TIME))
         assertEquals(DateFieldState(), DateFieldValue.parse("soon", DateFieldMode.DATE_TIME))
-        assertEquals("", DateFieldValue.display("soon", DateFieldMode.DATE_TIME, DateFormat.ISO, true))
+        assertEquals(
+            "",
+            DateFieldValue.display("soon", DateFieldMode.DATE_TIME, DateFormat.ISO, true)
+        )
     }
 }

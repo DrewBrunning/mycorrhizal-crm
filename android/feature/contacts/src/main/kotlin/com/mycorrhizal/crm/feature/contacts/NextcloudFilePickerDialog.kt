@@ -42,7 +42,7 @@ fun NextcloudFilePickerDialog(
     loading: Boolean,
     onEnterDir: (String) -> Unit,
     onSelect: (WebDAVItem) -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -53,7 +53,7 @@ fun NextcloudFilePickerDialog(
                 if (browsePath != "/") {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
+                        horizontalArrangement = Arrangement.End
                     ) {
                         TextButton(onClick = { onEnterDir(parentDirPath(browsePath) ?: "/") }) {
                             Text(stringResource(R.string.action_back))
@@ -63,11 +63,15 @@ fun NextcloudFilePickerDialog(
                 when {
                     loading -> Box(
                         modifier = Modifier.fillMaxWidth().padding(24.dp),
-                        contentAlignment = Alignment.Center,
+                        contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator()
                     }
-                    browseItems.isEmpty() -> EmptyPickerText(stringResource(R.string.nextcloud_picker_empty_folder))
+
+                    browseItems.isEmpty() -> EmptyPickerText(
+                        stringResource(R.string.nextcloud_picker_empty_folder)
+                    )
+
                     else -> {
                         LazyColumn(modifier = Modifier.heightIn(max = 320.dp)) {
                             items(browseItems, key = { it.path }) { item ->
@@ -75,28 +79,36 @@ fun NextcloudFilePickerDialog(
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clickable { if (isDir) onEnterDir(item.path) else onSelect(item) }
+                                        .clickable {
+                                            if (isDir) {
+                                                onEnterDir(
+                                                    item.path
+                                                )
+                                            } else {
+                                                onSelect(item)
+                                            }
+                                        }
                                         .padding(vertical = 10.dp),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
                                     Icon(
                                         if (isDir) Icons.Outlined.Folder else Icons.Outlined.InsertDriveFile,
-                                        contentDescription = null,
+                                        contentDescription = null
                                     )
                                     Column {
                                         Text(
                                             item.name,
                                             style = MaterialTheme.typography.bodyLarge,
                                             maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
+                                            overflow = TextOverflow.Ellipsis
                                         )
                                         val size = item.size
                                         if (!isDir && size != null) {
                                             Text(
                                                 formatFileSize(size),
                                                 style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
                                     }
@@ -110,6 +122,6 @@ fun NextcloudFilePickerDialog(
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
-        },
+        }
     )
 }

@@ -19,7 +19,7 @@ data class AppBuildInfo(
     val flavor: String,
     val applicationId: String,
     val commit: String? = null,
-    val buildDate: String? = null,
+    val buildDate: String? = null
 ) {
     /**
      * The applicationId suffix beyond the shipping id (e.g. `.localtest`), or

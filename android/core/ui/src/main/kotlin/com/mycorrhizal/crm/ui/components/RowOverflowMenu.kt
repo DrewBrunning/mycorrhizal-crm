@@ -27,18 +27,14 @@ import com.mycorrhizal.crm.ui.R
  * may show it inline; two or more go in this menu.
  */
 @Composable
-fun RowOverflowMenu(
-    rowName: String,
-    actions: List<RowAction>,
-    modifier: Modifier = Modifier,
-) {
+fun RowOverflowMenu(rowName: String, actions: List<RowAction>, modifier: Modifier = Modifier) {
     var expanded by remember { mutableStateOf(false) }
     // The Box anchors the popup to the button instead of to the row.
     Box(modifier = modifier) {
         AccessibleIconButton(onClick = { expanded = true }) {
             Icon(
                 Icons.Outlined.MoreVert,
-                contentDescription = stringResource(R.string.row_more_actions_named, rowName),
+                contentDescription = stringResource(R.string.row_more_actions_named, rowName)
             )
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -51,13 +47,13 @@ fun RowOverflowMenu(
                                 MaterialTheme.colorScheme.error
                             } else {
                                 MaterialTheme.colorScheme.onSurface
-                            },
+                            }
                         )
                     },
                     onClick = {
                         expanded = false
                         action.onClick()
-                    },
+                    }
                 )
             }
         }

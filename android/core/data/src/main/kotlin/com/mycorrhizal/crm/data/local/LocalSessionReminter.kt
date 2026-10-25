@@ -15,7 +15,7 @@ import com.mycorrhizal.crm.domain.profile.ServerProfileKind
  */
 class LocalSessionReminter(
     private val localServerHost: LocalServerHost,
-    private val sessionManager: SessionManager,
+    private val sessionManager: SessionManager
 ) {
     /**
      * Returns null when the active profile is not [ServerProfileKind.Local]

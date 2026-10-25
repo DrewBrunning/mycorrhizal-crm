@@ -18,34 +18,34 @@ object MycorrhizalNotificationChannels {
             NotificationChannel(
                 REMINDERS,
                 context.getString(R.string.notification_channel_reminders_name),
-                NotificationManager.IMPORTANCE_HIGH,
+                NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = context.getString(R.string.notification_channel_reminders_description)
                 enableVibration(true)
-            },
+            }
         )
 
         manager.createNotificationChannel(
             NotificationChannel(
                 CADENCE,
                 context.getString(R.string.notification_channel_cadence_name),
-                NotificationManager.IMPORTANCE_DEFAULT,
+                NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
                 description = context.getString(R.string.notification_channel_cadence_description)
                 enableVibration(true)
-            },
+            }
         )
 
         manager.createNotificationChannel(
             NotificationChannel(
                 BIRTHDAYS,
                 context.getString(R.string.notification_channel_birthdays_name),
-                NotificationManager.IMPORTANCE_DEFAULT,
+                NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
                 description = context.getString(R.string.notification_channel_birthdays_description)
                 enableVibration(false)
                 setShowBadge(true)
-            },
+            }
         )
     }
 }

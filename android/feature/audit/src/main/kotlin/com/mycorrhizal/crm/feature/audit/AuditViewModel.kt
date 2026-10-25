@@ -4,13 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.AuditRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
-import com.mycorrhizal.crm.model.network.AuditEvent
 import com.mycorrhizal.crm.model.network.AuditEntityTypes
+import com.mycorrhizal.crm.model.network.AuditEvent
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.network.toApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -20,7 +21,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /**
  * The fetch window grows in [DEFAULT_LIMIT] steps up to [MAX_LIMIT] — the
@@ -49,7 +49,7 @@ data class AuditUiState(
      * when its UID resolves (web: getContactsByUid). A UID that doesn't
      * resolve (deleted contact) renders as plain text.
      */
-    val contactsByUid: Map<String, ContactSummary> = emptyMap(),
+    val contactsByUid: Map<String, ContactSummary> = emptyMap()
 ) {
     /**
      * The window only ever returns up to [limit] rows, so "a full window means
@@ -79,7 +79,7 @@ sealed interface AuditUiEvent {
 @HiltViewModel
 class AuditViewModel @Inject constructor(
     private val auditRepository: AuditRepository,
-    private val contactRepository: ContactRepository,
+    private val contactRepository: ContactRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AuditUiState())
@@ -111,7 +111,7 @@ class AuditViewModel @Inject constructor(
             val result = auditRepository.list(
                 entityType = state.entityType,
                 entityId = state.entityId.takeIf { it.isNotBlank() },
-                limit = state.limit,
+                limit = state.limit
             )
             if (requestRef != requestId) return@launch
             // Resolve contact UIDs only on success and only for this request's
@@ -130,7 +130,7 @@ class AuditViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(isLoading = false, error = error.displayMessage)
                     }
-                },
+                }
             )
             if (events != null) {
                 resolveContactUids(requestId, events)
@@ -206,7 +206,7 @@ class AuditViewModel @Inject constructor(
                         error.displayMessage
                     }
                     AuditUiEvent.UndoFailed(retentionGone, message)
-                },
+                }
             )
             _events.send(outcome)
             if (outcome is AuditUiEvent.UndoSucceeded) load()
@@ -247,7 +247,7 @@ class AuditViewModel @Inject constructor(
                     _uiState.update { it.copy(contactsByUid = byUid) }
                 }
             },
-            onError = { /* keep the existing map — see the doc comment */ },
+            onError = { /* keep the existing map — see the doc comment */ }
         )
     }
 }

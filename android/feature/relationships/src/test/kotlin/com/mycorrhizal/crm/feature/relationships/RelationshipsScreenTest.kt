@@ -55,40 +55,57 @@ class RelationshipsScreenTest {
     private fun setScreen(
         edges: List<RelationshipEdge> = emptyList(),
         resolve: Map<String, ContactSummary> = emptyMap(),
-        onNavigateToContact: (Int) -> Unit = {},
+        onNavigateToContact: (Int) -> Unit = {}
     ) {
         val edgeRepository = mockk<RelationshipEdgeRepository>()
         val contactRepository = mockk<ContactRepository>()
         coEvery { contactRepository.getContact(5) } returns Result.success(
-            ContactRecordResponse(id = 5, card = Card(uid = "u-viewed")),
+            ContactRecordResponse(id = 5, card = Card(uid = "u-viewed"))
         )
-        coEvery { edgeRepository.listForContact("u-viewed", null, null) } returns Result.success(edges)
+        coEvery {
+            edgeRepository.listForContact(
+                "u-viewed",
+                null,
+                null
+            )
+        } returns Result.success(edges)
         if (resolve.isNotEmpty()) {
             coEvery { contactRepository.resolveByUid(any()) } returns Result.success(resolve)
         }
         val vm = RelationshipsViewModel(
             edgeRepository,
             contactRepository,
-            SavedStateHandle(mapOf("contactId" to 5)),
+            SavedStateHandle(mapOf("contactId" to 5))
         )
         composeTestRule.setContent {
             MycorrhizalTheme(darkTheme = false) {
-                RelationshipsScreen(onBack = {}, onNavigateToContact = onNavigateToContact, viewModel = vm)
+                RelationshipsScreen(
+                    onBack = {},
+                    onNavigateToContact = onNavigateToContact,
+                    viewModel = vm
+                )
             }
         }
     }
 
-    private fun confirmedEdge(id: String, source: String, target: String, type: String) = RelationshipEdge(
-        id = id, sourceId = source, targetId = target, type = type, status = RelationshipEdgeStatuses.CONFIRMED,
-    )
+    private fun confirmedEdge(id: String, source: String, target: String, type: String) =
+        RelationshipEdge(
+            id = id,
+            sourceId = source,
+            targetId = target,
+            type = type,
+            status = RelationshipEdgeStatuses.CONFIRMED
+        )
 
     @Test
     fun `renders confirmed edges with the other party's resolved name`() {
         setScreen(
             edges = listOf(
-                confirmedEdge("e1", "u-other", "u-viewed", RelationshipEdgeTypes.FRIEND_OF),
+                confirmedEdge("e1", "u-other", "u-viewed", RelationshipEdgeTypes.FRIEND_OF)
             ),
-            resolve = mapOf("u-other" to ContactSummary(id = 9, uid = "u-other", firstname = "Alice")),
+            resolve = mapOf(
+                "u-other" to ContactSummary(id = 9, uid = "u-other", firstname = "Alice")
+            )
         )
 
         composeTestRule.onNodeWithText("Alice").assertIsDisplayed()
@@ -102,12 +119,12 @@ class RelationshipsScreenTest {
         setScreen(
             edges = listOf(
                 confirmedEdge("e1", "u-viewed", "u-kid", RelationshipEdgeTypes.PARENT_OF),
-                confirmedEdge("e2", "u-mom", "u-viewed", RelationshipEdgeTypes.PARENT_OF),
+                confirmedEdge("e2", "u-mom", "u-viewed", RelationshipEdgeTypes.PARENT_OF)
             ),
             resolve = mapOf(
                 "u-kid" to ContactSummary(id = 9, uid = "u-kid", firstname = "Kid"),
-                "u-mom" to ContactSummary(id = 10, uid = "u-mom", firstname = "Mom"),
-            ),
+                "u-mom" to ContactSummary(id = 10, uid = "u-mom", firstname = "Mom")
+            )
         )
 
         composeTestRule.onNodeWithText("Child").assertIsDisplayed()
@@ -119,7 +136,9 @@ class RelationshipsScreenTest {
     fun `an unknown relationship token is humanized not shown raw`() {
         setScreen(
             edges = listOf(confirmedEdge("e1", "u-other", "u-viewed", "godparent_of")),
-            resolve = mapOf("u-other" to ContactSummary(id = 9, uid = "u-other", firstname = "Alice")),
+            resolve = mapOf(
+                "u-other" to ContactSummary(id = 9, uid = "u-other", firstname = "Alice")
+            )
         )
 
         // Unregistered tokens collapse to related_to in effectiveType; either way never raw.
@@ -137,13 +156,13 @@ class RelationshipsScreenTest {
                     sourceId = "u-viewed",
                     targetId = "u-bob",
                     type = RelationshipEdgeTypes.SPOUSE_OF,
-                    status = RelationshipEdgeStatuses.SUGGESTED,
-                ),
+                    status = RelationshipEdgeStatuses.SUGGESTED
+                )
             ),
             resolve = mapOf(
                 "u-other" to ContactSummary(id = 9, uid = "u-other", firstname = "Alice"),
-                "u-bob" to ContactSummary(id = 10, uid = "u-bob", firstname = "Bob"),
-            ),
+                "u-bob" to ContactSummary(id = 10, uid = "u-bob", firstname = "Bob")
+            )
         )
 
         // The suggested section header and the suggested-row status label both
@@ -167,8 +186,12 @@ class RelationshipsScreenTest {
     @Test
     fun `relationships screen has no accessibility violations`() {
         setScreen(
-            edges = listOf(confirmedEdge("e1", "u-other", "u-viewed", RelationshipEdgeTypes.FRIEND_OF)),
-            resolve = mapOf("u-other" to ContactSummary(id = 9, uid = "u-other", firstname = "Alice")),
+            edges = listOf(
+                confirmedEdge("e1", "u-other", "u-viewed", RelationshipEdgeTypes.FRIEND_OF)
+            ),
+            resolve = mapOf(
+                "u-other" to ContactSummary(id = 9, uid = "u-other", firstname = "Alice")
+            )
         )
 
         composeTestRule.assertAccessibleSemantics()
@@ -179,22 +202,28 @@ class RelationshipsScreenTest {
         val edgeRepository = mockk<RelationshipEdgeRepository>()
         val contactRepository = mockk<ContactRepository>()
         coEvery { contactRepository.getContact(5) } returns Result.success(
-            ContactRecordResponse(id = 5, card = Card(uid = "u-viewed")),
+            ContactRecordResponse(id = 5, card = Card(uid = "u-viewed"))
         )
         coEvery { edgeRepository.listForContact("u-viewed", null, null) } returns Result.success(
-            listOf(confirmedEdge("e1", "u-other", "u-viewed", RelationshipEdgeTypes.FRIEND_OF)),
+            listOf(confirmedEdge("e1", "u-other", "u-viewed", RelationshipEdgeTypes.FRIEND_OF))
         )
         coEvery { contactRepository.resolveByUid(any()) } returns Result.success(
-            mapOf("u-other" to ContactSummary(id = 9, uid = "u-other", firstname = "Alice")),
+            mapOf("u-other" to ContactSummary(id = 9, uid = "u-other", firstname = "Alice"))
         )
         coEvery { edgeRepository.delete("e1") } returns Result.success(Unit)
         val vm = RelationshipsViewModel(
             edgeRepository,
             contactRepository,
-            SavedStateHandle(mapOf("contactId" to 5)),
+            SavedStateHandle(mapOf("contactId" to 5))
         )
         composeTestRule.setContent {
-            MycorrhizalTheme { RelationshipsScreen(onBack = {}, onNavigateToContact = {}, viewModel = vm) }
+            MycorrhizalTheme {
+                RelationshipsScreen(
+                    onBack = {},
+                    onNavigateToContact = {},
+                    viewModel = vm
+                )
+            }
         }
 
         composeTestRule.onNodeWithContentDescription("Delete Alice").performClick()
@@ -210,7 +239,7 @@ class RelationshipsScreenTest {
         setScreen()
 
         composeTestRule.onNodeWithContentDescription(
-            str(R.string.relationships_new),
+            str(R.string.relationships_new)
         ).performClick()
 
         // Issue #1773: a full-screen form replaced the list (and its FAB).
@@ -233,23 +262,29 @@ class RelationshipsScreenTest {
         val edgeRepository = mockk<RelationshipEdgeRepository>()
         val contactRepository = mockk<ContactRepository>()
         coEvery { contactRepository.getContact(5) } returns Result.success(
-            ContactRecordResponse(id = 5, card = Card(uid = "u-viewed")),
+            ContactRecordResponse(id = 5, card = Card(uid = "u-viewed"))
         )
         coEvery { edgeRepository.listForContact("u-viewed", null, null) } returns Result.failure(
-            ApiError.Client(500, "boom"),
+            ApiError.Client(500, "boom")
         )
         val vm = RelationshipsViewModel(
             edgeRepository,
             contactRepository,
-            SavedStateHandle(mapOf("contactId" to 5)),
+            SavedStateHandle(mapOf("contactId" to 5))
         )
         composeTestRule.setContent {
-            MycorrhizalTheme { RelationshipsScreen(onBack = {}, onNavigateToContact = {}, viewModel = vm) }
+            MycorrhizalTheme {
+                RelationshipsScreen(
+                    onBack = {},
+                    onNavigateToContact = {},
+                    viewModel = vm
+                )
+            }
         }
         composeTestRule.waitForIdle()
 
         assertTrue(
-            composeTestRule.onAllNodesWithText("boom").fetchSemanticsNodes().isNotEmpty(),
+            composeTestRule.onAllNodesWithText("boom").fetchSemanticsNodes().isNotEmpty()
         )
     }
 
@@ -265,12 +300,12 @@ class RelationshipsScreenTest {
                     sourceId = "u-viewed",
                     targetId = "u-bob",
                     type = RelationshipEdgeTypes.SPOUSE_OF,
-                    status = RelationshipEdgeStatuses.SUGGESTED,
-                ),
+                    status = RelationshipEdgeStatuses.SUGGESTED
+                )
             ),
             resolve = mapOf(
-                "u-bob" to ContactSummary(id = 10, uid = "u-bob", firstname = "Bob"),
-            ),
+                "u-bob" to ContactSummary(id = 10, uid = "u-bob", firstname = "Bob")
+            )
         )
         composeTestRule.waitForIdle()
 

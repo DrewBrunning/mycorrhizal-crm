@@ -10,9 +10,8 @@ import javax.inject.Inject
  * Thin on purpose — the fail-open policy lives in the callers (they resolve a
  * [Result.failure] to "compatible"), not in a repository that would hide it.
  */
-class ServerCompatibilityRepositoryImpl @Inject constructor(
-    private val apiClient: ApiClient,
-) : ServerCompatibilityRepository {
+class ServerCompatibilityRepositoryImpl @Inject constructor(private val apiClient: ApiClient) :
+    ServerCompatibilityRepository {
 
     override suspend fun getServerHealth(): Result<ServerHealth> = apiClient.getHealth()
 }

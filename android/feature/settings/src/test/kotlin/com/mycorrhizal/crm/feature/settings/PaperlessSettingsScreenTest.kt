@@ -35,7 +35,9 @@ class PaperlessSettingsScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Paperless server URL *").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Paperless server URL *"
+        ).performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("API token *").performScrollTo().assertIsDisplayed()
     }
 
@@ -43,11 +45,15 @@ class PaperlessSettingsScreenTest {
     fun `shows the stored-token hint when a token is already configured`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                PaperlessSettingsContent(state = PaperlessSettingsUiState(isLoading = false, hasApiToken = true))
+                PaperlessSettingsContent(
+                    state = PaperlessSettingsUiState(isLoading = false, hasApiToken = true)
+                )
             }
         }
 
-        composeTestRule.onNodeWithText("A token is already stored. Leave the field empty to keep it.")
+        composeTestRule.onNodeWithText(
+            "A token is already stored. Leave the field empty to keep it."
+        )
             .performScrollTo().assertIsDisplayed()
     }
 
@@ -55,7 +61,9 @@ class PaperlessSettingsScreenTest {
     fun `the test button only appears once a token is stored`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                PaperlessSettingsContent(state = PaperlessSettingsUiState(isLoading = false, hasApiToken = false))
+                PaperlessSettingsContent(
+                    state = PaperlessSettingsUiState(isLoading = false, hasApiToken = false)
+                )
             }
         }
 
@@ -68,8 +76,12 @@ class PaperlessSettingsScreenTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 PaperlessSettingsContent(
-                    state = PaperlessSettingsUiState(isLoading = false, hasApiToken = true, baseUrl = "http://paperless:8000"),
-                    onTest = { tested = true },
+                    state = PaperlessSettingsUiState(
+                        isLoading = false,
+                        hasApiToken = true,
+                        baseUrl = "http://paperless:8000"
+                    ),
+                    onTest = { tested = true }
                 )
             }
         }
@@ -86,20 +98,27 @@ class PaperlessSettingsScreenTest {
                     state = PaperlessSettingsUiState(
                         isLoading = false,
                         hasApiToken = true,
-                        testResult = PaperlessTestOutcome(ok = false, message = "invalid API token"),
-                    ),
+                        testResult = PaperlessTestOutcome(
+                            ok = false,
+                            message = "invalid API token"
+                        )
+                    )
                 )
             }
         }
 
-        composeTestRule.onNodeWithText("Test failed: invalid API token").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Test failed: invalid API token"
+        ).performScrollTo().assertIsDisplayed()
     }
 
     @Test
     fun `remove connection only appears once a token is stored`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                PaperlessSettingsContent(state = PaperlessSettingsUiState(isLoading = false, hasApiToken = false))
+                PaperlessSettingsContent(
+                    state = PaperlessSettingsUiState(isLoading = false, hasApiToken = false)
+                )
             }
         }
 
@@ -113,7 +132,7 @@ class PaperlessSettingsScreenTest {
             MycorrhizalTheme {
                 PaperlessSettingsContent(
                     state = PaperlessSettingsUiState(isLoading = false, hasApiToken = true),
-                    onRemove = { removed = true },
+                    onRemove = { removed = true }
                 )
             }
         }
@@ -126,7 +145,9 @@ class PaperlessSettingsScreenTest {
     fun `save is disabled until a base url is entered`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                PaperlessSettingsContent(state = PaperlessSettingsUiState(isLoading = false, baseUrl = ""))
+                PaperlessSettingsContent(
+                    state = PaperlessSettingsUiState(isLoading = false, baseUrl = "")
+                )
             }
         }
 
@@ -137,12 +158,22 @@ class PaperlessSettingsScreenTest {
     fun `save error is announced as an assertive live region`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                PaperlessSettingsContent(state = PaperlessSettingsUiState(isLoading = false, saveError = "Could not save"))
+                PaperlessSettingsContent(
+                    state = PaperlessSettingsUiState(
+                        isLoading = false,
+                        saveError = "Could not save"
+                    )
+                )
             }
         }
 
         composeTestRule.onNodeWithText("Could not save")
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Assertive))
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.LiveRegion,
+                    LiveRegionMode.Assertive
+                )
+            )
     }
 
     @Test

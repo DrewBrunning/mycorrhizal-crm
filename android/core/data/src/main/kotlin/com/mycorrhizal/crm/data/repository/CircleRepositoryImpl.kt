@@ -21,7 +21,7 @@ import javax.inject.Inject
 class CircleRepositoryImpl @Inject constructor(
     private val apiClient: ApiClient,
     private val circleDao: CachedCircleDao,
-    private val memberDao: CachedCircleMemberDao,
+    private val memberDao: CachedCircleMemberDao
 ) : CircleRepository {
 
     override suspend fun list(cursor: String?, limit: Int): Result<List<Circle>> {
@@ -68,7 +68,7 @@ class CircleRepositoryImpl @Inject constructor(
         return result.map { d ->
             CircleDetail(
                 circle = d.circle ?: Circle(),
-                members = d.members.orEmpty(),
+                members = d.members.orEmpty()
             )
         }
     }
@@ -95,7 +95,10 @@ class CircleRepositoryImpl @Inject constructor(
     }
 
     override suspend fun addMember(circleId: String, vcardUid: String): Result<CircleMember> {
-        val result = apiClient.addCircleMember(circleId, CircleMemberInput(memberVCardUid = vcardUid))
+        val result = apiClient.addCircleMember(
+            circleId,
+            CircleMemberInput(memberVCardUid = vcardUid)
+        )
         result.getOrNull()?.let { memberDao.upsertAll(listOf(it.toCached())) }
         return result
     }
@@ -111,12 +114,12 @@ class CircleRepositoryImpl @Inject constructor(
     private fun Circle.toCached(): CachedCircle = CachedCircle(
         id = id,
         name = name,
-        updatedAt = updatedAt,
+        updatedAt = updatedAt
     )
 
     private fun CircleMember.toCached(): CachedCircleMember = CachedCircleMember(
         id = id,
         circleId = circleId,
-        memberVCardUid = memberVCardUid,
+        memberVCardUid = memberVCardUid
     )
 }

@@ -35,7 +35,9 @@ class NextcloudSettingsScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Nextcloud server URL *").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Nextcloud server URL *"
+        ).performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Username *").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("App password *").performScrollTo().assertIsDisplayed()
     }
@@ -44,11 +46,15 @@ class NextcloudSettingsScreenTest {
     fun `shows the stored-password hint when a password is already configured`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                NextcloudSettingsContent(state = NextcloudSettingsUiState(isLoading = false, hasAppPassword = true))
+                NextcloudSettingsContent(
+                    state = NextcloudSettingsUiState(isLoading = false, hasAppPassword = true)
+                )
             }
         }
 
-        composeTestRule.onNodeWithText("An app password is already stored. Leave the field empty to keep it.")
+        composeTestRule.onNodeWithText(
+            "An app password is already stored. Leave the field empty to keep it."
+        )
             .performScrollTo().assertIsDisplayed()
     }
 
@@ -56,7 +62,9 @@ class NextcloudSettingsScreenTest {
     fun `the test button only appears once a password is stored`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                NextcloudSettingsContent(state = NextcloudSettingsUiState(isLoading = false, hasAppPassword = false))
+                NextcloudSettingsContent(
+                    state = NextcloudSettingsUiState(isLoading = false, hasAppPassword = false)
+                )
             }
         }
 
@@ -73,9 +81,9 @@ class NextcloudSettingsScreenTest {
                         isLoading = false,
                         hasAppPassword = true,
                         baseUrl = "https://nextcloud.example.com",
-                        username = "drew",
+                        username = "drew"
                     ),
-                    onTest = { tested = true },
+                    onTest = { tested = true }
                 )
             }
         }
@@ -92,20 +100,27 @@ class NextcloudSettingsScreenTest {
                     state = NextcloudSettingsUiState(
                         isLoading = false,
                         hasAppPassword = true,
-                        testResult = NextcloudTestOutcome(ok = false, message = "invalid credentials"),
-                    ),
+                        testResult = NextcloudTestOutcome(
+                            ok = false,
+                            message = "invalid credentials"
+                        )
+                    )
                 )
             }
         }
 
-        composeTestRule.onNodeWithText("Test failed: invalid credentials").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Test failed: invalid credentials"
+        ).performScrollTo().assertIsDisplayed()
     }
 
     @Test
     fun `remove connection only appears once a password is stored`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                NextcloudSettingsContent(state = NextcloudSettingsUiState(isLoading = false, hasAppPassword = false))
+                NextcloudSettingsContent(
+                    state = NextcloudSettingsUiState(isLoading = false, hasAppPassword = false)
+                )
             }
         }
 
@@ -119,7 +134,7 @@ class NextcloudSettingsScreenTest {
             MycorrhizalTheme {
                 NextcloudSettingsContent(
                     state = NextcloudSettingsUiState(isLoading = false, hasAppPassword = true),
-                    onRemove = { removed = true },
+                    onRemove = { removed = true }
                 )
             }
         }
@@ -133,7 +148,11 @@ class NextcloudSettingsScreenTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 NextcloudSettingsContent(
-                    state = NextcloudSettingsUiState(isLoading = false, baseUrl = "https://nextcloud.example.com", username = ""),
+                    state = NextcloudSettingsUiState(
+                        isLoading = false,
+                        baseUrl = "https://nextcloud.example.com",
+                        username = ""
+                    )
                 )
             }
         }
@@ -145,12 +164,22 @@ class NextcloudSettingsScreenTest {
     fun `save error is announced as an assertive live region`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                NextcloudSettingsContent(state = NextcloudSettingsUiState(isLoading = false, saveError = "Could not save"))
+                NextcloudSettingsContent(
+                    state = NextcloudSettingsUiState(
+                        isLoading = false,
+                        saveError = "Could not save"
+                    )
+                )
             }
         }
 
         composeTestRule.onNodeWithText("Could not save")
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Assertive))
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.LiveRegion,
+                    LiveRegionMode.Assertive
+                )
+            )
     }
 
     @Test

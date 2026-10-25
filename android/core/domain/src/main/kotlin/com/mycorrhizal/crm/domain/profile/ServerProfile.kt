@@ -32,17 +32,18 @@ data class ServerProfile(
      * a read-only archive — browsable, every write blocked — until the user
      * deletes it. Always false for a Remote profile.
      */
-    val archived: Boolean = false,
+    val archived: Boolean = false
 ) {
     /** The remote origin, or null for a [ServerProfileKind.Local] profile. */
     val remoteUrl: String? get() = (kind as? ServerProfileKind.Remote)?.url
 }
 
-/**
+/*
  * The label a profile gets when one is created implicitly — a migrated legacy
  * install, or a login typed straight into the Auth screen. Deliberately derived
  * from the host (readable and recognisable in a list) rather than the raw URL.
  */
+
 /**
  * The label the single [ServerProfileKind.Local] profile is created with. The
  * Servers list localizes its display separately (the label is non-secret

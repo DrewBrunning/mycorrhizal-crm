@@ -1,9 +1,9 @@
 package com.mycorrhizal.crm.data.session
 
+import java.io.File
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 /**
  * Guard test for the session-token storage backend (issue #367, MASVS-L1
@@ -30,11 +30,11 @@ class EncryptedTokenStorageGuardTest {
     fun `the token is stored via EncryptedSharedPreferences, not plain SharedPreferences`() {
         assertTrue(
             "EncryptedTokenStorage must use EncryptedSharedPreferences.create",
-            tokenStorageSource.contains("EncryptedSharedPreferences.create"),
+            tokenStorageSource.contains("EncryptedSharedPreferences.create")
         )
         assertFalse(
             "EncryptedTokenStorage must not fall back to a plain getSharedPreferences",
-            tokenStorageSource.contains("getSharedPreferences"),
+            tokenStorageSource.contains("getSharedPreferences")
         )
     }
 
@@ -42,11 +42,11 @@ class EncryptedTokenStorageGuardTest {
     fun `the encryption key is a Keystore-backed MasterKey with AES256_GCM`() {
         assertTrue(
             "EncryptedTokenStorage must build a Keystore MasterKey",
-            tokenStorageSource.contains("MasterKey.Builder"),
+            tokenStorageSource.contains("MasterKey.Builder")
         )
         assertTrue(
             "The master key scheme must be AES256_GCM",
-            tokenStorageSource.contains("MasterKey.KeyScheme.AES256_GCM"),
+            tokenStorageSource.contains("MasterKey.KeyScheme.AES256_GCM")
         )
     }
 
@@ -54,11 +54,11 @@ class EncryptedTokenStorageGuardTest {
     fun `pref keys and values use the recommended encryption schemes`() {
         assertTrue(
             "Pref keys must use AES256_SIV",
-            tokenStorageSource.contains("PrefKeyEncryptionScheme.AES256_SIV"),
+            tokenStorageSource.contains("PrefKeyEncryptionScheme.AES256_SIV")
         )
         assertTrue(
             "Pref values must use AES256_GCM",
-            tokenStorageSource.contains("PrefValueEncryptionScheme.AES256_GCM"),
+            tokenStorageSource.contains("PrefValueEncryptionScheme.AES256_GCM")
         )
     }
 
@@ -66,7 +66,7 @@ class EncryptedTokenStorageGuardTest {
     fun `the DI graph wires EncryptedTokenStorage as the TokenStorage implementation`() {
         assertTrue(
             "provideTokenStorage must return an EncryptedTokenStorage",
-            diSource.contains("EncryptedTokenStorage"),
+            diSource.contains("EncryptedTokenStorage")
         )
     }
 }

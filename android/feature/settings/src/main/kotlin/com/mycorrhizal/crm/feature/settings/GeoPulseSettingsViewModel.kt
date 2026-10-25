@@ -8,13 +8,13 @@ import com.mycorrhizal.crm.model.network.GeoPulseConfigInput
 import com.mycorrhizal.crm.network.toApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.net.URI
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.net.URI
-import javax.inject.Inject
 
 /**
  * Outcome of "Test connection". [stage] is the server's `reachability|auth|ok` diagnosis; an
@@ -36,7 +36,7 @@ data class GeoPulseSettingsUiState(
     val storedBaseUrl: String = "",
     val hasApiKey: Boolean = false,
     /** Write-only: what the user typed this session. */
-    val apiKey: String = "",
+    val apiKey: String = ""
 ) {
     /**
      * Mirrors the backend rule (issue #1501): the token is required on first connect, and when the
@@ -44,7 +44,11 @@ data class GeoPulseSettingsUiState(
      * different server. Unparseable stored URLs count as a different origin (fail closed).
      */
     val tokenRequired: Boolean
-        get() = !hasApiKey || (geoPulseOriginOf(baseUrl) != null && !sameGeoPulseOrigin(storedBaseUrl, baseUrl))
+        get() = !hasApiKey || (
+            geoPulseOriginOf(
+                baseUrl
+            ) != null && !sameGeoPulseOrigin(storedBaseUrl, baseUrl)
+            )
 
     /** True when the token is required *because the origin changed* (drives the explanatory hint). */
     val tokenRequiredByOriginChange: Boolean
@@ -59,7 +63,13 @@ internal fun geoPulseOriginOf(raw: String): String? = try {
     if ((scheme != "http" && scheme != "https") || host.isNullOrEmpty()) {
         null
     } else {
-        val port = if (uri.port != -1) uri.port else if (scheme == "https") 443 else 80
+        val port = if (uri.port != -1) {
+            uri.port
+        } else if (scheme == "https") {
+            443
+        } else {
+            80
+        }
         "$scheme://$host:$port"
     }
 } catch (_: Exception) {
@@ -76,9 +86,8 @@ internal fun sameGeoPulseOrigin(a: String, b: String): Boolean {
  * API token, save / test connection / disconnect. Shape mirrors [ImmichSettingsViewModel].
  */
 @HiltViewModel
-class GeoPulseSettingsViewModel @Inject constructor(
-    private val repository: GeoPulseRepository,
-) : ViewModel() {
+class GeoPulseSettingsViewModel @Inject constructor(private val repository: GeoPulseRepository) :
+    ViewModel() {
 
     private val _uiState = MutableStateFlow(GeoPulseSettingsUiState())
     val uiState: StateFlow<GeoPulseSettingsUiState> = _uiState.asStateFlow()
@@ -97,19 +106,38 @@ class GeoPulseSettingsViewModel @Inject constructor(
                             isLoading = false,
                             baseUrl = config.baseUrl.orEmpty(),
                             storedBaseUrl = config.baseUrl.orEmpty(),
-                            hasApiKey = config.hasApiKey,
+                            hasApiKey = config.hasApiKey
                         )
                     }
                 }
-                .onFailure { e -> _uiState.update { it.copy(isLoading = false, loadError = e.message()) } }
+                .onFailure { e ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            loadError = e.message()
+                        )
+                    }
+                }
         }
     }
 
-    fun onBaseUrlChange(value: String) =
-        _uiState.update { it.copy(baseUrl = value, saveError = null, saveErrorRes = null, testResult = null) }
+    fun onBaseUrlChange(value: String) = _uiState.update {
+        it.copy(
+            baseUrl = value,
+            saveError = null,
+            saveErrorRes = null,
+            testResult = null
+        )
+    }
 
-    fun onApiKeyChange(value: String) =
-        _uiState.update { it.copy(apiKey = value, saveError = null, saveErrorRes = null, testResult = null) }
+    fun onApiKeyChange(value: String) = _uiState.update {
+        it.copy(
+            apiKey = value,
+            saveError = null,
+            saveErrorRes = null,
+            testResult = null
+        )
+    }
 
     /** Save the connection. A blank token keeps the stored one only when [GeoPulseSettingsUiState.tokenRequired] is false. */
     fun save() {
@@ -118,14 +146,18 @@ class GeoPulseSettingsViewModel @Inject constructor(
         val trimmed = s.baseUrl.trim()
         when {
             trimmed.isEmpty() -> return fail(R.string.geopulse_settings_base_url_required)
-            geoPulseOriginOf(trimmed) == null -> return fail(R.string.geopulse_settings_base_url_invalid)
+
+            geoPulseOriginOf(
+                trimmed
+            ) == null -> return fail(R.string.geopulse_settings_base_url_invalid)
+
             s.tokenRequired && s.apiKey.isBlank() ->
                 return fail(
                     if (s.tokenRequiredByOriginChange) {
                         R.string.geopulse_settings_api_key_required_origin_change
                     } else {
                         R.string.geopulse_settings_api_key_required
-                    },
+                    }
                 )
         }
         viewModelScope.launch {
@@ -139,15 +171,27 @@ class GeoPulseSettingsViewModel @Inject constructor(
                             storedBaseUrl = config.baseUrl.orEmpty(),
                             hasApiKey = config.hasApiKey,
                             // Write-only: never linger in state once sent.
-                            apiKey = "",
+                            apiKey = ""
                         )
                     }
                 }
-                .onFailure { e -> _uiState.update { it.copy(isSaving = false, saveError = e.message()) } }
+                .onFailure { e ->
+                    _uiState.update {
+                        it.copy(
+                            isSaving = false,
+                            saveError = e.message()
+                        )
+                    }
+                }
         }
     }
 
-    private fun fail(@StringRes res: Int) = _uiState.update { it.copy(saveErrorRes = res, saveError = null) }
+    private fun fail(@StringRes res: Int) = _uiState.update {
+        it.copy(
+            saveErrorRes = res,
+            saveError = null
+        )
+    }
 
     /** Diagnose the *saved* connection (reachability, then token validity). */
     fun test() {
@@ -157,12 +201,18 @@ class GeoPulseSettingsViewModel @Inject constructor(
             repository.testConnection()
                 .onSuccess { r ->
                     _uiState.update {
-                        it.copy(isTesting = false, testResult = GeoPulseTestOutcome(r.ok, r.stage, r.message))
+                        it.copy(
+                            isTesting = false,
+                            testResult = GeoPulseTestOutcome(r.ok, r.stage, r.message)
+                        )
                     }
                 }
                 .onFailure { e ->
                     _uiState.update {
-                        it.copy(isTesting = false, testResult = GeoPulseTestOutcome(false, null, e.message()))
+                        it.copy(
+                            isTesting = false,
+                            testResult = GeoPulseTestOutcome(false, null, e.message())
+                        )
                     }
                 }
         }
@@ -175,7 +225,14 @@ class GeoPulseSettingsViewModel @Inject constructor(
             _uiState.update { it.copy(isRemoving = true, saveError = null, saveErrorRes = null) }
             repository.deleteConfig()
                 .onSuccess { _uiState.value = GeoPulseSettingsUiState(isLoading = false) }
-                .onFailure { e -> _uiState.update { it.copy(isRemoving = false, saveError = e.message()) } }
+                .onFailure { e ->
+                    _uiState.update {
+                        it.copy(
+                            isRemoving = false,
+                            saveError = e.message()
+                        )
+                    }
+                }
         }
     }
 

@@ -3,8 +3,8 @@ package com.mycorrhizal.crm
 import androidx.lifecycle.ViewModel
 import com.mycorrhizal.crm.data.session.RoleRefresher
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.SharedFlow
 import javax.inject.Inject
+import kotlinx.coroutines.flow.SharedFlow
 
 /**
  * Issue #1826: surfaces [RoleRefresher]'s demotion events to the main nav tree
@@ -13,9 +13,7 @@ import javax.inject.Inject
  * no screen's 403 can precede the listener.
  */
 @HiltViewModel
-class PermissionChangeViewModel @Inject constructor(
-    roleRefresher: RoleRefresher,
-) : ViewModel() {
+class PermissionChangeViewModel @Inject constructor(roleRefresher: RoleRefresher) : ViewModel() {
     /** Emits when a re-fetch finds the user is no longer an admin. */
     val demotions: SharedFlow<Unit> = roleRefresher.demotions
 }

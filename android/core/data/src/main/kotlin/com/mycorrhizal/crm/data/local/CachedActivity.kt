@@ -16,5 +16,5 @@ data class CachedActivity(
     val location: String? = null,
     val date: String? = null,
     val type: String? = null,
-    val deleted: Boolean = false,
+    val deleted: Boolean = false
 )

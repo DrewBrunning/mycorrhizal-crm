@@ -1,9 +1,9 @@
 package com.mycorrhizal.crm.data.session
 
 import com.mycorrhizal.crm.network.SessionExpiryNotifier
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Glue between the network layer's 401 detection and the session store (issue
@@ -48,7 +48,7 @@ class SessionExpiryWiring(
      * through to [refresher]); otherwise whether the embedded server restarted
      * and a fresh session was adopted.
      */
-    private val localRemint: suspend (rejectedBearer: String?) -> Boolean? = { null },
+    private val localRemint: suspend (rejectedBearer: String?) -> Boolean? = { null }
 ) {
     private val refreshInFlight = AtomicBoolean(false)
 

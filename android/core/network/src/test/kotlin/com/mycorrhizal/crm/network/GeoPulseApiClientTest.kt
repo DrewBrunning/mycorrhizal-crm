@@ -29,7 +29,9 @@ class GeoPulseApiClientTest {
         server = MockWebServer()
         server.start()
         val okHttp = OkHttpClient.Builder()
-            .addInterceptor(BaseUrlInterceptor(BaseUrlProvider { server.url("/").toString().trimEnd('/') }))
+            .addInterceptor(
+                BaseUrlInterceptor(BaseUrlProvider { server.url("/").toString().trimEnd('/') })
+            )
             .build()
         client = ApiClient(okHttp, MoshiProvider.get())
     }
@@ -41,7 +43,9 @@ class GeoPulseApiClientTest {
 
     @Test
     fun `getGeoPulseConfig parses has_api_key and never expects a token`() = runBlocking {
-        server.enqueue(MockResponse().setBody("""{"base_url":"https://geo.example.com","has_api_key":true}"""))
+        server.enqueue(
+            MockResponse().setBody("""{"base_url":"https://geo.example.com","has_api_key":true}""")
+        )
 
         val config = client.getGeoPulseConfig().getOrThrow()
 
@@ -52,9 +56,13 @@ class GeoPulseApiClientTest {
 
     @Test
     fun `saveGeoPulseConfig PUTs snake_case base_url and api_key`() = runBlocking {
-        server.enqueue(MockResponse().setBody("""{"base_url":"https://geo.example.com","has_api_key":true}"""))
+        server.enqueue(
+            MockResponse().setBody("""{"base_url":"https://geo.example.com","has_api_key":true}""")
+        )
 
-        client.saveGeoPulseConfig(GeoPulseConfigInput("https://geo.example.com", "tok")).getOrThrow()
+        client.saveGeoPulseConfig(
+            GeoPulseConfigInput("https://geo.example.com", "tok")
+        ).getOrThrow()
 
         val req = server.takeRequest()
         assertEquals("PUT", req.method)
@@ -68,7 +76,9 @@ class GeoPulseApiClientTest {
     fun `a 400 on api_key surfaces the server message`() = runBlocking {
         server.enqueue(
             MockResponse().setResponseCode(400)
-                .setBody("""{"error":"re-enter the API token when changing the GeoPulse server"}"""),
+                .setBody(
+                    """{"error":"re-enter the API token when changing the GeoPulse server"}"""
+                )
         )
 
         val result = client.saveGeoPulseConfig(GeoPulseConfigInput("https://other.example.com"))
@@ -81,7 +91,9 @@ class GeoPulseApiClientTest {
     @Test
     fun `deleteGeoPulseConfig and testGeoPulseConnection use the right verbs`() = runBlocking {
         server.enqueue(MockResponse().setResponseCode(200).setBody("""{"message":"ok"}"""))
-        server.enqueue(MockResponse().setBody("""{"ok":false,"stage":"auth","message":"API token rejected"}"""))
+        server.enqueue(
+            MockResponse().setBody("""{"ok":false,"stage":"auth","message":"API token rejected"}""")
+        )
 
         assertTrue(client.deleteGeoPulseConfig().isSuccess)
         val test = client.testGeoPulseConnection().getOrThrow()
@@ -110,8 +122,8 @@ class GeoPulseApiClientTest {
                    "latitude":0,"longitude":0,"timestamp":"2026-03-10T16:00:00Z","duration_seconds":60,
                    "photos":[],"photos_unavailable":true}
                 ]}
-                """.trimIndent(),
-            ),
+                """.trimIndent()
+            )
         )
 
         val resp = client.getGeoPulseSuggestions("2026-03-10", "Europe/Rome").getOrThrow()
@@ -144,15 +156,15 @@ class GeoPulseApiClientTest {
     fun `503 external-service error surfaces the server's actionable message`() = runBlocking {
         server.enqueue(
             MockResponse().setResponseCode(503).setBody(
-                """{"error":{"code":"EXTERNAL_SERVICE_ERROR","message":"GeoPulse service error: Could not reach GeoPulse. Is the instance up?"}}""",
-            ),
+                """{"error":{"code":"EXTERNAL_SERVICE_ERROR","message":"GeoPulse service error: Could not reach GeoPulse. Is the instance up?"}}"""
+            )
         )
 
         val result = client.getGeoPulseSuggestions("2026-03-10", "UTC")
 
         assertEquals(
             "GeoPulse service error: Could not reach GeoPulse. Is the instance up?",
-            (result.exceptionOrNull() as ApiError).displayMessage,
+            (result.exceptionOrNull() as ApiError).displayMessage
         )
     }
 
@@ -160,14 +172,22 @@ class GeoPulseApiClientTest {
     fun `500 internal and database errors stay generic`() = runBlocking {
         server.enqueue(
             MockResponse().setResponseCode(500)
-                .setBody("""{"error":{"code":"INTERNAL_ERROR","message":"sql: connection refused at 10.0.0.5"}}"""),
+                .setBody(
+                    """{"error":{"code":"INTERNAL_ERROR","message":"sql: connection refused at 10.0.0.5"}}"""
+                )
         )
         server.enqueue(
             MockResponse().setResponseCode(503)
-                .setBody("""{"error":{"code":"DATABASE_ERROR","message":"database is locked"}}"""),
+                .setBody("""{"error":{"code":"DATABASE_ERROR","message":"database is locked"}}""")
         )
 
-        assertEquals("Server error (500)", (client.getGeoPulseConfig().exceptionOrNull() as ApiError).displayMessage)
-        assertEquals("Server error (503)", (client.getGeoPulseConfig().exceptionOrNull() as ApiError).displayMessage)
+        assertEquals(
+            "Server error (500)",
+            (client.getGeoPulseConfig().exceptionOrNull() as ApiError).displayMessage
+        )
+        assertEquals(
+            "Server error (503)",
+            (client.getGeoPulseConfig().exceptionOrNull() as ApiError).displayMessage
+        )
     }
 }

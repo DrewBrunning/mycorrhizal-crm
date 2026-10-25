@@ -1,12 +1,12 @@
 package com.mycorrhizal.crm.data.session
 
+import app.cash.turbine.test
 import com.mycorrhizal.crm.domain.profile.ServerProfile
 import com.mycorrhizal.crm.domain.profile.ServerProfileKind
 import com.mycorrhizal.crm.domain.repository.PendingInteraction
 import com.mycorrhizal.crm.domain.repository.PendingInteractionRepository
 import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.network.LOCAL_SERVER_SENTINEL_URL
-import app.cash.turbine.test
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -32,7 +32,7 @@ class DefaultSessionManagerTest {
         teardown: SessionTeardown = NoopSessionTeardown,
         pending: PendingInteractionRepository? = null,
         drainer: OutboxDrainer = NoopOutboxDrainer,
-        secrets: ProfileSecretStorage = NoopProfileSecretStorage,
+        secrets: ProfileSecretStorage = NoopProfileSecretStorage
     ): DefaultSessionManager {
         val ids = Ids()
         return DefaultSessionManager(
@@ -43,7 +43,7 @@ class DefaultSessionManagerTest {
             pendingInteractions = pending,
             outboxDrainer = drainer,
             profileSecretStorage = secrets,
-            newProfileId = ids::new,
+            newProfileId = ids::new
         )
     }
 
@@ -63,8 +63,10 @@ class DefaultSessionManagerTest {
         val tokenStorage = FakeTokenStorage()
         val prefs = FakeSessionPrefsStorage()
         prefs.snapshot = ProfilesSnapshot(
-            profiles = listOf(ServerProfile("p1", ServerProfileKind.Remote("https://a.example"), "a")),
-            activeProfileId = "p1",
+            profiles = listOf(
+                ServerProfile("p1", ServerProfileKind.Remote("https://a.example"), "a")
+            ),
+            activeProfileId = "p1"
         )
         tokenStorage.tokens["p1"] = "stored-jwt"
         val manager = manager(tokenStorage = tokenStorage, prefsStorage = prefs)
@@ -129,7 +131,7 @@ class DefaultSessionManagerTest {
         manager.setSession(
             serverUrl = "https://crm.example.com",
             token = "jwt-1",
-            state = SessionState(userId = 7, username = "alice"),
+            state = SessionState(userId = 7, username = "alice")
         )
 
         assertEquals("jwt-1", manager.bearerToken())
@@ -158,7 +160,7 @@ class DefaultSessionManagerTest {
         manager.setSession(
             serverUrl = "https://crm.example.com",
             token = "jwt-1",
-            state = SessionState(userId = 7, username = "alice"),
+            state = SessionState(userId = 7, username = "alice")
         )
         manager.clearSession()
 
@@ -181,7 +183,7 @@ class DefaultSessionManagerTest {
         managerWithSecrets.setSession(
             serverUrl = "https://crm.example.com",
             token = "jwt-1",
-            state = SessionState(userId = 7, username = "alice"),
+            state = SessionState(userId = 7, username = "alice")
         )
         val profileId = managerWithSecrets.activeProfileId()!!
 
@@ -265,7 +267,9 @@ class DefaultSessionManagerTest {
     fun `clearSession runs the teardown step while the session is still authenticated`() = runTest {
         var tokenSeenDuringTeardown: String? = null
         lateinit var manager: DefaultSessionManager
-        manager = manager(teardown = SessionTeardown { tokenSeenDuringTeardown = manager.bearerToken() })
+        manager = manager(
+            teardown = SessionTeardown { tokenSeenDuringTeardown = manager.bearerToken() }
+        )
         manager.setSession("https://crm.example.com", "jwt-1", SessionState(userId = 7))
 
         manager.clearSession()
@@ -281,7 +285,10 @@ class DefaultSessionManagerTest {
 
         manager.clearSession()
 
-        assertNull("the local clear must still happen despite the teardown throwing", manager.bearerToken())
+        assertNull(
+            "the local clear must still happen despite the teardown throwing",
+            manager.bearerToken()
+        )
         assertFalse(manager.observeSession().first().isLoggedIn)
     }
 
@@ -311,14 +318,19 @@ class DefaultSessionManagerTest {
     fun `isClearingSession is true only for the duration of the teardown call`() = runTest {
         lateinit var manager: DefaultSessionManager
         var duringTeardown = false
-        manager = manager(teardown = SessionTeardown { duringTeardown = manager.isClearingSession() })
+        manager = manager(
+            teardown = SessionTeardown { duringTeardown = manager.isClearingSession() }
+        )
         manager.setSession("https://crm.example.com", "jwt-1", SessionState(userId = 7))
         assertFalse("not clearing before logout", manager.isClearingSession())
 
         manager.clearSession()
 
         assertTrue("the flag must have been up while teardown ran", duringTeardown)
-        assertFalse("the flag must drop back down once clearSession returns", manager.isClearingSession())
+        assertFalse(
+            "the flag must drop back down once clearSession returns",
+            manager.isClearingSession()
+        )
     }
 
     @Test
@@ -371,8 +383,8 @@ class DefaultSessionManagerTest {
                 isAdmin = true,
                 language = "en",
                 dateFormat = "DMY",
-                enabledContactFields = listOf("email"),
-            ),
+                enabledContactFields = listOf("email")
+            )
         )
         manager.setSelfContactVCardUid("uid-me")
         return manager
@@ -436,15 +448,16 @@ class DefaultSessionManagerTest {
 
     // Issue #1769: the Auth screens call setServerUrl on every keystroke.
     @Test
-    fun `typing a url one character at a time leaves a label derived from the final url`() = runTest {
-        val (manager, _) = managerPair()
-        val typed = "https://crm.example.com"
-        for (i in 1..typed.length) manager.setServerUrl(typed.take(i))
+    fun `typing a url one character at a time leaves a label derived from the final url`() =
+        runTest {
+            val (manager, _) = managerPair()
+            val typed = "https://crm.example.com"
+            for (i in 1..typed.length) manager.setServerUrl(typed.take(i))
 
-        val profile = manager.profiles().single()
-        assertEquals(typed, profile.remoteUrl)
-        assertEquals("crm.example.com", profile.label)
-    }
+            val profile = manager.profiles().single()
+            assertEquals(typed, profile.remoteUrl)
+            assertEquals("crm.example.com", profile.label)
+        }
 
     @Test
     fun `a renamed profile keeps its label when its url is edited`() = runTest {
@@ -466,7 +479,11 @@ class DefaultSessionManagerTest {
     @Test
     fun `setSelfContactVCardUid overwrites the pointer, including clearing it to null`() = runTest {
         val (manager, _) = managerPair()
-        manager.setSession("https://crm.example.com", "jwt", SessionState(selfContactVCardUid = "uid-1"))
+        manager.setSession(
+            "https://crm.example.com",
+            "jwt",
+            SessionState(selfContactVCardUid = "uid-1")
+        )
 
         manager.setSelfContactVCardUid("uid-2")
         assertEquals("uid-2", manager.observeSession().first().selfContactVCardUid)
@@ -484,7 +501,7 @@ class DefaultSessionManagerTest {
         manager.setSession(
             serverUrl = "https://crm.example.com",
             token = "old-jwt",
-            state = SessionState(userId = 7, username = "alice"),
+            state = SessionState(userId = 7, username = "alice")
         )
 
         manager.setToken("reissued-jwt")
@@ -506,14 +523,19 @@ class DefaultSessionManagerTest {
         val tokenStorage = FakeTokenStorage()
         val prefs = FakeSessionPrefsStorage()
         prefs.snapshot = ProfilesSnapshot(
-            profiles = listOf(ServerProfile("p1", ServerProfileKind.Remote("https://a.example"), "a")),
-            activeProfileId = "p1",
+            profiles = listOf(
+                ServerProfile("p1", ServerProfileKind.Remote("https://a.example"), "a")
+            ),
+            activeProfileId = "p1"
         )
         tokenStorage.tokens["p1"] = "stored-jwt"
         val manager = manager(tokenStorage = tokenStorage, prefsStorage = prefs)
 
         var hydrated = false
-        async { manager.awaitHydrated(); hydrated = true }
+        async {
+            manager.awaitHydrated()
+            hydrated = true
+        }
 
         advanceUntilIdle()
         assertFalse(hydrated)
@@ -538,7 +560,7 @@ class DefaultSessionManagerTest {
             manager.setSession(
                 serverUrl = "https://crm.example.com",
                 token = "jwt-1",
-                state = SessionState(userId = 7, username = "alice"),
+                state = SessionState(userId = 7, username = "alice")
             )
             val authenticated = awaitItem()
             assertTrue(authenticated.isLoggedIn)
@@ -555,7 +577,7 @@ class DefaultSessionManagerTest {
             manager.setSession(
                 serverUrl = "https://crm.example.com",
                 token = "jwt-2",
-                state = SessionState(userId = 7, username = "alice"),
+                state = SessionState(userId = 7, username = "alice")
             )
             val reAuthenticated = awaitItem()
             assertTrue(reAuthenticated.isLoggedIn)
@@ -575,7 +597,7 @@ class DefaultSessionManagerTest {
         first.setSession(
             serverUrl = "https://crm.example.com",
             token = "jwt-1",
-            state = SessionState(userId = 7, username = "alice"),
+            state = SessionState(userId = 7, username = "alice")
         )
 
         val restarted = manager(tokenStorage = tokenStorage, prefsStorage = prefsStorage)
@@ -627,7 +649,11 @@ class DefaultSessionManagerTest {
         val two = manager.addRemoteProfile("Two", "https://two.example.com").id
 
         assertEquals(SwitchProfileResult.Switched, manager.switchProfile(two))
-        assertEquals("switching must wipe the previous profile's cached mirror", 1, cleaner.clearCount)
+        assertEquals(
+            "switching must wipe the previous profile's cached mirror",
+            1,
+            cleaner.clearCount
+        )
 
         manager.switchProfile(one)
         assertEquals(2, cleaner.clearCount)
@@ -663,7 +689,10 @@ class DefaultSessionManagerTest {
         assertEquals(0, cleaner.clearCount)
 
         // Confirming the discard proceeds.
-        assertEquals(SwitchProfileResult.Switched, manager.switchProfile(two, discardPending = true))
+        assertEquals(
+            SwitchProfileResult.Switched,
+            manager.switchProfile(two, discardPending = true)
+        )
         assertEquals(two, manager.activeProfileId())
         assertEquals(1, cleaner.clearCount)
     }
@@ -673,7 +702,10 @@ class DefaultSessionManagerTest {
         val pending = FakePendingInteractions(unsyncedCount = 2)
         val manager = manager(
             pending = pending,
-            drainer = OutboxDrainer { pending.unsyncedCount = 0; true },
+            drainer = OutboxDrainer {
+                pending.unsyncedCount = 0
+                true
+            }
         )
         manager.init()
         manager.setServerUrl("https://one.example.com")
@@ -692,7 +724,7 @@ class DefaultSessionManagerTest {
         val manager = manager(
             tokenStorage = tokenStorage,
             secrets = secrets,
-            teardown = SessionTeardown { teardownCalls++ },
+            teardown = SessionTeardown { teardownCalls++ }
         )
         manager.init()
         manager.setServerUrl("https://one.example.com")
@@ -716,7 +748,7 @@ class DefaultSessionManagerTest {
         val manager = manager(
             tokenStorage = tokenStorage,
             secrets = secrets,
-            teardown = SessionTeardown { tokenSeenDuringTeardown = managerHolder!!.bearerToken() },
+            teardown = SessionTeardown { tokenSeenDuringTeardown = managerHolder!!.bearerToken() }
         )
         managerHolder = manager
         manager.init()
@@ -782,19 +814,20 @@ class DefaultSessionManagerTest {
     }
 
     @Test
-    fun `activating a Local profile twice reuses the same profile and refreshes its token`() = runTest {
-        val tokenStorage = FakeTokenStorage()
-        val manager = manager(tokenStorage = tokenStorage)
-        manager.init()
+    fun `activating a Local profile twice reuses the same profile and refreshes its token`() =
+        runTest {
+            val tokenStorage = FakeTokenStorage()
+            val manager = manager(tokenStorage = tokenStorage)
+            manager.init()
 
-        val first = manager.activateLocalProfile("token-one")
-        val second = manager.activateLocalProfile("token-two")
+            val first = manager.activateLocalProfile("token-one")
+            val second = manager.activateLocalProfile("token-two")
 
-        assertEquals(first.id, second.id)
-        assertEquals(1, manager.profiles().size)
-        // Each app start mints a fresh token; the stored credential tracks it.
-        assertEquals("token-two", tokenStorage.tokens[first.id])
-    }
+            assertEquals(first.id, second.id)
+            assertEquals(1, manager.profiles().size)
+            // Each app start mints a fresh token; the stored credential tracks it.
+            assertEquals("token-two", tokenStorage.tokens[first.id])
+        }
 
     @Test
     fun `switching into a Local profile clears the previous profile's Room mirror`() = runTest {
@@ -946,4 +979,3 @@ class DefaultSessionManagerTest {
         assertFalse(manager.isActiveProfileArchived())
     }
 }
-

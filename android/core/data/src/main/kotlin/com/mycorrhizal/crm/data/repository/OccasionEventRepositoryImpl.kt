@@ -20,7 +20,7 @@ import javax.inject.Inject
  */
 class OccasionEventRepositoryImpl @Inject constructor(
     private val apiClient: ApiClient,
-    private val dao: CachedOccasionEventDao,
+    private val dao: CachedOccasionEventDao
 ) : OccasionEventRepository {
     override suspend fun list(): Result<List<OccasionEvent>> {
         val result = apiClient.listOccasionEvents()
@@ -32,7 +32,9 @@ class OccasionEventRepositoryImpl @Inject constructor(
         return result.map { it.occasionEvents }
     }
 
-    override suspend fun get(id: String): Result<OccasionEventDetail> = apiClient.getOccasionEvent(id)
+    override suspend fun get(id: String): Result<OccasionEventDetail> = apiClient.getOccasionEvent(
+        id
+    )
 
     override suspend fun create(input: OccasionEventInput): Result<OccasionEvent> {
         val result = apiClient.createOccasionEvent(input)
@@ -54,21 +56,25 @@ class OccasionEventRepositoryImpl @Inject constructor(
 
     override suspend fun addAttendee(
         eventId: String,
-        input: OccasionEventAttendeeInput,
+        input: OccasionEventAttendeeInput
     ): Result<OccasionEventAttendee> = apiClient.addOccasionEventAttendee(eventId, input)
 
     override suspend fun updateAttendee(
         eventId: String,
         vcardUid: String,
-        rsvp: String,
-    ): Result<OccasionEventAttendee> = apiClient.updateOccasionEventAttendee(eventId, vcardUid, rsvp)
+        rsvp: String
+    ): Result<OccasionEventAttendee> = apiClient.updateOccasionEventAttendee(
+        eventId,
+        vcardUid,
+        rsvp
+    )
 
     override suspend fun removeAttendee(eventId: String, vcardUid: String): Result<Unit> =
         apiClient.removeOccasionEventAttendee(eventId, vcardUid)
 
     override suspend fun suggestInvitees(
         circleIds: List<String>,
-        eventId: String?,
+        eventId: String?
     ): Result<List<InviteeSuggestion>> =
         apiClient.suggestInvitees(circleIds, eventId).map { it.suggestions }
 
@@ -81,6 +87,6 @@ class OccasionEventRepositoryImpl @Inject constructor(
         sensitivity = sensitivity,
         notes = notes,
         updatedAt = updatedAt,
-        deleted = deleted,
+        deleted = deleted
     )
 }

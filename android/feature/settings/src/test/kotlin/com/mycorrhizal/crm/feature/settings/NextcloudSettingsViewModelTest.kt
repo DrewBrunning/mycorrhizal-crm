@@ -25,9 +25,15 @@ class NextcloudSettingsViewModelTest {
     private val repository = mockk<NextcloudRepository>()
 
     @Test
-    fun `load populates the config into the editable state`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `load populates the config into the editable state`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.getConfig() } returns Result.success(
-            NextcloudConfigResponse(baseUrl = "https://nextcloud.example.com", username = "drew", hasAppPassword = true),
+            NextcloudConfigResponse(
+                baseUrl = "https://nextcloud.example.com",
+                username = "drew",
+                hasAppPassword = true
+            )
         )
         val vm = NextcloudSettingsViewModel(repository)
         advanceUntilIdle()
@@ -49,10 +55,16 @@ class NextcloudSettingsViewModelTest {
     }
 
     @Test
-    fun `save round-trips the config and clears the password field`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `save round-trips the config and clears the password field`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.getConfig() } returns Result.success(NextcloudConfigResponse())
         coEvery { repository.saveConfig(any()) } returns Result.success(
-            NextcloudConfigResponse(baseUrl = "https://nextcloud.example.com", username = "drew", hasAppPassword = true),
+            NextcloudConfigResponse(
+                baseUrl = "https://nextcloud.example.com",
+                username = "drew",
+                hasAppPassword = true
+            )
         )
         val vm = NextcloudSettingsViewModel(repository)
         advanceUntilIdle()
@@ -73,12 +85,20 @@ class NextcloudSettingsViewModelTest {
     }
 
     @Test
-    fun `a typed app password is sent on save exactly once`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a typed app password is sent on save exactly once`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val captured = mutableListOf<com.mycorrhizal.crm.model.network.NextcloudConfigInput>()
         coEvery { repository.getConfig() } returns Result.success(NextcloudConfigResponse())
         coEvery { repository.saveConfig(any()) } answers {
             captured.add(firstArg())
-            Result.success(NextcloudConfigResponse(baseUrl = "https://nextcloud.example.com", username = "drew", hasAppPassword = true))
+            Result.success(
+                NextcloudConfigResponse(
+                    baseUrl = "https://nextcloud.example.com",
+                    username = "drew",
+                    hasAppPassword = true
+                )
+            )
         }
         val vm = NextcloudSettingsViewModel(repository)
         advanceUntilIdle()
@@ -97,7 +117,11 @@ class NextcloudSettingsViewModelTest {
     @Test
     fun `save failure surfaces the save error`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { repository.getConfig() } returns Result.success(NextcloudConfigResponse())
-        coEvery { repository.saveConfig(any()) } returns Result.failure(ApiError.Client(400, "Invalid URL"))
+        coEvery {
+            repository.saveConfig(
+                any()
+            )
+        } returns Result.failure(ApiError.Client(400, "Invalid URL"))
         val vm = NextcloudSettingsViewModel(repository)
         advanceUntilIdle()
 
@@ -113,9 +137,15 @@ class NextcloudSettingsViewModelTest {
     fun `test reports success distinctly`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { repository.getConfig() } returns Result.success(NextcloudConfigResponse())
         coEvery { repository.saveConfig(any()) } returns Result.success(
-            NextcloudConfigResponse(baseUrl = "https://nextcloud.example.com", username = "drew", hasAppPassword = true),
+            NextcloudConfigResponse(
+                baseUrl = "https://nextcloud.example.com",
+                username = "drew",
+                hasAppPassword = true
+            )
         )
-        coEvery { repository.testConnection() } returns Result.success(NextcloudConnectionTestResult(ok = true))
+        coEvery { repository.testConnection() } returns Result.success(
+            NextcloudConnectionTestResult(ok = true)
+        )
         val vm = NextcloudSettingsViewModel(repository)
         advanceUntilIdle()
 
@@ -131,13 +161,19 @@ class NextcloudSettingsViewModelTest {
     }
 
     @Test
-    fun `test reports a diagnosed failure distinctly`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `test reports a diagnosed failure distinctly`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.getConfig() } returns Result.success(NextcloudConfigResponse())
         coEvery { repository.saveConfig(any()) } returns Result.success(
-            NextcloudConfigResponse(baseUrl = "https://nextcloud.example.com", username = "drew", hasAppPassword = true),
+            NextcloudConfigResponse(
+                baseUrl = "https://nextcloud.example.com",
+                username = "drew",
+                hasAppPassword = true
+            )
         )
         coEvery { repository.testConnection() } returns Result.success(
-            NextcloudConnectionTestResult(ok = false, message = "invalid credentials"),
+            NextcloudConnectionTestResult(ok = false, message = "invalid credentials")
         )
         val vm = NextcloudSettingsViewModel(repository)
         advanceUntilIdle()
@@ -153,9 +189,15 @@ class NextcloudSettingsViewModelTest {
     }
 
     @Test
-    fun `test never calls test-connection when the pre-test save fails`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `test never calls test-connection when the pre-test save fails`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.getConfig() } returns Result.success(NextcloudConfigResponse())
-        coEvery { repository.saveConfig(any()) } returns Result.failure(ApiError.Client(400, "Invalid URL"))
+        coEvery {
+            repository.saveConfig(
+                any()
+            )
+        } returns Result.failure(ApiError.Client(400, "Invalid URL"))
         val vm = NextcloudSettingsViewModel(repository)
         advanceUntilIdle()
 
@@ -171,9 +213,15 @@ class NextcloudSettingsViewModelTest {
     }
 
     @Test
-    fun `remove clears the connection back to a fresh state`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `remove clears the connection back to a fresh state`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.getConfig() } returns Result.success(
-            NextcloudConfigResponse(baseUrl = "https://nextcloud.example.com", username = "drew", hasAppPassword = true),
+            NextcloudConfigResponse(
+                baseUrl = "https://nextcloud.example.com",
+                username = "drew",
+                hasAppPassword = true
+            )
         )
         coEvery { repository.deleteConfig() } returns Result.success(Unit)
         val vm = NextcloudSettingsViewModel(repository)
@@ -190,9 +238,15 @@ class NextcloudSettingsViewModelTest {
     }
 
     @Test
-    fun `remove failure surfaces the save error and keeps the connection`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `remove failure surfaces the save error and keeps the connection`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.getConfig() } returns Result.success(
-            NextcloudConfigResponse(baseUrl = "https://nextcloud.example.com", username = "drew", hasAppPassword = true),
+            NextcloudConfigResponse(
+                baseUrl = "https://nextcloud.example.com",
+                username = "drew",
+                hasAppPassword = true
+            )
         )
         coEvery { repository.deleteConfig() } returns Result.failure(ApiError.Server(500, "boom"))
         val vm = NextcloudSettingsViewModel(repository)
@@ -206,12 +260,20 @@ class NextcloudSettingsViewModelTest {
     }
 
     @Test
-    fun `editing a field clears a stale test result`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `editing a field clears a stale test result`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.getConfig() } returns Result.success(NextcloudConfigResponse())
         coEvery { repository.saveConfig(any()) } returns Result.success(
-            NextcloudConfigResponse(baseUrl = "https://nextcloud.example.com", username = "drew", hasAppPassword = true),
+            NextcloudConfigResponse(
+                baseUrl = "https://nextcloud.example.com",
+                username = "drew",
+                hasAppPassword = true
+            )
         )
-        coEvery { repository.testConnection() } returns Result.success(NextcloudConnectionTestResult(ok = true))
+        coEvery { repository.testConnection() } returns Result.success(
+            NextcloudConnectionTestResult(ok = true)
+        )
         val vm = NextcloudSettingsViewModel(repository)
         advanceUntilIdle()
 

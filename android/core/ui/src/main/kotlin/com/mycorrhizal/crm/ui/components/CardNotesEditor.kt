@@ -34,35 +34,50 @@ fun CardNotesEditor(
     items: List<CardNote>,
     onChange: (List<CardNote>) -> Unit,
     label: String,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelLarge.copy(fontFamily = com.mycorrhizal.crm.ui.theme.MycorrhizalFonts.mono),
+            style = MaterialTheme.typography.labelLarge.copy(
+                fontFamily = com.mycorrhizal.crm.ui.theme.MycorrhizalFonts.mono
+            ),
             color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(top = 8.dp),
+            modifier = Modifier.padding(top = 8.dp)
         )
         items.forEachIndexed { index, note ->
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.Top,
+                    verticalAlignment = Alignment.Top
                 ) {
                     OutlinedTextField(
                         value = note.note.orEmpty(),
                         onValueChange = { value ->
-                            onChange(items.mapIndexed { i, it -> if (i == index) it.copy(note = value) else it })
+                            onChange(
+                                items.mapIndexed { i, it ->
+                                    if (i == index) {
+                                        it.copy(
+                                            note = value
+                                        )
+                                    } else {
+                                        it
+                                    }
+                                }
+                            )
                         },
                         label = { Text(stringResource(R.string.contact_value_n, index + 1)) },
                         minLines = 2,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f)
                     )
                     IconButton(
                         onClick = { onChange(items.filterIndexed { i, _ -> i != index }) },
-                        enabled = items.size > 1,
+                        enabled = items.size > 1
                     ) {
-                        Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.contact_remove))
+                        Icon(
+                            Icons.Outlined.Delete,
+                            contentDescription = stringResource(R.string.contact_remove)
+                        )
                     }
                 }
                 val authorCaption = noteAuthorCaption(note)
@@ -70,7 +85,7 @@ fun CardNotesEditor(
                     Text(
                         text = authorCaption,
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -83,7 +98,9 @@ fun CardNotesEditor(
 
 /** The read-only "— Name, 2026-01-01" caption for an import-populated note, or null. */
 private fun noteAuthorCaption(note: CardNote): String? {
-    val name = note.author?.name?.takeIf { it.isNotBlank() } ?: note.author?.uri?.takeIf { it.isNotBlank() }
+    val name =
+        note.author?.name?.takeIf { it.isNotBlank() }
+            ?: note.author?.uri?.takeIf { it.isNotBlank() }
     val created = note.created?.utc?.takeIf { it.isNotBlank() }
     return when {
         name != null && created != null -> "— $name, $created"

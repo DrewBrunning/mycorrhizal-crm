@@ -35,7 +35,9 @@ class DeviceContactsReaderTest {
 
     private fun setUp(dataValues: Map<String, Any?>) {
         provider.contacts = listOf(FakeContactsProvider.ContactFixture(1L, "lk1", "Dana White"))
-        provider.dataRows = listOf(FakeContactsProvider.DataRowFixture(contactId = 1L, values = dataValues))
+        provider.dataRows = listOf(
+            FakeContactsProvider.DataRowFixture(contactId = 1L, values = dataValues)
+        )
         ShadowContentResolver.registerProviderInternal(ContactsContract.AUTHORITY, provider)
     }
 
@@ -55,8 +57,8 @@ class DeviceContactsReaderTest {
                 ContactsContract.Data.DATA7 to "Springfield",
                 ContactsContract.Data.DATA8 to "IL",
                 ContactsContract.Data.DATA9 to "55555",
-                ContactsContract.Data.DATA10 to "USA",
-            ),
+                ContactsContract.Data.DATA10 to "USA"
+            )
         )
 
         val address = DeviceContactsReader(contentResolver()).readAll().single().addresses.single()
@@ -68,7 +70,7 @@ class DeviceContactsReaderTest {
         assertEquals("USA", address.country)
         assertEquals(
             "742 Evergreen Terrace, Springfield, IL 55555, USA",
-            address.formattedAddress,
+            address.formattedAddress
         )
         assertEquals(CommonDataKinds.StructuredPostal.TYPE_HOME, address.type)
     }
@@ -79,8 +81,8 @@ class DeviceContactsReaderTest {
         setUp(
             mapOf(
                 ContactsContract.Data.MIMETYPE to CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE,
-                ContactsContract.Data.DATA9 to "55555",
-            ),
+                ContactsContract.Data.DATA9 to "55555"
+            )
         )
 
         val address = DeviceContactsReader(contentResolver()).readAll().single().addresses.single()
@@ -96,8 +98,8 @@ class DeviceContactsReaderTest {
             mapOf(
                 ContactsContract.Data.MIMETYPE to CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE,
                 ContactsContract.Data.DATA4 to "1 Main St",
-                ContactsContract.Data.DATA10 to "Canada",
-            ),
+                ContactsContract.Data.DATA10 to "Canada"
+            )
         )
 
         val address = DeviceContactsReader(contentResolver()).readAll().single().addresses.single()
@@ -121,7 +123,7 @@ private class FakeContactsProvider : ContentProvider() {
         projection: Array<out String>?,
         selection: String?,
         selectionArgs: Array<out String>?,
-        sortOrder: String?,
+        sortOrder: String?
     ): Cursor {
         val columns = projection ?: emptyArray()
         return when {
@@ -137,11 +139,12 @@ private class FakeContactsProvider : ContentProvider() {
                                 else -> null
                             }
                             value
-                        }.toTypedArray(),
+                        }.toTypedArray()
                     )
                 }
                 cursor
             }
+
             uri.toString().startsWith(ContactsContract.Data.CONTENT_URI.toString()) -> {
                 val cursor = MatrixCursor(columns)
                 val wantedContactId = selectionArgs?.firstOrNull()?.toLongOrNull()
@@ -150,6 +153,7 @@ private class FakeContactsProvider : ContentProvider() {
                 }
                 cursor
             }
+
             else -> MatrixCursor(columns)
         }
     }
@@ -164,6 +168,6 @@ private class FakeContactsProvider : ContentProvider() {
         uri: Uri,
         values: ContentValues?,
         selection: String?,
-        selectionArgs: Array<out String>?,
+        selectionArgs: Array<out String>?
     ): Int = 0
 }

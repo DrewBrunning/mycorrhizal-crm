@@ -19,14 +19,19 @@ class OidcReturnParsingTest {
     @Test
     fun `a success callback captures the exchange code, state and profile prefs`() {
         val uri = Uri.parse(
-            "mycorrhizal://oidc/callback?code=single-use-code&state=app-state&language=de&date_format=eu",
+            "mycorrhizal://oidc/callback?code=single-use-code&state=app-state&language=de&date_format=eu"
         )
 
         val parsed = parseOidcReturn(uri)
 
         assertEquals(
-            OidcReturn.Success(state = "app-state", code = "single-use-code", language = "de", dateFormat = "eu"),
-            parsed,
+            OidcReturn.Success(
+                state = "app-state",
+                code = "single-use-code",
+                language = "de",
+                dateFormat = "eu"
+            ),
+            parsed
         )
     }
 
@@ -36,7 +41,10 @@ class OidcReturnParsingTest {
 
         val parsed = parseOidcReturn(uri)
 
-        assertEquals(OidcReturn.Success(state = "s", code = "abc", language = null, dateFormat = null), parsed)
+        assertEquals(
+            OidcReturn.Success(state = "s", code = "abc", language = null, dateFormat = null),
+            parsed
+        )
     }
 
     @Test
@@ -80,8 +88,8 @@ class OidcReturnParsingTest {
     fun `a legacy token-bearing callback is ignored`() {
         assertNull(
             parseOidcReturn(
-                Uri.parse("mycorrhizal://oidc/callback?token=eyJhbGciOiJIUzI1NiJ9.abc&language=de"),
-            ),
+                Uri.parse("mycorrhizal://oidc/callback?token=eyJhbGciOiJIUzI1NiJ9.abc&language=de")
+            )
         )
     }
 }

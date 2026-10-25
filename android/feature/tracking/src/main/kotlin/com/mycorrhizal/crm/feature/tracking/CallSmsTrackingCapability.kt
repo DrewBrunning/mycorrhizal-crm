@@ -31,7 +31,7 @@ fun interface CallSmsTrackingCapability {
  * overrides it to false for the Play build.
  */
 class ResourceCallSmsTrackingCapability @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @ApplicationContext private val context: Context
 ) : CallSmsTrackingCapability {
     override fun isAvailable(): Boolean =
         context.resources.getBoolean(R.bool.call_sms_tracking_available)

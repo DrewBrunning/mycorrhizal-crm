@@ -7,9 +7,7 @@ import com.squareup.moshi.JsonClass
 
 /** POST /api/v1/auth/device/grants body — optional display label. */
 @JsonClass(generateAdapter = true)
-data class DeviceGrantCreateRequest(
-    val label: String? = null,
-)
+data class DeviceGrantCreateRequest(val label: String? = null)
 
 /**
  * POST /api/v1/auth/device/grants response. [token] is the one-time plaintext
@@ -22,17 +20,13 @@ data class DeviceGrantCreateResponse(
     @Json(name = "created_at") val createdAt: String? = null,
     @Json(name = "last_used_at") val lastUsedAt: String? = null,
     @Json(name = "revoked_at") val revokedAt: String? = null,
-    val token: String? = null,
+    val token: String? = null
 )
 
 /** POST /api/v1/auth/device/session body — possession of the stored grant. */
 @JsonClass(generateAdapter = true)
-data class DeviceGrantExchangeRequest(
-    @Json(name = "device_token") val deviceToken: String,
-)
+data class DeviceGrantExchangeRequest(@Json(name = "device_token") val deviceToken: String)
 
 /** POST /api/v1/auth/device/grants/revoke-all — `{ revoked: n }`. */
 @JsonClass(generateAdapter = true)
-data class RevokeAllDeviceGrantsResponse(
-    val revoked: Int? = null,
-)
+data class RevokeAllDeviceGrantsResponse(val revoked: Int? = null)

@@ -77,7 +77,7 @@ fun DateField(
     onClear: (() -> Unit)? = null,
     /** Earliest date a *new* selection may make (reminders' `min: today`). */
     selectableFrom: LocalDate? = null,
-    testTag: String? = null,
+    testTag: String? = null
 ) {
     val dateFormat = LocalDateFormat.current
     val is24Hour = LocalIs24Hour.current
@@ -102,7 +102,7 @@ fun DateField(
             singleLine = true,
             modifier = Modifier
                 .fillMaxWidth()
-                .then(if (testTag != null) Modifier.testTag(testTag) else Modifier),
+                .then(if (testTag != null) Modifier.testTag(testTag) else Modifier)
         )
         if (enabled) {
             // A read-only text field still consumes taps itself, so the tap
@@ -110,27 +110,27 @@ fun DateField(
             Box(
                 modifier = Modifier
                     .matchParentSize()
-                    .clickable(onClickLabel = label) { showPicker = true },
+                    .clickable(onClickLabel = label) { showPicker = true }
             )
             Row(
                 modifier = Modifier
                     .matchParentSize()
                     .padding(end = 4.dp),
                 horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 if (allowClear && hasValue) {
                     IconButton(onClick = clear, enabled = enabled) {
                         Icon(
                             imageVector = Icons.Outlined.Close,
-                            contentDescription = stringResource(R.string.date_field_clear_date),
+                            contentDescription = stringResource(R.string.date_field_clear_date)
                         )
                     }
                 }
                 IconButton(onClick = { showPicker = true }, enabled = enabled) {
                     Icon(
                         imageVector = Icons.Outlined.CalendarToday,
-                        contentDescription = stringResource(R.string.date_field_pick_date),
+                        contentDescription = stringResource(R.string.date_field_pick_date)
                     )
                 }
             }
@@ -143,7 +143,7 @@ fun DateField(
             mode = mode,
             selectableFrom = selectableFrom,
             onConfirm = onValueChange,
-            onDismiss = { showPicker = false },
+            onDismiss = { showPicker = false }
         )
     }
 }
@@ -155,7 +155,7 @@ private fun DateFieldPickerDialog(
     mode: DateFieldMode,
     selectableFrom: LocalDate?,
     onConfirm: (String) -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     val zone = ZoneId.systemDefault()
     val initial = remember(value, mode) { DateFieldValue.parse(value, mode, zone) }
@@ -171,10 +171,12 @@ private fun DateFieldPickerDialog(
             object : SelectableDates {
                 override fun isSelectableDate(utcTimeMillis: Long): Boolean {
                     if (utcTimeMillis == initialMillis) return true
-                    return Instant.ofEpochMilli(utcTimeMillis).atZone(ZoneOffset.UTC).toLocalDate() >= selectableFrom
+                    return Instant.ofEpochMilli(
+                        utcTimeMillis
+                    ).atZone(ZoneOffset.UTC).toLocalDate() >= selectableFrom
                 }
             }
-        },
+        }
     )
     val is24Hour = LocalIs24Hour.current
     var time by remember { mutableStateOf(initial.time) }
@@ -205,12 +207,12 @@ private fun DateFieldPickerDialog(
                                 time = if (mode.allowsTime) time else null,
                                 mode = mode,
                                 yearUnknown = yearUnknown,
-                                zone = zone,
-                            ),
+                                zone = zone
+                            )
                         )
                     }
                     onDismiss()
-                },
+                }
             ) {
                 Text(stringResource(R.string.action_confirm))
             }
@@ -220,11 +222,11 @@ private fun DateFieldPickerDialog(
                 if (mode.allowsTime) {
                     TextButton(
                         modifier = Modifier.testTag("date-picker-time"),
-                        onClick = { showTimePicker = true },
+                        onClick = { showTimePicker = true }
                     ) {
                         Text(
                             time?.let { DateFieldValue.timeLabel(it, is24Hour) }
-                                ?: stringResource(R.string.date_field_add_time),
+                                ?: stringResource(R.string.date_field_add_time)
                         )
                     }
                 }
@@ -232,7 +234,7 @@ private fun DateFieldPickerDialog(
                     Text(stringResource(R.string.action_cancel))
                 }
             }
-        },
+        }
     ) {
         Column {
             DatePicker(state = dateState, showModeToggle = false)
@@ -244,9 +246,9 @@ private fun DateFieldPickerDialog(
                         .toggleable(
                             value = yearUnknown,
                             onValueChange = { yearUnknown = it },
-                            role = Role.Checkbox,
+                            role = Role.Checkbox
                         )
-                        .testTag("date-field-year-unknown"),
+                        .testTag("date-field-year-unknown")
                 ) {
                     Checkbox(checked = yearUnknown, onCheckedChange = null)
                     Text(stringResource(R.string.date_field_year_unknown))
@@ -267,7 +269,7 @@ private fun DateFieldPickerDialog(
                 time = null
                 showTimePicker = false
             },
-            onDismiss = { showTimePicker = false },
+            onDismiss = { showTimePicker = false }
         )
     }
 }
@@ -279,12 +281,12 @@ private fun DateFieldTimePickerDialog(
     is24Hour: Boolean,
     onConfirm: (LocalTime) -> Unit,
     onRemove: () -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     val timeState = rememberTimePickerState(
         initialHour = initial?.hour ?: 12,
         initialMinute = initial?.minute ?: 0,
-        is24Hour = is24Hour,
+        is24Hour = is24Hour
     )
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -293,7 +295,7 @@ private fun DateFieldTimePickerDialog(
         confirmButton = {
             TextButton(
                 modifier = Modifier.testTag("time-picker-confirm"),
-                onClick = { onConfirm(LocalTime.of(timeState.hour, timeState.minute)) },
+                onClick = { onConfirm(LocalTime.of(timeState.hour, timeState.minute)) }
             ) {
                 Text(stringResource(R.string.action_confirm))
             }
@@ -303,7 +305,7 @@ private fun DateFieldTimePickerDialog(
                 if (initial != null) {
                     TextButton(
                         modifier = Modifier.testTag("time-picker-remove"),
-                        onClick = onRemove,
+                        onClick = onRemove
                     ) {
                         Text(stringResource(R.string.date_field_remove_time))
                     }
@@ -312,6 +314,6 @@ private fun DateFieldTimePickerDialog(
                     Text(stringResource(R.string.action_cancel))
                 }
             }
-        },
+        }
     )
 }

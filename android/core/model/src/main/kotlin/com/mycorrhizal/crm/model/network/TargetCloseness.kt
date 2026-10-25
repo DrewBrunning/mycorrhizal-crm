@@ -43,5 +43,5 @@ data class ContactTargetClosenessResponse(
     @Json(name = "contact_id") val contactId: Int = 0,
     @Json(name = "target_closeness") val targetCloseness: String? = null,
     @Json(name = "default_interval_days") val defaultIntervalDays: Int? = null,
-    @Json(name = "cadence_policy_offer") val cadencePolicyOffer: CadencePolicyInput? = null,
+    @Json(name = "cadence_policy_offer") val cadencePolicyOffer: CadencePolicyInput? = null
 )

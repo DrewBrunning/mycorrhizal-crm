@@ -76,7 +76,9 @@ interface CachedConversationAgendaDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(item: CachedConversationAgenda)
 
-    @Query("SELECT * FROM cached_conversation_agenda WHERE entityId = :entityId ORDER BY updatedAt DESC")
+    @Query(
+        "SELECT * FROM cached_conversation_agenda WHERE entityId = :entityId ORDER BY updatedAt DESC"
+    )
     suspend fun getForContact(entityId: String): List<CachedConversationAgenda>
 
     @Query("DELETE FROM cached_conversation_agenda WHERE id = :id")
@@ -97,7 +99,9 @@ interface CachedCadencePolicyDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(item: CachedCadencePolicy)
 
-    @Query("SELECT * FROM cached_cadence_policies WHERE entityId = :entityId ORDER BY updatedAt DESC")
+    @Query(
+        "SELECT * FROM cached_cadence_policies WHERE entityId = :entityId ORDER BY updatedAt DESC"
+    )
     suspend fun getForContact(entityId: String): List<CachedCadencePolicy>
 
     @Query("DELETE FROM cached_cadence_policies WHERE id = :id")

@@ -10,5 +10,5 @@ data class CachedReminder(
     val message: String? = null,
     val remindAt: String? = null,
     val recurrence: String? = null,
-    val completed: Boolean = false,
+    val completed: Boolean = false
 )

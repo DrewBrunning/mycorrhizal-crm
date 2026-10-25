@@ -1,7 +1,6 @@
 package com.mycorrhizal.crm
 
 import androidx.annotation.StringRes
-import androidx.core.net.toUri
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Celebration
 import androidx.compose.material.icons.outlined.Contacts
@@ -19,6 +18,7 @@ import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.core.net.toUri
 import com.mycorrhizal.crm.ui.R
 
 /**
@@ -31,7 +31,7 @@ internal enum class NavGroup(@StringRes val labelRes: Int?) {
     PEOPLE(R.string.nav_group_people),
     INTERACTIONS(R.string.nav_group_interactions),
     DATA_ADMIN(R.string.nav_group_data_admin),
-    FOOTER(null),
+    FOOTER(null)
 }
 
 /**
@@ -47,7 +47,7 @@ internal data class TopLevelDestination(
     @StringRes val labelRes: Int,
     val icon: ImageVector,
     val group: NavGroup,
-    val ownedRoutePrefixes: List<String> = emptyList(),
+    val ownedRoutePrefixes: List<String> = emptyList()
 )
 
 /** Routes reachable only through Settings; the Settings entry stays selected on them. */
@@ -55,7 +55,7 @@ private val settingsOwnedRoutes = listOf(
     "servers", "custom-links", "webhooks", "api-tokens", "calendar-sync", "two-factor", "passkeys",
     "notification-channels", "immich-settings", "paperless-settings", "seafile-settings",
     "nextcloud-settings", "geopulse-settings", "circle-tag-triage", "custom-field-definitions",
-    "contact-field-settings", "admin",
+    "contact-field-settings", "admin"
 )
 
 /**
@@ -64,26 +64,69 @@ private val settingsOwnedRoutes = listOf(
  */
 internal val navDestinations: List<TopLevelDestination> = listOf(
     TopLevelDestination("home", R.string.nav_dashboard, Icons.Outlined.Home, NavGroup.PEOPLE),
-    TopLevelDestination("contacts", R.string.nav_contacts, Icons.Outlined.Contacts, NavGroup.PEOPLE),
+    TopLevelDestination(
+        "contacts",
+        R.string.nav_contacts,
+        Icons.Outlined.Contacts,
+        NavGroup.PEOPLE
+    ),
     TopLevelDestination("circles", R.string.circles_title, Icons.Outlined.Group, NavGroup.PEOPLE),
     TopLevelDestination("tags", R.string.tags_title, Icons.Outlined.Label, NavGroup.PEOPLE),
-    TopLevelDestination("households", R.string.households_title, Icons.Outlined.HomeWork, NavGroup.PEOPLE),
+    TopLevelDestination(
+        "households",
+        R.string.households_title,
+        Icons.Outlined.HomeWork,
+        NavGroup.PEOPLE
+    ),
     TopLevelDestination("network", R.string.nav_network, Icons.Outlined.Share, NavGroup.PEOPLE),
     TopLevelDestination("map", R.string.nav_map, Icons.Outlined.Map, NavGroup.PEOPLE),
-    TopLevelDestination("activities", R.string.nav_activities, Icons.Outlined.EventNote, NavGroup.INTERACTIONS),
-    TopLevelDestination("notes", R.string.nav_notes_unassigned, Icons.Outlined.EditNote, NavGroup.INTERACTIONS),
+    TopLevelDestination(
+        "activities",
+        R.string.nav_activities,
+        Icons.Outlined.EventNote,
+        NavGroup.INTERACTIONS
+    ),
+    TopLevelDestination(
+        "notes",
+        R.string.nav_notes_unassigned,
+        Icons.Outlined.EditNote,
+        NavGroup.INTERACTIONS
+    ),
     // Issue #1758: a distinct glyph, because Activities already uses the calendar one.
-    TopLevelDestination("occasions", R.string.occasions_title, Icons.Outlined.Celebration, NavGroup.INTERACTIONS),
-    TopLevelDestination("shares", R.string.shares_title, Icons.Outlined.IosShare, NavGroup.INTERACTIONS),
+    TopLevelDestination(
+        "occasions",
+        R.string.occasions_title,
+        Icons.Outlined.Celebration,
+        NavGroup.INTERACTIONS
+    ),
+    TopLevelDestination(
+        "shares",
+        R.string.shares_title,
+        Icons.Outlined.IosShare,
+        NavGroup.INTERACTIONS
+    ),
     // Issue #1758/#1759: the screen is titled "Data" (export, restore, suggestions); Settings no
     // longer carries a duplicate row.
-    TopLevelDestination("data", R.string.settings_data, Icons.Outlined.Dataset, NavGroup.DATA_ADMIN),
-    TopLevelDestination("import", R.string.import_title, Icons.Outlined.FileUpload, NavGroup.DATA_ADMIN),
+    TopLevelDestination(
+        "data",
+        R.string.settings_data,
+        Icons.Outlined.Dataset,
+        NavGroup.DATA_ADMIN
+    ),
+    TopLevelDestination(
+        "import",
+        R.string.import_title,
+        Icons.Outlined.FileUpload,
+        NavGroup.DATA_ADMIN
+    ),
     TopLevelDestination("audit", R.string.audit_title, Icons.Outlined.History, NavGroup.DATA_ADMIN),
     TopLevelDestination(
-        "settings", R.string.settings_title, Icons.Outlined.Settings, NavGroup.FOOTER,
-        ownedRoutePrefixes = settingsOwnedRoutes,
-    ),
+        "settings",
+        R.string.settings_title,
+        Icons.Outlined.Settings,
+        NavGroup.FOOTER,
+        ownedRoutePrefixes = settingsOwnedRoutes
+    )
 )
 
 /** The destinations of [group], in display order. */
@@ -102,8 +145,11 @@ internal val allDrawerRoutes: List<String> = navDestinations.map { it.route }
 /** True when the current destination is inside a [TopLevelDestination]'s route. */
 internal fun isSelected(currentRoute: String?, item: TopLevelDestination): Boolean {
     val route = currentRoute ?: return false
+
     // The bare contacts destination's pattern carries an optional query arg (issue #1269).
-    fun under(prefix: String) = route == prefix || route.startsWith("$prefix/") || route.startsWith("$prefix?")
+    fun under(prefix: String) = route == prefix || route.startsWith(
+        "$prefix/"
+    ) || route.startsWith("$prefix?")
     return under(item.route) || item.ownedRoutePrefixes.any(::under)
 }
 

@@ -25,7 +25,7 @@ class DeviceGrantManagerTest {
         val storage: DeviceGrantTokenStorage = mockk(),
         val settings: LocalAuthSettingsRepository = mockk(),
         val sessionManager: SessionManager = mockk(),
-        val profileId: String? = "profile-1",
+        val profileId: String? = "profile-1"
     ) {
         val manager = DeviceGrantManager(api, storage, settings, sessionManager)
 
@@ -39,9 +39,15 @@ class DeviceGrantManagerTest {
     fun `enroll stores the grant under the active profile and marks it enrolled`() = runTest {
         val h = Harness()
         coEvery { h.api.createDeviceGrant("Pixel") } returns
-            Result.success(DeviceGrantCreateResponse(id = 7, label = "Pixel", token = "grant-token"))
+            Result.success(
+                DeviceGrantCreateResponse(id = 7, label = "Pixel", token = "grant-token")
+            )
         coEvery { h.storage.save("profile-1", "grant-token", 7L) } returns Unit
-        coEvery { h.settings.setBiometricEnrollmentStatus(BiometricEnrollmentStatus.ENROLLED) } returns Unit
+        coEvery {
+            h.settings.setBiometricEnrollmentStatus(
+                BiometricEnrollmentStatus.ENROLLED
+            )
+        } returns Unit
 
         val result = h.manager.enroll("Pixel")
 
@@ -114,7 +120,11 @@ class DeviceGrantManagerTest {
         coEvery { h.storage.loadGrantId("profile-1") } returns 7L
         coEvery { h.api.revokeDeviceGrant(7L) } returns Result.success(Unit)
         coEvery { h.storage.clear("profile-1") } returns Unit
-        coEvery { h.settings.setBiometricEnrollmentStatus(BiometricEnrollmentStatus.OPTED_OUT) } returns Unit
+        coEvery {
+            h.settings.setBiometricEnrollmentStatus(
+                BiometricEnrollmentStatus.OPTED_OUT
+            )
+        } returns Unit
 
         val result = h.manager.removeEnrollment()
 
@@ -128,7 +138,9 @@ class DeviceGrantManagerTest {
     fun `remove enrollment falls back to revoke-all when the grant id is missing`() = runTest {
         val h = Harness()
         coEvery { h.storage.loadGrantId("profile-1") } returns null
-        coEvery { h.api.revokeAllDeviceGrants() } returns Result.success(com.mycorrhizal.crm.model.network.RevokeAllDeviceGrantsResponse(1))
+        coEvery { h.api.revokeAllDeviceGrants() } returns Result.success(
+            com.mycorrhizal.crm.model.network.RevokeAllDeviceGrantsResponse(1)
+        )
         coEvery { h.storage.clear("profile-1") } returns Unit
         coEvery { h.settings.setBiometricEnrollmentStatus(any()) } returns Unit
 

@@ -19,7 +19,7 @@ class DeviceContactMapperTest {
             emails = emptyList(),
             addresses = emptyList(),
             organization = null,
-            birthday = null,
+            birthday = null
         )
 
         val input = DeviceContactMapper.toInput(device)
@@ -42,7 +42,7 @@ class DeviceContactMapperTest {
             emails = emptyList(),
             addresses = emptyList(),
             organization = null,
-            birthday = null,
+            birthday = null
         )
 
         val input = DeviceContactMapper.toInput(device)
@@ -60,7 +60,7 @@ class DeviceContactMapperTest {
             emails = emptyList(),
             addresses = emptyList(),
             organization = null,
-            birthday = null,
+            birthday = null
         )
 
         val input = DeviceContactMapper.toInput(device)
@@ -79,7 +79,7 @@ class DeviceContactMapperTest {
             emails = emptyList(),
             addresses = emptyList(),
             organization = null,
-            birthday = "1990-06-15",
+            birthday = "1990-06-15"
         )
 
         val input = DeviceContactMapper.toInput(device)
@@ -101,7 +101,7 @@ class DeviceContactMapperTest {
             emails = emptyList(),
             addresses = emptyList(),
             organization = "Acme",
-            birthday = null,
+            birthday = null
         )
 
         val input = DeviceContactMapper.toInput(device)
@@ -128,11 +128,11 @@ class DeviceContactMapperTest {
                     country = "USA",
                     formattedAddress = "742 Evergreen Terrace, Springfield, IL 55555, USA",
                     customLabel = null,
-                    type = StructuredPostal.TYPE_HOME,
-                ),
+                    type = StructuredPostal.TYPE_HOME
+                )
             ),
             organization = null,
-            birthday = null,
+            birthday = null
         )
 
         val input = DeviceContactMapper.toInput(device)
@@ -167,11 +167,11 @@ class DeviceContactMapperTest {
                     country = null,
                     formattedAddress = null,
                     customLabel = null,
-                    type = StructuredPostal.TYPE_HOME,
-                ),
+                    type = StructuredPostal.TYPE_HOME
+                )
             ),
             organization = null,
-            birthday = null,
+            birthday = null
         )
 
         val input = DeviceContactMapper.toInput(device)
@@ -184,16 +184,34 @@ class DeviceContactMapperTest {
     @Test
     fun `home address carries the private context, work address the work context`() {
         val home = DeviceAddress(
-            street = "1 Main St", city = null, region = null, postcode = null, country = null,
-            formattedAddress = null, customLabel = null, type = StructuredPostal.TYPE_HOME,
+            street = "1 Main St",
+            city = null,
+            region = null,
+            postcode = null,
+            country = null,
+            formattedAddress = null,
+            customLabel = null,
+            type = StructuredPostal.TYPE_HOME
         )
         val work = DeviceAddress(
-            street = "2 Main St", city = null, region = null, postcode = null, country = null,
-            formattedAddress = null, customLabel = null, type = StructuredPostal.TYPE_WORK,
+            street = "2 Main St",
+            city = null,
+            region = null,
+            postcode = null,
+            country = null,
+            formattedAddress = null,
+            customLabel = null,
+            type = StructuredPostal.TYPE_WORK
         )
         val other = DeviceAddress(
-            street = "3 Main St", city = null, region = null, postcode = null, country = null,
-            formattedAddress = null, customLabel = null, type = StructuredPostal.TYPE_OTHER,
+            street = "3 Main St",
+            city = null,
+            region = null,
+            postcode = null,
+            country = null,
+            formattedAddress = null,
+            customLabel = null,
+            type = StructuredPostal.TYPE_OTHER
         )
         val device = DeviceContact(
             contactId = 1,
@@ -203,7 +221,7 @@ class DeviceContactMapperTest {
             emails = emptyList(),
             addresses = listOf(home, work, other),
             organization = null,
-            birthday = null,
+            birthday = null
         )
 
         val addresses = DeviceContactMapper.toInput(device).card?.addresses.orEmpty()
@@ -215,7 +233,16 @@ class DeviceContactMapperTest {
 
     @Test
     fun `blank display name yields no name`() {
-        val device = DeviceContact(1, "lk1", null, emptyList(), emptyList(), emptyList(), null, null)
+        val device = DeviceContact(
+            1,
+            "lk1",
+            null,
+            emptyList(),
+            emptyList(),
+            emptyList(),
+            null,
+            null
+        )
         val input = DeviceContactMapper.toInput(device)
         assertTrue(input.card?.name == null)
     }

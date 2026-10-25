@@ -2,8 +2,8 @@ package com.mycorrhizal.crm.network
 
 import com.mycorrhizal.crm.model.MoshiProvider
 import com.squareup.moshi.Moshi
-import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
+import okhttp3.OkHttpClient
 
 /**
  * Builds the OkHttp stack and Moshi instance. Interceptor order:
@@ -28,7 +28,7 @@ object NetworkFactory {
         forbiddenInterceptor: ForbiddenInterceptor? = null,
         clientVersionProvider: ClientVersionProvider? = null,
         localSocketPathProvider: LocalSocketPathProvider? = null,
-        archivedProfileProvider: ArchivedProfileProvider? = null,
+        archivedProfileProvider: ArchivedProfileProvider? = null
     ): OkHttpClient {
         val builder = OkHttpClient.Builder()
         // ADR 0028 Decision 3: first in the chain, so a write on an archived
@@ -44,8 +44,8 @@ object NetworkFactory {
             .addInterceptor(
                 ClientVersionInterceptor(
                     versionProvider = clientVersionProvider ?: ClientVersionProvider { null },
-                    baseUrlProvider = baseUrlProvider,
-                ),
+                    baseUrlProvider = baseUrlProvider
+                )
             )
             .addInterceptor(AuthInterceptor(tokenProvider, baseUrlProvider))
             .addInterceptor(RetryInterceptor())
@@ -75,7 +75,7 @@ object NetworkFactory {
             builder.addInterceptor(
                 okhttp3.logging.HttpLoggingInterceptor().apply {
                     level = okhttp3.logging.HttpLoggingInterceptor.Level.BASIC
-                },
+                }
             )
         }
         return builder.build()

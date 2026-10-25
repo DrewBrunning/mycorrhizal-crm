@@ -16,7 +16,6 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -39,20 +38,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.Note
-import com.mycorrhizal.crm.ui.components.BrandFab
-import com.mycorrhizal.crm.ui.components.FabListContentPadding
-import com.mycorrhizal.crm.ui.components.DateField
-import com.mycorrhizal.crm.ui.components.EmptyState
-import com.mycorrhizal.crm.ui.components.LoadingSkeleton
-import com.mycorrhizal.crm.ui.components.RefreshableContent
-import com.mycorrhizal.crm.ui.R
-import com.mycorrhizal.crm.ui.components.WriteConflictDialog
 import com.mycorrhizal.crm.model.util.DateFieldMode
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.ui.LocalDateFormat
+import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.DateField
+import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
+import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.RefreshableContent
+import com.mycorrhizal.crm.ui.components.WriteConflictDialog
 
 /**
  * M19: per-contact notes list. Gained a search field + from/to-date filters
@@ -66,7 +65,7 @@ fun NotesScreen(
     onBack: () -> Unit,
     onCreateNote: () -> Unit,
     onEditNote: (Int) -> Unit,
-    viewModel: NotesViewModel = hiltViewModel(),
+    viewModel: NotesViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     NotesScreenContent(
@@ -82,7 +81,7 @@ fun NotesScreen(
         onRefresh = viewModel::load,
         onErrorShown = viewModel::onErrorShown,
         onConflictDismiss = viewModel::onConflictDismissed,
-        onConflictLoadLatest = viewModel::onConflictLoadLatest,
+        onConflictLoadLatest = viewModel::onConflictLoadLatest
     )
 }
 
@@ -105,31 +104,38 @@ fun NotesScreenContent(
     onRefresh: () -> Unit = {},
     onErrorShown: () -> Unit = {},
     onConflictDismiss: () -> Unit = {},
-    onConflictLoadLatest: () -> Unit = {},
+    onConflictLoadLatest: () -> Unit = {}
 ) {
     val state = uiState
     val snackbarHostState = remember { SnackbarHostState() }
     var pendingDelete by remember { mutableStateOf<Note?>(null) }
 
-    val hasFilters = state.searchQuery.isNotBlank() || state.fromDate.isNotBlank() || state.toDate.isNotBlank()
+    val hasFilters =
+        state.searchQuery.isNotBlank() || state.fromDate.isNotBlank() || state.toDate.isNotBlank()
 
     Scaffold(
         topBar = {
             TopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back)
+                        )
                     }
                 },
                 title = {
-                    Text(stringResource(R.string.nav_notes), style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        stringResource(R.string.nav_notes),
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
         floatingActionButton = {
@@ -137,7 +143,7 @@ fun NotesScreenContent(
                 Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.cd_new_note))
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             TimelineFilterRow(
@@ -147,43 +153,71 @@ fun NotesScreenContent(
                 onFromDateChange = onFromDateChange,
                 toDate = state.toDate,
                 onToDateChange = onToDateChange,
-                searchLabelRes = R.string.notes_search,
+                searchLabelRes = R.string.notes_search
             )
             Box(modifier = Modifier.fillMaxSize()) {
                 RefreshableContent(
                     isRefreshing = state.isLoading && state.notes.isNotEmpty(),
                     onRefresh = onRefresh,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize()
                 ) {
                     when {
                         state.isLoading && state.notes.isEmpty() -> LoadingSkeleton()
+
                         // The error/errorRes branch must precede the generic empty
                         // branch: the missing-contact-id state sets errorRes with
                         // error == null, so the empty branch used to swallow it and
                         // show "No notes yet" instead of the real cause.
                         state.notes.isEmpty() && (state.errorRes != null || state.error != null) ->
-                            EmptyState(state.errorRes?.let { stringResource(it) } ?: state.error.orEmpty())
+                            EmptyState(
+                                state.errorRes?.let { stringResource(it) } ?: state.error.orEmpty()
+                            )
+
                         state.notes.isEmpty() && state.error == null ->
                             EmptyState(
-                                title = stringResource(if (hasFilters) R.string.notes_no_results else R.string.notes_empty),
-                                body = if (hasFilters) null else stringResource(R.string.notes_empty_body),
-                                actionLabel = if (hasFilters) null else stringResource(R.string.cd_new_note),
-                                onAction = if (hasFilters) null else onCreateNote,
+                                title = stringResource(
+                                    if (hasFilters) R.string.notes_no_results else R.string.notes_empty
+                                ),
+                                body = if (hasFilters) {
+                                    null
+                                } else {
+                                    stringResource(
+                                        R.string.notes_empty_body
+                                    )
+                                },
+                                actionLabel = if (hasFilters) {
+                                    null
+                                } else {
+                                    stringResource(
+                                        R.string.cd_new_note
+                                    )
+                                },
+                                onAction = if (hasFilters) null else onCreateNote
                             )
+
                         else -> {
-                            LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = FabListContentPadding) {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = FabListContentPadding
+                            ) {
                                 items(state.notes, key = { it.id }) { note ->
                                     NoteListItem(
                                         note = note,
                                         onClick = { onEditNote(note.id) },
                                         onDelete = { pendingDelete = note },
-                                        isDeleting = state.deletingId == note.id,
+                                        isDeleting = state.deletingId == note.id
                                     )
                                 }
                                 if (!state.nextCursor.isNullOrEmpty()) {
                                     item {
-                                        Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                                            Button(onClick = onLoadMore, enabled = !state.isLoadingMore) {
+                                        Box(
+                                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Button(
+                                                onClick = onLoadMore,
+                                                enabled = !state.isLoadingMore
+                                            ) {
                                                 Text(stringResource(R.string.action_load_more))
                                             }
                                         }
@@ -201,7 +235,11 @@ fun NotesScreenContent(
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
             title = { Text(stringResource(R.string.notes_delete_title)) },
-            text = { Text(stringResource(R.string.notes_delete_confirm, note.content.orEmpty().take(80))) },
+            text = {
+                Text(
+                    stringResource(R.string.notes_delete_confirm, note.content.orEmpty().take(80))
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
                     onDelete(note.id)
@@ -214,7 +252,7 @@ fun NotesScreenContent(
                 TextButton(onClick = { pendingDelete = null }) {
                     Text(stringResource(R.string.action_cancel))
                 }
-            },
+            }
         )
     }
 
@@ -226,7 +264,7 @@ fun NotesScreenContent(
             onLoadLatest = onConflictLoadLatest,
             onKeep = onConflictDismiss,
             messageRes = R.string.conflict_message_delete,
-            keepLabelRes = R.string.conflict_dismiss,
+            keepLabelRes = R.string.conflict_dismiss
         )
     }
 
@@ -249,7 +287,7 @@ fun TimelineFilterRow(
     toDate: String,
     onToDateChange: (String) -> Unit,
     searchLabelRes: Int,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
         OutlinedTextField(
@@ -257,7 +295,7 @@ fun TimelineFilterRow(
             onValueChange = onSearchChange,
             label = { Text(stringResource(searchLabelRes)) },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         )
         Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
             DateField(
@@ -267,7 +305,7 @@ fun TimelineFilterRow(
                 mode = DateFieldMode.DATE_ONLY,
                 allowClear = true,
                 testTag = "timeline-from-date",
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f)
             )
             DateField(
                 value = toDate,
@@ -278,7 +316,7 @@ fun TimelineFilterRow(
                 testTag = "timeline-to-date",
                 modifier = Modifier
                     .weight(1f)
-                    .padding(start = 8.dp),
+                    .padding(start = 8.dp)
             )
         }
     }
@@ -290,7 +328,7 @@ fun NoteListItem(
     onClick: () -> Unit,
     onDelete: () -> Unit,
     isDeleting: Boolean = false,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     val dateFormat = LocalDateFormat.current
     androidx.compose.material3.ListItem(
@@ -299,10 +337,15 @@ fun NoteListItem(
                 text = note.content.orEmpty(),
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
         },
-        supportingContent = note.date?.let { DateFormat.formatTimestamp(it, dateFormat) }?.takeIf { it.isNotBlank() }?.let { date ->
+        supportingContent = note.date?.let {
+            DateFormat.formatTimestamp(
+                it,
+                dateFormat
+            )
+        }?.takeIf { it.isNotBlank() }?.let { date ->
             { Text(date, style = MaterialTheme.typography.bodySmall) }
         },
         trailingContent = {
@@ -311,12 +354,15 @@ fun NoteListItem(
                 // TalkBack doesn't read a bare "Delete" on every row.
                 Icon(
                     Icons.Outlined.Delete,
-                    contentDescription = stringResource(R.string.notes_delete_named, note.content.orEmpty()),
+                    contentDescription = stringResource(
+                        R.string.notes_delete_named,
+                        note.content.orEmpty()
+                    )
                 )
             }
         },
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .clickable(onClick = onClick)
     )
 }

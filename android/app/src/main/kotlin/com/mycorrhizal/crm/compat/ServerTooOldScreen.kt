@@ -41,7 +41,7 @@ fun ServerTooOldScreen(
     serverUrl: String?,
     loggedIn: Boolean = true,
     onLogout: () -> Unit,
-    onBackToLogin: (() -> Unit)? = null,
+    onBackToLogin: (() -> Unit)? = null
 ) {
     Box(
         modifier = Modifier
@@ -49,45 +49,49 @@ fun ServerTooOldScreen(
             .verticalScroll(rememberScrollState())
             .padding(24.dp)
             .testTag("server-too-old-screen"),
-        contentAlignment = Alignment.Center,
+        contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         ) {
             Image(
                 painter = painterResource(id = R.drawable.ic_brand_logo),
                 contentDescription = stringResource(R.string.app_name),
-                modifier = Modifier.size(96.dp),
+                modifier = Modifier.size(96.dp)
             )
             Text(
                 text = stringResource(R.string.server_too_old_heading),
                 style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.semantics { heading() },
+                modifier = Modifier.semantics { heading() }
             )
             Text(
-                text = stringResource(R.string.server_too_old_message, requiredVersion, serverVersion),
+                text = stringResource(
+                    R.string.server_too_old_message,
+                    requiredVersion,
+                    serverVersion
+                ),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             serverUrl?.takeIf { it.isNotBlank() }?.let { url ->
                 Text(
                     text = stringResource(R.string.server_too_old_server, url),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyMedium
                 )
             }
             if (loggedIn || onBackToLogin == null) {
                 Button(
                     onClick = onLogout,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(stringResource(R.string.settings_log_out))
                 }
             } else {
                 Button(
                     onClick = onBackToLogin,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(stringResource(R.string.force_update_back_to_login))
                 }

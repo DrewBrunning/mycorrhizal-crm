@@ -32,7 +32,7 @@ class SmsReceiver private constructor(
     private val dependencyProvider: (Context) -> SmsDependencies,
     private val parseSms: (Intent) -> SmsEntry?,
     private val findInboxId: (Context, String, Long) -> Long?,
-    private val dispatcher: CoroutineDispatcher,
+    private val dispatcher: CoroutineDispatcher
 ) : BroadcastReceiver() {
 
     /** Manifest-instantiated path: no DI at construction time, resolve lazily. */
@@ -40,7 +40,7 @@ class SmsReceiver private constructor(
         dependencyProvider = ::resolveSmsReceiverDependencies,
         parseSms = SmsReader::parseFromExtras,
         findInboxId = ::findInboxIdForReceiver,
-        dispatcher = Dispatchers.IO,
+        dispatcher = Dispatchers.IO
     )
 
     /** Direct-construction path (tests): dependencies injected, no Hilt component touched. */
@@ -50,18 +50,18 @@ class SmsReceiver private constructor(
         trackingSettings: TrackingSettingsRepository,
         dispatcher: CoroutineDispatcher,
         parseSms: (Intent) -> SmsEntry?,
-        findInboxId: (Context, String, Long) -> Long? = { _, _, _ -> null },
+        findInboxId: (Context, String, Long) -> Long? = { _, _, _ -> null }
     ) : this(
         dependencyProvider = {
             SmsDependencies(
                 pendingInteractionRepository = pendingInteractionRepository,
                 contactRepository = contactRepository,
-                trackingSettings = trackingSettings,
+                trackingSettings = trackingSettings
             )
         },
         parseSms = parseSms,
         findInboxId = findInboxId,
-        dispatcher = dispatcher,
+        dispatcher = dispatcher
     )
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -83,7 +83,7 @@ class SmsReceiver private constructor(
                 direction = InteractionCapture.DIR_INCOMING,
                 number = sms.address,
                 timestampMillis = sms.timestampMillis,
-                dedupe = false,
+                dedupe = false
             )
             // ADR 0019 / issue #1127: record the Inbox _id this broadcast just
             // handled so the reconciliation worker's cursor never re-reads (and
@@ -118,7 +118,7 @@ class SmsReceiver private constructor(
 internal data class SmsDependencies(
     val pendingInteractionRepository: PendingInteractionRepository,
     val contactRepository: ContactRepository,
-    val trackingSettings: TrackingSettingsRepository,
+    val trackingSettings: TrackingSettingsRepository
 )
 
 /**
@@ -136,6 +136,13 @@ private fun findInboxIdForReceiver(context: Context, address: String, dateMillis
 // component pulls in the whole app graph (issue #327 documents both failed
 // attempts) — so the coverage gate excludes it.
 private fun resolveSmsReceiverDependencies(appContext: Context): SmsDependencies {
-    val entryPoint = EntryPointAccessors.fromApplication(appContext, SmsReceiver.SmsReceiverEntryPoint::class.java) // # pragma: no cover — needs a Hilt Application (issue #327)
-    return SmsDependencies(entryPoint.pendingInteractions(), entryPoint.contacts(), entryPoint.trackingSettings()) // # pragma: no cover — needs a Hilt Application (issue #327)
+    val entryPoint = EntryPointAccessors.fromApplication(
+        appContext,
+        SmsReceiver.SmsReceiverEntryPoint::class.java
+    ) // # pragma: no cover — needs a Hilt Application (issue #327)
+    return SmsDependencies(
+        entryPoint.pendingInteractions(),
+        entryPoint.contacts(),
+        entryPoint.trackingSettings()
+    ) // # pragma: no cover — needs a Hilt Application (issue #327)
 }

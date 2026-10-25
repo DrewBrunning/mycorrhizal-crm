@@ -3,16 +3,15 @@ package com.mycorrhizal.crm.feature.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.NotificationSettingsRepository
-import com.mycorrhizal.crm.model.network.NotificationConfig
 import com.mycorrhizal.crm.model.network.NotificationConfigInput
 import com.mycorrhizal.crm.network.ApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class NotificationChannelsUiState(
     val isLoading: Boolean = true,
@@ -31,17 +30,14 @@ data class NotificationChannelsUiState(
     val gotifyHasToken: Boolean = false,
     val notifyGotify: Boolean = false,
     /** Write-only: what the user typed this session. Empty on save keeps the stored token. */
-    val gotifyToken: String = "",
+    val gotifyToken: String = ""
 )
 
-data class NotificationTestOutcome(
-    val ok: Boolean,
-    val error: String? = null,
-)
+data class NotificationTestOutcome(val ok: Boolean, val error: String? = null)
 
 @HiltViewModel
 class NotificationChannelsViewModel @Inject constructor(
-    private val repository: NotificationSettingsRepository,
+    private val repository: NotificationSettingsRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(NotificationChannelsUiState())
@@ -64,7 +60,7 @@ class NotificationChannelsViewModel @Inject constructor(
                             notifyNtfy = config.notifyNtfy,
                             gotifyUrl = config.gotifyUrl,
                             gotifyHasToken = config.gotifyHasToken,
-                            notifyGotify = config.notifyGotify,
+                            notifyGotify = config.notifyGotify
                         )
                     }
                 }
@@ -74,12 +70,42 @@ class NotificationChannelsViewModel @Inject constructor(
         }
     }
 
-    fun onNtfyUrlChange(value: String) = _uiState.update { it.copy(ntfyUrl = value, testResult = emptyMap()) }
-    fun onNtfyTopicChange(value: String) = _uiState.update { it.copy(ntfyTopic = value, testResult = emptyMap()) }
-    fun onNotifyNtfyChange(value: Boolean) = _uiState.update { it.copy(notifyNtfy = value, testResult = emptyMap()) }
-    fun onGotifyUrlChange(value: String) = _uiState.update { it.copy(gotifyUrl = value, testResult = emptyMap()) }
-    fun onGotifyTokenChange(value: String) = _uiState.update { it.copy(gotifyToken = value, testResult = emptyMap()) }
-    fun onNotifyGotifyChange(value: Boolean) = _uiState.update { it.copy(notifyGotify = value, testResult = emptyMap()) }
+    fun onNtfyUrlChange(value: String) = _uiState.update {
+        it.copy(
+            ntfyUrl = value,
+            testResult = emptyMap()
+        )
+    }
+    fun onNtfyTopicChange(value: String) = _uiState.update {
+        it.copy(
+            ntfyTopic = value,
+            testResult = emptyMap()
+        )
+    }
+    fun onNotifyNtfyChange(value: Boolean) = _uiState.update {
+        it.copy(
+            notifyNtfy = value,
+            testResult = emptyMap()
+        )
+    }
+    fun onGotifyUrlChange(value: String) = _uiState.update {
+        it.copy(
+            gotifyUrl = value,
+            testResult = emptyMap()
+        )
+    }
+    fun onGotifyTokenChange(value: String) = _uiState.update {
+        it.copy(
+            gotifyToken = value,
+            testResult = emptyMap()
+        )
+    }
+    fun onNotifyGotifyChange(value: Boolean) = _uiState.update {
+        it.copy(
+            notifyGotify = value,
+            testResult = emptyMap()
+        )
+    }
 
     /** Save the current ntfy/gotify config (URLs + toggles). An empty gotify token keeps the stored one. */
     fun save() {
@@ -94,8 +120,8 @@ class NotificationChannelsViewModel @Inject constructor(
                     gotifyUrl = s.gotifyUrl.trim().ifBlank { null },
                     gotifyToken = s.gotifyToken.trim().ifBlank { null },
                     notifyNtfy = s.notifyNtfy,
-                    notifyGotify = s.notifyGotify,
-                ),
+                    notifyGotify = s.notifyGotify
+                )
             )
                 .onSuccess { config ->
                     _uiState.update {
@@ -109,7 +135,7 @@ class NotificationChannelsViewModel @Inject constructor(
                             notifyGotify = config.notifyGotify,
                             // The token is write-only — clear what the user typed
                             // so it never lingers in state (mirrors web).
-                            gotifyToken = "",
+                            gotifyToken = ""
                         )
                     }
                 }
@@ -137,14 +163,19 @@ class NotificationChannelsViewModel @Inject constructor(
                     gotifyUrl = s.gotifyUrl.trim().ifBlank { null },
                     gotifyToken = s.gotifyToken.trim().ifBlank { null },
                     notifyNtfy = s.notifyNtfy,
-                    notifyGotify = s.notifyGotify,
-                ),
+                    notifyGotify = s.notifyGotify
+                )
             )
             if (saved.isFailure) {
                 _uiState.update {
                     it.copy(
                         testingChannel = null,
-                        testResult = it.testResult + (channel to NotificationTestOutcome(ok = false, error = saved.exceptionOrNull().displayMessage())),
+                        testResult = it.testResult + (
+                            channel to NotificationTestOutcome(
+                                ok = false,
+                                error = saved.exceptionOrNull().displayMessage()
+                            )
+                            )
                     )
                 }
                 return@launch
@@ -154,7 +185,12 @@ class NotificationChannelsViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             testingChannel = null,
-                            testResult = it.testResult + (channel to NotificationTestOutcome(ok = result.ok, error = result.error)),
+                            testResult = it.testResult + (
+                                channel to NotificationTestOutcome(
+                                    ok = result.ok,
+                                    error = result.error
+                                )
+                                )
                         )
                     }
                 }
@@ -162,7 +198,12 @@ class NotificationChannelsViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             testingChannel = null,
-                            testResult = it.testResult + (channel to NotificationTestOutcome(ok = false, error = e.displayMessage())),
+                            testResult = it.testResult + (
+                                channel to NotificationTestOutcome(
+                                    ok = false,
+                                    error = e.displayMessage()
+                                )
+                                )
                         )
                     }
                 }

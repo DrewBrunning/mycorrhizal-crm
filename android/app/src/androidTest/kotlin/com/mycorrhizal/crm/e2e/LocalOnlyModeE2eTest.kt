@@ -11,6 +11,8 @@ import com.mycorrhizal.crm.network.LocalSocketPathProvider
 import com.mycorrhizal.crm.network.ProfileAwareDns
 import com.mycorrhizal.crm.network.ProfileAwareSocketFactory
 import dagger.hilt.android.EntryPointAccessors
+import java.io.File
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -21,8 +23,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.io.File
-import java.util.concurrent.TimeUnit
 
 /**
  * Issue #1262 acceptance, on real arm64 hardware.
@@ -56,7 +56,7 @@ class LocalOnlyModeE2eTest {
             .readTimeout(5, TimeUnit.SECONDS)
             .build()
         return client.newCall(
-            Request.Builder().url("$LOCAL_SERVER_SENTINEL_URL/health").build(),
+            Request.Builder().url("$LOCAL_SERVER_SENTINEL_URL/health").build()
         ).execute().use { response ->
             assertTrue("expected a healthy embedded server", response.isSuccessful)
             JSONObject(response.body!!.string())
@@ -69,7 +69,7 @@ class LocalOnlyModeE2eTest {
             "SKIPPED, NOT PASSED: the embedded server is arm64-v8a only and this ABI has no packaged " +
                 "binary. Local mode needs a manual real-arm64-device run before each release " +
                 "(docs/development/release-gates.md, issue #1339)",
-            LocalServerAvailability.isSupported(context),
+            LocalServerAvailability.isSupported(context)
         )
         // Start from a clean slate so the run is deterministic.
         host.deleteLocalData()
@@ -80,7 +80,7 @@ class LocalOnlyModeE2eTest {
         assertEquals(
             "the transport provider reports the running socket",
             endpoint.socketPath,
-            host.socketPathIfRunning(),
+            host.socketPathIfRunning()
         )
 
         val health = healthOverSocket(endpoint.socketPath)
@@ -94,7 +94,7 @@ class LocalOnlyModeE2eTest {
         host.deleteLocalData()
         assertFalse(
             "the embedded store must be gone after deleteLocalData",
-            File(context.filesDir, "local-server").exists(),
+            File(context.filesDir, "local-server").exists()
         )
     }
 }

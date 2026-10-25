@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -27,7 +28,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
-import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
@@ -55,11 +55,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.mycorrhizal.crm.model.network.AuditEvent
 import com.mycorrhizal.crm.model.network.AuditEntityTypes
+import com.mycorrhizal.crm.model.network.AuditEvent
 import com.mycorrhizal.crm.model.network.AuditOperations
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
@@ -67,7 +68,6 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
-import androidx.compose.material.icons.outlined.Menu
 
 /**
  * M16: the read-only audit log (mirroring web's AuditPage over T18/T60's
@@ -83,7 +83,7 @@ fun AuditScreen(
     // Issue #1758: a top-level drawer destination; null hides the hamburger (no drawer at Expanded).
     onMenuClick: (() -> Unit)? = {},
     onOpenContact: (contactId: Int) -> Unit,
-    viewModel: AuditViewModel = hiltViewModel(),
+    viewModel: AuditViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -109,6 +109,7 @@ fun AuditScreen(
         viewModel.events.collect { event ->
             when (event) {
                 is AuditUiEvent.UndoSucceeded -> snackbarHostState.showSnackbar(undoSuccessText)
+
                 is AuditUiEvent.UndoFailed -> {
                     val message = if (event.isRetentionGone) undoRetentionText else event.message
                     snackbarHostState.showSnackbar(message)
@@ -125,29 +126,35 @@ fun AuditScreen(
                     // null at Expanded width where the rail replaces it.
                     onMenuClick?.let { onMenu ->
                         AccessibleIconButton(onClick = onMenu) {
-                            Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
+                            Icon(
+                                Icons.Outlined.Menu,
+                                contentDescription = stringResource(R.string.cd_menu)
+                            )
                         }
                     }
                 },
                 title = {
-                    Text(stringResource(R.string.audit_title), style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        stringResource(R.string.audit_title),
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             Text(
                 text = stringResource(R.string.audit_description),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
             )
 
             AuditFilterToolbar(
@@ -162,14 +169,14 @@ fun AuditScreen(
                 onClearFilters = {
                     entityIdInput = ""
                     viewModel.clearFilters()
-                },
+                }
             )
 
             Box(modifier = Modifier.fillMaxSize()) {
                 RefreshableContent(
                     isRefreshing = state.isLoading && state.events.isNotEmpty(),
                     onRefresh = viewModel::load,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize()
                 ) {
                     when {
                         state.isLoading && state.events.isEmpty() ->
@@ -180,18 +187,27 @@ fun AuditScreen(
                                 Text(
                                     text = loadError,
                                     color = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.align(Alignment.Center),
+                                    modifier = Modifier.align(Alignment.Center)
                                 )
                             }
 
                         state.events.isEmpty() ->
                             EmptyState(
                                 title = stringResource(
-                                    if (hasFilters) R.string.audit_empty
-                                    else R.string.audit_empty_no_filters
+                                    if (hasFilters) {
+                                        R.string.audit_empty
+                                    } else {
+                                        R.string.audit_empty_no_filters
+                                    }
                                 ),
-                                body = if (hasFilters) null else stringResource(R.string.audit_empty_no_filters_body),
-                                icon = Icons.Outlined.History,
+                                body = if (hasFilters) {
+                                    null
+                                } else {
+                                    stringResource(
+                                        R.string.audit_empty_no_filters_body
+                                    )
+                                },
+                                icon = Icons.Outlined.History
                             )
 
                         else -> AuditEventList(
@@ -202,7 +218,7 @@ fun AuditScreen(
                             onOpenContact = onOpenContact,
                             canLoadMore = state.canLoadMore,
                             isLoadingMore = state.isLoading,
-                            onLoadMore = viewModel::loadMore,
+                            onLoadMore = viewModel::loadMore
                         )
                     }
                 }
@@ -228,7 +244,7 @@ fun AuditScreen(
                 viewModel.undo(undoEvent.id)
                 pendingUndo = null
             },
-            onDismiss = { pendingUndo = null },
+            onDismiss = { pendingUndo = null }
         )
     }
 }
@@ -241,7 +257,7 @@ internal fun AuditFilterToolbar(
     hasFilters: Boolean,
     onEntityTypeChange: (String?) -> Unit,
     onEntityIdChange: (String) -> Unit,
-    onClearFilters: () -> Unit,
+    onClearFilters: () -> Unit
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
 
@@ -252,7 +268,7 @@ internal fun AuditFilterToolbar(
         // glyph per line.
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             ExposedDropdownMenuBox(
                 expanded = menuExpanded,
@@ -262,29 +278,37 @@ internal fun AuditFilterToolbar(
                 // doesn't apply — so the row had no weighted child, the menu box
                 // took its measured width, and the Clear button was left with the
                 // leftover sliver (one character per line).
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f)
             ) {
                 OutlinedTextField(
-                    value = entityType?.let { entityTypeLabel(it) } ?: stringResource(R.string.audit_filters_entity_type_all),
+                    value = entityType?.let {
+                        entityTypeLabel(
+                            it
+                        )
+                    } ?: stringResource(R.string.audit_filters_entity_type_all),
                     onValueChange = {},
                     readOnly = true,
                     label = { Text(stringResource(R.string.audit_filters_entity_type)) },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = menuExpanded) },
+                    trailingIcon = {
+                        ExposedDropdownMenuDefaults.TrailingIcon(
+                            expanded = menuExpanded
+                        )
+                    },
                     modifier = Modifier
                         .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                         .testTag("audit-entity-type")
-                        .fillMaxWidth(),
+                        .fillMaxWidth()
                 )
                 ExposedDropdownMenu(
                     expanded = menuExpanded,
-                    onDismissRequest = { menuExpanded = false },
+                    onDismissRequest = { menuExpanded = false }
                 ) {
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.audit_filters_entity_type_all)) },
                         onClick = {
                             onEntityTypeChange(null)
                             menuExpanded = false
-                        },
+                        }
                     )
                     AuditEntityTypes.ALL.forEach { token ->
                         DropdownMenuItem(
@@ -292,7 +316,7 @@ internal fun AuditFilterToolbar(
                             onClick = {
                                 onEntityTypeChange(token)
                                 menuExpanded = false
-                            },
+                            }
                         )
                     }
                 }
@@ -302,10 +326,13 @@ internal fun AuditFilterToolbar(
                 enabled = hasFilters,
                 modifier = Modifier
                     .testTag("audit-clear-filters")
-                    .align(Alignment.CenterVertically),
+                    .align(Alignment.CenterVertically)
             ) {
                 Icon(Icons.Outlined.Clear, contentDescription = null)
-                Text(stringResource(R.string.audit_filters_clear), modifier = Modifier.padding(start = 4.dp))
+                Text(
+                    stringResource(R.string.audit_filters_clear),
+                    modifier = Modifier.padding(start = 4.dp)
+                )
             }
         }
         OutlinedTextField(
@@ -316,7 +343,7 @@ internal fun AuditFilterToolbar(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp)
-                .testTag("audit-entity-id"),
+                .testTag("audit-entity-id")
         )
     }
 }
@@ -330,12 +357,12 @@ internal fun AuditEventList(
     onOpenContact: (Int) -> Unit,
     canLoadMore: Boolean,
     isLoadingMore: Boolean,
-    onLoadMore: () -> Unit,
+    onLoadMore: () -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().testTag("audit-list"),
         contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(events, key = { it.id }) { event ->
             AuditEventRow(
@@ -343,16 +370,19 @@ internal fun AuditEventList(
                 contact = contactsByUid[event.entityId],
                 canUndo = canUndo,
                 onUndoClick = { onUndoClick(event) },
-                onOpenContact = onOpenContact,
+                onOpenContact = onOpenContact
             )
         }
         if (canLoadMore) {
             item(key = "load-more") {
-                Box(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                    contentAlignment = Alignment.Center
+                ) {
                     OutlinedButton(
                         onClick = onLoadMore,
                         enabled = !isLoadingMore,
-                        modifier = Modifier.testTag("audit-load-more"),
+                        modifier = Modifier.testTag("audit-load-more")
                     ) {
                         Text(stringResource(R.string.action_load_more))
                     }
@@ -368,16 +398,21 @@ internal fun AuditEventRow(
     contact: ContactSummary?,
     canUndo: Boolean,
     onUndoClick: () -> Unit,
-    onOpenContact: (Int) -> Unit,
+    onOpenContact: (Int) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        )
     ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 OperationBadge(event.operation)
                 Text(
@@ -386,12 +421,12 @@ internal fun AuditEventRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f)
                 )
                 Text(
                     text = formatAuditTime(event.createdAt),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -412,7 +447,7 @@ internal fun AuditEventRow(
                         .clickable {
                             onOpenContact(resolved.id)
                         }
-                        .padding(vertical = 2.dp),
+                        .padding(vertical = 2.dp)
                 )
             } else {
                 Text(
@@ -421,7 +456,7 @@ internal fun AuditEventRow(
                     fontFamily = FontFamily.Monospace,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
 
@@ -431,10 +466,13 @@ internal fun AuditEventRow(
                     enabled = canUndo,
                     modifier = Modifier
                         .testTag("audit-undo-${event.id}")
-                        .align(Alignment.End),
+                        .align(Alignment.End)
                 ) {
                     Icon(Icons.AutoMirrored.Outlined.Undo, contentDescription = null)
-                    Text(stringResource(R.string.audit_undo_button), modifier = Modifier.padding(start = 4.dp))
+                    Text(
+                        stringResource(R.string.audit_undo_button),
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
                 }
             }
         }
@@ -444,9 +482,18 @@ internal fun AuditEventRow(
 @Composable
 private fun OperationBadge(operation: String) {
     val (label, color) = when (operation) {
-        AuditOperations.CREATE -> stringResource(R.string.audit_operations_create) to MaterialTheme.colorScheme.tertiary
-        AuditOperations.UPDATE -> stringResource(R.string.audit_operations_update) to MaterialTheme.colorScheme.primary
-        AuditOperations.DELETE -> stringResource(R.string.audit_operations_delete) to MaterialTheme.colorScheme.error
+        AuditOperations.CREATE -> stringResource(
+            R.string.audit_operations_create
+        ) to MaterialTheme.colorScheme.tertiary
+
+        AuditOperations.UPDATE -> stringResource(
+            R.string.audit_operations_update
+        ) to MaterialTheme.colorScheme.primary
+
+        AuditOperations.DELETE -> stringResource(
+            R.string.audit_operations_delete
+        ) to MaterialTheme.colorScheme.error
+
         else -> operation to MaterialTheme.colorScheme.onSurfaceVariant
     }
     // #206: the 11sp label was drawn directly in the accent colour — moss at
@@ -463,7 +510,7 @@ private fun OperationBadge(operation: String) {
         modifier = Modifier
             .background(color.copy(alpha = 0.18f), MaterialTheme.shapes.small)
             .border(1.dp, color, MaterialTheme.shapes.small)
-            .padding(horizontal = 6.dp, vertical = 2.dp),
+            .padding(horizontal = 6.dp, vertical = 2.dp)
     )
 }
 
@@ -472,7 +519,7 @@ private fun AuditUndoDialog(
     event: AuditEvent,
     isUndoing: Boolean,
     onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = { if (!isUndoing) onDismiss() },
@@ -483,13 +530,13 @@ private fun AuditUndoDialog(
                     text = stringResource(
                         R.string.audit_undo_confirm_message,
                         entityTypeLabel(event.entityType),
-                        formatAuditTime(event.createdAt),
-                    ),
+                        formatAuditTime(event.createdAt)
+                    )
                 )
                 Text(
                     text = stringResource(R.string.audit_undo_partial_note),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         },
@@ -502,7 +549,7 @@ private fun AuditUndoDialog(
             TextButton(onClick = onDismiss, enabled = !isUndoing) {
                 Text(stringResource(R.string.action_cancel))
             }
-        },
+        }
     )
 }
 

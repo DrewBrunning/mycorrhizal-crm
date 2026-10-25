@@ -47,7 +47,10 @@ class FieldActionsTest {
     @Test
     fun `group sms intent joins numbers with semicolons`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        val intent = FieldActions.groupSmsIntent(listOf("+1-555-0100", "+1-555-0101", "+1-555-0102"), context)
+        val intent = FieldActions.groupSmsIntent(
+            listOf("+1-555-0100", "+1-555-0101", "+1-555-0102"),
+            context
+        )
         assertEquals(Intent.ACTION_SENDTO, intent.action)
         assertEquals("smsto", intent.data?.scheme)
         assertEquals("+1-555-0100;+1-555-0101;+1-555-0102", intent.data?.schemeSpecificPart)
@@ -108,7 +111,9 @@ class FieldActionsTest {
     fun `copy text places a clip on the clipboard`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         FieldActions.copyText(context, "phone", "+1-555-0100")
-        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+        val clipboard = context.getSystemService(
+            Context.CLIPBOARD_SERVICE
+        ) as android.content.ClipboardManager
         assertNotNull(clipboard.primaryClip)
         assertEquals("+1-555-0100", clipboard.primaryClip?.getItemAt(0)?.text?.toString())
     }
@@ -117,7 +122,9 @@ class FieldActionsTest {
     fun `copy text clip carries the label`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         FieldActions.copyText(context, "email", "a@example.com")
-        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+        val clipboard = context.getSystemService(
+            Context.CLIPBOARD_SERVICE
+        ) as android.content.ClipboardManager
         assertTrue(clipboard.primaryClip?.description?.label?.contains("email") == true)
     }
 }

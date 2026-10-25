@@ -32,10 +32,14 @@ data class DashboardResponse(
     val favorites: List<DashboardRandomContact> = emptyList(),
     // Issue #177: pending event-driven reach-out suggestions. Same
     // no-omitempty/always-`[]` discipline as every other block.
-    @Json(name = "reach_out_suggestions") val reachOutSuggestions: List<ReachOutSuggestion> = emptyList(),
+    @Json(
+        name = "reach_out_suggestions"
+    ) val reachOutSuggestions: List<ReachOutSuggestion> = emptyList(),
     // Issue #352: contacts whose info is due for re-verification. Same
     // no-omitempty/always-`[]` discipline as every other block.
-    @Json(name = "data_decay_overdue") val dataDecayOverdue: List<OverdueDataDecayPolicy> = emptyList(),
+    @Json(
+        name = "data_decay_overdue"
+    ) val dataDecayOverdue: List<OverdueDataDecayPolicy> = emptyList(),
     // Issue #1824 (server #1791/#1806): each list block above is capped at 25 rows;
     // the matching `*_total` is its size before the cap. Nullable, not defaulted to
     // 0: an older server omits them, and absent must mean "show no caption".
@@ -43,7 +47,7 @@ data class DashboardResponse(
     @Json(name = "upcoming_reminders_total") val upcomingRemindersTotal: Int? = null,
     @Json(name = "overdue_total") val overdueTotal: Int? = null,
     @Json(name = "reach_out_suggestions_total") val reachOutSuggestionsTotal: Int? = null,
-    @Json(name = "data_decay_overdue_total") val dataDecayOverdueTotal: Int? = null,
+    @Json(name = "data_decay_overdue_total") val dataDecayOverdueTotal: Int? = null
 )
 
 /**
@@ -58,7 +62,7 @@ data class DashboardContactRelationship(
     /** 0 = today; null when no qualifying interaction has been recorded. */
     @Json(name = "days_since_last_interaction") val daysSinceLastInteraction: Int? = null,
     /** Negative when overdue, 0 = due today; null when no policy anchors a due date. */
-    @Json(name = "days_until_due") val daysUntilDue: Int? = null,
+    @Json(name = "days_until_due") val daysUntilDue: Int? = null
 )
 
 /**
@@ -86,7 +90,7 @@ data class DashboardRandomContact(
      * Touch card's subtitle. Absent (null) on an older server, which the UI
      * falls back to a generic reason for.
      */
-    val relationship: DashboardContactRelationship? = null,
+    val relationship: DashboardContactRelationship? = null
 )
 
 /** One `upcoming_reminders` entry: a reminder with its contact's display name embedded. */
@@ -105,5 +109,5 @@ data class DashboardReminder(
     @Json(name = "contact_id") val contactId: Int? = null,
     @Json(name = "life_event_id") val lifeEventId: String? = null,
     val contact: ContactFlat? = null,
-    @Json(name = "contact_name") val contactName: String = "",
+    @Json(name = "contact_name") val contactName: String = ""
 )

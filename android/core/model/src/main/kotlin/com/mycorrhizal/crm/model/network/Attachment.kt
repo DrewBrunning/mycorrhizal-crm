@@ -16,18 +16,16 @@ data class ContactAttachment(
     @Json(name = "contact_vcard_uid") val contactVCardUid: String? = null,
     @Json(name = "original_name") val originalName: String = "",
     @Json(name = "content_type") val contentType: String = "",
-    @Json(name = "size_bytes") val sizeBytes: Long = 0,
+    @Json(name = "size_bytes") val sizeBytes: Long = 0
 )
 
 /** GET /contacts/{id}/attachments response envelope. */
 @JsonClass(generateAdapter = true)
 data class AttachmentListResponse(
     val attachments: List<ContactAttachment> = emptyList(),
-    val total: Int = 0,
+    val total: Int = 0
 )
 
 /** POST /contacts/{id}/attachments response envelope — `{ attachment }`. */
 @JsonClass(generateAdapter = true)
-data class AttachmentUploadResponse(
-    val attachment: ContactAttachment? = null,
-)
+data class AttachmentUploadResponse(val attachment: ContactAttachment? = null)

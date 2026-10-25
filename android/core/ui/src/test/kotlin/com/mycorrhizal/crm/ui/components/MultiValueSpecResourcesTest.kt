@@ -30,7 +30,7 @@ class MultiValueSpecResourcesTest {
         val label: String,
         val example: String? = null,
         val hint: String? = null,
-        val item: String,
+        val item: String
     )
 
     private val expected = listOf(
@@ -41,14 +41,14 @@ class MultiValueSpecResourcesTest {
             "Phone number",
             "+1 555 123 4567",
             "International format recommended.",
-            item = "phone number",
+            item = "phone number"
         ),
         Expected(
             "OnlineServiceSpec",
             OnlineServiceSpec,
             "Address / URL",
             "https://… or user@server",
-            item = "online service",
+            item = "online service"
         ),
         Expected("LinkSpec", LinkSpec, "URL", "https://example.com", item = "link"),
         Expected("TitleSpec", TitleSpec, "Title or role", item = "title"),
@@ -56,7 +56,7 @@ class MultiValueSpecResourcesTest {
             "PersonalInfoSpec",
             PersonalInfoSpec,
             "Expertise / hobby / interest",
-            item = "personal information",
+            item = "personal information"
         ),
         Expected(
             "LanguagePrefSpec",
@@ -64,14 +64,14 @@ class MultiValueSpecResourcesTest {
             "Language",
             "de, en-US, de-AT",
             "BCP-47 tag, e.g. de, en-US, de-AT.",
-            item = "preferred language",
+            item = "preferred language"
         ),
         Expected(
             "PronounsSpec",
             PronounsSpec,
             "Pronouns",
             "they/them, she/her",
-            item = "pronoun",
+            item = "pronoun"
         ),
         Expected(
             "GrammaticalGenderSpec",
@@ -79,25 +79,29 @@ class MultiValueSpecResourcesTest {
             "Language",
             "de, fr, es",
             "BCP-47 language tag; the dropdown is the gender.",
-            item = "grammatical gender",
+            item = "grammatical gender"
         ),
-        Expected("AnniversarySpec", AnniversarySpec, "Date", item = "anniversary"),
+        Expected("AnniversarySpec", AnniversarySpec, "Date", item = "anniversary")
     )
 
     @Test
     fun `each spec resolves its label example and hint`() {
         for (row in expected) {
-            assertEquals("${row.name} valueLabel", row.label, context.getString(row.spec.valueLabel))
+            assertEquals(
+                "${row.name} valueLabel",
+                row.label,
+                context.getString(row.spec.valueLabel)
+            )
             assertEquals("${row.name} itemLabel", row.item, context.getString(row.spec.itemLabel))
             assertEquals(
                 "${row.name} valueExample",
                 row.example,
-                row.spec.valueExample?.let { context.getString(it) },
+                row.spec.valueExample?.let { context.getString(it) }
             )
             assertEquals(
                 "${row.name} valueHint",
                 row.hint,
-                row.spec.valueHint?.let { context.getString(it) },
+                row.spec.valueHint?.let { context.getString(it) }
             )
         }
     }
@@ -117,10 +121,13 @@ class MultiValueSpecResourcesTest {
     fun `the grammatical gender free text is labelled Language while its dropdown is the gender`() {
         // The bug in the ticket: "Value 1" hid the fact that this box holds a
         // BCP-47 language tag; the dropdown next to it is the gender.
-        assertEquals(context.getString(R.string.contact_language), context.getString(GrammaticalGenderSpec.valueLabel))
+        assertEquals(
+            context.getString(R.string.contact_language),
+            context.getString(GrammaticalGenderSpec.valueLabel)
+        )
         assertEquals(
             context.getString(R.string.contact_item_grammatical_gender),
-            context.getString(GrammaticalGenderSpec.itemLabel),
+            context.getString(GrammaticalGenderSpec.itemLabel)
         )
         assertEquals("de, fr, es", context.getString(GrammaticalGenderSpec.valueExample))
     }

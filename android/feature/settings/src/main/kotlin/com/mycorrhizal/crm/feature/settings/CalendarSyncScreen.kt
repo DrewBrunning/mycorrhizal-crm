@@ -55,8 +55,8 @@ import com.mycorrhizal.crm.model.network.ContactSubscription
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.BrandFab
-import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import java.time.Duration
 import java.time.Instant
@@ -72,10 +72,7 @@ import java.time.format.FormatStyle
  * immediately for feedback (handled in [CalendarSyncViewModel.save]).
  */
 @Composable
-fun CalendarSyncScreen(
-    onBack: () -> Unit,
-    viewModel: CalendarSyncViewModel = hiltViewModel(),
-) {
+fun CalendarSyncScreen(onBack: () -> Unit, viewModel: CalendarSyncViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     CalendarSyncContent(
         state = state,
@@ -83,7 +80,7 @@ fun CalendarSyncScreen(
         onSync = viewModel::sync,
         onSave = viewModel::save,
         onDelete = viewModel::delete,
-        onRefresh = viewModel::load,
+        onRefresh = viewModel::load
     )
 }
 
@@ -101,7 +98,7 @@ internal fun CalendarSyncContent(
     onSync: (CalendarSubscription) -> Unit,
     onSave: (CalendarSubscriptionInput, Int?) -> Unit,
     onDelete: (CalendarSubscription) -> Unit,
-    onRefresh: () -> Unit = {},
+    onRefresh: () -> Unit = {}
 ) {
     var editorOpen by remember { mutableStateOf(false) }
     var editingCalendar by remember { mutableStateOf<CalendarSubscription?>(null) }
@@ -112,18 +109,24 @@ internal fun CalendarSyncContent(
             TopAppBar(
                 navigationIcon = {
                     AccessibleIconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back)
+                        )
                     }
                 },
                 title = {
-                    Text(stringResource(R.string.settings_calendar_sync_title), style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        stringResource(R.string.settings_calendar_sync_title),
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
         floatingActionButton = {
@@ -131,20 +134,23 @@ internal fun CalendarSyncContent(
                 editingCalendar = null
                 editorOpen = true
             }) {
-                Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.settings_calendar_sync_add))
+                Icon(
+                    Icons.Outlined.Add,
+                    contentDescription = stringResource(R.string.settings_calendar_sync_add)
+                )
             }
-        },
+        }
     ) { padding ->
         RefreshableContent(
             isRefreshing = state.isLoading && !state.isEmpty,
             onRefresh = onRefresh,
-            modifier = Modifier.fillMaxSize().padding(padding),
+            modifier = Modifier.fillMaxSize().padding(padding)
         ) {
             if (state.isLoading && state.isEmpty) {
                 Column(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     CircularProgressIndicator()
                 }
@@ -156,16 +162,19 @@ internal fun CalendarSyncContent(
                     onAction = {
                         editingCalendar = null
                         editorOpen = true
-                    },
+                    }
                 )
             } else {
-                LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = FabListContentPadding) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = FabListContentPadding
+                ) {
                     item {
                         Text(
                             text = stringResource(R.string.settings_calendar_sync_description),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         )
                     }
                     if (state.error != null) {
@@ -176,7 +185,7 @@ internal fun CalendarSyncContent(
                                 style = MaterialTheme.typography.bodySmall,
                                 modifier = Modifier
                                     .padding(horizontal = 16.dp, vertical = 4.dp)
-                                    .semantics { liveRegion = LiveRegionMode.Assertive },
+                                    .semantics { liveRegion = LiveRegionMode.Assertive }
                             )
                         }
                     }
@@ -187,11 +196,11 @@ internal fun CalendarSyncContent(
                                     R.string.settings_calendar_sync_sync_success,
                                     result.created,
                                     result.updated,
-                                    result.skipped,
+                                    result.skipped
                                 ),
                                 color = MaterialTheme.colorScheme.tertiary,
                                 style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                             )
                         }
                     }
@@ -201,7 +210,7 @@ internal fun CalendarSyncContent(
                                 text = stringResource(R.string.settings_calendar_sync_empty),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                             )
                         }
                     }
@@ -214,25 +223,32 @@ internal fun CalendarSyncContent(
                                 editingCalendar = calendar
                                 editorOpen = true
                             },
-                            onDelete = { deletingCalendar = calendar },
+                            onDelete = { deletingCalendar = calendar }
                         )
                     }
                     if (state.contactSubscriptions.isNotEmpty()) {
                         item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
                         item {
-                            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                            Column(
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                            ) {
                                 Text(
                                     text = stringResource(R.string.settings_contact_sync_title),
-                                    style = MaterialTheme.typography.titleSmall,
+                                    style = MaterialTheme.typography.titleSmall
                                 )
                                 Text(
-                                    text = stringResource(R.string.settings_contact_sync_description),
+                                    text = stringResource(
+                                        R.string.settings_contact_sync_description
+                                    ),
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
-                        items(state.contactSubscriptions, key = { "contact-${it.id}" }) { subscription ->
+                        items(
+                            state.contactSubscriptions,
+                            key = { "contact-${it.id}" }
+                        ) { subscription ->
                             ContactSubscriptionRow(subscription = subscription)
                         }
                     }
@@ -249,7 +265,7 @@ internal fun CalendarSyncContent(
                 onSave(input, editingCalendar?.id)
                 editorOpen = false
             },
-            onDismiss = { editorOpen = false },
+            onDismiss = { editorOpen = false }
         )
     }
 
@@ -257,7 +273,11 @@ internal fun CalendarSyncContent(
         AlertDialog(
             onDismissRequest = { deletingCalendar = null },
             title = { Text(stringResource(R.string.settings_calendar_sync_delete_title)) },
-            text = { Text(stringResource(R.string.settings_calendar_sync_delete_body, calendar.name)) },
+            text = {
+                Text(
+                    stringResource(R.string.settings_calendar_sync_delete_body, calendar.name)
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
                     onDelete(calendar)
@@ -268,7 +288,7 @@ internal fun CalendarSyncContent(
                 TextButton(onClick = { deletingCalendar = null }) {
                     Text(stringResource(R.string.settings_cancel))
                 }
-            },
+            }
         )
     }
 }
@@ -279,31 +299,37 @@ internal fun CalendarSubscriptionRow(
     syncing: Boolean,
     onSync: () -> Unit,
     onEdit: () -> Unit,
-    onDelete: () -> Unit,
+    onDelete: () -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(text = calendar.name, style = MaterialTheme.typography.bodyLarge)
                 if (!calendar.syncEnabled) {
                     Text(
                         text = stringResource(R.string.settings_calendar_sync_disabled),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 if (calendar.lastSyncStatus == "error") {
                     Text(
                         text = if (calendar.consecutiveFailures > 1) {
-                            stringResource(R.string.settings_calendar_sync_sync_failed_count, calendar.consecutiveFailures)
+                            stringResource(
+                                R.string.settings_calendar_sync_sync_failed_count,
+                                calendar.consecutiveFailures
+                            )
                         } else {
                             stringResource(R.string.settings_calendar_sync_sync_failed)
                         },
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.error,
+                        color = MaterialTheme.colorScheme.error
                     )
                 }
             }
@@ -312,7 +338,7 @@ internal fun CalendarSubscriptionRow(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
             SyncHealthSection(
                 consecutiveFailures = calendar.consecutiveFailures,
@@ -322,7 +348,7 @@ internal fun CalendarSubscriptionRow(
                 lastRunStats = calendar.lastRunStats,
                 terminalFailureAt = calendar.terminalFailureAt,
                 terminalReason = calendar.terminalReason,
-                includeArchived = false,
+                includeArchived = false
             )
         }
         AccessibleIconButton(onClick = onSync, enabled = !syncing) {
@@ -331,14 +357,32 @@ internal fun CalendarSubscriptionRow(
             } else {
                 // #205-equivalent: the row-action label carries the calendar
                 // name so TalkBack doesn't read a bare "Sync now" on every row.
-                Icon(Icons.Outlined.Sync, contentDescription = stringResource(R.string.settings_calendar_sync_sync_now_named, calendar.name))
+                Icon(
+                    Icons.Outlined.Sync,
+                    contentDescription = stringResource(
+                        R.string.settings_calendar_sync_sync_now_named,
+                        calendar.name
+                    )
+                )
             }
         }
         AccessibleIconButton(onClick = onEdit) {
-            Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.settings_calendar_sync_edit_named, calendar.name))
+            Icon(
+                Icons.Outlined.Edit,
+                contentDescription = stringResource(
+                    R.string.settings_calendar_sync_edit_named,
+                    calendar.name
+                )
+            )
         }
         AccessibleIconButton(onClick = onDelete) {
-            Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.settings_calendar_sync_delete_named, calendar.name))
+            Icon(
+                Icons.Outlined.Delete,
+                contentDescription = stringResource(
+                    R.string.settings_calendar_sync_delete_named,
+                    calendar.name
+                )
+            )
         }
     }
 }
@@ -351,13 +395,16 @@ internal fun CalendarSubscriptionRow(
 @Composable
 internal fun ContactSubscriptionRow(subscription: ContactSubscription) {
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Text(text = subscription.name, style = MaterialTheme.typography.bodyLarge)
             if (!subscription.syncEnabled) {
                 Text(
                     text = stringResource(R.string.settings_calendar_sync_disabled),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -366,7 +413,7 @@ internal fun ContactSubscriptionRow(subscription: ContactSubscription) {
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+            overflow = TextOverflow.Ellipsis
         )
         SyncHealthSection(
             consecutiveFailures = subscription.consecutiveFailures,
@@ -376,13 +423,16 @@ internal fun ContactSubscriptionRow(subscription: ContactSubscription) {
             lastRunStats = subscription.lastRunStats,
             terminalFailureAt = subscription.terminalFailureAt,
             terminalReason = subscription.terminalReason,
-            includeArchived = true,
+            includeArchived = true
         )
         if (subscription.pendingConflicts > 0) {
             Text(
-                text = stringResource(R.string.settings_contact_sync_pending_conflicts, subscription.pendingConflicts),
+                text = stringResource(
+                    R.string.settings_contact_sync_pending_conflicts,
+                    subscription.pendingConflicts
+                ),
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.error,
+                color = MaterialTheme.colorScheme.error
             )
         }
     }
@@ -404,36 +454,45 @@ internal fun SyncHealthSection(
     lastRunStats: Map<String, Int>,
     terminalFailureAt: String?,
     terminalReason: String,
-    includeArchived: Boolean,
+    includeArchived: Boolean
 ) {
     if (terminalFailureAt != null) {
         Text(
             text = stringResource(R.string.settings_sync_health_terminal_title),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.error,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.Bold
         )
         Text(
             text = terminalReasonText(terminalReason),
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.error,
+            color = MaterialTheme.colorScheme.error
         )
         Text(
             text = staleLine(lastSuccessAt),
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.error,
+            color = MaterialTheme.colorScheme.error
         )
         return
     }
     if (consecutiveFailures > 0) {
         val since = incidentFirstFailureAt?.let { formatSyncTime(it) }
             ?: stringResource(R.string.settings_calendar_sync_never_synced)
-        val lastGood = lastSuccessAt?.let { stringResource(R.string.settings_sync_health_last_success, formatSyncTime(it)) }
+        val lastGood = lastSuccessAt?.let {
+            stringResource(
+                R.string.settings_sync_health_last_success,
+                formatSyncTime(it)
+            )
+        }
             ?: stringResource(R.string.settings_sync_health_never_succeeded)
         Text(
-            text = stringResource(R.string.settings_sync_health_failing, since, consecutiveFailures) + " · " + lastGood,
+            text = stringResource(
+                R.string.settings_sync_health_failing,
+                since,
+                consecutiveFailures
+            ) + " · " + lastGood,
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.error,
+            color = MaterialTheme.colorScheme.error
         )
         return
     }
@@ -444,31 +503,44 @@ internal fun SyncHealthSection(
                 lastRunStats["created"] ?: 0,
                 lastRunStats["updated"] ?: 0,
                 lastRunStats["archived"] ?: 0,
-                lastRunStats["skipped"] ?: 0,
+                lastRunStats["skipped"] ?: 0
             )
         } else {
             stringResource(
                 R.string.settings_sync_health_last_run,
                 lastRunStats["created"] ?: 0,
                 lastRunStats["updated"] ?: 0,
-                lastRunStats["skipped"] ?: 0,
+                lastRunStats["skipped"] ?: 0
             )
         }
-        Text(text = text, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
 @Composable
-private fun lastSyncedLine(lastSyncedAt: String?): String =
-    lastSyncedAt?.let { stringResource(R.string.settings_calendar_sync_last_synced, formatSyncTime(it)) }
-        ?: stringResource(R.string.settings_calendar_sync_never_synced)
+private fun lastSyncedLine(lastSyncedAt: String?): String = lastSyncedAt?.let {
+    stringResource(
+        R.string.settings_calendar_sync_last_synced,
+        formatSyncTime(it)
+    )
+}
+    ?: stringResource(R.string.settings_calendar_sync_never_synced)
 
 /** i18n key text for the actionable message behind a terminal failure reason (INT-04, #467). */
 @Composable
 private fun terminalReasonText(reason: String): String = when (reason) {
     "auth-expiry" -> stringResource(R.string.settings_sync_health_terminal_auth_expiry)
+
     "authz-revoked" -> stringResource(R.string.settings_sync_health_terminal_authz_revoked)
-    "remote-resource-deleted" -> stringResource(R.string.settings_sync_health_terminal_remote_deleted)
+
+    "remote-resource-deleted" -> stringResource(
+        R.string.settings_sync_health_terminal_remote_deleted
+    )
+
     else -> stringResource(R.string.settings_sync_health_terminal_generic)
 }
 
@@ -478,7 +550,9 @@ private fun terminalReasonText(reason: String): String = when (reason) {
  */
 @Composable
 private fun staleLine(lastSuccessAt: String?): String {
-    val days = daysSince(lastSuccessAt) ?: return stringResource(R.string.settings_sync_health_stale_never)
+    val days = daysSince(
+        lastSuccessAt
+    ) ?: return stringResource(R.string.settings_sync_health_stale_never)
     return if (days >= 2) {
         stringResource(R.string.settings_sync_health_stale_days, days)
     } else {
@@ -506,20 +580,19 @@ private fun formatSyncTime(iso: String?): String {
 }
 
 /** Locale-aware date only, used by the staleness line (web's toLocaleDateString). */
-private fun formatSyncDate(iso: String): String =
-    runCatching {
-        val instant = Instant.parse(iso)
-        DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
-            .withZone(ZoneId.systemDefault())
-            .format(instant)
-    }.getOrDefault(iso)
+private fun formatSyncDate(iso: String): String = runCatching {
+    val instant = Instant.parse(iso)
+    DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
+        .withZone(ZoneId.systemDefault())
+        .format(instant)
+}.getOrDefault(iso)
 
 @Composable
 internal fun CalendarEditorDialog(
     initial: CalendarSubscription?,
     isSaving: Boolean,
     onConfirm: (CalendarSubscriptionInput) -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     var name by remember { mutableStateOf(initial?.name ?: "") }
     var url by remember { mutableStateOf(initial?.url ?: "") }
@@ -537,32 +610,42 @@ internal fun CalendarEditorDialog(
         title = {
             Text(
                 stringResource(
-                    if (initial == null) R.string.settings_calendar_sync_add_title else R.string.settings_calendar_sync_edit_title,
-                ),
+                    if (initial ==
+                        null
+                    ) {
+                        R.string.settings_calendar_sync_add_title
+                    } else {
+                        R.string.settings_calendar_sync_edit_title
+                    }
+                )
             )
         },
         text = {
             Column(
                 modifier = Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
                     text = stringResource(R.string.settings_calendar_sync_dialog_info),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text(stringResource(R.string.settings_calendar_sync_name)) },
-                    singleLine = true,
+                    singleLine = true
                 )
                 OutlinedTextField(
                     value = url,
                     onValueChange = { url = it },
                     label = { Text(stringResource(R.string.settings_calendar_sync_url)) },
                     singleLine = true,
-                    supportingText = { Text(stringResource(R.string.settings_calendar_sync_url_help)) },
+                    supportingText = {
+                        Text(
+                            stringResource(R.string.settings_calendar_sync_url_help)
+                        )
+                    }
                 )
                 if (url.trim().lowercase().startsWith("http://") &&
                     (username.trim().isNotEmpty() || password.isNotEmpty() || hasPassword)
@@ -570,7 +653,7 @@ internal fun CalendarEditorDialog(
                     Text(
                         text = stringResource(R.string.settings_calendar_sync_insecure_url_warning),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
+                        color = MaterialTheme.colorScheme.error
                     )
                 }
                 OutlinedTextField(
@@ -578,7 +661,11 @@ internal fun CalendarEditorDialog(
                     onValueChange = { username = it },
                     label = { Text(stringResource(R.string.settings_calendar_sync_username)) },
                     singleLine = true,
-                    supportingText = { Text(stringResource(R.string.settings_calendar_sync_credentials_optional)) },
+                    supportingText = {
+                        Text(
+                            stringResource(R.string.settings_calendar_sync_credentials_optional)
+                        )
+                    }
                 )
                 OutlinedTextField(
                     value = password,
@@ -590,7 +677,7 @@ internal fun CalendarEditorDialog(
                         { Text(stringResource(R.string.settings_calendar_sync_password_keep)) }
                     } else {
                         null
-                    },
+                    }
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedTextField(
@@ -599,18 +686,25 @@ internal fun CalendarEditorDialog(
                         label = { Text(stringResource(R.string.settings_calendar_sync_past_days)) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f)
                     )
                     OutlinedTextField(
                         value = futureDays,
                         onValueChange = { futureDays = it },
-                        label = { Text(stringResource(R.string.settings_calendar_sync_future_days)) },
+                        label = {
+                            Text(
+                                stringResource(R.string.settings_calendar_sync_future_days)
+                            )
+                        },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f)
                     )
                 }
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     Switch(checked = syncEnabled, onCheckedChange = { syncEnabled = it })
                     Text(stringResource(R.string.settings_calendar_sync_auto_sync))
                 }
@@ -634,19 +728,24 @@ internal fun CalendarEditorDialog(
                                 password.isEmpty(),
                             syncEnabled = syncEnabled,
                             pastDays = parseDays(pastDays, 5),
-                            futureDays = parseDays(futureDays, 10),
-                        ),
+                            futureDays = parseDays(futureDays, 10)
+                        )
                     )
                 },
-                enabled = !isSaving && name.isNotBlank() && url.isNotBlank(),
+                enabled = !isSaving && name.isNotBlank() && url.isNotBlank()
             ) {
-                if (isSaving) CircularProgressIndicator(modifier = Modifier.padding(end = 4.dp), strokeWidth = 2.dp)
+                if (isSaving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.padding(end = 4.dp),
+                        strokeWidth = 2.dp
+                    )
+                }
                 Text(stringResource(R.string.settings_save))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_cancel)) }
-        },
+        }
     )
 }
 

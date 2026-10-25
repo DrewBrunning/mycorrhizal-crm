@@ -52,8 +52,7 @@ import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.ScreenTitle
 
-/**
- * Issue #1759: the building blocks shared by the Settings root and its grouped sub-screens, so a
+/* Issue #1759: the building blocks shared by the Settings root and its grouped sub-screens, so a
  * row, a section heading and a sub-screen frame look and behave the same everywhere.
  */
 
@@ -68,7 +67,7 @@ internal fun SettingsScaffold(
     title: String,
     onBack: (() -> Unit)? = null,
     onMenuClick: (() -> Unit)? = null,
-    content: @Composable (Modifier) -> Unit,
+    content: @Composable (Modifier) -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -76,11 +75,17 @@ internal fun SettingsScaffold(
                 navigationIcon = {
                     if (onBack != null) {
                         AccessibleIconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                            Icon(
+                                Icons.AutoMirrored.Outlined.ArrowBack,
+                                contentDescription = stringResource(R.string.cd_back)
+                            )
                         }
                     } else if (onMenuClick != null) {
                         AccessibleIconButton(onClick = onMenuClick) {
-                            Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
+                            Icon(
+                                Icons.Outlined.Menu,
+                                contentDescription = stringResource(R.string.cd_menu)
+                            )
                         }
                     }
                 },
@@ -89,10 +94,10 @@ internal fun SettingsScaffold(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
-        },
+        }
     ) { padding ->
         content(Modifier.padding(padding))
     }
@@ -100,14 +105,17 @@ internal fun SettingsScaffold(
 
 /** The scrolling body shared by every Settings screen. */
 @Composable
-internal fun SettingsColumn(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+internal fun SettingsColumn(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit
+) {
     Column(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
-        content = content,
+        content = content
     )
 }
 
@@ -124,7 +132,7 @@ internal fun SettingsSectionHeader(title: String, modifier: Modifier = Modifier)
         modifier = modifier
             .fillMaxWidth()
             .padding(top = 16.dp, bottom = 4.dp)
-            .semantics { heading() },
+            .semantics { heading() }
     )
 }
 
@@ -140,7 +148,7 @@ internal fun SettingsNavigationRow(
     supporting: String? = null,
     icon: ImageVector? = null,
     destructive: Boolean = false,
-    showChevron: Boolean = true,
+    showChevron: Boolean = true
 ) {
     val color = if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
     Row(
@@ -150,14 +158,14 @@ internal fun SettingsNavigationRow(
             .clickable(role = Role.Button, onClick = onClick)
             .padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         if (icon != null) {
             Icon(
                 icon,
                 contentDescription = null,
                 tint = if (destructive) color else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(24.dp)
             )
         }
         Column(modifier = Modifier.weight(1f)) {
@@ -166,7 +174,7 @@ internal fun SettingsNavigationRow(
                 Text(
                     supporting,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -174,7 +182,7 @@ internal fun SettingsNavigationRow(
             Icon(
                 Icons.AutoMirrored.Outlined.KeyboardArrowRight,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -186,19 +194,29 @@ internal fun SettingsInfoRow(label: String, value: String) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Text(text = value, style = MaterialTheme.typography.bodyLarge)
     }
 }
 
 @Composable
-internal fun SettingsHelperText(text: String, modifier: Modifier = Modifier, color: Color = Color.Unspecified) {
+internal fun SettingsHelperText(
+    text: String,
+    modifier: Modifier = Modifier,
+    color: Color = Color.Unspecified
+) {
     Text(
         text = text,
         style = MaterialTheme.typography.bodySmall,
-        color = if (color == Color.Unspecified) MaterialTheme.colorScheme.onSurfaceVariant else color,
-        modifier = modifier,
+        color = if (color ==
+            Color.Unspecified
+        ) {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        } else {
+            color
+        },
+        modifier = modifier
     )
 }
 
@@ -208,7 +226,7 @@ internal fun SettingsToggleRow(
     checked: Boolean,
     enabled: Boolean = true,
     onCheckedChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     Row(
         // #214: a bare Switch has no text/contentDescription of its own — the
@@ -219,12 +237,21 @@ internal fun SettingsToggleRow(
         modifier = modifier
             .fillMaxWidth()
             .defaultMinSize(minHeight = 48.dp)
-            .toggleable(value = checked, enabled = enabled, onValueChange = onCheckedChange, role = Role.Switch)
+            .toggleable(
+                value = checked,
+                enabled = enabled,
+                onValueChange = onCheckedChange,
+                role = Role.Switch
+            )
             .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f).padding(end = 16.dp))
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f).padding(end = 16.dp)
+        )
         Switch(checked = checked, onCheckedChange = null, enabled = enabled)
     }
 }
@@ -249,7 +276,7 @@ internal fun SettingsSaveButton(
     isSaving: Boolean,
     onClick: () -> Unit,
     disabledHint: String,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     val savingLabel = stringResource(R.string.a11y_state_saving)
     Column(modifier = modifier.fillMaxWidth()) {
@@ -258,7 +285,7 @@ internal fun SettingsSaveButton(
             enabled = canSave && !isSaving,
             colors = ButtonDefaults.buttonColors(
                 disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
             ),
             modifier = Modifier
                 .fillMaxWidth()
@@ -268,17 +295,20 @@ internal fun SettingsSaveButton(
                     } else if (!canSave) {
                         stateDescription = disabledHint
                     }
-                },
+                }
         ) {
             if (isSaving) {
-                CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp), strokeWidth = 2.dp)
+                CircularProgressIndicator(
+                    modifier = Modifier.padding(end = 8.dp),
+                    strokeWidth = 2.dp
+                )
             }
             Text(stringResource(R.string.action_save))
         }
         if (!canSave && !isSaving) {
             SettingsHelperText(
                 text = disabledHint,
-                modifier = Modifier.padding(top = 4.dp).testTag("save-disabled-hint"),
+                modifier = Modifier.padding(top = 4.dp).testTag("save-disabled-hint")
             )
         }
     }
@@ -290,27 +320,33 @@ internal fun SettingsDropdown(
     value: String,
     options: List<String>,
     optionLabel: @Composable (String) -> String,
-    onSelect: (String) -> Unit,
+    onSelect: (String) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Box {
             OutlinedButton(
                 onClick = { expanded = true },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = if (value.isEmpty()) stringResource(R.string.settings_value_placeholder) else optionLabel(value),
-                    modifier = Modifier.weight(1f),
+                    text = if (value.isEmpty()) {
+                        stringResource(
+                            R.string.settings_value_placeholder
+                        )
+                    } else {
+                        optionLabel(value)
+                    },
+                    modifier = Modifier.weight(1f)
                 )
                 Icon(
                     Icons.AutoMirrored.Outlined.KeyboardArrowRight,
-                    contentDescription = null,
+                    contentDescription = null
                 )
             }
             DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -320,7 +356,7 @@ internal fun SettingsDropdown(
                         onClick = {
                             expanded = false
                             onSelect(option)
-                        },
+                        }
                     )
                 }
             }

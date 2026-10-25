@@ -28,7 +28,7 @@ class ServerCapabilitiesTest {
         ServerFeature.entries.forEach { feature ->
             assertTrue(
                 "server 1.0.0 must support ${feature.name}",
-                ServerCapabilities.isSupported(newest, feature),
+                ServerCapabilities.isSupported(newest, feature)
             )
         }
     }
@@ -41,7 +41,7 @@ class ServerCapabilitiesTest {
             .forEach { feature ->
                 assertTrue(
                     "server 1.0.0 must support baseline ${feature.name}",
-                    ServerCapabilities.isSupported(baselineServer, feature),
+                    ServerCapabilities.isSupported(baselineServer, feature)
                 )
             }
     }
@@ -98,7 +98,7 @@ class ServerCapabilitiesTest {
         ServerFeature.entries.forEach { feature ->
             assertTrue(
                 "floor of ${feature.name} must be <= the 1.0.0 baseline",
-                feature.minServerVersion <= ServerCapabilities.MIN_SUPPORTED_SERVER_VERSION,
+                feature.minServerVersion <= ServerCapabilities.MIN_SUPPORTED_SERVER_VERSION
             )
         }
     }
@@ -113,7 +113,7 @@ class ServerCapabilitiesTest {
         ServerFeature.entries.forEach { feature ->
             assertTrue(
                 "server 1.0.0 must support ${feature.name}",
-                ServerCapabilities.isSupported(server, feature),
+                ServerCapabilities.isSupported(server, feature)
             )
         }
     }

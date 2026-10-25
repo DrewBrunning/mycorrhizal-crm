@@ -2,8 +2,8 @@ package com.mycorrhizal.crm.data.repository
 
 import com.mycorrhizal.crm.model.network.BulkContactOperationInput
 import com.mycorrhizal.crm.model.network.BulkOperationResult
-import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.CRMEnvelope
+import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactMergePreviewResponse
 import com.mycorrhizal.crm.model.network.ContactMergeRequest
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
@@ -25,7 +25,7 @@ class MergeRepositoryImplTest {
     fun `preview forwards the request and returns the response`() = runTest {
         val request = ContactMergeRequest(keepId = 1, mergeId = 2)
         coEvery { apiClient.previewMerge(request) } returns Result.success(
-            ContactMergePreviewResponse(keepId = 1, mergeId = 2),
+            ContactMergePreviewResponse(keepId = 1, mergeId = 2)
         )
 
         val result = repository.preview(request)
@@ -37,7 +37,11 @@ class MergeRepositoryImplTest {
     @Test
     fun `preview failure propagates`() = runTest {
         val request = ContactMergeRequest(keepId = 1, mergeId = 2)
-        coEvery { apiClient.previewMerge(request) } returns Result.failure(ApiError.Client(409, "conflict"))
+        coEvery {
+            apiClient.previewMerge(
+                request
+            )
+        } returns Result.failure(ApiError.Client(409, "conflict"))
 
         val result = repository.preview(request)
 
@@ -59,7 +63,11 @@ class MergeRepositoryImplTest {
     @Test
     fun `commit failure propagates`() = runTest {
         val request = ContactMergeRequest(keepId = 1, mergeId = 2)
-        coEvery { apiClient.commitMerge(request) } returns Result.failure(ApiError.Server(500, "boom"))
+        coEvery {
+            apiClient.commitMerge(
+                request
+            )
+        } returns Result.failure(ApiError.Server(500, "boom"))
 
         val result = repository.commit(request)
 
@@ -76,7 +84,7 @@ class BulkOperationRepositoryImplTest {
     fun `run forwards the input and returns the result`() = runTest {
         val input = BulkContactOperationInput(action = "archive", vcardUids = listOf("u1", "u2"))
         coEvery { apiClient.bulkOperation(input) } returns Result.success(
-            BulkOperationResult(action = "archive", total = 2, succeeded = 2, failed = 0),
+            BulkOperationResult(action = "archive", total = 2, succeeded = 2, failed = 0)
         )
 
         val result = repository.run(input)
@@ -88,7 +96,11 @@ class BulkOperationRepositoryImplTest {
     @Test
     fun `run failure propagates`() = runTest {
         val input = BulkContactOperationInput(action = "archive", vcardUids = listOf("u1"))
-        coEvery { apiClient.bulkOperation(input) } returns Result.failure(ApiError.Client(400, "bad request"))
+        coEvery {
+            apiClient.bulkOperation(
+                input
+            )
+        } returns Result.failure(ApiError.Client(400, "bad request"))
 
         val result = repository.run(input)
 

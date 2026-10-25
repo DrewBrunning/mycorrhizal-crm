@@ -17,13 +17,12 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
-import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.mycorrhizal.crm.MainActivity
+import java.util.UUID
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
-import java.util.UUID
 
 /**
  * Issue #238: the shared harness for the instrumented E2E suite. Each test:
@@ -141,7 +140,7 @@ abstract class E2eBaseTest {
     protected fun scrollToNodeWhenStable(
         listTag: String,
         matcher: SemanticsMatcher,
-        timeoutMs: Long = DEFAULT_TIMEOUT_MS,
+        timeoutMs: Long = DEFAULT_TIMEOUT_MS
     ) {
         compose.waitUntil(timeoutMs) {
             runCatching {
@@ -220,13 +219,16 @@ abstract class E2eBaseTest {
     protected fun armAppLock() {
         val activity = compose.activity
         runBlocking {
-            activity.localAuthSettings.setAutoLockDelay(com.mycorrhizal.crm.domain.repository.AutoLockDelay.IMMEDIATELY)
+            activity.localAuthSettings.setAutoLockDelay(
+                com.mycorrhizal.crm.domain.repository.AutoLockDelay.IMMEDIATELY
+            )
             activity.localAuthSettings.setRequireLocalAuth(true)
         }
         compose.waitUntil(DEFAULT_TIMEOUT_MS) {
             activity.appLockController.onAppBackgrounded()
             activity.appLockController.onAppForegrounded()
-            activity.appLockController.state.value == com.mycorrhizal.crm.data.session.AppLockState.Locked
+            activity.appLockController.state.value ==
+                com.mycorrhizal.crm.data.session.AppLockState.Locked
         }
     }
 
@@ -252,7 +254,7 @@ abstract class E2eBaseTest {
     protected fun loginViaUi(
         serverUrl: String = E2eConfig.serverUrl,
         username: String = E2eConfig.SEED_USERNAME,
-        password: String = E2eConfig.SEED_PASSWORD,
+        password: String = E2eConfig.SEED_PASSWORD
     ) {
         waitForText("Sign in")
         replaceTextInField("Server URL", serverUrl)

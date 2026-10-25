@@ -51,7 +51,9 @@ class DeviceRegistrationViewModelTest {
     }
 
     @Test
-    fun `starting already logged in registers exactly once`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `starting already logged in registers exactly once`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val sessionFlow = MutableStateFlow(SessionState(isLoggedIn = true))
         val sessionManager = mockk<SessionManager>()
         every { sessionManager.observeSession() } returns sessionFlow

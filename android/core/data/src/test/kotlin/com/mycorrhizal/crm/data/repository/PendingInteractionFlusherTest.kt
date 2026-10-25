@@ -31,7 +31,7 @@ class PendingInteractionFlusherTest {
         kind: String = "call",
         direction: String? = "incoming",
         contactId: Int? = 7,
-        key: String? = "key-1",
+        key: String? = "key-1"
     ) = PendingInteraction(
         id = id,
         timestampMillis = 1_700_000_000_000,
@@ -39,7 +39,7 @@ class PendingInteractionFlusherTest {
         direction = direction,
         phoneNumber = "+15550100",
         matchedContactId = contactId,
-        idempotencyKey = key,
+        idempotencyKey = key
     )
 
     @Test
@@ -56,8 +56,12 @@ class PendingInteractionFlusherTest {
         coEvery { repository.unsynced() } returnsMany listOf(listOf(interaction()), emptyList())
         coEvery {
             api.createActivity(
-                match { it.type == "call" && it.title == "Call" && it.contactIds == listOf(7) && it.externalRef == "device:1" },
-                "key-1",
+                match {
+                    it.type == "call" && it.title == "Call" && it.contactIds == listOf(
+                        7
+                    ) && it.externalRef == "device:1"
+                },
+                "key-1"
             )
         } returns Result.success(Activity(id = 99))
 
@@ -68,11 +72,14 @@ class PendingInteractionFlusherTest {
 
     @Test
     fun `a message row maps to a bodyless message activity`() = runTest {
-        coEvery { repository.unsynced() } returnsMany listOf(listOf(interaction(kind = "message", direction = "incoming")), emptyList())
+        coEvery { repository.unsynced() } returnsMany listOf(
+            listOf(interaction(kind = "message", direction = "incoming")),
+            emptyList()
+        )
         coEvery {
             api.createActivity(
                 match { it.type == "message" && it.title == "Message" && it.description == null },
-                "key-1",
+                "key-1"
             )
         } returns Result.success(Activity(id = 5))
 
@@ -100,7 +107,12 @@ class PendingInteractionFlusherTest {
     @Test
     fun `a network failure leaves the row queued`() = runTest {
         coEvery { repository.unsynced() } returns listOf(interaction())
-        coEvery { api.createActivity(any(), any()) } returns Result.failure(ApiError.Server(500, "boom"))
+        coEvery {
+            api.createActivity(
+                any(),
+                any()
+            )
+        } returns Result.failure(ApiError.Server(500, "boom"))
 
         assertEquals(1, flusher.flush())
         assertFalse(flusher.drain())
@@ -118,7 +130,10 @@ class PendingInteractionFlusherTest {
 
     @Test
     fun `a keyless row is backfilled before syncing`() = runTest {
-        coEvery { repository.unsynced() } returnsMany listOf(listOf(interaction(key = null)), emptyList())
+        coEvery { repository.unsynced() } returnsMany listOf(
+            listOf(interaction(key = null)),
+            emptyList()
+        )
         coEvery { repository.setIdempotencyKey(1, any()) } returns Unit
         coEvery { api.createActivity(any(), any()) } returns Result.success(Activity(id = 1))
 

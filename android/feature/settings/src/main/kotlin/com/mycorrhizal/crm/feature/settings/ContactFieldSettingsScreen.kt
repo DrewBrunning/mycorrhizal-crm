@@ -49,7 +49,7 @@ import com.mycorrhizal.crm.ui.components.contactFieldLabel
 @Composable
 fun ContactFieldSettingsScreen(
     onBack: () -> Unit,
-    viewModel: ContactFieldSettingsViewModel = hiltViewModel(),
+    viewModel: ContactFieldSettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -58,25 +58,31 @@ fun ContactFieldSettingsScreen(
             TopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back)
+                        )
                     }
                 },
                 title = {
-                    Text(stringResource(R.string.settings_contact_fields_title), style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        stringResource(R.string.settings_contact_fields_title),
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
-        },
+        }
     ) { padding ->
         ContactFieldSettingsContent(
             state = state,
             onToggle = viewModel::onToggle,
-            modifier = Modifier.padding(padding),
+            modifier = Modifier.padding(padding)
         )
     }
 }
@@ -86,14 +92,14 @@ fun ContactFieldSettingsScreen(
 fun ContactFieldSettingsContent(
     state: ContactFieldSettingsUiState,
     onToggle: (ContactFieldKey) -> Unit = {},
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         if (state.isLoading) {
             Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
@@ -105,7 +111,7 @@ fun ContactFieldSettingsContent(
         Text(
             text = stringResource(R.string.settings_contact_fields_description),
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         state.loadError?.let {
@@ -113,7 +119,7 @@ fun ContactFieldSettingsContent(
                 it,
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
             )
         }
         state.saveError?.let {
@@ -121,18 +127,20 @@ fun ContactFieldSettingsContent(
                 it,
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
             )
         }
 
         CONTACT_FIELD_GROUP_ORDER.forEach { group ->
-            val keysInGroup = CONTACT_FIELD_GROUP.entries.filter { it.value == group }.map { it.key }
+            val keysInGroup = CONTACT_FIELD_GROUP.entries.filter {
+                it.value == group
+            }.map { it.key }
             if (keysInGroup.isEmpty()) return@forEach
             Text(
                 text = contactFieldGroupLabel(group),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(top = 8.dp),
+                modifier = Modifier.padding(top = 8.dp)
             )
             keysInGroup.forEach { key ->
                 FieldToggleRow(
@@ -140,7 +148,7 @@ fun ContactFieldSettingsContent(
                     description = contactFieldDescription(key),
                     checked = key in state.enabled,
                     enabled = state.savingKey == null,
-                    onCheckedChange = { onToggle(key) },
+                    onCheckedChange = { onToggle(key) }
                 )
             }
         }
@@ -159,15 +167,20 @@ private fun FieldToggleRow(
     description: String?,
     checked: Boolean,
     enabled: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
+    onCheckedChange: (Boolean) -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .toggleable(value = checked, enabled = enabled, onValueChange = onCheckedChange, role = Role.Switch)
+            .toggleable(
+                value = checked,
+                enabled = enabled,
+                onValueChange = onCheckedChange,
+                role = Role.Switch
+            )
             .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
             Text(label, style = MaterialTheme.typography.bodyLarge)
@@ -175,7 +188,7 @@ private fun FieldToggleRow(
                 Text(
                     description,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }

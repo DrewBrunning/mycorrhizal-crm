@@ -21,7 +21,9 @@ class MapRepositoryImplTest {
 
     @Test
     fun `getMapConfig passes through to the api client`() = runTest {
-        coEvery { apiClient.getMapConfig() } returns Result.success(MapConfig("https://tiles.example/s"))
+        coEvery { apiClient.getMapConfig() } returns Result.success(
+            MapConfig("https://tiles.example/s")
+        )
 
         assertEquals("https://tiles.example/s", repository.getMapConfig().getOrThrow().tileStyleUrl)
     }

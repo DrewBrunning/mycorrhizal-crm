@@ -13,7 +13,9 @@ interface CachedRelationshipEdgeDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(edge: CachedRelationshipEdge)
 
-    @Query("SELECT * FROM cached_relationship_edges WHERE sourceId = :uid OR targetId = :uid ORDER BY updatedAt DESC")
+    @Query(
+        "SELECT * FROM cached_relationship_edges WHERE sourceId = :uid OR targetId = :uid ORDER BY updatedAt DESC"
+    )
     suspend fun getForContact(uid: String): List<CachedRelationshipEdge>
 
     @Query("SELECT * FROM cached_relationship_edges WHERE id = :id")

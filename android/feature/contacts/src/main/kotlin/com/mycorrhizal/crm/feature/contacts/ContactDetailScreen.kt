@@ -27,8 +27,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
@@ -66,8 +66,6 @@ import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Unarchive
 import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material.icons.outlined.Work
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
@@ -76,6 +74,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -92,7 +91,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -111,26 +109,29 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.view.WindowCompat
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
+import com.mycorrhizal.crm.feature.timeline.TimelineSection
+import com.mycorrhizal.crm.feature.timeline.toTimelineItems
 import com.mycorrhizal.crm.model.network.Address
 import com.mycorrhizal.crm.model.network.CadencePolicyInput
 import com.mycorrhizal.crm.model.network.Card
@@ -145,8 +146,6 @@ import com.mycorrhizal.crm.model.network.ExternalActivity
 import com.mycorrhizal.crm.model.network.ExternalIdentity
 import com.mycorrhizal.crm.model.network.ExternalSystems
 import com.mycorrhizal.crm.model.network.FieldDefinition
-import com.mycorrhizal.crm.model.network.ImmichAssetSummary
-import com.mycorrhizal.crm.model.network.ImmichPerson
 import com.mycorrhizal.crm.model.network.ImmichPersonSummary
 import com.mycorrhizal.crm.model.network.OnlineService
 import com.mycorrhizal.crm.model.network.Phone
@@ -161,42 +160,39 @@ import com.mycorrhizal.crm.model.network.wireToEditorValue
 import com.mycorrhizal.crm.model.util.DateFieldMode
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.model.util.DateFormat.display
-import com.mycorrhizal.crm.ui.LocalServerUrl
-import com.mycorrhizal.crm.ui.components.AccessibleIconButton
-import com.mycorrhizal.crm.ui.components.DateField
-import com.mycorrhizal.crm.ui.components.EmptyState
-import com.mycorrhizal.crm.ui.components.AmbientExplanation
-import com.mycorrhizal.crm.ui.components.HealthScoreBadge
-import com.mycorrhizal.crm.ui.components.ScreenTitle
-import com.mycorrhizal.crm.ui.components.healthBandColor
-import com.mycorrhizal.crm.ui.components.targetStatusBand
-import com.mycorrhizal.crm.ui.components.targetStatusLabel
-import com.mycorrhizal.crm.ui.components.scoreReasonText
-import com.mycorrhizal.crm.ui.components.targetTierLabel
 import com.mycorrhizal.crm.ui.LocalDarkTheme
 import com.mycorrhizal.crm.ui.LocalDrawerOpen
+import com.mycorrhizal.crm.ui.LocalServerUrl
+import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.AccessibleIconButton
+import com.mycorrhizal.crm.ui.components.AmbientExplanation
+import com.mycorrhizal.crm.ui.components.DateField
+import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.HealthScoreBadge
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.ScreenTitle
 import com.mycorrhizal.crm.ui.components.WriteConflictDialog
+import com.mycorrhizal.crm.ui.components.healthBandColor
+import com.mycorrhizal.crm.ui.components.scoreReasonText
+import com.mycorrhizal.crm.ui.components.targetStatusBand
+import com.mycorrhizal.crm.ui.components.targetStatusLabel
+import com.mycorrhizal.crm.ui.components.targetTierLabel
 import com.mycorrhizal.crm.ui.components.typeOptionLabel
 import com.mycorrhizal.crm.ui.theme.AppTypography
 import com.mycorrhizal.crm.ui.theme.MycorrhizalFonts
-import com.mycorrhizal.crm.feature.timeline.TimelineSection
-import com.mycorrhizal.crm.feature.timeline.toTimelineItems
-import com.mycorrhizal.crm.ui.R
 import com.yalantis.ucrop.UCrop
+import java.io.File
+import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
-import kotlin.math.roundToInt
 
-private fun androidx.compose.ui.graphics.Color.toArgbCompat(): Int =
-    android.graphics.Color.argb(
-        (alpha * 255).toInt(),
-        (red * 255).toInt(),
-        (green * 255).toInt(),
-        (blue * 255).toInt(),
-    )
+private fun androidx.compose.ui.graphics.Color.toArgbCompat(): Int = android.graphics.Color.argb(
+    (alpha * 255).toInt(),
+    (red * 255).toInt(),
+    (green * 255).toInt(),
+    (blue * 255).toInt()
+)
 
 /**
  * The scroll window over which the contact name cross-fades out of the content
@@ -250,7 +246,7 @@ fun ContactDetailScreen(
     onEditActivity: (Int) -> Unit = {},
     onEditNote: (Int) -> Unit = {},
     onEditReminder: (Int) -> Unit = {},
-    viewModel: ContactDetailViewModel = hiltViewModel(),
+    viewModel: ContactDetailViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     // T90 / issue #831: web parity — the header "You" badge and the
@@ -283,11 +279,13 @@ fun ContactDetailScreen(
                 viewModel.onEventShown()
                 onDeleted()
             }
+
             is ContactDetailEvent.ExportReady -> {
                 val ready = event as ContactDetailEvent.ExportReady
                 viewModel.onEventShown()
                 shareExportedVcf(context, state.contact, ready.version, ready.bytes)
             }
+
             null -> Unit
         }
     }
@@ -312,7 +310,9 @@ fun ContactDetailScreen(
     // Both paths run the picked photo through uCrop (web's react-easy-crop
     // equivalent), then upload the cropped image.
     // uCrop activity result: the cropped output is uploaded directly.
-    val cropLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+    val cropLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             val data = result.data
             val outputUri = data?.let { UCrop.getOutput(it) }
@@ -336,7 +336,7 @@ fun ContactDetailScreen(
         cropLauncher.launch(ucropIntent(context, sourceUri))
     }
     val photoPicker = rememberLauncherForActivityResult(
-        ActivityResultContracts.PickVisualMedia(),
+        ActivityResultContracts.PickVisualMedia()
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
@@ -357,7 +357,9 @@ fun ContactDetailScreen(
                 snackbarHostState.showSnackbar(photoTooLargeMessage)
                 return@launch
             }
-            withContext(Dispatchers.IO) { writePhotoBytes(context, bytes) }?.let { launchCrop(Uri.fromFile(it)) }
+            withContext(
+                Dispatchers.IO
+            ) { writePhotoBytes(context, bytes) }?.let { launchCrop(Uri.fromFile(it)) }
         }
     }
     var photoSourceChooserOpen by remember { mutableStateOf(false) }
@@ -369,8 +371,13 @@ fun ContactDetailScreen(
     var seafilePickerOpen by remember { mutableStateOf(false) }
     var nextcloudPickerOpen by remember { mutableStateOf(false) }
     val onUploadProfilePicture = {
-        if (state.immichConfigured) photoSourceChooserOpen = true
-        else photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+        if (state.immichConfigured) {
+            photoSourceChooserOpen = true
+        } else {
+            photoPicker.launch(
+                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+            )
+        }
     }
 
     // M24: action failures (delete/archive/export/membership writes) set `state.error`, which
@@ -406,8 +413,10 @@ fun ContactDetailScreen(
             if (listState.firstVisibleItemIndex > 0) {
                 1f
             } else {
-                ((listState.firstVisibleItemScrollOffset - collapseStartPx) /
-                    (collapseEndPx - collapseStartPx)).coerceIn(0f, 1f)
+                (
+                    (listState.firstVisibleItemScrollOffset - collapseStartPx) /
+                        (collapseEndPx - collapseStartPx)
+                    ).coerceIn(0f, 1f)
             }
         }
     }
@@ -477,7 +486,7 @@ fun ContactDetailScreen(
                         Icon(
                             Icons.AutoMirrored.Outlined.ArrowBack,
                             contentDescription = stringResource(R.string.cd_back),
-                            tint = barIconColor,
+                            tint = barIconColor
                         )
                     }
                 },
@@ -490,24 +499,26 @@ fun ContactDetailScreen(
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            modifier = Modifier.graphicsLayer { alpha = collapseProgress },
+                            modifier = Modifier.graphicsLayer { alpha = collapseProgress }
                         ) {
                             ContactAvatar(
                                 photoUri = card?.photoUri ?: contact.photoThumbnail,
                                 contentDescription = stringResource(
                                     R.string.contacts_photo_description,
-                                    card?.displayName.orEmpty(),
+                                    card?.displayName.orEmpty()
                                 ),
                                 size = 36.dp,
                                 onClick = onUploadProfilePicture,
-                                onClickLabel = stringResource(R.string.contacts_photo_change),
+                                onClickLabel = stringResource(R.string.contacts_photo_change)
                             )
                             Text(
-                                text = card?.displayName ?: stringResource(R.string.contact_title_fallback),
+                                text = card?.displayName ?: stringResource(
+                                    R.string.contact_title_fallback
+                                ),
                                 style = MaterialTheme.typography.titleLarge,
                                 color = barIconColor,
                                 maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
@@ -518,7 +529,7 @@ fun ContactDetailScreen(
                             Icon(
                                 Icons.Outlined.Edit,
                                 contentDescription = stringResource(R.string.contact_edit),
-                                tint = barIconColor,
+                                tint = barIconColor
                             )
                         }
                         // M24: the top-level action menu (archive/unarchive, export, stay in
@@ -532,8 +543,10 @@ fun ContactDetailScreen(
                             IconButton(onClick = { menuExpanded = true }) {
                                 Icon(
                                     Icons.Outlined.MoreVert,
-                                    contentDescription = stringResource(R.string.contact_actions_menu),
-                                    tint = barIconColor,
+                                    contentDescription = stringResource(
+                                        R.string.contact_actions_menu
+                                    ),
+                                    tint = barIconColor
                                 )
                             }
                             DropdownMenu(
@@ -541,88 +554,134 @@ fun ContactDetailScreen(
                                 onDismissRequest = {
                                     menuExpanded = false
                                     exportExpanded = false
-                                },
+                                }
                             ) {
                                 // Issue #1763: grouped navigation, sharing and state actions,
                                 // each with a leading icon; Delete is isolated after a divider.
                                 DropdownMenuItem(
                                     text = { Text(stringResource(R.string.contact_prep_view)) },
-                                    leadingIcon = { Icon(Icons.Outlined.Lightbulb, contentDescription = null) },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Outlined.Lightbulb,
+                                            contentDescription = null
+                                        )
+                                    },
                                     onClick = {
                                         menuExpanded = false
                                         onViewPrep(contact.id)
-                                    },
+                                    }
                                 )
                                 DropdownMenuItem(
                                     text = { Text(stringResource(R.string.contact_network)) },
-                                    leadingIcon = { Icon(Icons.Outlined.Hub, contentDescription = null) },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Outlined.Hub,
+                                            contentDescription = null
+                                        )
+                                    },
                                     onClick = {
                                         menuExpanded = false
                                         onExploreConnections(contact.id)
-                                    },
+                                    }
                                 )
                                 // Issue #1763: merge is an action, not a data section — it was
                                 // previously listed among the drill-downs below.
                                 DropdownMenuItem(
                                     text = { Text(stringResource(R.string.contact_merge)) },
-                                    leadingIcon = { Icon(Icons.Outlined.CallMerge, contentDescription = null) },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Outlined.CallMerge,
+                                            contentDescription = null
+                                        )
+                                    },
                                     onClick = {
                                         menuExpanded = false
                                         onMerge(contact.id)
-                                    },
+                                    }
                                 )
                                 HorizontalDivider()
                                 DropdownMenuItem(
                                     text = { Text(stringResource(R.string.contact_share)) },
-                                    leadingIcon = { Icon(Icons.Outlined.Share, contentDescription = null) },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Outlined.Share,
+                                            contentDescription = null
+                                        )
+                                    },
                                     onClick = {
                                         menuExpanded = false
                                         onShareContact(contact.uid.orEmpty())
-                                    },
+                                    }
                                 )
                                 Box {
                                     DropdownMenuItem(
-                                        text = { Text(stringResource(R.string.contact_export_menu)) },
-                                        leadingIcon = { Icon(Icons.Outlined.FileDownload, contentDescription = null) },
+                                        text = {
+                                            Text(
+                                                stringResource(R.string.contact_export_menu)
+                                            )
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                Icons.Outlined.FileDownload,
+                                                contentDescription = null
+                                            )
+                                        },
                                         trailingIcon = {
                                             Icon(
                                                 Icons.AutoMirrored.Outlined.ArrowForward,
-                                                contentDescription = null,
+                                                contentDescription = null
                                             )
                                         },
-                                        onClick = { exportExpanded = true },
+                                        onClick = { exportExpanded = true }
                                     )
                                     DropdownMenu(
                                         expanded = exportExpanded,
-                                        onDismissRequest = { exportExpanded = false },
+                                        onDismissRequest = { exportExpanded = false }
                                     ) {
                                         DropdownMenuItem(
-                                            text = { Text(stringResource(R.string.contact_export_vcf4)) },
+                                            text = {
+                                                Text(
+                                                    stringResource(R.string.contact_export_vcf4)
+                                                )
+                                            },
                                             onClick = {
                                                 exportExpanded = false
                                                 menuExpanded = false
                                                 viewModel.exportVcf()
-                                            },
+                                            }
                                         )
                                         DropdownMenuItem(
-                                            text = { Text(stringResource(R.string.contact_export_vcf3)) },
+                                            text = {
+                                                Text(
+                                                    stringResource(R.string.contact_export_vcf3)
+                                                )
+                                            },
                                             onClick = {
                                                 exportExpanded = false
                                                 menuExpanded = false
                                                 viewModel.exportVcf(version = 3)
-                                            },
+                                            }
                                         )
                                     }
                                 }
                                 HorizontalDivider()
                                 if (!contact.archived) {
                                     DropdownMenuItem(
-                                        text = { Text(stringResource(R.string.contact_stay_in_touch)) },
-                                        leadingIcon = { Icon(Icons.Outlined.Schedule, contentDescription = null) },
+                                        text = {
+                                            Text(
+                                                stringResource(R.string.contact_stay_in_touch)
+                                            )
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                Icons.Outlined.Schedule,
+                                                contentDescription = null
+                                            )
+                                        },
                                         onClick = {
                                             menuExpanded = false
                                             onStayInTouch(contact)
-                                        },
+                                        }
                                     )
                                 }
                                 if (!contact.archived) {
@@ -633,23 +692,28 @@ fun ContactDetailScreen(
                                         text = {
                                             Text(
                                                 stringResource(
-                                                    if (isMe) R.string.contact_unmark_as_me else R.string.contact_mark_as_me,
-                                                ),
+                                                    if (isMe) R.string.contact_unmark_as_me else R.string.contact_mark_as_me
+                                                )
                                             )
                                         },
-                                        leadingIcon = { Icon(Icons.Outlined.Person, contentDescription = null) },
+                                        leadingIcon = {
+                                            Icon(
+                                                Icons.Outlined.Person,
+                                                contentDescription = null
+                                            )
+                                        },
                                         onClick = {
                                             menuExpanded = false
                                             viewModel.toggleMe()
-                                        },
+                                        }
                                     )
                                 }
                                 DropdownMenuItem(
                                     text = {
                                         Text(
                                             stringResource(
-                                                if (contact.archived) R.string.contact_unarchive else R.string.contact_archive,
-                                            ),
+                                                if (contact.archived) R.string.contact_unarchive else R.string.contact_archive
+                                            )
                                         )
                                     },
                                     leadingIcon = {
@@ -659,33 +723,38 @@ fun ContactDetailScreen(
                                             } else {
                                                 Icons.Outlined.Archive
                                             },
-                                            contentDescription = null,
+                                            contentDescription = null
                                         )
                                     },
                                     onClick = {
                                         menuExpanded = false
-                                        if (contact.archived) showUnarchiveConfirm = true else showArchiveConfirm = true
-                                    },
+                                        if (contact.archived) {
+                                            showUnarchiveConfirm = true
+                                        } else {
+                                            showArchiveConfirm =
+                                                true
+                                        }
+                                    }
                                 )
                                 HorizontalDivider()
                                 DropdownMenuItem(
                                     text = {
                                         Text(
                                             stringResource(R.string.contact_delete),
-                                            color = MaterialTheme.colorScheme.error,
+                                            color = MaterialTheme.colorScheme.error
                                         )
                                     },
                                     leadingIcon = {
                                         Icon(
                                             Icons.Outlined.Delete,
                                             contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.error,
+                                            tint = MaterialTheme.colorScheme.error
                                         )
                                     },
                                     onClick = {
                                         menuExpanded = false
                                         showDeleteConfirm = true
-                                    },
+                                    }
                                 )
                             }
                         }
@@ -696,15 +765,19 @@ fun ContactDetailScreen(
                     // lerped continuously so the color follows the drag rather
                     // than snapping. The nav/title/action icons are tinted
                     // explicitly from the same continuous progress.
-                    containerColor = lerp(Color.Transparent, MaterialTheme.colorScheme.primary, collapseProgress),
+                    containerColor = lerp(
+                        Color.Transparent,
+                        MaterialTheme.colorScheme.primary,
+                        collapseProgress
+                    ),
                     scrolledContainerColor = MaterialTheme.colorScheme.primary,
                     navigationIconContentColor = barIconColor,
                     titleContentColor = barIconColor,
-                    actionIconContentColor = barIconColor,
-                ),
+                    actionIconContentColor = barIconColor
+                )
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when {
@@ -714,9 +787,12 @@ fun ContactDetailScreen(
                 // swapping in the skeleton lost the user's place and flashed the
                 // page (and raced the skills drill-down E2E, #1893).
                 state.isLoading && state.contact == null -> LoadingSkeleton()
+
                 state.contact == null && (state.errorRes != null || state.error != null) ->
                     EmptyState(state.errorRes?.let { stringResource(it) } ?: state.error.orEmpty())
+
                 state.contact == null -> EmptyState(stringResource(R.string.contact_not_found))
+
                 else -> ContactDetailContent(
                     contact = state.contact!!,
                     listState = listState,
@@ -799,7 +875,7 @@ fun ContactDetailScreen(
                     onAddNextcloudLink = {
                         nextcloudPickerOpen = true
                         viewModel.loadNextcloudDir()
-                    },
+                    }
                 )
             }
         }
@@ -817,8 +893,8 @@ fun ContactDetailScreen(
                 Text(
                     stringResource(
                         R.string.contact_delete_confirm,
-                        contact.card?.displayName.orEmpty(),
-                    ),
+                        contact.card?.displayName.orEmpty()
+                    )
                 )
             },
             confirmButton = {
@@ -827,16 +903,19 @@ fun ContactDetailScreen(
                     onClick = {
                         showDeleteConfirm = false
                         viewModel.deleteContact()
-                    },
+                    }
                 ) {
-                    Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error)
+                    Text(
+                        stringResource(R.string.action_delete),
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirm = false }) {
                     Text(stringResource(R.string.action_cancel))
                 }
-            },
+            }
         )
     }
     if (state.conflict) {
@@ -844,7 +923,7 @@ fun ContactDetailScreen(
             onLoadLatest = viewModel::onConflictLoadLatest,
             onKeep = viewModel::onConflictDismissed,
             messageRes = R.string.conflict_message_delete,
-            keepLabelRes = R.string.conflict_dismiss,
+            keepLabelRes = R.string.conflict_dismiss
         )
     }
     if (showArchiveConfirm && contact != null) {
@@ -855,8 +934,8 @@ fun ContactDetailScreen(
                 Text(
                     stringResource(
                         R.string.contact_archive_confirm,
-                        contact.card?.displayName.orEmpty(),
-                    ),
+                        contact.card?.displayName.orEmpty()
+                    )
                 )
             },
             confirmButton = {
@@ -865,7 +944,7 @@ fun ContactDetailScreen(
                     onClick = {
                         showArchiveConfirm = false
                         viewModel.setArchived(archived = true)
-                    },
+                    }
                 ) {
                     Text(stringResource(R.string.contact_archive))
                 }
@@ -874,7 +953,7 @@ fun ContactDetailScreen(
                 TextButton(onClick = { showArchiveConfirm = false }) {
                     Text(stringResource(R.string.action_cancel))
                 }
-            },
+            }
         )
     }
     if (showUnarchiveConfirm && contact != null) {
@@ -885,8 +964,8 @@ fun ContactDetailScreen(
                 Text(
                     stringResource(
                         R.string.contact_unarchive_confirm,
-                        contact.card?.displayName.orEmpty(),
-                    ),
+                        contact.card?.displayName.orEmpty()
+                    )
                 )
             },
             confirmButton = {
@@ -895,7 +974,7 @@ fun ContactDetailScreen(
                     onClick = {
                         showUnarchiveConfirm = false
                         viewModel.setArchived(archived = false)
-                    },
+                    }
                 ) {
                     Text(stringResource(R.string.contact_unarchive))
                 }
@@ -904,7 +983,7 @@ fun ContactDetailScreen(
                 TextButton(onClick = { showUnarchiveConfirm = false }) {
                     Text(stringResource(R.string.action_cancel))
                 }
-            },
+            }
         )
     }
     pendingUndoCompletionId?.let { completionId ->
@@ -918,16 +997,19 @@ fun ContactDetailScreen(
                     onClick = {
                         pendingUndoCompletionId = null
                         viewModel.undoCompletion(completionId)
-                    },
+                    }
                 ) {
-                    Text(stringResource(R.string.reminder_completion_undo), color = MaterialTheme.colorScheme.error)
+                    Text(
+                        stringResource(R.string.reminder_completion_undo),
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
             },
             dismissButton = {
                 TextButton(onClick = { pendingUndoCompletionId = null }) {
                     Text(stringResource(R.string.action_cancel))
                 }
-            },
+            }
         )
     }
 
@@ -944,8 +1026,12 @@ fun ContactDetailScreen(
                         modifier = Modifier.fillMaxWidth(),
                         onClick = {
                             photoSourceChooserOpen = false
-                            photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                        },
+                            photoPicker.launch(
+                                PickVisualMediaRequest(
+                                    ActivityResultContracts.PickVisualMedia.ImageOnly
+                                )
+                            )
+                        }
                     ) {
                         Text(stringResource(R.string.profile_picture_source_gallery))
                     }
@@ -954,7 +1040,7 @@ fun ContactDetailScreen(
                         onClick = {
                             photoSourceChooserOpen = false
                             immichPickerOpen = true
-                        },
+                        }
                     ) {
                         Text(stringResource(R.string.profile_picture_source_immich))
                     }
@@ -965,7 +1051,7 @@ fun ContactDetailScreen(
                 TextButton(onClick = { photoSourceChooserOpen = false }) {
                     Text(stringResource(R.string.action_cancel))
                 }
-            },
+            }
         )
     }
 
@@ -976,7 +1062,13 @@ fun ContactDetailScreen(
             onDismissRequest = { pendingExternalLinkDelete = null },
             title = { Text(stringResource(R.string.external_links_remove_title)) },
             text = {
-                Text(stringResource(R.string.external_links_remove_confirm, identity.system.orEmpty(), identity.externalId))
+                Text(
+                    stringResource(
+                        R.string.external_links_remove_confirm,
+                        identity.system.orEmpty(),
+                        identity.externalId
+                    )
+                )
             },
             confirmButton = {
                 TextButton(
@@ -984,16 +1076,19 @@ fun ContactDetailScreen(
                     onClick = {
                         pendingExternalLinkDelete = null
                         viewModel.deleteExternalIdentity(identity.id)
-                    },
+                    }
                 ) {
-                    Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error)
+                    Text(
+                        stringResource(R.string.action_delete),
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
             },
             dismissButton = {
                 TextButton(onClick = { pendingExternalLinkDelete = null }) {
                     Text(stringResource(R.string.action_cancel))
                 }
-            },
+            }
         )
     }
     if (pendingImmichUnlink) {
@@ -1007,16 +1102,19 @@ fun ContactDetailScreen(
                     onClick = {
                         pendingImmichUnlink = false
                         viewModel.unlinkImmichPerson()
-                    },
+                    }
                 ) {
-                    Text(stringResource(R.string.immich_unlink), color = MaterialTheme.colorScheme.error)
+                    Text(
+                        stringResource(R.string.immich_unlink),
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
             },
             dismissButton = {
                 TextButton(onClick = { pendingImmichUnlink = false }) {
                     Text(stringResource(R.string.action_cancel))
                 }
-            },
+            }
         )
     }
 
@@ -1025,7 +1123,9 @@ fun ContactDetailScreen(
         val contactUid = state.contact?.uid.orEmpty()
         ImmichPhotoPickerDialog(
             contactUid = contactUid,
-            isLinked = state.immichSummary != null || state.externalIdentities.any { it.system == ExternalSystems.IMMICH },
+            isLinked =
+                state.immichSummary != null ||
+                    state.externalIdentities.any { it.system == ExternalSystems.IMMICH },
             people = state.immichPeople,
             peopleLoading = state.immichPeopleLoading,
             assets = state.immichAssets,
@@ -1036,11 +1136,13 @@ fun ContactDetailScreen(
             onPick = { assetId ->
                 viewModel.pickImmichAsset(assetId) { bytes ->
                     scope.launch {
-                        withContext(Dispatchers.IO) { writePhotoBytes(context, bytes) }?.let { launchCrop(Uri.fromFile(it)) }
+                        withContext(
+                            Dispatchers.IO
+                        ) { writePhotoBytes(context, bytes) }?.let { launchCrop(Uri.fromFile(it)) }
                     }
                 }
             },
-            onDismiss = { immichPickerOpen = false },
+            onDismiss = { immichPickerOpen = false }
         )
     }
 
@@ -1056,7 +1158,7 @@ fun ContactDetailScreen(
                 paperlessPickerOpen = false
                 viewModel.linkPaperlessDocument(document)
             },
-            onDismiss = { paperlessPickerOpen = false },
+            onDismiss = { paperlessPickerOpen = false }
         )
     }
     if (seafilePickerOpen) {
@@ -1067,13 +1169,18 @@ fun ContactDetailScreen(
             browseItems = state.seafileBrowseItems,
             loading = state.seafileBrowseLoading,
             onEnterLibrary = { repoId -> viewModel.enterSeafileDir(repoId) },
-            onEnterDir = { path -> viewModel.enterSeafileDir(state.seafileBrowseRepoId.orEmpty(), path) },
+            onEnterDir = { path ->
+                viewModel.enterSeafileDir(
+                    state.seafileBrowseRepoId.orEmpty(),
+                    path
+                )
+            },
             onBack = viewModel::backSeafileDir,
             onSelect = { item ->
                 seafilePickerOpen = false
                 viewModel.linkSeafileItem(item)
             },
-            onDismiss = { seafilePickerOpen = false },
+            onDismiss = { seafilePickerOpen = false }
         )
     }
     if (nextcloudPickerOpen) {
@@ -1086,13 +1193,16 @@ fun ContactDetailScreen(
                 nextcloudPickerOpen = false
                 viewModel.linkNextcloudItem(item)
             },
-            onDismiss = { nextcloudPickerOpen = false },
+            onDismiss = { nextcloudPickerOpen = false }
         )
     }
 }
 
 @Composable
-@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@OptIn(
+    ExperimentalMaterial3Api::class,
+    androidx.compose.foundation.layout.ExperimentalLayoutApi::class
+)
 fun ContactDetailContent(
     contact: ContactRecordResponse,
     listState: LazyListState = rememberLazyListState(),
@@ -1202,7 +1312,7 @@ fun ContactDetailContent(
     agendaCount: Int? = null,
     relationshipCount: Int? = null,
     attachmentCount: Int? = null,
-    cadenceCount: Int? = null,
+    cadenceCount: Int? = null
 ) {
     val card = contact.card
     // Issue #1763: counts for the three drill-downs whose rows are already
@@ -1226,7 +1336,7 @@ fun ContactDetailContent(
         modifier = Modifier
             .fillMaxSize()
             .testTag("contact-detail-list"),
-        state = listState,
+        state = listState
     ) {
         item {
             // Large photo + name header on the bone surface. It sits under the
@@ -1240,17 +1350,17 @@ fun ContactDetailContent(
                     // into the collapsing app bar (mirrors the bar-title alpha).
                     .graphicsLayer { alpha = headerContentAlpha },
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 ContactAvatar(
                     photoUri = card?.photoUri ?: contact.photoThumbnail,
                     contentDescription = stringResource(
                         R.string.contacts_photo_description,
-                        card?.displayName.orEmpty(),
+                        card?.displayName.orEmpty()
                     ),
                     size = 120.dp,
                     onClick = onUploadProfilePicture,
-                    onClickLabel = stringResource(R.string.contacts_photo_change),
+                    onClickLabel = stringResource(R.string.contacts_photo_change)
                 )
                 // #208: the contact name is the de facto page heading but
                 // carried no heading semantics, so TalkBack's heading
@@ -1261,7 +1371,7 @@ fun ContactDetailContent(
                 val deathAnniversary = card?.anniversaries?.firstOrNull { it.kind == "death" }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     // Issue #1922: focus/announce the contact name on entry,
                     // including a cold-start deep link (the collapsed app-bar
@@ -1270,7 +1380,7 @@ fun ContactDetailContent(
                     ScreenTitle(
                         text = card?.displayName ?: stringResource(R.string.contact_title_fallback),
                         color = MaterialTheme.colorScheme.onSurface,
-                        textAlign = TextAlign.Center,
+                        textAlign = TextAlign.Center
                     )
                     if (deathAnniversary != null) {
                         // Issue #1193: neutral, non-interactive chip -- same
@@ -1280,7 +1390,7 @@ fun ContactDetailContent(
                             onClick = {},
                             enabled = false,
                             label = { Text(stringResource(R.string.contact_deceased_badge)) },
-                            modifier = Modifier.testTag("deceased-badge"),
+                            modifier = Modifier.testTag("deceased-badge")
                         )
                     }
                     if (isMe) {
@@ -1290,7 +1400,7 @@ fun ContactDetailContent(
                             onClick = {},
                             enabled = false,
                             label = { Text(stringResource(R.string.contact_you_badge)) },
-                            modifier = Modifier.testTag("you-badge"),
+                            modifier = Modifier.testTag("you-badge")
                         )
                     }
                     // Issue #383 (ADR-0023): the relationship health score badge.
@@ -1299,7 +1409,7 @@ fun ContactDetailContent(
                         HealthScoreBadge(
                             score = score.score,
                             band = score.band,
-                            onClick = { showScoreDetails = true },
+                            onClick = { showScoreDetails = true }
                         )
                         // Issue #1798: "Target: close · drifting", tinted by the
                         // target status band. Tapping opens the same breakdown.
@@ -1312,12 +1422,12 @@ fun ContactDetailContent(
                                         text = stringResource(
                                             R.string.target_closeness_chip,
                                             targetTierLabel(target.tier),
-                                            targetStatusLabel(target.status),
+                                            targetStatusLabel(target.status)
                                         ),
-                                        color = healthBandColor(targetStatusBand(target.status)),
+                                        color = healthBandColor(targetStatusBand(target.status))
                                     )
                                 },
-                                modifier = Modifier.testTag("target-closeness-chip"),
+                                modifier = Modifier.testTag("target-closeness-chip")
                             )
                         }
                     }
@@ -1329,33 +1439,35 @@ fun ContactDetailContent(
                             imageVector = if (contact.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
                             contentDescription = stringResource(
                                 if (contact.isFavorite) R.string.contacts_unfavorite_contact else R.string.contacts_favorite_contact,
-                                card?.displayName.orEmpty(),
+                                card?.displayName.orEmpty()
                             ),
                             tint = if (contact.isFavorite) {
                                 MaterialTheme.colorScheme.tertiary
                             } else {
                                 MaterialTheme.colorScheme.onSurfaceVariant
-                            },
+                            }
                         )
                     }
                 }
                 val nickname = card?.nicknames?.firstOrNull()?.name
-                val birthday = card?.anniversaries?.firstOrNull { it.kind == "birth" }?.date?.partial
+                val birthday = card?.anniversaries?.firstOrNull {
+                    it.kind == "birth"
+                }?.date?.partial
                 if (nickname != null && ContactFieldKey.NICKNAME in enabledFields) {
                     Text(
                         text = "\"$nickname\"",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 if (birthday != null && ContactFieldKey.BIRTHDAY in enabledFields) {
                     Text(
                         text = stringResource(
                             R.string.contact_birthday_label,
-                            birthday.display(dateFormat ?: DateFormat.EU),
+                            birthday.display(dateFormat ?: DateFormat.EU)
                         ),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 val dateOfDeath = deathAnniversary?.date?.partial
@@ -1363,10 +1475,10 @@ fun ContactDetailContent(
                     Text(
                         text = stringResource(
                             R.string.contact_deceased_date_label,
-                            dateOfDeath.display(dateFormat ?: DateFormat.EU),
+                            dateOfDeath.display(dateFormat ?: DateFormat.EU)
                         ),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 // Issue #832: crm.gender — free text, shown alongside nickname/birthday
@@ -1376,7 +1488,7 @@ fun ContactDetailContent(
                     Text(
                         text = gender,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -1387,7 +1499,9 @@ fun ContactDetailContent(
         val otherAnniversaries = card?.anniversaries.orEmpty().filter { it.kind != "birth" }
         val pronouns = card?.speakToAs?.pronouns.orEmpty()
         val grammaticalGenders = card?.speakToAs?.grammaticalGenders.orEmpty()
-        if ((pronouns.isNotEmpty() || grammaticalGenders.isNotEmpty()) && ContactFieldKey.SPEAK_TO_AS in enabledFields) {
+        if ((pronouns.isNotEmpty() || grammaticalGenders.isNotEmpty()) &&
+            ContactFieldKey.SPEAK_TO_AS in enabledFields
+        ) {
             item {
                 SectionCard(stringResource(R.string.contact_speak_to_as)) {
                     pronouns.forEach { p -> p.pronouns?.let { InfoRow(it) } }
@@ -1403,7 +1517,9 @@ fun ContactDetailContent(
                 }
             }
         }
-        if (!card?.preferredLanguages.isNullOrEmpty() && ContactFieldKey.PREFERRED_LANGUAGES in enabledFields) {
+        if (!card?.preferredLanguages.isNullOrEmpty() &&
+            ContactFieldKey.PREFERRED_LANGUAGES in enabledFields
+        ) {
             item {
                 SectionCard(stringResource(R.string.contact_preferred_languages)) {
                     card.preferredLanguages?.forEach { pref -> pref.language?.let { InfoRow(it) } }
@@ -1435,9 +1551,33 @@ fun ContactDetailContent(
         // one merged UI section for three separate ContactFieldKeys, so disabling e.g.
         // socialProfiles must not hide impp/otherOnlineServices entries.
         val onlineServices = (
-            (if (ContactFieldKey.IMPP_ADDRESSES in enabledFields) card?.imppAddresses.orEmpty() else emptyList()) +
-                (if (ContactFieldKey.SOCIAL_PROFILES in enabledFields) card?.socialProfiles.orEmpty() else emptyList()) +
-                (if (ContactFieldKey.OTHER_ONLINE_SERVICES in enabledFields) card?.otherOnlineServices.orEmpty() else emptyList())
+            (
+                if (ContactFieldKey.IMPP_ADDRESSES in
+                    enabledFields
+                ) {
+                    card?.imppAddresses.orEmpty()
+                } else {
+                    emptyList()
+                }
+                ) +
+                (
+                    if (ContactFieldKey.SOCIAL_PROFILES in
+                        enabledFields
+                    ) {
+                        card?.socialProfiles.orEmpty()
+                    } else {
+                        emptyList()
+                    }
+                    ) +
+                (
+                    if (ContactFieldKey.OTHER_ONLINE_SERVICES in
+                        enabledFields
+                    ) {
+                        card?.otherOnlineServices.orEmpty()
+                    } else {
+                        emptyList()
+                    }
+                    )
             )
         if (onlineServices.isNotEmpty()) {
             item {
@@ -1449,14 +1589,14 @@ fun ContactDetailContent(
         if (!card?.links.isNullOrEmpty() && ContactFieldKey.LINKS in enabledFields) {
             item {
                 SectionCard(stringResource(R.string.contact_links)) {
-                card.links?.forEach { link ->
-                    val uri = link.uri.orEmpty()
-                    LinkRow(
-                        uri = uri,
-                        label = link.label ?: uri,
-                        linkType = MobileLinkRegistry.forProtocol(link.label),
-                    )
-                }
+                    card.links?.forEach { link ->
+                        val uri = link.uri.orEmpty()
+                        LinkRow(
+                            uri = uri,
+                            label = link.label ?: uri,
+                            linkType = MobileLinkRegistry.forProtocol(link.label)
+                        )
+                    }
                 }
             }
         }
@@ -1471,7 +1611,9 @@ fun ContactDetailContent(
             }
         }
         val contactInformation = contact.crm?.contactInformation
-        if (!contactInformation.isNullOrBlank() && ContactFieldKey.CONTACT_INFORMATION in enabledFields) {
+        if (!contactInformation.isNullOrBlank() &&
+            ContactFieldKey.CONTACT_INFORMATION in enabledFields
+        ) {
             item {
                 SectionCard(stringResource(R.string.contact_contact_information)) {
                     InfoRow(contactInformation)
@@ -1499,7 +1641,7 @@ fun ContactDetailContent(
                     onAdd = onAddCircle,
                     onRemove = onRemoveCircle,
                     emptyText = stringResource(R.string.contact_circles_empty),
-                    addLabel = stringResource(R.string.contact_circles_add),
+                    addLabel = stringResource(R.string.contact_circles_add)
                 )
             }
         }
@@ -1513,7 +1655,7 @@ fun ContactDetailContent(
                     onAdd = onAddTag,
                     onRemove = onRemoveTag,
                     emptyText = stringResource(R.string.contact_tags_empty),
-                    addLabel = stringResource(R.string.contact_tags_add),
+                    addLabel = stringResource(R.string.contact_tags_add)
                 )
             }
         }
@@ -1528,11 +1670,13 @@ fun ContactDetailContent(
                     definitions = fieldDefinitions,
                     values = fieldValuesByDefinitionId,
                     savingDefinitionId = savingFieldDefinitionId,
-                    onSaveValue = onSaveFieldValue,
+                    onSaveValue = onSaveFieldValue
                 )
             }
         }
-        if (externalIdentities.isNotEmpty() || paperlessConfigured || seafileConfigured || nextcloudConfigured) {
+        if (externalIdentities.isNotEmpty() || paperlessConfigured || seafileConfigured ||
+            nextcloudConfigured
+        ) {
             item {
                 // Issue #220: the External Links panel (ExternalIdentity
                 // substrate). Rendered when there's a link to show OR a
@@ -1551,20 +1695,32 @@ fun ContactDetailContent(
                                 contactUid = contact.uid,
                                 onUnlink = onUnlinkImmich,
                                 syncing = immichSyncing,
-                                onSync = onSyncImmich,
+                                onSync = onSyncImmich
                             )
                         } else {
-                            GenericExternalLinkRow(identity, onDelete = { onDeleteExternalIdentity(identity) })
+                            GenericExternalLinkRow(
+                                identity,
+                                onDelete = { onDeleteExternalIdentity(identity) }
+                            )
                         }
                     }
                     if (paperlessConfigured) {
-                        AddExternalLinkRow(stringResource(R.string.external_links_add_paperless), onAddPaperlessLink)
+                        AddExternalLinkRow(
+                            stringResource(R.string.external_links_add_paperless),
+                            onAddPaperlessLink
+                        )
                     }
                     if (seafileConfigured) {
-                        AddExternalLinkRow(stringResource(R.string.external_links_add_seafile), onAddSeafileLink)
+                        AddExternalLinkRow(
+                            stringResource(R.string.external_links_add_seafile),
+                            onAddSeafileLink
+                        )
                     }
                     if (nextcloudConfigured) {
-                        AddExternalLinkRow(stringResource(R.string.external_links_add_nextcloud), onAddNextcloudLink)
+                        AddExternalLinkRow(
+                            stringResource(R.string.external_links_add_nextcloud),
+                            onAddNextcloudLink
+                        )
                     }
                 }
             }
@@ -1578,12 +1734,12 @@ fun ContactDetailContent(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 SectionTitle(stringResource(R.string.contact_timeline))
                 TextButton(
                     onClick = { onViewTimeline(contact.id) },
-                    modifier = Modifier.padding(end = 8.dp),
+                    modifier = Modifier.padding(end = 8.dp)
                 ) {
                     Text(stringResource(R.string.timeline_view_all))
                 }
@@ -1594,20 +1750,29 @@ fun ContactDetailContent(
                 onEditNote = onEditNote,
                 onEditReminder = onEditReminder,
                 onCompleteReminder = onCompleteReminder,
-                onUndoCompletion = onUndoCompletion,
+                onUndoCompletion = onUndoCompletion
             )
         }
         if (deviceLookupKey != null) {
             item {
                 androidx.compose.material3.ListItem(
-                    headlineContent = { Text(stringResource(R.string.contact_open_in_contacts), style = MaterialTheme.typography.bodyLarge) },
+                    headlineContent = {
+                        Text(
+                            stringResource(R.string.contact_open_in_contacts),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    },
                     trailingContent = {
                         Icon(
                             imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
-                            contentDescription = null,
+                            contentDescription = null
                         )
                     },
-                    modifier = Modifier.fillMaxWidth().clickable { onOpenInContacts(deviceLookupKey) },
+                    modifier = Modifier.fillMaxWidth().clickable {
+                        onOpenInContacts(
+                            deviceLookupKey
+                        )
+                    }
                 )
             }
         }
@@ -1621,7 +1786,7 @@ fun ContactDetailContent(
                 label = stringResource(R.string.contact_activities),
                 icon = Icons.Outlined.History,
                 count = activityCount,
-                onClick = { onViewActivities(contact.id) },
+                onClick = { onViewActivities(contact.id) }
             )
         }
         item {
@@ -1629,7 +1794,7 @@ fun ContactDetailContent(
                 label = stringResource(R.string.contact_notes),
                 icon = Icons.Outlined.EditNote,
                 count = noteCount,
-                onClick = { onViewNotes(contact.id) },
+                onClick = { onViewNotes(contact.id) }
             )
         }
         item {
@@ -1637,7 +1802,7 @@ fun ContactDetailContent(
                 label = stringResource(R.string.contact_life_events),
                 icon = Icons.Outlined.Celebration,
                 count = lifeEventCount,
-                onClick = { onViewLifeEvents(contact.id) },
+                onClick = { onViewLifeEvents(contact.id) }
             )
         }
         item { DrillDownGroupHeader(stringResource(R.string.contact_section_planning)) }
@@ -1646,7 +1811,7 @@ fun ContactDetailContent(
                 label = stringResource(R.string.contact_reminders),
                 icon = Icons.Outlined.Notifications,
                 count = reminderCount,
-                onClick = { onViewReminders(contact.id) },
+                onClick = { onViewReminders(contact.id) }
             )
         }
         item {
@@ -1654,7 +1819,7 @@ fun ContactDetailContent(
                 label = stringResource(R.string.contact_cadence),
                 icon = Icons.Outlined.Schedule,
                 count = cadenceCount,
-                onClick = { onViewCadence(contact.id) },
+                onClick = { onViewCadence(contact.id) }
             )
         }
         item {
@@ -1662,7 +1827,7 @@ fun ContactDetailContent(
                 label = stringResource(R.string.contact_agenda),
                 icon = Icons.Outlined.Forum,
                 count = agendaCount,
-                onClick = { onViewAgenda(contact.id) },
+                onClick = { onViewAgenda(contact.id) }
             )
         }
         item {
@@ -1670,7 +1835,7 @@ fun ContactDetailContent(
                 label = stringResource(R.string.contact_gifts),
                 icon = Icons.Outlined.CardGiftcard,
                 count = giftCount,
-                onClick = { onViewGifts(contact.id) },
+                onClick = { onViewGifts(contact.id) }
             )
         }
         item { DrillDownGroupHeader(stringResource(R.string.contact_section_about)) }
@@ -1682,7 +1847,7 @@ fun ContactDetailContent(
                     icon = Icons.Outlined.Lightbulb,
                     count = personalInfoCount,
                     onClick = { onViewSkills(contact.id) },
-                    tag = "drill-down-skills",
+                    tag = "drill-down-skills"
                 )
             }
         }
@@ -1696,7 +1861,7 @@ fun ContactDetailContent(
                     icon = Icons.Outlined.Work,
                     count = workCount,
                     onClick = { onViewWork(contact.id) },
-                    tag = "drill-down-work",
+                    tag = "drill-down-work"
                 )
             }
         }
@@ -1707,7 +1872,7 @@ fun ContactDetailContent(
                     icon = Icons.Outlined.Celebration,
                     count = otherAnniversaries.size,
                     onClick = { onViewAnniversaries(contact.id) },
-                    tag = "drill-down-anniversaries",
+                    tag = "drill-down-anniversaries"
                 )
             }
         }
@@ -1716,7 +1881,7 @@ fun ContactDetailContent(
                 label = stringResource(R.string.contact_preferences),
                 icon = Icons.Outlined.Tune,
                 count = preferenceCount,
-                onClick = { onViewPreferences(contact.id) },
+                onClick = { onViewPreferences(contact.id) }
             )
         }
         item {
@@ -1724,7 +1889,7 @@ fun ContactDetailContent(
                 label = stringResource(R.string.contact_relationships),
                 icon = Icons.Outlined.People,
                 count = relationshipCount,
-                onClick = { onViewRelationships(contact.id) },
+                onClick = { onViewRelationships(contact.id) }
             )
         }
         item {
@@ -1732,7 +1897,7 @@ fun ContactDetailContent(
                 label = stringResource(R.string.contact_attachments),
                 icon = Icons.Outlined.AttachFile,
                 count = attachmentCount,
-                onClick = { onViewAttachments(contact.id) },
+                onClick = { onViewAttachments(contact.id) }
             )
         }
         item { Box(modifier = Modifier.size(32.dp)) }
@@ -1752,32 +1917,51 @@ fun ContactDetailContent(
                     if (score.ambient) {
                         AmbientExplanation(
                             reason = score.ambientReason,
-                            modifier = Modifier.testTag("health-score-ambient"),
+                            modifier = Modifier.testTag("health-score-ambient")
                         )
                     }
-                    ScoreFacetRow(stringResource(R.string.health_score_facet_recency), score.recency)
-                    ScoreFacetRow(stringResource(R.string.health_score_facet_frequency), score.frequency)
-                    ScoreFacetRow(stringResource(R.string.health_score_facet_closeness), score.closeness)
-                    ScoreFacetRow(stringResource(R.string.health_score_facet_reach_out), score.reachOut)
-                    ScoreFacetRow(stringResource(R.string.health_score_facet_last_updated), score.lastUpdated)
+                    ScoreFacetRow(
+                        stringResource(R.string.health_score_facet_recency),
+                        score.recency
+                    )
+                    ScoreFacetRow(
+                        stringResource(R.string.health_score_facet_frequency),
+                        score.frequency
+                    )
+                    ScoreFacetRow(
+                        stringResource(R.string.health_score_facet_closeness),
+                        score.closeness
+                    )
+                    ScoreFacetRow(
+                        stringResource(R.string.health_score_facet_reach_out),
+                        score.reachOut
+                    )
+                    ScoreFacetRow(
+                        stringResource(R.string.health_score_facet_last_updated),
+                        score.lastUpdated
+                    )
                     // Issue #1798: the target-closeness picker + the server's
                     // plain-language explanation of the current status.
                     HorizontalDivider()
                     Text(
                         text = stringResource(R.string.target_closeness_label),
-                        style = MaterialTheme.typography.titleSmall,
+                        style = MaterialTheme.typography.titleSmall
                     )
                     TargetClosenessPicker(
                         selected = contact.crm?.targetCloseness,
-                        onSelect = onSetTargetCloseness,
+                        onSelect = onSetTargetCloseness
                     )
                     val target = score.target
                     if (target != null) {
                         Text(
-                            text = scoreReasonText(target.reasonCode, target.reasonParams, target.reason),
+                            text = scoreReasonText(
+                                target.reasonCode,
+                                target.reasonParams,
+                                target.reason
+                            ),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.testTag("target-closeness-reason"),
+                            modifier = Modifier.testTag("target-closeness-reason")
                         )
                     }
                 }
@@ -1786,7 +1970,7 @@ fun ContactDetailContent(
                 TextButton(onClick = { showScoreDetails = false }) {
                     Text(stringResource(R.string.action_close))
                 }
-            },
+            }
         )
     }
 
@@ -1805,8 +1989,8 @@ fun ContactDetailContent(
                     stringResource(
                         R.string.target_closeness_offer_body,
                         contactName,
-                        cadencePolicyOffer.targetIntervalDays,
-                    ),
+                        cadencePolicyOffer.targetIntervalDays
+                    )
                 )
             },
             confirmButton = {
@@ -1818,7 +2002,7 @@ fun ContactDetailContent(
                 TextButton(onClick = onDismissCadenceOffer) {
                     Text(stringResource(R.string.target_closeness_offer_dismiss))
                 }
-            },
+            }
         )
     }
 }
@@ -1831,10 +2015,7 @@ fun ContactDetailContent(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TargetClosenessPicker(
-    selected: String?,
-    onSelect: (String?) -> Unit,
-) {
+private fun TargetClosenessPicker(selected: String?, onSelect: (String?) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     val selectedLabel = selected?.let { targetTierLabel(it) }
         ?: stringResource(R.string.target_closeness_none)
@@ -1848,7 +2029,7 @@ private fun TargetClosenessPicker(
             modifier = Modifier
                 .fillMaxWidth()
                 .menuAnchor()
-                .testTag("target-closeness-picker"),
+                .testTag("target-closeness-picker")
         )
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(
@@ -1856,7 +2037,7 @@ private fun TargetClosenessPicker(
                 onClick = {
                     onSelect(null)
                     expanded = false
-                },
+                }
             )
             TargetClosenessTier.ALL.forEach { tier ->
                 DropdownMenuItem(
@@ -1864,7 +2045,7 @@ private fun TargetClosenessPicker(
                     onClick = {
                         onSelect(tier)
                         expanded = false
-                    },
+                    }
                 )
             }
         }
@@ -1881,27 +2062,26 @@ private fun ScoreFacetRow(label: String, facet: ContactScoreFacet) {
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(text = label, style = MaterialTheme.typography.titleSmall)
             Text(
                 text = stringResource(
                     R.string.health_score_facet_value,
                     facet.value.roundToInt(),
-                    facet.weight.roundToInt(),
+                    facet.weight.roundToInt()
                 ),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         Text(
             text = scoreReasonText(facet.reasonCode, facet.reasonParams, facet.reason),
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
-
 
 /** Issue #1763: a section heading above a group of contact drill-down rows. */
 @Composable
@@ -1912,7 +2092,7 @@ private fun DrillDownGroupHeader(title: String) {
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier
             .padding(horizontal = 16.dp, vertical = 8.dp)
-            .semantics { heading() },
+            .semantics { heading() }
     )
 }
 
@@ -1927,7 +2107,7 @@ private fun DrillDownRow(
     icon: ImageVector,
     count: Int?,
     onClick: () -> Unit,
-    tag: String? = null,
+    tag: String? = null
 ) {
     androidx.compose.material3.ListItem(
         headlineContent = {
@@ -1937,26 +2117,26 @@ private fun DrillDownRow(
                 } else {
                     label
                 },
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyLarge
             )
         },
         leadingContent = {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         },
         trailingContent = {
             Icon(
                 imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
-                contentDescription = null,
+                contentDescription = null
             )
         },
         modifier = Modifier
             .fillMaxWidth()
             .then(if (tag != null) Modifier.testTag(tag) else Modifier)
-            .clickable(onClick = onClick),
+            .clickable(onClick = onClick)
     )
 }
 
@@ -1964,7 +2144,9 @@ private fun DrillDownRow(
 internal fun SectionCard(title: String, content: @Composable () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+        )
     ) {
         Column(modifier = Modifier.padding(vertical = 8.dp)) {
             // T63 Android port: field-group captions ("Phone", "Address",
@@ -1978,11 +2160,13 @@ internal fun SectionCard(title: String, content: @Composable () -> Unit) {
             // screen. One fix here covers all SectionCard call sites.
             Text(
                 text = title,
-                style = MaterialTheme.typography.labelLarge.copy(fontFamily = MycorrhizalFonts.mono),
+                style = MaterialTheme.typography.labelLarge.copy(
+                    fontFamily = MycorrhizalFonts.mono
+                ),
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
                     .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .semantics { heading() },
+                    .semantics { heading() }
             )
             content()
         }
@@ -1999,8 +2183,9 @@ private fun SectionTitle(text: String) {
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier
             .padding(horizontal = 16.dp, vertical = 8.dp)
-            .semantics { heading() },
-    )}
+            .semantics { heading() }
+    )
+}
 
 @Composable
 private fun InfoRow(text: String) {
@@ -2009,7 +2194,7 @@ private fun InfoRow(text: String) {
         style = MaterialTheme.typography.bodyLarge,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
+            .padding(horizontal = 16.dp, vertical = 4.dp)
     )
 }
 
@@ -2025,10 +2210,13 @@ internal fun CustomFieldValueRow(
     definition: FieldDefinition,
     value: Any?,
     saving: Boolean,
-    onSave: (Any?) -> Unit,
+    onSave: (Any?) -> Unit
 ) {
     var editing by remember(definition.id) { mutableStateOf(false) }
-    var editorValue by remember(definition.id, value) { mutableStateOf(wireToEditorValue(definition, value)) }
+    var editorValue by remember(
+        definition.id,
+        value
+    ) { mutableStateOf(wireToEditorValue(definition, value)) }
 
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -2036,38 +2224,42 @@ internal fun CustomFieldValueRow(
                 text = definition.label.orEmpty(),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f)
             )
             if (!editing) {
                 AccessibleIconButton(
                     onClick = {
                         editorValue = wireToEditorValue(definition, value)
                         editing = true
-                    },
+                    }
                 ) {
                     Icon(
                         Icons.Outlined.Edit,
                         contentDescription = stringResource(
                             R.string.contact_custom_field_edit_named,
-                            definition.label.orEmpty(),
+                            definition.label.orEmpty()
                         ),
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }
         }
         if (editing) {
-            CustomFieldValueEditor(definition = definition, value = editorValue, onChange = { editorValue = it })
+            CustomFieldValueEditor(
+                definition = definition,
+                value = editorValue,
+                onChange = { editorValue = it }
+            )
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                horizontalArrangement = Arrangement.End,
+                horizontalArrangement = Arrangement.End
             ) {
                 TextButton(
                     onClick = {
                         editorValue = wireToEditorValue(definition, value)
                         editing = false
                     },
-                    enabled = !saving,
+                    enabled = !saving
                 ) {
                     Text(stringResource(R.string.action_cancel))
                 }
@@ -2081,10 +2273,12 @@ internal fun CustomFieldValueRow(
                         onSave(next)
                         editing = false
                     },
-                    enabled = !saving,
+                    enabled = !saving
                 ) {
                     if (saving) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp).padding(end = 8.dp))
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp).padding(end = 8.dp)
+                        )
                     }
                     Text(stringResource(R.string.action_save))
                 }
@@ -2096,7 +2290,13 @@ internal fun CustomFieldValueRow(
             Text(
                 text = display,
                 style = MaterialTheme.typography.bodyMedium,
-                color = if (display == "—") MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                color = if (display ==
+                    "—"
+                ) {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                }
             )
         }
     }
@@ -2113,7 +2313,7 @@ internal fun CustomFieldValueRow(
 private fun CustomFieldValueEditor(
     definition: FieldDefinition,
     value: Any,
-    onChange: (Any) -> Unit,
+    onChange: (Any) -> Unit
 ) {
     if (isMulti(definition)) {
         val rows = (value as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
@@ -2126,23 +2326,34 @@ private fun CustomFieldValueEditor(
                             value = row,
                             onChange = { next ->
                                 onChange(rows.toMutableList().also { it[index] = next.toString() })
-                            },
+                            }
                         )
                     }
                     AccessibleIconButton(
-                        onClick = { onChange(rows.toMutableList().also { it.removeAt(index) }) },
+                        onClick = { onChange(rows.toMutableList().also { it.removeAt(index) }) }
                     ) {
-                        Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.action_delete))
+                        Icon(
+                            Icons.Outlined.Delete,
+                            contentDescription = stringResource(R.string.action_delete)
+                        )
                     }
                 }
             }
             TextButton(onClick = { onChange(rows + "") }) {
-                Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.padding(end = 4.dp))
+                Icon(
+                    Icons.Outlined.Add,
+                    contentDescription = null,
+                    modifier = Modifier.padding(end = 4.dp)
+                )
                 Text(stringResource(R.string.action_add))
             }
         }
     } else {
-        CustomFieldScalarEditor(definition = definition, value = value as? String ?: "", onChange = onChange)
+        CustomFieldScalarEditor(
+            definition = definition,
+            value = value as? String ?: "",
+            onChange = onChange
+        )
     }
 }
 
@@ -2154,7 +2365,7 @@ private fun CustomFieldValueEditor(
 private fun CustomFieldScalarEditor(
     definition: FieldDefinition,
     value: String,
-    onChange: (Any) -> Unit,
+    onChange: (Any) -> Unit
 ) {
     when (definition.type) {
         "boolean" -> {
@@ -2164,6 +2375,7 @@ private fun CustomFieldScalarEditor(
                 Text(stringResource(R.string.contact_custom_field_value_label))
             }
         }
+
         "enum" -> {
             var expanded by remember { mutableStateOf(false) }
             val options = definition.constraints?.values.orEmpty()
@@ -2173,27 +2385,36 @@ private fun CustomFieldScalarEditor(
                     onValueChange = {},
                     readOnly = true,
                     label = { Text(stringResource(R.string.contact_custom_field_value_label)) },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                    trailingIcon = {
+                        ExposedDropdownMenuDefaults.TrailingIcon(
+                            expanded = expanded
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth().menuAnchor()
                 )
                 ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                     options.forEach { option ->
                         DropdownMenuItem(
                             text = { Text(option) },
-                            onClick = { onChange(option); expanded = false },
+                            onClick = {
+                                onChange(option)
+                                expanded = false
+                            }
                         )
                     }
                 }
             }
         }
+
         "number" -> OutlinedTextField(
             value = value,
             onValueChange = onChange,
             label = { Text(stringResource(R.string.contact_custom_field_value_label)) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         )
+
         "date" -> DateField(
             value = value,
             onValueChange = { onChange(it) },
@@ -2201,8 +2422,9 @@ private fun CustomFieldScalarEditor(
             mode = DateFieldMode.DATE_ONLY,
             allowClear = true,
             testTag = "custom-field-date-${definition.id}",
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         )
+
         "datetime" -> DateField(
             value = value,
             onValueChange = { onChange(it) },
@@ -2210,45 +2432,50 @@ private fun CustomFieldScalarEditor(
             mode = DateFieldMode.DATE_TIME_OPTIONAL,
             allowClear = true,
             testTag = "custom-field-datetime-${definition.id}",
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         )
+
         "text" -> OutlinedTextField(
             value = value,
             onValueChange = onChange,
             label = { Text(stringResource(R.string.contact_custom_field_value_label)) },
             minLines = 2,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         )
+
         "email" -> OutlinedTextField(
             value = value,
             onValueChange = onChange,
             label = { Text(stringResource(R.string.contact_custom_field_value_label)) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         )
+
         "phone" -> OutlinedTextField(
             value = value,
             onValueChange = onChange,
             label = { Text(stringResource(R.string.contact_custom_field_value_label)) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
             singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         )
+
         "uri" -> OutlinedTextField(
             value = value,
             onValueChange = onChange,
             label = { Text(stringResource(R.string.contact_custom_field_value_label)) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
             singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         )
+
         else -> OutlinedTextField(
             value = value,
             onValueChange = onChange,
             label = { Text(stringResource(R.string.contact_custom_field_value_label)) },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         )
     }
 }
@@ -2266,13 +2493,13 @@ internal fun ValueWithType(value: String, typeToken: String?, modifier: Modifier
             text = value,
             style = AppTypography.mono,
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+            overflow = TextOverflow.Ellipsis
         )
         if (!typeToken.isNullOrBlank()) {
             Text(
                 text = typeOptionLabel(typeToken),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -2284,7 +2511,7 @@ private fun EmailRow(email: Email) {
     val address = email.address.orEmpty()
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         // M7: the type is `contexts[0]` (web parity — the form's type dropdown writes
         // there), with `label` as a fallback for legacy flat-Type data (backend's
@@ -2292,21 +2519,21 @@ private fun EmailRow(email: Email) {
         ValueWithType(
             value = address,
             typeToken = email.contexts?.firstOrNull() ?: email.label,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f)
         )
         if (address.isNotBlank()) {
             IconButton(onClick = { context.startActivity(FieldActions.emailIntent(address)) }) {
                 Icon(
                     Icons.Outlined.Email,
                     contentDescription = stringResource(R.string.cd_compose_email),
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
             IconButton(onClick = { FieldActions.copyText(context, "email", address) }) {
                 Icon(
                     Icons.Outlined.ContentCopy,
                     contentDescription = stringResource(R.string.cd_copy_email),
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -2319,21 +2546,21 @@ private fun PhoneRow(phone: Phone) {
     val number = phone.number.orEmpty()
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         // M7: the type is `features[0] ?: contexts[0]` (web parity), matching what
         // the form's type dropdown reads. `label` is X-ABLabel, not the type.
         ValueWithType(
             value = number,
             typeToken = phone.features?.firstOrNull() ?: phone.contexts?.firstOrNull(),
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f)
         )
         if (number.isNotBlank()) {
             IconButton(onClick = { context.startActivity(FieldActions.dialIntent(number)) }) {
                 Icon(
                     Icons.Outlined.Call,
                     contentDescription = stringResource(R.string.cd_call),
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
             // SMS for mobile numbers (T34 phone detection). Mirrors the web
@@ -2347,7 +2574,7 @@ private fun PhoneRow(phone: Phone) {
                     Icon(
                         Icons.Outlined.Message,
                         contentDescription = stringResource(R.string.cd_text),
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -2355,7 +2582,7 @@ private fun PhoneRow(phone: Phone) {
                 Icon(
                     Icons.Outlined.ContentCopy,
                     contentDescription = stringResource(R.string.cd_copy_phone),
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -2377,26 +2604,26 @@ private fun AddressRow(address: Address) {
         ?: ""
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = text,
             style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f)
         )
         if (text.isNotBlank()) {
             IconButton(onClick = { context.startActivity(FieldActions.mapIntent(text)) }) {
                 Icon(
                     Icons.Outlined.Map,
                     contentDescription = stringResource(R.string.cd_open_maps),
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
             IconButton(onClick = { FieldActions.copyText(context, "address", text) }) {
                 Icon(
                     Icons.Outlined.ContentCopy,
                     contentDescription = stringResource(R.string.cd_copy_address),
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -2411,14 +2638,14 @@ private fun OnlineServiceRow(service: OnlineService) {
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 if (serviceName.isNotBlank()) {
                     Text(
                         text = serviceName,
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 if (handle.isNotBlank()) {
@@ -2426,7 +2653,7 @@ private fun OnlineServiceRow(service: OnlineService) {
                         text = handle,
                         style = MaterialTheme.typography.bodyLarge,
                         maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
                 }
             }
@@ -2435,7 +2662,7 @@ private fun OnlineServiceRow(service: OnlineService) {
                     Icon(
                         Icons.Outlined.ContentCopy,
                         contentDescription = stringResource(R.string.cd_copy_link),
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -2451,16 +2678,12 @@ private fun OnlineServiceRow(service: OnlineService) {
 }
 
 @Composable
-private fun LinkRow(
-    uri: String,
-    label: String,
-    linkType: MobileLinkType?,
-) {
+private fun LinkRow(uri: String, label: String, linkType: MobileLinkType?) {
     val context = LocalContext.current
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(
                 text = label,
@@ -2468,21 +2691,21 @@ private fun LinkRow(
                 color = MaterialTheme.colorScheme.primary,
                 maxLines = 1,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f)
             )
             if (uri.isNotBlank()) {
                 IconButton(onClick = { context.startActivity(FieldActions.browserIntent(uri)) }) {
                     Icon(
                         Icons.Outlined.OpenInNew,
                         contentDescription = stringResource(R.string.cd_open_link),
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
                 IconButton(onClick = { FieldActions.copyText(context, "url", uri) }) {
                     Icon(
                         Icons.Outlined.ContentCopy,
                         contentDescription = stringResource(R.string.cd_copy_link),
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -2500,17 +2723,14 @@ private fun LinkRow(
  * degrades to nothing (the caller already shows the plain link + copy row).
  */
 @Composable
-private fun MobileLinkActions(
-    linkType: MobileLinkType,
-    handle: String,
-) {
+private fun MobileLinkActions(linkType: MobileLinkType, handle: String) {
     val context = LocalContext.current
     var availableActions by remember { mutableStateOf<List<MobileLinkAction>>(emptyList()) }
     var permissionAsked by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
+        ActivityResultContracts.RequestPermission()
     ) { granted ->
         permissionAsked = true
         if (granted) {
@@ -2523,7 +2743,8 @@ private fun MobileLinkActions(
 
     LaunchedEffect(linkType, handle) {
         val granted = ContextCompat.checkSelfPermission(
-            context, Manifest.permission.READ_CONTACTS,
+            context,
+            Manifest.permission.READ_CONTACTS
         ) == PackageManager.PERMISSION_GRANTED
         if (granted) {
             val resolver = MobileLinkActionResolver(context.contentResolver)
@@ -2540,7 +2761,7 @@ private fun MobileLinkActions(
     if (availableActions.isNotEmpty()) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(top = 4.dp),
+            modifier = Modifier.padding(top = 4.dp)
         ) {
             availableActions.forEach { action ->
                 AssistChip(
@@ -2555,23 +2776,23 @@ private fun MobileLinkActions(
                     label = { Text(stringResource(action.label)) },
                     leadingIcon = {
                         Icon(
-                                imageVector = when (action.kind) {
-                                    MobileActionKind.MESSAGE -> Icons.Outlined.Message
-                                    MobileActionKind.VOICE_CALL -> Icons.Outlined.Call
-                                    MobileActionKind.VIDEO_CALL -> Icons.Outlined.Videocam
-                                    MobileActionKind.APP_OPEN -> Icons.Outlined.OpenInNew
-                                    MobileActionKind.APP_CALL -> Icons.Outlined.Call
-                                },
-                                contentDescription = stringResource(action.label),
-                                modifier = Modifier.size(18.dp),
-                            )
-                        },
-                        modifier = Modifier.height(32.dp),
-                    )
-                }
+                            imageVector = when (action.kind) {
+                                MobileActionKind.MESSAGE -> Icons.Outlined.Message
+                                MobileActionKind.VOICE_CALL -> Icons.Outlined.Call
+                                MobileActionKind.VIDEO_CALL -> Icons.Outlined.Videocam
+                                MobileActionKind.APP_OPEN -> Icons.Outlined.OpenInNew
+                                MobileActionKind.APP_CALL -> Icons.Outlined.Call
+                            },
+                            contentDescription = stringResource(action.label),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    },
+                    modifier = Modifier.height(32.dp)
+                )
             }
         }
     }
+}
 
 // --- M24: inline circle/tag chip editor -------------------------------------
 
@@ -2590,7 +2811,7 @@ private fun <T> ChipEditorRow(
     onAdd: (T) -> Unit,
     onRemove: (T) -> Unit,
     emptyText: String,
-    addLabel: String,
+    addLabel: String
 ) {
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
         if (items.isEmpty()) {
@@ -2598,12 +2819,12 @@ private fun <T> ChipEditorRow(
                 text = emptyText,
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(vertical = 4.dp),
+                modifier = Modifier.padding(vertical = 4.dp)
             )
         }
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         ) {
             items.forEach { item ->
                 InputChip(
@@ -2614,9 +2835,9 @@ private fun <T> ChipEditorRow(
                         Icon(
                             Icons.Outlined.Close,
                             contentDescription = stringResource(R.string.contact_remove),
-                            modifier = Modifier.size(16.dp),
+                            modifier = Modifier.size(16.dp)
                         )
-                    },
+                    }
                 )
             }
         }
@@ -2631,14 +2852,14 @@ private fun <T> ChipEditorRow(
                         Icon(
                             Icons.Outlined.Add,
                             contentDescription = null,
-                            modifier = Modifier.size(18.dp),
+                            modifier = Modifier.size(18.dp)
                         )
                     },
-                    modifier = Modifier.height(32.dp),
+                    modifier = Modifier.height(32.dp)
                 )
                 DropdownMenu(
                     expanded = menuExpanded,
-                    onDismissRequest = { menuExpanded = false },
+                    onDismissRequest = { menuExpanded = false }
                 ) {
                     addable.forEach { item ->
                         DropdownMenuItem(
@@ -2646,7 +2867,7 @@ private fun <T> ChipEditorRow(
                             onClick = {
                                 menuExpanded = false
                                 onAdd(item)
-                            },
+                            }
                         )
                     }
                 }
@@ -2664,7 +2885,7 @@ private fun shareExportedVcf(
     context: Context,
     contact: ContactRecordResponse?,
     version: Int?,
-    bytes: ByteArray,
+    bytes: ByteArray
 ) {
     val dir = File(context.cacheDir, "exports").apply { mkdirs() }
     val safeName = contact?.card?.displayName
@@ -2681,7 +2902,9 @@ private fun shareExportedVcf(
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
     try {
-        context.startActivity(Intent.createChooser(intent, context.getString(R.string.contact_export_share_title)))
+        context.startActivity(
+            Intent.createChooser(intent, context.getString(R.string.contact_export_share_title))
+        )
     } catch (_: Exception) {
         // No activity can handle the share — nothing to do.
     }
@@ -2752,7 +2975,7 @@ private fun ImmichLinkRow(
     contactUid: String?,
     onUnlink: () -> Unit,
     syncing: Boolean = false,
-    onSync: () -> Unit = {},
+    onSync: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val serverOrigin = LocalServerUrl.current
@@ -2763,24 +2986,32 @@ private fun ImmichLinkRow(
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         if (contactUid != null) {
             AsyncImage(
-                model = resolvePhotoUri("/api/v1/immich/contacts/$contactUid/thumbnail", serverOrigin),
+                model = resolvePhotoUri(
+                    "/api/v1/immich/contacts/$contactUid/thumbnail",
+                    serverOrigin
+                ),
                 contentDescription = stringResource(R.string.immich_link_thumbnail_desc),
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .size(48.dp)
-                    .clip(RoundedCornerShape(8.dp)),
+                    .clip(RoundedCornerShape(8.dp))
             )
         }
         Column(modifier = Modifier.weight(1f)) {
-            Text(personName, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                personName,
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
             Text(
                 stringResource(R.string.immich_photo_count, summary?.photoCount ?: 0),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         if (safeUrl != null) {
@@ -2788,14 +3019,14 @@ private fun ImmichLinkRow(
                 Icon(
                     Icons.Outlined.OpenInNew,
                     contentDescription = stringResource(R.string.cd_open_link),
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         }
         AccessibleIconButton(
             onClick = onSync,
             enabled = !syncing,
-            modifier = Modifier.testTag("immich-sync-button"),
+            modifier = Modifier.testTag("immich-sync-button")
         ) {
             if (syncing) {
                 CircularProgressIndicator(modifier = Modifier.padding(4.dp), strokeWidth = 2.dp)
@@ -2803,7 +3034,7 @@ private fun ImmichLinkRow(
                 Icon(
                     Icons.Outlined.Sync,
                     contentDescription = stringResource(R.string.immich_sync_now),
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -2812,8 +3043,11 @@ private fun ImmichLinkRow(
                 Icons.Outlined.Delete,
                 // #205: the row action names the linked person so TalkBack
                 // doesn't read a bare "Remove link" on every row.
-                contentDescription = stringResource(R.string.external_links_remove_named, personName),
-                tint = MaterialTheme.colorScheme.error,
+                contentDescription = stringResource(
+                    R.string.external_links_remove_named,
+                    personName
+                ),
+                tint = MaterialTheme.colorScheme.error
             )
         }
     }
@@ -2832,16 +3066,21 @@ private fun GenericExternalLinkRow(identity: ExternalIdentity, onDelete: () -> U
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(identity.system.orEmpty(), style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                identity.system.orEmpty(),
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
             Text(
                 identity.externalId,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
         }
         if (safeUrl != null) {
@@ -2849,7 +3088,7 @@ private fun GenericExternalLinkRow(identity: ExternalIdentity, onDelete: () -> U
                 Icon(
                     Icons.Outlined.OpenInNew,
                     contentDescription = stringResource(R.string.cd_open_link),
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -2858,8 +3097,11 @@ private fun GenericExternalLinkRow(identity: ExternalIdentity, onDelete: () -> U
                 Icons.Outlined.Delete,
                 // #205: the row action names the linked system so TalkBack
                 // doesn't read a bare "Remove link" on every row.
-                contentDescription = stringResource(R.string.external_links_remove_named, identity.system.orEmpty()),
-                tint = MaterialTheme.colorScheme.error,
+                contentDescription = stringResource(
+                    R.string.external_links_remove_named,
+                    identity.system.orEmpty()
+                ),
+                tint = MaterialTheme.colorScheme.error
             )
         }
     }
@@ -2875,7 +3117,7 @@ private fun AddExternalLinkRow(label: String, onClick: () -> Unit) {
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp),
+            .padding(horizontal = 8.dp)
     ) {
         Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
         Text(label)

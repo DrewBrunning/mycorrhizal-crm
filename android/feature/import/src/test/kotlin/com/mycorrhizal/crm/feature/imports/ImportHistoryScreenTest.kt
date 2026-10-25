@@ -45,8 +45,16 @@ class ImportHistoryScreenTest {
         val apiClient = mockk<ApiClient>()
         coEvery { apiClient.getImportHistory() } returns Result.success(
             listOf(
-                ImportRun(id = 1, format = "csv", created = 3, updated = 1, skipped = 0, errorCount = 0, createdAt = "2026-09-20T12:00:00Z"),
-            ),
+                ImportRun(
+                    id = 1,
+                    format = "csv",
+                    created = 3,
+                    updated = 1,
+                    skipped = 0,
+                    errorCount = 0,
+                    createdAt = "2026-09-20T12:00:00Z"
+                )
+            )
         )
 
         setScreen(apiClient)
@@ -59,7 +67,16 @@ class ImportHistoryScreenTest {
     fun `renders the created updated skipped and error counts`() {
         val apiClient = mockk<ApiClient>()
         coEvery { apiClient.getImportHistory() } returns Result.success(
-            listOf(ImportRun(id = 1, format = "vcf", created = 3, updated = 1, skipped = 2, errorCount = 1)),
+            listOf(
+                ImportRun(
+                    id = 1,
+                    format = "vcf",
+                    created = 3,
+                    updated = 1,
+                    skipped = 2,
+                    errorCount = 1
+                )
+            )
         )
 
         setScreen(apiClient)
@@ -83,7 +100,9 @@ class ImportHistoryScreenTest {
     @Test
     fun `a load failure surfaces the error as a snackbar without crashing`() {
         val apiClient = mockk<ApiClient>()
-        coEvery { apiClient.getImportHistory() } returns Result.failure(ApiError.Client(500, "server error"))
+        coEvery { apiClient.getImportHistory() } returns Result.failure(
+            ApiError.Client(500, "server error")
+        )
 
         setScreen(apiClient)
 

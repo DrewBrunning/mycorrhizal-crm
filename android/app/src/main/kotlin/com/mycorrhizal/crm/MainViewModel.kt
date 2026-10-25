@@ -21,6 +21,7 @@ import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.model.AppVersion
 import com.mycorrhizal.crm.model.network.ServerHealth
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -28,7 +29,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /**
  * The client/server compatibility decision that gates the whole root (issues
@@ -91,7 +91,7 @@ class MainViewModel @Inject constructor(
     private val serverCompatibilityRepository: ServerCompatibilityRepository,
     private val authRepository: AuthRepository,
     private val serverCapabilitiesStore: ServerCapabilitiesStore,
-    private val localServerHost: LocalServerHost,
+    private val localServerHost: LocalServerHost
 ) : ViewModel() {
     val session: StateFlow<SessionState> = sessionManager.observeSession()
         .stateIn(viewModelScope, SharingStarted.Eagerly, SessionState())
@@ -100,7 +100,9 @@ class MainViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Eagerly, AppLockState.Resolving)
 
     /** The current compatibility gate. See [CompatibilityGate]. */
-    private val _compatibilityGate = MutableStateFlow<CompatibilityGate>(CompatibilityGate.NotRequired)
+    private val _compatibilityGate = MutableStateFlow<CompatibilityGate>(
+        CompatibilityGate.NotRequired
+    )
     val compatibilityGate: StateFlow<CompatibilityGate> = _compatibilityGate.asStateFlow()
 
     /** The server version while the current session's server is older than this
@@ -158,16 +160,19 @@ class MainViewModel @Inject constructor(
                         checkedServerUrl = null
                         resetCompatibilityState()
                     }
+
                     serverUrl != checkedServerUrl -> {
                         // A (possibly new) server to resolve — includes app start
                         // with a stored URL, logged in or not.
                         checkedServerUrl = serverUrl
                         runCheck()
                     }
+
                     loginEdge -> {
                         // Fresh session on the same server: re-resolve once.
                         runCheck()
                     }
+
                     logoutEdge -> {
                         // Ending a session returns to the auth screen without
                         // re-raising a blocking gate for the same URL — the next
@@ -212,8 +217,8 @@ class MainViewModel @Inject constructor(
                     isAdmin = user.isAdmin,
                     language = user.language,
                     dateFormat = user.dateFormat,
-                    enabledContactFields = user.enabledContactFields,
-                ),
+                    enabledContactFields = user.enabledContactFields
+                )
             )
             sessionManager.setSelfContactVCardUid(user.selfContactVCardUid)
         }
@@ -246,7 +251,10 @@ class MainViewModel @Inject constructor(
             localServerHost.ensureStarted()
                 .onSuccess { sessionManager.activateLocalProfile(it.sessionToken) }
                 .onFailure { error ->
-                    Log.w("MainViewModel", "embedded local server failed to start: ${error.message}")
+                    Log.w(
+                        "MainViewModel",
+                        "embedded local server failed to start: ${error.message}"
+                    )
                 }
         }
     }
@@ -316,7 +324,7 @@ class MainViewModel @Inject constructor(
 internal data class CompatibilityOutcome(
     val gate: CompatibilityGate,
     val noticeVersion: String?,
-    val serverVersion: AppVersion?,
+    val serverVersion: AppVersion?
 )
 
 /**
@@ -333,28 +341,32 @@ internal data class CompatibilityOutcome(
  */
 internal fun resolveCompatibilityOutcome(
     clientVersionName: String,
-    server: ServerHealth?,
+    server: ServerHealth?
 ): CompatibilityOutcome {
     val serverVersion = server?.version?.let { AppVersion.parse(it) }
     if (server == null) {
         return CompatibilityOutcome(CompatibilityGate.NotRequired, null, null)
     }
-    val serverUnsupported = serverVersion != null && !ServerCapabilities.isServerSupported(serverVersion)
+    val serverUnsupported = serverVersion != null && !ServerCapabilities.isServerSupported(
+        serverVersion
+    )
     return when (val decision = CompatibilityResolver.resolve(clientVersionName, server)) {
         Compatibility.Compatible -> CompatibilityOutcome(
             gate = if (serverUnsupported) CompatibilityGate.ServerTooOld else CompatibilityGate.NotRequired,
             noticeVersion = null,
-            serverVersion = serverVersion,
+            serverVersion = serverVersion
         )
+
         is Compatibility.ForceUpdate -> CompatibilityOutcome(
             gate = CompatibilityGate.ForceUpdate(decision.requiredVersion),
             noticeVersion = null,
-            serverVersion = serverVersion,
+            serverVersion = serverVersion
         )
+
         is Compatibility.ServerUpdateRecommended -> CompatibilityOutcome(
             gate = if (serverUnsupported) CompatibilityGate.ServerTooOld else CompatibilityGate.NotRequired,
             noticeVersion = if (serverUnsupported) null else decision.serverVersion,
-            serverVersion = serverVersion,
+            serverVersion = serverVersion
         )
     }
 }

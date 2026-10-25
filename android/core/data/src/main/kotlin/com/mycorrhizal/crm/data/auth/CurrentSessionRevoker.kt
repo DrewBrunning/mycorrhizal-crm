@@ -18,9 +18,7 @@ import javax.inject.Singleton
  * i.e. while the session is still authenticated — see that interface's doc.
  */
 @Singleton
-class CurrentSessionRevoker @Inject constructor(
-    private val api: ApiClient,
-) {
+class CurrentSessionRevoker @Inject constructor(private val api: ApiClient) {
     suspend fun revoke() {
         val sessions = api.listSessions().getOrNull() ?: return
         val current = sessions.firstOrNull { it.current } ?: return

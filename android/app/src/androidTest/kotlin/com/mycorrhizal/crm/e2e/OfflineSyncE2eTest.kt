@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm.e2e
 
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
@@ -18,7 +19,11 @@ import com.mycorrhizal.crm.feature.tracking.InteractionSyncWorker
 import com.mycorrhizal.crm.feature.tracking.TrackingWorkerScheduler
 import com.mycorrhizal.crm.model.network.ActivityInput
 import com.mycorrhizal.crm.network.ApiClient
-import androidx.room.Room
+import java.time.Instant
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -31,11 +36,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.time.Instant
-import java.time.OffsetDateTime
-import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
-import java.util.UUID
 
 /**
  * ANDROID-02 (issue #479): the offline-sync outbox lifecycle, driven against the real
@@ -144,7 +144,7 @@ class OfflineSyncE2eTest : E2eBaseTest() {
         direction: String?,
         phoneNumber: String,
         timestampMillis: Long,
-        matchedContactId: Int? = null,
+        matchedContactId: Int? = null
     ): Queued {
         pendingRepo.record(
             PendingInteraction(
@@ -152,8 +152,8 @@ class OfflineSyncE2eTest : E2eBaseTest() {
                 kind = kind,
                 direction = direction,
                 phoneNumber = phoneNumber,
-                matchedContactId = matchedContactId,
-            ),
+                matchedContactId = matchedContactId
+            )
         )
         val row = pendingRepo.unsynced().single { it.phoneNumber == phoneNumber }
         return Queued(row)
@@ -175,7 +175,7 @@ class OfflineSyncE2eTest : E2eBaseTest() {
     /** The worker's own date wire-format, replicated (see the class doc's drift note). */
     private fun workerDate(epochMillis: Long): String =
         DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(
-            Instant.ofEpochMilli(epochMillis).atOffset(ZoneOffset.UTC),
+            Instant.ofEpochMilli(epochMillis).atOffset(ZoneOffset.UTC)
         )
 
     /** The ActivityInput the worker would build for [row] — used to simulate an ambiguous first
@@ -189,8 +189,10 @@ class OfflineSyncE2eTest : E2eBaseTest() {
         }
         val title = when (row.kind) {
             InteractionCapture.KIND_MESSAGE -> "Message"
+
             InteractionCapture.KIND_CALL ->
                 if (row.direction == InteractionCapture.DIR_MISSED) "Missed call" else "Call"
+
             else -> "Interaction"
         }
         return ActivityInput(
@@ -198,7 +200,7 @@ class OfflineSyncE2eTest : E2eBaseTest() {
             date = workerDate(row.timestampMillis),
             contactIds = row.matchedContactId?.let { listOf(it) },
             type = type,
-            externalRef = "device:${row.id}",
+            externalRef = "device:${row.id}"
         )
     }
 
@@ -209,7 +211,7 @@ class OfflineSyncE2eTest : E2eBaseTest() {
         wm.enqueueUniqueWork(
             name,
             ExistingWorkPolicy.REPLACE,
-            OneTimeWorkRequestBuilder<InteractionSyncWorker>().build(),
+            OneTimeWorkRequestBuilder<InteractionSyncWorker>().build()
         )
         val deadlineMs = System.currentTimeMillis() + 60_000
         while (true) {
@@ -245,7 +247,7 @@ class OfflineSyncE2eTest : E2eBaseTest() {
         assertEquals(
             "exactly one server Activity for ${queued.externalRef} ($context); got $matches",
             1,
-            matches.size,
+            matches.size
         )
         createdActivityIds += matches.single().getLong("ID")
     }
@@ -262,19 +264,19 @@ class OfflineSyncE2eTest : E2eBaseTest() {
             direction = InteractionCapture.DIR_INCOMING,
             phoneNumber = uniquePhone("matched"),
             timestampMillis = freshTimestamp(),
-            matchedContactId = matchedContact.id.toInt(),
+            matchedContactId = matchedContact.id.toInt()
         )
         val missed = queue(
             kind = InteractionCapture.KIND_CALL,
             direction = InteractionCapture.DIR_MISSED,
             phoneNumber = uniquePhone("missed"),
-            timestampMillis = freshTimestamp(),
+            timestampMillis = freshTimestamp()
         )
         val message = queue(
             kind = InteractionCapture.KIND_MESSAGE,
             direction = InteractionCapture.DIR_INCOMING,
             phoneNumber = uniquePhone("message"),
-            timestampMillis = freshTimestamp(),
+            timestampMillis = freshTimestamp()
         )
 
         // Offline: the periodic-style sync runs and fails at the HTTP boundary; nothing is lost
@@ -282,12 +284,20 @@ class OfflineSyncE2eTest : E2eBaseTest() {
         goOffline()
         assertEquals(WorkInfo.State.SUCCEEDED, runSyncWorkerOnce())
         assertEquals(3, pendingRepo.unsynced().size)
-        assertEquals(0, serverActivitiesFor(call).size + serverActivitiesFor(missed).size + serverActivitiesFor(message).size)
+        assertEquals(
+            0,
+            serverActivitiesFor(
+                call
+            ).size + serverActivitiesFor(missed).size + serverActivitiesFor(message).size
+        )
 
         // Reconnect: the next run drains the queue and creates one Activity per entry.
         goOnline()
         assertEquals(WorkInfo.State.SUCCEEDED, runSyncWorkerOnce())
-        assertTrue("outbox must be drained after a successful run", pendingRepo.unsynced().isEmpty())
+        assertTrue(
+            "outbox must be drained after a successful run",
+            pendingRepo.unsynced().isEmpty()
+        )
 
         assertExactlyOneServerActivity(call, "matched incoming call")
         assertExactlyOneServerActivity(missed, "unmatched missed call")
@@ -305,7 +315,7 @@ class OfflineSyncE2eTest : E2eBaseTest() {
             direction = InteractionCapture.DIR_INCOMING,
             phoneNumber = uniquePhone("ambig"),
             timestampMillis = freshTimestamp(),
-            matchedContactId = contact.id.toInt(),
+            matchedContactId = contact.id.toInt()
         )
         val row = pendingRepo.unsynced().single()
         val queued = Queued(row)
@@ -316,7 +326,7 @@ class OfflineSyncE2eTest : E2eBaseTest() {
         // "never sees the response" (we discard the outcome, which is precisely the ambiguity).
         assertTrue(
             "the simulated first attempt must commit",
-            apiClient.createActivity(workerInputFor(row), key).isSuccess,
+            apiClient.createActivity(workerInputFor(row), key).isSuccess
         )
         assertExactlyOneServerActivity(queued, "after the ambiguous first attempt")
 
@@ -338,7 +348,7 @@ class OfflineSyncE2eTest : E2eBaseTest() {
             direction = InteractionCapture.DIR_OUTGOING,
             phoneNumber = uniquePhone("conflict"),
             timestampMillis = freshTimestamp(),
-            matchedContactId = contact.id.toInt(),
+            matchedContactId = contact.id.toInt()
         )
         val queued = Queued(pendingRepo.unsynced().single())
 
@@ -348,7 +358,10 @@ class OfflineSyncE2eTest : E2eBaseTest() {
         goOnline()
 
         assertEquals(WorkInfo.State.SUCCEEDED, runSyncWorkerOnce())
-        assertTrue("the conflicted row must drain, not sit in the queue forever", pendingRepo.unsynced().isEmpty())
+        assertTrue(
+            "the conflicted row must drain, not sit in the queue forever",
+            pendingRepo.unsynced().isEmpty()
+        )
 
         val matches = serverActivitiesFor(queued)
         assertEquals(1, matches.size)
@@ -357,7 +370,7 @@ class OfflineSyncE2eTest : E2eBaseTest() {
         val participants = activity.optJSONArray("contacts")
         assertTrue(
             "the interaction must survive as an unassociated Activity (its link was stale)",
-            participants == null || participants.length() == 0,
+            participants == null || participants.length() == 0
         )
     }
 
@@ -370,14 +383,14 @@ class OfflineSyncE2eTest : E2eBaseTest() {
             kind = InteractionCapture.KIND_CALL,
             direction = InteractionCapture.DIR_INCOMING,
             phoneNumber = uniquePhone("cold-a"),
-            timestampMillis = freshTimestamp(),
+            timestampMillis = freshTimestamp()
         )
         val second = queue(
             kind = InteractionCapture.KIND_MESSAGE,
             direction = InteractionCapture.DIR_INCOMING,
             phoneNumber = uniquePhone("cold-b"),
             timestampMillis = freshTimestamp(),
-            matchedContactId = createTestContact(uniqueName("Cold"), "Target").id.toInt(),
+            matchedContactId = createTestContact(uniqueName("Cold"), "Target").id.toInt()
         )
 
         // A brand-new AppDatabase over the app's real encrypted file — the same builder shape
@@ -420,20 +433,36 @@ class OfflineSyncE2eTest : E2eBaseTest() {
         val contacts = (1..3).map { createTestContact(uniqueName("Long"), "Target$it") }
         repeat(30) { i ->
             val matched = contacts[i % contacts.size].id.toInt()
-            val kind = if (i % 2 == 0) InteractionCapture.KIND_CALL else InteractionCapture.KIND_MESSAGE
-            val direction = if (kind == InteractionCapture.KIND_CALL) InteractionCapture.DIR_INCOMING else InteractionCapture.DIR_INCOMING
+            val kind = if (i % 2 ==
+                0
+            ) {
+                InteractionCapture.KIND_CALL
+            } else {
+                InteractionCapture.KIND_MESSAGE
+            }
+            val direction = if (kind ==
+                InteractionCapture.KIND_CALL
+            ) {
+                InteractionCapture.DIR_INCOMING
+            } else {
+                InteractionCapture.DIR_INCOMING
+            }
             queued += queue(
                 kind = kind,
                 direction = direction,
                 phoneNumber = uniquePhone("long$i"),
                 timestampMillis = freshTimestamp(),
-                matchedContactId = matched,
+                matchedContactId = matched
             )
         }
 
         goOffline()
         assertEquals(WorkInfo.State.SUCCEEDED, runSyncWorkerOnce())
-        assertEquals("nothing must be lost or synced while offline", 30, pendingRepo.unsynced().size)
+        assertEquals(
+            "nothing must be lost or synced while offline",
+            30,
+            pendingRepo.unsynced().size
+        )
 
         goOnline()
         assertEquals(WorkInfo.State.SUCCEEDED, runSyncWorkerOnce())

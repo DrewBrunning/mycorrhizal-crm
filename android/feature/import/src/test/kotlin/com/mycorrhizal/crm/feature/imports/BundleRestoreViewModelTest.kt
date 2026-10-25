@@ -43,22 +43,34 @@ class BundleRestoreViewModelTest {
     private val preview = SourceImportPreviewResponse(
         sessionId = "s1",
         rows = listOf(row(0), row(1, action = "update"), row(2, errors = listOf("bad"))),
-        totalRows = 3,
+        totalRows = 3
     )
 
     private fun stubUploadAndPrepare(vararg phases: SourceImportStatus) {
         coEvery { apiClient.uploadMycorrhizalBundle(any(), any()) } returns Result.success(
-            MycorrhizalUploadResponse(sessionId = "s1", version = 1, totals = MycorrhizalBundleCounts(contacts = 3)),
+            MycorrhizalUploadResponse(
+                sessionId = "s1",
+                version = 1,
+                totals = MycorrhizalBundleCounts(contacts = 3)
+            )
         )
         coEvery { apiClient.startMycorrhizalFetch("s1") } returns Result.success(Unit)
-        coEvery { apiClient.getMycorrhizalImportStatus("s1") } returnsMany phases.map { Result.success(it) }
+        coEvery {
+            apiClient.getMycorrhizalImportStatus(
+                "s1"
+            )
+        } returnsMany phases.map { Result.success(it) }
         coEvery { apiClient.getMycorrhizalImportPreview("s1") } returns Result.success(preview)
     }
 
     @Test
     fun `a picked bundle is uploaded, prepared by polling, and lands on review with suggested actions`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            stubUploadAndPrepare(status("building_preview"), status("building_preview"), status("ready"))
+            stubUploadAndPrepare(
+                status("building_preview"),
+                status("building_preview"),
+                status("ready")
+            )
             val vm = newVm()
 
             vm.onFilePicked("b.json", "{}".toByteArray())
@@ -75,7 +87,9 @@ class BundleRestoreViewModelTest {
         }
 
     @Test
-    fun `an empty file is rejected without calling the server`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `an empty file is rejected without calling the server`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = newVm()
 
         vm.onFilePicked("b.json", ByteArray(0))
@@ -123,7 +137,10 @@ class BundleRestoreViewModelTest {
     @Test
     fun `a failed mapping phase returns to the picker with the phase error`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            stubUploadAndPrepare(status("building_preview"), status("failed", error = "corrupt bundle"))
+            stubUploadAndPrepare(
+                status("building_preview"),
+                status("failed", error = "corrupt bundle")
+            )
             val vm = newVm()
 
             vm.onFilePicked("b.json", "{}".toByteArray())
@@ -135,11 +152,17 @@ class BundleRestoreViewModelTest {
         }
 
     @Test
-    fun `a failed status poll falls back to the generic error`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a failed status poll falls back to the generic error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { apiClient.uploadMycorrhizalBundle(any(), any()) } returns
             Result.success(MycorrhizalUploadResponse(sessionId = "s1"))
         coEvery { apiClient.startMycorrhizalFetch("s1") } returns Result.success(Unit)
-        coEvery { apiClient.getMycorrhizalImportStatus("s1") } returns Result.failure(ApiError.Server(500, "x"))
+        coEvery {
+            apiClient.getMycorrhizalImportStatus(
+                "s1"
+            )
+        } returns Result.failure(ApiError.Server(500, "x"))
         val vm = newVm()
 
         vm.onFilePicked("b.json", "{}".toByteArray())
@@ -150,10 +173,16 @@ class BundleRestoreViewModelTest {
     }
 
     @Test
-    fun `a failed fetch start returns to the picker`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a failed fetch start returns to the picker`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { apiClient.uploadMycorrhizalBundle(any(), any()) } returns
             Result.success(MycorrhizalUploadResponse(sessionId = "s1"))
-        coEvery { apiClient.startMycorrhizalFetch("s1") } returns Result.failure(ApiError.Client(409, "busy"))
+        coEvery {
+            apiClient.startMycorrhizalFetch(
+                "s1"
+            )
+        } returns Result.failure(ApiError.Client(409, "busy"))
         val vm = newVm()
 
         vm.onFilePicked("b.json", "{}".toByteArray())
@@ -164,9 +193,15 @@ class BundleRestoreViewModelTest {
     }
 
     @Test
-    fun `a failed preview fetch returns to the picker`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a failed preview fetch returns to the picker`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         stubUploadAndPrepare(status("ready"))
-        coEvery { apiClient.getMycorrhizalImportPreview("s1") } returns Result.failure(ApiError.Client(400, "nope"))
+        coEvery {
+            apiClient.getMycorrhizalImportPreview(
+                "s1"
+            )
+        } returns Result.failure(ApiError.Client(400, "nope"))
         val vm = newVm()
 
         vm.onFilePicked("b.json", "{}".toByteArray())
@@ -206,7 +241,9 @@ class BundleRestoreViewModelTest {
         }
 
     @Test
-    fun `resolveAll restores every valid row to its suggested action`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `resolveAll restores every valid row to its suggested action`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         stubUploadAndPrepare(status("ready"))
         val vm = newVm()
         vm.onFilePicked("b.json", "{}".toByteArray())
@@ -227,12 +264,16 @@ class BundleRestoreViewModelTest {
             vm.onFilePicked("b.json", "{}".toByteArray())
             advanceUntilIdle()
             val sent = slot<ImportConfirmRequest>()
-            coEvery { apiClient.confirmMycorrhizalImport(capture(sent)) } returns Result.success(Unit)
+            coEvery {
+                apiClient.confirmMycorrhizalImport(
+                    capture(sent)
+                )
+            } returns Result.success(Unit)
             val result = SourceImportResult(created = 2, updated = 1, skipped = 1)
             coEvery { apiClient.getMycorrhizalImportStatus("s1") } returnsMany listOf(
                 Result.success(status("importing")),
                 Result.success(status("importing_photos")),
-                Result.success(status("done", result = result)),
+                Result.success(status("done", result = result))
             )
 
             vm.confirm()
@@ -240,8 +281,12 @@ class BundleRestoreViewModelTest {
 
             assertEquals("s1", sent.captured.sessionId)
             assertEquals(
-                setOf(RowImportAction(0, "add"), RowImportAction(1, "update"), RowImportAction(2, "skip")),
-                sent.captured.actions.toSet(),
+                setOf(
+                    RowImportAction(0, "add"),
+                    RowImportAction(1, "update"),
+                    RowImportAction(2, "skip")
+                ),
+                sent.captured.actions.toSet()
             )
             assertEquals(BundleRestoreStep.RESULT, vm.uiState.value.step)
             assertEquals(result, vm.uiState.value.result)
@@ -274,7 +319,11 @@ class BundleRestoreViewModelTest {
         vm.onFilePicked("b.json", "{}".toByteArray())
         advanceUntilIdle()
         coEvery { apiClient.confirmMycorrhizalImport(any()) } returns Result.success(Unit)
-        coEvery { apiClient.getMycorrhizalImportStatus("s1") } returns Result.success(status("cancelled"))
+        coEvery {
+            apiClient.getMycorrhizalImportStatus(
+                "s1"
+            )
+        } returns Result.success(status("cancelled"))
 
         vm.confirm()
         advanceUntilIdle()
@@ -284,12 +333,18 @@ class BundleRestoreViewModelTest {
     }
 
     @Test
-    fun `a rejected confirm returns to review without polling`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a rejected confirm returns to review without polling`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         stubUploadAndPrepare(status("ready"))
         val vm = newVm()
         vm.onFilePicked("b.json", "{}".toByteArray())
         advanceUntilIdle()
-        coEvery { apiClient.confirmMycorrhizalImport(any()) } returns Result.failure(ApiError.Client(400, "expired"))
+        coEvery {
+            apiClient.confirmMycorrhizalImport(
+                any()
+            )
+        } returns Result.failure(ApiError.Client(400, "expired"))
 
         vm.confirm()
         advanceUntilIdle()
@@ -299,7 +354,9 @@ class BundleRestoreViewModelTest {
     }
 
     @Test
-    fun `confirm before a preview exists does nothing`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `confirm before a preview exists does nothing`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = newVm()
 
         vm.confirm()

@@ -32,7 +32,7 @@ class CircleNameDialogDirtyTest {
                     initial = initial,
                     confirmLabel = "Create",
                     onConfirm = {},
-                    onDismiss = onDismiss,
+                    onDismiss = onDismiss
                 )
             }
         }

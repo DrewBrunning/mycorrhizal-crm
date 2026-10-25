@@ -40,7 +40,7 @@ class CredentialManagerPasskeyClientTest {
 
         assertEquals(
             """{"challenge":"abc","timeout":60000,"rp":{"id":"crm.example.com","name":"M"}}""",
-            unwrapPublicKeyOptions(envelope),
+            unwrapPublicKeyOptions(envelope)
         )
     }
 
@@ -48,13 +48,18 @@ class CredentialManagerPasskeyClientTest {
     fun `other members are ignored and order does not matter`() {
         assertEquals(
             """{"challenge":"x"}""",
-            unwrapPublicKeyOptions("""{"mediation":"optional","publicKey":{"challenge":"x"},"extra":[1,2]}"""),
+            unwrapPublicKeyOptions(
+                """{"mediation":"optional","publicKey":{"challenge":"x"},"extra":[1,2]}"""
+            )
         )
     }
 
     @Test
     fun `numbers are not re-encoded`() {
-        assertEquals("""{"timeout":300000}""", unwrapPublicKeyOptions("""{"publicKey":{"timeout":300000}}"""))
+        assertEquals(
+            """{"timeout":300000}""",
+            unwrapPublicKeyOptions("""{"publicKey":{"timeout":300000}}""")
+        )
     }
 
     @Test
@@ -91,40 +96,67 @@ class CredentialManagerPasskeyClientTest {
 
     @Test
     fun `create - a user cancel is silent`() {
-        assertEquals(PasskeyResult.Cancelled, classifyCreateFailure(CreateCredentialCancellationException()))
         assertEquals(
             PasskeyResult.Cancelled,
-            classifyCreateFailure(CreatePublicKeyCredentialDomException(NotAllowedError(), "declined")),
+            classifyCreateFailure(CreateCredentialCancellationException())
         )
         assertEquals(
             PasskeyResult.Cancelled,
-            classifyCreateFailure(CreatePublicKeyCredentialDomException(AbortError(), "aborted")),
+            classifyCreateFailure(
+                CreatePublicKeyCredentialDomException(NotAllowedError(), "declined")
+            )
+        )
+        assertEquals(
+            PasskeyResult.Cancelled,
+            classifyCreateFailure(CreatePublicKeyCredentialDomException(AbortError(), "aborted"))
         )
     }
 
     @Test
     fun `create - no provider or unsupported device is the degraded state`() {
-        assertEquals(PasskeyResult.NoProvider, classifyCreateFailure(CreateCredentialProviderConfigurationException()))
-        assertEquals(PasskeyResult.NoProvider, classifyCreateFailure(CreateCredentialUnsupportedException()))
-        assertEquals(PasskeyResult.NoProvider, classifyCreateFailure(CreateCredentialNoCreateOptionException()))
+        assertEquals(
+            PasskeyResult.NoProvider,
+            classifyCreateFailure(CreateCredentialProviderConfigurationException())
+        )
+        assertEquals(
+            PasskeyResult.NoProvider,
+            classifyCreateFailure(CreateCredentialUnsupportedException())
+        )
+        assertEquals(
+            PasskeyResult.NoProvider,
+            classifyCreateFailure(CreateCredentialNoCreateOptionException())
+        )
     }
 
     @Test
     fun `create - the app-not-associated DOM class is its own state`() {
         assertEquals(
             PasskeyResult.NotAssociated,
-            classifyCreateFailure(CreatePublicKeyCredentialDomException(SecurityError(), "The incoming request cannot be validated")),
+            classifyCreateFailure(
+                CreatePublicKeyCredentialDomException(
+                    SecurityError(),
+                    "The incoming request cannot be validated"
+                )
+            )
         )
         // A NotAllowedError that says the request cannot be validated is association, not a user cancel.
         assertEquals(
             PasskeyResult.NotAssociated,
             classifyCreateFailure(
-                CreatePublicKeyCredentialDomException(NotAllowedError(), "The incoming request cannot be validated"),
-            ),
+                CreatePublicKeyCredentialDomException(
+                    NotAllowedError(),
+                    "The incoming request cannot be validated"
+                )
+            )
         )
         assertEquals(
             PasskeyResult.NotAssociated,
-            classifyCreateFailure(CreatePublicKeyCredentialDomException(DataError(), "app is not associated with rp id")),
+            classifyCreateFailure(
+                CreatePublicKeyCredentialDomException(
+                    DataError(),
+                    "app is not associated with rp id"
+                )
+            )
         )
     }
 
@@ -132,17 +164,27 @@ class CredentialManagerPasskeyClientTest {
     fun `create - an excluded credential is reported as already registered`() {
         assertEquals(
             PasskeyResult.AlreadyRegistered,
-            classifyCreateFailure(CreatePublicKeyCredentialDomException(InvalidStateError(), "exists")),
+            classifyCreateFailure(
+                CreatePublicKeyCredentialDomException(InvalidStateError(), "exists")
+            )
         )
     }
 
     @Test
     fun `create - everything else is a generic failure`() {
-        assertTrue(classifyCreateFailure(CreateCredentialUnknownException()) is PasskeyResult.Failed)
-        assertTrue(classifyCreateFailure(CreateCredentialInterruptedException()) is PasskeyResult.Failed)
-        assertTrue(classifyCreateFailure(CreateCredentialCustomException("t", "m")) is PasskeyResult.Failed)
         assertTrue(
-            classifyCreateFailure(CreatePublicKeyCredentialDomException(DataError(), "bad data")) is PasskeyResult.Failed,
+            classifyCreateFailure(CreateCredentialUnknownException()) is PasskeyResult.Failed
+        )
+        assertTrue(
+            classifyCreateFailure(CreateCredentialInterruptedException()) is PasskeyResult.Failed
+        )
+        assertTrue(
+            classifyCreateFailure(CreateCredentialCustomException("t", "m")) is PasskeyResult.Failed
+        )
+        assertTrue(
+            classifyCreateFailure(
+                CreatePublicKeyCredentialDomException(DataError(), "bad data")
+            ) is PasskeyResult.Failed
         )
     }
 
@@ -150,33 +192,52 @@ class CredentialManagerPasskeyClientTest {
 
     @Test
     fun `get - a user cancel is silent`() {
-        assertEquals(PasskeyResult.Cancelled, classifyGetFailure(GetCredentialCancellationException()))
         assertEquals(
             PasskeyResult.Cancelled,
-            classifyGetFailure(GetPublicKeyCredentialDomException(NotAllowedError(), "timed out")),
+            classifyGetFailure(GetCredentialCancellationException())
         )
         assertEquals(
             PasskeyResult.Cancelled,
-            classifyGetFailure(GetPublicKeyCredentialDomException(AbortError(), "aborted")),
+            classifyGetFailure(GetPublicKeyCredentialDomException(NotAllowedError(), "timed out"))
+        )
+        assertEquals(
+            PasskeyResult.Cancelled,
+            classifyGetFailure(GetPublicKeyCredentialDomException(AbortError(), "aborted"))
         )
     }
 
     @Test
     fun `get - no passkey on this device is distinct from a provider problem`() {
         assertEquals(PasskeyResult.NoMatchingPasskey, classifyGetFailure(NoCredentialException()))
-        assertEquals(PasskeyResult.NoProvider, classifyGetFailure(GetCredentialProviderConfigurationException()))
-        assertEquals(PasskeyResult.NoProvider, classifyGetFailure(GetCredentialUnsupportedException()))
+        assertEquals(
+            PasskeyResult.NoProvider,
+            classifyGetFailure(GetCredentialProviderConfigurationException())
+        )
+        assertEquals(
+            PasskeyResult.NoProvider,
+            classifyGetFailure(GetCredentialUnsupportedException())
+        )
     }
 
     @Test
     fun `get - the app-not-associated DOM class is its own state`() {
         assertEquals(
             PasskeyResult.NotAssociated,
-            classifyGetFailure(GetPublicKeyCredentialDomException(SecurityError(), "The incoming request cannot be validated")),
+            classifyGetFailure(
+                GetPublicKeyCredentialDomException(
+                    SecurityError(),
+                    "The incoming request cannot be validated"
+                )
+            )
         )
         assertEquals(
             PasskeyResult.NotAssociated,
-            classifyGetFailure(GetPublicKeyCredentialDomException(NotAllowedError(), "Unable to verify asset links")),
+            classifyGetFailure(
+                GetPublicKeyCredentialDomException(
+                    NotAllowedError(),
+                    "Unable to verify asset links"
+                )
+            )
         )
     }
 
@@ -184,6 +245,10 @@ class CredentialManagerPasskeyClientTest {
     fun `get - everything else is a generic failure`() {
         assertTrue(classifyGetFailure(GetCredentialUnknownException()) is PasskeyResult.Failed)
         assertTrue(classifyGetFailure(GetCredentialInterruptedException()) is PasskeyResult.Failed)
-        assertTrue(classifyGetFailure(GetPublicKeyCredentialDomException(DataError(), "bad")) is PasskeyResult.Failed)
+        assertTrue(
+            classifyGetFailure(
+                GetPublicKeyCredentialDomException(DataError(), "bad")
+            ) is PasskeyResult.Failed
+        )
     }
 }

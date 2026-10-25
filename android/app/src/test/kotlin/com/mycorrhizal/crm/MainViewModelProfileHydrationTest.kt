@@ -12,7 +12,6 @@ import com.mycorrhizal.crm.domain.profile.ServerProfile
 import com.mycorrhizal.crm.domain.profile.ServerProfileKind
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.ServerCompatibilityRepository
-import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.model.network.ServerHealth
 import com.mycorrhizal.crm.model.network.UserProfile
 import com.mycorrhizal.crm.testing.MainDispatcherRule
@@ -20,6 +19,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import java.io.IOException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,7 +31,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import java.io.IOException
 
 /**
  * Issue #1400: a RESTORED session (no login call) must get its username /
@@ -48,9 +47,13 @@ class MainViewModelProfileHydrationTest {
 
     private class Tokens : TokenStorage {
         val saved = mutableMapOf<String, String>()
-        override suspend fun save(profileId: String, token: String) { saved[profileId] = token }
+        override suspend fun save(profileId: String, token: String) {
+            saved[profileId] = token
+        }
         override suspend fun load(profileId: String): String? = saved[profileId]
-        override suspend fun clear(profileId: String) { saved.remove(profileId) }
+        override suspend fun clear(profileId: String) {
+            saved.remove(profileId)
+        }
         override suspend fun loadLegacy(): String? = null
         override suspend fun clearLegacy() = Unit
     }
@@ -59,44 +62,78 @@ class MainViewModelProfileHydrationTest {
         var snapshot = ProfilesSnapshot()
         override suspend fun save(serverUrl: String?) = Unit
         override suspend fun loadServerUrl(): String? = null
-        override suspend fun saveProfiles(snapshot: ProfilesSnapshot) { this.snapshot = snapshot }
+        override suspend fun saveProfiles(snapshot: ProfilesSnapshot) {
+            this.snapshot = snapshot
+        }
         override suspend fun loadProfiles(): ProfilesSnapshot = snapshot
-        override suspend fun clear() { snapshot = ProfilesSnapshot() }
+        override suspend fun clear() {
+            snapshot = ProfilesSnapshot()
+        }
     }
 
     private val admin = UserProfile(
-        id = 1, username = "admin-alice", isAdmin = true, language = "de", dateFormat = "DD.MM.YYYY",
-        selfContactVCardUid = "uid-1",
+        id = 1,
+        username = "admin-alice",
+        isAdmin = true,
+        language = "de",
+        dateFormat = "DD.MM.YYYY",
+        selfContactVCardUid = "uid-1"
     )
-    private val plain = UserProfile(id = 2, username = "bob", isAdmin = false, language = "en", dateFormat = "YYYY-MM-DD")
+    private val plain = UserProfile(
+        id = 2,
+        username = "bob",
+        isAdmin = false,
+        language = "en",
+        dateFormat = "YYYY-MM-DD"
+    )
 
     /** Two stored, signed-in profiles; "a" is active -> a restored session. */
     private suspend fun restoredManager(): DefaultSessionManager {
-        val tokens = Tokens().apply { this.saved["a"] = "jwt-a"; this.saved["b"] = "jwt-b" }
+        val tokens = Tokens().apply {
+            this.saved["a"] = "jwt-a"
+            this.saved["b"] = "jwt-b"
+        }
         val prefs = Prefs().apply {
             snapshot = ProfilesSnapshot(
                 profiles = listOf(
                     ServerProfile("a", ServerProfileKind.Remote("https://a.example"), "a"),
-                    ServerProfile("b", ServerProfileKind.Remote("https://b.example"), "b"),
+                    ServerProfile("b", ServerProfileKind.Remote("https://b.example"), "b")
                 ),
-                activeProfileId = "a",
+                activeProfileId = "a"
             )
         }
         return DefaultSessionManager(tokens, prefs).also { it.init() }
     }
 
     private fun vm(manager: DefaultSessionManager, auth: AuthRepository): MainViewModel {
-        val lock = mockk<AppLockController> { every { state } returns MutableStateFlow(AppLockState.Resolving) }
+        val lock = mockk<AppLockController> {
+            every { state } returns MutableStateFlow(
+                AppLockState.Resolving
+            )
+        }
         val compat = mockk<ServerCompatibilityRepository> {
             coEvery { getServerHealth() } returns Result.success(ServerHealth())
         }
-        return MainViewModel(manager, lock, compat, auth, DefaultServerCapabilitiesStore(), mockk(relaxed = true))
+        return MainViewModel(
+            manager,
+            lock,
+            compat,
+            auth,
+            DefaultServerCapabilitiesStore(),
+            mockk(relaxed = true)
+        )
     }
 
     @Test
-    fun `a restored session is hydrated from users-me`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a restored session is hydrated from users-me`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val manager = restoredManager()
-        val auth = mockk<AuthRepository> { coEvery { fetchCurrentUser() } returns Result.success(admin) }
+        val auth = mockk<AuthRepository> {
+            coEvery { fetchCurrentUser() } returns Result.success(
+                admin
+            )
+        }
 
         val viewModel = vm(manager, auth)
         advanceUntilIdle()
@@ -131,9 +168,16 @@ class MainViewModelProfileHydrationTest {
         }
 
     @Test
-    fun `a throwing fetch does not crash or log out`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a throwing fetch does not crash or log out`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val manager = restoredManager()
-        val auth = mockk<AuthRepository> { coEvery { fetchCurrentUser() } throws IllegalStateException("boom") }
+        val auth = mockk<AuthRepository> {
+            coEvery { fetchCurrentUser() } throws
+                IllegalStateException(
+                    "boom"
+                )
+        }
 
         val viewModel = vm(manager, auth)
         advanceUntilIdle()
@@ -147,7 +191,9 @@ class MainViewModelProfileHydrationTest {
             val manager = restoredManager()
             val bobGate = CompletableDeferred<Result<UserProfile>>()
             val auth = mockk<AuthRepository>()
-            coEvery { auth.fetchCurrentUser() } returns Result.success(admin) coAndThen { bobGate.await() }
+            coEvery { auth.fetchCurrentUser() } returns Result.success(
+                admin
+            ) coAndThen { bobGate.await() }
 
             val viewModel = vm(manager, auth)
             advanceUntilIdle()
@@ -174,7 +220,9 @@ class MainViewModelProfileHydrationTest {
             val manager = restoredManager()
             val aGate = CompletableDeferred<Result<UserProfile>>()
             val auth = mockk<AuthRepository>()
-            coEvery { auth.fetchCurrentUser() } coAnswers { aGate.await() } andThen Result.success(plain)
+            coEvery { auth.fetchCurrentUser() } coAnswers { aGate.await() } andThen Result.success(
+                plain
+            )
 
             val viewModel = vm(manager, auth)
             advanceUntilIdle()
@@ -189,7 +237,9 @@ class MainViewModelProfileHydrationTest {
         }
 
     @Test
-    fun `an already-populated session is not refetched`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `an already-populated session is not refetched`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val manager = restoredManager()
         manager.setProfile(ProfileUpdate(username = "alice", isAdmin = true))
         val auth = mockk<AuthRepository>()

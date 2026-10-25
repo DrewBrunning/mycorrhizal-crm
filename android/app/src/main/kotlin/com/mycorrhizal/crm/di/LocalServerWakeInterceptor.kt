@@ -2,10 +2,10 @@ package com.mycorrhizal.crm.di
 
 import com.mycorrhizal.crm.data.local.LocalServerHost
 import com.mycorrhizal.crm.network.LOCAL_SERVER_SENTINEL_HOST
+import java.io.IOException
 import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
 import okhttp3.Response
-import java.io.IOException
 
 /**
  * ADR 0028 Decision 2 / issue #1262: starts the embedded server lazily from the
@@ -30,9 +30,7 @@ import java.io.IOException
  * "process death mid-write ... the client must treat a dropped socket like a
  * network error").
  */
-class LocalServerWakeInterceptor(
-    private val localServerHost: LocalServerHost,
-) : Interceptor {
+class LocalServerWakeInterceptor(private val localServerHost: LocalServerHost) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
         if (request.url.host != LOCAL_SERVER_SENTINEL_HOST) return chain.proceed(request)
@@ -50,7 +48,10 @@ class LocalServerWakeInterceptor(
             stamped.substring("Bearer ".length) != endpoint.sessionToken
         ) {
             return chain.proceed(
-                request.newBuilder().header("Authorization", "Bearer ${endpoint.sessionToken}").build(),
+                request.newBuilder().header(
+                    "Authorization",
+                    "Bearer ${endpoint.sessionToken}"
+                ).build()
             )
         }
         return chain.proceed(request)

@@ -1,10 +1,10 @@
 package com.mycorrhizal.crm.feature.timeline
 
 import androidx.lifecycle.SavedStateHandle
+import com.mycorrhizal.crm.data.share.ShareDraftHolder
 import com.mycorrhizal.crm.domain.repository.ContactNotesPage
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ContactsPage
-import com.mycorrhizal.crm.data.share.ShareDraftHolder
 import com.mycorrhizal.crm.domain.repository.NoteRepository
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactFlat
@@ -42,11 +42,23 @@ class NotesViewModelTest {
 
     @Test
     fun `loads the contact's notes on init`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { noteRepository.listForContact(5, null, null, null, null, null) } returns Result.success(
+        coEvery {
+            noteRepository.listForContact(
+                5,
+                null,
+                null,
+                null,
+                null,
+                null
+            )
+        } returns Result.success(
             ContactNotesPage(
-                notes = listOf(Note(id = 3, content = "Loves climbing"), Note(id = 4, content = "Met at conference")),
-                nextCursor = null,
-            ),
+                notes = listOf(
+                    Note(id = 3, content = "Loves climbing"),
+                    Note(id = 4, content = "Met at conference")
+                ),
+                nextCursor = null
+            )
         )
 
         val vm = viewModel()
@@ -69,8 +81,17 @@ class NotesViewModelTest {
 
     @Test
     fun `failure surfaces the display message`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { noteRepository.listForContact(5, null, null, null, null, null) } returns Result.failure(
-            ApiError.Client(404, "Contact not found"),
+        coEvery {
+            noteRepository.listForContact(
+                5,
+                null,
+                null,
+                null,
+                null,
+                null
+            )
+        } returns Result.failure(
+            ApiError.Client(404, "Contact not found")
         )
 
         val vm = viewModel()
@@ -81,12 +102,38 @@ class NotesViewModelTest {
     }
 
     @Test
-    fun `search change debounces and reloads with the query`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { noteRepository.listForContact(5, null, null, null, null, null) } returns Result.success(
-            ContactNotesPage(notes = listOf(Note(id = 3, content = "Loves climbing")), nextCursor = null),
+    fun `search change debounces and reloads with the query`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery {
+            noteRepository.listForContact(
+                5,
+                null,
+                null,
+                null,
+                null,
+                null
+            )
+        } returns Result.success(
+            ContactNotesPage(
+                notes = listOf(Note(id = 3, content = "Loves climbing")),
+                nextCursor = null
+            )
         )
-        coEvery { noteRepository.listForContact(5, null, null, "climb", null, null) } returns Result.success(
-            ContactNotesPage(notes = listOf(Note(id = 3, content = "Loves climbing")), nextCursor = null),
+        coEvery {
+            noteRepository.listForContact(
+                5,
+                null,
+                null,
+                "climb",
+                null,
+                null
+            )
+        } returns Result.success(
+            ContactNotesPage(
+                notes = listOf(Note(id = 3, content = "Loves climbing")),
+                nextCursor = null
+            )
         )
 
         val vm = viewModel()
@@ -100,8 +147,17 @@ class NotesViewModelTest {
 
     @Test
     fun `date filters reload with the bounds`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { noteRepository.listForContact(any(), any(), any(), any(), any(), any()) } returns Result.success(
-            ContactNotesPage(notes = emptyList(), nextCursor = null),
+        coEvery {
+            noteRepository.listForContact(
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any()
+            )
+        } returns Result.success(
+            ContactNotesPage(notes = emptyList(), nextCursor = null)
         )
 
         val vm = viewModel()
@@ -115,15 +171,35 @@ class NotesViewModelTest {
     }
 
     @Test
-    fun `load more appends the next page without duplicating`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { noteRepository.listForContact(5, null, null, null, null, null) } returns Result.success(
+    fun `load more appends the next page without duplicating`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery {
+            noteRepository.listForContact(
+                5,
+                null,
+                null,
+                null,
+                null,
+                null
+            )
+        } returns Result.success(
             ContactNotesPage(
                 notes = listOf(Note(id = 3, content = "One"), Note(id = 4, content = "Two")),
-                nextCursor = "cursor-1",
-            ),
+                nextCursor = "cursor-1"
+            )
         )
-        coEvery { noteRepository.listForContact(5, "cursor-1", null, null, null, null) } returns Result.success(
-            ContactNotesPage(notes = listOf(Note(id = 5, content = "Three")), nextCursor = null),
+        coEvery {
+            noteRepository.listForContact(
+                5,
+                "cursor-1",
+                null,
+                null,
+                null,
+                null
+            )
+        } returns Result.success(
+            ContactNotesPage(notes = listOf(Note(id = 5, content = "Three")), nextCursor = null)
         )
 
         val vm = viewModel()
@@ -141,17 +217,39 @@ class NotesViewModelTest {
     }
 
     @Test
-    fun `a superseding load cancels the in-flight request so stale results never win`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a superseding load cancels the in-flight request so stale results never win`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val staleGate = CompletableDeferred<Unit>()
-        coEvery { noteRepository.listForContact(5, null, null, null, null, null) } returns Result.success(
-            ContactNotesPage(notes = listOf(Note(id = 1, content = "all")), nextCursor = null),
+        coEvery {
+            noteRepository.listForContact(
+                5,
+                null,
+                null,
+                null,
+                null,
+                null
+            )
+        } returns Result.success(
+            ContactNotesPage(notes = listOf(Note(id = 1, content = "all")), nextCursor = null)
         )
         coEvery { noteRepository.listForContact(5, null, null, "a", null, null) } coAnswers {
             staleGate.await()
-            Result.success(ContactNotesPage(notes = listOf(Note(id = 1, content = "stale")), nextCursor = null))
+            Result.success(
+                ContactNotesPage(notes = listOf(Note(id = 1, content = "stale")), nextCursor = null)
+            )
         }
-        coEvery { noteRepository.listForContact(5, null, null, "ab", null, null) } returns Result.success(
-            ContactNotesPage(notes = listOf(Note(id = 2, content = "fresh")), nextCursor = null),
+        coEvery {
+            noteRepository.listForContact(
+                5,
+                null,
+                null,
+                "ab",
+                null,
+                null
+            )
+        } returns Result.success(
+            ContactNotesPage(notes = listOf(Note(id = 2, content = "fresh")), nextCursor = null)
         )
 
         val vm = viewModel()
@@ -169,10 +267,24 @@ class NotesViewModelTest {
     }
 
     @Test
-    fun `load more is ignored while the list is reloading`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `load more is ignored while the list is reloading`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val reloadGate = CompletableDeferred<Unit>()
-        coEvery { noteRepository.listForContact(5, null, null, null, null, null) } returns Result.success(
-            ContactNotesPage(notes = listOf(Note(id = 1, content = "One")), nextCursor = "cursor-1"),
+        coEvery {
+            noteRepository.listForContact(
+                5,
+                null,
+                null,
+                null,
+                null,
+                null
+            )
+        } returns Result.success(
+            ContactNotesPage(
+                notes = listOf(Note(id = 1, content = "One")),
+                nextCursor = "cursor-1"
+            )
         )
         coEvery { noteRepository.listForContact(5, null, null, "x", null, null) } coAnswers {
             reloadGate.await()
@@ -187,15 +299,29 @@ class NotesViewModelTest {
 
         vm.loadMore() // must be a no-op while isLoading
 
-        coVerify(exactly = 0) { noteRepository.listForContact(5, "cursor-1", null, "x", null, null) }
+        coVerify(
+            exactly = 0
+        ) { noteRepository.listForContact(5, "cursor-1", null, "x", null, null) }
         reloadGate.complete(Unit)
         advanceUntilIdle()
     }
 
     @Test
     fun `delete removes the item on success`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { noteRepository.listForContact(5, null, null, null, null, null) } returns Result.success(
-            ContactNotesPage(notes = listOf(Note(id = 3, content = "One"), Note(id = 4, content = "Two")), nextCursor = null),
+        coEvery {
+            noteRepository.listForContact(
+                5,
+                null,
+                null,
+                null,
+                null,
+                null
+            )
+        } returns Result.success(
+            ContactNotesPage(
+                notes = listOf(Note(id = 3, content = "One"), Note(id = 4, content = "Two")),
+                nextCursor = null
+            )
         )
         coEvery { noteRepository.delete(3, any()) } returns Result.success(Unit)
 
@@ -210,10 +336,24 @@ class NotesViewModelTest {
 
     @Test
     fun `delete failure keeps the item`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { noteRepository.listForContact(5, null, null, null, null, null) } returns Result.success(
-            ContactNotesPage(notes = listOf(Note(id = 3, content = "One")), nextCursor = null),
+        coEvery {
+            noteRepository.listForContact(
+                5,
+                null,
+                null,
+                null,
+                null,
+                null
+            )
+        } returns Result.success(
+            ContactNotesPage(notes = listOf(Note(id = 3, content = "One")), nextCursor = null)
         )
-        coEvery { noteRepository.delete(3, any()) } returns Result.failure(ApiError.Client(500, "boom"))
+        coEvery {
+            noteRepository.delete(
+                3,
+                any()
+            )
+        } returns Result.failure(ApiError.Client(500, "boom"))
 
         val vm = viewModel()
         advanceUntilIdle()
@@ -238,16 +378,28 @@ class NoteFormViewModelTest {
     fun setUp() {
         // Create mode resolves the route contact's name (best-effort); the
         // failure fallback is enough for tests that don't assert the label.
-        coEvery { contactRepository.getContact(any()) } returns Result.failure(RuntimeException("offline"))
+        coEvery {
+            contactRepository.getContact(
+                any()
+            )
+        } returns Result.failure(RuntimeException("offline"))
     }
 
     private val shareDrafts = ShareDraftHolder()
 
-    private fun createViewModel(contactId: Int = 5, noteId: Int? = null, prefill: String? = null): NoteFormViewModel {
-        val handle = SavedStateHandle(mapOf<String, Any?>("contactId" to contactId).toMutableMap().apply {
-            if (noteId != null) put("noteId", noteId)
-            if (prefill != null) put("prefill", prefill)
-        })
+    private fun createViewModel(
+        contactId: Int = 5,
+        noteId: Int? = null,
+        prefill: String? = null
+    ): NoteFormViewModel {
+        val handle = SavedStateHandle(
+            mapOf<String, Any?>(
+                "contactId" to contactId
+            ).toMutableMap().apply {
+                if (noteId != null) put("noteId", noteId)
+                if (prefill != null) put("prefill", prefill)
+            }
+        )
         return NoteFormViewModel(noteRepository, contactRepository, shareDrafts, handle)
     }
 
@@ -315,8 +467,15 @@ class NoteFormViewModelTest {
     }
 
     @Test
-    fun `save in create mode calls create with the target contact id`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { noteRepository.create(5, any()) } returns Result.success(Note(id = 3, content = "Loves climbing"))
+    fun `save in create mode calls create with the target contact id`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery {
+            noteRepository.create(
+                5,
+                any()
+            )
+        } returns Result.success(Note(id = 3, content = "Loves climbing"))
 
         val vm = createViewModel()
         vm.onContentChange("Loves climbing")
@@ -331,18 +490,26 @@ class NoteFormViewModelTest {
                     input.content == "Loves climbing" &&
                         input.date == "2026-08-10T14:00:00Z" &&
                         input.contactId == 5
-                },
+                }
             )
         }
         assertEquals(NoteFormEvent.Saved, vm.events.value)
     }
 
     @Test
-    fun `save in edit mode hydrates and calls update`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `save in edit mode hydrates and calls update`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { noteRepository.get(3) } returns Result.success(
-            Note(id = 3, content = "Loves climbing", date = "2026-08-10T14:00:00Z"),
+            Note(id = 3, content = "Loves climbing", date = "2026-08-10T14:00:00Z")
         )
-        coEvery { noteRepository.update(3, any(), any()) } returns Result.success(Note(id = 3, content = "Loves climbing"))
+        coEvery {
+            noteRepository.update(
+                3,
+                any(),
+                any()
+            )
+        } returns Result.success(Note(id = 3, content = "Loves climbing"))
 
         val vm = createViewModel(noteId = 3)
         advanceUntilIdle()
@@ -357,15 +524,22 @@ class NoteFormViewModelTest {
             noteRepository.update(
                 3,
                 match<NoteInput> { input -> input.content == "Loves rock climbing" },
-                any(),
+                any()
             )
         }
         assertEquals(NoteFormEvent.Saved, vm.events.value)
     }
 
     @Test
-    fun `a date-only value is sent as the UTC-midnight calendar day`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { noteRepository.create(5, any()) } returns Result.success(Note(id = 3, content = "Loves climbing"))
+    fun `a date-only value is sent as the UTC-midnight calendar day`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery {
+            noteRepository.create(
+                5,
+                any()
+            )
+        } returns Result.success(Note(id = 3, content = "Loves climbing"))
 
         val vm = createViewModel()
         vm.onContentChange("Loves climbing")
@@ -381,7 +555,7 @@ class NoteFormViewModelTest {
     @Test
     fun `failed save surfaces the error and stays`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { noteRepository.create(any(), any()) } returns Result.failure(
-            ApiError.Client(409, "duplicate"),
+            ApiError.Client(409, "duplicate")
         )
 
         val vm = createViewModel()
@@ -397,8 +571,15 @@ class NoteFormViewModelTest {
 
     // M19: contact reassignment.
     @Test
-    fun `selecting a contact reassigns the note and save targets it`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { noteRepository.create(9, any()) } returns Result.success(Note(id = 3, content = "Loves climbing"))
+    fun `selecting a contact reassigns the note and save targets it`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery {
+            noteRepository.create(
+                9,
+                any()
+            )
+        } returns Result.success(Note(id = 3, content = "Loves climbing"))
 
         val vm = createViewModel()
         vm.selectContact(ContactSummary(id = 9, firstname = "Dana", lastname = "Lee"))
@@ -413,14 +594,20 @@ class NoteFormViewModelTest {
         coVerify {
             noteRepository.create(
                 9,
-                match<NoteInput> { input -> input.contactId == 9 },
+                match<NoteInput> { input -> input.contactId == 9 }
             )
         }
     }
 
     @Test
-    fun `clearing the contact creates an unassigned note`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { noteRepository.createUnassigned(any()) } returns Result.success(Note(id = 3, content = "Loves climbing"))
+    fun `clearing the contact creates an unassigned note`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery {
+            noteRepository.createUnassigned(
+                any()
+            )
+        } returns Result.success(Note(id = 3, content = "Loves climbing"))
 
         val vm = createViewModel()
         vm.clearContact()
@@ -433,24 +620,26 @@ class NoteFormViewModelTest {
 
         coVerify {
             noteRepository.createUnassigned(
-                match<NoteInput> { input -> input.contactId == null },
+                match<NoteInput> { input -> input.contactId == null }
             )
         }
         assertEquals(NoteFormEvent.Saved, vm.events.value)
     }
 
     @Test
-    fun `edit hydrates the loaded note's contact for reassignment`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `edit hydrates the loaded note's contact for reassignment`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { noteRepository.get(3) } returns Result.success(
             Note(
                 id = 3,
                 content = "Loves climbing",
                 date = "2026-08-10T14:00:00Z",
-                contactId = 9,
-            ),
+                contactId = 9
+            )
         )
         coEvery { contactRepository.getContact(9) } returns Result.success(
-            ContactRecordResponse(id = 9, card = Card(name = Name(full = "Dana Lee"))),
+            ContactRecordResponse(id = 9, card = Card(name = Name(full = "Dana Lee")))
         )
 
         val vm = createViewModel(noteId = 3)
@@ -465,40 +654,51 @@ class NoteFormViewModelTest {
     // assigned contact's name off the note gives "#0". The name must come from
     // the repository instead; the flat contact_id is the only reliable field.
     @Test
-    fun `edit contact name is resolved via the repository, never the empty nested contact`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { noteRepository.get(3) } returns Result.success(
-            Note(
-                id = 3,
-                content = "Loves climbing",
-                date = "2026-08-10T14:00:00Z",
-                contactId = 9,
-                // The real API sends a zero-valued contact here (id 0, blank names).
-                contact = ContactFlat(id = 0, firstname = null, lastname = null),
-            ),
-        )
-        coEvery { contactRepository.getContact(9) } returns Result.success(
-            ContactRecordResponse(id = 9, card = Card(name = Name(full = "Dana Lee"))),
-        )
+    fun `edit contact name is resolved via the repository, never the empty nested contact`() =
+        runTest(
+            mainDispatcherRule.testDispatcher
+        ) {
+            coEvery { noteRepository.get(3) } returns Result.success(
+                Note(
+                    id = 3,
+                    content = "Loves climbing",
+                    date = "2026-08-10T14:00:00Z",
+                    contactId = 9,
+                    // The real API sends a zero-valued contact here (id 0, blank names).
+                    contact = ContactFlat(id = 0, firstname = null, lastname = null)
+                )
+            )
+            coEvery { contactRepository.getContact(9) } returns Result.success(
+                ContactRecordResponse(id = 9, card = Card(name = Name(full = "Dana Lee")))
+            )
 
-        val vm = createViewModel(noteId = 3)
-        advanceUntilIdle()
+            val vm = createViewModel(noteId = 3)
+            advanceUntilIdle()
 
-        assertEquals(9, vm.uiState.value.targetContactId)
-        assertEquals("Dana Lee", vm.uiState.value.targetContactName)
-    }
+            assertEquals(9, vm.uiState.value.targetContactId)
+            assertEquals("Dana Lee", vm.uiState.value.targetContactName)
+        }
 
     @Test
-    fun `edit clearing the contact sends a null contact_id to unfile the note`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `edit clearing the contact sends a null contact_id to unfile the note`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { noteRepository.get(3) } returns Result.success(
             Note(
                 id = 3,
                 content = "Loves climbing",
                 date = "2026-08-10T14:00:00Z",
                 contactId = 9,
-                contact = ContactFlat(id = 9, firstname = "Dana", lastname = "Lee"),
-            ),
+                contact = ContactFlat(id = 9, firstname = "Dana", lastname = "Lee")
+            )
         )
-        coEvery { noteRepository.update(3, any(), any()) } returns Result.success(Note(id = 3, content = "Loves climbing"))
+        coEvery {
+            noteRepository.update(
+                3,
+                any(),
+                any()
+            )
+        } returns Result.success(Note(id = 3, content = "Loves climbing"))
 
         val vm = createViewModel(noteId = 3)
         advanceUntilIdle()
@@ -512,24 +712,32 @@ class NoteFormViewModelTest {
             noteRepository.update(
                 3,
                 match<NoteInput> { input -> input.contactId == null },
-                any(),
+                any()
             )
         }
         assertEquals(NoteFormEvent.Saved, vm.events.value)
     }
 
     @Test
-    fun `edit reassigning to another contact sends the new contact_id`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `edit reassigning to another contact sends the new contact_id`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { noteRepository.get(3) } returns Result.success(
             Note(
                 id = 3,
                 content = "Loves climbing",
                 date = "2026-08-10T14:00:00Z",
                 contactId = 9,
-                contact = ContactFlat(id = 9, firstname = "Dana", lastname = "Lee"),
-            ),
+                contact = ContactFlat(id = 9, firstname = "Dana", lastname = "Lee")
+            )
         )
-        coEvery { noteRepository.update(3, any(), any()) } returns Result.success(Note(id = 3, content = "Loves climbing"))
+        coEvery {
+            noteRepository.update(
+                3,
+                any(),
+                any()
+            )
+        } returns Result.success(Note(id = 3, content = "Loves climbing"))
 
         val vm = createViewModel(noteId = 3)
         advanceUntilIdle()
@@ -542,15 +750,27 @@ class NoteFormViewModelTest {
             noteRepository.update(
                 3,
                 match<NoteInput> { input -> input.contactId == 12 },
-                any(),
+                any()
             )
         }
     }
 
     @Test
-    fun `contact search debounces and only the latest query reaches the repository`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { contactRepository.listContacts(search = "al", limit = 25) } returns Result.success(
-            ContactsPage(contacts = listOf(ContactSummary(id = 9, firstname = "Dana", lastname = "Lee")), nextCursor = null, limit = 25, sync = null),
+    fun `contact search debounces and only the latest query reaches the repository`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery {
+            contactRepository.listContacts(
+                search = "al",
+                limit = 25
+            )
+        } returns Result.success(
+            ContactsPage(
+                contacts = listOf(ContactSummary(id = 9, firstname = "Dana", lastname = "Lee")),
+                nextCursor = null,
+                limit = 25,
+                sync = null
+            )
         )
 
         val vm = createViewModel()

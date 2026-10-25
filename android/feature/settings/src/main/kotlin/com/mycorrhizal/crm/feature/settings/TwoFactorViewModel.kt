@@ -48,7 +48,7 @@ class TwoFactorViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val passkeyRepository: PasskeyRepository,
     private val passkeyClient: PasskeyCredentialClient,
-    private val passkeyAvailability: PasskeyAvailability,
+    private val passkeyAvailability: PasskeyAvailability
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TwoFactorUiState())
@@ -73,7 +73,7 @@ class TwoFactorViewModel @Inject constructor(
                             loading = false,
                             enabled = status.enabled,
                             hasPasskey = hasPasskey,
-                            passkeysAvailable = available,
+                            passkeysAvailable = available
                         )
                     }
                 }
@@ -121,7 +121,11 @@ class TwoFactorViewModel @Inject constructor(
      */
     fun submitRegenerateWithPasskey(context: Context) {
         val state = _uiState.value
-        if (state.busy || state.prompt != TwoFactorPrompt.REGENERATE || !state.canProveWithPasskey) return
+        if (state.busy || state.prompt != TwoFactorPrompt.REGENERATE ||
+            !state.canProveWithPasskey
+        ) {
+            return
+        }
         proveWithPasskey(context) { runRegenerate(it) }
     }
 
@@ -138,15 +142,40 @@ class TwoFactorViewModel @Inject constructor(
                     _uiState.update { it.copy(busy = false) }
                     onProof(SecondFactorProof.Assertion(ceremony.json))
                 }
+
                 PasskeyResult.Cancelled -> _uiState.update { it.copy(busy = false) }
+
                 PasskeyResult.NoMatchingPasskey ->
-                    _uiState.update { it.copy(busy = false, errorRes = R.string.settings_passkeys_no_other_here) }
+                    _uiState.update {
+                        it.copy(
+                            busy = false,
+                            errorRes = R.string.settings_passkeys_no_other_here
+                        )
+                    }
+
                 PasskeyResult.NotAssociated ->
-                    _uiState.update { it.copy(busy = false, errorRes = R.string.settings_passkeys_not_associated) }
+                    _uiState.update {
+                        it.copy(
+                            busy = false,
+                            errorRes = R.string.settings_passkeys_not_associated
+                        )
+                    }
+
                 PasskeyResult.NoProvider ->
-                    _uiState.update { it.copy(busy = false, errorRes = R.string.settings_passkeys_no_provider) }
+                    _uiState.update {
+                        it.copy(
+                            busy = false,
+                            errorRes = R.string.settings_passkeys_no_provider
+                        )
+                    }
+
                 PasskeyResult.AlreadyRegistered, is PasskeyResult.Failed ->
-                    _uiState.update { it.copy(busy = false, errorRes = R.string.settings_passkeys_invalid_proof) }
+                    _uiState.update {
+                        it.copy(
+                            busy = false,
+                            errorRes = R.string.settings_passkeys_invalid_proof
+                        )
+                    }
             }
         }
     }
@@ -160,7 +189,9 @@ class TwoFactorViewModel @Inject constructor(
                         it.copy(
                             busy = false,
                             prompt = null,
-                            recoveryCodes = result.recoveryCodes.takeIf { codes -> codes.isNotEmpty() },
+                            recoveryCodes = result.recoveryCodes.takeIf { codes ->
+                                codes.isNotEmpty()
+                            }
                         )
                     }
                 }
@@ -185,7 +216,13 @@ class TwoFactorViewModel @Inject constructor(
                 .onFailure { e ->
                     _uiState.update {
                         // A rejected proof (400) keeps the proof dialog open with localized copy.
-                        if (proof != null) it.copy(busy = false).withCodeError(e) else it.copy(busy = false, error = e.displayText())
+                        if (proof != null) {
+                            it.copy(
+                                busy = false
+                            ).withCodeError(e)
+                        } else {
+                            it.copy(busy = false, error = e.displayText())
+                        }
                     }
                 }
         }
@@ -203,7 +240,7 @@ class TwoFactorViewModel @Inject constructor(
                             busy = false,
                             setup = null,
                             enabled = true,
-                            recoveryCodes = result.recoveryCodes,
+                            recoveryCodes = result.recoveryCodes
                         )
                     }
                 }
@@ -297,7 +334,7 @@ data class TwoFactorUiState(
     /** A transient action error (server text), shown and then cleared. */
     val error: String? = null,
     /** A localized action error (rejected code), shown and then cleared. */
-    @StringRes val errorRes: Int? = null,
+    @StringRes val errorRes: Int? = null
 ) {
     /** "Verify with a passkey" for the setup proof: the gate is open and a passkey exists to answer. */
     val canProveWithPasskey: Boolean get() = hasPasskey && passkeysAvailable

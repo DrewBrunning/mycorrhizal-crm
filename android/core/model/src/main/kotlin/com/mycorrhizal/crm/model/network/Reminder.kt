@@ -25,21 +25,16 @@ data class Reminder(
     @Json(name = "life_event_id") val lifeEventId: String? = null,
     val contact: ContactFlat? = null,
     /** ADR 0006/0008: monotonic per-row write counter; the value an `If-Match` precondition echoes. */
-    val revision: Int? = null,
+    val revision: Int? = null
 )
 
 /** GET /contacts/{id}/reminders — wrapped `{ reminders }` array. */
 @JsonClass(generateAdapter = true)
-data class ContactRemindersResponse(
-    val reminders: List<Reminder> = emptyList(),
-)
+data class ContactRemindersResponse(val reminders: List<Reminder> = emptyList())
 
 /** POST /contacts/{id}/reminders — wrapped `{ message, reminder }`. */
 @JsonClass(generateAdapter = true)
-data class CreateReminderResponse(
-    val message: String? = null,
-    val reminder: Reminder? = null,
-)
+data class CreateReminderResponse(val message: String? = null, val reminder: Reminder? = null)
 
 /**
  * POST /reminders/{id}/complete — recurring reminders reschedule and return
@@ -47,10 +42,7 @@ data class CreateReminderResponse(
  * message.
  */
 @JsonClass(generateAdapter = true)
-data class ReminderCompleteResponse(
-    val message: String? = null,
-    val reminder: Reminder? = null,
-)
+data class ReminderCompleteResponse(val message: String? = null, val reminder: Reminder? = null)
 
 /**
  * A reminder completion timeline record (backend `ReminderCompletion`). Written
@@ -65,7 +57,7 @@ data class ReminderCompletion(
     @Json(name = "reminder_id") val reminderId: Int? = null,
     @Json(name = "contact_id") val contactId: Int = 0,
     val message: String? = null,
-    @Json(name = "completed_at") val completedAt: String? = null,
+    @Json(name = "completed_at") val completedAt: String? = null
 )
 
 /**
@@ -80,7 +72,7 @@ data class ReminderCompletion(
  */
 @JsonClass(generateAdapter = true)
 data class CompletionsResponse(
-    @Json(name = "completions") val completionsRaw: List<ReminderCompletion>? = null,
+    @Json(name = "completions") val completionsRaw: List<ReminderCompletion>? = null
 ) {
     val completions: List<ReminderCompletion> get() = completionsRaw.orEmpty()
 }

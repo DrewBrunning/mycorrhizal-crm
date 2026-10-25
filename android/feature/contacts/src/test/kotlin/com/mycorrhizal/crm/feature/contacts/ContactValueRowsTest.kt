@@ -60,7 +60,7 @@ class ContactValueRowsTest {
         name = Name(full = "Nadia Okonkwo"),
         phones = listOf(Phone(number = "+44 20 7946 1234", features = listOf("cell"))),
         emails = listOf(Email(address = longEmail, contexts = listOf("home"))),
-        personalInfo = listOf(PersonalInfo(kind = "hobby", value = "pottery")),
+        personalInfo = listOf(PersonalInfo(kind = "hobby", value = "pottery"))
     )
 
     @Test
@@ -82,7 +82,10 @@ class ContactValueRowsTest {
         composeTestRule.onNodeWithText("Home").assertIsDisplayed()
         val value = composeTestRule.onNodeWithText(longEmail).fetchSemanticsNode()
         val type = composeTestRule.onNodeWithText("Home").fetchSemanticsNode()
-        assertTrue("type label must sit below the value", type.boundsInRoot.top >= value.boundsInRoot.bottom - 1f)
+        assertTrue(
+            "type label must sit below the value",
+            type.boundsInRoot.top >= value.boundsInRoot.bottom - 1f
+        )
     }
 
     @Test
@@ -96,8 +99,8 @@ class ContactValueRowsTest {
         show(
             card.copy(
                 phones = listOf(Phone(number = "+1 555 0100", contexts = listOf("beach_house"))),
-                emails = emptyList(),
-            ),
+                emails = emptyList()
+            )
         )
         scrollTo("Beach house").assertIsDisplayed()
         // Issue #1728: the inline "Hobby: pottery" row moved behind the
@@ -107,5 +110,6 @@ class ContactValueRowsTest {
     }
 }
 
-private fun androidx.compose.ui.test.junit4.ComposeContentTestRule.onAllNodesWithTextCount(text: String): Int =
-    onAllNodes(hasText(text)).fetchSemanticsNodes().size
+private fun androidx.compose.ui.test.junit4.ComposeContentTestRule.onAllNodesWithTextCount(
+    text: String
+): Int = onAllNodes(hasText(text)).fetchSemanticsNodes().size

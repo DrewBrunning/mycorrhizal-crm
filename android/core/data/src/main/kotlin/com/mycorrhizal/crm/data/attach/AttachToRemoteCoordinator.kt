@@ -8,21 +8,21 @@ import com.mycorrhizal.crm.domain.profile.ServerProfile
 import com.mycorrhizal.crm.domain.profile.ServerProfileKind
 import com.mycorrhizal.crm.model.network.ImportConfirmRequest
 import com.mycorrhizal.crm.model.network.MycorrhizalBundleCounts
-import com.mycorrhizal.crm.model.network.includesPasskey
+import com.mycorrhizal.crm.model.network.RowImportAction
+import com.mycorrhizal.crm.model.network.SourceImportPreviewResponse
 import com.mycorrhizal.crm.model.network.SourceImportResult
 import com.mycorrhizal.crm.model.network.SourceImportStatus
-import com.mycorrhizal.crm.model.network.SourceImportPreviewResponse
-import com.mycorrhizal.crm.model.network.RowImportAction
+import com.mycorrhizal.crm.model.network.includesPasskey
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.BaseUrlProvider
-import com.mycorrhizal.crm.network.LoginResult
 import com.mycorrhizal.crm.network.ClientVersionProvider
+import com.mycorrhizal.crm.network.LoginResult
 import com.mycorrhizal.crm.network.NetworkFactory
 import com.mycorrhizal.crm.network.TokenProvider
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.delay
 import java.util.UUID
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 
 /**
  * Builds an [ApiClient] that talks to one fixed remote server with one fixed
@@ -52,7 +52,7 @@ sealed interface AttachSignInResult {
      */
     data class TwoFactorRequired(
         val methods: List<String>? = null,
-        val serverOffersPasskeys: Boolean = false,
+        val serverOffersPasskeys: Boolean = false
     ) : AttachSignInResult
 }
 
@@ -65,7 +65,7 @@ data class AttachProgress(val stage: AttachStage, val done: Int = 0, val total: 
 /** What [AttachToRemoteCoordinator.prepare] hands the review step. */
 data class AttachPreview(
     val totals: MycorrhizalBundleCounts,
-    val preview: SourceImportPreviewResponse,
+    val preview: SourceImportPreviewResponse
 )
 
 /** Outcome of [AttachToRemoteCoordinator.finish]. */
@@ -101,7 +101,7 @@ class AttachException(message: String, cause: Throwable? = null) : Exception(mes
 class AttachToRemoteCoordinator @Inject constructor(
     private val sessionManager: SessionManager,
     private val localApi: ApiClient,
-    private val remoteApiFactory: AttachRemoteApiFactory,
+    private val remoteApiFactory: AttachRemoteApiFactory
 ) {
     /** Poll interval and cap; overridable so tests do not sleep. */
     internal var pollIntervalMs: Long = POLL_INTERVAL_MS
@@ -131,7 +131,7 @@ class AttachToRemoteCoordinator @Inject constructor(
         label: String,
         url: String,
         identifier: String,
-        password: String,
+        password: String
     ): Result<AttachSignInResult> {
         val profile = resolveRemoteProfile(existingProfileId, label, url)
             ?: return Result.failure(AttachException("Not a remote server profile"))
@@ -146,10 +146,16 @@ class AttachToRemoteCoordinator @Inject constructor(
             login.twoFactorRequired -> {
                 pendingTwoFactorCookie = login.pending2faCookie
                 val offers = login.methods.includesPasskey() &&
-                    api.getHealth().getOrNull()?.toCapabilitiesInfo()?.declares(ServerCapability.WEBAUTHN_ANDROID) == true
+                    api.getHealth().getOrNull()?.toCapabilitiesInfo()?.declares(
+                        ServerCapability.WEBAUTHN_ANDROID
+                    ) == true
                 Result.success(AttachSignInResult.TwoFactorRequired(login.methods, offers))
             }
-            login.token.isNullOrBlank() -> Result.failure(AttachException("Server returned no session"))
+
+            login.token.isNullOrBlank() -> Result.failure(
+                AttachException("Server returned no session")
+            )
+
             else -> {
                 storeToken(profile.id, login.token.orEmpty())
                 Result.success(AttachSignInResult.SignedIn)
@@ -159,7 +165,9 @@ class AttachToRemoteCoordinator @Inject constructor(
 
     /** Step 1b: finish a 2FA challenge started by [signIn]. */
     suspend fun completeTwoFactor(code: String): Result<AttachSignInResult> {
-        val cookie = pendingTwoFactorCookie ?: return Result.failure(AttachException("No pending 2FA challenge"))
+        val cookie = pendingTwoFactorCookie ?: return Result.failure(
+            AttachException("No pending 2FA challenge")
+        )
         val api = remoteApi ?: return Result.failure(AttachException("Not signed in"))
         return finishTwoFactor(api.complete2faLogin(code, cookie))
     }
@@ -170,14 +178,18 @@ class AttachToRemoteCoordinator @Inject constructor(
      * Credential Manager. The pending cookie never leaves this class.
      */
     suspend fun beginPasskey(): Result<String> {
-        val cookie = pendingTwoFactorCookie ?: return Result.failure(AttachException("No pending 2FA challenge"))
+        val cookie = pendingTwoFactorCookie ?: return Result.failure(
+            AttachException("No pending 2FA challenge")
+        )
         val api = remoteApi ?: return Result.failure(AttachException("Not signed in"))
         return api.webauthnLoginBegin(cookie)
     }
 
     /** Step 1b, passkey route: exchange the authenticator's assertion for the remote session (same tail as [completeTwoFactor]). */
     suspend fun completePasskey(assertionJson: String): Result<AttachSignInResult> {
-        val cookie = pendingTwoFactorCookie ?: return Result.failure(AttachException("No pending 2FA challenge"))
+        val cookie = pendingTwoFactorCookie ?: return Result.failure(
+            AttachException("No pending 2FA challenge")
+        )
         val api = remoteApi ?: return Result.failure(AttachException("Not signed in"))
         return finishTwoFactor(api.webauthnLoginFinish(assertionJson, cookie))
     }
@@ -186,7 +198,11 @@ class AttachToRemoteCoordinator @Inject constructor(
         val profileId = remoteProfileId ?: return Result.failure(AttachException("Not signed in"))
         val login = result.getOrElse { return Result.failure(it) }
         val token = login.token
-        if (token.isNullOrBlank()) return Result.failure(AttachException("Server returned no session"))
+        if (token.isNullOrBlank()) {
+            return Result.failure(
+                AttachException("Server returned no session")
+            )
+        }
         pendingTwoFactorCookie = null
         storeToken(profileId, token)
         return Result.success(AttachSignInResult.SignedIn)
@@ -197,7 +213,10 @@ class AttachToRemoteCoordinator @Inject constructor(
      * to the remote `mycorrhizal` import source, build the preview and return it.
      * Resumes from the first incomplete step on a retry.
      */
-    suspend fun prepare(onProgress: (AttachProgress) -> Unit = {}): Result<AttachPreview> = attempt {
+    suspend fun prepare(
+        onProgress: (AttachProgress) -> Unit = {
+        }
+    ): Result<AttachPreview> = attempt {
         val api = remoteApi ?: throw AttachException("Not signed in")
 
         val bytes = bundle ?: run {
@@ -208,7 +227,11 @@ class AttachToRemoteCoordinator @Inject constructor(
         val session = sessionId ?: run {
             onProgress(AttachProgress(AttachStage.Uploading))
             val key = uploadKey ?: newKey().also { uploadKey = it }
-            val uploaded = api.uploadMycorrhizalBundle(bytes, "account-bundle.json", key).getOrThrow()
+            val uploaded = api.uploadMycorrhizalBundle(
+                bytes,
+                "account-bundle.json",
+                key
+            ).getOrThrow()
             totals = uploaded.totals
             sessionId = uploaded.sessionId
             uploaded.sessionId
@@ -227,12 +250,14 @@ class AttachToRemoteCoordinator @Inject constructor(
     /** Step 5a: apply the reviewed per-contact decisions on the remote and wait for it to finish. */
     suspend fun confirm(
         actions: List<RowImportAction>,
-        onProgress: (AttachProgress) -> Unit = {},
+        onProgress: (AttachProgress) -> Unit = {}
     ): Result<SourceImportResult> = attempt {
         val api = remoteApi ?: throw AttachException("Not signed in")
         val session = sessionId ?: throw AttachException("Nothing to confirm")
         onProgress(AttachProgress(AttachStage.Importing))
-        api.confirmMycorrhizalImport(ImportConfirmRequest(sessionId = session, actions = actions)).getOrThrow()
+        api.confirmMycorrhizalImport(
+            ImportConfirmRequest(sessionId = session, actions = actions)
+        ).getOrThrow()
         val done = pollUntil(api, session, AttachStage.Importing, onProgress) { it.isDone }
         // A finished session stays live server-side until dropped, and a user may
         // only hold a few (MaxMycorrhizalImportSessionsPerUser) — so a wizard
@@ -251,7 +276,10 @@ class AttachToRemoteCoordinator @Inject constructor(
         val remoteId = remoteProfileId ?: throw AttachException("Not signed in")
         val localId = localProfileId ?: throw AttachException("No local profile to archive")
         return when (val switched = sessionManager.switchProfile(remoteId, discardPending)) {
-            is SwitchProfileResult.NeedsConfirmation -> AttachFinishResult.NeedsConfirmation(switched.pendingCount)
+            is SwitchProfileResult.NeedsConfirmation -> AttachFinishResult.NeedsConfirmation(
+                switched.pendingCount
+            )
+
             SwitchProfileResult.Switched -> {
                 sessionManager.setProfileArchived(localId, true)
                 close()
@@ -286,7 +314,9 @@ class AttachToRemoteCoordinator @Inject constructor(
         return when {
             active == null || active.kind !is ServerProfileKind.Local ->
                 Result.failure(AttachException("The attach wizard starts from the Local profile"))
+
             active.archived -> Result.failure(AttachException("This profile is already archived"))
+
             else -> {
                 localProfileId = active.id
                 Result.success(active)
@@ -294,10 +324,19 @@ class AttachToRemoteCoordinator @Inject constructor(
         }
     }
 
-    private suspend fun resolveRemoteProfile(existingId: String?, label: String, url: String): ServerProfile? {
+    private suspend fun resolveRemoteProfile(
+        existingId: String?,
+        label: String,
+        url: String
+    ): ServerProfile? {
         if (existingId != null) {
             val existing = sessionManager.profiles().find { it.id == existingId }
-            return existing?.takeIf { it.kind is ServerProfileKind.Remote }?.also { remoteProfileId = it.id }
+            return existing?.takeIf {
+                it.kind is ServerProfileKind.Remote
+            }?.also {
+                remoteProfileId =
+                    it.id
+            }
         }
         val trimmed = url.trim().trimEnd('/')
         // Reuse a profile this run (or the user) already has for the same URL
@@ -336,12 +375,14 @@ class AttachToRemoteCoordinator @Inject constructor(
         session: String,
         stage: AttachStage,
         onProgress: (AttachProgress) -> Unit,
-        predicate: (SourceImportStatus) -> Boolean,
+        predicate: (SourceImportStatus) -> Boolean
     ): SourceImportStatus {
         repeat(maxPolls) {
             val status = api.getMycorrhizalImportStatus(session).getOrThrow()
             if (status.isFailed) {
-                throw AttachSessionDied(status.error?.takeIf { it.isNotBlank() } ?: "Import ${status.phase}")
+                throw AttachSessionDied(
+                    status.error?.takeIf { it.isNotBlank() } ?: "Import ${status.phase}"
+                )
             }
             if (predicate(status)) return status
             onProgress(AttachProgress(stage, status.phaseDone, status.phaseTotal))
@@ -384,16 +425,15 @@ class AttachToRemoteCoordinator @Inject constructor(
  */
 class DefaultAttachRemoteApiFactory(
     private val clientVersionProvider: ClientVersionProvider,
-    private val debug: Boolean,
+    private val debug: Boolean
 ) : AttachRemoteApiFactory {
-    override fun create(baseUrl: String, tokenProvider: TokenProvider): ApiClient =
-        ApiClient(
-            NetworkFactory.okHttpClient(
-                tokenProvider = tokenProvider,
-                baseUrlProvider = BaseUrlProvider { baseUrl },
-                debug = debug,
-                clientVersionProvider = clientVersionProvider,
-            ),
-            NetworkFactory.moshi(),
-        )
+    override fun create(baseUrl: String, tokenProvider: TokenProvider): ApiClient = ApiClient(
+        NetworkFactory.okHttpClient(
+            tokenProvider = tokenProvider,
+            baseUrlProvider = BaseUrlProvider { baseUrl },
+            debug = debug,
+            clientVersionProvider = clientVersionProvider
+        ),
+        NetworkFactory.moshi()
+    )
 }

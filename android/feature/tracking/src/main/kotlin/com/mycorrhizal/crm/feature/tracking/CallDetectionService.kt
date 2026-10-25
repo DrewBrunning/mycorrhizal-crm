@@ -81,15 +81,17 @@ class CallDetectionService : Service() {
         if (state == TelephonyManager.CALL_STATE_IDLE) {
             val hasOverlayPermission = ContextCompat.checkSelfPermission(
                 this@CallDetectionService,
-                android.Manifest.permission.SYSTEM_ALERT_WINDOW,
+                android.Manifest.permission.SYSTEM_ALERT_WINDOW
             ) == PackageManager.PERMISSION_GRANTED
             if (hasOverlayPermission) {
                 scope().launch {
                     if (!shouldShowOverlay(phoneNumber)) return@launch
-                    (quickCaptureOverlay ?: QuickCaptureOverlay(
-                        contactRepository = contactRepository,
-                        activityRepository = activityRepository,
-                    ).also { quickCaptureOverlay = it })
+                    (
+                        quickCaptureOverlay ?: QuickCaptureOverlay(
+                            contactRepository = contactRepository,
+                            activityRepository = activityRepository
+                        ).also { quickCaptureOverlay = it }
+                        )
                         .show(this@CallDetectionService, phoneNumber)
                 }
             }
@@ -111,8 +113,9 @@ class CallDetectionService : Service() {
         return known || includeUnknown
     }
 
-    private fun scope(): CoroutineScope =
-        serviceScope ?: CoroutineScope(SupervisorJob() + serviceDispatcher).also { serviceScope = it }
+    private fun scope(): CoroutineScope = serviceScope ?: CoroutineScope(
+        SupervisorJob() + serviceDispatcher
+    ).also { serviceScope = it }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startForeground(
@@ -120,8 +123,8 @@ class CallDetectionService : Service() {
             NotificationBuilder.cadence(
                 applicationContext,
                 applicationContext.getString(R.string.app_name),
-                applicationContext.getString(R.string.call_service_notification_text),
-            ),
+                applicationContext.getString(R.string.call_service_notification_text)
+            )
         )
         val telephonyManager = getSystemService(TelephonyManager::class.java)
         // Issue #721: if READ_PHONE_STATE was revoked while the service was

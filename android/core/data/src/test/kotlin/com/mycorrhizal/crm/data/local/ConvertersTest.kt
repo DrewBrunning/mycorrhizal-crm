@@ -1,7 +1,7 @@
 package com.mycorrhizal.crm.data.local
 
-import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.CRMEnvelope
+import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.Name
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate

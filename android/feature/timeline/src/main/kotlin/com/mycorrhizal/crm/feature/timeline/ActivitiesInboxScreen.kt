@@ -1,6 +1,5 @@
 package com.mycorrhizal.crm.feature.timeline
 
-import com.mycorrhizal.crm.ui.components.activityTypeLabel
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,7 +20,6 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -46,13 +44,15 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ContactFlat
+import com.mycorrhizal.crm.model.util.DateFormat
+import com.mycorrhizal.crm.ui.LocalDateFormat
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.components.WriteConflictDialog
-import com.mycorrhizal.crm.model.util.DateFormat
-import com.mycorrhizal.crm.ui.LocalDateFormat
+import com.mycorrhizal.crm.ui.components.activityTypeLabel
 
 /**
  * M9 item 1: the "Activities" drawer entry — every activity across every contact (matching web's
@@ -71,7 +71,7 @@ fun ActivitiesInboxScreen(
     // Issue #160: "Log from location history" (GeoPulse). Null hides it — embedded/local profiles
     // omit the GeoPulse routes entirely.
     onLogFromLocation: (() -> Unit)? = null,
-    viewModel: ActivitiesInboxViewModel = hiltViewModel(),
+    viewModel: ActivitiesInboxViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     ActivitiesInboxScreenContent(
@@ -85,7 +85,7 @@ fun ActivitiesInboxScreen(
         onRefresh = viewModel::load,
         onErrorShown = viewModel::onErrorShown,
         onConflictDismiss = viewModel::onConflictDismissed,
-        onConflictLoadLatest = viewModel::onConflictLoadLatest,
+        onConflictLoadLatest = viewModel::onConflictLoadLatest
     )
 }
 
@@ -108,7 +108,7 @@ fun ActivitiesInboxScreenContent(
     onRefresh: () -> Unit = {},
     onErrorShown: () -> Unit = {},
     onConflictDismiss: () -> Unit = {},
-    onConflictLoadLatest: () -> Unit = {},
+    onConflictLoadLatest: () -> Unit = {}
 ) {
     val state = uiState
     val snackbarHostState = remember { SnackbarHostState() }
@@ -120,19 +120,25 @@ fun ActivitiesInboxScreenContent(
                 navigationIcon = {
                     onMenuClick?.let { onMenu ->
                         AccessibleIconButton(onClick = onMenu) {
-                            Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
+                            Icon(
+                                Icons.Outlined.Menu,
+                                contentDescription = stringResource(R.string.cd_menu)
+                            )
                         }
                     }
                 },
                 title = {
-                    Text(stringResource(R.string.nav_activities), style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        stringResource(R.string.nav_activities),
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 },
                 actions = {
                     onLogFromLocation?.let { onLog ->
                         AccessibleIconButton(onClick = onLog) {
                             Icon(
                                 Icons.Outlined.LocationOn,
-                                contentDescription = stringResource(R.string.geopulse_entry_point),
+                                contentDescription = stringResource(R.string.geopulse_entry_point)
                             )
                         }
                     }
@@ -141,40 +147,51 @@ fun ActivitiesInboxScreenContent(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             RefreshableContent(
                 isRefreshing = state.isLoading && state.activities.isNotEmpty(),
                 onRefresh = onRefresh,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize()
             ) {
                 when {
                     state.isLoading && state.activities.isEmpty() ->
                         LoadingSkeleton(modifier = Modifier.testTag("activities-inbox-loading"))
+
                     state.activities.isEmpty() && state.error == null ->
                         EmptyState(title = stringResource(R.string.activities_empty))
+
                     state.activities.isEmpty() && state.error != null ->
                         EmptyState(state.error.orEmpty())
+
                     else -> {
-                        LazyColumn(modifier = Modifier.fillMaxSize().testTag("activities-inbox-list")) {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize().testTag("activities-inbox-list")
+                        ) {
                             items(state.activities, key = { it.id }) { activity ->
                                 InboxActivityRow(
                                     activity = activity,
                                     onClick = { onActivityClick(activity.id) },
                                     onContactClick = onContactClick,
                                     onDelete = { pendingDelete = activity },
-                                    isDeleting = state.deletingId == activity.id,
+                                    isDeleting = state.deletingId == activity.id
                                 )
                             }
                             if (!state.nextCursor.isNullOrEmpty()) {
                                 item {
-                                    Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                                        Button(onClick = onLoadMore, enabled = !state.isLoadingMore) {
+                                    Box(
+                                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Button(
+                                            onClick = onLoadMore,
+                                            enabled = !state.isLoadingMore
+                                        ) {
                                             Text(stringResource(R.string.action_load_more))
                                         }
                                     }
@@ -191,7 +208,14 @@ fun ActivitiesInboxScreenContent(
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
             title = { Text(stringResource(R.string.activities_delete_title)) },
-            text = { Text(stringResource(R.string.activities_delete_confirm, activity.title.orEmpty().take(80))) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.activities_delete_confirm,
+                        activity.title.orEmpty().take(80)
+                    )
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
                     onDelete(activity.id)
@@ -204,7 +228,7 @@ fun ActivitiesInboxScreenContent(
                 TextButton(onClick = { pendingDelete = null }) {
                     Text(stringResource(R.string.action_cancel))
                 }
-            },
+            }
         )
     }
 
@@ -213,7 +237,7 @@ fun ActivitiesInboxScreenContent(
             onLoadLatest = onConflictLoadLatest,
             onKeep = onConflictDismiss,
             messageRes = R.string.conflict_message_delete,
-            keepLabelRes = R.string.conflict_dismiss,
+            keepLabelRes = R.string.conflict_dismiss
         )
     }
 
@@ -233,7 +257,7 @@ private fun InboxActivityRow(
     onContactClick: (Int) -> Unit,
     onDelete: () -> Unit,
     isDeleting: Boolean = false,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     val dateFormat = LocalDateFormat.current
     Row(
@@ -241,23 +265,37 @@ private fun InboxActivityRow(
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(start = 16.dp, end = 4.dp, top = 12.dp, bottom = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(activity.title.orEmpty(), style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                activity.title.orEmpty(),
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
             val subtitle = listOfNotNull(
                 activity.type?.takeIf { it.isNotBlank() }?.let { activityTypeLabel(it) },
                 activity.location?.takeIf { it.isNotBlank() },
-                activity.date?.let { DateFormat.formatTimestamp(it, dateFormat) }?.takeIf { it.isNotBlank() },
+                activity.date?.let {
+                    DateFormat.formatTimestamp(
+                        it,
+                        dateFormat
+                    )
+                }?.takeIf { it.isNotBlank() }
             ).joinToString(" · ")
             if (subtitle.isNotBlank()) {
-                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
             val contacts = activity.contacts.orEmpty()
             if (contacts.isNotEmpty()) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.padding(top = 6.dp),
+                    modifier = Modifier.padding(top = 6.dp)
                 ) {
                     contacts.forEach { contact: ContactFlat ->
                         AssistChip(
@@ -269,7 +307,7 @@ private fun InboxActivityRow(
                             // separate touch-dispatch expansion) only a real height constraint
                             // changes what accessibility services see; minimumInteractiveComponentSize
                             // reserves layout space only, it does not change reported bounds.
-                            modifier = Modifier.heightIn(min = 48.dp),
+                            modifier = Modifier.heightIn(min = 48.dp)
                         )
                     }
                 }
@@ -278,7 +316,10 @@ private fun InboxActivityRow(
         AccessibleIconButton(onClick = onDelete, enabled = !isDeleting) {
             Icon(
                 Icons.Outlined.Delete,
-                contentDescription = stringResource(R.string.activities_delete_named, activity.title.orEmpty()),
+                contentDescription = stringResource(
+                    R.string.activities_delete_named,
+                    activity.title.orEmpty()
+                )
             )
         }
     }

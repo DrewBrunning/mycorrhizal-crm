@@ -12,9 +12,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -70,7 +70,14 @@ val TITLE_KIND_OPTIONS = listOf("title", "role")
 val PERSONAL_INFO_KIND_OPTIONS = listOf("expertise", "hobby", "interest")
 
 /** Issue #832: RFC 9553 `SpeakToAs.grammaticalGenders[].value` enum. */
-val GRAMMATICAL_GENDER_OPTIONS = listOf("animate", "common", "feminine", "inanimate", "masculine", "neuter")
+val GRAMMATICAL_GENDER_OPTIONS = listOf(
+    "animate",
+    "common",
+    "feminine",
+    "inanimate",
+    "masculine",
+    "neuter"
+)
 
 /** Issue #832: `Card.anniversaries[].kind` enum. */
 val ANNIVERSARY_KIND_OPTIONS = listOf("birth", "death", "wedding")
@@ -90,7 +97,9 @@ val CARD_KIND_OPTIONS = listOf("individual", "group", "org", "location", "applic
  * The token -> string map lives in TokenLabels.kt.
  */
 @Composable
-fun typeOptionLabel(token: String): String = typeOptionLabelRes(token)?.let { stringResource(it) } ?: humanizeToken(token)
+fun typeOptionLabel(token: String): String = typeOptionLabelRes(
+    token
+)?.let { stringResource(it) } ?: humanizeToken(token)
 
 /**
  * Edit `contexts[0]` (the RFC 9554 standard "context" — private/work/…) that
@@ -101,8 +110,11 @@ fun typeOptionLabel(token: String): String = typeOptionLabelRes(token)?.let { st
  * import.
  */
 fun replaceFirstContext(contexts: List<String>?, type: String?): List<String>? =
-    if (type.isNullOrBlank()) contexts?.drop(1)?.ifEmpty { null }
-    else listOf(type) + (contexts?.drop(1) ?: emptyList())
+    if (type.isNullOrBlank()) {
+        contexts?.drop(1)?.ifEmpty { null }
+    } else {
+        listOf(type) + (contexts?.drop(1) ?: emptyList())
+    }
 
 /**
  * Issue #1724: legacy flat-Type data stores the type in `label`, while the
@@ -134,6 +146,7 @@ private fun knownTypeFromLabel(label: String?, options: List<String>): String? =
 interface MultiValueSpec<T> {
     fun value(item: T): String
     fun withValue(item: T, value: String): T // MUST be item.copy(...)
+
     /** Maps to `contexts[0]` (or `features[0]` fallback for phones), or `kind`. */
     fun type(item: T): String?
     fun withType(item: T, type: String?): T
@@ -142,38 +155,46 @@ interface MultiValueSpec<T> {
     fun blank(): T
     val typeOptions: List<String>
     val keyboardType: KeyboardType
+
     /**
      * Issue #1724: the field-specific label for the value input, replacing the
      * generic "Value N". Every spec must name what the box holds — the
      * grammatical-gender row's free text is a *language* tag, not a gender.
      */
     val valueLabel: Int
+
     /**
      * Issue #1724: a literal format example shown as the input placeholder
      * (e.g. `name@example.com`, `de, en-US, de-AT`), or null when the format
      * is free text. The example itself stays literal across locales.
      */
     val valueExample: Int? get() = null
+
     /** Issue #1724: translated supporting text under the input, or null. */
     val valueHint: Int? get() = null
+
     /**
      * Issue #1724: the singular noun used for the add/remove actions
      * ("Add email", "Remove email 2"). Separate from [valueLabel] where the
      * field label is not a noun (e.g. "Address / URL" → "Online service").
      */
     val itemLabel: Int
+
     /** False for entry types that carry no `pref` (Title, PersonalInfo, OnlineService) — hides the preferred chip. */
     val supportsPref: Boolean get() = true
+
     /**
      * When set, the value field is the shared [DateField] in this mode
      * (issue #1726 — anniversaries are partial dates) instead of a plain text
      * field.
      */
     val valueMode: DateFieldMode? get() = null
+
     /** True for entry types with a separate service/display name (OnlineService). */
     val supportsService: Boolean get() = false
     fun serviceName(item: T): String = ""
     fun withServiceName(item: T, service: String): T = item
+
     /**
      * T115: the Android autofill hint for the value field, or null for specs
      * with no standard hint (links, online services, titles, personal info).
@@ -187,7 +208,9 @@ object EmailSpec : MultiValueSpec<Email> {
     override fun withValue(item: Email, value: String) = item.copy(address = value)
     override fun type(item: Email) =
         item.contexts?.firstOrNull() ?: knownTypeFromLabel(item.label, CONTACT_TYPE_OPTIONS)
-    override fun withType(item: Email, type: String?) = item.copy(contexts = replaceFirstContext(item.contexts, type))
+    override fun withType(item: Email, type: String?) = item.copy(
+        contexts = replaceFirstContext(item.contexts, type)
+    )
     override fun pref(item: Email) = item.pref
     override fun withPref(item: Email, pref: Int?) = item.copy(pref = pref)
     override fun blank() = Email(address = "")
@@ -202,15 +225,18 @@ object EmailSpec : MultiValueSpec<Email> {
 object PhoneSpec : MultiValueSpec<Phone> {
     override fun value(item: Phone) = item.number.orEmpty()
     override fun withValue(item: Phone, value: String) = item.copy(number = value)
+
     // The web's type is `features[0] || contexts[0]` (contacts.ts); mirror it so a
     // vCard-imported "voice,fax" phone shows its feature, not a stale context.
-    override fun type(item: Phone) =
-        item.features?.firstOrNull()
-            ?: item.contexts?.firstOrNull()
-            ?: knownTypeFromLabel(item.label, CONTACT_TYPE_OPTIONS)
-    override fun withType(item: Phone, type: String?) = item.copy(contexts = replaceFirstContext(item.contexts, type))
+    override fun type(item: Phone) = item.features?.firstOrNull()
+        ?: item.contexts?.firstOrNull()
+        ?: knownTypeFromLabel(item.label, CONTACT_TYPE_OPTIONS)
+    override fun withType(item: Phone, type: String?) = item.copy(
+        contexts = replaceFirstContext(item.contexts, type)
+    )
     override fun pref(item: Phone) = item.pref
     override fun withPref(item: Phone, pref: Int?) = item.copy(pref = pref)
+
     // T81/M7: `cell` is the default for a *genuinely new* row. It goes into `contexts`
     // (matching web's `defaultType="cell"` → `contexts: ["cell"]`), so both platforms'
     // SMS detection see it — `label` alone was invisible to the web.
@@ -230,11 +256,19 @@ object OnlineServiceSpec : MultiValueSpec<OnlineService> {
         // Canonical home: an entry originally stored in `user` moves to `uri`
         // on edit rather than creating a duplicate display; `service` (the
         // link-resolver key) rides along untouched.
-        if (item.uri.isNullOrBlank() && !item.user.isNullOrBlank()) item.copy(uri = value, user = null)
-        else item.copy(uri = value)
+        if (item.uri.isNullOrBlank() && !item.user.isNullOrBlank()) {
+            item.copy(
+                uri = value,
+                user = null
+            )
+        } else {
+            item.copy(uri = value)
+        }
     override fun type(item: OnlineService) =
         item.contexts?.firstOrNull() ?: knownTypeFromLabel(item.label, CONTEXT_OPTIONS)
-    override fun withType(item: OnlineService, type: String?) = item.copy(contexts = replaceFirstContext(item.contexts, type))
+    override fun withType(item: OnlineService, type: String?) = item.copy(
+        contexts = replaceFirstContext(item.contexts, type)
+    )
     override fun pref(item: OnlineService) = item.pref
     override fun withPref(item: OnlineService, pref: Int?) = item.copy(pref = pref)
     override fun blank() = OnlineService()
@@ -243,11 +277,14 @@ object OnlineServiceSpec : MultiValueSpec<OnlineService> {
     override val valueLabel = R.string.contact_online_service_value
     override val valueExample = R.string.contact_example_online_service
     override val itemLabel = R.string.contact_item_online_service
+
     // The web's OnlineServiceEditor has no preferred star; don't offer one here either.
     override val supportsPref = false
     override val supportsService = true
     override fun serviceName(item: OnlineService) = item.service.orEmpty()
-    override fun withServiceName(item: OnlineService, service: String) = item.copy(service = service)
+    override fun withServiceName(item: OnlineService, service: String) = item.copy(
+        service = service
+    )
 }
 
 object LinkSpec : MultiValueSpec<Resource> {
@@ -255,7 +292,9 @@ object LinkSpec : MultiValueSpec<Resource> {
     override fun withValue(item: Resource, value: String) = item.copy(uri = value)
     override fun type(item: Resource) =
         item.contexts?.firstOrNull() ?: knownTypeFromLabel(item.label, CONTACT_TYPE_OPTIONS)
-    override fun withType(item: Resource, type: String?) = item.copy(contexts = replaceFirstContext(item.contexts, type))
+    override fun withType(item: Resource, type: String?) = item.copy(
+        contexts = replaceFirstContext(item.contexts, type)
+    )
     override fun pref(item: Resource) = item.pref
     override fun withPref(item: Resource, pref: Int?) = item.copy(pref = pref)
     override fun blank() = Resource()
@@ -301,7 +340,9 @@ object LanguagePrefSpec : MultiValueSpec<LanguagePref> {
     override fun value(item: LanguagePref) = item.language.orEmpty()
     override fun withValue(item: LanguagePref, value: String) = item.copy(language = value)
     override fun type(item: LanguagePref) = item.contexts?.firstOrNull()
-    override fun withType(item: LanguagePref, type: String?) = item.copy(contexts = replaceFirstContext(item.contexts, type))
+    override fun withType(item: LanguagePref, type: String?) = item.copy(
+        contexts = replaceFirstContext(item.contexts, type)
+    )
     override fun pref(item: LanguagePref) = item.pref
     override fun withPref(item: LanguagePref, pref: Int?) = item.copy(pref = pref)
     override fun blank() = LanguagePref(language = "")
@@ -318,7 +359,9 @@ object PronounsSpec : MultiValueSpec<Pronouns> {
     override fun value(item: Pronouns) = item.pronouns.orEmpty()
     override fun withValue(item: Pronouns, value: String) = item.copy(pronouns = value)
     override fun type(item: Pronouns) = item.contexts?.firstOrNull()
-    override fun withType(item: Pronouns, type: String?) = item.copy(contexts = replaceFirstContext(item.contexts, type))
+    override fun withType(item: Pronouns, type: String?) = item.copy(
+        contexts = replaceFirstContext(item.contexts, type)
+    )
     override fun pref(item: Pronouns) = item.pref
     override fun withPref(item: Pronouns, pref: Int?) = item.copy(pref = pref)
     override fun blank() = Pronouns(pronouns = "")
@@ -369,7 +412,10 @@ object AnniversarySpec : MultiValueSpec<Anniversary> {
     override fun withType(item: Anniversary, type: String?) = item.copy(kind = type)
     override fun pref(item: Anniversary) = null
     override fun withPref(item: Anniversary, pref: Int?) = item
-    override fun blank() = Anniversary(kind = "wedding", date = AnniversaryDate(partial = PartialDate()))
+    override fun blank() = Anniversary(
+        kind = "wedding",
+        date = AnniversaryDate(partial = PartialDate())
+    )
     override val typeOptions = ANNIVERSARY_KIND_OPTIONS
     override val keyboardType = KeyboardType.Text
     override val valueLabel = R.string.contact_date
@@ -411,7 +457,7 @@ fun <T> MultiValueEditor(
     spec: MultiValueSpec<T>,
     onChange: (List<T>) -> Unit,
     label: String,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         // Caption in the same mono/primary treatment the contact form's other section
@@ -419,9 +465,11 @@ fun <T> MultiValueEditor(
         // MultiValueField (Typography subtitle2) rather than needing a caller SectionLabel.
         Text(
             text = label,
-            style = MaterialTheme.typography.labelLarge.copy(fontFamily = com.mycorrhizal.crm.ui.theme.MycorrhizalFonts.mono),
+            style = MaterialTheme.typography.labelLarge.copy(
+                fontFamily = com.mycorrhizal.crm.ui.theme.MycorrhizalFonts.mono
+            ),
             color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(top = 8.dp),
+            modifier = Modifier.padding(top = 8.dp)
         )
         val itemLabel = stringResource(spec.itemLabel)
         items.forEachIndexed { index, item ->
@@ -435,20 +483,53 @@ fun <T> MultiValueEditor(
                 // there is more than one row to tell apart.
                 showRowNumber = items.size > 1,
                 onValueChange = { value ->
-                    onChange(items.mapIndexed { i, it -> if (i == index) spec.withValue(it, value) else it })
+                    onChange(
+                        items.mapIndexed { i, it ->
+                            if (i == index) {
+                                spec.withValue(
+                                    it,
+                                    value
+                                )
+                            } else {
+                                it
+                            }
+                        }
+                    )
                 },
                 onServiceNameChange = { service ->
-                    onChange(items.mapIndexed { i, it -> if (i == index) spec.withServiceName(it, service) else it })
+                    onChange(
+                        items.mapIndexed { i, it ->
+                            if (i == index) {
+                                spec.withServiceName(
+                                    it,
+                                    service
+                                )
+                            } else {
+                                it
+                            }
+                        }
+                    )
                 },
                 onTypeChange = { type ->
-                    onChange(items.mapIndexed { i, it -> if (i == index) spec.withType(it, type) else it })
+                    onChange(
+                        items.mapIndexed { i, it ->
+                            if (i == index) {
+                                spec.withType(
+                                    it,
+                                    type
+                                )
+                            } else {
+                                it
+                            }
+                        }
+                    )
                 },
                 onPrefToggle = {
                     onChange(applyPrefToggle(items, index, spec))
                 },
                 onRemove = {
                     onChange(items.filterIndexed { i, _ -> i != index })
-                },
+                }
             )
         }
         // Issue #1724: visible "Add email" text (web parity) instead of a bare
@@ -472,14 +553,22 @@ private fun <T> MultiValueRow(
     onServiceNameChange: (String) -> Unit,
     onTypeChange: (String?) -> Unit,
     onPrefToggle: () -> Unit,
-    onRemove: () -> Unit,
+    onRemove: () -> Unit
 ) {
     val valueLabel = stringResource(spec.valueLabel)
     val valueExample = spec.valueExample?.let { stringResource(it) }
     val valueHint = spec.valueHint?.let { stringResource(it) }
     val itemLabel = stringResource(spec.itemLabel)
     val valueDescription =
-        if (showRowNumber) stringResource(R.string.contact_field_row_named, valueLabel, rowNumber) else valueLabel
+        if (showRowNumber) {
+            stringResource(
+                R.string.contact_field_row_named,
+                valueLabel,
+                rowNumber
+            )
+        } else {
+            valueLabel
+        }
     val valueModifier = Modifier.semantics { contentDescription = valueDescription }
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         if (spec.supportsService) {
@@ -491,12 +580,12 @@ private fun <T> MultiValueRow(
                 onValueChange = onServiceNameChange,
                 label = { Text(stringResource(R.string.contact_online_service_service)) },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth()
             )
         }
         Row(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             // T115: email/phone rows advertise their ContentType so the
             // Autofill service can offer a fill; other specs keep the plain
@@ -511,7 +600,7 @@ private fun <T> MultiValueRow(
                     label = valueLabel,
                     mode = valueMode,
                     allowClear = true,
-                    modifier = valueModifier.weight(1f),
+                    modifier = valueModifier.weight(1f)
                 )
             } else if (spec.contentType != null) {
                 AutofillOutlinedTextField(
@@ -522,7 +611,7 @@ private fun <T> MultiValueRow(
                     keyboardOptions = KeyboardOptions(keyboardType = spec.keyboardType),
                     placeholder = valueExample,
                     supportingText = valueHint,
-                    modifier = valueModifier.weight(1f),
+                    modifier = valueModifier.weight(1f)
                 )
             } else {
                 OutlinedTextField(
@@ -533,25 +622,29 @@ private fun <T> MultiValueRow(
                     supportingText = valueHint?.let { { Text(it) } },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = spec.keyboardType),
-                    modifier = valueModifier.weight(1f),
+                    modifier = valueModifier.weight(1f)
                 )
             }
             IconButton(onClick = onRemove, enabled = canRemove) {
                 Icon(
                     Icons.Outlined.Delete,
-                    contentDescription = stringResource(R.string.contact_remove_named, itemLabel, rowNumber),
+                    contentDescription = stringResource(
+                        R.string.contact_remove_named,
+                        itemLabel,
+                        rowNumber
+                    )
                 )
             }
         }
         Row(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             TypeDropdown(
                 current = spec.type(item),
                 options = spec.typeOptions,
                 onTypeChange = onTypeChange,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f)
             )
             if (spec.supportsPref) {
                 // Issue #1724: a star here means "preferred value", but a star
@@ -560,7 +653,7 @@ private fun <T> MultiValueRow(
                 FilterChip(
                     selected = spec.pref(item) == 1,
                     onClick = onPrefToggle,
-                    label = { Text(stringResource(R.string.contact_preferred)) },
+                    label = { Text(stringResource(R.string.contact_preferred)) }
                 )
             }
         }
@@ -581,13 +674,13 @@ fun TypeDropdown(
     options: List<String>,
     onTypeChange: (String?) -> Unit,
     modifier: Modifier = Modifier,
-    label: String = stringResource(R.string.contact_field_type),
+    label: String = stringResource(R.string.contact_field_type)
 ) {
     var expanded by remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(
         expanded = expanded,
         onExpandedChange = { expanded = it },
-        modifier = modifier,
+        modifier = modifier
     ) {
         OutlinedTextField(
             value = current?.takeIf { it.isNotBlank() }?.let { typeOptionLabel(it) }.orEmpty(),
@@ -598,18 +691,18 @@ fun TypeDropdown(
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier
                 .fillMaxWidth()
-                .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
         )
         ExposedDropdownMenu(
             expanded = expanded,
-            onDismissRequest = { expanded = false },
+            onDismissRequest = { expanded = false }
         ) {
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.contact_type_none)) },
                 onClick = {
                     expanded = false
                     onTypeChange(null)
-                },
+                }
             )
             options.forEach { option ->
                 DropdownMenuItem(
@@ -617,7 +710,7 @@ fun TypeDropdown(
                     onClick = {
                         expanded = false
                         onTypeChange(option)
-                    },
+                    }
                 )
             }
         }

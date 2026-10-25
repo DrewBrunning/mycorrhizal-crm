@@ -26,12 +26,16 @@ class BaseUrlInterceptorTest {
 
     @Test
     fun `rewrites the request origin onto the configured server`() {
-        val interceptor = BaseUrlInterceptor(BaseUrlProvider { server.url("/").toString().trimEnd('/') })
+        val interceptor = BaseUrlInterceptor(
+            BaseUrlProvider { server.url("/").toString().trimEnd('/') }
+        )
         val client = OkHttpClient.Builder().addInterceptor(interceptor).build()
         server.enqueue(MockResponse().setResponseCode(200))
 
         // Request built against the placeholder origin; interceptor must point it at the server.
-        client.newCall(Request.Builder().url("http://placeholder/api/v1/contacts").build()).execute()
+        client.newCall(
+            Request.Builder().url("http://placeholder/api/v1/contacts").build()
+        ).execute()
 
         val recorded = server.takeRequest()
         assertEquals("/api/v1/contacts", recorded.path)

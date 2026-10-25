@@ -43,12 +43,12 @@ class ContactSharesScreenTest {
         fromUserId = 7,
         toUserId = 1,
         contactDisplayName = "Dana White",
-        status = ContactShareStatuses.PENDING,
+        status = ContactShareStatuses.PENDING
     )
 
     private fun screen(
         viewModel: ContactSharesViewModel = ContactSharesViewModel(repository),
-        darkTheme: Boolean = false,
+        darkTheme: Boolean = false
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme(darkTheme = darkTheme) {
@@ -60,9 +60,17 @@ class ContactSharesScreenTest {
     @Test
     fun `incoming pending share renders with accept and decline actions`() {
         coEvery { repository.listIncoming(any(), any()) } returns Result.success(
-            ContactSharesPage(contactShares = listOf(incomingShare), usernames = mapOf("7" to "dana")),
+            ContactSharesPage(
+                contactShares = listOf(incomingShare),
+                usernames = mapOf("7" to "dana")
+            )
         )
-        coEvery { repository.listOutgoing(any(), any()) } returns Result.success(ContactSharesPage())
+        coEvery {
+            repository.listOutgoing(
+                any(),
+                any()
+            )
+        } returns Result.success(ContactSharesPage())
 
         screen()
 
@@ -75,9 +83,14 @@ class ContactSharesScreenTest {
     @Test
     fun `tapping decline opens the confirmation dialog and does not call the repository`() {
         coEvery { repository.listIncoming(any(), any()) } returns Result.success(
-            ContactSharesPage(contactShares = listOf(incomingShare)),
+            ContactSharesPage(contactShares = listOf(incomingShare))
         )
-        coEvery { repository.listOutgoing(any(), any()) } returns Result.success(ContactSharesPage())
+        coEvery {
+            repository.listOutgoing(
+                any(),
+                any()
+            )
+        } returns Result.success(ContactSharesPage())
 
         screen()
 
@@ -94,9 +107,14 @@ class ContactSharesScreenTest {
         // reload the inbox is empty (the share was removed).
         coEvery { repository.listIncoming(any(), any()) } returnsMany listOf(
             Result.success(ContactSharesPage(contactShares = listOf(incomingShare))),
-            Result.success(ContactSharesPage()),
+            Result.success(ContactSharesPage())
         )
-        coEvery { repository.listOutgoing(any(), any()) } returns Result.success(ContactSharesPage())
+        coEvery {
+            repository.listOutgoing(
+                any(),
+                any()
+            )
+        } returns Result.success(ContactSharesPage())
         coEvery { repository.decline("s1") } returns Result.success(Unit)
 
         screen()
@@ -112,15 +130,20 @@ class ContactSharesScreenTest {
     @Test
     fun `tapping accept opens the preview dialog`() {
         coEvery { repository.listIncoming(any(), any()) } returns Result.success(
-            ContactSharesPage(contactShares = listOf(incomingShare)),
+            ContactSharesPage(contactShares = listOf(incomingShare))
         )
-        coEvery { repository.listOutgoing(any(), any()) } returns Result.success(ContactSharesPage())
+        coEvery {
+            repository.listOutgoing(
+                any(),
+                any()
+            )
+        } returns Result.success(ContactSharesPage())
         coEvery { repository.accept("s1") } returns Result.success(
             ImportPreviewResponse(
                 sessionId = "import-1",
                 rows = listOf(ImportRowPreview(rowIndex = 0, suggestedAction = "add")),
-                totalRows = 1,
-            ),
+                totalRows = 1
+            )
         )
 
         screen()
@@ -133,8 +156,18 @@ class ContactSharesScreenTest {
 
     @Test
     fun `empty incoming tab shows the incoming empty-state message`() {
-        coEvery { repository.listIncoming(any(), any()) } returns Result.success(ContactSharesPage())
-        coEvery { repository.listOutgoing(any(), any()) } returns Result.success(ContactSharesPage())
+        coEvery {
+            repository.listIncoming(
+                any(),
+                any()
+            )
+        } returns Result.success(ContactSharesPage())
+        coEvery {
+            repository.listOutgoing(
+                any(),
+                any()
+            )
+        } returns Result.success(ContactSharesPage())
 
         screen()
 
@@ -144,8 +177,18 @@ class ContactSharesScreenTest {
 
     @Test
     fun `empty outgoing tab shows the outgoing empty-state message`() {
-        coEvery { repository.listIncoming(any(), any()) } returns Result.success(ContactSharesPage())
-        coEvery { repository.listOutgoing(any(), any()) } returns Result.success(ContactSharesPage())
+        coEvery {
+            repository.listIncoming(
+                any(),
+                any()
+            )
+        } returns Result.success(ContactSharesPage())
+        coEvery {
+            repository.listOutgoing(
+                any(),
+                any()
+            )
+        } returns Result.success(ContactSharesPage())
 
         screen()
 
@@ -157,8 +200,18 @@ class ContactSharesScreenTest {
 
     @Test
     fun `a failed load with an empty list renders the error text`() {
-        coEvery { repository.listIncoming(any(), any()) } returns Result.failure(ApiError.Client(500, "boom"))
-        coEvery { repository.listOutgoing(any(), any()) } returns Result.failure(ApiError.Client(500, "boom"))
+        coEvery {
+            repository.listIncoming(
+                any(),
+                any()
+            )
+        } returns Result.failure(ApiError.Client(500, "boom"))
+        coEvery {
+            repository.listOutgoing(
+                any(),
+                any()
+            )
+        } returns Result.failure(ApiError.Client(500, "boom"))
 
         screen()
 
@@ -167,7 +220,7 @@ class ContactSharesScreenTest {
         // branch (line 117-123) ran — the snackbar alone would be a false pass.
         assertTrue(
             "expected the body error Text plus the snackbar",
-            composeTestRule.onAllNodesWithText("boom").fetchSemanticsNodes().size >= 2,
+            composeTestRule.onAllNodesWithText("boom").fetchSemanticsNodes().size >= 2
         )
     }
 
@@ -175,9 +228,17 @@ class ContactSharesScreenTest {
 
     private fun setUpPopulatedShares() {
         coEvery { repository.listIncoming(any(), any()) } returns Result.success(
-            ContactSharesPage(contactShares = listOf(incomingShare), usernames = mapOf("7" to "dana")),
+            ContactSharesPage(
+                contactShares = listOf(incomingShare),
+                usernames = mapOf("7" to "dana")
+            )
         )
-        coEvery { repository.listOutgoing(any(), any()) } returns Result.success(ContactSharesPage())
+        coEvery {
+            repository.listOutgoing(
+                any(),
+                any()
+            )
+        } returns Result.success(ContactSharesPage())
     }
 
     @Test

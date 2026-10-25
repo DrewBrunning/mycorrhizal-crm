@@ -4,8 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.data.session.SessionManager
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlinx.coroutines.launch
 
 /**
  * M5 §5a (issue #152): registers the FCM device on login and deletes it on
@@ -20,7 +20,7 @@ import javax.inject.Inject
 @HiltViewModel
 class DeviceRegistrationViewModel @Inject constructor(
     sessionManager: SessionManager,
-    private val deviceRegistration: DeviceRegistrationManager,
+    private val deviceRegistration: DeviceRegistrationManager
 ) : ViewModel() {
 
     private var wasLoggedIn = false
@@ -36,6 +36,7 @@ class DeviceRegistrationViewModel @Inject constructor(
                         // (client, token) key makes this idempotent.
                         deviceRegistration.register()
                     }
+
                     !session.isLoggedIn && wasLoggedIn -> {
                         wasLoggedIn = false
                         deviceRegistration.delete()

@@ -49,7 +49,13 @@ class CallLogSyncWorkerTest {
     private fun stubCallLog(rows: List<Array<Any?>>) {
         val cursor = RoboCursor().apply {
             setColumnNames(
-                listOf(CallLog.Calls.NUMBER, CallLog.Calls.TYPE, CallLog.Calls.DATE, CallLog.Calls.DURATION, CallLog.Calls.CACHED_NAME),
+                listOf(
+                    CallLog.Calls.NUMBER,
+                    CallLog.Calls.TYPE,
+                    CallLog.Calls.DATE,
+                    CallLog.Calls.DURATION,
+                    CallLog.Calls.CACHED_NAME
+                )
             )
             setResults(rows.toTypedArray())
         }
@@ -68,7 +74,7 @@ class CallLogSyncWorkerTest {
             workerParams = mockk(relaxed = true),
             pendingInteractionRepository = pendingInteractions,
             contactRepository = contacts,
-            trackingSettings = settings,
+            trackingSettings = settings
         )
         worker.doWork()
 
@@ -77,7 +83,9 @@ class CallLogSyncWorkerTest {
 
     @Test
     fun `a missing READ_CALL_LOG grant is a no-op success, not a worker failure`() = runTest {
-        Shadows.shadowOf(context as Application).denyPermissions(android.Manifest.permission.READ_CALL_LOG)
+        Shadows.shadowOf(
+            context as Application
+        ).denyPermissions(android.Manifest.permission.READ_CALL_LOG)
         val pendingInteractions = mockk<PendingInteractionRepository>(relaxed = true)
         val contacts = mockk<ContactRepository>(relaxed = true)
         val settings = mockk<TrackingSettingsRepository>()
@@ -89,7 +97,7 @@ class CallLogSyncWorkerTest {
             workerParams = mockk(relaxed = true),
             pendingInteractionRepository = pendingInteractions,
             contactRepository = contacts,
-            trackingSettings = settings,
+            trackingSettings = settings
         )
         val result = worker.doWork()
 
@@ -113,7 +121,7 @@ class CallLogSyncWorkerTest {
             workerParams = mockk(relaxed = true),
             pendingInteractionRepository = pendingInteractions,
             contactRepository = contacts,
-            trackingSettings = settings,
+            trackingSettings = settings
         )
         worker.doWork()
 
@@ -121,53 +129,56 @@ class CallLogSyncWorkerTest {
     }
 
     @Test
-    fun `records a matched incoming call, filters the unmatched one, and advances the watermark`() = runTest {
-        stubCallLog(
-            listOf(
-                arrayOf<Any?>("+15551234567", CallLog.Calls.INCOMING_TYPE, 5000L, 30L, "Jane"),
-                arrayOf<Any?>("+15559876543", CallLog.Calls.OUTGOING_TYPE, 7000L, 60L, null),
-            ),
-        )
-        val pendingInteractions = mockk<PendingInteractionRepository>(relaxed = true)
-        val contacts = mockk<ContactRepository>()
-        coEvery { contacts.findByPhone("+15551234567") } returns ContactSummary(id = 9)
-        coEvery { contacts.findByPhone("+15559876543") } returns null
-        val settings = mockk<TrackingSettingsRepository>(relaxed = true)
-        coEvery { settings.callTrackingEnabled() } returns true
-        coEvery { settings.lastCallLogTimestamp() } returns 0L
-
-        val worker = CallLogSyncWorker(
-            appContext = context,
-            workerParams = mockk(relaxed = true),
-            pendingInteractionRepository = pendingInteractions,
-            contactRepository = contacts,
-            trackingSettings = settings,
-        )
-        val result = worker.doWork()
-
-        assertTrue(result is androidx.work.ListenableWorker.Result.Success)
-        coVerify {
-            pendingInteractions.recordIfNew(
-                PendingInteraction(
-                    timestampMillis = 5000L,
-                    kind = InteractionCapture.KIND_CALL,
-                    direction = InteractionCapture.DIR_INCOMING,
-                    phoneNumber = "+15551234567",
-                    matchedContactId = 9,
-                ),
+    fun `records a matched incoming call, filters the unmatched one, and advances the watermark`() =
+        runTest {
+            stubCallLog(
+                listOf(
+                    arrayOf<Any?>("+15551234567", CallLog.Calls.INCOMING_TYPE, 5000L, 30L, "Jane"),
+                    arrayOf<Any?>("+15559876543", CallLog.Calls.OUTGOING_TYPE, 7000L, 60L, null)
+                )
             )
+            val pendingInteractions = mockk<PendingInteractionRepository>(relaxed = true)
+            val contacts = mockk<ContactRepository>()
+            coEvery { contacts.findByPhone("+15551234567") } returns ContactSummary(id = 9)
+            coEvery { contacts.findByPhone("+15559876543") } returns null
+            val settings = mockk<TrackingSettingsRepository>(relaxed = true)
+            coEvery { settings.callTrackingEnabled() } returns true
+            coEvery { settings.lastCallLogTimestamp() } returns 0L
+
+            val worker = CallLogSyncWorker(
+                appContext = context,
+                workerParams = mockk(relaxed = true),
+                pendingInteractionRepository = pendingInteractions,
+                contactRepository = contacts,
+                trackingSettings = settings
+            )
+            val result = worker.doWork()
+
+            assertTrue(result is androidx.work.ListenableWorker.Result.Success)
+            coVerify {
+                pendingInteractions.recordIfNew(
+                    PendingInteraction(
+                        timestampMillis = 5000L,
+                        kind = InteractionCapture.KIND_CALL,
+                        direction = InteractionCapture.DIR_INCOMING,
+                        phoneNumber = "+15551234567",
+                        matchedContactId = 9
+                    )
+                )
+            }
+            // Unknown number dropped by the capture policy (issue #1029).
+            coVerify(exactly = 0) {
+                pendingInteractions.recordIfNew(match { it.phoneNumber == "+15559876543" })
+            }
+            coVerify(exactly = 1) { settings.incrementFilteredUnknownCount() }
+            coVerify { settings.setLastCallLogTimestamp(7000L) }
         }
-        // Unknown number dropped by the capture policy (issue #1029).
-        coVerify(exactly = 0) {
-            pendingInteractions.recordIfNew(match { it.phoneNumber == "+15559876543" })
-        }
-        coVerify(exactly = 1) { settings.incrementFilteredUnknownCount() }
-        coVerify { settings.setLastCallLogTimestamp(7000L) }
-    }
 
     @Test
     fun `the include-unknown opt-in stages an unmatched call`() = runTest {
-        stubCallLog(listOf(arrayOf<Any?>("+15559876543", CallLog.Calls.OUTGOING_TYPE, 7000L, 60L, null)))
+        stubCallLog(
+            listOf(arrayOf<Any?>("+15559876543", CallLog.Calls.OUTGOING_TYPE, 7000L, 60L, null))
+        )
         val pendingInteractions = mockk<PendingInteractionRepository>(relaxed = true)
         val contacts = mockk<ContactRepository>()
         coEvery { contacts.findByPhone("+15559876543") } returns null
@@ -181,7 +192,7 @@ class CallLogSyncWorkerTest {
             workerParams = mockk(relaxed = true),
             pendingInteractionRepository = pendingInteractions,
             contactRepository = contacts,
-            trackingSettings = settings,
+            trackingSettings = settings
         ).doWork()
 
         coVerify {
@@ -191,8 +202,8 @@ class CallLogSyncWorkerTest {
                     kind = InteractionCapture.KIND_CALL,
                     direction = InteractionCapture.DIR_OUTGOING,
                     phoneNumber = "+15559876543",
-                    matchedContactId = null,
-                ),
+                    matchedContactId = null
+                )
             )
         }
         coVerify(exactly = 0) { settings.incrementFilteredUnknownCount() }
@@ -200,7 +211,9 @@ class CallLogSyncWorkerTest {
 
     @Test
     fun `a missed call maps to the missed direction`() = runTest {
-        stubCallLog(listOf(arrayOf<Any?>("+15551234567", CallLog.Calls.MISSED_TYPE, 1000L, 0L, null)))
+        stubCallLog(
+            listOf(arrayOf<Any?>("+15551234567", CallLog.Calls.MISSED_TYPE, 1000L, 0L, null))
+        )
         val pendingInteractions = mockk<PendingInteractionRepository>(relaxed = true)
         val contacts = mockk<ContactRepository>(relaxed = true)
         coEvery { contacts.findByPhone(any()) } returns ContactSummary(id = 5)
@@ -213,7 +226,7 @@ class CallLogSyncWorkerTest {
             workerParams = mockk(relaxed = true),
             pendingInteractionRepository = pendingInteractions,
             contactRepository = contacts,
-            trackingSettings = settings,
+            trackingSettings = settings
         )
         worker.doWork()
 
@@ -224,8 +237,8 @@ class CallLogSyncWorkerTest {
                     kind = InteractionCapture.KIND_CALL,
                     direction = InteractionCapture.DIR_MISSED,
                     phoneNumber = "+15551234567",
-                    matchedContactId = 5,
-                ),
+                    matchedContactId = 5
+                )
             )
         }
     }

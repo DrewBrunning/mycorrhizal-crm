@@ -31,42 +31,47 @@ import org.robolectric.annotation.Config
 class NotificationWorkersTest {
 
     private val context = ApplicationProvider.getApplicationContext<Context>()
-    private val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    private val manager = context.getSystemService(
+        Context.NOTIFICATION_SERVICE
+    ) as NotificationManager
     private val shadow = Shadows.shadowOf(manager)
 
     // -- CadenceCheckWorker --
 
     @Test
-    fun `cadence worker posts one notification per overdue contact under a distinct id`() = runTest {
-        val apiClient = mockk<ApiClient>()
-        coEvery { apiClient.listOverdueCadences() } returns Result.success(
-            OverdueCadencesResponse(
-                overdue = listOf(
-                    OverdueCadence(contactId = 1, contactName = "Jane"),
-                    OverdueCadence(contactId = 2, contactName = "Bob"),
-                ),
-            ),
-        )
-        val settings = mockk<TrackingSettingsRepository>()
-        coEvery { settings.notificationsEnabled() } returns true
+    fun `cadence worker posts one notification per overdue contact under a distinct id`() =
+        runTest {
+            val apiClient = mockk<ApiClient>()
+            coEvery { apiClient.listOverdueCadences() } returns Result.success(
+                OverdueCadencesResponse(
+                    overdue = listOf(
+                        OverdueCadence(contactId = 1, contactName = "Jane"),
+                        OverdueCadence(contactId = 2, contactName = "Bob")
+                    )
+                )
+            )
+            val settings = mockk<TrackingSettingsRepository>()
+            coEvery { settings.notificationsEnabled() } returns true
 
-        val worker = CadenceCheckWorker(
-            appContext = context,
-            workerParams = mockk(relaxed = true),
-            apiClient = apiClient,
-            trackingSettings = settings,
-        )
-        worker.doWork()
+            val worker = CadenceCheckWorker(
+                appContext = context,
+                workerParams = mockk(relaxed = true),
+                apiClient = apiClient,
+                trackingSettings = settings
+            )
+            worker.doWork()
 
-        assertNotNull(shadow.getNotification(AlertNotificationIds.CADENCE))
-        assertNotNull(shadow.getNotification(AlertNotificationIds.CADENCE + 1))
-    }
+            assertNotNull(shadow.getNotification(AlertNotificationIds.CADENCE))
+            assertNotNull(shadow.getNotification(AlertNotificationIds.CADENCE + 1))
+        }
 
     @Test
     fun `cadence worker falls back to a generic name when the contact name is blank`() = runTest {
         val apiClient = mockk<ApiClient>()
         coEvery { apiClient.listOverdueCadences() } returns Result.success(
-            OverdueCadencesResponse(overdue = listOf(OverdueCadence(contactId = 1, contactName = ""))),
+            OverdueCadencesResponse(
+                overdue = listOf(OverdueCadence(contactId = 1, contactName = ""))
+            )
         )
         val settings = mockk<TrackingSettingsRepository>()
         coEvery { settings.notificationsEnabled() } returns true
@@ -75,7 +80,7 @@ class NotificationWorkersTest {
             appContext = context,
             workerParams = mockk(relaxed = true),
             apiClient = apiClient,
-            trackingSettings = settings,
+            trackingSettings = settings
         )
         worker.doWork()
 
@@ -92,7 +97,7 @@ class NotificationWorkersTest {
             appContext = context,
             workerParams = mockk(relaxed = true),
             apiClient = apiClient,
-            trackingSettings = settings,
+            trackingSettings = settings
         )
         worker.doWork()
 
@@ -102,7 +107,9 @@ class NotificationWorkersTest {
     @Test
     fun `cadence worker posts nothing for an empty overdue list`() = runTest {
         val apiClient = mockk<ApiClient>()
-        coEvery { apiClient.listOverdueCadences() } returns Result.success(OverdueCadencesResponse(overdue = emptyList()))
+        coEvery { apiClient.listOverdueCadences() } returns Result.success(
+            OverdueCadencesResponse(overdue = emptyList())
+        )
         val settings = mockk<TrackingSettingsRepository>()
         coEvery { settings.notificationsEnabled() } returns true
 
@@ -110,7 +117,7 @@ class NotificationWorkersTest {
             appContext = context,
             workerParams = mockk(relaxed = true),
             apiClient = apiClient,
-            trackingSettings = settings,
+            trackingSettings = settings
         )
         worker.doWork()
 
@@ -126,9 +133,9 @@ class NotificationWorkersTest {
             BirthdaysResponse(
                 birthdays = listOf(
                     Birthday(contactId = 1, name = "Jane"),
-                    Birthday(contactId = 2, name = "Bob"),
-                ),
-            ),
+                    Birthday(contactId = 2, name = "Bob")
+                )
+            )
         )
         val settings = mockk<TrackingSettingsRepository>()
         coEvery { settings.notificationsEnabled() } returns true
@@ -137,7 +144,7 @@ class NotificationWorkersTest {
             appContext = context,
             workerParams = mockk(relaxed = true),
             apiClient = apiClient,
-            trackingSettings = settings,
+            trackingSettings = settings
         )
         worker.doWork()
 
@@ -149,7 +156,7 @@ class NotificationWorkersTest {
     fun `birthday worker falls back to a generic name when the name is blank`() = runTest {
         val apiClient = mockk<ApiClient>()
         coEvery { apiClient.listUpcomingBirthdays() } returns Result.success(
-            BirthdaysResponse(birthdays = listOf(Birthday(contactId = 1, name = ""))),
+            BirthdaysResponse(birthdays = listOf(Birthday(contactId = 1, name = "")))
         )
         val settings = mockk<TrackingSettingsRepository>()
         coEvery { settings.notificationsEnabled() } returns true
@@ -158,7 +165,7 @@ class NotificationWorkersTest {
             appContext = context,
             workerParams = mockk(relaxed = true),
             apiClient = apiClient,
-            trackingSettings = settings,
+            trackingSettings = settings
         )
         worker.doWork()
 
@@ -175,7 +182,7 @@ class NotificationWorkersTest {
             appContext = context,
             workerParams = mockk(relaxed = true),
             apiClient = apiClient,
-            trackingSettings = settings,
+            trackingSettings = settings
         )
         worker.doWork()
 
@@ -185,7 +192,9 @@ class NotificationWorkersTest {
     @Test
     fun `birthday worker posts nothing for an empty list`() = runTest {
         val apiClient = mockk<ApiClient>()
-        coEvery { apiClient.listUpcomingBirthdays() } returns Result.success(BirthdaysResponse(birthdays = emptyList()))
+        coEvery { apiClient.listUpcomingBirthdays() } returns Result.success(
+            BirthdaysResponse(birthdays = emptyList())
+        )
         val settings = mockk<TrackingSettingsRepository>()
         coEvery { settings.notificationsEnabled() } returns true
 
@@ -193,7 +202,7 @@ class NotificationWorkersTest {
             appContext = context,
             workerParams = mockk(relaxed = true),
             apiClient = apiClient,
-            trackingSettings = settings,
+            trackingSettings = settings
         )
         worker.doWork()
 

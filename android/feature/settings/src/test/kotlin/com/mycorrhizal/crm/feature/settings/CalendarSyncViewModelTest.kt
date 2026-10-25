@@ -32,8 +32,14 @@ class CalendarSyncViewModelTest {
         id: Int,
         name: String = "Cal $id",
         consecutiveFailures: Int = 0,
-        lastSyncStatus: String = "",
-    ) = CalendarSubscription(id = id, name = name, url = "https://example.com/$id.ics", consecutiveFailures = consecutiveFailures, lastSyncStatus = lastSyncStatus)
+        lastSyncStatus: String = ""
+    ) = CalendarSubscription(
+        id = id,
+        name = name,
+        url = "https://example.com/$id.ics",
+        consecutiveFailures = consecutiveFailures,
+        lastSyncStatus = lastSyncStatus
+    )
 
     private fun viewModel(): CalendarSyncViewModel {
         coEvery { contactSubscriptionRepository.list() } returns Result.success(emptyList())
@@ -41,10 +47,14 @@ class CalendarSyncViewModelTest {
     }
 
     @Test
-    fun `load populates calendars and contact subscriptions`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { calendarRepository.list() } returns Result.success(listOf(calendar(1), calendar(2)))
+    fun `load populates calendars and contact subscriptions`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { calendarRepository.list() } returns Result.success(
+            listOf(calendar(1), calendar(2))
+        )
         coEvery { contactSubscriptionRepository.list() } returns Result.success(
-            listOf(ContactSubscription(id = 1, name = "Address Book")),
+            listOf(ContactSubscription(id = 1, name = "Address Book"))
         )
         val vm = CalendarSyncViewModel(calendarRepository, contactSubscriptionRepository)
         advanceUntilIdle()
@@ -57,7 +67,9 @@ class CalendarSyncViewModelTest {
     }
 
     @Test
-    fun `load failure on calendars surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `load failure on calendars surfaces the error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { calendarRepository.list() } returns Result.failure(ApiError.Server(500, "boom"))
         val vm = viewModel()
         advanceUntilIdle()
@@ -68,8 +80,12 @@ class CalendarSyncViewModelTest {
     @Test
     fun `load failure on contact subscriptions does not clobber a calendar error`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            coEvery { calendarRepository.list() } returns Result.failure(ApiError.Server(500, "calendars down"))
-            coEvery { contactSubscriptionRepository.list() } returns Result.failure(ApiError.Server(500, "contacts down"))
+            coEvery { calendarRepository.list() } returns Result.failure(
+                ApiError.Server(500, "calendars down")
+            )
+            coEvery { contactSubscriptionRepository.list() } returns Result.failure(
+                ApiError.Server(500, "contacts down")
+            )
             val vm = CalendarSyncViewModel(calendarRepository, contactSubscriptionRepository)
             advanceUntilIdle()
 
@@ -77,15 +93,24 @@ class CalendarSyncViewModelTest {
         }
 
     @Test
-    fun `create appends the new calendar and triggers its first sync`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `create appends the new calendar and triggers its first sync`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { calendarRepository.list() } returns Result.success(emptyList())
         val created = calendar(9, name = "New")
         coEvery { calendarRepository.create(any()) } returns Result.success(created)
-        coEvery { calendarRepository.sync(9) } returns Result.success(CalendarSyncResult(created = 3, updated = 1, skipped = 0))
+        coEvery {
+            calendarRepository.sync(
+                9
+            )
+        } returns Result.success(CalendarSyncResult(created = 3, updated = 1, skipped = 0))
         val vm = viewModel()
         advanceUntilIdle()
 
-        vm.save(CalendarSubscriptionInput(name = "New", url = "https://example.com/9.ics"), editingId = null)
+        vm.save(
+            CalendarSubscriptionInput(name = "New", url = "https://example.com/9.ics"),
+            editingId = null
+        )
         advanceUntilIdle()
 
         coVerify { calendarRepository.sync(9) }
@@ -93,13 +118,25 @@ class CalendarSyncViewModelTest {
     }
 
     @Test
-    fun `update replaces the edited calendar in place`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { calendarRepository.list() } returns Result.success(listOf(calendar(1), calendar(2)))
-        coEvery { calendarRepository.update(2, any()) } returns Result.success(calendar(2, name = "Renamed"))
+    fun `update replaces the edited calendar in place`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { calendarRepository.list() } returns Result.success(
+            listOf(calendar(1), calendar(2))
+        )
+        coEvery {
+            calendarRepository.update(
+                2,
+                any()
+            )
+        } returns Result.success(calendar(2, name = "Renamed"))
         val vm = viewModel()
         advanceUntilIdle()
 
-        vm.save(CalendarSubscriptionInput(name = "Renamed", url = "https://example.com/2.ics"), editingId = 2)
+        vm.save(
+            CalendarSubscriptionInput(name = "Renamed", url = "https://example.com/2.ics"),
+            editingId = 2
+        )
         advanceUntilIdle()
 
         assertEquals("Renamed", vm.uiState.value.calendars[1].name)
@@ -107,8 +144,12 @@ class CalendarSyncViewModelTest {
     }
 
     @Test
-    fun `delete removes the calendar after a confirmed call`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { calendarRepository.list() } returns Result.success(listOf(calendar(1), calendar(2)))
+    fun `delete removes the calendar after a confirmed call`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { calendarRepository.list() } returns Result.success(
+            listOf(calendar(1), calendar(2))
+        )
         coEvery { calendarRepository.delete(1) } returns Result.success(Unit)
         val vm = viewModel()
         advanceUntilIdle()
@@ -121,11 +162,19 @@ class CalendarSyncViewModelTest {
     }
 
     @Test
-    fun `sync marks the id in flight then reloads the list on success`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `sync marks the id in flight then reloads the list on success`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val healthy = calendar(1)
         val healed = calendar(1, lastSyncStatus = "success")
-        coEvery { calendarRepository.list() } returns Result.success(listOf(healthy)) andThen Result.success(listOf(healed))
-        coEvery { calendarRepository.sync(1) } returns Result.success(CalendarSyncResult(created = 2, updated = 0, skipped = 1))
+        coEvery { calendarRepository.list() } returns Result.success(
+            listOf(healthy)
+        ) andThen Result.success(listOf(healed))
+        coEvery {
+            calendarRepository.sync(
+                1
+            )
+        } returns Result.success(CalendarSyncResult(created = 2, updated = 0, skipped = 1))
         val vm = viewModel()
         advanceUntilIdle()
 
@@ -139,10 +188,16 @@ class CalendarSyncViewModelTest {
     }
 
     @Test
-    fun `sync failure surfaces the error and still reloads the list`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `sync failure surfaces the error and still reloads the list`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val cal = calendar(1)
         coEvery { calendarRepository.list() } returns Result.success(listOf(cal))
-        coEvery { calendarRepository.sync(1) } returns Result.failure(ApiError.Client(400, "unreachable"))
+        coEvery {
+            calendarRepository.sync(
+                1
+            )
+        } returns Result.failure(ApiError.Client(400, "unreachable"))
         val vm = viewModel()
         advanceUntilIdle()
 

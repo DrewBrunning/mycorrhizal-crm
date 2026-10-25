@@ -32,10 +32,14 @@ class SessionExpiryInterceptorTest {
         server.shutdown()
     }
 
-    private fun client(notifier: SessionExpiryNotifier, baseUrl: String = server.url("/").toString()): OkHttpClient =
-        OkHttpClient.Builder()
-            .addInterceptor(SessionExpiryInterceptor(notifier, BaseUrlProvider { baseUrl }))
-            .build()
+    private fun client(
+        notifier: SessionExpiryNotifier,
+        baseUrl: String = server.url(
+            "/"
+        ).toString()
+    ): OkHttpClient = OkHttpClient.Builder()
+        .addInterceptor(SessionExpiryInterceptor(notifier, BaseUrlProvider { baseUrl }))
+        .build()
 
     private fun get(client: OkHttpClient) =
         client.newCall(Request.Builder().url(server.url("/x")).build()).execute()
@@ -139,7 +143,10 @@ class SessionExpiryInterceptorTest {
         val client = NetworkFactory.okHttpClient(
             tokenProvider = TokenProvider { null },
             baseUrlProvider = BaseUrlProvider { server.url("/").toString() },
-            sessionExpiryInterceptor = SessionExpiryInterceptor(notifier, BaseUrlProvider { server.url("/").toString() }),
+            sessionExpiryInterceptor = SessionExpiryInterceptor(
+                notifier,
+                BaseUrlProvider { server.url("/").toString() }
+            )
         )
         server.enqueue(MockResponse().setResponseCode(401))
 
@@ -157,7 +164,7 @@ class SessionExpiryInterceptorTest {
         val client = client(notifier)
 
         client.newCall(
-            Request.Builder().url(server.url("/x")).header("Authorization", "Bearer t1").build(),
+            Request.Builder().url(server.url("/x")).header("Authorization", "Bearer t1").build()
         ).execute()
 
         assertEquals(listOf<String?>("t1"), seen)
@@ -179,7 +186,7 @@ class SessionExpiryInterceptorTest {
         server.enqueue(MockResponse().setResponseCode(401))
 
         client(notifier).newCall(
-            Request.Builder().url(server.url("/x")).header("Authorization", "Basic abc").build(),
+            Request.Builder().url(server.url("/x")).header("Authorization", "Basic abc").build()
         ).execute()
 
         assertEquals(listOf<String?>(null), seen)
@@ -190,14 +197,20 @@ class SessionExpiryInterceptorTest {
         val (notifier, seen) = recordingNotifier()
         server.enqueue(MockResponse().setResponseCode(401))
         val client = OkHttpClient.Builder()
-            .addInterceptor(SessionExpiryInterceptor(notifier, BaseUrlProvider { server.url("/").toString() }))
+            .addInterceptor(
+                SessionExpiryInterceptor(notifier, BaseUrlProvider { server.url("/").toString() })
+            )
             .addInterceptor { chain ->
-                chain.proceed(chain.request().newBuilder().header("Authorization", "Bearer restamped").build())
+                chain.proceed(
+                    chain.request().newBuilder().header("Authorization", "Bearer restamped").build()
+                )
             }
             .build()
 
         client.newCall(
-            Request.Builder().url(server.url("/x")).header("Authorization", "Bearer original").build(),
+            Request.Builder().url(
+                server.url("/x")
+            ).header("Authorization", "Bearer original").build()
         ).execute()
 
         assertEquals(listOf<String?>("restamped"), seen)

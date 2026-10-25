@@ -96,7 +96,7 @@ fun assertNoDuplicateContentDescriptions(root: SemanticsNode) {
     if (violations.isNotEmpty()) {
         throw AssertionError(
             "Found ${violations.size} duplicate contentDescription(s):\n" +
-                violations.joinToString("\n") { "  - $it" },
+                violations.joinToString("\n") { "  - $it" }
         )
     }
 }
@@ -151,7 +151,7 @@ fun assertAccessibleSemantics(root: SemanticsNode) {
     if (violations.isNotEmpty()) {
         throw AssertionError(
             "Found ${violations.size} accessibility violation(s):\n" +
-                violations.joinToString("\n") { "  - $it" },
+                violations.joinToString("\n") { "  - $it" }
         )
     }
 }
@@ -185,7 +185,10 @@ private fun hasVisibleText(node: SemanticsNode): Boolean =
  * `SemanticsNode.mergeConfig`), so two of them sharing text is not a
  * duplicate announcement at all.
  */
-private fun collectDuplicateAnnouncements(interactiveNode: SemanticsNode, violations: MutableList<String>) {
+private fun collectDuplicateAnnouncements(
+    interactiveNode: SemanticsNode,
+    violations: MutableList<String>
+) {
     val contributions = mutableListOf<Pair<SemanticsNode, String>>()
     collectMergedTextContributions(interactiveNode, contributions, isRoot = true)
 
@@ -210,7 +213,7 @@ private fun collectDuplicateAnnouncements(interactiveNode: SemanticsNode, violat
 private fun collectMergedTextContributions(
     node: SemanticsNode,
     into: MutableList<Pair<SemanticsNode, String>>,
-    isRoot: Boolean,
+    isRoot: Boolean
 ) {
     if (!isRoot) {
         if (isInteractive(node)) return

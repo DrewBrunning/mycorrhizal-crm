@@ -38,7 +38,7 @@ fun AcceptContactShareDialog(
     confirming: Boolean,
     onActionChange: (String) -> Unit,
     onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = { if (!confirming) onDismiss() },
@@ -48,25 +48,27 @@ fun AcceptContactShareDialog(
                 previewLoading -> {
                     Column(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+                        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
                     ) {
                         CircularProgressIndicator(modifier = Modifier.padding(vertical = 8.dp))
                     }
                 }
+
                 previewError != null -> {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Icon(
                             imageVector = Icons.Outlined.WarningAmber,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error,
+                            tint = MaterialTheme.colorScheme.error
                         )
                         Text(
                             text = previewError,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.error,
+                            color = MaterialTheme.colorScheme.error
                         )
                     }
                 }
+
                 else -> {
                     val row = preview?.rows?.firstOrNull()
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -74,22 +76,26 @@ fun AcceptContactShareDialog(
                         if (duplicate != null) {
                             val existingName = listOfNotNull(
                                 duplicate.existingFirstname,
-                                duplicate.existingLastname,
+                                duplicate.existingLastname
                             ).joinToString(" ").ifBlank { "#${duplicate.existingContactId}" }
                             Text(
                                 text = stringResource(
                                     R.string.shares_accept_dialog_duplicate_of,
                                     existingName,
-                                    duplicate.matchReason.orEmpty(),
+                                    duplicate.matchReason.orEmpty()
                                 ),
                                 style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.tertiary,
+                                color = MaterialTheme.colorScheme.tertiary
                             )
                         }
                         val options = buildList {
                             add("add" to stringResource(R.string.shares_accept_dialog_action_add))
                             if (duplicate != null) {
-                                add("update" to stringResource(R.string.shares_accept_dialog_action_update))
+                                add(
+                                    "update" to stringResource(
+                                        R.string.shares_accept_dialog_action_update
+                                    )
+                                )
                             }
                             add("skip" to stringResource(R.string.shares_accept_dialog_action_skip))
                         }
@@ -98,7 +104,7 @@ fun AcceptContactShareDialog(
                             OutlinedButton(
                                 onClick = { onActionChange(value) },
                                 modifier = Modifier.fillMaxWidth(),
-                                enabled = !confirming,
+                                enabled = !confirming
                             ) {
                                 Text(
                                     text = label,
@@ -106,7 +112,7 @@ fun AcceptContactShareDialog(
                                         MaterialTheme.colorScheme.primary
                                     } else {
                                         MaterialTheme.colorScheme.onSurface
-                                    },
+                                    }
                                 )
                             }
                         }
@@ -118,14 +124,14 @@ fun AcceptContactShareDialog(
             TextButton(
                 onClick = onConfirm,
                 enabled = !confirming && !previewLoading && previewError == null &&
-                    preview?.rows?.firstOrNull() != null,
+                    preview?.rows?.firstOrNull() != null
             ) {
                 Text(
                     if (confirming) {
                         stringResource(R.string.shares_accept_dialog_confirming)
                     } else {
                         stringResource(R.string.shares_accept_dialog_confirm)
-                    },
+                    }
                 )
             }
         },
@@ -133,6 +139,6 @@ fun AcceptContactShareDialog(
             TextButton(onClick = onDismiss, enabled = !confirming) {
                 Text(stringResource(R.string.action_cancel))
             }
-        },
+        }
     )
 }

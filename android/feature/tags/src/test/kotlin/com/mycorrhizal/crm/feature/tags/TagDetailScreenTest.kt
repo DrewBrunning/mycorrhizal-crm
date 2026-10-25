@@ -2,10 +2,10 @@ package com.mycorrhizal.crm.feature.tags
 
 import android.content.Context
 import androidx.annotation.StringRes
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -53,7 +53,12 @@ class TagDetailScreenTest {
     private fun str(@StringRes res: Int, vararg args: Any): String =
         ApplicationProvider.getApplicationContext<Context>().getString(res, *args)
 
-    private val alice = ContactSummary(id = 42, uid = "uid-alice", firstname = "Alice", lastname = "Smith")
+    private val alice = ContactSummary(
+        id = 42,
+        uid = "uid-alice",
+        firstname = "Alice",
+        lastname = "Smith"
+    )
 
     private fun contactRepo(resolve: Map<String, ContactSummary> = emptyMap()): ContactRepository {
         val repo = mockk<ContactRepository>()
@@ -61,27 +66,31 @@ class TagDetailScreenTest {
         return repo
     }
 
-    private fun viewModel(resolve: Map<String, ContactSummary> = mapOf("uid-alice" to alice)): TagDetailViewModel {
+    private fun viewModel(
+        resolve: Map<String, ContactSummary> = mapOf(
+            "uid-alice" to alice
+        )
+    ): TagDetailViewModel {
         val repository = mockk<TagRepository>()
         coEvery { repository.getWithContacts("t1") } returns Result.success(
             TagDetail(
                 tag = Tag(id = "t1", name = "Work"),
                 contacts = listOf(
                     ContactTag(id = 1, tagId = "t1", contactVCardUid = "uid-alice"),
-                    ContactTag(id = 2, tagId = "t1", contactVCardUid = "uid-bob"),
-                ),
-            ),
+                    ContactTag(id = 2, tagId = "t1", contactVCardUid = "uid-bob")
+                )
+            )
         )
         return TagDetailViewModel(
             repository,
             contactRepo(resolve),
-            SavedStateHandle(mapOf("tagId" to "t1")),
+            SavedStateHandle(mapOf("tagId" to "t1"))
         )
     }
 
     private fun setScreen(
         onNavigate: (Int) -> Unit = {},
-        resolve: Map<String, ContactSummary> = mapOf("uid-alice" to alice),
+        resolve: Map<String, ContactSummary> = mapOf("uid-alice" to alice)
     ) {
         val vm = viewModel(resolve)
         composeTestRule.setContent {
@@ -108,7 +117,7 @@ class TagDetailScreenTest {
         composeTestRule.onNodeWithText(str(R.string.contact_unknown)).assertIsDisplayed()
         composeTestRule.onNodeWithText("uid-bob").assertDoesNotExist()
         composeTestRule.onNodeWithContentDescription(
-            str(R.string.tags_remove_contact_named, str(R.string.contact_unknown)),
+            str(R.string.tags_remove_contact_named, str(R.string.contact_unknown))
         ).assertIsDisplayed()
     }
 
@@ -130,8 +139,13 @@ class TagDetailScreenTest {
             onNavigate = { opened = it },
             resolve = mapOf(
                 "uid-alice" to alice.copy(photoThumbnail = "/thumb-a.jpg"),
-                "uid-bob" to ContactSummary(id = 43, uid = "uid-bob", firstname = "Bob", photo = "/photo-b.jpg"),
-            ),
+                "uid-bob" to ContactSummary(
+                    id = 43,
+                    uid = "uid-bob",
+                    firstname = "Bob",
+                    photo = "/photo-b.jpg"
+                )
+            )
         )
 
         composeTestRule.onNodeWithText("Alice Smith").assertIsDisplayed()
@@ -152,7 +166,9 @@ class TagDetailScreenTest {
     fun `the remove button announces the contact name`() {
         setScreen()
 
-        composeTestRule.onNodeWithContentDescription(str(R.string.tags_remove_contact_named, "Alice Smith"))
+        composeTestRule.onNodeWithContentDescription(
+            str(R.string.tags_remove_contact_named, "Alice Smith")
+        )
             .assertIsDisplayed()
     }
 
@@ -167,9 +183,13 @@ class TagDetailScreenTest {
     fun `an empty tag shows the empty state`() {
         val repository = mockk<TagRepository>()
         coEvery { repository.getWithContacts("t1") } returns Result.success(
-            TagDetail(tag = Tag(id = "t1", name = "Empty"), contacts = emptyList()),
+            TagDetail(tag = Tag(id = "t1", name = "Empty"), contacts = emptyList())
         )
-        val vm = TagDetailViewModel(repository, contactRepo(), SavedStateHandle(mapOf("tagId" to "t1")))
+        val vm = TagDetailViewModel(
+            repository,
+            contactRepo(),
+            SavedStateHandle(mapOf("tagId" to "t1"))
+        )
         composeTestRule.setContent {
             MycorrhizalTheme { TagDetailScreen(onBack = {}, viewModel = vm) }
         }
@@ -183,16 +203,22 @@ class TagDetailScreenTest {
         coEvery { repository.getWithContacts("t1") } returns Result.success(
             TagDetail(
                 tag = Tag(id = "t1", name = "Work"),
-                contacts = listOf(ContactTag(id = 1, tagId = "t1", contactVCardUid = "uid-alice")),
-            ),
+                contacts = listOf(ContactTag(id = 1, tagId = "t1", contactVCardUid = "uid-alice"))
+            )
         )
         coEvery { repository.removeContact("t1", "uid-alice") } returns Result.success(Unit)
-        val vm = TagDetailViewModel(repository, contactRepo(mapOf("uid-alice" to alice)), SavedStateHandle(mapOf("tagId" to "t1")))
+        val vm = TagDetailViewModel(
+            repository,
+            contactRepo(mapOf("uid-alice" to alice)),
+            SavedStateHandle(mapOf("tagId" to "t1"))
+        )
         composeTestRule.setContent {
             MycorrhizalTheme { TagDetailScreen(onBack = {}, viewModel = vm) }
         }
 
-        composeTestRule.onNodeWithContentDescription(str(R.string.tags_remove_contact_named, "Alice Smith"))
+        composeTestRule.onNodeWithContentDescription(
+            str(R.string.tags_remove_contact_named, "Alice Smith")
+        )
             .performClick()
 
         coVerify(exactly = 1) { repository.removeContact("t1", "uid-alice") }
@@ -203,12 +229,16 @@ class TagDetailScreenTest {
     fun `the add-contact dialog confirms a typed uid`() {
         val repository = mockk<TagRepository>()
         coEvery { repository.getWithContacts("t1") } returns Result.success(
-            TagDetail(tag = Tag(id = "t1", name = "Work"), contacts = emptyList()),
+            TagDetail(tag = Tag(id = "t1", name = "Work"), contacts = emptyList())
         )
         coEvery { repository.addContact("t1", "uid-new") } returns Result.success(
-            ContactTag(id = 3, tagId = "t1", contactVCardUid = "uid-new"),
+            ContactTag(id = 3, tagId = "t1", contactVCardUid = "uid-new")
         )
-        val vm = TagDetailViewModel(repository, contactRepo(), SavedStateHandle(mapOf("tagId" to "t1")))
+        val vm = TagDetailViewModel(
+            repository,
+            contactRepo(),
+            SavedStateHandle(mapOf("tagId" to "t1"))
+        )
         composeTestRule.setContent {
             MycorrhizalTheme { TagDetailScreen(onBack = {}, viewModel = vm) }
         }
@@ -217,7 +247,9 @@ class TagDetailScreenTest {
 
         // Add is disabled while the field is blank, enabled once a uid is typed.
         composeTestRule.onNodeWithText(str(R.string.action_add)).assertIsNotEnabled()
-        composeTestRule.onNodeWithText(str(R.string.tags_contact_vcard_uid)).performTextInput("uid-new")
+        composeTestRule.onNodeWithText(
+            str(R.string.tags_contact_vcard_uid)
+        ).performTextInput("uid-new")
         composeTestRule.onNodeWithText(str(R.string.action_add)).assertIsEnabled().performClick()
 
         coVerify(exactly = 1) { repository.addContact("t1", "uid-new") }
@@ -229,12 +261,18 @@ class TagDetailScreenTest {
         val gate = CompletableDeferred<Result<TagDetail>>()
         val repository = mockk<TagRepository>()
         coEvery { repository.getWithContacts("t1") } coAnswers { gate.await() }
-        val vm = TagDetailViewModel(repository, contactRepo(), SavedStateHandle(mapOf("tagId" to "t1")))
+        val vm = TagDetailViewModel(
+            repository,
+            contactRepo(),
+            SavedStateHandle(mapOf("tagId" to "t1"))
+        )
         composeTestRule.setContent {
             MycorrhizalTheme { TagDetailScreen(onBack = {}, viewModel = vm) }
         }
 
-        composeTestRule.onNodeWithContentDescription(str(R.string.a11y_state_loading)).assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(
+            str(R.string.a11y_state_loading)
+        ).assertIsDisplayed()
     }
 
     @Test
@@ -242,7 +280,11 @@ class TagDetailScreenTest {
         val repository = mockk<TagRepository>()
         coEvery { repository.getWithContacts("t1") } returns
             Result.failure(ApiError.Client(500, "boom"))
-        val vm = TagDetailViewModel(repository, contactRepo(), SavedStateHandle(mapOf("tagId" to "t1")))
+        val vm = TagDetailViewModel(
+            repository,
+            contactRepo(),
+            SavedStateHandle(mapOf("tagId" to "t1"))
+        )
         composeTestRule.setContent {
             MycorrhizalTheme { TagDetailScreen(onBack = {}, viewModel = vm) }
         }

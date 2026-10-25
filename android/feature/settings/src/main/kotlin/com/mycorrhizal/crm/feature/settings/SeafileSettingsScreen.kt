@@ -55,7 +55,7 @@ import com.mycorrhizal.crm.ui.R
 @Composable
 fun SeafileSettingsScreen(
     onBack: () -> Unit,
-    viewModel: SeafileSettingsViewModel = hiltViewModel(),
+    viewModel: SeafileSettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showRemoveConfirm by remember { mutableStateOf(false) }
@@ -65,20 +65,26 @@ fun SeafileSettingsScreen(
             TopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back)
+                        )
                     }
                 },
                 title = {
-                    Text(stringResource(R.string.settings_seafile_title), style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        stringResource(R.string.settings_seafile_title),
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
-        },
+        }
     ) { padding ->
         SeafileSettingsContent(
             state = state,
@@ -87,7 +93,7 @@ fun SeafileSettingsScreen(
             onTest = viewModel::test,
             onSave = viewModel::save,
             onRemove = { showRemoveConfirm = true },
-            modifier = Modifier.padding(padding),
+            modifier = Modifier.padding(padding)
         )
     }
 
@@ -102,16 +108,19 @@ fun SeafileSettingsScreen(
                     onClick = {
                         showRemoveConfirm = false
                         viewModel.remove()
-                    },
+                    }
                 ) {
-                    Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error)
+                    Text(
+                        stringResource(R.string.action_delete),
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showRemoveConfirm = false }) {
                     Text(stringResource(R.string.action_cancel))
                 }
-            },
+            }
         )
     }
 }
@@ -125,14 +134,14 @@ fun SeafileSettingsContent(
     onTest: () -> Unit = {},
     onSave: () -> Unit = {},
     onRemove: () -> Unit = {},
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         if (state.isLoading) {
             Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
@@ -142,7 +151,7 @@ fun SeafileSettingsContent(
             Text(
                 text = stringResource(R.string.seafile_settings_description),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             state.loadError?.let {
@@ -150,7 +159,7 @@ fun SeafileSettingsContent(
                     it,
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
                 )
             }
             state.saveError?.let {
@@ -158,22 +167,33 @@ fun SeafileSettingsContent(
                     it,
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
                 )
             }
 
             OutlinedTextField(
                 value = state.baseUrl,
                 onValueChange = onBaseUrlChange,
-                label = { Text(requiredFieldLabel(stringResource(R.string.seafile_settings_base_url))) },
+                label = {
+                    Text(
+                        requiredFieldLabel(stringResource(R.string.seafile_settings_base_url))
+                    )
+                },
                 placeholder = { Text("https://seafile.example.com") },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth()
             )
             OutlinedTextField(
                 value = state.apiToken,
                 onValueChange = onApiTokenChange,
-                label = { Text(requiredFieldLabel(stringResource(R.string.seafile_settings_api_token), state.tokenRequired)) },
+                label = {
+                    Text(
+                        requiredFieldLabel(
+                            stringResource(R.string.seafile_settings_api_token),
+                            state.tokenRequired
+                        )
+                    )
+                },
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -183,28 +203,31 @@ fun SeafileSettingsContent(
                             stringResource(R.string.seafile_settings_api_token_hint_existing)
                         } else {
                             stringResource(R.string.seafile_settings_api_token_hint_new)
-                        },
+                        }
                     )
                 },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth()
             )
 
             if (state.hasApiToken) {
                 Button(
                     onClick = onTest,
                     enabled = !state.isTesting && state.baseUrl.isNotBlank(),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     if (state.isTesting) {
-                        CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(
+                            modifier = Modifier.padding(end = 8.dp),
+                            strokeWidth = 2.dp
+                        )
                     } else {
                         Icon(Icons.Outlined.PlayArrow, contentDescription = null)
                     }
                     Text(
                         stringResource(
-                            if (state.isTesting) R.string.seafile_settings_testing else R.string.seafile_settings_test,
+                            if (state.isTesting) R.string.seafile_settings_testing else R.string.seafile_settings_test
                         ),
-                        modifier = Modifier.padding(start = 8.dp),
+                        modifier = Modifier.padding(start = 8.dp)
                     )
                 }
             }
@@ -214,30 +237,40 @@ fun SeafileSettingsContent(
                     text = if (result.ok) {
                         stringResource(R.string.seafile_settings_test_success)
                     } else {
-                        stringResource(R.string.seafile_settings_test_failed, result.message ?: "unknown")
+                        stringResource(
+                            R.string.seafile_settings_test_failed,
+                            result.message ?: "unknown"
+                        )
                     },
                     color = if (result.ok) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodySmall
                 )
             }
 
             SettingsSaveButton(
-                canSave = state.baseUrl.isNotBlank() && (state.hasApiToken || state.apiToken.isNotBlank()),
+                canSave =
+                    state.baseUrl.isNotBlank() && (state.hasApiToken || state.apiToken.isNotBlank()),
                 isSaving = state.isSaving,
                 onClick = onSave,
-                disabledHint = stringResource(R.string.settings_save_requires_fields),
+                disabledHint = stringResource(R.string.settings_save_requires_fields)
             )
 
             if (state.hasApiToken) {
                 OutlinedButton(
                     onClick = onRemove,
                     enabled = !state.isRemoving,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     if (state.isRemoving) {
-                        CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(
+                            modifier = Modifier.padding(end = 8.dp),
+                            strokeWidth = 2.dp
+                        )
                     }
-                    Text(stringResource(R.string.seafile_settings_remove), color = MaterialTheme.colorScheme.error)
+                    Text(
+                        stringResource(R.string.seafile_settings_remove),
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
             }
         }

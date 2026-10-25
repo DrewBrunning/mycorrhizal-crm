@@ -50,10 +50,7 @@ import java.time.format.FormatStyle
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ImportHistoryScreen(
-    onBack: () -> Unit,
-    viewModel: ImportHistoryViewModel = hiltViewModel(),
-) {
+fun ImportHistoryScreen(onBack: () -> Unit, viewModel: ImportHistoryViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -62,31 +59,43 @@ fun ImportHistoryScreen(
             TopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back)
+                        )
                     }
                 },
-                title = { Text(stringResource(R.string.import_history_title), style = MaterialTheme.typography.titleLarge) },
+                title = {
+                    Text(
+                        stringResource(R.string.import_history_title),
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         when {
-            state.isLoading -> LoadingSkeleton(modifier = Modifier.padding(padding).testTag("import-history-loading"))
+            state.isLoading -> LoadingSkeleton(
+                modifier = Modifier.padding(padding).testTag("import-history-loading")
+            )
+
             state.runs.isEmpty() ->
                 EmptyState(
                     title = stringResource(R.string.import_history_empty),
-                    modifier = Modifier.padding(padding),
+                    modifier = Modifier.padding(padding)
                 )
+
             else -> LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(padding).testTag("import-history-list"),
                 contentPadding = PaddingValues(12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(state.runs, key = { it.id }) { run -> ImportRunCard(run) }
             }
@@ -105,41 +114,52 @@ fun ImportHistoryScreen(
 private fun ImportRunCard(run: ImportRun) {
     Card(
         modifier = Modifier.fillMaxWidth().testTag("import-history-row-${run.id}"),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        )
     ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
                     text = formatLabel(run.format),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f)
                 )
                 Text(
                     text = formatRunTime(run.createdAt),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text(
                     stringResource(R.string.import_history_col_created) + ": " + run.created,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodySmall
                 )
                 Text(
                     stringResource(R.string.import_history_col_updated) + ": " + run.updated,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodySmall
                 )
                 Text(
                     stringResource(R.string.import_history_col_skipped) + ": " + run.skipped,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodySmall
                 )
                 Text(
                     stringResource(R.string.import_history_col_errors) + ": " + run.errorCount,
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (run.errorCount > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (run.errorCount >
+                        0
+                    ) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
                 )
             }
         }

@@ -28,7 +28,7 @@ data class ContactRecordResponse(
     @Json(name = "is_favorite") val isFavorite: Boolean = false,
     val notes: List<Note>? = null,
     val activities: List<Activity>? = null,
-    val reminders: List<Reminder>? = null,
+    val reminders: List<Reminder>? = null
 ) {
     /**
      * The contact's authoritative identity (VCardUID) — the value the graph
@@ -79,7 +79,7 @@ data class Card(
     @Json(name = "preferredLanguages") val preferredLanguages: List<LanguagePref>? = null,
     @Json(name = "relatedTo") val relatedTo: List<Relation>? = null,
     val members: List<String>? = null,
-    val localizations: Map<String, Any?>? = null,
+    val localizations: Map<String, Any?>? = null
 ) {
     val displayName: String
         get() {
@@ -168,7 +168,7 @@ data class CRMEnvelope(
      * backend preserves the stored map when the key is absent and clears it on
      * an explicit empty object.
      */
-    @Json(name = "personalInfoMeta") val personalInfoMeta: Map<String, PersonalInfoMeta>? = null,
+    @Json(name = "personalInfoMeta") val personalInfoMeta: Map<String, PersonalInfoMeta>? = null
 )
 
 /**
@@ -178,10 +178,7 @@ data class CRMEnvelope(
  * home, so file exports drop it by design (the CSV carries it).
  */
 @JsonClass(generateAdapter = true)
-data class TemporalRange(
-    val start: PartialDate? = null,
-    val end: PartialDate? = null,
-)
+data class TemporalRange(val start: PartialDate? = null, val end: PartialDate? = null)
 
 /**
  * ADR 0025: one [TemporalRange] attached to one Card entry by its neutral
@@ -193,20 +190,18 @@ data class TemporalRange(
 data class EntryPeriod(
     val kind: String = "",
     @Json(name = "entry_id") val entryId: String = "",
-    val range: TemporalRange = TemporalRange(),
+    val range: TemporalRange = TemporalRange()
 )
 
 /** Unmapped data preserved verbatim (passthrough). */
 @JsonClass(generateAdapter = true)
 data class Passthrough(
     @Json(name = "vCardProps") val vCardProps: List<JCardProp>? = null,
-    @Json(name = "jsContactProps") val jsContactProps: Map<String, Any?>? = null,
+    @Json(name = "jsContactProps") val jsContactProps: Map<String, Any?>? = null
 )
 
 @JsonClass(generateAdapter = true)
-data class Timestamp(
-    val utc: String? = null,
-)
+data class Timestamp(val utc: String? = null)
 
 /** Partial date: `{ year: 1990, month: 6, day: 15 }`, yearless, or year-only. */
 @JsonClass(generateAdapter = true)
@@ -214,22 +209,19 @@ data class PartialDate(
     val year: Int? = null,
     val month: Int? = null,
     val day: Int? = null,
-    val calendarScale: String? = null,
+    val calendarScale: String? = null
 ) {
     val hasMonthDay: Boolean get() = month != null && day != null
     val isYearOnly: Boolean get() = year != null && month == null
 }
 
 @JsonClass(generateAdapter = true)
-data class AnniversaryDate(
-    val partial: PartialDate? = null,
-    val timestamp: String? = null,
-)
+data class AnniversaryDate(val partial: PartialDate? = null, val timestamp: String? = null)
 
 @JsonClass(generateAdapter = true)
 data class Anniversary(
     val id: String? = null,
     val kind: String? = null,
     val date: AnniversaryDate? = null,
-    val place: Address? = null,
+    val place: Address? = null
 )

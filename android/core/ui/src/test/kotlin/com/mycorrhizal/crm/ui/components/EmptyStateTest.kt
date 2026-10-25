@@ -55,12 +55,14 @@ class EmptyStateTest {
                     body = "Notes capture what you want to remember.",
                     icon = Icons.Outlined.Add,
                     actionLabel = "New note",
-                    onAction = { clicks += 1 },
+                    onAction = { clicks += 1 }
                 )
             }
         }
         composeTestRule.onNodeWithText("No notes yet").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Notes capture what you want to remember.").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Notes capture what you want to remember."
+        ).assertIsDisplayed()
         composeTestRule.onNodeWithText("New note").assertIsDisplayed().performClick()
         assertEquals(1, clicks)
     }
@@ -77,14 +79,21 @@ class EmptyStateTest {
     fun `title and body are one polite live region and the button is a separate focusable control`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                EmptyState(title = "No notes yet", body = "Body text", actionLabel = "New note", onAction = {})
+                EmptyState(
+                    title = "No notes yet",
+                    body = "Body text",
+                    actionLabel = "New note",
+                    onAction = {}
+                )
             }
         }
         val region = SemanticsMatcher("polite live region") {
             it.config.getOrNull(SemanticsProperties.LiveRegion) == LiveRegionMode.Polite
         }
         val node = composeTestRule.onNode(region).fetchSemanticsNode()
-        val spoken = node.config.getOrNull(SemanticsProperties.Text).orEmpty().joinToString(" ") { it.text }
+        val spoken = node.config.getOrNull(
+            SemanticsProperties.Text
+        ).orEmpty().joinToString(" ") { it.text }
         assertTrue("live region speaks the title: $spoken", "No notes yet" in spoken)
         assertTrue("live region speaks the body: $spoken", "Body text" in spoken)
         // The action is outside the live region, so it keeps its own focus stop.

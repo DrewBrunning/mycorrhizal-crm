@@ -51,7 +51,7 @@ fun MapScreen(
     onOpenContact: (Int) -> Unit,
     // Issue #150: null hides the hamburger — there is no drawer at Expanded.
     onMenuClick: (() -> Unit)? = {},
-    viewModel: MapViewModel = hiltViewModel(),
+    viewModel: MapViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     MapScreenContent(
@@ -60,7 +60,7 @@ fun MapScreen(
         onOpenContact = onOpenContact,
         onSelect = viewModel::select,
         onShowListChange = viewModel::setShowList,
-        onRetry = viewModel::load,
+        onRetry = viewModel::load
     )
 }
 
@@ -74,16 +74,21 @@ fun MapScreenContent(
     onShowListChange: (Boolean) -> Unit,
     onRetry: () -> Unit = {},
     // Replaceable so tests (and previews) do not need the native renderer.
-    mapCanvas: @Composable (styleUrl: String, points: List<MapPoint>, selectedKey: String?, Modifier) -> Unit =
+    mapCanvas: @Composable (
+        styleUrl: String,
+        points: List<MapPoint>,
+        selectedKey: String?,
+        Modifier
+    ) -> Unit =
         { styleUrl, points, selectedKey, modifier ->
             ContactMapView(
                 styleUrl = styleUrl,
                 points = points,
                 selectedKey = selectedKey,
                 onSelect = onSelect,
-                modifier = modifier,
+                modifier = modifier
             )
-        },
+        }
 ) {
     Scaffold(
         topBar = {
@@ -91,19 +96,27 @@ fun MapScreenContent(
                 navigationIcon = {
                     onMenuClick?.let { onMenu ->
                         AccessibleIconButton(onClick = onMenu) {
-                            Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
+                            Icon(
+                                Icons.Outlined.Menu,
+                                contentDescription = stringResource(R.string.cd_menu)
+                            )
                         }
                     }
                 },
-                title = { Text(stringResource(R.string.nav_map), style = MaterialTheme.typography.titleLarge) },
+                title = {
+                    Text(
+                        stringResource(R.string.nav_map),
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
                 actions = {
                     if (uiState.points.isNotEmpty()) {
                         AccessibleIconButton(onClick = { onShowListChange(!uiState.showList) }) {
                             Icon(
                                 imageVector = if (uiState.showList) Icons.Outlined.Map else Icons.Outlined.FormatListBulleted,
                                 contentDescription = stringResource(
-                                    if (uiState.showList) R.string.map_show_map else R.string.map_show_list,
-                                ),
+                                    if (uiState.showList) R.string.map_show_map else R.string.map_show_list
+                                )
                             )
                         }
                     }
@@ -112,39 +125,41 @@ fun MapScreenContent(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
-        },
+        }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             when {
                 uiState.isLoading -> LoadingSkeleton()
+
                 uiState.error != null -> Column(
                     modifier = Modifier.fillMaxSize().padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
+                    verticalArrangement = Arrangement.Center
                 ) {
                     Text(
                         text = uiState.error,
                         color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = MaterialTheme.typography.bodyLarge
                     )
                     TextButton(onClick = onRetry) { Text(stringResource(R.string.action_retry)) }
                 }
+
                 else -> {
                     if (uiState.truncated) {
                         Text(
                             text = stringResource(R.string.map_truncated, uiState.points.size),
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         )
                     }
                     if (uiState.points.isEmpty()) {
                         EmptyState(
                             title = stringResource(R.string.map_empty),
-                            body = stringResource(R.string.map_empty_body),
+                            body = stringResource(R.string.map_empty_body)
                         )
                     } else if (uiState.showList) {
                         PointList(points = uiState.points, onOpenContact = onOpenContact)
@@ -154,7 +169,7 @@ fun MapScreenContent(
                                 uiState.styleUrl.orEmpty(),
                                 uiState.points,
                                 uiState.selectedKey,
-                                Modifier.fillMaxSize().testTag(MAP_CANVAS_TAG),
+                                Modifier.fillMaxSize().testTag(MAP_CANVAS_TAG)
                             )
                             uiState.selected?.let { point ->
                                 SelectedCard(
@@ -162,7 +177,14 @@ fun MapScreenContent(
                                     onOpenContact = onOpenContact,
                                     // Bottom padding clears MapLibre's attribution (the data licence requires it
                                     // to stay visible).
-                                    modifier = Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 56.dp),
+                                    modifier = Modifier.align(
+                                        Alignment.BottomCenter
+                                    ).padding(
+                                        start = 16.dp,
+                                        end = 16.dp,
+                                        top = 16.dp,
+                                        bottom = 56.dp
+                                    )
                                 )
                             }
                         }
@@ -174,9 +196,16 @@ fun MapScreenContent(
 }
 
 @Composable
-private fun SelectedCard(point: MapPoint, onOpenContact: (Int) -> Unit, modifier: Modifier = Modifier) {
+private fun SelectedCard(
+    point: MapPoint,
+    onOpenContact: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
     Card(modifier = modifier.fillMaxWidth().testTag("map-selected-card")) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
             Text(point.contactName, style = MaterialTheme.typography.titleMedium)
             if (point.label.isNotBlank()) {
                 Text(point.label, style = MaterialTheme.typography.bodyMedium)
@@ -194,8 +223,14 @@ private fun PointList(points: List<MapPoint>, onOpenContact: (Int) -> Unit) {
         items(points, key = { it.key }) { point ->
             ListItem(
                 headlineContent = { Text(point.contactName) },
-                supportingContent = point.label.takeIf { it.isNotBlank() }?.let { label -> { Text(label) } },
-                modifier = Modifier.clickable { onOpenContact(point.contactId) },
+                supportingContent = point.label.takeIf { it.isNotBlank() }?.let { label ->
+                    {
+                        Text(
+                            label
+                        )
+                    }
+                },
+                modifier = Modifier.clickable { onOpenContact(point.contactId) }
             )
         }
     }

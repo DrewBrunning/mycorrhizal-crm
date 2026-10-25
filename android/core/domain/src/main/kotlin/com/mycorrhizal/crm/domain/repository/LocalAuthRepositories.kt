@@ -134,8 +134,4 @@ interface DeviceGrantRepository {
 }
 
 /** A freshly-minted device grant (the plaintext appears exactly once). */
-data class DeviceGrantCreated(
-    val id: Long,
-    val label: String,
-    val token: String,
-)
+data class DeviceGrantCreated(val id: Long, val label: String, val token: String)

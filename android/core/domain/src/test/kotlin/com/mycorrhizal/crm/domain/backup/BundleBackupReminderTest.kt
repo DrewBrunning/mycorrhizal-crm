@@ -11,8 +11,11 @@ class BundleBackupReminderTest {
     private val day = 24L * 60 * 60 * 1000
     private val now = 1_800_000_000_000L
 
-    private fun local(lastExportAt: Long? = null, dismissedAt: Long? = null) =
-        BundleBackupStatus(isLocalProfile = true, lastExportAt = lastExportAt, dismissedAt = dismissedAt)
+    private fun local(lastExportAt: Long? = null, dismissedAt: Long? = null) = BundleBackupStatus(
+        isLocalProfile = true,
+        lastExportAt = lastExportAt,
+        dismissedAt = dismissedAt
+    )
 
     @Test
     fun `thresholds are 30 days stale and a 7 day snooze`() {
@@ -52,19 +55,26 @@ class BundleBackupReminderTest {
 
     @Test
     fun `a remote profile never shows the banner`() {
-        assertFalse(BundleBackupReminder.shouldShow(BundleBackupStatus(isLocalProfile = false), now))
+        assertFalse(
+            BundleBackupReminder.shouldShow(BundleBackupStatus(isLocalProfile = false), now)
+        )
         assertFalse(
             BundleBackupReminder.shouldShow(
                 BundleBackupStatus(isLocalProfile = false, lastExportAt = now - 90 * day),
-                now,
-            ),
+                now
+            )
         )
     }
 
     @Test
     fun `a dismissal within the snooze window hides a due banner`() {
         assertFalse(BundleBackupReminder.shouldShow(local(dismissedAt = now - 3 * day), now))
-        assertFalse(BundleBackupReminder.shouldShow(local(lastExportAt = now - 60 * day, dismissedAt = now - day), now))
+        assertFalse(
+            BundleBackupReminder.shouldShow(
+                local(lastExportAt = now - 60 * day, dismissedAt = now - day),
+                now
+            )
+        )
     }
 
     @Test

@@ -1,10 +1,10 @@
 package com.mycorrhizal.crm.data.local
 
+import java.security.SecureRandom
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.security.SecureRandom
 
 /**
  * Unit tests for [randomHexPassphrase] (issue #812). The rest of
@@ -33,7 +33,7 @@ class RoomPassphraseStoreTest {
         assertTrue("expected length 64 but was ${hex.length}", hex.length == 64)
         assertTrue(
             "characters must be lowercase hex digits, got $hex",
-            hex.all { it in '0'..'9' || it in 'a'..'f' },
+            hex.all { it in '0'..'9' || it in 'a'..'f' }
         )
     }
 
@@ -52,11 +52,11 @@ class RoomPassphraseStoreTest {
         // `KEY '<hex>'` SQL literal: lowercase, 2 chars per byte, no `0x`
         // prefix, no separators.
         val deterministic = FixedBytesSecureRandom(
-            byteArrayOf(0x00, 0x0f, 0x10, 0xab.toByte(), 0xff.toByte(), 0x5a),
+            byteArrayOf(0x00, 0x0f, 0x10, 0xab.toByte(), 0xff.toByte(), 0x5a)
         )
         assertEquals(
             "000f10abff5a",
-            randomHexPassphrase(random = deterministic, byteCount = 6),
+            randomHexPassphrase(random = deterministic, byteCount = 6)
         )
     }
 

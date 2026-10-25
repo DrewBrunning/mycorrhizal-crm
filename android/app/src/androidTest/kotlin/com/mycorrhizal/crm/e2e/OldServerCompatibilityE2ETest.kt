@@ -72,7 +72,10 @@ class OldServerCompatibilityE2ETest {
 
     @Before
     fun setUp() {
-        assumeOrFailInCi("old-server backend at $OLD_SERVER_URL is not reachable", backend.isReachable())
+        assumeOrFailInCi(
+            "old-server backend at $OLD_SERVER_URL is not reachable",
+            backend.isReachable()
+        )
         backend.registerSeedUser()
         clearSession()
     }
@@ -88,7 +91,9 @@ class OldServerCompatibilityE2ETest {
         replaceTextInField("Server URL", OLD_SERVER_URL)
         replaceTextInField("Username or email", E2eConfig.SEED_USERNAME)
         waitForText("Password")
-        compose.onNode(hasText("Password") and hasSetTextAction()).performTextInput(E2eConfig.SEED_PASSWORD)
+        compose.onNode(
+            hasText("Password") and hasSetTextAction()
+        ).performTextInput(E2eConfig.SEED_PASSWORD)
         compose.onNodeWithText("Sign in").performClick()
 
         // The real v1.0.0 baseline server is AT the floor, not below it: the

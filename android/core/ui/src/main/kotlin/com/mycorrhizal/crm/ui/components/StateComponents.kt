@@ -17,7 +17,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -34,10 +33,7 @@ import com.mycorrhizal.crm.ui.R
  * later polish; static placeholders keep the tests deterministic.
  */
 @Composable
-fun LoadingSkeleton(
-    rows: Int = 8,
-    modifier: Modifier = Modifier,
-) {
+fun LoadingSkeleton(rows: Int = 8, modifier: Modifier = Modifier) {
     val shimmerColor = MaterialTheme.colorScheme.surfaceVariant
     val baseColor = MaterialTheme.colorScheme.surface
     val brush = Brush.horizontalGradient(listOf(baseColor, shimmerColor, baseColor))
@@ -53,7 +49,7 @@ fun LoadingSkeleton(
             .semantics {
                 liveRegion = LiveRegionMode.Polite
                 contentDescription = loadingLabel
-            },
+            }
     ) {
         repeat(rows) {
             Box(
@@ -63,7 +59,7 @@ fun LoadingSkeleton(
                     .height(56.dp)
                     .clip(RoundedCornerShape(10.dp))
                     .background(brush)
-                    .clearAndSetSemantics {},
+                    .clearAndSetSemantics {}
             )
         }
     }
@@ -87,7 +83,7 @@ fun EmptyState(
     body: String? = null,
     icon: ImageVector? = null,
     actionLabel: String? = null,
-    onAction: (() -> Unit)? = null,
+    onAction: (() -> Unit)? = null
 ) {
     // #203: nothing announced an empty result to TalkBack — the title reads
     // fine once focused, but nothing spoke it when it replaced the loading
@@ -97,7 +93,7 @@ fun EmptyState(
         modifier = modifier
             .fillMaxWidth()
             .padding(32.dp),
-        contentAlignment = Alignment.Center,
+        contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             if (icon != null) {
@@ -105,14 +101,14 @@ fun EmptyState(
                     imageVector = icon,
                     contentDescription = null,
                     modifier = Modifier.size(48.dp).padding(bottom = 8.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.semantics(mergeDescendants = true) {
                     liveRegion = LiveRegionMode.Polite
-                },
+                }
             ) {
                 Text(
                     text = title,
@@ -126,7 +122,7 @@ fun EmptyState(
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant
                     },
-                    textAlign = TextAlign.Center,
+                    textAlign = TextAlign.Center
                 )
                 if (body != null) {
                     Text(
@@ -134,7 +130,7 @@ fun EmptyState(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(top = 4.dp),
+                        modifier = Modifier.padding(top = 4.dp)
                     )
                 }
             }

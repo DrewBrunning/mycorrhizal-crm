@@ -26,7 +26,9 @@ class FieldDefinitionRepositoryImplTest {
     @Test
     fun `list unwraps the definitions list on success`() = runTest {
         coEvery { apiClient.listFieldDefinitions(null) } returns Result.success(
-            FieldDefinitionsResponse(fieldDefinitions = listOf(FieldDefinition(id = "d1", label = "Coffee order"))),
+            FieldDefinitionsResponse(
+                fieldDefinitions = listOf(FieldDefinition(id = "d1", label = "Coffee order"))
+            )
         )
 
         val result = repository.list()
@@ -37,7 +39,11 @@ class FieldDefinitionRepositoryImplTest {
 
     @Test
     fun `list failure is normalized through mapError`() = runTest {
-        coEvery { apiClient.listFieldDefinitions(null) } returns Result.failure(ApiError.Server(500, "boom"))
+        coEvery {
+            apiClient.listFieldDefinitions(
+                null
+            )
+        } returns Result.failure(ApiError.Server(500, "boom"))
 
         val result = repository.list()
 
@@ -48,7 +54,7 @@ class FieldDefinitionRepositoryImplTest {
     @Test
     fun `get returns the field definition on success`() = runTest {
         coEvery { apiClient.getFieldDefinition("d1") } returns Result.success(
-            FieldDefinition(id = "d1", label = "Coffee order"),
+            FieldDefinition(id = "d1", label = "Coffee order")
         )
 
         val result = repository.get("d1")
@@ -59,9 +65,18 @@ class FieldDefinitionRepositoryImplTest {
 
     @Test
     fun `create forwards the input and returns the created definition`() = runTest {
-        val input = FieldDefinitionInput(label = "Coffee order", key = "coffee_order", type = "string")
+        val input = FieldDefinitionInput(
+            label = "Coffee order",
+            key = "coffee_order",
+            type = "string"
+        )
         coEvery { apiClient.createFieldDefinition(input) } returns Result.success(
-            FieldDefinition(id = "d1", label = "Coffee order", key = "coffee_order", type = "string"),
+            FieldDefinition(
+                id = "d1",
+                label = "Coffee order",
+                key = "coffee_order",
+                type = "string"
+            )
         )
 
         val result = repository.create(input)
@@ -75,7 +90,7 @@ class FieldDefinitionRepositoryImplTest {
     fun `update forwards id and input and returns the updated definition`() = runTest {
         val input = FieldDefinitionInput(label = "Renamed", key = "coffee_order", type = "string")
         coEvery { apiClient.updateFieldDefinition("d1", input) } returns Result.success(
-            FieldDefinition(id = "d1", label = "Renamed"),
+            FieldDefinition(id = "d1", label = "Renamed")
         )
 
         val result = repository.update("d1", input)
@@ -100,9 +115,9 @@ class FieldDefinitionRepositoryImplTest {
             FieldDefinitionsResponse(
                 fieldDefinitions = listOf(
                     FieldDefinition(id = "b", label = "Telegram", position = 0),
-                    FieldDefinition(id = "a", label = "Signal", position = 1),
-                ),
-            ),
+                    FieldDefinition(id = "a", label = "Signal", position = 1)
+                )
+            )
         )
 
         val result = repository.reorder(listOf("b", "a"))
@@ -115,7 +130,9 @@ class FieldDefinitionRepositoryImplTest {
     @Test
     fun `contactValues unwraps the values list on success`() = runTest {
         coEvery { apiClient.listContactFieldValues(5) } returns Result.success(
-            ContactFieldValuesResponse(fieldValues = listOf(FieldValue(id = 1, fieldDefinitionId = "d1", value = "Latte"))),
+            ContactFieldValuesResponse(
+                fieldValues = listOf(FieldValue(id = 1, fieldDefinitionId = "d1", value = "Latte"))
+            )
         )
 
         val result = repository.contactValues(5)
@@ -126,9 +143,13 @@ class FieldDefinitionRepositoryImplTest {
 
     @Test
     fun `replaceContactValues forwards the input and returns the new values`() = runTest {
-        val input = ContactFieldValuesInput(fieldValues = listOf(FieldValueInput(fieldDefinitionId = "d1", value = "Latte")))
+        val input = ContactFieldValuesInput(
+            fieldValues = listOf(FieldValueInput(fieldDefinitionId = "d1", value = "Latte"))
+        )
         coEvery { apiClient.replaceContactFieldValues(5, input) } returns Result.success(
-            ContactFieldValuesResponse(fieldValues = listOf(FieldValue(id = 1, fieldDefinitionId = "d1", value = "Latte"))),
+            ContactFieldValuesResponse(
+                fieldValues = listOf(FieldValue(id = 1, fieldDefinitionId = "d1", value = "Latte"))
+            )
         )
 
         val result = repository.replaceContactValues(5, input)

@@ -65,8 +65,8 @@ import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AmbientExplanation
 import com.mycorrhizal.crm.ui.components.BrandFab
-import com.mycorrhizal.crm.ui.components.FabListBottomPadding
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.FabListBottomPadding
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.theme.LocalWarningColors
 
@@ -77,10 +77,7 @@ import com.mycorrhizal.crm.ui.theme.LocalWarningColors
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CadenceScreen(
-    onBack: () -> Unit,
-    viewModel: CadenceViewModel = hiltViewModel(),
-) {
+fun CadenceScreen(onBack: () -> Unit, viewModel: CadenceViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var showDialog by remember { mutableStateOf(false) }
@@ -96,18 +93,24 @@ fun CadenceScreen(
             TopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back)
+                        )
                     }
                 },
                 title = {
-                    Text(stringResource(R.string.cadence_title), style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        stringResource(R.string.cadence_title),
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
         // A contact has at most one policy, so creating a second is a 409 —
@@ -116,30 +119,36 @@ fun CadenceScreen(
         floatingActionButton = {
             if (state.policy == null && !state.isLoading && fatalError == null) {
                 BrandFab(onClick = { showDialog = true }) {
-                    Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.cadence_add))
+                    Icon(
+                        Icons.Outlined.Add,
+                        contentDescription = stringResource(R.string.cadence_add)
+                    )
                 }
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when {
                 state.isLoading -> LoadingSkeleton()
+
                 state.policy == null && fatalError != null ->
                     EmptyState(title = fatalError)
+
                 state.policy == null -> EmptyState(
                     title = stringResource(R.string.cadence_no_policy),
                     body = stringResource(R.string.cadence_no_policy_body),
                     actionLabel = stringResource(R.string.cadence_add),
                     onAction = { showDialog = true },
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize()
                 )
+
                 else -> CadencePanelContent(
                     policy = state.policy!!,
                     dateFormat = state.dateFormat ?: DateFormat.EU,
                     isMutating = state.isMutating,
                     onEdit = { showDialog = true },
-                    onDelete = { pendingDelete = true },
+                    onDelete = { pendingDelete = true }
                 )
             }
         }
@@ -158,7 +167,7 @@ fun CadenceScreen(
                 }
                 showDialog = false
             },
-            onDismiss = { showDialog = false },
+            onDismiss = { showDialog = false }
         )
     }
 
@@ -173,7 +182,7 @@ fun CadenceScreen(
                     onClick = {
                         state.policy?.let { viewModel.delete(it.id) }
                         pendingDelete = false
-                    },
+                    }
                 ) {
                     Text(stringResource(R.string.action_delete))
                 }
@@ -182,7 +191,7 @@ fun CadenceScreen(
                 TextButton(onClick = { pendingDelete = false }) {
                     Text(stringResource(R.string.action_cancel))
                 }
-            },
+            }
         )
     }
 
@@ -210,67 +219,101 @@ fun CadencePanelContent(
     dateFormat: String = DateFormat.EU,
     isMutating: Boolean = false,
     onEdit: () -> Unit,
-    onDelete: () -> Unit,
+    onDelete: () -> Unit
 ) {
     val health = policy.health
     val hasInteraction = health?.hasQualifyingInteraction == true
     val isAmbient = health?.ambient == true
     val isOverdue = health != null && health.isOverdue
     val nextDue = health?.nextDue?.let { DateFormat.formatTimestamp(it, dateFormat) }
-    val lastInteraction = health?.lastInteraction?.let { DateFormat.formatTimestamp(it, dateFormat) }
+    val lastInteraction = health?.lastInteraction?.let {
+        DateFormat.formatTimestamp(
+            it,
+            dateFormat
+        )
+    }
     val qualifyingTypes = policy.qualifyingTypes
     val showTypes = qualifyingTypes.isNotEmpty()
 
     Card(
         modifier = Modifier.fillMaxWidth().padding(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+        )
     ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = stringResource(R.string.cadence_interval),
                     style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f)
                 )
-                CadencePill(stringResource(R.string.cadence_interval_value, policy.targetIntervalDays))
+                CadencePill(
+                    stringResource(R.string.cadence_interval_value, policy.targetIntervalDays)
+                )
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 when {
                     // Issue #1734: an ambient contact is in regular contact without logged
                     // activity -- show why instead of overdue / on-track / days-since figures.
                     isAmbient -> {
-                        Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary)
+                        Icon(
+                            Icons.Outlined.CheckCircle,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.tertiary
+                        )
                         AmbientExplanation(
                             reason = health.ambientReason,
-                            modifier = Modifier.testTag("cadence-ambient"),
+                            modifier = Modifier.testTag("cadence-ambient")
                         )
                     }
+
                     isOverdue -> {
                         // #200: amber text on parchment was 1.83:1 — illegible.
                         // The warning semantics ride the icon (tinted with the
                         // 3:1 non-text amber); the words use onSurface.
-                        Icon(Icons.Outlined.Warning, contentDescription = null, tint = LocalWarningColors.current.foreground)
+                        Icon(
+                            Icons.Outlined.Warning,
+                            contentDescription = null,
+                            tint = LocalWarningColors.current.foreground
+                        )
                         Text(
                             text = stringResource(R.string.cadence_overdue_by, health.overdueBy),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
+
                     hasInteraction -> {
-                        Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary)
+                        Icon(
+                            Icons.Outlined.CheckCircle,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.tertiary
+                        )
                         Text(
                             text = stringResource(R.string.cadence_on_track),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.tertiary,
+                            color = MaterialTheme.colorScheme.tertiary
                         )
                     }
+
                     else -> {
-                        Icon(Icons.Outlined.Schedule, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Icon(
+                            Icons.Outlined.Schedule,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                         Text(
                             text = stringResource(R.string.cadence_no_interactions_yet),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -280,14 +323,14 @@ fun CadencePanelContent(
                 Text(
                     text = stringResource(R.string.cadence_next_due, nextDue),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             if (!isAmbient && hasInteraction && !lastInteraction.isNullOrBlank()) {
                 Text(
                     text = stringResource(R.string.cadence_last_interaction, lastInteraction),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -299,14 +342,31 @@ fun CadencePanelContent(
                 }
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                OutlinedButton(onClick = onEdit, enabled = !isMutating, modifier = Modifier.weight(1f)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                OutlinedButton(
+                    onClick = onEdit,
+                    enabled = !isMutating,
+                    modifier = Modifier.weight(1f)
+                ) {
                     Icon(Icons.Outlined.Edit, contentDescription = null)
-                    Text(stringResource(R.string.action_edit), modifier = Modifier.padding(start = 4.dp))
+                    Text(
+                        stringResource(R.string.action_edit),
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
                 }
-                OutlinedButton(onClick = onDelete, enabled = !isMutating, modifier = Modifier.weight(1f)) {
+                OutlinedButton(
+                    onClick = onDelete,
+                    enabled = !isMutating,
+                    modifier = Modifier.weight(1f)
+                ) {
                     Icon(Icons.Outlined.Delete, contentDescription = null)
-                    Text(stringResource(R.string.action_delete), modifier = Modifier.padding(start = 4.dp))
+                    Text(
+                        stringResource(R.string.action_delete),
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
                 }
             }
         }
@@ -318,12 +378,12 @@ fun CadencePanelContent(
 private fun CadencePill(text: String) {
     Surface(
         shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        color = MaterialTheme.colorScheme.surfaceVariant
     ) {
         Text(
             text = text,
             style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
         )
     }
 }
@@ -339,7 +399,7 @@ fun CadenceDialog(
     policy: CadencePolicy?,
     isMutating: Boolean = false,
     onConfirm: (intervalDays: Int, qualifyingTypes: List<String>) -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     val isEditing = policy != null
     var intervalText by remember { mutableStateOf((policy?.targetIntervalDays ?: 30).toString()) }
@@ -352,42 +412,49 @@ fun CadenceDialog(
         // default, so TalkBack's heading navigation skips right over it.
         title = {
             Text(
-                stringResource(if (isEditing) R.string.cadence_edit_title else R.string.cadence_create_title),
-                modifier = Modifier.semantics { heading() },
+                stringResource(
+                    if (isEditing) R.string.cadence_edit_title else R.string.cadence_create_title
+                ),
+                modifier = Modifier.semantics { heading() }
             )
         },
         text = {
             Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.verticalScroll(rememberScrollState()).padding(bottom = FabListBottomPadding),
+                modifier = Modifier.verticalScroll(
+                    rememberScrollState()
+                ).padding(bottom = FabListBottomPadding)
             ) {
                 OutlinedTextField(
                     value = intervalText,
-                    onValueChange = { intervalText = it; intervalError = false },
+                    onValueChange = {
+                        intervalText = it
+                        intervalError = false
+                    },
                     label = { Text(stringResource(R.string.cadence_interval_days)) },
                     supportingText = { Text(stringResource(R.string.cadence_interval_hint)) },
                     isError = intervalError,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
                 )
                 if (intervalError) {
                     Text(
                         text = stringResource(R.string.cadence_interval_required),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
                     )
                 }
                 Text(
                     stringResource(R.string.cadence_qualifying_types),
                     style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.semantics { heading() },
+                    modifier = Modifier.semantics { heading() }
                 )
                 Text(
                     text = stringResource(R.string.cadence_qualifying_hint),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 CadenceQualifyingType.ALL.forEach { token ->
                     // #199: a bare Checkbox has no text of its own, and the label
@@ -404,12 +471,12 @@ fun CadenceDialog(
                                 onValueChange = { checked ->
                                     selected = if (checked) selected + token else selected - token
                                 },
-                                role = Role.Checkbox,
-                            ),
+                                role = Role.Checkbox
+                            )
                     ) {
                         Checkbox(
                             checked = token in selected,
-                            onCheckedChange = null,
+                            onCheckedChange = null
                         )
                         Text(text = cadenceTypeLabel(token))
                     }
@@ -426,16 +493,18 @@ fun CadenceDialog(
                     } else {
                         onConfirm(days, CadenceQualifyingType.ALL.filter { it in selected })
                     }
-                },
+                }
             ) {
-                Text(stringResource(if (isEditing) R.string.action_save else R.string.action_create))
+                Text(
+                    stringResource(if (isEditing) R.string.action_save else R.string.action_create)
+                )
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss, enabled = !isMutating) {
                 Text(stringResource(R.string.action_cancel))
             }
-        },
+        }
     )
 }
 

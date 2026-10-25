@@ -12,7 +12,7 @@ class AboutDetailsTest {
     fun `without commit or build date only the always-present lines appear`() {
         assertEquals(
             "version: 1.3.0\ncode: 1042\nbuild: release / obtainium",
-            AboutDetails.format(base, null),
+            AboutDetails.format(base, null)
         )
     }
 
@@ -21,7 +21,7 @@ class AboutDetailsTest {
         val info = base.copy(commit = "abc1234", buildDate = "2026-10-02T10:00:00Z")
         assertEquals(
             "version: 1.3.0\ncode: 1042\nbuild: release / obtainium\ncommit: abc1234\nbuilt: 2026-10-02T10:00:00Z",
-            AboutDetails.format(info, null),
+            AboutDetails.format(info, null)
         )
     }
 
@@ -29,7 +29,7 @@ class AboutDetailsTest {
     fun `blank commit and build date are omitted`() {
         assertEquals(
             "version: 1.3.0\ncode: 1042\nbuild: release / obtainium",
-            AboutDetails.format(base.copy(commit = " ", buildDate = ""), null),
+            AboutDetails.format(base.copy(commit = " ", buildDate = ""), null)
         )
     }
 
@@ -48,12 +48,12 @@ class AboutDetailsTest {
     fun `server lines are appended when the lookup succeeded`() {
         val text = AboutDetails.format(
             base,
-            ServerHealth(version = "1.3.0", commit = "def5678", buildDate = "2026-09-30T00:00:00Z"),
+            ServerHealth(version = "1.3.0", commit = "def5678", buildDate = "2026-09-30T00:00:00Z")
         )
         assertEquals(
             "version: 1.3.0\ncode: 1042\nbuild: release / obtainium\n" +
                 "server: 1.3.0 (def5678)\nserver built: 2026-09-30T00:00:00Z",
-            text,
+            text
         )
     }
 
@@ -61,7 +61,7 @@ class AboutDetailsTest {
     fun `a server without a version contributes nothing`() {
         assertEquals(
             "version: 1.3.0\ncode: 1042\nbuild: release / obtainium",
-            AboutDetails.format(base, ServerHealth(version = null, commit = "x")),
+            AboutDetails.format(base, ServerHealth(version = null, commit = "x"))
         )
     }
 

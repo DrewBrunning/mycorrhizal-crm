@@ -50,11 +50,11 @@ class Migration14To15Test {
         LocalDatabaseSchemaFixtures.createV14Tables(db)
         db.execSQL(
             "INSERT INTO cached_contacts (id, fn, primaryPhone, phonesNormalized, archived, deleted) " +
-                "VALUES (1, 'Dana White', '(800) 555-1234', '8005551234 5551234', 0, 0)",
+                "VALUES (1, 'Dana White', '(800) 555-1234', '8005551234 5551234', 0, 0)"
         )
         db.execSQL(
             "INSERT INTO pending_interactions (timestampMillis, kind, phoneNumber, synced) " +
-                "VALUES (1000, 'call', '5551234', 0)",
+                "VALUES (1000, 'call', '5551234', 0)"
         )
         db.version = 14
         db.close()
@@ -82,8 +82,8 @@ class Migration14To15Test {
                 id = "policy-1",
                 entityId = "contact-1",
                 targetIntervalDays = 30,
-                qualifyingTypes = listOf("call", "message"),
-            ),
+                qualifyingTypes = listOf("call", "message")
+            )
         )
         val policies = db.cachedCadencePolicyDao().getForContact("contact-1")
         assertEquals(1, policies.size)

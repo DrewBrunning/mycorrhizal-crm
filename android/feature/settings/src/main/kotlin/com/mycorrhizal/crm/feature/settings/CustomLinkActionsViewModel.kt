@@ -5,22 +5,22 @@ import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.CustomLinkAction
 import com.mycorrhizal.crm.domain.repository.CustomLinkActionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class CustomLinkActionsUiState(
     val actions: List<CustomLinkAction> = emptyList(),
     val isLoading: Boolean = false,
-    val error: String? = null,
+    val error: String? = null
 )
 
 @HiltViewModel
 class CustomLinkActionsViewModel @Inject constructor(
-    private val repository: CustomLinkActionRepository,
+    private val repository: CustomLinkActionRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CustomLinkActionsUiState())
@@ -50,8 +50,8 @@ class CustomLinkActionsViewModel @Inject constructor(
                     label = l,
                     kind = "APP_OPEN",
                     mimeType = m,
-                    intentUriTemplate = t,
-                ),
+                    intentUriTemplate = t
+                )
             )
             load()
         }

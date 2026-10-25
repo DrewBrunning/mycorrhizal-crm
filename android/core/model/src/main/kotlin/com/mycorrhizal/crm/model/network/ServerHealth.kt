@@ -37,5 +37,5 @@ data class ServerHealth(
     @Json(name = "api_contract_version") val apiContractVersion: String? = null,
     @Json(name = "min_client_version") val minClientVersion: String? = null,
     val deployment: String? = null,
-    val capabilities: List<String>? = null,
+    val capabilities: List<String>? = null
 )

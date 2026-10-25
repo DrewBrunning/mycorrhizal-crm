@@ -31,7 +31,9 @@ import org.robolectric.annotation.Config
 class ReminderNotificationWorkerTest {
 
     private val context = ApplicationProvider.getApplicationContext<Context>()
-    private val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    private val manager = context.getSystemService(
+        Context.NOTIFICATION_SERVICE
+    ) as NotificationManager
     private val shadow = Shadows.shadowOf(manager)
 
     @Test
@@ -40,9 +42,14 @@ class ReminderNotificationWorkerTest {
         coEvery { apiClient.listUpcomingReminders() } returns Result.success(
             ContactRemindersResponse(
                 reminders = listOf(
-                    Reminder(id = 42, remindAt = "2026-08-18T14:14:28Z", message = "Call Jane", contactId = 7),
-                ),
-            ),
+                    Reminder(
+                        id = 42,
+                        remindAt = "2026-08-18T14:14:28Z",
+                        message = "Call Jane",
+                        contactId = 7
+                    )
+                )
+            )
         )
         val settings = mockk<TrackingSettingsRepository>()
         coEvery { settings.notificationsEnabled() } returns true
@@ -51,12 +58,15 @@ class ReminderNotificationWorkerTest {
             appContext = context,
             workerParams = mockk(relaxed = true),
             apiClient = apiClient,
-            trackingSettings = settings,
+            trackingSettings = settings
         )
         worker.doWork()
 
         val expectedId = AlertNotificationIds.forReminder(42, "2026-08-18T14:14:28Z")
-        assertNotNull("notification must land under the idempotent id", shadow.getNotification(expectedId))
+        assertNotNull(
+            "notification must land under the idempotent id",
+            shadow.getNotification(expectedId)
+        )
     }
 
     @Test
@@ -69,7 +79,7 @@ class ReminderNotificationWorkerTest {
             appContext = context,
             workerParams = mockk(relaxed = true),
             apiClient = apiClient,
-            trackingSettings = settings,
+            trackingSettings = settings
         )
         worker.doWork()
 
@@ -80,7 +90,7 @@ class ReminderNotificationWorkerTest {
     fun `an empty upcoming-reminders list posts nothing`() = runTest {
         val apiClient = mockk<ApiClient>()
         coEvery { apiClient.listUpcomingReminders() } returns Result.success(
-            ContactRemindersResponse(reminders = emptyList()),
+            ContactRemindersResponse(reminders = emptyList())
         )
         val settings = mockk<TrackingSettingsRepository>()
         coEvery { settings.notificationsEnabled() } returns true
@@ -89,7 +99,7 @@ class ReminderNotificationWorkerTest {
             appContext = context,
             workerParams = mockk(relaxed = true),
             apiClient = apiClient,
-            trackingSettings = settings,
+            trackingSettings = settings
         )
         worker.doWork()
 

@@ -1,6 +1,6 @@
 package com.mycorrhizal.crm.model.network
 
-/**
+/*
  * ADR 0025 (#1233) period helpers, shared by the contact form ViewModel and
  * the address editor. Keeping the (kind, entryId) upsert in one place means the
  * "periods are keyed by neutral element ID" rule can't drift between callers.
@@ -18,10 +18,18 @@ fun upsertEntryPeriod(
     periods: List<EntryPeriod>,
     kind: String,
     entryId: String,
-    range: TemporalRange?,
+    range: TemporalRange?
 ): List<EntryPeriod> {
     val rest = periods.filterNot { it.kind == kind && it.entryId == entryId }
-    return if (range == null) rest else rest + EntryPeriod(kind = kind, entryId = entryId, range = range)
+    return if (range == null) {
+        rest
+    } else {
+        rest + EntryPeriod(
+            kind = kind,
+            entryId = entryId,
+            range = range
+        )
+    }
 }
 
 /**
@@ -34,6 +42,6 @@ fun yearTemporalRange(start: String, end: String): TemporalRange? {
     if (startYear == null && endYear == null) return null
     return TemporalRange(
         start = startYear?.let { PartialDate(year = it) },
-        end = endYear?.let { PartialDate(year = it) },
+        end = endYear?.let { PartialDate(year = it) }
     )
 }

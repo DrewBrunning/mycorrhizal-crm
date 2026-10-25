@@ -9,8 +9,8 @@ class GraphChainPathTest {
         targetName = "Bob",
         steps = listOf(
             GraphChainStep(contactName = "Sister", relation = "sibling_of"),
-            GraphChainStep(contactName = "", relation = "spouse_of"),
-        ),
+            GraphChainStep(contactName = "", relation = "spouse_of")
+        )
     )
 
     @Test
@@ -20,12 +20,18 @@ class GraphChainPathTest {
 
     @Test
     fun `path uses the supplied labels in step order`() {
-        assertEquals("Sister (Geschwister) → Unknown (Ehepartner)", chain.readablePath(listOf("Geschwister", "Ehepartner")))
+        assertEquals(
+            "Sister (Geschwister) → Unknown (Ehepartner)",
+            chain.readablePath(listOf("Geschwister", "Ehepartner"))
+        )
     }
 
     @Test
     fun `a missing label falls back to the humanized relation`() {
-        assertEquals("Sister (Sibling) → Unknown (spouse of)", chain.readablePath(listOf("Sibling")))
+        assertEquals(
+            "Sister (Sibling) → Unknown (spouse of)",
+            chain.readablePath(listOf("Sibling"))
+        )
     }
 
     @Test
@@ -38,7 +44,7 @@ class GraphChainPathTest {
     fun `target-facing path omits the repeated target name on a direct connection`() {
         val direct = GraphChain(
             targetName = "Bea Fontaine",
-            steps = listOf(GraphChainStep(contactName = "Bea Fontaine", relation = "related_to")),
+            steps = listOf(GraphChainStep(contactName = "Bea Fontaine", relation = "related_to"))
         )
 
         assertEquals("related to", direct.readablePathToTarget(emptyList()))
@@ -48,7 +54,7 @@ class GraphChainPathTest {
     fun `target-facing path keeps intermediate names and ends with the relationship label`() {
         assertEquals(
             "Sister (Geschwister) → Ehepartner",
-            chain.readablePathToTarget(listOf("Geschwister", "Ehepartner")),
+            chain.readablePathToTarget(listOf("Geschwister", "Ehepartner"))
         )
     }
 

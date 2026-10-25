@@ -47,7 +47,7 @@ class DeviceContactLinkTest {
     @Test
     fun `a lookup key resolves to the device contact id`() {
         provider.contacts = listOf(
-            LinkFakeContactsProvider.ContactFixture(id = 42L, lookupKey = "lk-alice"),
+            LinkFakeContactsProvider.ContactFixture(id = 42L, lookupKey = "lk-alice")
         )
 
         val id = DeviceContactLink.findDeviceContactId(contentResolver(), lookupKey = "lk-alice")
@@ -61,11 +61,14 @@ class DeviceContactLinkTest {
             LinkFakeContactsProvider.DataRowFixture(
                 contactId = 7L,
                 mimeType = CommonDataKinds.Phone.CONTENT_ITEM_TYPE,
-                data = "+1 555 0100",
-            ),
+                data = "+1 555 0100"
+            )
         )
 
-        val id = DeviceContactLink.findDeviceContactId(contentResolver(), phoneNumber = "+1 555 0100")
+        val id = DeviceContactLink.findDeviceContactId(
+            contentResolver(),
+            phoneNumber = "+1 555 0100"
+        )
 
         assertEquals(7L, id)
     }
@@ -76,11 +79,14 @@ class DeviceContactLinkTest {
             LinkFakeContactsProvider.DataRowFixture(
                 contactId = 9L,
                 mimeType = CommonDataKinds.Email.CONTENT_ITEM_TYPE,
-                data = "alice@example.com",
-            ),
+                data = "alice@example.com"
+            )
         )
 
-        val id = DeviceContactLink.findDeviceContactId(contentResolver(), email = "alice@example.com")
+        val id = DeviceContactLink.findDeviceContactId(
+            contentResolver(),
+            email = "alice@example.com"
+        )
 
         assertEquals(9L, id)
     }
@@ -88,14 +94,14 @@ class DeviceContactLinkTest {
     @Test
     fun `an unknown lookup key falls back to phone then email then null`() {
         provider.contacts = listOf(
-            LinkFakeContactsProvider.ContactFixture(id = 42L, lookupKey = "lk-alice"),
+            LinkFakeContactsProvider.ContactFixture(id = 42L, lookupKey = "lk-alice")
         )
         provider.dataRows = listOf(
             LinkFakeContactsProvider.DataRowFixture(
                 contactId = 7L,
                 mimeType = CommonDataKinds.Email.CONTENT_ITEM_TYPE,
-                data = "bob@example.com",
-            ),
+                data = "bob@example.com"
+            )
         )
 
         // lookupKey misses, phone misses, email hits.
@@ -105,13 +111,15 @@ class DeviceContactLinkTest {
                 contentResolver(),
                 lookupKey = "lk-missing",
                 phoneNumber = "+1 000",
-                email = "bob@example.com",
-            ),
+                email = "bob@example.com"
+            )
         )
         // No criterion at all: nothing to query.
         assertNull(DeviceContactLink.findDeviceContactId(contentResolver()))
         // Lookup key present but no contact matches: falls through to null.
-        assertNull(DeviceContactLink.findDeviceContactId(contentResolver(), lookupKey = "lk-absent"))
+        assertNull(
+            DeviceContactLink.findDeviceContactId(contentResolver(), lookupKey = "lk-absent")
+        )
     }
 
     @Test
@@ -120,7 +128,7 @@ class DeviceContactLinkTest {
 
         assertEquals(
             "content://com.android.contacts/contacts/lookup/lk%20alice%2F2",
-            uri?.toString(),
+            uri?.toString()
         )
     }
 }
@@ -140,7 +148,7 @@ private class LinkFakeContactsProvider : ContentProvider() {
         projection: Array<out String>?,
         selection: String?,
         selectionArgs: Array<out String>?,
-        sortOrder: String?,
+        sortOrder: String?
     ): Cursor {
         val columns = projection ?: emptyArray()
         return when {
@@ -148,37 +156,45 @@ private class LinkFakeContactsProvider : ContentProvider() {
                 val cursor = MatrixCursor(columns)
                 val wantedKey = selectionArgs?.firstOrNull()
                 contacts.filter { it.lookupKey == wantedKey }.forEach { c ->
-                    cursor.addRow(columns.map { col ->
-                        val value: Any? = when (col) {
-                            ContactsContract.Contacts._ID -> c.id
-                            ContactsContract.Contacts.LOOKUP_KEY -> c.lookupKey
-                            else -> null
-                        }
-                        value
-                    }.toTypedArray())
+                    cursor.addRow(
+                        columns.map { col ->
+                            val value: Any? = when (col) {
+                                ContactsContract.Contacts._ID -> c.id
+                                ContactsContract.Contacts.LOOKUP_KEY -> c.lookupKey
+                                else -> null
+                            }
+                            value
+                        }.toTypedArray()
+                    )
                 }
                 cursor
             }
+
             uri.toString().startsWith(ContactsContract.Data.CONTENT_URI.toString()) -> {
                 val cursor = MatrixCursor(columns)
                 dataRows.filter { row ->
                     // DeviceContactLink builds `(phone mime + data) OR (email
                     // mime + data)`; match either pair.
                     val args = selectionArgs ?: return@filter false
-                    val phoneMatch = args.size >= 2 && row.mimeType == args[0] && row.data == args[1]
-                    val emailMatch = args.size >= 4 && row.mimeType == args[2] && row.data == args[3]
+                    val phoneMatch =
+                        args.size >= 2 && row.mimeType == args[0] && row.data == args[1]
+                    val emailMatch =
+                        args.size >= 4 && row.mimeType == args[2] && row.data == args[3]
                     phoneMatch || emailMatch
                 }.forEach { row ->
-                    cursor.addRow(columns.map { col ->
-                        val value: Any? = when (col) {
-                            ContactsContract.Data.CONTACT_ID -> row.contactId
-                            else -> null
-                        }
-                        value
-                    }.toTypedArray())
+                    cursor.addRow(
+                        columns.map { col ->
+                            val value: Any? = when (col) {
+                                ContactsContract.Data.CONTACT_ID -> row.contactId
+                                else -> null
+                            }
+                            value
+                        }.toTypedArray()
+                    )
                 }
                 cursor
             }
+
             else -> MatrixCursor(columns)
         }
     }
@@ -190,6 +206,6 @@ private class LinkFakeContactsProvider : ContentProvider() {
         uri: Uri,
         values: ContentValues?,
         selection: String?,
-        selectionArgs: Array<out String>?,
+        selectionArgs: Array<out String>?
     ): Int = 0
 }

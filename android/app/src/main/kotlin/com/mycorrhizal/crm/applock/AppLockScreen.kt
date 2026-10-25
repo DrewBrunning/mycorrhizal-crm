@@ -53,7 +53,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun AppLockScreen(
     viewModel: AppLockViewModel = hiltViewModel(),
-    prompter: AppUnlockPrompter? = null,
+    prompter: AppUnlockPrompter? = null
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
@@ -76,7 +76,11 @@ fun AppLockScreen(
             autoPrompted = true
             if (state.canAuthenticate && !state.isUnlocking) {
                 viewModel.onAuthStarted()
-                unlockPrompter.requestUnlock(title, subtitle, cancelText).let(viewModel::onAuthResult)
+                unlockPrompter.requestUnlock(
+                    title,
+                    subtitle,
+                    cancelText
+                ).let(viewModel::onAuthResult)
             }
         }
     }
@@ -85,7 +89,11 @@ fun AppLockScreen(
         if (state.canAuthenticate && !state.isUnlocking) {
             scope.launch {
                 viewModel.onAuthStarted()
-                unlockPrompter.requestUnlock(title, subtitle, cancelText).let(viewModel::onAuthResult)
+                unlockPrompter.requestUnlock(
+                    title,
+                    subtitle,
+                    cancelText
+                ).let(viewModel::onAuthResult)
             }
         }
     }
@@ -94,7 +102,7 @@ fun AppLockScreen(
         state = state,
         onUnlockRequest = requestUnlock,
         onLogout = viewModel::onLogout,
-        onErrorShown = viewModel::onErrorShown,
+        onErrorShown = viewModel::onErrorShown
     )
 }
 
@@ -108,53 +116,53 @@ fun AppLockContent(
     state: AppLockUiState,
     onUnlockRequest: () -> Unit,
     onLogout: () -> Unit,
-    onErrorShown: () -> Unit = {},
+    onErrorShown: () -> Unit = {}
 ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(24.dp),
-        contentAlignment = Alignment.Center,
+        contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         ) {
             Image(
                 painter = painterResource(id = R.drawable.ic_brand_logo),
                 contentDescription = stringResource(R.string.app_name),
-                modifier = Modifier.size(96.dp),
+                modifier = Modifier.size(96.dp)
             )
             Text(
                 text = stringResource(R.string.app_lock_heading),
                 style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.semantics { heading() },
+                modifier = Modifier.semantics { heading() }
             )
             state.username?.let { username ->
                 Text(
                     text = stringResource(R.string.app_lock_signed_in_as, username),
                     style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             Text(
                 text = stringResource(R.string.app_lock_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             if (state.isUnlocking) {
                 CircularProgressIndicator(
                     modifier = Modifier.semantics {
                         liveRegion = LiveRegionMode.Assertive
-                    },
+                    }
                 )
             } else if (state.canAuthenticate) {
                 Button(
                     onClick = onUnlockRequest,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(stringResource(R.string.app_lock_unlock))
                 }
@@ -166,13 +174,13 @@ fun AppLockContent(
                     text = stringResource(R.string.app_lock_unsupported),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
                 )
             }
 
             TextButton(
                 onClick = onLogout,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text(stringResource(R.string.settings_log_out))
             }
@@ -183,7 +191,7 @@ fun AppLockContent(
                     text = message,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
                 )
                 LaunchedEffect(message) { onErrorShown() }
             }

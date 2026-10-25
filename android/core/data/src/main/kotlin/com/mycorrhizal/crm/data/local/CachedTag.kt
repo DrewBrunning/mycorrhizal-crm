@@ -8,7 +8,7 @@ import androidx.room.PrimaryKey
 data class CachedTag(
     @PrimaryKey val id: String,
     val name: String = "",
-    val updatedAt: String? = null,
+    val updatedAt: String? = null
 )
 
 /**
@@ -16,8 +16,4 @@ data class CachedTag(
  * contact_tags join — hard-delete semantics per CLAUDE.md.
  */
 @Entity(tableName = "cached_contact_tags")
-data class CachedContactTag(
-    @PrimaryKey val id: Int,
-    val tagId: String,
-    val contactVCardUid: String,
-)
+data class CachedContactTag(@PrimaryKey val id: Int, val tagId: String, val contactVCardUid: String)

@@ -7,12 +7,12 @@ import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.ImportConfirmRequest
 import com.mycorrhizal.crm.model.network.ImportPreviewResponse
-import com.mycorrhizal.crm.model.network.ImportResult
 import com.mycorrhizal.crm.model.network.RowImportAction
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,12 +21,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import javax.inject.Inject
 
 data class DeviceContactCandidate(
     val device: DeviceContact,
     /** A locally-cached contact this device contact duplicates (§7.4), if any. */
-    val duplicateOf: ContactSummary? = null,
+    val duplicateOf: ContactSummary? = null
 )
 
 enum class ImportStep { LIST, REVIEW, RESULT }
@@ -50,7 +49,7 @@ data class ImportUiState(
     /** Issue #1750: a device read has completed. The screen reloads on resume
      *  only until this is set (or after a permission change), so backgrounding
      *  the app does not wipe the user's selection with a fresh load. */
-    val loaded: Boolean = false,
+    val loaded: Boolean = false
 )
 
 /**
@@ -71,7 +70,7 @@ data class ImportUiState(
 class ImportContactsViewModel @Inject constructor(
     private val apiClient: ApiClient,
     private val contactRepository: ContactRepository,
-    @ApplicationContext private val appContext: android.content.Context,
+    @ApplicationContext private val appContext: android.content.Context
 ) : ViewModel() {
 
     internal var readDeviceContacts: (ContentResolver) -> List<DeviceContact> =
@@ -94,7 +93,7 @@ class ImportContactsViewModel @Inject constructor(
                         contacts = emptyList(),
                         selected = emptySet(),
                         permissionRequired = true,
-                        loaded = false,
+                        loaded = false
                     )
                 }
                 return@launch
@@ -109,7 +108,12 @@ class ImportContactsViewModel @Inject constructor(
                 DeviceContactCandidate(device, duplicate)
             }
             _uiState.update {
-                it.copy(isLoading = false, contacts = candidates, selected = emptySet(), loaded = true)
+                it.copy(
+                    isLoading = false,
+                    contacts = candidates,
+                    selected = emptySet(),
+                    loaded = true
+                )
             }
         }
     }
@@ -136,7 +140,10 @@ class ImportContactsViewModel @Inject constructor(
      *  pipeline and move to the review step. The old flow created contacts
      *  here directly; that decision now happens per row on review. */
     fun submitSelected() {
-        val toImport = _uiState.value.contacts.filter { it.device.contactId in _uiState.value.selected }
+        val toImport = _uiState.value.contacts.filter {
+            it.device.contactId in
+                _uiState.value.selected
+        }
         if (toImport.isEmpty() || _uiState.value.isImporting) return
         viewModelScope.launch {
             _uiState.update { it.copy(isImporting = true, error = null) }
@@ -144,13 +151,26 @@ class ImportContactsViewModel @Inject constructor(
             apiClient.uploadImportRecords(records).foldApiError(
                 onSuccess = { preview ->
                     val actions = preview.rows.associate { row ->
-                        row.rowIndex to if (row.validationErrors.isNotEmpty()) "skip" else row.suggestedAction
+                        row.rowIndex to
+                            if (row.validationErrors.isNotEmpty()) "skip" else row.suggestedAction
                     }
                     _uiState.update {
-                        it.copy(isImporting = false, step = ImportStep.REVIEW, preview = preview, rowActions = actions)
+                        it.copy(
+                            isImporting = false,
+                            step = ImportStep.REVIEW,
+                            preview = preview,
+                            rowActions = actions
+                        )
                     }
                 },
-                onError = { error -> _uiState.update { it.copy(isImporting = false, error = error.displayMessage) } },
+                onError = { error ->
+                    _uiState.update {
+                        it.copy(
+                            isImporting = false,
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }
@@ -179,14 +199,32 @@ class ImportContactsViewModel @Inject constructor(
         if (_uiState.value.isImporting) return
         viewModelScope.launch {
             _uiState.update { it.copy(isImporting = true, error = null) }
-            val actions = _uiState.value.rowActions.map { (rowIndex, action) -> RowImportAction(rowIndex, action) }
-            apiClient.confirmVcfImport(ImportConfirmRequest(sessionId = preview.sessionId, actions = actions)).foldApiError(
+            val actions = _uiState.value.rowActions.map { (rowIndex, action) ->
+                RowImportAction(
+                    rowIndex,
+                    action
+                )
+            }
+            apiClient.confirmVcfImport(
+                ImportConfirmRequest(sessionId = preview.sessionId, actions = actions)
+            ).foldApiError(
                 onSuccess = { result ->
                     _uiState.update {
-                        it.copy(isImporting = false, step = ImportStep.RESULT, importedCount = result.created + result.updated)
+                        it.copy(
+                            isImporting = false,
+                            step = ImportStep.RESULT,
+                            importedCount = result.created + result.updated
+                        )
                     }
                 },
-                onError = { error -> _uiState.update { it.copy(isImporting = false, error = error.displayMessage) } },
+                onError = { error ->
+                    _uiState.update {
+                        it.copy(
+                            isImporting = false,
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }
@@ -196,7 +234,13 @@ class ImportContactsViewModel @Inject constructor(
      *  fresh server state rather than the stale pre-import cache. */
     fun startOver() {
         _uiState.update {
-            it.copy(step = ImportStep.LIST, preview = null, rowActions = emptyMap(), importedCount = 0, selected = emptySet())
+            it.copy(
+                step = ImportStep.LIST,
+                preview = null,
+                rowActions = emptyMap(),
+                importedCount = 0,
+                selected = emptySet()
+            )
         }
         load()
     }

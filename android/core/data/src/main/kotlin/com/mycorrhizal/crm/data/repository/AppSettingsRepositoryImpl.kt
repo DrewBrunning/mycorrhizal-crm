@@ -14,7 +14,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
-private val Context.appSettingsDataStore: DataStore<Preferences> by preferencesDataStore(name = "app_settings")
+private val Context.appSettingsDataStore: DataStore<Preferences> by preferencesDataStore(
+    name = "app_settings"
+)
 
 /**
  * M25: device-side app settings (theme + UI-language override) stored in a
@@ -31,7 +33,7 @@ private val Context.appSettingsDataStore: DataStore<Preferences> by preferencesD
  */
 @Singleton
 class AppSettingsRepositoryImpl @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @ApplicationContext private val context: Context
 ) : AppSettingsRepository {
 
     private val themeKey = stringPreferencesKey("theme_preference")
@@ -68,10 +70,9 @@ class AppSettingsRepositoryImpl @Inject constructor(
 
     override fun currentThemePreference(): String = cachedTheme
 
-    override fun contactSortPreference(): Flow<String> =
-        context.appSettingsDataStore.data.map {
-            it[contactSortKey] ?: AppSettingsRepository.CONTACT_SORT_NAME
-        }
+    override fun contactSortPreference(): Flow<String> = context.appSettingsDataStore.data.map {
+        it[contactSortKey] ?: AppSettingsRepository.CONTACT_SORT_NAME
+    }
 
     override suspend fun setContactSortPreference(preference: String) {
         context.appSettingsDataStore.edit { it[contactSortKey] = preference }

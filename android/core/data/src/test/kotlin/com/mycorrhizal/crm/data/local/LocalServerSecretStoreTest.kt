@@ -1,5 +1,7 @@
 package com.mycorrhizal.crm.data.local
 
+import java.io.File
+import java.util.Base64
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -8,8 +10,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
-import java.io.File
-import java.util.Base64
 
 /**
  * Issue #1262: Keystore-wrapped local-server secrets. The generation/codec
@@ -25,7 +25,9 @@ class LocalServerSecretStoreTest {
 
     /** A reversible "cipher" that also proves per-purpose key separation by tagging. */
     private class TaggingCipher(private val tag: Byte) : LocalServerSecretCipher {
-        override fun wrap(plaintext: ByteArray): ByteArray = byteArrayOf(tag) + plaintext.reversedArray()
+        override fun wrap(plaintext: ByteArray): ByteArray = byteArrayOf(
+            tag
+        ) + plaintext.reversedArray()
 
         override fun unwrap(blob: ByteArray): ByteArray {
             assertEquals(tag, blob.first())
@@ -33,13 +35,14 @@ class LocalServerSecretStoreTest {
         }
     }
 
-    private fun provider(): LocalServerSecretCipherProvider = LocalServerSecretCipherProvider { purpose ->
-        purposesUsed += purpose
-        when (purpose) {
-            LocalServerSecretPurpose.JWT_SECRET -> TaggingCipher(1)
-            LocalServerSecretPurpose.ATREST_MASTER_KEY -> TaggingCipher(2)
+    private fun provider(): LocalServerSecretCipherProvider =
+        LocalServerSecretCipherProvider { purpose ->
+            purposesUsed += purpose
+            when (purpose) {
+                LocalServerSecretPurpose.JWT_SECRET -> TaggingCipher(1)
+                LocalServerSecretPurpose.ATREST_MASTER_KEY -> TaggingCipher(2)
+            }
         }
-    }
 
     private fun newStore(name: String = "keys.bin"): LocalServerSecretStore =
         LocalServerSecretStore(File(temp.root, name), provider())
@@ -58,7 +61,7 @@ class LocalServerSecretStoreTest {
         // Both purposes had their own cipher invoked.
         assertEquals(
             setOf(LocalServerSecretPurpose.JWT_SECRET, LocalServerSecretPurpose.ATREST_MASTER_KEY),
-            purposesUsed.toSet(),
+            purposesUsed.toSet()
         )
         // Round-trips through the recorded encodings.
         assertEquals(32, Base64.getUrlDecoder().decode(secrets.jwtSecret).size)

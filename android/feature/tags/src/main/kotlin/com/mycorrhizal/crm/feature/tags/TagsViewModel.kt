@@ -12,25 +12,23 @@ import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class TagsUiState(
     val tags: List<Tag> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
     val isSaving: Boolean = false,
-    val deletingId: String? = null,
+    val deletingId: String? = null
 )
 
 @HiltViewModel
-class TagsViewModel @Inject constructor(
-    private val tagRepository: TagRepository,
-) : ViewModel() {
+class TagsViewModel @Inject constructor(private val tagRepository: TagRepository) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TagsUiState())
     val uiState: StateFlow<TagsUiState> = _uiState.asStateFlow()
@@ -49,7 +47,7 @@ class TagsViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -62,13 +60,16 @@ class TagsViewModel @Inject constructor(
             tagRepository.create(trimmed).foldApiError(
                 onSuccess = { tag ->
                     _uiState.update {
-                        it.copy(isSaving = false, tags = (it.tags + tag).sortedBy { t -> t.name.lowercase() })
+                        it.copy(
+                            isSaving = false,
+                            tags = (it.tags + tag).sortedBy { t -> t.name.lowercase() }
+                        )
                     }
                     onDone()
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isSaving = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -83,13 +84,13 @@ class TagsViewModel @Inject constructor(
                     _uiState.update { state ->
                         state.copy(
                             tags = state.tags.map { if (it.id == id) tag else it }
-                                .sortedBy { t -> t.name.lowercase() },
+                                .sortedBy { t -> t.name.lowercase() }
                         )
                     }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -106,7 +107,7 @@ class TagsViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(deletingId = null, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -125,14 +126,14 @@ data class TagDetailUiState(
     val isLoading: Boolean = false,
     val removingUid: String? = null,
     val error: String? = null,
-    @StringRes val errorRes: Int? = null,
+    @StringRes val errorRes: Int? = null
 )
 
 @HiltViewModel
 class TagDetailViewModel @Inject constructor(
     private val tagRepository: TagRepository,
     private val contactRepository: ContactRepository,
-    savedStateHandle: SavedStateHandle,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val tagId: String = run {
@@ -149,7 +150,13 @@ class TagDetailViewModel @Inject constructor(
 
     fun load() {
         if (tagId.isBlank()) {
-            _uiState.update { it.copy(isLoading = false, errorRes = R.string.tags_error_missing_id, error = null) }
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    errorRes = R.string.tags_error_missing_id,
+                    error = null
+                )
+            }
             return
         }
         viewModelScope.launch {
@@ -163,7 +170,7 @@ class TagDetailViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -194,7 +201,7 @@ class TagDetailViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -208,13 +215,13 @@ class TagDetailViewModel @Inject constructor(
                     _uiState.update { state ->
                         state.copy(
                             removingUid = null,
-                            contacts = state.contacts.filterNot { it.contactVCardUid == vcardUid },
+                            contacts = state.contacts.filterNot { it.contactVCardUid == vcardUid }
                         )
                     }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(removingUid = null, error = error.displayMessage) }
-                },
+                }
             )
         }
     }

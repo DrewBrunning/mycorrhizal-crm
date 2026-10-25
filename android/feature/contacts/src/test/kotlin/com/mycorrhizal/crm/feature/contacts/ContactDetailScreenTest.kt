@@ -7,9 +7,12 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertAny
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isFocused
+import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
@@ -17,25 +20,22 @@ import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.isFocused
-import androidx.compose.ui.test.isToggleable
-import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
-import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.Anniversary
 import com.mycorrhizal.crm.model.network.AnniversaryDate
+import com.mycorrhizal.crm.model.network.CRMEnvelope
 import com.mycorrhizal.crm.model.network.CadencePolicyInput
 import com.mycorrhizal.crm.model.network.Card
+import com.mycorrhizal.crm.model.network.ContactFieldKey
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactScoreFacet
 import com.mycorrhizal.crm.model.network.ContactScoreResponse
 import com.mycorrhizal.crm.model.network.ContactScoreTarget
-import com.mycorrhizal.crm.model.network.CRMEnvelope
-import com.mycorrhizal.crm.model.network.ContactFieldKey
 import com.mycorrhizal.crm.model.network.DEFAULT_ENABLED_CONTACT_FIELDS
 import com.mycorrhizal.crm.model.network.Email
 import com.mycorrhizal.crm.model.network.ExternalActivity
@@ -49,8 +49,8 @@ import com.mycorrhizal.crm.model.network.LanguagePref
 import com.mycorrhizal.crm.model.network.Name
 import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.model.network.OnlineService
-import com.mycorrhizal.crm.model.network.Phone
 import com.mycorrhizal.crm.model.network.PartialDate
+import com.mycorrhizal.crm.model.network.Phone
 import com.mycorrhizal.crm.model.network.Pronouns
 import com.mycorrhizal.crm.model.network.Reminder
 import com.mycorrhizal.crm.model.network.Resource
@@ -86,7 +86,7 @@ class ContactDetailScreenTest {
                 ContactDetailContent(
                     contact = state.contact!!,
                     dateFormat = state.dateFormat,
-                    enabledFields = state.enabledFields,
+                    enabledFields = state.enabledFields
                 )
             }
         }
@@ -108,8 +108,9 @@ class ContactDetailScreenTest {
     }
 
     /** Scrolls the open drill-down's own list (not the detail list) to [text]. */
-    private fun inGroup(text: String) =
-        composeTestRule.onNodeWithTag(CUSTOM_FIELD_GROUP_LIST_TAG).performScrollToNode(hasText(text))
+    private fun inGroup(text: String) = composeTestRule.onNodeWithTag(
+        CUSTOM_FIELD_GROUP_LIST_TAG
+    ).performScrollToNode(hasText(text))
 
     // --- Issue #212: header star toggle (web #173) ---------------------------
 
@@ -121,12 +122,14 @@ class ContactDetailScreenTest {
                     contact = ContactRecordResponse(
                         id = 5,
                         card = Card(name = Name(full = "Dana White")),
-                        isFavorite = true,
-                    ),
+                        isFavorite = true
+                    )
                 )
             }
         }
-        composeTestRule.onNodeWithContentDescription("Unmark Dana White as favorite").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(
+            "Unmark Dana White as favorite"
+        ).assertIsDisplayed()
     }
 
     // --- Issue #1922: TalkBack focus on the contact's name on entry -------
@@ -138,8 +141,8 @@ class ContactDetailScreenTest {
                 ContactDetailContent(
                     contact = ContactRecordResponse(
                         id = 5,
-                        card = Card(name = Name(full = "Dana White")),
-                    ),
+                        card = Card(name = Name(full = "Dana White"))
+                    )
                 )
             }
         }
@@ -160,12 +163,14 @@ class ContactDetailScreenTest {
                     contact = ContactRecordResponse(
                         id = 5,
                         card = Card(name = Name(full = "Dana White")),
-                        isFavorite = false,
-                    ),
+                        isFavorite = false
+                    )
                 )
             }
         }
-        composeTestRule.onNodeWithContentDescription("Mark Dana White as favorite").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(
+            "Mark Dana White as favorite"
+        ).assertIsDisplayed()
     }
 
     @Test
@@ -177,9 +182,9 @@ class ContactDetailScreenTest {
                     contact = ContactRecordResponse(
                         id = 5,
                         card = Card(name = Name(full = "Dana White")),
-                        isFavorite = false,
+                        isFavorite = false
                     ),
-                    onToggleFavorite = { toggles++ },
+                    onToggleFavorite = { toggles++ }
                 )
             }
         }
@@ -196,8 +201,11 @@ class ContactDetailScreenTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 ContactDetailContent(
-                    contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White"))),
-                    isMe = true,
+                    contact = ContactRecordResponse(
+                        id = 5,
+                        card = Card(name = Name(full = "Dana White"))
+                    ),
+                    isMe = true
                 )
             }
         }
@@ -209,8 +217,11 @@ class ContactDetailScreenTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 ContactDetailContent(
-                    contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White"))),
-                    isMe = false,
+                    contact = ContactRecordResponse(
+                        id = 5,
+                        card = Card(name = Name(full = "Dana White"))
+                    ),
+                    isMe = false
                 )
             }
         }
@@ -227,7 +238,7 @@ class ContactDetailScreenTest {
         frequency = ContactScoreFacet(value = 60.0, weight = 20.0, reason = "Some cadence"),
         closeness = ContactScoreFacet(value = 85.0, weight = 20.0, reason = "Close relation"),
         reachOut = ContactScoreFacet(value = 100.0, weight = 15.0, reason = "No pending reach-out"),
-        lastUpdated = ContactScoreFacet(value = 90.0, weight = 10.0, reason = "Updated recently"),
+        lastUpdated = ContactScoreFacet(value = 90.0, weight = 10.0, reason = "Updated recently")
     )
 
     @Test
@@ -235,8 +246,11 @@ class ContactDetailScreenTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 ContactDetailContent(
-                    contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White"))),
-                    score = null,
+                    contact = ContactRecordResponse(
+                        id = 5,
+                        card = Card(name = Name(full = "Dana White"))
+                    ),
+                    score = null
                 )
             }
         }
@@ -248,8 +262,11 @@ class ContactDetailScreenTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 ContactDetailContent(
-                    contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White"))),
-                    score = scoreOf("moss"),
+                    contact = ContactRecordResponse(
+                        id = 5,
+                        card = Card(name = Name(full = "Dana White"))
+                    ),
+                    score = scoreOf("moss")
                 )
             }
         }
@@ -266,13 +283,18 @@ class ContactDetailScreenTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 ContactDetailContent(
-                    contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White"))),
-                    score = scoreOf("chanterelle"),
+                    contact = ContactRecordResponse(
+                        id = 5,
+                        card = Card(name = Name(full = "Dana White"))
+                    ),
+                    score = scoreOf("chanterelle")
                 )
             }
         }
         composeTestRule
-            .onNodeWithContentDescription("Relationship health score 72 out of 100: Needs attention")
+            .onNodeWithContentDescription(
+                "Relationship health score 72 out of 100: Needs attention"
+            )
             .assertIsDisplayed()
     }
 
@@ -281,8 +303,11 @@ class ContactDetailScreenTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 ContactDetailContent(
-                    contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White"))),
-                    score = scoreOf("russula"),
+                    contact = ContactRecordResponse(
+                        id = 5,
+                        card = Card(name = Name(full = "Dana White"))
+                    ),
+                    score = scoreOf("russula")
                 )
             }
         }
@@ -296,8 +321,11 @@ class ContactDetailScreenTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 ContactDetailContent(
-                    contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White"))),
-                    score = scoreOf("moss"),
+                    contact = ContactRecordResponse(
+                        id = 5,
+                        card = Card(name = Name(full = "Dana White"))
+                    ),
+                    score = scoreOf("moss")
                 )
             }
         }
@@ -318,8 +346,11 @@ class ContactDetailScreenTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 ContactDetailContent(
-                    contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White"))),
-                    score = score,
+                    contact = ContactRecordResponse(
+                        id = 5,
+                        card = Card(name = Name(full = "Dana White"))
+                    ),
+                    score = score
                 )
             }
         }
@@ -332,7 +363,9 @@ class ContactDetailScreenTest {
 
         composeTestRule.onNodeWithTag("health-score-ambient").assertIsDisplayed()
         composeTestRule.onNodeWithText("Lives with you (household)").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Counts as in regular contact without logging activities").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Counts as in regular contact without logging activities"
+        ).assertIsDisplayed()
         composeTestRule.onNodeWithText("Marked as ambient").assertDoesNotExist()
     }
 
@@ -358,8 +391,11 @@ class ContactDetailScreenTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 ContactDetailContent(
-                    contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White"))),
-                    score = scoreOf("moss"),
+                    contact = ContactRecordResponse(
+                        id = 5,
+                        card = Card(name = Name(full = "Dana White"))
+                    ),
+                    score = scoreOf("moss")
                 )
             }
         }
@@ -380,7 +416,7 @@ class ContactDetailScreenTest {
         value = 65.9,
         intervalDays = 30,
         intervalSource = "target_tier",
-        reason = "Recency and frequency score 66 against a 30-day interval from the close target",
+        reason = "Recency and frequency score 66 against a 30-day interval from the close target"
     )
 
     @Test
@@ -391,9 +427,9 @@ class ContactDetailScreenTest {
                     contact = ContactRecordResponse(
                         id = 5,
                         card = Card(name = Name(full = "Dana White")),
-                        crm = CRMEnvelope(targetCloseness = "close"),
+                        crm = CRMEnvelope(targetCloseness = "close")
                     ),
-                    score = scoreOf("moss").copy(target = targetOf()),
+                    score = scoreOf("moss").copy(target = targetOf())
                 )
             }
         }
@@ -411,8 +447,11 @@ class ContactDetailScreenTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 ContactDetailContent(
-                    contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White"))),
-                    score = scoreOf("moss").copy(target = null),
+                    contact = ContactRecordResponse(
+                        id = 5,
+                        card = Card(name = Name(full = "Dana White"))
+                    ),
+                    score = scoreOf("moss").copy(target = null)
                 )
             }
         }
@@ -429,10 +468,10 @@ class ContactDetailScreenTest {
                     contact = ContactRecordResponse(
                         id = 5,
                         card = Card(name = Name(full = "Dana White")),
-                        crm = CRMEnvelope(targetCloseness = "close"),
+                        crm = CRMEnvelope(targetCloseness = "close")
                     ),
                     score = scoreOf("moss").copy(target = targetOf()),
-                    onSetTargetCloseness = { picked = it },
+                    onSetTargetCloseness = { picked = it }
                 )
             }
         }
@@ -456,10 +495,10 @@ class ContactDetailScreenTest {
                     contact = ContactRecordResponse(
                         id = 5,
                         card = Card(name = Name(full = "Dana White")),
-                        crm = CRMEnvelope(targetCloseness = "close"),
+                        crm = CRMEnvelope(targetCloseness = "close")
                     ),
                     score = scoreOf("moss").copy(target = targetOf()),
-                    onSetTargetCloseness = { picked = it },
+                    onSetTargetCloseness = { picked = it }
                 )
             }
         }
@@ -476,8 +515,11 @@ class ContactDetailScreenTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 ContactDetailContent(
-                    contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White"))),
-                    score = scoreOf("moss").copy(target = targetOf()),
+                    contact = ContactRecordResponse(
+                        id = 5,
+                        card = Card(name = Name(full = "Dana White"))
+                    ),
+                    score = scoreOf("moss").copy(target = targetOf())
                 )
             }
         }
@@ -487,7 +529,9 @@ class ContactDetailScreenTest {
         // The dialog's text column can clip below the facets; the reason must
         // still be composed and rendered into the dialog.
         composeTestRule
-            .onNodeWithText("Recency and frequency score 66 against a 30-day interval from the close target")
+            .onNodeWithText(
+                "Recency and frequency score 66 against a 30-day interval from the close target"
+            )
             .assertExists()
     }
 
@@ -498,10 +542,16 @@ class ContactDetailScreenTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 ContactDetailContent(
-                    contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White"))),
-                    cadencePolicyOffer = CadencePolicyInput(entityId = "u5", targetIntervalDays = 30),
+                    contact = ContactRecordResponse(
+                        id = 5,
+                        card = Card(name = Name(full = "Dana White"))
+                    ),
+                    cadencePolicyOffer = CadencePolicyInput(
+                        entityId = "u5",
+                        targetIntervalDays = 30
+                    ),
                     onAcceptCadenceOffer = { accepted++ },
-                    onDismissCadenceOffer = { dismissed++ },
+                    onDismissCadenceOffer = { dismissed++ }
                 )
             }
         }
@@ -525,10 +575,16 @@ class ContactDetailScreenTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 ContactDetailContent(
-                    contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White"))),
-                    cadencePolicyOffer = CadencePolicyInput(entityId = "u5", targetIntervalDays = 30),
+                    contact = ContactRecordResponse(
+                        id = 5,
+                        card = Card(name = Name(full = "Dana White"))
+                    ),
+                    cadencePolicyOffer = CadencePolicyInput(
+                        entityId = "u5",
+                        targetIntervalDays = 30
+                    ),
                     onAcceptCadenceOffer = { accepted++ },
-                    onDismissCadenceOffer = { dismissed++ },
+                    onDismissCadenceOffer = { dismissed++ }
                 )
             }
         }
@@ -546,9 +602,9 @@ class ContactDetailScreenTest {
             card = Card(
                 name = Name(full = "Dana White"),
                 emails = listOf(Email(address = "dana@example.com", label = "Work")),
-                phones = listOf(Phone(number = "+1-555-0100")),
+                phones = listOf(Phone(number = "+1-555-0100"))
             ),
-            crm = CRMEnvelope(circles = listOf("friends", "work")),
+            crm = CRMEnvelope(circles = listOf("friends", "work"))
         )
         setContent(ContactDetailUiState(contact = contact))
 
@@ -581,15 +637,17 @@ class ContactDetailScreenTest {
             id = 5,
             card = Card(
                 name = Name(full = "Dana White"),
-                phones = listOf(Phone(number = "+1-555-0100")),
-            ),
+                phones = listOf(Phone(number = "+1-555-0100"))
+            )
         )
         setContent(ContactDetailUiState(contact = contact))
 
         composeTestRule.onNodeWithTag("contact-detail-list")
             .performScrollToNode(hasContentDescription("Call"))
             .assertIsDisplayed()
-        composeTestRule.onNodeWithContentDescription("Copy phone number").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(
+            "Copy phone number"
+        ).performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -598,8 +656,8 @@ class ContactDetailScreenTest {
             id = 5,
             card = Card(
                 name = Name(full = "Dana White"),
-                phones = listOf(Phone(number = "+1-555-0100", features = listOf("cell"))),
-            ),
+                phones = listOf(Phone(number = "+1-555-0100", features = listOf("cell")))
+            )
         )
         setContent(ContactDetailUiState(contact = contact))
 
@@ -614,8 +672,8 @@ class ContactDetailScreenTest {
             id = 5,
             card = Card(
                 name = Name(full = "Dana White"),
-                phones = listOf(Phone(number = "+1-555-0100")),
-            ),
+                phones = listOf(Phone(number = "+1-555-0100"))
+            )
         )
         setContent(ContactDetailUiState(contact = contact))
 
@@ -628,8 +686,8 @@ class ContactDetailScreenTest {
             id = 5,
             card = Card(
                 name = Name(full = "Dana White"),
-                phones = listOf(Phone(number = "+1-555-0100", contexts = listOf("cell"))),
-            ),
+                phones = listOf(Phone(number = "+1-555-0100", contexts = listOf("cell")))
+            )
         )
         setContent(ContactDetailUiState(contact = contact))
 
@@ -648,8 +706,8 @@ class ContactDetailScreenTest {
             id = 5,
             card = Card(
                 name = Name(full = "Dana White"),
-                phones = listOf(Phone(number = "+1-555-0100", label = "mobile")),
-            ),
+                phones = listOf(Phone(number = "+1-555-0100", label = "mobile"))
+            )
         )
         setContent(ContactDetailUiState(contact = contact))
 
@@ -664,15 +722,17 @@ class ContactDetailScreenTest {
             id = 5,
             card = Card(
                 name = Name(full = "Dana White"),
-                emails = listOf(Email(address = "dana@example.com")),
-            ),
+                emails = listOf(Email(address = "dana@example.com"))
+            )
         )
         setContent(ContactDetailUiState(contact = contact))
 
         composeTestRule.onNodeWithTag("contact-detail-list")
             .performScrollToNode(hasContentDescription("Compose email"))
             .assertIsDisplayed()
-        composeTestRule.onNodeWithContentDescription("Copy email").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(
+            "Copy email"
+        ).performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -681,15 +741,17 @@ class ContactDetailScreenTest {
             id = 5,
             card = Card(
                 name = Name(full = "Dana White"),
-                addresses = listOf(com.mycorrhizal.crm.model.network.Address(full = "123 Main St")),
-            ),
+                addresses = listOf(com.mycorrhizal.crm.model.network.Address(full = "123 Main St"))
+            )
         )
         setContent(ContactDetailUiState(contact = contact))
 
         composeTestRule.onNodeWithTag("contact-detail-list")
             .performScrollToNode(hasContentDescription("Open in maps"))
             .assertIsDisplayed()
-        composeTestRule.onNodeWithContentDescription("Copy address").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(
+            "Copy address"
+        ).performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -698,16 +760,23 @@ class ContactDetailScreenTest {
             id = 5,
             card = Card(
                 name = Name(full = "Dana White"),
-                links = listOf(Resource(uri = "https://example.com/profile", label = "Website")),
-            ),
+                links = listOf(Resource(uri = "https://example.com/profile", label = "Website"))
+            )
         )
-        setContent(ContactDetailUiState(contact = contact, enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.LINKS))
+        setContent(
+            ContactDetailUiState(
+                contact = contact,
+                enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.LINKS
+            )
+        )
 
         composeTestRule.onNodeWithTag("contact-detail-list")
             .performScrollToNode(hasContentDescription("Open link"))
             .assertIsDisplayed()
         composeTestRule.onNodeWithText("Website").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithContentDescription("Copy link").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(
+            "Copy link"
+        ).performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -717,9 +786,14 @@ class ContactDetailScreenTest {
             card = Card(
                 name = Name(full = "Dana White"),
                 anniversaries = listOf(
-                    Anniversary(kind = "birth", date = AnniversaryDate(partial = PartialDate(year = 1990, month = 6, day = 15))),
-                ),
-            ),
+                    Anniversary(
+                        kind = "birth",
+                        date = AnniversaryDate(
+                            partial = PartialDate(year = 1990, month = 6, day = 15)
+                        )
+                    )
+                )
+            )
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -737,9 +811,14 @@ class ContactDetailScreenTest {
             card = Card(
                 name = Name(full = "Dana White"),
                 anniversaries = listOf(
-                    Anniversary(kind = "birth", date = AnniversaryDate(partial = PartialDate(year = 1990, month = 6, day = 15))),
-                ),
-            ),
+                    Anniversary(
+                        kind = "birth",
+                        date = AnniversaryDate(
+                            partial = PartialDate(year = 1990, month = 6, day = 15)
+                        )
+                    )
+                )
+            )
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -771,9 +850,14 @@ class ContactDetailScreenTest {
             card = Card(
                 name = Name(full = "Dana White"),
                 anniversaries = listOf(
-                    Anniversary(kind = "death", date = AnniversaryDate(partial = PartialDate(year = 2020, month = 5, day = 1))),
-                ),
-            ),
+                    Anniversary(
+                        kind = "death",
+                        date = AnniversaryDate(
+                            partial = PartialDate(year = 2020, month = 5, day = 1)
+                        )
+                    )
+                )
+            )
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -792,9 +876,14 @@ class ContactDetailScreenTest {
             card = Card(
                 name = Name(full = "Dana White"),
                 anniversaries = listOf(
-                    Anniversary(kind = "death", date = AnniversaryDate(partial = PartialDate(year = 2020, month = 5, day = 1))),
-                ),
-            ),
+                    Anniversary(
+                        kind = "death",
+                        date = AnniversaryDate(
+                            partial = PartialDate(year = 2020, month = 5, day = 1)
+                        )
+                    )
+                )
+            )
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -812,10 +901,20 @@ class ContactDetailScreenTest {
             card = Card(
                 name = Name(full = "Dana White"),
                 anniversaries = listOf(
-                    Anniversary(kind = "birth", date = AnniversaryDate(partial = PartialDate(year = 1990, month = 6, day = 15))),
-                    Anniversary(kind = "death", date = AnniversaryDate(partial = PartialDate(year = 2020, month = 5, day = 1))),
-                ),
-            ),
+                    Anniversary(
+                        kind = "birth",
+                        date = AnniversaryDate(
+                            partial = PartialDate(year = 1990, month = 6, day = 15)
+                        )
+                    ),
+                    Anniversary(
+                        kind = "death",
+                        date = AnniversaryDate(
+                            partial = PartialDate(year = 2020, month = 5, day = 1)
+                        )
+                    )
+                )
+            )
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -835,7 +934,7 @@ class ContactDetailScreenTest {
         val contact = ContactRecordResponse(
             id = 5,
             card = Card(name = Name(full = "Dana White")),
-            crm = CRMEnvelope(gender = "non-binary"),
+            crm = CRMEnvelope(gender = "non-binary")
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -853,9 +952,11 @@ class ContactDetailScreenTest {
                 name = Name(full = "Dana White"),
                 speakToAs = SpeakToAs(
                     pronouns = listOf(Pronouns(pronouns = "they/them")),
-                    grammaticalGenders = listOf(GrammaticalGender(value = "common", language = "en")),
-                ),
-            ),
+                    grammaticalGenders = listOf(
+                        GrammaticalGender(value = "common", language = "en")
+                    )
+                )
+            )
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -882,11 +983,14 @@ class ContactDetailScreenTest {
     fun `keywords render as a single joined row`() {
         val contact = ContactRecordResponse(
             id = 5,
-            card = Card(name = Name(full = "Dana White"), keywords = listOf("hiking", "climbing")),
+            card = Card(name = Name(full = "Dana White"), keywords = listOf("hiking", "climbing"))
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
-                ContactDetailContent(contact = contact, enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.KEYWORDS)
+                ContactDetailContent(
+                    contact = contact,
+                    enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.KEYWORDS
+                )
             }
         }
         composeTestRule.onNodeWithText("Keywords").performScrollTo().assertIsDisplayed()
@@ -897,11 +1001,18 @@ class ContactDetailScreenTest {
     fun `preferred languages render each entry's language`() {
         val contact = ContactRecordResponse(
             id = 5,
-            card = Card(name = Name(full = "Dana White"), preferredLanguages = listOf(LanguagePref(language = "en"))),
+            card = Card(
+                name = Name(full = "Dana White"),
+                preferredLanguages = listOf(LanguagePref(language = "en"))
+            )
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
-                ContactDetailContent(contact = contact, enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.PREFERRED_LANGUAGES)
+                ContactDetailContent(
+                    contact = contact,
+                    enabledFields =
+                        DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.PREFERRED_LANGUAGES
+                )
             }
         }
         composeTestRule.onNodeWithText("Preferred languages").performScrollTo().assertIsDisplayed()
@@ -915,14 +1026,27 @@ class ContactDetailScreenTest {
             card = Card(
                 name = Name(full = "Dana White"),
                 anniversaries = listOf(
-                    Anniversary(kind = "birth", date = AnniversaryDate(partial = PartialDate(year = 1990, month = 6, day = 15))),
-                    Anniversary(kind = "wedding", date = AnniversaryDate(partial = PartialDate(year = 2020, month = 6, day = 1))),
-                ),
-            ),
+                    Anniversary(
+                        kind = "birth",
+                        date = AnniversaryDate(
+                            partial = PartialDate(year = 1990, month = 6, day = 15)
+                        )
+                    ),
+                    Anniversary(
+                        kind = "wedding",
+                        date = AnniversaryDate(
+                            partial = PartialDate(year = 2020, month = 6, day = 1)
+                        )
+                    )
+                )
+            )
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
-                ContactDetailContent(contact = contact, enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.ANNIVERSARIES)
+                ContactDetailContent(
+                    contact = contact,
+                    enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.ANNIVERSARIES
+                )
             }
         }
         composeTestRule.onNodeWithText("Birthday: 15.06.1990").assertIsDisplayed()
@@ -942,9 +1066,14 @@ class ContactDetailScreenTest {
             card = Card(
                 name = Name(full = "Dana White"),
                 anniversaries = listOf(
-                    Anniversary(kind = "wedding", date = AnniversaryDate(partial = PartialDate(year = 2020, month = 6, day = 1))),
-                ),
-            ),
+                    Anniversary(
+                        kind = "wedding",
+                        date = AnniversaryDate(
+                            partial = PartialDate(year = 2020, month = 6, day = 1)
+                        )
+                    )
+                )
+            )
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -962,14 +1091,16 @@ class ContactDetailScreenTest {
             id = 5,
             card = Card(
                 name = Name(full = "Dana White"),
-                titles = listOf(com.mycorrhizal.crm.model.network.Title(name = "Reporter", kind = "title")),
-            ),
+                titles = listOf(
+                    com.mycorrhizal.crm.model.network.Title(name = "Reporter", kind = "title")
+                )
+            )
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
                 ContactDetailContent(
                     contact = contact,
-                    enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.TITLES,
+                    enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.TITLES
                 )
             }
         }
@@ -986,14 +1117,17 @@ class ContactDetailScreenTest {
             id = 5,
             card = Card(
                 name = Name(full = "Dana White"),
-                titles = listOf(com.mycorrhizal.crm.model.network.Title(name = "Reporter", kind = "title")),
-            ),
+                titles = listOf(
+                    com.mycorrhizal.crm.model.network.Title(name = "Reporter", kind = "title")
+                )
+            )
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
                 ContactDetailContent(
                     contact = contact,
-                    enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS - ContactFieldKey.WORK_INFORMATION,
+                    enabledFields =
+                        DEFAULT_ENABLED_CONTACT_FIELDS - ContactFieldKey.WORK_INFORMATION
                 )
             }
         }
@@ -1008,8 +1142,8 @@ class ContactDetailScreenTest {
             crm = CRMEnvelope(
                 howWeMet = "At the climbing gym",
                 workInformation = "Full-stack at Acme",
-                contactInformation = "Prefers email",
-            ),
+                contactInformation = "Prefers email"
+            )
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -1018,7 +1152,9 @@ class ContactDetailScreenTest {
         }
         composeTestRule.onNodeWithText("How we met").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("At the climbing gym").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("Additional contact information").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Additional contact information"
+        ).performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Prefers email").performScrollTo().assertIsDisplayed()
         // Issue #1728: work_information moved behind the Work drill-down.
         composeTestRule.onNodeWithTag("contact-detail-list")
@@ -1035,16 +1171,25 @@ class ContactDetailScreenTest {
             card = Card(
                 name = Name(full = "Dana White"),
                 personalInfo = listOf(
-                    com.mycorrhizal.crm.model.network.PersonalInfo(id = "pi-1", kind = "expertise", value = "Go", level = "expert"),
-                    com.mycorrhizal.crm.model.network.PersonalInfo(id = "pi-2", kind = "hobby", value = "Climbing"),
-                ),
-            ),
+                    com.mycorrhizal.crm.model.network.PersonalInfo(
+                        id = "pi-1",
+                        kind = "expertise",
+                        value = "Go",
+                        level = "expert"
+                    ),
+                    com.mycorrhizal.crm.model.network.PersonalInfo(
+                        id = "pi-2",
+                        kind = "hobby",
+                        value = "Climbing"
+                    )
+                )
+            )
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
                 ContactDetailContent(
                     contact = contact,
-                    onViewSkills = { opened = it },
+                    onViewSkills = { opened = it }
                 )
             }
         }
@@ -1064,11 +1209,16 @@ class ContactDetailScreenTest {
             card = Card(
                 name = Name(full = "Dana White"),
                 imppAddresses = listOf(
-                    OnlineService(service = "Signal", uri = "6085142711"),
-                ),
-            ),
+                    OnlineService(service = "Signal", uri = "6085142711")
+                )
+            )
         )
-        setContent(ContactDetailUiState(contact = contact, enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.IMPP_ADDRESSES))
+        setContent(
+            ContactDetailUiState(
+                contact = contact,
+                enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.IMPP_ADDRESSES
+            )
+        )
 
         composeTestRule.onNodeWithTag("contact-detail-list")
             .performScrollToNode(hasText("Signal"))
@@ -1096,9 +1246,9 @@ class ContactDetailScreenTest {
                     contact = contact,
                     fieldDefinitions = listOf(
                         FieldDefinition(id = "d1", label = "Coffee order", type = "string"),
-                        FieldDefinition(id = "d2", label = "Favorite number", type = "number"),
+                        FieldDefinition(id = "d2", label = "Favorite number", type = "number")
                     ),
-                    fieldValuesByDefinitionId = mapOf("d1" to "Latte", "d2" to 7.0),
+                    fieldValuesByDefinitionId = mapOf("d1" to "Latte", "d2" to 7.0)
                 )
             }
         }
@@ -1117,8 +1267,10 @@ class ContactDetailScreenTest {
             MycorrhizalTheme {
                 ContactDetailContent(
                     contact = contact,
-                    fieldDefinitions = listOf(FieldDefinition(id = "d1", label = "Coffee order", type = "string")),
-                    fieldValuesByDefinitionId = emptyMap(),
+                    fieldDefinitions = listOf(
+                        FieldDefinition(id = "d1", label = "Coffee order", type = "string")
+                    ),
+                    fieldValuesByDefinitionId = emptyMap()
                 )
             }
         }
@@ -1139,7 +1291,7 @@ class ContactDetailScreenTest {
                 ContactDetailContent(
                     contact = contact,
                     fieldDefinitions = emptyList(),
-                    fieldValuesByDefinitionId = mapOf("deleted-def" to "orphaned value"),
+                    fieldValuesByDefinitionId = mapOf("deleted-def" to "orphaned value")
                 )
             }
         }
@@ -1161,10 +1313,13 @@ class ContactDetailScreenTest {
                             id = "d2",
                             label = "Milk options",
                             type = "string",
-                            constraints = FieldConstraints(multi = true),
-                        ),
+                            constraints = FieldConstraints(multi = true)
+                        )
                     ),
-                    fieldValuesByDefinitionId = mapOf("d1" to true, "d2" to listOf("oat", "almond")),
+                    fieldValuesByDefinitionId = mapOf(
+                        "d1" to true,
+                        "d2" to listOf("oat", "almond")
+                    )
                 )
             }
         }
@@ -1179,10 +1334,20 @@ class ContactDetailScreenTest {
     // --- Issue #1731: custom fields as per-group drill-downs ---
 
     private val groupedDefinitions = listOf(
-        FieldDefinition(id = "d1", label = "Passport country", type = "string", group = "Travel profile"),
-        FieldDefinition(id = "d2", label = "Seat preference", type = "string", group = "Travel profile"),
+        FieldDefinition(
+            id = "d1",
+            label = "Passport country",
+            type = "string",
+            group = "Travel profile"
+        ),
+        FieldDefinition(
+            id = "d2",
+            label = "Seat preference",
+            type = "string",
+            group = "Travel profile"
+        ),
         FieldDefinition(id = "d3", label = "Shoe size", type = "number"),
-        FieldDefinition(id = "d4", label = "Allergy", type = "string", group = "Health"),
+        FieldDefinition(id = "d4", label = "Allergy", type = "string", group = "Health")
     )
 
     @Test
@@ -1193,7 +1358,7 @@ class ContactDetailScreenTest {
                 ContactDetailContent(
                     contact = contact,
                     fieldDefinitions = groupedDefinitions,
-                    fieldValuesByDefinitionId = mapOf("d1" to "Canada", "d3" to 42.0),
+                    fieldValuesByDefinitionId = mapOf("d1" to "Canada", "d3" to 42.0)
                 )
             }
         }
@@ -1222,7 +1387,7 @@ class ContactDetailScreenTest {
                 ContactDetailContent(
                     contact = contact,
                     fieldDefinitions = groupedDefinitions,
-                    fieldValuesByDefinitionId = mapOf("d1" to "Canada", "d3" to 42.0),
+                    fieldValuesByDefinitionId = mapOf("d1" to "Canada", "d3" to 42.0)
                 )
             }
         }
@@ -1247,7 +1412,10 @@ class ContactDetailScreenTest {
                     contact = contact,
                     fieldDefinitions = groupedDefinitions,
                     fieldValuesByDefinitionId = mapOf("d1" to "Canada"),
-                    onSaveFieldValue = { id, value -> savedId = id; savedValue = value },
+                    onSaveFieldValue = { id, value ->
+                        savedId = id
+                        savedValue = value
+                    }
                 )
             }
         }
@@ -1275,9 +1443,9 @@ class ContactDetailScreenTest {
                     contact = contact,
                     fieldDefinitions = listOf(
                         FieldDefinition(id = "a", label = "A", type = "string", group = "Travel"),
-                        FieldDefinition(id = "b", label = "B", type = "string", group = "travel"),
+                        FieldDefinition(id = "b", label = "B", type = "string", group = "travel")
                     ),
-                    fieldValuesByDefinitionId = mapOf("a" to "x", "b" to "y"),
+                    fieldValuesByDefinitionId = mapOf("a" to "x", "b" to "y")
                 )
             }
         }
@@ -1297,8 +1465,10 @@ class ContactDetailScreenTest {
             MycorrhizalTheme {
                 ContactDetailContent(
                     contact = contact,
-                    fieldDefinitions = listOf(FieldDefinition(id = "d1", label = "Coffee order", type = "string")),
-                    fieldValuesByDefinitionId = mapOf("d1" to "Latte"),
+                    fieldDefinitions = listOf(
+                        FieldDefinition(id = "d1", label = "Coffee order", type = "string")
+                    ),
+                    fieldValuesByDefinitionId = mapOf("d1" to "Latte")
                 )
             }
         }
@@ -1321,9 +1491,11 @@ class ContactDetailScreenTest {
             MycorrhizalTheme {
                 ContactDetailContent(
                     contact = contact,
-                    fieldDefinitions = listOf(FieldDefinition(id = "d1", label = "Renewal", type = "date")),
+                    fieldDefinitions = listOf(
+                        FieldDefinition(id = "d1", label = "Renewal", type = "date")
+                    ),
                     fieldValuesByDefinitionId = mapOf("d1" to "2026-08-10"),
-                    onSaveFieldValue = { _, value -> savedValue = value },
+                    onSaveFieldValue = { _, value -> savedValue = value }
                 )
             }
         }
@@ -1349,9 +1521,14 @@ class ContactDetailScreenTest {
             MycorrhizalTheme {
                 ContactDetailContent(
                     contact = contact,
-                    fieldDefinitions = listOf(FieldDefinition(id = "d1", label = "Coffee order", type = "string")),
+                    fieldDefinitions = listOf(
+                        FieldDefinition(id = "d1", label = "Coffee order", type = "string")
+                    ),
                     fieldValuesByDefinitionId = mapOf("d1" to "Latte"),
-                    onSaveFieldValue = { id, value -> savedDefinitionId = id; savedValue = value },
+                    onSaveFieldValue = { id, value ->
+                        savedDefinitionId = id
+                        savedValue = value
+                    }
                 )
             }
         }
@@ -1376,9 +1553,11 @@ class ContactDetailScreenTest {
             MycorrhizalTheme {
                 ContactDetailContent(
                     contact = contact,
-                    fieldDefinitions = listOf(FieldDefinition(id = "d1", label = "Coffee order", type = "string")),
+                    fieldDefinitions = listOf(
+                        FieldDefinition(id = "d1", label = "Coffee order", type = "string")
+                    ),
                     fieldValuesByDefinitionId = mapOf("d1" to "Latte"),
-                    onSaveFieldValue = { _, value -> savedValue = value },
+                    onSaveFieldValue = { _, value -> savedValue = value }
                 )
             }
         }
@@ -1402,9 +1581,11 @@ class ContactDetailScreenTest {
             MycorrhizalTheme {
                 ContactDetailContent(
                     contact = contact,
-                    fieldDefinitions = listOf(FieldDefinition(id = "d1", label = "Coffee order", type = "string")),
+                    fieldDefinitions = listOf(
+                        FieldDefinition(id = "d1", label = "Coffee order", type = "string")
+                    ),
                     fieldValuesByDefinitionId = mapOf("d1" to "Latte"),
-                    onSaveFieldValue = { _, _ -> saveCalled = true },
+                    onSaveFieldValue = { _, _ -> saveCalled = true }
                 )
             }
         }
@@ -1428,9 +1609,11 @@ class ContactDetailScreenTest {
             MycorrhizalTheme {
                 ContactDetailContent(
                     contact = contact,
-                    fieldDefinitions = listOf(FieldDefinition(id = "d1", label = "Coffee order", type = "string")),
+                    fieldDefinitions = listOf(
+                        FieldDefinition(id = "d1", label = "Coffee order", type = "string")
+                    ),
                     fieldValuesByDefinitionId = mapOf("d1" to "Latte"),
-                    savingFieldDefinitionId = "d1",
+                    savingFieldDefinitionId = "d1"
                 )
             }
         }
@@ -1449,8 +1632,10 @@ class ContactDetailScreenTest {
             MycorrhizalTheme {
                 ContactDetailContent(
                     contact = contact,
-                    fieldDefinitions = listOf(FieldDefinition(id = "d1", label = "VIP", type = "boolean")),
-                    fieldValuesByDefinitionId = mapOf("d1" to true),
+                    fieldDefinitions = listOf(
+                        FieldDefinition(id = "d1", label = "VIP", type = "boolean")
+                    ),
+                    fieldValuesByDefinitionId = mapOf("d1" to true)
                 )
             }
         }
@@ -1475,11 +1660,11 @@ class ContactDetailScreenTest {
                             id = "d1",
                             label = "Milk",
                             type = "enum",
-                            constraints = FieldConstraints(values = listOf("Oat", "Almond")),
-                        ),
+                            constraints = FieldConstraints(values = listOf("Oat", "Almond"))
+                        )
                     ),
                     fieldValuesByDefinitionId = mapOf("d1" to "Oat"),
-                    onSaveFieldValue = { _, value -> savedValue = value },
+                    onSaveFieldValue = { _, value -> savedValue = value }
                 )
             }
         }
@@ -1511,11 +1696,11 @@ class ContactDetailScreenTest {
                             id = "d1",
                             label = "Milk options",
                             type = "string",
-                            constraints = FieldConstraints(multi = true),
-                        ),
+                            constraints = FieldConstraints(multi = true)
+                        )
                     ),
                     fieldValuesByDefinitionId = mapOf("d1" to listOf("oat")),
-                    onSaveFieldValue = { _, value -> savedValue = value },
+                    onSaveFieldValue = { _, value -> savedValue = value }
                 )
             }
         }
@@ -1547,11 +1732,11 @@ class ContactDetailScreenTest {
                             id = "d1",
                             label = "Milk options",
                             type = "string",
-                            constraints = FieldConstraints(multi = true),
-                        ),
+                            constraints = FieldConstraints(multi = true)
+                        )
                     ),
                     fieldValuesByDefinitionId = mapOf("d1" to listOf("oat", "almond")),
-                    onSaveFieldValue = { _, value -> savedValue = value },
+                    onSaveFieldValue = { _, value -> savedValue = value }
                 )
             }
         }
@@ -1573,8 +1758,10 @@ class ContactDetailScreenTest {
             MycorrhizalTheme {
                 ContactDetailContent(
                     contact = contact,
-                    fieldDefinitions = listOf(FieldDefinition(id = "d1", label = "Field", type = type)),
-                    fieldValuesByDefinitionId = mapOf("d1" to "value"),
+                    fieldDefinitions = listOf(
+                        FieldDefinition(id = "d1", label = "Field", type = type)
+                    ),
+                    fieldValuesByDefinitionId = mapOf("d1" to "value")
                 )
             }
         }
@@ -1587,16 +1774,24 @@ class ContactDetailScreenTest {
     }
 
     @Test
-    fun `a number field renders a text editor when opened`() = assertScalarEditorRendersForType("number")
+    fun `a number field renders a text editor when opened`() = assertScalarEditorRendersForType(
+        "number"
+    )
 
     @Test
-    fun `a text field renders a text editor when opened`() = assertScalarEditorRendersForType("text")
+    fun `a text field renders a text editor when opened`() = assertScalarEditorRendersForType(
+        "text"
+    )
 
     @Test
-    fun `an email field renders a text editor when opened`() = assertScalarEditorRendersForType("email")
+    fun `an email field renders a text editor when opened`() = assertScalarEditorRendersForType(
+        "email"
+    )
 
     @Test
-    fun `a phone field renders a text editor when opened`() = assertScalarEditorRendersForType("phone")
+    fun `a phone field renders a text editor when opened`() = assertScalarEditorRendersForType(
+        "phone"
+    )
 
     @Test
     fun `a uri field renders a text editor when opened`() = assertScalarEditorRendersForType("uri")
@@ -1611,10 +1806,14 @@ class ContactDetailScreenTest {
             MycorrhizalTheme {
                 ContactDetailContent(
                     contact = contact,
-                    contactCircles = listOf(com.mycorrhizal.crm.model.network.Circle(id = "c1", name = "friends")),
-                    allCircles = listOf(com.mycorrhizal.crm.model.network.Circle(id = "c1", name = "friends")),
+                    contactCircles = listOf(
+                        com.mycorrhizal.crm.model.network.Circle(id = "c1", name = "friends")
+                    ),
+                    allCircles = listOf(
+                        com.mycorrhizal.crm.model.network.Circle(id = "c1", name = "friends")
+                    ),
                     contactTags = emptyList(),
-                    onRemoveCircle = { removed = it.name },
+                    onRemoveCircle = { removed = it.name }
                 )
             }
         }
@@ -1633,9 +1832,13 @@ class ContactDetailScreenTest {
             MycorrhizalTheme {
                 ContactDetailContent(
                     contact = contact,
-                    contactCircles = listOf(com.mycorrhizal.crm.model.network.Circle(id = "c1", name = "friends")),
-                    allCircles = listOf(com.mycorrhizal.crm.model.network.Circle(id = "c1", name = "friends")),
-                    onRemoveCircle = { removed = it.name },
+                    contactCircles = listOf(
+                        com.mycorrhizal.crm.model.network.Circle(id = "c1", name = "friends")
+                    ),
+                    allCircles = listOf(
+                        com.mycorrhizal.crm.model.network.Circle(id = "c1", name = "friends")
+                    ),
+                    onRemoveCircle = { removed = it.name }
                 )
             }
         }
@@ -1654,12 +1857,14 @@ class ContactDetailScreenTest {
             MycorrhizalTheme {
                 ContactDetailContent(
                     contact = contact,
-                    contactCircles = listOf(com.mycorrhizal.crm.model.network.Circle(id = "c1", name = "friends")),
+                    contactCircles = listOf(
+                        com.mycorrhizal.crm.model.network.Circle(id = "c1", name = "friends")
+                    ),
                     allCircles = listOf(
                         com.mycorrhizal.crm.model.network.Circle(id = "c1", name = "friends"),
-                        com.mycorrhizal.crm.model.network.Circle(id = "c2", name = "family"),
+                        com.mycorrhizal.crm.model.network.Circle(id = "c2", name = "family")
                     ),
-                    onAddCircle = { added = it.name },
+                    onAddCircle = { added = it.name }
                 )
             }
         }
@@ -1681,7 +1886,7 @@ class ContactDetailScreenTest {
             MycorrhizalTheme {
                 ContactDetailContent(
                     contact = contact,
-                    onUploadProfilePicture = { tapped = true },
+                    onUploadProfilePicture = { tapped = true }
                 )
             }
         }
@@ -1700,9 +1905,11 @@ class ContactDetailScreenTest {
         }
 
         composeTestRule.onNodeWithContentDescription("Photo of Dana White")
-            .assert(SemanticsMatcher("has no click action") { node ->
-                !node.config.contains(SemanticsActions.OnClick)
-            })
+            .assert(
+                SemanticsMatcher("has no click action") { node ->
+                    !node.config.contains(SemanticsActions.OnClick)
+                }
+            )
     }
 
     // --- Issue #220: External Links panel ---
@@ -1716,9 +1923,9 @@ class ContactDetailScreenTest {
                 ContactDetailContent(
                     contact = contact,
                     externalIdentities = listOf(
-                        ExternalIdentity(id = "i1", system = "paperless", externalId = "doc-1"),
+                        ExternalIdentity(id = "i1", system = "paperless", externalId = "doc-1")
                     ),
-                    onDeleteExternalIdentity = { deleted = it.id },
+                    onDeleteExternalIdentity = { deleted = it.id }
                 )
             }
         }
@@ -1731,15 +1938,24 @@ class ContactDetailScreenTest {
 
     @Test
     fun `the immich link renders its person name and photo count`() {
-        val contact = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        val contact = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         composeTestRule.setContent {
             MycorrhizalTheme {
                 ContactDetailContent(
                     contact = contact,
                     externalIdentities = listOf(
-                        ExternalIdentity(id = "i1", entityId = "u5", system = ExternalSystems.IMMICH, externalId = "p1"),
+                        ExternalIdentity(
+                            id = "i1",
+                            entityId = "u5",
+                            system = ExternalSystems.IMMICH,
+                            externalId = "p1"
+                        )
                     ),
-                    immichSummary = ImmichPersonSummary(personName = "Alice", photoCount = 7),
+                    immichSummary = ImmichPersonSummary(personName = "Alice", photoCount = 7)
                 )
             }
         }
@@ -1753,17 +1969,26 @@ class ContactDetailScreenTest {
 
     @Test
     fun `the immich sync button fires the sync callback`() {
-        val contact = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        val contact = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         var synced = false
         composeTestRule.setContent {
             MycorrhizalTheme {
                 ContactDetailContent(
                     contact = contact,
                     externalIdentities = listOf(
-                        ExternalIdentity(id = "i1", entityId = "u5", system = ExternalSystems.IMMICH, externalId = "p1"),
+                        ExternalIdentity(
+                            id = "i1",
+                            entityId = "u5",
+                            system = ExternalSystems.IMMICH,
+                            externalId = "p1"
+                        )
                     ),
                     immichSummary = ImmichPersonSummary(personName = "Alice", photoCount = 7),
-                    onSyncImmich = { synced = true },
+                    onSyncImmich = { synced = true }
                 )
             }
         }
@@ -1777,16 +2002,25 @@ class ContactDetailScreenTest {
 
     @Test
     fun `the immich sync button is disabled while syncing`() {
-        val contact = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        val contact = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         composeTestRule.setContent {
             MycorrhizalTheme {
                 ContactDetailContent(
                     contact = contact,
                     externalIdentities = listOf(
-                        ExternalIdentity(id = "i1", entityId = "u5", system = ExternalSystems.IMMICH, externalId = "p1"),
+                        ExternalIdentity(
+                            id = "i1",
+                            entityId = "u5",
+                            system = ExternalSystems.IMMICH,
+                            externalId = "p1"
+                        )
                     ),
                     immichSummary = ImmichPersonSummary(personName = "Alice", photoCount = 7),
-                    immichSyncing = true,
+                    immichSyncing = true
                 )
             }
         }
@@ -1801,7 +2035,11 @@ class ContactDetailScreenTest {
 
     @Test
     fun `an external activity renders on the timeline`() {
-        val contact = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        val contact = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         composeTestRule.setContent {
             MycorrhizalTheme {
                 ContactDetailContent(
@@ -1814,9 +2052,9 @@ class ContactDetailScreenTest {
                             externalId = "asset-1",
                             type = "photo-appearance",
                             occurredAt = "2026-08-01T10:00:00Z",
-                            payload = mapOf("person_name" to "Bob"),
-                        ),
-                    ),
+                            payload = mapOf("person_name" to "Bob")
+                        )
+                    )
                 )
             }
         }
@@ -1859,7 +2097,12 @@ class ContactDetailScreenTest {
         val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
         composeTestRule.setContent {
             MycorrhizalTheme {
-                ContactDetailContent(contact = contact, paperlessConfigured = true, seafileConfigured = false, nextcloudConfigured = false)
+                ContactDetailContent(
+                    contact = contact,
+                    paperlessConfigured = true,
+                    seafileConfigured = false,
+                    nextcloudConfigured = false
+                )
             }
         }
 
@@ -1877,7 +2120,7 @@ class ContactDetailScreenTest {
                 ContactDetailContent(
                     contact = contact,
                     seafileConfigured = true,
-                    onAddSeafileLink = { tapped = true },
+                    onAddSeafileLink = { tapped = true }
                 )
             }
         }
@@ -1895,9 +2138,15 @@ class ContactDetailScreenTest {
         // contact's own header, not only from a shares list. This renders the
         // FULL ContactDetailScreen (not just ContactDetailContent) with a
         // mocked ViewModel so the top-bar action menu is present.
-        val contact = ContactRecordResponse(id = 5, uid = "uid-5", card = Card(name = Name(full = "Dana White")))
+        val contact = ContactRecordResponse(
+            id = 5,
+            uid = "uid-5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         val viewModel = mockk<ContactDetailViewModel>(relaxed = true)
-        every { viewModel.uiState } returns MutableStateFlow(ContactDetailUiState(contact = contact))
+        every { viewModel.uiState } returns MutableStateFlow(
+            ContactDetailUiState(contact = contact)
+        )
         every { viewModel.events } returns MutableStateFlow<ContactDetailEvent?>(null)
 
         var sharedUid: String? = null
@@ -1906,7 +2155,7 @@ class ContactDetailScreenTest {
                 ContactDetailScreen(
                     onBack = {},
                     onShareContact = { sharedUid = it },
-                    viewModel = viewModel,
+                    viewModel = viewModel
                 )
             }
         }
@@ -1924,13 +2173,25 @@ class ContactDetailScreenTest {
         // The ON_RESUME reload after a drill-down sets isLoading while the
         // previous record is still in state; the page must stay (with its
         // scroll position) rather than flash the skeleton.
-        val contact = ContactRecordResponse(id = 5, uid = "uid-5", card = Card(name = Name(full = "Dana White")))
+        val contact = ContactRecordResponse(
+            id = 5,
+            uid = "uid-5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         val viewModel = mockk<ContactDetailViewModel>(relaxed = true)
-        every { viewModel.uiState } returns MutableStateFlow(ContactDetailUiState(contact = contact, isLoading = true))
+        every { viewModel.uiState } returns MutableStateFlow(
+            ContactDetailUiState(contact = contact, isLoading = true)
+        )
         every { viewModel.events } returns MutableStateFlow<ContactDetailEvent?>(null)
 
         composeTestRule.setContent {
-            MycorrhizalTheme { ContactDetailScreen(onBack = {}, onShareContact = {}, viewModel = viewModel) }
+            MycorrhizalTheme {
+                ContactDetailScreen(
+                    onBack = {},
+                    onShareContact = {},
+                    viewModel = viewModel
+                )
+            }
         }
 
         composeTestRule.onNodeWithTag("contact-detail-list").assertExists()
@@ -1944,7 +2205,13 @@ class ContactDetailScreenTest {
         every { viewModel.events } returns MutableStateFlow<ContactDetailEvent?>(null)
 
         composeTestRule.setContent {
-            MycorrhizalTheme { ContactDetailScreen(onBack = {}, onShareContact = {}, viewModel = viewModel) }
+            MycorrhizalTheme {
+                ContactDetailScreen(
+                    onBack = {},
+                    onShareContact = {},
+                    viewModel = viewModel
+                )
+            }
         }
 
         composeTestRule.onNodeWithContentDescription("Loading").assertExists()
@@ -1955,10 +2222,14 @@ class ContactDetailScreenTest {
 
     @Test
     fun `mark as me in the action menu invokes toggleMe`() {
-        val contact = ContactRecordResponse(id = 5, uid = "uid-5", card = Card(name = Name(full = "Dana White")))
+        val contact = ContactRecordResponse(
+            id = 5,
+            uid = "uid-5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         val viewModel = mockk<ContactDetailViewModel>(relaxed = true)
         every { viewModel.uiState } returns MutableStateFlow(
-            ContactDetailUiState(contact = contact, selfContactVCardUid = null),
+            ContactDetailUiState(contact = contact, selfContactVCardUid = null)
         )
         every { viewModel.events } returns MutableStateFlow<ContactDetailEvent?>(null)
 
@@ -1976,10 +2247,14 @@ class ContactDetailScreenTest {
 
     @Test
     fun `action menu shows unmark as me when this contact is already the self contact`() {
-        val contact = ContactRecordResponse(id = 5, uid = "uid-5", card = Card(name = Name(full = "Dana White")))
+        val contact = ContactRecordResponse(
+            id = 5,
+            uid = "uid-5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         val viewModel = mockk<ContactDetailViewModel>(relaxed = true)
         every { viewModel.uiState } returns MutableStateFlow(
-            ContactDetailUiState(contact = contact, selfContactVCardUid = "uid-5"),
+            ContactDetailUiState(contact = contact, selfContactVCardUid = "uid-5")
         )
         every { viewModel.events } returns MutableStateFlow<ContactDetailEvent?>(null)
 
@@ -2000,8 +2275,8 @@ class ContactDetailScreenTest {
             id = 5,
             card = Card(
                 name = Name(full = "Dana White"),
-                phones = listOf(Phone(number = "+1-555-0100")),
-            ),
+                phones = listOf(Phone(number = "+1-555-0100"))
+            )
         )
         setContent(ContactDetailUiState(contact = contact))
 
@@ -2016,9 +2291,15 @@ class ContactDetailScreenTest {
 
     @Test
     fun `the contact name is marked as a heading`() {
-        val contact = ContactRecordResponse(id = 5, uid = "uid-5", card = Card(name = Name(full = "Dana White")))
+        val contact = ContactRecordResponse(
+            id = 5,
+            uid = "uid-5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         val viewModel = mockk<ContactDetailViewModel>(relaxed = true)
-        every { viewModel.uiState } returns MutableStateFlow(ContactDetailUiState(contact = contact))
+        every { viewModel.uiState } returns MutableStateFlow(
+            ContactDetailUiState(contact = contact)
+        )
         every { viewModel.events } returns MutableStateFlow<ContactDetailEvent?>(null)
 
         composeTestRule.setContent {
@@ -2031,7 +2312,9 @@ class ContactDetailScreenTest {
         // heading semantics. Two "Dana White" nodes exist (the collapsed
         // TopAppBar title, and the large centered name below it) -- only the
         // latter is the one this fix marks.
-        composeTestRule.onNode(hasText("Dana White").and(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)))
+        composeTestRule.onNode(
+            hasText("Dana White").and(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+        )
             .assertIsDisplayed()
     }
 
@@ -2045,13 +2328,17 @@ class ContactDetailScreenTest {
             externalId = "asset-$i",
             type = "photo-appearance",
             occurredAt = "2026-08-01T10:%02d:00Z".format(i % 60),
-            payload = mapOf("person_name" to "Bob"),
+            payload = mapOf("person_name" to "Bob")
         )
     }
 
     @Test
     fun `the timeline preview is capped at five events however many exist`() {
-        val contact = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        val contact = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         composeTestRule.setContent {
             MycorrhizalTheme {
                 ContactDetailContent(contact = contact, externalActivities = photoAppearances(100))
@@ -2059,7 +2346,10 @@ class ContactDetailScreenTest {
         }
 
         scrollTo("Photo appearance")
-        assertEquals(5, composeTestRule.onAllNodesWithText("Photo appearance").fetchSemanticsNodes().size)
+        assertEquals(
+            5,
+            composeTestRule.onAllNodesWithText("Photo appearance").fetchSemanticsNodes().size
+        )
     }
 
     @Test
@@ -2069,12 +2359,24 @@ class ContactDetailScreenTest {
             uid = "u5",
             card = Card(name = Name(full = "Dana White")),
             notes = listOf(
-                com.mycorrhizal.crm.model.network.Note(id = 1, content = "ancient note", date = "2020-01-01T00:00:00Z"),
-                com.mycorrhizal.crm.model.network.Note(id = 2, content = "newest note", date = "2026-09-20T00:00:00Z"),
+                com.mycorrhizal.crm.model.network.Note(
+                    id = 1,
+                    content = "ancient note",
+                    date = "2020-01-01T00:00:00Z"
+                ),
+                com.mycorrhizal.crm.model.network.Note(
+                    id = 2,
+                    content = "newest note",
+                    date = "2026-09-20T00:00:00Z"
+                )
             ),
             activities = listOf(
-                com.mycorrhizal.crm.model.network.Activity(id = 3, title = "newest activity", date = "2026-09-19T00:00:00Z"),
-            ),
+                com.mycorrhizal.crm.model.network.Activity(
+                    id = 3,
+                    title = "newest activity",
+                    date = "2026-09-19T00:00:00Z"
+                )
+            )
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -2087,7 +2389,10 @@ class ContactDetailScreenTest {
         composeTestRule.onNodeWithText("newest activity").assertExists()
         // 3 + 5 = 8 merged events; only the 5 newest remain: 2 recent notes/activities + 3 photos.
         composeTestRule.onNodeWithText("ancient note").assertDoesNotExist()
-        assertEquals(3, composeTestRule.onAllNodesWithText("Photo appearance").fetchSemanticsNodes().size)
+        assertEquals(
+            3,
+            composeTestRule.onAllNodesWithText("Photo appearance").fetchSemanticsNodes().size
+        )
     }
 
     @Test
@@ -2098,9 +2403,9 @@ class ContactDetailScreenTest {
             card = Card(
                 name = Name(full = "Dana White"),
                 phones = listOf(Phone(number = "+1-555-0100")),
-                emails = listOf(Email(address = "dana@example.com", label = "Work")),
+                emails = listOf(Email(address = "dana@example.com", label = "Work"))
             ),
-            crm = CRMEnvelope(circles = listOf("friends")),
+            crm = CRMEnvelope(circles = listOf("friends"))
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -2112,14 +2417,22 @@ class ContactDetailScreenTest {
         composeTestRule.onNodeWithText("+1-555-0100").assertIsDisplayed()
         composeTestRule.onNodeWithText("dana@example.com", substring = true).assertIsDisplayed()
         // And the management rows below the timeline are one short scroll away, not 100 rows away.
-        composeTestRule.onNodeWithTag("contact-detail-list").performScrollToNode(hasText("Reminders · 0"))
+        composeTestRule.onNodeWithTag(
+            "contact-detail-list"
+        ).performScrollToNode(hasText("Reminders · 0"))
         composeTestRule.onNodeWithText("Reminders · 0").assertIsDisplayed()
-        assertTrue(composeTestRule.onAllNodesWithText("Photo appearance").fetchSemanticsNodes().size <= 5)
+        assertTrue(
+            composeTestRule.onAllNodesWithText("Photo appearance").fetchSemanticsNodes().size <= 5
+        )
     }
 
     @Test
     fun `view all is shown even with no events and opens the explorer for this contact`() {
-        val contact = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        val contact = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         var opened: Int? = null
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -2136,17 +2449,32 @@ class ContactDetailScreenTest {
     // Issue #1665 / ADR 0008: a 412 on delete shows the "not deleted" prompt on the detail screen.
     @Test
     fun `a delete conflict shows the prompt and routes both buttons to the view model`() {
-        val contact = ContactRecordResponse(id = 5, uid = "uid-5", card = Card(name = Name(full = "Dana White")))
+        val contact = ContactRecordResponse(
+            id = 5,
+            uid = "uid-5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         val viewModel = mockk<ContactDetailViewModel>(relaxed = true)
-        every { viewModel.uiState } returns MutableStateFlow(ContactDetailUiState(contact = contact, conflict = true))
+        every { viewModel.uiState } returns MutableStateFlow(
+            ContactDetailUiState(contact = contact, conflict = true)
+        )
         every { viewModel.events } returns MutableStateFlow<ContactDetailEvent?>(null)
 
         composeTestRule.setContent {
-            MycorrhizalTheme { ContactDetailScreen(onBack = {}, onShareContact = {}, viewModel = viewModel) }
+            MycorrhizalTheme {
+                ContactDetailScreen(
+                    onBack = {},
+                    onShareContact = {},
+                    viewModel = viewModel
+                )
+            }
         }
 
         composeTestRule.onNodeWithText("Changed elsewhere").assertIsDisplayed()
-        composeTestRule.onNodeWithText("so it was not deleted", substring = true).assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "so it was not deleted",
+            substring = true
+        ).assertIsDisplayed()
         composeTestRule.onNodeWithText("Load latest version").performClick()
         verify(exactly = 1) { viewModel.onConflictLoadLatest() }
         composeTestRule.onNodeWithText("Not now").performClick()
@@ -2155,13 +2483,25 @@ class ContactDetailScreenTest {
 
     @Test
     fun `no conflict prompt on the detail screen without a conflict`() {
-        val contact = ContactRecordResponse(id = 5, uid = "uid-5", card = Card(name = Name(full = "Dana White")))
+        val contact = ContactRecordResponse(
+            id = 5,
+            uid = "uid-5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         val viewModel = mockk<ContactDetailViewModel>(relaxed = true)
-        every { viewModel.uiState } returns MutableStateFlow(ContactDetailUiState(contact = contact))
+        every { viewModel.uiState } returns MutableStateFlow(
+            ContactDetailUiState(contact = contact)
+        )
         every { viewModel.events } returns MutableStateFlow<ContactDetailEvent?>(null)
 
         composeTestRule.setContent {
-            MycorrhizalTheme { ContactDetailScreen(onBack = {}, onShareContact = {}, viewModel = viewModel) }
+            MycorrhizalTheme {
+                ContactDetailScreen(
+                    onBack = {},
+                    onShareContact = {},
+                    viewModel = viewModel
+                )
+            }
         }
 
         composeTestRule.onNodeWithText("Changed elsewhere").assertDoesNotExist()
@@ -2175,9 +2515,12 @@ class ContactDetailScreenTest {
             id = 5,
             uid = "u5",
             card = Card(name = Name(full = "Dana White")),
-            activities = listOf(Activity(id = 1, title = "Coffee"), Activity(id = 2, title = "Walk")),
+            activities = listOf(
+                Activity(id = 1, title = "Coffee"),
+                Activity(id = 2, title = "Walk")
+            ),
             notes = listOf(Note(id = 3, content = "Met at the park")),
-            reminders = listOf(Reminder(id = 4, message = "Call")),
+            reminders = listOf(Reminder(id = 4, message = "Call"))
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -2189,7 +2532,7 @@ class ContactDetailScreenTest {
                     agendaCount = 0,
                     relationshipCount = 5,
                     attachmentCount = 1,
-                    cadenceCount = 1,
+                    cadenceCount = 1
                 )
             }
         }
@@ -2229,7 +2572,11 @@ class ContactDetailScreenTest {
 
     @Test
     fun `an unknown count renders the label without a number`() {
-        val contact = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        val contact = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         composeTestRule.setContent {
             MycorrhizalTheme { ContactDetailContent(contact = contact) }
         }
@@ -2241,9 +2588,15 @@ class ContactDetailScreenTest {
 
     @Test
     fun `merge is reachable from the overflow menu`() {
-        val contact = ContactRecordResponse(id = 5, uid = "uid-5", card = Card(name = Name(full = "Dana White")))
+        val contact = ContactRecordResponse(
+            id = 5,
+            uid = "uid-5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         val viewModel = mockk<ContactDetailViewModel>(relaxed = true)
-        every { viewModel.uiState } returns MutableStateFlow(ContactDetailUiState(contact = contact))
+        every { viewModel.uiState } returns MutableStateFlow(
+            ContactDetailUiState(contact = contact)
+        )
         every { viewModel.events } returns MutableStateFlow<ContactDetailEvent?>(null)
 
         var mergedId: Int? = null
@@ -2261,9 +2614,15 @@ class ContactDetailScreenTest {
 
     @Test
     fun `export is a submenu offering both vCard versions`() {
-        val contact = ContactRecordResponse(id = 5, uid = "uid-5", card = Card(name = Name(full = "Dana White")))
+        val contact = ContactRecordResponse(
+            id = 5,
+            uid = "uid-5",
+            card = Card(name = Name(full = "Dana White"))
+        )
         val viewModel = mockk<ContactDetailViewModel>(relaxed = true)
-        every { viewModel.uiState } returns MutableStateFlow(ContactDetailUiState(contact = contact))
+        every { viewModel.uiState } returns MutableStateFlow(
+            ContactDetailUiState(contact = contact)
+        )
         every { viewModel.events } returns MutableStateFlow<ContactDetailEvent?>(null)
 
         composeTestRule.setContent {

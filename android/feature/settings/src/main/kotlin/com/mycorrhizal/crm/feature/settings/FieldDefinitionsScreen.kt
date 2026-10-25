@@ -50,8 +50,8 @@ import com.mycorrhizal.crm.model.network.FieldDefinition
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.BrandFab
-import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import kotlin.math.roundToInt
@@ -73,7 +73,7 @@ fun FieldDefinitionsScreen(
     onBack: () -> Unit,
     onCreate: () -> Unit,
     onEdit: (String) -> Unit,
-    viewModel: FieldDefinitionsViewModel = hiltViewModel(),
+    viewModel: FieldDefinitionsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -87,52 +87,70 @@ fun FieldDefinitionsScreen(
             TopAppBar(
                 navigationIcon = {
                     AccessibleIconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back)
+                        )
                     }
                 },
                 title = {
-                    Text(stringResource(R.string.settings_custom_fields_title), style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        stringResource(R.string.settings_custom_fields_title),
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
         floatingActionButton = {
             BrandFab(onClick = onCreate) {
-                Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.settings_custom_fields_new_title))
+                Icon(
+                    Icons.Outlined.Add,
+                    contentDescription = stringResource(R.string.settings_custom_fields_new_title)
+                )
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             RefreshableContent(
                 isRefreshing = state.isLoading && state.definitions.isNotEmpty(),
                 onRefresh = viewModel::load,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize()
             ) {
                 when {
                     state.isLoading && state.definitions.isEmpty() -> LoadingSkeleton()
+
                     state.definitions.isEmpty() && state.error == null ->
                         EmptyState(
                             title = stringResource(R.string.settings_custom_fields_empty),
                             body = stringResource(R.string.settings_custom_fields_empty_body),
                             actionLabel = stringResource(R.string.settings_custom_fields_new_title),
-                            onAction = onCreate,
+                            onAction = onCreate
                         )
+
                     state.definitions.isEmpty() && state.error != null -> {
                         Text(
                             text = state.error.orEmpty(),
                             color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.align(Alignment.Center),
+                            modifier = Modifier.align(Alignment.Center)
                         )
                     }
+
                     else -> {
-                        LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = FabListContentPadding) {
-                            itemsIndexed(state.definitions, key = { _, definition -> definition.id }) { index, definition ->
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = FabListContentPadding
+                        ) {
+                            itemsIndexed(
+                                state.definitions,
+                                key = { _, definition -> definition.id }
+                            ) { index, definition ->
                                 FieldDefinitionListItem(
                                     definition = definition,
                                     canMoveUp = index > 0,
@@ -141,7 +159,7 @@ fun FieldDefinitionsScreen(
                                     onMoveUp = { viewModel.move(definition.id, -1) },
                                     onMoveDown = { viewModel.move(definition.id, 1) },
                                     onMoveBy = { steps -> viewModel.moveBy(definition.id, steps) },
-                                    onEdit = { onEdit(definition.id) },
+                                    onEdit = { onEdit(definition.id) }
                                 )
                             }
                         }
@@ -168,7 +186,7 @@ private fun FieldDefinitionListItem(
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
     onMoveBy: (Int) -> Unit,
-    onEdit: () -> Unit,
+    onEdit: () -> Unit
 ) {
     val label = definition.label.orEmpty()
     val moveUpLabel = stringResource(R.string.settings_custom_fields_move_up_named, label)
@@ -186,26 +204,26 @@ private fun FieldDefinitionListItem(
                 translationY = dragOffset
                 if (dragging) shadowElevation = 8.dp.toPx()
             },
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Column(
             modifier = Modifier
                 .weight(1f)
                 .clickable(role = Role.Button, onClick = onEdit)
-                .padding(start = 16.dp, top = 8.dp, bottom = 8.dp),
+                .padding(start = 16.dp, top = 8.dp, bottom = 8.dp)
         ) {
             Text(
                 text = label,
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = metadataSummary(definition),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
         }
         Box(
@@ -236,26 +254,36 @@ private fun FieldDefinitionListItem(
                                 change.consume()
                                 dragOffset += amount.y
                             }
-                        },
+                        }
                     )
                 }
                 .semantics(mergeDescendants = true) {
                     contentDescription = reorderLabel
                     customActions = buildList {
                         if (canMoveUp && !reordering) {
-                            add(CustomAccessibilityAction(moveUpLabel) { onMoveUp(); true })
+                            add(
+                                CustomAccessibilityAction(moveUpLabel) {
+                                    onMoveUp()
+                                    true
+                                }
+                            )
                         }
                         if (canMoveDown && !reordering) {
-                            add(CustomAccessibilityAction(moveDownLabel) { onMoveDown(); true })
+                            add(
+                                CustomAccessibilityAction(moveDownLabel) {
+                                    onMoveDown()
+                                    true
+                                }
+                            )
                         }
                     }
                 },
-            contentAlignment = Alignment.Center,
+            contentAlignment = Alignment.Center
         ) {
             Icon(
                 Icons.Outlined.DragHandle,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

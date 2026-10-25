@@ -19,7 +19,11 @@ class EncryptedProfileSecretStorageTest {
             grants[profileId] = token to id
         }
         override suspend fun loadToken(profileId: String): String? = grants[profileId]?.first
-        override suspend fun loadGrantId(profileId: String): Long? = grants[profileId]?.second?.takeIf { it != 0L }
+        override suspend fun loadGrantId(profileId: String): Long? =
+            grants[profileId]?.second?.takeIf {
+                it !=
+                    0L
+            }
         override suspend fun clear(profileId: String) {
             grants.remove(profileId)
         }
@@ -58,7 +62,10 @@ class EncryptedProfileSecretStorageTest {
         storage.migrateLegacy("p1")
 
         assertEquals("grant-token" to 7L, deviceGrant.grants["p1"])
-        assertEquals("state-a" to "verifier-a", oidc.pending["p1"]?.let { it.state to it.codeVerifier })
+        assertEquals(
+            "state-a" to "verifier-a",
+            oidc.pending["p1"]?.let { it.state to it.codeVerifier }
+        )
         assertNull("the legacy grant slot must be cleared", deviceGrant.legacy)
         assertNull("the legacy OIDC slot must be cleared", oidc.legacy)
     }

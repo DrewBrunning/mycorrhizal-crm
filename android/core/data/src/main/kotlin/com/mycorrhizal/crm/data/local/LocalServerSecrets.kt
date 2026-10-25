@@ -16,13 +16,13 @@ data class LocalServerSecrets(
     /** The JWT signing secret, base64url. */
     val jwtSecret: String,
     /** The at-rest master key, base64 (the backend's expected encoding). */
-    val dataEncryptionKey: String,
+    val dataEncryptionKey: String
 )
 
 /** The two secrets, each with its own Keystore key alias. */
 enum class LocalServerSecretPurpose(val keystoreAlias: String) {
     JWT_SECRET("mycorrhizal.local_server.jwt"),
-    ATREST_MASTER_KEY("mycorrhizal.local_server.atrest"),
+    ATREST_MASTER_KEY("mycorrhizal.local_server.atrest")
 }
 
 /** Wraps a secret for storage; the production implementation is Keystore-backed. */
@@ -48,7 +48,7 @@ fun interface LocalServerSecretCipherProvider {
 class LocalServerSecretStore(
     private val keyFile: File,
     private val ciphers: LocalServerSecretCipherProvider,
-    private val random: SecureRandom = SecureRandom(),
+    private val random: SecureRandom = SecureRandom()
 ) {
 
     /**
@@ -65,8 +65,12 @@ class LocalServerSecretStore(
         val atrest = ByteArray(SECRET_BYTES).also(random::nextBytes)
         val record = buildString {
             append(FORMAT_HEADER).append('\n')
-            append(encode(ciphers.forPurpose(LocalServerSecretPurpose.JWT_SECRET).wrap(jwt))).append('\n')
-            append(encode(ciphers.forPurpose(LocalServerSecretPurpose.ATREST_MASTER_KEY).wrap(atrest))).append('\n')
+            append(
+                encode(ciphers.forPurpose(LocalServerSecretPurpose.JWT_SECRET).wrap(jwt))
+            ).append('\n')
+            append(
+                encode(ciphers.forPurpose(LocalServerSecretPurpose.ATREST_MASTER_KEY).wrap(atrest))
+            ).append('\n')
         }
         keyFile.parentFile?.mkdirs()
         keyFile.writeText(record)
@@ -84,14 +88,19 @@ class LocalServerSecretStore(
             "local-server keys.bin is malformed; refusing to regenerate and orphan the database"
         }
         val jwt = ciphers.forPurpose(LocalServerSecretPurpose.JWT_SECRET).unwrap(dec(lines[1]))
-        val atrest = ciphers.forPurpose(LocalServerSecretPurpose.ATREST_MASTER_KEY).unwrap(dec(lines[2]))
+        val atrest = ciphers.forPurpose(
+            LocalServerSecretPurpose.ATREST_MASTER_KEY
+        ).unwrap(dec(lines[2]))
         return LocalServerSecrets(base64Url(jwt), base64(atrest))
     }
 
     private fun encode(bytes: ByteArray): String = Base64.getEncoder().encodeToString(bytes)
     private fun dec(text: String): ByteArray = Base64.getDecoder().decode(text)
     private fun base64(bytes: ByteArray): String = Base64.getEncoder().encodeToString(bytes)
-    private fun base64Url(bytes: ByteArray): String = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
+    private fun base64Url(bytes: ByteArray): String =
+        Base64.getUrlEncoder().withoutPadding().encodeToString(
+            bytes
+        )
 
     companion object {
         const val FORMAT_HEADER = "mycorrhizal-local-server-keys/v1"

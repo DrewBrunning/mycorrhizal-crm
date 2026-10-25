@@ -13,14 +13,12 @@ import javax.inject.Inject
  * Ego-centric graph access over [ApiClient]. Stateless pass-through — the
  * traversal is computed server-side, so there is nothing to mirror locally.
  */
-class GraphRepositoryImpl @Inject constructor(
-    private val apiClient: ApiClient,
-) : GraphRepository {
+class GraphRepositoryImpl @Inject constructor(private val apiClient: ApiClient) : GraphRepository {
 
     override suspend fun getConnections(
         from: String,
         depth: Int?,
-        relation: String?,
+        relation: String?
     ): Result<GraphConnectionsResponse> =
         apiClient.getConnections(from = from, depth = depth, relation = relation)
 
@@ -46,7 +44,9 @@ fun CirclesPage.toCirclesWithMembers(): List<CircleWithMembers> {
         CircleWithMembers(
             id = circle.id,
             name = circle.name,
-            memberVCardUids = byCircle[circle.id].orEmpty().map(CircleMember::memberVCardUid).toSet(),
+            memberVCardUids = byCircle[circle.id].orEmpty().map(
+                CircleMember::memberVCardUid
+            ).toSet()
         )
     }
 }

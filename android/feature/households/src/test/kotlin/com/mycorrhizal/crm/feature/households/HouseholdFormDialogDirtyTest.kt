@@ -34,7 +34,7 @@ class HouseholdFormDialogDirtyTest {
                     initialType = HouseholdTypes.FAMILY_UNIT,
                     confirmLabel = "Create",
                     onConfirm = { _, _ -> },
-                    onDismiss = onDismiss,
+                    onDismiss = onDismiss
                 )
             }
         }

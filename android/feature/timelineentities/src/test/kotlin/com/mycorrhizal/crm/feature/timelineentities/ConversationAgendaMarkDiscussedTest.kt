@@ -61,12 +61,12 @@ class ConversationAgendaMarkDiscussedTest {
 
     private fun vm(
         saved: SavedStateHandle = SavedStateHandle(mapOf("contactId" to 5)),
-        activities: List<Activity> = emptyList(),
+        activities: List<Activity> = emptyList()
     ): ConversationAgendaViewModel {
         val activityRepo = mockk<ActivityRepository>()
         val contacts = mockk<ContactRepository>()
         coEvery { contacts.getContact(5) } returns Result.success(
-            ContactRecordResponse(id = 5, card = Card(uid = uid, name = Name(full = "Dana White"))),
+            ContactRecordResponse(id = 5, card = Card(uid = uid, name = Name(full = "Dana White")))
         )
         coEvery { activityRepo.listForContact(5, any(), any(), any(), any(), any()) } returns
             Result.success(ContactActivitiesPage(activities = activities, nextCursor = null))
@@ -226,7 +226,7 @@ class ConversationAgendaMarkDiscussedTest {
                     activities = listOf(Activity(id = 9, title = "Coffee", date = "2026-10-18")),
                     confirming = false,
                     onConfirm = {},
-                    onDismiss = {},
+                    onDismiss = {}
                 )
             }
         }

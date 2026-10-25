@@ -46,9 +46,7 @@ internal sealed interface UnlockCipherSpec {
  * biometrics permanently invalidates it and the app re-establishes the token
  * after a fresh unlock.
  */
-internal class BiometricUnlockVault(
-    context: Context,
-) {
+internal class BiometricUnlockVault(context: Context) {
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     private val keyStore: KeyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
 
@@ -62,11 +60,17 @@ internal class BiometricUnlockVault(
      */
     fun prepare(): UnlockCipherSpec { // # pragma: no cover — AndroidKeyStore is unavailable under Robolectric; see BiometricUnlockVaultGuardTest + AppUnlockPrompterGuardTest
         val key = loadOrCreateKey()
-        return storedWrapped()?.let { wrapped -> // # pragma: no cover
+        return storedWrapped()?.let { wrapped ->
+            // # pragma: no cover
             val cipher = Cipher.getInstance(TRANSFORMATION) // # pragma: no cover
-            cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(GCM_TAG_BITS, wrapped, 0, GCM_IV_LENGTH)) // # pragma: no cover
+            cipher.init(
+                Cipher.DECRYPT_MODE,
+                key,
+                GCMParameterSpec(GCM_TAG_BITS, wrapped, 0, GCM_IV_LENGTH)
+            ) // # pragma: no cover
             UnlockCipherSpec.Decrypt(cipher, wrapped.copyOfRange(GCM_IV_LENGTH, wrapped.size)) // # pragma: no cover
-        } ?: run { // # pragma: no cover
+        } ?: run {
+            // # pragma: no cover
             val cipher = Cipher.getInstance(TRANSFORMATION) // # pragma: no cover
             cipher.init(Cipher.ENCRYPT_MODE, key) // # pragma: no cover
             UnlockCipherSpec.Encrypt(cipher) // # pragma: no cover
@@ -95,13 +99,18 @@ internal class BiometricUnlockVault(
                     storeWrapped(wrapped)
                     true
                 }
+
                 is UnlockCipherSpec.Decrypt -> {
                     val plain = cipher.doFinal(spec.wrapped)
                     plain.contentEquals(PLAINTEXT)
                 }
             }
         } catch (e: KeyPermanentlyInvalidatedException) {
-            android.util.Log.w(TAG, "App-lock key invalidated (biometric enrollment changed); re-establishing", e)
+            android.util.Log.w(
+                TAG,
+                "App-lock key invalidated (biometric enrollment changed); re-establishing",
+                e
+            )
             clear()
             false
         } catch (e: Exception) {
@@ -121,7 +130,7 @@ internal class BiometricUnlockVault(
         val generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEYSTORE)
         val builder = KeyGenParameterSpec.Builder(
             KEY_ALIAS,
-            KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
+            KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
         )
             .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
             .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
@@ -131,7 +140,7 @@ internal class BiometricUnlockVault(
             builder.setUserAuthenticationParameters(
                 0, // no duration — every use must be freshly authorized
                 KeyProperties.AUTH_BIOMETRIC_STRONG or
-                    KeyProperties.AUTH_DEVICE_CREDENTIAL,
+                    KeyProperties.AUTH_DEVICE_CREDENTIAL
             )
         }
         generator.init(builder.build())

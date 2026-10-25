@@ -3,7 +3,7 @@ package com.mycorrhizal.crm.model.network
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
 
-/**
+/*
  * M5 §5a (issue #152) — mobile push device registrations. Mirrors
  * `backend/models/notification.go` by hand: a device is one platform push
  * token (`client` identifies the platform — `fcm` today, `apns` accepted but
@@ -17,7 +17,7 @@ import com.squareup.moshi.JsonClass
 data class DeviceRegistrationInput(
     val token: String,
     val client: String,
-    @Json(name = "device_label") val deviceLabel: String = "",
+    @Json(name = "device_label") val deviceLabel: String = ""
 )
 
 /**
@@ -33,11 +33,9 @@ data class DeviceRegistration(
     @Json(name = "updated_at") val updatedAt: String? = null,
     val token: String = "",
     val client: String = "",
-    @Json(name = "device_label") val deviceLabel: String = "",
+    @Json(name = "device_label") val deviceLabel: String = ""
 )
 
 /** GET /notifications/devices — `{ devices: [...] }`. */
 @JsonClass(generateAdapter = true)
-data class DeviceRegistrationsResponse(
-    val devices: List<DeviceRegistration> = emptyList(),
-)
+data class DeviceRegistrationsResponse(val devices: List<DeviceRegistration> = emptyList())

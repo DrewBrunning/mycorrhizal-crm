@@ -12,7 +12,7 @@ import com.squareup.moshi.JsonClass
  * must be kept in sync by hand if the backend ever adds a type.
  */
 val FIELD_TYPES: List<String> = listOf(
-    "string", "text", "number", "boolean", "date", "datetime", "uri", "email", "phone", "enum",
+    "string", "text", "number", "boolean", "date", "datetime", "uri", "email", "phone", "enum"
 )
 
 /** Type-dependent validation rules (§94.3). `multi` marks list-of-<type> rather than a scalar. */
@@ -24,7 +24,7 @@ data class FieldConstraints(
     val pattern: String? = null,
     /** The allowed-value list for type `enum`. */
     val values: List<String>? = null,
-    val multi: Boolean = false,
+    val multi: Boolean = false
 )
 
 @JsonClass(generateAdapter = true)
@@ -49,7 +49,7 @@ data class FieldDefinition(
      */
     val group: String = "",
     @Json(name = "created_at") val createdAt: String? = null,
-    @Json(name = "updated_at") val updatedAt: String? = null,
+    @Json(name = "updated_at") val updatedAt: String? = null
 )
 
 /** Server-side limit on [FieldDefinition.group] / [FieldDefinitionInput.group], in characters. */
@@ -69,7 +69,7 @@ data class FieldDefinitionsResponse(
     @Json(name = "field_definitions") val fieldDefinitions: List<FieldDefinition>? = null,
     val total: Int = 0,
     @Json(name = "next_cursor") val nextCursor: String? = null,
-    val limit: Int = 0,
+    val limit: Int = 0
 ) {
     val definitions: List<FieldDefinition> get() = fieldDefinitions.orEmpty()
 }
@@ -87,7 +87,7 @@ data class FieldValue(
     @Json(name = "entity_id") val entityId: String? = null,
     val value: Any? = null,
     @Json(name = "created_at") val createdAt: String? = null,
-    @Json(name = "updated_at") val updatedAt: String? = null,
+    @Json(name = "updated_at") val updatedAt: String? = null
 )
 
 /** GET/PUT /contacts/:id/field-values response envelope — see [FieldDefinitionsResponse]'s doc
@@ -95,7 +95,7 @@ data class FieldValue(
 @JsonClass(generateAdapter = true)
 data class ContactFieldValuesResponse(
     @Json(name = "field_values") val fieldValues: List<FieldValue>? = null,
-    val message: String? = null,
+    val message: String? = null
 ) {
     val values: List<FieldValue> get() = fieldValues.orEmpty()
 }
@@ -104,7 +104,7 @@ data class ContactFieldValuesResponse(
 @JsonClass(generateAdapter = true)
 data class FieldValueInput(
     @Json(name = "field_definition_id") val fieldDefinitionId: String,
-    val value: Any?,
+    val value: Any?
 )
 
 /**
@@ -113,7 +113,7 @@ data class FieldValueInput(
  */
 @JsonClass(generateAdapter = true)
 data class ContactFieldValuesInput(
-    @Json(name = "field_values") val fieldValues: List<FieldValueInput>,
+    @Json(name = "field_values") val fieldValues: List<FieldValueInput>
 )
 
 /**
@@ -136,7 +136,7 @@ data class FieldDefinitionInput(
      * a caller that does not know the group may leave it null. The edit form always sends the
      * label it shows, and `""` to clear the group (issue #1730).
      */
-    val group: String? = null,
+    val group: String? = null
 )
 
 /**
@@ -145,16 +145,14 @@ data class FieldDefinitionInput(
  * complete, owned, duplicate-free set.
  */
 @JsonClass(generateAdapter = true)
-data class FieldDefinitionReorderInput(
-    val order: List<String>,
-)
+data class FieldDefinitionReorderInput(val order: List<String>)
 
 /** POST /field-definitions response — wrapped `{ message, field_definition }`, unlike
  *  Get/Update's raw-object responses (see `field_definition_controller.go`'s CreateFieldDefinition). */
 @JsonClass(generateAdapter = true)
 data class CreateFieldDefinitionResponse(
     val message: String? = null,
-    @Json(name = "field_definition") val fieldDefinition: FieldDefinition? = null,
+    @Json(name = "field_definition") val fieldDefinition: FieldDefinition? = null
 )
 
 /** Whether [definition] is a multi-valued (list-of-scalar) field — `FieldConstraints.Multi`. */
@@ -191,8 +189,12 @@ fun isEditorValueEmpty(definition: FieldDefinition, editor: Any?): Boolean = whe
  * web's `wireToEditorValue`.
  */
 fun wireToEditorValue(definition: FieldDefinition, value: Any?): Any = when {
-    isMulti(definition) -> (value as? List<*>)?.map { scalarWireToEditorString(it) } ?: emptyList<String>()
+    isMulti(
+        definition
+    ) -> (value as? List<*>)?.map { scalarWireToEditorString(it) } ?: emptyList<String>()
+
     definition.type == "boolean" -> value == true
+
     else -> scalarWireToEditorString(value)
 }
 
@@ -204,15 +206,19 @@ fun wireToEditorValue(definition: FieldDefinition, value: Any?): Any = when {
  * calling this for an empty editor value.
  */
 fun editorToWireValue(definition: FieldDefinition, editor: Any?): Any? = when {
-    isMulti(definition) -> (editor as? List<*>).orEmpty().map { scalarEditorToWireValue(definition, it) }
+    isMulti(
+        definition
+    ) -> (editor as? List<*>).orEmpty().map { scalarEditorToWireValue(definition, it) }
+
     else -> scalarEditorToWireValue(definition, editor)
 }
 
-private fun scalarEditorToWireValue(definition: FieldDefinition, editor: Any?): Any? = when (definition.type) {
-    "number" -> (editor as? String)?.toDoubleOrNull()
-    "boolean" -> editor == true
-    else -> editor as? String ?: ""
-}
+private fun scalarEditorToWireValue(definition: FieldDefinition, editor: Any?): Any? =
+    when (definition.type) {
+        "number" -> (editor as? String)?.toDoubleOrNull()
+        "boolean" -> editor == true
+        else -> editor as? String ?: ""
+    }
 
 private fun scalarWireToEditorString(value: Any?): String = scalarValueDisplay(value)
 
@@ -224,7 +230,11 @@ private fun scalarWireToEditorString(value: Any?): String = scalarValueDisplay(v
 fun fieldValueDisplay(definition: FieldDefinition, value: Any?): String {
     if (definition.constraints?.multi == true) {
         val list = value as? List<*> ?: return ""
-        return list.mapNotNull { scalarValueDisplay(it).takeIf(String::isNotEmpty) }.joinToString("; ")
+        return list.mapNotNull {
+            scalarValueDisplay(
+                it
+            ).takeIf(String::isNotEmpty)
+        }.joinToString("; ")
     }
     if (definition.type == "boolean") return if (value == true) "true" else "false"
     return scalarValueDisplay(value)
@@ -232,7 +242,9 @@ fun fieldValueDisplay(definition: FieldDefinition, value: Any?): String {
 
 private fun scalarValueDisplay(value: Any?): String = when (value) {
     null -> ""
+
     is Boolean -> if (value) "true" else "false"
+
     // JSON numbers decode as Double via Moshi's Any support; render a whole number without
     // a trailing ".0" (matching how a user typed "5", not "5.0").
     is Double -> if (value == Math.floor(value) && !value.isInfinite()) {
@@ -240,5 +252,6 @@ private fun scalarValueDisplay(value: Any?): String = when (value) {
     } else {
         value.toString()
     }
+
     else -> value.toString()
 }

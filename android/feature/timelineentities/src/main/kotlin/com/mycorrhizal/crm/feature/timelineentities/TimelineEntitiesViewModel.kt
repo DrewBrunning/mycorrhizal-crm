@@ -5,15 +5,15 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.ActivityRepository
-import com.mycorrhizal.crm.domain.repository.ConversationAgendaRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
+import com.mycorrhizal.crm.domain.repository.ConversationAgendaRepository
 import com.mycorrhizal.crm.domain.repository.GiftRepository
 import com.mycorrhizal.crm.domain.repository.LifeEventRepository
 import com.mycorrhizal.crm.domain.repository.PreferenceRepository
 import com.mycorrhizal.crm.model.network.Activity
+import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.ConversationAgenda
 import com.mycorrhizal.crm.model.network.ConversationAgendaInput
-import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.Gift
 import com.mycorrhizal.crm.model.network.GiftInput
 import com.mycorrhizal.crm.model.network.GiftStatuses
@@ -29,6 +29,12 @@ import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneId
+import java.time.ZoneOffset
+import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,12 +42,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.time.Instant
-import java.time.LocalDate
-import java.time.LocalTime
-import java.time.ZoneId
-import java.time.ZoneOffset
-import javax.inject.Inject
 
 /**
  * Resolves a contact's numeric id to its VCardUID (the graph/entity_id
@@ -65,7 +65,7 @@ data class EntityItem(
      */
     val labelFamily: EntityLabelFamily? = null,
     val labelToken: String? = null,
-    val labelDetail: String? = null,
+    val labelDetail: String? = null
 )
 
 enum class EntityLabelFamily { LIFE_EVENT, PREFERENCE }
@@ -78,7 +78,7 @@ data class EntityListUiState(
     @StringRes val errorRes: Int? = null,
     val deletingId: String? = null,
     /** ADR 0008 (issue #1665): a life-event write was rejected with 412 (changed elsewhere). */
-    val conflict: EntityConflict? = null,
+    val conflict: EntityConflict? = null
 )
 
 /** Which write a 412 rejected — picks the conflict dialog's wording. */
@@ -95,7 +95,7 @@ data class LifeEventFormData(
     val description: String = "",
     val date: PartialDate? = null,
     val relatedEntityIds: List<String> = emptyList(),
-    val remind: Boolean = false,
+    val remind: Boolean = false
 )
 
 data class GiftFormData(
@@ -109,7 +109,7 @@ data class GiftFormData(
     val valueCents: Long? = null,
     val currency: String? = null,
     val lifeEventId: String? = null,
-    val activityId: Int? = null,
+    val activityId: Int? = null
 )
 
 data class PreferenceFormData(
@@ -120,7 +120,7 @@ data class PreferenceFormData(
      * none is recorded or the category doesn't support one. */
     val level: String? = null,
     val notes: String? = null,
-    val sensitivity: String = PreferenceSensitivities.NORMAL,
+    val sensitivity: String = PreferenceSensitivities.NORMAL
 )
 
 /**
@@ -173,7 +173,7 @@ fun giftTodayIso(now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefau
 class LifeEventsViewModel @Inject constructor(
     private val lifeEventRepository: LifeEventRepository,
     private val contactRepository: ContactRepository,
-    savedStateHandle: SavedStateHandle,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     private val resolver = ContactUidResolver(contactRepository)
     private val contactId: Int = (savedStateHandle["contactId"] as? Int) ?: 0
@@ -189,13 +189,16 @@ class LifeEventsViewModel @Inject constructor(
     val relatedSearchResults: StateFlow<List<ContactSummary>> = _relatedSearchResults.asStateFlow()
     private val _relatedSearchLoading = MutableStateFlow(false)
     val relatedSearchLoading: StateFlow<Boolean> = _relatedSearchLoading.asStateFlow()
+
     /** The currently selected related contacts (the form's multi-select value). */
     private val _relatedContacts = MutableStateFlow<List<ContactSummary>>(emptyList())
     val relatedContacts: StateFlow<List<ContactSummary>> = _relatedContacts.asStateFlow()
 
     private var relatedSearchJob: Job? = null
 
-    init { load() }
+    init {
+        load()
+    }
 
     fun load() {
         viewModelScope.launch {
@@ -203,7 +206,11 @@ class LifeEventsViewModel @Inject constructor(
             val uid = resolver.resolve(contactId)
             if (uid.isNullOrBlank()) {
                 _uiState.update {
-                    it.copy(isLoading = false, errorRes = R.string.entities_error_no_vcard_uid, error = null)
+                    it.copy(
+                        isLoading = false,
+                        errorRes = R.string.entities_error_no_vcard_uid,
+                        error = null
+                    )
                 }
                 return@launch
             }
@@ -211,11 +218,24 @@ class LifeEventsViewModel @Inject constructor(
             lifeEventRepository.listForContact(uid).foldApiError(
                 onSuccess = { items ->
                     loaded = items
-                    _uiState.update { it.copy(isLoading = false, items = items.map { e -> EntityItem(e.id, lifeEventLabel(e), labelFamily = EntityLabelFamily.LIFE_EVENT, labelToken = e.type?.takeIf { it.isNotBlank() }, labelDetail = e.description?.takeIf { it.isNotBlank() }) }) }
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            items = items.map { e ->
+                                EntityItem(
+                                    e.id,
+                                    lifeEventLabel(e),
+                                    labelFamily = EntityLabelFamily.LIFE_EVENT,
+                                    labelToken = e.type?.takeIf { it.isNotBlank() },
+                                    labelDetail = e.description?.takeIf { it.isNotBlank() }
+                                )
+                            }
+                        )
+                    }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -260,13 +280,14 @@ class LifeEventsViewModel @Inject constructor(
             contactRepository.listContacts(search = query, limit = 25).fold(
                 onSuccess = { page ->
                     val selected = _relatedContacts.value.map { it.uid }.toSet()
-                    _relatedSearchResults.value = page.contacts.filter { c -> c.uid != null && c.uid !in selected }
+                    _relatedSearchResults.value =
+                        page.contacts.filter { c -> c.uid != null && c.uid !in selected }
                     _relatedSearchLoading.value = false
                 },
                 onFailure = {
                     _relatedSearchResults.value = emptyList()
                     _relatedSearchLoading.value = false
-                },
+                }
             )
         }
     }
@@ -301,7 +322,7 @@ class LifeEventsViewModel @Inject constructor(
         viewModelScope.launch {
             lifeEventRepository.create(form.toInput(uid)).foldApiError(
                 onSuccess = { load() },
-                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
+                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } }
             )
         }
     }
@@ -316,7 +337,7 @@ class LifeEventsViewModel @Inject constructor(
             lifeEventRepository.update(
                 original.id,
                 form.toInput(original.entityId).copy(source = original.source),
-                original.revision,
+                original.revision
             ).foldApiError(
                 onSuccess = { load() },
                 onError = { e ->
@@ -327,7 +348,7 @@ class LifeEventsViewModel @Inject constructor(
                             it.copy(error = e.displayMessage)
                         }
                     }
-                },
+                }
             )
         }
     }
@@ -357,12 +378,14 @@ class LifeEventsViewModel @Inject constructor(
                             it.copy(deletingId = null, error = e.displayMessage)
                         }
                     }
-                },
+                }
             )
         }
     }
 
-    fun onErrorShown() { _uiState.update { it.copy(error = null, errorRes = null) } }
+    fun onErrorShown() {
+        _uiState.update { it.copy(error = null, errorRes = null) }
+    }
 
     private companion object {
         const val SEARCH_DEBOUNCE_MS = 300L
@@ -372,16 +395,15 @@ class LifeEventsViewModel @Inject constructor(
     }
 }
 
-private fun LifeEventFormData.toInput(entityId: String): LifeEventInput =
-    LifeEventInput(
-        entityId = entityId,
-        type = type.takeIf { it.isNotBlank() },
-        category = category,
-        date = date,
-        description = description,
-        relatedEntityIds = relatedEntityIds.ifEmpty { null },
-        remind = remind,
-    )
+private fun LifeEventFormData.toInput(entityId: String): LifeEventInput = LifeEventInput(
+    entityId = entityId,
+    type = type.takeIf { it.isNotBlank() },
+    category = category,
+    date = date,
+    description = description,
+    relatedEntityIds = relatedEntityIds.ifEmpty { null },
+    remind = remind
+)
 
 // ---------------------------------------------------------------------------
 // Gifts
@@ -394,7 +416,7 @@ class GiftsViewModel @Inject constructor(
     private val activityRepository: ActivityRepository,
     private val preferenceRepository: PreferenceRepository,
     contactRepository: ContactRepository,
-    savedStateHandle: SavedStateHandle,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     private val resolver = ContactUidResolver(contactRepository)
     private val contactId: Int = (savedStateHandle["contactId"] as? Int) ?: 0
@@ -420,7 +442,9 @@ class GiftsViewModel @Inject constructor(
     private val _giftPreferences = MutableStateFlow<List<Preference>>(emptyList())
     val giftPreferences: StateFlow<List<Preference>> = _giftPreferences.asStateFlow()
 
-    init { load() }
+    init {
+        load()
+    }
 
     fun load() {
         viewModelScope.launch {
@@ -428,7 +452,11 @@ class GiftsViewModel @Inject constructor(
             val uid = resolver.resolve(contactId)
             if (uid.isNullOrBlank()) {
                 _uiState.update {
-                    it.copy(isLoading = false, errorRes = R.string.entities_error_no_vcard_uid, error = null)
+                    it.copy(
+                        isLoading = false,
+                        errorRes = R.string.entities_error_no_vcard_uid,
+                        error = null
+                    )
                 }
                 return@launch
             }
@@ -436,11 +464,16 @@ class GiftsViewModel @Inject constructor(
             giftRepository.listForContact(uid).foldApiError(
                 onSuccess = { items ->
                     loaded = items
-                    _uiState.update { it.copy(isLoading = false, items = items.map { g -> EntityItem(g.id, giftLabel(g), url = g.url) }) }
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            items = items.map { g -> EntityItem(g.id, giftLabel(g), url = g.url) }
+                        )
+                    }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
-                },
+                }
             )
             loadPickers(uid)
             loadGiftsTabPreferences(uid)
@@ -461,7 +494,7 @@ class GiftsViewModel @Inject constructor(
         viewModelScope.launch {
             giftRepository.create(form.toInput(uid)).foldApiError(
                 onSuccess = { load() },
-                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
+                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } }
             )
         }
     }
@@ -474,7 +507,7 @@ class GiftsViewModel @Inject constructor(
         viewModelScope.launch {
             giftRepository.update(original.id, form.toInput(original.entityId)).foldApiError(
                 onSuccess = { load() },
-                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
+                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } }
             )
         }
     }
@@ -503,11 +536,11 @@ class GiftsViewModel @Inject constructor(
                     valueCents = gift.valueCents,
                     currency = gift.currency,
                     lifeEventId = gift.lifeEventId,
-                    activityId = gift.activityId,
-                ),
+                    activityId = gift.activityId
+                )
             ).foldApiError(
                 onSuccess = { load() },
-                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
+                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } }
             )
         }
     }
@@ -518,12 +551,21 @@ class GiftsViewModel @Inject constructor(
             _uiState.update { it.copy(deletingId = id) }
             giftRepository.delete(id).foldApiError(
                 onSuccess = { load() },
-                onError = { e -> _uiState.update { it.copy(deletingId = null, error = e.displayMessage) } },
+                onError = { e ->
+                    _uiState.update {
+                        it.copy(
+                            deletingId = null,
+                            error = e.displayMessage
+                        )
+                    }
+                }
             )
         }
     }
 
-    fun onErrorShown() { _uiState.update { it.copy(error = null, errorRes = null) } }
+    fun onErrorShown() {
+        _uiState.update { it.copy(error = null, errorRes = null) }
+    }
 
     // --- Clothing sizes + Gift Preferences (web's ClothingSizesPanel and its
     // Gifts-tab jewelry/flowers/color/fragrance/cause/gift-avoid panel,
@@ -534,7 +576,11 @@ class GiftsViewModel @Inject constructor(
     private suspend fun loadGiftsTabPreferences(uid: String) {
         preferenceRepository.listForContact(uid).onSuccess { items ->
             _clothingSizes.value = items.filter { it.category == PreferenceCategory.CLOTHING_SIZE }
-            _giftPreferences.value = items.filter { PreferenceCategory.isGiftsTabCategory(it.category) }
+            _giftPreferences.value = items.filter {
+                PreferenceCategory.isGiftsTabCategory(
+                    it.category
+                )
+            }
         }
     }
 
@@ -553,11 +599,11 @@ class GiftsViewModel @Inject constructor(
                     key = key.trim().takeIf { it.isNotBlank() },
                     value = value,
                     source = "user",
-                    confidence = 1.0,
-                ),
+                    confidence = 1.0
+                )
             ).foldApiError(
                 onSuccess = { viewModelScope.launch { loadGiftsTabPreferences(uid) } },
-                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
+                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } }
             )
         }
     }
@@ -576,11 +622,17 @@ class GiftsViewModel @Inject constructor(
                     source = original.source,
                     confidence = original.confidence,
                     lastConfirmed = original.lastConfirmed,
-                    sensitivity = original.sensitivity,
-                ),
+                    sensitivity = original.sensitivity
+                )
             ).foldApiError(
-                onSuccess = { viewModelScope.launch { loadGiftsTabPreferences(original.entityId) } },
-                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
+                onSuccess = {
+                    viewModelScope.launch {
+                        loadGiftsTabPreferences(
+                            original.entityId
+                        )
+                    }
+                },
+                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } }
             )
         }
     }
@@ -590,7 +642,7 @@ class GiftsViewModel @Inject constructor(
         viewModelScope.launch {
             preferenceRepository.delete(id).foldApiError(
                 onSuccess = { viewModelScope.launch { loadGiftsTabPreferences(uid) } },
-                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
+                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } }
             )
         }
     }
@@ -601,7 +653,7 @@ class GiftsViewModel @Inject constructor(
         viewModelScope.launch {
             preferenceRepository.create(form.toInput(uid)).foldApiError(
                 onSuccess = { viewModelScope.launch { loadGiftsTabPreferences(uid) } },
-                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
+                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } }
             )
         }
     }
@@ -617,11 +669,17 @@ class GiftsViewModel @Inject constructor(
                 form.toInput(original.entityId).copy(
                     source = original.source,
                     confidence = original.confidence,
-                    lastConfirmed = original.lastConfirmed,
-                ),
+                    lastConfirmed = original.lastConfirmed
+                )
             ).foldApiError(
-                onSuccess = { viewModelScope.launch { loadGiftsTabPreferences(original.entityId) } },
-                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
+                onSuccess = {
+                    viewModelScope.launch {
+                        loadGiftsTabPreferences(
+                            original.entityId
+                        )
+                    }
+                },
+                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } }
             )
         }
     }
@@ -631,27 +689,25 @@ class GiftsViewModel @Inject constructor(
         viewModelScope.launch {
             preferenceRepository.delete(id).foldApiError(
                 onSuccess = { viewModelScope.launch { loadGiftsTabPreferences(uid) } },
-                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
+                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } }
             )
         }
     }
 }
 
-private fun GiftFormData.toInput(entityId: String): GiftInput =
-    GiftInput(
-        entityId = entityId,
-        status = status,
-        occasion = occasion?.trim()?.takeIf { it.isNotBlank() },
-        description = description,
-        url = url?.trim()?.takeIf { it.isNotBlank() },
-        notes = notes?.trim()?.takeIf { it.isNotBlank() },
-        date = giftDateToIso(date.orEmpty()),
-        valueCents = valueCents,
-        currency = currency?.trim()?.uppercase()?.takeIf { it.isNotBlank() },
-        lifeEventId = lifeEventId,
-        activityId = activityId,
-    )
-
+private fun GiftFormData.toInput(entityId: String): GiftInput = GiftInput(
+    entityId = entityId,
+    status = status,
+    occasion = occasion?.trim()?.takeIf { it.isNotBlank() },
+    description = description,
+    url = url?.trim()?.takeIf { it.isNotBlank() },
+    notes = notes?.trim()?.takeIf { it.isNotBlank() },
+    date = giftDateToIso(date.orEmpty()),
+    valueCents = valueCents,
+    currency = currency?.trim()?.uppercase()?.takeIf { it.isNotBlank() },
+    lifeEventId = lifeEventId,
+    activityId = activityId
+)
 
 // ---------------------------------------------------------------------------
 // Preferences
@@ -661,7 +717,7 @@ private fun GiftFormData.toInput(entityId: String): GiftInput =
 class PreferencesViewModel @Inject constructor(
     private val preferenceRepository: PreferenceRepository,
     contactRepository: ContactRepository,
-    savedStateHandle: SavedStateHandle,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     private val resolver = ContactUidResolver(contactRepository)
     private val contactId: Int = (savedStateHandle["contactId"] as? Int) ?: 0
@@ -670,7 +726,9 @@ class PreferencesViewModel @Inject constructor(
 
     private var loaded: List<Preference> = emptyList()
 
-    init { load() }
+    init {
+        load()
+    }
 
     fun load() {
         viewModelScope.launch {
@@ -678,7 +736,11 @@ class PreferencesViewModel @Inject constructor(
             val uid = resolver.resolve(contactId)
             if (uid.isNullOrBlank()) {
                 _uiState.update {
-                    it.copy(isLoading = false, errorRes = R.string.entities_error_no_vcard_uid, error = null)
+                    it.copy(
+                        isLoading = false,
+                        errorRes = R.string.entities_error_no_vcard_uid,
+                        error = null
+                    )
                 }
                 return@launch
             }
@@ -702,7 +764,7 @@ class PreferencesViewModel @Inject constructor(
                         // Issue #1738: Dislikes is its own overview section, ordered
                         // before the catch-all Other bucket.
                         PreferenceSection.DISLIKES to 3,
-                        PreferenceSection.OTHER to 4,
+                        PreferenceSection.OTHER to 4
                     )
                     _uiState.update {
                         it.copy(
@@ -713,13 +775,22 @@ class PreferencesViewModel @Inject constructor(
                                         !PreferenceCategory.isGiftsTabCategory(it.category)
                                 }
                                 .sortedBy { sectionOrder[preferenceSection(it.category)] ?: 3 }
-                                .map { p -> EntityItem(p.id, preferenceLabel(p), sectionKey = preferenceSection(p.category), labelFamily = EntityLabelFamily.PREFERENCE, labelToken = p.category, labelDetail = preferenceDetail(p)) },
+                                .map { p ->
+                                    EntityItem(
+                                        p.id,
+                                        preferenceLabel(p),
+                                        sectionKey = preferenceSection(p.category),
+                                        labelFamily = EntityLabelFamily.PREFERENCE,
+                                        labelToken = p.category,
+                                        labelDetail = preferenceDetail(p)
+                                    )
+                                }
                         )
                     }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -732,7 +803,7 @@ class PreferencesViewModel @Inject constructor(
         viewModelScope.launch {
             preferenceRepository.create(form.toInput(uid)).foldApiError(
                 onSuccess = { load() },
-                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
+                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } }
             )
         }
     }
@@ -749,11 +820,11 @@ class PreferencesViewModel @Inject constructor(
                 form.toInput(original.entityId).copy(
                     source = original.source,
                     confidence = original.confidence,
-                    lastConfirmed = original.lastConfirmed,
-                ),
+                    lastConfirmed = original.lastConfirmed
+                )
             ).foldApiError(
                 onSuccess = { load() },
-                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
+                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } }
             )
         }
     }
@@ -764,34 +835,48 @@ class PreferencesViewModel @Inject constructor(
             _uiState.update { it.copy(deletingId = id) }
             preferenceRepository.delete(id).foldApiError(
                 onSuccess = { load() },
-                onError = { e -> _uiState.update { it.copy(deletingId = null, error = e.displayMessage) } },
+                onError = { e ->
+                    _uiState.update {
+                        it.copy(
+                            deletingId = null,
+                            error = e.displayMessage
+                        )
+                    }
+                }
             )
         }
     }
 
-    fun onErrorShown() { _uiState.update { it.copy(error = null, errorRes = null) } }
+    fun onErrorShown() {
+        _uiState.update { it.copy(error = null, errorRes = null) }
+    }
 }
 
-private fun PreferenceFormData.toInput(entityId: String): PreferenceInput =
-    PreferenceInput(
-        entityId = entityId,
-        category = category,
-        key = key?.trim()?.takeIf { it.isNotBlank() },
-        value = value,
-        // Guard the category gate here too (the backend rejects a level on any
-        // non-hobby category): a level only travels for hobby/skill categories,
-        // and switching away clears it rather than stranding it.
-        level = level?.takeIf { it.isNotBlank() }?.takeIf { PreferenceCategory.supportsLevelFor(category) },
-        notes = notes?.trim()?.takeIf { it.isNotBlank() },
-        source = "user",
-        confidence = 1.0,
-        sensitivity = sensitivity,
-    )
+private fun PreferenceFormData.toInput(entityId: String): PreferenceInput = PreferenceInput(
+    entityId = entityId,
+    category = category,
+    key = key?.trim()?.takeIf { it.isNotBlank() },
+    value = value,
+    // Guard the category gate here too (the backend rejects a level on any
+    // non-hobby category): a level only travels for hobby/skill categories,
+    // and switching away clears it rather than stranding it.
+    level = level?.takeIf { it.isNotBlank() }?.takeIf {
+        PreferenceCategory.supportsLevelFor(
+            category
+        )
+    },
+    notes = notes?.trim()?.takeIf { it.isNotBlank() },
+    source = "user",
+    confidence = 1.0,
+    sensitivity = sensitivity
+)
 
 /** Web's PreferenceList grouping, delegating to the shared registry
  * (PreferenceCategory.sectionOf) so the taxonomy lives in exactly one place;
  * an unrecognized category falls to PreferenceSection.OTHER. */
-fun preferenceSection(category: String): String = PreferenceCategory.sectionOf(category) ?: PreferenceSection.OTHER
+fun preferenceSection(category: String): String = PreferenceCategory.sectionOf(
+    category
+) ?: PreferenceSection.OTHER
 
 // ---------------------------------------------------------------------------
 // Conversation agenda
@@ -805,7 +890,7 @@ class ConversationAgendaViewModel @Inject constructor(
     private val agendaRepository: ConversationAgendaRepository,
     private val activityRepository: ActivityRepository,
     contactRepository: ContactRepository,
-    savedStateHandle: SavedStateHandle,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     private val resolver = ContactUidResolver(contactRepository)
     private val contactId: Int = (savedStateHandle["contactId"] as? Int) ?: 0
@@ -828,9 +913,14 @@ class ConversationAgendaViewModel @Inject constructor(
     // rotation and process death. Closed only by a successful PATCH or a dismiss,
     // so a failed PATCH leaves the dialog open next to the error snackbar.
     private val savedState = savedStateHandle
-    val pendingDiscussId: StateFlow<String?> = savedStateHandle.getStateFlow(PENDING_DISCUSS_KEY, null)
+    val pendingDiscussId: StateFlow<String?> = savedStateHandle.getStateFlow(
+        PENDING_DISCUSS_KEY,
+        null
+    )
 
-    init { load() }
+    init {
+        load()
+    }
 
     fun load() {
         viewModelScope.launch {
@@ -838,7 +928,11 @@ class ConversationAgendaViewModel @Inject constructor(
             val uid = resolver.resolve(contactId)
             if (uid.isNullOrBlank()) {
                 _uiState.update {
-                    it.copy(isLoading = false, errorRes = R.string.entities_error_no_vcard_uid, error = null)
+                    it.copy(
+                        isLoading = false,
+                        errorRes = R.string.entities_error_no_vcard_uid,
+                        error = null
+                    )
                 }
                 return@launch
             }
@@ -868,17 +962,25 @@ class ConversationAgendaViewModel @Inject constructor(
                                         a.id,
                                         agendaLabel(a),
                                         url = a.referenceUrl,
-                                        sectionKey = if (a.discussedAt == null) "open" else "discussed",
+                                        sectionKey = if (a.discussedAt ==
+                                            null
+                                        ) {
+                                            "open"
+                                        } else {
+                                            "discussed"
+                                        }
                                     )
-                                },
+                                }
                         )
                     }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
-                },
+                }
             )
-            activityRepository.listForContact(contactId).onSuccess { _activities.value = it.activities }
+            activityRepository.listForContact(
+                contactId
+            ).onSuccess { _activities.value = it.activities }
         }
     }
 
@@ -892,11 +994,11 @@ class ConversationAgendaViewModel @Inject constructor(
                 ConversationAgendaInput(
                     entityId = uid,
                     content = content,
-                    referenceUrl = referenceUrl?.trim()?.takeIf { it.isNotBlank() },
-                ),
+                    referenceUrl = referenceUrl?.trim()?.takeIf { it.isNotBlank() }
+                )
             ).foldApiError(
                 onSuccess = { load() },
-                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
+                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } }
             )
         }
     }
@@ -912,11 +1014,11 @@ class ConversationAgendaViewModel @Inject constructor(
                 ConversationAgendaInput(
                     entityId = original.entityId,
                     content = content,
-                    referenceUrl = referenceUrl?.trim()?.takeIf { it.isNotBlank() },
-                ),
+                    referenceUrl = referenceUrl?.trim()?.takeIf { it.isNotBlank() }
+                )
             ).foldApiError(
                 onSuccess = { load() },
-                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
+                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } }
             )
         }
     }
@@ -932,13 +1034,18 @@ class ConversationAgendaViewModel @Inject constructor(
             agendaRepository.discuss(id, activityId).foldApiError(
                 onSuccess = {
                     _discussingId.value = null
-                    if (savedState.get<String>(PENDING_DISCUSS_KEY) == id) savedState[PENDING_DISCUSS_KEY] = null
+                    if (savedState.get<String>(
+                            PENDING_DISCUSS_KEY
+                        ) == id
+                    ) {
+                        savedState[PENDING_DISCUSS_KEY] = null
+                    }
                     load()
                 },
                 onError = { e ->
                     _discussingId.value = null
                     _uiState.update { it.copy(error = e.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -964,12 +1071,21 @@ class ConversationAgendaViewModel @Inject constructor(
             _uiState.update { it.copy(deletingId = id) }
             agendaRepository.delete(id).foldApiError(
                 onSuccess = { load() },
-                onError = { e -> _uiState.update { it.copy(deletingId = null, error = e.displayMessage) } },
+                onError = { e ->
+                    _uiState.update {
+                        it.copy(
+                            deletingId = null,
+                            error = e.displayMessage
+                        )
+                    }
+                }
             )
         }
     }
 
-    fun onErrorShown() { _uiState.update { it.copy(error = null, errorRes = null) } }
+    fun onErrorShown() {
+        _uiState.update { it.copy(error = null, errorRes = null) }
+    }
 }
 
 // --- display helpers ---
@@ -979,7 +1095,8 @@ private fun lifeEventLabel(e: LifeEvent): String {
     return e.description?.let { "$t — $it" } ?: t
 }
 
-private fun giftLabel(g: Gift): String = g.occasion?.let { "$it — ${g.description}" } ?: g.description
+private fun giftLabel(g: Gift): String =
+    g.occasion?.let { "$it — ${g.description}" } ?: g.description
 
 /**
  * The part of a preference after its category: `key = value`, plus notes when present.

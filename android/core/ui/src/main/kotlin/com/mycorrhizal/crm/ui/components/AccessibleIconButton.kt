@@ -37,7 +37,7 @@ fun AccessibleIconButton(
     enabled: Boolean = true,
     colors: IconButtonColors = IconButtonDefaults.iconButtonColors(),
     interactionSource: MutableInteractionSource? = null,
-    content: @Composable () -> Unit,
+    content: @Composable () -> Unit
 ) {
     IconButton(
         onClick = onClick,
@@ -45,6 +45,6 @@ fun AccessibleIconButton(
         enabled = enabled,
         colors = colors,
         interactionSource = interactionSource,
-        content = content,
+        content = content
     )
 }

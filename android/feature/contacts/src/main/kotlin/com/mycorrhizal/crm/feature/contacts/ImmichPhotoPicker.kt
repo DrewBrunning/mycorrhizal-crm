@@ -64,7 +64,7 @@ fun ImmichPhotoPickerDialog(
     onLinkPerson: (ImmichPerson) -> Unit,
     onLoadAssets: () -> Unit,
     onPick: (String?) -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     // Optimistically flip to the browse phase when a person is picked; the
     // `isLinked` prop (from the refreshed ExternalIdentity list) re-syncs it.
@@ -82,7 +82,7 @@ fun ImmichPhotoPickerDialog(
                 linked = true
                 onLinkPerson(person)
             },
-            onDismiss = onDismiss,
+            onDismiss = onDismiss
         )
     } else {
         ImmichAssetGridStep(
@@ -90,7 +90,7 @@ fun ImmichPhotoPickerDialog(
             assets = assets,
             loading = assetsLoading,
             onPick = onPick,
-            onDismiss = onDismiss,
+            onDismiss = onDismiss
         )
     }
 }
@@ -100,7 +100,7 @@ private fun ImmichPersonSearchStep(
     people: List<ImmichPerson>,
     loading: Boolean,
     onLink: (ImmichPerson) -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     var query by remember { mutableStateOf("") }
     AlertDialog(
@@ -113,16 +113,17 @@ private fun ImmichPersonSearchStep(
                     onValueChange = { query = it },
                     label = { Text(stringResource(R.string.immich_person_search_placeholder)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(Modifier.height(8.dp))
                 when {
                     loading -> Box(
                         modifier = Modifier.fillMaxWidth().padding(24.dp),
-                        contentAlignment = Alignment.Center,
+                        contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator()
                     }
+
                     else -> {
                         val filtered = people.filter {
                             query.isBlank() || it.name.contains(query.trim(), ignoreCase = true)
@@ -132,18 +133,22 @@ private fun ImmichPersonSearchStep(
                                 text = stringResource(R.string.immich_person_search_no_matches),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(vertical = 8.dp),
+                                modifier = Modifier.padding(vertical = 8.dp)
                             )
                         } else {
                             LazyColumn(modifier = Modifier.heightIn(max = 320.dp)) {
                                 items(filtered, key = { it.id }) { person ->
                                     Text(
-                                        text = person.name.ifBlank { stringResource(R.string.immich_person_search_unnamed) },
+                                        text = person.name.ifBlank {
+                                            stringResource(
+                                                R.string.immich_person_search_unnamed
+                                            )
+                                        },
                                         style = MaterialTheme.typography.bodyLarge,
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .clickable { onLink(person) }
-                                            .padding(vertical = 10.dp),
+                                            .padding(vertical = 10.dp)
                                     )
                                 }
                             }
@@ -155,7 +160,7 @@ private fun ImmichPersonSearchStep(
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
-        },
+        }
     )
 }
 
@@ -166,7 +171,7 @@ private fun ImmichAssetGridStep(
     assets: List<ImmichAssetSummary>,
     loading: Boolean,
     onPick: (String?) -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     val serverOrigin = LocalServerUrl.current
     AlertDialog(
@@ -177,35 +182,47 @@ private fun ImmichAssetGridStep(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(max = 400.dp)
-                    .verticalScroll(rememberScrollState()),
+                    .verticalScroll(rememberScrollState())
             ) {
                 when {
                     loading -> Box(
                         modifier = Modifier.fillMaxWidth().padding(24.dp),
-                        contentAlignment = Alignment.Center,
+                        contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator()
                     }
+
                     assets.isEmpty() -> Text(
                         text = stringResource(R.string.immich_photo_picker_no_photos),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(vertical = 8.dp),
+                        modifier = Modifier.padding(vertical = 8.dp)
                     )
+
                     else -> {
                         // The linked person's own photo, always first.
                         ImmichPhotoCell(
-                            url = resolvePhotoUri("/api/v1/immich/contacts/$contactUid/thumbnail", serverOrigin),
-                            contentDescription = stringResource(R.string.immich_photo_picker_primary_desc),
-                            onClick = { onPick(null) },
+                            url = resolvePhotoUri(
+                                "/api/v1/immich/contacts/$contactUid/thumbnail",
+                                serverOrigin
+                            ),
+                            contentDescription = stringResource(
+                                R.string.immich_photo_picker_primary_desc
+                            ),
+                            onClick = { onPick(null) }
                         )
                         Spacer(Modifier.height(8.dp))
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             assets.forEach { asset ->
                                 ImmichPhotoCell(
-                                    url = resolvePhotoUri("/api/v1/immich/contacts/$contactUid/assets/${asset.id}/image", serverOrigin),
-                                    contentDescription = stringResource(R.string.immich_photo_picker_photo_desc),
-                                    onClick = { onPick(asset.id) },
+                                    url = resolvePhotoUri(
+                                        "/api/v1/immich/contacts/$contactUid/assets/${asset.id}/image",
+                                        serverOrigin
+                                    ),
+                                    contentDescription = stringResource(
+                                        R.string.immich_photo_picker_photo_desc
+                                    ),
+                                    onClick = { onPick(asset.id) }
                                 )
                             }
                         }
@@ -216,16 +233,12 @@ private fun ImmichAssetGridStep(
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
-        },
+        }
     )
 }
 
 @Composable
-private fun ImmichPhotoCell(
-    url: String?,
-    contentDescription: String,
-    onClick: () -> Unit,
-) {
+private fun ImmichPhotoCell(url: String?, contentDescription: String, onClick: () -> Unit) {
     AsyncImage(
         model = url,
         contentDescription = contentDescription,
@@ -234,6 +247,6 @@ private fun ImmichPhotoCell(
             .size(96.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .clickable(onClick = onClick),
+            .clickable(onClick = onClick)
     )
 }

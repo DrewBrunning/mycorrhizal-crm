@@ -13,6 +13,7 @@ import com.mycorrhizal.crm.testing.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import java.io.IOException
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -23,7 +24,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import java.io.IOException
 
 class SystemEventsViewModelTest {
 
@@ -35,21 +35,28 @@ class SystemEventsViewModelTest {
     @Before
     fun stubPanelsByDefault() {
         coEvery { repository.subsystemHealth() } returns Result.success(SubsystemHealthResponse())
-        coEvery { repository.errorAggregation(any()) } returns Result.success(ErrorAggregationResponse())
+        coEvery {
+            repository.errorAggregation(
+                any()
+            )
+        } returns Result.success(ErrorAggregationResponse())
         coEvery { repository.jobRunHealth() } returns Result.success(JobRunHealthResponse())
     }
 
     private fun viewModel() = SystemEventsViewModel(repository)
 
-    private fun event(id: Long = 1, type: String = "sync_completed", correlation: String = "chain-A") =
-        SystemEvent(
-            id = id,
-            occurredAt = "2026-08-27T10:00:00Z",
-            eventType = type,
-            severity = "info",
-            component = "contact_sync",
-            correlationId = correlation,
-        )
+    private fun event(
+        id: Long = 1,
+        type: String = "sync_completed",
+        correlation: String = "chain-A"
+    ) = SystemEvent(
+        id = id,
+        occurredAt = "2026-08-27T10:00:00Z",
+        eventType = type,
+        severity = "info",
+        component = "contact_sync",
+        correlationId = correlation
+    )
 
     private fun stubList(response: SystemEventsResponse) {
         coEvery {
@@ -59,7 +66,7 @@ class SystemEventsViewModelTest {
                 eventType = any(),
                 correlationId = any(),
                 ids = any(),
-                limit = any(),
+                limit = any()
             )
         } returns Result.success(response)
     }
@@ -67,7 +74,11 @@ class SystemEventsViewModelTest {
     @Test
     fun `load fetches the default window and surfaces the events`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            stubList(SystemEventsResponse(systemEvents = listOf(event(1), event(2, type = "sync_failed"))))
+            stubList(
+                SystemEventsResponse(
+                    systemEvents = listOf(event(1), event(2, type = "sync_failed"))
+                )
+            )
 
             val vm = viewModel()
             advanceUntilIdle()
@@ -81,7 +92,7 @@ class SystemEventsViewModelTest {
                     severity = null,
                     eventType = null,
                     correlationId = null,
-                    limit = 100,
+                    limit = 100
                 )
             }
         }
@@ -103,7 +114,7 @@ class SystemEventsViewModelTest {
                     severity = null,
                     eventType = null,
                     correlationId = null,
-                    limit = 100,
+                    limit = 100
                 )
             }
         }
@@ -132,37 +143,36 @@ class SystemEventsViewModelTest {
                     severity = null,
                     eventType = null,
                     correlationId = "job:purge_deleted:abc",
-                    limit = 500,
+                    limit = 500
                 )
             }
         }
 
     @Test
-    fun `correlation id filter is debounced`() =
-        runTest(mainDispatcherRule.testDispatcher) {
-            stubList(SystemEventsResponse(systemEvents = emptyList()))
-            val vm = viewModel()
-            advanceUntilIdle()
+    fun `correlation id filter is debounced`() = runTest(mainDispatcherRule.testDispatcher) {
+        stubList(SystemEventsResponse(systemEvents = emptyList()))
+        val vm = viewModel()
+        advanceUntilIdle()
 
-            vm.onCorrelationIdChange("c")
-            vm.onCorrelationIdChange("ch")
-            vm.onCorrelationIdChange("chain-Z")
-            advanceTimeBy(100)
-            // Not yet applied.
-            assertEquals("", vm.uiState.value.correlationId)
+        vm.onCorrelationIdChange("c")
+        vm.onCorrelationIdChange("ch")
+        vm.onCorrelationIdChange("chain-Z")
+        advanceTimeBy(100)
+        // Not yet applied.
+        assertEquals("", vm.uiState.value.correlationId)
 
-            advanceUntilIdle()
-            assertEquals("chain-Z", vm.uiState.value.correlationId)
-            coVerify(exactly = 1) {
-                repository.list(
-                    component = null,
-                    severity = null,
-                    eventType = null,
-                    correlationId = "chain-Z",
-                    limit = 100,
-                )
-            }
+        advanceUntilIdle()
+        assertEquals("chain-Z", vm.uiState.value.correlationId)
+        coVerify(exactly = 1) {
+            repository.list(
+                component = null,
+                severity = null,
+                eventType = null,
+                correlationId = "chain-Z",
+                limit = 100
+            )
         }
+    }
 
     @Test
     fun `subsystem health is fetched on open and lands in state`() =
@@ -171,10 +181,14 @@ class SystemEventsViewModelTest {
             coEvery { repository.subsystemHealth() } returns Result.success(
                 SubsystemHealthResponse(
                     subsystems = listOf(
-                        SubsystemHealth(subsystem = "contact_sync", status = "failing", consecutiveFailures = 9),
-                        SubsystemHealth(subsystem = "backup", status = "healthy"),
-                    ),
-                ),
+                        SubsystemHealth(
+                            subsystem = "contact_sync",
+                            status = "failing",
+                            consecutiveFailures = 9
+                        ),
+                        SubsystemHealth(subsystem = "backup", status = "healthy")
+                    )
+                )
             )
 
             val vm = viewModel()
@@ -194,8 +208,8 @@ class SystemEventsViewModelTest {
 
             coEvery { repository.subsystemHealth() } returns Result.success(
                 SubsystemHealthResponse(
-                    subsystems = listOf(SubsystemHealth(subsystem = "webhook", status = "unknown")),
-                ),
+                    subsystems = listOf(SubsystemHealth(subsystem = "webhook", status = "unknown"))
+                )
             )
             vm.refreshSubsystemHealth()
             advanceUntilIdle()
@@ -225,10 +239,14 @@ class SystemEventsViewModelTest {
             coEvery { repository.jobRunHealth() } returns Result.success(
                 JobRunHealthResponse(
                     jobs = listOf(
-                        JobRunHealth(jobName = "daily_reminders", status = "failing", consecutiveFailures = 4),
-                        JobRunHealth(jobName = "calendar_sync", status = "healthy"),
-                    ),
-                ),
+                        JobRunHealth(
+                            jobName = "daily_reminders",
+                            status = "failing",
+                            consecutiveFailures = 4
+                        ),
+                        JobRunHealth(jobName = "calendar_sync", status = "healthy")
+                    )
+                )
             )
 
             val vm = viewModel()
@@ -261,9 +279,14 @@ class SystemEventsViewModelTest {
                 ErrorAggregationResponse(
                     totalEvents = 17,
                     buckets = listOf(
-                        ErrorBucket(component = "contact_sync", count = 17, recurring = true, eventIds = listOf(1, 2, 3)),
-                    ),
-                ),
+                        ErrorBucket(
+                            component = "contact_sync",
+                            count = 17,
+                            recurring = true,
+                            eventIds = listOf(1, 2, 3)
+                        )
+                    )
+                )
             )
 
             val vm = viewModel()
@@ -278,7 +301,11 @@ class SystemEventsViewModelTest {
     fun `a error-aggregation failure is swallowed and leaves the list unaffected`() =
         runTest(mainDispatcherRule.testDispatcher) {
             stubList(SystemEventsResponse(systemEvents = listOf(event(1))))
-            coEvery { repository.errorAggregation(any()) } returns Result.failure(IOException("nope"))
+            coEvery {
+                repository.errorAggregation(
+                    any()
+                )
+            } returns Result.failure(IOException("nope"))
 
             val vm = viewModel()
             advanceUntilIdle()
@@ -312,7 +339,7 @@ class SystemEventsViewModelTest {
                     eventType = null,
                     correlationId = null,
                     ids = listOf(11L, 12L, 13L),
-                    limit = 500,
+                    limit = 500
                 )
             }
 
@@ -332,7 +359,7 @@ class SystemEventsViewModelTest {
                     eventType = any(),
                     correlationId = any(),
                     ids = any(),
-                    limit = any(),
+                    limit = any()
                 )
             } returns Result.failure(IOException("boom"))
 

@@ -2,8 +2,8 @@ package com.mycorrhizal.crm.feature.audit
 
 import com.mycorrhizal.crm.domain.repository.AuditRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
-import com.mycorrhizal.crm.model.network.AuditEvent
 import com.mycorrhizal.crm.model.network.AuditEntityTypes
+import com.mycorrhizal.crm.model.network.AuditEvent
 import com.mycorrhizal.crm.model.network.AuditEventsResponse
 import com.mycorrhizal.crm.model.network.AuditOperations
 import com.mycorrhizal.crm.model.network.ContactSummary
@@ -12,6 +12,7 @@ import com.mycorrhizal.crm.testing.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import java.io.IOException
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -22,7 +23,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import java.io.IOException
 
 class AuditViewModelTest {
 
@@ -38,8 +38,14 @@ class AuditViewModelTest {
         id: Long = 1,
         type: String = AuditEntityTypes.CONTACT,
         entityId: String = "uid-1",
-        operation: String = AuditOperations.UPDATE,
-    ) = AuditEvent(id = id, createdAt = "2026-08-14T10:00:00Z", entityType = type, entityId = entityId, operation = operation)
+        operation: String = AuditOperations.UPDATE
+    ) = AuditEvent(
+        id = id,
+        createdAt = "2026-08-14T10:00:00Z",
+        entityType = type,
+        entityId = entityId,
+        operation = operation
+    )
 
     private fun stubList(response: AuditEventsResponse) {
         coEvery {
@@ -52,8 +58,14 @@ class AuditViewModelTest {
     }
 
     @Test
-    fun `load fetches the default window and surfaces the events`() = runTest(mainDispatcherRule.testDispatcher) {
-        stubList(AuditEventsResponse(auditEvents = listOf(event(1), event(2, operation = AuditOperations.DELETE))))
+    fun `load fetches the default window and surfaces the events`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stubList(
+            AuditEventsResponse(
+                auditEvents = listOf(event(1), event(2, operation = AuditOperations.DELETE))
+            )
+        )
         stubResolve(emptyMap())
 
         val vm = viewModel()
@@ -69,7 +81,13 @@ class AuditViewModelTest {
 
     @Test
     fun `load failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { auditRepository.list(entityType = any(), entityId = any(), limit = any()) } returns
+        coEvery {
+            auditRepository.list(
+                entityType = any(),
+                entityId = any(),
+                limit = any()
+            )
+        } returns
             Result.failure(ApiError.Client(500, "boom"))
 
         val vm = viewModel()
@@ -79,7 +97,9 @@ class AuditViewModelTest {
     }
 
     @Test
-    fun `applying an entity type sends the filter and resets the window`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `applying an entity type sends the filter and resets the window`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         stubList(AuditEventsResponse(auditEvents = emptyList()))
         stubResolve(emptyMap())
 
@@ -88,7 +108,7 @@ class AuditViewModelTest {
         coEvery {
             auditRepository.list(entityType = "contact", entityId = null, limit = 100)
         } returns Result.success(
-            AuditEventsResponse(auditEvents = listOf(event(3, type = AuditEntityTypes.CONTACT))),
+            AuditEventsResponse(auditEvents = listOf(event(3, type = AuditEntityTypes.CONTACT)))
         )
 
         vm.applyEntityType(AuditEntityTypes.CONTACT)
@@ -97,18 +117,24 @@ class AuditViewModelTest {
         assertEquals(AuditEntityTypes.CONTACT, vm.uiState.value.entityType)
         assertEquals(1, vm.uiState.value.events.size)
         coVerify {
-            auditRepository.list(entityType = AuditEntityTypes.CONTACT, entityId = null, limit = 100)
+            auditRepository.list(
+                entityType = AuditEntityTypes.CONTACT,
+                entityId = null,
+                limit = 100
+            )
         }
     }
 
     @Test
-    fun `entity id is debounced before it becomes a filter`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `entity id is debounced before it becomes a filter`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         stubList(AuditEventsResponse(auditEvents = emptyList()))
         stubResolve(emptyMap())
         coEvery {
             auditRepository.list(entityType = null, entityId = "uid-9", limit = 100)
         } returns Result.success(
-            AuditEventsResponse(auditEvents = listOf(event(4, entityId = "uid-9"))),
+            AuditEventsResponse(auditEvents = listOf(event(4, entityId = "uid-9")))
         )
 
         val vm = viewModel()
@@ -131,7 +157,9 @@ class AuditViewModelTest {
     }
 
     @Test
-    fun `clear filters resets both filters to the default window`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `clear filters resets both filters to the default window`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         stubList(AuditEventsResponse(auditEvents = emptyList()))
         stubResolve(emptyMap())
 
@@ -184,16 +212,27 @@ class AuditViewModelTest {
     }
 
     @Test
-    fun `contact uids resolve to summaries for the linkable cells`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `contact uids resolve to summaries for the linkable cells`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         stubList(
             AuditEventsResponse(
                 auditEvents = listOf(
                     event(1, entityId = "uid-1"),
-                    event(2, type = AuditEntityTypes.NOTE, entityId = "9"),
-                ),
-            ),
+                    event(2, type = AuditEntityTypes.NOTE, entityId = "9")
+                )
+            )
         )
-        stubResolve(mapOf("uid-1" to ContactSummary(id = 5, uid = "uid-1", firstname = "Dana", lastname = "White")))
+        stubResolve(
+            mapOf(
+                "uid-1" to ContactSummary(
+                    id = 5,
+                    uid = "uid-1",
+                    firstname = "Dana",
+                    lastname = "White"
+                )
+            )
+        )
 
         val vm = viewModel()
         advanceUntilIdle()
@@ -204,10 +243,21 @@ class AuditViewModelTest {
     }
 
     @Test
-    fun `a resolve failure keeps the previously resolved map`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a resolve failure keeps the previously resolved map`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         // First load resolves uid-1 successfully.
         stubList(AuditEventsResponse(auditEvents = listOf(event(1, entityId = "uid-1"))))
-        stubResolve(mapOf("uid-1" to ContactSummary(id = 5, uid = "uid-1", firstname = "Dana", lastname = "White")))
+        stubResolve(
+            mapOf(
+                "uid-1" to ContactSummary(
+                    id = 5,
+                    uid = "uid-1",
+                    firstname = "Dana",
+                    lastname = "White"
+                )
+            )
+        )
 
         val vm = viewModel()
         advanceUntilIdle()
@@ -215,7 +265,13 @@ class AuditViewModelTest {
 
         // A second load's resolve fails — the existing map must survive (web's
         // useContactsForEvents `.catch` leaves it in place too).
-        coEvery { auditRepository.list(entityType = any(), entityId = any(), limit = any()) } returns
+        coEvery {
+            auditRepository.list(
+                entityType = any(),
+                entityId = any(),
+                limit = any()
+            )
+        } returns
             Result.success(AuditEventsResponse(auditEvents = listOf(event(2, entityId = "uid-2"))))
         coEvery { contactRepository.resolveByUid(listOf("uid-2")) } returns
             Result.failure(ApiError.Network(IOException("offline")))
@@ -228,15 +284,32 @@ class AuditViewModelTest {
     }
 
     @Test
-    fun `a list failure does not resolve uids and keeps the prior rows and map`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a list failure does not resolve uids and keeps the prior rows and map`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         stubList(AuditEventsResponse(auditEvents = listOf(event(1, entityId = "uid-1"))))
-        stubResolve(mapOf("uid-1" to ContactSummary(id = 5, uid = "uid-1", firstname = "Dana", lastname = "White")))
+        stubResolve(
+            mapOf(
+                "uid-1" to ContactSummary(
+                    id = 5,
+                    uid = "uid-1",
+                    firstname = "Dana",
+                    lastname = "White"
+                )
+            )
+        )
 
         val vm = viewModel()
         advanceUntilIdle()
 
         // The next load fails: events + resolved map stay, error surfaces.
-        coEvery { auditRepository.list(entityType = any(), entityId = any(), limit = any()) } returns
+        coEvery {
+            auditRepository.list(
+                entityType = any(),
+                entityId = any(),
+                limit = any()
+            )
+        } returns
             Result.failure(ApiError.Client(500, "boom"))
 
         vm.load()
@@ -250,13 +323,21 @@ class AuditViewModelTest {
     }
 
     @Test
-    fun `a stale list response cannot overwrite a newer one`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a stale list response cannot overwrite a newer one`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         // Gate the first response so the second request (a filter change) can
         // overtake it — the stale response must be discarded, not applied.
         val firstGate = kotlinx.coroutines.CompletableDeferred<Result<AuditEventsResponse>>()
         val secondGate = kotlinx.coroutines.CompletableDeferred<Result<AuditEventsResponse>>()
         var call = 0
-        coEvery { auditRepository.list(entityType = any(), entityId = any(), limit = any()) } coAnswers {
+        coEvery {
+            auditRepository.list(
+                entityType = any(),
+                entityId = any(),
+                limit = any()
+            )
+        } coAnswers {
             if (call++ == 0) firstGate.await() else secondGate.await()
         }
         coEvery { contactRepository.resolveByUid(any()) } returns Result.success(emptyMap())
@@ -265,7 +346,11 @@ class AuditViewModelTest {
         // First request is in flight (gated); a filter change fires a second.
         vm.applyEntityType(AuditEntityTypes.NOTE)
         // The newer request returns first and must win.
-        secondGate.complete(Result.success(AuditEventsResponse(auditEvents = listOf(event(9, type = AuditEntityTypes.NOTE)))))
+        secondGate.complete(
+            Result.success(
+                AuditEventsResponse(auditEvents = listOf(event(9, type = AuditEntityTypes.NOTE)))
+            )
+        )
         advanceUntilIdle()
         assertEquals(1, vm.uiState.value.events.size)
         assertEquals(AuditEntityTypes.NOTE, vm.uiState.value.events[0].entityType)
@@ -301,7 +386,9 @@ class AuditViewModelTest {
     }
 
     @Test
-    fun `a second undo while one is in flight is ignored`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a second undo while one is in flight is ignored`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         stubList(AuditEventsResponse(auditEvents = listOf(event(1))))
         stubResolve(emptyMap())
         val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
@@ -343,7 +430,9 @@ class AuditViewModelTest {
     }
 
     @Test
-    fun `undo failure on 410 is flagged retention-gone`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `undo failure on 410 is flagged retention-gone`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         stubList(AuditEventsResponse(auditEvents = listOf(event(1))))
         stubResolve(emptyMap())
         coEvery { auditRepository.undo(1L) } returns Result.failure(ApiError.Client(410, "gone"))
@@ -362,10 +451,16 @@ class AuditViewModelTest {
     }
 
     @Test
-    fun `undo failure on another code carries the server message`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `undo failure on another code carries the server message`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         stubList(AuditEventsResponse(auditEvents = listOf(event(1))))
         stubResolve(emptyMap())
-        coEvery { auditRepository.undo(1L) } returns Result.failure(ApiError.Client(400, "unsupported"))
+        coEvery {
+            auditRepository.undo(
+                1L
+            )
+        } returns Result.failure(ApiError.Client(400, "unsupported"))
 
         val vm = viewModel()
         advanceUntilIdle()

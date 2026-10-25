@@ -5,15 +5,17 @@ import org.junit.Test
 
 class CardDisplayNameTest {
 
-    private fun cardWith(components: List<NameComponent>) = Card(name = Name(components = components))
+    private fun cardWith(components: List<NameComponent>) = Card(
+        name = Name(components = components)
+    )
 
     @Test
     fun `joins given and surname when no other components are present`() {
         val card = cardWith(
             listOf(
                 NameComponent(kind = "given", value = "Dana"),
-                NameComponent(kind = "surname", value = "White"),
-            ),
+                NameComponent(kind = "surname", value = "White")
+            )
         )
         assertEquals("Dana White", card.displayName)
     }
@@ -26,8 +28,8 @@ class CardDisplayNameTest {
                 NameComponent(kind = "given", value = "Dana"),
                 NameComponent(kind = "given2", value = "Marie"),
                 NameComponent(kind = "surname", value = "White"),
-                NameComponent(kind = "generation", value = "Jr."),
-            ),
+                NameComponent(kind = "generation", value = "Jr.")
+            )
         )
         assertEquals("Dr. Dana Marie White Jr.", card.displayName)
     }
@@ -38,8 +40,8 @@ class CardDisplayNameTest {
             listOf(
                 NameComponent(kind = "given", value = "Dana"),
                 NameComponent(kind = "surname", value = "White"),
-                NameComponent(kind = "generation", value = "Jr."),
-            ),
+                NameComponent(kind = "generation", value = "Jr.")
+            )
         )
         assertEquals("Dana White Jr.", card.displayName)
     }

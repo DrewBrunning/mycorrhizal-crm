@@ -43,7 +43,7 @@ data class ContactBriefing(
     @Json(name = "relationships") val relationshipsRaw: List<BriefingRelationship>? = null,
     @Json(name = "life_events") val lifeEventsRaw: List<LifeEvent>? = null,
     @Json(name = "upcoming_reminders") val upcomingRemindersRaw: List<Reminder>? = null,
-    @Json(name = "upcoming_dates") val upcomingDatesRaw: List<BriefingUpcomingDate>? = null,
+    @Json(name = "upcoming_dates") val upcomingDatesRaw: List<BriefingUpcomingDate>? = null
 ) {
     val recentNotes: List<Note> get() = recentNotesRaw.orEmpty()
     val openAgendaItems: List<ConversationAgenda> get() = openAgendaItemsRaw.orEmpty()
@@ -67,7 +67,7 @@ data class BriefingActivity(
     val type: String? = null,
     val location: String? = null,
     /** ISO 8601 timestamp. */
-    val date: String? = null,
+    val date: String? = null
 )
 
 /**
@@ -82,7 +82,7 @@ data class BriefingActivity(
 @JsonClass(generateAdapter = true)
 data class BriefingCadence(
     val policy: BriefingCadencePolicy? = null,
-    val health: BriefingCadenceHealth = BriefingCadenceHealth(),
+    val health: BriefingCadenceHealth = BriefingCadenceHealth()
 )
 
 /**
@@ -98,7 +98,7 @@ data class BriefingCadencePolicy(
     @Json(name = "target_interval_days") val targetIntervalDays: Int = 0,
     @Json(name = "qualifying_types") val qualifyingTypes: List<String> = emptyList(),
     @Json(name = "created_at") val createdAt: String? = null,
-    @Json(name = "updated_at") val updatedAt: String? = null,
+    @Json(name = "updated_at") val updatedAt: String? = null
 )
 
 /**
@@ -122,7 +122,7 @@ data class BriefingCadenceHealth(
     /** Issue #1733: an ambient contact is never overdue. Same as [CadenceHealth.ambient]. */
     val ambient: Boolean = false,
     /** [AMBIENT_REASON_HOUSEHOLD] or [AMBIENT_REASON_FLAG]; absent when [ambient] is false. */
-    @Json(name = "ambient_reason") val ambientReason: String? = null,
+    @Json(name = "ambient_reason") val ambientReason: String? = null
 ) {
     /** Never true for an ambient contact. Same as [CadenceHealth.isOverdue]. */
     val isOverdue: Boolean
@@ -142,7 +142,7 @@ data class BriefingRelationship(
     @Json(name = "other_party_contact_id") val otherPartyContactId: Int? = null,
     @Json(name = "other_party_name") val otherPartyName: String? = null,
     @Json(name = "other_party_uid") val otherPartyUid: String? = null,
-    @Json(name = "display_token") val displayToken: String? = null,
+    @Json(name = "display_token") val displayToken: String? = null
 )
 
 /** One upcoming birthday/anniversary for the briefing. */
@@ -153,5 +153,5 @@ data class BriefingUpcomingDate(
     /** Stored YYYY-MM-DD or --MM-DD value. */
     val date: String = "",
     /** Whole days from today; 0 when the date is today. */
-    @Json(name = "days_until") val daysUntil: Int = 0,
+    @Json(name = "days_until") val daysUntil: Int = 0
 )

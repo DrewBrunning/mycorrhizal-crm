@@ -14,7 +14,6 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Message
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -35,25 +34,25 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.feature.contacts.ContactAvatar
 import com.mycorrhizal.crm.feature.contacts.FieldActions
 import com.mycorrhizal.crm.feature.contacts.memberDisplayName
-import com.mycorrhizal.crm.ui.components.BrandFab
-import com.mycorrhizal.crm.ui.components.FabListContentPadding
+import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
+import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
-import com.mycorrhizal.crm.ui.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CircleDetailScreen(
     onBack: () -> Unit,
     onNavigateToContact: (Int) -> Unit = {},
-    viewModel: CircleDetailViewModel = hiltViewModel(),
+    viewModel: CircleDetailViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -77,23 +76,30 @@ fun CircleDetailScreen(
             TopAppBar(
                 navigationIcon = {
                     AccessibleIconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back)
+                        )
                     }
                 },
                 title = {
                     Text(
                         text = state.circle?.name ?: stringResource(R.string.circles_title),
-                        style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.titleLarge
                     )
                 },
                 actions = {
                     AccessibleIconButton(
-                        onClick = { context.startActivity(FieldActions.groupSmsIntent(textablePhones, context)) },
-                        enabled = textablePhones.size >= 2,
+                        onClick = {
+                            context.startActivity(
+                                FieldActions.groupSmsIntent(textablePhones, context)
+                            )
+                        },
+                        enabled = textablePhones.size >= 2
                     ) {
                         Icon(
                             Icons.Outlined.Message,
-                            contentDescription = stringResource(R.string.circles_text_everyone),
+                            contentDescription = stringResource(R.string.circles_text_everyone)
                         )
                     }
                 },
@@ -101,40 +107,49 @@ fun CircleDetailScreen(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
         floatingActionButton = {
             BrandFab(onClick = { showAddDialog = true }) {
-                Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.circles_add_member))
+                Icon(
+                    Icons.Outlined.Add,
+                    contentDescription = stringResource(R.string.circles_add_member)
+                )
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             RefreshableContent(
                 isRefreshing = state.isLoading && state.members.isNotEmpty(),
                 onRefresh = viewModel::load,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize()
             ) {
                 when {
                     state.isLoading && state.members.isEmpty() -> LoadingSkeleton()
+
                     state.members.isEmpty() && errorMessage == null ->
                         EmptyState(
                             title = stringResource(R.string.circles_members_empty),
                             actionLabel = stringResource(R.string.circles_add_member),
-                            onAction = { showAddDialog = true },
+                            onAction = { showAddDialog = true }
                         )
+
                     state.members.isEmpty() && errorMessage != null -> {
                         Text(
                             text = errorMessage,
                             color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.align(Alignment.Center),
+                            modifier = Modifier.align(Alignment.Center)
                         )
                     }
+
                     else -> {
-                        LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = FabListContentPadding) {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = FabListContentPadding
+                        ) {
                             items(state.members, key = { it.id }) { member ->
                                 val resolved = state.contactsByUid[member.memberVCardUid]
                                 MemberRow(
@@ -144,7 +159,7 @@ fun CircleDetailScreen(
                                     resolvedContactId = resolved?.takeIf { it.id != 0 }?.id,
                                     onNavigateToContact = onNavigateToContact,
                                     removing = state.removingUid == member.memberVCardUid,
-                                    onRemove = { viewModel.removeMember(member.memberVCardUid) },
+                                    onRemove = { viewModel.removeMember(member.memberVCardUid) }
                                 )
                             }
                         }
@@ -160,7 +175,7 @@ fun CircleDetailScreen(
                 viewModel.addMember(uid)
                 showAddDialog = false
             },
-            onDismiss = { showAddDialog = false },
+            onDismiss = { showAddDialog = false }
         )
     }
 
@@ -179,14 +194,24 @@ private fun MemberRow(
     resolvedContactId: Int?,
     onNavigateToContact: (Int) -> Unit,
     removing: Boolean,
-    onRemove: () -> Unit,
+    onRemove: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .then(if (resolvedContactId != null) Modifier.clickable { onNavigateToContact(resolvedContactId) } else Modifier)
+            .then(
+                if (resolvedContactId != null) {
+                    Modifier.clickable {
+                        onNavigateToContact(
+                            resolvedContactId
+                        )
+                    }
+                } else {
+                    Modifier
+                }
+            )
             .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         ContactAvatar(photoUri = photoUri, contentDescription = null, size = 40.dp)
         Text(
@@ -194,24 +219,24 @@ private fun MemberRow(
             style = MaterialTheme.typography.bodyLarge,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+            modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
         )
         AccessibleIconButton(onClick = onRemove, enabled = !removing) {
             Icon(
                 imageVector = Icons.Outlined.Remove,
                 // #205/#1768: the remove action carries the member's name (never the
                 // raw UID) so TalkBack doesn't read a bare "Remove member" on every row.
-                contentDescription = stringResource(R.string.circles_remove_member_named, displayName),
+                contentDescription = stringResource(
+                    R.string.circles_remove_member_named,
+                    displayName
+                )
             )
         }
     }
 }
 
 @Composable
-fun AddMemberDialog(
-    onConfirm: (String) -> Unit,
-    onDismiss: () -> Unit,
-) {
+fun AddMemberDialog(onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
     var uid by remember { mutableStateOf("") }
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
@@ -221,13 +246,13 @@ fun AddMemberDialog(
                 value = uid,
                 onValueChange = { uid = it },
                 label = { Text(stringResource(R.string.circles_member_vcard_uid)) },
-                singleLine = true,
+                singleLine = true
             )
         },
         confirmButton = {
             androidx.compose.material3.TextButton(
                 onClick = { onConfirm(uid) },
-                enabled = uid.isNotBlank(),
+                enabled = uid.isNotBlank()
             ) {
                 Text(stringResource(R.string.action_add))
             }
@@ -236,6 +261,6 @@ fun AddMemberDialog(
             androidx.compose.material3.TextButton(onClick = onDismiss) {
                 Text(stringResource(R.string.action_cancel))
             }
-        },
+        }
     )
 }

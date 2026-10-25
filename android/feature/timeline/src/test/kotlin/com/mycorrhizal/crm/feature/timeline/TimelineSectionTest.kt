@@ -37,7 +37,7 @@ class TimelineSectionTest {
                     onEditActivity = {},
                     onEditNote = {},
                     onEditReminder = {},
-                    onCompleteReminder = {},
+                    onCompleteReminder = {}
                 )
             }
         }
@@ -50,8 +50,8 @@ class TimelineSectionTest {
             TimelineItem.ActivityItem(Activity(id = 1, title = "Coffee with Dana", type = "visit")),
             TimelineItem.NoteItem(Note(id = 2, content = "Loves climbing")),
             TimelineItem.ReminderItem(
-                Reminder(id = 3, message = "Call Dana", recurrence = ReminderRecurrence.WEEKLY),
-            ),
+                Reminder(id = 3, message = "Call Dana", recurrence = ReminderRecurrence.WEEKLY)
+            )
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -60,7 +60,7 @@ class TimelineSectionTest {
                     onEditActivity = {},
                     onEditNote = {},
                     onEditReminder = {},
-                    onCompleteReminder = {},
+                    onCompleteReminder = {}
                 )
             }
         }
@@ -80,7 +80,7 @@ class TimelineSectionTest {
                     onEditActivity = { edited = it },
                     onEditNote = {},
                     onEditReminder = {},
-                    onCompleteReminder = {},
+                    onCompleteReminder = {}
                 )
             }
         }
@@ -93,8 +93,8 @@ class TimelineSectionTest {
         var completed: Int? = null
         val items = listOf(
             TimelineItem.ReminderItem(
-                Reminder(id = 3, message = "Call Dana", recurrence = ReminderRecurrence.ONCE),
-            ),
+                Reminder(id = 3, message = "Call Dana", recurrence = ReminderRecurrence.ONCE)
+            )
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -103,7 +103,7 @@ class TimelineSectionTest {
                     onEditActivity = {},
                     onEditNote = {},
                     onEditReminder = {},
-                    onCompleteReminder = { completed = it },
+                    onCompleteReminder = { completed = it }
                 )
             }
         }
@@ -115,8 +115,13 @@ class TimelineSectionTest {
     fun `completion row renders the completed message`() {
         val items = listOf(
             TimelineItem.CompletionItem(
-                ReminderCompletion(id = 5, contactId = 5, message = "Done with gift", completedAt = "2026-08-05T10:00:00Z"),
-            ),
+                ReminderCompletion(
+                    id = 5,
+                    contactId = 5,
+                    message = "Done with gift",
+                    completedAt = "2026-08-05T10:00:00Z"
+                )
+            )
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -125,7 +130,7 @@ class TimelineSectionTest {
                     onEditActivity = {},
                     onEditNote = {},
                     onEditReminder = {},
-                    onCompleteReminder = {},
+                    onCompleteReminder = {}
                 )
             }
         }
@@ -138,8 +143,13 @@ class TimelineSectionTest {
         var undone: Int? = null
         val items = listOf(
             TimelineItem.CompletionItem(
-                ReminderCompletion(id = 5, contactId = 5, message = "Done", completedAt = "2026-08-05T10:00:00Z"),
-            ),
+                ReminderCompletion(
+                    id = 5,
+                    contactId = 5,
+                    message = "Done",
+                    completedAt = "2026-08-05T10:00:00Z"
+                )
+            )
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -149,7 +159,7 @@ class TimelineSectionTest {
                     onEditNote = {},
                     onEditReminder = {},
                     onCompleteReminder = {},
-                    onUndoCompletion = { undone = it },
+                    onUndoCompletion = { undone = it }
                 )
             }
         }
@@ -168,9 +178,9 @@ class TimelineSectionTest {
                     entityId = "u5",
                     sourceSystem = "immich",
                     type = "photo-appearance",
-                    payload = mapOf("person_name" to "Alice"),
-                ),
-            ),
+                    payload = mapOf("person_name" to "Alice")
+                )
+            )
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -179,7 +189,7 @@ class TimelineSectionTest {
                     onEditActivity = {},
                     onEditNote = {},
                     onEditReminder = {},
-                    onCompleteReminder = {},
+                    onCompleteReminder = {}
                 )
             }
         }
@@ -191,8 +201,13 @@ class TimelineSectionTest {
     fun `an unrecognized external activity type falls back to a generic title`() {
         val items = listOf(
             TimelineItem.ExternalActivityItem(
-                ExternalActivity(id = "a1", entityId = "u5", sourceSystem = "immich", type = "media-watched"),
-            ),
+                ExternalActivity(
+                    id = "a1",
+                    entityId = "u5",
+                    sourceSystem = "immich",
+                    type = "media-watched"
+                )
+            )
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -201,7 +216,7 @@ class TimelineSectionTest {
                     onEditActivity = {},
                     onEditNote = {},
                     onEditReminder = {},
-                    onCompleteReminder = {},
+                    onCompleteReminder = {}
                 )
             }
         }
@@ -220,7 +235,7 @@ class TimelineSectionTest {
                     onEditActivity = {},
                     onEditNote = {},
                     onEditReminder = {},
-                    onCompleteReminder = {},
+                    onCompleteReminder = {}
                 )
             }
         }
@@ -240,7 +255,7 @@ class TimelineSectionTest {
                     onEditNote = {},
                     onEditReminder = {},
                     onCompleteReminder = {},
-                    previewLimit = 2,
+                    previewLimit = 2
                 )
             }
         }

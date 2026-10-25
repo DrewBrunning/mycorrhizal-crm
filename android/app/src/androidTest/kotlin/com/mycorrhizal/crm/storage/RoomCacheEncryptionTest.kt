@@ -6,8 +6,8 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.mycorrhizal.crm.data.local.AppDatabase
 import com.mycorrhizal.crm.data.local.CachedContact
-import com.mycorrhizal.crm.data.local.PhoneKey
 import com.mycorrhizal.crm.data.local.PendingInteraction
+import com.mycorrhizal.crm.data.local.PhoneKey
 import com.mycorrhizal.crm.data.local.RoomCacheEncryption
 import java.io.DataInputStream
 import java.io.File
@@ -89,12 +89,16 @@ class RoomCacheEncryptionTest {
         val db = buildEncryptedDb(file)
         runBlocking {
             db.cachedContactDao().upsert(
-                CachedContact(id = 1, fn = "Dana White", primaryPhone = "(800) 555-1234"),
+                CachedContact(id = 1, fn = "Dana White", primaryPhone = "(800) 555-1234")
             )
         }
         db.close()
 
-        assertNotEquals("The file header must not be a plaintext SQLite header", plaintextHeader, headerOf(file))
+        assertNotEquals(
+            "The file header must not be a plaintext SQLite header",
+            plaintextHeader,
+            headerOf(file)
+        )
         assertTrue(RoomCacheEncryption.isEncrypted(file))
     }
 
@@ -139,15 +143,24 @@ class RoomCacheEncryptionTest {
                     id = 1,
                     fn = "Dana White",
                     primaryPhone = "555-0100",
-                    phonesNormalized = PhoneKey.flatten(listOf("555-0100")),
-                ),
+                    phonesNormalized = PhoneKey.flatten(listOf("555-0100"))
+                )
             )
             plaintext.pendingInteractionDao().insert(
-                PendingInteraction(timestampMillis = 1000, kind = "call", phoneNumber = "5551234", synced = false),
+                PendingInteraction(
+                    timestampMillis = 1000,
+                    kind = "call",
+                    phoneNumber = "5551234",
+                    synced = false
+                )
             )
         }
         plaintext.close()
-        assertEquals("A plaintext Room DB must start with the plaintext header", plaintextHeader, headerOf(file))
+        assertEquals(
+            "A plaintext Room DB must start with the plaintext header",
+            plaintextHeader,
+            headerOf(file)
+        )
 
         RoomCacheEncryption.ensureEncrypted(file, passphrase)
 

@@ -1,13 +1,13 @@
 package com.mycorrhizal.crm.feature.settings
 
-import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -34,7 +34,12 @@ class PasskeysScreenTest {
     val composeTestRule = createComposeRule()
 
     private val phone = WebAuthnCredential("id-phone", "Phone", "2026-09-01T10:00:00Z", null)
-    private val key = WebAuthnCredential("id-key", "YubiKey", "2026-09-02T10:00:00Z", "2026-09-03T10:00:00Z")
+    private val key = WebAuthnCredential(
+        "id-key",
+        "YubiKey",
+        "2026-09-02T10:00:00Z",
+        "2026-09-03T10:00:00Z"
+    )
 
     private fun setContent(
         state: PasskeysUiState,
@@ -44,7 +49,7 @@ class PasskeysScreenTest {
         onRequestRemove: (WebAuthnCredential) -> Unit = {},
         onRemoveWithCode: (String) -> Unit = {},
         onRemoveWithPasskey: () -> Unit = {},
-        onDismissRecoveryCodes: () -> Unit = {},
+        onDismissRecoveryCodes: () -> Unit = {}
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -58,7 +63,7 @@ class PasskeysScreenTest {
                     onDismissRemove = {},
                     onRemoveWithCode = onRemoveWithCode,
                     onRemoveWithPasskey = onRemoveWithPasskey,
-                    onDismissRecoveryCodes = onDismissRecoveryCodes,
+                    onDismissRecoveryCodes = onDismissRecoveryCodes
                 )
             }
         }
@@ -67,7 +72,7 @@ class PasskeysScreenTest {
     private fun ready(
         passkeys: List<WebAuthnCredential> = listOf(phone, key),
         available: Boolean = true,
-        block: PasskeysUiState.() -> PasskeysUiState = { this },
+        block: PasskeysUiState.() -> PasskeysUiState = { this }
     ) = PasskeysUiState(loading = false, available = available, passkeys = passkeys).block()
 
     @Test
@@ -92,28 +97,38 @@ class PasskeysScreenTest {
     @Test
     fun `a closed gate explains and offers no add`() {
         setContent(ready(available = false))
-        composeTestRule.onNodeWithText("Passkeys aren't available on this app for this server.").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Passkeys aren't available on this app for this server."
+        ).assertIsDisplayed()
         composeTestRule.onNodeWithText("Add a passkey").assertDoesNotExist()
     }
 
     @Test
     fun `a blocked account shows the server text and no add`() {
         setContent(ready { copy(blockedText = "Not available for identity-provider accounts") })
-        composeTestRule.onNodeWithText("Not available for identity-provider accounts").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Not available for identity-provider accounts"
+        ).assertIsDisplayed()
         composeTestRule.onNodeWithText("Add a passkey").assertDoesNotExist()
     }
 
     @Test
     fun `a not-associated server shows its state and no add`() {
         setContent(ready { copy(blockedRes = R.string.settings_passkeys_not_associated) })
-        composeTestRule.onNodeWithText("This server isn't set up for passkeys on Android", substring = true).assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "This server isn't set up for passkeys on Android",
+            substring = true
+        ).assertIsDisplayed()
         composeTestRule.onNodeWithText("Add a passkey").assertDoesNotExist()
     }
 
     @Test
     fun `the add dialog submits the typed label`() {
         var label: String? = null
-        setContent(ready(passkeys = emptyList()) { copy(adding = true) }, onConfirmAdd = { name, _ -> label = name })
+        setContent(
+            ready(passkeys = emptyList()) { copy(adding = true) },
+            onConfirmAdd = { name, _ -> label = name }
+        )
         composeTestRule.onNodeWithText("Passkey name (optional)").performTextInput("Laptop")
         composeTestRule.onNodeWithText("Continue").performClick()
         assertEquals("Laptop", label)
@@ -125,13 +140,18 @@ class PasskeysScreenTest {
     fun `the first passkey needs no proof field`() {
         setContent(ready(passkeys = emptyList()) { copy(adding = true) })
         composeTestRule.onNodeWithText("Verification code").assertDoesNotExist()
-        composeTestRule.onNodeWithText("Verify with an existing passkey instead").assertDoesNotExist()
+        composeTestRule.onNodeWithText(
+            "Verify with an existing passkey instead"
+        ).assertDoesNotExist()
     }
 
     @Test
     fun `an account with a factor must type a code before Continue and it is submitted with the name`() {
         var submitted: Pair<String, String>? = null
-        setContent(ready { copy(adding = true) }, onConfirmAdd = { name, code -> submitted = name to code })
+        setContent(
+            ready { copy(adding = true) },
+            onConfirmAdd = { name, code -> submitted = name to code }
+        )
         composeTestRule.onNodeWithText("Continue").assertIsNotEnabled()
         composeTestRule.onNodeWithText("Passkey name (optional)").performTextInput("Laptop")
         composeTestRule.onNodeWithText("Verification code").performTextInput("ABCDE-12345")
@@ -143,7 +163,9 @@ class PasskeysScreenTest {
     fun `a TOTP-only account is asked for a proof but offered no passkey route`() {
         setContent(ready(passkeys = emptyList()) { copy(adding = true, totpEnabled = true) })
         composeTestRule.onNodeWithText("Verification code").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Verify with an existing passkey instead").assertDoesNotExist()
+        composeTestRule.onNodeWithText(
+            "Verify with an existing passkey instead"
+        ).assertDoesNotExist()
     }
 
     @Test
@@ -169,7 +191,7 @@ class PasskeysScreenTest {
         setContent(
             ready { copy(removing = phone) },
             onRequestRemove = { removed = it },
-            onRemoveWithCode = { code = it },
+            onRemoveWithCode = { code = it }
         )
         composeTestRule.onNodeWithText("Verification code").performTextInput("123456")
         // Title and confirm button share the text; the confirm button is the last one.
@@ -189,7 +211,10 @@ class PasskeysScreenTest {
     @Test
     fun `another-passkey proof is offered only when another passkey exists`() {
         var used = 0
-        setContent(ready(listOf(phone, key)) { copy(removing = phone) }, onRemoveWithPasskey = { used++ })
+        setContent(
+            ready(listOf(phone, key)) { copy(removing = phone) },
+            onRemoveWithPasskey = { used++ }
+        )
         composeTestRule.onNodeWithText("Verify with another passkey instead").performClick()
         assertEquals(1, used)
     }
@@ -209,7 +234,9 @@ class PasskeysScreenTest {
 
     @Test
     fun `proof errors appear inside the dialog`() {
-        setContent(ready { copy(removing = phone, errorRes = R.string.settings_passkeys_invalid_proof) })
+        setContent(
+            ready { copy(removing = phone, errorRes = R.string.settings_passkeys_invalid_proof) }
+        )
         composeTestRule.onNodeWithText("Verification failed. Please try again.").assertIsDisplayed()
     }
 
@@ -224,7 +251,7 @@ class PasskeysScreenTest {
         var done = 0
         setContent(
             ready { copy(recoveryCodes = listOf("AAAAA-BBBBB-CCCCC", "DDDDD-EEEEE-FFFFF")) },
-            onDismissRecoveryCodes = { done++ },
+            onDismissRecoveryCodes = { done++ }
         )
         composeTestRule.onNodeWithText("AAAAA-BBBBB-CCCCC").assertIsDisplayed()
         composeTestRule.onNodeWithText("Done").performClick()
@@ -233,7 +260,9 @@ class PasskeysScreenTest {
 
     @Test
     fun `success and error lines are shown outside dialogs`() {
-        setContent(ready { copy(messageRes = R.string.settings_passkeys_add_success, error = "Boom") })
+        setContent(
+            ready { copy(messageRes = R.string.settings_passkeys_add_success, error = "Boom") }
+        )
         composeTestRule.onNodeWithText("Passkey added.").assertIsDisplayed()
         composeTestRule.onNodeWithText("Boom").assertIsDisplayed()
     }
@@ -245,4 +274,3 @@ class PasskeysScreenTest {
         assertTrue(true)
     }
 }
-

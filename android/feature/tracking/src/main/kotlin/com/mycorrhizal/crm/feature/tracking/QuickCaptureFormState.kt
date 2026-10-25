@@ -30,7 +30,7 @@ class QuickCaptureFormState(
     private val scope: CoroutineScope,
     val prefill: QuickCapturePrefill,
     private val blankTitleMessage: String = "Title is required",
-    private val onFirstInteraction: () -> Unit = {},
+    private val onFirstInteraction: () -> Unit = {}
 ) {
     var title by mutableStateOf(prefill.title)
         private set
@@ -86,14 +86,14 @@ class QuickCaptureFormState(
                     type = type.trim().ifBlank { prefill.type },
                     date = prefill.date,
                     description = description.trim().ifBlank { null },
-                    contactIds = prefill.participants.map { it.id }.ifEmpty { null },
-                ),
+                    contactIds = prefill.participants.map { it.id }.ifEmpty { null }
+                )
             ).fold(
                 onSuccess = { saved = true },
                 onFailure = { e ->
                     error = (e as? ApiError)?.displayMessage ?: e.message ?: "error"
                     isSaving = false
-                },
+                }
             )
         }
     }

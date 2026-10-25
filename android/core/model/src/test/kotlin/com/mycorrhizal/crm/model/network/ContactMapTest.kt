@@ -23,7 +23,7 @@ class ContactMapTest {
     fun `parseGeoUri rejects malformed and out-of-range values`() {
         listOf(
             null, "", "geo:", "geo:abc,def", "geo:91,0", "geo:-91,0", "geo:0,181", "geo:0,-181",
-            "http://x/1,2", "geo:1", "geo:1,2,x", "geo:1,2,3,4", "geo:1.2.3,4", "geo:--1,2",
+            "http://x/1,2", "geo:1", "geo:1,2,x", "geo:1,2,3,4", "geo:1.2.3,4", "geo:--1,2"
         ).forEach { assertNull("expected null for $it", parseGeoUri(it)) }
     }
 
@@ -44,12 +44,15 @@ class ContactMapTest {
             0.0 to 0.0,
             51.5 to -0.12,
             -33.8688 to 151.2093,
-            90.0 to 180.0,
+            90.0 to 180.0
         ).forEach { (lat, lng) ->
             val uri = formatGeoUri(lat, lng)
             // The `geo:` scheme itself contains an `e`; the coordinates must not.
             val coords = uri.removePrefix("geo:")
-            assertFalse("scientific notation leaked into '$uri'", coords.contains('E') || coords.contains('e'))
+            assertFalse(
+                "scientific notation leaked into '$uri'",
+                coords.contains('E') || coords.contains('e')
+            )
             assertEquals("round-trip failed for '$uri'", LatLng(lat, lng), parseGeoUri(uri))
         }
     }
@@ -94,7 +97,9 @@ class ContactMapTest {
     @Test
     fun `Address round-trips sensitivity through Moshi so a save cannot erase it`() {
         val adapter = MoshiProvider.get().adapter(Address::class.java)
-        val parsed = adapter.fromJson("""{"id":"a","sensitivity":"secret","coordinates":"geo:1,2"}""")
+        val parsed = adapter.fromJson(
+            """{"id":"a","sensitivity":"secret","coordinates":"geo:1,2"}"""
+        )
         assertEquals("secret", parsed?.sensitivity)
         assertTrue(adapter.toJson(parsed).contains("\"sensitivity\":\"secret\""))
     }
@@ -103,7 +108,7 @@ class ContactMapTest {
     fun `ContactMapResponse decodes the spec shape and tolerates null points`() {
         val adapter = MoshiProvider.get().adapter(ContactMapResponse::class.java)
         val full = adapter.fromJson(
-            """{"points":[{"contact_id":2,"contact_uid":"u","contact_name":"Ada","address_id":"a","label":"10 Downing St","coordinates":"geo:51.5,-0.12"}],"truncated":true}""",
+            """{"points":[{"contact_id":2,"contact_uid":"u","contact_name":"Ada","address_id":"a","label":"10 Downing St","coordinates":"geo:51.5,-0.12"}],"truncated":true}"""
         )
         assertNotNull(full)
         assertTrue(full!!.truncated)
@@ -122,7 +127,9 @@ class ContactMapTest {
         val moshi = MoshiProvider.get()
         assertEquals(
             "https://tiles.example/style",
-            moshi.adapter(MapConfig::class.java).fromJson("""{"tile_style_url":"https://tiles.example/style"}""")?.tileStyleUrl,
+            moshi.adapter(
+                MapConfig::class.java
+            ).fromJson("""{"tile_style_url":"https://tiles.example/style"}""")?.tileStyleUrl
         )
         val geo = moshi.adapter(GeocodeDraftResponse::class.java)
             .fromJson("""{"coordinates":"geo:1,2","cached":true}""")

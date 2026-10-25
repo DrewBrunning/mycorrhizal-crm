@@ -34,16 +34,19 @@ class MergeAndBulkViewModelTest {
     fun `preview loads and exposes conflicts`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { mergeRepository.preview(any()) } returns Result.success(
             ContactMergePreviewResponse(
-                keepId = 1, mergeId = 2,
+                keepId = 1,
+                mergeId = 2,
                 resolution = ContactMergeResolution(
                     conflicts = listOf(
                         com.mycorrhizal.crm.model.network.ContactMergeFieldConflict(
-                            field = "firstname", label = "First name",
-                            keeperValue = "Dana", loserValue = "Dana",
-                        ),
-                    ),
-                ),
-            ),
+                            field = "firstname",
+                            label = "First name",
+                            keeperValue = "Dana",
+                            loserValue = "Dana"
+                        )
+                    )
+                )
+            )
         )
 
         val vm = viewModel()
@@ -59,7 +62,7 @@ class MergeAndBulkViewModelTest {
     @Test
     fun `commit sends resolutions and marks merged`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { mergeRepository.commit(any()) } returns Result.success(
-            com.mycorrhizal.crm.model.network.ContactRecordResponse(id = 1),
+            com.mycorrhizal.crm.model.network.ContactRecordResponse(id = 1)
         )
 
         val vm = viewModel()
@@ -71,14 +74,18 @@ class MergeAndBulkViewModelTest {
         assertTrue(vm.uiState.value.merged)
         coVerify {
             mergeRepository.commit(
-                match<ContactMergeRequest> { it.resolutions?.get("firstname") == "Dana" },
+                match<ContactMergeRequest> { it.resolutions?.get("firstname") == "Dana" }
             )
         }
     }
 
     @Test
     fun `preview failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { mergeRepository.preview(any()) } returns Result.failure(ApiError.Client(400, "bad pair"))
+        coEvery {
+            mergeRepository.preview(
+                any()
+            )
+        } returns Result.failure(ApiError.Client(400, "bad pair"))
 
         val vm = viewModel()
         vm.setPair(1, 1)
@@ -91,21 +98,45 @@ class MergeAndBulkViewModelTest {
     // --- M23: search-based target picker (test case 4) ---
 
     @Test
-    fun `a merge can be initiated by search without ever entering a numeric id`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a merge can be initiated by search without ever entering a numeric id`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         // The reported gap: Android required typing the target's raw numeric ID. This test
         // drives the whole flow — type a name, pick the row, preview fires — with no ID input.
-        coEvery { contactRepository.listContacts(cursor = null, limit = 100, search = "Dana") } returns
+        coEvery {
+            contactRepository.listContacts(
+                cursor = null,
+                limit = 100,
+                search = "Dana"
+            )
+        } returns
             Result.success(
                 ContactsPage(
                     contacts = listOf(
-                        ContactSummary(id = 5, uid = "uid-5", fn = "Dana White", firstname = "Dana"),
-                        ContactSummary(id = 7, uid = "uid-7", fn = "Dana Brown", firstname = "Dana"),
+                        ContactSummary(
+                            id = 5,
+                            uid = "uid-5",
+                            fn = "Dana White",
+                            firstname = "Dana"
+                        ),
+                        ContactSummary(
+                            id = 7,
+                            uid = "uid-7",
+                            fn = "Dana Brown",
+                            firstname = "Dana"
+                        )
                     ),
-                    nextCursor = null, limit = 100, sync = null,
-                ),
+                    nextCursor = null,
+                    limit = 100,
+                    sync = null
+                )
             )
         coEvery { mergeRepository.preview(match { it.mergeId == 5L }) } returns Result.success(
-            ContactMergePreviewResponse(keepId = 1, mergeId = 5, resolution = ContactMergeResolution()),
+            ContactMergePreviewResponse(
+                keepId = 1,
+                mergeId = 5,
+                resolution = ContactMergeResolution()
+            )
         )
 
         val vm = viewModel()
@@ -126,16 +157,24 @@ class MergeAndBulkViewModelTest {
 
     @Test
     fun `search results exclude the keeper`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { contactRepository.listContacts(cursor = null, limit = 100, search = "Dana") } returns
+        coEvery {
+            contactRepository.listContacts(
+                cursor = null,
+                limit = 100,
+                search = "Dana"
+            )
+        } returns
             Result.success(
                 ContactsPage(
                     contacts = listOf(
                         // id 3 == keepId: a contact can't merge into itself and must not be offered.
                         ContactSummary(id = 3, uid = "uid-3", fn = "Dana Self"),
-                        ContactSummary(id = 5, uid = "uid-5", fn = "Dana White"),
+                        ContactSummary(id = 5, uid = "uid-5", fn = "Dana White")
                     ),
-                    nextCursor = null, limit = 100, sync = null,
-                ),
+                    nextCursor = null,
+                    limit = 100,
+                    sync = null
+                )
             )
 
         val vm = viewModel()
@@ -149,11 +188,17 @@ class MergeAndBulkViewModelTest {
     }
 
     @Test
-    fun `a preselected pair loads the preview without the search hop`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a preselected pair loads the preview without the search hop`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         // T93: duplicate review navigates to merge with BOTH contacts known;
         // setPair + loadPreview must fire the preview immediately.
         coEvery { mergeRepository.preview(any()) } returns Result.success(
-            ContactMergePreviewResponse(keepId = 1, mergeId = 2, resolution = ContactMergeResolution()),
+            ContactMergePreviewResponse(
+                keepId = 1,
+                mergeId = 2,
+                resolution = ContactMergeResolution()
+            )
         )
 
         val vm = viewModel()
@@ -170,19 +215,39 @@ class MergeAndBulkViewModelTest {
     // only on an unrelated field. The merge picker must not offer it, and must
     // disclose the drop via hiddenMatchCount instead of silently hiding it.
     @Test
-    fun `search results are strict-name-filtered with a hidden count`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { contactRepository.listContacts(cursor = null, limit = 100, search = "Jordan") } returns
+    fun `search results are strict-name-filtered with a hidden count`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery {
+            contactRepository.listContacts(
+                cursor = null,
+                limit = 100,
+                search = "Jordan"
+            )
+        } returns
             Result.success(
                 ContactsPage(
                     contacts = listOf(
-                        ContactSummary(id = 5, uid = "uid-5", firstname = "Jordan", lastname = "Lee"),
+                        ContactSummary(
+                            id = 5,
+                            uid = "uid-5",
+                            firstname = "Jordan",
+                            lastname = "Lee"
+                        ),
                         // Server matched this on an address/email/FTS field; its
                         // display name does not contain "Jordan" and it must not
                         // be offered as a merge target.
-                        ContactSummary(id = 7, uid = "uid-7", firstname = "Meike", lastname = "Schmidt"),
+                        ContactSummary(
+                            id = 7,
+                            uid = "uid-7",
+                            firstname = "Meike",
+                            lastname = "Schmidt"
+                        )
                     ),
-                    nextCursor = null, limit = 100, sync = null,
-                ),
+                    nextCursor = null,
+                    limit = 100,
+                    sync = null
+                )
             )
 
         val vm = viewModel()
@@ -209,7 +274,13 @@ class MergeAndBulkViewModelTest {
 
     @Test
     fun `search failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { contactRepository.listContacts(cursor = null, limit = 100, search = "zzz") } returns
+        coEvery {
+            contactRepository.listContacts(
+                cursor = null,
+                limit = 100,
+                search = "zzz"
+            )
+        } returns
             Result.failure(ApiError.Client(500, "server error"))
 
         val vm = viewModel()

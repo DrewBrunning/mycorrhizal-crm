@@ -1,6 +1,5 @@
 package com.mycorrhizal.crm.data.repository
 
-import androidx.room.RoomDatabase
 import androidx.room.withTransaction
 import com.mycorrhizal.crm.data.local.AppDatabase
 import com.mycorrhizal.crm.data.local.PendingInteractionDao
@@ -36,7 +35,7 @@ import javax.inject.Inject
  */
 class PendingInteractionRepositoryImpl @Inject constructor(
     private val dao: PendingInteractionDao,
-    private val database: AppDatabase,
+    private val database: AppDatabase
 ) : PendingInteractionRepository {
     override suspend fun record(interaction: DomainPendingInteraction) {
         database.withTransaction {
@@ -90,7 +89,7 @@ private fun com.mycorrhizal.crm.data.local.PendingInteraction.toDomain(): Domain
         matchedContactId = matchedContactId,
         synced = synced,
         syncedAt = syncedAt,
-        idempotencyKey = idempotencyKey,
+        idempotencyKey = idempotencyKey
     )
 
 private fun DomainPendingInteraction.toEntity(): com.mycorrhizal.crm.data.local.PendingInteraction =
@@ -103,5 +102,5 @@ private fun DomainPendingInteraction.toEntity(): com.mycorrhizal.crm.data.local.
         matchedContactId = matchedContactId,
         synced = synced,
         syncedAt = syncedAt,
-        idempotencyKey = idempotencyKey ?: UUID.randomUUID().toString(),
+        idempotencyKey = idempotencyKey ?: UUID.randomUUID().toString()
     )

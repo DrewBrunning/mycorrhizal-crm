@@ -12,7 +12,7 @@ data class ContactMergeFieldConflict(
     val field: String = "",
     val label: String = "",
     @Json(name = "keeper_value") val keeperValue: String = "",
-    @Json(name = "loser_value") val loserValue: String = "",
+    @Json(name = "loser_value") val loserValue: String = ""
 )
 
 @JsonClass(generateAdapter = true)
@@ -25,14 +25,13 @@ data class ContactMergeResolution(
     val circles: List<String> = emptyList(),
     @Json(name = "resolved_scalars") val resolvedScalars: Map<String, String> = emptyMap(),
     val conflicts: List<ContactMergeFieldConflict> = emptyList(),
-    @Json(name = "field_value_conflicts") val fieldValueConflicts: List<ContactMergeFieldConflict> = emptyList(),
+    @Json(
+        name = "field_value_conflicts"
+    ) val fieldValueConflicts: List<ContactMergeFieldConflict> = emptyList()
 )
 
 @JsonClass(generateAdapter = true)
-data class ContactMergeValue(
-    val type: String? = null,
-    val value: String = "",
-)
+data class ContactMergeValue(val type: String? = null, val value: String = "")
 
 @JsonClass(generateAdapter = true)
 data class ContactMergeAddress(
@@ -41,7 +40,7 @@ data class ContactMergeAddress(
     val city: String? = null,
     val region: String? = null,
     val postal: String? = null,
-    val country: String? = null,
+    val country: String? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -67,14 +66,14 @@ data class ContactMergeAssociationCounts(
     val preferences: Long = 0,
     @Json(name = "external_identities") val externalIdentities: Long = 0,
     @Json(name = "external_activities") val externalActivities: Long = 0,
-    @Json(name = "cadence_policies") val cadencePolicies: Long = 0,
+    @Json(name = "cadence_policies") val cadencePolicies: Long = 0
 )
 
 @JsonClass(generateAdapter = true)
 data class ContactMergeRequest(
     @Json(name = "keep_id") val keepId: Long,
     @Json(name = "merge_id") val mergeId: Long,
-    val resolutions: Map<String, String>? = null,
+    val resolutions: Map<String, String>? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -83,14 +82,14 @@ data class ContactMergePreviewResponse(
     @Json(name = "merge_id") val mergeId: Long = 0,
     val resolution: ContactMergeResolution = ContactMergeResolution(),
     @Json(name = "association_counts") val associationCounts: ContactMergeAssociationCounts =
-        ContactMergeAssociationCounts(),
+        ContactMergeAssociationCounts()
 )
 
 /** Commit response — `{ message, contact }` (the merged full contact record). */
 @JsonClass(generateAdapter = true)
 data class ContactMergeCommitResponse(
     val message: String? = null,
-    val contact: ContactRecordResponse? = null,
+    val contact: ContactRecordResponse? = null
 )
 
 // ---------------------------------------------------------------------------
@@ -112,13 +111,13 @@ data class BulkContactOperationInput(
     val action: String,
     @Json(name = "vcard_uids") val vcardUids: List<String>,
     @Json(name = "circle_id") val circleId: String? = null,
-    @Json(name = "tag_id") val tagId: String? = null,
+    @Json(name = "tag_id") val tagId: String? = null
 )
 
 @JsonClass(generateAdapter = true)
 data class BulkFailureEntry(
     @Json(name = "vcard_uid") val vcardUid: String = "",
-    val reason: String = "",
+    val reason: String = ""
 )
 
 @JsonClass(generateAdapter = true)
@@ -127,5 +126,5 @@ data class BulkOperationResult(
     val total: Int = 0,
     val succeeded: Int = 0,
     val failed: Int = 0,
-    val failures: List<BulkFailureEntry> = emptyList(),
+    val failures: List<BulkFailureEntry> = emptyList()
 )

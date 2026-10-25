@@ -31,7 +31,10 @@ class RowOverflowMenuTest {
     fun `actions stay hidden until the overflow button is tapped`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                RowOverflowMenu(rowName = "Family", actions = listOf(RowAction("Rename", onClick = {})))
+                RowOverflowMenu(
+                    rowName = "Family",
+                    actions = listOf(RowAction("Rename", onClick = {}))
+                )
             }
         }
         composeTestRule.onNodeWithText("Rename").assertDoesNotExist()
@@ -48,8 +51,8 @@ class RowOverflowMenuTest {
                     rowName = "Family",
                     actions = listOf(
                         RowAction("Rename", onClick = { log += "rename" }),
-                        RowAction("Delete", onClick = { log += "delete" }, destructive = true),
-                    ),
+                        RowAction("Delete", onClick = { log += "delete" }, destructive = true)
+                    )
                 )
             }
         }
@@ -64,8 +67,14 @@ class RowOverflowMenuTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 Column {
-                    RowOverflowMenu(rowName = "Family", actions = listOf(RowAction("Rename", onClick = {})))
-                    RowOverflowMenu(rowName = "Friends", actions = listOf(RowAction("Rename", onClick = {})))
+                    RowOverflowMenu(
+                        rowName = "Family",
+                        actions = listOf(RowAction("Rename", onClick = {}))
+                    )
+                    RowOverflowMenu(
+                        rowName = "Friends",
+                        actions = listOf(RowAction("Rename", onClick = {}))
+                    )
                 }
             }
         }

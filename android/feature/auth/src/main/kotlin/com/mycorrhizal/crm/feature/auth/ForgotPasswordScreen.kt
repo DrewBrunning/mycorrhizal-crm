@@ -41,10 +41,7 @@ import com.mycorrhizal.crm.ui.R
  * the ViewModel (LoginViewModel's convention).
  */
 @Composable
-fun ForgotPasswordScreen(
-    onBack: () -> Unit,
-    viewModel: ForgotPasswordViewModel = viewModel(),
-) {
+fun ForgotPasswordScreen(onBack: () -> Unit, viewModel: ForgotPasswordViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     ForgotPasswordScreenContent(
@@ -56,7 +53,7 @@ fun ForgotPasswordScreen(
         onConfirmReset = viewModel::confirmReset,
         onDone = viewModel::onDone,
         onBack = onBack,
-        onErrorShown = viewModel::onErrorShown,
+        onErrorShown = viewModel::onErrorShown
     )
 }
 
@@ -70,7 +67,7 @@ fun ForgotPasswordScreenContent(
     onConfirmReset: (token: String, newPassword: String, confirmPassword: String) -> Unit,
     onDone: () -> Unit,
     onBack: () -> Unit,
-    onErrorShown: () -> Unit,
+    onErrorShown: () -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -86,18 +83,18 @@ fun ForgotPasswordScreenContent(
                 .padding(24.dp)
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
                 text = stringResource(R.string.forgot_password_title),
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleLarge
             )
 
             when (uiState.step) {
                 PasswordResetStep.REQUEST -> {
                     Text(
                         text = stringResource(R.string.forgot_password_request_hint),
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = MaterialTheme.typography.bodyLarge
                     )
                     OutlinedTextField(
                         value = uiState.serverUrl,
@@ -105,7 +102,7 @@ fun ForgotPasswordScreenContent(
                         label = { Text(stringResource(R.string.login_server_url)) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth()
                     )
                     OutlinedTextField(
                         value = uiState.email,
@@ -113,7 +110,7 @@ fun ForgotPasswordScreenContent(
                         label = { Text(stringResource(R.string.forgot_password_email)) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth()
                     )
                     if (uiState.isLoading) {
                         CircularProgressIndicator()
@@ -129,15 +126,18 @@ fun ForgotPasswordScreenContent(
                         Text(
                             text = message,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.tertiary,
+                            color = MaterialTheme.colorScheme.tertiary
                         )
                     }
                     OutlinedTextField(
                         value = token,
-                        onValueChange = { token = it; onTokenChange(it) },
+                        onValueChange = {
+                            token = it
+                            onTokenChange(it)
+                        },
                         label = { Text(stringResource(R.string.forgot_password_token)) },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth()
                     )
                     OutlinedTextField(
                         value = newPassword,
@@ -146,7 +146,7 @@ fun ForgotPasswordScreenContent(
                         singleLine = true,
                         visualTransformation = PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth()
                     )
                     OutlinedTextField(
                         value = confirmPassword,
@@ -155,14 +155,14 @@ fun ForgotPasswordScreenContent(
                         singleLine = true,
                         visualTransformation = PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth()
                     )
                     if (uiState.isLoading) {
                         CircularProgressIndicator()
                     } else {
                         Button(
                             onClick = { onConfirmReset(token, newPassword, confirmPassword) },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(stringResource(R.string.forgot_password_reset))
                         }
@@ -172,7 +172,7 @@ fun ForgotPasswordScreenContent(
                 PasswordResetStep.DONE -> {
                     Text(
                         text = stringResource(R.string.forgot_password_done),
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = MaterialTheme.typography.bodyLarge
                     )
                     Button(onClick = onDone, modifier = Modifier.fillMaxWidth()) {
                         Text(stringResource(R.string.action_close))

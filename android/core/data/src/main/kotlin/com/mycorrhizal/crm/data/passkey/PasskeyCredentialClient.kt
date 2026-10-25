@@ -79,21 +79,19 @@ private const val PUBLIC_KEY_MEMBER = "publicKey"
  * not an object at all — is returned unchanged.
  */
 @Suppress("TooGenericExceptionCaught", "SwallowedException")
-fun unwrapPublicKeyOptions(envelope: String): String {
-    return try {
-        val reader = JsonReader.of(Buffer().writeUtf8(envelope))
-        reader.beginObject()
-        var inner: String? = null
-        while (reader.hasNext()) {
-            val name = reader.nextName()
-            if (inner == null && name == PUBLIC_KEY_MEMBER) {
-                inner = reader.nextSource().readUtf8()
-            } else {
-                reader.skipValue()
-            }
+fun unwrapPublicKeyOptions(envelope: String): String = try {
+    val reader = JsonReader.of(Buffer().writeUtf8(envelope))
+    reader.beginObject()
+    var inner: String? = null
+    while (reader.hasNext()) {
+        val name = reader.nextName()
+        if (inner == null && name == PUBLIC_KEY_MEMBER) {
+            inner = reader.nextSource().readUtf8()
+        } else {
+            reader.skipValue()
         }
-        inner ?: envelope
-    } catch (e: Exception) {
-        envelope
     }
+    inner ?: envelope
+} catch (e: Exception) {
+    envelope
 }

@@ -31,7 +31,7 @@ class TagsViewModelTest {
     @Test
     fun `loads tags on init`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { tagRepository.list(any(), any()) } returns Result.success(
-            listOf(Tag(id = "t1", name = "Friend"), Tag(id = "t2", name = "Family")),
+            listOf(Tag(id = "t1", name = "Friend"), Tag(id = "t2", name = "Family"))
         )
 
         val vm = TagsViewModel(tagRepository)
@@ -46,7 +46,7 @@ class TagsViewModelTest {
     @Test
     fun `load failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { tagRepository.list(any(), any()) } returns Result.failure(
-            ApiError.Client(500, "boom"),
+            ApiError.Client(500, "boom")
         )
 
         val vm = TagsViewModel(tagRepository)
@@ -58,7 +58,11 @@ class TagsViewModelTest {
     @Test
     fun `create adds the tag to the list`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { tagRepository.list(any(), any()) } returns Result.success(emptyList())
-        coEvery { tagRepository.create("Family") } returns Result.success(Tag(id = "t9", name = "Family"))
+        coEvery {
+            tagRepository.create(
+                "Family"
+            )
+        } returns Result.success(Tag(id = "t9", name = "Family"))
 
         val vm = TagsViewModel(tagRepository)
         advanceUntilIdle()
@@ -87,7 +91,7 @@ class TagsViewModelTest {
     @Test
     fun `rename updates the tag in place`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { tagRepository.list(any(), any()) } returns Result.success(
-            listOf(Tag(id = "t1", name = "Friend")),
+            listOf(Tag(id = "t1", name = "Friend"))
         )
         coEvery { tagRepository.rename("t1", "Close Friend") } returns
             Result.success(Tag(id = "t1", name = "Close Friend"))
@@ -104,7 +108,7 @@ class TagsViewModelTest {
     @Test
     fun `delete removes the tag`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { tagRepository.list(any(), any()) } returns Result.success(
-            listOf(Tag(id = "t1", name = "Friend"), Tag(id = "t2", name = "Family")),
+            listOf(Tag(id = "t1", name = "Friend"), Tag(id = "t2", name = "Family"))
         )
         coEvery { tagRepository.delete("t1") } returns Result.success(Unit)
 
@@ -136,8 +140,8 @@ class TagDetailViewModelTest {
         coEvery { tagRepository.getWithContacts("t1") } returns Result.success(
             TagDetail(
                 tag = Tag(id = "t1", name = "Friend"),
-                contacts = listOf(ContactTag(id = 1, tagId = "t1", contactVCardUid = "uid-1")),
-            ),
+                contacts = listOf(ContactTag(id = 1, tagId = "t1", contactVCardUid = "uid-1"))
+            )
         )
 
         val vm = viewModel()
@@ -152,10 +156,10 @@ class TagDetailViewModelTest {
     @Test
     fun `addContact appends to the contacts list`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { tagRepository.getWithContacts("t1") } returns Result.success(
-            TagDetail(tag = Tag(id = "t1", name = "Friend"), contacts = emptyList()),
+            TagDetail(tag = Tag(id = "t1", name = "Friend"), contacts = emptyList())
         )
         coEvery { tagRepository.addContact("t1", "uid-2") } returns Result.success(
-            ContactTag(id = 2, tagId = "t1", contactVCardUid = "uid-2"),
+            ContactTag(id = 2, tagId = "t1", contactVCardUid = "uid-2")
         )
 
         val vm = viewModel()
@@ -174,9 +178,9 @@ class TagDetailViewModelTest {
                 tag = Tag(id = "t1", name = "Friend"),
                 contacts = listOf(
                     ContactTag(id = 1, tagId = "t1", contactVCardUid = "uid-1"),
-                    ContactTag(id = 2, tagId = "t1", contactVCardUid = "uid-2"),
-                ),
-            ),
+                    ContactTag(id = 2, tagId = "t1", contactVCardUid = "uid-2")
+                )
+            )
         )
         coEvery { tagRepository.removeContact("t1", "uid-1") } returns Result.success(Unit)
 
@@ -195,8 +199,8 @@ class TagDetailViewModelTest {
         coEvery { tagRepository.getWithContacts("t1") } returns Result.success(
             TagDetail(
                 tag = Tag(id = "t1", name = "Friend"),
-                contacts = listOf(ContactTag(id = 1, tagId = "t1", contactVCardUid = "uid-1")),
-            ),
+                contacts = listOf(ContactTag(id = 1, tagId = "t1", contactVCardUid = "uid-1"))
+            )
         )
         coEvery { contactRepository.resolveByUid(listOf("uid-1")) } returns
             Result.success(mapOf("uid-1" to alice))
@@ -208,14 +212,20 @@ class TagDetailViewModelTest {
     }
 
     @Test
-    fun `a failed name lookup is not surfaced as the screen error`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a failed name lookup is not surfaced as the screen error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { tagRepository.getWithContacts("t1") } returns Result.success(
             TagDetail(
                 tag = Tag(id = "t1", name = "Friend"),
-                contacts = listOf(ContactTag(id = 1, tagId = "t1", contactVCardUid = "uid-1")),
-            ),
+                contacts = listOf(ContactTag(id = 1, tagId = "t1", contactVCardUid = "uid-1"))
+            )
         )
-        coEvery { contactRepository.resolveByUid(any()) } returns Result.failure(ApiError.Client(500, "x"))
+        coEvery {
+            contactRepository.resolveByUid(
+                any()
+            )
+        } returns Result.failure(ApiError.Client(500, "x"))
 
         val vm = viewModel()
         advanceUntilIdle()
@@ -225,13 +235,15 @@ class TagDetailViewModelTest {
     }
 
     @Test
-    fun `addContact resolves the new contact's name`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `addContact resolves the new contact's name`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val bob = ContactSummary(id = 8, uid = "uid-2", firstname = "Bob")
         coEvery { tagRepository.getWithContacts("t1") } returns Result.success(
-            TagDetail(tag = Tag(id = "t1", name = "Friend"), contacts = emptyList()),
+            TagDetail(tag = Tag(id = "t1", name = "Friend"), contacts = emptyList())
         )
         coEvery { tagRepository.addContact("t1", "uid-2") } returns Result.success(
-            ContactTag(id = 2, tagId = "t1", contactVCardUid = "uid-2"),
+            ContactTag(id = 2, tagId = "t1", contactVCardUid = "uid-2")
         )
         coEvery { contactRepository.resolveByUid(listOf("uid-2")) } returns
             Result.success(mapOf("uid-2" to bob))
@@ -245,7 +257,9 @@ class TagDetailViewModelTest {
     }
 
     @Test
-    fun `blank and duplicate uids are resolved once`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `blank and duplicate uids are resolved once`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val alice = ContactSummary(id = 7, uid = "uid-1", firstname = "Alice")
         coEvery { tagRepository.getWithContacts("t1") } returns Result.success(
             TagDetail(
@@ -253,9 +267,9 @@ class TagDetailViewModelTest {
                 contacts = listOf(
                     ContactTag(id = 1, tagId = "t1", contactVCardUid = "uid-1"),
                     ContactTag(id = 2, tagId = "t1", contactVCardUid = ""),
-                    ContactTag(id = 3, tagId = "t1", contactVCardUid = "uid-1"),
-                ),
-            ),
+                    ContactTag(id = 3, tagId = "t1", contactVCardUid = "uid-1")
+                )
+            )
         )
         coEvery { contactRepository.resolveByUid(listOf("uid-1")) } returns
             Result.success(mapOf("uid-1" to alice))

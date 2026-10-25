@@ -43,7 +43,7 @@ class CardNotesEditorTest {
         var latest: List<CardNote>? = null
         setEditor(
             listOf(CardNote(note = "one"), CardNote(note = "two"), CardNote(note = "three")),
-            onChange = { latest = it },
+            onChange = { latest = it }
         )
 
         composeTestRule.onNodeWithText("Value 2").performTextReplacement("TWO")
@@ -57,7 +57,7 @@ class CardNotesEditorTest {
         var latest: List<CardNote>? = null
         setEditor(
             listOf(CardNote(note = "one"), CardNote(note = "two"), CardNote(note = "three")),
-            onChange = { latest = it },
+            onChange = { latest = it }
         )
 
         composeTestRule.onAllNodesWithContentDescription("Remove")[0].performClick()
@@ -72,9 +72,9 @@ class CardNotesEditorTest {
                 CardNote(
                     note = "imported",
                     author = Author(name = "Ada Lovelace"),
-                    created = Timestamp(utc = "2026-01-01"),
-                ),
-            ),
+                    created = Timestamp(utc = "2026-01-01")
+                )
+            )
         )
 
         composeTestRule.onNodeWithText("— Ada Lovelace, 2026-01-01").assertExists()

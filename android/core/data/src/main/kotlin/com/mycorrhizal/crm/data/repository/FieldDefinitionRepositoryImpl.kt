@@ -10,9 +10,8 @@ import com.mycorrhizal.crm.network.toApiError
 import javax.inject.Inject
 
 /** Issue #830: field-definition CRUD + per-contact value read/write, thin over [ApiClient]. */
-class FieldDefinitionRepositoryImpl @Inject constructor(
-    private val apiClient: ApiClient,
-) : FieldDefinitionRepository {
+class FieldDefinitionRepositoryImpl @Inject constructor(private val apiClient: ApiClient) :
+    FieldDefinitionRepository {
 
     override suspend fun list(limit: Int?): Result<List<FieldDefinition>> =
         apiClient.listFieldDefinitions(limit).mapError().map { it.definitions }
@@ -37,7 +36,7 @@ class FieldDefinitionRepositoryImpl @Inject constructor(
 
     override suspend fun replaceContactValues(
         contactId: Int,
-        input: ContactFieldValuesInput,
+        input: ContactFieldValuesInput
     ): Result<List<FieldValue>> =
         apiClient.replaceContactFieldValues(contactId, input).mapError().map { it.values }
 

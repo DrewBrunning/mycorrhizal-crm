@@ -1,9 +1,9 @@
 package com.mycorrhizal.crm
 
+import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 /**
  * Guard test for the `benchmark` build type's network security config.
@@ -35,11 +35,11 @@ class BenchmarkNetworkSecurityConfigTest {
     fun `benchmark config stays cleartext-forbidden by default`() {
         assertTrue(
             "The benchmark base-config must keep cleartextTrafficPermitted=\"false\"",
-            config.contains("cleartextTrafficPermitted=\"false\""),
+            config.contains("cleartextTrafficPermitted=\"false\"")
         )
         assertTrue(
             "Trust anchors must stay restricted to the system certificate store",
-            config.contains("<certificates src=\"system\" />"),
+            config.contains("<certificates src=\"system\" />")
         )
     }
 
@@ -50,16 +50,16 @@ class BenchmarkNetworkSecurityConfigTest {
         assertEquals(
             "The benchmark config must have exactly one cleartext carve-out",
             1,
-            Regex("""cleartextTrafficPermitted="true"""").findAll(config).count(),
+            Regex("""cleartextTrafficPermitted="true"""").findAll(config).count()
         )
         assertTrue(
             "The benchmark config must carry the loopback cleartext carve-out",
-            config.contains("<domain-config cleartextTrafficPermitted=\"true\">"),
+            config.contains("<domain-config cleartextTrafficPermitted=\"true\">")
         )
         for (host in listOf("10.0.2.2", "127.0.0.1", "localhost")) {
             assertTrue(
                 "The benchmark config must permit cleartext to $host",
-                config.contains(">$host</domain>"),
+                config.contains(">$host</domain>")
             )
         }
     }

@@ -2,39 +2,31 @@ package com.mycorrhizal.crm.network
 
 import com.mycorrhizal.crm.model.network.AcceptHouseholdSuggestionInput
 import com.mycorrhizal.crm.model.network.AcceptHouseholdSuggestionResponse
-import com.mycorrhizal.crm.model.network.AddressSuggestionsResponse
-import com.mycorrhizal.crm.model.network.ApplyContactAddressSuggestionInput
-import com.mycorrhizal.crm.model.network.AttachmentListResponse
-import com.mycorrhizal.crm.model.network.AttachmentUploadResponse
-import com.mycorrhizal.crm.model.network.ContactAddressSuggestion
-import com.mycorrhizal.crm.model.network.ContactAddressSuggestionsResponse
-import com.mycorrhizal.crm.model.network.DeviceGrantCreateRequest
-import com.mycorrhizal.crm.model.network.DeviceGrantCreateResponse
-import com.mycorrhizal.crm.model.network.DeviceGrantExchangeRequest
-import com.mycorrhizal.crm.model.network.RevokeAllDeviceGrantsResponse
-import com.mycorrhizal.crm.model.network.DismissHouseholdSuggestionInput
-import com.mycorrhizal.crm.model.network.RelationshipSuggestionsResponse
-import com.mycorrhizal.crm.model.network.SuggestRelationshipsResponse
 import com.mycorrhizal.crm.model.network.ActivitiesPage
 import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ActivityInput
+import com.mycorrhizal.crm.model.network.AddCircleMemberResponse
+import com.mycorrhizal.crm.model.network.AddContactTagResponse
+import com.mycorrhizal.crm.model.network.AddHouseholdMemberResponse
+import com.mycorrhizal.crm.model.network.AddOccasionEventAttendeeResponse
+import com.mycorrhizal.crm.model.network.AddressSuggestionsResponse
 import com.mycorrhizal.crm.model.network.AdminUser
 import com.mycorrhizal.crm.model.network.AdminUserCreateInput
 import com.mycorrhizal.crm.model.network.AdminUserUpdateInput
 import com.mycorrhizal.crm.model.network.AdminUsersListResponse
-import com.mycorrhizal.crm.model.network.AddCircleMemberResponse
-import com.mycorrhizal.crm.model.network.AddContactTagResponse
-import com.mycorrhizal.crm.model.network.AddHouseholdMemberResponse
+import com.mycorrhizal.crm.model.network.ApiToken
+import com.mycorrhizal.crm.model.network.ApiTokenCreateResponse
+import com.mycorrhizal.crm.model.network.ApiTokenInput
+import com.mycorrhizal.crm.model.network.ApiTokensResponse
+import com.mycorrhizal.crm.model.network.ApplyContactAddressSuggestionInput
+import com.mycorrhizal.crm.model.network.AttachmentListResponse
 import com.mycorrhizal.crm.model.network.AuditEventsResponse
-import com.mycorrhizal.crm.model.network.AuthConfig
 import com.mycorrhizal.crm.model.network.AuditUndoResponse
-import com.mycorrhizal.crm.model.network.ErrorAggregationResponse
-import com.mycorrhizal.crm.model.network.JobRunHealthResponse
-import com.mycorrhizal.crm.model.network.JobRunsResponse
-import com.mycorrhizal.crm.model.network.SubsystemHealthResponse
-import com.mycorrhizal.crm.model.network.SystemEventsResponse
+import com.mycorrhizal.crm.model.network.AuthConfig
 import com.mycorrhizal.crm.model.network.BackendError
 import com.mycorrhizal.crm.model.network.BirthdaysResponse
+import com.mycorrhizal.crm.model.network.BulkContactOperationInput
+import com.mycorrhizal.crm.model.network.BulkOperationResult
 import com.mycorrhizal.crm.model.network.CadencePoliciesResponse
 import com.mycorrhizal.crm.model.network.CadencePolicy
 import com.mycorrhizal.crm.model.network.CadencePolicyInput
@@ -42,91 +34,99 @@ import com.mycorrhizal.crm.model.network.CalendarSubscription
 import com.mycorrhizal.crm.model.network.CalendarSubscriptionInput
 import com.mycorrhizal.crm.model.network.CalendarSubscriptionsResponse
 import com.mycorrhizal.crm.model.network.CalendarSyncResult
-import com.mycorrhizal.crm.model.network.ContactSubscription
-import com.mycorrhizal.crm.model.network.ContactTimelinePage
-import com.mycorrhizal.crm.model.network.ContactSubscriptionsResponse
 import com.mycorrhizal.crm.model.network.ChangePasswordRequest
 import com.mycorrhizal.crm.model.network.CheckPasswordStrengthRequest
-import com.mycorrhizal.crm.model.network.ContactBriefing
-import com.mycorrhizal.crm.model.network.ContactScoreResponse
-import com.mycorrhizal.crm.model.network.ContactTargetClosenessResponse
-import com.mycorrhizal.crm.model.network.TargetClosenessInput
-import com.mycorrhizal.crm.model.network.CreateCadencePolicyResponse
-import com.mycorrhizal.crm.model.network.OverdueCadencesResponse
-import com.mycorrhizal.crm.model.network.OverdueDataDecayPoliciesResponse
-import com.mycorrhizal.crm.model.network.AddOccasionEventAttendeeResponse
-import com.mycorrhizal.crm.model.network.CreateOccasionEventResponse
-import com.mycorrhizal.crm.model.network.InviteeSuggestionsResponse
-import com.mycorrhizal.crm.model.network.OccasionEvent
-import com.mycorrhizal.crm.model.network.OccasionEventAttendee
-import com.mycorrhizal.crm.model.network.OccasionEventAttendeeInput
-import com.mycorrhizal.crm.model.network.OccasionEventAttendeeUpdateInput
-import com.mycorrhizal.crm.model.network.OccasionEventDetail
-import com.mycorrhizal.crm.model.network.OccasionEventInput
-import com.mycorrhizal.crm.model.network.OccasionEventsResponse
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.CircleDetailResponse
 import com.mycorrhizal.crm.model.network.CircleInput
 import com.mycorrhizal.crm.model.network.CircleMember
 import com.mycorrhizal.crm.model.network.CircleMemberInput
 import com.mycorrhizal.crm.model.network.CirclesPage
+import com.mycorrhizal.crm.model.network.CompletionsResponse
 import com.mycorrhizal.crm.model.network.ContactActivitiesResponse
+import com.mycorrhizal.crm.model.network.ContactAddressSuggestionsResponse
+import com.mycorrhizal.crm.model.network.ContactBriefing
 import com.mycorrhizal.crm.model.network.ContactFieldValuesInput
 import com.mycorrhizal.crm.model.network.ContactFieldValuesResponse
+import com.mycorrhizal.crm.model.network.ContactMapResponse
+import com.mycorrhizal.crm.model.network.ContactMergeCommitResponse
+import com.mycorrhizal.crm.model.network.ContactMergePreviewResponse
+import com.mycorrhizal.crm.model.network.ContactMergeRequest
 import com.mycorrhizal.crm.model.network.ContactNotesResponse
 import com.mycorrhizal.crm.model.network.ContactRecordInput
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactRemindersResponse
+import com.mycorrhizal.crm.model.network.ContactScoreResponse
+import com.mycorrhizal.crm.model.network.ContactShare
+import com.mycorrhizal.crm.model.network.ContactShareInput
+import com.mycorrhizal.crm.model.network.ContactSharesPage
+import com.mycorrhizal.crm.model.network.ContactSubscription
+import com.mycorrhizal.crm.model.network.ContactSubscriptionsResponse
 import com.mycorrhizal.crm.model.network.ContactTag
 import com.mycorrhizal.crm.model.network.ContactTagInput
+import com.mycorrhizal.crm.model.network.ContactTargetClosenessResponse
+import com.mycorrhizal.crm.model.network.ContactTimelinePage
 import com.mycorrhizal.crm.model.network.ContactsPage
-import com.mycorrhizal.crm.model.network.ContactAttachment
+import com.mycorrhizal.crm.model.network.ConversationAgenda
+import com.mycorrhizal.crm.model.network.ConversationAgendaInput
+import com.mycorrhizal.crm.model.network.ConversationAgendaPage
 import com.mycorrhizal.crm.model.network.CreateActivityResponse
+import com.mycorrhizal.crm.model.network.CreateCadencePolicyResponse
 import com.mycorrhizal.crm.model.network.CreateCircleResponse
 import com.mycorrhizal.crm.model.network.CreateContactResponse
+import com.mycorrhizal.crm.model.network.CreateContactShareResponse
 import com.mycorrhizal.crm.model.network.CreateConversationAgendaResponse
 import com.mycorrhizal.crm.model.network.CreateFieldDefinitionResponse
-import com.mycorrhizal.crm.model.network.ExportLossPreflightResponse
-import com.mycorrhizal.crm.model.network.FieldDefinition
-import com.mycorrhizal.crm.model.network.FieldDefinitionInput
-import com.mycorrhizal.crm.model.network.FieldDefinitionReorderInput
-import com.mycorrhizal.crm.model.network.FieldDefinitionsResponse
 import com.mycorrhizal.crm.model.network.CreateGiftResponse
 import com.mycorrhizal.crm.model.network.CreateHouseholdResponse
 import com.mycorrhizal.crm.model.network.CreateLifeEventResponse
 import com.mycorrhizal.crm.model.network.CreateNoteResponse
+import com.mycorrhizal.crm.model.network.CreateOccasionEventResponse
 import com.mycorrhizal.crm.model.network.CreatePreferenceResponse
 import com.mycorrhizal.crm.model.network.CreateRelationshipEdgeResponse
-import com.mycorrhizal.crm.model.network.CompletionsResponse
 import com.mycorrhizal.crm.model.network.CreateReminderResponse
 import com.mycorrhizal.crm.model.network.CreateTagResponse
-import com.mycorrhizal.crm.model.network.ConversationAgenda
-import com.mycorrhizal.crm.model.network.ConversationAgendaInput
-import com.mycorrhizal.crm.model.network.ConversationAgendaPage
-import com.mycorrhizal.crm.model.network.DiscussConversationAgendaInput
-import com.mycorrhizal.crm.model.network.BulkContactOperationInput
-import com.mycorrhizal.crm.model.network.BulkOperationResult
-import com.mycorrhizal.crm.model.network.ContactMergeCommitResponse
-import com.mycorrhizal.crm.model.network.ContactMergePreviewResponse
-import com.mycorrhizal.crm.model.network.ContactMergeRequest
 import com.mycorrhizal.crm.model.network.DashboardResponse
 import com.mycorrhizal.crm.model.network.DataDecayPolicy
+import com.mycorrhizal.crm.model.network.DeviceGrantCreateRequest
+import com.mycorrhizal.crm.model.network.DeviceGrantCreateResponse
+import com.mycorrhizal.crm.model.network.DeviceGrantExchangeRequest
 import com.mycorrhizal.crm.model.network.DeviceRegistration
 import com.mycorrhizal.crm.model.network.DeviceRegistrationInput
 import com.mycorrhizal.crm.model.network.DeviceRegistrationsResponse
+import com.mycorrhizal.crm.model.network.DiscussConversationAgendaInput
+import com.mycorrhizal.crm.model.network.DismissHouseholdSuggestionInput
 import com.mycorrhizal.crm.model.network.DuplicateDismissalInput
 import com.mycorrhizal.crm.model.network.DuplicatePairsResponse
 import com.mycorrhizal.crm.model.network.EnabledContactFieldsInput
 import com.mycorrhizal.crm.model.network.EnabledContactFieldsResponse
-import com.mycorrhizal.crm.model.network.ExternalActivity
+import com.mycorrhizal.crm.model.network.ErrorAggregationResponse
+import com.mycorrhizal.crm.model.network.ExportLossPreflightResponse
 import com.mycorrhizal.crm.model.network.ExternalActivitiesPage
+import com.mycorrhizal.crm.model.network.ExternalActivity
 import com.mycorrhizal.crm.model.network.ExternalIdentitiesPage
+import com.mycorrhizal.crm.model.network.FieldDefinition
+import com.mycorrhizal.crm.model.network.FieldDefinitionInput
+import com.mycorrhizal.crm.model.network.FieldDefinitionReorderInput
+import com.mycorrhizal.crm.model.network.FieldDefinitionsResponse
 import com.mycorrhizal.crm.model.network.GeoPulseConfigInput
 import com.mycorrhizal.crm.model.network.GeoPulseConfigResponse
 import com.mycorrhizal.crm.model.network.GeoPulseConnectionTestResult
 import com.mycorrhizal.crm.model.network.GeoPulseSuggestionsResponse
-import com.mycorrhizal.crm.model.network.ImmichAssetsResponse
+import com.mycorrhizal.crm.model.network.GeocodeDraftRequest
+import com.mycorrhizal.crm.model.network.GeocodeDraftResponse
+import com.mycorrhizal.crm.model.network.Gift
+import com.mycorrhizal.crm.model.network.GiftInput
+import com.mycorrhizal.crm.model.network.GiftsPage
+import com.mycorrhizal.crm.model.network.GraphConnectionsResponse
+import com.mycorrhizal.crm.model.network.Household
+import com.mycorrhizal.crm.model.network.HouseholdDetailResponse
+import com.mycorrhizal.crm.model.network.HouseholdInput
+import com.mycorrhizal.crm.model.network.HouseholdMember
+import com.mycorrhizal.crm.model.network.HouseholdMemberInput
+import com.mycorrhizal.crm.model.network.HouseholdsPage
 import com.mycorrhizal.crm.model.network.ImmichAssetSummary
+import com.mycorrhizal.crm.model.network.ImmichAssetsResponse
 import com.mycorrhizal.crm.model.network.ImmichConfigInput
 import com.mycorrhizal.crm.model.network.ImmichConfigResponse
 import com.mycorrhizal.crm.model.network.ImmichConnectionTestResult
@@ -135,40 +135,6 @@ import com.mycorrhizal.crm.model.network.ImmichPeopleResponse
 import com.mycorrhizal.crm.model.network.ImmichPerson
 import com.mycorrhizal.crm.model.network.ImmichPersonSummary
 import com.mycorrhizal.crm.model.network.ImmichSummaryResponse
-import com.mycorrhizal.crm.model.network.NextcloudConfigInput
-import com.mycorrhizal.crm.model.network.NextcloudConfigResponse
-import com.mycorrhizal.crm.model.network.NextcloudConnectionTestResult
-import com.mycorrhizal.crm.model.network.NextcloudItemsResponse
-import com.mycorrhizal.crm.model.network.NextcloudLinkRequest
-import com.mycorrhizal.crm.model.network.PaperlessConfigInput
-import com.mycorrhizal.crm.model.network.PaperlessConfigResponse
-import com.mycorrhizal.crm.model.network.PaperlessConnectionTestResult
-import com.mycorrhizal.crm.model.network.PaperlessDocument
-import com.mycorrhizal.crm.model.network.PaperlessDocumentsResponse
-import com.mycorrhizal.crm.model.network.PaperlessLinkRequest
-import com.mycorrhizal.crm.model.network.SeafileConfigInput
-import com.mycorrhizal.crm.model.network.SeafileConfigResponse
-import com.mycorrhizal.crm.model.network.SeafileConnectionTestResult
-import com.mycorrhizal.crm.model.network.SeafileItem
-import com.mycorrhizal.crm.model.network.SeafileItemsResponse
-import com.mycorrhizal.crm.model.network.SeafileLibrariesResponse
-import com.mycorrhizal.crm.model.network.SeafileLibrary
-import com.mycorrhizal.crm.model.network.SeafileLinkRequest
-import com.mycorrhizal.crm.model.network.WebDAVItem
-import com.mycorrhizal.crm.model.network.Gift
-import com.mycorrhizal.crm.model.network.GiftInput
-import com.mycorrhizal.crm.model.network.GiftsPage
-import com.mycorrhizal.crm.model.network.GeocodeDraftRequest
-import com.mycorrhizal.crm.model.network.GeocodeDraftResponse
-import com.mycorrhizal.crm.model.network.GraphConnectionsResponse
-import com.mycorrhizal.crm.model.network.ContactMapResponse
-import com.mycorrhizal.crm.model.network.MapConfig
-import com.mycorrhizal.crm.model.network.Household
-import com.mycorrhizal.crm.model.network.HouseholdDetailResponse
-import com.mycorrhizal.crm.model.network.HouseholdInput
-import com.mycorrhizal.crm.model.network.HouseholdMember
-import com.mycorrhizal.crm.model.network.HouseholdMemberInput
-import com.mycorrhizal.crm.model.network.HouseholdsPage
 import com.mycorrhizal.crm.model.network.ImportConfirmRequest
 import com.mycorrhizal.crm.model.network.ImportPreviewRequest
 import com.mycorrhizal.crm.model.network.ImportPreviewResponse
@@ -176,25 +142,47 @@ import com.mycorrhizal.crm.model.network.ImportRecordsRequest
 import com.mycorrhizal.crm.model.network.ImportResult
 import com.mycorrhizal.crm.model.network.ImportRun
 import com.mycorrhizal.crm.model.network.ImportUploadResponse
-import com.mycorrhizal.crm.model.network.MycorrhizalFetchRequest
-import com.mycorrhizal.crm.model.network.MycorrhizalUploadResponse
-import com.mycorrhizal.crm.model.network.SourceImportPreviewResponse
-import com.mycorrhizal.crm.model.network.SourceImportStatus
+import com.mycorrhizal.crm.model.network.InviteeSuggestionsResponse
+import com.mycorrhizal.crm.model.network.JobRunHealthResponse
+import com.mycorrhizal.crm.model.network.JobRunsResponse
 import com.mycorrhizal.crm.model.network.LifeEvent
 import com.mycorrhizal.crm.model.network.LifeEventInput
 import com.mycorrhizal.crm.model.network.LifeEventsPage
 import com.mycorrhizal.crm.model.network.LoginRequest
 import com.mycorrhizal.crm.model.network.LoginResponse
+import com.mycorrhizal.crm.model.network.MapConfig
 import com.mycorrhizal.crm.model.network.MessageResponse
+import com.mycorrhizal.crm.model.network.MycorrhizalFetchRequest
+import com.mycorrhizal.crm.model.network.MycorrhizalUploadResponse
+import com.mycorrhizal.crm.model.network.NextcloudConfigInput
+import com.mycorrhizal.crm.model.network.NextcloudConfigResponse
+import com.mycorrhizal.crm.model.network.NextcloudConnectionTestResult
+import com.mycorrhizal.crm.model.network.NextcloudItemsResponse
+import com.mycorrhizal.crm.model.network.NextcloudLinkRequest
 import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.model.network.NoteInput
 import com.mycorrhizal.crm.model.network.NotesPage
-import com.mycorrhizal.crm.model.network.OidcNativeExchangeRequest
-import com.mycorrhizal.crm.model.network.OidcNativeExchangeResponse
 import com.mycorrhizal.crm.model.network.NotificationConfig
 import com.mycorrhizal.crm.model.network.NotificationConfigInput
 import com.mycorrhizal.crm.model.network.NotificationTestChannelRequest
 import com.mycorrhizal.crm.model.network.NotificationTestResult
+import com.mycorrhizal.crm.model.network.OccasionEvent
+import com.mycorrhizal.crm.model.network.OccasionEventAttendee
+import com.mycorrhizal.crm.model.network.OccasionEventAttendeeInput
+import com.mycorrhizal.crm.model.network.OccasionEventAttendeeUpdateInput
+import com.mycorrhizal.crm.model.network.OccasionEventDetail
+import com.mycorrhizal.crm.model.network.OccasionEventInput
+import com.mycorrhizal.crm.model.network.OccasionEventsResponse
+import com.mycorrhizal.crm.model.network.OidcNativeExchangeRequest
+import com.mycorrhizal.crm.model.network.OidcNativeExchangeResponse
+import com.mycorrhizal.crm.model.network.OverdueCadencesResponse
+import com.mycorrhizal.crm.model.network.OverdueDataDecayPoliciesResponse
+import com.mycorrhizal.crm.model.network.PaperlessConfigInput
+import com.mycorrhizal.crm.model.network.PaperlessConfigResponse
+import com.mycorrhizal.crm.model.network.PaperlessConnectionTestResult
+import com.mycorrhizal.crm.model.network.PaperlessDocument
+import com.mycorrhizal.crm.model.network.PaperlessDocumentsResponse
+import com.mycorrhizal.crm.model.network.PaperlessLinkRequest
 import com.mycorrhizal.crm.model.network.PasswordResetConfirmRequest
 import com.mycorrhizal.crm.model.network.PasswordResetRequest
 import com.mycorrhizal.crm.model.network.PasswordStrength
@@ -205,17 +193,35 @@ import com.mycorrhizal.crm.model.network.RegisterRequest
 import com.mycorrhizal.crm.model.network.RelationshipEdge
 import com.mycorrhizal.crm.model.network.RelationshipEdgeInput
 import com.mycorrhizal.crm.model.network.RelationshipEdgesPage
+import com.mycorrhizal.crm.model.network.RelationshipSuggestionsResponse
 import com.mycorrhizal.crm.model.network.Reminder
-import com.mycorrhizal.crm.model.network.ReminderCompletion
 import com.mycorrhizal.crm.model.network.ReminderCompleteResponse
+import com.mycorrhizal.crm.model.network.ReminderCompletion
+import com.mycorrhizal.crm.model.network.RevokeAllApiTokensResponse
+import com.mycorrhizal.crm.model.network.RevokeAllDeviceGrantsResponse
+import com.mycorrhizal.crm.model.network.SeafileConfigInput
+import com.mycorrhizal.crm.model.network.SeafileConfigResponse
+import com.mycorrhizal.crm.model.network.SeafileConnectionTestResult
+import com.mycorrhizal.crm.model.network.SeafileItem
+import com.mycorrhizal.crm.model.network.SeafileItemsResponse
+import com.mycorrhizal.crm.model.network.SeafileLibrariesResponse
+import com.mycorrhizal.crm.model.network.SeafileLibrary
+import com.mycorrhizal.crm.model.network.SeafileLinkRequest
 import com.mycorrhizal.crm.model.network.SearchResult
+import com.mycorrhizal.crm.model.network.SelfContactRequest
 import com.mycorrhizal.crm.model.network.ServerHealth
 import com.mycorrhizal.crm.model.network.SessionInfo
 import com.mycorrhizal.crm.model.network.SessionsResponse
+import com.mycorrhizal.crm.model.network.SourceImportPreviewResponse
+import com.mycorrhizal.crm.model.network.SourceImportStatus
+import com.mycorrhizal.crm.model.network.SubsystemHealthResponse
+import com.mycorrhizal.crm.model.network.SuggestRelationshipsResponse
+import com.mycorrhizal.crm.model.network.SystemEventsResponse
 import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.model.network.TagDetailResponse
 import com.mycorrhizal.crm.model.network.TagInput
 import com.mycorrhizal.crm.model.network.TagsPage
+import com.mycorrhizal.crm.model.network.TargetClosenessInput
 import com.mycorrhizal.crm.model.network.TimelineBuckets
 import com.mycorrhizal.crm.model.network.TimelineEvent
 import com.mycorrhizal.crm.model.network.TimelineTypes
@@ -225,33 +231,24 @@ import com.mycorrhizal.crm.model.network.TwoFactorCodeInput
 import com.mycorrhizal.crm.model.network.TwoFactorConfirmResponse
 import com.mycorrhizal.crm.model.network.TwoFactorSetupResponse
 import com.mycorrhizal.crm.model.network.TwoFactorStatusResponse
+import com.mycorrhizal.crm.model.network.UpdateDateFormatRequest
+import com.mycorrhizal.crm.model.network.UpdateLanguageRequest
+import com.mycorrhizal.crm.model.network.UserDirectoryEntry
+import com.mycorrhizal.crm.model.network.UserDirectoryResponse
 import com.mycorrhizal.crm.model.network.UserProfile
 import com.mycorrhizal.crm.model.network.WebAuthnCredentialListResponse
 import com.mycorrhizal.crm.model.network.WebAuthnDeleteCodeInput
 import com.mycorrhizal.crm.model.network.WebAuthnProofBeginInput
 import com.mycorrhizal.crm.model.network.WebAuthnRegisterBeginInput
 import com.mycorrhizal.crm.model.network.WebAuthnRegisterResponse
-import com.mycorrhizal.crm.model.network.ContactShare
-import com.mycorrhizal.crm.model.network.ContactShareInput
-import com.mycorrhizal.crm.model.network.ContactSharesPage
-import com.mycorrhizal.crm.model.network.CreateContactShareResponse
-import com.mycorrhizal.crm.model.network.UserDirectoryEntry
-import com.mycorrhizal.crm.model.network.UserDirectoryResponse
-import com.mycorrhizal.crm.model.network.ApiToken
-import com.mycorrhizal.crm.model.network.ApiTokenCreateResponse
-import com.mycorrhizal.crm.model.network.ApiTokenInput
-import com.mycorrhizal.crm.model.network.ApiTokensResponse
-import com.mycorrhizal.crm.model.network.RevokeAllApiTokensResponse
-import com.mycorrhizal.crm.model.network.SelfContactRequest
-import com.mycorrhizal.crm.model.network.UpdateDateFormatRequest
-import com.mycorrhizal.crm.model.network.UpdateLanguageRequest
+import com.mycorrhizal.crm.model.network.WebDAVItem
 import com.mycorrhizal.crm.model.network.Webhook
 import com.mycorrhizal.crm.model.network.WebhookCreateResponse
-import com.mycorrhizal.crm.model.network.WebhookDelivery
 import com.mycorrhizal.crm.model.network.WebhookDeliveriesResponse
+import com.mycorrhizal.crm.model.network.WebhookDelivery
 import com.mycorrhizal.crm.model.network.WebhookInput
-import com.mycorrhizal.crm.model.network.WebhooksResponse
 import com.mycorrhizal.crm.model.network.WebhookTestResponse
+import com.mycorrhizal.crm.model.network.WebhooksResponse
 import com.squareup.moshi.Moshi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -261,7 +258,6 @@ import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import java.io.IOException
 
 /**
  * Hand-written typed client for the Phase-1 backend surface (login, current
@@ -273,10 +269,7 @@ import java.io.IOException
  * deliberately small and endpoint-focused so the swap stays local to
  * :core:network.
  */
-class ApiClient(
-    private val okHttpClient: OkHttpClient,
-    private val moshi: Moshi,
-) {
+class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi) {
     private val jsonMediaType = "application/json".toMediaType()
 
     /**
@@ -287,20 +280,29 @@ class ApiClient(
      * later [complete2faLogin] can exchange it. For a non-2FA account the
      * `auth_token` JWT is captured from the Set-Cookie header as before.
      */
-    suspend fun login(identifier: String, password: String): Result<LoginResult> =
-        executePost(LOGIN_PATH, LoginRequest(identifier = identifier, password = password)) { response, body ->
-            val loginResponse = moshi.adapter(LoginResponse::class.java).fromJson(body)
-            val twoFactorRequired = loginResponse?.twoFactorRequired == true
-            val setCookies = response.headers("Set-Cookie")
-            LoginResult(
-                token = if (twoFactorRequired) null else extractCookie(setCookies, AUTH_COOKIE),
-                language = loginResponse?.language,
-                dateFormat = loginResponse?.dateFormat,
-                twoFactorRequired = twoFactorRequired,
-                pending2faCookie = if (twoFactorRequired) extractCookie(setCookies, TWO_FACTOR_COOKIE) else null,
-                methods = if (twoFactorRequired) loginResponse.methods else null,
-            )
-        }
+    suspend fun login(identifier: String, password: String): Result<LoginResult> = executePost(
+        LOGIN_PATH,
+        LoginRequest(identifier = identifier, password = password)
+    ) { response, body ->
+        val loginResponse = moshi.adapter(LoginResponse::class.java).fromJson(body)
+        val twoFactorRequired = loginResponse?.twoFactorRequired == true
+        val setCookies = response.headers("Set-Cookie")
+        LoginResult(
+            token = if (twoFactorRequired) null else extractCookie(setCookies, AUTH_COOKIE),
+            language = loginResponse?.language,
+            dateFormat = loginResponse?.dateFormat,
+            twoFactorRequired = twoFactorRequired,
+            pending2faCookie = if (twoFactorRequired) {
+                extractCookie(
+                    setCookies,
+                    TWO_FACTOR_COOKIE
+                )
+            } else {
+                null
+            },
+            methods = if (twoFactorRequired) loginResponse.methods else null
+        )
+    }
 
     /**
      * POST /api/v1/login/2fa — step 2 of interactive login for a 2FA account.
@@ -326,7 +328,7 @@ class ApiClient(
             LoginResult(
                 token = token,
                 language = loginResponse?.language,
-                dateFormat = loginResponse?.dateFormat,
+                dateFormat = loginResponse?.dateFormat
             )
         }
     }
@@ -358,18 +360,25 @@ class ApiClient(
      * Errors: 400 no challenge, 401 rejected/expired, 403 client too old,
      * 409 no login in progress, 429 lockout.
      */
-    suspend fun webauthnLoginFinish(credentialJson: String, pending2faCookie: String): Result<LoginResult> {
+    suspend fun webauthnLoginFinish(
+        credentialJson: String,
+        pending2faCookie: String
+    ): Result<LoginResult> {
         val request = Request.Builder()
             .url("$PLACEHOLDER_ORIGIN$WEBAUTHN_PATH/login/finish".toHttpUrl())
             .addHeader("Cookie", "$TWO_FACTOR_COOKIE=$pending2faCookie")
             .post(credentialJson.toRequestBody(jsonMediaType))
             .build()
         return execute(request) { response, body ->
-            val loginResponse = runCatching { moshi.adapter(LoginResponse::class.java).fromJson(body) }.getOrNull()
+            val loginResponse = runCatching {
+                moshi.adapter(
+                    LoginResponse::class.java
+                ).fromJson(body)
+            }.getOrNull()
             LoginResult(
                 token = extractCookie(response.headers("Set-Cookie"), AUTH_COOKIE),
                 language = loginResponse?.language,
-                dateFormat = loginResponse?.dateFormat,
+                dateFormat = loginResponse?.dateFormat
             )
         }
     }
@@ -390,18 +399,21 @@ class ApiClient(
     suspend fun webauthnRegisterBegin(
         name: String? = null,
         code: String? = null,
-        assertionJson: String? = null,
+        assertionJson: String? = null
     ): Result<String> {
         val cleanName = name?.takeIf { it.isNotBlank() }
         if (code == null && assertionJson == null) {
             return executePost(
                 "$WEBAUTHN_PATH/register/begin",
-                WebAuthnRegisterBeginInput(cleanName),
+                WebAuthnRegisterBeginInput(cleanName)
             ) { _, body -> body.ifBlank { null } }
         }
         val json = enrollmentProofBody(cleanName, code, assertionJson)
             ?: return Result.failure(ApiError.Parse(ASSERTION_NOT_OBJECT))
-        return executeRawPost("$WEBAUTHN_PATH/register/begin", json) { _, body -> body.ifBlank { null } }
+        return executeRawPost(
+            "$WEBAUTHN_PATH/register/begin",
+            json
+        ) { _, body -> body.ifBlank { null } }
     }
 
     /**
@@ -411,7 +423,9 @@ class ApiClient(
      * server re-issues the session cookie when this is the account's first
      * factor, so [ReissuedTokenResult.reissuedToken] carries it.
      */
-    suspend fun webauthnRegisterFinish(credentialJson: String): Result<ReissuedTokenResult<WebAuthnRegisterResponse>> {
+    suspend fun webauthnRegisterFinish(
+        credentialJson: String
+    ): Result<ReissuedTokenResult<WebAuthnRegisterResponse>> {
         val request = Request.Builder()
             .url("$PLACEHOLDER_ORIGIN$WEBAUTHN_PATH/register/finish".toHttpUrl())
             .post(credentialJson.toRequestBody(jsonMediaType))
@@ -421,7 +435,10 @@ class ApiClient(
             if (parsed == null) {
                 null
             } else {
-                ReissuedTokenResult(parsed, extractCookie(response.headers("Set-Cookie"), AUTH_COOKIE))
+                ReissuedTokenResult(
+                    parsed,
+                    extractCookie(response.headers("Set-Cookie"), AUTH_COOKIE)
+                )
             }
         }
     }
@@ -432,11 +449,10 @@ class ApiClient(
      * #1317) is left out of `allowCredentials` server-side so the authenticator
      * cannot pick it. 404 unknown/foreign id, 409 no other passkey remains.
      */
-    suspend fun webauthnProofBegin(excludeId: String? = null): Result<String> =
-        executePost(
-            "$WEBAUTHN_PATH/assert/begin",
-            WebAuthnProofBeginInput(excludeId?.takeIf { it.isNotBlank() }),
-        ) { _, body -> body.ifBlank { null } }
+    suspend fun webauthnProofBegin(excludeId: String? = null): Result<String> = executePost(
+        "$WEBAUTHN_PATH/assert/begin",
+        WebAuthnProofBeginInput(excludeId?.takeIf { it.isNotBlank() })
+    ) { _, body -> body.ifBlank { null } }
 
     /** GET /api/v1/webauthn/credentials — id, name and timestamps only. */
     suspend fun listWebAuthnCredentials(): Result<WebAuthnCredentialListResponse> =
@@ -450,11 +466,15 @@ class ApiClient(
      * LAST second factor bumps token_version server-side and re-issues the
      * session cookie (#1338), so [ReissuedTokenResult.reissuedToken] carries it.
      */
-    suspend fun deleteWebAuthnCredential(id: String, code: String): Result<ReissuedTokenResult<MessageResponse>> =
-        deleteWebAuthnCredentialWithBody(
-            id,
-            moshi.adapter(WebAuthnDeleteCodeInput::class.java).toJson(WebAuthnDeleteCodeInput(code)),
-        )
+    suspend fun deleteWebAuthnCredential(
+        id: String,
+        code: String
+    ): Result<ReissuedTokenResult<MessageResponse>> = deleteWebAuthnCredentialWithBody(
+        id,
+        moshi.adapter(
+            WebAuthnDeleteCodeInput::class.java
+        ).toJson(WebAuthnDeleteCodeInput(code))
+    )
 
     /**
      * DELETE /api/v1/webauthn/credentials/{id} with a passkey-assertion proof:
@@ -464,15 +484,23 @@ class ApiClient(
      */
     suspend fun deleteWebAuthnCredentialWithAssertion(
         id: String,
-        assertionJson: String,
+        assertionJson: String
     ): Result<ReissuedTokenResult<MessageResponse>> {
         // Validate it is a JSON object before splicing, so a malformed blob is a Parse error, not a 400 round-trip.
-        if (!isJsonObject(assertionJson)) return Result.failure(ApiError.Parse(ASSERTION_NOT_OBJECT))
+        if (!isJsonObject(
+                assertionJson
+            )
+        ) {
+            return Result.failure(ApiError.Parse(ASSERTION_NOT_OBJECT))
+        }
         return deleteWebAuthnCredentialWithBody(id, "{\"assertion\":$assertionJson}")
     }
 
-    private fun isJsonObject(json: String): Boolean =
-        runCatching { moshi.adapter(Any::class.java).fromJson(json) is Map<*, *> }.getOrDefault(false)
+    private fun isJsonObject(json: String): Boolean = runCatching {
+        moshi.adapter(
+            Any::class.java
+        ).fromJson(json) is Map<*, *>
+    }.getOrDefault(false)
 
     /**
      * The enrollment body of [webauthnRegisterBegin] / [setupTwoFactor] when a
@@ -494,7 +522,7 @@ class ApiClient(
     private suspend fun <T> executeRawPost(
         path: String,
         jsonBody: String,
-        mapper: (okhttp3.Response, String) -> T?,
+        mapper: (okhttp3.Response, String) -> T?
     ): Result<T> {
         val request = Request.Builder()
             .url("$PLACEHOLDER_ORIGIN$path".toHttpUrl())
@@ -505,7 +533,7 @@ class ApiClient(
 
     private suspend fun deleteWebAuthnCredentialWithBody(
         id: String,
-        jsonBody: String,
+        jsonBody: String
     ): Result<ReissuedTokenResult<MessageResponse>> {
         val url = "$PLACEHOLDER_ORIGIN$WEBAUTHN_PATH/credentials".toHttpUrl().newBuilder()
             .addPathSegment(id)
@@ -519,7 +547,10 @@ class ApiClient(
             if (parsed == null) {
                 null
             } else {
-                ReissuedTokenResult(parsed, extractCookie(response.headers("Set-Cookie"), AUTH_COOKIE))
+                ReissuedTokenResult(
+                    parsed,
+                    extractCookie(response.headers("Set-Cookie"), AUTH_COOKIE)
+                )
             }
         }
     }
@@ -543,24 +574,37 @@ class ApiClient(
      * setup needs a live proof: a recovery [code], or [assertionJson] from
      * [webauthnProofBegin]'s options. 400 = missing/wrong proof, 429 = locked out.
      */
-    suspend fun setupTwoFactor(code: String? = null, assertionJson: String? = null): Result<TwoFactorSetupResponse> {
+    suspend fun setupTwoFactor(
+        code: String? = null,
+        assertionJson: String? = null
+    ): Result<TwoFactorSetupResponse> {
         val parse = { _: okhttp3.Response, body: String ->
             moshi.adapter(TwoFactorSetupResponse::class.java).fromJson(body)
         }
-        if (code == null && assertionJson == null) return executePostEmpty("$TWO_FACTOR_PATH/setup", parse)
+        if (code == null && assertionJson == null) {
+            return executePostEmpty(
+                "$TWO_FACTOR_PATH/setup",
+                parse
+            )
+        }
         val json = enrollmentProofBody(null, code, assertionJson)
             ?: return Result.failure(ApiError.Parse(ASSERTION_NOT_OBJECT))
         return executeRawPost("$TWO_FACTOR_PATH/setup", json, parse)
     }
 
     /** POST /api/v1/users/2fa/confirm — enables 2FA and mints the one-time recovery codes; re-issues the session cookie. */
-    suspend fun confirmTwoFactor(code: String): Result<ReissuedTokenResult<TwoFactorConfirmResponse>> =
+    suspend fun confirmTwoFactor(
+        code: String
+    ): Result<ReissuedTokenResult<TwoFactorConfirmResponse>> =
         executePost("$TWO_FACTOR_PATH/confirm", TwoFactorCodeInput(code)) { response, body ->
             val parsed = moshi.adapter(TwoFactorConfirmResponse::class.java).fromJson(body)
             if (parsed == null) {
                 null
             } else {
-                ReissuedTokenResult(parsed, extractCookie(response.headers("Set-Cookie"), AUTH_COOKIE))
+                ReissuedTokenResult(
+                    parsed,
+                    extractCookie(response.headers("Set-Cookie"), AUTH_COOKIE)
+                )
             }
         }
 
@@ -571,7 +615,10 @@ class ApiClient(
             if (parsed == null) {
                 null
             } else {
-                ReissuedTokenResult(parsed, extractCookie(response.headers("Set-Cookie"), AUTH_COOKIE))
+                ReissuedTokenResult(
+                    parsed,
+                    extractCookie(response.headers("Set-Cookie"), AUTH_COOKIE)
+                )
             }
         }
 
@@ -583,16 +630,22 @@ class ApiClient(
      */
     suspend fun regenerateRecoveryCodes(
         code: String? = null,
-        assertionJson: String? = null,
+        assertionJson: String? = null
     ): Result<ReissuedTokenResult<TwoFactorConfirmResponse>> {
         val json = enrollmentProofBody(null, code, assertionJson)
             ?: return Result.failure(ApiError.Parse(ASSERTION_NOT_OBJECT))
-        return executeRawPost("$TWO_FACTOR_PATH/recovery-codes/regenerate", json) { response, body ->
+        return executeRawPost(
+            "$TWO_FACTOR_PATH/recovery-codes/regenerate",
+            json
+        ) { response, body ->
             val parsed = moshi.adapter(TwoFactorConfirmResponse::class.java).fromJson(body)
             if (parsed == null) {
                 null
             } else {
-                ReissuedTokenResult(parsed, extractCookie(response.headers("Set-Cookie"), AUTH_COOKIE))
+                ReissuedTokenResult(
+                    parsed,
+                    extractCookie(response.headers("Set-Cookie"), AUTH_COOKIE)
+                )
             }
         }
     }
@@ -631,16 +684,24 @@ class ApiClient(
     // success (the ticket's test case 3), so this surface pairs with [login].
 
     /** POST /api/v1/register — 201 `{ message }`; 409 on duplicate email/username. */
-    suspend fun register(username: String, email: String, password: String): Result<MessageResponse> =
-        executePost(REGISTER_PATH, RegisterRequest(username = username, email = email, password = password)) { _, body ->
-            moshi.adapter(MessageResponse::class.java).fromJson(body)
-        }
+    suspend fun register(
+        username: String,
+        email: String,
+        password: String
+    ): Result<MessageResponse> = executePost(
+        REGISTER_PATH,
+        RegisterRequest(username = username, email = email, password = password)
+    ) { _, body ->
+        moshi.adapter(MessageResponse::class.java).fromJson(body)
+    }
 
     /** POST /api/v1/check-password-strength — raw, unwrapped [PasswordStrength]. */
-    suspend fun checkPasswordStrength(password: String): Result<PasswordStrength> =
-        executePost(CHECK_PASSWORD_STRENGTH_PATH, CheckPasswordStrengthRequest(password)) { _, body ->
-            moshi.adapter(PasswordStrength::class.java).fromJson(body)
-        }
+    suspend fun checkPasswordStrength(password: String): Result<PasswordStrength> = executePost(
+        CHECK_PASSWORD_STRENGTH_PATH,
+        CheckPasswordStrengthRequest(password)
+    ) { _, body ->
+        moshi.adapter(PasswordStrength::class.java).fromJson(body)
+    }
 
     /** POST /api/v1/password-reset/request — anti-enumeration: always the same message. */
     suspend fun requestPasswordReset(email: String): Result<MessageResponse> =
@@ -652,7 +713,7 @@ class ApiClient(
     suspend fun confirmPasswordReset(token: String, password: String): Result<MessageResponse> =
         executePost(
             PASSWORD_RESET_CONFIRM_PATH,
-            PasswordResetConfirmRequest(token = token, password = password),
+            PasswordResetConfirmRequest(token = token, password = password)
         ) { _, body ->
             moshi.adapter(MessageResponse::class.java).fromJson(body)
         }
@@ -663,16 +724,20 @@ class ApiClient(
     // client surface, not the backend.
 
     /** PATCH /api/v1/users/language — the same route web's SettingsPage uses. */
-    suspend fun updateLanguage(language: String): Result<MessageResponse> =
-        executePatch("$PLACEHOLDER_ORIGIN$USERS_PATH/language", UpdateLanguageRequest(language)) { _, body ->
-            moshi.adapter(MessageResponse::class.java).fromJson(body)
-        }
+    suspend fun updateLanguage(language: String): Result<MessageResponse> = executePatch(
+        "$PLACEHOLDER_ORIGIN$USERS_PATH/language",
+        UpdateLanguageRequest(language)
+    ) { _, body ->
+        moshi.adapter(MessageResponse::class.java).fromJson(body)
+    }
 
     /** PATCH /api/v1/users/date-format — the same route web's SettingsPage uses. */
-    suspend fun updateDateFormat(dateFormat: String): Result<MessageResponse> =
-        executePatch("$PLACEHOLDER_ORIGIN$USERS_PATH/date-format", UpdateDateFormatRequest(dateFormat)) { _, body ->
-            moshi.adapter(MessageResponse::class.java).fromJson(body)
-        }
+    suspend fun updateDateFormat(dateFormat: String): Result<MessageResponse> = executePatch(
+        "$PLACEHOLDER_ORIGIN$USERS_PATH/date-format",
+        UpdateDateFormatRequest(dateFormat)
+    ) { _, body ->
+        moshi.adapter(MessageResponse::class.java).fromJson(body)
+    }
 
     /**
      * PATCH /api/v1/users/me/self-contact (T90, issue #831 Android parity) —
@@ -681,10 +746,12 @@ class ApiClient(
      * pointer; a non-null one must resolve to a non-deleted contact the
      * caller owns (the server 404s otherwise).
      */
-    suspend fun updateSelfContact(vcardUid: String?): Result<MessageResponse> =
-        executePatch("$PLACEHOLDER_ORIGIN$ME_PATH/self-contact", SelfContactRequest(vcardUid)) { _, body ->
-            moshi.adapter(MessageResponse::class.java).fromJson(body)
-        }
+    suspend fun updateSelfContact(vcardUid: String?): Result<MessageResponse> = executePatch(
+        "$PLACEHOLDER_ORIGIN$ME_PATH/self-contact",
+        SelfContactRequest(vcardUid)
+    ) { _, body ->
+        moshi.adapter(MessageResponse::class.java).fromJson(body)
+    }
 
     /**
      * GET /api/v1/users/enabled-contact-fields (issue #832 Android parity) —
@@ -703,13 +770,14 @@ class ApiClient(
      * concrete (possibly empty) list; the response echoes back the stored
      * list, never null.
      */
-    suspend fun updateEnabledContactFields(fields: List<String>): Result<EnabledContactFieldsResponse> =
-        executePatch(
-            "$PLACEHOLDER_ORIGIN$USERS_PATH/enabled-contact-fields",
-            EnabledContactFieldsInput(fields),
-        ) { _, body ->
-            moshi.adapter(EnabledContactFieldsResponse::class.java).fromJson(body)
-        }
+    suspend fun updateEnabledContactFields(
+        fields: List<String>
+    ): Result<EnabledContactFieldsResponse> = executePatch(
+        "$PLACEHOLDER_ORIGIN$USERS_PATH/enabled-contact-fields",
+        EnabledContactFieldsInput(fields)
+    ) { _, body ->
+        moshi.adapter(EnabledContactFieldsResponse::class.java).fromJson(body)
+    }
 
     /**
      * POST /api/v1/users/change-password — the server bumps TokenVersion on
@@ -717,10 +785,15 @@ class ApiClient(
      * so the Android session must re-login afterwards. A wrong current
      * password is a 400 with the server's message, surfaced via [ApiError].
      */
-    suspend fun changePassword(currentPassword: String, newPassword: String): Result<MessageResponse> =
-        executePost("$USERS_PATH/change-password", ChangePasswordRequest(currentPassword, newPassword)) { _, body ->
-            moshi.adapter(MessageResponse::class.java).fromJson(body)
-        }
+    suspend fun changePassword(
+        currentPassword: String,
+        newPassword: String
+    ): Result<MessageResponse> = executePost(
+        "$USERS_PATH/change-password",
+        ChangePasswordRequest(currentPassword, newPassword)
+    ) { _, body ->
+        moshi.adapter(MessageResponse::class.java).fromJson(body)
+    }
 
     /** GET /api/v1/notifications/config — flat per-user notification config. */
     suspend fun getNotificationConfig(): Result<NotificationConfig> =
@@ -736,7 +809,10 @@ class ApiClient(
 
     /** POST /api/v1/notifications/config/test — diagnosed failures are HTTP 200 `{ok:false}`. */
     suspend fun testNotificationChannel(channel: String): Result<NotificationTestResult> =
-        executePost("$NOTIFICATIONS_CONFIG_PATH/test", NotificationTestChannelRequest(channel)) { _, body ->
+        executePost(
+            "$NOTIFICATIONS_CONFIG_PATH/test",
+            NotificationTestChannelRequest(channel)
+        ) { _, body ->
             moshi.adapter(NotificationTestResult::class.java).fromJson(body)
         }
 
@@ -860,13 +936,17 @@ class ApiClient(
         }
 
     /** POST /api/v1/calendars — 201; raw response, not wrapped. */
-    suspend fun createCalendarSubscription(input: CalendarSubscriptionInput): Result<CalendarSubscription> =
-        executePost(CALENDARS_PATH, input) { _, body ->
-            moshi.adapter(CalendarSubscription::class.java).fromJson(body)
-        }
+    suspend fun createCalendarSubscription(
+        input: CalendarSubscriptionInput
+    ): Result<CalendarSubscription> = executePost(CALENDARS_PATH, input) { _, body ->
+        moshi.adapter(CalendarSubscription::class.java).fromJson(body)
+    }
 
     /** PUT /api/v1/calendars/{id} — raw updated subscription. */
-    suspend fun updateCalendarSubscription(id: Int, input: CalendarSubscriptionInput): Result<CalendarSubscription> =
+    suspend fun updateCalendarSubscription(
+        id: Int,
+        input: CalendarSubscriptionInput
+    ): Result<CalendarSubscription> =
         executePut("$PLACEHOLDER_ORIGIN$CALENDARS_PATH/$id", input) { _, body ->
             moshi.adapter(CalendarSubscription::class.java).fromJson(body)
         }
@@ -888,7 +968,9 @@ class ApiClient(
      */
     suspend fun listContactSubscriptions(): Result<List<ContactSubscription>> =
         executeGet("$PLACEHOLDER_ORIGIN$CONTACT_SUBSCRIPTIONS_PATH") { _, body ->
-            moshi.adapter(ContactSubscriptionsResponse::class.java).fromJson(body)?.contactSubscriptions
+            moshi.adapter(
+                ContactSubscriptionsResponse::class.java
+            ).fromJson(body)?.contactSubscriptions
         }
 
     // --- Issue #722: fully biometric login — device grants. The exchange is
@@ -906,10 +988,12 @@ class ApiClient(
      * the `auth_token` Set-Cookie and is captured and returned here; the body
      * only carries language/date_format.
      */
-    suspend fun exchangeDeviceSession(deviceToken: String): Result<String> =
-        executePost("$DEVICE_SESSION_PATH", DeviceGrantExchangeRequest(deviceToken = deviceToken)) { response, _ ->
-            extractCookie(response.headers("Set-Cookie"), AUTH_COOKIE)
-        }
+    suspend fun exchangeDeviceSession(deviceToken: String): Result<String> = executePost(
+        "$DEVICE_SESSION_PATH",
+        DeviceGrantExchangeRequest(deviceToken = deviceToken)
+    ) { response, _ ->
+        extractCookie(response.headers("Set-Cookie"), AUTH_COOKIE)
+    }
 
     /** POST /api/v1/auth/device/grants/revoke-all — the lost-phone path; `{ revoked: N }`. */
     suspend fun revokeAllDeviceGrants(): Result<RevokeAllDeviceGrantsResponse> =
@@ -929,7 +1013,7 @@ class ApiClient(
     suspend fun exchangeOidcNativeCode(code: String, codeVerifier: String): Result<String> =
         executePost(
             OIDC_NATIVE_EXCHANGE_PATH,
-            OidcNativeExchangeRequest(code = code, codeVerifier = codeVerifier),
+            OidcNativeExchangeRequest(code = code, codeVerifier = codeVerifier)
         ) { _, body ->
             moshi.adapter(OidcNativeExchangeResponse::class.java)
                 .fromJson(body)?.token?.takeIf { it.isNotBlank() }
@@ -966,7 +1050,7 @@ class ApiClient(
         // (`deleted:true` tombstones) — ordered forward and ignoring every
         // filter. This is the ONLY path that surfaces tombstones, so the offline
         // mirror's delete propagation depends on it. See `syncContacts`.
-        since: String? = null,
+        since: String? = null
     ): Result<ContactsPage> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$CONTACTS_PATH".toHttpUrl().newBuilder()
         if (!vcardUids.isNullOrEmpty()) {
@@ -989,7 +1073,12 @@ class ApiClient(
             search?.let { urlBuilder.addQueryParameter("search", it) }
             includeArchived?.let { urlBuilder.addQueryParameter("include_archived", it.toString()) }
             circle?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("circle", it) }
-            circleLegacy?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("circle_legacy", it) }
+            circleLegacy?.takeIf { it.isNotBlank() }?.let {
+                urlBuilder.addQueryParameter(
+                    "circle_legacy",
+                    it
+                )
+            }
             favorites?.let { urlBuilder.addQueryParameter("favorites", it.toString()) }
             sort?.let { urlBuilder.addQueryParameter("sort", it) }
             order?.let { urlBuilder.addQueryParameter("order", it) }
@@ -1008,7 +1097,7 @@ class ApiClient(
     suspend fun listLegacyCircles(): Result<List<String>> =
         executeGet("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/circles?legacy=true") { _, body ->
             moshi.adapter<List<String>>(
-                com.squareup.moshi.Types.newParameterizedType(List::class.java, String::class.java),
+                com.squareup.moshi.Types.newParameterizedType(List::class.java, String::class.java)
             ).fromJson(body)
         }
 
@@ -1076,7 +1165,11 @@ class ApiClient(
      * return empty. The response's `contacts` group is deliberately unmodeled — see
      * [SearchResult]'s doc comment.
      */
-    suspend fun search(q: String, limit: Int? = null, householdId: String? = null): Result<SearchResult> {
+    suspend fun search(
+        q: String,
+        limit: Int? = null,
+        householdId: String? = null
+    ): Result<SearchResult> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$SEARCH_PATH".toHttpUrl().newBuilder()
         urlBuilder.addQueryParameter("q", q)
         limit?.let { urlBuilder.addQueryParameter("limit", it.toString()) }
@@ -1097,7 +1190,11 @@ class ApiClient(
         }
 
     /** PUT /api/v1/contacts/{id} — returns the raw ContactRecordResponse (200). */
-    suspend fun updateContact(id: Int, input: ContactRecordInput, ifMatchRevision: Int? = null): Result<ContactRecordResponse> =
+    suspend fun updateContact(
+        id: Int,
+        input: ContactRecordInput,
+        ifMatchRevision: Int? = null
+    ): Result<ContactRecordResponse> =
         executePut("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$id", input, ifMatchRevision) { _, body ->
             moshi.adapter(ContactRecordResponse::class.java).fromJson(body)
         }
@@ -1138,7 +1235,10 @@ class ApiClient(
 
     /** PUT /api/v1/contacts/{id}/target-closeness — sets the relationship goal tier. */
     suspend fun setTargetCloseness(id: Int, tier: String): Result<ContactTargetClosenessResponse> =
-        executePut("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$id/target-closeness", TargetClosenessInput(tier)) { _, body ->
+        executePut(
+            "$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$id/target-closeness",
+            TargetClosenessInput(tier)
+        ) { _, body ->
             moshi.adapter(ContactTargetClosenessResponse::class.java).fromJson(body)
         }
 
@@ -1177,7 +1277,7 @@ class ApiClient(
     suspend fun exportAllContactsVcf(
         version: Int? = null,
         sections: List<String>? = null,
-        includeSensitive: Boolean = false,
+        includeSensitive: Boolean = false
     ): Result<ByteArray> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$EXPORT_VCF_PATH".toHttpUrl().newBuilder()
         if (version == 3) urlBuilder.addQueryParameter("version", "3")
@@ -1202,7 +1302,7 @@ class ApiClient(
      */
     suspend fun exportAllContactsJsContact(
         sections: List<String>? = null,
-        includeSensitive: Boolean = false,
+        includeSensitive: Boolean = false
     ): Result<ByteArray> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$EXPORT_JSCONTACT_PATH".toHttpUrl().newBuilder()
         if (sections != null) urlBuilder.addQueryParameter("sections", sections.joinToString(","))
@@ -1219,7 +1319,7 @@ class ApiClient(
     suspend fun exportPreflight(
         format: String,
         sections: List<String>,
-        includeSensitive: Boolean,
+        includeSensitive: Boolean
     ): Result<ExportLossPreflightResponse> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$EXPORT_PREFLIGHT_PATH".toHttpUrl().newBuilder()
         urlBuilder.addQueryParameter("format", format)
@@ -1252,15 +1352,14 @@ class ApiClient(
     suspend fun uploadContactPhoto(
         id: Int,
         bytes: ByteArray,
-        mimeType: String = "image/jpeg",
-    ): Result<Unit> =
-        executeMultipartUpload(
-            path = "$CONTACTS_PATH/$id/profile_picture",
-            fieldName = "photo",
-            fileName = "profile.jpg",
-            mediaType = mimeType,
-            fileBytes = bytes,
-        ) { _, _ -> Unit }
+        mimeType: String = "image/jpeg"
+    ): Result<Unit> = executeMultipartUpload(
+        path = "$CONTACTS_PATH/$id/profile_picture",
+        fieldName = "photo",
+        fileName = "profile.jpg",
+        mediaType = mimeType,
+        fileBytes = bytes
+    ) { _, _ -> Unit }
 
     // N7 contact attachments: the per-contact file/document feature whose
     // metadata rows are the ContactAttachment DTO (the bytes stay server-side
@@ -1284,15 +1383,14 @@ class ApiClient(
         id: Int,
         fileName: String,
         mimeType: String,
-        bytes: ByteArray,
-    ): Result<Unit> =
-        executeMultipartUpload(
-            path = "$CONTACTS_PATH/$id/attachments",
-            fieldName = "file",
-            fileName = fileName,
-            mediaType = mimeType,
-            fileBytes = bytes,
-        ) { _, _ -> Unit }
+        bytes: ByteArray
+    ): Result<Unit> = executeMultipartUpload(
+        path = "$CONTACTS_PATH/$id/attachments",
+        fieldName = "file",
+        fileName = fileName,
+        mediaType = mimeType,
+        fileBytes = bytes
+    ) { _, _ -> Unit }
 
     /** GET /api/v1/attachments/{id}/download — the raw attachment bytes. */
     suspend fun downloadAttachment(attachmentId: Int): Result<ByteArray> =
@@ -1333,7 +1431,10 @@ class ApiClient(
      * key is accepted but silently ignored server-side (UpdateFieldDefinition's own doc comment);
      * the UI disables the key field when editing rather than relying on this.
      */
-    suspend fun updateFieldDefinition(id: String, input: FieldDefinitionInput): Result<FieldDefinition> =
+    suspend fun updateFieldDefinition(
+        id: String,
+        input: FieldDefinitionInput
+    ): Result<FieldDefinition> =
         executePut("$PLACEHOLDER_ORIGIN$FIELD_DEFINITIONS_PATH/$id", input) { _, body ->
             moshi.adapter(FieldDefinition::class.java).fromJson(body)
         }
@@ -1351,7 +1452,7 @@ class ApiClient(
     suspend fun reorderFieldDefinitions(order: List<String>): Result<FieldDefinitionsResponse> =
         executePut(
             "$PLACEHOLDER_ORIGIN$FIELD_DEFINITIONS_PATH/reorder",
-            FieldDefinitionReorderInput(order),
+            FieldDefinitionReorderInput(order)
         ) { _, body ->
             moshi.adapter(FieldDefinitionsResponse::class.java).fromJson(body)
         }
@@ -1370,7 +1471,7 @@ class ApiClient(
      */
     suspend fun replaceContactFieldValues(
         contactId: Int,
-        input: ContactFieldValuesInput,
+        input: ContactFieldValuesInput
     ): Result<ContactFieldValuesResponse> =
         executePut("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/field-values", input) { _, body ->
             moshi.adapter(ContactFieldValuesResponse::class.java).fromJson(body)
@@ -1386,7 +1487,7 @@ class ApiClient(
         limit: Int? = null,
         search: String? = null,
         fromDate: String? = null,
-        toDate: String? = null,
+        toDate: String? = null
     ): Result<ContactActivitiesResponse> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/activities".toHttpUrl().newBuilder()
         cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
@@ -1411,13 +1512,20 @@ class ApiClient(
      * instead of creating a second Activity — see CON-04/ADR-0010. Other callers omit it and
      * get a plain, non-idempotent create.
      */
-    suspend fun createActivity(input: ActivityInput, idempotencyKey: String? = null): Result<Activity> =
+    suspend fun createActivity(
+        input: ActivityInput,
+        idempotencyKey: String? = null
+    ): Result<Activity> =
         executePost(ACTIVITIES_PATH, input, idempotencyKey = idempotencyKey) { _, body ->
             moshi.adapter(CreateActivityResponse::class.java).fromJson(body)?.activity
         }
 
     /** PUT /api/v1/activities/{id} — raw Activity response. */
-    suspend fun updateActivity(id: Int, input: ActivityInput, ifMatchRevision: Int? = null): Result<Activity> =
+    suspend fun updateActivity(
+        id: Int,
+        input: ActivityInput,
+        ifMatchRevision: Int? = null
+    ): Result<Activity> =
         executePut("$PLACEHOLDER_ORIGIN$ACTIVITIES_PATH/$id", input, ifMatchRevision) { _, body ->
             moshi.adapter(Activity::class.java).fromJson(body)
         }
@@ -1436,7 +1544,7 @@ class ApiClient(
     suspend fun listActivities(
         cursor: String? = null,
         limit: Int? = null,
-        includeContacts: Boolean = false,
+        includeContacts: Boolean = false
     ): Result<ActivitiesPage> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$ACTIVITIES_PATH".toHttpUrl().newBuilder()
         cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
@@ -1467,7 +1575,7 @@ class ApiClient(
         limit: Int? = null,
         search: String? = null,
         fromDate: String? = null,
-        toDate: String? = null,
+        toDate: String? = null
     ): Result<ContactNotesResponse> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/notes".toHttpUrl().newBuilder()
         cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
@@ -1521,9 +1629,17 @@ class ApiClient(
         }
 
     /** PUT /api/v1/reminders/{id} — wrapped `{ message, reminder }`, unwrapped here. */
-    suspend fun updateReminder(id: Int, reminder: Reminder, ifMatchRevision: Int? = null): Result<Reminder> =
+    suspend fun updateReminder(
+        id: Int,
+        reminder: Reminder,
+        ifMatchRevision: Int? = null
+    ): Result<Reminder> =
         // The revision rides in If-Match, never the body (a request body is not the precondition).
-        executePut("$PLACEHOLDER_ORIGIN$REMINDERS_PATH/$id", reminder.copy(revision = null), ifMatchRevision) { _, body ->
+        executePut(
+            "$PLACEHOLDER_ORIGIN$REMINDERS_PATH/$id",
+            reminder.copy(revision = null),
+            ifMatchRevision
+        ) { _, body ->
             moshi.adapter(CreateReminderResponse::class.java).fromJson(body)?.reminder
         }
 
@@ -1581,7 +1697,7 @@ class ApiClient(
         types: Collection<String> = emptyList(),
         bucket: String? = null,
         cursor: String? = null,
-        limit: Int = 25,
+        limit: Int = 25
     ): Result<ContactTimelinePage> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/timeline".toHttpUrl().newBuilder()
         urlBuilder.addQueryParameter("limit", limit.toString())
@@ -1607,12 +1723,22 @@ class ApiClient(
             val base = TimelineEvent(item.type, item.id, item.date)
             when (item.type) {
                 TimelineTypes.NOTE -> base.copy(note = entity(item, Note::class.java))
+
                 TimelineTypes.ACTIVITY -> base.copy(activity = entity(item, Activity::class.java))
-                TimelineTypes.COMPLETION -> base.copy(completion = entity(item, ReminderCompletion::class.java))
-                TimelineTypes.LIFE_EVENT -> base.copy(lifeEvent = entity(item, LifeEvent::class.java))
+
+                TimelineTypes.COMPLETION -> base.copy(
+                    completion = entity(item, ReminderCompletion::class.java)
+                )
+
+                TimelineTypes.LIFE_EVENT -> base.copy(
+                    lifeEvent = entity(item, LifeEvent::class.java)
+                )
+
                 TimelineTypes.EXTERNAL_ACTIVITY ->
                     base.copy(externalActivity = entity(item, ExternalActivity::class.java))
+
                 TimelineTypes.GIFT -> base.copy(gift = entity(item, Gift::class.java))
+
                 else -> null
             }
         }
@@ -1727,7 +1853,7 @@ class ApiClient(
     /** POST /api/v1/occasion-events/{id}/attendees — wrapped `{ attendee }`. */
     suspend fun addOccasionEventAttendee(
         eventId: String,
-        input: OccasionEventAttendeeInput,
+        input: OccasionEventAttendeeInput
     ): Result<OccasionEventAttendee> =
         executePost("$OCCASION_EVENTS_PATH/$eventId/attendees", input) { _, body ->
             moshi.adapter(AddOccasionEventAttendeeResponse::class.java).fromJson(body)?.attendee
@@ -1737,14 +1863,13 @@ class ApiClient(
     suspend fun updateOccasionEventAttendee(
         eventId: String,
         vcardUid: String,
-        rsvp: String,
-    ): Result<OccasionEventAttendee> =
-        executePut(
-            "$PLACEHOLDER_ORIGIN$OCCASION_EVENTS_PATH/$eventId/attendees/$vcardUid",
-            OccasionEventAttendeeUpdateInput(rsvp),
-        ) { _, body ->
-            moshi.adapter(OccasionEventAttendee::class.java).fromJson(body)
-        }
+        rsvp: String
+    ): Result<OccasionEventAttendee> = executePut(
+        "$PLACEHOLDER_ORIGIN$OCCASION_EVENTS_PATH/$eventId/attendees/$vcardUid",
+        OccasionEventAttendeeUpdateInput(rsvp)
+    ) { _, body ->
+        moshi.adapter(OccasionEventAttendee::class.java).fromJson(body)
+    }
 
     /** DELETE /api/v1/occasion-events/{id}/attendees/{vcard_uid}. */
     suspend fun removeOccasionEventAttendee(eventId: String, vcardUid: String): Result<Unit> =
@@ -1753,7 +1878,7 @@ class ApiClient(
     /** GET /api/v1/occasion-events/invitee-suggestions?circle_ids=…[&event_id=…]. */
     suspend fun suggestInvitees(
         circleIds: List<String>,
-        eventId: String?,
+        eventId: String?
     ): Result<InviteeSuggestionsResponse> {
         val builder = "$PLACEHOLDER_ORIGIN$OCCASION_EVENTS_PATH/invitee-suggestions"
             .toHttpUrl().newBuilder()
@@ -1768,7 +1893,7 @@ class ApiClient(
     suspend fun listCircles(
         cursor: String? = null,
         limit: Int? = null,
-        includeMembers: Boolean = false,
+        includeMembers: Boolean = false
     ): Result<CirclesPage> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$CIRCLES_PATH".toHttpUrl().newBuilder()
         cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
@@ -1815,7 +1940,7 @@ class ApiClient(
     suspend fun listTags(
         cursor: String? = null,
         limit: Int? = null,
-        includeContacts: Boolean = false,
+        includeContacts: Boolean = false
     ): Result<TagsPage> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$TAGS_PATH".toHttpUrl().newBuilder()
         cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
@@ -1833,10 +1958,9 @@ class ApiClient(
         }
 
     /** POST /api/v1/tags — wrapped `{ message, tag }`, unwrapped here. */
-    suspend fun createTag(input: TagInput): Result<Tag> =
-        executePost(TAGS_PATH, input) { _, body ->
-            moshi.adapter(CreateTagResponse::class.java).fromJson(body)?.tag
-        }
+    suspend fun createTag(input: TagInput): Result<Tag> = executePost(TAGS_PATH, input) { _, body ->
+        moshi.adapter(CreateTagResponse::class.java).fromJson(body)?.tag
+    }
 
     /** PUT /api/v1/tags/{id} — raw Tag response. */
     suspend fun updateTag(id: String, input: TagInput): Result<Tag> =
@@ -1862,7 +1986,7 @@ class ApiClient(
     suspend fun listHouseholds(
         cursor: String? = null,
         limit: Int? = null,
-        includeMembers: Boolean = false,
+        includeMembers: Boolean = false
     ): Result<HouseholdsPage> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$HOUSEHOLDS_PATH".toHttpUrl().newBuilder()
         cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
@@ -1896,17 +2020,23 @@ class ApiClient(
         executeDelete("$PLACEHOLDER_ORIGIN$HOUSEHOLDS_PATH/$id")
 
     /** POST /api/v1/households/{id}/members — wrapped `{ message, member }`. */
-    suspend fun addHouseholdMember(id: String, input: HouseholdMemberInput): Result<HouseholdMember> =
-        executePost("$HOUSEHOLDS_PATH/$id/members", input) { _, body ->
-            moshi.adapter(AddHouseholdMemberResponse::class.java).fromJson(body)?.member
-        }
+    suspend fun addHouseholdMember(
+        id: String,
+        input: HouseholdMemberInput
+    ): Result<HouseholdMember> = executePost("$HOUSEHOLDS_PATH/$id/members", input) { _, body ->
+        moshi.adapter(AddHouseholdMemberResponse::class.java).fromJson(body)?.member
+    }
 
     /** DELETE /api/v1/households/{id}/members/{vcard_uid}. */
     suspend fun removeHouseholdMember(id: String, vcardUid: String): Result<Unit> =
         executeDelete("$PLACEHOLDER_ORIGIN$HOUSEHOLDS_PATH/$id/members/$vcardUid")
 
     /** PATCH /api/v1/households/{id}/members/{vcard_uid} — update role/since/until. */
-    suspend fun updateHouseholdMember(id: String, vcardUid: String, input: HouseholdMemberInput): Result<Unit> =
+    suspend fun updateHouseholdMember(
+        id: String,
+        vcardUid: String,
+        input: HouseholdMemberInput
+    ): Result<Unit> =
         executePatch("$PLACEHOLDER_ORIGIN$HOUSEHOLDS_PATH/$id/members/$vcardUid", input)
 
     /** POST /api/v1/households/{id}/suggest-relationships — trigger the relationship-suggestion engine. */
@@ -1922,10 +2052,11 @@ class ApiClient(
         }
 
     /** POST /api/v1/households/suggestions/accept — materialize a household from a suggested group; unwrapped `{ household }`. */
-    suspend fun acceptHouseholdSuggestion(input: AcceptHouseholdSuggestionInput): Result<Household> =
-        executePost("$HOUSEHOLDS_PATH/suggestions/accept", input) { _, body ->
-            moshi.adapter(AcceptHouseholdSuggestionResponse::class.java).fromJson(body)?.household
-        }
+    suspend fun acceptHouseholdSuggestion(
+        input: AcceptHouseholdSuggestionInput
+    ): Result<Household> = executePost("$HOUSEHOLDS_PATH/suggestions/accept", input) { _, body ->
+        moshi.adapter(AcceptHouseholdSuggestionResponse::class.java).fromJson(body)?.household
+    }
 
     /** POST /api/v1/households/suggestions/dismiss — permanently dismiss a suggested group. */
     suspend fun dismissHouseholdSuggestion(input: DismissHouseholdSuggestionInput): Result<Unit> =
@@ -1936,7 +2067,7 @@ class ApiClient(
         contactId: String,
         status: String? = null,
         cursor: String? = null,
-        limit: Int? = null,
+        limit: Int? = null
     ): Result<RelationshipEdgesPage> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$RELATIONSHIP_EDGES_PATH".toHttpUrl().newBuilder()
         urlBuilder.addQueryParameter("contact_id", contactId)
@@ -1951,11 +2082,16 @@ class ApiClient(
     /** POST /api/v1/relationship-edges — wrapped `{ relationship_edge }`, unwrapped here. */
     suspend fun createRelationshipEdge(input: RelationshipEdgeInput): Result<RelationshipEdge> =
         executePost(RELATIONSHIP_EDGES_PATH, input) { _, body ->
-            moshi.adapter(CreateRelationshipEdgeResponse::class.java).fromJson(body)?.relationshipEdge
+            moshi.adapter(
+                CreateRelationshipEdgeResponse::class.java
+            ).fromJson(body)?.relationshipEdge
         }
 
     /** PUT /api/v1/relationship-edges/{id} — raw (unwrapped) updated edge, unlike create's wrapped response. */
-    suspend fun updateRelationshipEdge(id: String, input: RelationshipEdgeInput): Result<RelationshipEdge> =
+    suspend fun updateRelationshipEdge(
+        id: String,
+        input: RelationshipEdgeInput
+    ): Result<RelationshipEdge> =
         executePut("$PLACEHOLDER_ORIGIN$RELATIONSHIP_EDGES_PATH/$id", input) { _, body ->
             moshi.adapter(RelationshipEdge::class.java).fromJson(body)
         }
@@ -1983,7 +2119,9 @@ class ApiClient(
         }
 
     /** POST /api/v1/contacts/address-suggestions/apply — apply one address suggestion. */
-    suspend fun applyContactAddressSuggestion(input: ApplyContactAddressSuggestionInput): Result<Unit> =
+    suspend fun applyContactAddressSuggestion(
+        input: ApplyContactAddressSuggestionInput
+    ): Result<Unit> =
         executePost("$CONTACTS_PATH/address-suggestions/apply", input) { _, _ -> Unit }
 
     // --- Issue #220: ExternalIdentity substrate (T14) + the Immich integration (T15/T16) ---
@@ -1994,7 +2132,10 @@ class ApiClient(
     // proxied URLs (auth attached by the shared stack); picks are fetched as bytes.
 
     /** GET /api/v1/external-identities?contact_id=… — cursor-paginated, full_resync. */
-    suspend fun listExternalIdentities(contactId: String, limit: Int = 100): Result<ExternalIdentitiesPage> {
+    suspend fun listExternalIdentities(
+        contactId: String,
+        limit: Int = 100
+    ): Result<ExternalIdentitiesPage> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$EXTERNAL_IDENTITIES_PATH".toHttpUrl().newBuilder()
         urlBuilder.addQueryParameter("contact_id", contactId)
         urlBuilder.addQueryParameter("limit", limit.toString())
@@ -2008,7 +2149,10 @@ class ApiClient(
         executeDelete("$PLACEHOLDER_ORIGIN$EXTERNAL_IDENTITIES_PATH/$id")
 
     /** GET /api/v1/external-activities?contact_id=… — cursor-paginated, full_resync (issue #836). */
-    suspend fun listExternalActivities(contactId: String, limit: Int = 100): Result<ExternalActivitiesPage> {
+    suspend fun listExternalActivities(
+        contactId: String,
+        limit: Int = 100
+    ): Result<ExternalActivitiesPage> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$EXTERNAL_ACTIVITIES_PATH".toHttpUrl().newBuilder()
         urlBuilder.addQueryParameter("contact_id", contactId)
         urlBuilder.addQueryParameter("limit", limit.toString())
@@ -2030,8 +2174,14 @@ class ApiClient(
         }
 
     /** POST /api/v1/immich/contacts/:vcard_uid/link — links the person; 201. */
-    suspend fun linkImmichContact(vcardUid: String, personId: String, personName: String): Result<Unit> =
-        executePost("$IMMICH_PATH/contacts/$vcardUid/link", ImmichLinkRequest(personId, personName)) { _, _ -> Unit }
+    suspend fun linkImmichContact(
+        vcardUid: String,
+        personId: String,
+        personName: String
+    ): Result<Unit> = executePost(
+        "$IMMICH_PATH/contacts/$vcardUid/link",
+        ImmichLinkRequest(personId, personName)
+    ) { _, _ -> Unit }
 
     /** DELETE /api/v1/immich/contacts/:vcard_uid/link — unlinks; keeps enrichment history. */
     suspend fun unlinkImmichContact(vcardUid: String): Result<Unit> =
@@ -2042,7 +2192,9 @@ class ApiClient(
         // The mapper returns the non-null wrapper so `summary: null` is a
         // success-with-null, not a parse failure (execute treats a null mapper
         // result as "empty body").
-        val response = executeGet("$PLACEHOLDER_ORIGIN$IMMICH_PATH/contacts/$vcardUid/summary") { _, body ->
+        val response = executeGet(
+            "$PLACEHOLDER_ORIGIN$IMMICH_PATH/contacts/$vcardUid/summary"
+        ) { _, body ->
             moshi.adapter(ImmichSummaryResponse::class.java).fromJson(body)
         }
         return response.map { it.summary }
@@ -2108,10 +2260,20 @@ class ApiClient(
         }
 
     /** GET /api/v1/geopulse/suggestions?date=YYYY-MM-DD&timezone=<IANA> — one ephemeral lookup for a day. */
-    suspend fun getGeoPulseSuggestions(date: String, timezone: String? = null): Result<GeoPulseSuggestionsResponse> {
+    suspend fun getGeoPulseSuggestions(
+        date: String,
+        timezone: String? = null
+    ): Result<GeoPulseSuggestionsResponse> {
         val url = "$PLACEHOLDER_ORIGIN$GEOPULSE_PATH/suggestions".toHttpUrl().newBuilder()
             .addQueryParameter("date", date)
-            .apply { timezone?.takeIf { it.isNotBlank() }?.let { addQueryParameter("timezone", it) } }
+            .apply {
+                timezone?.takeIf { it.isNotBlank() }?.let {
+                    addQueryParameter(
+                        "timezone",
+                        it
+                    )
+                }
+            }
             .build()
         return executeGet(url.toString()) { _, body ->
             moshi.adapter(GeoPulseSuggestionsResponse::class.java).fromJson(body)
@@ -2155,7 +2317,10 @@ class ApiClient(
 
     /** POST /api/v1/paperless/contacts/:vcard_uid/link — 201; writes the ExternalIdentity server-side. */
     suspend fun linkPaperlessContact(vcardUid: String, documentId: String): Result<Unit> =
-        executePost("$PAPERLESS_PATH/contacts/$vcardUid/link", PaperlessLinkRequest(documentId)) { _, _ -> Unit }
+        executePost(
+            "$PAPERLESS_PATH/contacts/$vcardUid/link",
+            PaperlessLinkRequest(documentId)
+        ) { _, _ -> Unit }
 
     /** GET /api/v1/seafile/config — `has_api_token` gates the Seafile UI entry points. */
     suspend fun getSeafileConfig(): Result<SeafileConfigResponse> =
@@ -2230,7 +2395,10 @@ class ApiClient(
     }
 
     /** POST /api/v1/nextcloud/contacts/:vcard_uid/link — 201; writes the ExternalIdentity server-side. */
-    suspend fun linkNextcloudContact(vcardUid: String, request: NextcloudLinkRequest): Result<Unit> =
+    suspend fun linkNextcloudContact(
+        vcardUid: String,
+        request: NextcloudLinkRequest
+    ): Result<Unit> =
         executePost("$NEXTCLOUD_PATH/contacts/$vcardUid/link", request) { _, _ -> Unit }
 
     // --- Life events ---
@@ -2238,7 +2406,7 @@ class ApiClient(
     suspend fun listLifeEvents(
         entityId: String? = null,
         cursor: String? = null,
-        limit: Int? = null,
+        limit: Int? = null
     ): Result<LifeEventsPage> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$LIFE_EVENTS_PATH".toHttpUrl().newBuilder()
         entityId?.let { urlBuilder.addQueryParameter("entity_id", it) }
@@ -2254,7 +2422,11 @@ class ApiClient(
             moshi.adapter(CreateLifeEventResponse::class.java).fromJson(body)?.lifeEvent
         }
 
-    suspend fun updateLifeEvent(id: String, input: LifeEventInput, ifMatchRevision: Int? = null): Result<LifeEvent> =
+    suspend fun updateLifeEvent(
+        id: String,
+        input: LifeEventInput,
+        ifMatchRevision: Int? = null
+    ): Result<LifeEvent> =
         executePut("$PLACEHOLDER_ORIGIN$LIFE_EVENTS_PATH/$id", input, ifMatchRevision) { _, body ->
             moshi.adapter(LifeEvent::class.java).fromJson(body)
         }
@@ -2267,7 +2439,7 @@ class ApiClient(
     suspend fun listGifts(
         entityId: String? = null,
         cursor: String? = null,
-        limit: Int? = null,
+        limit: Int? = null
     ): Result<GiftsPage> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$GIFTS_PATH".toHttpUrl().newBuilder()
         entityId?.let { urlBuilder.addQueryParameter("entity_id", it) }
@@ -2296,7 +2468,7 @@ class ApiClient(
     suspend fun listPreferences(
         entityId: String? = null,
         cursor: String? = null,
-        limit: Int? = null,
+        limit: Int? = null
     ): Result<PreferencesPage> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$PREFERENCES_PATH".toHttpUrl().newBuilder()
         entityId?.let { urlBuilder.addQueryParameter("entity_id", it) }
@@ -2325,7 +2497,7 @@ class ApiClient(
     suspend fun listConversationAgenda(
         entityId: String? = null,
         cursor: String? = null,
-        limit: Int? = null,
+        limit: Int? = null
     ): Result<ConversationAgendaPage> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$CONVERSATION_AGENDA_PATH".toHttpUrl().newBuilder()
         entityId?.let { urlBuilder.addQueryParameter("entity_id", it) }
@@ -2336,12 +2508,18 @@ class ApiClient(
         }
     }
 
-    suspend fun createConversationAgenda(input: ConversationAgendaInput): Result<ConversationAgenda> =
-        executePost(CONVERSATION_AGENDA_PATH, input) { _, body ->
-            moshi.adapter(CreateConversationAgendaResponse::class.java).fromJson(body)?.conversationAgenda
-        }
+    suspend fun createConversationAgenda(
+        input: ConversationAgendaInput
+    ): Result<ConversationAgenda> = executePost(CONVERSATION_AGENDA_PATH, input) { _, body ->
+        moshi.adapter(
+            CreateConversationAgendaResponse::class.java
+        ).fromJson(body)?.conversationAgenda
+    }
 
-    suspend fun updateConversationAgenda(id: String, input: ConversationAgendaInput): Result<ConversationAgenda> =
+    suspend fun updateConversationAgenda(
+        id: String,
+        input: ConversationAgendaInput
+    ): Result<ConversationAgenda> =
         executePut("$PLACEHOLDER_ORIGIN$CONVERSATION_AGENDA_PATH/$id", input) { _, body ->
             moshi.adapter(ConversationAgenda::class.java).fromJson(body)
         }
@@ -2355,13 +2533,15 @@ class ApiClient(
      * `{ activity_id }` when [activityId] is set and an empty object
      * otherwise — matching web's MarkDiscussedDialog.
      */
-    suspend fun discussConversationAgenda(id: String, activityId: Int? = null): Result<ConversationAgenda> =
-        executePatch(
-            "$PLACEHOLDER_ORIGIN$CONVERSATION_AGENDA_PATH/$id/discuss",
-            DiscussConversationAgendaInput(activityId = activityId),
-        ) { _, body ->
-            moshi.adapter(ConversationAgenda::class.java).fromJson(body)
-        }
+    suspend fun discussConversationAgenda(
+        id: String,
+        activityId: Int? = null
+    ): Result<ConversationAgenda> = executePatch(
+        "$PLACEHOLDER_ORIGIN$CONVERSATION_AGENDA_PATH/$id/discuss",
+        DiscussConversationAgendaInput(activityId = activityId)
+    ) { _, body ->
+        moshi.adapter(ConversationAgenda::class.java).fromJson(body)
+    }
 
     // --- Contact merge ---
 
@@ -2388,7 +2568,10 @@ class ApiClient(
      * tiers: email, exact name, phone), strongest-first, offset-paginated;
      * already-dismissed pairs are filtered out. Read-only and idempotent.
      */
-    suspend fun listDuplicatePairs(page: Int = 1, limit: Int? = null): Result<DuplicatePairsResponse> {
+    suspend fun listDuplicatePairs(
+        page: Int = 1,
+        limit: Int? = null
+    ): Result<DuplicatePairsResponse> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$CONTACTS_PATH/duplicates".toHttpUrl().newBuilder()
         urlBuilder.addQueryParameter("page", page.toString())
         limit?.let { urlBuilder.addQueryParameter("limit", it.toString()) }
@@ -2404,34 +2587,40 @@ class ApiClient(
      * (user_id, uid_low, uid_high) row, so (A,B) and (B,A) are the same
      * dismissal).
      */
-    suspend fun dismissDuplicatePair(uidA: String, uidB: String): Result<Unit> =
-        executePost("$CONTACTS_PATH/duplicates/dismiss", DuplicateDismissalInput(uidA = uidA, uidB = uidB)) { _, _ ->
-            Unit
-        }
+    suspend fun dismissDuplicatePair(uidA: String, uidB: String): Result<Unit> = executePost(
+        "$CONTACTS_PATH/duplicates/dismiss",
+        DuplicateDismissalInput(uidA = uidA, uidB = uidB)
+    ) { _, _ ->
+        Unit
+    }
 
     // --- Import (CSV / VCF / JSContact) ---
 
-    suspend fun uploadCsvImport(fileBytes: ByteArray, fileName: String): Result<ImportUploadResponse> =
-        executeMultipartUpload(
-            "$CONTACTS_PATH/import/upload",
-            fieldName = "file",
-            fileName = fileName,
-            mediaType = "application/octet-stream",
-            fileBytes = fileBytes,
-        ) { _, body ->
-            moshi.adapter(ImportUploadResponse::class.java).fromJson(body)
-        }
+    suspend fun uploadCsvImport(
+        fileBytes: ByteArray,
+        fileName: String
+    ): Result<ImportUploadResponse> = executeMultipartUpload(
+        "$CONTACTS_PATH/import/upload",
+        fieldName = "file",
+        fileName = fileName,
+        mediaType = "application/octet-stream",
+        fileBytes = fileBytes
+    ) { _, body ->
+        moshi.adapter(ImportUploadResponse::class.java).fromJson(body)
+    }
 
-    suspend fun uploadVcfImport(fileBytes: ByteArray, fileName: String): Result<ImportPreviewResponse> =
-        executeMultipartUpload(
-            "$CONTACTS_PATH/import/vcf/upload",
-            fieldName = "file",
-            fileName = fileName,
-            mediaType = "application/octet-stream",
-            fileBytes = fileBytes,
-        ) { _, body ->
-            moshi.adapter(ImportPreviewResponse::class.java).fromJson(body)
-        }
+    suspend fun uploadVcfImport(
+        fileBytes: ByteArray,
+        fileName: String
+    ): Result<ImportPreviewResponse> = executeMultipartUpload(
+        "$CONTACTS_PATH/import/vcf/upload",
+        fieldName = "file",
+        fileName = fileName,
+        mediaType = "application/octet-stream",
+        fileBytes = fileBytes
+    ) { _, body ->
+        moshi.adapter(ImportPreviewResponse::class.java).fromJson(body)
+    }
 
     suspend fun previewCsvImport(request: ImportPreviewRequest): Result<ImportPreviewResponse> =
         executePost("$CONTACTS_PATH/import/preview", request) { _, body ->
@@ -2457,7 +2646,9 @@ class ApiClient(
      * within-batch duplicate detection — and is confirmed via
      * [confirmVcfImport].
      */
-    suspend fun uploadImportRecords(records: List<ContactRecordInput>): Result<ImportPreviewResponse> =
+    suspend fun uploadImportRecords(
+        records: List<ContactRecordInput>
+    ): Result<ImportPreviewResponse> =
         executePost("$CONTACTS_PATH/import/records", ImportRecordsRequest(records)) { _, body ->
             moshi.adapter(ImportPreviewResponse::class.java).fromJson(body)
         }
@@ -2473,7 +2664,10 @@ class ApiClient(
         executeGetBytes("$PLACEHOLDER_ORIGIN$EXPORT_PATH/account")
 
     /** POST /api/v1/import/mycorrhizal/upload — stages a bundle and opens an import session. */
-    suspend fun uploadMycorrhizalBundle(fileBytes: ByteArray, fileName: String): Result<MycorrhizalUploadResponse> =
+    suspend fun uploadMycorrhizalBundle(
+        fileBytes: ByteArray,
+        fileName: String
+    ): Result<MycorrhizalUploadResponse> =
         uploadMycorrhizalBundleInternal(fileBytes, fileName, null)
 
     /**
@@ -2483,29 +2677,30 @@ class ApiClient(
     suspend fun uploadMycorrhizalBundle(
         fileBytes: ByteArray,
         fileName: String,
-        idempotencyKey: String,
+        idempotencyKey: String
     ): Result<MycorrhizalUploadResponse> =
         uploadMycorrhizalBundleInternal(fileBytes, fileName, idempotencyKey)
 
     private suspend fun uploadMycorrhizalBundleInternal(
         fileBytes: ByteArray,
         fileName: String,
-        idempotencyKey: String?,
-    ): Result<MycorrhizalUploadResponse> =
-        executeMultipartUpload(
-            "$IMPORT_MYCORRHIZAL_PATH/upload",
-            fieldName = "file",
-            fileName = fileName,
-            mediaType = "application/json",
-            fileBytes = fileBytes,
-            idempotencyKey = idempotencyKey,
-        ) { _, body ->
-            moshi.adapter(MycorrhizalUploadResponse::class.java).fromJson(body)
-        }
+        idempotencyKey: String?
+    ): Result<MycorrhizalUploadResponse> = executeMultipartUpload(
+        "$IMPORT_MYCORRHIZAL_PATH/upload",
+        fieldName = "file",
+        fileName = fileName,
+        mediaType = "application/json",
+        fileBytes = fileBytes,
+        idempotencyKey = idempotencyKey
+    ) { _, body ->
+        moshi.adapter(MycorrhizalUploadResponse::class.java).fromJson(body)
+    }
 
     /** POST /api/v1/import/mycorrhizal/fetch — starts the background map + preview build (202). */
-    suspend fun startMycorrhizalFetch(sessionId: String): Result<Unit> =
-        executePost("$IMPORT_MYCORRHIZAL_PATH/fetch", MycorrhizalFetchRequest(sessionId)) { _, _ -> Unit }
+    suspend fun startMycorrhizalFetch(sessionId: String): Result<Unit> = executePost(
+        "$IMPORT_MYCORRHIZAL_PATH/fetch",
+        MycorrhizalFetchRequest(sessionId)
+    ) { _, _ -> Unit }
 
     /** GET /api/v1/import/mycorrhizal/status — the session's phase and progress. */
     suspend fun getMycorrhizalImportStatus(sessionId: String): Result<SourceImportStatus> =
@@ -2514,7 +2709,9 @@ class ApiClient(
         }
 
     /** GET /api/v1/import/mycorrhizal/preview — review rows + loss report for a prepared bundle. */
-    suspend fun getMycorrhizalImportPreview(sessionId: String): Result<SourceImportPreviewResponse> =
+    suspend fun getMycorrhizalImportPreview(
+        sessionId: String
+    ): Result<SourceImportPreviewResponse> =
         executeGet(mycorrhizalSessionUrl("preview", sessionId)) { _, body ->
             moshi.adapter(SourceImportPreviewResponse::class.java).fromJson(body)
         }
@@ -2524,8 +2721,9 @@ class ApiClient(
         executePost("$IMPORT_MYCORRHIZAL_PATH/confirm", request) { _, _ -> Unit }
 
     /** POST /api/v1/import/mycorrhizal/cancel — cancels an in-flight import or drops the session. */
-    suspend fun cancelMycorrhizalImport(sessionId: String): Result<Unit> =
-        executePostEmpty(mycorrhizalSessionUrl("cancel", sessionId).removePrefix(PLACEHOLDER_ORIGIN)) { _, _ -> Unit }
+    suspend fun cancelMycorrhizalImport(sessionId: String): Result<Unit> = executePostEmpty(
+        mycorrhizalSessionUrl("cancel", sessionId).removePrefix(PLACEHOLDER_ORIGIN)
+    ) { _, _ -> Unit }
 
     private fun mycorrhizalSessionUrl(action: String, sessionId: String): String =
         "$PLACEHOLDER_ORIGIN$IMPORT_MYCORRHIZAL_PATH/$action".toHttpUrl().newBuilder()
@@ -2541,7 +2739,10 @@ class ApiClient(
     suspend fun getImportHistory(): Result<List<ImportRun>> =
         executeGet("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/import/history") { _, body ->
             moshi.adapter<List<ImportRun>>(
-                com.squareup.moshi.Types.newParameterizedType(List::class.java, ImportRun::class.java),
+                com.squareup.moshi.Types.newParameterizedType(
+                    List::class.java,
+                    ImportRun::class.java
+                )
             ).fromJson(body)
         }
 
@@ -2552,7 +2753,7 @@ class ApiClient(
     /** GET /api/v1/contact-shares/incoming — shares offered TO the current user, cursor-paginated. */
     suspend fun listIncomingContactShares(
         cursor: String? = null,
-        limit: Int? = null,
+        limit: Int? = null
     ): Result<ContactSharesPage> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$CONTACT_SHARES_PATH/incoming".toHttpUrl().newBuilder()
         cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
@@ -2565,7 +2766,7 @@ class ApiClient(
     /** GET /api/v1/contact-shares/outgoing — shares the current user has sent, cursor-paginated. */
     suspend fun listOutgoingContactShares(
         cursor: String? = null,
-        limit: Int? = null,
+        limit: Int? = null
     ): Result<ContactSharesPage> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$CONTACT_SHARES_PATH/outgoing".toHttpUrl().newBuilder()
         cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
@@ -2594,10 +2795,12 @@ class ApiClient(
         }
 
     /** POST /api/v1/contact-shares/{id}/confirm — finalizes an accepted share with the chosen per-row actions. */
-    suspend fun confirmContactShare(id: String, request: ImportConfirmRequest): Result<ImportResult> =
-        executePost("$CONTACT_SHARES_PATH/$id/confirm", request) { _, body ->
-            moshi.adapter(ImportResult::class.java).fromJson(body)
-        }
+    suspend fun confirmContactShare(
+        id: String,
+        request: ImportConfirmRequest
+    ): Result<ImportResult> = executePost("$CONTACT_SHARES_PATH/$id/confirm", request) { _, body ->
+        moshi.adapter(ImportResult::class.java).fromJson(body)
+    }
 
     /** POST /api/v1/contact-shares/{id}/decline — flips a pending share to declined. */
     suspend fun declineContactShare(id: String): Result<Unit> =
@@ -2666,11 +2869,16 @@ class ApiClient(
     suspend fun getAuditEvents(
         entityType: String? = null,
         entityId: String? = null,
-        limit: Int = 100,
+        limit: Int = 100
     ): Result<AuditEventsResponse> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$AUDIT_PATH".toHttpUrl().newBuilder()
         urlBuilder.addQueryParameter("limit", limit.toString())
-        entityType?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("entity_type", it) }
+        entityType?.takeIf { it.isNotBlank() }?.let {
+            urlBuilder.addQueryParameter(
+                "entity_type",
+                it
+            )
+        }
         entityId?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("entity_id", it) }
         return executeGet(urlBuilder.build().toString()) { _, body ->
             moshi.adapter(AuditEventsResponse::class.java).fromJson(body)
@@ -2703,13 +2911,18 @@ class ApiClient(
         eventType: String? = null,
         correlationId: String? = null,
         ids: List<Long>? = null,
-        limit: Int = 100,
+        limit: Int = 100
     ): Result<SystemEventsResponse> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$ADMIN_SYSTEM_EVENTS_PATH".toHttpUrl().newBuilder()
         urlBuilder.addQueryParameter("limit", limit.toString())
         component?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("component", it) }
         severity?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("severity", it) }
-        eventType?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("event_type", it) }
+        eventType?.takeIf { it.isNotBlank() }?.let {
+            urlBuilder.addQueryParameter(
+                "event_type",
+                it
+            )
+        }
         correlationId?.takeIf { it.isNotBlank() }
             ?.let { urlBuilder.addQueryParameter("correlation_id", it) }
         ids?.takeIf { it.isNotEmpty() }
@@ -2757,7 +2970,7 @@ class ApiClient(
         result: String? = null,
         since: String? = null,
         until: String? = null,
-        limit: Int = 100,
+        limit: Int = 100
     ): Result<JobRunsResponse> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$ADMIN_JOB_RUNS_PATH".toHttpUrl().newBuilder()
         urlBuilder.addQueryParameter("limit", limit.toString())
@@ -2798,7 +3011,7 @@ class ApiClient(
     suspend fun getConnections(
         from: String,
         depth: Int? = null,
-        relation: String? = null,
+        relation: String? = null
     ): Result<GraphConnectionsResponse> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$GRAPH_CONNECTIONS_PATH".toHttpUrl().newBuilder()
         urlBuilder.addQueryParameter("from", from)
@@ -2838,14 +3051,17 @@ class ApiClient(
      * UI blocks it before it gets here. 404 when the instance has no geocoder
      * (e.g. embedded).
      */
-    suspend fun geocodeAddressDraft(contactId: Int, draft: GeocodeDraftRequest): Result<GeocodeDraftResponse> =
+    suspend fun geocodeAddressDraft(
+        contactId: Int,
+        draft: GeocodeDraftRequest
+    ): Result<GeocodeDraftResponse> =
         executePost("$API_V1/contacts/$contactId/addresses/geocode", draft) { _, body ->
             moshi.adapter(GeocodeDraftResponse::class.java).fromJson(body)
         }
 
     private suspend fun <T> executeGet(
         url: String,
-        mapper: (okhttp3.Response, String) -> T?,
+        mapper: (okhttp3.Response, String) -> T?
     ): Result<T> {
         val request = Request.Builder().url(url).get().build()
         return execute(request, mapper)
@@ -2855,7 +3071,7 @@ class ApiClient(
         path: String,
         body: Any,
         idempotencyKey: String? = null,
-        mapper: (okhttp3.Response, String) -> T?,
+        mapper: (okhttp3.Response, String) -> T?
     ): Result<T> {
         val requestBuilder = Request.Builder()
             .url("$PLACEHOLDER_ORIGIN$path".toHttpUrl())
@@ -2870,7 +3086,7 @@ class ApiClient(
 
     private suspend fun <T> executePostEmpty(
         path: String,
-        mapper: (okhttp3.Response, String) -> T?,
+        mapper: (okhttp3.Response, String) -> T?
     ): Result<T> {
         val request = Request.Builder()
             .url("$PLACEHOLDER_ORIGIN$path".toHttpUrl())
@@ -2883,7 +3099,7 @@ class ApiClient(
         url: String,
         body: Any,
         ifMatchRevision: Int? = null,
-        mapper: (okhttp3.Response, String) -> T?,
+        mapper: (okhttp3.Response, String) -> T?
     ): Result<T> {
         val request = Request.Builder()
             .url(url.toHttpUrl())
@@ -2898,7 +3114,7 @@ class ApiClient(
         body: Any,
         // A Unit result for callers that ignore the body; T is Unit there.
         @Suppress("UNCHECKED_CAST")
-        mapper: (okhttp3.Response, String) -> T? = { _, _ -> Unit as T },
+        mapper: (okhttp3.Response, String) -> T? = { _, _ -> Unit as T }
     ): Result<T> {
         val request = Request.Builder()
             .url(url.toHttpUrl())
@@ -2909,7 +3125,7 @@ class ApiClient(
 
     private suspend fun <T> executePatchEmpty(
         url: String,
-        mapper: (okhttp3.Response, String) -> T?,
+        mapper: (okhttp3.Response, String) -> T?
     ): Result<T> {
         val request = Request.Builder()
             .url(url.toHttpUrl())
@@ -2925,13 +3141,21 @@ class ApiClient(
         mediaType: String,
         fileBytes: ByteArray,
         idempotencyKey: String? = null,
-        mapper: (okhttp3.Response, String) -> T?,
+        mapper: (okhttp3.Response, String) -> T?
     ): Result<T> {
         // The server fingerprints a keyed request by its raw body (ADR 0010), and
         // OkHttp picks a random multipart boundary per builder — so a retry of the
         // "same" upload would hash differently and be refused as key reuse. A
         // boundary derived from the key makes every retry byte-identical.
-        val body = (if (idempotencyKey != null) MultipartBody.Builder(boundaryFor(idempotencyKey)) else MultipartBody.Builder())
+        val body = (
+            if (idempotencyKey != null) {
+                MultipartBody.Builder(
+                    boundaryFor(idempotencyKey)
+                )
+            } else {
+                MultipartBody.Builder()
+            }
+            )
             .setType(MultipartBody.FORM)
             .addFormDataPart(fieldName, fileName, fileBytes.toRequestBody(mediaType.toMediaType()))
             .build()
@@ -2944,7 +3168,9 @@ class ApiClient(
 
     /** A valid (<= 70 chars, token-safe) multipart boundary determined by [idempotencyKey]. */
     private fun boundaryFor(idempotencyKey: String): String =
-        "mycorrhizal-" + idempotencyKey.filter { it.isLetterOrDigit() || it == '-' }.take(MAX_BOUNDARY_KEY_CHARS)
+        "mycorrhizal-" + idempotencyKey.filter { it.isLetterOrDigit() || it == '-' }.take(
+            MAX_BOUNDARY_KEY_CHARS
+        )
 
     /**
      * ADR 0008 / issue #1665: attach `If-Match: "<revision>"` (a quoted integer, the `revision`
@@ -2963,7 +3189,7 @@ class ApiClient(
         ifMatchRevision: Int? = null,
         // A Unit result for callers that ignore the body; T is Unit there.
         @Suppress("UNCHECKED_CAST")
-        mapper: (okhttp3.Response, String) -> T? = { _, _ -> Unit as T },
+        mapper: (okhttp3.Response, String) -> T? = { _, _ -> Unit as T }
     ): Result<T> {
         val request = Request.Builder()
             .url(url.toHttpUrl())
@@ -3011,7 +3237,7 @@ class ApiClient(
     @Suppress("TooGenericExceptionCaught")
     private suspend fun <T> execute(
         request: Request,
-        mapper: (okhttp3.Response, String) -> T?,
+        mapper: (okhttp3.Response, String) -> T?
     ): Result<T> = withContext(Dispatchers.IO) {
         try {
             val response = okHttpClient.newCall(request).execute()
@@ -3107,6 +3333,7 @@ class ApiClient(
         private const val TWO_FACTOR_PATH = "$API_V1/users/2fa"
         private const val WEBAUTHN_PATH = "$API_V1/webauthn"
         private const val AUTH_CONFIG_PATH = "$API_V1/auth/oidc/config"
+
         /** Unversioned public health surface (issue #528) — /health is NOT under /api/v1. */
         private const val HEALTH_PATH = "/health"
         private const val ME_PATH = "$API_V1/users/me"
@@ -3171,6 +3398,7 @@ class ApiClient(
         private const val SEAFILE_PATH = "$API_V1/seafile"
         private const val NEXTCLOUD_PATH = "$API_V1/nextcloud"
         private const val AUTH_COOKIE = "auth_token"
+
         /** The short-lived 2FA login challenge cookie (600s, httpOnly) — captured, never stored. */
         private const val TWO_FACTOR_COOKIE = "2fa_pending"
         private const val ASSERTION_NOT_OBJECT = "assertion is not a JSON object"
@@ -3191,7 +3419,7 @@ data class LoginResult(
     val twoFactorRequired: Boolean = false,
     val pending2faCookie: String? = null,
     /** Issue #1293: enrolled second-factor tokens (see `SecondFactorMethod`); null from an older server. */
-    val methods: List<String>? = null,
+    val methods: List<String>? = null
 )
 
 /**
@@ -3201,7 +3429,4 @@ data class LoginResult(
  * [reissuedToken] the new bearer token (null when the server did not re-issue
  * one) — the data layer refreshes the stored token so the session survives.
  */
-data class ReissuedTokenResult<T>(
-    val value: T,
-    val reissuedToken: String?,
-)
+data class ReissuedTokenResult<T>(val value: T, val reissuedToken: String?)

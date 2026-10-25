@@ -39,14 +39,14 @@ class AppLockScreenTest {
     private fun setContent(
         state: AppLockUiState = AppLockUiState(username = "alice"),
         onUnlockRequest: () -> Unit = {},
-        onLogout: () -> Unit = {},
+        onLogout: () -> Unit = {}
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 AppLockContent(
                     state = state,
                     onUnlockRequest = onUnlockRequest,
-                    onLogout = onLogout,
+                    onLogout = onLogout
                 )
             }
         }
@@ -60,7 +60,9 @@ class AppLockScreenTest {
 
         composeTestRule.onNodeWithText("Your data is locked").assertIsDisplayed()
         composeTestRule.onNodeWithText("Signed in as alice").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Unlock with your fingerprint, face or device PIN to continue.")
+        composeTestRule.onNodeWithText(
+            "Unlock with your fingerprint, face or device PIN to continue."
+        )
             .assertIsDisplayed()
         composeTestRule.onNodeWithText("Unlock").assertIsDisplayed()
         composeTestRule.onNodeWithText("Log out").assertIsDisplayed()
@@ -102,7 +104,7 @@ class AppLockScreenTest {
 
         composeTestRule.onNodeWithText(
             "Fingerprint, face or device PIN unlock is not available on this device. " +
-                "Log out to sign in with your password.",
+                "Log out to sign in with your password."
         ).assertIsDisplayed()
         composeTestRule.onNodeWithText("Unlock").assertDoesNotExist()
         composeTestRule.onNodeWithText("Log out").assertIsDisplayed()
@@ -119,13 +121,18 @@ class AppLockScreenTest {
                     state = AppLockUiState(errorRes = R.string.app_lock_auth_failed),
                     onUnlockRequest = {},
                     onLogout = {},
-                    onErrorShown = { shown = true },
+                    onErrorShown = { shown = true }
                 )
             }
         }
 
         composeTestRule.onNodeWithText("Couldn't unlock. Please try again.")
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Assertive))
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.LiveRegion,
+                    LiveRegionMode.Assertive
+                )
+            )
         assertTrue(shown)
     }
 
@@ -145,7 +152,7 @@ class AppLockScreenTest {
         override suspend fun requestUnlock(
             title: String,
             subtitle: String,
-            negativeButtonText: String?,
+            negativeButtonText: String?
         ): AppLockAuthOutcome {
             requests++
             lastTitle = title
@@ -155,7 +162,7 @@ class AppLockScreenTest {
 
     private fun hostViewModel(
         canAuthenticate: Boolean = true,
-        controller: AppLockController = mockk(relaxed = true),
+        controller: AppLockController = mockk(relaxed = true)
     ): AppLockViewModel {
         val authRepository = mockk<AuthRepository>(relaxed = true)
         val capabilities = mockk<LocalAuthCapabilities> {
@@ -163,7 +170,7 @@ class AppLockScreenTest {
         }
         val sessionManager = mockk<SessionManager> {
             every { observeSession() } returns MutableStateFlow(
-                SessionState(isLoggedIn = true, username = "alice"),
+                SessionState(isLoggedIn = true, username = "alice")
             )
         }
         return AppLockViewModel(controller, authRepository, capabilities, sessionManager)
@@ -179,7 +186,10 @@ class AppLockScreenTest {
         val prompter = FakePrompter(AppLockAuthOutcome.Success)
         composeTestRule.setContent {
             MycorrhizalTheme {
-                AppLockScreen(viewModel = hostViewModel(controller = controller), prompter = prompter)
+                AppLockScreen(
+                    viewModel = hostViewModel(controller = controller),
+                    prompter = prompter
+                )
             }
         }
         composeTestRule.waitForIdle()
@@ -195,7 +205,10 @@ class AppLockScreenTest {
         val prompter = FakePrompter(AppLockAuthOutcome.Cancelled)
         composeTestRule.setContent {
             MycorrhizalTheme {
-                AppLockScreen(viewModel = hostViewModel(controller = controller), prompter = prompter)
+                AppLockScreen(
+                    viewModel = hostViewModel(controller = controller),
+                    prompter = prompter
+                )
             }
         }
         composeTestRule.waitForIdle()
@@ -215,7 +228,10 @@ class AppLockScreenTest {
         val prompter = FakePrompter(AppLockAuthOutcome.Success)
         composeTestRule.setContent {
             MycorrhizalTheme {
-                AppLockScreen(viewModel = hostViewModel(canAuthenticate = false), prompter = prompter)
+                AppLockScreen(
+                    viewModel = hostViewModel(canAuthenticate = false),
+                    prompter = prompter
+                )
             }
         }
         composeTestRule.waitForIdle()

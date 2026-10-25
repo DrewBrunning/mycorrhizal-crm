@@ -55,7 +55,7 @@ import com.mycorrhizal.crm.ui.R
 @Composable
 fun NextcloudSettingsScreen(
     onBack: () -> Unit,
-    viewModel: NextcloudSettingsViewModel = hiltViewModel(),
+    viewModel: NextcloudSettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showRemoveConfirm by remember { mutableStateOf(false) }
@@ -65,20 +65,26 @@ fun NextcloudSettingsScreen(
             TopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back)
+                        )
                     }
                 },
                 title = {
-                    Text(stringResource(R.string.settings_nextcloud_title), style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        stringResource(R.string.settings_nextcloud_title),
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
-        },
+        }
     ) { padding ->
         NextcloudSettingsContent(
             state = state,
@@ -88,7 +94,7 @@ fun NextcloudSettingsScreen(
             onTest = viewModel::test,
             onSave = viewModel::save,
             onRemove = { showRemoveConfirm = true },
-            modifier = Modifier.padding(padding),
+            modifier = Modifier.padding(padding)
         )
     }
 
@@ -103,16 +109,19 @@ fun NextcloudSettingsScreen(
                     onClick = {
                         showRemoveConfirm = false
                         viewModel.remove()
-                    },
+                    }
                 ) {
-                    Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error)
+                    Text(
+                        stringResource(R.string.action_delete),
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showRemoveConfirm = false }) {
                     Text(stringResource(R.string.action_cancel))
                 }
-            },
+            }
         )
     }
 }
@@ -127,14 +136,14 @@ fun NextcloudSettingsContent(
     onTest: () -> Unit = {},
     onSave: () -> Unit = {},
     onRemove: () -> Unit = {},
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         if (state.isLoading) {
             Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
@@ -144,7 +153,7 @@ fun NextcloudSettingsContent(
             Text(
                 text = stringResource(R.string.nextcloud_settings_description),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             state.loadError?.let {
@@ -152,7 +161,7 @@ fun NextcloudSettingsContent(
                     it,
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
                 )
             }
             state.saveError?.let {
@@ -160,29 +169,44 @@ fun NextcloudSettingsContent(
                     it,
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
                 )
             }
 
             OutlinedTextField(
                 value = state.baseUrl,
                 onValueChange = onBaseUrlChange,
-                label = { Text(requiredFieldLabel(stringResource(R.string.nextcloud_settings_base_url))) },
+                label = {
+                    Text(
+                        requiredFieldLabel(stringResource(R.string.nextcloud_settings_base_url))
+                    )
+                },
                 placeholder = { Text("https://nextcloud.example.com") },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth()
             )
             OutlinedTextField(
                 value = state.username,
                 onValueChange = onUsernameChange,
-                label = { Text(requiredFieldLabel(stringResource(R.string.nextcloud_settings_username))) },
+                label = {
+                    Text(
+                        requiredFieldLabel(stringResource(R.string.nextcloud_settings_username))
+                    )
+                },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth()
             )
             OutlinedTextField(
                 value = state.appPassword,
                 onValueChange = onAppPasswordChange,
-                label = { Text(requiredFieldLabel(stringResource(R.string.nextcloud_settings_app_password), state.tokenRequired)) },
+                label = {
+                    Text(
+                        requiredFieldLabel(
+                            stringResource(R.string.nextcloud_settings_app_password),
+                            state.tokenRequired
+                        )
+                    )
+                },
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -192,28 +216,33 @@ fun NextcloudSettingsContent(
                             stringResource(R.string.nextcloud_settings_app_password_hint_existing)
                         } else {
                             stringResource(R.string.nextcloud_settings_app_password_hint_new)
-                        },
+                        }
                     )
                 },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth()
             )
 
             if (state.hasAppPassword) {
                 Button(
                     onClick = onTest,
-                    enabled = !state.isTesting && state.baseUrl.isNotBlank() && state.username.isNotBlank(),
-                    modifier = Modifier.fillMaxWidth(),
+                    enabled =
+                        !state.isTesting && state.baseUrl.isNotBlank() &&
+                            state.username.isNotBlank(),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     if (state.isTesting) {
-                        CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(
+                            modifier = Modifier.padding(end = 8.dp),
+                            strokeWidth = 2.dp
+                        )
                     } else {
                         Icon(Icons.Outlined.PlayArrow, contentDescription = null)
                     }
                     Text(
                         stringResource(
-                            if (state.isTesting) R.string.nextcloud_settings_testing else R.string.nextcloud_settings_test,
+                            if (state.isTesting) R.string.nextcloud_settings_testing else R.string.nextcloud_settings_test
                         ),
-                        modifier = Modifier.padding(start = 8.dp),
+                        modifier = Modifier.padding(start = 8.dp)
                     )
                 }
             }
@@ -223,10 +252,13 @@ fun NextcloudSettingsContent(
                     text = if (result.ok) {
                         stringResource(R.string.nextcloud_settings_test_success)
                     } else {
-                        stringResource(R.string.nextcloud_settings_test_failed, result.message ?: "unknown")
+                        stringResource(
+                            R.string.nextcloud_settings_test_failed,
+                            result.message ?: "unknown"
+                        )
                     },
                     color = if (result.ok) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodySmall
                 )
             }
 
@@ -235,19 +267,25 @@ fun NextcloudSettingsContent(
                     (state.hasAppPassword || state.appPassword.isNotBlank()),
                 isSaving = state.isSaving,
                 onClick = onSave,
-                disabledHint = stringResource(R.string.settings_save_requires_fields),
+                disabledHint = stringResource(R.string.settings_save_requires_fields)
             )
 
             if (state.hasAppPassword) {
                 OutlinedButton(
                     onClick = onRemove,
                     enabled = !state.isRemoving,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     if (state.isRemoving) {
-                        CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(
+                            modifier = Modifier.padding(end = 8.dp),
+                            strokeWidth = 2.dp
+                        )
                     }
-                    Text(stringResource(R.string.nextcloud_settings_remove), color = MaterialTheme.colorScheme.error)
+                    Text(
+                        stringResource(R.string.nextcloud_settings_remove),
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
             }
         }

@@ -15,6 +15,7 @@ import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,7 +23,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /**
  * Editable form state for an activity (Interaction). The `type` classifier is
@@ -60,7 +60,7 @@ data class ActivityFormState(
      *  ref the form doesn't render (e.g. a calendar/ExternalActivity link). */
     val externalRef: String? = null,
     /** Issue #1751: the editable state the form opened with, for [isDirty]. */
-    val baseline: ActivityFormState? = null,
+    val baseline: ActivityFormState? = null
 ) {
     val isEdit: Boolean get() = activityId != null
     val hasTitle: Boolean get() = title.isNotBlank()
@@ -79,13 +79,20 @@ data class ActivityFormState(
         errorRes = null,
         error = null,
         conflict = false,
-        baseline = null,
+        baseline = null
     )
 
     fun snapshotForBaseline(): ActivityFormState = editableSnapshot()
 
-    private fun effectiveParticipants(): List<ContactFlat> =
-        if (isEdit) participants else participants.ifEmpty { listOf(ContactFlat(id = contactId)).filter { it.id != 0 } }
+    private fun effectiveParticipants(): List<ContactFlat> = if (isEdit) {
+        participants
+    } else {
+        participants.ifEmpty {
+            listOf(
+                ContactFlat(id = contactId)
+            ).filter { it.id != 0 }
+        }
+    }
 
     fun toInput(): ActivityInput = ActivityInput(
         title = title.trim(),
@@ -94,7 +101,7 @@ data class ActivityFormState(
         description = description.trim().ifBlank { null },
         location = location.trim().ifBlank { null },
         contactIds = participantIds(),
-        externalRef = externalRef,
+        externalRef = externalRef
     )
 
     /**
@@ -114,8 +121,10 @@ data class ActivityFormState(
 
     fun validate(): Int? = when {
         !hasTitle -> R.string.activity_error_title
+
         // The backend requires Activity.Date; the picker makes it explicit.
         date.isBlank() -> R.string.activity_error_date_required
+
         // DateField only emits a backend-accepted shape (RFC 3339, normalised
         // to the UTC-midnight instant in toInput), so no format re-validation.
         else -> null
@@ -130,7 +139,7 @@ sealed interface ActivityFormEvent {
 class ActivityFormViewModel @Inject constructor(
     private val activityRepository: ActivityRepository,
     private val contactRepository: ContactRepository,
-    private val savedStateHandle: SavedStateHandle,
+    private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val contactId: Int = run {
@@ -157,11 +166,11 @@ class ActivityFormViewModel @Inject constructor(
                 base.copy(
                     location = prefillArg(PREFILL_LOCATION).orEmpty(),
                     date = prefillArg(PREFILL_DATE).orEmpty(),
-                    externalRef = prefillArg(PREFILL_EXTERNAL_REF),
+                    externalRef = prefillArg(PREFILL_EXTERNAL_REF)
                 )
             }
             initial.copy(baseline = initial.snapshotForBaseline())
-        },
+        }
     )
     val uiState: StateFlow<ActivityFormState> = _uiState.asStateFlow()
 
@@ -192,7 +201,7 @@ class ActivityFormViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -210,9 +219,13 @@ class ActivityFormViewModel @Inject constructor(
             contactRepository.getContact(contactId).fold(
                 onSuccess = { record ->
                     val name = record.card?.displayName?.takeIf { it.isNotBlank() } ?: "#$contactId"
-                    _uiState.update { it.copy(participants = listOf(ContactFlat(id = contactId, firstname = name))) }
+                    _uiState.update {
+                        it.copy(
+                            participants = listOf(ContactFlat(id = contactId, firstname = name))
+                        )
+                    }
                 },
-                onFailure = { _uiState.update { it.copy(participants = listOf(fallback)) } },
+                onFailure = { _uiState.update { it.copy(participants = listOf(fallback)) } }
             )
         }
     }
@@ -241,7 +254,12 @@ class ActivityFormViewModel @Inject constructor(
         _uiState.update { it.copy(contactSearchQuery = query) }
         searchJob?.cancel()
         if (query.isBlank()) {
-            _uiState.update { it.copy(contactSearchResults = emptyList(), contactSearchLoading = false) }
+            _uiState.update {
+                it.copy(
+                    contactSearchResults = emptyList(),
+                    contactSearchLoading = false
+                )
+            }
             return
         }
         searchJob = viewModelScope.launch {
@@ -255,7 +273,7 @@ class ActivityFormViewModel @Inject constructor(
                 },
                 onFailure = {
                     _uiState.update { it.copy(contactSearchLoading = false) }
-                },
+                }
             )
         }
     }
@@ -270,11 +288,11 @@ class ActivityFormViewModel @Inject constructor(
                     firstname = contact.firstname,
                     lastname = contact.lastname,
                     nickname = contact.nickname,
-                    uid = contact.uid,
+                    uid = contact.uid
                 ),
                 contactSearchQuery = "",
                 contactSearchResults = emptyList(),
-                contactSearchLoading = false,
+                contactSearchLoading = false
             )
         }
     }
@@ -303,7 +321,14 @@ class ActivityFormViewModel @Inject constructor(
                 activityRepository.create(input)
             }
             result.foldApiError(
-                onSuccess = { _uiState.update { it.copy(isSaving = false) }; _events.value = ActivityFormEvent.Saved },
+                onSuccess = {
+                    _uiState.update {
+                        it.copy(
+                            isSaving = false
+                        )
+                    }
+                    _events.value = ActivityFormEvent.Saved
+                },
                 onError = { error ->
                     _uiState.update {
                         if (error is ApiError.PreconditionFailed) {
@@ -312,7 +337,7 @@ class ActivityFormViewModel @Inject constructor(
                             it.copy(isSaving = false, error = error.displayMessage)
                         }
                     }
-                },
+                }
             )
         }
     }
@@ -329,7 +354,7 @@ class ActivityFormViewModel @Inject constructor(
         location = activity.location.orEmpty(),
         participants = activity.contacts.orEmpty(),
         externalRef = activity.externalRef,
-        revision = activity.revision,
+        revision = activity.revision
     )
 
     companion object {

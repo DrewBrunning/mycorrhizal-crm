@@ -26,7 +26,7 @@ data class LifeEvent(
     val remind: Boolean? = null,
     /** ADR 0006/0008: monotonic per-row write counter; the value an `If-Match` precondition echoes. */
     val revision: Int? = null,
-    val deleted: Boolean? = null,
+    val deleted: Boolean? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -39,7 +39,7 @@ data class LifeEventInput(
     val description: String? = null,
     val source: String? = null,
     @Json(name = "related_entity_ids") val relatedEntityIds: List<String>? = null,
-    val remind: Boolean? = null,
+    val remind: Boolean? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -47,13 +47,13 @@ data class LifeEventsPage(
     @Json(name = "life_events") val lifeEvents: List<LifeEvent> = emptyList(),
     @Json(name = "next_cursor") val nextCursor: String? = null,
     val limit: Int = 0,
-    val sync: SyncInfo? = null,
+    val sync: SyncInfo? = null
 )
 
 @JsonClass(generateAdapter = true)
 data class CreateLifeEventResponse(
     val message: String? = null,
-    @Json(name = "life_event") val lifeEvent: LifeEvent? = null,
+    @Json(name = "life_event") val lifeEvent: LifeEvent? = null
 )
 
 // ---------------------------------------------------------------------------
@@ -84,7 +84,7 @@ data class Gift(
     val currency: String? = null,
     @Json(name = "life_event_id") val lifeEventId: String? = null,
     @Json(name = "activity_id") val activityId: Int? = null,
-    val deleted: Boolean? = null,
+    val deleted: Boolean? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -99,7 +99,7 @@ data class GiftInput(
     @Json(name = "value_cents") val valueCents: Long? = null,
     val currency: String? = null,
     @Json(name = "life_event_id") val lifeEventId: String? = null,
-    @Json(name = "activity_id") val activityId: Int? = null,
+    @Json(name = "activity_id") val activityId: Int? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -107,14 +107,11 @@ data class GiftsPage(
     val gifts: List<Gift> = emptyList(),
     @Json(name = "next_cursor") val nextCursor: String? = null,
     val limit: Int = 0,
-    val sync: SyncInfo? = null,
+    val sync: SyncInfo? = null
 )
 
 @JsonClass(generateAdapter = true)
-data class CreateGiftResponse(
-    val message: String? = null,
-    val gift: Gift? = null,
-)
+data class CreateGiftResponse(val message: String? = null, val gift: Gift? = null)
 
 // ---------------------------------------------------------------------------
 // Preferences
@@ -156,7 +153,7 @@ data class Preference(
     val confidence: Double? = null,
     @Json(name = "last_confirmed") val lastConfirmed: String? = null,
     val sensitivity: String = PreferenceSensitivities.NORMAL,
-    val deleted: Boolean? = null,
+    val deleted: Boolean? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -172,7 +169,7 @@ data class PreferenceInput(
     val source: String? = null,
     val confidence: Double? = null,
     @Json(name = "last_confirmed") val lastConfirmed: String? = null,
-    val sensitivity: String = PreferenceSensitivities.NORMAL,
+    val sensitivity: String = PreferenceSensitivities.NORMAL
 )
 
 @JsonClass(generateAdapter = true)
@@ -181,14 +178,11 @@ data class PreferencesPage(
     val total: Int = 0,
     @Json(name = "next_cursor") val nextCursor: String? = null,
     val limit: Int = 0,
-    val sync: SyncInfo? = null,
+    val sync: SyncInfo? = null
 )
 
 @JsonClass(generateAdapter = true)
-data class CreatePreferenceResponse(
-    val message: String? = null,
-    val preference: Preference? = null,
-)
+data class CreatePreferenceResponse(val message: String? = null, val preference: Preference? = null)
 
 // ---------------------------------------------------------------------------
 // Conversation agenda
@@ -204,32 +198,32 @@ data class ConversationAgenda(
     @Json(name = "reference_url") val referenceUrl: String? = null,
     @Json(name = "discussed_at") val discussedAt: String? = null,
     @Json(name = "activity_id") val activityId: Int? = null,
-    val deleted: Boolean? = null,
+    val deleted: Boolean? = null
 )
 
 @JsonClass(generateAdapter = true)
 data class ConversationAgendaInput(
     @Json(name = "entity_id") val entityId: String,
     val content: String,
-    @Json(name = "reference_url") val referenceUrl: String? = null,
+    @Json(name = "reference_url") val referenceUrl: String? = null
 )
 
 /** PATCH /conversation-agenda/:id/discuss body — `{}` when unlinked (M18). */
 @JsonClass(generateAdapter = true)
-data class DiscussConversationAgendaInput(
-    @Json(name = "activity_id") val activityId: Int? = null,
-)
+data class DiscussConversationAgendaInput(@Json(name = "activity_id") val activityId: Int? = null)
 
 @JsonClass(generateAdapter = true)
 data class ConversationAgendaPage(
-    @Json(name = "conversation_agenda") val conversationAgenda: List<ConversationAgenda> = emptyList(),
+    @Json(
+        name = "conversation_agenda"
+    ) val conversationAgenda: List<ConversationAgenda> = emptyList(),
     @Json(name = "next_cursor") val nextCursor: String? = null,
     val limit: Int = 0,
-    val sync: SyncInfo? = null,
+    val sync: SyncInfo? = null
 )
 
 @JsonClass(generateAdapter = true)
 data class CreateConversationAgendaResponse(
     val message: String? = null,
-    @Json(name = "conversation_agenda") val conversationAgenda: ConversationAgenda? = null,
+    @Json(name = "conversation_agenda") val conversationAgenda: ConversationAgenda? = null
 )

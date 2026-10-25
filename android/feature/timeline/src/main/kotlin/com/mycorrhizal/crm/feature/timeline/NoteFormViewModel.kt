@@ -15,6 +15,7 @@ import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,7 +23,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /**
  * Editable form state for a note. `content` and `date` are required by the
@@ -54,7 +54,7 @@ data class NoteFormState(
     /** ADR 0008: the save was rejected with 412 — the record changed elsewhere since it loaded. */
     val conflict: Boolean = false,
     /** Issue #1751: the editable state the form opened with, for [isDirty]. */
-    val baseline: NoteFormState? = null,
+    val baseline: NoteFormState? = null
 ) {
     val isEdit: Boolean get() = noteId != null
     val hasContent: Boolean get() = content.isNotBlank()
@@ -71,7 +71,7 @@ data class NoteFormState(
         errorRes = null,
         error = null,
         conflict = false,
-        baseline = null,
+        baseline = null
     )
 
     fun snapshotForBaseline(): NoteFormState = editableSnapshot()
@@ -79,12 +79,14 @@ data class NoteFormState(
     fun toInput(): NoteInput = NoteInput(
         content = content.trim(),
         date = DateFieldValue.normalizeCalendarDayInstant(date),
-        contactId = targetContactId,
+        contactId = targetContactId
     )
 
     fun validate(): Int? = when {
         !hasContent -> R.string.note_error_content
+
         date.isBlank() -> R.string.note_error_date_required
+
         // DateField only emits a backend-accepted shape, so no format check.
         else -> null
     }
@@ -99,7 +101,7 @@ class NoteFormViewModel @Inject constructor(
     private val noteRepository: NoteRepository,
     private val contactRepository: ContactRepository,
     private val shareDrafts: ShareDraftHolder,
-    savedStateHandle: SavedStateHandle,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val contactId: Int = run {
@@ -127,8 +129,8 @@ class NoteFormViewModel @Inject constructor(
             contactId = contactId,
             noteId = noteId,
             content = prefill.orEmpty(),
-            targetContactId = contactId.takeIf { it != 0 },
-        ).let { it.copy(baseline = it.snapshotForBaseline()) },
+            targetContactId = contactId.takeIf { it != 0 }
+        ).let { it.copy(baseline = it.snapshotForBaseline()) }
     )
     val uiState: StateFlow<NoteFormState> = _uiState.asStateFlow()
 
@@ -171,7 +173,7 @@ class NoteFormViewModel @Inject constructor(
                     val name = record.card?.displayName?.takeIf { it.isNotBlank() } ?: "#$id"
                     _uiState.update { it.copy(targetContactName = name) }
                 },
-                onFailure = { _uiState.update { it.copy(targetContactName = "#$id") } },
+                onFailure = { _uiState.update { it.copy(targetContactName = "#$id") } }
             )
         }
     }
@@ -190,7 +192,7 @@ class NoteFormViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -216,7 +218,12 @@ class NoteFormViewModel @Inject constructor(
         _uiState.update { it.copy(contactSearchQuery = query) }
         searchJob?.cancel()
         if (query.isBlank()) {
-            _uiState.update { it.copy(contactSearchResults = emptyList(), contactSearchLoading = false) }
+            _uiState.update {
+                it.copy(
+                    contactSearchResults = emptyList(),
+                    contactSearchLoading = false
+                )
+            }
             return
         }
         searchJob = viewModelScope.launch {
@@ -230,7 +237,7 @@ class NoteFormViewModel @Inject constructor(
                 },
                 onFailure = {
                     _uiState.update { it.copy(contactSearchLoading = false) }
-                },
+                }
             )
         }
     }
@@ -243,7 +250,7 @@ class NoteFormViewModel @Inject constructor(
                 targetContactName = contact.displayName,
                 contactSearchQuery = "",
                 contactSearchResults = emptyList(),
-                contactSearchLoading = false,
+                contactSearchLoading = false
             )
         }
     }
@@ -272,7 +279,14 @@ class NoteFormViewModel @Inject constructor(
                 else -> noteRepository.createUnassigned(input)
             }
             result.foldApiError(
-                onSuccess = { _uiState.update { it.copy(isSaving = false) }; _events.value = NoteFormEvent.Saved },
+                onSuccess = {
+                    _uiState.update {
+                        it.copy(
+                            isSaving = false
+                        )
+                    }
+                    _events.value = NoteFormEvent.Saved
+                },
                 onError = { error ->
                     _uiState.update {
                         if (error is ApiError.PreconditionFailed) {
@@ -281,7 +295,7 @@ class NoteFormViewModel @Inject constructor(
                             it.copy(isSaving = false, error = error.displayMessage)
                         }
                     }
-                },
+                }
             )
         }
     }
@@ -298,7 +312,7 @@ class NoteFormViewModel @Inject constructor(
         // Deliberately NOT read from note.contact — the note API never
         // populates it (zero-valued struct); the name is resolved via
         // ContactRepository by [loadExisting] instead.
-        targetContactName = null,
+        targetContactName = null
     )
 
     private companion object {

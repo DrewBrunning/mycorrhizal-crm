@@ -21,11 +21,9 @@ interface TrackingCatchUpScheduler {
 }
 
 class TrackingCatchUpSchedulerImpl @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @ApplicationContext private val context: Context
 ) : TrackingCatchUpScheduler {
-    override fun enqueueCallLogCatchUp() =
-        TrackingWorkerScheduler.enqueueCallLogCatchUp(context)
+    override fun enqueueCallLogCatchUp() = TrackingWorkerScheduler.enqueueCallLogCatchUp(context)
 
-    override fun enqueueSmsBackfill() =
-        TrackingWorkerScheduler.enqueueSmsBackfill(context)
+    override fun enqueueSmsBackfill() = TrackingWorkerScheduler.enqueueSmsBackfill(context)
 }

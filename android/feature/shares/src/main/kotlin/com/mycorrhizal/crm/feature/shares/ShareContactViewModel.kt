@@ -11,12 +11,12 @@ import com.mycorrhizal.crm.model.network.UserDirectoryEntry
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class ShareContactUiState(
     val isLoading: Boolean = false,
@@ -30,7 +30,7 @@ data class ShareContactUiState(
     val sensitiveRevealed: Boolean = false,
     val isSharing: Boolean = false,
     /** Set when the share was created successfully — the screen navigates back. */
-    val shared: Boolean = false,
+    val shared: Boolean = false
 ) {
     val canShare: Boolean
         get() = selectedRecipientId != null && selectedSections.isNotEmpty() && !isSharing
@@ -39,7 +39,7 @@ data class ShareContactUiState(
 @HiltViewModel
 class ShareContactViewModel @Inject constructor(
     private val contactShareRepository: ContactShareRepository,
-    savedStateHandle: SavedStateHandle,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     /**
@@ -66,7 +66,7 @@ class ShareContactViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -112,15 +112,15 @@ class ShareContactViewModel @Inject constructor(
                     toUserId = _uiState.value.selectedRecipientId ?: 0L,
                     vcardUid = contactVCardUid,
                     sections = _uiState.value.selectedSections.toList(),
-                    includeSensitive = includeSensitive,
-                ),
+                    includeSensitive = includeSensitive
+                )
             ).foldApiError(
                 onSuccess = {
                     _uiState.update { it.copy(isSharing = false, shared = true) }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isSharing = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }

@@ -12,7 +12,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -58,7 +57,7 @@ class FormScaffoldTest {
         saveDisabledHint: String? = null,
         content: @Composable (PaddingValues) -> Unit = { padding ->
             Text("Form body", modifier = Modifier.padding(padding))
-        },
+        }
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -73,7 +72,7 @@ class FormScaffoldTest {
                     saveDisabledHint = saveDisabledHint,
                     isDirty = isDirty,
                     entityLabel = entityLabel,
-                    content = content,
+                    content = content
                 )
             }
         }
@@ -98,7 +97,9 @@ class FormScaffoldTest {
         composeTestRule.onNodeWithContentDescription("Back").performClick()
 
         composeTestRule.onNodeWithText("Discard changes?").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Your edits to this contact haven't been saved.").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Your edits to this contact haven't been saved."
+        ).assertIsDisplayed()
         assertFalse(back)
 
         composeTestRule.onNodeWithText("Keep editing").performClick()
@@ -152,7 +153,9 @@ class FormScaffoldTest {
 
         composeTestRule.onNodeWithContentDescription("Back").performClick()
 
-        composeTestRule.onNodeWithText("Your edits to this note haven't been saved.").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Your edits to this note haven't been saved."
+        ).assertIsDisplayed()
     }
 
     @Test
@@ -194,11 +197,20 @@ class FormScaffoldTest {
     @Test
     @Config(qualifiers = "w640dp-h360dp")
     fun `the compact top-bar save action mirrors disabled state and says why`() {
-        setContent(isDirty = false, saveEnabled = false, saveDisabledHint = "Enter a name to continue")
+        setContent(
+            isDirty = false,
+            saveEnabled = false,
+            saveDisabledHint = "Enter a name to continue"
+        )
 
         composeTestRule.onNodeWithTag("form-save-top-action")
             .assertIsNotEnabled()
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Enter a name to continue"))
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.StateDescription,
+                    "Enter a name to continue"
+                )
+            )
     }
 
     @Test

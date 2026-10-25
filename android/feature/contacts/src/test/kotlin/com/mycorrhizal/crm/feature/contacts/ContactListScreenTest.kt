@@ -75,7 +75,7 @@ class ContactListScreenTest {
         onToggleSelectAll: () -> Unit = {},
         onRunBulkAction: (String, String?, String?) -> Unit = { _, _, _ -> },
         onMenuClick: (() -> Unit)? = {},
-        darkTheme: Boolean = false,
+        darkTheme: Boolean = false
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme(darkTheme = darkTheme) {
@@ -92,7 +92,7 @@ class ContactListScreenTest {
                     onToggleSelection = onToggleSelection,
                     onToggleSelectAll = onToggleSelectAll,
                     onRunBulkAction = onRunBulkAction,
-                    onMenuClick = onMenuClick,
+                    onMenuClick = onMenuClick
                 )
             }
         }
@@ -120,14 +120,13 @@ class ContactListScreenTest {
                 isLoading = false,
                 contacts = listOf(
                     ContactSummary(id = 1, fn = "Alice", firstname = "Alice"),
-                    ContactSummary(id = 2, fn = "Bob", firstname = "Bob"),
-                ),
-            ),
+                    ContactSummary(id = 2, fn = "Bob", firstname = "Bob")
+                )
+            )
         )
         composeTestRule.onNodeWithText("Alice").assertIsDisplayed()
         composeTestRule.onNodeWithText("Bob").assertIsDisplayed()
     }
-
 
     // --- Issue #1754: subtitle separators and the non-interactive "You" badge ---
 
@@ -142,9 +141,9 @@ class ContactListScreenTest {
                         firstname = "Alex",
                         lastname = "Rivera",
                         primaryEmail = "alex.rivera@example.com",
-                        primaryPhone = "",
+                        primaryPhone = ""
                     ),
-                    onClick = {},
+                    onClick = {}
                 )
             }
         }
@@ -164,9 +163,9 @@ class ContactListScreenTest {
                         firstname = "Alex",
                         lastname = "Rivera",
                         primaryEmail = "",
-                        primaryPhone = "+15551230000",
+                        primaryPhone = "+15551230000"
                     ),
-                    onClick = {},
+                    onClick = {}
                 )
             }
         }
@@ -186,9 +185,9 @@ class ContactListScreenTest {
                         firstname = "Alex",
                         lastname = "Rivera",
                         primaryEmail = "",
-                        primaryPhone = "",
+                        primaryPhone = ""
                     ),
-                    onClick = {},
+                    onClick = {}
                 )
             }
         }
@@ -196,7 +195,7 @@ class ContactListScreenTest {
         composeTestRule.onNodeWithText("Alex Rivera").assertIsDisplayed()
         assertTrue(
             "no separator may render when both contact fields are blank",
-            composeTestRule.onAllNodesWithText("·").fetchSemanticsNodes().isEmpty(),
+            composeTestRule.onAllNodesWithText("·").fetchSemanticsNodes().isEmpty()
         )
     }
 
@@ -205,9 +204,11 @@ class ContactListScreenTest {
         setContent(
             ContactListUiState(
                 isLoading = false,
-                contacts = listOf(ContactSummary(id = 1, uid = "u1", fn = "Alice", firstname = "Alice")),
-                selfContactVCardUid = "u1",
-            ),
+                contacts = listOf(
+                    ContactSummary(id = 1, uid = "u1", fn = "Alice", firstname = "Alice")
+                ),
+                selfContactVCardUid = "u1"
+            )
         )
 
         composeTestRule.onNodeWithTag("you-badge-1")
@@ -221,17 +222,21 @@ class ContactListScreenTest {
     @Test
     fun `the last row can scroll clear of the create-contact FAB`() {
         setContent(
-            ContactListUiState(isLoading = false, contacts = manyContacts(30)),
+            ContactListUiState(isLoading = false, contacts = manyContacts(30))
         )
 
         composeTestRule.onNodeWithTag("contact-list").performScrollToIndex(29)
         composeTestRule.waitForIdle()
 
-        val fabTop = composeTestRule.onNodeWithTag("create-contact-fab").getUnclippedBoundsInRoot().top
-        val lastRowStarBottom = composeTestRule.onNodeWithTag("favorite-30").getUnclippedBoundsInRoot().bottom
+        val fabTop = composeTestRule.onNodeWithTag(
+            "create-contact-fab"
+        ).getUnclippedBoundsInRoot().top
+        val lastRowStarBottom = composeTestRule.onNodeWithTag(
+            "favorite-30"
+        ).getUnclippedBoundsInRoot().bottom
         assertTrue(
             "the last row's star ($lastRowStarBottom) must sit above the FAB ($fabTop)",
-            lastRowStarBottom <= fabTop,
+            lastRowStarBottom <= fabTop
         )
     }
 
@@ -244,10 +249,10 @@ class ContactListScreenTest {
                 isLoading = false,
                 contacts = listOf(
                     ContactSummary(id = 1, uid = "u1", fn = "Alice", firstname = "Alice"),
-                    ContactSummary(id = 2, uid = "u2", fn = "Bob", firstname = "Bob"),
+                    ContactSummary(id = 2, uid = "u2", fn = "Bob", firstname = "Bob")
                 ),
-                selfContactVCardUid = "u1",
-            ),
+                selfContactVCardUid = "u1"
+            )
         )
 
         composeTestRule.onNodeWithTag("you-badge-1").assertIsDisplayed()
@@ -259,9 +264,11 @@ class ContactListScreenTest {
         setContent(
             ContactListUiState(
                 isLoading = false,
-                contacts = listOf(ContactSummary(id = 1, uid = "u1", fn = "Alice", firstname = "Alice")),
-                selfContactVCardUid = null,
-            ),
+                contacts = listOf(
+                    ContactSummary(id = 1, uid = "u1", fn = "Alice", firstname = "Alice")
+                ),
+                selfContactVCardUid = null
+            )
         )
 
         composeTestRule.onNodeWithTag("you-badge-1").assertDoesNotExist()
@@ -273,9 +280,9 @@ class ContactListScreenTest {
         setContent(
             ContactListUiState(
                 isLoading = false,
-                contacts = listOf(ContactSummary(id = 1, fn = "Alice", firstname = "Alice")),
+                contacts = listOf(ContactSummary(id = 1, fn = "Alice", firstname = "Alice"))
             ),
-            onContactClick = { navigatedId = it },
+            onContactClick = { navigatedId = it }
         )
         composeTestRule.onNodeWithText("Alice").performClick()
         assertEquals(1, navigatedId)
@@ -286,7 +293,7 @@ class ContactListScreenTest {
         var query: String? = null
         setContent(
             ContactListUiState(isLoading = false, contacts = emptyList()),
-            onSearchQueryChange = { query = it },
+            onSearchQueryChange = { query = it }
         )
         composeTestRule.onNodeWithTag("contact-search").performTextInput("ali")
         assertEquals("ali", query)
@@ -295,9 +302,12 @@ class ContactListScreenTest {
     @Test
     fun `no cross-entity section renders when searchResult is null`() {
         setContent(
-            ContactListUiState(isLoading = false, contacts = emptyList(), searchResult = null),
+            ContactListUiState(isLoading = false, contacts = emptyList(), searchResult = null)
         )
-        composeTestRule.onNodeWithText("matches in notes and activities", substring = true).assertDoesNotExist()
+        composeTestRule.onNodeWithText(
+            "matches in notes and activities",
+            substring = true
+        ).assertDoesNotExist()
     }
 
     @Test
@@ -306,10 +316,13 @@ class ContactListScreenTest {
             ContactListUiState(
                 isLoading = false,
                 contacts = emptyList(),
-                searchResult = SearchResult(),
-            ),
+                searchResult = SearchResult()
+            )
         )
-        composeTestRule.onNodeWithText("matches in notes and activities", substring = true).assertDoesNotExist()
+        composeTestRule.onNodeWithText(
+            "matches in notes and activities",
+            substring = true
+        ).assertDoesNotExist()
     }
 
     @Test
@@ -319,10 +332,17 @@ class ContactListScreenTest {
                 isLoading = false,
                 contacts = emptyList(),
                 searchResult = SearchResult(
-                    notes = listOf(SearchNoteHit(id = 1, content = "called mom", contactId = 5, contactName = "Dana")),
-                    activities = listOf(SearchActivityHit(id = 2, title = "Coffee with mom")),
-                ),
-            ),
+                    notes = listOf(
+                        SearchNoteHit(
+                            id = 1,
+                            content = "called mom",
+                            contactId = 5,
+                            contactName = "Dana"
+                        )
+                    ),
+                    activities = listOf(SearchActivityHit(id = 2, title = "Coffee with mom"))
+                )
+            )
         )
 
         composeTestRule.onNodeWithTag("contact-list")
@@ -346,10 +366,17 @@ class ContactListScreenTest {
                 isLoading = false,
                 contacts = emptyList(),
                 searchResult = SearchResult(
-                    notes = listOf(SearchNoteHit(id = 1, content = "called Dana", contactId = 5, contactName = "Dana White")),
-                ),
+                    notes = listOf(
+                        SearchNoteHit(
+                            id = 1,
+                            content = "called Dana",
+                            contactId = 5,
+                            contactName = "Dana White"
+                        )
+                    )
+                )
             ),
-            onContactClick = { navigatedId = it },
+            onContactClick = { navigatedId = it }
         )
 
         composeTestRule.onNodeWithTag("contact-list")
@@ -367,9 +394,16 @@ class ContactListScreenTest {
                 isLoading = false,
                 contacts = emptyList(),
                 searchResult = SearchResult(
-                    notes = listOf(SearchNoteHit(id = 1, content = "a stray note", contactId = null, contactName = null)),
-                ),
-            ),
+                    notes = listOf(
+                        SearchNoteHit(
+                            id = 1,
+                            content = "a stray note",
+                            contactId = null,
+                            contactName = null
+                        )
+                    )
+                )
+            )
         )
 
         composeTestRule.onNodeWithTag("contact-list")
@@ -384,8 +418,8 @@ class ContactListScreenTest {
             ContactListUiState(
                 isLoading = false,
                 contacts = emptyList(),
-                searchResult = SearchResult(resolvedRelation = "parent_of"),
-            ),
+                searchResult = SearchResult(resolvedRelation = "parent_of")
+            )
         )
         composeTestRule.onNodeWithTag("contact-list")
             .performScrollToNode(hasText("Matched relationship: parent_of"))
@@ -411,7 +445,7 @@ class ContactListScreenTest {
                     uiState = state,
                     onSearchQueryChange = {},
                     onContactClick = {},
-                    onLoadMore = { loadMoreCalls++ },
+                    onLoadMore = { loadMoreCalls++ }
                 )
             }
         }
@@ -419,7 +453,7 @@ class ContactListScreenTest {
         state = ContactListUiState(
             isLoading = false,
             contacts = manyContacts(30),
-            pagination = PaginationState(nextCursor = "cursor-2", hasMore = true),
+            pagination = PaginationState(nextCursor = "cursor-2", hasMore = true)
         )
         composeTestRule.waitForIdle()
 
@@ -436,9 +470,9 @@ class ContactListScreenTest {
             ContactListUiState(
                 isLoading = false,
                 contacts = manyContacts(30),
-                pagination = PaginationState(nextCursor = null, hasMore = false),
+                pagination = PaginationState(nextCursor = null, hasMore = false)
             ),
-            onLoadMore = { loadMoreCalls++ },
+            onLoadMore = { loadMoreCalls++ }
         )
 
         composeTestRule.onNodeWithTag("contact-list").performScrollToIndex(29)
@@ -456,9 +490,12 @@ class ContactListScreenTest {
             ContactListUiState(
                 isLoading = false,
                 contacts = listOf(ContactSummary(id = 1, fn = "Alice", firstname = "Alice")),
-                circles = listOf(Circle(id = "c-1", name = "Book club"), Circle(id = "c-2", name = "Family")),
+                circles = listOf(
+                    Circle(id = "c-1", name = "Book club"),
+                    Circle(id = "c-2", name = "Family")
+                )
             ),
-            onCircleFilterChange = { filter = it },
+            onCircleFilterChange = { filter = it }
         )
 
         composeTestRule.onNodeWithTag("circle-filter").performClick()
@@ -473,8 +510,8 @@ class ContactListScreenTest {
             ContactListUiState(
                 isLoading = false,
                 contacts = emptyList(),
-                circles = listOf(Circle(id = "c-1", name = "Book club")),
-            ),
+                circles = listOf(Circle(id = "c-1", name = "Book club"))
+            )
         )
 
         composeTestRule.onNodeWithText("All circles").assertIsDisplayed()
@@ -490,8 +527,8 @@ class ContactListScreenTest {
                 isLoading = false,
                 contacts = emptyList(),
                 circles = listOf(Circle(id = "c-1", name = "Neighbourhood Watch Committee")),
-                circleFilter = "Neighbourhood Watch Committee",
-            ),
+                circleFilter = "Neighbourhood Watch Committee"
+            )
         )
 
         composeTestRule.onNodeWithTag("circle-filter")
@@ -506,14 +543,13 @@ class ContactListScreenTest {
         var toggled: Boolean? = null
         setContent(
             ContactListUiState(isLoading = false, contacts = emptyList()),
-            onIncludeArchivedChange = { toggled = it },
+            onIncludeArchivedChange = { toggled = it }
         )
 
         composeTestRule.onNodeWithTag("archived-toggle").performClick()
 
         assertEquals(true, toggled)
     }
-
 
     // --- Issue #1762: compact filter row, sort control, sticky headers -------
 
@@ -537,7 +573,7 @@ class ContactListScreenTest {
         var chosen: ContactSort? = null
         setContent(
             ContactListUiState(isLoading = false, contacts = emptyList()),
-            onSortChange = { chosen = it },
+            onSortChange = { chosen = it }
         )
 
         composeTestRule.onNodeWithTag("sort-filter")
@@ -557,9 +593,9 @@ class ContactListScreenTest {
                 isLoading = false,
                 contacts = listOf(
                     ContactSummary(id = 1, firstname = "Alice", lastname = "Adams"),
-                    ContactSummary(id = 2, firstname = "Bob", lastname = "Brown"),
-                ),
-            ),
+                    ContactSummary(id = 2, firstname = "Bob", lastname = "Brown")
+                )
+            )
         )
 
         composeTestRule.onNodeWithTag("contact-header-A").assertIsDisplayed()
@@ -575,9 +611,9 @@ class ContactListScreenTest {
                 isLoading = false,
                 sort = ContactSort.RECENTLY_ADDED,
                 contacts = listOf(
-                    ContactSummary(id = 1, firstname = "Alice", lastname = "Adams"),
-                ),
-            ),
+                    ContactSummary(id = 1, firstname = "Alice", lastname = "Adams")
+                )
+            )
         )
 
         composeTestRule.onNodeWithTag("contact-header-A").assertDoesNotExist()
@@ -599,7 +635,7 @@ class ContactListScreenTest {
         var toggled: Boolean? = null
         setContent(
             ContactListUiState(isLoading = false, contacts = emptyList()),
-            onIncludeFavoritesChange = { toggled = it },
+            onIncludeFavoritesChange = { toggled = it }
         )
 
         composeTestRule.onNodeWithTag("favorites-toggle").performClick()
@@ -614,9 +650,9 @@ class ContactListScreenTest {
                 isLoading = false,
                 contacts = listOf(
                     ContactSummary(id = 1, fn = "Alice", firstname = "Alice", isFavorite = true),
-                    ContactSummary(id = 2, fn = "Bob", firstname = "Bob", isFavorite = false),
-                ),
-            ),
+                    ContactSummary(id = 2, fn = "Bob", firstname = "Bob", isFavorite = false)
+                )
+            )
         )
 
         composeTestRule.onNodeWithContentDescription("Unmark Alice as favorite").assertIsDisplayed()
@@ -630,10 +666,10 @@ class ContactListScreenTest {
         setContent(
             ContactListUiState(
                 isLoading = false,
-                contacts = listOf(ContactSummary(id = 1, fn = "Alice", firstname = "Alice")),
+                contacts = listOf(ContactSummary(id = 1, fn = "Alice", firstname = "Alice"))
             ),
             onToggleFavorite = { toggledContactId = it.id },
-            onContactClick = { navigatedId = it },
+            onContactClick = { navigatedId = it }
         )
 
         composeTestRule.onNodeWithContentDescription("Mark Alice as favorite").performClick()
@@ -652,9 +688,11 @@ class ContactListScreenTest {
         setContent(
             ContactListUiState(
                 isLoading = false,
-                contacts = listOf(ContactSummary(id = 1, uid = "u1", fn = "Alice", firstname = "Alice")),
+                contacts = listOf(
+                    ContactSummary(id = 1, uid = "u1", fn = "Alice", firstname = "Alice")
+                )
             ),
-            onToggleSelection = { toggledId = it },
+            onToggleSelection = { toggledId = it }
         )
 
         composeTestRule.onNodeWithTag("enter-select-mode").performClick()
@@ -675,10 +713,10 @@ class ContactListScreenTest {
                 isLoading = false,
                 contacts = listOf(
                     ContactSummary(id = 1, uid = "u1", fn = "Alice", firstname = "Alice"),
-                    ContactSummary(id = 2, uid = "u2", fn = "Bob", firstname = "Bob"),
+                    ContactSummary(id = 2, uid = "u2", fn = "Bob", firstname = "Bob")
                 ),
-                selected = setOf(1),
-            ),
+                selected = setOf(1)
+            )
         )
 
         composeTestRule.onNodeWithTag("enter-select-mode").performClick()
@@ -693,9 +731,9 @@ class ContactListScreenTest {
         setContent(
             ContactListUiState(
                 isLoading = false,
-                contacts = listOf(ContactSummary(id = 1, fn = "Alice", firstname = "Alice")),
+                contacts = listOf(ContactSummary(id = 1, fn = "Alice", firstname = "Alice"))
             ),
-            onToggleSelectAll = { selectAllCalls++ },
+            onToggleSelectAll = { selectAllCalls++ }
         )
 
         composeTestRule.onNodeWithTag("enter-select-mode").performClick()
@@ -710,10 +748,12 @@ class ContactListScreenTest {
         setContent(
             ContactListUiState(
                 isLoading = false,
-                contacts = listOf(ContactSummary(id = 1, uid = "u1", fn = "Alice", firstname = "Alice")),
-                selected = setOf(1),
+                contacts = listOf(
+                    ContactSummary(id = 1, uid = "u1", fn = "Alice", firstname = "Alice")
+                ),
+                selected = setOf(1)
             ),
-            onRunBulkAction = { action, circleId, tagId -> ran = Triple(action, circleId, tagId) },
+            onRunBulkAction = { action, circleId, tagId -> ran = Triple(action, circleId, tagId) }
         )
 
         composeTestRule.onNodeWithTag("enter-select-mode").performClick()
@@ -737,7 +777,10 @@ class ContactListScreenTest {
 
     @Test
     fun `hides the menu button when there is no drawer to open`() {
-        setContent(ContactListUiState(isLoading = false, contacts = emptyList()), onMenuClick = null)
+        setContent(
+            ContactListUiState(isLoading = false, contacts = emptyList()),
+            onMenuClick = null
+        )
 
         composeTestRule.onNodeWithContentDescription("Menu").assertDoesNotExist()
     }
@@ -747,11 +790,11 @@ class ContactListScreenTest {
     @Test
     fun `a failed load renders the error branch`() {
         setContent(
-            ContactListUiState(isLoading = false, contacts = emptyList(), error = "Load failed"),
+            ContactListUiState(isLoading = false, contacts = emptyList(), error = "Load failed")
         )
 
         assertTrue(
-            composeTestRule.onAllNodesWithText("Load failed").fetchSemanticsNodes().isNotEmpty(),
+            composeTestRule.onAllNodesWithText("Load failed").fetchSemanticsNodes().isNotEmpty()
         )
     }
 
@@ -763,8 +806,8 @@ class ContactListScreenTest {
             ContactListUiState(
                 isLoading = false,
                 contacts = listOf(ContactSummary(id = 1, fn = "Alice", firstname = "Alice")),
-                pagination = PaginationState(isLoadingMore = true),
-            ),
+                pagination = PaginationState(isLoadingMore = true)
+            )
         )
 
         composeTestRule.onNodeWithText("Alice").assertIsDisplayed()
@@ -779,10 +822,12 @@ class ContactListScreenTest {
         setContent(
             ContactListUiState(
                 isLoading = false,
-                contacts = listOf(ContactSummary(id = 1, uid = "u1", fn = "Alice", firstname = "Alice")),
+                contacts = listOf(
+                    ContactSummary(id = 1, uid = "u1", fn = "Alice", firstname = "Alice")
+                )
             ),
             onToggleSelection = { toggledId = it },
-            onContactClick = { navigatedId = it },
+            onContactClick = { navigatedId = it }
         )
 
         composeTestRule.onNodeWithText("Alice").performTouchInput { longClick() }
@@ -800,9 +845,21 @@ class ContactListScreenTest {
     private fun populatedListState() = ContactListUiState(
         isLoading = false,
         contacts = listOf(
-            ContactSummary(id = 1, uid = "u1", fn = "Alice Johnson", firstname = "Alice", primaryEmail = "alice@example.com"),
-            ContactSummary(id = 2, uid = "u2", fn = "Bob Smith", firstname = "Bob", primaryPhone = "+15551230000"),
-        ),
+            ContactSummary(
+                id = 1,
+                uid = "u1",
+                fn = "Alice Johnson",
+                firstname = "Alice",
+                primaryEmail = "alice@example.com"
+            ),
+            ContactSummary(
+                id = 2,
+                uid = "u2",
+                fn = "Bob Smith",
+                firstname = "Bob",
+                primaryPhone = "+15551230000"
+            )
+        )
     )
 
     @Test
@@ -843,14 +900,16 @@ class ContactListScreenTest {
         coEvery { repository.observeContacts() } returns emptyFlow()
         coEvery { repository.searchLocal(any()) } returns emptyList()
         coEvery { repository.syncContacts() } returns Result.success(Unit)
-        coEvery { repository.listContacts(any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns
+        coEvery {
+            repository.listContacts(any(), any(), any(), any(), any(), any(), any(), any(), any())
+        } returns
             Result.success(
                 ContactsPage(
                     contacts = listOf(ContactSummary(id = 1, fn = "Alice", firstname = "Alice")),
                     nextCursor = null,
                     limit = 50,
-                    sync = null,
-                ),
+                    sync = null
+                )
             )
         val apiClient = mockk<ApiClient>()
         coEvery { apiClient.search(any(), any(), any()) } returns Result.success(SearchResult())
@@ -862,7 +921,9 @@ class ContactListScreenTest {
         val authRepository = mockk<AuthRepository>()
         every { authRepository.observeSession() } returns flowOf(SessionState())
         val appSettingsRepository = mockk<AppSettingsRepository>()
-        every { appSettingsRepository.contactSortPreference() } returns flowOf(AppSettingsRepository.CONTACT_SORT_NAME)
+        every { appSettingsRepository.contactSortPreference() } returns flowOf(
+            AppSettingsRepository.CONTACT_SORT_NAME
+        )
         val viewModel = ContactListViewModel(
             repository,
             apiClient,
@@ -870,7 +931,7 @@ class ContactListScreenTest {
             bulkRepository,
             tagRepository,
             authRepository,
-            appSettingsRepository,
+            appSettingsRepository
         )
 
         composeTestRule.setContent {
@@ -887,7 +948,9 @@ class ContactListScreenTest {
     private fun setPickerContent(
         onContactClick: (Int) -> Unit = {},
         onPickerBack: () -> Unit = {},
-        contacts: List<ContactSummary> = listOf(ContactSummary(id = 1, fn = "Alice", firstname = "Alice")),
+        contacts: List<ContactSummary> = listOf(
+            ContactSummary(id = 1, fn = "Alice", firstname = "Alice")
+        )
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -896,7 +959,7 @@ class ContactListScreenTest {
                     onSearchQueryChange = {},
                     onContactClick = onContactClick,
                     pickerTitle = "Share to…",
-                    onPickerBack = onPickerBack,
+                    onPickerBack = onPickerBack
                 )
             }
         }

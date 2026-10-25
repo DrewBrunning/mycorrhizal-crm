@@ -24,24 +24,29 @@ enum class SecondFactorPrompt {
     CODE_OR_PASSKEY,
 
     /** Gate open, passkey-only: "Use a passkey" is primary, the code field takes a recovery code. */
-    PASSKEY_OR_RECOVERY_CODE,
+    PASSKEY_OR_RECOVERY_CODE
 }
 
 /** True when the prompt offers the passkey action. */
 val SecondFactorPrompt.offersPasskey: Boolean
-    get() = this == SecondFactorPrompt.CODE_OR_PASSKEY || this == SecondFactorPrompt.PASSKEY_OR_RECOVERY_CODE
+    get() = this == SecondFactorPrompt.CODE_OR_PASSKEY ||
+        this == SecondFactorPrompt.PASSKEY_OR_RECOVERY_CODE
 
 /**
  * Pure routing for the 2FA step. Absent (older server) or passkey-free
  * [methods] is always [SecondFactorPrompt.STANDARD].
  */
-fun secondFactorPrompt(methods: List<String>?, passkeyAvailable: Boolean): SecondFactorPrompt = when {
-    !methods.includesPasskey() -> SecondFactorPrompt.STANDARD
-    passkeyAvailable ->
-        if (methods.isPasskeyOnly()) SecondFactorPrompt.PASSKEY_OR_RECOVERY_CODE else SecondFactorPrompt.CODE_OR_PASSKEY
-    methods.isPasskeyOnly() -> SecondFactorPrompt.RECOVERY_CODE_ONLY
-    else -> SecondFactorPrompt.CODE_WITH_PASSKEY_NOTE
-}
+fun secondFactorPrompt(methods: List<String>?, passkeyAvailable: Boolean): SecondFactorPrompt =
+    when {
+        !methods.includesPasskey() -> SecondFactorPrompt.STANDARD
+
+        passkeyAvailable ->
+            if (methods.isPasskeyOnly()) SecondFactorPrompt.PASSKEY_OR_RECOVERY_CODE else SecondFactorPrompt.CODE_OR_PASSKEY
+
+        methods.isPasskeyOnly() -> SecondFactorPrompt.RECOVERY_CODE_ONLY
+
+        else -> SecondFactorPrompt.CODE_WITH_PASSKEY_NOTE
+    }
 
 /**
  * Why a passkey attempt dropped the step to the degraded (code-only) state at
@@ -52,5 +57,5 @@ enum class PasskeyIssue {
     NOT_ASSOCIATED,
 
     /** No credential provider on the device. */
-    NO_PROVIDER,
+    NO_PROVIDER
 }

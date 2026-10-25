@@ -6,25 +6,24 @@ import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class CirclesUiState(
     val circles: List<Circle> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
     val isSaving: Boolean = false,
-    val deletingId: String? = null,
+    val deletingId: String? = null
 )
 
 @HiltViewModel
-class CirclesViewModel @Inject constructor(
-    private val circleRepository: CircleRepository,
-) : ViewModel() {
+class CirclesViewModel @Inject constructor(private val circleRepository: CircleRepository) :
+    ViewModel() {
 
     private val _uiState = MutableStateFlow(CirclesUiState())
     val uiState: StateFlow<CirclesUiState> = _uiState.asStateFlow()
@@ -43,7 +42,7 @@ class CirclesViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -56,13 +55,16 @@ class CirclesViewModel @Inject constructor(
             circleRepository.create(trimmed).foldApiError(
                 onSuccess = { circle ->
                     _uiState.update {
-                        it.copy(isSaving = false, circles = (it.circles + circle).sortedBy { c -> c.name.lowercase() })
+                        it.copy(
+                            isSaving = false,
+                            circles = (it.circles + circle).sortedBy { c -> c.name.lowercase() }
+                        )
                     }
                     onDone()
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isSaving = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -77,13 +79,13 @@ class CirclesViewModel @Inject constructor(
                     _uiState.update { state ->
                         state.copy(
                             circles = state.circles.map { if (it.id == id) circle else it }
-                                .sortedBy { c -> c.name.lowercase() },
+                                .sortedBy { c -> c.name.lowercase() }
                         )
                     }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -95,12 +97,15 @@ class CirclesViewModel @Inject constructor(
             circleRepository.delete(id).foldApiError(
                 onSuccess = {
                     _uiState.update { state ->
-                        state.copy(deletingId = null, circles = state.circles.filterNot { it.id == id })
+                        state.copy(
+                            deletingId = null,
+                            circles = state.circles.filterNot { it.id == id }
+                        )
                     }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(deletingId = null, error = error.displayMessage) }
-                },
+                }
             )
         }
     }

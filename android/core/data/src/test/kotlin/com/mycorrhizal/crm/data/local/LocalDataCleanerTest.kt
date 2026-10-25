@@ -57,11 +57,11 @@ class LocalDataCleanerTest {
 
         assertNull(
             "clear() must wipe the Room mirror (offline PII)",
-            db.cachedContactDao().getById(1),
+            db.cachedContactDao().getById(1)
         )
         assertFalse(
             "clear() must delete the cached-image directory",
-            cachedFile.exists(),
+            cachedFile.exists()
         )
     }
 

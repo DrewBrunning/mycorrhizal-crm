@@ -16,8 +16,8 @@ class HouseholdSuggestionFormatTest {
             full = "1 Main St, Berlin",
             components = listOf(
                 AddressComponent(kind = "locality", value = "Berlin"),
-                AddressComponent(kind = "country", value = "DE"),
-            ),
+                AddressComponent(kind = "country", value = "DE")
+            )
         )
         assertEquals("1 Main St, Berlin", formatSuggestionAddress(address))
     }
@@ -31,8 +31,8 @@ class HouseholdSuggestionFormatTest {
                 AddressComponent(kind = "postcode", value = "10115"),
                 AddressComponent(kind = "locality", value = "Berlin"),
                 AddressComponent(kind = "name", value = "1 Main St"),
-                AddressComponent(kind = "region", value = "Berlin"),
-            ),
+                AddressComponent(kind = "region", value = "Berlin")
+            )
         )
         assertEquals("1 Main St, Berlin, Berlin, 10115, DE", formatSuggestionAddress(address))
     }
@@ -44,8 +44,8 @@ class HouseholdSuggestionFormatTest {
             components = listOf(
                 AddressComponent(kind = "name", value = "1 Main St"),
                 AddressComponent(kind = "locality", value = "  "),
-                AddressComponent(kind = "unknown-kind", value = "ignored"),
-            ),
+                AddressComponent(kind = "unknown-kind", value = "ignored")
+            )
         )
         assertEquals("1 Main St", formatSuggestionAddress(address))
     }
@@ -56,8 +56,8 @@ class HouseholdSuggestionFormatTest {
             full = null,
             components = listOf(
                 AddressComponent(kind = "name", value = "1 Main St"),
-                AddressComponent(kind = "name", value = "2 Second St"),
-            ),
+                AddressComponent(kind = "name", value = "2 Second St")
+            )
         )
         assertEquals("1 Main St", formatSuggestionAddress(address))
     }

@@ -1,9 +1,9 @@
 package com.mycorrhizal.crm.data.local
 
+import java.io.File
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 /**
  * Guard test for the Room-mirror encryption stack (issue #385, MASVS-L1
@@ -35,11 +35,11 @@ class RoomEncryptionGuardTest {
     fun `the SQLCipher passphrase is stored via EncryptedSharedPreferences, not a plain prefs file`() {
         assertTrue(
             "RoomPassphraseStore must use EncryptedSharedPreferences.create",
-            passphraseStoreSource.contains("EncryptedSharedPreferences.create"),
+            passphraseStoreSource.contains("EncryptedSharedPreferences.create")
         )
         assertFalse(
             "RoomPassphraseStore must not fall back to a plain getSharedPreferences",
-            passphraseStoreSource.contains("getSharedPreferences"),
+            passphraseStoreSource.contains("getSharedPreferences")
         )
     }
 
@@ -47,11 +47,11 @@ class RoomEncryptionGuardTest {
     fun `the passphrase is a fresh 32-byte SecureRandom value, generated on first use`() {
         assertTrue(
             "RoomPassphraseStore must generate the passphrase from SecureRandom (issue #812 moved the bytes into randomHexPassphrase)",
-            passphraseStoreSource.contains("random.nextBytes(bytes)"),
+            passphraseStoreSource.contains("random.nextBytes(bytes)")
         )
         assertTrue(
             "The passphrase must be 32 bytes by default (256-bit key material)",
-            passphraseStoreSource.contains("byteCount: Int = 32"),
+            passphraseStoreSource.contains("byteCount: Int = 32")
         )
     }
 
@@ -59,17 +59,17 @@ class RoomEncryptionGuardTest {
     fun `a freshly generated passphrase is committed synchronously and verified, not fire-and-forget (issue 998)`() {
         assertTrue(
             "getOrCreate must persist with commit() so the write is durable before the passphrase is used",
-            passphraseStoreSource.contains(".putString(KEY_PASSPHRASE, passphrase).commit()"),
+            passphraseStoreSource.contains(".putString(KEY_PASSPHRASE, passphrase).commit()")
         )
         assertFalse(
             "getOrCreate must not persist the freshly generated passphrase with the async, " +
                 "fire-and-forget apply() (clear()'s apply() is fine: it's only ever used " +
                 "alongside deleting the DB file outright, not before using the value)",
-            passphraseStoreSource.contains(".putString(KEY_PASSPHRASE, passphrase).apply()"),
+            passphraseStoreSource.contains(".putString(KEY_PASSPHRASE, passphrase).apply()")
         )
         assertTrue(
             "getOrCreate must read the value back to confirm it actually landed",
-            passphraseStoreSource.contains("prefs.getString(KEY_PASSPHRASE, null) == passphrase"),
+            passphraseStoreSource.contains("prefs.getString(KEY_PASSPHRASE, null) == passphrase")
         )
     }
 
@@ -77,11 +77,11 @@ class RoomEncryptionGuardTest {
     fun `the database is opened through the SQLCipher open-helper factory`() {
         assertTrue(
             "provideDatabase must call ensureEncrypted before Room opens",
-            dataModuleSource.contains("RoomCacheEncryption.ensureEncrypted"),
+            dataModuleSource.contains("RoomCacheEncryption.ensureEncrypted")
         )
         assertTrue(
             "provideDatabase must set the SQLCipher SupportOpenHelperFactory",
-            dataModuleSource.contains("SupportOpenHelperFactory"),
+            dataModuleSource.contains("SupportOpenHelperFactory")
         )
     }
 
@@ -90,7 +90,7 @@ class RoomEncryptionGuardTest {
         assertTrue(
             "provideDatabase must open through RoomDatabaseRecovery so a wrong/lost passphrase " +
                 "wipes and rebuilds the mirror instead of crashing forever",
-            dataModuleSource.contains("RoomDatabaseRecovery.openOrRebuild"),
+            dataModuleSource.contains("RoomDatabaseRecovery.openOrRebuild")
         )
     }
 
@@ -98,11 +98,11 @@ class RoomEncryptionGuardTest {
     fun `the plaintext-to-encrypted transition preserves the whole database`() {
         assertTrue(
             "The transition must export every table (incl. FTS + the outbox) via sqlcipher_export",
-            transitionSource.contains("sqlcipher_export"),
+            transitionSource.contains("sqlcipher_export")
         )
         assertTrue(
             "The transition must overwrite the plaintext file before deletion",
-            transitionSource.contains("overwriteFile"),
+            transitionSource.contains("overwriteFile")
         )
     }
 
@@ -110,11 +110,11 @@ class RoomEncryptionGuardTest {
     fun `ending a session wipes the Room mirror and cached images`() {
         assertTrue(
             "LocalDataCleaner must clear the Room database tables",
-            cleanerSource.contains("clearAllTables"),
+            cleanerSource.contains("clearAllTables")
         )
         assertTrue(
             "LocalDataCleaner must delete the cached image files",
-            cleanerSource.contains("deleteRecursively"),
+            cleanerSource.contains("deleteRecursively")
         )
     }
 }

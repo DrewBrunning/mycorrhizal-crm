@@ -11,6 +11,7 @@ import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.toApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -20,7 +21,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /**
  * Registration state. Deliberately carries NO credentials (username/email/
@@ -43,7 +43,7 @@ data class RegisterUiState(
     // disabled notice up front instead. Best-effort: a failed fetch leaves
     // this false (the form shows, exactly as before this existed) — the
     // server's 403 is still the real enforcement either way.
-    val registrationDisabled: Boolean = false,
+    val registrationDisabled: Boolean = false
 )
 
 sealed interface RegisterEvent {
@@ -53,7 +53,7 @@ sealed interface RegisterEvent {
 @HiltViewModel
 class RegisterViewModel @Inject constructor(
     private val authRepository: AuthRepository,
-    private val sessionManager: SessionManager,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(RegisterUiState())
@@ -111,7 +111,7 @@ class RegisterViewModel @Inject constructor(
                 errorRes = null,
                 passwordStrength = null,
                 passwordChecked = false,
-                checkingStrength = value.isNotBlank(),
+                checkingStrength = value.isNotBlank()
             )
         }
         strengthJob?.cancel()
@@ -121,13 +121,17 @@ class RegisterViewModel @Inject constructor(
             authRepository.checkPasswordStrength(value).fold(
                 onSuccess = { strength ->
                     _uiState.update {
-                        it.copy(passwordStrength = strength, passwordChecked = true, checkingStrength = false)
+                        it.copy(
+                            passwordStrength = strength,
+                            passwordChecked = true,
+                            checkingStrength = false
+                        )
                     }
                 },
                 onFailure = {
                     // The check is best-effort; the server is the backstop.
                     _uiState.update { it.copy(checkingStrength = false) }
-                },
+                }
             )
         }
     }
@@ -148,7 +152,12 @@ class RegisterViewModel @Inject constructor(
 
         val trimmedUrl = state.serverUrl.trim().trimEnd('/')
         if (!Validators.isValidServerUrl(trimmedUrl)) {
-            _uiState.update { it.copy(errorRes = R.string.login_error_valid_server_url, error = null) }
+            _uiState.update {
+                it.copy(
+                    errorRes = R.string.login_error_valid_server_url,
+                    error = null
+                )
+            }
             return
         }
         val validationError = when {
@@ -165,13 +174,23 @@ class RegisterViewModel @Inject constructor(
         // blocks submit, and an in-flight check also blocks (a verdict that
         // hasn't landed yet must not be raced past — review-pass fix).
         if (state.checkingStrength) {
-            _uiState.update { it.copy(errorRes = R.string.register_checking_strength, error = null) }
+            _uiState.update {
+                it.copy(
+                    errorRes = R.string.register_checking_strength,
+                    error = null
+                )
+            }
             return
         }
         if (state.passwordChecked && state.passwordStrength?.isValid == false) {
             val feedback = state.passwordStrength.feedback
             if (feedback.isNullOrBlank()) {
-                _uiState.update { it.copy(errorRes = R.string.register_error_password_weak, error = null) }
+                _uiState.update {
+                    it.copy(
+                        errorRes = R.string.register_error_password_weak,
+                        error = null
+                    )
+                }
             } else {
                 _uiState.update { it.copy(error = feedback, errorRes = null) }
             }
@@ -186,7 +205,10 @@ class RegisterViewModel @Inject constructor(
             val registered = authRepository.register(trimmedUsername, trimmedEmail, password)
             if (registered.isFailure) {
                 _uiState.update {
-                    it.copy(isLoading = false, error = registered.exceptionOrNull()?.toApiError()?.registerMessage())
+                    it.copy(
+                        isLoading = false,
+                        error = registered.exceptionOrNull()?.toApiError()?.registerMessage()
+                    )
                 }
                 return@launch
             }
@@ -197,7 +219,11 @@ class RegisterViewModel @Inject constructor(
                 // user at the sign-in screen rather than a confusing 409 on
                 // retry (review-pass fix).
                 _uiState.update {
-                    it.copy(isLoading = false, errorRes = R.string.register_created_login_failed, error = null)
+                    it.copy(
+                        isLoading = false,
+                        errorRes = R.string.register_created_login_failed,
+                        error = null
+                    )
                 }
                 return@launch
             }

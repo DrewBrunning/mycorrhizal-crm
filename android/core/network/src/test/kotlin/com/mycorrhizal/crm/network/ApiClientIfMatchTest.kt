@@ -34,7 +34,9 @@ class ApiClientIfMatchTest {
         server = MockWebServer()
         server.start()
         val okHttp = OkHttpClient.Builder()
-            .addInterceptor(BaseUrlInterceptor(BaseUrlProvider { server.url("/").toString().trimEnd('/') }))
+            .addInterceptor(
+                BaseUrlInterceptor(BaseUrlProvider { server.url("/").toString().trimEnd('/') })
+            )
             .build()
         client = ApiClient(okHttp, Moshi.Builder().add(KotlinJsonAdapterFactory()).build())
     }
@@ -47,19 +49,52 @@ class ApiClientIfMatchTest {
     /** One body that satisfies every update mapper (raw DTO, `{note}` and `{reminder}` wrappers). */
     private val okBody = """{"ID":1,"revision":9,"note":{"ID":1,"revision":9},"reminder":{"ID":1,"revision":9}}"""
 
-    private data class Write(val name: String, val method: String, val path: String, val call: suspend (ApiClient, Int?) -> Result<*>)
+    private data class Write(
+        val name: String,
+        val method: String,
+        val path: String,
+        val call: suspend (ApiClient, Int?) -> Result<*>
+    )
 
     private val writes = listOf(
-        Write("updateContact", "PUT", "/api/v1/contacts/1") { c, r -> c.updateContact(1, ContactRecordInput(), r) },
+        Write(
+            "updateContact",
+            "PUT",
+            "/api/v1/contacts/1"
+        ) { c, r -> c.updateContact(1, ContactRecordInput(), r) },
         Write("deleteContact", "DELETE", "/api/v1/contacts/1") { c, r -> c.deleteContact(1, r) },
-        Write("updateNote", "PUT", "/api/v1/notes/1") { c, r -> c.updateNote(1, NoteInput(content = "x"), r) },
+        Write(
+            "updateNote",
+            "PUT",
+            "/api/v1/notes/1"
+        ) { c, r -> c.updateNote(1, NoteInput(content = "x"), r) },
         Write("deleteNote", "DELETE", "/api/v1/notes/1") { c, r -> c.deleteNote(1, r) },
-        Write("updateActivity", "PUT", "/api/v1/activities/1") { c, r -> c.updateActivity(1, ActivityInput(title = "x"), r) },
-        Write("deleteActivity", "DELETE", "/api/v1/activities/1") { c, r -> c.deleteActivity(1, r) },
-        Write("updateLifeEvent", "PUT", "/api/v1/life-events/le1") { c, r -> c.updateLifeEvent("le1", LifeEventInput(entityId = "e"), r) },
-        Write("deleteLifeEvent", "DELETE", "/api/v1/life-events/le1") { c, r -> c.deleteLifeEvent("le1", r) },
-        Write("updateReminder", "PUT", "/api/v1/reminders/1") { c, r -> c.updateReminder(1, Reminder(message = "x"), r) },
-        Write("deleteReminder", "DELETE", "/api/v1/reminders/1") { c, r -> c.deleteReminder(1, r) },
+        Write(
+            "updateActivity",
+            "PUT",
+            "/api/v1/activities/1"
+        ) { c, r -> c.updateActivity(1, ActivityInput(title = "x"), r) },
+        Write(
+            "deleteActivity",
+            "DELETE",
+            "/api/v1/activities/1"
+        ) { c, r -> c.deleteActivity(1, r) },
+        Write(
+            "updateLifeEvent",
+            "PUT",
+            "/api/v1/life-events/le1"
+        ) { c, r -> c.updateLifeEvent("le1", LifeEventInput(entityId = "e"), r) },
+        Write(
+            "deleteLifeEvent",
+            "DELETE",
+            "/api/v1/life-events/le1"
+        ) { c, r -> c.deleteLifeEvent("le1", r) },
+        Write(
+            "updateReminder",
+            "PUT",
+            "/api/v1/reminders/1"
+        ) { c, r -> c.updateReminder(1, Reminder(message = "x"), r) },
+        Write("deleteReminder", "DELETE", "/api/v1/reminders/1") { c, r -> c.deleteReminder(1, r) }
     )
 
     @Test
@@ -88,8 +123,8 @@ class ApiClientIfMatchTest {
         for (w in writes) {
             server.enqueue(
                 MockResponse().setResponseCode(412).setBody(
-                    """{"error":{"code":"PRECONDITION_FAILED","message":"stale revision","details":{"expected_revision":8}}}""",
-                ),
+                    """{"error":{"code":"PRECONDITION_FAILED","message":"stale revision","details":{"expected_revision":8}}}"""
+                )
             )
             val error = w.call(client, 7).exceptionOrNull()
             assertTrue(w.name, error is ApiError.PreconditionFailed)
@@ -100,7 +135,11 @@ class ApiClientIfMatchTest {
 
     @Test
     fun `other 4xx statuses stay a generic client error`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(409).setBody("""{"error":{"code":"CONFLICT","message":"dup"}}"""))
+        server.enqueue(
+            MockResponse().setResponseCode(
+                409
+            ).setBody("""{"error":{"code":"CONFLICT","message":"dup"}}""")
+        )
         val error = client.deleteNote(1, 7).exceptionOrNull()
         assertTrue(error is ApiError.Client)
         assertEquals(409, (error as ApiError.Client).code)
@@ -130,6 +169,9 @@ class ApiClientIfMatchTest {
         assertEquals(9, client.updateReminder(1, Reminder(message = "x")).getOrThrow().revision)
         server.takeRequest()
         server.enqueue(MockResponse().setResponseCode(200).setBody("""{"id":"le1","revision":9}"""))
-        assertEquals(9, client.updateLifeEvent("le1", LifeEventInput(entityId = "e")).getOrThrow().revision)
+        assertEquals(
+            9,
+            client.updateLifeEvent("le1", LifeEventInput(entityId = "e")).getOrThrow().revision
+        )
     }
 }

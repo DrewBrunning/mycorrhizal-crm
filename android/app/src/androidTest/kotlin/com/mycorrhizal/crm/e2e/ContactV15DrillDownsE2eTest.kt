@@ -11,10 +11,10 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import java.util.UUID
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.util.UUID
 
 /**
  * Issue #1948 acceptance: the v1.5.0 contact drill-downs must round-trip
@@ -133,7 +133,9 @@ class ContactV15DrillDownsE2eTest : E2eBaseTest() {
         // The saved entry is on the server, not just in the form's state or a
         // local cache: the full-record PUT carried the new personal-info row.
         compose.waitUntil(15_000) {
-            val entries = backend.contactState(contact.id).optJSONObject("card")?.optJSONArray("personalInfo")
+            val entries = backend.contactState(
+                contact.id
+            ).optJSONObject("card")?.optJSONArray("personalInfo")
             (0 until (entries?.length() ?: 0)).any { index ->
                 val entry = entries!!.getJSONObject(index)
                 entry.optString("kind") == "hobby" && entry.optString("value") == hobbyValue

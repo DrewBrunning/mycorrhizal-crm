@@ -26,19 +26,23 @@ class MapViewModelTest {
 
     private val repository = mockk<MapRepository>()
 
-    private fun point(contactId: Int, addressId: String, coordinates: String, name: String = "Ada") =
-        ContactMapPoint(
-            contactId = contactId,
-            contactName = name,
-            addressId = addressId,
-            label = "label-$addressId",
-            coordinates = coordinates,
-        )
+    private fun point(
+        contactId: Int,
+        addressId: String,
+        coordinates: String,
+        name: String = "Ada"
+    ) = ContactMapPoint(
+        contactId = contactId,
+        contactName = name,
+        addressId = addressId,
+        label = "label-$addressId",
+        coordinates = coordinates
+    )
 
     private fun stub(
         points: List<ContactMapPoint>? = emptyList(),
         truncated: Boolean = false,
-        style: String = "https://tiles.example/s",
+        style: String = "https://tiles.example/s"
     ) {
         coEvery { repository.getMapConfig() } returns Result.success(MapConfig(style))
         coEvery { repository.getContactMap() } returns
@@ -46,8 +50,15 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `loads the style and plots every valid point`() = runTest(mainDispatcherRule.testDispatcher) {
-        stub(points = listOf(point(1, "a", "geo:51.5,-0.12"), point(2, "b", "geo:40,-74", name = "Grace")))
+    fun `loads the style and plots every valid point`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stub(
+            points = listOf(
+                point(1, "a", "geo:51.5,-0.12"),
+                point(2, "b", "geo:40,-74", name = "Grace")
+            )
+        )
 
         val vm = MapViewModel(repository)
         assertTrue(vm.uiState.value.isLoading)
@@ -64,7 +75,9 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `skips a point whose coordinates the client cannot parse`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `skips a point whose coordinates the client cannot parse`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         stub(points = listOf(point(1, "bad", "geo:999,0"), point(2, "ok", "geo:1,2")))
 
         val vm = MapViewModel(repository)
@@ -74,7 +87,9 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `a null points list is an empty map, not a crash`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a null points list is an empty map, not a crash`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         stub(points = null)
 
         val vm = MapViewModel(repository)
@@ -95,8 +110,12 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `a config failure shows an error and no points`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { repository.getMapConfig() } returns Result.failure(ApiError.Network(java.io.IOException("x")))
+    fun `a config failure shows an error and no points`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { repository.getMapConfig() } returns Result.failure(
+            ApiError.Network(java.io.IOException("x"))
+        )
         coEvery { repository.getContactMap() } returns Result.success(ContactMapResponse())
 
         val vm = MapViewModel(repository)
@@ -110,9 +129,13 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `a points failure shows an error even when the config loaded`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a points failure shows an error even when the config loaded`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.getMapConfig() } returns Result.success(MapConfig("s"))
-        coEvery { repository.getContactMap() } returns Result.failure(ApiError.Timeout(java.net.SocketTimeoutException("x")))
+        coEvery { repository.getContactMap() } returns Result.failure(
+            ApiError.Timeout(java.net.SocketTimeoutException("x"))
+        )
 
         val vm = MapViewModel(repository)
         advanceUntilIdle()
@@ -122,7 +145,9 @@ class MapViewModelTest {
 
     @Test
     fun `retry reloads and clears the error`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { repository.getMapConfig() } returns Result.failure(ApiError.Network(java.io.IOException("x")))
+        coEvery { repository.getMapConfig() } returns Result.failure(
+            ApiError.Network(java.io.IOException("x"))
+        )
         coEvery { repository.getContactMap() } returns Result.success(ContactMapResponse())
         val vm = MapViewModel(repository)
         advanceUntilIdle()
@@ -138,7 +163,9 @@ class MapViewModelTest {
     }
 
     @Test
-    fun `selecting a marker exposes it and a reload clears the selection`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `selecting a marker exposes it and a reload clears the selection`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         stub(points = listOf(point(1, "a", "geo:1,2")))
         val vm = MapViewModel(repository)
         advanceUntilIdle()
@@ -174,7 +201,7 @@ class MapViewModelTest {
         assertEquals(MapViewport.Single(LatLng(1.0, 2.0)), viewportFor(listOf(p(1.0, 2.0))))
         assertEquals(
             MapViewport.Bounds(southWest = LatLng(-10.0, -20.0), northEast = LatLng(30.0, 40.0)),
-            viewportFor(listOf(p(30.0, -20.0, 1), p(-10.0, 40.0, 2), p(5.0, 0.0, 3))),
+            viewportFor(listOf(p(30.0, -20.0, 1), p(-10.0, 40.0, 2), p(5.0, 0.0, 3)))
         )
     }
 }

@@ -11,5 +11,5 @@ data class CachedCadencePolicy(
     val targetIntervalDays: Int = 0,
     val qualifyingTypes: List<String> = emptyList(),
     val updatedAt: String? = null,
-    val deleted: Boolean = false,
+    val deleted: Boolean = false
 )

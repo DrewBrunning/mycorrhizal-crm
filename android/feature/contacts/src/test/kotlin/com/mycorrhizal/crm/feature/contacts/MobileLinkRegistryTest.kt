@@ -21,9 +21,9 @@ class MobileLinkRegistryTest {
             listOf(
                 MobileActionKind.MESSAGE,
                 MobileActionKind.VOICE_CALL,
-                MobileActionKind.VIDEO_CALL,
+                MobileActionKind.VIDEO_CALL
             ),
-            signal?.actions?.map { it.kind },
+            signal?.actions?.map { it.kind }
         )
     }
 
@@ -35,9 +35,9 @@ class MobileLinkRegistryTest {
             listOf(
                 MobileActionKind.MESSAGE,
                 MobileActionKind.VOICE_CALL,
-                MobileActionKind.VIDEO_CALL,
+                MobileActionKind.VIDEO_CALL
             ),
-            whatsapp?.actions?.map { it.kind },
+            whatsapp?.actions?.map { it.kind }
         )
     }
 
@@ -76,7 +76,7 @@ class MobileLinkRegistryTest {
     fun `all seeded protocols are known`() {
         assertEquals(
             setOf("signal", "whatsapp", "telegram", "google-meet", "zoom", "discord"),
-            MobileLinkRegistry.all.map { it.protocol }.toSet(),
+            MobileLinkRegistry.all.map { it.protocol }.toSet()
         )
     }
 
@@ -86,7 +86,7 @@ class MobileLinkRegistryTest {
             linkType.actions.forEach { action ->
                 assertTrue(
                     "action '${action.label}' on '${linkType.protocol}' needs a MIMETYPE",
-                    action.mimeTypes.isNotEmpty(),
+                    action.mimeTypes.isNotEmpty()
                 )
             }
         }

@@ -15,6 +15,7 @@ import com.mycorrhizal.crm.model.network.OccasionEventAttendeeView
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,7 +23,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class OccasionAttendeesUiState(
     val eventId: String = "",
@@ -40,7 +40,7 @@ data class OccasionAttendeesUiState(
     val contactResults: List<ContactSummary> = emptyList(),
     val contactSearchLoading: Boolean = false,
     @StringRes val errorRes: Int? = null,
-    val error: String? = null,
+    val error: String? = null
 )
 
 /**
@@ -54,7 +54,7 @@ class OccasionAttendeesViewModel @Inject constructor(
     private val occasionEventRepository: OccasionEventRepository,
     private val circleRepository: CircleRepository,
     private val contactRepository: ContactRepository,
-    savedStateHandle: SavedStateHandle,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val eventId: String = savedStateHandle.get<String>("eventId") ?: ""
@@ -71,7 +71,12 @@ class OccasionAttendeesViewModel @Inject constructor(
 
     fun load() {
         if (eventId.isBlank()) {
-            _uiState.update { it.copy(isLoading = false, errorRes = R.string.occasions_error_missing_event_id) }
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    errorRes = R.string.occasions_error_missing_event_id
+                )
+            }
             return
         }
         viewModelScope.launch {
@@ -82,11 +87,18 @@ class OccasionAttendeesViewModel @Inject constructor(
                         it.copy(
                             isLoading = false,
                             eventTitle = detail.occasionEvent?.title ?: it.eventTitle,
-                            attendees = detail.attendees,
+                            attendees = detail.attendees
                         )
                     }
                 },
-                onError = { error -> _uiState.update { it.copy(isLoading = false, error = error.displayMessage) } },
+                onError = { error ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }
@@ -95,7 +107,7 @@ class OccasionAttendeesViewModel @Inject constructor(
         viewModelScope.launch {
             circleRepository.list().foldApiError(
                 onSuccess = { circles -> _uiState.update { it.copy(circles = circles) } },
-                onError = { /* Suggestions are optional; a circle-load failure is non-fatal. */ },
+                onError = { /* Suggestions are optional; a circle-load failure is non-fatal. */ }
             )
         }
     }
@@ -118,10 +130,23 @@ class OccasionAttendeesViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(suggestionsLoading = true, error = null) }
             occasionEventRepository.suggestInvitees(selected.toList(), eventId).foldApiError(
-                onSuccess = { suggestions -> _uiState.update { it.copy(suggestionsLoading = false, suggestions = suggestions) } },
-                onError = { error ->
-                    _uiState.update { it.copy(suggestionsLoading = false, suggestions = emptyList(), error = error.displayMessage) }
+                onSuccess = { suggestions ->
+                    _uiState.update {
+                        it.copy(
+                            suggestionsLoading = false,
+                            suggestions = suggestions
+                        )
+                    }
                 },
+                onError = { error ->
+                    _uiState.update {
+                        it.copy(
+                            suggestionsLoading = false,
+                            suggestions = emptyList(),
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }
@@ -147,13 +172,21 @@ class OccasionAttendeesViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             contactSearchLoading = false,
-                            contactResults = page.contacts.filter { c -> c.uid != null && c.uid !in attending },
+                            contactResults = page.contacts.filter { c ->
+                                c.uid != null &&
+                                    c.uid !in attending
+                            }
                         )
                     }
                 },
                 onFailure = {
-                    _uiState.update { it.copy(contactSearchLoading = false, contactResults = emptyList()) }
-                },
+                    _uiState.update {
+                        it.copy(
+                            contactSearchLoading = false,
+                            contactResults = emptyList()
+                        )
+                    }
+                }
             )
         }
     }
@@ -163,12 +196,29 @@ class OccasionAttendeesViewModel @Inject constructor(
         if (eventId.isBlank() || _uiState.value.isMutating) return
         viewModelScope.launch {
             _uiState.update { it.copy(isMutating = true, error = null) }
-            occasionEventRepository.addAttendee(eventId, OccasionEventAttendeeInput(entityId)).foldApiError(
+            occasionEventRepository.addAttendee(
+                eventId,
+                OccasionEventAttendeeInput(entityId)
+            ).foldApiError(
                 onSuccess = {
-                    _uiState.update { it.copy(isMutating = false, suggestions = emptyList(), contactResults = emptyList(), contactQuery = "") }
+                    _uiState.update {
+                        it.copy(
+                            isMutating = false,
+                            suggestions = emptyList(),
+                            contactResults = emptyList(),
+                            contactQuery = ""
+                        )
+                    }
                     load()
                 },
-                onError = { error -> _uiState.update { it.copy(isMutating = false, error = error.displayMessage) } },
+                onError = { error ->
+                    _uiState.update {
+                        it.copy(
+                            isMutating = false,
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }
@@ -183,7 +233,14 @@ class OccasionAttendeesViewModel @Inject constructor(
                     _uiState.update { it.copy(isMutating = false) }
                     load()
                 },
-                onError = { error -> _uiState.update { it.copy(isMutating = false, error = error.displayMessage) } },
+                onError = { error ->
+                    _uiState.update {
+                        it.copy(
+                            isMutating = false,
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }
@@ -198,7 +255,14 @@ class OccasionAttendeesViewModel @Inject constructor(
                     _uiState.update { it.copy(isMutating = false) }
                     load()
                 },
-                onError = { error -> _uiState.update { it.copy(isMutating = false, error = error.displayMessage) } },
+                onError = { error ->
+                    _uiState.update {
+                        it.copy(
+                            isMutating = false,
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }

@@ -6,7 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.mycorrhizal.crm.ui.R
 
-/**
+/*
  * Issue #1755: translated labels for stored enum tokens.
  *
  * Every `*LabelRes` lookup maps a backend token to a string resource, or null when the

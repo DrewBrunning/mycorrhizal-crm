@@ -52,7 +52,7 @@ import com.mycorrhizal.crm.ui.R
 @Composable
 fun NotificationChannelsScreen(
     onBack: () -> Unit,
-    viewModel: NotificationChannelsViewModel = hiltViewModel(),
+    viewModel: NotificationChannelsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -61,20 +61,26 @@ fun NotificationChannelsScreen(
             TopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back)
+                        )
                     }
                 },
                 title = {
-                    Text(stringResource(R.string.settings_notifications_title), style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        stringResource(R.string.settings_notifications_title),
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
-        },
+        }
     ) { padding ->
         NotificationChannelsContent(
             state = state,
@@ -86,7 +92,7 @@ fun NotificationChannelsScreen(
             onNotifyGotifyChange = viewModel::onNotifyGotifyChange,
             onTest = viewModel::test,
             onSave = viewModel::save,
-            modifier = Modifier.padding(padding),
+            modifier = Modifier.padding(padding)
         )
     }
 }
@@ -103,14 +109,14 @@ fun NotificationChannelsContent(
     onNotifyGotifyChange: (Boolean) -> Unit = {},
     onTest: (String) -> Unit = {},
     onSave: () -> Unit = {},
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         if (state.isLoading) {
             Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
@@ -120,7 +126,7 @@ fun NotificationChannelsContent(
             Text(
                 text = stringResource(R.string.settings_notifications_description),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             state.loadError?.let {
@@ -128,7 +134,7 @@ fun NotificationChannelsContent(
                     it,
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
                 )
             }
             state.saveError?.let {
@@ -136,16 +142,19 @@ fun NotificationChannelsContent(
                     it,
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
                 )
             }
 
             // ntfy
-            Text(stringResource(R.string.settings_notifications_ntfy), style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(R.string.settings_notifications_ntfy),
+                style = MaterialTheme.typography.titleMedium
+            )
             ChannelToggle(
                 label = stringResource(R.string.settings_notifications_ntfy_enable),
                 checked = state.notifyNtfy,
-                onCheckedChange = onNotifyNtfyChange,
+                onCheckedChange = onNotifyNtfyChange
             )
             OutlinedTextField(
                 value = state.ntfyUrl,
@@ -153,7 +162,7 @@ fun NotificationChannelsContent(
                 label = { Text(stringResource(R.string.settings_notifications_ntfy_url)) },
                 placeholder = { Text("https://ntfy.sh") },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth()
             )
             OutlinedTextField(
                 value = state.ntfyTopic,
@@ -161,20 +170,24 @@ fun NotificationChannelsContent(
                 label = { Text(stringResource(R.string.settings_notifications_ntfy_topic)) },
                 placeholder = { Text("my-reminders") },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth()
             )
             TestButton(
-                enabled = state.notifyNtfy && state.ntfyUrl.isNotBlank() && state.ntfyTopic.isNotBlank(),
+                enabled =
+                    state.notifyNtfy && state.ntfyUrl.isNotBlank() && state.ntfyTopic.isNotBlank(),
                 testing = state.testingChannel == "ntfy",
-                onClick = { onTest("ntfy") },
+                onClick = { onTest("ntfy") }
             )
 
             // Gotify
-            Text(stringResource(R.string.settings_notifications_gotify), style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(R.string.settings_notifications_gotify),
+                style = MaterialTheme.typography.titleMedium
+            )
             ChannelToggle(
                 label = stringResource(R.string.settings_notifications_gotify_enable),
                 checked = state.notifyGotify,
-                onCheckedChange = onNotifyGotifyChange,
+                onCheckedChange = onNotifyGotifyChange
             )
             OutlinedTextField(
                 value = state.gotifyUrl,
@@ -182,7 +195,7 @@ fun NotificationChannelsContent(
                 label = { Text(stringResource(R.string.settings_notifications_gotify_url)) },
                 placeholder = { Text("http://gotify:8080") },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth()
             )
             OutlinedTextField(
                 value = state.gotifyToken,
@@ -194,18 +207,20 @@ fun NotificationChannelsContent(
                 supportingText = {
                     Text(
                         if (state.gotifyHasToken) {
-                            stringResource(R.string.settings_notifications_gotify_token_hint_existing)
+                            stringResource(
+                                R.string.settings_notifications_gotify_token_hint_existing
+                            )
                         } else {
                             stringResource(R.string.settings_notifications_gotify_token_hint_new)
-                        },
+                        }
                     )
                 },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth()
             )
             TestButton(
                 enabled = state.notifyGotify && state.gotifyUrl.isNotBlank(),
                 testing = state.testingChannel == "gotify",
-                onClick = { onTest("gotify") },
+                onClick = { onTest("gotify") }
             )
 
             // Test result
@@ -213,14 +228,14 @@ fun NotificationChannelsContent(
                 Text(
                     text = resultMessage("ntfy", result.ok, result.error),
                     color = if (result.ok) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodySmall
                 )
             }
             state.testResult["gotify"]?.let { result ->
                 Text(
                     text = resultMessage("gotify", result.ok, result.error),
                     color = if (result.ok) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodySmall
                 )
             }
 
@@ -230,10 +245,13 @@ fun NotificationChannelsContent(
                 enabled = !state.isSaving,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .semantics { if (state.isSaving) stateDescription = savingLabel },
+                    .semantics { if (state.isSaving) stateDescription = savingLabel }
             ) {
                 if (state.isSaving) {
-                    CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp), strokeWidth = 2.dp)
+                    CircularProgressIndicator(
+                        modifier = Modifier.padding(end = 8.dp),
+                        strokeWidth = 2.dp
+                    )
                 }
                 Text(stringResource(R.string.settings_notifications_save))
             }
@@ -242,11 +260,7 @@ fun NotificationChannelsContent(
 }
 
 @Composable
-private fun ChannelToggle(
-    label: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-) {
+private fun ChannelToggle(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     // #199: a bare Switch has no text/contentDescription of its own — the
     // adjacent label Text was a separate, unassociated node, so TalkBack
     // announced the switch with no name at all. Modifier.toggleable on the
@@ -257,7 +271,7 @@ private fun ChannelToggle(
             .fillMaxWidth()
             .toggleable(value = checked, onValueChange = onCheckedChange, role = Role.Switch),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
     ) {
         Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         Switch(checked = checked, onCheckedChange = null)
@@ -265,15 +279,11 @@ private fun ChannelToggle(
 }
 
 @Composable
-private fun TestButton(
-    enabled: Boolean,
-    testing: Boolean,
-    onClick: () -> Unit,
-) {
+private fun TestButton(enabled: Boolean, testing: Boolean, onClick: () -> Unit) {
     Button(
         onClick = onClick,
         enabled = enabled && !testing,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth()
     ) {
         if (testing) {
             CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp), strokeWidth = 2.dp)
@@ -282,22 +292,27 @@ private fun TestButton(
         }
         Text(
             stringResource(
-                if (testing) R.string.settings_notifications_testing else R.string.settings_notifications_test,
+                if (testing) R.string.settings_notifications_testing else R.string.settings_notifications_test
             ),
-            modifier = Modifier.padding(start = 8.dp),
+            modifier = Modifier.padding(start = 8.dp)
         )
     }
 }
 
 @Composable
-private fun resultMessage(channel: String, ok: Boolean, error: String?): String =
-    if (ok) {
+private fun resultMessage(channel: String, ok: Boolean, error: String?): String = if (ok) {
+    stringResource(
+        R.string.settings_notifications_test_success,
         stringResource(
-            R.string.settings_notifications_test_success,
-            stringResource(
-                if (channel == "ntfy") R.string.settings_notifications_ntfy else R.string.settings_notifications_gotify,
-            ),
+            if (channel ==
+                "ntfy"
+            ) {
+                R.string.settings_notifications_ntfy
+            } else {
+                R.string.settings_notifications_gotify
+            }
         )
-    } else {
-        stringResource(R.string.settings_notifications_test_failed, error ?: "unknown")
-    }
+    )
+} else {
+    stringResource(R.string.settings_notifications_test_failed, error ?: "unknown")
+}

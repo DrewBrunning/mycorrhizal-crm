@@ -57,12 +57,12 @@ class ContactRepositoryImplTest {
     private fun networkPage(
         contacts: List<ContactSummary>,
         nextCursor: String? = null,
-        sync: SyncInfo? = null,
+        sync: SyncInfo? = null
     ) = com.mycorrhizal.crm.model.network.ContactsPage(
         contacts = contacts,
         nextCursor = nextCursor,
         limit = 100,
-        sync = sync,
+        sync = sync
     )
 
     @Test
@@ -70,8 +70,8 @@ class ContactRepositoryImplTest {
         coEvery { apiClient.listContacts(any(), any(), any(), any()) } returns Result.success(
             com.mycorrhizal.crm.model.network.ContactsPage(
                 contacts = listOf(summary(1, "Alice"), summary(2, "Bob")),
-                nextCursor = "",
-            ),
+                nextCursor = ""
+            )
         )
 
         val result = repository.listContacts()
@@ -88,11 +88,20 @@ class ContactRepositoryImplTest {
     fun `listContacts caches the favorite flag into Room`() = runTest {
         // Issue #212: the star must survive the cache mirror (and thus the
         // offline list) exactly as the server sent it.
-        coEvery { apiClient.listContacts(any(), any(), any(), any(), any(), any()) } returns Result.success(
+        coEvery {
+            apiClient.listContacts(
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any()
+            )
+        } returns Result.success(
             com.mycorrhizal.crm.model.network.ContactsPage(
                 contacts = listOf(summary(1, "Alice").copy(isFavorite = true), summary(2, "Bob")),
-                nextCursor = "",
-            ),
+                nextCursor = ""
+            )
         )
 
         repository.listContacts()
@@ -106,8 +115,16 @@ class ContactRepositoryImplTest {
     fun `listContacts forwards the circle filter and archived toggle to the client`() = runTest {
         // M23: the list's filter dropdown + archived switch are only as good as the
         // repository's willingness to pass them through — this pins the data layer.
-        coEvery { apiClient.listContacts(any(), any(), any(), any(), any()) } returns Result.success(
-            com.mycorrhizal.crm.model.network.ContactsPage(contacts = emptyList(), nextCursor = ""),
+        coEvery {
+            apiClient.listContacts(
+                any(),
+                any(),
+                any(),
+                any(),
+                any()
+            )
+        } returns Result.success(
+            com.mycorrhizal.crm.model.network.ContactsPage(contacts = emptyList(), nextCursor = "")
         )
 
         repository.listContacts(circle = "Friends", includeArchived = true)
@@ -118,7 +135,7 @@ class ContactRepositoryImplTest {
                 limit = 50,
                 search = null,
                 includeArchived = true,
-                circle = "Friends",
+                circle = "Friends"
             )
         }
     }
@@ -127,8 +144,16 @@ class ContactRepositoryImplTest {
     fun `listContacts leaves the circle filter and archived toggle null by default`() = runTest {
         // A plain list request must not send include_archived/circle (the backend treats
         // absent as the default) — proving the defaults are null, not false/empty.
-        coEvery { apiClient.listContacts(any(), any(), any(), any(), any()) } returns Result.success(
-            com.mycorrhizal.crm.model.network.ContactsPage(contacts = emptyList(), nextCursor = ""),
+        coEvery {
+            apiClient.listContacts(
+                any(),
+                any(),
+                any(),
+                any(),
+                any()
+            )
+        } returns Result.success(
+            com.mycorrhizal.crm.model.network.ContactsPage(contacts = emptyList(), nextCursor = "")
         )
 
         repository.listContacts()
@@ -140,7 +165,7 @@ class ContactRepositoryImplTest {
                 search = null,
                 includeArchived = null,
                 circle = null,
-                favorites = null,
+                favorites = null
             )
         }
     }
@@ -152,8 +177,18 @@ class ContactRepositoryImplTest {
         // MockK records the compiled default for trailing params, so the stub
         // must name the favorites=true it wants matched — a 6-any() stub would
         // only ever answer favorites=null calls.
-        coEvery { apiClient.listContacts(any(), any(), any(), any(), any(), any(), true) } returns Result.success(
-            com.mycorrhizal.crm.model.network.ContactsPage(contacts = emptyList(), nextCursor = ""),
+        coEvery {
+            apiClient.listContacts(
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                true
+            )
+        } returns Result.success(
+            com.mycorrhizal.crm.model.network.ContactsPage(contacts = emptyList(), nextCursor = "")
         )
 
         repository.listContacts(favorites = true)
@@ -165,7 +200,7 @@ class ContactRepositoryImplTest {
                 search = null,
                 includeArchived = null,
                 circle = null,
-                favorites = true,
+                favorites = true
             )
         }
     }
@@ -174,8 +209,17 @@ class ContactRepositoryImplTest {
     fun `listContacts leaves the favorites filter null by default`() = runTest {
         // A plain list request must not send favorites (the backend treats
         // absent as "all contacts", not favorites-only).
-        coEvery { apiClient.listContacts(any(), any(), any(), any(), any(), any()) } returns Result.success(
-            com.mycorrhizal.crm.model.network.ContactsPage(contacts = emptyList(), nextCursor = ""),
+        coEvery {
+            apiClient.listContacts(
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any()
+            )
+        } returns Result.success(
+            com.mycorrhizal.crm.model.network.ContactsPage(contacts = emptyList(), nextCursor = "")
         )
 
         repository.listContacts()
@@ -187,14 +231,20 @@ class ContactRepositoryImplTest {
                 search = null,
                 includeArchived = null,
                 circle = null,
-                favorites = null,
+                favorites = null
             )
         }
     }
 
     @Test
     fun `favoriteContact flips the cached favorite flag on success`() = runTest {
-        db.cachedContactDao().upsert(com.mycorrhizal.crm.data.local.CachedContact(id = 5, fn = "Dana White", isFavorite = false))
+        db.cachedContactDao().upsert(
+            com.mycorrhizal.crm.data.local.CachedContact(
+                id = 5,
+                fn = "Dana White",
+                isFavorite = false
+            )
+        )
         coEvery { apiClient.favoriteContact(5) } returns Result.success(Unit)
 
         val result = repository.favoriteContact(5)
@@ -206,7 +256,13 @@ class ContactRepositoryImplTest {
 
     @Test
     fun `unfavoriteContact flips the cached favorite flag back`() = runTest {
-        db.cachedContactDao().upsert(com.mycorrhizal.crm.data.local.CachedContact(id = 5, fn = "Dana White", isFavorite = true))
+        db.cachedContactDao().upsert(
+            com.mycorrhizal.crm.data.local.CachedContact(
+                id = 5,
+                fn = "Dana White",
+                isFavorite = true
+            )
+        )
         coEvery { apiClient.unfavoriteContact(5) } returns Result.success(Unit)
 
         val result = repository.unfavoriteContact(5)
@@ -218,8 +274,18 @@ class ContactRepositoryImplTest {
 
     @Test
     fun `favoriteContact failure leaves the cached flag unchanged`() = runTest {
-        db.cachedContactDao().upsert(com.mycorrhizal.crm.data.local.CachedContact(id = 5, fn = "Dana White", isFavorite = false))
-        coEvery { apiClient.favoriteContact(5) } returns Result.failure(ApiError.Server(500, "boom"))
+        db.cachedContactDao().upsert(
+            com.mycorrhizal.crm.data.local.CachedContact(
+                id = 5,
+                fn = "Dana White",
+                isFavorite = false
+            )
+        )
+        coEvery {
+            apiClient.favoriteContact(
+                5
+            )
+        } returns Result.failure(ApiError.Server(500, "boom"))
 
         val result = repository.favoriteContact(5)
 
@@ -234,7 +300,7 @@ class ContactRepositoryImplTest {
         val response = com.mycorrhizal.crm.model.network.ContactTargetClosenessResponse(
             contactId = 5,
             targetCloseness = "close",
-            defaultIntervalDays = 30,
+            defaultIntervalDays = 30
         )
         coEvery { apiClient.setTargetCloseness(5, "close") } returns Result.success(response)
 
@@ -249,7 +315,9 @@ class ContactRepositoryImplTest {
 
     @Test
     fun `clearTargetCloseness delegates to the client and does not touch the cache`() = runTest {
-        val response = com.mycorrhizal.crm.model.network.ContactTargetClosenessResponse(contactId = 5)
+        val response = com.mycorrhizal.crm.model.network.ContactTargetClosenessResponse(
+            contactId = 5
+        )
         coEvery { apiClient.clearTargetCloseness(5) } returns Result.success(response)
 
         val result = repository.clearTargetCloseness(5)
@@ -270,8 +338,8 @@ class ContactRepositoryImplTest {
         db.cachedContactDao().upsertAll(
             listOf(
                 com.mycorrhizal.crm.data.local.CachedContact(id = 1, fn = "Alice"),
-                com.mycorrhizal.crm.data.local.CachedContact(id = 2, fn = "Bob"),
-            ),
+                com.mycorrhizal.crm.data.local.CachedContact(id = 2, fn = "Bob")
+            )
         )
         coEvery { apiClient.listContacts(any(), any(), any(), any()) } returns Result.success(
             com.mycorrhizal.crm.model.network.ContactsPage(
@@ -279,9 +347,9 @@ class ContactRepositoryImplTest {
                 nextCursor = "",
                 sync = SyncInfo(
                     mode = "incremental",
-                    incremental = listOf("contacts", "notes", "activities"),
-                ),
-            ),
+                    incremental = listOf("contacts", "notes", "activities")
+                )
+            )
         )
 
         repository.listContacts()
@@ -297,11 +365,16 @@ class ContactRepositoryImplTest {
             listOf(
                 com.mycorrhizal.crm.data.local.CachedContact(id = 1, fn = "Alice"),
                 com.mycorrhizal.crm.data.local.CachedContact(id = 2, fn = "Deleted Bob"),
-                com.mycorrhizal.crm.data.local.CachedContact(id = 3, fn = "Carol"),
-            ),
+                com.mycorrhizal.crm.data.local.CachedContact(id = 3, fn = "Carol")
+            )
         )
-        coEvery { apiClient.listContacts(limit = 100, includeArchived = true) } returns Result.success(
-            networkPage(listOf(summary(1, "Alice"), summary(3, "Carol")), nextCursor = ""),
+        coEvery {
+            apiClient.listContacts(
+                limit = 100,
+                includeArchived = true
+            )
+        } returns Result.success(
+            networkPage(listOf(summary(1, "Alice"), summary(3, "Carol")), nextCursor = "")
         )
 
         val result = repository.syncContacts()
@@ -315,19 +388,24 @@ class ContactRepositoryImplTest {
         db.cachedContactDao().upsertAll(
             listOf(
                 com.mycorrhizal.crm.data.local.CachedContact(id = 1, fn = "Alice"),
-                com.mycorrhizal.crm.data.local.CachedContact(id = 2, fn = "Gone"),
-            ),
+                com.mycorrhizal.crm.data.local.CachedContact(id = 2, fn = "Gone")
+            )
         )
         // Bootstrap: the page has a next page, so its trailing cursor becomes
         // the feed watermark rather than triggering a reconcile.
-        coEvery { apiClient.listContacts(limit = 100, includeArchived = true) } returns Result.success(
-            networkPage(listOf(summary(1, "Alice"), summary(2, "Gone")), nextCursor = "cursor-1"),
+        coEvery {
+            apiClient.listContacts(
+                limit = 100,
+                includeArchived = true
+            )
+        } returns Result.success(
+            networkPage(listOf(summary(1, "Alice"), summary(2, "Gone")), nextCursor = "cursor-1")
         )
         repository.syncContacts()
 
         // The change feed returns contact 2 as a deletion tombstone.
         coEvery { apiClient.listContacts(since = "cursor-1", limit = 100) } returns Result.success(
-            networkPage(listOf(summary(2, "Gone").copy(deleted = true))),
+            networkPage(listOf(summary(2, "Gone").copy(deleted = true)))
         )
         val result = repository.syncContacts()
 
@@ -340,10 +418,15 @@ class ContactRepositoryImplTest {
         // Bootstrapping with include_archived=true is what stops a reconcile
         // from treating an archived cached row as a deleted one.
         db.cachedContactDao().upsert(
-            com.mycorrhizal.crm.data.local.CachedContact(id = 1, fn = "Archived", archived = true),
+            com.mycorrhizal.crm.data.local.CachedContact(id = 1, fn = "Archived", archived = true)
         )
-        coEvery { apiClient.listContacts(limit = 100, includeArchived = true) } returns Result.success(
-            networkPage(listOf(summary(1, "Archived").copy(archived = true))),
+        coEvery {
+            apiClient.listContacts(
+                limit = 100,
+                includeArchived = true
+            )
+        } returns Result.success(
+            networkPage(listOf(summary(1, "Archived").copy(archived = true)))
         )
 
         repository.syncContacts()
@@ -356,19 +439,24 @@ class ContactRepositoryImplTest {
         db.cachedContactDao().upsertAll(
             listOf(
                 com.mycorrhizal.crm.data.local.CachedContact(id = 2, fn = "Gone"),
-                com.mycorrhizal.crm.data.local.CachedContact(id = 3, fn = "Gone Too"),
-            ),
+                com.mycorrhizal.crm.data.local.CachedContact(id = 3, fn = "Gone Too")
+            )
         )
-        coEvery { apiClient.listContacts(limit = 100, includeArchived = true) } returns Result.success(
-            networkPage(listOf(summary(1, "Alice")), nextCursor = "c1"),
+        coEvery {
+            apiClient.listContacts(
+                limit = 100,
+                includeArchived = true
+            )
+        } returns Result.success(
+            networkPage(listOf(summary(1, "Alice")), nextCursor = "c1")
         )
         repository.syncContacts()
 
         coEvery { apiClient.listContacts(since = "c1", limit = 100) } returns Result.success(
-            networkPage(listOf(summary(2, "Gone").copy(deleted = true)), nextCursor = "c2"),
+            networkPage(listOf(summary(2, "Gone").copy(deleted = true)), nextCursor = "c2")
         )
         coEvery { apiClient.listContacts(since = "c2", limit = 100) } returns Result.success(
-            networkPage(listOf(summary(3, "Gone Too").copy(deleted = true)), nextCursor = ""),
+            networkPage(listOf(summary(3, "Gone Too").copy(deleted = true)), nextCursor = "")
         )
 
         val result = repository.syncContacts()
@@ -387,15 +475,20 @@ class ContactRepositoryImplTest {
             com.mycorrhizal.crm.data.local.CachedContact(
                 id = 1,
                 fn = "Alice",
-                card = Card(name = Name(full = "Alice Full Name")),
-            ),
+                card = Card(name = Name(full = "Alice Full Name"))
+            )
         )
-        coEvery { apiClient.listContacts(limit = 100, includeArchived = true) } returns Result.success(
-            networkPage(listOf(summary(1, "Alice")), nextCursor = "c1"),
+        coEvery {
+            apiClient.listContacts(
+                limit = 100,
+                includeArchived = true
+            )
+        } returns Result.success(
+            networkPage(listOf(summary(1, "Alice")), nextCursor = "c1")
         )
         repository.syncContacts()
         coEvery { apiClient.listContacts(since = "c1", limit = 100) } returns Result.success(
-            networkPage(listOf(summary(1, "Alice"))),
+            networkPage(listOf(summary(1, "Alice")))
         )
 
         repository.syncContacts()
@@ -409,13 +502,18 @@ class ContactRepositoryImplTest {
         db.cachedContactDao().upsertAll(
             listOf(
                 com.mycorrhizal.crm.data.local.CachedContact(id = 1, fn = "Alice"),
-                com.mycorrhizal.crm.data.local.CachedContact(id = 2, fn = "Gone"),
-            ),
+                com.mycorrhizal.crm.data.local.CachedContact(id = 2, fn = "Gone")
+            )
         )
         coEvery { apiClient.listContacts(limit = 100, includeArchived = true) } returnsMany listOf(
-            Result.success(networkPage(listOf(summary(1, "Alice"), summary(2, "Gone")), nextCursor = "old-cursor")),
+            Result.success(
+                networkPage(
+                    listOf(summary(1, "Alice"), summary(2, "Gone")),
+                    nextCursor = "old-cursor"
+                )
+            ),
             // After the 410 the server's live set no longer holds contact 2.
-            Result.success(networkPage(listOf(summary(1, "Alice")), nextCursor = "")),
+            Result.success(networkPage(listOf(summary(1, "Alice")), nextCursor = ""))
         )
         repository.syncContacts()
 
@@ -430,7 +528,9 @@ class ContactRepositoryImplTest {
 
     @Test
     fun `syncContacts propagates a network failure without touching the cache`() = runTest {
-        db.cachedContactDao().upsert(com.mycorrhizal.crm.data.local.CachedContact(id = 1, fn = "Alice"))
+        db.cachedContactDao().upsert(
+            com.mycorrhizal.crm.data.local.CachedContact(id = 1, fn = "Alice")
+        )
         coEvery { apiClient.listContacts(limit = 100, includeArchived = true) } returns
             Result.failure(ApiError.Network(java.io.IOException("offline")))
 
@@ -448,10 +548,10 @@ class ContactRepositoryImplTest {
             com.mycorrhizal.crm.model.network.ContactsPage(
                 contacts = listOf(
                     ContactSummary(id = 1, uid = "u1", fn = "Alice"),
-                    ContactSummary(id = 2, uid = "u2", fn = "Bob"),
+                    ContactSummary(id = 2, uid = "u2", fn = "Bob")
                 ),
-                nextCursor = "",
-            ),
+                nextCursor = ""
+            )
         )
 
         val result = repository.resolveByUid(listOf("u1", "u2"))
@@ -468,11 +568,18 @@ class ContactRepositoryImplTest {
         // Web's getContactsByUid sends include_archived=true (an edge/audit
         // reference can point at an archived contact); the Android mirror must
         // too, or an archived contact's uid silently fails to resolve.
-        coEvery { apiClient.listContacts(vcardUids = any(), includeArchived = true) } returns Result.success(
+        coEvery {
+            apiClient.listContacts(
+                vcardUids = any(),
+                includeArchived = true
+            )
+        } returns Result.success(
             com.mycorrhizal.crm.model.network.ContactsPage(
-                contacts = listOf(ContactSummary(id = 3, uid = "u3", fn = "Carol", archived = true)),
-                nextCursor = "",
-            ),
+                contacts = listOf(
+                    ContactSummary(id = 3, uid = "u3", fn = "Carol", archived = true)
+                ),
+                nextCursor = ""
+            )
         )
 
         val result = repository.resolveByUid(listOf("u3"))
@@ -499,7 +606,7 @@ class ContactRepositoryImplTest {
             id = 5,
             uid = "u5",
             card = Card(name = Name(full = "Dana White"), emails = emptyList()),
-            crm = CRMEnvelope(circles = listOf("friends")),
+            crm = CRMEnvelope(circles = listOf("friends"))
         )
         coEvery { apiClient.getContact(5) } returns Result.success(record)
 
@@ -517,10 +624,14 @@ class ContactRepositoryImplTest {
             com.mycorrhizal.crm.data.local.CachedContact(
                 id = 5,
                 uid = "u5",
-                card = Card(name = Name(full = "Dana White")),
-            ),
+                card = Card(name = Name(full = "Dana White"))
+            )
         )
-        coEvery { apiClient.getContact(5) } returns Result.failure(ApiError.Network(java.io.IOException("no net")))
+        coEvery {
+            apiClient.getContact(
+                5
+            )
+        } returns Result.failure(ApiError.Network(java.io.IOException("no net")))
 
         val result = repository.getContact(5)
 
@@ -531,7 +642,7 @@ class ContactRepositoryImplTest {
     @Test
     fun `getContact propagates failure when no cache exists`() = runTest {
         coEvery { apiClient.getContact(999) } returns Result.failure(
-            ApiError.Client(404, "Contact not found"),
+            ApiError.Client(404, "Contact not found")
         )
 
         val result = repository.getContact(999)
@@ -549,14 +660,14 @@ class ContactRepositoryImplTest {
             com.mycorrhizal.crm.data.local.CachedContact(
                 id = 1,
                 fn = "Alice",
-                card = Card(name = Name(full = "Alice Full Name")),
-            ),
+                card = Card(name = Name(full = "Alice Full Name"))
+            )
         )
         coEvery { apiClient.listContacts(any(), any(), any(), any()) } returns Result.success(
             com.mycorrhizal.crm.model.network.ContactsPage(
                 contacts = listOf(summary(1, "Alice")),
-                nextCursor = "",
-            ),
+                nextCursor = ""
+            )
         )
 
         repository.listContacts()
@@ -572,8 +683,8 @@ class ContactRepositoryImplTest {
         coEvery { apiClient.listContacts(any(), any(), any(), any()) } returns Result.success(
             com.mycorrhizal.crm.model.network.ContactsPage(
                 contacts = listOf(summary(1, "Alice").copy(primaryPhone = "555-0100")),
-                nextCursor = "",
-            ),
+                nextCursor = ""
+            )
         )
 
         repository.listContacts()
@@ -582,47 +693,52 @@ class ContactRepositoryImplTest {
     }
 
     @Test
-    fun `issue 1122 a detail fetch hydrates the full phone index and clears it from the backfill queue`() = runTest {
-        // Simulates the ContactPhoneIndexBackfillWorker loop end to end: a
-        // contact synced only via the list endpoint has a non-primary number
-        // that findByPhone can't match until getContact hydrates it.
-        coEvery { apiClient.listContacts(any(), any(), any(), any()) } returns Result.success(
-            com.mycorrhizal.crm.model.network.ContactsPage(
-                contacts = listOf(summary(1, "Dana White").copy(primaryPhone = "555-0100")),
-                nextCursor = "",
-            ),
-        )
-        repository.listContacts()
-        assertEquals(null, repository.findByPhone("555-0200"))
-        assertEquals(listOf(1), repository.getContactIdsMissingPhoneIndex(limit = 10))
+    fun `issue 1122 a detail fetch hydrates the full phone index and clears it from the backfill queue`() =
+        runTest {
+            // Simulates the ContactPhoneIndexBackfillWorker loop end to end: a
+            // contact synced only via the list endpoint has a non-primary number
+            // that findByPhone can't match until getContact hydrates it.
+            coEvery { apiClient.listContacts(any(), any(), any(), any()) } returns Result.success(
+                com.mycorrhizal.crm.model.network.ContactsPage(
+                    contacts = listOf(summary(1, "Dana White").copy(primaryPhone = "555-0100")),
+                    nextCursor = ""
+                )
+            )
+            repository.listContacts()
+            assertEquals(null, repository.findByPhone("555-0200"))
+            assertEquals(listOf(1), repository.getContactIdsMissingPhoneIndex(limit = 10))
 
-        coEvery { apiClient.getContact(1) } returns Result.success(
-            ContactRecordResponse(
-                id = 1,
-                uid = "u1",
-                card = Card(
-                    name = Name(full = "Dana White"),
-                    phones = listOf(
-                        com.mycorrhizal.crm.model.network.Phone(number = "555-0100"),
-                        com.mycorrhizal.crm.model.network.Phone(number = "555-0200"),
-                    ),
-                ),
-            ),
-        )
+            coEvery { apiClient.getContact(1) } returns Result.success(
+                ContactRecordResponse(
+                    id = 1,
+                    uid = "u1",
+                    card = Card(
+                        name = Name(full = "Dana White"),
+                        phones = listOf(
+                            com.mycorrhizal.crm.model.network.Phone(number = "555-0100"),
+                            com.mycorrhizal.crm.model.network.Phone(number = "555-0200")
+                        )
+                    )
+                )
+            )
 
-        repository.getContact(1)
+            repository.getContact(1)
 
-        assertEquals(1, repository.findByPhone("555-0200")?.id)
-        assertTrue(repository.getContactIdsMissingPhoneIndex(limit = 10).isEmpty())
-    }
+            assertEquals(1, repository.findByPhone("555-0200")?.id)
+            assertTrue(repository.getContactIdsMissingPhoneIndex(limit = 10).isEmpty())
+        }
 
     @Test
     fun `observeContacts surfaces cached summaries`() = runTest {
         db.cachedContactDao().upsertAll(
             listOf(
-                com.mycorrhizal.crm.data.local.CachedContact(id = 1, fn = "Alice", firstname = "Alice"),
-                com.mycorrhizal.crm.data.local.CachedContact(id = 2, fn = "Bob", firstname = "Bob"),
-            ),
+                com.mycorrhizal.crm.data.local.CachedContact(
+                    id = 1,
+                    fn = "Alice",
+                    firstname = "Alice"
+                ),
+                com.mycorrhizal.crm.data.local.CachedContact(id = 2, fn = "Bob", firstname = "Bob")
+            )
         )
 
         val observed = repository.observeContacts().first()
@@ -633,7 +749,11 @@ class ContactRepositoryImplTest {
 
     @Test
     fun `createContact caches the created record`() = runTest {
-        val created = ContactRecordResponse(id = 9, uid = "u9", card = Card(name = Name(full = "Carol King")))
+        val created = ContactRecordResponse(
+            id = 9,
+            uid = "u9",
+            card = Card(name = Name(full = "Carol King"))
+        )
         coEvery { apiClient.createContact(any()) } returns Result.success(created)
         val input = ContactRecordInput(card = Card(name = Name(full = "Carol King")))
 
@@ -647,7 +767,11 @@ class ContactRepositoryImplTest {
 
     @Test
     fun `updateContact caches the updated record`() = runTest {
-        val updated = ContactRecordResponse(id = 9, uid = "u9", card = Card(name = Name(full = "Carol King Renamed")))
+        val updated = ContactRecordResponse(
+            id = 9,
+            uid = "u9",
+            card = Card(name = Name(full = "Carol King Renamed"))
+        )
         coEvery { apiClient.updateContact(9, any()) } returns Result.success(updated)
         val input = ContactRecordInput(card = Card(name = Name(full = "Carol King Renamed")))
 
@@ -661,7 +785,10 @@ class ContactRepositoryImplTest {
     @Test
     fun `createContact propagates a validation failure`() = runTest {
         coEvery { apiClient.createContact(any()) } returns Result.failure(
-            ApiError.Client(400, "at least one name component (kind=given) or name.full is required"),
+            ApiError.Client(
+                400,
+                "at least one name component (kind=given) or name.full is required"
+            )
         )
 
         val result = repository.createContact(ContactRecordInput(card = Card()))
@@ -676,8 +803,8 @@ class ContactRepositoryImplTest {
         db.cachedContactDao().upsertAll(
             listOf(
                 com.mycorrhizal.crm.data.local.CachedContact(id = 1, fn = "David Smith"),
-                com.mycorrhizal.crm.data.local.CachedContact(id = 2, fn = "Bob Jones"),
-            ),
+                com.mycorrhizal.crm.data.local.CachedContact(id = 2, fn = "Bob Jones")
+            )
         )
 
         val result = repository.searchLocal("dav")
@@ -696,10 +823,12 @@ class ContactRepositoryImplTest {
                     id = 1,
                     fn = "Dana White",
                     primaryPhone = "(800) 555-1234",
-                    phonesNormalized = com.mycorrhizal.crm.data.local.PhoneKey.flatten(listOf("(800) 555-1234")),
+                    phonesNormalized = com.mycorrhizal.crm.data.local.PhoneKey.flatten(
+                        listOf("(800) 555-1234")
+                    )
                 ),
-                com.mycorrhizal.crm.data.local.CachedContact(id = 2, fn = "Bob Jones"),
-            ),
+                com.mycorrhizal.crm.data.local.CachedContact(id = 2, fn = "Bob Jones")
+            )
         )
 
         val result = repository.searchLocal("8005551234")
@@ -709,35 +838,38 @@ class ContactRepositoryImplTest {
     }
 
     @Test
-    fun `searchLocal finds a contact by querying with a country code the stored number lacks`() = runTest {
-        // The specific thing PhoneKey's digits-vs-key duality buys over a bare/unrestricted FTS
-        // prefix match: "18005551234" is not a prefix of the stored "8005551234" token or vice
-        // versa, so only the OR'd key match (via phoneMatchExpr) finds it. This is the part a
-        // weaker "does *any* phone query work" test wouldn't catch regressing.
-        db.cachedContactDao().upsertAll(
-            listOf(
-                com.mycorrhizal.crm.data.local.CachedContact(
-                    id = 1,
-                    fn = "Dana White",
-                    primaryPhone = "(800) 555-1234",
-                    phonesNormalized = com.mycorrhizal.crm.data.local.PhoneKey.flatten(listOf("(800) 555-1234")),
-                ),
-            ),
-        )
+    fun `searchLocal finds a contact by querying with a country code the stored number lacks`() =
+        runTest {
+            // The specific thing PhoneKey's digits-vs-key duality buys over a bare/unrestricted FTS
+            // prefix match: "18005551234" is not a prefix of the stored "8005551234" token or vice
+            // versa, so only the OR'd key match (via phoneMatchExpr) finds it. This is the part a
+            // weaker "does *any* phone query work" test wouldn't catch regressing.
+            db.cachedContactDao().upsertAll(
+                listOf(
+                    com.mycorrhizal.crm.data.local.CachedContact(
+                        id = 1,
+                        fn = "Dana White",
+                        primaryPhone = "(800) 555-1234",
+                        phonesNormalized = com.mycorrhizal.crm.data.local.PhoneKey.flatten(
+                            listOf("(800) 555-1234")
+                        )
+                    )
+                )
+            )
 
-        val result = repository.searchLocal("+1 (800) 555-1234")
+            val result = repository.searchLocal("+1 (800) 555-1234")
 
-        assertEquals(1, result.size)
-        assertEquals("Dana White", result[0].fn)
-    }
+            assertEquals(1, result.size)
+            assertEquals("Dana White", result[0].fn)
+        }
 
     @Test
     fun `searchLocal with a blank query returns the whole cache`() = runTest {
         db.cachedContactDao().upsertAll(
             listOf(
                 com.mycorrhizal.crm.data.local.CachedContact(id = 1, fn = "Alice"),
-                com.mycorrhizal.crm.data.local.CachedContact(id = 2, fn = "Bob"),
-            ),
+                com.mycorrhizal.crm.data.local.CachedContact(id = 2, fn = "Bob")
+            )
         )
 
         val result = repository.searchLocal("")
@@ -748,7 +880,7 @@ class ContactRepositoryImplTest {
     @Test
     fun `searchLocal strips FTS operator characters from the query`() = runTest {
         db.cachedContactDao().upsertAll(
-            listOf(com.mycorrhizal.crm.data.local.CachedContact(id = 1, fn = "David Smith")),
+            listOf(com.mycorrhizal.crm.data.local.CachedContact(id = 1, fn = "David Smith"))
         )
 
         // A quote would otherwise break the FTS MATCH expression.
@@ -761,7 +893,7 @@ class ContactRepositoryImplTest {
     @Test
     fun `searchLocal tolerates unbalanced parens and NEAR without crashing`() = runTest {
         db.cachedContactDao().upsertAll(
-            listOf(com.mycorrhizal.crm.data.local.CachedContact(id = 1, fn = "David Smith")),
+            listOf(com.mycorrhizal.crm.data.local.CachedContact(id = 1, fn = "David Smith"))
         )
 
         // Unbalanced parens or a bare NEAR throw "malformed MATCH expression"
@@ -786,8 +918,10 @@ class ContactRepositoryImplTest {
                 id = 1,
                 fn = "Klara Beispiel",
                 primaryPhone = "+49 (0) 151 12345678",
-                phonesNormalized = com.mycorrhizal.crm.data.local.PhoneKey.flatten(listOf("+49 (0) 151 12345678")),
-            ),
+                phonesNormalized = com.mycorrhizal.crm.data.local.PhoneKey.flatten(
+                    listOf("+49 (0) 151 12345678")
+                )
+            )
         )
 
         assertEquals(1, repository.findByPhone("+4915112345678")?.id)
@@ -803,9 +937,9 @@ class ContactRepositoryImplTest {
                 fn = "Dana White",
                 primaryPhone = "(800) 555-1234",
                 phonesNormalized = com.mycorrhizal.crm.data.local.PhoneKey.flatten(
-                    listOf("(800) 555-1234", "555-0100"),
-                ),
-            ),
+                    listOf("(800) 555-1234", "555-0100")
+                )
+            )
         )
 
         assertEquals(1, repository.findByPhone("5550100")?.id)
@@ -818,8 +952,8 @@ class ContactRepositoryImplTest {
                 id = 1,
                 fn = "Short Code",
                 primaryPhone = "5551",
-                phonesNormalized = com.mycorrhizal.crm.data.local.PhoneKey.flatten(listOf("5551")),
-            ),
+                phonesNormalized = com.mycorrhizal.crm.data.local.PhoneKey.flatten(listOf("5551"))
+            )
         )
 
         assertNull(repository.findByPhone("5551"))
@@ -833,9 +967,11 @@ class ContactRepositoryImplTest {
                 id = 1,
                 fn = "Dana White",
                 primaryPhone = "(800) 555-1234",
-                phonesNormalized = com.mycorrhizal.crm.data.local.PhoneKey.flatten(listOf("(800) 555-1234")),
-                deleted = true,
-            ),
+                phonesNormalized = com.mycorrhizal.crm.data.local.PhoneKey.flatten(
+                    listOf("(800) 555-1234")
+                ),
+                deleted = true
+            )
         )
 
         assertNull(repository.findByPhone("8005551234"))
@@ -844,7 +980,7 @@ class ContactRepositoryImplTest {
     @Test
     fun `findByPhone returns null when no contact matches`() = runTest {
         db.cachedContactDao().upsert(
-            com.mycorrhizal.crm.data.local.CachedContact(id = 1, fn = "Bob Jones"),
+            com.mycorrhizal.crm.data.local.CachedContact(id = 1, fn = "Bob Jones")
         )
 
         assertNull(repository.findByPhone("8005551234"))
@@ -854,7 +990,9 @@ class ContactRepositoryImplTest {
 
     @Test
     fun `deleteContact removes the cached row on success`() = runTest {
-        db.cachedContactDao().upsert(com.mycorrhizal.crm.data.local.CachedContact(id = 5, fn = "Dana White"))
+        db.cachedContactDao().upsert(
+            com.mycorrhizal.crm.data.local.CachedContact(id = 5, fn = "Dana White")
+        )
         coEvery { apiClient.deleteContact(5) } returns Result.success(Unit)
 
         val result = repository.deleteContact(5, null)
@@ -866,7 +1004,9 @@ class ContactRepositoryImplTest {
 
     @Test
     fun `deleteContact failure leaves the cached row in place`() = runTest {
-        db.cachedContactDao().upsert(com.mycorrhizal.crm.data.local.CachedContact(id = 5, fn = "Dana White"))
+        db.cachedContactDao().upsert(
+            com.mycorrhizal.crm.data.local.CachedContact(id = 5, fn = "Dana White")
+        )
         coEvery { apiClient.deleteContact(5) } returns Result.failure(ApiError.Server(500, "boom"))
 
         val result = repository.deleteContact(5, null)
@@ -877,7 +1017,13 @@ class ContactRepositoryImplTest {
 
     @Test
     fun `archiveContact flips the cached archived flag on success`() = runTest {
-        db.cachedContactDao().upsert(com.mycorrhizal.crm.data.local.CachedContact(id = 5, fn = "Dana White", archived = false))
+        db.cachedContactDao().upsert(
+            com.mycorrhizal.crm.data.local.CachedContact(
+                id = 5,
+                fn = "Dana White",
+                archived = false
+            )
+        )
         coEvery { apiClient.archiveContact(5) } returns Result.success(Unit)
 
         val result = repository.archiveContact(5)
@@ -888,7 +1034,9 @@ class ContactRepositoryImplTest {
 
     @Test
     fun `unarchiveContact flips the cached archived flag back`() = runTest {
-        db.cachedContactDao().upsert(com.mycorrhizal.crm.data.local.CachedContact(id = 5, fn = "Dana White", archived = true))
+        db.cachedContactDao().upsert(
+            com.mycorrhizal.crm.data.local.CachedContact(id = 5, fn = "Dana White", archived = true)
+        )
         coEvery { apiClient.unarchiveContact(5) } returns Result.success(Unit)
 
         val result = repository.unarchiveContact(5)
@@ -910,7 +1058,12 @@ class ContactRepositoryImplTest {
 
     @Test
     fun `exportContactVcf propagates a backend failure`() = runTest {
-        coEvery { apiClient.exportContactVcf("u5", 3) } returns Result.failure(ApiError.Client(400, "bad request"))
+        coEvery {
+            apiClient.exportContactVcf(
+                "u5",
+                3
+            )
+        } returns Result.failure(ApiError.Client(400, "bad request"))
 
         val result = repository.exportContactVcf("u5", version = 3)
 
@@ -957,11 +1110,16 @@ class ContactRepositoryImplTest {
                 sourceId = "bob-uid",
                 sourceName = "Bob",
                 relationType = "spouse_of",
-                addressKey = "key1",
-            ),
+                addressKey = "key1"
+            )
         )
         coEvery { apiClient.suggestContactAddresses() } returns
-            Result.success(com.mycorrhizal.crm.model.network.ContactAddressSuggestionsResponse(suggestions = suggestions, total = 1))
+            Result.success(
+                com.mycorrhizal.crm.model.network.ContactAddressSuggestionsResponse(
+                    suggestions = suggestions,
+                    total = 1
+                )
+            )
 
         val result = repository.suggestContactAddresses()
 
@@ -971,7 +1129,9 @@ class ContactRepositoryImplTest {
 
     @Test
     fun `suggestContactAddresses propagates a backend failure`() = runTest {
-        coEvery { apiClient.suggestContactAddresses() } returns Result.failure(ApiError.Client(500, "boom"))
+        coEvery { apiClient.suggestContactAddresses() } returns Result.failure(
+            ApiError.Client(500, "boom")
+        )
 
         val result = repository.suggestContactAddresses()
 
@@ -984,7 +1144,7 @@ class ContactRepositoryImplTest {
             contactVCardUid = "alice-uid",
             sourceKind = "relationship",
             sourceId = "bob-uid",
-            addressKey = "key1",
+            addressKey = "key1"
         )
         coEvery { apiClient.applyContactAddressSuggestion(input) } returns Result.success(Unit)
 
@@ -996,7 +1156,13 @@ class ContactRepositoryImplTest {
     // Issue #1665 / ADR 0008: the revision is forwarded as If-Match; a 412 leaves the cache alone.
     @Test
     fun `updateContact and deleteContact forward the revision`() = runTest {
-        coEvery { apiClient.updateContact(9, any(), 5) } returns Result.success(ContactRecordResponse(id = 9, uid = "u9"))
+        coEvery {
+            apiClient.updateContact(
+                9,
+                any(),
+                5
+            )
+        } returns Result.success(ContactRecordResponse(id = 9, uid = "u9"))
         coEvery { apiClient.deleteContact(9, 6) } returns Result.success(Unit)
 
         assertTrue(repository.updateContact(9, ContactRecordInput(), 5).isSuccess)
@@ -1008,7 +1174,13 @@ class ContactRepositoryImplTest {
 
     @Test
     fun `a 412 update returns the typed conflict`() = runTest {
-        coEvery { apiClient.updateContact(9, any(), 5) } returns Result.failure(ApiError.PreconditionFailed("stale"))
+        coEvery {
+            apiClient.updateContact(
+                9,
+                any(),
+                5
+            )
+        } returns Result.failure(ApiError.PreconditionFailed("stale"))
 
         val result = repository.updateContact(9, ContactRecordInput(), 5)
 

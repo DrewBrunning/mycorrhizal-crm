@@ -2,15 +2,15 @@ package com.mycorrhizal.crm.model.util
 
 import com.mycorrhizal.crm.model.network.PartialDate
 import com.mycorrhizal.crm.model.util.DateFormat.display
+import java.time.ZoneId
+import java.util.Locale
+import java.util.TimeZone
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import java.time.ZoneId
-import java.util.Locale
-import java.util.TimeZone
 
 class DateFormatTest {
 
@@ -49,7 +49,7 @@ class DateFormatTest {
             "us-mmm" to "Jun 11, 2026",
             "us-mmmm" to "June 11, 2026",
             "eu-mmm" to "11 Jun, 2026",
-            "eu-mmmm" to "11 June, 2026",
+            "eu-mmmm" to "11 June, 2026"
         )
         assertEquals(DateFormat.ALL_FORMATS.toSet(), expected.keys)
         expected.forEach { (token, text) ->
@@ -59,7 +59,15 @@ class DateFormatTest {
 
     @Test
     fun `every token renders distinctly`() {
-        val rendered = DateFormat.ALL_FORMATS.map { DateFormat.formatFull(2026, 6, 11, it, Locale.ENGLISH) }
+        val rendered = DateFormat.ALL_FORMATS.map {
+            DateFormat.formatFull(
+                2026,
+                6,
+                11,
+                it,
+                Locale.ENGLISH
+            )
+        }
         assertEquals(rendered.size, rendered.toSet().size)
     }
 
@@ -80,8 +88,14 @@ class DateFormatTest {
     fun `month names follow the locale`() {
         assertEquals("11 Juni, 2026", DateFormat.formatFull(2026, 6, 11, "eu-mmmm", Locale.GERMAN))
         assertEquals("11 juin, 2026", DateFormat.formatFull(2026, 6, 11, "eu-mmmm", Locale.FRENCH))
-        assertEquals("11 giugno, 2026", DateFormat.formatFull(2026, 6, 11, "eu-mmmm", Locale.ITALIAN))
-        assertEquals("11 junio, 2026", DateFormat.formatFull(2026, 6, 11, "eu-mmmm", Locale.forLanguageTag("es")))
+        assertEquals(
+            "11 giugno, 2026",
+            DateFormat.formatFull(2026, 6, 11, "eu-mmmm", Locale.ITALIAN)
+        )
+        assertEquals(
+            "11 junio, 2026",
+            DateFormat.formatFull(2026, 6, 11, "eu-mmmm", Locale.forLanguageTag("es"))
+        )
         assertEquals("März 3, 2026", DateFormat.formatFull(2026, 3, 3, "us-mmmm", Locale.GERMAN))
         // The default-locale overload follows Locale.getDefault().
         Locale.setDefault(Locale.GERMAN)
@@ -91,7 +105,12 @@ class DateFormatTest {
 
     @Test
     fun `numeric formats are locale independent`() {
-        for (locale in listOf(Locale.GERMAN, Locale.FRENCH, Locale.ITALIAN, Locale.forLanguageTag("es"))) {
+        for (locale in listOf(
+            Locale.GERMAN,
+            Locale.FRENCH,
+            Locale.ITALIAN,
+            Locale.forLanguageTag("es")
+        )) {
             assertEquals("11.06.2026", DateFormat.formatFull(2026, 6, 11, "eu", locale))
             assertEquals("06/11/2026", DateFormat.formatFull(2026, 6, 11, "us", locale))
         }
@@ -120,7 +139,7 @@ class DateFormatTest {
             "us-mmm" to "Apr 30",
             "us-mmmm" to "April 30",
             "eu-mmm" to "30 Apr",
-            "eu-mmmm" to "30 April",
+            "eu-mmmm" to "30 April"
         )
         expected.forEach { (token, text) -> assertEquals(token, text, date.display(token)) }
     }
@@ -154,34 +173,62 @@ class DateFormatTest {
         // activity/note date, reminder remind_at: stored 00:00Z. West of UTC the
         // instant is the previous evening; the day must still read the 21st.
         for (zone in listOf(chicago, auckland, utc)) {
-            assertEquals(zone.id, "21.09.2026", DateFormat.formatTimestamp("2026-09-21T00:00:00Z", "eu", zone))
-            assertEquals(zone.id, "2026-09-21", DateFormat.formatTimestamp("2026-09-21T00:00:00.000Z", "iso", zone))
-            assertEquals(zone.id, "21.09.2026", DateFormat.formatTimestamp("2026-09-21T00:00:00+00:00", "eu", zone))
+            assertEquals(
+                zone.id,
+                "21.09.2026",
+                DateFormat.formatTimestamp("2026-09-21T00:00:00Z", "eu", zone)
+            )
+            assertEquals(
+                zone.id,
+                "2026-09-21",
+                DateFormat.formatTimestamp("2026-09-21T00:00:00.000Z", "iso", zone)
+            )
+            assertEquals(
+                zone.id,
+                "21.09.2026",
+                DateFormat.formatTimestamp("2026-09-21T00:00:00+00:00", "eu", zone)
+            )
         }
     }
 
     @Test
     fun `a date-only value is never zone shifted`() {
         for (zone in listOf(chicago, auckland, utc)) {
-            assertEquals(zone.id, "21.09.2026", DateFormat.formatTimestamp("2026-09-21", "eu", zone))
+            assertEquals(
+                zone.id,
+                "21.09.2026",
+                DateFormat.formatTimestamp("2026-09-21", "eu", zone)
+            )
         }
     }
 
     @Test
     fun `a real instant renders its local calendar date`() {
         // 2026-09-10T01:00Z is the 9th, 20:00 in Chicago; the 10th in UTC; the 10th 13:00 in Auckland.
-        assertEquals("09.09.2026", DateFormat.formatTimestamp("2026-09-10T01:00:00Z", "eu", chicago))
+        assertEquals(
+            "09.09.2026",
+            DateFormat.formatTimestamp("2026-09-10T01:00:00Z", "eu", chicago)
+        )
         assertEquals("10.09.2026", DateFormat.formatTimestamp("2026-09-10T01:00:00Z", "eu", utc))
-        assertEquals("10.09.2026", DateFormat.formatTimestamp("2026-09-10T01:00:00Z", "eu", auckland))
+        assertEquals(
+            "10.09.2026",
+            DateFormat.formatTimestamp("2026-09-10T01:00:00Z", "eu", auckland)
+        )
         // 2026-09-10T14:00Z is already the 11th in Auckland (NZST/NZDT is ahead).
-        assertEquals("11.09.2026", DateFormat.formatTimestamp("2026-09-10T14:00:00Z", "eu", auckland))
+        assertEquals(
+            "11.09.2026",
+            DateFormat.formatTimestamp("2026-09-10T14:00:00Z", "eu", auckland)
+        )
     }
 
     @Test
     fun `a midnight in a non-zero offset is a real instant`() {
         // Only an exact zero-offset midnight is a calendar day (web parity):
         // 02:00+02:00 on the 10th is 00:00Z but was not stored as a picked day.
-        assertEquals("09.09.2026", DateFormat.formatTimestamp("2026-09-10T02:00:00+02:00", "eu", chicago))
+        assertEquals(
+            "09.09.2026",
+            DateFormat.formatTimestamp("2026-09-10T02:00:00+02:00", "eu", chicago)
+        )
     }
 
     @Test
@@ -197,11 +244,11 @@ class DateFormatTest {
         assertEquals("09/10/2026", DateFormat.formatTimestamp("2026-09-10T00:00:00Z", "us", utc))
         assertEquals(
             "10 September, 2026",
-            DateFormat.formatTimestamp("2026-09-10T00:00:00Z", "eu-mmmm", utc, Locale.ENGLISH),
+            DateFormat.formatTimestamp("2026-09-10T00:00:00Z", "eu-mmmm", utc, Locale.ENGLISH)
         )
         assertEquals(
             "10 septembre, 2026",
-            DateFormat.formatTimestamp("2026-09-10T00:00:00Z", "eu-mmmm", utc, Locale.FRENCH),
+            DateFormat.formatTimestamp("2026-09-10T00:00:00Z", "eu-mmmm", utc, Locale.FRENCH)
         )
     }
 
@@ -238,9 +285,15 @@ class DateFormatTest {
         // en-US with the device on 24-hour shows 14:30 even though en-US defaults to 12-hour.
         assertEquals("14:30", DateFormat.formatTime(noon, true, chicago, Locale.US))
         // en-US with 12-hour (newer JDKs put a narrow no-break space before PM).
-        assertEquals("2:30 PM", DateFormat.formatTime(noon, false, chicago, Locale.US).replace('\u202f', ' '))
+        assertEquals(
+            "2:30 PM",
+            DateFormat.formatTime(noon, false, chicago, Locale.US).replace('\u202f', ' ')
+        )
         // de defaults to 24-hour, but a 12-hour preference wins.
-        assertEquals("2:30 PM", DateFormat.formatTime(noon, false, chicago, Locale.GERMANY).replace('\u202f', ' '))
+        assertEquals(
+            "2:30 PM",
+            DateFormat.formatTime(noon, false, chicago, Locale.GERMANY).replace('\u202f', ' ')
+        )
         assertEquals("14:30", DateFormat.formatTime(noon, true, chicago, Locale.GERMANY))
         assertEquals("", DateFormat.formatTime(null, true))
         assertEquals("", DateFormat.formatTime("nope", false))

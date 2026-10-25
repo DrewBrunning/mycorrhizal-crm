@@ -2,7 +2,6 @@ package com.mycorrhizal.crm.feature.circles
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -10,21 +9,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import com.mycorrhizal.crm.ui.components.AccessibleIconButton
-import com.mycorrhizal.crm.ui.components.DiscardChangesDialog
-import com.mycorrhizal.crm.ui.components.RowAction
-import com.mycorrhizal.crm.ui.components.RowOverflowMenu
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -42,18 +34,22 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.res.stringResource
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.Circle
+import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.BrandFab
-import com.mycorrhizal.crm.ui.components.FabListContentPadding
+import com.mycorrhizal.crm.ui.components.DiscardChangesDialog
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
-import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.RowAction
+import com.mycorrhizal.crm.ui.components.RowOverflowMenu
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,7 +57,7 @@ fun CirclesScreen(
     // Issue #150: null hides the hamburger — there is no drawer at Expanded.
     onMenuClick: (() -> Unit)? = {},
     onOpenCircle: (String) -> Unit,
-    viewModel: CirclesViewModel = hiltViewModel(),
+    viewModel: CirclesViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -73,19 +69,25 @@ fun CirclesScreen(
                 navigationIcon = {
                     onMenuClick?.let { onMenu ->
                         AccessibleIconButton(onClick = onMenu) {
-                            Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
+                            Icon(
+                                Icons.Outlined.Menu,
+                                contentDescription = stringResource(R.string.cd_menu)
+                            )
                         }
                     }
                 },
                 title = {
-                    Text(stringResource(R.string.circles_title), style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        stringResource(R.string.circles_title),
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
         floatingActionButton = {
@@ -93,38 +95,44 @@ fun CirclesScreen(
                 Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.circles_new))
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             RefreshableContent(
                 isRefreshing = state.isLoading && state.circles.isNotEmpty(),
                 onRefresh = viewModel::load,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize()
             ) {
                 when {
                     state.isLoading && state.circles.isEmpty() -> LoadingSkeleton()
+
                     state.circles.isEmpty() && state.error == null ->
                         EmptyState(
                             title = stringResource(R.string.circles_empty),
                             body = stringResource(R.string.circles_empty_body),
                             actionLabel = stringResource(R.string.circles_new),
-                            onAction = { showCreateDialog = true },
+                            onAction = { showCreateDialog = true }
                         )
+
                     state.circles.isEmpty() && state.error != null -> {
                         Text(
                             text = state.error.orEmpty(),
                             color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.align(Alignment.Center),
+                            modifier = Modifier.align(Alignment.Center)
                         )
                     }
+
                     else -> {
-                        LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = FabListContentPadding) {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = FabListContentPadding
+                        ) {
                             items(state.circles, key = { it.id }) { circle ->
                                 CircleListItem(
                                     circle = circle,
                                     onClick = { onOpenCircle(circle.id) },
                                     onRename = { name -> viewModel.rename(circle.id, name) },
-                                    onDelete = { viewModel.delete(circle.id) },
+                                    onDelete = { viewModel.delete(circle.id) }
                                 )
                             }
                         }
@@ -143,7 +151,7 @@ fun CirclesScreen(
                 viewModel.create(name)
                 showCreateDialog = false
             },
-            onDismiss = { showCreateDialog = false },
+            onDismiss = { showCreateDialog = false }
         )
     }
 
@@ -160,7 +168,7 @@ private fun CircleListItem(
     circle: Circle,
     onClick: () -> Unit,
     onRename: (String) -> Unit,
-    onDelete: () -> Unit,
+    onDelete: () -> Unit
 ) {
     var renaming by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
@@ -170,8 +178,11 @@ private fun CircleListItem(
             title = stringResource(R.string.circles_rename),
             initial = circle.name,
             confirmLabel = stringResource(R.string.action_save),
-            onConfirm = { name -> onRename(name); renaming = false },
-            onDismiss = { renaming = false },
+            onConfirm = { name ->
+                onRename(name)
+                renaming = false
+            },
+            onDismiss = { renaming = false }
         )
     }
     if (deleting) {
@@ -180,7 +191,10 @@ private fun CircleListItem(
             title = { Text(stringResource(R.string.circles_delete_title)) },
             text = { Text(stringResource(R.string.circles_delete_confirm, circle.name)) },
             confirmButton = {
-                TextButton(onClick = { onDelete(); deleting = false }) {
+                TextButton(onClick = {
+                    onDelete()
+                    deleting = false
+                }) {
                     Text(stringResource(R.string.action_delete))
                 }
             },
@@ -188,7 +202,7 @@ private fun CircleListItem(
                 TextButton(onClick = { deleting = false }) {
                     Text(stringResource(R.string.action_cancel))
                 }
-            },
+            }
         )
     }
 
@@ -198,19 +212,19 @@ private fun CircleListItem(
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp),
+        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)
     ) {
         Icon(
             imageVector = Icons.Outlined.Person,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Text(
             text = circle.name,
             style = MaterialTheme.typography.bodyLarge,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f)
         )
         // #1760: secondary actions behind one overflow button; its label carries
         // the circle name so TalkBack doesn't read a bare "More actions" per row (#205).
@@ -218,8 +232,12 @@ private fun CircleListItem(
             rowName = circle.name,
             actions = listOf(
                 RowAction(stringResource(R.string.action_rename), onClick = { renaming = true }),
-                RowAction(stringResource(R.string.action_delete), onClick = { deleting = true }, destructive = true),
-            ),
+                RowAction(
+                    stringResource(R.string.action_delete),
+                    onClick = { deleting = true },
+                    destructive = true
+                )
+            )
         )
         Icon(Icons.AutoMirrored.Outlined.ArrowForward, contentDescription = null)
     }
@@ -231,7 +249,7 @@ fun CircleNameDialog(
     initial: String,
     confirmLabel: String,
     onConfirm: (String) -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     var name by remember { mutableStateOf(initial) }
     var showDiscardDialog by rememberSaveable { mutableStateOf(false) }
@@ -245,13 +263,13 @@ fun CircleNameDialog(
                 value = name,
                 onValueChange = { name = it },
                 label = { Text(stringResource(R.string.circles_name)) },
-                singleLine = true,
+                singleLine = true
             )
         },
         confirmButton = {
             TextButton(
                 onClick = { onConfirm(name) },
-                enabled = name.isNotBlank(),
+                enabled = name.isNotBlank()
             ) {
                 Text(confirmLabel)
             }
@@ -260,7 +278,7 @@ fun CircleNameDialog(
             TextButton(onClick = requestDismiss) {
                 Text(stringResource(R.string.action_cancel))
             }
-        },
+        }
     )
 
     if (showDiscardDialog) {
@@ -270,7 +288,7 @@ fun CircleNameDialog(
             onDiscard = {
                 showDiscardDialog = false
                 onDismiss()
-            },
+            }
         )
     }
 }

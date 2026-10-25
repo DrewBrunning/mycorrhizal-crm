@@ -47,7 +47,7 @@ fun ContactMapView(
     points: List<MapPoint>,
     selectedKey: String?,
     onSelect: (String?) -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val mapView = remember { createMapView(context) }
@@ -89,14 +89,16 @@ fun ContactMapView(
         mapView.getMapAsync { map ->
             holder.map = map
             map.setStyle(Style.Builder().fromUri(styleUrl)) { style ->
-                style.addSource(GeoJsonSource(SOURCE_ID, FeatureCollection.fromFeatures(emptyList())))
+                style.addSource(
+                    GeoJsonSource(SOURCE_ID, FeatureCollection.fromFeatures(emptyList()))
+                )
                 style.addLayer(
                     CircleLayer(LAYER_ID, SOURCE_ID).withProperties(
                         PropertyFactory.circleColor("#3b5340"),
                         PropertyFactory.circleStrokeColor("#ffffff"),
                         PropertyFactory.circleStrokeWidth(2f),
-                        PropertyFactory.circleRadius(CIRCLE_RADIUS),
-                    ),
+                        PropertyFactory.circleRadius(CIRCLE_RADIUS)
+                    )
                 )
                 holder.styleLoaded = true
                 holder.framedFor = null
@@ -121,13 +123,14 @@ fun ContactMapView(
             if (map != null && style != null && holder.styleLoaded) {
                 render(map, style, points, selectedKey, holder)
             }
-        },
+        }
     )
 }
 
 private class MapHolder {
     var map: MapLibreMap? = null
     var styleLoaded: Boolean = false
+
     /** The point set the camera was last framed for, so a selection change does not re-frame. */
     var framedFor: List<String>? = null
 }
@@ -143,25 +146,27 @@ private fun render(
     style: Style,
     points: List<MapPoint>,
     selectedKey: String?,
-    holder: MapHolder,
+    holder: MapHolder
 ) {
     val features = points.map { p ->
         Feature.fromGeometry(Point.fromLngLat(p.position.longitude, p.position.latitude)).also {
             it.addStringProperty(KEY_PROPERTY, p.key)
         }
     }
-    style.getSourceAs<GeoJsonSource>(SOURCE_ID)?.setGeoJson(FeatureCollection.fromFeatures(features))
+    style.getSourceAs<GeoJsonSource>(
+        SOURCE_ID
+    )?.setGeoJson(FeatureCollection.fromFeatures(features))
     style.getLayerAs<CircleLayer>(LAYER_ID)?.setProperties(
         PropertyFactory.circleRadius(
             Expression.switchCase(
                 Expression.eq(
                     Expression.get(KEY_PROPERTY),
-                    Expression.literal(selectedKey.orEmpty()),
+                    Expression.literal(selectedKey.orEmpty())
                 ),
                 Expression.literal(SELECTED_CIRCLE_RADIUS),
-                Expression.literal(CIRCLE_RADIUS),
-            ),
-        ),
+                Expression.literal(CIRCLE_RADIUS)
+            )
+        )
     )
 
     val keys = points.map { it.key }
@@ -169,20 +174,22 @@ private fun render(
     holder.framedFor = keys
     when (val viewport = viewportFor(points)) {
         MapViewport.World -> Unit
+
         is MapViewport.Single -> map.moveCamera(
             CameraUpdateFactory.newLatLngZoom(
                 LatLng(viewport.position.latitude, viewport.position.longitude),
-                SINGLE_POINT_ZOOM,
-            ),
+                SINGLE_POINT_ZOOM
+            )
         )
+
         is MapViewport.Bounds -> map.moveCamera(
             CameraUpdateFactory.newLatLngBounds(
                 LatLngBounds.Builder()
                     .include(LatLng(viewport.southWest.latitude, viewport.southWest.longitude))
                     .include(LatLng(viewport.northEast.latitude, viewport.northEast.longitude))
                     .build(),
-                FRAME_PADDING_PX,
-            ),
+                FRAME_PADDING_PX
+            )
         )
     }
 }

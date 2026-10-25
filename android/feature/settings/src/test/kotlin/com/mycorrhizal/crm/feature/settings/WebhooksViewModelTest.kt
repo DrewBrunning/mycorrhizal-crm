@@ -25,8 +25,13 @@ class WebhooksViewModelTest {
 
     private val repository = mockk<WebhookRepository>()
 
-    private fun webhook(id: Int, name: String = "Hook $id", isActive: Boolean = true) =
-        Webhook(id = id, name = name, url = "https://example.com/$id", events = listOf("contact.created"), isActive = isActive)
+    private fun webhook(id: Int, name: String = "Hook $id", isActive: Boolean = true) = Webhook(
+        id = id,
+        name = name,
+        url = "https://example.com/$id",
+        events = listOf("contact.created"),
+        isActive = isActive
+    )
 
     @Test
     fun `load populates the webhook list`() = runTest(mainDispatcherRule.testDispatcher) {
@@ -54,12 +59,27 @@ class WebhooksViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { repository.list() } returns Result.success(emptyList())
             coEvery { repository.create(any()) } returns Result.success(
-                WebhookCreateResponse(id = 9, name = "New", url = "https://example.com/new", events = listOf("note.created"), isActive = true, secret = "s3cret"),
+                WebhookCreateResponse(
+                    id = 9,
+                    name = "New",
+                    url = "https://example.com/new",
+                    events = listOf("note.created"),
+                    isActive = true,
+                    secret = "s3cret"
+                )
             )
             val vm = WebhooksViewModel(repository)
             advanceUntilIdle()
 
-            vm.save(WebhookInput(name = "New", url = "https://example.com/new", events = listOf("note.created"), isActive = true), editingId = null)
+            vm.save(
+                WebhookInput(
+                    name = "New",
+                    url = "https://example.com/new",
+                    events = listOf("note.created"),
+                    isActive = true
+                ),
+                editingId = null
+            )
             advanceUntilIdle()
 
             val state = vm.uiState.value
@@ -69,15 +89,25 @@ class WebhooksViewModelTest {
         }
 
     @Test
-    fun `update replaces the edited webhook in place`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `update replaces the edited webhook in place`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.list() } returns Result.success(listOf(webhook(1), webhook(2)))
         coEvery { repository.update(2, any()) } returns Result.success(
-            webhook(2, name = "Renamed", isActive = false),
+            webhook(2, name = "Renamed", isActive = false)
         )
         val vm = WebhooksViewModel(repository)
         advanceUntilIdle()
 
-        vm.save(WebhookInput(name = "Renamed", url = "https://example.com/2", events = listOf("contact.created"), isActive = false), editingId = 2)
+        vm.save(
+            WebhookInput(
+                name = "Renamed",
+                url = "https://example.com/2",
+                events = listOf("contact.created"),
+                isActive = false
+            ),
+            editingId = 2
+        )
         advanceUntilIdle()
 
         assertEquals("Renamed", vm.uiState.value.webhooks[1].name)
@@ -86,7 +116,9 @@ class WebhooksViewModelTest {
     }
 
     @Test
-    fun `delete removes the webhook after a confirmed call`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `delete removes the webhook after a confirmed call`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.list() } returns Result.success(listOf(webhook(1), webhook(2)))
         coEvery { repository.delete(1) } returns Result.success(Unit)
         val vm = WebhooksViewModel(repository)
@@ -104,7 +136,7 @@ class WebhooksViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { repository.list() } returns Result.success(listOf(webhook(1)))
             coEvery { repository.test(1) } returns Result.success(
-                WebhookDelivery(id = 10, webhookId = 1, eventType = "test", statusCode = 200),
+                WebhookDelivery(id = 10, webhookId = 1, eventType = "test", statusCode = 200)
             )
             val vm = WebhooksViewModel(repository)
             advanceUntilIdle()
@@ -124,7 +156,13 @@ class WebhooksViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { repository.list() } returns Result.success(listOf(webhook(1)))
             coEvery { repository.test(1) } returns Result.success(
-                WebhookDelivery(id = 11, webhookId = 1, eventType = "test", statusCode = 500, error = "connection refused"),
+                WebhookDelivery(
+                    id = 11,
+                    webhookId = 1,
+                    eventType = "test",
+                    statusCode = 500,
+                    error = "connection refused"
+                )
             )
             val vm = WebhooksViewModel(repository)
             advanceUntilIdle()
@@ -139,10 +177,19 @@ class WebhooksViewModelTest {
         }
 
     @Test
-    fun `expanding a webhook loads its delivery history once`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `expanding a webhook loads its delivery history once`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.list() } returns Result.success(listOf(webhook(1)))
         coEvery { repository.deliveries(1) } returns Result.success(
-            listOf(WebhookDelivery(id = 1, webhookId = 1, eventType = "contact.created", statusCode = 200)),
+            listOf(
+                WebhookDelivery(
+                    id = 1,
+                    webhookId = 1,
+                    eventType = "contact.created",
+                    statusCode = 200
+                )
+            )
         )
         val vm = WebhooksViewModel(repository)
         advanceUntilIdle()
@@ -160,7 +207,11 @@ class WebhooksViewModelTest {
     fun `delivery history load failure is a transient error, not a crash`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { repository.list() } returns Result.success(listOf(webhook(1)))
-            coEvery { repository.deliveries(1) } returns Result.failure(ApiError.Server(500, "boom"))
+            coEvery {
+                repository.deliveries(
+                    1
+                )
+            } returns Result.failure(ApiError.Server(500, "boom"))
             val vm = WebhooksViewModel(repository)
             advanceUntilIdle()
 

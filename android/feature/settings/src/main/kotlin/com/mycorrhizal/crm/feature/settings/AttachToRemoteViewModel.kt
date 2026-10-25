@@ -18,19 +18,19 @@ import com.mycorrhizal.crm.data.passkey.secondFactorPrompt
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.domain.profile.ServerProfile
 import com.mycorrhizal.crm.domain.profile.ServerProfileKind
-import com.mycorrhizal.crm.model.network.SourceImportResult
 import com.mycorrhizal.crm.model.network.RowImportAction
+import com.mycorrhizal.crm.model.network.SourceImportResult
 import com.mycorrhizal.crm.model.util.Validators
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.toApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /** Where the wizard is. Every step before [Done] leaves the Local profile active and writable. */
 enum class AttachStep {
@@ -43,7 +43,7 @@ enum class AttachStep {
     /** Export/upload/preview failed after sign-in; offers a resumable retry. */
     PrepareFailed,
     Review,
-    Done,
+    Done
 }
 
 data class AttachUiState(
@@ -65,7 +65,7 @@ data class AttachUiState(
     val passkeyIssue: PasskeyIssue? = null,
     val twoFactorMethods: List<String>? = null,
     @StringRes val errorRes: Int? = null,
-    val error: String? = null,
+    val error: String? = null
 )
 
 /**
@@ -79,7 +79,7 @@ data class AttachUiState(
 class AttachToRemoteViewModel @Inject constructor(
     private val coordinator: AttachToRemoteCoordinator,
     private val sessionManager: SessionManager,
-    private val passkeyClient: PasskeyCredentialClient,
+    private val passkeyClient: PasskeyCredentialClient
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AttachUiState())
@@ -89,12 +89,19 @@ class AttachToRemoteViewModel @Inject constructor(
         viewModelScope.launch {
             coordinator.begin().fold(
                 onSuccess = {
-                    val remotes = sessionManager.profiles().filter { it.kind is ServerProfileKind.Remote }
+                    val remotes = sessionManager.profiles().filter {
+                        it.kind is ServerProfileKind.Remote
+                    }
                     _uiState.update { it.copy(step = AttachStep.SignIn, remoteProfiles = remotes) }
                 },
                 onFailure = {
-                    _uiState.update { it.copy(step = AttachStep.Blocked, errorRes = R.string.attach_error_not_local) }
-                },
+                    _uiState.update {
+                        it.copy(
+                            step = AttachStep.Blocked,
+                            errorRes = R.string.attach_error_not_local
+                        )
+                    }
+                }
             )
         }
     }
@@ -103,7 +110,13 @@ class AttachToRemoteViewModel @Inject constructor(
      * Step 1: sign in to [existingProfileId] or, when null, a new profile for
      * [url]. Then straight on to export → upload → preview.
      */
-    fun signIn(existingProfileId: String?, label: String, url: String, identifier: String, password: String) {
+    fun signIn(
+        existingProfileId: String?,
+        label: String,
+        url: String,
+        identifier: String,
+        password: String
+    ) {
         if (_uiState.value.step != AttachStep.SignIn) return
         if (existingProfileId == null && !Validators.isValidServerUrl(url.trim().trimEnd('/'))) {
             _uiState.update { it.copy(errorRes = R.string.servers_add_invalid_url, error = null) }
@@ -114,10 +127,23 @@ class AttachToRemoteViewModel @Inject constructor(
             return
         }
         viewModelScope.launch {
-            _uiState.update { it.copy(step = AttachStep.Working, errorRes = null, error = null, progress = null) }
+            _uiState.update {
+                it.copy(
+                    step = AttachStep.Working,
+                    errorRes = null,
+                    error = null,
+                    progress = null
+                )
+            }
             coordinator.signIn(existingProfileId, label, url, identifier.trim(), password).fold(
                 onSuccess = { outcome -> onSignedIn(outcome) },
-                onFailure = { failure -> fail(AttachStep.SignIn, failure, badCredentialsOn401 = true) },
+                onFailure = { failure ->
+                    fail(
+                        AttachStep.SignIn,
+                        failure,
+                        badCredentialsOn401 = true
+                    )
+                }
             )
         }
     }
@@ -128,7 +154,13 @@ class AttachToRemoteViewModel @Inject constructor(
             _uiState.update { it.copy(step = AttachStep.Working, errorRes = null, error = null) }
             coordinator.completeTwoFactor(code.trim()).fold(
                 onSuccess = { outcome -> onSignedIn(outcome) },
-                onFailure = { failure -> fail(AttachStep.TwoFactor, failure, badCredentialsOn401 = true) },
+                onFailure = { failure ->
+                    fail(
+                        AttachStep.TwoFactor,
+                        failure,
+                        badCredentialsOn401 = true
+                    )
+                }
             )
         }
     }
@@ -152,15 +184,30 @@ class AttachToRemoteViewModel @Inject constructor(
             when (val ceremony = passkeyClient.getPasskey(context, options)) {
                 is PasskeyResult.Success -> coordinator.completePasskey(ceremony.json).fold(
                     onSuccess = { outcome -> onSignedIn(outcome) },
-                    onFailure = { failure -> failPasskey(failure) },
+                    onFailure = { failure -> failPasskey(failure) }
                 )
+
                 PasskeyResult.Cancelled -> _uiState.update { it.copy(step = AttachStep.TwoFactor) }
+
                 PasskeyResult.NoMatchingPasskey ->
-                    _uiState.update { it.copy(step = AttachStep.TwoFactor, errorRes = R.string.login_error_passkey_no_match) }
+                    _uiState.update {
+                        it.copy(
+                            step = AttachStep.TwoFactor,
+                            errorRes = R.string.login_error_passkey_no_match
+                        )
+                    }
+
                 PasskeyResult.NotAssociated -> degradePasskey(PasskeyIssue.NOT_ASSOCIATED)
+
                 PasskeyResult.NoProvider -> degradePasskey(PasskeyIssue.NO_PROVIDER)
+
                 PasskeyResult.AlreadyRegistered, is PasskeyResult.Failed ->
-                    _uiState.update { it.copy(step = AttachStep.TwoFactor, errorRes = R.string.login_error_passkey_failed) }
+                    _uiState.update {
+                        it.copy(
+                            step = AttachStep.TwoFactor,
+                            errorRes = R.string.login_error_passkey_failed
+                        )
+                    }
             }
         }
     }
@@ -170,7 +217,7 @@ class AttachToRemoteViewModel @Inject constructor(
             it.copy(
                 step = AttachStep.TwoFactor,
                 twoFactorPrompt = secondFactorPrompt(it.twoFactorMethods, passkeyAvailable = false),
-                passkeyIssue = issue,
+                passkeyIssue = issue
             )
         }
     }
@@ -181,7 +228,12 @@ class AttachToRemoteViewModel @Inject constructor(
             fail(AttachStep.TwoFactor, failure)
         } else {
             _uiState.update {
-                it.copy(step = AttachStep.TwoFactor, errorRes = R.string.login_error_passkey_failed, error = null, progress = null)
+                it.copy(
+                    step = AttachStep.TwoFactor,
+                    errorRes = R.string.login_error_passkey_failed,
+                    error = null,
+                    progress = null
+                )
             }
         }
     }
@@ -202,7 +254,12 @@ class AttachToRemoteViewModel @Inject constructor(
         val rows = _uiState.value.preview?.preview?.rows ?: return
         _uiState.update { state ->
             val next = state.rowActions.toMutableMap()
-            rows.forEach { row -> if (row.validationErrors.isEmpty()) next[row.rowIndex] = row.suggestedAction }
+            rows.forEach { row ->
+                if (row.validationErrors.isEmpty()) {
+                    next[row.rowIndex] =
+                        row.suggestedAction
+                }
+            }
             state.copy(rowActions = next)
         }
     }
@@ -210,7 +267,12 @@ class AttachToRemoteViewModel @Inject constructor(
     /** Step 5: apply the reviewed decisions on the remote, then switch and archive Local. */
     fun confirm() {
         if (_uiState.value.step != AttachStep.Review) return
-        val actions = _uiState.value.rowActions.map { (index, action) -> RowImportAction(index, action) }
+        val actions = _uiState.value.rowActions.map { (index, action) ->
+            RowImportAction(
+                index,
+                action
+            )
+        }
         viewModelScope.launch {
             _uiState.update { it.copy(step = AttachStep.Working, errorRes = null, error = null) }
             if (_uiState.value.importApplied) {
@@ -219,12 +281,14 @@ class AttachToRemoteViewModel @Inject constructor(
                 finish(discardPending = false)
                 return@launch
             }
-            coordinator.confirm(actions) { progress -> _uiState.update { it.copy(progress = progress) } }.fold(
+            coordinator.confirm(
+                actions
+            ) { progress -> _uiState.update { it.copy(progress = progress) } }.fold(
                 onSuccess = { result ->
                     _uiState.update { it.copy(result = result, importApplied = true) }
                     finish(discardPending = false)
                 },
-                onFailure = { failure -> fail(AttachStep.Review, failure) },
+                onFailure = { failure -> fail(AttachStep.Review, failure) }
             )
         }
     }
@@ -266,26 +330,41 @@ class AttachToRemoteViewModel @Inject constructor(
                     passkeyIssue = null,
                     twoFactorPrompt = secondFactorPrompt(
                         outcome.methods,
-                        passkeyAvailable = outcome.serverOffersPasskeys && passkeyClient.isSupported(),
-                    ),
+                        passkeyAvailable =
+                            outcome.serverOffersPasskeys && passkeyClient.isSupported()
+                    )
                 )
             }
+
             AttachSignInResult.SignedIn -> prepare()
         }
     }
 
     private suspend fun prepare() {
-        _uiState.update { it.copy(step = AttachStep.Working, errorRes = null, error = null, progress = null) }
+        _uiState.update {
+            it.copy(
+                step = AttachStep.Working,
+                errorRes = null,
+                error = null,
+                progress = null
+            )
+        }
         coordinator.prepare { progress -> _uiState.update { it.copy(progress = progress) } }.fold(
             onSuccess = { attachPreview ->
                 val seeded = attachPreview.preview.rows.associate { row ->
-                    row.rowIndex to if (row.validationErrors.isEmpty()) row.suggestedAction else "skip"
+                    row.rowIndex to
+                        if (row.validationErrors.isEmpty()) row.suggestedAction else "skip"
                 }
                 _uiState.update {
-                    it.copy(step = AttachStep.Review, preview = attachPreview, rowActions = seeded, progress = null)
+                    it.copy(
+                        step = AttachStep.Review,
+                        preview = attachPreview,
+                        rowActions = seeded,
+                        progress = null
+                    )
                 }
             },
-            onFailure = { failure -> fail(AttachStep.PrepareFailed, failure) },
+            onFailure = { failure -> fail(AttachStep.PrepareFailed, failure) }
         )
     }
 
@@ -293,13 +372,22 @@ class AttachToRemoteViewModel @Inject constructor(
         runCatching { coordinator.finish(discardPending) }.fold(
             onSuccess = { outcome ->
                 when (outcome) {
-                    AttachFinishResult.Done -> _uiState.update { it.copy(step = AttachStep.Done, progress = null) }
+                    AttachFinishResult.Done -> _uiState.update {
+                        it.copy(
+                            step = AttachStep.Done,
+                            progress = null
+                        )
+                    }
+
                     is AttachFinishResult.NeedsConfirmation -> _uiState.update {
-                        it.copy(step = AttachStep.Review, pendingDiscardCount = outcome.pendingCount)
+                        it.copy(
+                            step = AttachStep.Review,
+                            pendingDiscardCount = outcome.pendingCount
+                        )
                     }
                 }
             },
-            onFailure = { failure -> fail(AttachStep.Review, failure) },
+            onFailure = { failure -> fail(AttachStep.Review, failure) }
         )
     }
 
@@ -309,10 +397,17 @@ class AttachToRemoteViewModel @Inject constructor(
      */
     private fun fail(step: AttachStep, failure: Throwable, badCredentialsOn401: Boolean = false) {
         val apiError = failure.toApiError()
-        if (badCredentialsOn401 && apiError is ApiError.Client && apiError.code == HTTP_UNAUTHORIZED) {
+        if (badCredentialsOn401 && apiError is ApiError.Client &&
+            apiError.code == HTTP_UNAUTHORIZED
+        ) {
             // ApiError's generic 401 text is "Session expired"; on a login attempt it means wrong credentials.
             _uiState.update {
-                it.copy(step = step, error = null, errorRes = R.string.attach_error_bad_credentials, progress = null)
+                it.copy(
+                    step = step,
+                    error = null,
+                    errorRes = R.string.attach_error_bad_credentials,
+                    progress = null
+                )
             }
             return
         }
@@ -322,7 +417,7 @@ class AttachToRemoteViewModel @Inject constructor(
                 step = step,
                 error = message ?: "Something went wrong",
                 errorRes = null,
-                progress = null,
+                progress = null
             )
         }
     }
@@ -332,4 +427,3 @@ class AttachToRemoteViewModel @Inject constructor(
         const val HTTP_TOO_MANY_REQUESTS = 429
     }
 }
-

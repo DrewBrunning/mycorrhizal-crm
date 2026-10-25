@@ -9,12 +9,12 @@ import com.mycorrhizal.crm.model.network.AdminUserUpdateInput
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class UsersUiState(
     val users: List<AdminUser> = emptyList(),
@@ -23,7 +23,7 @@ data class UsersUiState(
     val isSaving: Boolean = false,
     val deletingId: Int? = null,
     val resettingTwoFactorId: Int? = null,
-    val error: String? = null,
+    val error: String? = null
 )
 
 /**
@@ -34,7 +34,7 @@ data class UsersUiState(
  */
 @HiltViewModel
 class UsersViewModel @Inject constructor(
-    private val userManagementRepository: UserManagementRepository,
+    private val userManagementRepository: UserManagementRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(UsersUiState())
@@ -56,7 +56,7 @@ class UsersViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.uiMessage()) }
-                },
+                }
             )
         }
     }
@@ -76,7 +76,7 @@ class UsersViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isSaving = false, error = error.uiMessage()) }
-                },
+                }
             )
         }
     }
@@ -90,14 +90,14 @@ class UsersViewModel @Inject constructor(
                     _uiState.update { state ->
                         state.copy(
                             isSaving = false,
-                            users = state.users.map { if (it.id == id) updated else it },
+                            users = state.users.map { if (it.id == id) updated else it }
                         )
                     }
                     onDone()
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isSaving = false, error = error.uiMessage()) }
-                },
+                }
             )
         }
     }
@@ -112,13 +112,13 @@ class UsersViewModel @Inject constructor(
                         state.copy(
                             deletingId = null,
                             users = state.users.filterNot { it.id == id },
-                            total = (state.total - 1).coerceAtLeast(0),
+                            total = (state.total - 1).coerceAtLeast(0)
                         )
                     }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(deletingId = null, error = error.uiMessage()) }
-                },
+                }
             )
         }
     }
@@ -137,14 +137,19 @@ class UsersViewModel @Inject constructor(
                     _uiState.update { state ->
                         state.copy(
                             resettingTwoFactorId = null,
-                            users = state.users.map { if (it.id == id) updated else it },
+                            users = state.users.map { if (it.id == id) updated else it }
                         )
                     }
                     onDone()
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(resettingTwoFactorId = null, error = error.uiMessage()) }
-                },
+                    _uiState.update {
+                        it.copy(
+                            resettingTwoFactorId = null,
+                            error = error.uiMessage()
+                        )
+                    }
+                }
             )
         }
     }

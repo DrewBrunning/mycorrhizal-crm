@@ -45,19 +45,19 @@ class PrepViewModelTest {
         },
         giftRepository: GiftRepository = mockk<GiftRepository>().also {
             coEvery { it.listForContact(any()) } returns Result.success(emptyList())
-        },
-    ): PrepViewModel {
-        return PrepViewModel(
-            apiClient,
-            authRepository,
-            preferenceRepository,
-            giftRepository,
-            SavedStateHandle(mapOf("contactId" to contactId)),
-        )
-    }
+        }
+    ): PrepViewModel = PrepViewModel(
+        apiClient,
+        authRepository,
+        preferenceRepository,
+        giftRepository,
+        SavedStateHandle(mapOf("contactId" to contactId))
+    )
 
     @Test
-    fun `loading transitions to success with the fetched briefing`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `loading transitions to success with the fetched briefing`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val apiClient = mockk<ApiClient>()
         val briefing = ContactBriefing(contactId = 7, uid = "u7", name = "Alice Wonder")
         coEvery { apiClient.getBriefing(7) } returns Result.success(briefing)
@@ -87,14 +87,16 @@ class PrepViewModelTest {
     }
 
     @Test
-    fun `an empty-history briefing is success, not an error`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `an empty-history briefing is success, not an error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         // M11 test case 1's ViewModel half: the parse-side normalization is pinned by the
         // ApiClient MockWebServer test (absent/null/[] all decode to empty lists); here we
         // pin that a briefing with nothing populated is still a successful state, so the
         // screen renders its empty states instead of the error/retry surface.
         val apiClient = mockk<ApiClient>()
         coEvery { apiClient.getBriefing(7) } returns Result.success(
-            ContactBriefing(contactId = 7, uid = "u7", name = "Empty"),
+            ContactBriefing(contactId = 7, uid = "u7", name = "Empty")
         )
 
         val viewModel = newViewModel(apiClient)
@@ -109,31 +111,47 @@ class PrepViewModelTest {
         assertNull(state.briefing?.cadence)
     }
 
-
     @Test
     fun `preferences and unbought gift ideas are loaded alongside the briefing`() =
         runTest(mainDispatcherRule.testDispatcher) {
             val apiClient = mockk<ApiClient>()
             coEvery { apiClient.getBriefing(7) } returns Result.success(
-                ContactBriefing(contactId = 7, uid = "u7", name = "Nadia"),
+                ContactBriefing(contactId = 7, uid = "u7", name = "Nadia")
             )
             val preferenceRepository = mockk<PreferenceRepository>()
             coEvery { preferenceRepository.listForContact("u7") } returns Result.success(
-                listOf(Preference(id = "p1", entityId = "u7", category = "hobby", value = "Pottery")),
+                listOf(
+                    Preference(id = "p1", entityId = "u7", category = "hobby", value = "Pottery")
+                )
             )
             val giftRepository = mockk<GiftRepository>()
             coEvery { giftRepository.listForContact("u7") } returns Result.success(
                 listOf(
-                    Gift(id = "g1", entityId = "u7", status = GiftStatuses.IDEA, description = "Pottery wheel"),
-                    Gift(id = "g2", entityId = "u7", status = GiftStatuses.GIVEN, description = "Mug"),
-                    Gift(id = "g3", entityId = "u7", status = GiftStatuses.PURCHASED, description = "Apron"),
-                ),
+                    Gift(
+                        id = "g1",
+                        entityId = "u7",
+                        status = GiftStatuses.IDEA,
+                        description = "Pottery wheel"
+                    ),
+                    Gift(
+                        id = "g2",
+                        entityId = "u7",
+                        status = GiftStatuses.GIVEN,
+                        description = "Mug"
+                    ),
+                    Gift(
+                        id = "g3",
+                        entityId = "u7",
+                        status = GiftStatuses.PURCHASED,
+                        description = "Apron"
+                    )
+                )
             )
 
             val viewModel = newViewModel(
                 apiClient,
                 preferenceRepository = preferenceRepository,
-                giftRepository = giftRepository,
+                giftRepository = giftRepository
             )
             advanceUntilIdle()
 
@@ -150,7 +168,7 @@ class PrepViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             val apiClient = mockk<ApiClient>()
             coEvery { apiClient.getBriefing(7) } returns Result.success(
-                ContactBriefing(contactId = 7, uid = "u7", name = "Nadia"),
+                ContactBriefing(contactId = 7, uid = "u7", name = "Nadia")
             )
             val preferenceRepository = mockk<PreferenceRepository>()
             coEvery { preferenceRepository.listForContact("u7") } returns
@@ -162,7 +180,7 @@ class PrepViewModelTest {
             val viewModel = newViewModel(
                 apiClient,
                 preferenceRepository = preferenceRepository,
-                giftRepository = giftRepository,
+                giftRepository = giftRepository
             )
             advanceUntilIdle()
 
@@ -178,7 +196,7 @@ class PrepViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             val apiClient = mockk<ApiClient>()
             coEvery { apiClient.getBriefing(7) } returns Result.success(
-                ContactBriefing(contactId = 7, uid = "", name = "Nameless"),
+                ContactBriefing(contactId = 7, uid = "", name = "Nameless")
             )
             val preferenceRepository = mockk<PreferenceRepository>()
             val giftRepository = mockk<GiftRepository>()
@@ -186,13 +204,14 @@ class PrepViewModelTest {
             val viewModel = newViewModel(
                 apiClient,
                 preferenceRepository = preferenceRepository,
-                giftRepository = giftRepository,
+                giftRepository = giftRepository
             )
             advanceUntilIdle()
 
             coVerify(exactly = 0) { preferenceRepository.listForContact(any()) }
             coVerify(exactly = 0) { giftRepository.listForContact(any()) }
         }
+
     @Test
     fun `a network failure yields the error state`() = runTest(mainDispatcherRule.testDispatcher) {
         val apiClient = mockk<ApiClient>()
@@ -209,7 +228,9 @@ class PrepViewModelTest {
     }
 
     @Test
-    fun `retry re-issues the briefing call after a failure`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `retry re-issues the briefing call after a failure`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val apiClient = mockk<ApiClient>()
         coEvery { apiClient.getBriefing(7) } returns
             Result.failure(ApiError.Server(500, "boom")) andThen
@@ -230,7 +251,9 @@ class PrepViewModelTest {
     }
 
     @Test
-    fun `health card reads server-provided cadence fields unchanged`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `health card reads server-provided cadence fields unchanged`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         // M11 test case 3: the cadence/health block renders server-provided values; it must
         // never recompute health locally. The ViewModel must pass the BriefingCadence
         // through untouched — assert every health field the screen renders is byte-identical
@@ -241,11 +264,11 @@ class PrepViewModelTest {
                 hasQualifyingInteraction = true,
                 lastInteraction = "2026-08-10T14:00:00Z",
                 nextDue = "2026-09-09T14:00:00Z",
-                overdueBy = 2,
-            ),
+                overdueBy = 2
+            )
         )
         coEvery { apiClient.getBriefing(7) } returns Result.success(
-            ContactBriefing(contactId = 7, uid = "u7", name = "Alice", cadence = cadence),
+            ContactBriefing(contactId = 7, uid = "u7", name = "Alice", cadence = cadence)
         )
 
         val viewModel = newViewModel(apiClient)
@@ -259,7 +282,9 @@ class PrepViewModelTest {
     }
 
     @Test
-    fun `missing contact id is an empty-not-error state`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `missing contact id is an empty-not-error state`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val apiClient = mockk<ApiClient>()
         val viewModel = newViewModel(apiClient, contactId = 0)
         advanceUntilIdle()
@@ -272,14 +297,16 @@ class PrepViewModelTest {
     }
 
     @Test
-    fun `the session date format flows into the state`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `the session date format flows into the state`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val apiClient = mockk<ApiClient>()
         coEvery { apiClient.getBriefing(7) } returns Result.success(
-            ContactBriefing(contactId = 7, uid = "u7", name = "Alice"),
+            ContactBriefing(contactId = 7, uid = "u7", name = "Alice")
         )
         val authRepository = mockk<AuthRepository>()
         coEvery { authRepository.observeSession() } returns flowOf(
-            SessionState(dateFormat = "us"),
+            SessionState(dateFormat = "us")
         )
 
         val viewModel = newViewModel(apiClient, authRepository = authRepository)
@@ -289,7 +316,9 @@ class PrepViewModelTest {
     }
 
     @Test
-    fun `a retry tapped while a load is in flight is a no-op`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a retry tapped while a load is in flight is a no-op`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val apiClient = mockk<ApiClient>()
         // First call fails (drives the error state), the retry succeeds.
         coEvery { apiClient.getBriefing(7) } returns

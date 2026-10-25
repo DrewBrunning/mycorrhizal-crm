@@ -25,7 +25,7 @@ class CallLogReaderTest {
         CallLog.Calls.TYPE,
         CallLog.Calls.DATE,
         CallLog.Calls.DURATION,
-        CallLog.Calls.CACHED_NAME,
+        CallLog.Calls.CACHED_NAME
     )
 
     @Test
@@ -54,7 +54,7 @@ class CallLogReaderTest {
             CallLog.Calls.NUMBER,
             CallLog.Calls.TYPE,
             CallLog.Calls.DATE,
-            CallLog.Calls.DURATION,
+            CallLog.Calls.DURATION
         )
         val cursor = MatrixCursor(projectionWithoutName).apply {
             addRow(arrayOf<Any>("+15551234567", CallLog.Calls.MISSED_TYPE, 2_000L, 0L))

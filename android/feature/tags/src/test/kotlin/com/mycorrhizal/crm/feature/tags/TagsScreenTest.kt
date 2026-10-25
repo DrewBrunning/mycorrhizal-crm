@@ -61,7 +61,7 @@ class TagsScreenTest {
     private fun setScreen(darkTheme: Boolean) {
         val repository = mockk<TagRepository>()
         coEvery { repository.list(any(), any()) } returns Result.success(
-            listOf(Tag(id = "t1", name = "vip"), Tag(id = "t2", name = "colleague")),
+            listOf(Tag(id = "t1", name = "vip"), Tag(id = "t2", name = "colleague"))
         )
         val viewModel = TagsViewModel(repository)
 
@@ -104,7 +104,7 @@ class TagsScreenTest {
                     initial = "vip",
                     confirmLabel = "Save",
                     onConfirm = {},
-                    onDismiss = {},
+                    onDismiss = {}
                 )
             }
         }
@@ -128,7 +128,9 @@ class TagsScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithContentDescription(str(R.string.a11y_state_loading)).assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(
+            str(R.string.a11y_state_loading)
+        ).assertIsDisplayed()
     }
 
     @Test

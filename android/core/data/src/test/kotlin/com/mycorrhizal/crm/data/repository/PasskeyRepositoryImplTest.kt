@@ -34,7 +34,9 @@ class PasskeyRepositoryImplTest {
     fun `list unwraps the credentials`() = runTest {
         val h = Harness()
         val list = listOf(WebAuthnCredential("a", "Phone", "2026-09-01T10:00:00Z", null))
-        coEvery { h.apiClient.listWebAuthnCredentials() } returns Result.success(WebAuthnCredentialListResponse(list))
+        coEvery { h.apiClient.listWebAuthnCredentials() } returns Result.success(
+            WebAuthnCredentialListResponse(list)
+        )
 
         assertEquals(list, h.repository.listPasskeys().getOrThrow())
     }
@@ -42,12 +44,25 @@ class PasskeyRepositoryImplTest {
     @Test
     fun `failures are normalized to ApiError`() = runTest {
         val h = Harness()
-        coEvery { h.apiClient.listWebAuthnCredentials() } returns Result.failure(ApiError.Server(500, "boom"))
-        coEvery { h.apiClient.webauthnRegisterBegin(any()) } returns Result.failure(ApiError.Client(403, "OIDC"))
-        coEvery { h.apiClient.webauthnProofBegin(any()) } returns Result.failure(ApiError.Client(409, "No other passkey"))
+        coEvery { h.apiClient.listWebAuthnCredentials() } returns Result.failure(
+            ApiError.Server(500, "boom")
+        )
+        coEvery {
+            h.apiClient.webauthnRegisterBegin(
+                any()
+            )
+        } returns Result.failure(ApiError.Client(403, "OIDC"))
+        coEvery {
+            h.apiClient.webauthnProofBegin(
+                any()
+            )
+        } returns Result.failure(ApiError.Client(409, "No other passkey"))
 
         assertTrue(h.repository.listPasskeys().exceptionOrNull() is ApiError.Server)
-        assertEquals(403, (h.repository.beginRegistration("x").exceptionOrNull() as ApiError.Client).code)
+        assertEquals(
+            403,
+            (h.repository.beginRegistration("x").exceptionOrNull() as ApiError.Client).code
+        )
         assertEquals(409, (h.repository.beginProof("a").exceptionOrNull() as ApiError.Client).code)
     }
 
@@ -67,8 +82,17 @@ class PasskeyRepositoryImplTest {
     fun `finishing the first passkey stores the re-issued session token`() = runTest {
         val h = Harness()
         h.sessionManager.setServerUrl("https://crm.example.com")
-        val body = WebAuthnRegisterResponse("id", "Phone", "2026-09-01T10:00:00Z", listOf("AAAAA-BBBBB-CCCCC"))
-        coEvery { h.apiClient.webauthnRegisterFinish("{att}") } returns Result.success(ReissuedTokenResult(body, "jwt-new"))
+        val body = WebAuthnRegisterResponse(
+            "id",
+            "Phone",
+            "2026-09-01T10:00:00Z",
+            listOf("AAAAA-BBBBB-CCCCC")
+        )
+        coEvery {
+            h.apiClient.webauthnRegisterFinish(
+                "{att}"
+            )
+        } returns Result.success(ReissuedTokenResult(body, "jwt-new"))
 
         val result = h.repository.finishRegistration("{att}")
 
@@ -82,7 +106,11 @@ class PasskeyRepositoryImplTest {
         h.sessionManager.setServerUrl("https://crm.example.com")
         h.sessionManager.setToken("jwt-old")
         val body = WebAuthnRegisterResponse("id", "Phone", "2026-09-01T10:00:00Z", emptyList())
-        coEvery { h.apiClient.webauthnRegisterFinish(any()) } returns Result.success(ReissuedTokenResult(body, null))
+        coEvery {
+            h.apiClient.webauthnRegisterFinish(
+                any()
+            )
+        } returns Result.success(ReissuedTokenResult(body, null))
 
         assertTrue(h.repository.finishRegistration("{att}").getOrThrow().recoveryCodes.isEmpty())
         assertEquals("jwt-old", h.sessionManager.bearerToken())
@@ -91,17 +119,34 @@ class PasskeyRepositoryImplTest {
     @Test
     fun `a rejected attestation does not touch the session`() = runTest {
         val h = Harness()
-        coEvery { h.apiClient.webauthnRegisterFinish(any()) } returns Result.failure(ApiError.Client(400, "bad"))
+        coEvery {
+            h.apiClient.webauthnRegisterFinish(
+                any()
+            )
+        } returns Result.failure(ApiError.Client(400, "bad"))
 
-        assertEquals(400, (h.repository.finishRegistration("{att}").exceptionOrNull() as ApiError.Client).code)
+        assertEquals(
+            400,
+            (h.repository.finishRegistration("{att}").exceptionOrNull() as ApiError.Client).code
+        )
         assertNull(h.sessionManager.bearerToken())
     }
 
     @Test
     fun `removal by code trims it and by assertion passes the id and blob`() = runTest {
         val h = Harness()
-        coEvery { h.apiClient.deleteWebAuthnCredential(any(), any()) } returns Result.success(ReissuedTokenResult(MessageResponse("ok"), null))
-        coEvery { h.apiClient.deleteWebAuthnCredentialWithAssertion(any(), any()) } returns Result.success(ReissuedTokenResult(MessageResponse("ok"), null))
+        coEvery {
+            h.apiClient.deleteWebAuthnCredential(
+                any(),
+                any()
+            )
+        } returns Result.success(ReissuedTokenResult(MessageResponse("ok"), null))
+        coEvery {
+            h.apiClient.deleteWebAuthnCredentialWithAssertion(
+                any(),
+                any()
+            )
+        } returns Result.success(ReissuedTokenResult(MessageResponse("ok"), null))
 
         assertTrue(h.repository.removeWithCode("a", " 123456 ").isSuccess)
         assertTrue(h.repository.removeWithAssertion("b", """{"id":"other"}""").isSuccess)
@@ -152,17 +197,37 @@ class PasskeyRepositoryImplTest {
     @Test
     fun `removal failures keep their status`() = runTest {
         val h = Harness()
-        coEvery { h.apiClient.deleteWebAuthnCredential(any(), any()) } returns Result.failure(ApiError.Client(404, "Not found"))
-        coEvery { h.apiClient.deleteWebAuthnCredentialWithAssertion(any(), any()) } returns Result.failure(ApiError.Client(400, "bad proof"))
+        coEvery {
+            h.apiClient.deleteWebAuthnCredential(
+                any(),
+                any()
+            )
+        } returns Result.failure(ApiError.Client(404, "Not found"))
+        coEvery {
+            h.apiClient.deleteWebAuthnCredentialWithAssertion(
+                any(),
+                any()
+            )
+        } returns Result.failure(ApiError.Client(400, "bad proof"))
 
-        assertEquals(404, (h.repository.removeWithCode("a", "1").exceptionOrNull() as ApiError.Client).code)
-        assertEquals(400, (h.repository.removeWithAssertion("a", "{}").exceptionOrNull() as ApiError.Client).code)
+        assertEquals(
+            404,
+            (h.repository.removeWithCode("a", "1").exceptionOrNull() as ApiError.Client).code
+        )
+        assertEquals(
+            400,
+            (h.repository.removeWithAssertion("a", "{}").exceptionOrNull() as ApiError.Client).code
+        )
     }
 
     @Test
     fun `proof begin forwards the id to exclude`() = runTest {
         val h = Harness()
-        coEvery { h.apiClient.webauthnProofBegin("target") } returns Result.success("""{"publicKey":{}}""")
+        coEvery {
+            h.apiClient.webauthnProofBegin(
+                "target"
+            )
+        } returns Result.success("""{"publicKey":{}}""")
 
         assertEquals("""{"publicKey":{}}""", h.repository.beginProof("target").getOrThrow())
         coVerify { h.apiClient.webauthnProofBegin("target") }
@@ -173,7 +238,13 @@ class PasskeyRepositoryImplTest {
     @Test
     fun `begin registration maps a code proof to a trimmed code`() = runTest {
         val h = Harness()
-        coEvery { h.apiClient.webauthnRegisterBegin(any(), any(), any()) } returns Result.success("{}")
+        coEvery {
+            h.apiClient.webauthnRegisterBegin(
+                any(),
+                any(),
+                any()
+            )
+        } returns Result.success("{}")
 
         h.repository.beginRegistration("Laptop", SecondFactorProof.Code("  123456 "))
 
@@ -183,7 +254,13 @@ class PasskeyRepositoryImplTest {
     @Test
     fun `begin registration maps an assertion proof to its json`() = runTest {
         val h = Harness()
-        coEvery { h.apiClient.webauthnRegisterBegin(any(), any(), any()) } returns Result.success("{}")
+        coEvery {
+            h.apiClient.webauthnRegisterBegin(
+                any(),
+                any(),
+                any()
+            )
+        } returns Result.success("{}")
 
         h.repository.beginRegistration(null, SecondFactorProof.Assertion("""{"id":"a"}"""))
 
@@ -193,7 +270,11 @@ class PasskeyRepositoryImplTest {
     @Test
     fun `begin proof with no exclude id covers every passkey`() = runTest {
         val h = Harness()
-        coEvery { h.apiClient.webauthnProofBegin(null) } returns Result.success("""{"publicKey":{}}""")
+        coEvery {
+            h.apiClient.webauthnProofBegin(
+                null
+            )
+        } returns Result.success("""{"publicKey":{}}""")
 
         assertEquals("""{"publicKey":{}}""", h.repository.beginProof().getOrThrow())
 

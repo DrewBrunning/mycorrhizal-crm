@@ -41,5 +41,5 @@ object BundleBackupReminder {
 data class BundleBackupStatus(
     val isLocalProfile: Boolean = false,
     val lastExportAt: Long? = null,
-    val dismissedAt: Long? = null,
+    val dismissedAt: Long? = null
 )

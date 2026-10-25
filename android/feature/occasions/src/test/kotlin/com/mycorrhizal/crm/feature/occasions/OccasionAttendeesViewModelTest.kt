@@ -40,7 +40,7 @@ class OccasionAttendeesViewModelTest {
         occasionRepository,
         circleRepository,
         contactRepository,
-        SavedStateHandle(mapOf("eventId" to eventId)),
+        SavedStateHandle(mapOf("eventId" to eventId))
     )
 
     private val attendeeView = OccasionEventAttendeeView(
@@ -49,23 +49,29 @@ class OccasionAttendeesViewModelTest {
         entityId = "uid-1",
         contactId = 3,
         contactName = "Alice",
-        rsvp = "pending",
+        rsvp = "pending"
     )
 
     private fun stubLoad(attendees: List<OccasionEventAttendeeView> = listOf(attendeeView)) {
         coEvery { occasionRepository.get("e1") } returns Result.success(
             OccasionEventDetail(
-                occasionEvent = OccasionEvent(id = "e1", title = "BBQ", startsAt = "2026-07-04T15:00:00Z"),
-                attendees = attendees,
-            ),
+                occasionEvent = OccasionEvent(
+                    id = "e1",
+                    title = "BBQ",
+                    startsAt = "2026-07-04T15:00:00Z"
+                ),
+                attendees = attendees
+            )
         )
         coEvery { circleRepository.list(any(), any()) } returns Result.success(
-            listOf(Circle(id = "c1", name = "Friends")),
+            listOf(Circle(id = "c1", name = "Friends"))
         )
     }
 
     @Test
-    fun `load populates attendees and the event title`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `load populates attendees and the event title`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         stubLoad()
         val vm = viewModel()
         advanceUntilIdle()
@@ -76,7 +82,9 @@ class OccasionAttendeesViewModelTest {
     }
 
     @Test
-    fun `a blank event id surfaces the missing-id error`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a blank event id surfaces the missing-id error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { circleRepository.list(any(), any()) } returns Result.success(emptyList())
         val vm = viewModel(eventId = "")
         advanceUntilIdle()
@@ -97,10 +105,12 @@ class OccasionAttendeesViewModelTest {
     }
 
     @Test
-    fun `suggest fetches candidates for the selected circles`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `suggest fetches candidates for the selected circles`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         stubLoad()
         coEvery { occasionRepository.suggestInvitees(listOf("c1"), "e1") } returns Result.success(
-            listOf(InviteeSuggestion(contactId = 5, contactName = "Bob", entityId = "uid-5")),
+            listOf(InviteeSuggestion(contactId = 5, contactName = "Bob", entityId = "uid-5"))
         )
         val vm = viewModel()
         advanceUntilIdle()
@@ -116,8 +126,13 @@ class OccasionAttendeesViewModelTest {
     @Test
     fun `addAttendee invites and reloads`() = runTest(mainDispatcherRule.testDispatcher) {
         stubLoad(attendees = emptyList())
-        coEvery { occasionRepository.addAttendee("e1", OccasionEventAttendeeInput("uid-5")) } returns Result.success(
-            OccasionEventAttendee(id = "a1", eventId = "e1", entityId = "uid-5"),
+        coEvery {
+            occasionRepository.addAttendee(
+                "e1",
+                OccasionEventAttendeeInput("uid-5")
+            )
+        } returns Result.success(
+            OccasionEventAttendee(id = "a1", eventId = "e1", entityId = "uid-5")
         )
         val vm = viewModel()
         advanceUntilIdle()
@@ -130,10 +145,18 @@ class OccasionAttendeesViewModelTest {
     }
 
     @Test
-    fun `updateRsvp and removeAttendee call the repository`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `updateRsvp and removeAttendee call the repository`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         stubLoad()
-        coEvery { occasionRepository.updateAttendee("e1", "uid-1", "accepted") } returns Result.success(
-            OccasionEventAttendee(id = "a1", eventId = "e1", entityId = "uid-1", rsvp = "accepted"),
+        coEvery {
+            occasionRepository.updateAttendee(
+                "e1",
+                "uid-1",
+                "accepted"
+            )
+        } returns Result.success(
+            OccasionEventAttendee(id = "a1", eventId = "e1", entityId = "uid-1", rsvp = "accepted")
         )
         coEvery { occasionRepository.removeAttendee("e1", "uid-1") } returns Result.success(Unit)
         val vm = viewModel()
@@ -152,16 +175,21 @@ class OccasionAttendeesViewModelTest {
     fun `contact search debounces, excludes attendees, and clears on blank`() =
         runTest(mainDispatcherRule.testDispatcher) {
             stubLoad()
-            coEvery { contactRepository.listContacts(search = "bo", limit = 25) } returns Result.success(
+            coEvery {
+                contactRepository.listContacts(
+                    search = "bo",
+                    limit = 25
+                )
+            } returns Result.success(
                 ContactsPage(
                     contacts = listOf(
                         ContactSummary(id = 5, uid = "uid-5", firstname = "Bob"),
-                        ContactSummary(id = 3, uid = "uid-1", firstname = "Alice"),
+                        ContactSummary(id = 3, uid = "uid-1", firstname = "Alice")
                     ),
                     nextCursor = null,
                     limit = 25,
-                    sync = null,
-                ),
+                    sync = null
+                )
             )
             val vm = viewModel()
             advanceUntilIdle()

@@ -1,9 +1,9 @@
 package com.mycorrhizal.crm.network
 
-import okhttp3.Interceptor
-import okhttp3.Response
 import java.io.IOException
 import java.util.concurrent.TimeUnit
+import okhttp3.Interceptor
+import okhttp3.Response
 
 /**
  * Retries idempotent requests (GET/HEAD/PUT/DELETE) on network errors and
@@ -11,10 +11,8 @@ import java.util.concurrent.TimeUnit
  * never retried to avoid duplicating server side effects. Interceptors are
  * synchronous, so backoff uses a blocking sleep.
  */
-class RetryInterceptor(
-    private val maxRetries: Int = 3,
-    private val baseDelayMs: Long = 500,
-) : Interceptor {
+class RetryInterceptor(private val maxRetries: Int = 3, private val baseDelayMs: Long = 500) :
+    Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {
         var attempt = 0

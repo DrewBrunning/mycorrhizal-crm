@@ -5,14 +5,13 @@ import android.os.Build
 import com.mycorrhizal.crm.model.MoshiProvider
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
+import java.io.File
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import java.io.File
-import java.io.InputStream
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
  * ADR 0028 Decision 2 / issue #1262: the running embedded server. A `Local`
@@ -47,10 +46,7 @@ interface LocalServerHost {
 }
 
 /** A running embedded server's transport and credential. */
-data class LocalServerEndpoint(
-    val socketPath: String,
-    val sessionToken: String,
-)
+data class LocalServerEndpoint(val socketPath: String, val sessionToken: String)
 
 /** The app-private paths the embedded server owns. All under `filesDir`. */
 data class LocalServerPaths(
@@ -58,7 +54,7 @@ data class LocalServerPaths(
     val socketPath: String,
     val dbPath: String,
     val photoDir: File,
-    val attachmentsDir: File,
+    val attachmentsDir: File
 ) {
     companion object {
         fun under(filesDir: File): LocalServerPaths {
@@ -68,7 +64,7 @@ data class LocalServerPaths(
                 socketPath = File(dataDir, "sock").absolutePath,
                 dbPath = File(dataDir, "mycorrhizal.db").absolutePath,
                 photoDir = File(dataDir, "photos"),
-                attachmentsDir = File(dataDir, "attachments"),
+                attachmentsDir = File(dataDir, "attachments")
             )
         }
     }
@@ -92,7 +88,7 @@ data class LocalServerCommand(
     val workDir: String,
     val environment: Map<String, String>,
     /** The HostConfig JSON written to the child's stdin — the secrets' only path. */
-    val stdinPayload: String,
+    val stdinPayload: String
 )
 
 /** A launched server process. */
@@ -121,9 +117,8 @@ object LocalServerAvailability {
     const val BINARY_NAME = "libmycorrhizal.so"
     const val REQUIRED_ABI = "arm64-v8a"
 
-    fun isSupported(context: Context): Boolean =
-        Build.SUPPORTED_ABIS.contains(REQUIRED_ABI) &&
-            File(context.applicationInfo.nativeLibraryDir, BINARY_NAME).exists()
+    fun isSupported(context: Context): Boolean = Build.SUPPORTED_ABIS.contains(REQUIRED_ABI) &&
+        File(context.applicationInfo.nativeLibraryDir, BINARY_NAME).exists()
 }
 
 /** The HostConfig JSON written to the child's stdin. Field names mirror `embedded.HostConfig`. */
@@ -135,7 +130,7 @@ internal data class LocalServerHostPayload(
     @Json(name = "db_path") val dbPath: String,
     @Json(name = "profile_photo_dir") val profilePhotoDir: String,
     @Json(name = "attachments_dir") val attachmentsDir: String,
-    @Json(name = "catch_up_delay_ms") val catchUpDelayMs: Long,
+    @Json(name = "catch_up_delay_ms") val catchUpDelayMs: Long
 )
 
 /**
@@ -152,7 +147,7 @@ class AndroidLocalServerHost @Inject constructor(
     private val binaryProvider: LocalServerBinaryProvider,
     private val secretStore: LocalServerSecretStore,
     private val launcher: LocalServerProcessLauncher,
-    private val healthProbe: LocalServerHealthProbe,
+    private val healthProbe: LocalServerHealthProbe
 ) : LocalServerHost {
 
     private val mutex = Mutex()
@@ -169,7 +164,9 @@ class AndroidLocalServerHost @Inject constructor(
         clearLocked()
 
         val binary = binaryProvider.binary()
-            ?: return Result.failure(IllegalStateException("embedded server binary is not packaged for this ABI"))
+            ?: return Result.failure(
+                IllegalStateException("embedded server binary is not packaged for this ABI")
+            )
 
         runCatching {
             paths.dataDir.mkdirs()
@@ -184,9 +181,11 @@ class AndroidLocalServerHost @Inject constructor(
                 dbPath = paths.dbPath,
                 profilePhotoDir = paths.photoDir.absolutePath,
                 attachmentsDir = paths.attachmentsDir.absolutePath,
-                catchUpDelayMs = CATCH_UP_DELAY_MS,
+                catchUpDelayMs = CATCH_UP_DELAY_MS
             )
-            val stdinJson = MoshiProvider.get().adapter(LocalServerHostPayload::class.java).toJson(payload)
+            val stdinJson = MoshiProvider.get().adapter(
+                LocalServerHostPayload::class.java
+            ).toJson(payload)
 
             val command = LocalServerCommand(
                 binaryPath = binary.absolutePath,
@@ -194,9 +193,9 @@ class AndroidLocalServerHost @Inject constructor(
                 workDir = paths.dataDir.absolutePath,
                 environment = mapOf(
                     "HOME" to paths.dataDir.absolutePath,
-                    "TMPDIR" to paths.dataDir.absolutePath,
+                    "TMPDIR" to paths.dataDir.absolutePath
                 ),
-                stdinPayload = stdinJson,
+                stdinPayload = stdinJson
             )
             val launched = withContext(Dispatchers.IO) { launcher.launch(command) }
             process = launched
@@ -207,7 +206,10 @@ class AndroidLocalServerHost @Inject constructor(
             val healthy = withContext(Dispatchers.IO) { awaitHealthy() }
             check(healthy) { "embedded server socket never answered /health" }
 
-            LocalServerEndpoint(socketPath = paths.socketPath, sessionToken = token).also { endpoint = it }
+            LocalServerEndpoint(
+                socketPath = paths.socketPath,
+                sessionToken = token
+            ).also { endpoint = it }
         }.onFailure {
             withContext(Dispatchers.IO) { process?.destroy() }
             clearLocked()
@@ -229,9 +231,13 @@ class AndroidLocalServerHost @Inject constructor(
         }
     }
 
-    override fun socketPathIfRunning(): String? = endpoint?.takeIf { process?.isAlive() == true }?.socketPath
+    override fun socketPathIfRunning(): String? = endpoint?.takeIf {
+        process?.isAlive() == true
+    }?.socketPath
 
-    override fun sessionTokenIfRunning(): String? = endpoint?.takeIf { process?.isAlive() == true }?.sessionToken
+    override fun sessionTokenIfRunning(): String? = endpoint?.takeIf {
+        process?.isAlive() == true
+    }?.sessionToken
 
     private fun clearLocked() {
         process = null

@@ -42,39 +42,34 @@ import javax.inject.Inject
  * doc comment for why there is no Room mirror. The list is a full_resync page
  * per contact; deletes hard-remove the row server-side.
  */
-class ExternalIdentityRepositoryImpl @Inject constructor(
-    private val apiClient: ApiClient,
-) : ExternalIdentityRepository {
+class ExternalIdentityRepositoryImpl @Inject constructor(private val apiClient: ApiClient) :
+    ExternalIdentityRepository {
 
     override suspend fun listForContact(entityId: String): Result<List<ExternalIdentity>> =
         apiClient.listExternalIdentities(entityId).map { it.externalIdentities }
 
-    override suspend fun delete(id: String): Result<Unit> =
-        apiClient.deleteExternalIdentity(id)
+    override suspend fun delete(id: String): Result<Unit> = apiClient.deleteExternalIdentity(id)
 }
 
 /**
  * Online-only access to the ExternalActivity substrate (issue #836) — see the
  * interface's doc comment for why there is no Room mirror.
  */
-class ExternalActivityRepositoryImpl @Inject constructor(
-    private val apiClient: ApiClient,
-) : ExternalActivityRepository {
+class ExternalActivityRepositoryImpl @Inject constructor(private val apiClient: ApiClient) :
+    ExternalActivityRepository {
 
     override suspend fun listForContact(entityId: String): Result<List<ExternalActivity>> =
         apiClient.listExternalActivities(entityId).map { it.externalActivities }
 }
 
 /** Online-only Immich integration — delegates straight to the ApiClient. */
-class ImmichRepositoryImpl @Inject constructor(
-    private val apiClient: ApiClient,
-) : ImmichRepository {
+class ImmichRepositoryImpl @Inject constructor(private val apiClient: ApiClient) :
+    ImmichRepository {
 
     override suspend fun isConfigured(): Result<Boolean> =
         apiClient.getImmichConfig().map { it.hasApiKey }
 
-    override suspend fun listPeople(): Result<List<ImmichPerson>> =
-        apiClient.listImmichPeople()
+    override suspend fun listPeople(): Result<List<ImmichPerson>> = apiClient.listImmichPeople()
 
     override suspend fun linkPerson(vcardUid: String, person: ImmichPerson): Result<Unit> =
         apiClient.linkImmichContact(vcardUid, person.id, person.name)
@@ -101,20 +96,21 @@ class ImmichRepositoryImpl @Inject constructor(
 
     override suspend fun deleteConfig(): Result<Unit> = apiClient.deleteImmichConfig()
 
-    override suspend fun testConnection(): Result<ImmichConnectionTestResult> = apiClient.testImmichConnection()
+    override suspend fun testConnection(): Result<ImmichConnectionTestResult> =
+        apiClient.testImmichConnection()
 
     override suspend fun syncNow(): Result<Unit> = apiClient.syncImmichNow()
 }
 
 /** Online-only Paperless-ngx integration (issue #236) — delegates straight to the ApiClient. */
-class PaperlessRepositoryImpl @Inject constructor(
-    private val apiClient: ApiClient,
-) : PaperlessRepository {
+class PaperlessRepositoryImpl @Inject constructor(private val apiClient: ApiClient) :
+    PaperlessRepository {
 
     override suspend fun isConfigured(): Result<Boolean> =
         apiClient.getPaperlessConfig().map { it.hasApiToken }
 
-    override suspend fun getConfig(): Result<PaperlessConfigResponse> = apiClient.getPaperlessConfig()
+    override suspend fun getConfig(): Result<PaperlessConfigResponse> =
+        apiClient.getPaperlessConfig()
 
     override suspend fun saveConfig(input: PaperlessConfigInput): Result<PaperlessConfigResponse> =
         apiClient.savePaperlessConfig(input)
@@ -132,9 +128,8 @@ class PaperlessRepositoryImpl @Inject constructor(
 }
 
 /** Online-only Seafile integration (issue #236) — delegates straight to the ApiClient. */
-class SeafileRepositoryImpl @Inject constructor(
-    private val apiClient: ApiClient,
-) : SeafileRepository {
+class SeafileRepositoryImpl @Inject constructor(private val apiClient: ApiClient) :
+    SeafileRepository {
 
     override suspend fun isConfigured(): Result<Boolean> =
         apiClient.getSeafileConfig().map { it.hasApiToken }
@@ -149,7 +144,8 @@ class SeafileRepositoryImpl @Inject constructor(
     override suspend fun testConnection(): Result<SeafileConnectionTestResult> =
         apiClient.testSeafileConnection()
 
-    override suspend fun listLibraries(): Result<List<SeafileLibrary>> = apiClient.listSeafileLibraries()
+    override suspend fun listLibraries(): Result<List<SeafileLibrary>> =
+        apiClient.listSeafileLibraries()
 
     override suspend fun listDir(repoId: String, path: String): Result<List<SeafileItem>> =
         apiClient.listSeafileDir(repoId, path)
@@ -159,14 +155,14 @@ class SeafileRepositoryImpl @Inject constructor(
 }
 
 /** Online-only Nextcloud/WebDAV integration (issue #236) — delegates straight to the ApiClient. */
-class NextcloudRepositoryImpl @Inject constructor(
-    private val apiClient: ApiClient,
-) : NextcloudRepository {
+class NextcloudRepositoryImpl @Inject constructor(private val apiClient: ApiClient) :
+    NextcloudRepository {
 
     override suspend fun isConfigured(): Result<Boolean> =
         apiClient.getNextcloudConfig().map { it.hasAppPassword }
 
-    override suspend fun getConfig(): Result<NextcloudConfigResponse> = apiClient.getNextcloudConfig()
+    override suspend fun getConfig(): Result<NextcloudConfigResponse> =
+        apiClient.getNextcloudConfig()
 
     override suspend fun saveConfig(input: NextcloudConfigInput): Result<NextcloudConfigResponse> =
         apiClient.saveNextcloudConfig(input)
@@ -176,7 +172,10 @@ class NextcloudRepositoryImpl @Inject constructor(
     override suspend fun testConnection(): Result<NextcloudConnectionTestResult> =
         apiClient.testNextcloudConnection()
 
-    override suspend fun listDir(path: String): Result<List<WebDAVItem>> = apiClient.listNextcloudDir(path)
+    override suspend fun listDir(path: String): Result<List<WebDAVItem>> =
+        apiClient.listNextcloudDir(
+            path
+        )
 
     override suspend fun linkItem(vcardUid: String, item: WebDAVItem): Result<Unit> =
         apiClient.linkNextcloudContact(
@@ -187,15 +186,14 @@ class NextcloudRepositoryImpl @Inject constructor(
                 type = item.type,
                 size = item.size,
                 modifiedAt = item.modifiedAt,
-                fileId = item.fileId,
-            ),
+                fileId = item.fileId
+            )
         )
 }
 
 /** Online-only GeoPulse integration (issue #160) — delegates straight to the ApiClient. */
-class GeoPulseRepositoryImpl @Inject constructor(
-    private val apiClient: ApiClient,
-) : GeoPulseRepository {
+class GeoPulseRepositoryImpl @Inject constructor(private val apiClient: ApiClient) :
+    GeoPulseRepository {
     override suspend fun getConfig(): Result<GeoPulseConfigResponse> = apiClient.getGeoPulseConfig()
 
     override suspend fun saveConfig(input: GeoPulseConfigInput): Result<GeoPulseConfigResponse> =
@@ -203,8 +201,11 @@ class GeoPulseRepositoryImpl @Inject constructor(
 
     override suspend fun deleteConfig(): Result<Unit> = apiClient.deleteGeoPulseConfig()
 
-    override suspend fun testConnection(): Result<GeoPulseConnectionTestResult> = apiClient.testGeoPulseConnection()
+    override suspend fun testConnection(): Result<GeoPulseConnectionTestResult> =
+        apiClient.testGeoPulseConnection()
 
-    override suspend fun getSuggestions(date: String, timezone: String?): Result<GeoPulseSuggestionsResponse> =
-        apiClient.getGeoPulseSuggestions(date, timezone)
+    override suspend fun getSuggestions(
+        date: String,
+        timezone: String?
+    ): Result<GeoPulseSuggestionsResponse> = apiClient.getGeoPulseSuggestions(date, timezone)
 }

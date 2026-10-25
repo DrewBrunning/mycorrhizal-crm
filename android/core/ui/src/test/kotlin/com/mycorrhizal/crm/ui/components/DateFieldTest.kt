@@ -11,6 +11,8 @@ import androidx.compose.ui.test.performClick
 import com.mycorrhizal.crm.model.util.DateFieldMode
 import com.mycorrhizal.crm.ui.LocalDateFormat
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
+import java.time.OffsetDateTime
+import java.util.TimeZone
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Rule
@@ -19,8 +21,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import java.time.OffsetDateTime
-import java.util.TimeZone
 
 /** Issue #1726: the shared date field renders, opens the picker and clears. */
 @RunWith(RobolectricTestRunner::class)
@@ -42,7 +42,7 @@ class DateFieldTest {
                         onValueChange = { picked = it },
                         label = "Date",
                         mode = DateFieldMode.DATE_ONLY,
-                        testTag = "date",
+                        testTag = "date"
                     )
                 }
             }
@@ -65,7 +65,7 @@ class DateFieldTest {
                     onValueChange = { picked = it },
                     label = "Birthday",
                     mode = DateFieldMode.PARTIAL,
-                    testTag = "birthday",
+                    testTag = "birthday"
                 )
             }
         }
@@ -90,7 +90,7 @@ class DateFieldTest {
                     onValueChange = { picked = it },
                     label = "From",
                     mode = DateFieldMode.DATE_ONLY,
-                    allowClear = true,
+                    allowClear = true
                 )
             }
         }
@@ -111,7 +111,7 @@ class DateFieldTest {
                     label = "From",
                     mode = DateFieldMode.DATE_ONLY,
                     allowClear = true,
-                    onClear = { cleared = true },
+                    onClear = { cleared = true }
                 )
             }
         }
@@ -132,7 +132,7 @@ class DateFieldTest {
                     onValueChange = { picked = it },
                     label = "Date",
                     mode = DateFieldMode.DATE_TIME,
-                    testTag = "date-time",
+                    testTag = "date-time"
                 )
             }
         }
@@ -179,7 +179,7 @@ class DateFieldTest {
                     onValueChange = onPicked,
                     label = "Date",
                     mode = DateFieldMode.DATE_TIME,
-                    testTag = "date-time",
+                    testTag = "date-time"
                 )
             }
         }

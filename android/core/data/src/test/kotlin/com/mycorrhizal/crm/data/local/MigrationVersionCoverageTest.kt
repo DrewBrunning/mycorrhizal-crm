@@ -23,7 +23,7 @@ class MigrationVersionCoverageTest {
     fun `every version pair from the earliest known version to current is covered`() {
         assertTrue(
             "EARLIEST_KNOWN_VERSION ($EARLIEST_KNOWN_VERSION) must be below CURRENT_VERSION ($CURRENT_VERSION)",
-            EARLIEST_KNOWN_VERSION < CURRENT_VERSION,
+            EARLIEST_KNOWN_VERSION < CURRENT_VERSION
         )
 
         val registeredStarts = REGISTERED_MIGRATIONS.map { it.startVersion }.toSet()
@@ -39,7 +39,7 @@ class MigrationVersionCoverageTest {
             if (hasMigration && isAcceptedGap) {
                 fail(
                     "Version pair $start -> $end is both a registered migration AND an accepted " +
-                        "destructive gap — that's a contradiction, not a valid state. Pick one.",
+                        "destructive gap — that's a contradiction, not a valid state. Pick one."
                 )
             }
         }
@@ -49,7 +49,7 @@ class MigrationVersionCoverageTest {
                 "REGISTERED_MIGRATIONS nor a documented entry in ACCEPTED_DESTRUCTIVE_GAPS — an " +
                 "upgrade across one of these silently wipes pending_interactions via " +
                 "fallbackToDestructiveMigration with no warning: $uncovered",
-            uncovered.isEmpty(),
+            uncovered.isEmpty()
         )
     }
 
@@ -62,7 +62,7 @@ class MigrationVersionCoverageTest {
             assertTrue(
                 "Migration ${migration.startVersion} -> ${migration.endVersion} is not a single " +
                     "adjacent hop; the coverage sweep assumes startVersion + 1 == endVersion",
-                migration.endVersion == migration.startVersion + 1,
+                migration.endVersion == migration.startVersion + 1
             )
         }
     }
@@ -73,7 +73,7 @@ class MigrationVersionCoverageTest {
         assertTrue(
             "Two registered migrations start at the same version — Room would only ever run " +
                 "one of them: $starts",
-            starts.size == starts.toSet().size,
+            starts.size == starts.toSet().size
         )
     }
 }

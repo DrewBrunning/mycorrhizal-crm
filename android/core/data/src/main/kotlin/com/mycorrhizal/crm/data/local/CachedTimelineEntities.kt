@@ -14,7 +14,7 @@ data class CachedLifeEvent(
     val description: String? = null,
     val remind: Boolean? = null,
     val updatedAt: String? = null,
-    val deleted: Boolean = false,
+    val deleted: Boolean = false
 )
 
 /** Local cache of one gift. */
@@ -26,7 +26,7 @@ data class CachedGift(
     val occasion: String? = null,
     val description: String = "",
     val updatedAt: String? = null,
-    val deleted: Boolean = false,
+    val deleted: Boolean = false
 )
 
 /** Local cache of one preference. */
@@ -39,7 +39,7 @@ data class CachedPreference(
     val value: String = "",
     val sensitivity: String = "normal",
     val updatedAt: String? = null,
-    val deleted: Boolean = false,
+    val deleted: Boolean = false
 )
 
 /** Local cache of one conversation-agenda item. */
@@ -51,5 +51,5 @@ data class CachedConversationAgenda(
     val referenceUrl: String? = null,
     val discussedAt: String? = null,
     val updatedAt: String? = null,
-    val deleted: Boolean = false,
+    val deleted: Boolean = false
 )

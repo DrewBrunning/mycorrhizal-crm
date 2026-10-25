@@ -6,7 +6,6 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performScrollTo
-import com.mycorrhizal.crm.domain.repository.BiometricEnrollmentStatus
 import com.mycorrhizal.crm.domain.backup.BundleBackupStatus
 import com.mycorrhizal.crm.domain.repository.BundleBackupRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
@@ -17,11 +16,11 @@ import com.mycorrhizal.crm.model.AppVersion
 import com.mycorrhizal.crm.model.network.ApiToken
 import com.mycorrhizal.crm.ui.LocalServerVersion
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.flowOf
-import io.mockk.every
-import org.junit.Assert.assertTrue
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -45,7 +44,11 @@ class ServerVersionGatingTest {
         AppVersion(major, minor, patch)
 
     private fun adminState() = SettingsUiState(
-        session = SessionState(serverUrl = "https://crm.example.com", username = "alice", isAdmin = true),
+        session = SessionState(
+            serverUrl = "https://crm.example.com",
+            username = "alice",
+            isAdmin = true
+        )
     )
 
     private fun setAdministration(serverVersion: AppVersion?) {
@@ -134,7 +137,11 @@ class ServerVersionGatingTest {
             mockk<ContactRepository>(),
             mockk<RelationshipEdgeRepository>(),
             mockk<ExportRepository>(),
-            mockk<BundleBackupRepository> { every { observeStatus() } returns flowOf(BundleBackupStatus()) },
+            mockk<BundleBackupRepository> {
+                every { observeStatus() } returns flowOf(
+                    BundleBackupStatus()
+                )
+            }
         )
         composeTestRule.setContent {
             CompositionLocalProvider(LocalServerVersion provides serverVersion) {
@@ -168,7 +175,7 @@ class ServerVersionGatingTest {
         id = 1,
         name = "CI token",
         createdAt = "2026-01-01T00:00:00Z",
-        scope = "full",
+        scope = "full"
     )
 
     @Test
@@ -181,7 +188,7 @@ class ServerVersionGatingTest {
                     revoking = false,
                     rotateSupported = false,
                     onRotate = {},
-                    onRevoke = {},
+                    onRevoke = {}
                 )
             }
         }
@@ -200,7 +207,7 @@ class ServerVersionGatingTest {
                     revoking = false,
                     rotateSupported = true,
                     onRotate = {},
-                    onRevoke = {},
+                    onRevoke = {}
                 )
             }
         }

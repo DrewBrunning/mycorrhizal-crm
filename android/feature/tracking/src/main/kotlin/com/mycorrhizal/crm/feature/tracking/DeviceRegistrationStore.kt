@@ -19,13 +19,12 @@ interface DeviceRegistrationStore {
 
 /** SharedPreferences-backed [DeviceRegistrationStore]. */
 class SharedPrefsDeviceRegistrationStore @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @ApplicationContext private val context: Context
 ) : DeviceRegistrationStore {
 
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-    override fun loadDeviceId(): Int? =
-        prefs.getInt(KEY_DEVICE_ID, -1).takeIf { it > 0 }
+    override fun loadDeviceId(): Int? = prefs.getInt(KEY_DEVICE_ID, -1).takeIf { it > 0 }
 
     override fun saveDeviceId(id: Int) {
         prefs.edit { putInt(KEY_DEVICE_ID, id) }

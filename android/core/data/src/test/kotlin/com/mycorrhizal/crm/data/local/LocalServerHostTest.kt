@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.data.local
 
+import java.io.File
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -9,7 +10,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
-import java.io.File
 
 /**
  * Issue #1262: the embedded host's lifecycle and its secret boundary. The
@@ -21,7 +21,8 @@ class LocalServerHostTest {
     @get:Rule
     val temp = TemporaryFolder()
 
-    private class FakeProcess(private val token: String?, val aliveAlways: Boolean = true) : LocalServerProcess {
+    private class FakeProcess(private val token: String?, val aliveAlways: Boolean = true) :
+        LocalServerProcess {
         var destroyed = false
 
         override fun isAlive(): Boolean = aliveAlways && !destroyed
@@ -55,14 +56,14 @@ class LocalServerHostTest {
 
     private fun secretStore(root: File): LocalServerSecretStore = LocalServerSecretStore(
         keyFile = File(root, "local-server/keys.bin"),
-        ciphers = LocalServerSecretCipherProvider { IdentityCipher() },
+        ciphers = LocalServerSecretCipherProvider { IdentityCipher() }
     )
 
     private fun host(
         launcher: RecordingLauncher,
         probe: FixedProbe = FixedProbe(true),
         binary: File? = null,
-        root: File = temp.root,
+        root: File = temp.root
     ): AndroidLocalServerHost {
         val binaryFile = binary ?: File(root, "libmycorrhizal.so").apply { writeText("fake") }
         return AndroidLocalServerHost(
@@ -70,42 +71,43 @@ class LocalServerHostTest {
             binaryProvider = LocalServerBinaryProvider { binaryFile.takeIf { it.exists() } },
             secretStore = secretStore(root),
             launcher = launcher,
-            healthProbe = probe,
+            healthProbe = probe
         )
     }
 
     @Test
-    fun `ensureStarted launches once, returns the token, and never puts secrets in the environment`() = runBlocking {
-        val process = FakeProcess(token = "local-jwt")
-        val launcher = RecordingLauncher(process)
-        val server = host(launcher)
+    fun `ensureStarted launches once, returns the token, and never puts secrets in the environment`() =
+        runBlocking {
+            val process = FakeProcess(token = "local-jwt")
+            val launcher = RecordingLauncher(process)
+            val server = host(launcher)
 
-        val result = server.ensureStarted()
+            val result = server.ensureStarted()
 
-        assertTrue("expected success, got $result", result.isSuccess)
-        val endpoint = result.getOrThrow()
-        assertEquals("local-jwt", endpoint.sessionToken)
-        assertTrue(endpoint.socketPath.endsWith("local-server/sock"))
-        assertEquals(1, launcher.calls)
+            assertTrue("expected success, got $result", result.isSuccess)
+            val endpoint = result.getOrThrow()
+            assertEquals("local-jwt", endpoint.sessionToken)
+            assertTrue(endpoint.socketPath.endsWith("local-server/sock"))
+            assertEquals(1, launcher.calls)
 
-        val command = launcher.commands.single()
-        // Without this arg the binary runs the normal env-configured main() and
-        // dies on missing JWT_SECRET_KEY (found on-device, issue #1108).
-        assertEquals(listOf("--embedded-host"), command.args)
-        // The secrets travel on stdin only.
-        assertTrue(command.stdinPayload.contains("\"jwt_secret\""))
-        assertTrue(command.stdinPayload.contains("\"data_encryption_key\""))
-        // The environment carries no secret.
-        assertEquals(setOf("HOME", "TMPDIR"), command.environment.keys)
-        assertTrue(command.environment.values.none { it.contains("jwt_secret") })
-        assertEquals(endpoint.socketPath, server.socketPathIfRunning())
-        assertEquals("local-jwt", server.sessionTokenIfRunning())
+            val command = launcher.commands.single()
+            // Without this arg the binary runs the normal env-configured main() and
+            // dies on missing JWT_SECRET_KEY (found on-device, issue #1108).
+            assertEquals(listOf("--embedded-host"), command.args)
+            // The secrets travel on stdin only.
+            assertTrue(command.stdinPayload.contains("\"jwt_secret\""))
+            assertTrue(command.stdinPayload.contains("\"data_encryption_key\""))
+            // The environment carries no secret.
+            assertEquals(setOf("HOME", "TMPDIR"), command.environment.keys)
+            assertTrue(command.environment.values.none { it.contains("jwt_secret") })
+            assertEquals(endpoint.socketPath, server.socketPathIfRunning())
+            assertEquals("local-jwt", server.sessionTokenIfRunning())
 
-        // Idempotent: a second caller joins the running server.
-        val again = server.ensureStarted()
-        assertEquals(endpoint, again.getOrThrow())
-        assertEquals(1, launcher.calls)
-    }
+            // Idempotent: a second caller joins the running server.
+            val again = server.ensureStarted()
+            assertEquals(endpoint, again.getOrThrow())
+            assertEquals(1, launcher.calls)
+        }
 
     @Test
     fun `ensureStarted fails cleanly when the binary is absent`() = runBlocking {
@@ -158,10 +160,15 @@ class LocalServerHostTest {
         val root = temp.newFolder("retry")
         val server = AndroidLocalServerHost(
             paths = LocalServerPaths.under(root),
-            binaryProvider = LocalServerBinaryProvider { File(root, "lib.so").apply { writeText("x") } },
+            binaryProvider = LocalServerBinaryProvider {
+                File(
+                    root,
+                    "lib.so"
+                ).apply { writeText("x") }
+            },
             secretStore = secretStore(root),
             launcher = launcher,
-            healthProbe = FixedProbe(true),
+            healthProbe = FixedProbe(true)
         )
 
         assertTrue(server.ensureStarted().isFailure)

@@ -59,9 +59,15 @@ class TrackingWorkerSchedulerTest {
         assertTrue(uniqueWorkState(TrackingWorkerScheduler.UNIQUE_CALL_LOG_CATCH_UP).isNotEmpty())
         assertTrue(uniqueWorkState(TrackingWorkerScheduler.UNIQUE_SMS_BACKFILL).isNotEmpty())
         // ADR 0019 / issue #1127: incoming-SMS Inbox reconciliation.
-        assertTrue(uniqueWorkState(TrackingWorkerScheduler.UNIQUE_SMS_INBOX_RECONCILIATION).isNotEmpty())
+        assertTrue(
+            uniqueWorkState(TrackingWorkerScheduler.UNIQUE_SMS_INBOX_RECONCILIATION).isNotEmpty()
+        )
         // Issue #1122: the contact phone-index backfill.
-        assertTrue(uniqueWorkState(TrackingWorkerScheduler.UNIQUE_CONTACT_PHONE_INDEX_BACKFILL).isNotEmpty())
+        assertTrue(
+            uniqueWorkState(
+                TrackingWorkerScheduler.UNIQUE_CONTACT_PHONE_INDEX_BACKFILL
+            ).isNotEmpty()
+        )
     }
 
     // Issue #1200: the play flavor has no call/SMS capture feature, so none of
@@ -75,10 +81,16 @@ class TrackingWorkerSchedulerTest {
         assertTrue(uniqueWorkState(TrackingWorkerScheduler.UNIQUE_REMINDER_CHECK).isNotEmpty())
         assertTrue(uniqueWorkState(TrackingWorkerScheduler.UNIQUE_CADENCE_CHECK).isNotEmpty())
         assertTrue(uniqueWorkState(TrackingWorkerScheduler.UNIQUE_BIRTHDAY_CHECK).isNotEmpty())
-        assertTrue(uniqueWorkState(TrackingWorkerScheduler.UNIQUE_CONTACT_PHONE_INDEX_BACKFILL).isNotEmpty())
+        assertTrue(
+            uniqueWorkState(
+                TrackingWorkerScheduler.UNIQUE_CONTACT_PHONE_INDEX_BACKFILL
+            ).isNotEmpty()
+        )
         assertTrue(uniqueWorkState(TrackingWorkerScheduler.UNIQUE_CALL_LOG_CATCH_UP).isEmpty())
         assertTrue(uniqueWorkState(TrackingWorkerScheduler.UNIQUE_SMS_BACKFILL).isEmpty())
-        assertTrue(uniqueWorkState(TrackingWorkerScheduler.UNIQUE_SMS_INBOX_RECONCILIATION).isEmpty())
+        assertTrue(
+            uniqueWorkState(TrackingWorkerScheduler.UNIQUE_SMS_INBOX_RECONCILIATION).isEmpty()
+        )
     }
 
     @Test

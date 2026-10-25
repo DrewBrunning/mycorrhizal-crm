@@ -58,7 +58,11 @@ class OccasionsViewModelTest {
         viewModel.create("Party", "2026-07-04T15:00:00Z", null, "Park", "normal", "notes")
         advanceUntilIdle()
 
-        coVerify { repository.create(OccasionEventInput("Party", "2026-07-04T15:00:00Z", null, "Park", "normal", "notes")) }
+        coVerify {
+            repository.create(
+                OccasionEventInput("Party", "2026-07-04T15:00:00Z", null, "Park", "normal", "notes")
+            )
+        }
         coVerify(atLeast = 2) { repository.list() }
     }
 
@@ -72,7 +76,12 @@ class OccasionsViewModelTest {
         viewModel.update("e1", "Renamed", "2026-07-04T15:00:00Z", null, null, "normal", null)
         advanceUntilIdle()
 
-        coVerify { repository.update("e1", OccasionEventInput("Renamed", "2026-07-04T15:00:00Z", null, null, "normal", null)) }
+        coVerify {
+            repository.update(
+                "e1",
+                OccasionEventInput("Renamed", "2026-07-04T15:00:00Z", null, null, "normal", null)
+            )
+        }
     }
 
     @Test

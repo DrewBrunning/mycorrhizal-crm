@@ -26,13 +26,18 @@ class UsersViewModelTest {
 
     private val repository = mockk<UserManagementRepository>()
 
-    private val alice = AdminUser(id = 1, username = "alice", email = "alice@example.com", isAdmin = true)
+    private val alice = AdminUser(
+        id = 1,
+        username = "alice",
+        email = "alice@example.com",
+        isAdmin = true
+    )
     private val bob = AdminUser(id = 2, username = "bob", email = "bob@example.com")
 
     @Test
     fun `loads users on init`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { repository.list(any(), any()) } returns Result.success(
-            AdminUsersListResponse(users = listOf(alice, bob), total = 2),
+            AdminUsersListResponse(users = listOf(alice, bob), total = 2)
         )
 
         val vm = UsersViewModel(repository)
@@ -49,7 +54,7 @@ class UsersViewModelTest {
     @Test
     fun `load failure surfaces the server error`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { repository.list(any(), any()) } returns Result.failure(
-            ApiError.Client(403, "Forbidden"),
+            ApiError.Client(403, "Forbidden")
         )
 
         val vm = UsersViewModel(repository)
@@ -63,7 +68,7 @@ class UsersViewModelTest {
     fun `create saves then reloads the list`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { repository.list(any(), any()) } returnsMany listOf(
             Result.success(AdminUsersListResponse(users = listOf(alice), total = 1)),
-            Result.success(AdminUsersListResponse(users = listOf(alice, bob), total = 2)),
+            Result.success(AdminUsersListResponse(users = listOf(alice, bob), total = 2))
         )
         coEvery { repository.create(any()) } returns Result.success(bob)
 
@@ -72,8 +77,12 @@ class UsersViewModelTest {
 
         var done = false
         vm.create(
-            AdminUserCreateInput(username = "bob", email = "bob@example.com", password = "password123"),
-            onDone = { done = true },
+            AdminUserCreateInput(
+                username = "bob",
+                email = "bob@example.com",
+                password = "password123"
+            ),
+            onDone = { done = true }
         )
         advanceUntilIdle()
 
@@ -84,12 +93,14 @@ class UsersViewModelTest {
     }
 
     @Test
-    fun `create failure keeps the error for the dialog`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `create failure keeps the error for the dialog`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.list(any(), any()) } returns Result.success(
-            AdminUsersListResponse(users = listOf(alice), total = 1),
+            AdminUsersListResponse(users = listOf(alice), total = 1)
         )
         coEvery { repository.create(any()) } returns Result.failure(
-            ApiError.Client(409, "User already exists"),
+            ApiError.Client(409, "User already exists")
         )
 
         val vm = UsersViewModel(repository)
@@ -97,8 +108,12 @@ class UsersViewModelTest {
 
         var done = false
         vm.create(
-            AdminUserCreateInput(username = "bob", email = "bob@example.com", password = "password123"),
-            onDone = { done = true },
+            AdminUserCreateInput(
+                username = "bob",
+                email = "bob@example.com",
+                password = "password123"
+            ),
+            onDone = { done = true }
         )
         advanceUntilIdle()
 
@@ -110,7 +125,7 @@ class UsersViewModelTest {
     @Test
     fun `update replaces the user in place`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { repository.list(any(), any()) } returns Result.success(
-            AdminUsersListResponse(users = listOf(alice, bob), total = 2),
+            AdminUsersListResponse(users = listOf(alice, bob), total = 2)
         )
         val promotedBob = bob.copy(isAdmin = true)
         coEvery { repository.update(2, any()) } returns Result.success(promotedBob)
@@ -130,10 +145,10 @@ class UsersViewModelTest {
     @Test
     fun `update failure keeps the error`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { repository.list(any(), any()) } returns Result.success(
-            AdminUsersListResponse(users = listOf(alice, bob), total = 2),
+            AdminUsersListResponse(users = listOf(alice, bob), total = 2)
         )
         coEvery { repository.update(1, any()) } returns Result.failure(
-            ApiError.Client(403, "Cannot remove the last admin"),
+            ApiError.Client(403, "Cannot remove the last admin")
         )
 
         val vm = UsersViewModel(repository)
@@ -148,9 +163,11 @@ class UsersViewModelTest {
     }
 
     @Test
-    fun `delete removes the user and decrements the total`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `delete removes the user and decrements the total`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.list(any(), any()) } returns Result.success(
-            AdminUsersListResponse(users = listOf(alice, bob), total = 2),
+            AdminUsersListResponse(users = listOf(alice, bob), total = 2)
         )
         coEvery { repository.delete(2) } returns Result.success(Unit)
 
@@ -168,10 +185,10 @@ class UsersViewModelTest {
     @Test
     fun `delete failure surfaces the server error`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { repository.list(any(), any()) } returns Result.success(
-            AdminUsersListResponse(users = listOf(alice, bob), total = 2),
+            AdminUsersListResponse(users = listOf(alice, bob), total = 2)
         )
         coEvery { repository.delete(1) } returns Result.failure(
-            ApiError.Client(403, "Cannot delete your own account"),
+            ApiError.Client(403, "Cannot delete your own account")
         )
 
         val vm = UsersViewModel(repository)
@@ -187,7 +204,12 @@ class UsersViewModelTest {
 
     @Test
     fun `onErrorShown clears the error`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { repository.list(any(), any()) } returns Result.failure(ApiError.Client(500, "boom"))
+        coEvery {
+            repository.list(
+                any(),
+                any()
+            )
+        } returns Result.failure(ApiError.Client(500, "boom"))
 
         val vm = UsersViewModel(repository)
         advanceUntilIdle()
@@ -203,7 +225,7 @@ class UsersViewModelTest {
     fun `resetTwoFactor calls the repository with the id, replaces the row and reports done`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { repository.list(any(), any()) } returns Result.success(
-                AdminUsersListResponse(users = listOf(alice, bob), total = 2),
+                AdminUsersListResponse(users = listOf(alice, bob), total = 2)
             )
             val refreshedBob = bob.copy(updatedAt = "2026-09-01T00:00:00Z")
             coEvery { repository.resetTwoFactor(2) } returns Result.success(refreshedBob)
@@ -229,7 +251,7 @@ class UsersViewModelTest {
     fun `resetTwoFactor exposes the in-flight id while the call is pending`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { repository.list(any(), any()) } returns Result.success(
-                AdminUsersListResponse(users = listOf(alice, bob), total = 2),
+                AdminUsersListResponse(users = listOf(alice, bob), total = 2)
             )
             coEvery { repository.resetTwoFactor(2) } coAnswers {
                 kotlinx.coroutines.awaitCancellation()
@@ -253,9 +275,13 @@ class UsersViewModelTest {
     fun `resetTwoFactor failure surfaces the server message and allows a retry`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { repository.list(any(), any()) } returns Result.success(
-                AdminUsersListResponse(users = listOf(alice, bob), total = 2),
+                AdminUsersListResponse(users = listOf(alice, bob), total = 2)
             )
-            coEvery { repository.resetTwoFactor(2) } returns Result.failure(ApiError.Client(404, "User not found"))
+            coEvery {
+                repository.resetTwoFactor(
+                    2
+                )
+            } returns Result.failure(ApiError.Client(404, "User not found"))
 
             val vm = UsersViewModel(repository)
             advanceUntilIdle()
@@ -283,9 +309,13 @@ class UsersViewModelTest {
     fun `resetTwoFactor forbidden keeps the server message rather than the generic fallback`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { repository.list(any(), any()) } returns Result.success(
-                AdminUsersListResponse(users = listOf(alice, bob), total = 2),
+                AdminUsersListResponse(users = listOf(alice, bob), total = 2)
             )
-            coEvery { repository.resetTwoFactor(1) } returns Result.failure(ApiError.Client(403, "Admin access required"))
+            coEvery {
+                repository.resetTwoFactor(
+                    1
+                )
+            } returns Result.failure(ApiError.Client(403, "Admin access required"))
 
             val vm = UsersViewModel(repository)
             advanceUntilIdle()

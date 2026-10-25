@@ -32,7 +32,7 @@ data class ContactSummary(
     /** Change-feed tombstone marker (T17): true only via ?since=. */
     val deleted: Boolean = false,
     /** Device Contacts LOOKUP_KEY after a T57 import (§7.5.4); null otherwise. */
-    @Json(name = "device_lookup_key") val deviceLookupKey: String? = null,
+    @Json(name = "device_lookup_key") val deviceLookupKey: String? = null
 ) {
     val displayName: String
         get() = contactDisplayName(firstname, nickname, lastname, fn, "#$id")
@@ -49,12 +49,12 @@ fun contactDisplayName(
     nickname: String?,
     lastname: String?,
     fn: String? = null,
-    fallbackId: String? = null,
+    fallbackId: String? = null
 ): String {
     val parts = listOfNotNull(
         firstname?.takeIf { it.isNotBlank() },
         nickname?.takeIf { it.isNotBlank() }?.let { "\"$it\"" },
-        lastname?.takeIf { it.isNotBlank() },
+        lastname?.takeIf { it.isNotBlank() }
     )
     if (parts.isNotEmpty()) return parts.joinToString(" ")
     return fn?.takeIf { it.isNotBlank() } ?: fallbackId.orEmpty()
@@ -66,7 +66,7 @@ data class ContactsPage(
     val contacts: List<ContactSummary> = emptyList(),
     @Json(name = "next_cursor") val nextCursor: String? = null,
     val limit: Int = 0,
-    val sync: SyncInfo? = null,
+    val sync: SyncInfo? = null
 )
 
 /**
@@ -78,5 +78,5 @@ data class ContactsPage(
 data class SyncInfo(
     val mode: String? = null,
     val incremental: List<String>? = null,
-    @Json(name = "full_resync") val fullResync: List<String>? = null,
+    @Json(name = "full_resync") val fullResync: List<String>? = null
 )

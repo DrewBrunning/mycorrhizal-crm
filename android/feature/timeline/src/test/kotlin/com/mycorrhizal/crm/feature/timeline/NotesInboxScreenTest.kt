@@ -41,7 +41,7 @@ class NotesInboxScreenTest {
         onNoteClick: (Int) -> Unit = {},
         onLoadMore: () -> Unit = {},
         onCreateNote: () -> Unit = {},
-        darkTheme: Boolean = false,
+        darkTheme: Boolean = false
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme(darkTheme = darkTheme) {
@@ -49,7 +49,7 @@ class NotesInboxScreenTest {
                     uiState = uiState,
                     onNoteClick = onNoteClick,
                     onLoadMore = onLoadMore,
-                    onCreateNote = onCreateNote,
+                    onCreateNote = onCreateNote
                 )
             }
         }
@@ -60,7 +60,9 @@ class NotesInboxScreenTest {
         // Issue #1757: a user whose notes are all on contacts saw "No notes yet" here.
         setContent(NotesInboxUiState(isLoading = false, notes = emptyList()))
         composeTestRule.onNodeWithText("No unassigned notes yet").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Notes you capture without a contact land here.").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Notes you capture without a contact land here."
+        ).assertIsDisplayed()
         composeTestRule.onNodeWithText("No notes yet").assertDoesNotExist()
     }
 
@@ -73,7 +75,10 @@ class NotesInboxScreenTest {
     @Test
     fun `the empty state offers New note and the FAB does the same`() {
         var created = 0
-        setContent(NotesInboxUiState(isLoading = false, notes = emptyList()), onCreateNote = { created++ })
+        setContent(
+            NotesInboxUiState(isLoading = false, notes = emptyList()),
+            onCreateNote = { created++ }
+        )
 
         // The empty-state button and the FAB both carry the "New note" label.
         val buttons = composeTestRule.onAllNodesWithText("New note")
@@ -86,8 +91,11 @@ class NotesInboxScreenTest {
     fun `a populated list has the FAB but no empty state`() {
         var created = 0
         setContent(
-            NotesInboxUiState(isLoading = false, notes = listOf(Note(id = 3, content = "Buy milk"))),
-            onCreateNote = { created++ },
+            NotesInboxUiState(
+                isLoading = false,
+                notes = listOf(Note(id = 3, content = "Buy milk"))
+            ),
+            onCreateNote = { created++ }
         )
         composeTestRule.onNodeWithText("No unassigned notes yet").assertDoesNotExist()
         composeTestRule.onNodeWithContentDescription("New note").performClick()
@@ -105,9 +113,12 @@ class NotesInboxScreenTest {
         setContent(
             NotesInboxUiState(
                 isLoading = false,
-                notes = listOf(Note(id = 3, content = "Buy milk"), Note(id = 4, content = "Call mom")),
-                total = 2,
-            ),
+                notes = listOf(
+                    Note(id = 3, content = "Buy milk"),
+                    Note(id = 4, content = "Call mom")
+                ),
+                total = 2
+            )
         )
         composeTestRule.onNodeWithText("Buy milk").assertIsDisplayed()
         composeTestRule.onNodeWithText("Call mom").assertIsDisplayed()
@@ -115,7 +126,13 @@ class NotesInboxScreenTest {
 
     @Test
     fun `shows the total count`() {
-        setContent(NotesInboxUiState(isLoading = false, notes = listOf(Note(id = 3, content = "Buy milk")), total = 7))
+        setContent(
+            NotesInboxUiState(
+                isLoading = false,
+                notes = listOf(Note(id = 3, content = "Buy milk")),
+                total = 7
+            )
+        )
         composeTestRule.onNodeWithText("7 total").assertIsDisplayed()
     }
 
@@ -123,8 +140,11 @@ class NotesInboxScreenTest {
     fun `tapping a note invokes the click callback`() {
         var clickedId: Int? = null
         setContent(
-            NotesInboxUiState(isLoading = false, notes = listOf(Note(id = 3, content = "Buy milk"))),
-            onNoteClick = { clickedId = it },
+            NotesInboxUiState(
+                isLoading = false,
+                notes = listOf(Note(id = 3, content = "Buy milk"))
+            ),
+            onNoteClick = { clickedId = it }
         )
         composeTestRule.onNodeWithText("Buy milk").performClick()
         assertEquals(3, clickedId)
@@ -134,8 +154,12 @@ class NotesInboxScreenTest {
     fun `a load more button appears with a next cursor and calls back on tap`() {
         var loadMoreCalls = 0
         setContent(
-            NotesInboxUiState(isLoading = false, notes = listOf(Note(id = 3, content = "Buy milk")), nextCursor = "cursor-2"),
-            onLoadMore = { loadMoreCalls++ },
+            NotesInboxUiState(
+                isLoading = false,
+                notes = listOf(Note(id = 3, content = "Buy milk")),
+                nextCursor = "cursor-2"
+            ),
+            onLoadMore = { loadMoreCalls++ }
         )
         composeTestRule.onNodeWithText("Load more").performClick()
         assertEquals(1, loadMoreCalls)
@@ -143,7 +167,13 @@ class NotesInboxScreenTest {
 
     @Test
     fun `no load more button when there is no next cursor`() {
-        setContent(NotesInboxUiState(isLoading = false, notes = listOf(Note(id = 3, content = "Buy milk")), nextCursor = null))
+        setContent(
+            NotesInboxUiState(
+                isLoading = false,
+                notes = listOf(Note(id = 3, content = "Buy milk")),
+                nextCursor = null
+            )
+        )
         assertEquals(0, composeTestRule.onAllNodesWithText("Load more").fetchSemanticsNodes().size)
     }
 
@@ -160,7 +190,9 @@ class NotesInboxScreenTest {
         // loading.
         setContent(NotesInboxUiState(isLoading = true))
         composeTestRule.onNodeWithTag("notes-inbox-loading")
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
+            .assert(
+                SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite)
+            )
     }
 
     // --- Issue #214: Compose semantics a11y sweep (the axe-core analog) -----
@@ -168,7 +200,7 @@ class NotesInboxScreenTest {
     private fun populatedState() = NotesInboxUiState(
         isLoading = false,
         notes = listOf(Note(id = 3, content = "Buy milk"), Note(id = 4, content = "Call mom")),
-        total = 2,
+        total = 2
     )
 
     @Test
@@ -198,8 +230,8 @@ class NotesInboxScreenTest {
             UnfiledNotesPage(
                 notes = listOf(Note(id = 3, content = "Buy milk")),
                 nextCursor = null,
-                total = 1,
-            ),
+                total = 1
+            )
         )
         val viewModel = NotesInboxViewModel(repository)
 

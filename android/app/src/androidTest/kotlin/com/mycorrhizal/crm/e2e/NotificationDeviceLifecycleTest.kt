@@ -7,13 +7,13 @@ import com.mycorrhizal.crm.feature.tracking.DeviceRegistrationStore
 import com.mycorrhizal.crm.feature.tracking.FcmAvailability
 import com.mycorrhizal.crm.feature.tracking.FcmTokenSource
 import com.mycorrhizal.crm.network.ApiClient
+import java.util.UUID
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.util.UUID
 
 /**
  * ANDROID-04 (issue #481): the FCM device-registration lifecycle, driven
@@ -59,7 +59,15 @@ class NotificationDeviceLifecycleTest : E2eBaseTest() {
 
     @After
     fun deviceLifecycleTearDown() {
-        createdDeviceIds.forEach { id -> runCatching { runBlocking { apiClient.deleteDevice(id) } } }
+        createdDeviceIds.forEach { id ->
+            runCatching {
+                runBlocking {
+                    apiClient.deleteDevice(
+                        id
+                    )
+                }
+            }
+        }
         createdDeviceIds.clear()
     }
 
@@ -72,7 +80,7 @@ class NotificationDeviceLifecycleTest : E2eBaseTest() {
             context = compose.activity.applicationContext,
             fcmToken = tokenSource,
             // Fail-open capabilities: this suite runs against a full server.
-            serverCapabilities = DefaultServerCapabilitiesStore(),
+            serverCapabilities = DefaultServerCapabilitiesStore()
         )
 
     private fun uniqueToken(label: String): String =
@@ -90,7 +98,10 @@ class NotificationDeviceLifecycleTest : E2eBaseTest() {
         assertTrue(result.isSuccess)
         val devices = currentDevices()
         val registered = devices.firstOrNull { it.token == token }
-        assertTrue("expected a registered device for token $token, got $devices", registered != null)
+        assertTrue(
+            "expected a registered device for token $token, got $devices",
+            registered != null
+        )
         createdDeviceIds += registered!!.id
         assertTrue(registered.client == "fcm")
     }
@@ -110,13 +121,16 @@ class NotificationDeviceLifecycleTest : E2eBaseTest() {
 
         val finalDevices = currentDevices()
         val deviceB = finalDevices.firstOrNull { it.token == tokenB }
-        assertTrue("expected the rotated token to be registered, got $finalDevices", deviceB != null)
+        assertTrue(
+            "expected the rotated token to be registered, got $finalDevices",
+            deviceB != null
+        )
         createdDeviceIds += deviceB!!.id
 
         // The important assertion: rotation must not leave the old row behind.
         assertFalse(
             "rotation must delete the old registration (id=$deviceIdA), not accumulate it",
-            finalDevices.any { it.id == deviceIdA },
+            finalDevices.any { it.id == deviceIdA }
         )
     }
 
@@ -132,7 +146,7 @@ class NotificationDeviceLifecycleTest : E2eBaseTest() {
 
         assertFalse(
             "expected device $deviceId to be gone after delete()",
-            currentDevices().any { it.id == deviceId },
+            currentDevices().any { it.id == deviceId }
         )
     }
 

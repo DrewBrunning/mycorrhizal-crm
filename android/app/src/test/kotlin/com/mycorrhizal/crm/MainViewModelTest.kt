@@ -38,10 +38,11 @@ class MainViewModelTest {
             every { this@mockk.state } returns MutableStateFlow(state)
         }
 
-    private fun compatibilityRepository(result: Result<ServerHealth>): ServerCompatibilityRepository =
-        mockk<ServerCompatibilityRepository> {
-            coEvery { getServerHealth() } returns result
-        }
+    private fun compatibilityRepository(
+        result: Result<ServerHealth>
+    ): ServerCompatibilityRepository = mockk<ServerCompatibilityRepository> {
+        coEvery { getServerHealth() } returns result
+    }
 
     private fun sessionManager(flow: MutableStateFlow<SessionState>): SessionManager =
         mockk<SessionManager> {
@@ -55,7 +56,7 @@ class MainViewModelTest {
         serverUrl = "https://crm.example.com",
         isLoggedIn = true,
         userId = 7,
-        username = "alice",
+        username = "alice"
     )
 
     private fun vm(
@@ -63,14 +64,14 @@ class MainViewModelTest {
         repo: ServerCompatibilityRepository,
         authRepository: AuthRepository = mockk(),
         capabilitiesStore: ServerCapabilitiesStore = DefaultServerCapabilitiesStore(),
-        localServerHost: LocalServerHost = mockk(relaxed = true),
+        localServerHost: LocalServerHost = mockk(relaxed = true)
     ): MainViewModel = MainViewModel(
         sessionManager,
         appLockController(),
         repo,
         authRepository,
         capabilitiesStore,
-        localServerHost,
+        localServerHost
     )
 
     @Test
@@ -89,7 +90,9 @@ class MainViewModelTest {
     }
 
     @Test
-    fun `a logged-in session is surfaced to the session flow`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a logged-in session is surfaced to the session flow`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val flow = MutableStateFlow(SessionState())
         val sessionManager = sessionManager(flow)
 
@@ -107,7 +110,9 @@ class MainViewModelTest {
 
     // Issue #722: the app-lock gate state is surfaced for the root branch.
     @Test
-    fun `the app-lock gate state is surfaced to the root`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `the app-lock gate state is surfaced to the root`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val lock = MutableStateFlow(AppLockState.Resolving)
         val sessionManager = sessionManager(MutableStateFlow(SessionState(isLoggedIn = true)))
         val controller = mockk<AppLockController> {
@@ -120,7 +125,7 @@ class MainViewModelTest {
             compatibilityRepository(Result.success(ServerHealth())),
             mockk(),
             DefaultServerCapabilitiesStore(),
-            mockk(relaxed = true),
+            mockk(relaxed = true)
         )
         advanceUntilIdle()
         assertEquals(AppLockState.Resolving, viewModel.appLockState.value)
@@ -133,13 +138,15 @@ class MainViewModelTest {
     // --- Issues #528 + #692: client/server compatibility --------------------
 
     @Test
-    fun `server floor above client version forces the update gate`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `server floor above client version forces the update gate`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         // The debug/test client versionName is 0.1.0 (see the build-logic
         // defaults); a floor above it must force the update screen.
         val flow = MutableStateFlow(SessionState())
         val sessionManager = sessionManager(flow)
         val repo = compatibilityRepository(
-            Result.success(ServerHealth(minClientVersion = "0.6.0", apiContractVersion = "v1")),
+            Result.success(ServerHealth(minClientVersion = "0.6.0", apiContractVersion = "v1"))
         )
 
         val viewModel = vm(sessionManager, repo)
@@ -150,19 +157,21 @@ class MainViewModelTest {
 
         assertEquals(
             CompatibilityGate.ForceUpdate(requiredVersion = "0.6.0"),
-            viewModel.compatibilityGate.value,
+            viewModel.compatibilityGate.value
         )
         assertNull(viewModel.serverOutdatedNoticeVersion.value)
     }
 
     @Test
-    fun `no declared floor keeps a below-server client compatible`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `no declared floor keeps a below-server client compatible`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         // The policy's default posture: an old client keeps working against a
         // new server until the server explicitly declares a floor.
         val flow = MutableStateFlow(SessionState())
         val sessionManager = sessionManager(flow)
         val repo = compatibilityRepository(
-            Result.success(ServerHealth(version = "1.0.0", apiContractVersion = "v1")),
+            Result.success(ServerHealth(version = "1.0.0", apiContractVersion = "v1"))
         )
 
         val viewModel = vm(sessionManager, repo)
@@ -177,7 +186,9 @@ class MainViewModelTest {
     }
 
     @Test
-    fun `a pre-baseline server blocks the whole tree as server too old`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a pre-baseline server blocks the whole tree as server too old`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         // Issue #692: a reachable server reporting 0.5.3 predates the app's
         // v0.6.0 baseline — refusing the whole surface beats failing on every
         // screen. (The debug client 0.1.0 is "older" than 0.5.3 numerically, so
@@ -186,7 +197,7 @@ class MainViewModelTest {
         val flow = MutableStateFlow(SessionState())
         val sessionManager = sessionManager(flow)
         val repo = compatibilityRepository(
-            Result.success(ServerHealth(version = "0.5.3", apiContractVersion = "v1")),
+            Result.success(ServerHealth(version = "0.5.3", apiContractVersion = "v1"))
         )
 
         val viewModel = vm(sessionManager, repo)
@@ -201,13 +212,15 @@ class MainViewModelTest {
     }
 
     @Test
-    fun `a pre-baseline server blocks even before a session exists`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a pre-baseline server blocks even before a session exists`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         // App start with a stored server URL but no session: the resolved
         // server is still too old, and the root refuses the auth screen too.
         val flow = MutableStateFlow(SessionState(serverUrl = "https://crm.example.com"))
         val sessionManager = sessionManager(flow)
         val repo = compatibilityRepository(
-            Result.success(ServerHealth(version = "0.4.0", apiContractVersion = "v1")),
+            Result.success(ServerHealth(version = "0.4.0", apiContractVersion = "v1"))
         )
 
         val viewModel = vm(sessionManager, repo)
@@ -218,13 +231,15 @@ class MainViewModelTest {
     }
 
     @Test
-    fun `a server floor above the client blocks login before a session exists`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a server floor above the client blocks login before a session exists`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         // Issue #692: the force-update gate now raises pre-login, because the
         // server would refuse authentication anyway.
         val flow = MutableStateFlow(SessionState(serverUrl = "https://crm.example.com"))
         val sessionManager = sessionManager(flow)
         val repo = compatibilityRepository(
-            Result.success(ServerHealth(minClientVersion = "0.6.0", apiContractVersion = "v1")),
+            Result.success(ServerHealth(minClientVersion = "0.6.0", apiContractVersion = "v1"))
         )
 
         val viewModel = vm(sessionManager, repo)
@@ -235,11 +250,13 @@ class MainViewModelTest {
     }
 
     @Test
-    fun `a pre-login blocking gate can be dismissed to reach the auth screen`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a pre-login blocking gate can be dismissed to reach the auth screen`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val flow = MutableStateFlow(SessionState(serverUrl = "https://crm.example.com"))
         val sessionManager = sessionManager(flow)
         val repo = compatibilityRepository(
-            Result.success(ServerHealth(minClientVersion = "0.6.0", apiContractVersion = "v1")),
+            Result.success(ServerHealth(minClientVersion = "0.6.0", apiContractVersion = "v1"))
         )
 
         val viewModel = vm(sessionManager, repo)
@@ -252,11 +269,13 @@ class MainViewModelTest {
     }
 
     @Test
-    fun `dismissing the pre-login gate is a no-op once a session exists`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `dismissing the pre-login gate is a no-op once a session exists`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val flow = MutableStateFlow(SessionState())
         val sessionManager = sessionManager(flow)
         val repo = compatibilityRepository(
-            Result.success(ServerHealth(minClientVersion = "0.6.0", apiContractVersion = "v1")),
+            Result.success(ServerHealth(minClientVersion = "0.6.0", apiContractVersion = "v1"))
         )
 
         val viewModel = vm(sessionManager, repo)
@@ -271,13 +290,15 @@ class MainViewModelTest {
     }
 
     @Test
-    fun `switching to a supported server clears a pre-login blocking gate`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `switching to a supported server clears a pre-login blocking gate`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val flow = MutableStateFlow(SessionState(serverUrl = "https://old.example.com"))
         val sessionManager = sessionManager(flow)
         // The mock answers per current URL: old.example.com declares a floor
         // above the client; the replacement server does not.
         var result: Result<ServerHealth> = Result.success(
-            ServerHealth(minClientVersion = "0.9.0", apiContractVersion = "v1"),
+            ServerHealth(minClientVersion = "0.9.0", apiContractVersion = "v1")
         )
         val repo = mockk<ServerCompatibilityRepository> {
             coEvery { getServerHealth() } answers { result }
@@ -295,7 +316,9 @@ class MainViewModelTest {
     }
 
     @Test
-    fun `unreachable or malformed health fails open`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `unreachable or malformed health fails open`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val flow = MutableStateFlow(SessionState())
         val sessionManager = sessionManager(flow)
         // A network error must never brick the app into a force-update screen.
@@ -318,7 +341,7 @@ class MainViewModelTest {
         val flow = MutableStateFlow(SessionState())
         val sessionManager = sessionManager(flow)
         val repo = compatibilityRepository(
-            Result.success(ServerHealth(version = "dev", apiContractVersion = "v1")),
+            Result.success(ServerHealth(version = "dev", apiContractVersion = "v1"))
         )
 
         val viewModel = vm(sessionManager, repo)
@@ -332,11 +355,13 @@ class MainViewModelTest {
     }
 
     @Test
-    fun `logging out clears a set force-update gate`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `logging out clears a set force-update gate`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val flow = MutableStateFlow(SessionState())
         val sessionManager = sessionManager(flow)
         val repo = compatibilityRepository(
-            Result.success(ServerHealth(minClientVersion = "0.6.0", apiContractVersion = "v1")),
+            Result.success(ServerHealth(minClientVersion = "0.6.0", apiContractVersion = "v1"))
         )
 
         val viewModel = vm(sessionManager, repo)
@@ -355,7 +380,9 @@ class MainViewModelTest {
     }
 
     @Test
-    fun `the check runs when the server url changes and on each login edge`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `the check runs when the server url changes and on each login edge`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val flow = MutableStateFlow(SessionState())
         val sessionManager = sessionManager(flow)
         val repo = compatibilityRepository(Result.success(ServerHealth(minClientVersion = "0.6.0")))
@@ -383,13 +410,13 @@ class MainViewModelTest {
             val health = ServerHealth(
                 version = "1.2.0",
                 deployment = "embedded",
-                capabilities = listOf("contacts", "calendar"),
+                capabilities = listOf("contacts", "calendar")
             )
             val store = DefaultServerCapabilitiesStore()
             val viewModel = vm(
                 sessionManager,
                 compatibilityRepository(Result.success(health)),
-                capabilitiesStore = store,
+                capabilitiesStore = store
             )
             advanceUntilIdle()
 
@@ -407,10 +434,21 @@ class MainViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             val flow = MutableStateFlow(loggedInState())
             val sessionManager = sessionManager(flow)
-            val first = ServerHealth(version = "1.3.0", deployment = "server", capabilities = listOf("webauthn_android"))
-            val second = ServerHealth(version = "1.3.0", deployment = "server", capabilities = listOf("contacts"))
+            val first = ServerHealth(
+                version = "1.3.0",
+                deployment = "server",
+                capabilities = listOf("webauthn_android")
+            )
+            val second = ServerHealth(
+                version = "1.3.0",
+                deployment = "server",
+                capabilities = listOf("contacts")
+            )
             val repo = mockk<com.mycorrhizal.crm.domain.repository.ServerCompatibilityRepository>()
-            coEvery { repo.getServerHealth() } returnsMany listOf(Result.success(first), Result.success(second))
+            coEvery { repo.getServerHealth() } returnsMany listOf(
+                Result.success(first),
+                Result.success(second)
+            )
             val store = DefaultServerCapabilitiesStore()
             vm(sessionManager, repo, capabilitiesStore = store)
             advanceUntilIdle()
@@ -424,15 +462,23 @@ class MainViewModelTest {
         }
 
     @Test
-    fun `a session that ends resets the shared store to unknown`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a session that ends resets the shared store to unknown`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val flow = MutableStateFlow(loggedInState())
         val store = DefaultServerCapabilitiesStore()
         vm(
             sessionManager(flow),
             compatibilityRepository(
-                Result.success(ServerHealth(version = "1.3.0", deployment = "server", capabilities = listOf("webauthn_android"))),
+                Result.success(
+                    ServerHealth(
+                        version = "1.3.0",
+                        deployment = "server",
+                        capabilities = listOf("webauthn_android")
+                    )
+                )
             ),
-            capabilitiesStore = store,
+            capabilitiesStore = store
         )
         advanceUntilIdle()
         assertTrue(store.current().declares("webauthn_android"))
@@ -444,12 +490,18 @@ class MainViewModelTest {
     }
 
     @Test
-    fun `logout on the force-update screen ends the session`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `logout on the force-update screen ends the session`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val authRepository = mockk<AuthRepository>()
         coEvery { authRepository.logout() } returns Unit
 
         val sessionManager = sessionManager(MutableStateFlow(loggedInState()))
-        val viewModel = vm(sessionManager, compatibilityRepository(Result.success(ServerHealth())), authRepository)
+        val viewModel = vm(
+            sessionManager,
+            compatibilityRepository(Result.success(ServerHealth())),
+            authRepository
+        )
         advanceUntilIdle()
 
         viewModel.logout()

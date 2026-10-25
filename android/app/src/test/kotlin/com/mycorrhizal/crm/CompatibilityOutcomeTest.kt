@@ -26,7 +26,7 @@ class CompatibilityOutcomeTest {
     fun `a floor above the client forces an update`() {
         val outcome = resolveCompatibilityOutcome(
             clientVersionName = "0.6.0",
-            server = ServerHealth(version = "0.6.10", minClientVersion = "0.7.0"),
+            server = ServerHealth(version = "0.6.10", minClientVersion = "0.7.0")
         )
         assertEquals(CompatibilityGate.ForceUpdate("0.7.0"), outcome.gate)
         assertNull(outcome.noticeVersion)
@@ -37,7 +37,7 @@ class CompatibilityOutcomeTest {
     fun `a compatible supported server passes with its version exposed`() {
         val outcome = resolveCompatibilityOutcome(
             clientVersionName = "0.6.0",
-            server = ServerHealth(version = "1.0.0"),
+            server = ServerHealth(version = "1.0.0")
         )
         assertEquals(CompatibilityGate.NotRequired, outcome.gate)
         assertNull(outcome.noticeVersion)
@@ -48,7 +48,7 @@ class CompatibilityOutcomeTest {
     fun `a pre-baseline server blocks even when the client is not newer`() {
         val outcome = resolveCompatibilityOutcome(
             clientVersionName = "0.1.0",
-            server = ServerHealth(version = "0.5.3"),
+            server = ServerHealth(version = "0.5.3")
         )
         assertEquals(CompatibilityGate.ServerTooOld, outcome.gate)
         assertNull(outcome.noticeVersion)
@@ -59,7 +59,7 @@ class CompatibilityOutcomeTest {
     fun `a pre-baseline server blocks when the client is newer instead of noticing`() {
         val outcome = resolveCompatibilityOutcome(
             clientVersionName = clientNewer,
-            server = ServerHealth(version = "0.5.3"),
+            server = ServerHealth(version = "0.5.3")
         )
         assertEquals(CompatibilityGate.ServerTooOld, outcome.gate)
         assertNull(outcome.noticeVersion)
@@ -69,7 +69,7 @@ class CompatibilityOutcomeTest {
     fun `a newer client on a supported-but-older server raises the notice`() {
         val outcome = resolveCompatibilityOutcome(
             clientVersionName = clientNewer,
-            server = ServerHealth(version = "1.0.0"),
+            server = ServerHealth(version = "1.0.0")
         )
         assertEquals(CompatibilityGate.NotRequired, outcome.gate)
         assertEquals("1.0.0", outcome.noticeVersion)
@@ -80,7 +80,7 @@ class CompatibilityOutcomeTest {
     fun `an unparseable server version fails open to compatible`() {
         val outcome = resolveCompatibilityOutcome(
             clientVersionName = clientNewer,
-            server = ServerHealth(version = "dev"),
+            server = ServerHealth(version = "dev")
         )
         assertEquals(CompatibilityGate.NotRequired, outcome.gate)
         assertNull(outcome.noticeVersion)

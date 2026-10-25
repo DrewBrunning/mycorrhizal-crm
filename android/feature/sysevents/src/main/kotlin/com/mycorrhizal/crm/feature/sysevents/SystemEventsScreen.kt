@@ -60,8 +60,8 @@ import com.mycorrhizal.crm.model.network.ErrorBucket
 import com.mycorrhizal.crm.model.network.JobRunHealth
 import com.mycorrhizal.crm.model.network.JobRunStatuses
 import com.mycorrhizal.crm.model.network.SubsystemHealth
-import com.mycorrhizal.crm.model.network.Subsystems
 import com.mycorrhizal.crm.model.network.SubsystemStatuses
+import com.mycorrhizal.crm.model.network.Subsystems
 import com.mycorrhizal.crm.model.network.SystemEvent
 import com.mycorrhizal.crm.model.network.SystemEventComponents
 import com.mycorrhizal.crm.model.network.SystemEventSeverities
@@ -84,10 +84,7 @@ import java.time.format.FormatStyle
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SystemEventsScreen(
-    onBack: () -> Unit,
-    viewModel: SystemEventsViewModel = hiltViewModel(),
-) {
+fun SystemEventsScreen(onBack: () -> Unit, viewModel: SystemEventsViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val loadError = state.error
@@ -110,49 +107,49 @@ fun SystemEventsScreen(
                     AccessibleIconButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = stringResource(R.string.cd_back),
+                            contentDescription = stringResource(R.string.cd_back)
                         )
                     }
                 },
                 title = {
                     Text(
                         stringResource(R.string.sysevents_title),
-                        style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.titleLarge
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             Text(
                 text = stringResource(R.string.sysevents_description),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
             )
 
             SubsystemHealthSection(
                 health = state.subsystemHealth,
                 onSelectSubsystem = viewModel::applyComponent,
-                onRefresh = viewModel::refreshSubsystemHealth,
+                onRefresh = viewModel::refreshSubsystemHealth
             )
 
             BackgroundJobsSection(
                 jobs = state.jobRunHealth,
-                onRefresh = viewModel::refreshJobRunHealth,
+                onRefresh = viewModel::refreshJobRunHealth
             )
 
             ErrorAggregationSection(
                 buckets = state.errorBuckets,
                 onViewEvents = viewModel::applyEventIds,
-                onRefresh = viewModel::refreshErrorAggregation,
+                onRefresh = viewModel::refreshErrorAggregation
             )
 
             SystemEventsFilterToolbar(
@@ -171,7 +168,7 @@ fun SystemEventsScreen(
                 onClearFilters = {
                     correlationInput = ""
                     viewModel.clearFilters()
-                },
+                }
             )
 
             if (state.correlationId.isNotBlank()) {
@@ -181,16 +178,19 @@ fun SystemEventsScreen(
                         .padding(horizontal = 16.dp, vertical = 4.dp)
                         .testTag("sysevents-related-banner"),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
                         Icons.Outlined.Hub,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = stringResource(R.string.sysevents_related_banner, state.correlationId),
-                        style = MaterialTheme.typography.bodySmall,
+                        text = stringResource(
+                            R.string.sysevents_related_banner,
+                            state.correlationId
+                        ),
+                        style = MaterialTheme.typography.bodySmall
                     )
                 }
             }
@@ -202,16 +202,19 @@ fun SystemEventsScreen(
                         .padding(horizontal = 16.dp, vertical = 4.dp)
                         .testTag("sysevents-errors-banner"),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
                         Icons.Outlined.Hub,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = stringResource(R.string.sysevents_errors_banner, state.eventIds.size),
-                        style = MaterialTheme.typography.bodySmall,
+                        text = stringResource(
+                            R.string.sysevents_errors_banner,
+                            state.eventIds.size
+                        ),
+                        style = MaterialTheme.typography.bodySmall
                     )
                 }
             }
@@ -220,7 +223,7 @@ fun SystemEventsScreen(
                 RefreshableContent(
                     isRefreshing = state.isLoading && state.events.isNotEmpty(),
                     onRefresh = viewModel::load,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize()
                 ) {
                     when {
                         state.isLoading && state.events.isEmpty() ->
@@ -231,17 +234,20 @@ fun SystemEventsScreen(
                                 Text(
                                     text = loadError,
                                     color = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.align(Alignment.Center),
+                                    modifier = Modifier.align(Alignment.Center)
                                 )
                             }
 
                         state.events.isEmpty() ->
                             EmptyState(
                                 title = stringResource(
-                                    if (hasFilters) R.string.sysevents_empty
-                                    else R.string.sysevents_empty_no_filters
+                                    if (hasFilters) {
+                                        R.string.sysevents_empty
+                                    } else {
+                                        R.string.sysevents_empty_no_filters
+                                    }
                                 ),
-                                icon = Icons.Outlined.MonitorHeart,
+                                icon = Icons.Outlined.MonitorHeart
                             )
 
                         else -> SystemEventList(
@@ -249,7 +255,7 @@ fun SystemEventsScreen(
                             canLoadMore = state.canLoadMore,
                             isLoadingMore = state.isLoading,
                             onLoadMore = viewModel::loadMore,
-                            onRowClick = { selected = it },
+                            onRowClick = { selected = it }
                         )
                     }
                 }
@@ -273,7 +279,7 @@ fun SystemEventsScreen(
                 selected = null
                 correlationInput = detail.correlationId
                 viewModel.showRelated(detail.correlationId)
-            },
+            }
         )
     }
 }
@@ -290,12 +296,12 @@ internal fun SystemEventsFilterToolbar(
     onSeverityChange: (String?) -> Unit,
     onEventTypeChange: (String?) -> Unit,
     onCorrelationChange: (String) -> Unit,
-    onClearFilters: () -> Unit,
+    onClearFilters: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             FilterDropdown(
                 label = stringResource(R.string.sysevents_filter_component),
@@ -303,7 +309,7 @@ internal fun SystemEventsFilterToolbar(
                 options = SystemEventComponents.ALL,
                 optionLabel = { it },
                 onSelect = onComponentChange,
-                testTag = "sysevents-component",
+                testTag = "sysevents-component"
             )
             FilterDropdown(
                 label = stringResource(R.string.sysevents_filter_severity),
@@ -312,7 +318,7 @@ internal fun SystemEventsFilterToolbar(
                 options = SystemEventSeverities.ALL,
                 optionLabel = { severityLabel(it) },
                 onSelect = onSeverityChange,
-                testTag = "sysevents-severity",
+                testTag = "sysevents-severity"
             )
             FilterDropdown(
                 label = stringResource(R.string.sysevents_filter_event_type),
@@ -321,19 +327,19 @@ internal fun SystemEventsFilterToolbar(
                 options = SystemEventTypes.ALL,
                 optionLabel = { eventTypeLabel(it) },
                 onSelect = onEventTypeChange,
-                testTag = "sysevents-event-type",
+                testTag = "sysevents-event-type"
             )
             OutlinedButton(
                 onClick = onClearFilters,
                 enabled = hasFilters,
                 modifier = Modifier
                     .testTag("sysevents-clear-filters")
-                    .align(Alignment.CenterVertically),
+                    .align(Alignment.CenterVertically)
             ) {
                 Icon(Icons.Outlined.Clear, contentDescription = null)
                 Text(
                     stringResource(R.string.sysevents_filter_clear),
-                    modifier = Modifier.padding(start = 4.dp),
+                    modifier = Modifier.padding(start = 4.dp)
                 )
             }
         }
@@ -345,7 +351,7 @@ internal fun SystemEventsFilterToolbar(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp)
-                .testTag("sysevents-correlation-id"),
+                .testTag("sysevents-correlation-id")
         )
     }
 }
@@ -358,12 +364,12 @@ private fun FilterDropdown(
     options: List<String>,
     optionLabel: @Composable (String) -> String,
     onSelect: (String?) -> Unit,
-    testTag: String,
+    testTag: String
 ) {
     var expanded by remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(
         expanded = expanded,
-        onExpandedChange = { expanded = it },
+        onExpandedChange = { expanded = it }
     ) {
         OutlinedTextField(
             value = selectedLabel,
@@ -373,7 +379,7 @@ private fun FilterDropdown(
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier
                 .menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                .testTag(testTag),
+                .testTag(testTag)
         )
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(
@@ -381,7 +387,7 @@ private fun FilterDropdown(
                 onClick = {
                     onSelect(null)
                     expanded = false
-                },
+                }
             )
             options.forEach { token ->
                 DropdownMenuItem(
@@ -389,7 +395,7 @@ private fun FilterDropdown(
                     onClick = {
                         onSelect(token)
                         expanded = false
-                    },
+                    }
                 )
             }
         }
@@ -405,7 +411,7 @@ private fun FilterDropdown(
 internal fun SubsystemHealthSection(
     health: List<SubsystemHealth>,
     onSelectSubsystem: (String) -> Unit,
-    onRefresh: () -> Unit,
+    onRefresh: () -> Unit
 ) {
     if (health.isEmpty()) return
     Column(
@@ -413,20 +419,20 @@ internal fun SubsystemHealthSection(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
             .testTag("sysevents-subsystem-health"),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = stringResource(R.string.subsystem_health_title),
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.titleSmall
             )
             TextButton(
                 onClick = onRefresh,
-                modifier = Modifier.testTag("subsystem-health-refresh"),
+                modifier = Modifier.testTag("subsystem-health-refresh")
             ) {
                 Text(stringResource(R.string.subsystem_health_refresh))
             }
@@ -453,42 +459,42 @@ private fun SubsystemHealthCard(item: SubsystemHealth, onClick: () -> Unit) {
             .testTag("subsystem-health-card-${item.subsystem}"),
         onClick = onClick,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        ),
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        )
     ) {
         Column(
             modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(
                 text = subsystemLabel(item.subsystem),
                 style = MaterialTheme.typography.labelLarge,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = subsystemStatusLabel(item.status),
                 style = MaterialTheme.typography.labelMedium,
-                color = statusColor,
+                color = statusColor
             )
             if (failing) {
                 Text(
                     text = stringResource(
                         R.string.subsystem_health_consecutive_failures,
-                        item.consecutiveFailures,
+                        item.consecutiveFailures
                     ),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
+                    color = MaterialTheme.colorScheme.error
                 )
                 val incidentStart = item.incidentFirstFailureAt
                 if (!incidentStart.isNullOrBlank()) {
                     Text(
                         text = stringResource(
                             R.string.subsystem_health_incident_since,
-                            formatEventTime(incidentStart),
+                            formatEventTime(incidentStart)
                         ),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 if (item.lastError.isNotBlank()) {
@@ -497,7 +503,7 @@ private fun SubsystemHealthCard(item: SubsystemHealth, onClick: () -> Unit) {
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.error,
                         maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             } else {
@@ -505,10 +511,10 @@ private fun SubsystemHealthCard(item: SubsystemHealth, onClick: () -> Unit) {
                     text = stringResource(
                         R.string.subsystem_health_last_success,
                         item.lastSuccessAt?.let { formatEventTime(it) }
-                            ?: stringResource(R.string.subsystem_health_never),
+                            ?: stringResource(R.string.subsystem_health_never)
                     ),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -541,30 +547,27 @@ internal fun subsystemStatusLabel(token: String): String = when (token) {
  * error. Mirrors [SubsystemHealthSection]. Hidden until the first fetch lands.
  */
 @Composable
-internal fun BackgroundJobsSection(
-    jobs: List<JobRunHealth>,
-    onRefresh: () -> Unit,
-) {
+internal fun BackgroundJobsSection(jobs: List<JobRunHealth>, onRefresh: () -> Unit) {
     if (jobs.isEmpty()) return
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
             .testTag("sysevents-background-jobs"),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = stringResource(R.string.jobruns_title),
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.titleSmall
             )
             TextButton(
                 onClick = onRefresh,
-                modifier = Modifier.testTag("background-jobs-refresh"),
+                modifier = Modifier.testTag("background-jobs-refresh")
             ) {
                 Text(stringResource(R.string.jobruns_refresh))
             }
@@ -590,32 +593,32 @@ private fun BackgroundJobCard(item: JobRunHealth) {
             .width(220.dp)
             .testTag("background-job-card-${item.jobName}"),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        ),
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        )
     ) {
         Column(
             modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(
                 text = jobRunLabel(item.jobName),
                 style = MaterialTheme.typography.labelLarge,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = jobRunStatusLabel(item.status),
                 style = MaterialTheme.typography.labelMedium,
-                color = statusColor,
+                color = statusColor
             )
             if (failing) {
                 Text(
                     text = stringResource(
                         R.string.jobruns_consecutive_failures,
-                        item.consecutiveFailures,
+                        item.consecutiveFailures
                     ),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
+                    color = MaterialTheme.colorScheme.error
                 )
                 if (item.lastError.isNotBlank()) {
                     Text(
@@ -623,7 +626,7 @@ private fun BackgroundJobCard(item: JobRunHealth) {
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.error,
                         maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
@@ -631,16 +634,16 @@ private fun BackgroundJobCard(item: JobRunHealth) {
                 text = stringResource(
                     R.string.jobruns_last_run,
                     item.lastRunAt?.let { formatEventTime(it) }
-                        ?: stringResource(R.string.jobruns_never),
+                        ?: stringResource(R.string.jobruns_never)
                 ),
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             item.lastDurationMs?.let { ms ->
                 Text(
                     text = stringResource(R.string.jobruns_duration, formatJobRunDuration(ms)),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -693,7 +696,7 @@ private fun formatJobRunDuration(ms: Long): String =
 internal fun ErrorAggregationSection(
     buckets: List<ErrorBucket>,
     onViewEvents: (List<Long>) -> Unit,
-    onRefresh: () -> Unit,
+    onRefresh: () -> Unit
 ) {
     if (buckets.isEmpty()) return
     Column(
@@ -701,20 +704,20 @@ internal fun ErrorAggregationSection(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
             .testTag("sysevents-error-aggregation"),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = stringResource(R.string.error_aggregation_title),
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.titleSmall
             )
             TextButton(
                 onClick = onRefresh,
-                modifier = Modifier.testTag("error-aggregation-refresh"),
+                modifier = Modifier.testTag("error-aggregation-refresh")
             ) {
                 Text(stringResource(R.string.error_aggregation_refresh))
             }
@@ -734,14 +737,17 @@ private fun ErrorBucketCard(bucket: ErrorBucket, onViewEvents: () -> Unit) {
             .width(240.dp)
             .testTag("error-bucket-card-${bucket.component}"),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        ),
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        )
     ) {
         Column(
             modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
                 Text(
                     text = bucket.count.toString(),
                     style = MaterialTheme.typography.titleMedium,
@@ -749,20 +755,20 @@ private fun ErrorBucketCard(bucket: ErrorBucket, onViewEvents: () -> Unit) {
                         MaterialTheme.colorScheme.error
                     } else {
                         MaterialTheme.colorScheme.onSurface
-                    },
+                    }
                 )
                 Text(
                     text = subsystemLabel(bucket.component),
                     style = MaterialTheme.typography.labelLarge,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
             if (bucket.recurring) {
                 Text(
                     text = stringResource(R.string.error_aggregation_recurring),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.error,
+                    color = MaterialTheme.colorScheme.error
                 )
             }
             Text(
@@ -770,12 +776,12 @@ private fun ErrorBucketCard(bucket: ErrorBucket, onViewEvents: () -> Unit) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
                 maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
             TextButton(
                 onClick = onViewEvents,
                 enabled = bucket.eventIds.isNotEmpty(),
-                modifier = Modifier.testTag("error-bucket-view-${bucket.component}"),
+                modifier = Modifier.testTag("error-bucket-view-${bucket.component}")
             ) {
                 Text(stringResource(R.string.error_aggregation_view_events, bucket.eventIds.size))
             }
@@ -789,12 +795,12 @@ internal fun SystemEventList(
     canLoadMore: Boolean,
     isLoadingMore: Boolean,
     onLoadMore: () -> Unit,
-    onRowClick: (SystemEvent) -> Unit,
+    onRowClick: (SystemEvent) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().testTag("sysevents-list"),
         contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(events, key = { it.id }) { event ->
             SystemEventRow(event = event, onClick = { onRowClick(event) })
@@ -803,12 +809,12 @@ internal fun SystemEventList(
             item(key = "load-more") {
                 Box(
                     modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                    contentAlignment = Alignment.Center,
+                    contentAlignment = Alignment.Center
                 ) {
                     OutlinedButton(
                         onClick = onLoadMore,
                         enabled = !isLoadingMore,
-                        modifier = Modifier.testTag("sysevents-load-more"),
+                        modifier = Modifier.testTag("sysevents-load-more")
                     ) {
                         Text(stringResource(R.string.action_load_more))
                     }
@@ -824,16 +830,16 @@ internal fun SystemEventRow(event: SystemEvent, onClick: () -> Unit) {
         modifier = Modifier.fillMaxWidth().testTag("sysevents-row-${event.id}"),
         onClick = onClick,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        ),
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        )
     ) {
         Column(
             modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 SeverityBadge(event.severity)
                 Text(
@@ -841,12 +847,12 @@ internal fun SystemEventRow(event: SystemEvent, onClick: () -> Unit) {
                     style = MaterialTheme.typography.labelMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f)
                 )
                 Text(
                     text = formatEventTime(event.occurredAt),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             val resultText = event.result?.let { resultLabel(it) }
@@ -860,7 +866,7 @@ internal fun SystemEventRow(event: SystemEvent, onClick: () -> Unit) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -880,7 +886,7 @@ private fun SeverityBadge(severity: String) {
         modifier = Modifier
             .background(color.copy(alpha = 0.18f), MaterialTheme.shapes.small)
             .border(1.dp, color, MaterialTheme.shapes.small)
-            .padding(horizontal = 6.dp, vertical = 2.dp),
+            .padding(horizontal = 6.dp, vertical = 2.dp)
     )
 }
 
@@ -888,35 +894,47 @@ private fun SeverityBadge(severity: String) {
 private fun SystemEventDetailDialog(
     event: SystemEvent,
     onDismiss: () -> Unit,
-    onViewRelated: () -> Unit,
+    onViewRelated: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.sysevents_details_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                DetailLine(stringResource(R.string.sysevents_col_event), eventTypeLabel(event.eventType))
-                DetailLine(stringResource(R.string.sysevents_col_time), formatEventTime(event.occurredAt))
-                DetailLine(stringResource(R.string.sysevents_col_severity), severityLabel(event.severity))
-                DetailLine(stringResource(R.string.sysevents_col_component), event.component.ifBlank { "—" })
+                DetailLine(
+                    stringResource(R.string.sysevents_col_event),
+                    eventTypeLabel(event.eventType)
+                )
+                DetailLine(
+                    stringResource(R.string.sysevents_col_time),
+                    formatEventTime(event.occurredAt)
+                )
+                DetailLine(
+                    stringResource(R.string.sysevents_col_severity),
+                    severityLabel(event.severity)
+                )
+                DetailLine(
+                    stringResource(R.string.sysevents_col_component),
+                    event.component.ifBlank { "—" }
+                )
                 DetailLine(stringResource(R.string.sysevents_col_operation), event.operation ?: "—")
                 DetailLine(
                     stringResource(R.string.sysevents_col_result),
-                    event.result?.let { resultLabel(it) } ?: "—",
+                    event.result?.let { resultLabel(it) } ?: "—"
                 )
                 DetailLine(
                     stringResource(R.string.sysevents_col_duration),
-                    event.durationMs?.let { "$it ms" } ?: "—",
+                    event.durationMs?.let { "$it ms" } ?: "—"
                 )
                 Text(
                     text = stringResource(R.string.sysevents_details_correlation_id),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     text = event.correlationId.ifBlank { "—" },
                     style = MaterialTheme.typography.bodySmall,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = FontFamily.Monospace
                 )
                 val detailText = event.detail
                 if (!detailText.isNullOrBlank()) {
@@ -927,12 +945,12 @@ private fun SystemEventDetailDialog(
                     Text(
                         text = stringResource(R.string.sysevents_details_error),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
                         text = errorText,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
+                        color = MaterialTheme.colorScheme.error
                     )
                 }
             }
@@ -941,14 +959,14 @@ private fun SystemEventDetailDialog(
             TextButton(
                 onClick = onViewRelated,
                 enabled = event.correlationId.isNotBlank(),
-                modifier = Modifier.testTag("sysevents-view-related"),
+                modifier = Modifier.testTag("sysevents-view-related")
             ) {
                 Text(stringResource(R.string.sysevents_details_view_related))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) }
-        },
+        }
     )
 }
 
@@ -958,7 +976,7 @@ private fun DetailLine(label: String, value: String) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Text(text = value, style = MaterialTheme.typography.bodySmall)
     }
@@ -983,23 +1001,52 @@ internal fun resultLabel(token: String): String = when (token) {
 /** Human label for an event-type token, falling back to the raw token for future ones. */
 @Composable
 internal fun eventTypeLabel(token: String): String = when (token) {
-    SystemEventTypes.APPLICATION_STARTED -> stringResource(R.string.sysevents_type_application_started)
-    SystemEventTypes.APPLICATION_STOPPED -> stringResource(R.string.sysevents_type_application_stopped)
+    SystemEventTypes.APPLICATION_STARTED -> stringResource(
+        R.string.sysevents_type_application_started
+    )
+
+    SystemEventTypes.APPLICATION_STOPPED -> stringResource(
+        R.string.sysevents_type_application_stopped
+    )
+
     SystemEventTypes.MIGRATION_STARTED -> stringResource(R.string.sysevents_type_migration_started)
-    SystemEventTypes.MIGRATION_COMPLETED -> stringResource(R.string.sysevents_type_migration_completed)
+
+    SystemEventTypes.MIGRATION_COMPLETED -> stringResource(
+        R.string.sysevents_type_migration_completed
+    )
+
     SystemEventTypes.MIGRATION_FAILED -> stringResource(R.string.sysevents_type_migration_failed)
+
     SystemEventTypes.JOB_STARTED -> stringResource(R.string.sysevents_type_job_started)
+
     SystemEventTypes.JOB_COMPLETED -> stringResource(R.string.sysevents_type_job_completed)
+
     SystemEventTypes.JOB_FAILED -> stringResource(R.string.sysevents_type_job_failed)
+
     SystemEventTypes.SYNC_STARTED -> stringResource(R.string.sysevents_type_sync_started)
+
     SystemEventTypes.SYNC_COMPLETED -> stringResource(R.string.sysevents_type_sync_completed)
+
     SystemEventTypes.SYNC_FAILED -> stringResource(R.string.sysevents_type_sync_failed)
+
     SystemEventTypes.NOTIFICATION_SENT -> stringResource(R.string.sysevents_type_notification_sent)
-    SystemEventTypes.NOTIFICATION_FAILED -> stringResource(R.string.sysevents_type_notification_failed)
+
+    SystemEventTypes.NOTIFICATION_FAILED -> stringResource(
+        R.string.sysevents_type_notification_failed
+    )
+
     SystemEventTypes.BACKUP_COMPLETED -> stringResource(R.string.sysevents_type_backup_completed)
+
     SystemEventTypes.BACKUP_FAILED -> stringResource(R.string.sysevents_type_backup_failed)
-    SystemEventTypes.RESTORE_TEST_COMPLETED -> stringResource(R.string.sysevents_type_restore_test_completed)
-    SystemEventTypes.INTEGRATION_FAILED -> stringResource(R.string.sysevents_type_integration_failed)
+
+    SystemEventTypes.RESTORE_TEST_COMPLETED -> stringResource(
+        R.string.sysevents_type_restore_test_completed
+    )
+
+    SystemEventTypes.INTEGRATION_FAILED -> stringResource(
+        R.string.sysevents_type_integration_failed
+    )
+
     else -> token
 }
 

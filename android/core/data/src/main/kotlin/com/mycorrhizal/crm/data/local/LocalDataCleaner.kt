@@ -19,10 +19,8 @@ import kotlinx.coroutines.withContext
  * here too: ending a session is an explicit hand-over of the device, and the
  * privacy wipe takes precedence over that rebuildable-from-phone-metadata data.
  */
-class LocalDataCleaner(
-    private val context: Context,
-    private val database: AppDatabase,
-) : SessionDataCleaner {
+class LocalDataCleaner(private val context: Context, private val database: AppDatabase) :
+    SessionDataCleaner {
 
     override suspend fun clear() {
         withContext(Dispatchers.IO) {

@@ -40,10 +40,13 @@ fun AccountSettingsScreen(
     onTwoFactor: () -> Unit = {},
     onPasskeys: () -> Unit = {},
     onApiTokens: () -> Unit = {},
-    viewModel: SettingsViewModel = hiltViewModel(),
+    viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    SettingsScaffold(title = stringResource(R.string.settings_group_account), onBack = onBack) { padding ->
+    SettingsScaffold(
+        title = stringResource(R.string.settings_group_account),
+        onBack = onBack
+    ) { padding ->
         AccountSettingsContent(
             state = state,
             onServers = onServers,
@@ -51,7 +54,7 @@ fun AccountSettingsScreen(
             onTwoFactor = onTwoFactor,
             onPasskeys = onPasskeys,
             onApiTokens = onApiTokens,
-            modifier = padding,
+            modifier = padding
         )
     }
 }
@@ -64,7 +67,7 @@ fun AccountSettingsContent(
     onTwoFactor: () -> Unit = {},
     onPasskeys: () -> Unit = {},
     onApiTokens: () -> Unit = {},
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     val gating = rememberSettingsGating()
     SettingsColumn(modifier = modifier) {
@@ -75,28 +78,46 @@ fun AccountSettingsContent(
         SettingsInfoRow(stringResource(R.string.settings_username), state.session.username ?: dash)
         SettingsInfoRow(
             stringResource(R.string.settings_admin),
-            if (state.session.isAdmin) stringResource(R.string.settings_yes) else stringResource(R.string.settings_no),
+            if (state.session.isAdmin) {
+                stringResource(
+                    R.string.settings_yes
+                )
+            } else {
+                stringResource(R.string.settings_no)
+            }
         )
         // ADR 0028 Decision 1: manage/toggle server profiles.
         SettingsNavigationRow(stringResource(R.string.settings_servers_title), onClick = onServers)
 
         SettingsSectionHeader(stringResource(R.string.settings_security))
-        SettingsNavigationRow(stringResource(R.string.settings_password_title), onClick = onChangePassword)
+        SettingsNavigationRow(
+            stringResource(R.string.settings_password_title),
+            onClick = onChangePassword
+        )
         // N8 (issue #814): TOTP two-factor enrollment/management (web parity).
         // Issue #1263: absent on a deployment that does not offer 2FA.
         if (gating.twoFactorSupported) {
-            SettingsNavigationRow(stringResource(R.string.settings_two_factor_title), onClick = onTwoFactor)
+            SettingsNavigationRow(
+                stringResource(R.string.settings_two_factor_title),
+                onClick = onTwoFactor
+            )
         }
         // Issue #1293 / ADR 0034: passkeys, offered only through an open gate (Remote profile +
         // server capability + Credential Manager on this device). An OIDC-provisioned account still
         // sees the entry and gets the server-worded refusal on the screen, exactly like the TOTP
         // screen.
         if (state.passkeysAvailable) {
-            SettingsNavigationRow(stringResource(R.string.settings_passkeys_title), onClick = onPasskeys)
+            SettingsNavigationRow(
+                stringResource(R.string.settings_passkeys_title),
+                onClick = onPasskeys
+            )
         }
         // Issue #413's Android follow-up (#573): API token management.
         if (gating.apiTokensSupported) {
-            SettingsNavigationRow(stringResource(R.string.settings_api_tokens_title), onClick = onApiTokens)
+            SettingsNavigationRow(
+                stringResource(R.string.settings_api_tokens_title),
+                onClick = onApiTokens
+            )
         }
     }
 }
@@ -110,7 +131,7 @@ fun AccountSettingsContent(
 fun ChangePasswordScreen(
     onBack: () -> Unit,
     onLoggedOut: () -> Unit,
-    viewModel: SettingsViewModel = hiltViewModel(),
+    viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val events by viewModel.events.collectAsStateWithLifecycle()
@@ -123,15 +144,19 @@ fun ChangePasswordScreen(
                 viewModel.onEventShown()
                 onLoggedOut()
             }
+
             else -> Unit
         }
     }
 
-    SettingsScaffold(title = stringResource(R.string.settings_password_title), onBack = onBack) { padding ->
+    SettingsScaffold(
+        title = stringResource(R.string.settings_password_title),
+        onBack = onBack
+    ) { padding ->
         ChangePasswordContent(
             state = state,
             onChangePassword = viewModel::changePassword,
-            modifier = padding,
+            modifier = padding
         )
     }
 }
@@ -140,7 +165,7 @@ fun ChangePasswordScreen(
 fun ChangePasswordContent(
     state: SettingsUiState,
     onChangePassword: (String, String, String) -> Unit = { _, _, _ -> },
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     var currentPassword by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
@@ -151,14 +176,14 @@ fun ChangePasswordContent(
             SettingsHelperText(
                 text = stringResource(res),
                 color = androidx.compose.material3.MaterialTheme.colorScheme.error,
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
             )
         }
         state.passwordError?.let { error ->
             SettingsHelperText(
                 text = error,
                 color = androidx.compose.material3.MaterialTheme.colorScheme.error,
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
             )
         }
         OutlinedTextField(
@@ -168,7 +193,7 @@ fun ChangePasswordContent(
             singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
             value = newPassword,
@@ -177,7 +202,7 @@ fun ChangePasswordContent(
             singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
             value = confirmPassword,
@@ -186,7 +211,7 @@ fun ChangePasswordContent(
             singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         )
         val changingPasswordLabel = stringResource(R.string.a11y_state_saving)
         // #1760: a disabled button says what enables it, both as visible helper text and as the
@@ -209,7 +234,7 @@ fun ChangePasswordContent(
                     } else if (!canChangePassword) {
                         stateDescription = passwordHint
                     }
-                },
+                }
         ) {
             if (state.isChangingPassword) {
                 CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))

@@ -31,21 +31,28 @@ class DefaultAppLockControllerTest {
         private val enrollment = MutableStateFlow(BiometricEnrollmentStatus.UNASKED)
 
         override fun requireLocalAuth(): Flow<Boolean> = require
-        override suspend fun setRequireLocalAuth(enabled: Boolean) { require.value = enabled }
+        override suspend fun setRequireLocalAuth(enabled: Boolean) {
+            require.value = enabled
+        }
         override fun autoLockDelay(): Flow<AutoLockDelay> = delay
-        override suspend fun setAutoLockDelay(delay: AutoLockDelay) { this.delay.value = delay }
+        override suspend fun setAutoLockDelay(delay: AutoLockDelay) {
+            this.delay.value = delay
+        }
         override fun biometricEnrollmentStatus(): Flow<BiometricEnrollmentStatus> = enrollment
         override suspend fun setBiometricEnrollmentStatus(status: BiometricEnrollmentStatus) {
             enrollment.value = status
         }
         private val blockShots = MutableStateFlow(false)
         override fun blockScreenshots(): Flow<Boolean> = blockShots
-        override suspend fun setBlockScreenshots(enabled: Boolean) { blockShots.value = enabled }
+        override suspend fun setBlockScreenshots(enabled: Boolean) {
+            blockShots.value = enabled
+        }
     }
 
     private class Harness(var now: Long = 0L) {
         val settings = FakeLocalAuthSettingsRepository()
         val tokenStorage = FakeTokenStorage()
+
         // ADR 0028 Decision 1: a pre-seeded token (tokenStorage.stored = ...)
         // is the legacy `jwt` slot, which init() only migrates onto a profile
         // when a legacy server_url anchors one.
@@ -58,7 +65,7 @@ class DefaultAppLockControllerTest {
         setSession(
             serverUrl = "https://crm.example.com",
             token = "jwt-1",
-            state = SessionState(userId = 7, username = "alice"),
+            state = SessionState(userId = 7, username = "alice")
         )
     }
 
@@ -116,21 +123,26 @@ class DefaultAppLockControllerTest {
     // gate applies — arguably more important there, since there is no
     // server-side revocation to fall back on.
     @Test
-    fun `a cold start on a persisted Local profile passes the same app-lock gate`() = controllerTest { h ->
-        h.settings.setRequireLocalAuth(true)
-        h.prefs.snapshot = ProfilesSnapshot(
-            profiles = listOf(
-                ServerProfile(id = "local", kind = ServerProfileKind.Local, label = "On this device"),
-            ),
-            activeProfileId = "local",
-        )
-        h.tokenStorage.tokens["local"] = "local-jwt"
+    fun `a cold start on a persisted Local profile passes the same app-lock gate`() =
+        controllerTest { h ->
+            h.settings.setRequireLocalAuth(true)
+            h.prefs.snapshot = ProfilesSnapshot(
+                profiles = listOf(
+                    ServerProfile(
+                        id = "local",
+                        kind = ServerProfileKind.Local,
+                        label = "On this device"
+                    )
+                ),
+                activeProfileId = "local"
+            )
+            h.tokenStorage.tokens["local"] = "local-jwt"
 
-        h.sessionManager.init()
-        advanceUntilIdle()
+            h.sessionManager.init()
+            advanceUntilIdle()
 
-        assertEquals(AppLockState.Locked, h.controller.state.value)
-    }
+            assertEquals(AppLockState.Locked, h.controller.state.value)
+        }
 
     @Test
     fun `a logged-out start resolves unlocked`() = controllerTest { h ->
@@ -309,24 +321,25 @@ class DefaultAppLockControllerTest {
     // session — the user is already authenticated — but the next background
     // past the grace period applies it.
     @Test
-    fun `enabling mid-session does not lock immediately but arms the next gate`() = controllerTest { h ->
-        h.tokenStorage.stored = "stored-jwt"
+    fun `enabling mid-session does not lock immediately but arms the next gate`() =
+        controllerTest { h ->
+            h.tokenStorage.stored = "stored-jwt"
 
-        h.sessionManager.init()
-        advanceUntilIdle()
-        assertEquals(AppLockState.Unlocked, h.controller.state.value)
+            h.sessionManager.init()
+            advanceUntilIdle()
+            assertEquals(AppLockState.Unlocked, h.controller.state.value)
 
-        h.settings.setRequireLocalAuth(true)
-        advanceUntilIdle()
-        assertEquals(AppLockState.Unlocked, h.controller.state.value)
+            h.settings.setRequireLocalAuth(true)
+            advanceUntilIdle()
+            assertEquals(AppLockState.Unlocked, h.controller.state.value)
 
-        h.now = 1_000L
-        h.controller.onAppBackgrounded()
-        h.now = 1_000L + AutoLockDelay.FIVE_MINUTES.minutes * 60_000L + 1L
-        h.controller.onAppForegrounded()
+            h.now = 1_000L
+            h.controller.onAppBackgrounded()
+            h.now = 1_000L + AutoLockDelay.FIVE_MINUTES.minutes * 60_000L + 1L
+            h.controller.onAppForegrounded()
 
-        assertEquals(AppLockState.Locked, h.controller.state.value)
-    }
+            assertEquals(AppLockState.Locked, h.controller.state.value)
+        }
 
     // Disabling the setting disarms the gate entirely (and never locks the
     // session it is flipped in).
@@ -372,5 +385,4 @@ class DefaultAppLockControllerTest {
 
         assertEquals(AppLockState.Unlocked, h.controller.state.value)
     }
-
 }

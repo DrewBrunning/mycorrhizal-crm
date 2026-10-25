@@ -13,7 +13,7 @@ import java.util.Locale
 data class FieldGroup(
     val label: String,
     val definitions: List<FieldDefinition>,
-    val filledCount: Int,
+    val filledCount: Int
 ) {
     val isUngrouped: Boolean get() = label.isEmpty()
     val hasFilled: Boolean get() = filledCount > 0
@@ -48,7 +48,7 @@ fun hasFieldValue(value: Any?): Boolean = when (value) {
 fun groupFieldDefinitions(
     definitions: List<FieldDefinition>,
     values: Map<String, Any?>,
-    locale: Locale = Locale.getDefault(),
+    locale: Locale = Locale.getDefault()
 ): List<FieldGroup> {
     val collator = Collator.getInstance(locale)
     val byLabel = definitions.groupBy { fieldGroupKey(it) }
@@ -61,7 +61,7 @@ fun groupFieldDefinitions(
     return groups.sortedWith(
         compareByDescending<FieldGroup> { it.hasFilled }
             .thenBy { it.isUngrouped }
-            .then(labelOrder),
+            .then(labelOrder)
     )
 }
 
@@ -71,7 +71,7 @@ fun groupFieldDefinitions(
  */
 fun fieldGroupSuggestions(
     definitions: List<FieldDefinition>,
-    locale: Locale = Locale.getDefault(),
+    locale: Locale = Locale.getDefault()
 ): List<String> {
     val collator = Collator.getInstance(locale)
     return definitions.map { fieldGroupKey(it) }.filter { it.isNotEmpty() }.distinct()

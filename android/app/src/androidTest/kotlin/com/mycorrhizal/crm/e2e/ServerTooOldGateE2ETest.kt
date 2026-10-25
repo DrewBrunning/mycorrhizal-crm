@@ -65,7 +65,7 @@ class ServerTooOldGateE2ETest {
             oldServerStub.enqueue(
                 MockResponse()
                     .setResponseCode(200)
-                    .setBody("""{"status":"healthy","version":"$BELOW_FLOOR_VERSION"}"""),
+                    .setBody("""{"status":"healthy","version":"$BELOW_FLOOR_VERSION"}""")
             )
         }
         oldServerStub.start()

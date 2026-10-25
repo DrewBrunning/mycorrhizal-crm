@@ -44,7 +44,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         val push = PushMessageParser.parse(
             data = message.data,
             title = message.notification?.title,
-            body = message.notification?.body,
+            body = message.notification?.body
         ) ?: return
         dispatcher.dispatch(applicationContext, push)
     }

@@ -34,7 +34,7 @@ class ContactSharesViewModelTest {
         fromUserId = 7,
         toUserId = 1,
         contactDisplayName = name,
-        status = ContactShareStatuses.PENDING,
+        status = ContactShareStatuses.PENDING
     )
 
     private fun outgoingShare(id: String = "s3", name: String = "Casey Tran") = ContactShare(
@@ -42,23 +42,25 @@ class ContactSharesViewModelTest {
         fromUserId = 1,
         toUserId = 9,
         contactDisplayName = name,
-        status = ContactShareStatuses.PENDING,
+        status = ContactShareStatuses.PENDING
     )
 
     private fun stubLists(
         incoming: List<ContactShare> = emptyList(),
-        outgoing: List<ContactShare> = emptyList(),
+        outgoing: List<ContactShare> = emptyList()
     ) {
         coEvery { repository.listIncoming(any(), any()) } returns Result.success(
-            ContactSharesPage(contactShares = incoming, usernames = mapOf("7" to "dana")),
+            ContactSharesPage(contactShares = incoming, usernames = mapOf("7" to "dana"))
         )
         coEvery { repository.listOutgoing(any(), any()) } returns Result.success(
-            ContactSharesPage(contactShares = outgoing, usernames = mapOf("9" to "casey")),
+            ContactSharesPage(contactShares = outgoing, usernames = mapOf("9" to "casey"))
         )
     }
 
     @Test
-    fun `loads incoming and outgoing shares on init`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `loads incoming and outgoing shares on init`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         stubLists(incoming = listOf(incomingShare()), outgoing = listOf(outgoingShare()))
 
         val vm = ContactSharesViewModel(repository)
@@ -75,8 +77,18 @@ class ContactSharesViewModelTest {
 
     @Test
     fun `load failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { repository.listIncoming(any(), any()) } returns Result.failure(ApiError.Client(500, "boom"))
-        coEvery { repository.listOutgoing(any(), any()) } returns Result.failure(ApiError.Client(500, "boom"))
+        coEvery {
+            repository.listIncoming(
+                any(),
+                any()
+            )
+        } returns Result.failure(ApiError.Client(500, "boom"))
+        coEvery {
+            repository.listOutgoing(
+                any(),
+                any()
+            )
+        } returns Result.failure(ApiError.Client(500, "boom"))
 
         val vm = ContactSharesViewModel(repository)
         advanceUntilIdle()
@@ -88,9 +100,14 @@ class ContactSharesViewModelTest {
     @Test
     fun `a single failed list surfaces the error while the other list still renders`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            coEvery { repository.listIncoming(any(), any()) } returns Result.failure(ApiError.Client(500, "boom"))
+            coEvery {
+                repository.listIncoming(
+                    any(),
+                    any()
+                )
+            } returns Result.failure(ApiError.Client(500, "boom"))
             coEvery { repository.listOutgoing(any(), any()) } returns Result.success(
-                ContactSharesPage(contactShares = listOf(outgoingShare())),
+                ContactSharesPage(contactShares = listOf(outgoingShare()))
             )
 
             val vm = ContactSharesViewModel(repository)
@@ -117,7 +134,9 @@ class ContactSharesViewModelTest {
     // --- Accept flow (M15: accept is preview-then-confirm, never a one-tap button) ---
 
     @Test
-    fun `openAccept fetches the preview and suggests the row default action`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `openAccept fetches the preview and suggests the row default action`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         stubLists(incoming = listOf(incomingShare()))
         coEvery { repository.accept("s1") } returns Result.success(
             ImportPreviewResponse(
@@ -126,14 +145,14 @@ class ContactSharesViewModelTest {
                     ImportRowPreview(
                         rowIndex = 0,
                         parsedContact = mapOf("firstname" to "Dana"),
-                        suggestedAction = "update",
-                    ),
+                        suggestedAction = "update"
+                    )
                 ),
                 totalRows = 1,
                 validRows = 1,
                 duplicateCount = 0,
-                errorCount = 0,
-            ),
+                errorCount = 0
+            )
         )
 
         val vm = ContactSharesViewModel(repository)
@@ -158,16 +177,21 @@ class ContactSharesViewModelTest {
                 ImportPreviewResponse(
                     sessionId = "import-1",
                     rows = listOf(ImportRowPreview(rowIndex = 0, suggestedAction = "add")),
-                    totalRows = 1,
-                ),
+                    totalRows = 1
+                )
             )
             coEvery { repository.confirm(any(), any(), any()) } returns Result.success(
-                ImportResult(totalProcessed = 1, created = 1),
+                ImportResult(totalProcessed = 1, created = 1)
             )
             // After a successful confirm, the incoming list is refreshed — the
             // accepted share no longer shows as pending (the accepted contact now
             // lives locally).
-            coEvery { repository.listIncoming(any(), any()) } returns Result.success(ContactSharesPage())
+            coEvery {
+                repository.listIncoming(
+                    any(),
+                    any()
+                )
+            } returns Result.success(ContactSharesPage())
 
             val vm = ContactSharesViewModel(repository)
             advanceUntilIdle()
@@ -179,7 +203,13 @@ class ContactSharesViewModelTest {
             vm.confirmAccept()
             advanceUntilIdle()
 
-            coVerify { repository.confirm("s1", "import-1", listOf(RowImportAction(rowIndex = 0, action = "add"))) }
+            coVerify {
+                repository.confirm(
+                    "s1",
+                    "import-1",
+                    listOf(RowImportAction(rowIndex = 0, action = "add"))
+                )
+            }
             assertNull(vm.uiState.value.acceptingShare)
             assertTrue(vm.uiState.value.incoming.isEmpty())
         }
@@ -187,7 +217,9 @@ class ContactSharesViewModelTest {
     // --- Decline flow (M15: the repository is NOT called until the user confirms) ---
 
     @Test
-    fun `requestDecline does not call the repository`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `requestDecline does not call the repository`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         stubLists(incoming = listOf(incomingShare()))
 
         val vm = ContactSharesViewModel(repository)
@@ -206,7 +238,12 @@ class ContactSharesViewModelTest {
             stubLists(incoming = listOf(incomingShare()))
             coEvery { repository.decline("s1") } returns Result.success(Unit)
             // After declining, the pending share leaves the inbox.
-            coEvery { repository.listIncoming(any(), any()) } returns Result.success(ContactSharesPage())
+            coEvery {
+                repository.listIncoming(
+                    any(),
+                    any()
+                )
+            } returns Result.success(ContactSharesPage())
 
             val vm = ContactSharesViewModel(repository)
             advanceUntilIdle()

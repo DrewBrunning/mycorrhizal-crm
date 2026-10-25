@@ -51,7 +51,10 @@ class ScreenResilienceTest {
 
     private fun ActivityScenario<MainActivity>.hasFlagSecure(): Boolean {
         var secure = false
-        onActivity { secure = (it.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE) != 0 }
+        onActivity {
+            secure =
+                (it.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE) != 0
+        }
         return secure
     }
 
@@ -74,7 +77,7 @@ class ScreenResilienceTest {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             assertFalse(
                 "FLAG_SECURE must be absent while 'Block screenshots and screen recording' is off",
-                scenario.hasFlagSecure(),
+                scenario.hasFlagSecure()
             )
         }
     }
@@ -85,7 +88,10 @@ class ScreenResilienceTest {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             // No waiting: the stored value must already be applied when the
             // activity first becomes available to the test.
-            assertTrue("FLAG_SECURE must be set on cold start when the setting is on", scenario.hasFlagSecure())
+            assertTrue(
+                "FLAG_SECURE must be set on cold start when the setting is on",
+                scenario.hasFlagSecure()
+            )
         }
     }
 
@@ -109,7 +115,7 @@ class ScreenResilienceTest {
                     assertEquals(
                         "setRecentsScreenshotEnabled(false) is called on API 33+ (setting=$setting)",
                         Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU,
-                        activity.recentsScreenshotDisabled,
+                        activity.recentsScreenshotDisabled
                     )
                 }
             }
@@ -123,7 +129,7 @@ class ScreenResilienceTest {
                 assertTrue(
                     "MainActivity's decor view must filter touches while obscured by " +
                         "another window, so an overlay attack can't tap through it",
-                    activity.window.decorView.filterTouchesWhenObscured,
+                    activity.window.decorView.filterTouchesWhenObscured
                 )
             }
         }

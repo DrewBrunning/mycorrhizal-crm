@@ -45,7 +45,7 @@ class TimelineExplorerScreenTest {
         onBucketChange: (String) -> Unit = {},
         onLoadMore: () -> Unit = {},
         onRetry: () -> Unit = {},
-        onUndoCompletion: (Int) -> Unit = {},
+        onUndoCompletion: (Int) -> Unit = {}
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -57,21 +57,31 @@ class TimelineExplorerScreenTest {
                     onBucketChange = onBucketChange,
                     onLoadMore = onLoadMore,
                     onRetry = onRetry,
-                    onUndoCompletion = onUndoCompletion,
+                    onUndoCompletion = onUndoCompletion
                 )
             }
         }
     }
 
-    private fun notes(count: Int) = (1..count).map { TimelineItem.NoteItem(Note(id = it, content = "note $it")) }
+    private fun notes(count: Int) = (1..count).map {
+        TimelineItem.NoteItem(
+            Note(id = it, content = "note $it")
+        )
+    }
 
     @Test
     fun `rows are composed lazily - a large page does not compose every event`() {
         show(TimelineExplorerUiState(contactId = 5, items = notes(200)))
 
         composeTestRule.onNodeWithText("note 1").assertIsDisplayed()
-        val composed = composeTestRule.onAllNodesWithText("note ", substring = true).fetchSemanticsNodes().size
-        assertTrue("expected a lazily-composed window, got $composed of 200 rows", composed in 1..60)
+        val composed = composeTestRule.onAllNodesWithText(
+            "note ",
+            substring = true
+        ).fetchSemanticsNodes().size
+        assertTrue(
+            "expected a lazily-composed window, got $composed of 200 rows",
+            composed in 1..60
+        )
     }
 
     @Test
@@ -79,7 +89,7 @@ class TimelineExplorerScreenTest {
         var loads = 0
         show(
             TimelineExplorerUiState(contactId = 5, items = notes(2), nextCursor = "cur-1"),
-            onLoadMore = { loads++ },
+            onLoadMore = { loads++ }
         )
 
         composeTestRule.onNodeWithText("Load more").assertIsDisplayed().performClick()
@@ -96,7 +106,14 @@ class TimelineExplorerScreenTest {
 
     @Test
     fun `load more is disabled while the next page is loading`() {
-        show(TimelineExplorerUiState(contactId = 5, items = notes(2), nextCursor = "cur-1", isLoadingMore = true))
+        show(
+            TimelineExplorerUiState(
+                contactId = 5,
+                items = notes(2),
+                nextCursor = "cur-1",
+                isLoadingMore = true
+            )
+        )
 
         composeTestRule.onNodeWithText("Load more").assertIsNotEnabled()
     }
@@ -105,8 +122,12 @@ class TimelineExplorerScreenTest {
     fun `selecting a type chip reports the selection and deselecting removes it`() {
         var selection: Set<String>? = null
         show(
-            TimelineExplorerUiState(contactId = 5, items = notes(1), types = setOf(TimelineTypes.NOTE)),
-            onTypesChange = { selection = it },
+            TimelineExplorerUiState(
+                contactId = 5,
+                items = notes(1),
+                types = setOf(TimelineTypes.NOTE)
+            ),
+            onTypesChange = { selection = it }
         )
 
         composeTestRule.onNodeWithText("Activity").performClick()
@@ -120,8 +141,12 @@ class TimelineExplorerScreenTest {
     fun `the all types chip clears the type filter`() {
         var selection: Set<String>? = null
         show(
-            TimelineExplorerUiState(contactId = 5, items = notes(1), types = setOf(TimelineTypes.GIFT)),
-            onTypesChange = { selection = it },
+            TimelineExplorerUiState(
+                contactId = 5,
+                items = notes(1),
+                types = setOf(TimelineTypes.GIFT)
+            ),
+            onTypesChange = { selection = it }
         )
 
         composeTestRule.onNodeWithText("All types").performClick()
@@ -132,7 +157,10 @@ class TimelineExplorerScreenTest {
     @Test
     fun `picking a recency chip reports the bucket`() {
         var bucket: String? = null
-        show(TimelineExplorerUiState(contactId = 5, items = notes(1)), onBucketChange = { bucket = it })
+        show(
+            TimelineExplorerUiState(contactId = 5, items = notes(1)),
+            onBucketChange = { bucket = it }
+        )
 
         composeTestRule.onNodeWithText("Last 7 days").performClick()
 
@@ -149,7 +177,10 @@ class TimelineExplorerScreenTest {
     @Test
     fun `a failed first load shows the error with a retry that refetches`() {
         var retries = 0
-        show(TimelineExplorerUiState(contactId = 5, error = "Unexpected server response"), onRetry = { retries++ })
+        show(
+            TimelineExplorerUiState(contactId = 5, error = "Unexpected server response"),
+            onRetry = { retries++ }
+        )
 
         composeTestRule.onNodeWithText("Unexpected server response").assertIsDisplayed()
         composeTestRule.onNodeWithText("Retry").assertIsEnabled().performClick()
@@ -166,11 +197,11 @@ class TimelineExplorerScreenTest {
                 contactId = 5,
                 items = listOf(
                     TimelineItem.NoteItem(Note(id = 4, content = "Loves climbing")),
-                    TimelineItem.ActivityItem(Activity(id = 8, title = "Coffee with Dana")),
-                ),
+                    TimelineItem.ActivityItem(Activity(id = 8, title = "Coffee with Dana"))
+                )
             ),
             onEditNote = { editedNote = it },
-            onEditActivity = { editedActivity = it },
+            onEditActivity = { editedActivity = it }
         )
 
         composeTestRule.onNodeWithText("Loves climbing").performClick()
@@ -186,9 +217,13 @@ class TimelineExplorerScreenTest {
         show(
             TimelineExplorerUiState(
                 contactId = 5,
-                items = listOf(TimelineItem.CompletionItem(ReminderCompletion(id = 9, contactId = 5, message = "Call Dana"))),
+                items = listOf(
+                    TimelineItem.CompletionItem(
+                        ReminderCompletion(id = 9, contactId = 5, message = "Call Dana")
+                    )
+                )
             ),
-            onUndoCompletion = { undone = it },
+            onUndoCompletion = { undone = it }
         )
 
         composeTestRule.onNodeWithContentDescription("Undo completion").performClick()
@@ -205,13 +240,24 @@ class TimelineExplorerScreenTest {
             TimelineExplorerUiState(
                 contactId = 5,
                 items = listOf(
-                    TimelineItem.LifeEventItem(LifeEvent(id = "le1", type = "moved", description = "Moved to Oslo"), "2026-08-20T00:00:00Z"),
-                    TimelineItem.ExternalActivityItem(
-                        ExternalActivity(id = "ea1", sourceSystem = "immich", type = "photo-appearance", payload = mapOf("person_name" to "Alice")),
+                    TimelineItem.LifeEventItem(
+                        LifeEvent(id = "le1", type = "moved", description = "Moved to Oslo"),
+                        "2026-08-20T00:00:00Z"
                     ),
-                    TimelineItem.GiftItem(Gift(id = "g1", description = "A book", status = GiftStatuses.GIVEN), "2026-08-01T00:00:00Z"),
-                ),
-            ),
+                    TimelineItem.ExternalActivityItem(
+                        ExternalActivity(
+                            id = "ea1",
+                            sourceSystem = "immich",
+                            type = "photo-appearance",
+                            payload = mapOf("person_name" to "Alice")
+                        )
+                    ),
+                    TimelineItem.GiftItem(
+                        Gift(id = "g1", description = "A book", status = GiftStatuses.GIVEN),
+                        "2026-08-01T00:00:00Z"
+                    )
+                )
+            )
         )
 
         composeTestRule.onNodeWithText("Moved to Oslo").assertIsDisplayed()

@@ -13,8 +13,6 @@ import io.mockk.mockk
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -43,7 +41,9 @@ class VcfImportViewModelTest {
 
     // The backstop, for content providers that declare no size at all.
     @Test
-    fun `a file over 50MB is rejected client-side without calling the API`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a file over 50MB is rejected client-side without calling the API`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = VcfImportViewModel(apiClient)
 
         vm.onFilePicked("big.vcf", ByteArray(VcfImportViewModel.MAX_VCF_SIZE_BYTES + 1))
@@ -55,7 +55,9 @@ class VcfImportViewModelTest {
     }
 
     @Test
-    fun `an empty file is rejected client-side without calling the API`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `an empty file is rejected client-side without calling the API`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = VcfImportViewModel(apiClient)
 
         vm.onFilePicked("empty.vcf", ByteArray(0))
@@ -73,9 +75,9 @@ class VcfImportViewModelTest {
                     sessionId = "session-1",
                     rows = listOf(
                         ImportRowPreview(rowIndex = 0, suggestedAction = "add"),
-                        ImportRowPreview(rowIndex = 1, suggestedAction = "update"),
-                    ),
-                ),
+                        ImportRowPreview(rowIndex = 1, suggestedAction = "update")
+                    )
+                )
             )
 
             val vm = VcfImportViewModel(apiClient)
@@ -95,9 +97,13 @@ class VcfImportViewModelTest {
                 ImportPreviewResponse(
                     sessionId = "session-1",
                     rows = listOf(
-                        ImportRowPreview(rowIndex = 0, suggestedAction = "add", validationErrors = listOf("missing name")),
-                    ),
-                ),
+                        ImportRowPreview(
+                            rowIndex = 0,
+                            suggestedAction = "add",
+                            validationErrors = listOf("missing name")
+                        )
+                    )
+                )
             )
 
             val vm = VcfImportViewModel(apiClient)
@@ -112,9 +118,14 @@ class VcfImportViewModelTest {
         }
 
     @Test
-    fun `a row without errors can have its action overridden`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a row without errors can have its action overridden`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { apiClient.uploadVcfImport(any(), any()) } returns Result.success(
-            ImportPreviewResponse(sessionId = "session-1", rows = listOf(ImportRowPreview(rowIndex = 0, suggestedAction = "add"))),
+            ImportPreviewResponse(
+                sessionId = "session-1",
+                rows = listOf(ImportRowPreview(rowIndex = 0, suggestedAction = "add"))
+            )
         )
 
         val vm = VcfImportViewModel(apiClient)
@@ -135,9 +146,13 @@ class VcfImportViewModelTest {
                     rows = listOf(
                         ImportRowPreview(rowIndex = 0, suggestedAction = "update"),
                         ImportRowPreview(rowIndex = 1, suggestedAction = "add"),
-                        ImportRowPreview(rowIndex = 2, validationErrors = listOf("missing name"), suggestedAction = "skip"),
-                    ),
-                ),
+                        ImportRowPreview(
+                            rowIndex = 2,
+                            validationErrors = listOf("missing name"),
+                            suggestedAction = "skip"
+                        )
+                    )
+                )
             )
 
             val vm = VcfImportViewModel(apiClient)
@@ -157,8 +172,15 @@ class VcfImportViewModelTest {
         }
 
     @Test
-    fun `upload failure surfaces the error and stays on the pick step`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { apiClient.uploadVcfImport(any(), any()) } returns Result.failure(ApiError.Client(400, "bad vcf"))
+    fun `upload failure surfaces the error and stays on the pick step`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery {
+            apiClient.uploadVcfImport(
+                any(),
+                any()
+            )
+        } returns Result.failure(ApiError.Client(400, "bad vcf"))
 
         val vm = VcfImportViewModel(apiClient)
         vm.onFilePicked("contacts.vcf", byteArrayOf(1))
@@ -176,13 +198,13 @@ class VcfImportViewModelTest {
                     sessionId = "session-1",
                     rows = listOf(
                         ImportRowPreview(rowIndex = 0, suggestedAction = "add"),
-                        ImportRowPreview(rowIndex = 1, suggestedAction = "update"),
-                    ),
-                ),
+                        ImportRowPreview(rowIndex = 1, suggestedAction = "update")
+                    )
+                )
             )
             coEvery {
                 apiClient.confirmVcfImport(
-                    match { it.sessionId == "session-1" && it.actions.size == 2 },
+                    match { it.sessionId == "session-1" && it.actions.size == 2 }
                 )
             } returns Result.success(ImportResult(totalProcessed = 2, created = 1, updated = 1))
 
@@ -201,17 +223,26 @@ class VcfImportViewModelTest {
                     match { request ->
                         request.actions.any { it.rowIndex == 0 && it.action == "add" } &&
                             request.actions.any { it.rowIndex == 1 && it.action == "skip" }
-                    },
+                    }
                 )
             }
         }
 
     @Test
-    fun `confirm failure surfaces the error and stays on the preview step`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `confirm failure surfaces the error and stays on the preview step`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { apiClient.uploadVcfImport(any(), any()) } returns Result.success(
-            ImportPreviewResponse(sessionId = "session-1", rows = listOf(ImportRowPreview(rowIndex = 0, suggestedAction = "add"))),
+            ImportPreviewResponse(
+                sessionId = "session-1",
+                rows = listOf(ImportRowPreview(rowIndex = 0, suggestedAction = "add"))
+            )
         )
-        coEvery { apiClient.confirmVcfImport(any()) } returns Result.failure(ApiError.Client(500, "server error"))
+        coEvery {
+            apiClient.confirmVcfImport(
+                any()
+            )
+        } returns Result.failure(ApiError.Client(500, "server error"))
 
         val vm = VcfImportViewModel(apiClient)
         vm.onFilePicked("contacts.vcf", byteArrayOf(1))

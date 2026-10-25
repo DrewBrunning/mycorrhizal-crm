@@ -15,12 +15,12 @@ import com.mycorrhizal.crm.model.network.ContactsPage as NetworkContactsPage
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.toApiError
+import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import javax.inject.Inject
 
 /**
  * Online-first contact access. Fetches pages from the server and mirrors them
@@ -29,7 +29,7 @@ import javax.inject.Inject
  */
 class ContactRepositoryImpl @Inject constructor(
     private val apiClient: ApiClient,
-    private val dao: CachedContactDao,
+    private val dao: CachedContactDao
 ) : ContactRepository {
 
     /**
@@ -54,7 +54,7 @@ class ContactRepositoryImpl @Inject constructor(
         includeArchived: Boolean?,
         favorites: Boolean?,
         sort: String?,
-        order: String?,
+        order: String?
     ): Result<ContactsPage> {
         val result = apiClient.listContacts(
             cursor = cursor,
@@ -65,7 +65,7 @@ class ContactRepositoryImpl @Inject constructor(
             circleLegacy = circleLegacy,
             favorites = favorites,
             sort = sort,
-            order = order,
+            order = order
         )
         val page = result.getOrElse { error ->
             // Network failure: serve whatever is cached for this search term.
@@ -81,13 +81,12 @@ class ContactRepositoryImpl @Inject constructor(
                 contacts = page.contacts,
                 nextCursor = page.nextCursor,
                 limit = page.limit,
-                sync = page.sync,
-            ),
+                sync = page.sync
+            )
         )
     }
 
-    override suspend fun listLegacyCircles(): Result<List<String>> =
-        apiClient.listLegacyCircles()
+    override suspend fun listLegacyCircles(): Result<List<String>> = apiClient.listLegacyCircles()
 
     /**
      * T17 change-feed sync (issue #959). The old implementation read
@@ -192,7 +191,7 @@ class ContactRepositoryImpl @Inject constructor(
             onSuccess = { page ->
                 Result.success(page.contacts.mapNotNull { c -> c.uid?.let { it to c } }.toMap())
             },
-            onFailure = { error -> Result.failure(error.toApiError()) },
+            onFailure = { error -> Result.failure(error.toApiError()) }
         )
     }
 
@@ -216,9 +215,12 @@ class ContactRepositoryImpl @Inject constructor(
                 }
                 val cached = dao.getById(id)
                 val fromCache = cached?.let { it.toRecord() }
-                if (fromCache != null) Result.success(fromCache)
-                else Result.failure(error)
-            },
+                if (fromCache != null) {
+                    Result.success(fromCache)
+                } else {
+                    Result.failure(error)
+                }
+            }
         )
     }
 
@@ -229,18 +231,22 @@ class ContactRepositoryImpl @Inject constructor(
                 dao.upsert(record.toCached())
                 Result.success(record)
             },
-            onFailure = { error -> Result.failure(error) },
+            onFailure = { error -> Result.failure(error) }
         )
     }
 
-    override suspend fun updateContact(id: Int, input: ContactRecordInput, revision: Int?): Result<ContactRecordResponse> {
+    override suspend fun updateContact(
+        id: Int,
+        input: ContactRecordInput,
+        revision: Int?
+    ): Result<ContactRecordResponse> {
         val result = apiClient.updateContact(id, input, revision)
         return result.fold(
             onSuccess = { record ->
                 dao.upsert(record.toCached())
                 Result.success(record)
             },
-            onFailure = { error -> Result.failure(error) },
+            onFailure = { error -> Result.failure(error) }
         )
     }
 
@@ -283,7 +289,7 @@ class ContactRepositoryImpl @Inject constructor(
 
     override suspend fun setTargetCloseness(
         id: Int,
-        tier: String,
+        tier: String
     ): Result<ContactTargetClosenessResponse> = apiClient.setTargetCloseness(id, tier)
 
     override suspend fun clearTargetCloseness(id: Int): Result<ContactTargetClosenessResponse> =
@@ -295,10 +301,9 @@ class ContactRepositoryImpl @Inject constructor(
     override suspend fun uploadPhoto(id: Int, bytes: ByteArray, mimeType: String): Result<Unit> =
         apiClient.uploadContactPhoto(id, bytes, mimeType)
 
-    override fun observeContacts(): Flow<List<ContactSummary>> =
-        flow {
-            emit(dao.getAll().map { it.toSummary() })
-        }
+    override fun observeContacts(): Flow<List<ContactSummary>> = flow {
+        emit(dao.getAll().map { it.toSummary() })
+    }
 
     override suspend fun findByPhone(phone: String): ContactSummary? {
         // Issue #963: match on the shared PhoneKey (whole digits, last-10), not
@@ -318,8 +323,7 @@ class ContactRepositoryImpl @Inject constructor(
         dao.setDeviceLookupKey(id, lookupKey)
     }
 
-    override suspend fun getDeviceLookupKey(id: Int): String? =
-        dao.getById(id)?.deviceLookupKey
+    override suspend fun getDeviceLookupKey(id: Int): String? = dao.getById(id)?.deviceLookupKey
 
     override suspend fun searchLocal(query: String): List<ContactSummary> {
         val trimmed = query.trim()
@@ -369,10 +373,9 @@ class ContactRepositoryImpl @Inject constructor(
         return tokens.joinToString(" OR ")
     }
 
-    override fun observeContact(id: Int): Flow<ContactRecordResponse?> =
-        flow {
-            emit(dao.getById(id)?.toRecord())
-        }
+    override fun observeContact(id: Int): Flow<ContactRecordResponse?> = flow {
+        emit(dao.getById(id)?.toRecord())
+    }
 
     override suspend fun getContactIdsMissingPhoneIndex(limit: Int): List<Int> =
         dao.getIdsMissingPhoneIndex(limit)
@@ -397,7 +400,13 @@ class ContactRepositoryImpl @Inject constructor(
                 // index from a previously cached full detail fetch (cached.card != null,
                 // same signal card/crm above key off) rather than downgrading it on every
                 // plain list refresh.
-                phonesNormalized = if (cached.card != null) cached.phonesNormalized else row.phonesNormalized,
+                phonesNormalized = if (cached.card !=
+                    null
+                ) {
+                    cached.phonesNormalized
+                } else {
+                    row.phonesNormalized
+                }
             )
         }
     }
@@ -421,7 +430,7 @@ class ContactRepositoryImpl @Inject constructor(
         archived = archived,
         isFavorite = isFavorite,
         deleted = deleted,
-        deviceLookupKey = deviceLookupKey,
+        deviceLookupKey = deviceLookupKey
     )
 
     private fun ContactRecordResponse.toCached(): CachedContact = CachedContact(
@@ -440,14 +449,15 @@ class ContactRepositoryImpl @Inject constructor(
         archived = archived,
         isFavorite = isFavorite,
         card = card,
-        crm = crm,
+        crm = crm
     )
 
     override suspend fun suggestContactAddresses(): Result<List<ContactAddressSuggestion>> =
         apiClient.suggestContactAddresses().map { it.suggestions }
 
-    override suspend fun applyContactAddressSuggestion(input: ApplyContactAddressSuggestionInput): Result<Unit> =
-        apiClient.applyContactAddressSuggestion(input)
+    override suspend fun applyContactAddressSuggestion(
+        input: ApplyContactAddressSuggestionInput
+    ): Result<Unit> = apiClient.applyContactAddressSuggestion(input)
 
     private fun CachedContact.toSummary(): ContactSummary = ContactSummary(
         id = id,
@@ -465,7 +475,7 @@ class ContactRepositoryImpl @Inject constructor(
         archived = archived,
         isFavorite = isFavorite,
         deleted = deleted,
-        deviceLookupKey = deviceLookupKey,
+        deviceLookupKey = deviceLookupKey
     )
 
     private fun CachedContact.toRecord(): ContactRecordResponse? {
@@ -477,7 +487,7 @@ class ContactRepositoryImpl @Inject constructor(
             crm = crm,
             photoThumbnail = photoThumbnail,
             archived = archived,
-            isFavorite = isFavorite,
+            isFavorite = isFavorite
         )
     }
 }

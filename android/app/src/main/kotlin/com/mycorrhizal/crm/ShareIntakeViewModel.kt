@@ -11,9 +11,8 @@ import javax.inject.Inject
  * the text; the note form takes it once. Backing out of the picker/form discards it.
  */
 @HiltViewModel
-class ShareIntakeViewModel @Inject constructor(
-    private val drafts: ShareDraftHolder,
-) : ViewModel() {
+class ShareIntakeViewModel @Inject constructor(private val drafts: ShareDraftHolder) :
+    ViewModel() {
 
     /** Stashes [text] and returns the key to route with. */
     fun stash(text: String): String = drafts.put(text)
@@ -28,7 +27,10 @@ class ShareIntakeViewModel @Inject constructor(
 }
 
 /** Route of the "Share to…" contact picker; [key] is the [ShareDraftHolder] key. */
-internal fun sharePickerRoute(key: String): String = "share/pick-contact?key=${android.net.Uri.encode(key)}"
+internal fun sharePickerRoute(key: String): String =
+    "share/pick-contact?key=${android.net.Uri.encode(
+        key
+    )}"
 
 /** Route of the new-note form prefilled from the [ShareDraftHolder] draft behind [key]. */
 internal fun sharedNoteRoute(contactId: Int, key: String): String =

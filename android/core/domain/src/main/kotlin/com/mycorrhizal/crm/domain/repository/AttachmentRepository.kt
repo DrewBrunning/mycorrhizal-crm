@@ -12,7 +12,12 @@ interface AttachmentRepository {
     suspend fun list(contactId: Int): Result<AttachmentListResponse>
 
     /** POST /contacts/{id}/attachments — multipart upload (server caps size/type). */
-    suspend fun upload(contactId: Int, fileName: String, mimeType: String, bytes: ByteArray): Result<Unit>
+    suspend fun upload(
+        contactId: Int,
+        fileName: String,
+        mimeType: String,
+        bytes: ByteArray
+    ): Result<Unit>
 
     /** GET /attachments/{id}/download — the raw bytes of one attachment. */
     suspend fun download(attachmentId: Int): Result<ByteArray>

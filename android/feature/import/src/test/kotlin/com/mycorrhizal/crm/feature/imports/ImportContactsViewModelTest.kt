@@ -36,7 +36,7 @@ class ImportContactsViewModelTest {
         return ImportContactsViewModel(
             apiClient = apiClient,
             contactRepository = contactRepository,
-            appContext = mockk<Context>(relaxed = true),
+            appContext = mockk<Context>(relaxed = true)
         ).apply {
             readDeviceContacts = { contacts }
             ioDispatcher = mainDispatcherRule.testDispatcher
@@ -45,7 +45,7 @@ class ImportContactsViewModelTest {
 
     private fun preview(vararg rows: ImportRowPreview) = ImportPreviewResponse(
         sessionId = "session-device",
-        rows = rows.toList(),
+        rows = rows.toList()
     )
 
     @Test
@@ -59,12 +59,12 @@ class ImportContactsViewModelTest {
                 emails = listOf("jane@example.com"),
                 addresses = emptyList(),
                 organization = null,
-                birthday = null,
+                birthday = null
             )
             coEvery { apiClient.uploadImportRecords(any()) } returns Result.success(
                 preview(
-                    ImportRowPreview(rowIndex = 0, suggestedAction = "update"),
-                ),
+                    ImportRowPreview(rowIndex = 0, suggestedAction = "update")
+                )
             )
 
             val vm = vm(listOf(device))
@@ -81,8 +81,19 @@ class ImportContactsViewModelTest {
         }
 
     @Test
-    fun `submitSelected with no selection is a no-op`() = runTest(mainDispatcherRule.testDispatcher) {
-        val device = DeviceContact(1, "lk-1", "Jane Smith", emptyList(), emptyList(), emptyList(), null, null)
+    fun `submitSelected with no selection is a no-op`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val device = DeviceContact(
+            1,
+            "lk-1",
+            "Jane Smith",
+            emptyList(),
+            emptyList(),
+            emptyList(),
+            null,
+            null
+        )
         val vm = vm(listOf(device))
         vm.load(contentResolver = mockk<ContentResolver>(relaxed = true))
         advanceUntilIdle()
@@ -97,12 +108,21 @@ class ImportContactsViewModelTest {
     @Test
     fun `a within-batch duplicate defaults to skip on the review step`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            val dup = DeviceContact(1, "lk-1", "Jane Smith", emptyList(), listOf("jane@example.com"), emptyList(), null, null)
+            val dup = DeviceContact(
+                1,
+                "lk-1",
+                "Jane Smith",
+                emptyList(),
+                listOf("jane@example.com"),
+                emptyList(),
+                null,
+                null
+            )
             coEvery { apiClient.uploadImportRecords(any()) } returns Result.success(
                 preview(
                     ImportRowPreview(rowIndex = 0, suggestedAction = "add"),
-                    ImportRowPreview(rowIndex = 1, suggestedAction = "skip", batchDuplicateOf = 0),
-                ),
+                    ImportRowPreview(rowIndex = 1, suggestedAction = "skip", batchDuplicateOf = 0)
+                )
             )
 
             val vm = vm(listOf(dup, dup.copy(contactId = 2)))
@@ -116,19 +136,37 @@ class ImportContactsViewModelTest {
             val state = vm.uiState.value
             assertEquals(ImportStep.REVIEW, state.step)
             assertEquals("add", state.rowActions[0])
-            assertEquals("a within-batch duplicate must default to discard", "skip", state.rowActions[1])        }
+            assertEquals(
+                "a within-batch duplicate must default to discard",
+                "skip",
+                state.rowActions[1]
+            )
+        }
 
     @Test
     fun `confirmImport sends every chosen action and moves to the result step`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            val device = DeviceContact(1, "lk-1", "Jane Smith", emptyList(), listOf("jane@example.com"), emptyList(), null, null)
+            val device = DeviceContact(
+                1,
+                "lk-1",
+                "Jane Smith",
+                emptyList(),
+                listOf("jane@example.com"),
+                emptyList(),
+                null,
+                null
+            )
             coEvery { apiClient.uploadImportRecords(any()) } returns Result.success(
                 preview(
                     ImportRowPreview(rowIndex = 0, suggestedAction = "update"),
-                    ImportRowPreview(rowIndex = 1, suggestedAction = "add"),
-                ),
+                    ImportRowPreview(rowIndex = 1, suggestedAction = "add")
+                )
             )
-            coEvery { apiClient.confirmVcfImport(any()) } returns Result.success(ImportResult(created = 1, updated = 1))
+            coEvery {
+                apiClient.confirmVcfImport(
+                    any()
+                )
+            } returns Result.success(ImportResult(created = 1, updated = 1))
 
             val vm = vm(listOf(device, device.copy(contactId = 2)))
             vm.load(contentResolver = mockk<ContentResolver>(relaxed = true))
@@ -151,19 +189,34 @@ class ImportContactsViewModelTest {
                         request.sessionId == "session-device" &&
                             request.actions.any { it.rowIndex == 0 && it.action == "update" } &&
                             request.actions.any { it.rowIndex == 1 && it.action == "skip" }
-                    },
+                    }
                 )
             }
         }
 
     @Test
-    fun `resolveAll sets every valid row to its suggested action`() = runTest(mainDispatcherRule.testDispatcher) {
-        val device = DeviceContact(1, "lk-1", "Jane Smith", emptyList(), listOf("jane@example.com"), emptyList(), null, null)
+    fun `resolveAll sets every valid row to its suggested action`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val device = DeviceContact(
+            1,
+            "lk-1",
+            "Jane Smith",
+            emptyList(),
+            listOf("jane@example.com"),
+            emptyList(),
+            null,
+            null
+        )
         coEvery { apiClient.uploadImportRecords(any()) } returns Result.success(
             preview(
                 ImportRowPreview(rowIndex = 0, suggestedAction = "update"),
-                ImportRowPreview(rowIndex = 1, validationErrors = listOf("missing name"), suggestedAction = "skip"),
-            ),
+                ImportRowPreview(
+                    rowIndex = 1,
+                    validationErrors = listOf("missing name"),
+                    suggestedAction = "skip"
+                )
+            )
         )
 
         val vm = vm(listOf(device, device.copy(contactId = 2)))
@@ -186,9 +239,18 @@ class ImportContactsViewModelTest {
     @Test
     fun `confirmImport failure surfaces the error and stays on the review step`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            val device = DeviceContact(1, "lk-1", "Jane Smith", emptyList(), emptyList(), emptyList(), null, null)
+            val device = DeviceContact(
+                1,
+                "lk-1",
+                "Jane Smith",
+                emptyList(),
+                emptyList(),
+                emptyList(),
+                null,
+                null
+            )
             coEvery { apiClient.uploadImportRecords(any()) } returns Result.success(
-                preview(ImportRowPreview(rowIndex = 0, suggestedAction = "add")),
+                preview(ImportRowPreview(rowIndex = 0, suggestedAction = "add"))
             )
             coEvery { apiClient.confirmVcfImport(any()) } returns Result.failure(Exception("boom"))
 
@@ -208,11 +270,24 @@ class ImportContactsViewModelTest {
     @Test
     fun `startOver returns to the list step and reloads the device contacts`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            val device = DeviceContact(1, "lk-1", "Jane Smith", emptyList(), listOf("jane@example.com"), emptyList(), null, null)
-            coEvery { apiClient.uploadImportRecords(any()) } returns Result.success(
-                preview(ImportRowPreview(rowIndex = 0, suggestedAction = "add")),
+            val device = DeviceContact(
+                1,
+                "lk-1",
+                "Jane Smith",
+                emptyList(),
+                listOf("jane@example.com"),
+                emptyList(),
+                null,
+                null
             )
-            coEvery { apiClient.confirmVcfImport(any()) } returns Result.success(ImportResult(created = 1))
+            coEvery { apiClient.uploadImportRecords(any()) } returns Result.success(
+                preview(ImportRowPreview(rowIndex = 0, suggestedAction = "add"))
+            )
+            coEvery {
+                apiClient.confirmVcfImport(
+                    any()
+                )
+            } returns Result.success(ImportResult(created = 1))
 
             val vm = vm(listOf(device))
             vm.load(contentResolver = mockk<ContentResolver>(relaxed = true))
@@ -238,7 +313,9 @@ class ImportContactsViewModelTest {
     @Test
     fun `load maps a SecurityException from the device read to permissionRequired`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            val vm = vm(emptyList()).apply { readDeviceContacts = { throw SecurityException("READ_CONTACTS") } }
+            val vm = vm(
+                emptyList()
+            ).apply { readDeviceContacts = { throw SecurityException("READ_CONTACTS") } }
             vm.load(contentResolver = mockk<ContentResolver>(relaxed = true))
             advanceUntilIdle()
 

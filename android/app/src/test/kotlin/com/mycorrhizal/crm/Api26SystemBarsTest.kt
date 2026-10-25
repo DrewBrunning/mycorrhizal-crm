@@ -1,12 +1,12 @@
 package com.mycorrhizal.crm
 
+import java.io.File
+import javax.xml.parsers.DocumentBuilderFactory
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.w3c.dom.Element
-import java.io.File
-import javax.xml.parsers.DocumentBuilderFactory
 
 /**
  * Issue #1920: API 26 cannot render dark navigation-bar icons on the bone bar
@@ -19,10 +19,7 @@ import javax.xml.parsers.DocumentBuilderFactory
  */
 class Api26SystemBarsTest {
 
-    private fun styleItems(
-        file: String,
-        styleName: String,
-    ): Map<String, String> {
+    private fun styleItems(file: String, styleName: String): Map<String, String> {
         val doc = DocumentBuilderFactory.newInstance()
             .newDocumentBuilder()
             .parse(File("src/main/res/$file"))

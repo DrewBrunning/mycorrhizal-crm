@@ -48,7 +48,7 @@ class EncryptedDeviceGrantTokenStorage(context: Context) : DeviceGrantTokenStora
             FILE_NAME, // # pragma: no cover
             masterKey, // # pragma: no cover
             EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV, // # pragma: no cover
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM, // # pragma: no cover
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM // # pragma: no cover
         )
     }
 
@@ -63,7 +63,9 @@ class EncryptedDeviceGrantTokenStorage(context: Context) : DeviceGrantTokenStora
         prefs.getString(tokenKey(profileId), null) // # pragma: no cover — needs a real Android Keystore
 
     override suspend fun loadGrantId(profileId: String): Long? =
-        prefs.getLong(idKey(profileId), 0L).takeIf { it != 0L } // # pragma: no cover — needs a real Android Keystore
+        prefs.getLong(idKey(profileId), 0L).takeIf {
+            it != 0L
+        } // # pragma: no cover — needs a real Android Keystore
 
     override suspend fun clear(profileId: String) { // # pragma: no cover — needs a real Android Keystore (see EncryptedDeviceGrantStorageGuardTest)
         prefs.edit { // # pragma: no cover

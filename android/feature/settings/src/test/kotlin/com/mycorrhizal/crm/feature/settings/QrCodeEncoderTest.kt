@@ -15,10 +15,16 @@ class QrCodeEncoderTest {
 
     @Test
     fun `encodes an otpauth uri into a square bitmap`() {
-        val bitmap = QrCodeEncoder.encode("otpauth://totp/Example:alice?secret=JBSWY3DPEHPK3PXP&issuer=Example", 256)
+        val bitmap = QrCodeEncoder.encode(
+            "otpauth://totp/Example:alice?secret=JBSWY3DPEHPK3PXP&issuer=Example",
+            256
+        )
 
         assertNotNull(bitmap)
-        assertNotNull("bitmap must be square", bitmap?.let { it.width == it.height && it.width > 0 })
+        assertNotNull(
+            "bitmap must be square",
+            bitmap?.let { it.width == it.height && it.width > 0 }
+        )
     }
 
     @Test

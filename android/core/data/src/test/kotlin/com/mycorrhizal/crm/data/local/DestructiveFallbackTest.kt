@@ -60,64 +60,72 @@ class DestructiveFallbackTest {
     private fun createUnrecognizedLegacyDatabase() {
         val db = SQLiteDatabase.openOrCreateDatabase(dbFile, null)
         db.execSQL("CREATE TABLE some_ancient_prototype_table (id INTEGER PRIMARY KEY, note TEXT)")
-        db.execSQL("INSERT INTO some_ancient_prototype_table (note) VALUES ('pre-migration-chain data')")
+        db.execSQL(
+            "INSERT INTO some_ancient_prototype_table (note) VALUES ('pre-migration-chain data')"
+        )
         db.version = EARLIEST_KNOWN_VERSION - 5
         db.close()
     }
 
     @Test
-    fun `an unrecognized version gap triggers destructive recreate and the app recovers`() = runBlocking {
-        createUnrecognizedLegacyDatabase()
+    fun `an unrecognized version gap triggers destructive recreate and the app recovers`() =
+        runBlocking {
+            createUnrecognizedLegacyDatabase()
 
-        // The exact same builder configuration DataModule uses: the real registered migrations
-        // plus the destructive fallback, so this proves what production actually does when it
-        // meets a gap the migration chain doesn't cover — not a hypothetical.
-        val db = Room.databaseBuilder(context, AppDatabase::class.java, dbFile.absolutePath)
-            .addMigrations(*REGISTERED_MIGRATIONS.toTypedArray())
-            .fallbackToDestructiveMigration()
-            .build()
+            // The exact same builder configuration DataModule uses: the real registered migrations
+            // plus the destructive fallback, so this proves what production actually does when it
+            // meets a gap the migration chain doesn't cover — not a hypothetical.
+            val db = Room.databaseBuilder(context, AppDatabase::class.java, dbFile.absolutePath)
+                .addMigrations(*REGISTERED_MIGRATIONS.toTypedArray())
+                .fallbackToDestructiveMigration()
+                .build()
 
-        // Opens without throwing (no crash, no hang) and the current schema exists — the
-        // recognized tables from the unrecognized legacy shape are simply gone, which is the
-        // destructive recreate actually having happened rather than some other recovery path.
-        assertEquals(0, db.cachedContactDao().getAll().size)
-        assertEquals(0, db.pendingInteractionDao().countUnsynced())
+            // Opens without throwing (no crash, no hang) and the current schema exists — the
+            // recognized tables from the unrecognized legacy shape are simply gone, which is the
+            // destructive recreate actually having happened rather than some other recovery path.
+            assertEquals(0, db.cachedContactDao().getAll().size)
+            assertEquals(0, db.pendingInteractionDao().countUnsynced())
 
-        // The app functions exactly as it would post-fresh-install: the cache rebuilds from the
-        // server (simulated here by writing through the DAOs) as soon as the next sync runs.
-        db.cachedContactDao().upsert(CachedContact(id = 1, fn = "Rebuilt After Wipe"))
-        assertEquals("Rebuilt After Wipe", db.cachedContactDao().getById(1)?.fn)
-        db.cachedCadencePolicyDao().upsert(
-            CachedCadencePolicy(id = "policy-1", entityId = "contact-1", targetIntervalDays = 14),
-        )
-        assertEquals(1, db.cachedCadencePolicyDao().getForContact("contact-1").size)
+            // The app functions exactly as it would post-fresh-install: the cache rebuilds from the
+            // server (simulated here by writing through the DAOs) as soon as the next sync runs.
+            db.cachedContactDao().upsert(CachedContact(id = 1, fn = "Rebuilt After Wipe"))
+            assertEquals("Rebuilt After Wipe", db.cachedContactDao().getById(1)?.fn)
+            db.cachedCadencePolicyDao().upsert(
+                CachedCadencePolicy(
+                    id = "policy-1",
+                    entityId = "contact-1",
+                    targetIntervalDays = 14
+                )
+            )
+            assertEquals(1, db.cachedCadencePolicyDao().getForContact("contact-1").size)
 
-        db.close()
-    }
+            db.close()
+        }
 
     @Test
-    fun `destructive fallback does not fire when every hop has a registered migration`() = runBlocking {
-        // The real, ever-shipped v13 shape with outbox data — every hop from here to current is
-        // covered by REGISTERED_MIGRATIONS (MigrationVersionCoverageTest pins that), so this must
-        // go through the migration chain, not the destructive path.
-        val db2 = SQLiteDatabase.openOrCreateDatabase(dbFile, null)
-        LocalDatabaseSchemaFixtures.createV13Tables(db2)
-        db2.execSQL(
-            "INSERT INTO pending_interactions (timestampMillis, kind, phoneNumber, synced) " +
-                "VALUES (1000, 'call', '5551234', 0)",
-        )
-        db2.version = 13
-        db2.close()
+    fun `destructive fallback does not fire when every hop has a registered migration`() =
+        runBlocking {
+            // The real, ever-shipped v13 shape with outbox data — every hop from here to current is
+            // covered by REGISTERED_MIGRATIONS (MigrationVersionCoverageTest pins that), so this must
+            // go through the migration chain, not the destructive path.
+            val db2 = SQLiteDatabase.openOrCreateDatabase(dbFile, null)
+            LocalDatabaseSchemaFixtures.createV13Tables(db2)
+            db2.execSQL(
+                "INSERT INTO pending_interactions (timestampMillis, kind, phoneNumber, synced) " +
+                    "VALUES (1000, 'call', '5551234', 0)"
+            )
+            db2.version = 13
+            db2.close()
 
-        val db = Room.databaseBuilder(context, AppDatabase::class.java, dbFile.absolutePath)
-            .addMigrations(*REGISTERED_MIGRATIONS.toTypedArray())
-            .fallbackToDestructiveMigration()
-            .build()
+            val db = Room.databaseBuilder(context, AppDatabase::class.java, dbFile.absolutePath)
+                .addMigrations(*REGISTERED_MIGRATIONS.toTypedArray())
+                .fallbackToDestructiveMigration()
+                .build()
 
-        // If the destructive path had fired instead of the migration chain, this outbox row —
-        // present only because the real 13->current migration chain preserves it — would be gone.
-        assertTrue(db.pendingInteractionDao().countUnsynced() == 1)
+            // If the destructive path had fired instead of the migration chain, this outbox row —
+            // present only because the real 13->current migration chain preserves it — would be gone.
+            assertTrue(db.pendingInteractionDao().countUnsynced() == 1)
 
-        db.close()
-    }
+            db.close()
+        }
 }

@@ -35,7 +35,7 @@ internal fun NavHostController.leaveAdminOnlyScreen(): Boolean {
  */
 internal suspend fun NavHostController.leaveAdminScreenOnDemotion(
     demotions: Flow<Unit>,
-    announce: suspend () -> Unit,
+    announce: suspend () -> Unit
 ) {
     demotions.collect { if (leaveAdminOnlyScreen()) announce() }
 }

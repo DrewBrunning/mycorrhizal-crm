@@ -16,6 +16,7 @@ import com.mycorrhizal.crm.model.network.ThinContactInput
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,7 +24,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class RelationshipsUiState(
     val contactVCardUid: String = "",
@@ -38,7 +38,7 @@ data class RelationshipsUiState(
     val contactSearchResults: List<ContactSummary> = emptyList(),
     val contactSearchLoading: Boolean = false,
     val error: String? = null,
-    @StringRes val errorRes: Int? = null,
+    @StringRes val errorRes: Int? = null
 ) {
     val confirmedEdges: List<RelationshipEdge>
         get() = edges.filter { it.status == RelationshipEdgeStatuses.CONFIRMED }
@@ -51,7 +51,7 @@ data class RelationshipsUiState(
 class RelationshipsViewModel @Inject constructor(
     private val relationshipEdgeRepository: RelationshipEdgeRepository,
     private val contactRepository: ContactRepository,
-    savedStateHandle: SavedStateHandle,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val contactId: Int = run {
@@ -71,7 +71,11 @@ class RelationshipsViewModel @Inject constructor(
     fun load() {
         if (contactId == 0) {
             _uiState.update {
-                it.copy(isLoading = false, errorRes = R.string.relationships_error_missing_contact_id, error = null)
+                it.copy(
+                    isLoading = false,
+                    errorRes = R.string.relationships_error_missing_contact_id,
+                    error = null
+                )
             }
             return
         }
@@ -83,7 +87,11 @@ class RelationshipsViewModel @Inject constructor(
             val uid = contactRepository.getContact(contactId).getOrNull()?.vcardUid
             if (uid.isNullOrBlank()) {
                 _uiState.update {
-                    it.copy(isLoading = false, errorRes = R.string.relationships_error_no_vcard_uid, error = null)
+                    it.copy(
+                        isLoading = false,
+                        errorRes = R.string.relationships_error_no_vcard_uid,
+                        error = null
+                    )
                 }
                 return@launch
             }
@@ -95,7 +103,7 @@ class RelationshipsViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -108,7 +116,12 @@ class RelationshipsViewModel @Inject constructor(
      * or crashing the list that already loaded fine.
      */
     private fun resolveOtherParties(edges: List<RelationshipEdge>, viewedUid: String) {
-        val otherUids = edges.map { otherPartyId(it, viewedUid) }.filter { it.isNotBlank() }.distinct()
+        val otherUids = edges.map {
+            otherPartyId(
+                it,
+                viewedUid
+            )
+        }.filter { it.isNotBlank() }.distinct()
         if (otherUids.isEmpty()) return
         viewModelScope.launch {
             contactRepository.resolveByUid(otherUids).onSuccess { resolved ->
@@ -132,7 +145,7 @@ class RelationshipsViewModel @Inject constructor(
         gender: String = "",
         birthday: String = "",
         sensitivity: String = RelationshipEdgeSensitivities.NORMAL,
-        linkedContact: ContactSummary? = null,
+        linkedContact: ContactSummary? = null
     ) {
         val uid = otherPartyVCardUid.trim()
         val name = otherPartyName.trim()
@@ -147,24 +160,32 @@ class RelationshipsViewModel @Inject constructor(
                     ThinContactInput(
                         name = name,
                         gender = gender.trim().takeIf { it.isNotBlank() },
-                        birthday = birthday.trim().takeIf { it.isNotBlank() },
+                        birthday = birthday.trim().takeIf { it.isNotBlank() }
                     )
-                } else null,
+                } else {
+                    null
+                },
                 targetId = viewedUid,
                 type = type,
-                sensitivity = sensitivity,
+                sensitivity = sensitivity
             )
             relationshipEdgeRepository.create(input).foldApiError(
                 onSuccess = { edge ->
                     val linkedEntry = linkedContact?.uid?.let { it to linkedContact }
                     _uiState.update {
-                        val resolved = if (linkedEntry != null) it.contactsByUid + linkedEntry else it.contactsByUid
+                        val resolved = if (linkedEntry !=
+                            null
+                        ) {
+                            it.contactsByUid + linkedEntry
+                        } else {
+                            it.contactsByUid
+                        }
                         it.copy(edges = it.edges + edge, contactsByUid = resolved)
                     }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -189,20 +210,20 @@ class RelationshipsViewModel @Inject constructor(
                 targetId = edge.targetId,
                 type = backendType,
                 sensitivity = sensitivity,
-                metadata = edge.metadata,
+                metadata = edge.metadata
             )
             relationshipEdgeRepository.update(id, input).foldApiError(
                 onSuccess = { updated ->
                     _uiState.update { state ->
                         state.copy(
                             updatingId = null,
-                            edges = state.edges.map { if (it.id == id) updated else it },
+                            edges = state.edges.map { if (it.id == id) updated else it }
                         )
                     }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(updatingId = null, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -215,7 +236,12 @@ class RelationshipsViewModel @Inject constructor(
         _uiState.update { it.copy(contactSearchQuery = query) }
         searchJob?.cancel()
         if (query.isBlank()) {
-            _uiState.update { it.copy(contactSearchResults = emptyList(), contactSearchLoading = false) }
+            _uiState.update {
+                it.copy(
+                    contactSearchResults = emptyList(),
+                    contactSearchLoading = false
+                )
+            }
             return
         }
         searchJob = viewModelScope.launch {
@@ -227,20 +253,26 @@ class RelationshipsViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             contactSearchResults = page.contacts.filter { c -> c.uid != viewedUid },
-                            contactSearchLoading = false,
+                            contactSearchLoading = false
                         )
                     }
                 },
                 onFailure = {
                     _uiState.update { it.copy(contactSearchLoading = false) }
-                },
+                }
             )
         }
     }
 
     fun clearContactSearch() {
         searchJob?.cancel()
-        _uiState.update { it.copy(contactSearchQuery = "", contactSearchResults = emptyList(), contactSearchLoading = false) }
+        _uiState.update {
+            it.copy(
+                contactSearchQuery = "",
+                contactSearchResults = emptyList(),
+                contactSearchLoading = false
+            )
+        }
     }
 
     fun accept(id: String) {
@@ -252,13 +284,13 @@ class RelationshipsViewModel @Inject constructor(
                     _uiState.update { state ->
                         state.copy(
                             acceptingId = null,
-                            edges = state.edges.map { if (it.id == id) edge else it },
+                            edges = state.edges.map { if (it.id == id) edge else it }
                         )
                     }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(acceptingId = null, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -276,7 +308,7 @@ class RelationshipsViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(deletingId = null, error = error.displayMessage) }
-                },
+                }
             )
         }
     }

@@ -33,7 +33,8 @@ object DateFormat {
     const val EU_MMMM = "eu-mmmm" // DD MMMM, YYYY
 
     /** Every supported token, in the web's declaration order. */
-    val ALL_FORMATS: List<String> = listOf(EU, US, ISO, CA, EU_HYPHEN, US_MMM, US_MMMM, EU_MMM, EU_MMMM)
+    val ALL_FORMATS: List<String> =
+        listOf(EU, US, ISO, CA, EU_HYPHEN, US_MMM, US_MMMM, EU_MMM, EU_MMMM)
 
     /**
      * Format a partial date for display:
@@ -59,7 +60,7 @@ object DateFormat {
         month: Int,
         day: Int,
         format: String,
-        locale: Locale = Locale.getDefault(),
+        locale: Locale = Locale.getDefault()
     ): String {
         val y = "%04d".format(year)
         val mm = "%02d".format(month)
@@ -82,7 +83,7 @@ object DateFormat {
         month: Int,
         day: Int,
         format: String,
-        locale: Locale = Locale.getDefault(),
+        locale: Locale = Locale.getDefault()
     ): String {
         val mm = "%02d".format(month)
         val dd = "%02d".format(day)
@@ -112,7 +113,7 @@ object DateFormat {
         "T00:00:00Z",
         "T00:00:00.000Z",
         "T00:00:00+00:00",
-        "T00:00:00.000+00:00",
+        "T00:00:00.000+00:00"
     )
     private val DATE_ONLY = Regex("""\d{4}-\d{2}-\d{2}""")
 
@@ -150,7 +151,7 @@ object DateFormat {
         iso: String?,
         format: String,
         zone: ZoneId = ZoneId.systemDefault(),
-        locale: Locale = Locale.getDefault(),
+        locale: Locale = Locale.getDefault()
     ): String {
         if (iso.isNullOrBlank()) return ""
         calendarDay(iso)?.let { (y, m, d) -> return formatFull(y, m, d, format, locale) }
@@ -170,7 +171,7 @@ object DateFormat {
         iso: String?,
         is24Hour: Boolean,
         zone: ZoneId = ZoneId.systemDefault(),
-        locale: Locale = Locale.getDefault(),
+        locale: Locale = Locale.getDefault()
     ): String {
         if (iso.isNullOrBlank()) return ""
         return runCatching {

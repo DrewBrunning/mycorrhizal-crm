@@ -52,14 +52,23 @@ class MembershipDerivationRepositoryTest {
     @Test
     fun `circlesForContact filters the member snapshot by the contact's uid`() = runTest {
         val repo = CircleRepositoryImpl(apiClient, db.cachedCircleDao(), db.cachedCircleMemberDao())
-        coEvery { apiClient.listCircles(cursor = any(), limit = any(), includeMembers = true) } returns Result.success(
+        coEvery {
+            apiClient.listCircles(
+                cursor = any(),
+                limit = any(),
+                includeMembers = true
+            )
+        } returns Result.success(
             CirclesPage(
-                circles = listOf(Circle(id = "c1", name = "friends"), Circle(id = "c2", name = "family")),
+                circles = listOf(
+                    Circle(id = "c1", name = "friends"),
+                    Circle(id = "c2", name = "family")
+                ),
                 members = listOf(
                     CircleMember(id = 1, circleId = "c1", memberVCardUid = "u5"),
-                    CircleMember(id = 2, circleId = "c2", memberVCardUid = "u9"),
-                ),
-            ),
+                    CircleMember(id = 2, circleId = "c2", memberVCardUid = "u9")
+                )
+            )
         )
 
         val result = repo.circlesForContact("u5")
@@ -85,14 +94,20 @@ class MembershipDerivationRepositoryTest {
     @Test
     fun `tagsForContact filters the tagging snapshot by the contact's uid`() = runTest {
         val repo = TagRepositoryImpl(apiClient, db.cachedTagDao(), db.cachedContactTagDao())
-        coEvery { apiClient.listTags(cursor = any(), limit = any(), includeContacts = true) } returns Result.success(
+        coEvery {
+            apiClient.listTags(
+                cursor = any(),
+                limit = any(),
+                includeContacts = true
+            )
+        } returns Result.success(
             TagsPage(
                 tags = listOf(Tag(id = "t1", name = "close"), Tag(id = "t2", name = "work")),
                 contacts = listOf(
                     ContactTag(id = 1, tagId = "t1", contactVCardUid = "u5"),
-                    ContactTag(id = 2, tagId = "t2", contactVCardUid = "u9"),
-                ),
-            ),
+                    ContactTag(id = 2, tagId = "t2", contactVCardUid = "u9")
+                )
+            )
         )
 
         val result = repo.tagsForContact("u5")
@@ -104,8 +119,14 @@ class MembershipDerivationRepositoryTest {
     @Test
     fun `tagsForContact propagates a failure rather than returning a partial list`() = runTest {
         val repo = TagRepositoryImpl(apiClient, db.cachedTagDao(), db.cachedContactTagDao())
-        coEvery { apiClient.listTags(cursor = any(), limit = any(), includeContacts = true) } returns Result.failure(
-            ApiError.Network(java.io.IOException("offline")),
+        coEvery {
+            apiClient.listTags(
+                cursor = any(),
+                limit = any(),
+                includeContacts = true
+            )
+        } returns Result.failure(
+            ApiError.Network(java.io.IOException("offline"))
         )
 
         val result = repo.tagsForContact("u5")

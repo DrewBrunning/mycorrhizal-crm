@@ -8,6 +8,8 @@ import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.ui.LocalDateFormat
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
+import java.util.Locale
+import java.util.TimeZone
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -16,8 +18,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import java.util.Locale
-import java.util.TimeZone
 
 /**
  * Issue #1752: the activity and note list rows render their date through
@@ -53,13 +53,23 @@ class ListDatePreferenceTest {
             MycorrhizalTheme {
                 val row = @androidx.compose.runtime.Composable {
                     ActivityListItem(
-                        activity = Activity(id = 1, title = "Coffee", date = "2026-05-19T00:00:00Z"),
+                        activity = Activity(
+                            id = 1,
+                            title = "Coffee",
+                            date = "2026-05-19T00:00:00Z"
+                        ),
                         onClick = {},
                         onContactClick = {},
-                        onDelete = {},
+                        onDelete = {}
                     )
                 }
-                if (format == null) row() else CompositionLocalProvider(LocalDateFormat provides format) { row() }
+                if (format == null) {
+                    row()
+                } else {
+                    CompositionLocalProvider(
+                        LocalDateFormat provides format
+                    ) { row() }
+                }
             }
         }
     }
@@ -69,9 +79,13 @@ class ListDatePreferenceTest {
             MycorrhizalTheme {
                 CompositionLocalProvider(LocalDateFormat provides format) {
                     NoteListItem(
-                        note = Note(id = 1, content = "Met at the fair", date = "2026-05-19T00:00:00Z"),
+                        note = Note(
+                            id = 1,
+                            content = "Met at the fair",
+                            date = "2026-05-19T00:00:00Z"
+                        ),
                         onClick = {},
-                        onDelete = {},
+                        onDelete = {}
                     )
                 }
             }

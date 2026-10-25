@@ -57,7 +57,7 @@ import com.mycorrhizal.crm.ui.R
 @Composable
 fun OccasionAttendeesScreen(
     onBack: () -> Unit,
-    viewModel: OccasionAttendeesViewModel = hiltViewModel(),
+    viewModel: OccasionAttendeesViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -75,7 +75,10 @@ fun OccasionAttendeesScreen(
             TopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back)
+                        )
                     }
                 },
                 title = {
@@ -87,66 +90,85 @@ fun OccasionAttendeesScreen(
                         },
                         style = MaterialTheme.typography.titleLarge,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                        overflow = TextOverflow.Ellipsis
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
             if (state.errorRes != null) {
                 CenteredMessage(stringResource(state.errorRes!!))
             } else {
                 Column(
-                    modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxSize().verticalScroll(
+                        rememberScrollState()
+                    ).padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
                         stringResource(R.string.occasions_rsvp_hint),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
                     if (state.isLoading && state.attendees.isEmpty()) {
                         Text(stringResource(R.string.a11y_state_loading))
                     } else if (state.attendees.isEmpty()) {
-                        Text(stringResource(R.string.occasions_no_attendees), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            stringResource(R.string.occasions_no_attendees),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     } else {
                         state.attendees.forEach { attendee ->
                             AttendeeRow(
                                 attendee = attendee,
                                 enabled = !state.isMutating,
                                 onRsvp = { rsvp -> viewModel.updateRsvp(attendee.entityId, rsvp) },
-                                onRemove = { pendingRemove = attendee },
+                                onRemove = { pendingRemove = attendee }
                             )
                         }
                     }
 
                     HorizontalDivider()
 
-                    Text(stringResource(R.string.occasions_suggest_from_circles), style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        stringResource(R.string.occasions_suggest_from_circles),
+                        style = MaterialTheme.typography.titleSmall
+                    )
                     if (state.circles.isEmpty()) {
-                        Text(stringResource(R.string.occasions_no_circles), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            stringResource(R.string.occasions_no_circles),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     } else {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             state.circles.forEach { circle ->
                                 FilterChip(
                                     selected = circle.id in state.selectedCircleIds,
                                     onClick = { viewModel.toggleCircle(circle.id) },
-                                    label = { Text(circle.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                    label = {
+                                        Text(
+                                            circle.name,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
                                 )
                             }
                         }
                         TextButton(
-                            enabled = state.selectedCircleIds.isNotEmpty() && !state.suggestionsLoading,
-                            onClick = { viewModel.suggest() },
+                            enabled =
+                                state.selectedCircleIds.isNotEmpty() && !state.suggestionsLoading,
+                            onClick = { viewModel.suggest() }
                         ) { Text(stringResource(R.string.occasions_suggest)) }
                     }
 
@@ -154,7 +176,7 @@ fun OccasionAttendeesScreen(
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(suggestion.contactName, modifier = Modifier.weight(1f))
                             TextButton(onClick = { viewModel.addAttendee(suggestion.entityId) }) {
@@ -162,8 +184,14 @@ fun OccasionAttendeesScreen(
                             }
                         }
                     }
-                    if (state.selectedCircleIds.isNotEmpty() && state.suggestions.isEmpty() && !state.suggestionsLoading) {
-                        Text(stringResource(R.string.occasions_no_suggestions), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (state.selectedCircleIds.isNotEmpty() && state.suggestions.isEmpty() &&
+                        !state.suggestionsLoading
+                    ) {
+                        Text(
+                            stringResource(R.string.occasions_no_suggestions),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
 
                     HorizontalDivider()
@@ -173,19 +201,29 @@ fun OccasionAttendeesScreen(
                         onValueChange = viewModel::onContactQueryChange,
                         label = { Text(stringResource(R.string.occasions_search_contacts)) },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth()
                     )
                     state.contactResults.forEach { contact ->
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text(contact.displayName, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(
+                                contact.displayName,
+                                modifier = Modifier.weight(1f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                             val uid = contact.uid
                             if (uid != null) {
                                 IconButton(onClick = { viewModel.addAttendee(uid) }) {
-                                    Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.occasions_add_attendee))
+                                    Icon(
+                                        Icons.Outlined.Add,
+                                        contentDescription = stringResource(
+                                            R.string.occasions_add_attendee
+                                        )
+                                    )
                                 }
                             }
                         }
@@ -199,14 +237,25 @@ fun OccasionAttendeesScreen(
         AlertDialog(
             onDismissRequest = { pendingRemove = null },
             title = { Text(stringResource(R.string.occasions_remove_attendee)) },
-            text = { Text(stringResource(R.string.occasions_remove_confirm, attendee.contactName)) },
+            text = {
+                Text(
+                    stringResource(R.string.occasions_remove_confirm, attendee.contactName)
+                )
+            },
             confirmButton = {
                 TextButton(
                     enabled = !state.isMutating,
-                    onClick = { viewModel.removeAttendee(attendee.entityId); pendingRemove = null },
+                    onClick = {
+                        viewModel.removeAttendee(attendee.entityId)
+                        pendingRemove = null
+                    }
                 ) { Text(stringResource(R.string.action_delete)) }
             },
-            dismissButton = { TextButton(onClick = { pendingRemove = null }) { Text(stringResource(R.string.action_cancel)) } },
+            dismissButton = {
+                TextButton(
+                    onClick = { pendingRemove = null }
+                ) { Text(stringResource(R.string.action_cancel)) }
+            }
         )
     }
 }
@@ -216,15 +265,20 @@ private fun AttendeeRow(
     attendee: OccasionEventAttendeeView,
     enabled: Boolean,
     onRsvp: (String) -> Unit,
-    onRemove: () -> Unit,
+    onRemove: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Text(attendee.contactName, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(
+            attendee.contactName,
+            modifier = Modifier.weight(1f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
         Box {
             OutlinedButton(enabled = enabled, onClick = { expanded = true }) {
                 Text(rsvpLabel(attendee.rsvp), maxLines = 1)
@@ -233,13 +287,19 @@ private fun AttendeeRow(
                 OccasionRsvp.ALL.forEach { option ->
                     DropdownMenuItem(
                         text = { Text(rsvpLabel(option)) },
-                        onClick = { expanded = false; onRsvp(option) },
+                        onClick = {
+                            expanded = false
+                            onRsvp(option)
+                        }
                     )
                 }
             }
         }
         IconButton(enabled = enabled, onClick = onRemove) {
-            Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.occasions_remove_attendee))
+            Icon(
+                Icons.Outlined.Delete,
+                contentDescription = stringResource(R.string.occasions_remove_attendee)
+            )
         }
     }
 }

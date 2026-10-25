@@ -4,12 +4,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.runtime.getValue
 import com.mycorrhizal.crm.ui.R
 
 /**
@@ -22,15 +22,18 @@ fun ContactsFieldsSettingsScreen(
     onCustomFields: () -> Unit = {},
     onContactFieldSettings: () -> Unit = {},
     onCustomLinks: () -> Unit = {},
-    onCircleTagTriage: () -> Unit = {},
+    onCircleTagTriage: () -> Unit = {}
 ) {
-    SettingsScaffold(title = stringResource(R.string.settings_group_contacts_fields), onBack = onBack) { padding ->
+    SettingsScaffold(
+        title = stringResource(R.string.settings_group_contacts_fields),
+        onBack = onBack
+    ) { padding ->
         ContactsFieldsSettingsContent(
             onCustomFields = onCustomFields,
             onContactFieldSettings = onContactFieldSettings,
             onCustomLinks = onCustomLinks,
             onCircleTagTriage = onCircleTagTriage,
-            modifier = padding,
+            modifier = padding
         )
     }
 }
@@ -41,16 +44,25 @@ fun ContactsFieldsSettingsContent(
     onContactFieldSettings: () -> Unit = {},
     onCustomLinks: () -> Unit = {},
     onCircleTagTriage: () -> Unit = {},
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     SettingsColumn(modifier = modifier) {
         // Issue #830: create/edit/delete custom field definitions.
-        SettingsNavigationRow(stringResource(R.string.settings_custom_fields_title), onClick = onCustomFields)
+        SettingsNavigationRow(
+            stringResource(R.string.settings_custom_fields_title),
+            onClick = onCustomFields
+        )
         // Issue #832: per-field show/edit toggles for the contact detail/form screens.
-        SettingsNavigationRow(stringResource(R.string.settings_contact_fields_title), onClick = onContactFieldSettings)
+        SettingsNavigationRow(
+            stringResource(R.string.settings_contact_fields_title),
+            onClick = onContactFieldSettings
+        )
         SettingsNavigationRow(stringResource(R.string.custom_links_title), onClick = onCustomLinks)
         // M26: one-time legacy circle/tag cleanup.
-        SettingsNavigationRow(stringResource(R.string.settings_circle_tag_triage), onClick = onCircleTagTriage)
+        SettingsNavigationRow(
+            stringResource(R.string.settings_circle_tag_triage),
+            onClick = onCircleTagTriage
+        )
     }
 }
 
@@ -67,9 +79,12 @@ fun IntegrationsSettingsScreen(
     onPaperlessSettings: () -> Unit = {},
     onSeafileSettings: () -> Unit = {},
     onNextcloudSettings: () -> Unit = {},
-    onGeoPulseSettings: () -> Unit = {},
+    onGeoPulseSettings: () -> Unit = {}
 ) {
-    SettingsScaffold(title = stringResource(R.string.settings_group_integrations), onBack = onBack) { padding ->
+    SettingsScaffold(
+        title = stringResource(R.string.settings_group_integrations),
+        onBack = onBack
+    ) { padding ->
         IntegrationsSettingsContent(
             onCalendarSync = onCalendarSync,
             onWebhooks = onWebhooks,
@@ -78,7 +93,7 @@ fun IntegrationsSettingsScreen(
             onSeafileSettings = onSeafileSettings,
             onNextcloudSettings = onNextcloudSettings,
             onGeoPulseSettings = onGeoPulseSettings,
-            modifier = padding,
+            modifier = padding
         )
     }
 }
@@ -92,7 +107,7 @@ fun IntegrationsSettingsContent(
     onSeafileSettings: () -> Unit = {},
     onNextcloudSettings: () -> Unit = {},
     onGeoPulseSettings: () -> Unit = {},
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     val gating = rememberSettingsGating()
     SettingsColumn(modifier = modifier) {
@@ -100,21 +115,42 @@ fun IntegrationsSettingsContent(
         // embedded local server omits webhooks, DAV serving and push).
         // Issue #390's Android follow-up (#628): calendar/contact sync management.
         if (gating.calendarSyncSupported) {
-            SettingsNavigationRow(stringResource(R.string.settings_calendar_sync_title), onClick = onCalendarSync)
+            SettingsNavigationRow(
+                stringResource(R.string.settings_calendar_sync_title),
+                onClick = onCalendarSync
+            )
         }
         if (gating.webhooksSupported) {
-            SettingsNavigationRow(stringResource(R.string.settings_webhooks_title), onClick = onWebhooks)
+            SettingsNavigationRow(
+                stringResource(R.string.settings_webhooks_title),
+                onClick = onWebhooks
+            )
         }
         if (gating.integrationsSupported) {
             // Issue #236: the Immich connection-config settings screen.
-            SettingsNavigationRow(stringResource(R.string.settings_immich_title), onClick = onImmichSettings)
+            SettingsNavigationRow(
+                stringResource(R.string.settings_immich_title),
+                onClick = onImmichSettings
+            )
             // Issue #833: the Paperless/Seafile/Nextcloud connection-config settings screens.
-            SettingsNavigationRow(stringResource(R.string.settings_paperless_title), onClick = onPaperlessSettings)
-            SettingsNavigationRow(stringResource(R.string.settings_seafile_title), onClick = onSeafileSettings)
-            SettingsNavigationRow(stringResource(R.string.settings_nextcloud_title), onClick = onNextcloudSettings)
+            SettingsNavigationRow(
+                stringResource(R.string.settings_paperless_title),
+                onClick = onPaperlessSettings
+            )
+            SettingsNavigationRow(
+                stringResource(R.string.settings_seafile_title),
+                onClick = onSeafileSettings
+            )
+            SettingsNavigationRow(
+                stringResource(R.string.settings_nextcloud_title),
+                onClick = onNextcloudSettings
+            )
             // Issue #160: GeoPulse location history (an outbound integration, so hidden on
             // embedded profiles).
-            SettingsNavigationRow(stringResource(R.string.settings_geopulse_title), onClick = onGeoPulseSettings)
+            SettingsNavigationRow(
+                stringResource(R.string.settings_geopulse_title),
+                onClick = onGeoPulseSettings
+            )
         }
     }
 }
@@ -127,13 +163,16 @@ fun IntegrationsSettingsContent(
 fun AdministrationSettingsScreen(
     onBack: () -> Unit,
     onManageUsers: () -> Unit = {},
-    onSystemEvents: () -> Unit = {},
+    onSystemEvents: () -> Unit = {}
 ) {
-    SettingsScaffold(title = stringResource(R.string.settings_group_administration), onBack = onBack) { padding ->
+    SettingsScaffold(
+        title = stringResource(R.string.settings_group_administration),
+        onBack = onBack
+    ) { padding ->
         AdministrationSettingsContent(
             onManageUsers = onManageUsers,
             onSystemEvents = onSystemEvents,
-            modifier = padding,
+            modifier = padding
         )
     }
 }
@@ -142,7 +181,7 @@ fun AdministrationSettingsScreen(
 fun AdministrationSettingsContent(
     onManageUsers: () -> Unit = {},
     onSystemEvents: () -> Unit = {},
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     val gating = rememberSettingsGating()
     SettingsColumn(modifier = modifier) {
@@ -153,7 +192,10 @@ fun AdministrationSettingsContent(
             // Issue #692: the system-events surface needs the v0.6.2 admin endpoints; an older
             // server has none of them.
             if (gating.systemEventsSupported) {
-                SettingsNavigationRow(stringResource(R.string.sysevents_title), onClick = onSystemEvents)
+                SettingsNavigationRow(
+                    stringResource(R.string.sysevents_title),
+                    onClick = onSystemEvents
+                )
             }
         }
     }
@@ -164,7 +206,7 @@ fun AdministrationSettingsContent(
 fun AboutSettingsScreen(
     onBack: () -> Unit,
     onLicenses: () -> Unit = {},
-    viewModel: SettingsViewModel = hiltViewModel(),
+    viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     SettingsScaffold(title = stringResource(R.string.settings_about), onBack = onBack) { padding ->
@@ -182,7 +224,7 @@ fun AboutSettingsScreen(
 fun AboutSettingsContent(
     state: SettingsUiState,
     modifier: Modifier = Modifier,
-    onLicenses: () -> Unit = {},
+    onLicenses: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val dash = stringResource(R.string.settings_value_placeholder)
@@ -190,14 +232,30 @@ fun AboutSettingsContent(
         val info = state.buildInfo
         if (info != null) {
             SettingsInfoRow(stringResource(R.string.settings_about_version), info.versionName)
-            SettingsInfoRow(stringResource(R.string.settings_about_version_code), info.versionCode.toString())
-            SettingsInfoRow(stringResource(R.string.settings_about_build_type), AboutDetails.buildLabel(info))
+            SettingsInfoRow(
+                stringResource(R.string.settings_about_version_code),
+                info.versionCode.toString()
+            )
+            SettingsInfoRow(
+                stringResource(R.string.settings_about_build_type),
+                AboutDetails.buildLabel(info)
+            )
             info.commit?.let { SettingsInfoRow(stringResource(R.string.settings_about_commit), it) }
-            info.buildDate?.let { SettingsInfoRow(stringResource(R.string.settings_about_built), it) }
+            info.buildDate?.let {
+                SettingsInfoRow(
+                    stringResource(R.string.settings_about_built),
+                    it
+                )
+            }
             val serverVersion = state.serverHealth?.version?.takeIf { it.isNotBlank() }
             SettingsInfoRow(
                 stringResource(R.string.settings_about_server_version),
-                serverVersion?.let { AboutDetails.versionWithCommit(it, state.serverHealth.commit) } ?: dash,
+                serverVersion?.let {
+                    AboutDetails.versionWithCommit(
+                        it,
+                        state.serverHealth.commit
+                    )
+                } ?: dash
             )
             state.serverHealth?.buildDate?.takeIf { it.isNotBlank() }?.let {
                 SettingsInfoRow(stringResource(R.string.settings_about_server_built), it)
@@ -205,13 +263,18 @@ fun AboutSettingsContent(
             val label = stringResource(R.string.settings_about_copy)
             OutlinedButton(
                 onClick = {
-                    val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                    val clipboard = context.getSystemService(
+                        android.content.Context.CLIPBOARD_SERVICE
+                    )
                         as android.content.ClipboardManager
                     clipboard.setPrimaryClip(
-                        android.content.ClipData.newPlainText(label, AboutDetails.format(info, state.serverHealth)),
+                        android.content.ClipData.newPlainText(
+                            label,
+                            AboutDetails.format(info, state.serverHealth)
+                        )
                     )
                 },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text(label)
             }
@@ -219,7 +282,7 @@ fun AboutSettingsContent(
             // distributes, generated at build time by AboutLibraries.
             SettingsNavigationRow(
                 title = stringResource(R.string.settings_about_licenses),
-                onClick = onLicenses,
+                onClick = onLicenses
             )
         }
     }

@@ -17,7 +17,9 @@ import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-private val Context.localAuthDataStore: DataStore<Preferences> by preferencesDataStore(name = "local_auth_prefs")
+private val Context.localAuthDataStore: DataStore<Preferences> by preferencesDataStore(
+    name = "local_auth_prefs"
+)
 
 /**
  * Issue #722: the opt-in app-lock preference. Stored in plain DataStore, not
@@ -27,7 +29,7 @@ private val Context.localAuthDataStore: DataStore<Preferences> by preferencesDat
  */
 @Singleton
 class LocalAuthSettingsRepositoryImpl @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @ApplicationContext private val context: Context
 ) : LocalAuthSettingsRepository {
 
     private val requireLocalAuthKey = booleanPreferencesKey("require_local_auth")
@@ -44,7 +46,9 @@ class LocalAuthSettingsRepositoryImpl @Inject constructor(
 
     override fun autoLockDelay(): Flow<AutoLockDelay> =
         context.localAuthDataStore.data.map { prefs ->
-            AutoLockDelay.fromMinutes(prefs[autoLockDelayMinutesKey] ?: AutoLockDelay.DEFAULT.minutes)
+            AutoLockDelay.fromMinutes(
+                prefs[autoLockDelayMinutesKey] ?: AutoLockDelay.DEFAULT.minutes
+            )
         }
 
     override suspend fun setAutoLockDelay(delay: AutoLockDelay) {

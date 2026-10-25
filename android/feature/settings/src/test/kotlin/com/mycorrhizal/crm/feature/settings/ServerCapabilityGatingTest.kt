@@ -1,10 +1,8 @@
 package com.mycorrhizal.crm.feature.settings
 
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performScrollTo
 import com.mycorrhizal.crm.domain.compat.ServerCapabilitiesInfo
 import com.mycorrhizal.crm.domain.compat.ServerCapability
 import com.mycorrhizal.crm.domain.repository.SessionState
@@ -32,7 +30,7 @@ class ServerCapabilityGatingTest {
     val composeTestRule = createComposeRule()
 
     private val adminState = SettingsUiState(
-        session = SessionState(serverUrl = "embedded.invalid", username = "local", isAdmin = true),
+        session = SessionState(serverUrl = "embedded.invalid", username = "local", isAdmin = true)
     )
 
     private fun setSettingsContent(capabilities: ServerCapabilitiesInfo) {
@@ -66,8 +64,8 @@ class ServerCapabilityGatingTest {
             ServerCapability.GRAPH,
             ServerCapability.SEARCH,
             ServerCapability.IMPORT,
-            ServerCapability.EXPORT,
-        ),
+            ServerCapability.EXPORT
+        )
     )
 
     @Test
@@ -107,7 +105,7 @@ class ServerCapabilityGatingTest {
         // Fail open: an unreachable /health never strips settings.
         listOf(
             "Two-factor authentication", "Webhooks", "API tokens", "Calendar sync", "Immich", "GeoPulse",
-            "Notification channels", "User management", "System events",
+            "Notification channels", "User management", "System events"
         ).forEach { composeTestRule.onNodeWithText(it).assertExists() }
     }
 }

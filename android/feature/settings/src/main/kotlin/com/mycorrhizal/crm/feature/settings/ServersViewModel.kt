@@ -11,6 +11,7 @@ import com.mycorrhizal.crm.domain.repository.BundleBackupRepository
 import com.mycorrhizal.crm.model.util.Validators
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,7 +20,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /** A switch blocked on the user agreeing to discard unsynced interactions. */
 data class PendingSwitch(val profileId: String, val count: Int)
@@ -29,7 +29,7 @@ data class ServersUiState(
     val activeProfileId: String? = null,
     val isBusy: Boolean = false,
     @StringRes val errorRes: Int? = null,
-    val pendingSwitch: PendingSwitch? = null,
+    val pendingSwitch: PendingSwitch? = null
 )
 
 sealed interface ServersEvent {
@@ -49,7 +49,7 @@ sealed interface ServersEvent {
 class ServersViewModel @Inject constructor(
     private val sessionManager: SessionManager,
     private val localServerHost: LocalServerHost,
-    private val bundleBackupRepository: BundleBackupRepository,
+    private val bundleBackupRepository: BundleBackupRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ServersUiState())
@@ -62,7 +62,7 @@ class ServersViewModel @Inject constructor(
         viewModelScope.launch {
             combine(
                 sessionManager.observeProfiles(),
-                sessionManager.observeActiveProfile(),
+                sessionManager.observeActiveProfile()
             ) { profiles, active -> profiles to active?.id }
                 .collect { (profiles, activeId) ->
                     _uiState.update { it.copy(profiles = profiles, activeProfileId = activeId) }
@@ -154,9 +154,13 @@ class ServersViewModel @Inject constructor(
                 _uiState.update { it.copy(isBusy = false) }
                 _events.send(ServersEvent.Switched)
             }
+
             is SwitchProfileResult.NeedsConfirmation -> {
                 _uiState.update {
-                    it.copy(isBusy = false, pendingSwitch = PendingSwitch(profileId, result.pendingCount))
+                    it.copy(
+                        isBusy = false,
+                        pendingSwitch = PendingSwitch(profileId, result.pendingCount)
+                    )
                 }
             }
         }

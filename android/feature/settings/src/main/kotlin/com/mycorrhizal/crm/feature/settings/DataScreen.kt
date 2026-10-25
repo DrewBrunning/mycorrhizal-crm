@@ -1,6 +1,5 @@
 package com.mycorrhizal.crm.feature.settings
 
-import com.mycorrhizal.crm.ui.components.relationshipRoleLabel
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -13,6 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -33,9 +33,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -49,9 +49,9 @@ import com.mycorrhizal.crm.model.network.ContactAddressSuggestion
 import com.mycorrhizal.crm.model.network.formatSuggestionAddress
 import com.mycorrhizal.crm.ui.LocalServerVersion
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.relationshipRoleLabel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import androidx.compose.material.icons.outlined.Menu
 
 /**
  * The "propose data" screen (T104 + address suggestions): buttons that trigger
@@ -65,7 +65,7 @@ fun DataScreen(
     onMenuClick: (() -> Unit)? = {},
     onCustomExport: () -> Unit = {},
     onRestoreBundle: () -> Unit = {},
-    viewModel: DataViewModel = hiltViewModel(),
+    viewModel: DataViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -75,7 +75,7 @@ fun DataScreen(
     // storage, so it goes through the SAF create-document picker (not the
     // share sheet the lossy per-format exports use).
     val bundleDestination = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/json"),
+        ActivityResultContracts.CreateDocument("application/json")
     ) { uri ->
         if (uri != null) {
             viewModel.exportAccountBundle { bytes ->
@@ -92,21 +92,27 @@ fun DataScreen(
                     // null at Expanded width where the rail replaces it.
                     onMenuClick?.let { onMenu ->
                         IconButton(onClick = onMenu) {
-                            Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
+                            Icon(
+                                Icons.Outlined.Menu,
+                                contentDescription = stringResource(R.string.cd_menu)
+                            )
                         }
                     }
                 },
                 title = {
-                    Text(stringResource(R.string.settings_data), style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        stringResource(R.string.settings_data),
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(
             modifier = Modifier
@@ -114,16 +120,16 @@ fun DataScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
                 text = stringResource(R.string.data_export_section),
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleMedium
             )
             Text(
                 text = stringResource(R.string.data_export_description),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             // Issue #1264 / ADR 0028 Decision 3: the full-fidelity, re-importable
             // backup. First in the list — it is the export a Local profile's
@@ -132,43 +138,47 @@ fun DataScreen(
                 labelRes = R.string.data_export_bundle,
                 exporting = state.isExporting,
                 onClick = { bundleDestination.launch(viewModel.accountBundleFileName()) },
-                modifier = Modifier.testTag("export-account-bundle"),
+                modifier = Modifier.testTag("export-account-bundle")
             )
             if (state.canRestoreBundle) {
                 ExportRow(
                     labelRes = R.string.data_restore_bundle,
                     exporting = state.isExporting,
                     onClick = onRestoreBundle,
-                    modifier = Modifier.testTag("restore-account-bundle"),
+                    modifier = Modifier.testTag("restore-account-bundle")
                 )
             }
             ExportRow(
                 labelRes = R.string.data_export_csv,
                 exporting = state.isExporting,
-                onClick = { viewModel.export(DataExportKind.CSV) },
+                onClick = { viewModel.export(DataExportKind.CSV) }
             )
             ExportRow(
                 labelRes = R.string.data_export_vcard4,
                 exporting = state.isExporting,
-                onClick = { viewModel.export(DataExportKind.VCF4) },
+                onClick = { viewModel.export(DataExportKind.VCF4) }
             )
             ExportRow(
                 labelRes = R.string.data_export_vcard3,
                 exporting = state.isExporting,
-                onClick = { viewModel.export(DataExportKind.VCF3) },
+                onClick = { viewModel.export(DataExportKind.VCF3) }
             )
             ExportRow(
                 labelRes = R.string.data_export_jscontact,
                 exporting = state.isExporting,
-                onClick = { viewModel.export(DataExportKind.JSCONTACT) },
+                onClick = { viewModel.export(DataExportKind.JSCONTACT) }
             )
             // Issue #692: the audit-log export endpoint shipped in v0.6.1, so on
             // a v0.6.0 server the row is hidden rather than 404ing.
-            if (ServerCapabilities.isSupported(LocalServerVersion.current, ServerFeature.AUDIT_EXPORT)) {
+            if (ServerCapabilities.isSupported(
+                    LocalServerVersion.current,
+                    ServerFeature.AUDIT_EXPORT
+                )
+            ) {
                 ExportRow(
                     labelRes = R.string.data_export_audit,
                     exporting = state.isExporting,
-                    onClick = { viewModel.export(DataExportKind.AUDIT_CSV) },
+                    onClick = { viewModel.export(DataExportKind.AUDIT_CSV) }
                 )
             }
             // Issue #835 (web parity, T9 follow-up): pick sections + opt in to
@@ -176,19 +186,19 @@ fun DataScreen(
             ExportRow(
                 labelRes = R.string.data_export_custom,
                 exporting = state.isExporting,
-                onClick = onCustomExport,
+                onClick = onCustomExport
             )
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
             Text(
                 text = stringResource(R.string.data_relationships_section),
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleMedium
             )
             Text(
                 text = stringResource(R.string.data_relationships_description),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             state.suggestedRelationshipCount?.let { count ->
                 Text(
@@ -198,7 +208,7 @@ fun DataScreen(
                         stringResource(R.string.data_relationships_none)
                     },
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             val suggestingLabel = stringResource(R.string.a11y_state_saving)
@@ -207,7 +217,12 @@ fun DataScreen(
                 enabled = !state.isSuggestingRelationships,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .semantics { if (state.isSuggestingRelationships) stateDescription = suggestingLabel },
+                    .semantics {
+                        if (state.isSuggestingRelationships) {
+                            stateDescription =
+                                suggestingLabel
+                        }
+                    }
             ) {
                 if (state.isSuggestingRelationships) {
                     CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
@@ -219,12 +234,12 @@ fun DataScreen(
 
             Text(
                 text = stringResource(R.string.data_address_section),
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleMedium
             )
             Text(
                 text = stringResource(R.string.data_address_description),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             val loadingLabel = stringResource(R.string.a11y_state_loading)
             // Filled Button, matching the sibling "Suggest relationships"
@@ -234,7 +249,7 @@ fun DataScreen(
                 enabled = !state.suggestionsLoading,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .semantics { if (state.suggestionsLoading) stateDescription = loadingLabel },
+                    .semantics { if (state.suggestionsLoading) stateDescription = loadingLabel }
             ) {
                 if (state.suggestionsLoading) {
                     CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
@@ -247,14 +262,14 @@ fun DataScreen(
                     Text(
                         text = stringResource(R.string.data_address_suggestions_empty),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 } else {
                     state.addressSuggestions.forEach { suggestion ->
                         AddressSuggestionRow(
                             suggestion = suggestion,
                             pending = state.applyingKey == suggestionKey(suggestion),
-                            onApply = { viewModel.applySuggestion(suggestion) },
+                            onApply = { viewModel.applySuggestion(suggestion) }
                         )
                     }
                 }
@@ -292,7 +307,7 @@ fun DataScreen(
 private fun AddressSuggestionRow(
     suggestion: ContactAddressSuggestion,
     pending: Boolean,
-    onApply: () -> Unit,
+    onApply: () -> Unit
 ) {
     OutlinedCard(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(12.dp)) {
@@ -300,26 +315,30 @@ private fun AddressSuggestionRow(
                 text = suggestion.contactName,
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = formatSuggestionAddress(suggestion.address),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
                 text = reasonLabel(suggestion),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(top = 8.dp),
+                modifier = Modifier.padding(top = 8.dp)
             ) {
                 TextButton(onClick = onApply, enabled = !pending) {
-                    Icon(Icons.Outlined.AutoAwesome, contentDescription = null, modifier = Modifier.padding(end = 4.dp))
+                    Icon(
+                        Icons.Outlined.AutoAwesome,
+                        contentDescription = null,
+                        modifier = Modifier.padding(end = 4.dp)
+                    )
                     Text(stringResource(R.string.data_apply_address))
                 }
             }
@@ -328,13 +347,21 @@ private fun AddressSuggestionRow(
 }
 
 @Composable
-private fun reasonLabel(suggestion: ContactAddressSuggestion): String = when (suggestion.sourceKind) {
-    "household" -> stringResource(R.string.data_address_reason_household, suggestion.sourceName)
-    else -> {
-        val relation = relationshipRoleLabel(suggestion.relationType?.takeIf { it.isNotBlank() } ?: "related_to")
-        stringResource(R.string.data_address_reason_relationship, suggestion.sourceName, relation)
+private fun reasonLabel(suggestion: ContactAddressSuggestion): String =
+    when (suggestion.sourceKind) {
+        "household" -> stringResource(R.string.data_address_reason_household, suggestion.sourceName)
+
+        else -> {
+            val relation = relationshipRoleLabel(
+                suggestion.relationType?.takeIf { it.isNotBlank() } ?: "related_to"
+            )
+            stringResource(
+                R.string.data_address_reason_relationship,
+                suggestion.sourceName,
+                relation
+            )
+        }
     }
-}
 
 private fun suggestionKey(suggestion: ContactAddressSuggestion): String =
     "${suggestion.contactVCardUid}|${suggestion.addressKey}"
@@ -349,7 +376,7 @@ private fun ExportRow(
     labelRes: Int,
     exporting: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     val loadingLabel = stringResource(R.string.a11y_state_loading)
     OutlinedButton(
@@ -357,7 +384,7 @@ private fun ExportRow(
         enabled = !exporting,
         modifier = modifier
             .fillMaxWidth()
-            .semantics { if (exporting) stateDescription = loadingLabel },
+            .semantics { if (exporting) stateDescription = loadingLabel }
     ) {
         if (exporting) {
             CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
@@ -366,15 +393,17 @@ private fun ExportRow(
     }
 }
 
-
 /** Writes [bytes] to the SAF [uri] the user picked. A provider that yields no stream is a failure. */
 @Suppress("TooGenericExceptionCaught")
-private fun writeBundle(context: android.content.Context, uri: android.net.Uri, bytes: ByteArray): Result<Unit> =
-    try {
-        val stream = context.contentResolver.openOutputStream(uri, "wt")
-            ?: throw java.io.IOException("No output stream for $uri")
-        stream.use { it.write(bytes) }
-        Result.success(Unit)
-    } catch (e: Exception) {
-        Result.failure(e)
-    }
+private fun writeBundle(
+    context: android.content.Context,
+    uri: android.net.Uri,
+    bytes: ByteArray
+): Result<Unit> = try {
+    val stream = context.contentResolver.openOutputStream(uri, "wt")
+        ?: throw java.io.IOException("No output stream for $uri")
+    stream.use { it.write(bytes) }
+    Result.success(Unit)
+} catch (e: Exception) {
+    Result.failure(e)
+}

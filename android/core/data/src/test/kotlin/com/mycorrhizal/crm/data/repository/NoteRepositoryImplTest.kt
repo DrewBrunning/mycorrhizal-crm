@@ -48,13 +48,22 @@ class NoteRepositoryImplTest {
 
     @Test
     fun `listForContact caches notes and returns them`() = runTest {
-        coEvery { apiClient.listContactNotes(5, any(), any(), any(), any(), any()) } returns Result.success(
+        coEvery {
+            apiClient.listContactNotes(
+                5,
+                any(),
+                any(),
+                any(),
+                any(),
+                any()
+            )
+        } returns Result.success(
             ContactNotesResponse(
                 notes = listOf(
                     Note(id = 3, content = "Loves climbing"),
-                    Note(id = 4, content = "Met at conference"),
-                ),
-            ),
+                    Note(id = 4, content = "Met at conference")
+                )
+            )
         )
 
         val result = repository.listForContact(5)
@@ -69,8 +78,17 @@ class NoteRepositoryImplTest {
 
     @Test
     fun `listForContact propagates a 404`() = runTest {
-        coEvery { apiClient.listContactNotes(999, any(), any(), any(), any(), any()) } returns Result.failure(
-            ApiError.Client(404, "Contact not found"),
+        coEvery {
+            apiClient.listContactNotes(
+                999,
+                any(),
+                any(),
+                any(),
+                any(),
+                any()
+            )
+        } returns Result.failure(
+            ApiError.Client(404, "Contact not found")
         )
 
         val result = repository.listForContact(999)
@@ -83,8 +101,20 @@ class NoteRepositoryImplTest {
     // M19: the page carries the T17 next_cursor for "load more".
     @Test
     fun `listForContact carries the next cursor`() = runTest {
-        coEvery { apiClient.listContactNotes(5, any(), any(), any(), any(), any()) } returns Result.success(
-            ContactNotesResponse(notes = listOf(Note(id = 3, content = "Loves climbing")), nextCursor = "cursor-2"),
+        coEvery {
+            apiClient.listContactNotes(
+                5,
+                any(),
+                any(),
+                any(),
+                any(),
+                any()
+            )
+        } returns Result.success(
+            ContactNotesResponse(
+                notes = listOf(Note(id = 3, content = "Loves climbing")),
+                nextCursor = "cursor-2"
+            )
         )
 
         val result = repository.listForContact(5)
@@ -96,7 +126,9 @@ class NoteRepositoryImplTest {
     // M19: delete drops the local cache row after a successful server soft delete.
     @Test
     fun `delete removes the cached row on success`() = runTest {
-        db.cachedNoteDao().upsertAll(listOf(CachedNote(id = 3, content = "Loves climbing", date = null, deleted = false)))
+        db.cachedNoteDao().upsertAll(
+            listOf(CachedNote(id = 3, content = "Loves climbing", date = null, deleted = false))
+        )
         coEvery { apiClient.deleteNote(3) } returns Result.success(Unit)
 
         val result = repository.delete(3, null)
@@ -108,7 +140,9 @@ class NoteRepositoryImplTest {
     // M19: a failed delete must not clear the local cache (the item stays).
     @Test
     fun `delete failure leaves the cached row`() = runTest {
-        db.cachedNoteDao().upsertAll(listOf(CachedNote(id = 3, content = "Loves climbing", date = null, deleted = false)))
+        db.cachedNoteDao().upsertAll(
+            listOf(CachedNote(id = 3, content = "Loves climbing", date = null, deleted = false))
+        )
         coEvery { apiClient.deleteNote(3) } returns Result.failure(ApiError.Client(500, "boom"))
 
         val result = repository.delete(3, null)
@@ -124,8 +158,8 @@ class NoteRepositoryImplTest {
             NotesPage(
                 notesRaw = listOf(Note(id = 3, content = "Buy milk")),
                 nextCursor = "cursor-2",
-                total = 12,
-            ),
+                total = 12
+            )
         )
 
         val result = repository.listUnfiled()
@@ -144,7 +178,7 @@ class NoteRepositoryImplTest {
     @Test
     fun `listUnfiled tolerates a null notes list`() = runTest {
         coEvery { apiClient.listNotes(null, null) } returns Result.success(
-            NotesPage(notesRaw = null, total = 0),
+            NotesPage(notesRaw = null, total = 0)
         )
 
         val result = repository.listUnfiled()
@@ -157,7 +191,7 @@ class NoteRepositoryImplTest {
     @Test
     fun `create caches the created note`() = runTest {
         coEvery { apiClient.createNote(5, any()) } returns Result.success(
-            Note(id = 3, content = "Loves climbing"),
+            Note(id = 3, content = "Loves climbing")
         )
 
         val result = repository.create(5, NoteInput(content = "Loves climbing"))
@@ -170,7 +204,7 @@ class NoteRepositoryImplTest {
     @Test
     fun `createUnassigned caches the created note`() = runTest {
         coEvery { apiClient.createUnassignedNote(any()) } returns Result.success(
-            Note(id = 3, content = "Loves climbing", contactId = null),
+            Note(id = 3, content = "Loves climbing", contactId = null)
         )
 
         val result = repository.createUnassigned(NoteInput(content = "Loves climbing"))
@@ -182,7 +216,7 @@ class NoteRepositoryImplTest {
     @Test
     fun `update caches the updated note`() = runTest {
         coEvery { apiClient.updateNote(3, any()) } returns Result.success(
-            Note(id = 3, content = "Loves rock climbing"),
+            Note(id = 3, content = "Loves rock climbing")
         )
 
         val result = repository.update(3, NoteInput(content = "Loves rock climbing"), null)
@@ -194,7 +228,7 @@ class NoteRepositoryImplTest {
     @Test
     fun `create propagates a validation failure`() = runTest {
         coEvery { apiClient.createNote(5, any()) } returns Result.failure(
-            ApiError.Client(400, "Note content is required"),
+            ApiError.Client(400, "Note content is required")
         )
 
         val result = repository.create(5, NoteInput(content = ""))
@@ -207,7 +241,13 @@ class NoteRepositoryImplTest {
     // Issue #1665 / ADR 0008: the revision is forwarded as If-Match; a 412 changes nothing locally.
     @Test
     fun `update and delete forward the revision`() = runTest {
-        coEvery { apiClient.updateNote(3, any(), 5) } returns Result.success(Note(id = 3, content = "x"))
+        coEvery {
+            apiClient.updateNote(
+                3,
+                any(),
+                5
+            )
+        } returns Result.success(Note(id = 3, content = "x"))
         coEvery { apiClient.deleteNote(3, 5) } returns Result.success(Unit)
 
         assertTrue(repository.update(3, NoteInput(content = "x"), 5).isSuccess)
@@ -219,8 +259,15 @@ class NoteRepositoryImplTest {
 
     @Test
     fun `a 412 delete keeps the cached row and returns the typed conflict`() = runTest {
-        db.cachedNoteDao().upsertAll(listOf(CachedNote(id = 3, content = "Loves climbing", date = null, deleted = false)))
-        coEvery { apiClient.deleteNote(3, 5) } returns Result.failure(ApiError.PreconditionFailed("stale"))
+        db.cachedNoteDao().upsertAll(
+            listOf(CachedNote(id = 3, content = "Loves climbing", date = null, deleted = false))
+        )
+        coEvery {
+            apiClient.deleteNote(
+                3,
+                5
+            )
+        } returns Result.failure(ApiError.PreconditionFailed("stale"))
 
         val result = repository.delete(3, 5)
 

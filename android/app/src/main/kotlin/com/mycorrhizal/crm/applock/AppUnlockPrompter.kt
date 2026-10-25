@@ -14,7 +14,11 @@ import kotlinx.coroutines.suspendCancellableCoroutine
  * [AppLockAuthOutcome] without an Activity or an OS dialog.
  */
 interface AppUnlockPrompter {
-    suspend fun requestUnlock(title: String, subtitle: String, negativeButtonText: String?): AppLockAuthOutcome
+    suspend fun requestUnlock(
+        title: String,
+        subtitle: String,
+        negativeButtonText: String?
+    ): AppLockAuthOutcome
 }
 
 /**
@@ -42,9 +46,7 @@ interface AppUnlockPrompter {
  * all, so the prompt is strong-biometric-only and carries a negative (cancel)
  * button instead — see [platformSupportsDeviceCredential].
  */
-class BiometricAppUnlockPrompter(
-    private val activity: FragmentActivity,
-) : AppUnlockPrompter {
+class BiometricAppUnlockPrompter(private val activity: FragmentActivity) : AppUnlockPrompter {
 
     // detekt(TooGenericExceptionCaught): the AndroidKeyStore/cipher surface
     // throws several unrelated checked+unchecked types; the only meaningful
@@ -56,7 +58,7 @@ class BiometricAppUnlockPrompter(
     override suspend fun requestUnlock(
         title: String,
         subtitle: String,
-        negativeButtonText: String?,
+        negativeButtonText: String?
     ): AppLockAuthOutcome = suspendCancellableCoroutine { continuation ->
         val vault = BiometricUnlockVault(activity.applicationContext)
         val prepared = try { // # pragma: no cover — a real AndroidKeyStore + OS prompt; Robolectric tests use a fake prompter
@@ -69,38 +71,49 @@ class BiometricAppUnlockPrompter(
             continuation.resume(AppLockAuthOutcome.NotAvailable)
             return@suspendCancellableCoroutine
         }
-        val prompt = BiometricPrompt( // # pragma: no cover — requires a real FragmentActivity + OS prompt (issue #238's device suite exercises it)
-            activity,
-            ContextCompat.getMainExecutor(activity),
-            object : BiometricPrompt.AuthenticationCallback() {
-                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) { // # pragma: no cover — OS-only callback
-                    continuation.resume(when { // # pragma: no cover
-                        errorCode in CANCELLED_ERRORS -> AppLockAuthOutcome.Cancelled // # pragma: no cover
-                        errorCode in UNAVAILABLE_ERRORS -> AppLockAuthOutcome.NotAvailable // # pragma: no cover
-                        else -> AppLockAuthOutcome.Error // # pragma: no cover
-                    })
-                }
+        val prompt =
+            BiometricPrompt( // # pragma: no cover — requires a real FragmentActivity + OS prompt (issue #238's device suite exercises it)
+                activity,
+                ContextCompat.getMainExecutor(activity),
+                object : BiometricPrompt.AuthenticationCallback() {
+                    override fun onAuthenticationError(errorCode: Int, errString: CharSequence) { // # pragma: no cover — OS-only callback
+                        continuation.resume(
+                            when { // # pragma: no cover
+                                errorCode in CANCELLED_ERRORS -> AppLockAuthOutcome.Cancelled
 
-                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) { // # pragma: no cover — OS-only callback; the authentication result's CryptoObject feeds vault.finish
-                    val cipher = result.cryptoObject?.cipher // # pragma: no cover
-                    if (cipher == null) { // # pragma: no cover
-                        continuation.resume(AppLockAuthOutcome.Error) // # pragma: no cover
-                        return // # pragma: no cover
+                                // # pragma: no cover
+                                errorCode in UNAVAILABLE_ERRORS -> AppLockAuthOutcome.NotAvailable
+
+                                // # pragma: no cover
+                                else -> AppLockAuthOutcome.Error // # pragma: no cover
+                            }
+                        )
                     }
-                    val ok = vault.finish(prepared, cipher) // # pragma: no cover
-                    continuation.resume(if (ok) AppLockAuthOutcome.Success else AppLockAuthOutcome.Error) // # pragma: no cover
-                }
 
-                override fun onAuthenticationFailed() { // # pragma: no cover — OS-only callback
-                    // A transient mismatch (e.g. wrong fingerprint) is
-                    // non-terminal — the OS lets the user retry, and we
-                    // leave the prompt up rather than showing an error.
+                    override fun onAuthenticationSucceeded(
+                        result: BiometricPrompt.AuthenticationResult
+                    ) { // # pragma: no cover — OS-only callback; the authentication result's CryptoObject feeds vault.finish
+                        val cipher = result.cryptoObject?.cipher // # pragma: no cover
+                        if (cipher == null) { // # pragma: no cover
+                            continuation.resume(AppLockAuthOutcome.Error) // # pragma: no cover
+                            return // # pragma: no cover
+                        }
+                        val ok = vault.finish(prepared, cipher) // # pragma: no cover
+                        continuation.resume(
+                            if (ok) AppLockAuthOutcome.Success else AppLockAuthOutcome.Error
+                        ) // # pragma: no cover
+                    }
+
+                    override fun onAuthenticationFailed() { // # pragma: no cover — OS-only callback
+                        // A transient mismatch (e.g. wrong fingerprint) is
+                        // non-terminal — the OS lets the user retry, and we
+                        // leave the prompt up rather than showing an error.
+                    }
                 }
-            },
-        )
+            )
         prompt.authenticate( // # pragma: no cover — requires a real FragmentActivity + OS prompt
             androidAppUnlockPromptInfo(title, subtitle, negativeButtonText),
-            BiometricPrompt.CryptoObject(prepared.cipher),
+            BiometricPrompt.CryptoObject(prepared.cipher)
         )
     }
 
@@ -111,14 +124,14 @@ class BiometricAppUnlockPrompter(
         private val CANCELLED_ERRORS = setOf(
             BiometricPrompt.ERROR_CANCELED,
             BiometricPrompt.ERROR_USER_CANCELED,
-            BiometricPrompt.ERROR_NEGATIVE_BUTTON,
+            BiometricPrompt.ERROR_NEGATIVE_BUTTON
         )
 
         /** The device cannot currently satisfy the gate. */
         private val UNAVAILABLE_ERRORS = setOf(
             BiometricPrompt.ERROR_NO_BIOMETRICS,
             BiometricPrompt.ERROR_NO_DEVICE_CREDENTIAL,
-            BiometricPrompt.ERROR_HW_UNAVAILABLE,
+            BiometricPrompt.ERROR_HW_UNAVAILABLE
         )
     }
 }
@@ -162,7 +175,7 @@ internal fun androidAppUnlockPromptInfo(
     title: String,
     subtitle: String,
     negativeButtonText: String?,
-    deviceCredentialSupported: Boolean = platformSupportsDeviceCredential(),
+    deviceCredentialSupported: Boolean = platformSupportsDeviceCredential()
 ): BiometricPrompt.PromptInfo {
     val builder = BiometricPrompt.PromptInfo.Builder()
         .setTitle(title)

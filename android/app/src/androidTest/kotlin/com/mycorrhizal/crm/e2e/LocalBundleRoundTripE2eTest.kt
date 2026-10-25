@@ -12,6 +12,7 @@ import com.mycorrhizal.crm.network.LocalSocketPathProvider
 import com.mycorrhizal.crm.network.ProfileAwareDns
 import com.mycorrhizal.crm.network.ProfileAwareSocketFactory
 import dagger.hilt.android.EntryPointAccessors
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.runBlocking
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
@@ -25,7 +26,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.util.concurrent.TimeUnit
 
 /**
  * Issue #1264 acceptance: on a `Local` profile, create data → export the account
@@ -68,18 +68,27 @@ class LocalBundleRoundTripE2eTest {
             it.body!!.string()
         }
 
-    private fun OkHttpClient.postJson(endpoint: LocalServerEndpoint, path: String, json: String): String =
-        newCall(
-            Request.Builder().api(endpoint, path)
-                .post(json.toRequestBody("application/json".toMediaType())).build(),
-        ).execute().use {
-            check(it.isSuccessful) { "POST $path failed: ${it.code} ${it.body?.string()}" }
-            it.body!!.string()
-        }
+    private fun OkHttpClient.postJson(
+        endpoint: LocalServerEndpoint,
+        path: String,
+        json: String
+    ): String = newCall(
+        Request.Builder().api(endpoint, path)
+            .post(json.toRequestBody("application/json".toMediaType())).build()
+    ).execute().use {
+        check(it.isSuccessful) { "POST $path failed: ${it.code} ${it.body?.string()}" }
+        it.body!!.string()
+    }
 
-    private fun OkHttpClient.awaitPhase(endpoint: LocalServerEndpoint, sessionId: String, phase: String) {
+    private fun OkHttpClient.awaitPhase(
+        endpoint: LocalServerEndpoint,
+        sessionId: String,
+        phase: String
+    ) {
         repeat(120) {
-            val status = JSONObject(getJson(endpoint, "/import/mycorrhizal/status?session_id=$sessionId"))
+            val status = JSONObject(
+                getJson(endpoint, "/import/mycorrhizal/status?session_id=$sessionId")
+            )
             val current = status.getString("phase")
             check(current != "failed") { "import failed: ${status.optString("error")}" }
             if (current == phase) return
@@ -89,7 +98,9 @@ class LocalBundleRoundTripE2eTest {
     }
 
     private fun contactNames(client: OkHttpClient, endpoint: LocalServerEndpoint): List<String> {
-        val contacts = JSONObject(client.getJson(endpoint, "/contacts?limit=50")).getJSONArray("contacts")
+        val contacts = JSONObject(
+            client.getJson(endpoint, "/contacts?limit=50")
+        ).getJSONArray("contacts")
         return (0 until contacts.length()).map {
             val c = contacts.getJSONObject(it)
             "${c.optString("firstname")} ${c.optString("lastname")}".trim()
@@ -98,18 +109,26 @@ class LocalBundleRoundTripE2eTest {
 
     /** The contact the user's "Me" pointer names (`users/me` -> `self_contact_vcard_uid`), if any. */
     private fun selfContactUid(client: OkHttpClient, endpoint: LocalServerEndpoint): String? =
-        JSONObject(client.getJson(endpoint, "/users/me")).optString("self_contact_vcard_uid").ifBlank { null }
+        JSONObject(
+            client.getJson(endpoint, "/users/me")
+        ).optString("self_contact_vcard_uid").ifBlank { null }
 
     private fun contactUids(client: OkHttpClient, endpoint: LocalServerEndpoint): Set<String> {
-        val contacts = JSONObject(client.getJson(endpoint, "/contacts?limit=50")).getJSONArray("contacts")
-        return (0 until contacts.length()).map { contacts.getJSONObject(it).optString("uid") }.toSet()
+        val contacts = JSONObject(
+            client.getJson(endpoint, "/contacts?limit=50")
+        ).getJSONArray("contacts")
+        return (0 until contacts.length()).map {
+            contacts.getJSONObject(
+                it
+            ).optString("uid")
+        }.toSet()
     }
 
     @Test
     fun exportDeleteLocalDataAndRestoreBringsTheDataBack() = runBlocking {
         assumeTrue(
             "the embedded server is arm64-v8a only; this ABI has no packaged binary",
-            LocalServerAvailability.isSupported(context),
+            LocalServerAvailability.isSupported(context)
         )
         host.deleteLocalData()
 
@@ -125,9 +144,15 @@ class LocalBundleRoundTripE2eTest {
         firstClient.postJson(
             first,
             "/contacts",
-            JSONObject().put("card", JSONObject().put("name", JSONObject().put("components", components))).toString(),
+            JSONObject().put(
+                "card",
+                JSONObject().put("name", JSONObject().put("components", components))
+            ).toString()
         )
-        assertEquals((baseline + "Ada Lovelace").sorted(), contactNames(firstClient, first).sorted())
+        assertEquals(
+            (baseline + "Ada Lovelace").sorted(),
+            contactNames(firstClient, first).sorted()
+        )
 
         // 2. Export the account bundle (what Settings -> Data -> "Account bundle" writes to the SAF file).
         val bundle = firstClient.getJson(first, "/export/account")
@@ -140,7 +165,7 @@ class LocalBundleRoundTripE2eTest {
         assertEquals(
             "the fresh local profile must hold only its own self contact",
             baseline,
-            contactNames(secondClient, second).sorted(),
+            contactNames(secondClient, second).sorted()
         )
 
         // 4. Restore: upload -> fetch -> ready -> confirm (suggested actions) -> done.
@@ -151,40 +176,52 @@ class LocalBundleRoundTripE2eTest {
                         .addFormDataPart(
                             "file",
                             "mycorrhizal-account.json",
-                            bundle.toRequestBody("application/json".toMediaType()),
-                        ).build(),
-                ).build(),
+                            bundle.toRequestBody("application/json".toMediaType())
+                        ).build()
+                ).build()
         ).execute().use {
             check(it.isSuccessful) { "upload failed: ${it.code}" }
             JSONObject(it.body!!.string())
         }
         val sessionId = upload.getString("session_id")
-        secondClient.postJson(second, "/import/mycorrhizal/fetch", JSONObject().put("session_id", sessionId).toString())
+        secondClient.postJson(
+            second,
+            "/import/mycorrhizal/fetch",
+            JSONObject().put("session_id", sessionId).toString()
+        )
         secondClient.awaitPhase(second, sessionId, "ready")
-        val rows = JSONObject(secondClient.getJson(second, "/import/mycorrhizal/preview?session_id=$sessionId"))
+        val rows = JSONObject(
+            secondClient.getJson(second, "/import/mycorrhizal/preview?session_id=$sessionId")
+        )
             .getJSONArray("rows")
         val actions = JSONArray()
         for (i in 0 until rows.length()) {
             val row = rows.getJSONObject(i)
             actions.put(
-                JSONObject().put("row_index", row.getInt("row_index")).put("action", row.getString("suggested_action")),
+                JSONObject().put(
+                    "row_index",
+                    row.getInt("row_index")
+                ).put("action", row.getString("suggested_action"))
             )
         }
         secondClient.postJson(
             second,
             "/import/mycorrhizal/confirm",
-            JSONObject().put("session_id", sessionId).put("actions", actions).toString(),
+            JSONObject().put("session_id", sessionId).put("actions", actions).toString()
         )
         secondClient.awaitPhase(second, sessionId, "done")
 
         // 5. The data is back, and the restore did not add a second self contact
         // next to the one the fresh store already provisioned.
-        assertEquals((baseline + "Ada Lovelace").sorted(), contactNames(secondClient, second).sorted())
+        assertEquals(
+            (baseline + "Ada Lovelace").sorted(),
+            contactNames(secondClient, second).sorted()
+        )
         val self = selfContactUid(secondClient, second)
         if (self != null) {
             assertTrue(
                 "the restored profile's Me pointer must name a contact that exists",
-                self in contactUids(secondClient, second),
+                self in contactUids(secondClient, second)
             )
         }
 

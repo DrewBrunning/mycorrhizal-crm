@@ -65,7 +65,7 @@ fun TimelineExplorerScreen(
     onBack: () -> Unit,
     onEditActivity: (Int) -> Unit,
     onEditNote: (Int) -> Unit,
-    viewModel: TimelineExplorerViewModel = hiltViewModel(),
+    viewModel: TimelineExplorerViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -86,7 +86,7 @@ fun TimelineExplorerScreen(
         onLoadMore = viewModel::loadMore,
         onRetry = viewModel::refresh,
         onUndoCompletion = viewModel::undoCompletion,
-        onErrorShown = viewModel::onErrorShown,
+        onErrorShown = viewModel::onErrorShown
     )
 }
 
@@ -103,7 +103,7 @@ fun TimelineExplorerContent(
     onLoadMore: () -> Unit = {},
     onRetry: () -> Unit = {},
     onUndoCompletion: (Int) -> Unit = {},
-    onErrorShown: () -> Unit = {},
+    onErrorShown: () -> Unit = {}
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     // Undoing a completion deletes its timeline entry — confirm first (M17), as the contact page does.
@@ -114,60 +114,73 @@ fun TimelineExplorerContent(
             TopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back)
+                        )
                     }
                 },
                 title = {
-                    Text(stringResource(R.string.timeline_explorer_title), style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        stringResource(R.string.timeline_explorer_title),
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             TimelineExplorerFilters(
                 types = state.types,
                 bucket = state.bucket,
                 onTypesChange = onTypesChange,
-                onBucketChange = onBucketChange,
+                onBucketChange = onBucketChange
             )
             Box(modifier = Modifier.fillMaxSize()) {
                 when {
                     state.isLoading && state.items.isEmpty() -> LoadingSkeleton()
+
                     state.items.isEmpty() && state.error != null -> Column(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         EmptyState(state.error)
                         Button(onClick = onRetry) { Text(stringResource(R.string.action_retry)) }
                     }
-                    state.items.isEmpty() -> EmptyState(stringResource(R.string.timeline_explorer_empty))
-                    else -> LazyColumn(modifier = Modifier.fillMaxSize().testTag("timeline-explorer-list")) {
+
+                    state.items.isEmpty() -> EmptyState(
+                        stringResource(R.string.timeline_explorer_empty)
+                    )
+
+                    else -> LazyColumn(
+                        modifier = Modifier.fillMaxSize().testTag("timeline-explorer-list")
+                    ) {
                         // Each event is its own lazy item — rows outside the viewport are never composed.
                         items(state.items, key = { it.key }) { item ->
                             TimelineItemRow(
                                 item = item,
                                 onEditActivity = onEditActivity,
                                 onEditNote = onEditNote,
-                                onUndoCompletion = { id -> pendingUndoCompletionId = id },
+                                onUndoCompletion = { id -> pendingUndoCompletionId = id }
                             )
                         }
                         if (!state.nextCursor.isNullOrEmpty()) {
                             item(key = "load-more") {
                                 Box(
                                     modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                    contentAlignment = Alignment.Center,
+                                    contentAlignment = Alignment.Center
                                 ) {
                                     // Disabled mid-refresh too: the cursor belongs to the page it was returned with.
                                     Button(
                                         onClick = onLoadMore,
-                                        enabled = !state.isLoadingMore && !state.isLoading,
+                                        enabled = !state.isLoadingMore && !state.isLoading
                                     ) {
                                         Text(stringResource(R.string.action_load_more))
                                     }
@@ -190,14 +203,17 @@ fun TimelineExplorerContent(
                     pendingUndoCompletionId = null
                     onUndoCompletion(completionId)
                 }) {
-                    Text(stringResource(R.string.reminder_completion_undo), color = MaterialTheme.colorScheme.error)
+                    Text(
+                        stringResource(R.string.reminder_completion_undo),
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
             },
             dismissButton = {
                 TextButton(onClick = { pendingUndoCompletionId = null }) {
                     Text(stringResource(R.string.action_cancel))
                 }
-            },
+            }
         )
     }
 
@@ -217,30 +233,30 @@ private fun TimelineExplorerFilters(
     types: Set<String>,
     bucket: String,
     onTypesChange: (Set<String>) -> Unit,
-    onBucketChange: (String) -> Unit,
+    onBucketChange: (String) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
         Text(
             text = stringResource(R.string.timeline_filter_type),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 16.dp),
+            modifier = Modifier.padding(horizontal = 16.dp)
         )
         Row(
             modifier = Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // Empty selection means "all" (the backend treats an absent ?type= the same way).
             FilterChip(
                 selected = types.isEmpty(),
                 onClick = { onTypesChange(emptySet()) },
-                label = { Text(stringResource(R.string.timeline_all_types)) },
+                label = { Text(stringResource(R.string.timeline_all_types)) }
             )
             TimelineTypes.ALL.forEach { type ->
                 FilterChip(
                     selected = type in types,
                     onClick = { onTypesChange(if (type in types) types - type else types + type) },
-                    label = { Text(stringResource(timelineTypeLabel(type))) },
+                    label = { Text(stringResource(timelineTypeLabel(type))) }
                 )
             }
         }
@@ -248,17 +264,17 @@ private fun TimelineExplorerFilters(
             text = stringResource(R.string.timeline_filter_bucket),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp),
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp)
         )
         Row(
             modifier = Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             TimelineBuckets.ALL_BUCKETS.forEach { b ->
                 FilterChip(
                     selected = b == bucket,
                     onClick = { onBucketChange(b) },
-                    label = { Text(stringResource(timelineBucketLabel(b))) },
+                    label = { Text(stringResource(timelineBucketLabel(b))) }
                 )
             }
         }

@@ -8,7 +8,6 @@ import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.BulkOperationRepository
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
-import com.mycorrhizal.crm.domain.repository.ContactsPage
 import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.model.network.BulkContactOperationInput
 import com.mycorrhizal.crm.model.network.BulkOperationResult
@@ -20,16 +19,16 @@ import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /** Issue #1762: the list's sort control. [apiSort]/[apiOrder] are the server's
  * cursor-order keys; [preferenceValue] is what survives a restart. */
@@ -37,20 +36,21 @@ enum class ContactSort(val preferenceValue: String, val apiSort: String, val api
     NAME(
         AppSettingsRepository.CONTACT_SORT_NAME,
         apiSort = "name",
-        apiOrder = "asc",
+        apiOrder = "asc"
     ),
+
     // The list contract has no last-interaction key; its most-recent-change
     // order (updated_at) is the closest available "recently contacted" order.
     RECENTLY_CONTACTED(
         AppSettingsRepository.CONTACT_SORT_RECENTLY_CONTACTED,
         apiSort = "updated_at",
-        apiOrder = "desc",
+        apiOrder = "desc"
     ),
     RECENTLY_ADDED(
         AppSettingsRepository.CONTACT_SORT_RECENTLY_ADDED,
         apiSort = "created_at",
-        apiOrder = "desc",
-    ),
+        apiOrder = "desc"
+    )
     ;
 
     companion object {
@@ -63,7 +63,7 @@ data class PaginationState(
     val nextCursor: String? = null,
     val limit: Int = 50,
     val isLoadingMore: Boolean = false,
-    val hasMore: Boolean = true,
+    val hasMore: Boolean = true
 )
 
 data class ContactListUiState(
@@ -102,7 +102,7 @@ data class ContactListUiState(
     val isBulkRunning: Boolean = false,
     val bulkResult: BulkOperationResult? = null,
     /** Issue #1762: name (default), recently contacted, or recently added. */
-    val sort: ContactSort = ContactSort.NAME,
+    val sort: ContactSort = ContactSort.NAME
 )
 
 sealed interface ContactListEvent {
@@ -128,7 +128,7 @@ class ContactListViewModel @Inject constructor(
     private val appSettingsRepository: AppSettingsRepository,
     // ADR 0029 §4 / issue #1269: `mycorrhizal://search?q=…` navigates to `contacts?search=…`.
     // Default so callers/tests that don't deep-link need not supply one.
-    savedStateHandle: SavedStateHandle = SavedStateHandle(),
+    savedStateHandle: SavedStateHandle = SavedStateHandle()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ContactListUiState())
@@ -151,7 +151,14 @@ class ContactListViewModel @Inject constructor(
                 // offered as the answer — showing an unfiltered page against a
                 // circle filter would be silently wrong data.
                 _uiState.update {
-                    if (it.contacts.isEmpty() && !hasActiveFilter(it)) it.copy(contacts = cached) else it
+                    if (it.contacts.isEmpty() && !hasActiveFilter(
+                            it
+                        )
+                    ) {
+                        it.copy(contacts = cached)
+                    } else {
+                        it
+                    }
                 }
             }
         }
@@ -184,7 +191,8 @@ class ContactListViewModel @Inject constructor(
     }
 
     private fun hasActiveFilter(state: ContactListUiState): Boolean =
-        state.circleFilter != null || state.includeArchived || state.includeFavorites || state.searchQuery.isNotBlank()
+        state.circleFilter != null || state.includeArchived || state.includeFavorites ||
+            state.searchQuery.isNotBlank()
 
     private var loadJob: Job? = null
     private var nextPageJob: Job? = null
@@ -223,7 +231,7 @@ class ContactListViewModel @Inject constructor(
                     isLoading = true,
                     error = null,
                     contacts = if (keepItems) it.contacts else emptyList(),
-                    pagination = it.pagination.copy(isLoadingMore = false),
+                    pagination = it.pagination.copy(isLoadingMore = false)
                 )
             }
             val page = contactRepository.listContacts(
@@ -234,7 +242,7 @@ class ContactListViewModel @Inject constructor(
                 includeArchived = _uiState.value.includeArchived.takeIf { it },
                 favorites = _uiState.value.includeFavorites.takeIf { it },
                 sort = _uiState.value.sort.apiSort,
-                order = _uiState.value.sort.apiOrder,
+                order = _uiState.value.sort.apiOrder
             )
             page.foldApiError(
                 onSuccess = { result ->
@@ -245,8 +253,8 @@ class ContactListViewModel @Inject constructor(
                             pagination = it.pagination.copy(
                                 nextCursor = result.nextCursor,
                                 isLoadingMore = false,
-                                hasMore = !result.nextCursor.isNullOrEmpty(),
-                            ),
+                                hasMore = !result.nextCursor.isNullOrEmpty()
+                            )
                         )
                     }
                 },
@@ -261,7 +269,7 @@ class ContactListViewModel @Inject constructor(
                             } else {
                                 it.contacts
                             },
-                            error = error.displayMessage,
+                            error = error.displayMessage
                         )
                     }
                     handleAuthError(error)
@@ -274,7 +282,7 @@ class ContactListViewModel @Inject constructor(
                             _uiState.update { it.copy(contacts = cached) }
                         }
                     }
-                },
+                }
             )
         }
     }
@@ -295,7 +303,7 @@ class ContactListViewModel @Inject constructor(
                 includeArchived = state.includeArchived.takeIf { it },
                 favorites = state.includeFavorites.takeIf { it },
                 sort = state.sort.apiSort,
-                order = state.sort.apiOrder,
+                order = state.sort.apiOrder
             )
             page.foldApiError(
                 onSuccess = { result ->
@@ -309,17 +317,20 @@ class ContactListViewModel @Inject constructor(
                             pagination = it.pagination.copy(
                                 nextCursor = result.nextCursor,
                                 isLoadingMore = false,
-                                hasMore = !result.nextCursor.isNullOrEmpty(),
-                            ),
+                                hasMore = !result.nextCursor.isNullOrEmpty()
+                            )
                         )
                     }
                 },
                 onError = { error ->
                     _uiState.update {
-                        it.copy(pagination = it.pagination.copy(isLoadingMore = false), error = error.displayMessage)
+                        it.copy(
+                            pagination = it.pagination.copy(isLoadingMore = false),
+                            error = error.displayMessage
+                        )
                     }
                     handleAuthError(error)
-                },
+                }
             )
         }
     }
@@ -328,7 +339,9 @@ class ContactListViewModel @Inject constructor(
         viewModelScope.launch {
             circleRepository.list().foldApiError(
                 onSuccess = { circles -> _uiState.update { it.copy(circles = circles) } },
-                onError = { /* The dropdown just shows "All circles"; the list's own error already surfaces. */ },
+                onError = {
+                    /* The dropdown just shows "All circles"; the list's own error already surfaces. */
+                }
             )
         }
     }
@@ -337,7 +350,9 @@ class ContactListViewModel @Inject constructor(
         viewModelScope.launch {
             tagRepository.list().foldApiError(
                 onSuccess = { tags -> _uiState.update { it.copy(tags = tags) } },
-                onError = { /* The picker just shows empty; the list's own error already surfaces. */ },
+                onError = {
+                    /* The picker just shows empty; the list's own error already surfaces. */
+                }
             )
         }
     }
@@ -395,9 +410,11 @@ class ContactListViewModel @Inject constructor(
         val wasFavorite = contact.isFavorite
         viewModelScope.launch {
             _uiState.update { state ->
-                state.copy(contacts = state.contacts.map {
-                    if (it.id == contact.id) it.copy(isFavorite = !wasFavorite) else it
-                })
+                state.copy(
+                    contacts = state.contacts.map {
+                        if (it.id == contact.id) it.copy(isFavorite = !wasFavorite) else it
+                    }
+                )
             }
             val result = if (wasFavorite) {
                 contactRepository.unfavoriteContact(contact.id)
@@ -414,12 +431,15 @@ class ContactListViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { state ->
-                        state.copy(contacts = state.contacts.map {
-                            if (it.id == contact.id) it.copy(isFavorite = wasFavorite) else it
-                        }, error = error.displayMessage)
+                        state.copy(
+                            contacts = state.contacts.map {
+                                if (it.id == contact.id) it.copy(isFavorite = wasFavorite) else it
+                            },
+                            error = error.displayMessage
+                        )
                     }
                     handleAuthError(error)
-                },
+                }
             )
         }
     }
@@ -457,8 +477,8 @@ class ContactListViewModel @Inject constructor(
                     action = action,
                     vcardUids = uids,
                     circleId = circleId,
-                    tagId = tagId,
-                ),
+                    tagId = tagId
+                )
             ).foldApiError(
                 onSuccess = { result ->
                     _uiState.update {
@@ -471,7 +491,7 @@ class ContactListViewModel @Inject constructor(
                 onError = { error ->
                     _uiState.update { it.copy(isBulkRunning = false, error = error.displayMessage) }
                     handleAuthError(error)
-                },
+                }
             )
         }
     }
@@ -530,7 +550,7 @@ class ContactListViewModel @Inject constructor(
         val result = apiClient.search(query)
         result.foldApiError(
             onSuccess = { search -> _uiState.update { it.copy(searchResult = search) } },
-            onError = { _uiState.update { it.copy(searchResult = null) } },
+            onError = { _uiState.update { it.copy(searchResult = null) } }
         )
     }
 

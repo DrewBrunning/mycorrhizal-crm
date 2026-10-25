@@ -32,7 +32,7 @@ class ContactPhoneIndexBackfillWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted workerParams: WorkerParameters,
     private val contactRepository: ContactRepository,
-    private val trackingSettings: TrackingSettingsRepository,
+    private val trackingSettings: TrackingSettingsRepository
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {
@@ -44,7 +44,10 @@ class ContactPhoneIndexBackfillWorker @AssistedInject constructor(
         ids.forEach { id ->
             val outcome = runCatching { contactRepository.getContact(id) }
             if (outcome.isFailure || outcome.getOrNull()?.isFailure == true) {
-                Log.w(TAG, "Phone-index backfill: failed to hydrate contact $id; will retry next run")
+                Log.w(
+                    TAG,
+                    "Phone-index backfill: failed to hydrate contact $id; will retry next run"
+                )
             }
         }
         return Result.success()

@@ -13,12 +13,12 @@ import com.mycorrhizal.crm.model.network.fieldGroupSuggestions
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 private const val PROJECTION_INTERNAL = "internal"
 private const val PROJECTION_VCARD = "vcard"
@@ -55,7 +55,7 @@ data class FieldDefinitionFormState(
     @StringRes val errorRes: Int? = null,
     val error: String? = null,
     /** Issue #1751: the editable state the form opened with, for [isDirty]. */
-    val baseline: FieldDefinitionFormState? = null,
+    val baseline: FieldDefinitionFormState? = null
 ) {
     val isEdit: Boolean get() = fieldDefinitionId != null
 
@@ -68,7 +68,7 @@ data class FieldDefinitionFormState(
         isDeleting = false,
         errorRes = null,
         error = null,
-        baseline = null,
+        baseline = null
     )
 
     fun snapshotForBaseline(): FieldDefinitionFormState = editableSnapshot()
@@ -76,11 +76,18 @@ data class FieldDefinitionFormState(
     /** Validation order/messages mirror `FieldDefinitionDialog.tsx:122-138` exactly. */
     fun validate(): Int? = when {
         label.isBlank() -> R.string.settings_custom_fields_error_label_required
+
         group.trim().length > FIELD_GROUP_MAX_LENGTH -> R.string.settings_custom_fields_error_group_too_long
+
         !isEdit && key.isBlank() -> R.string.settings_custom_fields_error_key_required
-        type == "enum" && enumValues.none { it.isNotBlank() } -> R.string.settings_custom_fields_error_enum_required
+
+        type == "enum" && enumValues.none {
+            it.isNotBlank()
+        } -> R.string.settings_custom_fields_error_enum_required
+
         projectionMode == PROJECTION_VCARD && vcardName.isBlank() ->
             R.string.settings_custom_fields_error_vcard_name_required
+
         else -> null
     }
 
@@ -91,13 +98,19 @@ data class FieldDefinitionFormState(
             min = if (type == "number") min.toDoubleOrNull() else null,
             max = if (type == "number") max.toDoubleOrNull() else null,
             maxLength = if (type == "string" || type == "text") maxLength.toIntOrNull() else null,
-            pattern = if (type == "string" || type == "text") pattern.trim().ifBlank { null } else null,
+            pattern = if (type == "string" ||
+                type == "text"
+            ) {
+                pattern.trim().ifBlank { null }
+            } else {
+                null
+            },
             values = if (type == "enum") {
                 enumValues.map { it.trim() }.filter { it.isNotBlank() }.ifEmpty { null }
             } else {
                 null
             },
-            multi = multi,
+            multi = multi
         )
         val projection = if (projectionMode == PROJECTION_VCARD) {
             "$PROJECTION_VCARD_PREFIX${vcardName.trim()}"
@@ -113,7 +126,7 @@ data class FieldDefinitionFormState(
             sensitivity = sensitivity,
             // Always sent (never null) so an edit can't silently keep a group the user cleared:
             // the server treats an omitted key as "keep", "" as "clear".
-            group = group.trim(),
+            group = group.trim()
         )
     }
 
@@ -133,18 +146,31 @@ data class FieldDefinitionFormState(
             maxLength = constraints.maxLength?.toString() ?: "",
             pattern = constraints.pattern.orEmpty(),
             enumValues = constraints.values.orEmpty(),
-            projectionMode = if (projection.startsWith("vcard:")) PROJECTION_VCARD else PROJECTION_INTERNAL,
+            projectionMode = if (projection.startsWith(
+                    "vcard:"
+                )
+            ) {
+                PROJECTION_VCARD
+            } else {
+                PROJECTION_INTERNAL
+            },
             vcardName = projection.removePrefix(PROJECTION_VCARD_PREFIX),
             sensitivity = definition.sensitivity ?: FIELD_SENSITIVITY_NORMAL,
-            group = definition.group,
+            group = definition.group
         )
     }
 }
 
 /** Renders a constraint `Double` without a trailing ".0" for a whole number, matching how the
  *  user is expected to have typed it (mirrors `FieldDefinition.kt`'s `scalarValueDisplay`). */
-private fun formatConstraintNumber(value: Double): String =
-    if (value == Math.floor(value) && !value.isInfinite()) value.toLong().toString() else value.toString()
+private fun formatConstraintNumber(value: Double): String = if (value == Math.floor(
+        value
+    ) && !value.isInfinite()
+) {
+    value.toLong().toString()
+} else {
+    value.toString()
+}
 
 sealed interface FieldDefinitionFormEvent {
     data object Saved : FieldDefinitionFormEvent
@@ -154,7 +180,7 @@ sealed interface FieldDefinitionFormEvent {
 @HiltViewModel
 class FieldDefinitionFormViewModel @Inject constructor(
     private val repository: FieldDefinitionRepository,
-    savedStateHandle: SavedStateHandle,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val fieldDefinitionId: String? = run {
@@ -164,7 +190,7 @@ class FieldDefinitionFormViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(
         FieldDefinitionFormState(fieldDefinitionId = fieldDefinitionId)
-            .let { it.copy(baseline = it.snapshotForBaseline()) },
+            .let { it.copy(baseline = it.snapshotForBaseline()) }
     )
     val uiState: StateFlow<FieldDefinitionFormState> = _uiState.asStateFlow()
 
@@ -181,9 +207,13 @@ class FieldDefinitionFormViewModel @Inject constructor(
         viewModelScope.launch {
             repository.list().foldApiError(
                 onSuccess = { definitions ->
-                    _uiState.update { it.copy(groupSuggestions = fieldGroupSuggestions(definitions)) }
+                    _uiState.update {
+                        it.copy(
+                            groupSuggestions = fieldGroupSuggestions(definitions)
+                        )
+                    }
                 },
-                onError = { },
+                onError = { }
             )
         }
     }
@@ -200,7 +230,7 @@ class FieldDefinitionFormViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -253,7 +283,7 @@ class FieldDefinitionFormViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isSaving = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -275,7 +305,7 @@ class FieldDefinitionFormViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isDeleting = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }

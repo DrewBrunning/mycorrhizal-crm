@@ -28,7 +28,7 @@ import javax.inject.Singleton
 @Singleton
 class AppSessionTeardown @Inject constructor(
     private val deviceRegistration: DeviceRegistrationManager,
-    private val sessionRevoker: CurrentSessionRevoker,
+    private val sessionRevoker: CurrentSessionRevoker
 ) : SessionTeardown {
     override suspend fun beforeClear() {
         runCatching { deviceRegistration.delete() }

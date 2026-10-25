@@ -31,7 +31,7 @@ class GraphRepositoryImplTest {
     @Test
     fun `selfContactVCardUid reads the profile's pointer`() = runTest {
         coEvery { apiClient.currentUser() } returns Result.success(
-            UserProfile(id = 1, selfContactVCardUid = "self-uid"),
+            UserProfile(id = 1, selfContactVCardUid = "self-uid")
         )
 
         val result = repository.selfContactVCardUid()
@@ -52,19 +52,33 @@ class GraphRepositoryImplTest {
 
     @Test
     fun `circlesWithMembers maps the page into per-circle member uid sets`() = runTest {
-        coEvery { apiClient.listCircles(includeMembers = true, limit = 100) } returns Result.success(
+        coEvery {
+            apiClient.listCircles(
+                includeMembers = true,
+                limit = 100
+            )
+        } returns Result.success(
             CirclesPage(
                 circles = listOf(
                     com.mycorrhizal.crm.model.network.Circle(id = "c1", name = "Family"),
                     com.mycorrhizal.crm.model.network.Circle(id = "c2", name = "Work"),
-                    com.mycorrhizal.crm.model.network.Circle(id = "c3", name = "Empty"),
+                    com.mycorrhizal.crm.model.network.Circle(id = "c3", name = "Empty")
                 ),
                 members = listOf(
-                    com.mycorrhizal.crm.model.network.CircleMember(circleId = "c1", memberVCardUid = "u1"),
-                    com.mycorrhizal.crm.model.network.CircleMember(circleId = "c1", memberVCardUid = "u2"),
-                    com.mycorrhizal.crm.model.network.CircleMember(circleId = "c2", memberVCardUid = "u2"),
-                ),
-            ),
+                    com.mycorrhizal.crm.model.network.CircleMember(
+                        circleId = "c1",
+                        memberVCardUid = "u1"
+                    ),
+                    com.mycorrhizal.crm.model.network.CircleMember(
+                        circleId = "c1",
+                        memberVCardUid = "u2"
+                    ),
+                    com.mycorrhizal.crm.model.network.CircleMember(
+                        circleId = "c2",
+                        memberVCardUid = "u2"
+                    )
+                )
+            )
         )
 
         val result = repository.circlesWithMembers()

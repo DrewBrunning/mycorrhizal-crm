@@ -56,21 +56,23 @@ class ShareContactScreenTest {
     fun `renders the recipient picker and sections once the directory loads`() {
         val repo = mockk<ContactShareRepository>()
         coEvery { repo.userDirectory() } returns Result.success(
-            listOf(UserDirectoryEntry(id = 1, username = "alice")),
+            listOf(UserDirectoryEntry(id = 1, username = "alice"))
         )
         screen(repo)
 
         composeTestRule.onNodeWithText(str(R.string.shares_share_dialog_title)).assertIsDisplayed()
         composeTestRule.onNodeWithText(str(R.string.shares_recipient)).assertIsDisplayed()
         composeTestRule.onNodeWithText(str(R.string.shares_fields_label)).assertIsDisplayed()
-        composeTestRule.onNodeWithText(str(R.string.shares_share_button)).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            str(R.string.shares_share_button)
+        ).performScrollTo().assertIsDisplayed()
     }
 
     @Test
     fun `share is disabled until a recipient is selected`() {
         val repo = mockk<ContactShareRepository>()
         coEvery { repo.userDirectory() } returns Result.success(
-            listOf(UserDirectoryEntry(id = 1, username = "alice")),
+            listOf(UserDirectoryEntry(id = 1, username = "alice"))
         )
         screen(repo)
 
@@ -92,7 +94,7 @@ class ShareContactScreenTest {
     fun `share screen has no accessibility violations`() {
         val repo = mockk<ContactShareRepository>()
         coEvery { repo.userDirectory() } returns Result.success(
-            listOf(UserDirectoryEntry(id = 1, username = "alice")),
+            listOf(UserDirectoryEntry(id = 1, username = "alice"))
         )
         screen(repo)
 
@@ -103,11 +105,13 @@ class ShareContactScreenTest {
     fun `the reveal button opens the sensitive confirmation dialog`() {
         val repo = mockk<ContactShareRepository>()
         coEvery { repo.userDirectory() } returns Result.success(
-            listOf(UserDirectoryEntry(id = 1, username = "alice")),
+            listOf(UserDirectoryEntry(id = 1, username = "alice"))
         )
         screen(repo)
 
-        composeTestRule.onNodeWithText(str(R.string.shares_reveal_button)).performScrollTo().performClick()
+        composeTestRule.onNodeWithText(
+            str(R.string.shares_reveal_button)
+        ).performScrollTo().performClick()
 
         // The confirm gate is reachable only after the deliberate reveal step.
         composeTestRule.onNodeWithText(str(R.string.shares_reveal_title)).assertIsDisplayed()
@@ -117,10 +121,10 @@ class ShareContactScreenTest {
     fun `sharing with a selected recipient calls the repository`() {
         val repo = mockk<ContactShareRepository>()
         coEvery { repo.userDirectory() } returns Result.success(
-            listOf(UserDirectoryEntry(id = 1, username = "alice")),
+            listOf(UserDirectoryEntry(id = 1, username = "alice"))
         )
         coEvery { repo.create(any()) } returns Result.success(
-            com.mycorrhizal.crm.model.network.ContactShare(id = "share-1"),
+            com.mycorrhizal.crm.model.network.ContactShare(id = "share-1")
         )
         val vm = viewModel(repo)
         // Recipient selection is exercised by the ViewModel suite; here the

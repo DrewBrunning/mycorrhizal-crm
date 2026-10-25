@@ -22,7 +22,11 @@ class SmsInboxReaderTest {
     private val reader = SmsInboxReader(contentResolver)
 
     private val idProjection = arrayOf(Telephony.Sms._ID)
-    private val readSinceProjection = arrayOf(Telephony.Sms._ID, Telephony.Sms.ADDRESS, Telephony.Sms.DATE)
+    private val readSinceProjection = arrayOf(
+        Telephony.Sms._ID,
+        Telephony.Sms.ADDRESS,
+        Telephony.Sms.DATE
+    )
 
     // --- findId --------------------------------------------------------
 
@@ -44,12 +48,21 @@ class SmsInboxReaderTest {
         val selectionArgs = slot<Array<String>>()
         val cursor = MatrixCursor(idProjection).apply { addRow(arrayOf<Any>(1L)) }
         every {
-            contentResolver.query(Telephony.Sms.Inbox.CONTENT_URI, idProjection, capture(selection), capture(selectionArgs), null)
+            contentResolver.query(
+                Telephony.Sms.Inbox.CONTENT_URI,
+                idProjection,
+                capture(selection),
+                capture(selectionArgs),
+                null
+            )
         } returns cursor
 
         reader.findId("+15551234567", 1234L)
 
-        assertEquals("${Telephony.Sms.ADDRESS} = ? AND ${Telephony.Sms.DATE} = ?", selection.captured)
+        assertEquals(
+            "${Telephony.Sms.ADDRESS} = ? AND ${Telephony.Sms.DATE} = ?",
+            selection.captured
+        )
         assertEquals(listOf("+15551234567", "1234"), selectionArgs.captured.toList())
     }
 
@@ -96,14 +109,26 @@ class SmsInboxReaderTest {
             addRow(arrayOf<Any>(12L, "+15559876543", 8_000L))
         }
         every {
-            contentResolver.query(Telephony.Sms.Inbox.CONTENT_URI, readSinceProjection, any(), any(), any())
+            contentResolver.query(
+                Telephony.Sms.Inbox.CONTENT_URI,
+                readSinceProjection,
+                any(),
+                any(),
+                any()
+            )
         } returns cursor
 
         val entries = reader.readSince(sinceId = 0L)
 
         assertEquals(2, entries.size)
-        assertEquals(SmsInboxEntry(id = 11L, address = "+15551234567", timestampMillis = 6_000L), entries[0])
-        assertEquals(SmsInboxEntry(id = 12L, address = "+15559876543", timestampMillis = 8_000L), entries[1])
+        assertEquals(
+            SmsInboxEntry(id = 11L, address = "+15551234567", timestampMillis = 6_000L),
+            entries[0]
+        )
+        assertEquals(
+            SmsInboxEntry(id = 12L, address = "+15559876543", timestampMillis = 8_000L),
+            entries[1]
+        )
     }
 
     @Test
@@ -112,7 +137,13 @@ class SmsInboxReaderTest {
             addRow(arrayOf<Any>(9L, 9_000L))
         }
         every {
-            contentResolver.query(Telephony.Sms.Inbox.CONTENT_URI, readSinceProjection, any(), any(), any())
+            contentResolver.query(
+                Telephony.Sms.Inbox.CONTENT_URI,
+                readSinceProjection,
+                any(),
+                any(),
+                any()
+            )
         } returns cursor
 
         val entries = reader.readSince(sinceId = 0L)
@@ -125,7 +156,13 @@ class SmsInboxReaderTest {
     @Test
     fun `a null cursor from the provider is an empty list`() {
         every {
-            contentResolver.query(Telephony.Sms.Inbox.CONTENT_URI, readSinceProjection, any(), any(), any())
+            contentResolver.query(
+                Telephony.Sms.Inbox.CONTENT_URI,
+                readSinceProjection,
+                any(),
+                any(),
+                any()
+            )
         } returns null
 
         val entries = reader.readSince(sinceId = 0L)
@@ -147,7 +184,7 @@ class SmsInboxReaderTest {
                 readSinceProjection,
                 capture(selection),
                 capture(selectionArgs),
-                capture(sortOrder),
+                capture(sortOrder)
             )
         } returns cursor
 
@@ -161,7 +198,13 @@ class SmsInboxReaderTest {
     @Test
     fun `readSince returns an empty list on a missing READ_SMS grant (SecurityException), not a crash`() {
         every {
-            contentResolver.query(Telephony.Sms.Inbox.CONTENT_URI, readSinceProjection, any(), any(), any())
+            contentResolver.query(
+                Telephony.Sms.Inbox.CONTENT_URI,
+                readSinceProjection,
+                any(),
+                any(),
+                any()
+            )
         } throws SecurityException("Permission Denial: reading com.android.providers.telephony")
 
         val entries = reader.readSince(sinceId = 0L)

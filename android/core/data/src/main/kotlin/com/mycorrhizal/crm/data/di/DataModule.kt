@@ -1,14 +1,17 @@
 package com.mycorrhizal.crm.data.di
 
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.room.Room
 import com.mycorrhizal.crm.data.auth.AndroidLocalAuthCapabilities
+import com.mycorrhizal.crm.data.compat.DefaultServerCapabilitiesStore
 import com.mycorrhizal.crm.data.local.AppDatabase
 import com.mycorrhizal.crm.data.local.CachedActivityDao
 import com.mycorrhizal.crm.data.local.CachedCadencePolicyDao
-import com.mycorrhizal.crm.data.local.CachedOccasionEventDao
 import com.mycorrhizal.crm.data.local.CachedCircleDao
 import com.mycorrhizal.crm.data.local.CachedCircleMemberDao
 import com.mycorrhizal.crm.data.local.CachedContactDao
-import com.mycorrhizal.crm.data.local.CustomLinkActionDao
 import com.mycorrhizal.crm.data.local.CachedContactTagDao
 import com.mycorrhizal.crm.data.local.CachedConversationAgendaDao
 import com.mycorrhizal.crm.data.local.CachedGiftDao
@@ -16,62 +19,64 @@ import com.mycorrhizal.crm.data.local.CachedHouseholdDao
 import com.mycorrhizal.crm.data.local.CachedHouseholdMemberDao
 import com.mycorrhizal.crm.data.local.CachedLifeEventDao
 import com.mycorrhizal.crm.data.local.CachedNoteDao
+import com.mycorrhizal.crm.data.local.CachedOccasionEventDao
 import com.mycorrhizal.crm.data.local.CachedPreferenceDao
 import com.mycorrhizal.crm.data.local.CachedRelationshipEdgeDao
 import com.mycorrhizal.crm.data.local.CachedReminderDao
 import com.mycorrhizal.crm.data.local.CachedTagDao
+import com.mycorrhizal.crm.data.local.CustomLinkActionDao
 import com.mycorrhizal.crm.data.local.LocalDataCleaner
 import com.mycorrhizal.crm.data.local.PendingInteractionDao
 import com.mycorrhizal.crm.data.local.RoomCacheEncryption
 import com.mycorrhizal.crm.data.local.RoomPassphraseStore
 import com.mycorrhizal.crm.data.repository.ActivityRepositoryImpl
+import com.mycorrhizal.crm.data.repository.ApiTokenRepositoryImpl
+import com.mycorrhizal.crm.data.repository.AppSettingsRepositoryImpl
+import com.mycorrhizal.crm.data.repository.AttachmentRepositoryImpl
 import com.mycorrhizal.crm.data.repository.AuditRepositoryImpl
 import com.mycorrhizal.crm.data.repository.AuthRepositoryImpl
-import com.mycorrhizal.crm.data.repository.PasskeyRepositoryImpl
-import com.mycorrhizal.crm.data.repository.AttachmentRepositoryImpl
-import com.mycorrhizal.crm.data.repository.DuplicateRepositoryImpl
-import com.mycorrhizal.crm.data.repository.ExportRepositoryImpl
-import com.mycorrhizal.crm.data.repository.SystemEventRepositoryImpl
+import com.mycorrhizal.crm.data.repository.BulkOperationRepositoryImpl
 import com.mycorrhizal.crm.data.repository.CadencePolicyRepositoryImpl
-import com.mycorrhizal.crm.data.repository.OccasionEventRepositoryImpl
+import com.mycorrhizal.crm.data.repository.CalendarSubscriptionRepositoryImpl
 import com.mycorrhizal.crm.data.repository.CircleRepositoryImpl
-import com.mycorrhizal.crm.data.repository.CustomLinkActionRepositoryImpl
-import com.mycorrhizal.crm.data.repository.ContactTimelineRepositoryImpl
-import com.mycorrhizal.crm.data.repository.ExternalActivityRepositoryImpl
-import com.mycorrhizal.crm.data.repository.ExternalIdentityRepositoryImpl
-import com.mycorrhizal.crm.data.repository.GeoPulseRepositoryImpl
-import com.mycorrhizal.crm.data.repository.ImmichRepositoryImpl
-import com.mycorrhizal.crm.data.repository.NextcloudRepositoryImpl
-import com.mycorrhizal.crm.data.repository.PaperlessRepositoryImpl
-import com.mycorrhizal.crm.data.repository.SeafileRepositoryImpl
-import com.mycorrhizal.crm.data.repository.ServerCompatibilityRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ContactRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ContactScoreRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ContactShareRepositoryImpl
+import com.mycorrhizal.crm.data.repository.ContactSubscriptionRepositoryImpl
+import com.mycorrhizal.crm.data.repository.ContactTimelineRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ConversationAgendaRepositoryImpl
+import com.mycorrhizal.crm.data.repository.CustomLinkActionRepositoryImpl
+import com.mycorrhizal.crm.data.repository.DuplicateRepositoryImpl
+import com.mycorrhizal.crm.data.repository.ExportRepositoryImpl
+import com.mycorrhizal.crm.data.repository.ExternalActivityRepositoryImpl
+import com.mycorrhizal.crm.data.repository.ExternalIdentityRepositoryImpl
+import com.mycorrhizal.crm.data.repository.FieldDefinitionRepositoryImpl
+import com.mycorrhizal.crm.data.repository.GeoPulseRepositoryImpl
 import com.mycorrhizal.crm.data.repository.GiftRepositoryImpl
 import com.mycorrhizal.crm.data.repository.GraphRepositoryImpl
-import com.mycorrhizal.crm.data.repository.MapRepositoryImpl
 import com.mycorrhizal.crm.data.repository.HouseholdRepositoryImpl
+import com.mycorrhizal.crm.data.repository.ImmichRepositoryImpl
 import com.mycorrhizal.crm.data.repository.LifeEventRepositoryImpl
+import com.mycorrhizal.crm.data.repository.LocalAuthSettingsRepositoryImpl
+import com.mycorrhizal.crm.data.repository.MapRepositoryImpl
 import com.mycorrhizal.crm.data.repository.MergeRepositoryImpl
+import com.mycorrhizal.crm.data.repository.NextcloudRepositoryImpl
 import com.mycorrhizal.crm.data.repository.NoteRepositoryImpl
-import com.mycorrhizal.crm.data.repository.PreferenceRepositoryImpl
-import com.mycorrhizal.crm.data.repository.BulkOperationRepositoryImpl
-import com.mycorrhizal.crm.data.repository.CalendarSubscriptionRepositoryImpl
-import com.mycorrhizal.crm.data.repository.ContactSubscriptionRepositoryImpl
+import com.mycorrhizal.crm.data.repository.NotificationSettingsRepositoryImpl
+import com.mycorrhizal.crm.data.repository.OccasionEventRepositoryImpl
+import com.mycorrhizal.crm.data.repository.PaperlessRepositoryImpl
+import com.mycorrhizal.crm.data.repository.PasskeyRepositoryImpl
 import com.mycorrhizal.crm.data.repository.PendingInteractionRepositoryImpl
-import com.mycorrhizal.crm.data.repository.ReminderRepositoryImpl
+import com.mycorrhizal.crm.data.repository.PreferenceRepositoryImpl
 import com.mycorrhizal.crm.data.repository.RelationshipEdgeRepositoryImpl
+import com.mycorrhizal.crm.data.repository.ReminderRepositoryImpl
+import com.mycorrhizal.crm.data.repository.SeafileRepositoryImpl
+import com.mycorrhizal.crm.data.repository.ServerCompatibilityRepositoryImpl
+import com.mycorrhizal.crm.data.repository.SystemEventRepositoryImpl
 import com.mycorrhizal.crm.data.repository.TagRepositoryImpl
 import com.mycorrhizal.crm.data.repository.TrackingSettingsRepositoryImpl
-import com.mycorrhizal.crm.data.repository.NotificationSettingsRepositoryImpl
-import com.mycorrhizal.crm.data.repository.AppSettingsRepositoryImpl
 import com.mycorrhizal.crm.data.repository.UserManagementRepositoryImpl
 import com.mycorrhizal.crm.data.repository.WebhookRepositoryImpl
-import com.mycorrhizal.crm.data.repository.ApiTokenRepositoryImpl
-import com.mycorrhizal.crm.data.repository.LocalAuthSettingsRepositoryImpl
-import com.mycorrhizal.crm.data.repository.FieldDefinitionRepositoryImpl
 import com.mycorrhizal.crm.data.session.AppLockController
 import com.mycorrhizal.crm.data.session.DefaultAppLockController
 import com.mycorrhizal.crm.data.session.DefaultSessionManager
@@ -81,67 +86,62 @@ import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.data.session.SessionPrefsStorage
 import com.mycorrhizal.crm.data.session.SessionTeardown
 import com.mycorrhizal.crm.data.session.TokenStorage
-import com.mycorrhizal.crm.data.compat.DefaultServerCapabilitiesStore
 import com.mycorrhizal.crm.domain.compat.ServerCapabilitiesStore
 import com.mycorrhizal.crm.domain.repository.ActivityRepository
+import com.mycorrhizal.crm.domain.repository.ApiTokenRepository
+import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
+import com.mycorrhizal.crm.domain.repository.AttachmentRepository
 import com.mycorrhizal.crm.domain.repository.AuditRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
-import com.mycorrhizal.crm.domain.repository.PasskeyRepository
-import com.mycorrhizal.crm.domain.repository.AttachmentRepository
-import com.mycorrhizal.crm.domain.repository.DuplicateRepository
-import com.mycorrhizal.crm.domain.repository.ExportRepository
-import com.mycorrhizal.crm.domain.repository.SystemEventRepository
 import com.mycorrhizal.crm.domain.repository.BulkOperationRepository
 import com.mycorrhizal.crm.domain.repository.CadencePolicyRepository
-import com.mycorrhizal.crm.domain.repository.OccasionEventRepository
 import com.mycorrhizal.crm.domain.repository.CalendarSubscriptionRepository
 import com.mycorrhizal.crm.domain.repository.CircleRepository
-import com.mycorrhizal.crm.domain.repository.ContactSubscriptionRepository
-import com.mycorrhizal.crm.domain.repository.CustomLinkActionRepository
-import com.mycorrhizal.crm.domain.repository.ContactTimelineRepository
-import com.mycorrhizal.crm.domain.repository.ExternalActivityRepository
-import com.mycorrhizal.crm.domain.repository.ExternalIdentityRepository
-import com.mycorrhizal.crm.domain.repository.GeoPulseRepository
-import com.mycorrhizal.crm.domain.repository.ImmichRepository
-import com.mycorrhizal.crm.domain.repository.NextcloudRepository
-import com.mycorrhizal.crm.domain.repository.PaperlessRepository
-import com.mycorrhizal.crm.domain.repository.SeafileRepository
-import com.mycorrhizal.crm.domain.repository.ServerCompatibilityRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ContactScoreRepository
 import com.mycorrhizal.crm.domain.repository.ContactShareRepository
+import com.mycorrhizal.crm.domain.repository.ContactSubscriptionRepository
+import com.mycorrhizal.crm.domain.repository.ContactTimelineRepository
 import com.mycorrhizal.crm.domain.repository.ConversationAgendaRepository
+import com.mycorrhizal.crm.domain.repository.CustomLinkActionRepository
+import com.mycorrhizal.crm.domain.repository.DuplicateRepository
+import com.mycorrhizal.crm.domain.repository.ExportRepository
+import com.mycorrhizal.crm.domain.repository.ExternalActivityRepository
+import com.mycorrhizal.crm.domain.repository.ExternalIdentityRepository
+import com.mycorrhizal.crm.domain.repository.FieldDefinitionRepository
+import com.mycorrhizal.crm.domain.repository.GeoPulseRepository
 import com.mycorrhizal.crm.domain.repository.GiftRepository
 import com.mycorrhizal.crm.domain.repository.GraphRepository
-import com.mycorrhizal.crm.domain.repository.MapRepository
 import com.mycorrhizal.crm.domain.repository.HouseholdRepository
+import com.mycorrhizal.crm.domain.repository.ImmichRepository
 import com.mycorrhizal.crm.domain.repository.LifeEventRepository
-import com.mycorrhizal.crm.domain.repository.MergeRepository
-import com.mycorrhizal.crm.domain.repository.NoteRepository
-import com.mycorrhizal.crm.domain.repository.PendingInteractionRepository
-import com.mycorrhizal.crm.domain.repository.PreferenceRepository
-import com.mycorrhizal.crm.domain.repository.ReminderRepository
-import com.mycorrhizal.crm.domain.repository.RelationshipEdgeRepository
-import com.mycorrhizal.crm.domain.repository.TagRepository
-import com.mycorrhizal.crm.domain.repository.TrackingSettingsRepository
-import com.mycorrhizal.crm.domain.repository.NotificationSettingsRepository
-import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
-import com.mycorrhizal.crm.domain.repository.WebhookRepository
-import com.mycorrhizal.crm.domain.repository.ApiTokenRepository
-import com.mycorrhizal.crm.domain.repository.UserManagementRepository
 import com.mycorrhizal.crm.domain.repository.LocalAuthCapabilities
 import com.mycorrhizal.crm.domain.repository.LocalAuthSettingsRepository
-import com.mycorrhizal.crm.domain.repository.FieldDefinitionRepository
+import com.mycorrhizal.crm.domain.repository.MapRepository
+import com.mycorrhizal.crm.domain.repository.MergeRepository
+import com.mycorrhizal.crm.domain.repository.NextcloudRepository
+import com.mycorrhizal.crm.domain.repository.NoteRepository
+import com.mycorrhizal.crm.domain.repository.NotificationSettingsRepository
+import com.mycorrhizal.crm.domain.repository.OccasionEventRepository
+import com.mycorrhizal.crm.domain.repository.PaperlessRepository
+import com.mycorrhizal.crm.domain.repository.PasskeyRepository
+import com.mycorrhizal.crm.domain.repository.PendingInteractionRepository
+import com.mycorrhizal.crm.domain.repository.PreferenceRepository
+import com.mycorrhizal.crm.domain.repository.RelationshipEdgeRepository
+import com.mycorrhizal.crm.domain.repository.ReminderRepository
+import com.mycorrhizal.crm.domain.repository.SeafileRepository
+import com.mycorrhizal.crm.domain.repository.ServerCompatibilityRepository
+import com.mycorrhizal.crm.domain.repository.SystemEventRepository
+import com.mycorrhizal.crm.domain.repository.TagRepository
+import com.mycorrhizal.crm.domain.repository.TrackingSettingsRepository
+import com.mycorrhizal.crm.domain.repository.UserManagementRepository
+import com.mycorrhizal.crm.domain.repository.WebhookRepository
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ArchivedProfileProvider
 import com.mycorrhizal.crm.network.BaseUrlProvider
 import com.mycorrhizal.crm.network.NetworkFactory
 import com.mycorrhizal.crm.network.SessionExpiryNotifier
 import com.mycorrhizal.crm.network.TokenProvider
-import androidx.room.Room
-import androidx.lifecycle.DefaultLifecycleObserver
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.ProcessLifecycleOwner
 import com.squareup.moshi.Moshi
 import dagger.Binds
 import dagger.Module
@@ -149,12 +149,12 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
-import javax.inject.Singleton
 
 /**
  * Core dependency graph. Binding at the lowest scope that covers each
@@ -188,7 +188,7 @@ object DataModule {
     @Suppress("SpreadOperator")
     fun provideDatabase(
         @ApplicationContext context: android.content.Context,
-        passphraseStore: RoomPassphraseStore,
+        passphraseStore: RoomPassphraseStore
     ): AppDatabase {
         // Issue #385: the Room mirror (offline PII) is SQLCipher-encrypted. On
         // first launch of an encrypted build this also re-encrypts a
@@ -197,40 +197,45 @@ object DataModule {
         val dbFile = context.getDatabasePath(DB_NAME)
         val passphrase = passphraseStore.getOrCreate()
         RoomCacheEncryption.ensureEncrypted(dbFile, passphrase)
-        fun buildDatabase(): AppDatabase = Room.databaseBuilder( // # pragma: no cover — provideDatabase needs a real Android Keystore (RoomPassphraseStore); see RoomEncryptionGuardTest
-            context,
-            AppDatabase::class.java,
-            DB_NAME,
-        )
-            .openHelperFactory(SupportOpenHelperFactory(passphrase.toByteArray()))
-            // T76/#480: REGISTERED_MIGRATIONS (Migrations.kt) is the single source of truth
-            // for which version bumps have a hand-written migration — so pending_interactions
-            // (a real not-yet-synced outbox) survives those bumps; the destructive fallback
-            // remains for any other/unexpected version gap, per this cache's general
-            // rebuild-from-server policy (see AppDatabase's doc comment).
-            // MigrationVersionCoverageTest guards against a future gap being left unregistered
-            // by accident.
-            .addMigrations(*com.mycorrhizal.crm.data.local.REGISTERED_MIGRATIONS.toTypedArray()) // # pragma: no cover — provideDatabase needs a real Android Keystore (RoomPassphraseStore); see RoomEncryptionGuardTest
-            .fallbackToDestructiveMigration()
-            .build()
+        fun buildDatabase(): AppDatabase =
+            Room.databaseBuilder( // # pragma: no cover — provideDatabase needs a real Android Keystore (RoomPassphraseStore); see RoomEncryptionGuardTest
+                context,
+                AppDatabase::class.java,
+                DB_NAME
+            )
+                .openHelperFactory(SupportOpenHelperFactory(passphrase.toByteArray()))
+                // T76/#480: REGISTERED_MIGRATIONS (Migrations.kt) is the single source of truth
+                // for which version bumps have a hand-written migration — so pending_interactions
+                // (a real not-yet-synced outbox) survives those bumps; the destructive fallback
+                // remains for any other/unexpected version gap, per this cache's general
+                // rebuild-from-server policy (see AppDatabase's doc comment).
+                // MigrationVersionCoverageTest guards against a future gap being left unregistered
+                // by accident.
+                .addMigrations(*com.mycorrhizal.crm.data.local.REGISTERED_MIGRATIONS.toTypedArray()) // # pragma: no cover — provideDatabase needs a real Android Keystore (RoomPassphraseStore); see RoomEncryptionGuardTest
+                .fallbackToDestructiveMigration()
+                .build()
         // Issue #998: if dbFile is left encrypted with some other, now-lost
         // passphrase (e.g. a pre-fix build hit the RoomPassphraseStore
         // async-persist race), it will fail to open under `passphrase` no
         // matter how correctly that value was just persisted — recover by
         // wiping and rebuilding a fresh cache rather than boot-looping.
-        return com.mycorrhizal.crm.data.local.RoomDatabaseRecovery.openOrRebuild(dbFile, ::buildDatabase) // # pragma: no cover — provideDatabase needs a real Android Keystore (RoomPassphraseStore); see RoomEncryptionGuardTest
+        return com.mycorrhizal.crm.data.local.RoomDatabaseRecovery.openOrRebuild(
+            dbFile,
+            ::buildDatabase
+        ) // # pragma: no cover — provideDatabase needs a real Android Keystore (RoomPassphraseStore); see RoomEncryptionGuardTest
     }
 
     @Provides
     @Singleton
-    fun provideRoomPassphraseStore(@ApplicationContext context: android.content.Context): RoomPassphraseStore =
-        RoomPassphraseStore(context)
+    fun provideRoomPassphraseStore(
+        @ApplicationContext context: android.content.Context
+    ): RoomPassphraseStore = RoomPassphraseStore(context)
 
     @Provides
     @Singleton
     fun provideSessionDataCleaner(
         @ApplicationContext context: android.content.Context,
-        database: AppDatabase,
+        database: AppDatabase
     ): SessionDataCleaner = LocalDataCleaner(context, database)
 
     @Provides
@@ -256,12 +261,10 @@ object DataModule {
     fun provideCachedTagDao(db: AppDatabase): CachedTagDao = db.cachedTagDao()
 
     @Provides
-    fun provideCachedContactTagDao(db: AppDatabase): CachedContactTagDao =
-        db.cachedContactTagDao()
+    fun provideCachedContactTagDao(db: AppDatabase): CachedContactTagDao = db.cachedContactTagDao()
 
     @Provides
-    fun provideCachedHouseholdDao(db: AppDatabase): CachedHouseholdDao =
-        db.cachedHouseholdDao()
+    fun provideCachedHouseholdDao(db: AppDatabase): CachedHouseholdDao = db.cachedHouseholdDao()
 
     @Provides
     fun provideCachedHouseholdMemberDao(db: AppDatabase): CachedHouseholdMemberDao =
@@ -297,8 +300,7 @@ object DataModule {
         db.pendingInteractionDao()
 
     @Provides
-    fun provideCustomLinkActionDao(db: AppDatabase): CustomLinkActionDao =
-        db.customLinkActionDao()
+    fun provideCustomLinkActionDao(db: AppDatabase): CustomLinkActionDao = db.customLinkActionDao()
 
     @Provides
     @Singleton
@@ -321,12 +323,12 @@ object DataModule {
     fun provideRoleRefresher(
         forbiddenNotifier: com.mycorrhizal.crm.network.ForbiddenNotifier,
         sessionManager: SessionManager,
-        authRepository: javax.inject.Provider<AuthRepository>,
+        authRepository: javax.inject.Provider<AuthRepository>
     ): com.mycorrhizal.crm.data.session.RoleRefresher {
         val refresher = com.mycorrhizal.crm.data.session.RoleRefresher(
             forbiddenNotifier,
             sessionManager,
-            fetchIsAdmin = { authRepository.get().fetchCurrentUser().getOrNull()?.isAdmin },
+            fetchIsAdmin = { authRepository.get().fetchCurrentUser().getOrNull()?.isAdmin }
         )
         refresher.start(CoroutineScope(SupervisorJob() + Dispatchers.IO))
         return refresher
@@ -359,7 +361,8 @@ object DataModule {
         // ADR 0028 Decision 1: the profile list / active ID and the outbox
         // drain. The repository has no dependency on SessionManager, so no
         // Provider indirection is needed here.
-        pendingInteractionRepository: com.mycorrhizal.crm.domain.repository.PendingInteractionRepository,
+        pendingInteractionRepository:
+        com.mycorrhizal.crm.domain.repository.PendingInteractionRepository,
         // A `Provider` breaks the cycle: the real drainer goes through
         // ApiClient → OkHttpClient → BaseUrlProvider, which is bound to the
         // SessionManager this provider is building. It is only resolved when a
@@ -367,7 +370,7 @@ object DataModule {
         outboxDrainer: javax.inject.Provider<com.mycorrhizal.crm.data.session.OutboxDrainer>,
         profileSecretStorage: com.mycorrhizal.crm.data.session.ProfileSecretStorage,
         // Issue #1312: a Provider for the same cycle-avoidance reason as above.
-        localServerHost: javax.inject.Provider<com.mycorrhizal.crm.data.local.LocalServerHost>,
+        localServerHost: javax.inject.Provider<com.mycorrhizal.crm.data.local.LocalServerHost>
     ): DefaultSessionManager {
         val manager = DefaultSessionManager(
             tokenStorage,
@@ -375,8 +378,10 @@ object DataModule {
             localDataCleaner,
             sessionTeardown = SessionTeardown { sessionTeardown.get().beforeClear() },
             pendingInteractions = pendingInteractionRepository,
-            outboxDrainer = com.mycorrhizal.crm.data.session.OutboxDrainer { outboxDrainer.get().drain() },
-            profileSecretStorage = profileSecretStorage,
+            outboxDrainer = com.mycorrhizal.crm.data.session.OutboxDrainer {
+                outboxDrainer.get().drain()
+            },
+            profileSecretStorage = profileSecretStorage
         )
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         // Issue #678: a 401 on any API call must clear the session so the app
@@ -395,7 +400,7 @@ object DataModule {
             localRemint = { rejectedBearer ->
                 com.mycorrhizal.crm.data.local.LocalSessionReminter(localServerHost.get(), manager)
                     .remint(rejectedBearer)
-            },
+            }
         ).start(scope)
         // Hydrate the stored JWT/server URL into memory asynchronously so a
         // returning user is already logged in on launch (H3 review fix).
@@ -406,7 +411,7 @@ object DataModule {
     @Provides
     @Singleton
     fun provideDeviceGrantTokenStorage(
-        @ApplicationContext context: android.content.Context,
+        @ApplicationContext context: android.content.Context
     ): com.mycorrhizal.crm.data.session.DeviceGrantTokenStorage =
         com.mycorrhizal.crm.data.session.EncryptedDeviceGrantTokenStorage(context)
 
@@ -418,7 +423,7 @@ object DataModule {
     @Singleton
     fun provideAppLockController(
         localAuthSettings: LocalAuthSettingsRepository,
-        sessionManager: SessionManager,
+        sessionManager: SessionManager
     ): DefaultAppLockController {
         val controller = DefaultAppLockController(localAuthSettings, sessionManager)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -451,7 +456,9 @@ abstract class DataBindsModule {
 
     @Binds
     @Singleton
-    abstract fun bindServerCapabilitiesStore(impl: DefaultServerCapabilitiesStore): ServerCapabilitiesStore
+    abstract fun bindServerCapabilitiesStore(
+        impl: DefaultServerCapabilitiesStore
+    ): ServerCapabilitiesStore
 
     @Binds
     @Singleton
@@ -499,7 +506,9 @@ abstract class DataBindsModule {
 
     @Binds
     @Singleton
-    abstract fun bindRelationshipEdgeRepository(impl: RelationshipEdgeRepositoryImpl): RelationshipEdgeRepository
+    abstract fun bindRelationshipEdgeRepository(
+        impl: RelationshipEdgeRepositoryImpl
+    ): RelationshipEdgeRepository
 
     @Binds
     @Singleton
@@ -519,7 +528,9 @@ abstract class DataBindsModule {
 
     @Binds
     @Singleton
-    abstract fun bindContactScoreRepository(impl: ContactScoreRepositoryImpl): ContactScoreRepository
+    abstract fun bindContactScoreRepository(
+        impl: ContactScoreRepositoryImpl
+    ): ContactScoreRepository
 
     @Binds
     @Singleton
@@ -527,19 +538,27 @@ abstract class DataBindsModule {
 
     @Binds
     @Singleton
-    abstract fun bindFieldDefinitionRepository(impl: FieldDefinitionRepositoryImpl): FieldDefinitionRepository
+    abstract fun bindFieldDefinitionRepository(
+        impl: FieldDefinitionRepositoryImpl
+    ): FieldDefinitionRepository
 
     @Binds
     @Singleton
-    abstract fun bindConversationAgendaRepository(impl: ConversationAgendaRepositoryImpl): ConversationAgendaRepository
+    abstract fun bindConversationAgendaRepository(
+        impl: ConversationAgendaRepositoryImpl
+    ): ConversationAgendaRepository
 
     @Binds
     @Singleton
-    abstract fun bindCadencePolicyRepository(impl: CadencePolicyRepositoryImpl): CadencePolicyRepository
+    abstract fun bindCadencePolicyRepository(
+        impl: CadencePolicyRepositoryImpl
+    ): CadencePolicyRepository
 
     @Binds
     @Singleton
-    abstract fun bindOccasionEventRepository(impl: OccasionEventRepositoryImpl): OccasionEventRepository
+    abstract fun bindOccasionEventRepository(
+        impl: OccasionEventRepositoryImpl
+    ): OccasionEventRepository
 
     @Binds
     @Singleton
@@ -547,7 +566,9 @@ abstract class DataBindsModule {
 
     @Binds
     @Singleton
-    abstract fun bindBulkOperationRepository(impl: BulkOperationRepositoryImpl): BulkOperationRepository
+    abstract fun bindBulkOperationRepository(
+        impl: BulkOperationRepositoryImpl
+    ): BulkOperationRepository
 
     @Binds
     @Singleton
@@ -563,23 +584,33 @@ abstract class DataBindsModule {
 
     @Binds
     @Singleton
-    abstract fun bindPendingInteractionRepository(impl: PendingInteractionRepositoryImpl): PendingInteractionRepository
+    abstract fun bindPendingInteractionRepository(
+        impl: PendingInteractionRepositoryImpl
+    ): PendingInteractionRepository
 
     @Binds
     @Singleton
-    abstract fun bindCustomLinkActionRepository(impl: CustomLinkActionRepositoryImpl): CustomLinkActionRepository
+    abstract fun bindCustomLinkActionRepository(
+        impl: CustomLinkActionRepositoryImpl
+    ): CustomLinkActionRepository
 
     @Binds
     @Singleton
-    abstract fun bindExternalIdentityRepository(impl: ExternalIdentityRepositoryImpl): ExternalIdentityRepository
+    abstract fun bindExternalIdentityRepository(
+        impl: ExternalIdentityRepositoryImpl
+    ): ExternalIdentityRepository
 
     @Binds
     @Singleton
-    abstract fun bindExternalActivityRepository(impl: ExternalActivityRepositoryImpl): ExternalActivityRepository
+    abstract fun bindExternalActivityRepository(
+        impl: ExternalActivityRepositoryImpl
+    ): ExternalActivityRepository
 
     @Binds
     @Singleton
-    abstract fun bindContactTimelineRepository(impl: ContactTimelineRepositoryImpl): ContactTimelineRepository
+    abstract fun bindContactTimelineRepository(
+        impl: ContactTimelineRepositoryImpl
+    ): ContactTimelineRepository
 
     @Binds
     @Singleton
@@ -604,16 +635,20 @@ abstract class DataBindsModule {
     @Binds
     @Singleton
     abstract fun bindServerCompatibilityRepository(
-        impl: ServerCompatibilityRepositoryImpl,
+        impl: ServerCompatibilityRepositoryImpl
     ): ServerCompatibilityRepository
 
     @Binds
     @Singleton
-    abstract fun bindTrackingSettingsRepository(impl: TrackingSettingsRepositoryImpl): TrackingSettingsRepository
+    abstract fun bindTrackingSettingsRepository(
+        impl: TrackingSettingsRepositoryImpl
+    ): TrackingSettingsRepository
 
     @Binds
     @Singleton
-    abstract fun bindContactShareRepository(impl: ContactShareRepositoryImpl): ContactShareRepository
+    abstract fun bindContactShareRepository(
+        impl: ContactShareRepositoryImpl
+    ): ContactShareRepository
 
     @Binds
     @Singleton
@@ -626,18 +661,20 @@ abstract class DataBindsModule {
     @Binds
     @Singleton
     abstract fun bindCalendarSubscriptionRepository(
-        impl: CalendarSubscriptionRepositoryImpl,
+        impl: CalendarSubscriptionRepositoryImpl
     ): CalendarSubscriptionRepository
 
     @Binds
     @Singleton
     abstract fun bindContactSubscriptionRepository(
-        impl: ContactSubscriptionRepositoryImpl,
+        impl: ContactSubscriptionRepositoryImpl
     ): ContactSubscriptionRepository
 
     @Binds
     @Singleton
-    abstract fun bindNotificationSettingsRepository(impl: NotificationSettingsRepositoryImpl): NotificationSettingsRepository
+    abstract fun bindNotificationSettingsRepository(
+        impl: NotificationSettingsRepositoryImpl
+    ): NotificationSettingsRepository
 
     @Binds
     @Singleton
@@ -645,17 +682,21 @@ abstract class DataBindsModule {
 
     @Binds
     @Singleton
-    abstract fun bindUserManagementRepository(impl: UserManagementRepositoryImpl): UserManagementRepository
+    abstract fun bindUserManagementRepository(
+        impl: UserManagementRepositoryImpl
+    ): UserManagementRepository
 
     @Binds
     @Singleton
     abstract fun bindLocalAuthSettingsRepository(
-        impl: LocalAuthSettingsRepositoryImpl,
+        impl: LocalAuthSettingsRepositoryImpl
     ): LocalAuthSettingsRepository
 
     @Binds
     @Singleton
-    abstract fun bindLocalAuthCapabilities(impl: AndroidLocalAuthCapabilities): LocalAuthCapabilities
+    abstract fun bindLocalAuthCapabilities(
+        impl: AndroidLocalAuthCapabilities
+    ): LocalAuthCapabilities
 
     @Binds
     @Singleton
@@ -664,7 +705,7 @@ abstract class DataBindsModule {
     @Binds
     @Singleton
     abstract fun bindDeviceGrantRepository(
-        impl: com.mycorrhizal.crm.data.auth.DeviceGrantManager,
+        impl: com.mycorrhizal.crm.data.auth.DeviceGrantManager
     ): com.mycorrhizal.crm.domain.repository.DeviceGrantRepository
 
     // ADR 0028 Decision 1: the real outbox drain reuses the interaction-sync
@@ -673,13 +714,13 @@ abstract class DataBindsModule {
     @Binds
     @Singleton
     abstract fun bindOutboxDrainer(
-        impl: com.mycorrhizal.crm.data.repository.PendingInteractionFlusher,
+        impl: com.mycorrhizal.crm.data.repository.PendingInteractionFlusher
     ): com.mycorrhizal.crm.data.session.OutboxDrainer
 
     // Issue #1264: per-profile account-bundle export / reminder bookkeeping.
     @Binds
     @Singleton
     abstract fun bindBundleBackupRepository(
-        impl: com.mycorrhizal.crm.data.repository.BundleBackupRepositoryImpl,
+        impl: com.mycorrhizal.crm.data.repository.BundleBackupRepositoryImpl
     ): com.mycorrhizal.crm.domain.repository.BundleBackupRepository
 }

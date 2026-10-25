@@ -33,29 +33,40 @@ class FormDirtyStateTest {
     private val shareDrafts = ShareDraftHolder()
 
     private fun noteViewModel(noteId: Int? = null, prefill: String? = null): NoteFormViewModel {
-        coEvery { contactRepository.getContact(any()) } returns Result.failure(RuntimeException("offline"))
-        val handle = SavedStateHandle(mapOf<String, Any?>("contactId" to 5).toMutableMap().apply {
-            if (noteId != null) put("noteId", noteId)
-            if (prefill != null) put("prefill", prefill)
-        })
+        coEvery {
+            contactRepository.getContact(
+                any()
+            )
+        } returns Result.failure(RuntimeException("offline"))
+        val handle = SavedStateHandle(
+            mapOf<String, Any?>("contactId" to 5).toMutableMap().apply {
+                if (noteId != null) put("noteId", noteId)
+                if (prefill != null) put("prefill", prefill)
+            }
+        )
         return NoteFormViewModel(noteRepository, contactRepository, shareDrafts, handle)
     }
 
     @Test
-    fun `a new note starts clean, becomes dirty when typed, and clean again when reverted`() = runTest(mainDispatcherRule.testDispatcher) {
-        val vm = noteViewModel()
-        advanceUntilIdle()
-        assertFalse(vm.uiState.value.isDirty)
+    fun `a new note starts clean, becomes dirty when typed, and clean again when reverted`() =
+        runTest(
+            mainDispatcherRule.testDispatcher
+        ) {
+            val vm = noteViewModel()
+            advanceUntilIdle()
+            assertFalse(vm.uiState.value.isDirty)
 
-        vm.onContentChange("Loves climbing")
-        assertTrue(vm.uiState.value.isDirty)
+            vm.onContentChange("Loves climbing")
+            assertTrue(vm.uiState.value.isDirty)
 
-        vm.onContentChange("")
-        assertFalse(vm.uiState.value.isDirty)
-    }
+            vm.onContentChange("")
+            assertFalse(vm.uiState.value.isDirty)
+        }
 
     @Test
-    fun `a shared prefill is part of the starting state, and a later edit is dirty`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a shared prefill is part of the starting state, and a later edit is dirty`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val key = shareDrafts.put("shared snippet")
         val vm = noteViewModel(prefill = key)
         advanceUntilIdle()
@@ -68,7 +79,13 @@ class FormDirtyStateTest {
     @Test
     fun `a loaded note edit starts clean`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { noteRepository.get(9) } returns Result.success(
-            Note(id = 9, content = "Loves climbing", date = "2026-08-10T14:00:00Z", contactId = 5, revision = 1),
+            Note(
+                id = 9,
+                content = "Loves climbing",
+                date = "2026-08-10T14:00:00Z",
+                contactId = 5,
+                revision = 1
+            )
         )
         val vm = noteViewModel(noteId = 9)
         advanceUntilIdle()
@@ -82,7 +99,11 @@ class FormDirtyStateTest {
     private val activityRepository = mockk<ActivityRepository>()
 
     private fun activityViewModel(activityId: Int? = null): ActivityFormViewModel {
-        coEvery { contactRepository.getContact(any()) } returns Result.failure(RuntimeException("offline"))
+        coEvery {
+            contactRepository.getContact(
+                any()
+            )
+        } returns Result.failure(RuntimeException("offline"))
         val handle = if (activityId == null) {
             SavedStateHandle(mapOf("contactId" to 5))
         } else {
@@ -92,7 +113,9 @@ class FormDirtyStateTest {
     }
 
     @Test
-    fun `a new activity starts clean after the route contact resolves`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a new activity starts clean after the route contact resolves`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = activityViewModel()
         advanceUntilIdle()
 
@@ -106,7 +129,9 @@ class FormDirtyStateTest {
     }
 
     @Test
-    fun `adding and removing a participant marks an activity dirty and clean`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `adding and removing a participant marks an activity dirty and clean`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = activityViewModel()
         advanceUntilIdle()
         assertFalse(vm.uiState.value.isDirty)
@@ -126,8 +151,8 @@ class FormDirtyStateTest {
                 title = "Coffee",
                 date = "2026-08-10T14:00:00Z",
                 contacts = listOf(ContactFlat(id = 5, firstname = "Dana")),
-                revision = 1,
-            ),
+                revision = 1
+            )
         )
         val vm = activityViewModel(activityId = 11)
         advanceUntilIdle()
@@ -150,7 +175,9 @@ class FormDirtyStateTest {
     }
 
     @Test
-    fun `a new reminder starts clean and becomes dirty on an edit`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a new reminder starts clean and becomes dirty on an edit`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = reminderViewModel()
         assertFalse(vm.uiState.value.isDirty)
 
@@ -172,8 +199,8 @@ class FormDirtyStateTest {
                 byMail = false,
                 reoccurFromCompletion = true,
                 contactId = 5,
-                revision = 1,
-            ),
+                revision = 1
+            )
         )
         val vm = reminderViewModel(reminderId = 7)
         advanceUntilIdle()

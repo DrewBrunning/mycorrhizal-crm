@@ -6,7 +6,6 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.google.firebase.messaging.RemoteMessage
 import com.mycorrhizal.crm.feature.tracking.AlertNotificationIds
-import com.mycorrhizal.crm.feature.tracking.DeviceRegistrationManager
 import com.mycorrhizal.crm.feature.tracking.PushNotificationDispatcher
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -43,7 +42,9 @@ import org.robolectric.annotation.Config
 class MyFirebaseMessagingServiceTest {
 
     private val context = ApplicationProvider.getApplicationContext<Context>()
-    private val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    private val manager = context.getSystemService(
+        Context.NOTIFICATION_SERVICE
+    ) as NotificationManager
     private val shadow = Shadows.shadowOf(manager)
 
     // .get() only, not .create() -- see CallDetectionServiceTest's buildService
@@ -65,9 +66,16 @@ class MyFirebaseMessagingServiceTest {
     @Test
     fun `a data-only reminder push posts a notification`() {
         val service = buildService()
-        Shadows.shadowOf(context as Application).grantPermissions(android.Manifest.permission.POST_NOTIFICATIONS)
+        Shadows.shadowOf(
+            context as Application
+        ).grantPermissions(android.Manifest.permission.POST_NOTIFICATIONS)
         val message = dataOnlyMessage(
-            mapOf("title" to "Call Jane", "body" to "Overdue by 2 days", "reminder_id" to "42", "due_at" to "2026-08-18T14:14:28Z"),
+            mapOf(
+                "title" to "Call Jane",
+                "body" to "Overdue by 2 days",
+                "reminder_id" to "42",
+                "due_at" to "2026-08-18T14:14:28Z"
+            )
         )
 
         service.onMessageReceived(message)
@@ -79,7 +87,9 @@ class MyFirebaseMessagingServiceTest {
     @Test
     fun `an unparseable data payload posts nothing`() {
         val service = buildService()
-        Shadows.shadowOf(context as Application).grantPermissions(android.Manifest.permission.POST_NOTIFICATIONS)
+        Shadows.shadowOf(
+            context as Application
+        ).grantPermissions(android.Manifest.permission.POST_NOTIFICATIONS)
 
         service.onMessageReceived(dataOnlyMessage(emptyMap()))
 
@@ -89,10 +99,16 @@ class MyFirebaseMessagingServiceTest {
     @Test
     fun `onNewToken re-registers the device with the new token`() {
         val service = buildService()
-        coEvery { service.deviceRegistration.register(tokenOverride = "new-token") } returns Result.success(Unit)
+        coEvery {
+            service.deviceRegistration.register(
+                tokenOverride = "new-token"
+            )
+        } returns Result.success(Unit)
 
         service.onNewToken("new-token")
 
-        coVerify(timeout = 1000) { service.deviceRegistration.register(tokenOverride = "new-token") }
+        coVerify(
+            timeout = 1000
+        ) { service.deviceRegistration.register(tokenOverride = "new-token") }
     }
 }

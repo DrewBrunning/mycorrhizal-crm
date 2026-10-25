@@ -1,18 +1,18 @@
 package com.mycorrhizal.crm
 
 import android.app.Application
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.testTag
-import androidx.compose.foundation.clickable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.navigation.NavType
 import androidx.navigation.compose.ComposeNavigator
 import androidx.navigation.compose.NavHost
@@ -55,7 +55,7 @@ class NavigationGraphTest {
                     composable("contacts") { Text("Contacts") }
                     composable(
                         "contacts/{contactId}",
-                        arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+                        arguments = listOf(navArgument("contactId") { type = NavType.IntType })
                     ) { Text("Contact ${it.arguments?.getInt("contactId")}") }
                     composable("circles/{circleId}") { Text("Circle") }
                     composable("tags") { Text("Tags") }
@@ -118,7 +118,10 @@ class NavigationGraphTest {
         navController.navigateToRoot("home")
 
         assertEquals("home", currentRoute())
-        assertNull("navigating home-to-home must not stack a duplicate", navController.previousBackStackEntry)
+        assertNull(
+            "navigating home-to-home must not stack a duplicate",
+            navController.previousBackStackEntry
+        )
     }
 
     @Test
@@ -163,10 +166,14 @@ class NavigationGraphTest {
                                 type = NavType.StringType
                                 nullable = true
                                 defaultValue = null
-                            },
-                        ),
+                            }
+                        )
                     ) { entry ->
-                        var field by remember { mutableStateOf(entry.arguments?.getString("search").orEmpty()) }
+                        var field by remember {
+                            mutableStateOf(
+                                entry.arguments?.getString("search").orEmpty()
+                            )
+                        }
                         Text(field, Modifier.testTag("field"))
                         Text("clear", Modifier.testTag("clear").clickable { field = "" })
                     }
@@ -231,10 +238,19 @@ class NavigationGraphTest {
                     composable("home") { Text("Home") }
                     composable(
                         "contacts/{contactId}",
-                        arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
-                    ) { Text("Contact ${it.arguments?.getInt("contactId")}", Modifier.testTag("detail")) }
+                        arguments = listOf(navArgument("contactId") { type = NavType.IntType })
+                    ) {
+                        Text(
+                            "Contact ${it.arguments?.getInt("contactId")}",
+                            Modifier.testTag("detail")
+                        )
+                    }
                     composable("tags") {
-                        var count by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(0) }
+                        var count by androidx.compose.runtime.saveable.rememberSaveable {
+                            mutableStateOf(
+                                0
+                            )
+                        }
                         Text("count $count", Modifier.testTag("count").clickable { count++ })
                     }
                 }

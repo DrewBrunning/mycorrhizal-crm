@@ -1,9 +1,9 @@
 package com.mycorrhizal.crm.data.session
 
+import java.io.File
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 /**
  * Guard test for the OIDC pending-request storage backend (issue #965, same
@@ -18,7 +18,9 @@ import java.io.File
 class EncryptedOidcPendingRequestStorageGuardTest {
 
     private val storageSource =
-        File("src/main/kotlin/com/mycorrhizal/crm/data/session/OidcPendingRequestStore.kt").readText()
+        File(
+            "src/main/kotlin/com/mycorrhizal/crm/data/session/OidcPendingRequestStore.kt"
+        ).readText()
 
     private val diSource =
         File("src/main/kotlin/com/mycorrhizal/crm/data/di/SessionStorageModule.kt").readText()
@@ -27,11 +29,11 @@ class EncryptedOidcPendingRequestStorageGuardTest {
     fun `the pending request is stored via EncryptedSharedPreferences, not plain SharedPreferences`() {
         assertTrue(
             "EncryptedOidcPendingRequestStore must use EncryptedSharedPreferences.create",
-            storageSource.contains("EncryptedSharedPreferences.create"),
+            storageSource.contains("EncryptedSharedPreferences.create")
         )
         assertFalse(
             "EncryptedOidcPendingRequestStore must not fall back to a plain getSharedPreferences",
-            storageSource.contains("getSharedPreferences"),
+            storageSource.contains("getSharedPreferences")
         )
     }
 
@@ -51,7 +53,7 @@ class EncryptedOidcPendingRequestStorageGuardTest {
     fun `the DI graph wires the encrypted store as the OidcPendingRequestStore implementation`() {
         assertTrue(
             "provideOidcPendingRequestStore must return an EncryptedOidcPendingRequestStore",
-            diSource.contains("EncryptedOidcPendingRequestStore(context)"),
+            diSource.contains("EncryptedOidcPendingRequestStore(context)")
         )
     }
 }

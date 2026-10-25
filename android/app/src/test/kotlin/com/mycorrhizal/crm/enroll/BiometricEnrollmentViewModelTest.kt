@@ -14,7 +14,6 @@ import io.mockk.mockk
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -28,13 +27,13 @@ class BiometricEnrollmentViewModelTest {
     private class Harness(
         val viewModel: BiometricEnrollmentViewModel,
         val manager: DeviceGrantManager,
-        val settings: LocalAuthSettingsRepository,
+        val settings: LocalAuthSettingsRepository
     )
 
     private fun harness(
         status: BiometricEnrollmentStatus = BiometricEnrollmentStatus.UNASKED,
         canAuthenticate: Boolean = true,
-        loggedIn: Boolean = true,
+        loggedIn: Boolean = true
     ): Harness {
         val manager = mockk<DeviceGrantManager>(relaxed = true)
         coEvery { manager.enroll(any()) } returns Result.success(Unit)
@@ -46,15 +45,24 @@ class BiometricEnrollmentViewModelTest {
         }
         val sessionManager = mockk<SessionManager>()
         coEvery { sessionManager.awaitHydrated() } returns Unit
-        every { sessionManager.observeSession() } returns MutableStateFlow(SessionState(isLoggedIn = loggedIn))
-        val viewModel = BiometricEnrollmentViewModel(manager, settings, capabilities, sessionManager)
+        every { sessionManager.observeSession() } returns MutableStateFlow(
+            SessionState(isLoggedIn = loggedIn)
+        )
+        val viewModel = BiometricEnrollmentViewModel(
+            manager,
+            settings,
+            capabilities,
+            sessionManager
+        )
         return Harness(viewModel, manager, settings)
     }
 
     // Issue #722: the prompt only shows for an undecided user on a capable,
     // logged-in device.
     @Test
-    fun `the prompt is visible for an unasked user on a capable device`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `the prompt is visible for an unasked user on a capable device`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val h = harness()
         advanceUntilIdle()
 
@@ -89,7 +97,9 @@ class BiometricEnrollmentViewModelTest {
     }
 
     @Test
-    fun `not now leaves the state unasked so the prompt returns next login`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `not now leaves the state unasked so the prompt returns next login`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val h = harness()
         advanceUntilIdle()
 
@@ -138,7 +148,9 @@ class BiometricEnrollmentViewModelTest {
     }
 
     @Test
-    fun `a failed enrollment surfaces an error and stays visible`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a failed enrollment surfaces an error and stays visible`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val h = harness()
         coEvery { h.manager.enroll(any()) } returns Result.failure(Exception("network"))
         advanceUntilIdle()
@@ -146,8 +158,10 @@ class BiometricEnrollmentViewModelTest {
         h.viewModel.performEnroll("Pixel")
 
         assertTrue(h.viewModel.uiState.value.error)
-        assertTrue("an enrollment failure must not silently dismiss", h.viewModel.uiState.value.visible)
+        assertTrue(
+            "an enrollment failure must not silently dismiss",
+            h.viewModel.uiState.value.visible
+        )
         assertFalse(h.viewModel.uiState.value.isBusy)
     }
-
 }

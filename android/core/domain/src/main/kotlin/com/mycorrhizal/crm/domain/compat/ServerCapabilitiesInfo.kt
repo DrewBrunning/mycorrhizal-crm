@@ -38,7 +38,7 @@ data class ServerCapabilitiesInfo(
     /** "server" or "embedded"; null when an older server omits it. */
     val deployment: String? = null,
     /** The declared surface tokens, or null when the field is absent (fail open). */
-    val capabilities: Set<String>? = null,
+    val capabilities: Set<String>? = null
 ) {
     /**
      * True when [token] is available. Fail-open: an absent list is "everything".

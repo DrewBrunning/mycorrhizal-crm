@@ -50,46 +50,47 @@ class Migration15To16Test {
         LocalDatabaseSchemaFixtures.createV15Tables(db)
         db.execSQL(
             "INSERT INTO cached_contacts (id, fn, primaryPhone, phonesNormalized, archived, deleted) " +
-                "VALUES (1, 'Dana White', '(800) 555-1234', '8005551234 5551234', 0, 0)",
+                "VALUES (1, 'Dana White', '(800) 555-1234', '8005551234 5551234', 0, 0)"
         )
         db.execSQL(
             "INSERT INTO pending_interactions (timestampMillis, kind, phoneNumber, synced) " +
-                "VALUES (1000, 'call', '5551234', 0)",
+                "VALUES (1000, 'call', '5551234', 0)"
         )
         db.execSQL(
             "INSERT INTO cached_cadence_policies " +
                 "(id, entityId, targetIntervalDays, qualifyingTypes, deleted) " +
-                "VALUES ('policy-1', 'contact-1', 30, '[\"call\",\"message\"]', 0)",
+                "VALUES ('policy-1', 'contact-1', 30, '[\"call\",\"message\"]', 0)"
         )
         db.version = 15
         db.close()
     }
 
     @Test
-    fun `migration preserves outbox and cadence policies and adds isFavorite defaulted false`() = runBlocking {
-        createV15Database()
+    fun `migration preserves outbox and cadence policies and adds isFavorite defaulted false`() =
+        runBlocking {
+            createV15Database()
 
-        val db = Room.databaseBuilder(context, AppDatabase::class.java, dbFile.absolutePath)
-            .addMigrations(*REGISTERED_MIGRATIONS.toTypedArray())
-            .build()
+            val db = Room.databaseBuilder(context, AppDatabase::class.java, dbFile.absolutePath)
+                .addMigrations(*REGISTERED_MIGRATIONS.toTypedArray())
+                .build()
 
-        // Neither of these tables is touched by this migration — they must survive untouched.
-        val pending = db.pendingInteractionDao().getUnsynced()
-        assertEquals(1, pending.size)
-        assertEquals("5551234", pending[0].phoneNumber)
-        val policies = db.cachedCadencePolicyDao().getForContact("contact-1")
-        assertEquals(1, policies.size)
+            // Neither of these tables is touched by this migration — they must survive untouched.
+            val pending = db.pendingInteractionDao().getUnsynced()
+            assertEquals(1, pending.size)
+            assertEquals("5551234", pending[0].phoneNumber)
+            val policies = db.cachedCadencePolicyDao().getForContact("contact-1")
+            assertEquals(1, policies.size)
 
-        // The pre-existing contact row survived, and its new column defaulted to false rather
-        // than silently favoriting every pre-existing contact.
-        val contact = db.cachedContactDao().getById(1)
-        assertEquals("Dana White", contact?.fn)
-        assertFalse(contact?.isFavorite ?: true)
+            // The pre-existing contact row survived, and its new column defaulted to false rather
+            // than silently favoriting every pre-existing contact.
+            val contact = db.cachedContactDao().getById(1)
+            assertEquals("Dana White", contact?.fn)
+            assertFalse(contact?.isFavorite ?: true)
 
-        // The column is fully usable through the DAO, not just present as a schema-only shell.
-        db.cachedContactDao().setFavorite(1, true)
-        assertEquals(true, db.cachedContactDao().getById(1)?.isFavorite)
+            // The column is fully usable through the DAO, not just present as a schema-only shell.
+            db.cachedContactDao().setFavorite(1, true)
+            assertEquals(true, db.cachedContactDao().getById(1)?.isFavorite)
 
-        db.close()
-    }
+            db.close()
+        }
 }

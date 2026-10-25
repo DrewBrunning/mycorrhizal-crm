@@ -6,24 +6,24 @@ import com.mycorrhizal.crm.domain.repository.FieldDefinitionRepository
 import com.mycorrhizal.crm.model.network.FieldDefinition
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /** Issue #830: Settings → Data → Custom fields, the list half. Mirrors `TagsViewModel`'s shape. */
 data class FieldDefinitionsUiState(
     val definitions: List<FieldDefinition> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
-    val isReordering: Boolean = false,
+    val isReordering: Boolean = false
 )
 
 @HiltViewModel
 class FieldDefinitionsViewModel @Inject constructor(
-    private val repository: FieldDefinitionRepository,
+    private val repository: FieldDefinitionRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(FieldDefinitionsUiState())
@@ -39,7 +39,7 @@ class FieldDefinitionsViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -75,7 +75,7 @@ class FieldDefinitionsViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isReordering = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }

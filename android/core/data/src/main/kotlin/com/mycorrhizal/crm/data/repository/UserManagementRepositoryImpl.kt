@@ -13,9 +13,8 @@ import javax.inject.Inject
  * [UserManagementRepository]'s doc comment). Follows the ContactShareRepositoryImpl
  * precedent of a bare ApiClient facade.
  */
-class UserManagementRepositoryImpl @Inject constructor(
-    private val apiClient: ApiClient,
-) : UserManagementRepository {
+class UserManagementRepositoryImpl @Inject constructor(private val apiClient: ApiClient) :
+    UserManagementRepository {
 
     override suspend fun list(page: Int, limit: Int): Result<AdminUsersListResponse> =
         apiClient.listUsers(page = page, limit = limit)
@@ -26,8 +25,7 @@ class UserManagementRepositoryImpl @Inject constructor(
     override suspend fun update(id: Int, input: AdminUserUpdateInput): Result<AdminUser> =
         apiClient.updateUser(id, input)
 
-    override suspend fun delete(id: Int): Result<Unit> =
-        apiClient.deleteUser(id)
+    override suspend fun delete(id: Int): Result<Unit> = apiClient.deleteUser(id)
 
     override suspend fun resetTwoFactor(id: Int): Result<AdminUser> =
         apiClient.resetUserTwoFactor(id)

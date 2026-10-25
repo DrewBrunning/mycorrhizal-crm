@@ -51,7 +51,7 @@ class ReminderNotificationWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted workerParams: WorkerParameters,
     private val apiClient: ApiClient,
-    private val trackingSettings: TrackingSettingsRepository,
+    private val trackingSettings: TrackingSettingsRepository
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {
@@ -71,8 +71,8 @@ class ReminderNotificationWorker @AssistedInject constructor(
                     applicationContext,
                     fallbackTitle,
                     text,
-                    deepLink = reminder.contactId?.let { "mycorrhizal://contacts/$it" },
-                ),
+                    deepLink = reminder.contactId?.let { "mycorrhizal://contacts/$it" }
+                )
             )
         }
         return Result.success()
@@ -92,7 +92,7 @@ class CadenceCheckWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted workerParams: WorkerParameters,
     private val apiClient: ApiClient,
-    private val trackingSettings: TrackingSettingsRepository,
+    private val trackingSettings: TrackingSettingsRepository
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {
@@ -102,11 +102,14 @@ class CadenceCheckWorker @AssistedInject constructor(
         val fallbackName = applicationContext.getString(R.string.notification_contact_fallback)
         response.overdue.take(MAX_NOTIFICATIONS).forEachIndexed { i, cadence ->
             val name = cadence.contactName.takeIf { it.isNotBlank() } ?: fallbackName
-            val text = applicationContext.getString(R.string.notification_cadence_overdue_body, name)
+            val text = applicationContext.getString(
+                R.string.notification_cadence_overdue_body,
+                name
+            )
             NotificationBuilder.notify(
                 applicationContext,
                 AlertNotificationIds.CADENCE + i,
-                NotificationBuilder.cadence(applicationContext, title, text),
+                NotificationBuilder.cadence(applicationContext, title, text)
             )
         }
         return Result.success()
@@ -125,7 +128,7 @@ class BirthdayCheckWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted workerParams: WorkerParameters,
     private val apiClient: ApiClient,
-    private val trackingSettings: TrackingSettingsRepository,
+    private val trackingSettings: TrackingSettingsRepository
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {
@@ -135,11 +138,14 @@ class BirthdayCheckWorker @AssistedInject constructor(
         val fallbackName = applicationContext.getString(R.string.notification_someone_fallback)
         response.birthdays.take(MAX_NOTIFICATIONS).forEachIndexed { i, birthday ->
             val name = birthday.name.takeIf { it.isNotBlank() } ?: fallbackName
-            val text = applicationContext.getString(R.string.notification_birthday_upcoming_body, name)
+            val text = applicationContext.getString(
+                R.string.notification_birthday_upcoming_body,
+                name
+            )
             NotificationBuilder.notify(
                 applicationContext,
                 AlertNotificationIds.BIRTHDAYS + i,
-                NotificationBuilder.birthday(applicationContext, title, text),
+                NotificationBuilder.birthday(applicationContext, title, text)
             )
         }
         return Result.success()

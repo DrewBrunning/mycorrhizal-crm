@@ -7,25 +7,25 @@ import com.mycorrhizal.crm.domain.profile.ServerProfileKind
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.TagRepository
+import com.mycorrhizal.crm.model.network.Address
+import com.mycorrhizal.crm.model.network.AddressComponent
 import com.mycorrhizal.crm.model.network.CRMEnvelope
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.CardNote
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.ContactRecordInput
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
-import com.mycorrhizal.crm.model.network.Name
-import com.mycorrhizal.crm.model.network.Nickname
 import com.mycorrhizal.crm.model.network.Email
-import com.mycorrhizal.crm.model.network.Phone
-import com.mycorrhizal.crm.model.network.Address
-import com.mycorrhizal.crm.model.network.AddressComponent
 import com.mycorrhizal.crm.model.network.EntryPeriod
 import com.mycorrhizal.crm.model.network.GeocodeDraftRequest
 import com.mycorrhizal.crm.model.network.GeocodeDraftResponse
+import com.mycorrhizal.crm.model.network.Name
+import com.mycorrhizal.crm.model.network.Nickname
 import com.mycorrhizal.crm.model.network.OnlineService
 import com.mycorrhizal.crm.model.network.Organization
 import com.mycorrhizal.crm.model.network.PartialDate
 import com.mycorrhizal.crm.model.network.PersonalInfo
+import com.mycorrhizal.crm.model.network.Phone
 import com.mycorrhizal.crm.model.network.Resource
 import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.model.network.TemporalRange
@@ -64,7 +64,7 @@ class ContactFormViewModelTest {
     private val authRepository = mockk<com.mycorrhizal.crm.domain.repository.AuthRepository>()
     private val mapRepository = mockk<com.mycorrhizal.crm.domain.repository.MapRepository>()
     private val activeProfile = kotlinx.coroutines.flow.MutableStateFlow<ServerProfile?>(
-        ServerProfile("r1", ServerProfileKind.Remote("https://home.example"), "Home"),
+        ServerProfile("r1", ServerProfileKind.Remote("https://home.example"), "Home")
     )
     private val sessionManager = mockk<SessionManager>(relaxed = true) {
         io.mockk.every { observeActiveProfile() } returns activeProfile
@@ -82,7 +82,7 @@ class ContactFormViewModelTest {
         // Issue #832: no toggle configured — the form sees the default enabled set,
         // same as the pre-#832 behavior every existing test in this file assumes.
         io.mockk.every { authRepository.observeSession() } returns kotlinx.coroutines.flow.flowOf(
-            com.mycorrhizal.crm.domain.repository.SessionState(),
+            com.mycorrhizal.crm.domain.repository.SessionState()
         )
         return ContactFormViewModel(
             contactRepository,
@@ -91,7 +91,7 @@ class ContactFormViewModelTest {
             authRepository,
             mapRepository,
             sessionManager,
-            if (id == null) SavedStateHandle() else SavedStateHandle(mapOf("contactId" to id)),
+            if (id == null) SavedStateHandle() else SavedStateHandle(mapOf("contactId" to id))
         )
     }
 
@@ -108,7 +108,9 @@ class ContactFormViewModelTest {
     }
 
     @Test
-    fun `edit mode loads the existing contact into the form`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `edit mode loads the existing contact into the form`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(
             id = 5,
             uid = "u5",
@@ -116,15 +118,21 @@ class ContactFormViewModelTest {
                 name = Name(
                     full = "Dana White",
                     components = listOf(
-                        com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"),
-                        com.mycorrhizal.crm.model.network.NameComponent(kind = "surname", value = "White"),
-                    ),
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "given",
+                            value = "Dana"
+                        ),
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "surname",
+                            value = "White"
+                        )
+                    )
                 ),
                 nicknames = listOf(Nickname(name = "D")),
                 emails = listOf(Email(address = "dana@example.com")),
-                phones = listOf(Phone(number = "+1-555-0100")),
+                phones = listOf(Phone(number = "+1-555-0100"))
             ),
-            crm = CRMEnvelope(circles = listOf("friends")),
+            crm = CRMEnvelope(circles = listOf("friends"))
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
@@ -132,8 +140,16 @@ class ContactFormViewModelTest {
         // M24: the circles chips seed from the join-row derivation, not the stale flat
         // `crm.circles` column (which is a legacy mirror, not the authoritative membership).
         // Re-stub after creation (last-registered-wins) and before advanceUntilIdle.
-        coEvery { circleRepository.circlesForContact("u5") } returns Result.success(listOf(Circle(id = "c1", name = "friends")))
-        coEvery { tagRepository.tagsForContact("u5") } returns Result.success(listOf(Tag(id = "t1", name = "close")))
+        coEvery {
+            circleRepository.circlesForContact(
+                "u5"
+            )
+        } returns Result.success(listOf(Circle(id = "c1", name = "friends")))
+        coEvery {
+            tagRepository.tagsForContact(
+                "u5"
+            )
+        } returns Result.success(listOf(Tag(id = "t1", name = "close")))
         advanceUntilIdle()
 
         val state = vm.uiState.value
@@ -153,7 +169,9 @@ class ContactFormViewModelTest {
     }
 
     @Test
-    fun `edit mode maps prefix middle suffix kind and language from the record`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `edit mode maps prefix middle suffix kind and language from the record`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(
             id = 5,
             uid = "u5",
@@ -162,15 +180,30 @@ class ContactFormViewModelTest {
                 name = Name(
                     full = "Dr. Dana White Jr.",
                     components = listOf(
-                        com.mycorrhizal.crm.model.network.NameComponent(kind = "title", value = "Dr."),
-                        com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"),
-                        com.mycorrhizal.crm.model.network.NameComponent(kind = "given2", value = "Ann"),
-                        com.mycorrhizal.crm.model.network.NameComponent(kind = "surname", value = "White"),
-                        com.mycorrhizal.crm.model.network.NameComponent(kind = "generation", value = "Jr."),
-                    ),
-                ),
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "title",
+                            value = "Dr."
+                        ),
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "given",
+                            value = "Dana"
+                        ),
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "given2",
+                            value = "Ann"
+                        ),
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "surname",
+                            value = "White"
+                        ),
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "generation",
+                            value = "Jr."
+                        )
+                    )
+                )
             ),
-            crm = CRMEnvelope(kind = "animal"),
+            crm = CRMEnvelope(kind = "animal")
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
@@ -186,7 +219,9 @@ class ContactFormViewModelTest {
     }
 
     @Test
-    fun `save in create mode calls createContact and emits Saved`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `save in create mode calls createContact and emits Saved`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val created = ContactRecordResponse(id = 9, card = Card(name = Name(full = "Carol King")))
         coEvery { contactRepository.createContact(any()) } returns Result.success(created)
 
@@ -201,10 +236,12 @@ class ContactFormViewModelTest {
         coVerify {
             contactRepository.createContact(
                 match<ContactRecordInput> { input ->
-                    input.card?.name?.components?.firstOrNull { it.kind == "given" }?.value == "Carol" &&
-                        input.card?.name?.components?.firstOrNull { it.kind == "surname" }?.value == "King" &&
+                    input.card?.name?.components?.firstOrNull { it.kind == "given" }?.value ==
+                        "Carol" &&
+                        input.card?.name?.components?.firstOrNull { it.kind == "surname" }?.value ==
+                        "King" &&
                         input.card?.emails?.firstOrNull()?.address == "carol@example.com"
-                },
+                }
             )
         }
         assertEquals(ContactFormEvent.Saved, vm.events.value)
@@ -212,7 +249,9 @@ class ContactFormViewModelTest {
     }
 
     @Test
-    fun `prefix middle and suffix map to title given2 and generation components`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `prefix middle and suffix map to title given2 and generation components`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val created = ContactRecordResponse(id = 9, card = Card(name = Name(full = "Carol King")))
         coEvery { contactRepository.createContact(any()) } returns Result.success(created)
 
@@ -232,7 +271,7 @@ class ContactFormViewModelTest {
                     comps.firstOrNull { it.kind == "title" }?.value == "Dr." &&
                         comps.firstOrNull { it.kind == "given2" }?.value == "Ann" &&
                         comps.firstOrNull { it.kind == "generation" }?.value == "Jr."
-                },
+                }
             )
         }
     }
@@ -253,28 +292,46 @@ class ContactFormViewModelTest {
             contactRepository.createContact(
                 match<ContactRecordInput> { input ->
                     input.crm?.kind == ContactFormState.KIND_ANIMAL && input.card?.language == "de"
-                },
+                }
             )
         }
     }
 
     @Test
-    fun `selected circles and tags become memberships after create`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `selected circles and tags become memberships after create`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         // M24: the form applies memberships via the CircleMember/ContactTag sub-resources,
         // like web's AddContactDialog — the PUT's crm.circles only touches the flat column.
-        val created = ContactRecordResponse(id = 9, uid = "u9", card = Card(name = Name(full = "Carol King")))
+        val created = ContactRecordResponse(
+            id = 9,
+            uid = "u9",
+            card = Card(name = Name(full = "Carol King"))
+        )
         coEvery { contactRepository.createContact(any()) } returns Result.success(created)
 
         val vm = createViewModel()
-        coEvery { circleRepository.list(any(), any()) } returns Result.success(listOf(Circle(id = "c1", name = "friends"), Circle(id = "c2", name = "family")))
-        coEvery { tagRepository.list(any(), any()) } returns Result.success(listOf(Tag(id = "t1", name = "close")))
+        coEvery {
+            circleRepository.list(
+                any(),
+                any()
+            )
+        } returns Result.success(
+            listOf(Circle(id = "c1", name = "friends"), Circle(id = "c2", name = "family"))
+        )
+        coEvery {
+            tagRepository.list(
+                any(),
+                any()
+            )
+        } returns Result.success(listOf(Tag(id = "t1", name = "close")))
         coEvery { circleRepository.circlesForContact("u9") } returns Result.success(emptyList())
         coEvery { tagRepository.tagsForContact("u9") } returns Result.success(emptyList())
         coEvery { circleRepository.addMember("c1", "u9") } returns Result.success(
-            com.mycorrhizal.crm.model.network.CircleMember(circleId = "c1", memberVCardUid = "u9"),
+            com.mycorrhizal.crm.model.network.CircleMember(circleId = "c1", memberVCardUid = "u9")
         )
         coEvery { tagRepository.addContact("t1", "u9") } returns Result.success(
-            com.mycorrhizal.crm.model.network.ContactTag(tagId = "t1", contactVCardUid = "u9"),
+            com.mycorrhizal.crm.model.network.ContactTag(tagId = "t1", contactVCardUid = "u9")
         )
         vm.onGivenNameChange("Carol")
         vm.onCircleToggle("friends")
@@ -288,7 +345,9 @@ class ContactFormViewModelTest {
     }
 
     @Test
-    fun `deselecting a membership removes it in edit mode`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `deselecting a membership removes it in edit mode`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(
             id = 5,
             uid = "u5",
@@ -296,12 +355,18 @@ class ContactFormViewModelTest {
                 name = Name(
                     full = "Dana White",
                     components = listOf(
-                        com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"),
-                        com.mycorrhizal.crm.model.network.NameComponent(kind = "surname", value = "White"),
-                    ),
-                ),
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "given",
+                            value = "Dana"
+                        ),
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "surname",
+                            value = "White"
+                        )
+                    )
+                )
             ),
-            crm = CRMEnvelope(circles = listOf("friends")),
+            crm = CRMEnvelope(circles = listOf("friends"))
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
@@ -309,7 +374,11 @@ class ContactFormViewModelTest {
         val vm = createViewModel(5)
         // Re-stub after creation (last-registered-wins) so the edit-mode membership load
         // sees the pre-edit membership and can detect the deselection.
-        coEvery { circleRepository.circlesForContact("u5") } returns Result.success(listOf(Circle(id = "c1", name = "friends")))
+        coEvery {
+            circleRepository.circlesForContact(
+                "u5"
+            )
+        } returns Result.success(listOf(Circle(id = "c1", name = "friends")))
         coEvery { tagRepository.tagsForContact("u5") } returns Result.success(emptyList())
         coEvery { circleRepository.removeMember("c1", "u5") } returns Result.success(Unit)
         advanceUntilIdle()
@@ -342,24 +411,32 @@ class ContactFormViewModelTest {
                 match<ContactRecordInput> { input ->
                     input.card?.phones?.firstOrNull()?.number == "+1-555-0100" &&
                         input.card?.phones?.firstOrNull()?.contexts == listOf("cell")
-                },
+                }
             )
         }
     }
 
     @Test
-    fun `save in edit mode calls updateContact with the id`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `save in edit mode calls updateContact with the id`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(
             id = 5,
             card = Card(
                 name = Name(
                     full = "Dana White",
                     components = listOf(
-                        com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"),
-                        com.mycorrhizal.crm.model.network.NameComponent(kind = "surname", value = "White"),
-                    ),
-                ),
-            ),
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "given",
+                            value = "Dana"
+                        ),
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "surname",
+                            value = "White"
+                        )
+                    )
+                )
+            )
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
@@ -375,7 +452,9 @@ class ContactFormViewModelTest {
     }
 
     @Test
-    fun `save without a given name is blocked by validation`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `save without a given name is blocked by validation`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = createViewModel()
         vm.onEmailsChange(listOf(Email(address = "x@example.com")))
         vm.save()
@@ -386,7 +465,9 @@ class ContactFormViewModelTest {
     }
 
     @Test
-    fun `birthday is converted to a partial date in the input`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `birthday is converted to a partial date in the input`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val created = ContactRecordResponse(id = 9, card = Card(name = Name(full = "Carol King")))
         coEvery { contactRepository.createContact(any()) } returns Result.success(created)
 
@@ -402,7 +483,7 @@ class ContactFormViewModelTest {
                 match<ContactRecordInput> { input ->
                     val partial = input.card?.anniversaries?.firstOrNull()?.date?.partial
                     partial?.year == 1990 && partial.month == 6 && partial.day == 15
-                },
+                }
             )
         }
     }
@@ -426,7 +507,9 @@ class ContactFormViewModelTest {
     }
 
     @Test
-    fun `edit save preserves fields the form does not model`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `edit save preserves fields the form does not model`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         // Base record carries addresses + personalInfo the form never renders.
         val record = ContactRecordResponse(
             id = 5,
@@ -434,17 +517,26 @@ class ContactFormViewModelTest {
                 name = Name(
                     full = "Dana White",
                     components = listOf(
-                        com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"),
-                        com.mycorrhizal.crm.model.network.NameComponent(kind = "surname", value = "White"),
-                    ),
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "given",
+                            value = "Dana"
+                        ),
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "surname",
+                            value = "White"
+                        )
+                    )
                 ),
                 addresses = listOf(
-                    com.mycorrhizal.crm.model.network.Address(full = "123 Main St"),
+                    com.mycorrhizal.crm.model.network.Address(full = "123 Main St")
                 ),
                 personalInfo = listOf(
-                    com.mycorrhizal.crm.model.network.PersonalInfo(kind = "hobby", value = "climbing"),
-                ),
-            ),
+                    com.mycorrhizal.crm.model.network.PersonalInfo(
+                        kind = "hobby",
+                        value = "climbing"
+                    )
+                )
+            )
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
@@ -461,15 +553,18 @@ class ContactFormViewModelTest {
                 match<ContactRecordInput> { input ->
                     input.card?.addresses?.firstOrNull()?.full == "123 Main St" &&
                         input.card?.personalInfo?.firstOrNull()?.value == "climbing" &&
-                        input.card?.name?.components?.firstOrNull { it.kind == "surname" }?.value == "Whitehall"
+                        input.card?.name?.components?.firstOrNull { it.kind == "surname" }?.value ==
+                        "Whitehall"
                 },
-                any(),
+                any()
             )
         }
     }
 
     @Test
-    fun `editing an unrelated field preserves phone and email metadata`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `editing an unrelated field preserves phone and email metadata`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         // Regression for T81: the old toInput reconstructed every phone/email from
         // scratch on every save, so editing the *name* silently relabeled every
         // phone "cell" and dropped id/pref/contexts/features.
@@ -479,9 +574,15 @@ class ContactFormViewModelTest {
                 name = Name(
                     full = "Dana White",
                     components = listOf(
-                        com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"),
-                        com.mycorrhizal.crm.model.network.NameComponent(kind = "surname", value = "White"),
-                    ),
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "given",
+                            value = "Dana"
+                        ),
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "surname",
+                            value = "White"
+                        )
+                    )
                 ),
                 phones = listOf(
                     Phone(
@@ -490,13 +591,18 @@ class ContactFormViewModelTest {
                         label = "work",
                         contexts = listOf("work"),
                         pref = 1,
-                        features = listOf("voice"),
-                    ),
+                        features = listOf("voice")
+                    )
                 ),
                 emails = listOf(
-                    Email(id = "email-1", address = "dana@example.com", contexts = listOf("work"), pref = 1),
-                ),
-            ),
+                    Email(
+                        id = "email-1",
+                        address = "dana@example.com",
+                        contexts = listOf("work"),
+                        pref = 1
+                    )
+                )
+            )
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
@@ -513,29 +619,43 @@ class ContactFormViewModelTest {
                 match<ContactRecordInput> { input ->
                     val phone = input.card?.phones?.firstOrNull()
                     val email = input.card?.emails?.firstOrNull()
-                    phone?.id == "phone-1" && phone.label == "work" && phone.contexts == listOf("work") &&
+                    phone?.id == "phone-1" && phone.label == "work" && phone.contexts == listOf(
+                        "work"
+                    ) &&
                         phone.pref == 1 && phone.features == listOf("voice") &&
-                        email?.id == "email-1" && email.contexts == listOf("work") && email.pref == 1
+                        email?.id == "email-1" && email.contexts == listOf(
+                            "work"
+                        ) && email.pref == 1
                 },
-                any(),
+                any()
             )
         }
     }
 
     @Test
-    fun `a newly added phone still defaults to cell, an existing one is untouched`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a newly added phone still defaults to cell, an existing one is untouched`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(
             id = 5,
             card = Card(
                 name = Name(
                     full = "Dana White",
                     components = listOf(
-                        com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"),
-                        com.mycorrhizal.crm.model.network.NameComponent(kind = "surname", value = "White"),
-                    ),
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "given",
+                            value = "Dana"
+                        ),
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "surname",
+                            value = "White"
+                        )
+                    )
                 ),
-                phones = listOf(Phone(id = "phone-1", number = "+1-555-0100", contexts = listOf("work"))),
-            ),
+                phones = listOf(
+                    Phone(id = "phone-1", number = "+1-555-0100", contexts = listOf("work"))
+                )
+            )
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
@@ -545,7 +665,17 @@ class ContactFormViewModelTest {
         // M7: the add path goes through the editor's `onChange(items + spec.blank())`,
         // which is what mints a genuinely-new phone with the `cell` default.
         vm.onPhonesChange(vm.uiState.value.phones + PhoneSpec.blank())
-        vm.onPhonesChange(vm.uiState.value.phones.mapIndexed { i, p -> if (i == 1) p.copy(number = "+1-555-0199") else p })
+        vm.onPhonesChange(
+            vm.uiState.value.phones.mapIndexed { i, p ->
+                if (i == 1) {
+                    p.copy(
+                        number = "+1-555-0199"
+                    )
+                } else {
+                    p
+                }
+            }
+        )
         vm.save()
         advanceUntilIdle()
 
@@ -554,35 +684,57 @@ class ContactFormViewModelTest {
                 5,
                 match<ContactRecordInput> { input ->
                     val phones = input.card?.phones.orEmpty()
-                    phones.any { it.id == "phone-1" && it.number == "+1-555-0100" && it.contexts == listOf("work") } &&
-                        phones.any { it.id == null && it.number == "+1-555-0199" && it.contexts == listOf("cell") }
+                    phones.any {
+                        it.id == "phone-1" && it.number == "+1-555-0100" &&
+                            it.contexts == listOf(
+                                "work"
+                            )
+                    } &&
+                        phones.any {
+                            it.id == null && it.number == "+1-555-0199" &&
+                                it.contexts == listOf(
+                                    "cell"
+                                )
+                        }
                 },
-                any(),
+                any()
             )
         }
     }
 
     @Test
-    fun `yearless birthday round-trips through the form`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `yearless birthday round-trips through the form`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(
             id = 5,
             card = Card(
                 name = Name(
                     full = "Dana White",
                     components = listOf(
-                        com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"),
-                        com.mycorrhizal.crm.model.network.NameComponent(kind = "surname", value = "White"),
-                    ),
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "given",
+                            value = "Dana"
+                        ),
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "surname",
+                            value = "White"
+                        )
+                    )
                 ),
                 anniversaries = listOf(
                     com.mycorrhizal.crm.model.network.Anniversary(
                         kind = "birth",
                         date = com.mycorrhizal.crm.model.network.AnniversaryDate(
-                            partial = com.mycorrhizal.crm.model.network.PartialDate(year = null, month = 12, day = 25),
-                        ),
-                    ),
-                ),
-            ),
+                            partial = com.mycorrhizal.crm.model.network.PartialDate(
+                                year = null,
+                                month = 12,
+                                day = 25
+                            )
+                        )
+                    )
+                )
+            )
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
@@ -604,13 +756,15 @@ class ContactFormViewModelTest {
                     val partial = input.card?.anniversaries?.firstOrNull()?.date?.partial
                     partial?.year == null && partial?.month == 12 && partial.day == 25
                 },
-                any(),
+                any()
             )
         }
     }
 
     @Test
-    fun `blank birthday field preserves a year-only anniversary on save`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `blank birthday field preserves a year-only anniversary on save`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         // A CardDAV-synced year-only partial (no month/day) cannot be rendered
         // in the form field; saving must NOT delete it.
         val record = ContactRecordResponse(
@@ -619,19 +773,29 @@ class ContactFormViewModelTest {
                 name = Name(
                     full = "Dana White",
                     components = listOf(
-                        com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"),
-                        com.mycorrhizal.crm.model.network.NameComponent(kind = "surname", value = "White"),
-                    ),
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "given",
+                            value = "Dana"
+                        ),
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "surname",
+                            value = "White"
+                        )
+                    )
                 ),
                 anniversaries = listOf(
                     com.mycorrhizal.crm.model.network.Anniversary(
                         kind = "birth",
                         date = com.mycorrhizal.crm.model.network.AnniversaryDate(
-                            partial = com.mycorrhizal.crm.model.network.PartialDate(year = 2020, month = null, day = null),
-                        ),
-                    ),
-                ),
-            ),
+                            partial = com.mycorrhizal.crm.model.network.PartialDate(
+                                year = 2020,
+                                month = null,
+                                day = null
+                            )
+                        )
+                    )
+                )
+            )
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
@@ -651,15 +815,17 @@ class ContactFormViewModelTest {
                     val partial = input.card?.anniversaries?.firstOrNull()?.date?.partial
                     partial?.year == 2020 && partial.month == null
                 },
-                any(),
+                any()
             )
         }
     }
 
     @Test
-    fun `failed save surfaces the error and stays on the form`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `failed save surfaces the error and stays on the form`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { contactRepository.createContact(any()) } returns Result.failure(
-            ApiError.Client(409, "A contact with this email already exists"),
+            ApiError.Client(409, "A contact with this email already exists")
         )
 
         val vm = createViewModel()
@@ -675,7 +841,9 @@ class ContactFormViewModelTest {
     // --- M7 ---
 
     @Test
-    fun `editing email and phone type and preferred preserves id contexts and pref`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `editing email and phone type and preferred preserves id contexts and pref`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         // The whole point of the withValue/withType -> .copy() contract (M7 test case 1):
         // changing a phone's number and label must not touch id/contexts/pref/features, and
         // setting a phone preferred must clear it on the other phone (list-level pref).
@@ -685,18 +853,42 @@ class ContactFormViewModelTest {
                 name = Name(
                     full = "Dana White",
                     components = listOf(
-                        com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"),
-                        com.mycorrhizal.crm.model.network.NameComponent(kind = "surname", value = "White"),
-                    ),
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "given",
+                            value = "Dana"
+                        ),
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "surname",
+                            value = "White"
+                        )
+                    )
                 ),
                 phones = listOf(
-                    Phone(id = "phone-1", number = "+1-555-0100", label = "work", contexts = listOf("work"), pref = 1, features = listOf("voice")),
-                    Phone(id = "phone-2", number = "+1-555-0199", label = "cell", contexts = listOf("cell")),
+                    Phone(
+                        id = "phone-1",
+                        number = "+1-555-0100",
+                        label = "work",
+                        contexts = listOf("work"),
+                        pref = 1,
+                        features = listOf("voice")
+                    ),
+                    Phone(
+                        id = "phone-2",
+                        number = "+1-555-0199",
+                        label = "cell",
+                        contexts = listOf("cell")
+                    )
                 ),
                 emails = listOf(
-                    Email(id = "email-1", address = "dana@example.com", label = "work", contexts = listOf("work"), pref = 1),
-                ),
-            ),
+                    Email(
+                        id = "email-1",
+                        address = "dana@example.com",
+                        label = "work",
+                        contexts = listOf("work"),
+                        pref = 1
+                    )
+                )
+            )
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
@@ -714,9 +906,19 @@ class ContactFormViewModelTest {
                     1 -> p.copy(pref = 1)
                     else -> p
                 }
-            },
+            }
         )
-        vm.onEmailsChange(vm.uiState.value.emails.mapIndexed { i, e -> if (i == 0) e.copy(contexts = listOf("home")) else e })
+        vm.onEmailsChange(
+            vm.uiState.value.emails.mapIndexed { i, e ->
+                if (i == 0) {
+                    e.copy(
+                        contexts = listOf("home")
+                    )
+                } else {
+                    e
+                }
+            }
+        )
         vm.save()
         advanceUntilIdle()
 
@@ -730,19 +932,24 @@ class ContactFormViewModelTest {
                     phone1.number == "+1-555-0000" && phone1.contexts == listOf("home") &&
                         phone1.id == "phone-1" && phone1.label == "work" &&
                         phone1.pref == null && phone1.features == listOf("voice") &&
-                        phone2.pref == 1 && phone2.number == "+1-555-0199" && phone2.contexts == listOf("cell") &&
+                        phone2.pref == 1 && phone2.number == "+1-555-0199" &&
+                        phone2.contexts == listOf(
+                            "cell"
+                        ) &&
                         input.card?.emails?.firstOrNull()?.contexts == listOf("home") &&
                         input.card?.emails?.firstOrNull()?.id == "email-1" &&
                         input.card?.emails?.firstOrNull()?.label == "work" &&
                         input.card?.emails?.firstOrNull()?.pref == 1
                 },
-                any(),
+                any()
             )
         }
     }
 
     @Test
-    fun `addresses round-trip with registry kinds and preserve id contexts and pref`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `addresses round-trip with registry kinds and preserve id contexts and pref`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         // M7 test case 5: the editor emits the real registry kinds (`name` for street,
         // `locality` for city — NOT `street`/`city`, the T67 bug), and a save preserves
         // id/contexts/pref on the loaded entry.
@@ -752,9 +959,15 @@ class ContactFormViewModelTest {
                 name = Name(
                     full = "Dana White",
                     components = listOf(
-                        com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"),
-                        com.mycorrhizal.crm.model.network.NameComponent(kind = "surname", value = "White"),
-                    ),
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "given",
+                            value = "Dana"
+                        ),
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "surname",
+                            value = "White"
+                        )
+                    )
                 ),
                 addresses = listOf(
                     Address(
@@ -765,11 +978,11 @@ class ContactFormViewModelTest {
                             AddressComponent(kind = "name", value = "123 Main St"),
                             AddressComponent(kind = "locality", value = "Springfield"),
                             AddressComponent(kind = "postcode", value = "12345"),
-                            AddressComponent(kind = "country", value = "US"),
-                        ),
-                    ),
-                ),
-            ),
+                            AddressComponent(kind = "country", value = "US")
+                        )
+                    )
+                )
+            )
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
@@ -781,10 +994,12 @@ class ContactFormViewModelTest {
         // Change the city on the loaded address.
         vm.onAddressesChange(
             vm.uiState.value.addresses.map { addr ->
-                addr.copy(components = addr.components.orEmpty().map { c ->
-                    if (c.kind == "locality") c.copy(value = "Shelbyville") else c
-                })
-            },
+                addr.copy(
+                    components = addr.components.orEmpty().map { c ->
+                        if (c.kind == "locality") c.copy(value = "Shelbyville") else c
+                    }
+                )
+            }
         )
         vm.save()
         advanceUntilIdle()
@@ -800,29 +1015,37 @@ class ContactFormViewModelTest {
                         comps.first { it.kind == "postcode" }.value == "12345" &&
                         addr?.id == "addr-1" && addr.pref == 1
                 },
-                any(),
+                any()
             )
         }
     }
 
     @Test
-    fun `editing an address preserves its extra contexts`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `editing an address preserves its extra contexts`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         // M7 AddressEditor is deliberately better than web here: contexts[1..] survive a
         // save (web's valuesToCardAddresses collapses to just contexts[0]).
         val record = ContactRecordResponse(
             id = 5,
             card = Card(
-                name = Name(full = "Dana White", components = listOf(
-                    com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"),
-                )),
+                name = Name(
+                    full = "Dana White",
+                    components = listOf(
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "given",
+                            value = "Dana"
+                        )
+                    )
+                ),
                 addresses = listOf(
                     Address(
                         id = "addr-1",
                         contexts = listOf("home", "delivery"),
-                        components = listOf(AddressComponent(kind = "name", value = "1 Elm St")),
-                    ),
-                ),
-            ),
+                        components = listOf(AddressComponent(kind = "name", value = "1 Elm St"))
+                    )
+                )
+            )
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
@@ -835,7 +1058,7 @@ class ContactFormViewModelTest {
         vm.onAddressesChange(
             vm.uiState.value.addresses.map { addr ->
                 addr.copy(contexts = listOf("work") + addr.contexts.orEmpty().drop(1))
-            },
+            }
         )
         vm.save()
         advanceUntilIdle()
@@ -846,26 +1069,54 @@ class ContactFormViewModelTest {
                 match<ContactRecordInput> { input ->
                     input.card?.addresses?.firstOrNull()?.contexts == listOf("work", "delivery")
                 },
-                any(),
+                any()
             )
         }
     }
 
     @Test
-    fun `online services links titles and personal info round-trip`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `online services links titles and personal info round-trip`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(
             id = 5,
             card = Card(
-                name = Name(full = "Dana White", components = listOf(
-                    com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"),
-                )),
-                imppAddresses = listOf(OnlineService(id = "impp-1", service = "Signal", uri = "tel:+15550001", contexts = listOf("work"))),
-                socialProfiles = listOf(OnlineService(id = "social-1", service = "Mastodon", user = "@dana", contexts = listOf("home"))),
-                otherOnlineServices = listOf(OnlineService(id = "other-1", service = "Website", uri = "https://example.com")),
-                links = listOf(Resource(id = "link-1", uri = "https://example.com/home", label = "Website")),
+                name = Name(
+                    full = "Dana White",
+                    components = listOf(
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "given",
+                            value = "Dana"
+                        )
+                    )
+                ),
+                imppAddresses = listOf(
+                    OnlineService(
+                        id = "impp-1",
+                        service = "Signal",
+                        uri = "tel:+15550001",
+                        contexts = listOf("work")
+                    )
+                ),
+                socialProfiles = listOf(
+                    OnlineService(
+                        id = "social-1",
+                        service = "Mastodon",
+                        user = "@dana",
+                        contexts = listOf("home")
+                    )
+                ),
+                otherOnlineServices = listOf(
+                    OnlineService(id = "other-1", service = "Website", uri = "https://example.com")
+                ),
+                links = listOf(
+                    Resource(id = "link-1", uri = "https://example.com/home", label = "Website")
+                ),
                 titles = listOf(Title(id = "title-1", name = "Engineer", kind = "title")),
-                personalInfo = listOf(PersonalInfo(id = "pi-1", kind = "hobby", value = "climbing", level = "medium")),
-            ),
+                personalInfo = listOf(
+                    PersonalInfo(id = "pi-1", kind = "hobby", value = "climbing", level = "medium")
+                )
+            )
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
@@ -874,17 +1125,87 @@ class ContactFormViewModelTest {
         advanceUntilIdle()
 
         // Loaded as real objects, none of the unshown metadata narrowed away.
-        assertEquals(listOf(OnlineService(id = "impp-1", service = "Signal", uri = "tel:+15550001", contexts = listOf("work"))), vm.uiState.value.imppAddresses)
-        assertEquals(listOf(OnlineService(id = "social-1", service = "Mastodon", user = "@dana", contexts = listOf("home"))), vm.uiState.value.socialProfiles)
-        assertEquals(listOf(Resource(id = "link-1", uri = "https://example.com/home", label = "Website")), vm.uiState.value.links)
-        assertEquals(listOf(Title(id = "title-1", name = "Engineer", kind = "title")), vm.uiState.value.titles)
-        assertEquals(listOf(PersonalInfo(id = "pi-1", kind = "hobby", value = "climbing", level = "medium")), vm.uiState.value.personalInfo)
+        assertEquals(
+            listOf(
+                OnlineService(
+                    id = "impp-1",
+                    service = "Signal",
+                    uri = "tel:+15550001",
+                    contexts = listOf("work")
+                )
+            ),
+            vm.uiState.value.imppAddresses
+        )
+        assertEquals(
+            listOf(
+                OnlineService(
+                    id = "social-1",
+                    service = "Mastodon",
+                    user = "@dana",
+                    contexts = listOf("home")
+                )
+            ),
+            vm.uiState.value.socialProfiles
+        )
+        assertEquals(
+            listOf(Resource(id = "link-1", uri = "https://example.com/home", label = "Website")),
+            vm.uiState.value.links
+        )
+        assertEquals(
+            listOf(Title(id = "title-1", name = "Engineer", kind = "title")),
+            vm.uiState.value.titles
+        )
+        assertEquals(
+            listOf(PersonalInfo(id = "pi-1", kind = "hobby", value = "climbing", level = "medium")),
+            vm.uiState.value.personalInfo
+        )
 
         // Edit a handle and retype it; save must keep id/service/contexts.
-        vm.onImppChange(vm.uiState.value.imppAddresses.mapIndexed { i, s -> if (i == 0) s.copy(uri = "tel:+15559999", contexts = listOf("home")) else s })
-        vm.onSocialChange(vm.uiState.value.socialProfiles.mapIndexed { i, s -> if (i == 0) s.copy(user = "@dana2") else s })
-        vm.onLinksChange(vm.uiState.value.links.mapIndexed { i, l -> if (i == 0) l.copy(uri = "https://example.com/new") else l })
-        vm.onPersonalInfoChange(vm.uiState.value.personalInfo.mapIndexed { i, p -> if (i == 0) p.copy(value = "trail running") else p })
+        vm.onImppChange(
+            vm.uiState.value.imppAddresses.mapIndexed { i, s ->
+                if (i == 0) {
+                    s.copy(
+                        uri = "tel:+15559999",
+                        contexts = listOf("home")
+                    )
+                } else {
+                    s
+                }
+            }
+        )
+        vm.onSocialChange(
+            vm.uiState.value.socialProfiles.mapIndexed { i, s ->
+                if (i == 0) {
+                    s.copy(
+                        user = "@dana2"
+                    )
+                } else {
+                    s
+                }
+            }
+        )
+        vm.onLinksChange(
+            vm.uiState.value.links.mapIndexed { i, l ->
+                if (i == 0) {
+                    l.copy(
+                        uri = "https://example.com/new"
+                    )
+                } else {
+                    l
+                }
+            }
+        )
+        vm.onPersonalInfoChange(
+            vm.uiState.value.personalInfo.mapIndexed { i, p ->
+                if (i == 0) {
+                    p.copy(
+                        value = "trail running"
+                    )
+                } else {
+                    p
+                }
+            }
+        )
         vm.save()
         advanceUntilIdle()
 
@@ -897,30 +1218,47 @@ class ContactFormViewModelTest {
                     val link = input.card?.links?.firstOrNull()
                     val pi = input.card?.personalInfo?.firstOrNull()
                     val title = input.card?.titles?.firstOrNull()
-                    impp?.uri == "tel:+15559999" && impp.contexts == listOf("home") && impp.service == "Signal" && impp.id == "impp-1" &&
-                        social?.user == "@dana2" && social.id == "social-1" && social.service == "Mastodon" &&
-                        link?.uri == "https://example.com/new" && link.label == "Website" && link.id == "link-1" &&
-                        pi?.value == "trail running" && pi.kind == "hobby" && pi.id == "pi-1" && pi.level == "medium" &&
+                    impp?.uri == "tel:+15559999" && impp.contexts == listOf(
+                        "home"
+                    ) && impp.service == "Signal" && impp.id == "impp-1" &&
+                        social?.user == "@dana2" && social.id == "social-1" &&
+                        social.service == "Mastodon" &&
+                        link?.uri == "https://example.com/new" && link.label == "Website" &&
+                        link.id == "link-1" &&
+                        pi?.value == "trail running" && pi.kind == "hobby" && pi.id == "pi-1" &&
+                        pi.level == "medium" &&
                         title?.name == "Engineer" && title.kind == "title" && title.id == "title-1"
                 },
-                any(),
+                any()
             )
         }
     }
 
     @Test
-    fun `organization and department map onto the first organization preserving extras`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `organization and department map onto the first organization preserving extras`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(
             id = 5,
             card = Card(
-                name = Name(full = "Dana White", components = listOf(
-                    com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"),
-                )),
-                organizations = listOf(
-                    Organization(id = "org-1", name = "Acme", units = listOf(com.mycorrhizal.crm.model.network.OrgUnit(name = "R&D"))),
-                    Organization(id = "org-2", name = "Side project"),
+                name = Name(
+                    full = "Dana White",
+                    components = listOf(
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "given",
+                            value = "Dana"
+                        )
+                    )
                 ),
-            ),
+                organizations = listOf(
+                    Organization(
+                        id = "org-1",
+                        name = "Acme",
+                        units = listOf(com.mycorrhizal.crm.model.network.OrgUnit(name = "R&D"))
+                    ),
+                    Organization(id = "org-2", name = "Side project")
+                )
+            )
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
@@ -946,24 +1284,32 @@ class ContactFormViewModelTest {
                         orgs.getOrNull(1)?.name == "Side project" && // extra org preserved
                         orgs.getOrNull(1)?.id == "org-2"
                 },
-                any(),
+                any()
             )
         }
     }
 
     @Test
-    fun `blank organization name drops the first organization but keeps extras`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `blank organization name drops the first organization but keeps extras`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(
             id = 5,
             card = Card(
-                name = Name(full = "Dana White", components = listOf(
-                    com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"),
-                )),
+                name = Name(
+                    full = "Dana White",
+                    components = listOf(
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "given",
+                            value = "Dana"
+                        )
+                    )
+                ),
                 organizations = listOf(
                     Organization(id = "org-1", name = "Acme"),
-                    Organization(id = "org-2", name = "Side project"),
-                ),
-            ),
+                    Organization(id = "org-2", name = "Side project")
+                )
+            )
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
@@ -981,31 +1327,58 @@ class ContactFormViewModelTest {
                     val orgs = input.card?.organizations.orEmpty()
                     orgs.size == 1 && orgs.first().id == "org-2"
                 },
-                any(),
+                any()
             )
         }
     }
 
     @Test
-    fun `existing periods round-trip on save so Android never drops them`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `existing periods round-trip on save so Android never drops them`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         // Regression guard for the ADR 0025 data loss: the PUT is a full
         // overwrite and toInput rebuilds crm via copy, so every period must be
         // carried back even when the form doesn't touch one.
         val record = ContactRecordResponse(
             id = 5,
             card = Card(
-                name = Name(full = "Dana White", components = listOf(
-                    com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"),
-                )),
-                addresses = listOf(Address(id = "addr-1", components = listOf(AddressComponent(kind = "name", value = "1 Main St")))),
+                name = Name(
+                    full = "Dana White",
+                    components = listOf(
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "given",
+                            value = "Dana"
+                        )
+                    )
+                ),
+                addresses = listOf(
+                    Address(
+                        id = "addr-1",
+                        components = listOf(AddressComponent(kind = "name", value = "1 Main St"))
+                    )
+                ),
                 organizations = listOf(Organization(id = "org-1", name = "Acme")),
-                titles = listOf(Title(id = "title-1", name = "Engineer", kind = "title")),
+                titles = listOf(Title(id = "title-1", name = "Engineer", kind = "title"))
             ),
-            crm = CRMEnvelope(periods = listOf(
-                EntryPeriod(kind = "address", entryId = "addr-1", range = TemporalRange(start = PartialDate(year = 2019))),
-                EntryPeriod(kind = "organization", entryId = "org-1", range = TemporalRange(start = PartialDate(year = 2020))),
-                EntryPeriod(kind = "title", entryId = "title-1", range = TemporalRange(start = PartialDate(year = 2020))),
-            )),
+            crm = CRMEnvelope(
+                periods = listOf(
+                    EntryPeriod(
+                        kind = "address",
+                        entryId = "addr-1",
+                        range = TemporalRange(start = PartialDate(year = 2019))
+                    ),
+                    EntryPeriod(
+                        kind = "organization",
+                        entryId = "org-1",
+                        range = TemporalRange(start = PartialDate(year = 2020))
+                    ),
+                    EntryPeriod(
+                        kind = "title",
+                        entryId = "title-1",
+                        range = TemporalRange(start = PartialDate(year = 2020))
+                    )
+                )
+            )
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
@@ -1023,25 +1396,36 @@ class ContactFormViewModelTest {
                 match<ContactRecordInput> { input ->
                     val periods = input.crm?.periods.orEmpty()
                     periods.size == 3 &&
-                        periods.any { it.kind == "address" && it.entryId == "addr-1" && it.range.start?.year == 2019 } &&
+                        periods.any {
+                            it.kind == "address" && it.entryId == "addr-1" &&
+                                it.range.start?.year == 2019
+                        } &&
                         periods.any { it.kind == "organization" && it.entryId == "org-1" } &&
                         periods.any { it.kind == "title" && it.entryId == "title-1" }
                 },
-                any(),
+                any()
             )
         }
     }
 
     @Test
-    fun `setting an organization period mints an element ID and records it`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `setting an organization period mints an element ID and records it`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(
             id = 5,
             card = Card(
-                name = Name(full = "Dana White", components = listOf(
-                    com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"),
-                )),
-                organizations = listOf(Organization(name = "Acme")), // legacy: no id
-            ),
+                name = Name(
+                    full = "Dana White",
+                    components = listOf(
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "given",
+                            value = "Dana"
+                        )
+                    )
+                ),
+                organizations = listOf(Organization(name = "Acme")) // legacy: no id
+            )
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
@@ -1064,24 +1448,38 @@ class ContactFormViewModelTest {
                                 it.range.start?.year == 2019 && it.range.end?.year == 2024
                         }
                 },
-                any(),
+                any()
             )
         }
     }
 
     @Test
-    fun `clearing the organization period removes it`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `clearing the organization period removes it`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(
             id = 5,
             card = Card(
-                name = Name(full = "Dana White", components = listOf(
-                    com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"),
-                )),
-                organizations = listOf(Organization(id = "org-1", name = "Acme")),
+                name = Name(
+                    full = "Dana White",
+                    components = listOf(
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "given",
+                            value = "Dana"
+                        )
+                    )
+                ),
+                organizations = listOf(Organization(id = "org-1", name = "Acme"))
             ),
-            crm = CRMEnvelope(periods = listOf(
-                EntryPeriod(kind = "organization", entryId = "org-1", range = TemporalRange(start = PartialDate(year = 2019))),
-            )),
+            crm = CRMEnvelope(
+                periods = listOf(
+                    EntryPeriod(
+                        kind = "organization",
+                        entryId = "org-1",
+                        range = TemporalRange(start = PartialDate(year = 2019))
+                    )
+                )
+            )
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
@@ -1099,24 +1497,43 @@ class ContactFormViewModelTest {
                 match<ContactRecordInput> { input ->
                     input.crm?.periods.orEmpty().none { it.kind == "organization" }
                 },
-                any(),
+                any()
             )
         }
     }
 
     @Test
-    fun `editing an address period writes it back keyed by address id`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `editing an address period writes it back keyed by address id`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(
             id = 5,
             card = Card(
-                name = Name(full = "Dana White", components = listOf(
-                    com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"),
-                )),
-                addresses = listOf(Address(id = "addr-1", components = listOf(AddressComponent(kind = "name", value = "1 Main St")))),
+                name = Name(
+                    full = "Dana White",
+                    components = listOf(
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "given",
+                            value = "Dana"
+                        )
+                    )
+                ),
+                addresses = listOf(
+                    Address(
+                        id = "addr-1",
+                        components = listOf(AddressComponent(kind = "name", value = "1 Main St"))
+                    )
+                )
             ),
-            crm = CRMEnvelope(periods = listOf(
-                EntryPeriod(kind = "address", entryId = "addr-1", range = TemporalRange(start = PartialDate(year = 2019))),
-            )),
+            crm = CRMEnvelope(
+                periods = listOf(
+                    EntryPeriod(
+                        kind = "address",
+                        entryId = "addr-1",
+                        range = TemporalRange(start = PartialDate(year = 2019))
+                    )
+                )
+            )
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
@@ -1124,7 +1541,16 @@ class ContactFormViewModelTest {
         val vm = createViewModel(5)
         advanceUntilIdle()
         vm.onPeriodsChange(
-            listOf(EntryPeriod(kind = "address", entryId = "addr-1", range = TemporalRange(start = PartialDate(year = 2019), end = PartialDate(year = 2024)))),
+            listOf(
+                EntryPeriod(
+                    kind = "address",
+                    entryId = "addr-1",
+                    range = TemporalRange(
+                        start = PartialDate(year = 2019),
+                        end = PartialDate(year = 2024)
+                    )
+                )
+            )
         )
         vm.save()
         advanceUntilIdle()
@@ -1137,23 +1563,33 @@ class ContactFormViewModelTest {
                         it.kind == "address" && it.entryId == "addr-1" && it.range.end?.year == 2024
                     }
                 },
-                any(),
+                any()
             )
         }
     }
 
     @Test
-    fun `crm envelope fields are sent on save and blank preserves the loaded value`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `crm envelope fields are sent on save and blank preserves the loaded value`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(
             id = 5,
-            card = Card(name = Name(full = "Dana White", components = listOf(
-                com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"),
-            ))),
+            card = Card(
+                name = Name(
+                    full = "Dana White",
+                    components = listOf(
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "given",
+                            value = "Dana"
+                        )
+                    )
+                )
+            ),
             crm = CRMEnvelope(
                 howWeMet = "At the climbing gym",
                 workInformation = "Full-stack at Acme",
-                contactInformation = "Prefers email",
-            ),
+                contactInformation = "Prefers email"
+            )
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
@@ -1175,19 +1611,30 @@ class ContactFormViewModelTest {
                         input.crm?.workInformation == "Full-stack at Acme" &&
                         input.crm?.contactInformation == "Prefers email"
                 },
-                any(),
+                any()
             )
         }
     }
 
     @Test
-    fun `create mode sends addresses online services links titles and crm strings`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `create mode sends addresses online services links titles and crm strings`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val created = ContactRecordResponse(id = 9, card = Card(name = Name(full = "Carol King")))
         coEvery { contactRepository.createContact(any()) } returns Result.success(created)
 
         val vm = createViewModel()
         vm.onGivenNameChange("Carol")
-        vm.onAddressesChange(listOf(Address(components = listOf(AddressComponent(kind = "name", value = "1 Main St"), AddressComponent(kind = "locality", value = "Metropolis")))))
+        vm.onAddressesChange(
+            listOf(
+                Address(
+                    components = listOf(
+                        AddressComponent(kind = "name", value = "1 Main St"),
+                        AddressComponent(kind = "locality", value = "Metropolis")
+                    )
+                )
+            )
+        )
         vm.onOrganizationNameChange("Daily Planet")
         vm.onTitlesChange(listOf(Title(name = "Reporter", kind = "title")))
         vm.onImppChange(listOf(OnlineService(service = "Signal", uri = "tel:+15550001")))
@@ -1200,15 +1647,23 @@ class ContactFormViewModelTest {
         coVerify {
             contactRepository.createContact(
                 match<ContactRecordInput> { input ->
-                    input.card?.addresses?.firstOrNull()?.components?.firstOrNull { it.kind == "name" }?.value == "1 Main St" &&
-                        input.card?.addresses?.firstOrNull()?.components?.firstOrNull { it.kind == "locality" }?.value == "Metropolis" &&
+                    input.card?.addresses?.firstOrNull()?.components?.firstOrNull {
+                        it.kind ==
+                            "name"
+                    }?.value ==
+                        "1 Main St" &&
+                        input.card?.addresses?.firstOrNull()?.components?.firstOrNull {
+                            it.kind ==
+                                "locality"
+                        }?.value ==
+                        "Metropolis" &&
                         input.card?.organizations?.firstOrNull()?.name == "Daily Planet" &&
                         input.card?.titles?.firstOrNull()?.name == "Reporter" &&
                         input.card?.imppAddresses?.firstOrNull()?.uri == "tel:+15550001" &&
                         input.card?.links?.firstOrNull()?.uri == "https://example.com" &&
                         input.card?.personalInfo?.firstOrNull()?.value == "flying" &&
                         input.crm?.howWeMet == "At the newsroom"
-                },
+                }
             )
         }
     }
@@ -1216,12 +1671,24 @@ class ContactFormViewModelTest {
     // --- Issue #832: fields with no prior Android UI ---
 
     @Test
-    fun `gender loads from crm gender, not the legacy top-level field`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `gender loads from crm gender, not the legacy top-level field`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(
             id = 5,
             gender = "stale-legacy-value",
-            card = Card(name = Name(full = "Dana", components = listOf(com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana")))),
-            crm = CRMEnvelope(gender = "non-binary"),
+            card = Card(
+                name = Name(
+                    full = "Dana",
+                    components = listOf(
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "given",
+                            value = "Dana"
+                        )
+                    )
+                )
+            ),
+            crm = CRMEnvelope(gender = "non-binary")
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
@@ -1236,11 +1703,27 @@ class ContactFormViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             val record = ContactRecordResponse(
                 id = 5,
-                card = Card(name = Name(full = "Dana", components = listOf(com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana")))),
-                crm = CRMEnvelope(gender = "non-binary"),
+                card = Card(
+                    name = Name(
+                        full = "Dana",
+                        components = listOf(
+                            com.mycorrhizal.crm.model.network.NameComponent(
+                                kind = "given",
+                                value = "Dana"
+                            )
+                        )
+                    )
+                ),
+                crm = CRMEnvelope(gender = "non-binary")
             )
             coEvery { contactRepository.getContact(5) } returns Result.success(record)
-            coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
+            coEvery {
+                contactRepository.updateContact(
+                    5,
+                    any(),
+                    any()
+                )
+            } returns Result.success(record)
 
             val vm = createViewModel(5)
             advanceUntilIdle()
@@ -1250,16 +1733,32 @@ class ContactFormViewModelTest {
             advanceUntilIdle()
 
             coVerify {
-                contactRepository.updateContact(5, match<ContactRecordInput> { it.crm?.gender == "genderfluid" }, any())
+                contactRepository.updateContact(
+                    5,
+                    match<ContactRecordInput> { it.crm?.gender == "genderfluid" },
+                    any()
+                )
             }
         }
 
     @Test
-    fun `blank gender preserves the loaded value on save`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `blank gender preserves the loaded value on save`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(
             id = 5,
-            card = Card(name = Name(full = "Dana", components = listOf(com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana")))),
-            crm = CRMEnvelope(gender = "non-binary"),
+            card = Card(
+                name = Name(
+                    full = "Dana",
+                    components = listOf(
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "given",
+                            value = "Dana"
+                        )
+                    )
+                )
+            ),
+            crm = CRMEnvelope(gender = "non-binary")
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
@@ -1271,27 +1770,56 @@ class ContactFormViewModelTest {
         advanceUntilIdle()
 
         coVerify {
-            contactRepository.updateContact(5, match<ContactRecordInput> { it.crm?.gender == "non-binary" }, any())
+            contactRepository.updateContact(
+                5,
+                match<ContactRecordInput> { it.crm?.gender == "non-binary" },
+                any()
+            )
         }
     }
 
     @Test
-    fun `preferred languages round-trip with their context and pref`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `preferred languages round-trip with their context and pref`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(
             id = 5,
             card = Card(
-                name = Name(full = "Dana", components = listOf(com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"))),
-                preferredLanguages = listOf(
-                    com.mycorrhizal.crm.model.network.LanguagePref(id = "lp1", language = "en", contexts = listOf("work"), pref = 1),
+                name = Name(
+                    full = "Dana",
+                    components = listOf(
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "given",
+                            value = "Dana"
+                        )
+                    )
                 ),
-            ),
+                preferredLanguages = listOf(
+                    com.mycorrhizal.crm.model.network.LanguagePref(
+                        id = "lp1",
+                        language = "en",
+                        contexts = listOf("work"),
+                        pref = 1
+                    )
+                )
+            )
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
 
         val vm = createViewModel(5)
         advanceUntilIdle()
-        assertEquals(listOf(com.mycorrhizal.crm.model.network.LanguagePref(id = "lp1", language = "en", contexts = listOf("work"), pref = 1)), vm.uiState.value.preferredLanguages)
+        assertEquals(
+            listOf(
+                com.mycorrhizal.crm.model.network.LanguagePref(
+                    id = "lp1",
+                    language = "en",
+                    contexts = listOf("work"),
+                    pref = 1
+                )
+            ),
+            vm.uiState.value.preferredLanguages
+        )
 
         vm.save()
         advanceUntilIdle()
@@ -1301,24 +1829,47 @@ class ContactFormViewModelTest {
                 5,
                 match<ContactRecordInput> { input ->
                     val pref = input.card?.preferredLanguages?.firstOrNull()
-                    pref?.id == "lp1" && pref.language == "en" && pref.contexts == listOf("work") && pref.pref == 1
+                    pref?.id == "lp1" && pref.language == "en" && pref.contexts == listOf(
+                        "work"
+                    ) && pref.pref == 1
                 },
-                any(),
+                any()
             )
         }
     }
 
     @Test
-    fun `speakToAs pronouns and grammatical genders round-trip independently`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `speakToAs pronouns and grammatical genders round-trip independently`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(
             id = 5,
             card = Card(
-                name = Name(full = "Dana", components = listOf(com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"))),
-                speakToAs = com.mycorrhizal.crm.model.network.SpeakToAs(
-                    pronouns = listOf(com.mycorrhizal.crm.model.network.Pronouns(id = "p1", pronouns = "they/them")),
-                    grammaticalGenders = listOf(com.mycorrhizal.crm.model.network.GrammaticalGender(id = "g1", value = "common", language = "en")),
+                name = Name(
+                    full = "Dana",
+                    components = listOf(
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "given",
+                            value = "Dana"
+                        )
+                    )
                 ),
-            ),
+                speakToAs = com.mycorrhizal.crm.model.network.SpeakToAs(
+                    pronouns = listOf(
+                        com.mycorrhizal.crm.model.network.Pronouns(
+                            id = "p1",
+                            pronouns = "they/them"
+                        )
+                    ),
+                    grammaticalGenders = listOf(
+                        com.mycorrhizal.crm.model.network.GrammaticalGender(
+                            id = "g1",
+                            value = "common",
+                            language = "en"
+                        )
+                    )
+                )
+            )
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
@@ -1341,13 +1892,15 @@ class ContactFormViewModelTest {
                         speakToAs.grammaticalGenders?.firstOrNull()?.id == "g1" &&
                         speakToAs.grammaticalGenders?.firstOrNull()?.value == "common"
                 },
-                any(),
+                any()
             )
         }
     }
 
     @Test
-    fun `keywords are trimmed deduplicated and dropped when blank`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `keywords are trimmed deduplicated and dropped when blank`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val created = ContactRecordResponse(id = 9, card = Card(name = Name(full = "Carol")))
         coEvery { contactRepository.createContact(any()) } returns Result.success(created)
 
@@ -1359,22 +1912,32 @@ class ContactFormViewModelTest {
 
         coVerify {
             contactRepository.createContact(
-                match<ContactRecordInput> { it.card?.keywords == listOf("hiking", "climbing") },
+                match<ContactRecordInput> { it.card?.keywords == listOf("hiking", "climbing") }
             )
         }
     }
 
     @Test
-    fun `card notes list round-trips and a blank row is dropped on save`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `card notes list round-trips and a blank row is dropped on save`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(
             id = 5,
             card = Card(
-                name = Name(full = "Dana", components = listOf(com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"))),
+                name = Name(
+                    full = "Dana",
+                    components = listOf(
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "given",
+                            value = "Dana"
+                        )
+                    )
+                ),
                 notes = listOf(
                     CardNote(id = "n1", note = "met at conf"),
-                    CardNote(id = "n2", note = "loves coffee"),
-                ),
-            ),
+                    CardNote(id = "n2", note = "loves coffee")
+                )
+            )
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
@@ -1389,8 +1952,8 @@ class ContactFormViewModelTest {
             listOf(
                 vm.uiState.value.cardNotes[0],
                 vm.uiState.value.cardNotes[1].copy(note = "  "),
-                CardNote(note = ""),
-            ),
+                CardNote(note = "")
+            )
         )
         vm.save()
         advanceUntilIdle()
@@ -1401,7 +1964,7 @@ class ContactFormViewModelTest {
                 match<ContactRecordInput> { input ->
                     input.card?.notes == listOf(CardNote(id = "n1", note = "met at conf"))
                 },
-                any(),
+                any()
             )
         }
     }
@@ -1412,26 +1975,48 @@ class ContactFormViewModelTest {
             val record = ContactRecordResponse(
                 id = 5,
                 card = Card(
-                    name = Name(full = "Dana", components = listOf(com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"))),
+                    name = Name(
+                        full = "Dana",
+                        components = listOf(
+                            com.mycorrhizal.crm.model.network.NameComponent(
+                                kind = "given",
+                                value = "Dana"
+                            )
+                        )
+                    ),
                     anniversaries = listOf(
                         com.mycorrhizal.crm.model.network.Anniversary(
                             kind = "birth",
                             date = com.mycorrhizal.crm.model.network.AnniversaryDate(
-                                partial = com.mycorrhizal.crm.model.network.PartialDate(year = 1990, month = 6, day = 15),
-                            ),
+                                partial = com.mycorrhizal.crm.model.network.PartialDate(
+                                    year = 1990,
+                                    month = 6,
+                                    day = 15
+                                )
+                            )
                         ),
                         com.mycorrhizal.crm.model.network.Anniversary(
                             id = "a1",
                             kind = "wedding",
                             date = com.mycorrhizal.crm.model.network.AnniversaryDate(
-                                partial = com.mycorrhizal.crm.model.network.PartialDate(year = 2020, month = 6, day = 1),
-                            ),
-                        ),
-                    ),
-                ),
+                                partial = com.mycorrhizal.crm.model.network.PartialDate(
+                                    year = 2020,
+                                    month = 6,
+                                    day = 1
+                                )
+                            )
+                        )
+                    )
+                )
             )
             coEvery { contactRepository.getContact(5) } returns Result.success(record)
-            coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
+            coEvery {
+                contactRepository.updateContact(
+                    5,
+                    any(),
+                    any()
+                )
+            } returns Result.success(record)
 
             val vm = createViewModel(5)
             advanceUntilIdle()
@@ -1456,37 +2041,59 @@ class ContactFormViewModelTest {
                         birth?.date?.partial?.month == 7 && birth.date?.partial?.day == 4 &&
                             wedding?.id == "a1" && wedding.date?.partial?.year == 2020
                     },
-                    any(),
+                    any()
                 )
             }
         }
 
     @Test
-    fun `a blank row in the anniversaries list editor is dropped on save`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a blank row in the anniversaries list editor is dropped on save`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val created = ContactRecordResponse(id = 9, card = Card(name = Name(full = "Carol")))
         coEvery { contactRepository.createContact(any()) } returns Result.success(created)
 
         val vm = createViewModel()
         vm.onGivenNameChange("Carol")
         vm.onAnniversariesChange(
-            listOf(com.mycorrhizal.crm.model.network.Anniversary(kind = "wedding", date = com.mycorrhizal.crm.model.network.AnniversaryDate(partial = com.mycorrhizal.crm.model.network.PartialDate()))),
+            listOf(
+                com.mycorrhizal.crm.model.network.Anniversary(
+                    kind = "wedding",
+                    date = com.mycorrhizal.crm.model.network.AnniversaryDate(
+                        partial = com.mycorrhizal.crm.model.network.PartialDate()
+                    )
+                )
+            )
         )
         vm.save()
         advanceUntilIdle()
 
         coVerify {
             contactRepository.createContact(
-                match<ContactRecordInput> { it.card?.anniversaries.isNullOrEmpty() },
+                match<ContactRecordInput> { it.card?.anniversaries.isNullOrEmpty() }
             )
         }
     }
 
     @Test
-    fun `cardKind round-trips distinctly from crm kind`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `cardKind round-trips distinctly from crm kind`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val record = ContactRecordResponse(
             id = 5,
-            card = Card(name = Name(full = "Dana", components = listOf(com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"))), kind = "org"),
-            crm = CRMEnvelope(kind = "human"),
+            card = Card(
+                name = Name(
+                    full = "Dana",
+                    components = listOf(
+                        com.mycorrhizal.crm.model.network.NameComponent(
+                            kind = "given",
+                            value = "Dana"
+                        )
+                    )
+                ),
+                kind = "org"
+            ),
+            crm = CRMEnvelope(kind = "human")
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
@@ -1503,8 +2110,11 @@ class ContactFormViewModelTest {
         coVerify {
             contactRepository.updateContact(
                 5,
-                match<ContactRecordInput> { input -> input.card?.kind == "device" && input.crm?.kind == "human" },
-                any(),
+                match<ContactRecordInput> { input ->
+                    input.card?.kind == "device" &&
+                        input.crm?.kind == "human"
+                },
+                any()
             )
         }
     }
@@ -1514,10 +2124,27 @@ class ContactFormViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             val record = ContactRecordResponse(
                 id = 5,
-                card = Card(name = Name(full = "Dana", components = listOf(com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"))), kind = "org"),
+                card = Card(
+                    name = Name(
+                        full = "Dana",
+                        components = listOf(
+                            com.mycorrhizal.crm.model.network.NameComponent(
+                                kind = "given",
+                                value = "Dana"
+                            )
+                        )
+                    ),
+                    kind = "org"
+                )
             )
             coEvery { contactRepository.getContact(5) } returns Result.success(record)
-            coEvery { contactRepository.updateContact(5, any(), any()) } returns Result.success(record)
+            coEvery {
+                contactRepository.updateContact(
+                    5,
+                    any(),
+                    any()
+                )
+            } returns Result.success(record)
 
             val vm = createViewModel(5)
             advanceUntilIdle()
@@ -1528,26 +2155,42 @@ class ContactFormViewModelTest {
             advanceUntilIdle()
 
             coVerify {
-                contactRepository.updateContact(5, match<ContactRecordInput> { it.card?.kind == null }, any())
+                contactRepository.updateContact(
+                    5,
+                    match<ContactRecordInput> { it.card?.kind == null },
+                    any()
+                )
             }
         }
 
     @Test
-    fun `enabledFields resolves from the session and re-emits on change`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `enabledFields resolves from the session and re-emits on change`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = createViewModel()
         // Re-stub after creation, before advanceUntilIdle — createViewModel()'s own default
         // stub (flowOf(SessionState())) would otherwise win (mockk last-registered-wins), but
         // the ViewModel's init coroutine that actually calls observeSession() hasn't run yet.
-        val sessionFlow = kotlinx.coroutines.flow.MutableStateFlow(com.mycorrhizal.crm.domain.repository.SessionState())
+        val sessionFlow = kotlinx.coroutines.flow.MutableStateFlow(
+            com.mycorrhizal.crm.domain.repository.SessionState()
+        )
         io.mockk.every { authRepository.observeSession() } returns sessionFlow
         advanceUntilIdle()
 
-        assertEquals(com.mycorrhizal.crm.model.network.DEFAULT_ENABLED_CONTACT_FIELDS, vm.uiState.value.enabledFields)
+        assertEquals(
+            com.mycorrhizal.crm.model.network.DEFAULT_ENABLED_CONTACT_FIELDS,
+            vm.uiState.value.enabledFields
+        )
 
-        sessionFlow.value = com.mycorrhizal.crm.domain.repository.SessionState(enabledContactFields = listOf("emails"))
+        sessionFlow.value = com.mycorrhizal.crm.domain.repository.SessionState(
+            enabledContactFields = listOf("emails")
+        )
         advanceUntilIdle()
 
-        assertEquals(setOf(com.mycorrhizal.crm.model.network.ContactFieldKey.EMAILS), vm.uiState.value.enabledFields)
+        assertEquals(
+            setOf(com.mycorrhizal.crm.model.network.ContactFieldKey.EMAILS),
+            vm.uiState.value.enabledFields
+        )
     }
 
     @Test
@@ -1573,14 +2216,26 @@ class ContactFormViewModelTest {
         uid = "u5",
         revision = revision,
         card = Card(
-            name = Name(components = listOf(com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = given))),
-        ),
+            name = Name(
+                components = listOf(
+                    com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = given)
+                )
+            )
+        )
     )
 
     @Test
-    fun `save sends the revision the contact had when the edit began`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `save sends the revision the contact had when the edit began`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { contactRepository.getContact(5) } returns Result.success(revisionRecord(4))
-        coEvery { contactRepository.updateContact(5, any(), 4) } returns Result.success(revisionRecord(5))
+        coEvery {
+            contactRepository.updateContact(
+                5,
+                any(),
+                4
+            )
+        } returns Result.success(revisionRecord(5))
 
         val vm = createViewModel(5)
         advanceUntilIdle()
@@ -1592,7 +2247,9 @@ class ContactFormViewModelTest {
     }
 
     @Test
-    fun `a 412 on save raises the conflict state instead of an error toast`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a 412 on save raises the conflict state instead of an error toast`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { contactRepository.getContact(5) } returns Result.success(revisionRecord(4))
         coEvery { contactRepository.updateContact(5, any(), 4) } returns
             Result.failure(ApiError.PreconditionFailed("stale"))
@@ -1613,7 +2270,9 @@ class ContactFormViewModelTest {
     }
 
     @Test
-    fun `keep editing dismisses the conflict and leaves the edit in place`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `keep editing dismisses the conflict and leaves the edit in place`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { contactRepository.getContact(5) } returns Result.success(revisionRecord(4))
         coEvery { contactRepository.updateContact(5, any(), 4) } returns
             Result.failure(ApiError.PreconditionFailed("stale"))
@@ -1635,7 +2294,13 @@ class ContactFormViewModelTest {
             coEvery { contactRepository.getContact(5) } returns Result.success(revisionRecord(4))
             coEvery { contactRepository.updateContact(5, any(), 4) } returns
                 Result.failure(ApiError.PreconditionFailed("stale"))
-            coEvery { contactRepository.updateContact(5, any(), 6) } returns Result.success(revisionRecord(7))
+            coEvery {
+                contactRepository.updateContact(
+                    5,
+                    any(),
+                    6
+                )
+            } returns Result.success(revisionRecord(7))
 
             val vm = createViewModel(5)
             advanceUntilIdle()
@@ -1643,7 +2308,11 @@ class ContactFormViewModelTest {
             vm.save()
             advanceUntilIdle()
 
-            coEvery { contactRepository.getContact(5) } returns Result.success(revisionRecord(6, given = "Server"))
+            coEvery {
+                contactRepository.getContact(
+                    5
+                )
+            } returns Result.success(revisionRecord(6, given = "Server"))
             vm.onConflictLoadLatest()
             advanceUntilIdle()
 
@@ -1661,14 +2330,24 @@ class ContactFormViewModelTest {
         id = 5,
         uid = "u5",
         card = Card(
-            name = Name(components = listOf(com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"))),
-            addresses = addresses.toList(),
+            name = Name(
+                components = listOf(
+                    com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana")
+                )
+            ),
+            addresses = addresses.toList()
         ),
-        crm = CRMEnvelope(),
+        crm = CRMEnvelope()
     )
 
-    private suspend fun kotlinx.coroutines.test.TestScope.editVm(vararg addresses: Address): ContactFormViewModel {
-        coEvery { contactRepository.getContact(5) } returns Result.success(recordWithAddresses(*addresses))
+    private suspend fun kotlinx.coroutines.test.TestScope.editVm(
+        vararg addresses: Address
+    ): ContactFormViewModel {
+        coEvery {
+            contactRepository.getContact(
+                5
+            )
+        } returns Result.success(recordWithAddresses(*addresses))
         val vm = createViewModel(5)
         advanceUntilIdle()
         return vm
@@ -1684,15 +2363,20 @@ class ContactFormViewModelTest {
             AddressComponent(kind = "name", value = street),
             AddressComponent(kind = "locality", value = "Springfield"),
             AddressComponent(kind = "postcode", value = "62701"),
-            AddressComponent(kind = "country", value = "US"),
-        ),
+            AddressComponent(kind = "country", value = "US")
+        )
     )
 
     @Test
     fun `find coordinates sends the row's text to the draft route and writes the result onto the form only`() =
         runTest(mainDispatcherRule.testDispatcher) {
             val vm = editVm(streetAddress("a1", "1 Main St"), Address(id = "a2"))
-            coEvery { mapRepository.geocodeAddressDraft(5, any()) } returns draftResult("geo:48.85,2.35")
+            coEvery {
+                mapRepository.geocodeAddressDraft(
+                    5,
+                    any()
+                )
+            } returns draftResult("geo:48.85,2.35")
 
             vm.onFindCoordinates("a1")
             assertEquals(setOf("a1"), vm.uiState.value.geocodeInFlight)
@@ -1707,9 +2391,13 @@ class ContactFormViewModelTest {
                 mapRepository.geocodeAddressDraft(
                     5,
                     GeocodeDraftRequest(
-                        street = "1 Main St", city = "Springfield", region = "", postal = "62701",
-                        country = "US", sensitivity = "",
-                    ),
+                        street = "1 Main St",
+                        city = "Springfield",
+                        region = "",
+                        postal = "62701",
+                        country = "US",
+                        sensitivity = ""
+                    )
                 )
             }
             // Nothing is persisted by the lookup: no save, no update. Discard == leave.
@@ -1717,7 +2405,9 @@ class ContactFormViewModelTest {
         }
 
     @Test
-    fun `an unsaved edit to the row is what gets geocoded`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `an unsaved edit to the row is what gets geocoded`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = editVm(streetAddress("a1", "1 Main St"))
         vm.onAddressesChange(listOf(streetAddress("a1", "99 Edited Rd")))
         coEvery { mapRepository.geocodeAddressDraft(5, any()) } returns draftResult("geo:1,2")
@@ -1725,7 +2415,9 @@ class ContactFormViewModelTest {
         vm.onFindCoordinates("a1")
         advanceUntilIdle()
 
-        coVerify(exactly = 1) { mapRepository.geocodeAddressDraft(5, match { it.street == "99 Edited Rd" }) }
+        coVerify(
+            exactly = 1
+        ) { mapRepository.geocodeAddressDraft(5, match { it.street == "99 Edited Rd" }) }
     }
 
     @Test
@@ -1742,7 +2434,9 @@ class ContactFormViewModelTest {
             val state = vm.uiState.value
             assertEquals("geo:7,8", state.addresses[1].coordinates)
             assertNull(state.addresses[0].coordinates)
-            coVerify(exactly = 1) { mapRepository.geocodeAddressDraft(5, match { it.street == "5 New Ave" }) }
+            coVerify(
+                exactly = 1
+            ) { mapRepository.geocodeAddressDraft(5, match { it.street == "5 New Ave" }) }
         }
 
     @Test
@@ -1774,7 +2468,7 @@ class ContactFormViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             val vm = editVm(Address(id = "a1", coordinates = "geo:1,2"))
             coEvery { mapRepository.geocodeAddressDraft(5, any()) } returns Result.failure(
-                ApiError.Client(422, "geocoding is not enabled on this server"),
+                ApiError.Client(422, "geocoding is not enabled on this server")
             )
 
             vm.onFindCoordinates("a1")
@@ -1789,7 +2483,12 @@ class ContactFormViewModelTest {
     @Test
     fun `retrying clears the previous error`() = runTest(mainDispatcherRule.testDispatcher) {
         val vm = editVm(Address(id = "a1"))
-        coEvery { mapRepository.geocodeAddressDraft(5, any()) } returns Result.failure(ApiError.Client(422, "nope"))
+        coEvery {
+            mapRepository.geocodeAddressDraft(
+                5,
+                any()
+            )
+        } returns Result.failure(ApiError.Client(422, "nope"))
         vm.onFindCoordinates("a1")
         advanceUntilIdle()
         assertEquals("nope", vm.uiState.value.geocodeErrors["a1"])
@@ -1804,7 +2503,10 @@ class ContactFormViewModelTest {
     @Test
     fun `private and secret addresses are never sent to the geocoder`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            val vm = editVm(Address(id = "p", sensitivity = "private"), Address(id = "s", sensitivity = "secret"))
+            val vm = editVm(
+                Address(id = "p", sensitivity = "private"),
+                Address(id = "s", sensitivity = "secret")
+            )
 
             vm.onFindCoordinates("p")
             vm.onFindCoordinates("s")
@@ -1873,14 +2575,16 @@ class ContactFormViewModelTest {
         }
 
     @Test
-    fun `sensitivity survives loading and saving the form`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `sensitivity survives loading and saving the form`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = editVm(
             Address(
                 id = "a1",
                 sensitivity = "secret",
                 coordinates = "geo:1,2",
-                components = listOf(AddressComponent(kind = "name", value = "1 Secret Way")),
-            ),
+                components = listOf(AddressComponent(kind = "name", value = "1 Secret Way"))
+            )
         )
 
         val saved = vm.uiState.value.toInput(null).card?.addresses?.single()
@@ -1895,16 +2599,22 @@ class ContactFormViewModelTest {
      *  returns the `ContactRecordInput` that was PUT. */
     private fun kotlinx.coroutines.test.TestScope.saveWithAmbient(
         stored: Boolean?,
-        edit: (ContactFormViewModel) -> Unit = {},
+        edit: (ContactFormViewModel) -> Unit = {}
     ): ContactRecordInput {
         val record = ContactRecordResponse(
             id = 5,
             card = Card(name = Name(full = "Dana White")),
-            crm = CRMEnvelope(howWeMet = "Work", ambient = stored),
+            crm = CRMEnvelope(howWeMet = "Work", ambient = stored)
         )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         val captured = io.mockk.slot<ContactRecordInput>()
-        coEvery { contactRepository.updateContact(5, capture(captured), any()) } returns Result.success(record)
+        coEvery {
+            contactRepository.updateContact(
+                5,
+                capture(captured),
+                any()
+            )
+        } returns Result.success(record)
 
         val vm = createViewModel(5)
         advanceUntilIdle()
@@ -1917,7 +2627,11 @@ class ContactFormViewModelTest {
 
     @Test
     fun `the form reads crm ambient into state`() = runTest(mainDispatcherRule.testDispatcher) {
-        val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")), crm = CRMEnvelope(ambient = true))
+        val record = ContactRecordResponse(
+            id = 5,
+            card = Card(name = Name(full = "Dana White")),
+            crm = CRMEnvelope(ambient = true)
+        )
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
         val vm = createViewModel(5)
@@ -1927,17 +2641,23 @@ class ContactFormViewModelTest {
     }
 
     @Test
-    fun `an untouched true flag is sent back as true`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `an untouched true flag is sent back as true`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         assertEquals(true, saveWithAmbient(stored = true).crm?.ambient)
     }
 
     @Test
-    fun `an untouched absent flag stays absent and is not invented as false`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `an untouched absent flag stays absent and is not invented as false`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         assertNull(saveWithAmbient(stored = null).crm?.ambient)
     }
 
     @Test
-    fun `an untouched explicit false is sent back as false`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `an untouched explicit false is sent back as false`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         assertEquals(false, saveWithAmbient(stored = false).crm?.ambient)
     }
 
@@ -1949,17 +2669,24 @@ class ContactFormViewModelTest {
     @Test
     fun `turning the toggle off writes an explicit false so the server clears it`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            assertEquals(false, saveWithAmbient(stored = true) { it.onAmbientChange(false) }.crm?.ambient)
+            assertEquals(
+                false,
+                saveWithAmbient(stored = true) { it.onAmbientChange(false) }.crm?.ambient
+            )
         }
 
     @Test
-    fun `saving other edits leaves the rest of crm alongside the flag`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `saving other edits leaves the rest of crm alongside the flag`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val input = saveWithAmbient(stored = true)
         assertEquals("Work", input.crm?.howWeMet)
     }
 
     @Test
-    fun `a new contact sends no flag until the toggle is used`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a new contact sends no flag until the toggle is used`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = createViewModel()
         advanceUntilIdle()
         assertNull(vm.uiState.value.toInput(null).crm?.ambient)

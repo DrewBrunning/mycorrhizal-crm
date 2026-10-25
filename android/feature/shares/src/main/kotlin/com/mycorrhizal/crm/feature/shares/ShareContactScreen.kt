@@ -48,8 +48,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.ShareFieldSections
 import com.mycorrhizal.crm.ui.R
-import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
+import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 
 /**
@@ -60,10 +60,7 @@ import com.mycorrhizal.crm.ui.components.LoadingSkeleton
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ShareContactScreen(
-    onBack: () -> Unit,
-    viewModel: ShareContactViewModel = hiltViewModel(),
-) {
+fun ShareContactScreen(onBack: () -> Unit, viewModel: ShareContactViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var recipientExpanded by remember { mutableStateOf(false) }
@@ -76,44 +73,50 @@ fun ShareContactScreen(
                     AccessibleIconButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = stringResource(R.string.cd_back),
+                            contentDescription = stringResource(R.string.cd_back)
                         )
                     }
                 },
                 title = {
-                    Text(stringResource(R.string.shares_share_dialog_title), style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        stringResource(R.string.shares_share_dialog_title),
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when {
                 state.isLoading && state.recipients.isEmpty() -> LoadingSkeleton()
+
                 // No other users on the instance (empty directory, no error): there is
                 // nobody to share with — explain rather than showing an unusable form.
                 state.recipients.isEmpty() && state.error == null && !state.isLoading ->
                     EmptyState(title = stringResource(R.string.shares_no_recipients))
+
                 state.recipients.isEmpty() && state.error != null ->
                     EmptyState(title = state.error.orEmpty())
+
                 else -> {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState())
                             .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Text(
                             text = stringResource(R.string.shares_share_dialog_description),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
 
                         RecipientField(
@@ -124,13 +127,15 @@ fun ShareContactScreen(
                             expanded = recipientExpanded,
                             onExpandedChange = { recipientExpanded = it },
                             onSelect = { username ->
-                                viewModel.selectRecipient(state.recipients.firstOrNull { it.username == username }?.id)
-                            },
+                                viewModel.selectRecipient(
+                                    state.recipients.firstOrNull { it.username == username }?.id
+                                )
+                            }
                         )
 
                         Text(
                             text = stringResource(R.string.shares_fields_label),
-                            style = MaterialTheme.typography.titleMedium,
+                            style = MaterialTheme.typography.titleMedium
                         )
                         val lockedLabel = stringResource(R.string.a11y_share_field_locked)
                         ShareFieldSections.ALL.forEach { section ->
@@ -151,16 +156,21 @@ fun ShareContactScreen(
                                     .fillMaxWidth()
                                     .toggleable(
                                         value = if (locked) false else checked,
-                                        onValueChange = { viewModel.toggleSection(section.token, it) },
+                                        onValueChange = {
+                                            viewModel.toggleSection(
+                                                section.token,
+                                                it
+                                            )
+                                        },
                                         enabled = !locked,
-                                        role = Role.Checkbox,
+                                        role = Role.Checkbox
                                     )
-                                    .semantics { if (locked) stateDescription = lockedLabel },
+                                    .semantics { if (locked) stateDescription = lockedLabel }
                             ) {
                                 Checkbox(
                                     checked = if (locked) false else checked,
                                     onCheckedChange = null,
-                                    enabled = !locked,
+                                    enabled = !locked
                                 )
                                 Text(
                                     text = stringResource(sectionLabelRes(section.token)),
@@ -169,14 +179,14 @@ fun ShareContactScreen(
                                         MaterialTheme.colorScheme.onSurfaceVariant
                                     } else {
                                         MaterialTheme.colorScheme.onSurface
-                                    },
+                                    }
                                 )
                                 if (locked) {
                                     Icon(
                                         imageVector = Icons.Outlined.Lock,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(start = 4.dp),
+                                        modifier = Modifier.padding(start = 4.dp)
                                     )
                                 }
                             }
@@ -185,27 +195,30 @@ fun ShareContactScreen(
                         if (!state.sensitiveRevealed) {
                             OutlinedButton(
                                 onClick = { showSensitiveConfirm = true },
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth()
                             ) {
                                 Icon(
                                     imageVector = Icons.Outlined.Lock,
-                                    contentDescription = null,
+                                    contentDescription = null
                                 )
-                                Text(stringResource(R.string.shares_reveal_button), modifier = Modifier.padding(start = 4.dp))
+                                Text(
+                                    stringResource(R.string.shares_reveal_button),
+                                    modifier = Modifier.padding(start = 4.dp)
+                                )
                             }
                         }
 
                         OutlinedButton(
                             onClick = viewModel::share,
                             enabled = state.canShare,
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
                                 if (state.isSharing) {
                                     stringResource(R.string.shares_sharing)
                                 } else {
                                     stringResource(R.string.shares_share_button)
-                                },
+                                }
                             )
                         }
                     }
@@ -224,7 +237,7 @@ fun ShareContactScreen(
                     onClick = {
                         viewModel.revealSensitive()
                         showSensitiveConfirm = false
-                    },
+                    }
                 ) {
                     Text(stringResource(R.string.shares_reveal_confirm_button))
                 }
@@ -233,7 +246,7 @@ fun ShareContactScreen(
                 TextButton(onClick = { showSensitiveConfirm = false }) {
                     Text(stringResource(R.string.action_cancel))
                 }
-            },
+            }
         )
     }
 
@@ -257,11 +270,11 @@ private fun RecipientField(
     selectedRecipient: String?,
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
-    onSelect: (String) -> Unit,
+    onSelect: (String) -> Unit
 ) {
     ExposedDropdownMenuBox(
         expanded = expanded,
-        onExpandedChange = onExpandedChange,
+        onExpandedChange = onExpandedChange
     ) {
         OutlinedTextField(
             value = selectedRecipient.orEmpty(),
@@ -269,16 +282,19 @@ private fun RecipientField(
             readOnly = true,
             label = { Text(stringResource(R.string.shares_recipient)) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier.fillMaxWidth().menuAnchor(),
+            modifier = Modifier.fillMaxWidth().menuAnchor()
         )
         ExposedDropdownMenu(
             expanded = expanded,
-            onDismissRequest = { onExpandedChange(false) },
+            onDismissRequest = { onExpandedChange(false) }
         ) {
             recipients.forEach { username ->
                 DropdownMenuItem(
                     text = { Text(username) },
-                    onClick = { onSelect(username); onExpandedChange(false) },
+                    onClick = {
+                        onSelect(username)
+                        onExpandedChange(false)
+                    }
                 )
             }
         }

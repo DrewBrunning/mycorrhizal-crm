@@ -19,7 +19,7 @@ data class ExportLossReport(
     val concept: String,
     val bucket: String,
     val reason: String,
-    val message: String,
+    val message: String
 )
 
 /** GET /export/preflight response — what an export with the given params would lose. */
@@ -27,5 +27,5 @@ data class ExportLossReport(
 data class ExportLossPreflightResponse(
     val format: String,
     @Json(name = "contact_count") val contactCount: Int,
-    val diagnostics: List<ExportLossReport> = emptyList(),
+    val diagnostics: List<ExportLossReport> = emptyList()
 )

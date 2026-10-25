@@ -6,9 +6,9 @@ import com.mycorrhizal.crm.model.network.ExternalActivity
 import com.mycorrhizal.crm.model.network.Gift
 import com.mycorrhizal.crm.model.network.LifeEvent
 import com.mycorrhizal.crm.model.network.Note
-import com.mycorrhizal.crm.model.network.TimelineEvent
 import com.mycorrhizal.crm.model.network.Reminder
 import com.mycorrhizal.crm.model.network.ReminderCompletion
+import com.mycorrhizal.crm.model.network.TimelineEvent
 
 /**
  * One entry in a contact's unified timeline (Phase 2 item 10). The backend
@@ -83,7 +83,7 @@ sealed interface TimelineItem {
  */
 fun ContactRecordResponse.toTimelineItems(
     completions: List<ReminderCompletion> = emptyList(),
-    externalActivities: List<ExternalActivity> = emptyList(),
+    externalActivities: List<ExternalActivity> = emptyList()
 ): List<TimelineItem> {
     val activities = activities.orEmpty()
         .filterNot { it.deleted }
@@ -92,13 +92,16 @@ fun ContactRecordResponse.toTimelineItems(
         .filterNot { it.deleted }
         .map { TimelineItem.NoteItem(it) }
     val reminders = reminders.orEmpty()
-        .filterNot { it.completed && it.recurrence == com.mycorrhizal.crm.model.network.ReminderRecurrence.ONCE }
+        .filterNot {
+            it.completed &&
+                it.recurrence == com.mycorrhizal.crm.model.network.ReminderRecurrence.ONCE
+        }
         .map { TimelineItem.ReminderItem(it) }
     val completionItems = completions.map { TimelineItem.CompletionItem(it) }
     val externalActivityItems = externalActivities.map { TimelineItem.ExternalActivityItem(it) }
 
     return (activities + notes + reminders + completionItems + externalActivityItems).sortedWith(
-        compareByDescending<TimelineItem> { it.date }.thenByDescending { it.id },
+        compareByDescending<TimelineItem> { it.date }.thenByDescending { it.id }
     )
 }
 

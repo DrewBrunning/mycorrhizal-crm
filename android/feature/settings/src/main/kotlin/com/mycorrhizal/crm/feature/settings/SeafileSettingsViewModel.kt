@@ -6,12 +6,12 @@ import com.mycorrhizal.crm.domain.repository.SeafileRepository
 import com.mycorrhizal.crm.model.network.SeafileConfigInput
 import com.mycorrhizal.crm.network.ApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class SeafileSettingsUiState(
     val isLoading: Boolean = true,
@@ -24,7 +24,7 @@ data class SeafileSettingsUiState(
     val baseUrl: String = "",
     val hasApiToken: Boolean = false,
     /** Write-only: what the user typed this session. Empty on save keeps the stored token. */
-    val apiToken: String = "",
+    val apiToken: String = ""
 ) {
     /** Issue #1775: the token is required on first connect (there is no stored token to keep). */
     val tokenRequired: Boolean get() = !hasApiToken
@@ -37,9 +37,8 @@ data class SeafileTestOutcome(val ok: Boolean, val message: String?)
  * (issue #236), minus the sync toggle/status Seafile's config has no equivalent of.
  */
 @HiltViewModel
-class SeafileSettingsViewModel @Inject constructor(
-    private val repository: SeafileRepository,
-) : ViewModel() {
+class SeafileSettingsViewModel @Inject constructor(private val repository: SeafileRepository) :
+    ViewModel() {
 
     private val _uiState = MutableStateFlow(SeafileSettingsUiState())
     val uiState: StateFlow<SeafileSettingsUiState> = _uiState.asStateFlow()
@@ -57,7 +56,7 @@ class SeafileSettingsViewModel @Inject constructor(
                         it.copy(
                             isLoading = false,
                             baseUrl = config.baseUrl.orEmpty(),
-                            hasApiToken = config.hasApiToken,
+                            hasApiToken = config.hasApiToken
                         )
                     }
                 }
@@ -67,8 +66,18 @@ class SeafileSettingsViewModel @Inject constructor(
         }
     }
 
-    fun onBaseUrlChange(value: String) = _uiState.update { it.copy(baseUrl = value, testResult = null) }
-    fun onApiTokenChange(value: String) = _uiState.update { it.copy(apiToken = value, testResult = null) }
+    fun onBaseUrlChange(value: String) = _uiState.update {
+        it.copy(
+            baseUrl = value,
+            testResult = null
+        )
+    }
+    fun onApiTokenChange(value: String) = _uiState.update {
+        it.copy(
+            apiToken = value,
+            testResult = null
+        )
+    }
 
     /** Save the current base URL/API token. An empty API token keeps the stored one. */
     fun save() {
@@ -77,7 +86,7 @@ class SeafileSettingsViewModel @Inject constructor(
             _uiState.update { it.copy(isSaving = true, saveError = null) }
             val s = _uiState.value
             repository.saveConfig(
-                SeafileConfigInput(baseUrl = s.baseUrl.trim(), apiToken = s.apiToken.trim()),
+                SeafileConfigInput(baseUrl = s.baseUrl.trim(), apiToken = s.apiToken.trim())
             )
                 .onSuccess { config ->
                     _uiState.update {
@@ -87,7 +96,7 @@ class SeafileSettingsViewModel @Inject constructor(
                             hasApiToken = config.hasApiToken,
                             // The token is write-only — clear what the user typed so it
                             // never lingers in state (mirrors web and Immich).
-                            apiToken = "",
+                            apiToken = ""
                         )
                     }
                 }
@@ -108,13 +117,16 @@ class SeafileSettingsViewModel @Inject constructor(
             _uiState.update { it.copy(isTesting = true, saveError = null, testResult = null) }
             val s = _uiState.value
             val saved = repository.saveConfig(
-                SeafileConfigInput(baseUrl = s.baseUrl.trim(), apiToken = s.apiToken.trim()),
+                SeafileConfigInput(baseUrl = s.baseUrl.trim(), apiToken = s.apiToken.trim())
             )
             if (saved.isFailure) {
                 _uiState.update {
                     it.copy(
                         isTesting = false,
-                        testResult = SeafileTestOutcome(ok = false, message = saved.exceptionOrNull().displayMessage()),
+                        testResult = SeafileTestOutcome(
+                            ok = false,
+                            message = saved.exceptionOrNull().displayMessage()
+                        )
                     )
                 }
                 return@launch
@@ -124,18 +136,30 @@ class SeafileSettingsViewModel @Inject constructor(
                 it.copy(
                     baseUrl = config.baseUrl.orEmpty(),
                     hasApiToken = config.hasApiToken,
-                    apiToken = "",
+                    apiToken = ""
                 )
             }
             repository.testConnection()
                 .onSuccess { result ->
                     _uiState.update {
-                        it.copy(isTesting = false, testResult = SeafileTestOutcome(ok = result.ok, message = result.message))
+                        it.copy(
+                            isTesting = false,
+                            testResult = SeafileTestOutcome(
+                                ok = result.ok,
+                                message = result.message
+                            )
+                        )
                     }
                 }
                 .onFailure { e ->
                     _uiState.update {
-                        it.copy(isTesting = false, testResult = SeafileTestOutcome(ok = false, message = e.displayMessage()))
+                        it.copy(
+                            isTesting = false,
+                            testResult = SeafileTestOutcome(
+                                ok = false,
+                                message = e.displayMessage()
+                            )
+                        )
                     }
                 }
         }

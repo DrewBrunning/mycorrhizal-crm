@@ -40,7 +40,7 @@ class ContactFormDirtyStateTest {
     private val authRepository = mockk<AuthRepository>()
     private val mapRepository = mockk<MapRepository>()
     private val activeProfile = MutableStateFlow<ServerProfile?>(
-        ServerProfile("r1", ServerProfileKind.Remote("https://home.example"), "Home"),
+        ServerProfile("r1", ServerProfileKind.Remote("https://home.example"), "Home")
     )
     private val sessionManager = mockk<SessionManager>(relaxed = true) {
         every { observeActiveProfile() } returns activeProfile
@@ -59,7 +59,7 @@ class ContactFormDirtyStateTest {
             authRepository,
             mapRepository,
             sessionManager,
-            if (id == null) SavedStateHandle() else SavedStateHandle(mapOf("contactId" to id)),
+            if (id == null) SavedStateHandle() else SavedStateHandle(mapOf("contactId" to id))
         )
     }
 
@@ -72,7 +72,9 @@ class ContactFormDirtyStateTest {
     }
 
     @Test
-    fun `typing marks the form dirty and clearing it marks it clean again`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `typing marks the form dirty and clearing it marks it clean again`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = createViewModel()
         advanceUntilIdle()
 
@@ -84,7 +86,9 @@ class ContactFormDirtyStateTest {
     }
 
     @Test
-    fun `editing a list field, a chip and a toggle each mark the form dirty`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `editing a list field, a chip and a toggle each mark the form dirty`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = createViewModel()
         advanceUntilIdle()
 
@@ -105,7 +109,9 @@ class ContactFormDirtyStateTest {
     }
 
     @Test
-    fun `async reference loads do not make an untouched form dirty`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `async reference loads do not make an untouched form dirty`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         // Options, the active profile and the session's field toggles all arrive after the
         // baseline is taken; none of them is something the user typed.
         val vm = createViewModel()
@@ -115,7 +121,9 @@ class ContactFormDirtyStateTest {
     }
 
     @Test
-    fun `a loaded edit is clean until the user changes something`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a loaded edit is clean until the user changes something`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { contactRepository.getContact(5) } returns Result.success(
             ContactRecordResponse(
                 id = 5,
@@ -123,11 +131,11 @@ class ContactFormDirtyStateTest {
                 card = Card(
                     name = Name(
                         full = "Dana White",
-                        components = listOf(NameComponent(kind = "given", value = "Dana")),
-                    ),
+                        components = listOf(NameComponent(kind = "given", value = "Dana"))
+                    )
                 ),
-                crm = CRMEnvelope(circles = listOf("friends")),
-            ),
+                crm = CRMEnvelope(circles = listOf("friends"))
+            )
         )
 
         val vm = createViewModel(5)

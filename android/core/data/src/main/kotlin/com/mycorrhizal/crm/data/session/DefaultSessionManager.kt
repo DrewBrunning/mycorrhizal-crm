@@ -4,14 +4,14 @@ import com.mycorrhizal.crm.domain.profile.LOCAL_PROFILE_LABEL
 import com.mycorrhizal.crm.domain.profile.ServerProfile
 import com.mycorrhizal.crm.domain.profile.ServerProfileKind
 import com.mycorrhizal.crm.domain.profile.defaultProfileLabel
-import com.mycorrhizal.crm.network.LOCAL_SERVER_SENTINEL_URL
 import com.mycorrhizal.crm.domain.repository.PendingInteractionRepository
 import com.mycorrhizal.crm.domain.repository.SessionState
+import com.mycorrhizal.crm.network.LOCAL_SERVER_SENTINEL_URL
+import java.util.UUID
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
-import java.util.UUID
-import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * In-memory-backed [SessionManager] used by unit tests and as the base for
@@ -39,7 +39,7 @@ class DefaultSessionManager(
     private val profileSecretStorage: ProfileSecretStorage = NoopProfileSecretStorage,
     // Deterministic injection points for tests.
     private val newProfileId: () -> String = { UUID.randomUUID().toString() },
-    private val labelForUrl: (String) -> String = ::defaultProfileLabel,
+    private val labelForUrl: (String) -> String = ::defaultProfileLabel
 ) : SessionManager {
 
     private var cachedToken: String? = null
@@ -56,7 +56,8 @@ class DefaultSessionManager(
     suspend fun init() {
         val snapshot = prefsStorage.loadProfiles()
         cachedProfiles = snapshot.profiles
-        cachedActiveProfileId = snapshot.activeProfileId?.takeIf { id -> cachedProfiles.any { it.id == id } }
+        cachedActiveProfileId =
+            snapshot.activeProfileId?.takeIf { id -> cachedProfiles.any { it.id == id } }
 
         // ADR 0028 Decision 1: a pre-profiles install (server_url + jwt in the
         // legacy slots) becomes one active Remote profile, no re-login.
@@ -82,7 +83,7 @@ class DefaultSessionManager(
         val profile = ServerProfile(
             id = id,
             kind = ServerProfileKind.Remote(legacyUrl),
-            label = labelForUrl(legacyUrl),
+            label = labelForUrl(legacyUrl)
         )
         cachedProfiles = listOf(profile)
         cachedActiveProfileId = id
@@ -133,7 +134,7 @@ class DefaultSessionManager(
             val profile = ServerProfile(
                 id = newProfileId(),
                 kind = ServerProfileKind.Remote(trimmed),
-                label = labelForUrl(trimmed),
+                label = labelForUrl(trimmed)
             )
             cachedProfiles = cachedProfiles + profile
             cachedActiveProfileId = profile.id
@@ -155,7 +156,7 @@ class DefaultSessionManager(
                 if (profile.id == active.id) {
                     profile.copy(
                         kind = ServerProfileKind.Remote(trimmed),
-                        label = if (labelIsDerived) labelForUrl(trimmed) else profile.label,
+                        label = if (labelIsDerived) labelForUrl(trimmed) else profile.label
                     )
                 } else {
                     profile
@@ -174,7 +175,7 @@ class DefaultSessionManager(
             val profile = ServerProfile(
                 id = newProfileId(),
                 kind = ServerProfileKind.Remote(serverUrl.trim().trimEnd('/')),
-                label = labelForUrl(serverUrl.trim().trimEnd('/')),
+                label = labelForUrl(serverUrl.trim().trimEnd('/'))
             )
             cachedProfiles = cachedProfiles + profile
             cachedActiveProfileId = profile.id
@@ -187,7 +188,7 @@ class DefaultSessionManager(
         refreshProfiles()
         sessionState.value = state.copy(
             serverUrl = profileBaseUrl(activeProfileSync()),
-            isLoggedIn = true,
+            isLoggedIn = true
         )
     }
 
@@ -202,7 +203,7 @@ class DefaultSessionManager(
             isAdmin = profile.isAdmin ?: current.isAdmin,
             language = profile.language ?: current.language,
             dateFormat = profile.dateFormat ?: current.dateFormat,
-            enabledContactFields = profile.enabledContactFields ?: current.enabledContactFields,
+            enabledContactFields = profile.enabledContactFields ?: current.enabledContactFields
         )
     }
 
@@ -272,7 +273,7 @@ class DefaultSessionManager(
         val profile = ServerProfile(
             id = newProfileId(),
             kind = ServerProfileKind.Remote(trimmed),
-            label = label.ifBlank { labelForUrl(trimmed) },
+            label = label.ifBlank { labelForUrl(trimmed) }
         )
         cachedProfiles = cachedProfiles + profile
         persistProfiles()
@@ -285,7 +286,7 @@ class DefaultSessionManager(
         val profile = existing ?: ServerProfile(
             id = newProfileId(),
             kind = ServerProfileKind.Local,
-            label = LOCAL_PROFILE_LABEL,
+            label = LOCAL_PROFILE_LABEL
         )
         if (existing == null) {
             cachedProfiles = cachedProfiles + profile
@@ -310,7 +311,15 @@ class DefaultSessionManager(
     override suspend fun renameProfile(id: String, label: String) {
         if (label.isBlank()) return
         val current = cachedProfiles.find { it.id == id } ?: return
-        cachedProfiles = cachedProfiles.map { if (it.id == id) it.copy(label = label.trim()) else it }
+        cachedProfiles = cachedProfiles.map {
+            if (it.id == id) {
+                it.copy(
+                    label = label.trim()
+                )
+            } else {
+                it
+            }
+        }
         persistProfiles()
         refreshProfiles()
         // Keep the active-profile flow in sync when the active one was renamed.
@@ -349,8 +358,7 @@ class DefaultSessionManager(
         refreshProfiles()
     }
 
-    override suspend fun pendingInteractionCount(): Int =
-        pendingInteractions?.unsynced()?.size ?: 0
+    override suspend fun pendingInteractionCount(): Int = pendingInteractions?.unsynced()?.size ?: 0
 
     override suspend fun switchProfile(id: String, discardPending: Boolean): SwitchProfileResult {
         val target = cachedProfiles.find { it.id == id } ?: return SwitchProfileResult.Switched
@@ -379,7 +387,7 @@ class DefaultSessionManager(
         //    because the server URL changed.
         sessionState.value = SessionState(
             serverUrl = profileBaseUrl(target),
-            isLoggedIn = !cachedToken.isNullOrBlank(),
+            isLoggedIn = !cachedToken.isNullOrBlank()
         )
         return SwitchProfileResult.Switched
     }
@@ -397,7 +405,15 @@ class DefaultSessionManager(
         // profile is never a read-only archive.
         if (current.kind !is ServerProfileKind.Local) return
         if (current.archived == archived) return
-        cachedProfiles = cachedProfiles.map { if (it.id == id) it.copy(archived = archived) else it }
+        cachedProfiles = cachedProfiles.map {
+            if (it.id == id) {
+                it.copy(
+                    archived = archived
+                )
+            } else {
+                it
+            }
+        }
         persistProfiles()
         refreshProfiles()
     }
@@ -408,7 +424,7 @@ class DefaultSessionManager(
 
     private suspend fun persistProfiles() {
         prefsStorage.saveProfiles(
-            ProfilesSnapshot(profiles = cachedProfiles, activeProfileId = cachedActiveProfileId),
+            ProfilesSnapshot(profiles = cachedProfiles, activeProfileId = cachedActiveProfileId)
         )
     }
 
@@ -434,7 +450,7 @@ class DefaultSessionManager(
     private fun refreshState() {
         sessionState.value = SessionState(
             serverUrl = profileBaseUrl(activeProfileSync()),
-            isLoggedIn = !cachedToken.isNullOrBlank(),
+            isLoggedIn = !cachedToken.isNullOrBlank()
         )
     }
 }

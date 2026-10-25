@@ -27,7 +27,7 @@ class ApiClientTimelineTest {
         server.start()
         val okHttp = OkHttpClient.Builder()
             .addInterceptor(
-                BaseUrlInterceptor(BaseUrlProvider { server.url("/").toString().trimEnd('/') }),
+                BaseUrlInterceptor(BaseUrlProvider { server.url("/").toString().trimEnd('/') })
             )
             .build()
         val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
@@ -40,7 +40,11 @@ class ApiClientTimelineTest {
     }
 
     private fun enqueueEmpty() {
-        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"items": [], "next_cursor": "", "limit": 25}"""))
+        server.enqueue(
+            MockResponse().setResponseCode(
+                200
+            ).setBody("""{"items": [], "next_cursor": "", "limit": 25}""")
+        )
     }
 
     @Test
@@ -63,12 +67,12 @@ class ApiClientTimelineTest {
             types = setOf(TimelineTypes.GIFT, TimelineTypes.NOTE),
             bucket = TimelineBuckets.LAST_30_DAYS,
             cursor = "abc123",
-            limit = 10,
+            limit = 10
         )
 
         assertEquals(
             "/api/v1/contacts/7/timeline?limit=10&type=note%2Cgift&bucket=last_30_days&cursor=abc123",
-            server.takeRequest().path,
+            server.takeRequest().path
         )
     }
 
@@ -76,7 +80,12 @@ class ApiClientTimelineTest {
     fun `all six types and the all bucket are the same query as no filter`() = runBlocking {
         enqueueEmpty()
 
-        client.getContactTimeline(7, types = TimelineTypes.ALL, bucket = TimelineBuckets.ALL, cursor = "")
+        client.getContactTimeline(
+            7,
+            types = TimelineTypes.ALL,
+            bucket = TimelineBuckets.ALL,
+            cursor = ""
+        )
 
         assertEquals("/api/v1/contacts/7/timeline?limit=25", server.takeRequest().path)
     }
@@ -105,8 +114,8 @@ class ApiClientTimelineTest {
                   "next_cursor": "next-page-token",
                   "limit": 25
                 }
-                """.trimIndent(),
-            ),
+                """.trimIndent()
+            )
         )
 
         val page = client.getContactTimeline(7).getOrThrow()
@@ -125,28 +134,33 @@ class ApiClientTimelineTest {
     }
 
     @Test
-    fun `an empty next_cursor means the last page and unknown event types are skipped`() = runBlocking {
-        server.enqueue(
-            MockResponse().setResponseCode(200).setBody(
-                """
+    fun `an empty next_cursor means the last page and unknown event types are skipped`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody(
+                    """
                 {"items": [
                    {"type": "hologram", "id": "x", "date": "2026-09-01T10:00:00Z", "data": {"id": "x"}},
                    {"type": "note", "id": "1", "date": "2026-09-01T10:00:00Z", "data": {"ID": 1, "content": "kept"}}
                  ], "next_cursor": "", "limit": 25}
-                """.trimIndent(),
-            ),
-        )
+                    """.trimIndent()
+                )
+            )
 
-        val page = client.getContactTimeline(7).getOrThrow()
+            val page = client.getContactTimeline(7).getOrThrow()
 
-        assertEquals(1, page.items.size)
-        assertEquals("kept", page.items[0].note?.content)
-        assertNull(page.nextCursor)
-    }
+            assertEquals(1, page.items.size)
+            assertEquals("kept", page.items[0].note?.content)
+            assertNull(page.nextCursor)
+        }
 
     @Test
     fun `a null items array parses as an empty page`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"items": null, "next_cursor": "", "limit": 25}"""))
+        server.enqueue(
+            MockResponse().setResponseCode(
+                200
+            ).setBody("""{"items": null, "next_cursor": "", "limit": 25}""")
+        )
 
         val page = client.getContactTimeline(7).getOrThrow()
 
@@ -157,7 +171,9 @@ class ApiClientTimelineTest {
     fun `a 400 for a bad filter maps to Client 400`() = runBlocking {
         server.enqueue(
             MockResponse().setResponseCode(400)
-                .setBody("""{"error":{"code":"invalid_input","message":"unknown timeline type"}}"""),
+                .setBody(
+                    """{"error":{"code":"invalid_input","message":"unknown timeline type"}}"""
+                )
         )
 
         val result = client.getContactTimeline(7, types = setOf("bogus"))
@@ -168,7 +184,11 @@ class ApiClientTimelineTest {
 
     @Test
     fun `a 404 maps to Client 404`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(404).setBody("""{"error":{"code":"not_found","message":"Contact not found"}}"""))
+        server.enqueue(
+            MockResponse().setResponseCode(
+                404
+            ).setBody("""{"error":{"code":"not_found","message":"Contact not found"}}""")
+        )
 
         val result = client.getContactTimeline(999)
 

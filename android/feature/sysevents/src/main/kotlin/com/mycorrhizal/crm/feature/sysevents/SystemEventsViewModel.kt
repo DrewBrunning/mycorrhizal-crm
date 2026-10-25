@@ -9,6 +9,7 @@ import com.mycorrhizal.crm.model.network.SubsystemHealth
 import com.mycorrhizal.crm.model.network.SystemEvent
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,7 +17,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /**
  * The fetch window grows in [DEFAULT_LIMIT] steps up to [MAX_LIMIT] — the
@@ -64,7 +64,7 @@ data class SystemEventsUiState(
      * non-empty it is used alone — every other mutator clears it.
      */
     val eventIds: List<Long> = emptyList(),
-    val limit: Int = DEFAULT_LIMIT,
+    val limit: Int = DEFAULT_LIMIT
 ) {
     val canLoadMore: Boolean
         get() = events.size >= limit && limit < MAX_LIMIT
@@ -75,9 +75,8 @@ data class SystemEventsUiState(
 }
 
 @HiltViewModel
-class SystemEventsViewModel @Inject constructor(
-    private val repository: SystemEventRepository,
-) : ViewModel() {
+class SystemEventsViewModel @Inject constructor(private val repository: SystemEventRepository) :
+    ViewModel() {
 
     private val _uiState = MutableStateFlow(SystemEventsUiState())
     val uiState: StateFlow<SystemEventsUiState> = _uiState.asStateFlow()
@@ -104,7 +103,7 @@ class SystemEventsViewModel @Inject constructor(
                 onSuccess = { response ->
                     _uiState.update { it.copy(jobRunHealth = response.jobs) }
                 },
-                onError = { },
+                onError = { }
             )
         }
     }
@@ -120,7 +119,7 @@ class SystemEventsViewModel @Inject constructor(
                 onSuccess = { response ->
                     _uiState.update { it.copy(subsystemHealth = response.subsystems) }
                 },
-                onError = { },
+                onError = { }
             )
         }
     }
@@ -135,7 +134,7 @@ class SystemEventsViewModel @Inject constructor(
                 onSuccess = { response ->
                     _uiState.update { it.copy(errorBuckets = response.buckets) }
                 },
-                onError = { },
+                onError = { }
             )
         }
     }
@@ -151,7 +150,7 @@ class SystemEventsViewModel @Inject constructor(
                 eventType = state.eventType,
                 correlationId = state.correlationId.takeIf { it.isNotBlank() },
                 ids = state.eventIds.takeIf { it.isNotEmpty() },
-                limit = state.limit,
+                limit = state.limit
             )
             if (requestRef != requestId) return@launch
             result.foldApiError(
@@ -160,7 +159,7 @@ class SystemEventsViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -208,7 +207,7 @@ class SystemEventsViewModel @Inject constructor(
                 eventType = null,
                 correlationId = "",
                 eventIds = ids,
-                limit = MAX_LIMIT,
+                limit = MAX_LIMIT
             )
         }
         load()
@@ -223,7 +222,13 @@ class SystemEventsViewModel @Inject constructor(
             if (trimmed == _uiState.value.correlationId && _uiState.value.eventIds.isEmpty()) {
                 return@launch
             }
-            _uiState.update { it.copy(correlationId = trimmed, eventIds = emptyList(), limit = DEFAULT_LIMIT) }
+            _uiState.update {
+                it.copy(
+                    correlationId = trimmed,
+                    eventIds = emptyList(),
+                    limit = DEFAULT_LIMIT
+                )
+            }
             load()
         }
     }
@@ -242,7 +247,7 @@ class SystemEventsViewModel @Inject constructor(
                 eventType = null,
                 correlationId = correlationId,
                 eventIds = emptyList(),
-                limit = MAX_LIMIT,
+                limit = MAX_LIMIT
             )
         }
         load()
@@ -258,7 +263,7 @@ class SystemEventsViewModel @Inject constructor(
                 eventType = null,
                 correlationId = "",
                 eventIds = emptyList(),
-                limit = DEFAULT_LIMIT,
+                limit = DEFAULT_LIMIT
             )
         }
         load()

@@ -7,7 +7,7 @@ import com.squareup.moshi.JsonClass
 data class ColumnMapping(
     @Json(name = "csv_column") val csvColumn: String = "",
     @Json(name = "contact_field") val contactField: String = "",
-    val group: Int = 0,
+    val group: Int = 0
 )
 
 @JsonClass(generateAdapter = true)
@@ -16,7 +16,7 @@ data class ImportUploadResponse(
     val headers: List<String> = emptyList(),
     @Json(name = "suggested_mappings") val suggestedMappings: List<ColumnMapping> = emptyList(),
     @Json(name = "row_count") val rowCount: Int = 0,
-    @Json(name = "sample_data") val sampleData: List<List<String>> = emptyList(),
+    @Json(name = "sample_data") val sampleData: List<List<String>> = emptyList()
 )
 
 /**
@@ -28,7 +28,7 @@ data class ImportUploadResponse(
 @JsonClass(generateAdapter = true)
 data class ImportPreviewRequest(
     @Json(name = "session_id") val sessionId: String,
-    val mappings: List<ColumnMapping>,
+    val mappings: List<ColumnMapping>
 )
 
 @JsonClass(generateAdapter = true)
@@ -38,7 +38,7 @@ data class DuplicateMatch(
     @Json(name = "existing_lastname") val existingLastname: String? = null,
     @Json(name = "existing_email") val existingEmail: String? = null,
     @Json(name = "existing_phone") val existingPhone: String? = null,
-    @Json(name = "match_reason") val matchReason: String? = null,
+    @Json(name = "match_reason") val matchReason: String? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -46,14 +46,11 @@ data class ImportScalarChange(
     val field: String = "",
     val label: String = "",
     val old: String = "",
-    val new: String = "",
+    val new: String = ""
 )
 
 @JsonClass(generateAdapter = true)
-data class ImportAddedValue(
-    val kind: String = "",
-    val value: String = "",
-)
+data class ImportAddedValue(val kind: String = "", val value: String = "")
 
 /**
  * T96: exactly what the "Merge" (update) action will change on the matched
@@ -64,7 +61,7 @@ data class ImportAddedValue(
 @JsonClass(generateAdapter = true)
 data class ImportMergeDiff(
     val updated: List<ImportScalarChange> = emptyList(),
-    val added: List<ImportAddedValue> = emptyList(),
+    val added: List<ImportAddedValue> = emptyList()
 )
 
 @JsonClass(generateAdapter = true)
@@ -76,7 +73,7 @@ data class ImportRowPreview(
     @Json(name = "suggested_action") val suggestedAction: String = "add",
     val diagnostics: List<String>? = null,
     @Json(name = "merge_diff") val mergeDiff: ImportMergeDiff? = null,
-    @Json(name = "batch_duplicate_of") val batchDuplicateOf: Int? = null,
+    @Json(name = "batch_duplicate_of") val batchDuplicateOf: Int? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -86,26 +83,21 @@ data class ImportPreviewResponse(
     @Json(name = "total_rows") val totalRows: Int = 0,
     @Json(name = "valid_rows") val validRows: Int = 0,
     @Json(name = "duplicate_count") val duplicateCount: Int = 0,
-    @Json(name = "error_count") val errorCount: Int = 0,
+    @Json(name = "error_count") val errorCount: Int = 0
 )
 
 @JsonClass(generateAdapter = true)
-data class RowImportAction(
-    @Json(name = "row_index") val rowIndex: Int,
-    val action: String,
-)
+data class RowImportAction(@Json(name = "row_index") val rowIndex: Int, val action: String)
 
 @JsonClass(generateAdapter = true)
 data class ImportConfirmRequest(
     @Json(name = "session_id") val sessionId: String,
-    val actions: List<RowImportAction>,
+    val actions: List<RowImportAction>
 )
 
 /** T96: request body for the records-import endpoint (device-contacts path). */
 @JsonClass(generateAdapter = true)
-data class ImportRecordsRequest(
-    val records: List<ContactRecordInput>,
-)
+data class ImportRecordsRequest(val records: List<ContactRecordInput>)
 
 @JsonClass(generateAdapter = true)
 data class ImportResult(
@@ -113,7 +105,7 @@ data class ImportResult(
     val created: Int = 0,
     val updated: Int = 0,
     val skipped: Int = 0,
-    val errors: List<String> = emptyList(),
+    val errors: List<String> = emptyList()
 )
 
 /**
@@ -130,7 +122,7 @@ data class ImportRun(
     val updated: Int = 0,
     val skipped: Int = 0,
     @Json(name = "error_count") val errorCount: Int = 0,
-    @Json(name = "created_at") val createdAt: String? = null,
+    @Json(name = "created_at") val createdAt: String? = null
 )
 
 // --- Mycorrhizal account-bundle import source (issues #1260/#1264, ADR 0028) ---
@@ -149,20 +141,18 @@ data class MycorrhizalBundleCounts(
     val gifts: Int = 0,
     val households: Int = 0,
     val circles: Int = 0,
-    val tags: Int = 0,
+    val tags: Int = 0
 )
 
 @JsonClass(generateAdapter = true)
 data class MycorrhizalUploadResponse(
     @Json(name = "session_id") val sessionId: String = "",
     val version: Int = 0,
-    val totals: MycorrhizalBundleCounts = MycorrhizalBundleCounts(),
+    val totals: MycorrhizalBundleCounts = MycorrhizalBundleCounts()
 )
 
 @JsonClass(generateAdapter = true)
-data class MycorrhizalFetchRequest(
-    @Json(name = "session_id") val sessionId: String,
-)
+data class MycorrhizalFetchRequest(@Json(name = "session_id") val sessionId: String)
 
 /** Outcome of a finished source import: the shared [ImportResult] counts plus graph-entity counts. */
 @JsonClass(generateAdapter = true)
@@ -175,7 +165,7 @@ data class SourceImportResult(
     @Json(name = "relationships_created") val relationshipsCreated: Int = 0,
     @Json(name = "notes_created") val notesCreated: Int = 0,
     @Json(name = "activities_created") val activitiesCreated: Int = 0,
-    @Json(name = "reminders_created") val remindersCreated: Int = 0,
+    @Json(name = "reminders_created") val remindersCreated: Int = 0
 )
 
 /**
@@ -190,7 +180,7 @@ data class SourceImportStatus(
     @Json(name = "phase_done") val phaseDone: Int = 0,
     @Json(name = "phase_total") val phaseTotal: Int = 0,
     val error: String? = null,
-    val result: SourceImportResult? = null,
+    val result: SourceImportResult? = null
 ) {
     val isReady: Boolean get() = phase == "ready"
     val isDone: Boolean get() = phase == "done"
@@ -203,7 +193,7 @@ data class SourceImportIssue(
     val record: String = "",
     val field: String = "",
     val category: String = "",
-    val message: String = "",
+    val message: String = ""
 )
 
 @JsonClass(generateAdapter = true)
@@ -214,5 +204,5 @@ data class SourceImportPreviewResponse(
     @Json(name = "valid_rows") val validRows: Int = 0,
     @Json(name = "duplicate_count") val duplicateCount: Int = 0,
     @Json(name = "error_count") val errorCount: Int = 0,
-    @Json(name = "loss_report") val lossReport: List<SourceImportIssue> = emptyList(),
+    @Json(name = "loss_report") val lossReport: List<SourceImportIssue> = emptyList()
 )

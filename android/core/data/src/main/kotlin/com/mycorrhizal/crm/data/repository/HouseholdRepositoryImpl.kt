@@ -24,7 +24,7 @@ import javax.inject.Inject
 class HouseholdRepositoryImpl @Inject constructor(
     private val apiClient: ApiClient,
     private val householdDao: CachedHouseholdDao,
-    private val memberDao: CachedHouseholdMemberDao,
+    private val memberDao: CachedHouseholdMemberDao
 ) : HouseholdRepository {
 
     override suspend fun list(cursor: String?, limit: Int): Result<List<Household>> {
@@ -73,14 +73,18 @@ class HouseholdRepositoryImpl @Inject constructor(
         return result
     }
 
-    override suspend fun addMember(id: String, vcardUid: String, role: String?): Result<HouseholdMember> {
+    override suspend fun addMember(
+        id: String,
+        vcardUid: String,
+        role: String?
+    ): Result<HouseholdMember> {
         val result = apiClient.addHouseholdMember(
             id,
             // role must never serialize as null: the backend's member DTOs bind
             // `role` into a Go `string`, which rejects an explicit JSON null
             // with a 400. "" means "no role" (and the backend's `omitempty`
             // drops it entirely on add).
-            HouseholdMemberInput(memberVCardUid = vcardUid, role = role.orEmpty()),
+            HouseholdMemberInput(memberVCardUid = vcardUid, role = role.orEmpty())
         )
         result.getOrNull()?.let { memberDao.upsertAll(listOf(it.toCached())) }
         return result
@@ -101,7 +105,7 @@ class HouseholdRepositoryImpl @Inject constructor(
             // Same null-role rule as addMember: the backend's PATCH binds role
             // into a plain Go string, so an explicit JSON null is a 400. ""
             // clears the role (matches web's `role: ''`).
-            HouseholdMemberInput(memberVCardUid = vcardUid, role = role.orEmpty()),
+            HouseholdMemberInput(memberVCardUid = vcardUid, role = role.orEmpty())
         )
         if (result.isSuccess) {
             // Re-pull the member rows so the cache reflects the new role.
@@ -119,20 +123,22 @@ class HouseholdRepositoryImpl @Inject constructor(
     override suspend fun suggestAddressHouseholds(): Result<List<AddressHouseholdSuggestion>> =
         apiClient.suggestAddressHouseholds().map { it.suggestions }
 
-    override suspend fun acceptAddressSuggestion(input: AcceptHouseholdSuggestionInput): Result<Household> =
-        apiClient.acceptHouseholdSuggestion(input).map { household ->
-            householdDao.upsert(household.toCached())
-            household
-        }
+    override suspend fun acceptAddressSuggestion(
+        input: AcceptHouseholdSuggestionInput
+    ): Result<Household> = apiClient.acceptHouseholdSuggestion(input).map { household ->
+        householdDao.upsert(household.toCached())
+        household
+    }
 
-    override suspend fun dismissAddressSuggestion(input: DismissHouseholdSuggestionInput): Result<Unit> =
-        apiClient.dismissHouseholdSuggestion(input)
+    override suspend fun dismissAddressSuggestion(
+        input: DismissHouseholdSuggestionInput
+    ): Result<Unit> = apiClient.dismissHouseholdSuggestion(input)
 
     private fun Household.toCached(): CachedHousehold = CachedHousehold(
         id = id,
         name = name,
         type = type,
-        updatedAt = updatedAt,
+        updatedAt = updatedAt
     )
 
     private fun HouseholdMember.toCached(): CachedHouseholdMember = CachedHouseholdMember(
@@ -141,6 +147,6 @@ class HouseholdRepositoryImpl @Inject constructor(
         memberVCardUid = memberVCardUid,
         role = role,
         since = since,
-        until = until,
+        until = until
     )
 }

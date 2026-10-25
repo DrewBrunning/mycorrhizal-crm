@@ -25,16 +25,14 @@ import androidx.core.net.toUri
 object FieldActions {
 
     /** `ACTION_DIAL` — opens the dialer pre-filled with [phoneNumber]. */
-    fun dialIntent(phoneNumber: String): Intent =
-        Intent(Intent.ACTION_DIAL).apply {
-            data = "tel:${phoneNumber.trim()}".toUri()
-        }
+    fun dialIntent(phoneNumber: String): Intent = Intent(Intent.ACTION_DIAL).apply {
+        data = "tel:${phoneNumber.trim()}".toUri()
+    }
 
     /** `ACTION_SENDTO smsto:` — opens the SMS app with [phoneNumber] pre-filled. */
-    fun smsIntent(phoneNumber: String): Intent =
-        Intent(Intent.ACTION_SENDTO).apply {
-            data = "smsto:${phoneNumber.trim()}".toUri()
-        }
+    fun smsIntent(phoneNumber: String): Intent = Intent(Intent.ACTION_SENDTO).apply {
+        data = "smsto:${phoneNumber.trim()}".toUri()
+    }
 
     /**
      * `ACTION_SENDTO smsto:` — opens the SMS app with all of [numbers]
@@ -58,22 +56,19 @@ object FieldActions {
         }
 
     /** `ACTION_SENDTO mailto:` — opens the mail app with [address] pre-filled. */
-    fun emailIntent(address: String): Intent =
-        Intent(Intent.ACTION_SENDTO).apply {
-            data = "mailto:${address.trim()}".toUri()
-        }
+    fun emailIntent(address: String): Intent = Intent(Intent.ACTION_SENDTO).apply {
+        data = "mailto:${address.trim()}".toUri()
+    }
 
     /** `ACTION_VIEW geo:` — opens a maps app for [formattedAddress]. */
-    fun mapIntent(formattedAddress: String): Intent =
-        Intent(Intent.ACTION_VIEW).apply {
-            data = "geo:0,0?q=${Uri.encode(formattedAddress.trim())}".toUri()
-        }
+    fun mapIntent(formattedAddress: String): Intent = Intent(Intent.ACTION_VIEW).apply {
+        data = "geo:0,0?q=${Uri.encode(formattedAddress.trim())}".toUri()
+    }
 
     /** `ACTION_VIEW` — opens [url] in the browser. */
-    fun browserIntent(url: String): Intent =
-        Intent(Intent.ACTION_VIEW).apply {
-            data = url.trim().toUri()
-        }
+    fun browserIntent(url: String): Intent = Intent(Intent.ACTION_VIEW).apply {
+        data = url.trim().toUri()
+    }
 
     /** Copies [text] to the system clipboard (no permission needed). */
     fun copyText(context: Context, label: String, text: String) {

@@ -8,12 +8,12 @@ import com.mycorrhizal.crm.model.network.ContactAttachment
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /**
  * N7 contact attachments (web-parity for the contact-detail Attachments
@@ -24,7 +24,7 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class AttachmentsViewModel @Inject constructor(
-    private val attachmentRepository: AttachmentRepository,
+    private val attachmentRepository: AttachmentRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AttachmentUiState())
@@ -50,13 +50,13 @@ class AttachmentsViewModel @Inject constructor(
                         it.copy(
                             isLoading = false,
                             attachments = response.attachments,
-                            total = response.total,
+                            total = response.total
                         )
                     }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -78,7 +78,7 @@ class AttachmentsViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isUploading = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -95,13 +95,13 @@ class AttachmentsViewModel @Inject constructor(
                         state.copy(
                             deletingId = null,
                             attachments = remaining,
-                            total = (state.total - 1).coerceAtLeast(0),
+                            total = (state.total - 1).coerceAtLeast(0)
                         )
                     }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(deletingId = null, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -120,13 +120,13 @@ class AttachmentsViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             downloadingId = null,
-                            downloaded = attachment to bytes,
+                            downloaded = attachment to bytes
                         )
                     }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(downloadingId = null, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -167,5 +167,5 @@ data class AttachmentUiState(
     val downloaded: Pair<ContactAttachment, ByteArray>? = null,
     /** A pre-read size rejection (e.g. over the server cap) — see [AttachmentsViewModel.rejectUpload]. */
     @StringRes val uploadErrorRes: Int? = null,
-    val error: String? = null,
+    val error: String? = null
 )

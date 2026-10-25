@@ -1,18 +1,18 @@
 package com.mycorrhizal.crm
 
 import android.app.Application
-import android.net.Uri
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
-import org.json.JSONObject
 import android.content.Intent
+import android.net.Uri
 import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.feature.tracking.NotificationBuilder
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
+import org.json.JSONObject
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -36,7 +36,7 @@ class NotificationDeepLinkRouteTest {
     fun `a nested activities deep link maps to the activities route`() {
         assertEquals(
             "contacts/7/activities",
-            deepLinkRoute(Uri.parse("mycorrhizal://contacts/7/activities")),
+            deepLinkRoute(Uri.parse("mycorrhizal://contacts/7/activities"))
         )
     }
 
@@ -95,13 +95,18 @@ class NotificationDeepLinkRouteTest {
         assertNull(deepLinkRoute(Uri.parse("mycorrhizal://circles/a%2Fb")))
         assertNull(deepLinkRoute(Uri.parse("mycorrhizal://circles/a b")))
         assertNull(deepLinkRoute(Uri.parse("mycorrhizal://circles/" + "a".repeat(129))))
-        assertEquals("circles/" + "a".repeat(128), deepLinkRoute(Uri.parse("mycorrhizal://circles/" + "a".repeat(128))))
+        assertEquals(
+            "circles/" + "a".repeat(128),
+            deepLinkRoute(Uri.parse("mycorrhizal://circles/" + "a".repeat(128)))
+        )
         assertNull(deepLinkRoute(Uri.parse("mycorrhizal://home/extra")))
     }
 
     @Test
     fun `payload-less intent does not erase the consumed link record`() {
-        val a = launchIntentIdentity(Intent(Intent.ACTION_VIEW, Uri.parse("mycorrhizal://contacts/1")))
+        val a = launchIntentIdentity(
+            Intent(Intent.ACTION_VIEW, Uri.parse("mycorrhizal://contacts/1"))
+        )
         var consumed: String? = null
         consumed = nextConsumedLaunchIdentity(consumed, a) // consume A
         consumed = nextConsumedLaunchIdentity(consumed, null) // launcher tap via onNewIntent
@@ -126,8 +131,12 @@ class NotificationDeepLinkRouteTest {
     // Issue #1654: restored-from-saved-state delivery.
     @Test
     fun `restored activity handles a different link but not the consumed one`() {
-        val a = launchIntentIdentity(Intent(Intent.ACTION_VIEW, Uri.parse("mycorrhizal://contacts/1")))
-        val b = launchIntentIdentity(Intent(Intent.ACTION_VIEW, Uri.parse("mycorrhizal://contacts/2")))
+        val a = launchIntentIdentity(
+            Intent(Intent.ACTION_VIEW, Uri.parse("mycorrhizal://contacts/1"))
+        )
+        val b = launchIntentIdentity(
+            Intent(Intent.ACTION_VIEW, Uri.parse("mycorrhizal://contacts/2"))
+        )
         assertTrue(shouldHandleLaunchIntent(false, 0, identity = b, consumedIdentity = a))
         assertFalse(shouldHandleLaunchIntent(false, 0, identity = a, consumedIdentity = a))
         // nothing consumed yet before the save (e.g. first link arrives with a restore)
@@ -135,7 +144,12 @@ class NotificationDeepLinkRouteTest {
         // a stripped / payload-less intent is never handled; history reopen never is
         assertFalse(shouldHandleLaunchIntent(false, 0, identity = null, consumedIdentity = a))
         assertFalse(
-            shouldHandleLaunchIntent(false, Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY, identity = b, consumedIdentity = a),
+            shouldHandleLaunchIntent(
+                false,
+                Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY,
+                identity = b,
+                consumedIdentity = a
+            )
         )
     }
 
@@ -143,11 +157,20 @@ class NotificationDeepLinkRouteTest {
     fun `launchIntentIdentity distinguishes sources and is null without a payload`() {
         assertNull(launchIntentIdentity(null))
         assertNull(launchIntentIdentity(Intent(Intent.ACTION_MAIN)))
-        val n = launchIntentIdentity(Intent().putExtra(NotificationBuilder.EXTRA_DEEP_LINK, "mycorrhizal://contacts/1"))
-        val v = launchIntentIdentity(Intent(Intent.ACTION_VIEW, Uri.parse("mycorrhizal://contacts/1")))
-        val shared = launchIntentIdentity(Intent().putExtra(Intent.EXTRA_TEXT, "t").putExtra(Intent.EXTRA_SUBJECT, "s"))
+        val n = launchIntentIdentity(
+            Intent().putExtra(NotificationBuilder.EXTRA_DEEP_LINK, "mycorrhizal://contacts/1")
+        )
+        val v = launchIntentIdentity(
+            Intent(Intent.ACTION_VIEW, Uri.parse("mycorrhizal://contacts/1"))
+        )
+        val shared = launchIntentIdentity(
+            Intent().putExtra(Intent.EXTRA_TEXT, "t").putExtra(Intent.EXTRA_SUBJECT, "s")
+        )
         assertEquals(3, setOf(n, v, shared).size)
-        assertEquals(v, launchIntentIdentity(Intent(Intent.ACTION_VIEW, Uri.parse("mycorrhizal://contacts/1"))))
+        assertEquals(
+            v,
+            launchIntentIdentity(Intent(Intent.ACTION_VIEW, Uri.parse("mycorrhizal://contacts/1")))
+        )
     }
 
     @Test
@@ -157,7 +180,9 @@ class NotificationDeepLinkRouteTest {
         assertFalse(shouldHandleLaunchIntent(savedStateIsNull = false, flags = 0))
         assertFalse(shouldHandleLaunchIntent(savedStateIsNull = true, flags = history))
         assertFalse(shouldHandleLaunchIntent(savedStateIsNull = false, flags = history))
-        assertTrue(shouldHandleLaunchIntent(savedStateIsNull = true, flags = Intent.FLAG_ACTIVITY_NEW_TASK))
+        assertTrue(
+            shouldHandleLaunchIntent(savedStateIsNull = true, flags = Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
     }
 
     @Test
@@ -176,7 +201,9 @@ class NotificationDeepLinkRouteTest {
         assertEquals(link, kept.value)
 
         val cleared = MutableStateFlow<PendingDeepLink?>(link)
-        cleared.clearWhenLoggedOut(flowOf(SessionState(isLoggedIn = true), SessionState(isLoggedIn = false)))
+        cleared.clearWhenLoggedOut(
+            flowOf(SessionState(isLoggedIn = true), SessionState(isLoggedIn = false))
+        )
         assertNull(cleared.value)
     }
 
@@ -184,13 +211,28 @@ class NotificationDeepLinkRouteTest {
     fun `search links sanitise the query and reject extra path or a foreign host`() {
         assertEquals("contacts", deepLinkRoute(Uri.parse("mycorrhizal://search")))
         assertEquals("contacts", deepLinkRoute(Uri.parse("mycorrhizal://search?q=%20%20")))
-        assertEquals("contacts?search=ann", deepLinkRoute(Uri.parse("mycorrhizal://search?q=%20ann%20")))
+        assertEquals(
+            "contacts?search=ann",
+            deepLinkRoute(Uri.parse("mycorrhizal://search?q=%20ann%20"))
+        )
         // Cf (zero-width space U+200B) and Cc (NUL) are stripped.
-        assertEquals("contacts?search=ab", deepLinkRoute(Uri.parse("mycorrhizal://search?q=a%E2%80%8Bb")))
+        assertEquals(
+            "contacts?search=ab",
+            deepLinkRoute(Uri.parse("mycorrhizal://search?q=a%E2%80%8Bb"))
+        )
         assertEquals("contacts", deepLinkRoute(Uri.parse("mycorrhizal://search?q=%00")))
-        assertEquals("contacts?search=a%20b%26c", deepLinkRoute(Uri.parse("mycorrhizal://search?q=a%20b%26c")))
-        assertEquals("contacts?search=ann", deepLinkRoute(Uri.parse("mycorrhizal://search?x=1&q=ann")))
-        assertEquals("contacts?search=" + "a".repeat(200), deepLinkRoute(Uri.parse("mycorrhizal://search?q=" + "a".repeat(250))))
+        assertEquals(
+            "contacts?search=a%20b%26c",
+            deepLinkRoute(Uri.parse("mycorrhizal://search?q=a%20b%26c"))
+        )
+        assertEquals(
+            "contacts?search=ann",
+            deepLinkRoute(Uri.parse("mycorrhizal://search?x=1&q=ann"))
+        )
+        assertEquals(
+            "contacts?search=" + "a".repeat(200),
+            deepLinkRoute(Uri.parse("mycorrhizal://search?q=" + "a".repeat(250)))
+        )
         assertNull(deepLinkRoute(Uri.parse("mycorrhizal://search/extra?q=ann")))
     }
 
@@ -200,18 +242,33 @@ class NotificationDeepLinkRouteTest {
         assertEquals("mycorrhizal://contacts/5", deepLinkUri(view).toString())
 
         // The OIDC callback is auth-only: never treated as a navigable link.
-        val oidc = Intent(Intent.ACTION_VIEW, Uri.parse("mycorrhizal://oidc/callback?error=access_denied"))
+        val oidc = Intent(
+            Intent.ACTION_VIEW,
+            Uri.parse("mycorrhizal://oidc/callback?error=access_denied")
+        )
         assertNull(deepLinkUri(oidc))
 
         // Data on a non-VIEW intent is ignored; the extra is used.
         val extra = Intent(Intent.ACTION_MAIN).apply {
             data = Uri.parse("mycorrhizal://contacts/9")
-            putExtra(com.mycorrhizal.crm.feature.tracking.NotificationBuilder.EXTRA_DEEP_LINK, "mycorrhizal://home")
+            putExtra(
+                com.mycorrhizal.crm.feature.tracking.NotificationBuilder.EXTRA_DEEP_LINK,
+                "mycorrhizal://home"
+            )
         }
         assertEquals("mycorrhizal://home", deepLinkUri(extra).toString())
 
         assertNull(deepLinkUri(Intent(Intent.ACTION_MAIN)))
-        assertNull(deepLinkUri(Intent(Intent.ACTION_MAIN).putExtra(com.mycorrhizal.crm.feature.tracking.NotificationBuilder.EXTRA_DEEP_LINK, " ")))
+        assertNull(
+            deepLinkUri(
+                Intent(
+                    Intent.ACTION_MAIN
+                ).putExtra(
+                    com.mycorrhizal.crm.feature.tracking.NotificationBuilder.EXTRA_DEEP_LINK,
+                    " "
+                )
+            )
+        )
         assertNull(deepLinkUri(null))
     }
 
@@ -223,11 +280,15 @@ class NotificationDeepLinkRouteTest {
         val pm = androidx.test.core.app.ApplicationProvider.getApplicationContext<Application>().packageManager
         fun resolves(uri: String) = pm.queryIntentActivities(
             Intent(Intent.ACTION_VIEW, Uri.parse(uri)).addCategory(Intent.CATEGORY_BROWSABLE),
-            0,
+            0
         ).map { it.activityInfo.name }
         for (ok in listOf(
-            "mycorrhizal://home", "mycorrhizal://contacts/1", "mycorrhizal://search?q=a",
-            "mycorrhizal://circles/c", "mycorrhizal://tags/t", "mycorrhizal://households/h",
+            "mycorrhizal://home",
+            "mycorrhizal://contacts/1",
+            "mycorrhizal://search?q=a",
+            "mycorrhizal://circles/c",
+            "mycorrhizal://tags/t",
+            "mycorrhizal://households/h"
         )) {
             assertEquals(ok, listOf(MainActivity::class.java.name), resolves(ok))
         }
@@ -237,12 +298,16 @@ class NotificationDeepLinkRouteTest {
 
     // --- ADR 0029 §6 (issue #1271): share-to-CRM intake ---------------------------------
 
-    private fun send(text: String?, subject: String? = null, type: String? = "text/plain", action: String = Intent.ACTION_SEND) =
-        Intent(action).apply {
-            this.type = type
-            text?.let { putExtra(Intent.EXTRA_TEXT, it) }
-            subject?.let { putExtra(Intent.EXTRA_SUBJECT, it) }
-        }
+    private fun send(
+        text: String?,
+        subject: String? = null,
+        type: String? = "text/plain",
+        action: String = Intent.ACTION_SEND
+    ) = Intent(action).apply {
+        this.type = type
+        text?.let { putExtra(Intent.EXTRA_TEXT, it) }
+        subject?.let { putExtra(Intent.EXTRA_SUBJECT, it) }
+    }
 
     @Test
     fun `a text plain SEND intent yields the sanitised draft with the subject first`() {
@@ -272,7 +337,9 @@ class NotificationDeepLinkRouteTest {
     fun `an empty or non-text share yields nothing`() {
         assertNull(shareDraftFromIntent(send(null)))
         assertNull(shareDraftFromIntent(send("  \n ")))
-        val wrongType = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, 42)
+        val wrongType = Intent(
+            Intent.ACTION_SEND
+        ).setType("text/plain").putExtra(Intent.EXTRA_TEXT, 42)
         assertNull(shareDraftFromIntent(wrongType))
     }
 
@@ -291,7 +358,9 @@ class NotificationDeepLinkRouteTest {
         assertEquals(share, kept.value)
 
         val cleared = MutableStateFlow<PendingShare?>(share)
-        cleared.clearWhenLoggedOut(flowOf(SessionState(isLoggedIn = true), SessionState(isLoggedIn = false)))
+        cleared.clearWhenLoggedOut(
+            flowOf(SessionState(isLoggedIn = true), SessionState(isLoggedIn = false))
+        )
         assertNull(cleared.value)
     }
 
@@ -323,7 +392,7 @@ class NotificationDeepLinkRouteTest {
         val pm = androidx.test.core.app.ApplicationProvider.getApplicationContext<Application>().packageManager
         fun resolves(type: String) = pm.queryIntentActivities(
             Intent(Intent.ACTION_SEND).setType(type),
-            0,
+            0
         ).map { it.activityInfo.name }
         assertEquals(listOf(MainActivity::class.java.name), resolves("text/plain"))
         assertTrue(resolves("text/vcard").isEmpty())

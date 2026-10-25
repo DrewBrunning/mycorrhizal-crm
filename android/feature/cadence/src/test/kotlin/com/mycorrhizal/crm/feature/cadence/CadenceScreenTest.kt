@@ -51,19 +51,24 @@ class CadenceScreenTest {
     private fun policy(
         interval: Int = 30,
         qualifyingTypes: List<String> = emptyList(),
-        health: CadenceHealth? = null,
+        health: CadenceHealth? = null
     ) = CadencePolicy(
         id = "p1",
         entityId = uid,
         targetIntervalDays = interval,
         qualifyingTypes = qualifyingTypes,
-        health = health,
+        health = health
     )
 
     private fun setPanelContent(policy: CadencePolicy, dateFormat: String = "eu") {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                CadencePanelContent(policy = policy, dateFormat = dateFormat, onEdit = {}, onDelete = {})
+                CadencePanelContent(
+                    policy = policy,
+                    dateFormat = dateFormat,
+                    onEdit = {},
+                    onDelete = {}
+                )
             }
         }
     }
@@ -74,17 +79,17 @@ class CadenceScreenTest {
         val contactRepository = mockk<ContactRepository>()
         val authRepository = mockk<AuthRepository>()
         coEvery { contactRepository.getContact(5) } returns Result.success(
-            ContactRecordResponse(id = 5, card = Card(uid = uid, name = Name(full = "Dana White"))),
+            ContactRecordResponse(id = 5, card = Card(uid = uid, name = Name(full = "Dana White")))
         )
         coEvery { policyRepository.listForContact(uid) } returns Result.success(
-            if (policy == null) emptyList() else listOf(policy),
+            if (policy == null) emptyList() else listOf(policy)
         )
         coEvery { authRepository.observeSession() } returns flowOf(SessionState())
         val viewModel = CadenceViewModel(
             policyRepository,
             contactRepository,
             authRepository,
-            SavedStateHandle(mapOf("contactId" to 5)),
+            SavedStateHandle(mapOf("contactId" to 5))
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -111,7 +116,7 @@ class CadenceScreenTest {
         val contactRepository = mockk<ContactRepository>()
         val authRepository = mockk<AuthRepository>()
         coEvery { contactRepository.getContact(5) } returns Result.success(
-            ContactRecordResponse(id = 5, card = Card(uid = uid, name = Name(full = "Dana White"))),
+            ContactRecordResponse(id = 5, card = Card(uid = uid, name = Name(full = "Dana White")))
         )
         coEvery { policyRepository.listForContact(uid) } returns Result.success(listOf(policy()))
         coEvery { policyRepository.delete("p1") } returns Result.success(Unit)
@@ -120,7 +125,7 @@ class CadenceScreenTest {
             policyRepository,
             contactRepository,
             authRepository,
-            SavedStateHandle(mapOf("contactId" to 5)),
+            SavedStateHandle(mapOf("contactId" to 5))
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -157,18 +162,18 @@ class CadenceScreenTest {
         val contactRepository = mockk<ContactRepository>()
         val authRepository = mockk<AuthRepository>()
         coEvery { contactRepository.getContact(5) } returns Result.success(
-            ContactRecordResponse(id = 5, card = Card(uid = uid, name = Name(full = "Dana White"))),
+            ContactRecordResponse(id = 5, card = Card(uid = uid, name = Name(full = "Dana White")))
         )
         coEvery { policyRepository.listForContact(uid) } returns Result.success(emptyList())
         coEvery { policyRepository.create(any()) } returns Result.failure(
-            com.mycorrhizal.crm.network.ApiError.Client(409, "A cadence already exists"),
+            com.mycorrhizal.crm.network.ApiError.Client(409, "A cadence already exists")
         )
         coEvery { authRepository.observeSession() } returns flowOf(SessionState())
         val viewModel = CadenceViewModel(
             policyRepository,
             contactRepository,
             authRepository,
-            SavedStateHandle(mapOf("contactId" to 5)),
+            SavedStateHandle(mapOf("contactId" to 5))
         )
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -204,9 +209,9 @@ class CadenceScreenTest {
                     hasQualifyingInteraction = true,
                     lastInteraction = "2026-08-01T10:00:00Z",
                     nextDue = "2026-12-01T00:00:00Z",
-                    overdueBy = 3,
-                ),
-            ),
+                    overdueBy = 3
+                )
+            )
         )
         composeTestRule.onNodeWithText("3 days overdue").assertIsDisplayed()
     }
@@ -223,9 +228,9 @@ class CadenceScreenTest {
                     nextDue = "2026-07-31T00:00:00Z",
                     overdueBy = 0,
                     ambient = true,
-                    ambientReason = "household",
-                ),
-            ),
+                    ambientReason = "household"
+                )
+            )
         )
         composeTestRule.onNodeWithText("Lives with you (household)").assertIsDisplayed()
         composeTestRule.onNodeWithText("On track").assertDoesNotExist()
@@ -237,13 +242,20 @@ class CadenceScreenTest {
     fun `an ambient flagged contact shows the marked-as-ambient wording`() {
         setPanelContent(policy(health = CadenceHealth(ambient = true, ambientReason = "flag")))
         composeTestRule.onNodeWithText("Marked as ambient").assertIsDisplayed()
-        composeTestRule.onNodeWithText("No qualifying interactions yet — cadence starts once you record one.")
+        composeTestRule.onNodeWithText(
+            "No qualifying interactions yet — cadence starts once you record one."
+        )
             .assertDoesNotExist()
     }
 
     @Test
     fun `an ambient contact shows no overdue state even if a payload carries a stale overdue_by`() {
-        val health = CadenceHealth(hasQualifyingInteraction = true, overdueBy = 9, ambient = true, ambientReason = "flag")
+        val health = CadenceHealth(
+            hasQualifyingInteraction = true,
+            overdueBy = 9,
+            ambient = true,
+            ambientReason = "flag"
+        )
         assertFalse(health.isOverdue)
         setPanelContent(policy(health = health))
         composeTestRule.onNodeWithText("9 days overdue").assertDoesNotExist()
@@ -258,9 +270,9 @@ class CadenceScreenTest {
                     hasQualifyingInteraction = true,
                     lastInteraction = "2026-07-01T10:00:00Z",
                     nextDue = "2026-07-31T00:00:00Z",
-                    overdueBy = 0,
-                ),
-            ),
+                    overdueBy = 0
+                )
+            )
         )
         composeTestRule.onNodeWithText("On track").assertIsDisplayed()
     }
@@ -268,9 +280,11 @@ class CadenceScreenTest {
     @Test
     fun `panel shows the no-interactions-yet hint before the first qualifying interaction`() {
         setPanelContent(
-            policy(health = CadenceHealth(hasQualifyingInteraction = false, overdueBy = 0)),
+            policy(health = CadenceHealth(hasQualifyingInteraction = false, overdueBy = 0))
         )
-        composeTestRule.onNodeWithText("No qualifying interactions yet — cadence starts once you record one.")
+        composeTestRule.onNodeWithText(
+            "No qualifying interactions yet — cadence starts once you record one."
+        )
             .assertIsDisplayed()
     }
 
@@ -295,9 +309,9 @@ class CadenceScreenTest {
                         hasQualifyingInteraction = true,
                         lastInteraction = "2026-07-01T10:00:00Z",
                         nextDue = "2026-09-10T00:00:00Z",
-                        overdueBy = 0,
-                    ),
-                ),
+                        overdueBy = 0
+                    )
+                )
             )
             composeTestRule.onNodeWithText("Next due: 10.09.2026").assertIsDisplayed()
         } finally {
@@ -313,10 +327,10 @@ class CadenceScreenTest {
                     hasQualifyingInteraction = true,
                     lastInteraction = "2026-07-01T10:00:00Z",
                     nextDue = "2026-07-31T00:00:00Z",
-                    overdueBy = 0,
-                ),
+                    overdueBy = 0
+                )
             ),
-            dateFormat = "iso",
+            dateFormat = "iso"
         )
         composeTestRule.onNodeWithText("Next due: 2026-07-31").assertIsDisplayed()
         composeTestRule.onNodeWithText("Last interaction: 2026-07-01").assertIsDisplayed()
@@ -330,9 +344,9 @@ class CadenceScreenTest {
                     hasQualifyingInteraction = true,
                     lastInteraction = "2026-07-01T10:00:00Z",
                     nextDue = "not-a-date",
-                    overdueBy = 0,
-                ),
-            ),
+                    overdueBy = 0
+                )
+            )
         )
         // The valid caption still renders; the unparseable one is dropped rather
         // than showing "Next due: " with an empty value.
@@ -352,7 +366,7 @@ class CadenceScreenTest {
                         savedInterval = interval
                         savedTypes = types
                     },
-                    onDismiss = {},
+                    onDismiss = {}
                 )
             }
         }
@@ -369,7 +383,7 @@ class CadenceScreenTest {
                 CadenceDialog(
                     policy = null,
                     onConfirm = { _, types -> savedTypes = types },
-                    onDismiss = {},
+                    onDismiss = {}
                 )
             }
         }
@@ -389,7 +403,7 @@ class CadenceScreenTest {
                 CadenceDialog(
                     policy = null,
                     onConfirm = { _, _ -> confirmed = true },
-                    onDismiss = {},
+                    onDismiss = {}
                 )
             }
         }
@@ -406,7 +420,7 @@ class CadenceScreenTest {
                 CadenceDialog(
                     policy = policy(interval = 90, qualifyingTypes = listOf("visit")),
                     onConfirm = { _, _ -> },
-                    onDismiss = {},
+                    onDismiss = {}
                 )
             }
         }
@@ -422,7 +436,7 @@ class CadenceScreenTest {
                 CadenceDialog(
                     policy = policy(interval = 90, qualifyingTypes = listOf("visit")),
                     onConfirm = { interval, _ -> savedInterval = interval },
-                    onDismiss = {},
+                    onDismiss = {}
                 )
             }
         }

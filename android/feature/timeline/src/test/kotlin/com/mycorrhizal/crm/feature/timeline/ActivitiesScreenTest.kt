@@ -45,7 +45,7 @@ class ActivitiesScreenTest {
         onFromDateChange: (String) -> Unit = {},
         onToDateChange: (String) -> Unit = {},
         onLoadMore: () -> Unit = {},
-        onErrorShown: () -> Unit = {},
+        onErrorShown: () -> Unit = {}
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -58,7 +58,7 @@ class ActivitiesScreenTest {
                     onToDateChange = onToDateChange,
                     onLoadMore = onLoadMore,
                     onDelete = onDelete,
-                    onErrorShown = onErrorShown,
+                    onErrorShown = onErrorShown
                 )
             }
         }
@@ -72,7 +72,9 @@ class ActivitiesScreenTest {
 
     @Test
     fun `shows a no-results message when filters are active`() {
-        setContent(ActivitiesUiState(contactId = 5, activities = emptyList(), fromDate = "2026-08-01"))
+        setContent(
+            ActivitiesUiState(contactId = 5, activities = emptyList(), fromDate = "2026-08-01")
+        )
         composeTestRule.onNodeWithText("No activities match your filters").assertIsDisplayed()
     }
 
@@ -85,8 +87,8 @@ class ActivitiesScreenTest {
             ActivitiesUiState(
                 contactId = 0,
                 activities = emptyList(),
-                errorRes = R.string.activity_error_missing_id,
-            ),
+                errorRes = R.string.activity_error_missing_id
+            )
         )
         composeTestRule.onNodeWithText("Missing contact id").assertIsDisplayed()
         composeTestRule.onNodeWithText("No activities yet").assertDoesNotExist()
@@ -99,9 +101,9 @@ class ActivitiesScreenTest {
                 contactId = 5,
                 activities = listOf(
                     Activity(id = 1, title = "Coffee with Dana", type = "visit"),
-                    Activity(id = 2, title = "Phone call", type = "call"),
-                ),
-            ),
+                    Activity(id = 2, title = "Phone call", type = "call")
+                )
+            )
         )
         composeTestRule.onNodeWithText("Coffee with Dana").assertIsDisplayed()
         composeTestRule.onNodeWithText("Phone call").assertIsDisplayed()
@@ -111,8 +113,11 @@ class ActivitiesScreenTest {
     fun `tapping an activity invokes the edit callback`() {
         var editedId: Int? = null
         setContent(
-            ActivitiesUiState(contactId = 5, activities = listOf(Activity(id = 7, title = "Lunch", type = "meal"))),
-            onEditActivity = { editedId = it },
+            ActivitiesUiState(
+                contactId = 5,
+                activities = listOf(Activity(id = 7, title = "Lunch", type = "meal"))
+            ),
+            onEditActivity = { editedId = it }
         )
         composeTestRule.onNodeWithText("Lunch").performClick()
         assertEquals(7, editedId)
@@ -127,10 +132,14 @@ class ActivitiesScreenTest {
             ActivitiesUiState(
                 contactId = 5,
                 activities = listOf(
-                    Activity(id = 1, title = "Coffee with Dana", contacts = listOf(ContactFlat(id = 5, firstname = "Dana"))),
-                ),
+                    Activity(
+                        id = 1,
+                        title = "Coffee with Dana",
+                        contacts = listOf(ContactFlat(id = 5, firstname = "Dana"))
+                    )
+                )
             ),
-            onEditActivity = { editedId = it },
+            onEditActivity = { editedId = it }
         )
         composeTestRule.onNodeWithText("Dana").assertDoesNotExist()
         composeTestRule.onNodeWithText("Coffee with Dana").performClick()
@@ -147,12 +156,12 @@ class ActivitiesScreenTest {
                         title = "Lunch",
                         type = "visit",
                         location = "Cafe",
-                        date = "2026-08-01T12:00:00Z",
+                        date = "2026-08-01T12:00:00Z"
                     ),
                     onClick = {},
                     onContactClick = {},
                     onDelete = {},
-                    showContactChips = false,
+                    showContactChips = false
                 )
             }
         }
@@ -168,8 +177,8 @@ class ActivitiesScreenTest {
             ActivitiesUiState(
                 contactId = 5,
                 activities = listOf(Activity(id = 7, title = "Lunch")),
-                error = "Offline",
-            ),
+                error = "Offline"
+            )
         )
 
         composeTestRule.waitForIdle()
@@ -188,12 +197,12 @@ class ActivitiesScreenTest {
                     activity = Activity(
                         id = 1,
                         title = "Coffee with Dana",
-                        contacts = listOf(ContactFlat(id = 5, firstname = "Dana")),
+                        contacts = listOf(ContactFlat(id = 5, firstname = "Dana"))
                     ),
                     onClick = {},
                     onContactClick = { contactedId = it },
                     onDelete = {},
-                    showContactChips = true,
+                    showContactChips = true
                 )
             }
         }
@@ -206,8 +215,11 @@ class ActivitiesScreenTest {
     fun `the row pencil opens the same edit form as tapping the row`() {
         var editedId: Int? = null
         setContent(
-            ActivitiesUiState(contactId = 5, activities = listOf(Activity(id = 7, title = "Lunch"))),
-            onEditActivity = { editedId = it },
+            ActivitiesUiState(
+                contactId = 5,
+                activities = listOf(Activity(id = 7, title = "Lunch"))
+            ),
+            onEditActivity = { editedId = it }
         )
         composeTestRule.onNodeWithContentDescription("Edit activity").performClick()
 
@@ -219,7 +231,7 @@ class ActivitiesScreenTest {
         var query = ""
         setContent(
             ActivitiesUiState(contactId = 5, activities = emptyList()),
-            onSearchChange = { query = it },
+            onSearchChange = { query = it }
         )
         composeTestRule.onNodeWithText("Search activities").performTextInput("coffee")
         assertEquals("coffee", query)
@@ -230,7 +242,7 @@ class ActivitiesScreenTest {
         var from = ""
         setContent(
             ActivitiesUiState(contactId = 5, activities = emptyList(), fromDate = "2026-08-01"),
-            onFromDateChange = { from = it },
+            onFromDateChange = { from = it }
         )
         composeTestRule.onNodeWithTag("timeline-from-date").performClick()
         composeTestRule.onNodeWithText("Confirm").performClick()
@@ -242,7 +254,7 @@ class ActivitiesScreenTest {
         var to = ""
         setContent(
             ActivitiesUiState(contactId = 5, activities = emptyList(), toDate = "2026-08-10"),
-            onToDateChange = { to = it },
+            onToDateChange = { to = it }
         )
         composeTestRule.onNodeWithTag("timeline-to-date").performClick()
         composeTestRule.onNodeWithText("Confirm").performClick()
@@ -254,7 +266,7 @@ class ActivitiesScreenTest {
         var from: String? = null
         setContent(
             ActivitiesUiState(contactId = 5, activities = emptyList(), fromDate = "2026-08-01"),
-            onFromDateChange = { from = it },
+            onFromDateChange = { from = it }
         )
         composeTestRule.onNodeWithContentDescription("Clear date").performClick()
         assertEquals("", from)
@@ -264,8 +276,11 @@ class ActivitiesScreenTest {
     fun `delete asks first -- tapping delete shows a confirmation and does not call onDelete`() {
         var deletedId: Int? = null
         setContent(
-            ActivitiesUiState(contactId = 5, activities = listOf(Activity(id = 7, title = "Lunch"))),
-            onDelete = { deletedId = it },
+            ActivitiesUiState(
+                contactId = 5,
+                activities = listOf(Activity(id = 7, title = "Lunch"))
+            ),
+            onDelete = { deletedId = it }
         )
         composeTestRule.onNodeWithContentDescription("Delete Lunch").performClick()
 
@@ -277,8 +292,11 @@ class ActivitiesScreenTest {
     fun `cancel is inert -- dismissing the confirmation issues no call and leaves the item present`() {
         var deletedId: Int? = null
         setContent(
-            ActivitiesUiState(contactId = 5, activities = listOf(Activity(id = 7, title = "Lunch"))),
-            onDelete = { deletedId = it },
+            ActivitiesUiState(
+                contactId = 5,
+                activities = listOf(Activity(id = 7, title = "Lunch"))
+            ),
+            onDelete = { deletedId = it }
         )
         composeTestRule.onNodeWithContentDescription("Delete Lunch").performClick()
         composeTestRule.onNodeWithText("Cancel").performClick()
@@ -291,8 +309,11 @@ class ActivitiesScreenTest {
     fun `confirming the dialog calls onDelete with the right id`() {
         var deletedId: Int? = null
         setContent(
-            ActivitiesUiState(contactId = 5, activities = listOf(Activity(id = 7, title = "Lunch"))),
-            onDelete = { deletedId = it },
+            ActivitiesUiState(
+                contactId = 5,
+                activities = listOf(Activity(id = 7, title = "Lunch"))
+            ),
+            onDelete = { deletedId = it }
         )
         composeTestRule.onNodeWithContentDescription("Delete Lunch").performClick()
         composeTestRule.onNodeWithText("Delete").performClick()
@@ -304,8 +325,12 @@ class ActivitiesScreenTest {
     fun `a load more button appears with a next cursor and calls back on tap`() {
         var loadMoreCalls = 0
         setContent(
-            ActivitiesUiState(contactId = 5, activities = listOf(Activity(id = 7, title = "Lunch")), nextCursor = "cursor-2"),
-            onLoadMore = { loadMoreCalls++ },
+            ActivitiesUiState(
+                contactId = 5,
+                activities = listOf(Activity(id = 7, title = "Lunch")),
+                nextCursor = "cursor-2"
+            ),
+            onLoadMore = { loadMoreCalls++ }
         )
         composeTestRule.onNodeWithText("Load more").performClick()
         assertEquals(1, loadMoreCalls)
@@ -320,11 +345,20 @@ class ActivitiesScreenTest {
     @Test
     fun `top-level screen renders the view model's activities`() {
         val repository = mockk<ActivityRepository>()
-        coEvery { repository.listForContact(1, null, null, null, null, null) } returns Result.success(
+        coEvery {
+            repository.listForContact(
+                1,
+                null,
+                null,
+                null,
+                null,
+                null
+            )
+        } returns Result.success(
             ContactActivitiesPage(
                 activities = listOf(Activity(id = 1, title = "Coffee with Dana")),
-                nextCursor = null,
-            ),
+                nextCursor = null
+            )
         )
         val viewModel = ActivitiesViewModel(repository, SavedStateHandle(mapOf("contactId" to 1)))
 
@@ -335,7 +369,7 @@ class ActivitiesScreenTest {
                     onCreateActivity = {},
                     onEditActivity = {},
                     onContactClick = {},
-                    viewModel = viewModel,
+                    viewModel = viewModel
                 )
             }
         }

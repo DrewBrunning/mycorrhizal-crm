@@ -44,7 +44,9 @@ class ImmichSettingsScreenTest {
     fun `a stored key makes the token optional and drops the required marker`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                ImmichSettingsContent(state = ImmichSettingsUiState(isLoading = false, hasApiKey = true))
+                ImmichSettingsContent(
+                    state = ImmichSettingsUiState(isLoading = false, hasApiKey = true)
+                )
             }
         }
 
@@ -56,7 +58,9 @@ class ImmichSettingsScreenTest {
     fun `shows the stored-key hint when a key is already configured`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                ImmichSettingsContent(state = ImmichSettingsUiState(isLoading = false, hasApiKey = true))
+                ImmichSettingsContent(
+                    state = ImmichSettingsUiState(isLoading = false, hasApiKey = true)
+                )
             }
         }
 
@@ -68,7 +72,9 @@ class ImmichSettingsScreenTest {
     fun `the sync toggle and test button only appear once a key is stored`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                ImmichSettingsContent(state = ImmichSettingsUiState(isLoading = false, hasApiKey = false))
+                ImmichSettingsContent(
+                    state = ImmichSettingsUiState(isLoading = false, hasApiKey = false)
+                )
             }
         }
 
@@ -82,8 +88,12 @@ class ImmichSettingsScreenTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 ImmichSettingsContent(
-                    state = ImmichSettingsUiState(isLoading = false, hasApiKey = true, syncEnabled = false),
-                    onSyncEnabledChange = { value = it },
+                    state = ImmichSettingsUiState(
+                        isLoading = false,
+                        hasApiKey = true,
+                        syncEnabled = false
+                    ),
+                    onSyncEnabledChange = { value = it }
                 )
             }
         }
@@ -104,13 +114,15 @@ class ImmichSettingsScreenTest {
                     state = ImmichSettingsUiState(
                         isLoading = false,
                         hasApiKey = true,
-                        testResult = ImmichTestOutcome(ok = false, message = "invalid API key"),
-                    ),
+                        testResult = ImmichTestOutcome(ok = false, message = "invalid API key")
+                    )
                 )
             }
         }
 
-        composeTestRule.onNodeWithText("Test failed: invalid API key").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Test failed: invalid API key"
+        ).performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -122,20 +134,24 @@ class ImmichSettingsScreenTest {
                         isLoading = false,
                         hasApiKey = true,
                         lastSyncStatus = "error",
-                        lastSyncError = "connection refused",
-                    ),
+                        lastSyncError = "connection refused"
+                    )
                 )
             }
         }
 
-        composeTestRule.onNodeWithText("Last sync failed: connection refused").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Last sync failed: connection refused"
+        ).performScrollTo().assertIsDisplayed()
     }
 
     @Test
     fun `remove connection only appears once a key is stored`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                ImmichSettingsContent(state = ImmichSettingsUiState(isLoading = false, hasApiKey = false))
+                ImmichSettingsContent(
+                    state = ImmichSettingsUiState(isLoading = false, hasApiKey = false)
+                )
             }
         }
 
@@ -149,7 +165,7 @@ class ImmichSettingsScreenTest {
             MycorrhizalTheme {
                 ImmichSettingsContent(
                     state = ImmichSettingsUiState(isLoading = false, hasApiKey = true),
-                    onRemove = { removed = true },
+                    onRemove = { removed = true }
                 )
             }
         }
@@ -162,12 +178,19 @@ class ImmichSettingsScreenTest {
     fun `save error is announced as an assertive live region`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                ImmichSettingsContent(state = ImmichSettingsUiState(isLoading = false, saveError = "Could not save"))
+                ImmichSettingsContent(
+                    state = ImmichSettingsUiState(isLoading = false, saveError = "Could not save")
+                )
             }
         }
 
         composeTestRule.onNodeWithText("Could not save")
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Assertive))
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.LiveRegion,
+                    LiveRegionMode.Assertive
+                )
+            )
     }
 
     @Test

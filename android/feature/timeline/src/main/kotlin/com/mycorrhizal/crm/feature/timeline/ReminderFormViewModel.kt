@@ -12,12 +12,12 @@ import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /**
  * Editable form state for a reminder. `message`, `remind_at`, `recurrence`
@@ -41,7 +41,7 @@ data class ReminderFormState(
     /** ADR 0008: the save was rejected with 412 — the record changed elsewhere since it loaded. */
     val conflict: Boolean = false,
     /** Issue #1751: the editable state the form opened with, for [isDirty]. */
-    val baseline: ReminderFormState? = null,
+    val baseline: ReminderFormState? = null
 ) {
     val isEdit: Boolean get() = reminderId != null
     val hasMessage: Boolean get() = message.isNotBlank()
@@ -54,7 +54,7 @@ data class ReminderFormState(
         errorRes = null,
         error = null,
         conflict = false,
-        baseline = null,
+        baseline = null
     )
 
     fun snapshotForBaseline(): ReminderFormState = editableSnapshot()
@@ -66,7 +66,7 @@ data class ReminderFormState(
         recurrence = recurrence,
         byMail = byMail,
         reoccurFromCompletion = reoccurFromCompletion,
-        contactId = contactId.takeIf { it != 0 },
+        contactId = contactId.takeIf { it != 0 }
     )
 
     fun validate(): Int? = when {
@@ -104,7 +104,7 @@ sealed interface ReminderFormEvent {
 @HiltViewModel
 class ReminderFormViewModel @Inject constructor(
     private val reminderRepository: ReminderRepository,
-    savedStateHandle: SavedStateHandle,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val contactId: Int = run {
@@ -139,11 +139,13 @@ class ReminderFormViewModel @Inject constructor(
             // of the initial recurrence — today for `once`). M20 mirrors that; the
             // create form never opens with an empty date.
             remindAt = if (reminderId == null) {
-                "${ReminderFormState.dateForRecurrence(prefillRecurrence ?: ReminderRecurrence.ONCE)}T00:00:00Z"
+                "${ReminderFormState.dateForRecurrence(
+                    prefillRecurrence ?: ReminderRecurrence.ONCE
+                )}T00:00:00Z"
             } else {
                 ""
-            },
-        ).let { it.copy(baseline = it.snapshotForBaseline()) },
+            }
+        ).let { it.copy(baseline = it.snapshotForBaseline()) }
     )
     val uiState: StateFlow<ReminderFormState> = _uiState.asStateFlow()
 
@@ -167,7 +169,7 @@ class ReminderFormViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -187,7 +189,7 @@ class ReminderFormViewModel @Inject constructor(
         if (state.reminderId == null) {
             state.copy(
                 recurrence = value,
-                remindAt = "${ReminderFormState.dateForRecurrence(value)}T00:00:00Z",
+                remindAt = "${ReminderFormState.dateForRecurrence(value)}T00:00:00Z"
             )
         } else {
             state.copy(recurrence = value)
@@ -195,7 +197,11 @@ class ReminderFormViewModel @Inject constructor(
     }
 
     fun onByMailChange(value: Boolean) = _uiState.update { it.copy(byMail = value) }
-    fun onReoccurFromCompletionChange(value: Boolean) = _uiState.update { it.copy(reoccurFromCompletion = value) }
+    fun onReoccurFromCompletionChange(value: Boolean) = _uiState.update {
+        it.copy(
+            reoccurFromCompletion = value
+        )
+    }
     fun onErrorShown() = _uiState.update { it.copy(errorRes = null, error = null) }
 
     /** Conflict dialog "Keep editing": leave the form as typed (nothing was saved). */
@@ -226,7 +232,14 @@ class ReminderFormViewModel @Inject constructor(
                 reminderRepository.create(state.contactId, reminder)
             }
             result.foldApiError(
-                onSuccess = { _uiState.update { it.copy(isSaving = false) }; _events.value = ReminderFormEvent.Saved },
+                onSuccess = {
+                    _uiState.update {
+                        it.copy(
+                            isSaving = false
+                        )
+                    }
+                    _events.value = ReminderFormEvent.Saved
+                },
                 onError = { error ->
                     _uiState.update {
                         if (error is ApiError.PreconditionFailed) {
@@ -235,7 +248,7 @@ class ReminderFormViewModel @Inject constructor(
                             it.copy(isSaving = false, error = error.displayMessage)
                         }
                     }
-                },
+                }
             )
         }
     }
@@ -250,6 +263,6 @@ class ReminderFormViewModel @Inject constructor(
         recurrence = reminder.recurrence ?: ReminderRecurrence.ONCE,
         byMail = reminder.byMail ?: false,
         reoccurFromCompletion = reminder.reoccurFromCompletion ?: true,
-        revision = reminder.revision,
+        revision = reminder.revision
     )
 }

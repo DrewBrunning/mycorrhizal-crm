@@ -48,6 +48,10 @@ internal object E2eActivities {
     fun finishAllMainActivities(timeoutMs: Long = 10_000) {
         onMain { mainActivities().forEach { it.finishAndRemoveTask() } }
         val deadline = System.currentTimeMillis() + timeoutMs
-        while (System.currentTimeMillis() < deadline && mainActivities().isNotEmpty()) Thread.sleep(200)
+        while (System.currentTimeMillis() < deadline && mainActivities().isNotEmpty()) {
+            Thread.sleep(
+                200
+            )
+        }
     }
 }

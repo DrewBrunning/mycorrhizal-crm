@@ -15,7 +15,12 @@ import org.junit.Test
  */
 class PhoneKeyVectorTest {
 
-    private data class Vector(val input: String, val digits: String, val key: String, val why: String)
+    private data class Vector(
+        val input: String,
+        val digits: String,
+        val key: String,
+        val why: String
+    )
 
     private fun loadTable(): Pair<List<Vector>, List<Pair<String, List<String>>>> {
         val stream = checkNotNull(javaClass.classLoader?.getResourceAsStream("vectors.json")) {
@@ -31,7 +36,7 @@ class PhoneKeyVectorTest {
                 input = m["input"] as String,
                 digits = m["digits"] as String,
                 key = m["key"] as String,
-                why = m["why"] as String,
+                why = m["why"] as String
             )
         }
         val groups = (root["same_key_groups"] as List<*>).map { row ->
@@ -47,7 +52,11 @@ class PhoneKeyVectorTest {
         check(vectors.isNotEmpty()) { "shared phonekey vectors are empty" }
 
         for (v in vectors) {
-            assertEquals("normalizeDigits(${v.input}) [${v.why}]", v.digits, PhoneKey.normalizeDigits(v.input))
+            assertEquals(
+                "normalizeDigits(${v.input}) [${v.why}]",
+                v.digits,
+                PhoneKey.normalizeDigits(v.input)
+            )
             assertEquals("key(${v.input}) [${v.why}]", v.key, PhoneKey.key(v.input))
         }
     }
@@ -64,7 +73,11 @@ class PhoneKeyVectorTest {
             val want = PhoneKey.key(inputs.first())
             check(want.isNotEmpty()) { "same_key_groups entry '$why' first input keys to empty" }
             for (input in inputs.drop(1)) {
-                assertEquals("key($input) should equal key(${inputs.first()}) [$why]", want, PhoneKey.key(input))
+                assertEquals(
+                    "key($input) should equal key(${inputs.first()}) [$why]",
+                    want,
+                    PhoneKey.key(input)
+                )
             }
         }
     }

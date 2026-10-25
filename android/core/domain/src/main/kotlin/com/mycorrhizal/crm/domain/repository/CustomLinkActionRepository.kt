@@ -7,7 +7,7 @@ data class CustomLinkAction(
     val label: String,
     val kind: String,
     val mimeType: String,
-    val intentUriTemplate: String,
+    val intentUriTemplate: String
 )
 
 /**

@@ -17,9 +17,9 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -35,6 +35,8 @@ import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.platform.LocalAutofillManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -42,11 +44,9 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mycorrhizal.crm.data.passkey.PasskeyIssue
@@ -72,7 +72,7 @@ fun LoginScreen(
     // outside, shown through this screen's existing SnackbarHostState.
     oidcError: String? = null,
     onOidcErrorShown: () -> Unit = {},
-    viewModel: LoginViewModel = viewModel(),
+    viewModel: LoginViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val autofillManager = LocalAutofillManager.current
@@ -98,6 +98,7 @@ fun LoginScreen(
                     autofillManager?.commit()
                     onLoggedIn()
                 }
+
                 LoginEvent.ServerUrlUpdated -> Unit
             }
         }
@@ -118,7 +119,7 @@ fun LoginScreen(
         onUseLocalOnly = onUseLocalOnly,
         onErrorShown = viewModel::onErrorShown,
         oidcError = oidcError,
-        onOidcErrorShown = onOidcErrorShown,
+        onOidcErrorShown = onOidcErrorShown
     )
 }
 
@@ -145,7 +146,7 @@ fun LoginScreenContent(
     onUseLocalOnly: () -> Unit = {},
     onErrorShown: () -> Unit = {},
     oidcError: String? = null,
-    onOidcErrorShown: () -> Unit = {},
+    onOidcErrorShown: () -> Unit = {}
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -179,9 +180,9 @@ fun LoginScreenContent(
         snackbarHost = {
             SnackbarHost(
                 snackbarHostState,
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
             )
-        },
+        }
     ) { padding ->
         Column(
             modifier = Modifier
@@ -190,16 +191,16 @@ fun LoginScreenContent(
                 .padding(24.dp)
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Image(
                 painter = painterResource(id = R.drawable.ic_brand_logo),
                 contentDescription = stringResource(R.string.app_name),
-                modifier = Modifier.size(96.dp),
+                modifier = Modifier.size(96.dp)
             )
             Text(
                 text = stringResource(R.string.app_name),
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleLarge
             )
 
             if (uiState.twoFactorStep) {
@@ -211,12 +212,12 @@ fun LoginScreenContent(
                     isLoading = uiState.isLoading,
                     prompt = uiState.twoFactorPrompt,
                     passkeyIssue = uiState.passkeyIssue,
-                    onUsePasskey = onUsePasskey,
+                    onUsePasskey = onUsePasskey
                 )
             } else {
                 Text(
                     text = stringResource(R.string.login_connect_to_server),
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.bodyLarge
                 )
 
                 OutlinedTextField(
@@ -230,19 +231,19 @@ fun LoginScreenContent(
                     placeholder = { Text(stringResource(R.string.login_server_url_hint)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
                 )
 
                 SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                     SegmentedButton(
                         selected = uiState.mode == LoginMode.PASSWORD,
                         onClick = { onModeChange(LoginMode.PASSWORD) },
-                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
                     ) { Text(stringResource(R.string.login_mode_password)) }
                     SegmentedButton(
                         selected = uiState.mode == LoginMode.API_TOKEN,
                         onClick = { onModeChange(LoginMode.API_TOKEN) },
-                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
                     ) { Text(stringResource(R.string.login_api_token)) }
                 }
 
@@ -254,14 +255,14 @@ fun LoginScreenContent(
                         value = identifier,
                         onValueChange = { identifier = it },
                         label = stringResource(R.string.login_username_or_email),
-                        contentType = ContentType.Username + ContentType.EmailAddress,
+                        contentType = ContentType.Username + ContentType.EmailAddress
                     )
                     AutofillOutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
                         label = stringResource(R.string.login_mode_password),
                         contentType = ContentType.Password,
-                        visualTransformation = PasswordVisualTransformation(),
+                        visualTransformation = PasswordVisualTransformation()
                     )
                 } else {
                     OutlinedTextField(
@@ -270,7 +271,7 @@ fun LoginScreenContent(
                         label = { Text(stringResource(R.string.login_api_token)) },
                         placeholder = { Text(stringResource(R.string.login_api_token_hint)) },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
 
@@ -280,14 +281,14 @@ fun LoginScreenContent(
                     // apply here — the spinner itself needs the name.
                     val savingLabel = stringResource(R.string.a11y_state_saving)
                     CircularProgressIndicator(
-                        modifier = Modifier.semantics { contentDescription = savingLabel },
+                        modifier = Modifier.semantics { contentDescription = savingLabel }
                     )
                 } else {
                     Button(
                         onClick = {
                             onSubmit(serverUrl, identifier, password, apiToken)
                         },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(stringResource(R.string.login_sign_in))
                     }
@@ -302,7 +303,7 @@ fun LoginScreenContent(
                     enabled = ssoEnabled,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .semantics { if (!ssoEnabled) stateDescription = ssoHint },
+                        .semantics { if (!ssoEnabled) stateDescription = ssoHint }
                 ) {
                     Text(stringResource(R.string.login_sso))
                 }
@@ -312,7 +313,7 @@ fun LoginScreenContent(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth().testTag("sso-disabled-hint"),
+                        modifier = Modifier.fillMaxWidth().testTag("sso-disabled-hint")
                     )
                 }
 
@@ -321,13 +322,13 @@ fun LoginScreenContent(
                 // them together here too.
                 TextButton(
                     onClick = onRegisterClick,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(stringResource(R.string.login_no_account))
                 }
                 TextButton(
                     onClick = onForgotPasswordClick,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(stringResource(R.string.login_forgot_password))
                 }
@@ -336,7 +337,7 @@ fun LoginScreenContent(
                 if (localModeEnabled) {
                     TextButton(
                         onClick = onUseLocalOnly,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(stringResource(R.string.login_use_local_only))
                     }
@@ -378,12 +379,12 @@ private fun TwoFactorLoginStep(
     isLoading: Boolean,
     prompt: SecondFactorPrompt = SecondFactorPrompt.STANDARD,
     passkeyIssue: PasskeyIssue? = null,
-    onUsePasskey: () -> Unit = {},
+    onUsePasskey: () -> Unit = {}
 ) {
     Text(
         text = stringResource(R.string.login_two_factor_title),
         style = MaterialTheme.typography.titleMedium,
-        modifier = Modifier.semantics { heading() },
+        modifier = Modifier.semantics { heading() }
     )
     // Issue #1293 (ADR 0034 Decision 4): a passkey-only account on a build/server
     // that cannot run the ceremony is steered to a recovery code; the same code
@@ -396,12 +397,14 @@ private fun TwoFactorLoginStep(
             PasskeyIssue.NO_PROVIDER -> R.string.login_two_factor_passkey_no_provider_only_description
             null -> R.string.login_two_factor_passkey_only_description
         }
+
         SecondFactorPrompt.PASSKEY_OR_RECOVERY_CODE -> R.string.login_two_factor_passkey_or_recovery_description
+
         else -> R.string.login_two_factor_description
     }
     Text(
         text = stringResource(descriptionRes),
-        style = MaterialTheme.typography.bodyLarge,
+        style = MaterialTheme.typography.bodyLarge
     )
     if (prompt == SecondFactorPrompt.CODE_WITH_PASSKEY_NOTE) {
         Text(
@@ -410,9 +413,9 @@ private fun TwoFactorLoginStep(
                     PasskeyIssue.NOT_ASSOCIATED -> R.string.login_two_factor_passkey_not_associated_note
                     PasskeyIssue.NO_PROVIDER -> R.string.login_two_factor_passkey_no_provider_note
                     null -> R.string.login_two_factor_passkey_unavailable_note
-                },
+                }
             ),
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodyMedium
         )
     }
     // Issue #1293: the passkey action sits ABOVE the code field but never replaces it.
@@ -420,7 +423,7 @@ private fun TwoFactorLoginStep(
         Button(
             onClick = onUsePasskey,
             enabled = !isLoading,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         ) {
             Text(stringResource(R.string.login_two_factor_use_passkey))
         }
@@ -431,31 +434,31 @@ private fun TwoFactorLoginStep(
         label = {
             Text(
                 stringResource(
-                    if (recoveryOnly) R.string.login_two_factor_recovery_code_label else R.string.login_two_factor_code_label,
-                ),
+                    if (recoveryOnly) R.string.login_two_factor_recovery_code_label else R.string.login_two_factor_code_label
+                )
             )
         },
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth()
     )
     if (isLoading) {
         val savingLabel = stringResource(R.string.a11y_state_saving)
         CircularProgressIndicator(
-            modifier = Modifier.semantics { contentDescription = savingLabel },
+            modifier = Modifier.semantics { contentDescription = savingLabel }
         )
     } else {
         Button(
             onClick = onTwoFactorSubmit,
             enabled = code.isNotBlank(),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         ) {
             Text(stringResource(R.string.login_sign_in))
         }
         TextButton(
             onClick = onBackToCredentials,
             enabled = !isLoading,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
         ) {
             Text(stringResource(R.string.login_two_factor_back))
         }

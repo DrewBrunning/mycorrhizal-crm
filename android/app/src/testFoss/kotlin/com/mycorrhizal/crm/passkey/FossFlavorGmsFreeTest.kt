@@ -15,17 +15,20 @@ import org.junit.Test
  */
 class FossFlavorGmsFreeTest {
 
-    private fun loadable(name: String): Boolean =
-        runCatching { Class.forName(name) }.isSuccess
+    private fun loadable(name: String): Boolean = runCatching { Class.forName(name) }.isSuccess
 
     @Test
     fun `the core Credential Manager API is present`() {
-        assertNotNull(runCatching { Class.forName("androidx.credentials.CredentialManager") }.getOrNull())
+        assertNotNull(
+            runCatching { Class.forName("androidx.credentials.CredentialManager") }.getOrNull()
+        )
     }
 
     @Test
     fun `the Play services credential provider is absent`() {
-        assertFalse(loadable("androidx.credentials.playservices.CredentialProviderPlayServicesImpl"))
+        assertFalse(
+            loadable("androidx.credentials.playservices.CredentialProviderPlayServicesImpl")
+        )
     }
 
     @Test
@@ -34,9 +37,12 @@ class FossFlavorGmsFreeTest {
             "com.google.android.gms.common.GoogleApiAvailability",
             "com.google.android.gms.fido.Fido",
             "com.google.android.gms.auth.api.identity.Identity",
-            "com.google.firebase.messaging.FirebaseMessaging",
+            "com.google.firebase.messaging.FirebaseMessaging"
         )) {
-            assertNull("$name must not be on the foss classpath", runCatching { Class.forName(name) }.getOrNull())
+            assertNull(
+                "$name must not be on the foss classpath",
+                runCatching { Class.forName(name) }.getOrNull()
+            )
         }
     }
 }

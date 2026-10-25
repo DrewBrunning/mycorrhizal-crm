@@ -96,7 +96,7 @@ class OidcLoginCoordinatorTest {
             authRepository = auth,
             pendingStore = pending,
             launchBrowser = { launched += it },
-            nowMillis = { now },
+            nowMillis = { now }
         )
 
         suspend fun withServer() {
@@ -105,34 +105,42 @@ class OidcLoginCoordinatorTest {
         }
     }
 
-    private fun seedPending(h: Harness, state: String = "state-a", verifier: String = "verifier-a") {
+    private fun seedPending(
+        h: Harness,
+        state: String = "state-a",
+        verifier: String = "verifier-a"
+    ) {
         h.pending.request = OidcPendingRequest(state, verifier, h.now)
     }
 
     // --- start ---
 
     @Test
-    fun `start persists the binding and opens the auth URL with only state and S256 challenge`() = runTest {
-        val h = Harness()
+    fun `start persists the binding and opens the auth URL with only state and S256 challenge`() =
+        runTest {
+            val h = Harness()
 
-        h.coordinator().start("https://crm.example.com/")
+            h.coordinator().start("https://crm.example.com/")
 
-        val pending = h.pending.request
-        requireNotNull(pending)
-        assertEquals(1, h.launched.size)
-        val url = h.launched.single()
-        assertTrue(
-            "must target the native OIDC login route",
-            url.startsWith("https://crm.example.com/api/v1/auth/oidc/login?client=android"),
-        )
-        assertTrue("must echo the generated state", url.contains("state=${pending.state}"))
-        assertTrue(
-            "must send the S256 challenge, never the verifier",
-            url.contains("code_challenge=${OidcPkce.challenge(pending.codeVerifier)}"),
-        )
-        assertTrue(url.contains("code_challenge_method=S256"))
-        assertFalse("the verifier must never reach the browser", url.contains(pending.codeVerifier))
-    }
+            val pending = h.pending.request
+            requireNotNull(pending)
+            assertEquals(1, h.launched.size)
+            val url = h.launched.single()
+            assertTrue(
+                "must target the native OIDC login route",
+                url.startsWith("https://crm.example.com/api/v1/auth/oidc/login?client=android")
+            )
+            assertTrue("must echo the generated state", url.contains("state=${pending.state}"))
+            assertTrue(
+                "must send the S256 challenge, never the verifier",
+                url.contains("code_challenge=${OidcPkce.challenge(pending.codeVerifier)}")
+            )
+            assertTrue(url.contains("code_challenge_method=S256"))
+            assertFalse(
+                "the verifier must never reach the browser",
+                url.contains(pending.codeVerifier)
+            )
+        }
 
     // --- onCallback: ignored/failed returns ---
 
@@ -215,27 +223,38 @@ class OidcLoginCoordinatorTest {
     // --- onCallback: redemption ---
 
     @Test
-    fun `a matching success redeems the code with the on-device verifier and persists the session`() = runTest {
-        val h = Harness()
-        h.withServer()
-        seedPending(h, state = "state-a", verifier = "verifier-a")
-        coEvery { h.auth.completeOidcNativeLogin("code-1", "verifier-a") } returns Result.success("jwt-1")
-        coEvery { h.auth.fetchCurrentUser() } returns
-            Result.success(UserProfile(id = 7, username = "alice", isAdmin = true))
+    fun `a matching success redeems the code with the on-device verifier and persists the session`() =
+        runTest {
+            val h = Harness()
+            h.withServer()
+            seedPending(h, state = "state-a", verifier = "verifier-a")
+            coEvery {
+                h.auth.completeOidcNativeLogin(
+                    "code-1",
+                    "verifier-a"
+                )
+            } returns Result.success("jwt-1")
+            coEvery { h.auth.fetchCurrentUser() } returns
+                Result.success(UserProfile(id = 7, username = "alice", isAdmin = true))
 
-        val outcome = h.coordinator().onCallback(
-            OidcReturn.Success(state = "state-a", code = "code-1", language = "de", dateFormat = "eu"),
-        )
+            val outcome = h.coordinator().onCallback(
+                OidcReturn.Success(
+                    state = "state-a",
+                    code = "code-1",
+                    language = "de",
+                    dateFormat = "eu"
+                )
+            )
 
-        assertEquals(OidcCallbackOutcome.Succeeded, outcome)
-        assertEquals("jwt-1", h.tokenStorage.stored)
-        val session = h.session.observeSession().first()
-        assertTrue(session.isLoggedIn)
-        assertEquals(7, session.userId)
-        assertEquals("alice", session.username)
-        assertEquals("de", session.language)
-        assertEquals("eu", session.dateFormat)
-    }
+            assertEquals(OidcCallbackOutcome.Succeeded, outcome)
+            assertEquals("jwt-1", h.tokenStorage.stored)
+            val session = h.session.observeSession().first()
+            assertTrue(session.isLoggedIn)
+            assertEquals(7, session.userId)
+            assertEquals("alice", session.username)
+            assertEquals("de", session.language)
+            assertEquals("eu", session.dateFormat)
+        }
 
     @Test
     fun `a rejected code leaves the session logged out`() = runTest {
@@ -258,7 +277,9 @@ class OidcLoginCoordinatorTest {
         h.withServer()
         seedPending(h)
         coEvery { h.auth.completeOidcNativeLogin(any(), any()) } returns Result.success("jwt-1")
-        coEvery { h.auth.fetchCurrentUser() } returns Result.failure(ApiError.Client(401, "expired"))
+        coEvery { h.auth.fetchCurrentUser() } returns Result.failure(
+            ApiError.Client(401, "expired")
+        )
 
         val outcome = h.coordinator().onCallback(success(state = "state-a"))
 

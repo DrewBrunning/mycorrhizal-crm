@@ -28,7 +28,11 @@ fun parsePartialDateForEdit(value: String): PartialDate {
         Triple(null, parts.getOrNull(0)?.toIntOrNull(), parts.getOrNull(1)?.toIntOrNull())
     } else {
         val parts = clean.split("-")
-        Triple(parts.getOrNull(0)?.toIntOrNull(), parts.getOrNull(1)?.toIntOrNull(), parts.getOrNull(2)?.toIntOrNull())
+        Triple(
+            parts.getOrNull(0)?.toIntOrNull(),
+            parts.getOrNull(1)?.toIntOrNull(),
+            parts.getOrNull(2)?.toIntOrNull()
+        )
     }
     return PartialDate(year = year, month = month, day = day)
 }

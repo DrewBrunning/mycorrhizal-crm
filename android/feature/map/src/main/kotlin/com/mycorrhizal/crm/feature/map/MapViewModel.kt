@@ -7,12 +7,12 @@ import com.mycorrhizal.crm.model.network.LatLng
 import com.mycorrhizal.crm.model.network.parseGeoUri
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /** One plottable address with its already-validated position. */
 data class MapPoint(
@@ -20,7 +20,7 @@ data class MapPoint(
     val contactName: String,
     val addressId: String,
     val label: String,
-    val position: LatLng,
+    val position: LatLng
 ) {
     /** Unique per address; the key MapLibre feature properties and selection use. */
     val key: String get() = "$contactId/$addressId"
@@ -37,7 +37,7 @@ data class MapUiState(
     /** The marker the user tapped, shown in the bottom card. */
     val selectedKey: String? = null,
     /** Accessible alternative to the canvas: the same points as a list. */
-    val showList: Boolean = false,
+    val showList: Boolean = false
 ) {
     val selected: MapPoint? get() = points.firstOrNull { it.key == selectedKey }
 }
@@ -47,9 +47,7 @@ data class MapUiState(
  * owner's own contacts, regardless of sensitivity (ADR 0031 section 3).
  */
 @HiltViewModel
-class MapViewModel @Inject constructor(
-    private val mapRepository: MapRepository,
-) : ViewModel() {
+class MapViewModel @Inject constructor(private val mapRepository: MapRepository) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MapUiState())
     val uiState: StateFlow<MapUiState> = _uiState.asStateFlow()
@@ -69,7 +67,7 @@ class MapViewModel @Inject constructor(
                     onSuccess = {},
                     onError = { e ->
                         _uiState.update { it.copy(isLoading = false, error = e.displayMessage) }
-                    },
+                    }
                 )
                 return@launch
             }
@@ -85,7 +83,7 @@ class MapViewModel @Inject constructor(
                         MapPoint(p.contactId, p.contactName, p.addressId, p.label, position)
                     },
                     truncated = response.truncated,
-                    selectedKey = null,
+                    selectedKey = null
                 )
             }
         }
@@ -106,9 +104,17 @@ sealed interface MapViewport {
 /** Pure framing decision, kept out of the MapLibre view so it is unit-testable. */
 fun viewportFor(points: List<MapPoint>): MapViewport = when (points.size) {
     0 -> MapViewport.World
+
     1 -> MapViewport.Single(points.first().position)
+
     else -> MapViewport.Bounds(
-        southWest = LatLng(points.minOf { it.position.latitude }, points.minOf { it.position.longitude }),
-        northEast = LatLng(points.maxOf { it.position.latitude }, points.maxOf { it.position.longitude }),
+        southWest = LatLng(
+            points.minOf { it.position.latitude },
+            points.minOf { it.position.longitude }
+        ),
+        northEast = LatLng(
+            points.maxOf { it.position.latitude },
+            points.maxOf { it.position.longitude }
+        )
     )
 }

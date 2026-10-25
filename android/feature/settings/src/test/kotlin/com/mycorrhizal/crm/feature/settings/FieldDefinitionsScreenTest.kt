@@ -56,11 +56,11 @@ class FieldDefinitionsScreenTest {
                     key = "coffee_order",
                     type = "string",
                     sensitivity = "normal",
-                    projection = "internal-only",
-                ),
-            ),
+                    projection = "internal-only"
+                )
+            )
         ),
-        onEdit: (String) -> Unit = {},
+        onEdit: (String) -> Unit = {}
     ): FieldDefinitionRepository {
         val repository = mockk<FieldDefinitionRepository>()
         coEvery { repository.list() } returns result
@@ -69,7 +69,12 @@ class FieldDefinitionsScreenTest {
 
         composeTestRule.setContent {
             MycorrhizalTheme {
-                FieldDefinitionsScreen(onBack = {}, onCreate = {}, onEdit = onEdit, viewModel = viewModel)
+                FieldDefinitionsScreen(
+                    onBack = {},
+                    onCreate = {},
+                    onEdit = onEdit,
+                    viewModel = viewModel
+                )
             }
         }
         composeTestRule.waitForIdle()
@@ -78,9 +83,21 @@ class FieldDefinitionsScreenTest {
 
     private fun twoDefinitions() = Result.success(
         listOf(
-            FieldDefinition(id = "d1", label = "Coffee order", type = "string", sensitivity = "normal", position = 0),
-            FieldDefinition(id = "d2", label = "Tea order", type = "string", sensitivity = "normal", position = 1),
-        ),
+            FieldDefinition(
+                id = "d1",
+                label = "Coffee order",
+                type = "string",
+                sensitivity = "normal",
+                position = 0
+            ),
+            FieldDefinition(
+                id = "d2",
+                label = "Tea order",
+                type = "string",
+                sensitivity = "normal",
+                position = 1
+            )
+        )
     )
 
     @Test
@@ -94,7 +111,9 @@ class FieldDefinitionsScreenTest {
     fun `an empty list renders the empty state`() {
         setScreen(Result.success(emptyList()))
 
-        composeTestRule.onNodeWithText(str(R.string.settings_custom_fields_empty)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            str(R.string.settings_custom_fields_empty)
+        ).assertIsDisplayed()
     }
 
     @Test
@@ -104,7 +123,9 @@ class FieldDefinitionsScreenTest {
         composeTestRule.onNodeWithText("Coffee order").assertIsDisplayed()
         // Readable one-line metadata, not the old low-contrast disabled chips.
         composeTestRule.onNodeWithText(
-            "${str(R.string.custom_field_type_string)} · ${str(R.string.relationships_sensitivity_normal)}",
+            "${str(
+                R.string.custom_field_type_string
+            )} · ${str(R.string.relationships_sensitivity_normal)}"
         ).assertIsDisplayed()
     }
 
@@ -118,15 +139,17 @@ class FieldDefinitionsScreenTest {
                         label = "Favorite drinks",
                         type = "string",
                         constraints = FieldConstraints(multi = true),
-                        sensitivity = "normal",
-                    ),
-                ),
-            ),
+                        sensitivity = "normal"
+                    )
+                )
+            )
         )
 
         composeTestRule.onNodeWithText(
-            "${str(R.string.custom_field_type_string)} · ${str(R.string.settings_custom_fields_multi)} · " +
-                str(R.string.relationships_sensitivity_normal),
+            "${str(
+                R.string.custom_field_type_string
+            )} · ${str(R.string.settings_custom_fields_multi)} · " +
+                str(R.string.relationships_sensitivity_normal)
         ).assertIsDisplayed()
     }
 
@@ -140,10 +163,10 @@ class FieldDefinitionsScreenTest {
                         label = "Favourite coffee",
                         type = "string",
                         sensitivity = "normal",
-                        projection = "vcard:X-FAVORITE-COFFEE",
-                    ),
-                ),
-            ),
+                        projection = "vcard:X-FAVORITE-COFFEE"
+                    )
+                )
+            )
         )
 
         composeTestRule.onNodeWithText("vcard:X-FAVORITE-COFFEE").assertDoesNotExist()
@@ -164,16 +187,26 @@ class FieldDefinitionsScreenTest {
         setScreen()
 
         // The old per-row edit/delete/move icon buttons are gone.
-        composeTestRule.onNodeWithContentDescription(str(R.string.settings_custom_fields_edit_named, "Coffee order"))
+        composeTestRule.onNodeWithContentDescription(
+            str(R.string.settings_custom_fields_edit_named, "Coffee order")
+        )
             .assertDoesNotExist()
-        composeTestRule.onNodeWithContentDescription(str(R.string.settings_custom_fields_delete_named, "Coffee order"))
+        composeTestRule.onNodeWithContentDescription(
+            str(R.string.settings_custom_fields_delete_named, "Coffee order")
+        )
             .assertDoesNotExist()
-        composeTestRule.onNodeWithContentDescription(str(R.string.settings_custom_fields_move_up_named, "Coffee order"))
+        composeTestRule.onNodeWithContentDescription(
+            str(R.string.settings_custom_fields_move_up_named, "Coffee order")
+        )
             .assertDoesNotExist()
-        composeTestRule.onNodeWithContentDescription(str(R.string.settings_custom_fields_move_down_named, "Coffee order"))
+        composeTestRule.onNodeWithContentDescription(
+            str(R.string.settings_custom_fields_move_down_named, "Coffee order")
+        )
             .assertDoesNotExist()
 
-        composeTestRule.onNodeWithContentDescription(str(R.string.settings_custom_fields_reorder_named, "Coffee order"))
+        composeTestRule.onNodeWithContentDescription(
+            str(R.string.settings_custom_fields_reorder_named, "Coffee order")
+        )
             .assertIsDisplayed()
     }
 
@@ -182,14 +215,16 @@ class FieldDefinitionsScreenTest {
         setScreen(twoDefinitions())
 
         val actions = composeTestRule
-            .onNodeWithContentDescription(str(R.string.settings_custom_fields_reorder_named, "Coffee order"))
+            .onNodeWithContentDescription(
+                str(R.string.settings_custom_fields_reorder_named, "Coffee order")
+            )
             .fetchSemanticsNode()
             .config
             .getOrNull(SemanticsActions.CustomActions)
 
         assertEquals(
             listOf(str(R.string.settings_custom_fields_move_down_named, "Coffee order")),
-            actions?.map { it.label },
+            actions?.map { it.label }
         )
     }
 
@@ -198,9 +233,11 @@ class FieldDefinitionsScreenTest {
         val repository = setScreen(twoDefinitions())
 
         composeTestRule
-            .onNodeWithContentDescription(str(R.string.settings_custom_fields_reorder_named, "Coffee order"))
+            .onNodeWithContentDescription(
+                str(R.string.settings_custom_fields_reorder_named, "Coffee order")
+            )
             .performCustomAccessibilityActionWithLabel(
-                str(R.string.settings_custom_fields_move_down_named, "Coffee order"),
+                str(R.string.settings_custom_fields_move_down_named, "Coffee order")
             )
 
         coVerify { repository.reorder(listOf("d2", "d1")) }
@@ -211,7 +248,9 @@ class FieldDefinitionsScreenTest {
         val repository = setScreen(twoDefinitions())
 
         composeTestRule
-            .onNodeWithContentDescription(str(R.string.settings_custom_fields_reorder_named, "Coffee order"))
+            .onNodeWithContentDescription(
+                str(R.string.settings_custom_fields_reorder_named, "Coffee order")
+            )
             .performTouchInput {
                 down(center)
                 advanceEventTime(700)

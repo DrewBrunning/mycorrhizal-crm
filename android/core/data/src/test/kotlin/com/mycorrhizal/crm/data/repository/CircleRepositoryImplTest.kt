@@ -42,7 +42,11 @@ class CircleRepositoryImplTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).build()
         apiClient = mockk()
-        repository = CircleRepositoryImpl(apiClient, db.cachedCircleDao(), db.cachedCircleMemberDao())
+        repository = CircleRepositoryImpl(
+            apiClient,
+            db.cachedCircleDao(),
+            db.cachedCircleMemberDao()
+        )
     }
 
     @After
@@ -53,7 +57,7 @@ class CircleRepositoryImplTest {
     @Test
     fun `list mirrors the page into the cache`() = runTest {
         coEvery { apiClient.listCircles(cursor = null, limit = 20) } returns Result.success(
-            CirclesPage(circles = listOf(Circle(id = "c1", name = "Friends"))),
+            CirclesPage(circles = listOf(Circle(id = "c1", name = "Friends")))
         )
 
         val result = repository.list(cursor = null, limit = 20)
@@ -65,7 +69,12 @@ class CircleRepositoryImplTest {
 
     @Test
     fun `list failure propagates without touching the cache`() = runTest {
-        coEvery { apiClient.listCircles(cursor = null, limit = 20) } returns Result.failure(ApiError.Server(500, "boom"))
+        coEvery {
+            apiClient.listCircles(
+                cursor = null,
+                limit = 20
+            )
+        } returns Result.failure(ApiError.Server(500, "boom"))
 
         val result = repository.list(cursor = null, limit = 20)
 
@@ -77,16 +86,24 @@ class CircleRepositoryImplTest {
     fun `circlesForContact replaces the member mirror wholesale`() = runTest {
         // Seed a stale membership for a different circle that should be wiped by the full resync.
         db.cachedCircleMemberDao().upsertAll(
-            listOf(CachedCircleMember(id = 99, circleId = "stale", memberVCardUid = "u1")),
+            listOf(CachedCircleMember(id = 99, circleId = "stale", memberVCardUid = "u1"))
         )
-        coEvery { apiClient.listCircles(includeMembers = true, limit = 100) } returns Result.success(
+        coEvery {
+            apiClient.listCircles(
+                includeMembers = true,
+                limit = 100
+            )
+        } returns Result.success(
             CirclesPage(
-                circles = listOf(Circle(id = "c1", name = "Friends"), Circle(id = "c2", name = "Family")),
+                circles = listOf(
+                    Circle(id = "c1", name = "Friends"),
+                    Circle(id = "c2", name = "Family")
+                ),
                 members = listOf(
                     CircleMember(id = 1, circleId = "c1", memberVCardUid = "u1"),
-                    CircleMember(id = 2, circleId = "c2", memberVCardUid = "u2"),
-                ),
-            ),
+                    CircleMember(id = 2, circleId = "c2", memberVCardUid = "u2")
+                )
+            )
         )
 
         val result = repository.circlesForContact("u1")
@@ -110,8 +127,8 @@ class CircleRepositoryImplTest {
         coEvery { apiClient.getCircle("c1") } returns Result.success(
             CircleDetailResponse(
                 circle = Circle(id = "c1", name = "Friends"),
-                members = listOf(CircleMember(id = 1, circleId = "c1", memberVCardUid = "u1")),
-            ),
+                members = listOf(CircleMember(id = 1, circleId = "c1", memberVCardUid = "u1"))
+            )
         )
 
         val result = repository.getWithMembers("c1")
@@ -124,7 +141,7 @@ class CircleRepositoryImplTest {
     @Test
     fun `create mirrors the created circle into the cache`() = runTest {
         coEvery { apiClient.createCircle(CircleInput(name = "Friends")) } returns Result.success(
-            Circle(id = "c1", name = "Friends"),
+            Circle(id = "c1", name = "Friends")
         )
 
         val result = repository.create("Friends")
@@ -137,7 +154,7 @@ class CircleRepositoryImplTest {
     fun `delete cascades to the cached circle and its members`() = runTest {
         db.cachedCircleDao().upsert(CachedCircle(id = "c1", name = "Friends"))
         db.cachedCircleMemberDao().upsertAll(
-            listOf(CachedCircleMember(id = 1, circleId = "c1", memberVCardUid = "u1")),
+            listOf(CachedCircleMember(id = 1, circleId = "c1", memberVCardUid = "u1"))
         )
         coEvery { apiClient.deleteCircle("c1") } returns Result.success(Unit)
 
@@ -151,7 +168,11 @@ class CircleRepositoryImplTest {
     @Test
     fun `delete failure leaves the cache untouched`() = runTest {
         db.cachedCircleDao().upsert(CachedCircle(id = "c1", name = "Friends"))
-        coEvery { apiClient.deleteCircle("c1") } returns Result.failure(ApiError.Server(500, "boom"))
+        coEvery {
+            apiClient.deleteCircle(
+                "c1"
+            )
+        } returns Result.failure(ApiError.Server(500, "boom"))
 
         val result = repository.delete("c1")
 
@@ -161,8 +182,13 @@ class CircleRepositoryImplTest {
 
     @Test
     fun `addMember upserts the new membership`() = runTest {
-        coEvery { apiClient.addCircleMember("c1", CircleMemberInput(memberVCardUid = "u1")) } returns Result.success(
-            CircleMember(id = 1, circleId = "c1", memberVCardUid = "u1"),
+        coEvery {
+            apiClient.addCircleMember(
+                "c1",
+                CircleMemberInput(memberVCardUid = "u1")
+            )
+        } returns Result.success(
+            CircleMember(id = 1, circleId = "c1", memberVCardUid = "u1")
         )
 
         val result = repository.addMember("c1", "u1")
@@ -174,7 +200,7 @@ class CircleRepositoryImplTest {
     @Test
     fun `removeMember deletes the cached membership`() = runTest {
         db.cachedCircleMemberDao().upsertAll(
-            listOf(CachedCircleMember(id = 1, circleId = "c1", memberVCardUid = "u1")),
+            listOf(CachedCircleMember(id = 1, circleId = "c1", memberVCardUid = "u1"))
         )
         coEvery { apiClient.removeCircleMember("c1", "u1") } returns Result.success(Unit)
 

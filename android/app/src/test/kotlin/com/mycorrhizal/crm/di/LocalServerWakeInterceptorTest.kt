@@ -7,6 +7,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import java.io.IOException
 import okhttp3.Interceptor
 import okhttp3.Protocol
 import okhttp3.Request
@@ -16,7 +17,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Test
-import java.io.IOException
 
 /**
  * Issue #1262 / ADR 0028 Decision 2: the lazy-start seam. The embedded server
@@ -54,7 +54,10 @@ class LocalServerWakeInterceptorTest {
         coVerify(exactly = 1) { host.ensureStarted() }
     }
 
-    private fun capturingChain(url: String, authorization: String?): Pair<Interceptor.Chain, MutableList<Request>> {
+    private fun capturingChain(
+        url: String,
+        authorization: String?
+    ): Pair<Interceptor.Chain, MutableList<Request>> {
         val request = Request.Builder().url(url).apply {
             if (authorization != null) header("Authorization", authorization)
         }.build()

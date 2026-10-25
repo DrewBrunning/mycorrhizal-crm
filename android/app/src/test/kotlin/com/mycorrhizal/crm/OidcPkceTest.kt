@@ -33,7 +33,7 @@ class OidcPkceTest {
         assertEquals(43, verifier.length)
         assertTrue(
             "verifier must be base64url (RFC 7636 §4.1)",
-            verifier.all { it.isLetterOrDigit() || it == '-' || it == '_' },
+            verifier.all { it.isLetterOrDigit() || it == '-' || it == '_' }
         )
         // ...and its challenge is the other 43-char half of the pair.
         assertEquals(43, OidcPkce.challenge(verifier).length)

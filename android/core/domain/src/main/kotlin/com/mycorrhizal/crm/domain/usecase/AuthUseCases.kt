@@ -16,6 +16,7 @@ import javax.inject.Inject
 class LoginUseCase @Inject constructor(private val authRepository: AuthRepository) {
     sealed interface Result {
         data object Success : Result
+
         /** [methods]: enrolled second-factor tokens (issue #1293); null from an older server. */
         data class TwoFactorRequired(val methods: List<String>? = null) : Result
         data class Failure(val message: String) : Result

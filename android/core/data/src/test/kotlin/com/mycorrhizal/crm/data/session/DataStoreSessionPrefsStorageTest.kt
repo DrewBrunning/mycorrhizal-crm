@@ -77,9 +77,9 @@ class DataStoreSessionPrefsStorageTest {
         val snapshot = ProfilesSnapshot(
             profiles = listOf(
                 ServerProfile("p1", ServerProfileKind.Remote("https://one.example"), "One"),
-                ServerProfile("p2", ServerProfileKind.Local, "On this device"),
+                ServerProfile("p2", ServerProfileKind.Local, "On this device")
             ),
-            activeProfileId = "p2",
+            activeProfileId = "p2"
         )
 
         storage.saveProfiles(snapshot)
@@ -91,9 +91,11 @@ class DataStoreSessionPrefsStorageTest {
     fun `saving an empty profile list clears them`() = runTest {
         storage.saveProfiles(
             ProfilesSnapshot(
-                profiles = listOf(ServerProfile("p1", ServerProfileKind.Remote("https://one.example"), "One")),
-                activeProfileId = "p1",
-            ),
+                profiles = listOf(
+                    ServerProfile("p1", ServerProfileKind.Remote("https://one.example"), "One")
+                ),
+                activeProfileId = "p1"
+            )
         )
 
         storage.saveProfiles(ProfilesSnapshot())
@@ -105,9 +107,11 @@ class DataStoreSessionPrefsStorageTest {
     fun `clear removes the profiles too`() = runTest {
         storage.saveProfiles(
             ProfilesSnapshot(
-                profiles = listOf(ServerProfile("p1", ServerProfileKind.Remote("https://one.example"), "One")),
-                activeProfileId = "p1",
-            ),
+                profiles = listOf(
+                    ServerProfile("p1", ServerProfileKind.Remote("https://one.example"), "One")
+                ),
+                activeProfileId = "p1"
+            )
         )
 
         storage.clear()

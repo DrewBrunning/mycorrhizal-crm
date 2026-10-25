@@ -63,10 +63,7 @@ import com.mycorrhizal.crm.ui.components.AccessibleIconButton
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TwoFactorScreen(
-    onBack: () -> Unit,
-    viewModel: TwoFactorViewModel = hiltViewModel(),
-) {
+fun TwoFactorScreen(onBack: () -> Unit, viewModel: TwoFactorViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     // The provider UI launches from this Activity context; it is handed to the
     // ViewModel for one call and never retained.
@@ -77,19 +74,25 @@ fun TwoFactorScreen(
             TopAppBar(
                 navigationIcon = {
                     AccessibleIconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back)
+                        )
                     }
                 },
                 title = {
-                    Text(stringResource(R.string.settings_two_factor_title), style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        stringResource(R.string.settings_two_factor_title),
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
-        },
+        }
     ) { padding ->
         TwoFactorContent(
             state = state,
@@ -105,7 +108,7 @@ fun TwoFactorScreen(
             onPromptWithPasskey = { viewModel.submitRegenerateWithPasskey(context) },
             onDismissPrompt = viewModel::dismissPrompt,
             onDismissRecoveryCodes = viewModel::dismissRecoveryCodes,
-            modifier = Modifier.padding(padding),
+            modifier = Modifier.padding(padding)
         )
     }
 }
@@ -125,14 +128,14 @@ fun TwoFactorContent(
     onPromptWithPasskey: () -> Unit,
     onDismissPrompt: () -> Unit,
     onDismissRecoveryCodes: () -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         when {
             state.loading && state.enabled == null -> {
@@ -140,16 +143,17 @@ fun TwoFactorContent(
                     CircularProgressIndicator()
                 }
             }
+
             state.enabled == true -> {
                 Text(
                     text = stringResource(R.string.settings_two_factor_enabled_badge),
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.tertiary,
+                    color = MaterialTheme.colorScheme.tertiary
                 )
                 Text(
                     text = stringResource(R.string.settings_two_factor_enabled_description),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedButton(onClick = onRegenerate, enabled = !state.busy) {
@@ -160,16 +164,21 @@ fun TwoFactorContent(
                     }
                 }
             }
+
             else -> {
                 Text(
                     text = stringResource(R.string.settings_two_factor_description),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 // Issue #1354: a passkey-only account holds a second factor and can
                 // rotate its recovery codes (proof: a code or a passkey assertion).
                 if (state.hasPasskey) {
-                    OutlinedButton(onClick = onRegenerate, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {
+                    OutlinedButton(
+                        onClick = onRegenerate,
+                        enabled = !state.busy,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         Text(stringResource(R.string.settings_two_factor_regenerate_button))
                     }
                 }
@@ -179,7 +188,7 @@ fun TwoFactorContent(
                     enabled = !state.busy,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .semantics { if (state.busy) stateDescription = enablingLabel },
+                        .semantics { if (state.busy) stateDescription = enablingLabel }
                 ) {
                     if (state.busy) {
                         CircularProgressIndicator(modifier = Modifier.size(18.dp))
@@ -192,14 +201,24 @@ fun TwoFactorContent(
         // A dialog-level error (rejected code during setup/prompt) is shown
         // inside the dialog; only surface it here when no dialog is up, so a
         // live-region read doesn't announce it twice.
-        val dialogOpen = state.setup != null || state.prompt != null || state.recoveryCodes != null || state.proofPrompt
-        val errorText = if (dialogOpen) null else state.errorRes?.let { stringResource(it) } ?: state.error
+        val dialogOpen =
+            state.setup != null || state.prompt != null || state.recoveryCodes != null ||
+                state.proofPrompt
+        val errorText = if (dialogOpen) {
+            null
+        } else {
+            state.errorRes?.let {
+                stringResource(
+                    it
+                )
+            } ?: state.error
+        }
         errorText?.let { text ->
             Text(
                 text = text,
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
             )
         }
     }
@@ -212,7 +231,7 @@ fun TwoFactorContent(
             errorRes = state.errorRes,
             onConfirmCode = onSubmitSetupProofCode,
             onUsePasskey = onSetupProofWithPasskey,
-            onDismiss = onDismissSetupProof,
+            onDismiss = onDismissSetupProof
         )
     }
 
@@ -223,7 +242,7 @@ fun TwoFactorContent(
             error = state.error,
             errorRes = state.errorRes,
             onConfirm = onConfirmSetup,
-            onDismiss = onCloseSetup,
+            onDismiss = onCloseSetup
         )
     }
 
@@ -236,14 +255,14 @@ fun TwoFactorContent(
             canProveWithPasskey = state.canProveWithPasskey,
             onConfirm = onSubmitPromptCode,
             onUsePasskey = onPromptWithPasskey,
-            onDismiss = onDismissPrompt,
+            onDismiss = onDismissPrompt
         )
     }
 
     state.recoveryCodes?.let { codes ->
         RecoveryCodesDialog(
             codes = codes,
-            onDone = onDismissRecoveryCodes,
+            onDone = onDismissRecoveryCodes
         )
     }
 }
@@ -260,7 +279,7 @@ internal fun SetupProofDialog(
     errorRes: Int?,
     onConfirmCode: (String) -> Unit,
     onUsePasskey: () -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     var code by remember { mutableStateOf("") }
     AlertDialog(
@@ -271,21 +290,35 @@ internal fun SetupProofDialog(
                 Text(
                     text = stringResource(R.string.settings_two_factor_proof_description),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 OutlinedTextField(
                     value = code,
                     onValueChange = { code = it },
                     singleLine = true,
                     enabled = !busy,
-                    label = { Text(stringResource(R.string.settings_two_factor_code_prompt_label)) },
+                    label = {
+                        Text(
+                            stringResource(R.string.settings_two_factor_code_prompt_label)
+                        )
+                    },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
                 )
                 val message = errorRes?.let { stringResource(it) } ?: error
-                message?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                message?.let {
+                    Text(
+                        it,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
                 if (canProveWithPasskey) {
-                    OutlinedButton(onClick = onUsePasskey, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+                    OutlinedButton(
+                        onClick = onUsePasskey,
+                        enabled = !busy,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         Text(stringResource(R.string.settings_two_factor_proof_use_passkey))
                     }
                 }
@@ -293,14 +326,18 @@ internal fun SetupProofDialog(
         },
         confirmButton = {
             TextButton(onClick = { onConfirmCode(code) }, enabled = !busy && code.isNotBlank()) {
-                Text(stringResource(if (busy) R.string.settings_two_factor_submitting else R.string.settings_two_factor_proof_confirm))
+                Text(
+                    stringResource(
+                        if (busy) R.string.settings_two_factor_submitting else R.string.settings_two_factor_proof_confirm
+                    )
+                )
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss, enabled = !busy) {
                 Text(stringResource(R.string.settings_cancel))
             }
-        },
+        }
     )
 }
 
@@ -312,7 +349,7 @@ internal fun EnrollmentSetupDialog(
     error: String?,
     errorRes: Int?,
     onConfirm: (String) -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     var code by remember { mutableStateOf("") }
     val qrBitmap = remember(setup.otpauthUrl) { QrCodeEncoder.encode(setup.otpauthUrl, 512) }
@@ -325,7 +362,7 @@ internal fun EnrollmentSetupDialog(
                 Text(
                     text = stringResource(R.string.settings_two_factor_setup_description),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 // The manual key below is the functional path (it always
                 // renders); the QR is a convenience for scanner apps. The image
@@ -334,8 +371,10 @@ internal fun EnrollmentSetupDialog(
                     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                         Image(
                             bitmap = bitmap.asImageBitmap(),
-                            contentDescription = stringResource(R.string.settings_two_factor_qr_content_description),
-                            modifier = Modifier.size(180.dp),
+                            contentDescription = stringResource(
+                                R.string.settings_two_factor_qr_content_description
+                            ),
+                            modifier = Modifier.size(180.dp)
                         )
                     }
                 }
@@ -345,35 +384,51 @@ internal fun EnrollmentSetupDialog(
                     readOnly = true,
                     singleLine = true,
                     label = { Text(stringResource(R.string.settings_two_factor_setup_manual_key)) },
-                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
-                    modifier = Modifier.fillMaxWidth(),
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(
+                        fontFamily = FontFamily.Monospace
+                    ),
+                    modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = code,
                     onValueChange = { code = it },
                     singleLine = true,
                     label = { Text(stringResource(R.string.settings_two_factor_setup_code_label)) },
-                    supportingText = { Text(stringResource(R.string.settings_two_factor_setup_code_help)) },
+                    supportingText = {
+                        Text(
+                            stringResource(R.string.settings_two_factor_setup_code_help)
+                        )
+                    },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
                 )
                 val message = errorRes?.let { stringResource(it) } ?: error
-                message?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                message?.let {
+                    Text(
+                        it,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             }
         },
         confirmButton = {
             TextButton(
                 onClick = { onConfirm(code) },
-                enabled = !busy && code.isNotBlank(),
+                enabled = !busy && code.isNotBlank()
             ) {
-                Text(stringResource(if (busy) R.string.settings_two_factor_setup_enabling else R.string.settings_two_factor_setup_confirm_button))
+                Text(
+                    stringResource(
+                        if (busy) R.string.settings_two_factor_setup_enabling else R.string.settings_two_factor_setup_confirm_button
+                    )
+                )
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss, enabled = !busy) {
                 Text(stringResource(R.string.settings_cancel))
             }
-        },
+        }
     )
 }
 
@@ -387,18 +442,23 @@ internal fun CodePromptDialog(
     onConfirm: (String) -> Unit,
     onDismiss: () -> Unit,
     canProveWithPasskey: Boolean = false,
-    onUsePasskey: () -> Unit = {},
+    onUsePasskey: () -> Unit = {}
 ) {
     var code by remember { mutableStateOf("") }
     // Regenerate offers a passkey proof (issue #1354) only when one can answer.
     val passkeyOffered = prompt == TwoFactorPrompt.REGENERATE && canProveWithPasskey
     val (title, description) = when (prompt) {
         TwoFactorPrompt.DISABLE ->
-            R.string.settings_two_factor_disable_title to R.string.settings_two_factor_disable_description
+            R.string.settings_two_factor_disable_title to
+                R.string.settings_two_factor_disable_description
+
         TwoFactorPrompt.REGENERATE ->
             R.string.settings_two_factor_regenerate_title to
-                if (passkeyOffered) R.string.settings_two_factor_regenerate_proof_description
-                else R.string.settings_two_factor_regenerate_description
+                if (passkeyOffered) {
+                    R.string.settings_two_factor_regenerate_proof_description
+                } else {
+                    R.string.settings_two_factor_regenerate_description
+                }
     }
 
     AlertDialog(
@@ -409,20 +469,36 @@ internal fun CodePromptDialog(
                 Text(
                     text = stringResource(description),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 OutlinedTextField(
                     value = code,
                     onValueChange = { code = it },
                     singleLine = true,
-                    label = { Text(stringResource(R.string.settings_two_factor_code_prompt_label)) },
-                    keyboardOptions = KeyboardOptions(keyboardType = if (passkeyOffered) KeyboardType.Ascii else KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth(),
+                    label = {
+                        Text(
+                            stringResource(R.string.settings_two_factor_code_prompt_label)
+                        )
+                    },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = if (passkeyOffered) KeyboardType.Ascii else KeyboardType.Number
+                    ),
+                    modifier = Modifier.fillMaxWidth()
                 )
                 val message = errorRes?.let { stringResource(it) } ?: error
-                message?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                message?.let {
+                    Text(
+                        it,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
                 if (passkeyOffered) {
-                    OutlinedButton(onClick = onUsePasskey, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+                    OutlinedButton(
+                        onClick = onUsePasskey,
+                        enabled = !busy,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         Text(stringResource(R.string.settings_two_factor_proof_use_passkey))
                     }
                 }
@@ -431,25 +507,26 @@ internal fun CodePromptDialog(
         confirmButton = {
             TextButton(
                 onClick = { onConfirm(code) },
-                enabled = !busy && code.isNotBlank(),
+                enabled = !busy && code.isNotBlank()
             ) {
-                Text(stringResource(if (busy) R.string.settings_two_factor_submitting else R.string.settings_two_factor_confirm))
+                Text(
+                    stringResource(
+                        if (busy) R.string.settings_two_factor_submitting else R.string.settings_two_factor_confirm
+                    )
+                )
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss, enabled = !busy) {
                 Text(stringResource(R.string.settings_cancel))
             }
-        },
+        }
     )
 }
 
 /** Issue #814 Phase 2: the ten one-time recovery codes — plaintext, shown exactly once. */
 @Composable
-internal fun RecoveryCodesDialog(
-    codes: List<String>,
-    onDone: () -> Unit,
-) {
+internal fun RecoveryCodesDialog(codes: List<String>, onDone: () -> Unit) {
     val clipboard = LocalClipboardManager.current
     var copied by remember { mutableStateOf(false) }
 
@@ -461,18 +538,20 @@ internal fun RecoveryCodesDialog(
                 Text(
                     text = stringResource(R.string.settings_two_factor_recovery_warning),
                     color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyMedium
                 )
                 Text(
                     text = stringResource(R.string.settings_two_factor_recovery_description),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 codes.forEach { code ->
                     Text(
                         text = code,
-                        style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
-                        color = MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontFamily = FontFamily.Monospace
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
                 TextButton(onClick = {
@@ -482,10 +561,13 @@ internal fun RecoveryCodesDialog(
                     Icon(Icons.Outlined.ContentCopy, contentDescription = null)
                     Text(
                         stringResource(
-                            if (copied) R.string.settings_two_factor_recovery_copied
-                            else R.string.settings_two_factor_recovery_copy,
+                            if (copied) {
+                                R.string.settings_two_factor_recovery_copied
+                            } else {
+                                R.string.settings_two_factor_recovery_copy
+                            }
                         ),
-                        modifier = Modifier.padding(start = 4.dp),
+                        modifier = Modifier.padding(start = 4.dp)
                     )
                 }
             }
@@ -494,6 +576,6 @@ internal fun RecoveryCodesDialog(
             TextButton(onClick = onDone) {
                 Text(stringResource(R.string.settings_two_factor_recovery_done))
             }
-        },
+        }
     )
 }

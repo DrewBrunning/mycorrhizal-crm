@@ -21,7 +21,7 @@ data class PendingInteraction(
      * server replay its stored response instead (exactly-once). Null only for
      * rows written before the key column existed and not yet backfilled.
      */
-    val idempotencyKey: String? = null,
+    val idempotencyKey: String? = null
 )
 
 /**
@@ -94,12 +94,15 @@ interface TrackingSettingsRepository {
     suspend fun setSmsTrackingEnabled(enabled: Boolean)
     suspend fun notificationsEnabled(): Boolean
     suspend fun setNotificationsEnabled(enabled: Boolean)
+
     /** Last timestamp processed by the call-log reader (dedupe). */
     suspend fun lastCallLogTimestamp(): Long
     suspend fun setLastCallLogTimestamp(ts: Long)
+
     /** Last timestamp processed by the SMS-history reader (dedupe). */
     suspend fun lastSmsTimestamp(): Long
     suspend fun setLastSmsTimestamp(ts: Long)
+
     /** When the periodic interaction sync last ran. */
     suspend fun lastInteractionSyncAt(): Long?
 

@@ -25,9 +25,15 @@ class ImmichSettingsViewModelTest {
     private val repository = mockk<ImmichRepository>()
 
     @Test
-    fun `load populates the config into the editable state`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `load populates the config into the editable state`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.getConfig() } returns Result.success(
-            ImmichConfigResponse(baseUrl = "http://immich:2283", hasApiKey = true, syncEnabled = true),
+            ImmichConfigResponse(
+                baseUrl = "http://immich:2283",
+                hasApiKey = true,
+                syncEnabled = true
+            )
         )
         val vm = ImmichSettingsViewModel(repository)
         advanceUntilIdle()
@@ -49,10 +55,16 @@ class ImmichSettingsViewModelTest {
     }
 
     @Test
-    fun `save round-trips the config and clears the key field`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `save round-trips the config and clears the key field`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.getConfig() } returns Result.success(ImmichConfigResponse())
         coEvery { repository.saveConfig(any()) } returns Result.success(
-            ImmichConfigResponse(baseUrl = "http://immich:2283", hasApiKey = true, syncEnabled = true),
+            ImmichConfigResponse(
+                baseUrl = "http://immich:2283",
+                hasApiKey = true,
+                syncEnabled = true
+            )
         )
         val vm = ImmichSettingsViewModel(repository)
         advanceUntilIdle()
@@ -71,7 +83,9 @@ class ImmichSettingsViewModelTest {
     }
 
     @Test
-    fun `a typed api key is sent on save exactly once`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a typed api key is sent on save exactly once`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val captured = mutableListOf<com.mycorrhizal.crm.model.network.ImmichConfigInput>()
         coEvery { repository.getConfig() } returns Result.success(ImmichConfigResponse())
         coEvery { repository.saveConfig(any()) } answers {
@@ -93,7 +107,11 @@ class ImmichSettingsViewModelTest {
     @Test
     fun `save failure surfaces the save error`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { repository.getConfig() } returns Result.success(ImmichConfigResponse())
-        coEvery { repository.saveConfig(any()) } returns Result.failure(ApiError.Client(400, "Invalid URL"))
+        coEvery {
+            repository.saveConfig(
+                any()
+            )
+        } returns Result.failure(ApiError.Client(400, "Invalid URL"))
         val vm = ImmichSettingsViewModel(repository)
         advanceUntilIdle()
 
@@ -108,9 +126,11 @@ class ImmichSettingsViewModelTest {
     fun `test reports success distinctly`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { repository.getConfig() } returns Result.success(ImmichConfigResponse())
         coEvery { repository.saveConfig(any()) } returns Result.success(
-            ImmichConfigResponse(baseUrl = "http://immich:2283", hasApiKey = true),
+            ImmichConfigResponse(baseUrl = "http://immich:2283", hasApiKey = true)
         )
-        coEvery { repository.testConnection() } returns Result.success(ImmichConnectionTestResult(ok = true))
+        coEvery { repository.testConnection() } returns Result.success(
+            ImmichConnectionTestResult(ok = true)
+        )
         val vm = ImmichSettingsViewModel(repository)
         advanceUntilIdle()
 
@@ -125,13 +145,15 @@ class ImmichSettingsViewModelTest {
     }
 
     @Test
-    fun `test reports a diagnosed failure distinctly`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `test reports a diagnosed failure distinctly`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.getConfig() } returns Result.success(ImmichConfigResponse())
         coEvery { repository.saveConfig(any()) } returns Result.success(
-            ImmichConfigResponse(baseUrl = "http://immich:2283", hasApiKey = true),
+            ImmichConfigResponse(baseUrl = "http://immich:2283", hasApiKey = true)
         )
         coEvery { repository.testConnection() } returns Result.success(
-            ImmichConnectionTestResult(ok = false, message = "invalid API key"),
+            ImmichConnectionTestResult(ok = false, message = "invalid API key")
         )
         val vm = ImmichSettingsViewModel(repository)
         advanceUntilIdle()
@@ -146,9 +168,15 @@ class ImmichSettingsViewModelTest {
     }
 
     @Test
-    fun `test never calls test-connection when the pre-test save fails`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `test never calls test-connection when the pre-test save fails`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.getConfig() } returns Result.success(ImmichConfigResponse())
-        coEvery { repository.saveConfig(any()) } returns Result.failure(ApiError.Client(400, "Invalid URL"))
+        coEvery {
+            repository.saveConfig(
+                any()
+            )
+        } returns Result.failure(ApiError.Client(400, "Invalid URL"))
         val vm = ImmichSettingsViewModel(repository)
         advanceUntilIdle()
 
@@ -163,9 +191,11 @@ class ImmichSettingsViewModelTest {
     }
 
     @Test
-    fun `remove clears the connection back to a fresh state`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `remove clears the connection back to a fresh state`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.getConfig() } returns Result.success(
-            ImmichConfigResponse(baseUrl = "http://immich:2283", hasApiKey = true),
+            ImmichConfigResponse(baseUrl = "http://immich:2283", hasApiKey = true)
         )
         coEvery { repository.deleteConfig() } returns Result.success(Unit)
         val vm = ImmichSettingsViewModel(repository)
@@ -181,9 +211,11 @@ class ImmichSettingsViewModelTest {
     }
 
     @Test
-    fun `remove failure surfaces the save error and keeps the connection`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `remove failure surfaces the save error and keeps the connection`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.getConfig() } returns Result.success(
-            ImmichConfigResponse(baseUrl = "http://immich:2283", hasApiKey = true),
+            ImmichConfigResponse(baseUrl = "http://immich:2283", hasApiKey = true)
         )
         coEvery { repository.deleteConfig() } returns Result.failure(ApiError.Server(500, "boom"))
         val vm = ImmichSettingsViewModel(repository)
@@ -197,12 +229,16 @@ class ImmichSettingsViewModelTest {
     }
 
     @Test
-    fun `editing a field clears a stale test result`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `editing a field clears a stale test result`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.getConfig() } returns Result.success(ImmichConfigResponse())
         coEvery { repository.saveConfig(any()) } returns Result.success(
-            ImmichConfigResponse(baseUrl = "http://immich:2283", hasApiKey = true),
+            ImmichConfigResponse(baseUrl = "http://immich:2283", hasApiKey = true)
         )
-        coEvery { repository.testConnection() } returns Result.success(ImmichConnectionTestResult(ok = true))
+        coEvery { repository.testConnection() } returns Result.success(
+            ImmichConnectionTestResult(ok = true)
+        )
         val vm = ImmichSettingsViewModel(repository)
         advanceUntilIdle()
 

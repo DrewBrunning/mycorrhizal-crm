@@ -50,25 +50,34 @@ class CircleDetailScreenTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    private val alice = ContactSummary(id = 42, uid = "uid-alice", firstname = "Alice", lastname = "Smith")
+    private val alice = ContactSummary(
+        id = 42,
+        uid = "uid-alice",
+        firstname = "Alice",
+        lastname = "Smith"
+    )
 
     private fun str(@StringRes res: Int, vararg args: Any): String =
         ApplicationProvider.getApplicationContext<Context>().getString(res, *args)
 
     private fun setScreen(
         members: List<CircleMember> = listOf(
-            CircleMember(id = 1, circleId = "c1", memberVCardUid = "uid-alice"),
+            CircleMember(id = 1, circleId = "c1", memberVCardUid = "uid-alice")
         ),
         resolve: Map<String, ContactSummary> = emptyMap(),
-        onNavigate: (Int) -> Unit = {},
+        onNavigate: (Int) -> Unit = {}
     ) {
         val circleRepository = mockk<CircleRepository>()
         val contactRepository = mockk<ContactRepository>()
         coEvery { circleRepository.getWithMembers("c1") } returns Result.success(
-            CircleDetail(circle = Circle(id = "c1", name = "Family"), members = members),
+            CircleDetail(circle = Circle(id = "c1", name = "Family"), members = members)
         )
         coEvery { contactRepository.resolveByUid(any()) } returns Result.success(resolve)
-        val vm = CircleDetailViewModel(circleRepository, contactRepository, SavedStateHandle(mapOf("circleId" to "c1")))
+        val vm = CircleDetailViewModel(
+            circleRepository,
+            contactRepository,
+            SavedStateHandle(mapOf("circleId" to "c1"))
+        )
         composeTestRule.setContent {
             MycorrhizalTheme(darkTheme = false) {
                 CircleDetailScreen(onBack = {}, onNavigateToContact = onNavigate, viewModel = vm)
@@ -93,7 +102,7 @@ class CircleDetailScreenTest {
         composeTestRule.onNodeWithText(str(R.string.contact_unknown)).assertIsDisplayed()
         composeTestRule.onNodeWithText("uid-alice").assertDoesNotExist()
         composeTestRule.onNodeWithContentDescription(
-            str(R.string.circles_remove_member_named, str(R.string.contact_unknown)),
+            str(R.string.circles_remove_member_named, str(R.string.contact_unknown))
         ).assertIsDisplayed()
     }
 
@@ -103,10 +112,10 @@ class CircleDetailScreenTest {
         setScreen(
             members = listOf(
                 CircleMember(id = 1, circleId = "c1", memberVCardUid = "uid-alice"),
-                CircleMember(id = 2, circleId = "c1", memberVCardUid = "uid-ghost"),
+                CircleMember(id = 2, circleId = "c1", memberVCardUid = "uid-ghost")
             ),
             resolve = mapOf("uid-alice" to alice),
-            onNavigate = { opened = it },
+            onNavigate = { opened = it }
         )
 
         composeTestRule.onNodeWithText(str(R.string.contact_unknown)).performClick()
@@ -121,13 +130,18 @@ class CircleDetailScreenTest {
         setScreen(
             members = listOf(
                 CircleMember(id = 1, circleId = "c1", memberVCardUid = "uid-alice"),
-                CircleMember(id = 2, circleId = "c1", memberVCardUid = "uid-bob"),
+                CircleMember(id = 2, circleId = "c1", memberVCardUid = "uid-bob")
             ),
             resolve = mapOf(
                 "uid-alice" to alice.copy(photoThumbnail = "/thumb-a.jpg"),
-                "uid-bob" to ContactSummary(id = 43, uid = "uid-bob", firstname = "Bob", photo = "/photo-b.jpg"),
+                "uid-bob" to ContactSummary(
+                    id = 43,
+                    uid = "uid-bob",
+                    firstname = "Bob",
+                    photo = "/photo-b.jpg"
+                )
             ),
-            onNavigate = { opened = it },
+            onNavigate = { opened = it }
         )
 
         composeTestRule.onNodeWithText("Alice Smith").assertIsDisplayed()
@@ -148,7 +162,9 @@ class CircleDetailScreenTest {
     fun `the remove button announces the member name`() {
         setScreen(resolve = mapOf("uid-alice" to alice))
 
-        composeTestRule.onNodeWithContentDescription(str(R.string.circles_remove_member_named, "Alice Smith"))
+        composeTestRule.onNodeWithContentDescription(
+            str(R.string.circles_remove_member_named, "Alice Smith")
+        )
             .assertIsDisplayed()
     }
 
@@ -173,17 +189,29 @@ class CircleDetailScreenTest {
         coEvery { circleRepository.getWithMembers("c1") } returns Result.success(
             CircleDetail(
                 circle = Circle(id = "c1", name = "Family"),
-                members = listOf(CircleMember(id = 1, circleId = "c1", memberVCardUid = "uid-alice")),
-            ),
+                members = listOf(
+                    CircleMember(id = 1, circleId = "c1", memberVCardUid = "uid-alice")
+                )
+            )
         )
-        coEvery { contactRepository.resolveByUid(any()) } returns Result.success(mapOf("uid-alice" to alice))
+        coEvery {
+            contactRepository.resolveByUid(
+                any()
+            )
+        } returns Result.success(mapOf("uid-alice" to alice))
         coEvery { circleRepository.removeMember("c1", "uid-alice") } returns Result.success(Unit)
-        val vm = CircleDetailViewModel(circleRepository, contactRepository, SavedStateHandle(mapOf("circleId" to "c1")))
+        val vm = CircleDetailViewModel(
+            circleRepository,
+            contactRepository,
+            SavedStateHandle(mapOf("circleId" to "c1"))
+        )
         composeTestRule.setContent {
             MycorrhizalTheme { CircleDetailScreen(onBack = {}, viewModel = vm) }
         }
 
-        composeTestRule.onNodeWithContentDescription(str(R.string.circles_remove_member_named, "Alice Smith"))
+        composeTestRule.onNodeWithContentDescription(
+            str(R.string.circles_remove_member_named, "Alice Smith")
+        )
             .performClick()
 
         coVerify(exactly = 1) { circleRepository.removeMember("c1", "uid-alice") }
@@ -195,21 +223,29 @@ class CircleDetailScreenTest {
         val circleRepository = mockk<CircleRepository>()
         val contactRepository = mockk<ContactRepository>()
         coEvery { circleRepository.getWithMembers("c1") } returns Result.success(
-            CircleDetail(circle = Circle(id = "c1", name = "Family"), members = emptyList()),
+            CircleDetail(circle = Circle(id = "c1", name = "Family"), members = emptyList())
         )
         coEvery { contactRepository.resolveByUid(any()) } returns Result.success(emptyMap())
         coEvery { circleRepository.addMember("c1", "uid-new") } returns Result.success(
-            CircleMember(id = 2, circleId = "c1", memberVCardUid = "uid-new"),
+            CircleMember(id = 2, circleId = "c1", memberVCardUid = "uid-new")
         )
-        val vm = CircleDetailViewModel(circleRepository, contactRepository, SavedStateHandle(mapOf("circleId" to "c1")))
+        val vm = CircleDetailViewModel(
+            circleRepository,
+            contactRepository,
+            SavedStateHandle(mapOf("circleId" to "c1"))
+        )
         composeTestRule.setContent {
             MycorrhizalTheme { CircleDetailScreen(onBack = {}, viewModel = vm) }
         }
 
-        composeTestRule.onNodeWithContentDescription(str(R.string.circles_add_member)).performClick()
+        composeTestRule.onNodeWithContentDescription(
+            str(R.string.circles_add_member)
+        ).performClick()
 
         composeTestRule.onNodeWithText(str(R.string.action_add)).assertIsNotEnabled()
-        composeTestRule.onNodeWithText(str(R.string.circles_member_vcard_uid)).performTextInput("uid-new")
+        composeTestRule.onNodeWithText(
+            str(R.string.circles_member_vcard_uid)
+        ).performTextInput("uid-new")
         composeTestRule.onNodeWithText(str(R.string.action_add)).assertIsEnabled().performClick()
 
         coVerify(exactly = 1) { circleRepository.addMember("c1", "uid-new") }
@@ -222,12 +258,18 @@ class CircleDetailScreenTest {
         val contactRepository = mockk<ContactRepository>()
         val gate = CompletableDeferred<Result<CircleDetail>>()
         coEvery { circleRepository.getWithMembers("c1") } coAnswers { gate.await() }
-        val vm = CircleDetailViewModel(circleRepository, contactRepository, SavedStateHandle(mapOf("circleId" to "c1")))
+        val vm = CircleDetailViewModel(
+            circleRepository,
+            contactRepository,
+            SavedStateHandle(mapOf("circleId" to "c1"))
+        )
         composeTestRule.setContent {
             MycorrhizalTheme { CircleDetailScreen(onBack = {}, viewModel = vm) }
         }
 
-        composeTestRule.onNodeWithContentDescription(str(R.string.a11y_state_loading)).assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(
+            str(R.string.a11y_state_loading)
+        ).assertIsDisplayed()
     }
 
     @Test
@@ -237,7 +279,11 @@ class CircleDetailScreenTest {
         coEvery { circleRepository.getWithMembers("c1") } returns
             Result.failure(ApiError.Client(500, "boom"))
         coEvery { contactRepository.resolveByUid(any()) } returns Result.success(emptyMap())
-        val vm = CircleDetailViewModel(circleRepository, contactRepository, SavedStateHandle(mapOf("circleId" to "c1")))
+        val vm = CircleDetailViewModel(
+            circleRepository,
+            contactRepository,
+            SavedStateHandle(mapOf("circleId" to "c1"))
+        )
         composeTestRule.setContent {
             MycorrhizalTheme { CircleDetailScreen(onBack = {}, viewModel = vm) }
         }

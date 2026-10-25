@@ -8,12 +8,12 @@ import com.mycorrhizal.crm.model.network.DEFAULT_ENABLED_CONTACT_FIELDS
 import com.mycorrhizal.crm.model.network.resolveEnabledFields
 import com.mycorrhizal.crm.network.ApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class ContactFieldSettingsUiState(
     val isLoading: Boolean = true,
@@ -21,7 +21,7 @@ data class ContactFieldSettingsUiState(
     /** The one row whose switch is disabled while its own PATCH is in flight. */
     val savingKey: ContactFieldKey? = null,
     val loadError: String? = null,
-    val saveError: String? = null,
+    val saveError: String? = null
 )
 
 /**
@@ -33,7 +33,7 @@ data class ContactFieldSettingsUiState(
  */
 @HiltViewModel
 class ContactFieldSettingsViewModel @Inject constructor(
-    private val authRepository: AuthRepository,
+    private val authRepository: AuthRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ContactFieldSettingsUiState())
@@ -48,7 +48,12 @@ class ContactFieldSettingsViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, loadError = null) }
             authRepository.getEnabledContactFields()
                 .onSuccess { stored ->
-                    _uiState.update { it.copy(isLoading = false, enabled = resolveEnabledFields(stored)) }
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            enabled = resolveEnabledFields(stored)
+                        )
+                    }
                 }
                 .onFailure { e ->
                     _uiState.update { it.copy(isLoading = false, loadError = e.displayMessage()) }
@@ -72,7 +77,13 @@ class ContactFieldSettingsViewModel @Inject constructor(
                     _uiState.update { it.copy(savingKey = null) }
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(enabled = previous, savingKey = null, saveError = e.displayMessage()) }
+                    _uiState.update {
+                        it.copy(
+                            enabled = previous,
+                            savingKey = null,
+                            saveError = e.displayMessage()
+                        )
+                    }
                 }
         }
     }

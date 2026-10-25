@@ -27,7 +27,7 @@ data class DuplicatePair(
     val a: ContactSummary = ContactSummary(),
     val b: ContactSummary = ContactSummary(),
     val reasons: List<String> = emptyList(),
-    val confidence: Double = 0.0,
+    val confidence: Double = 0.0
 ) {
     /** Stable review key: both VCardUIDs ordered, so (A,B) and (B,A) collapse. */
     val reviewKey: String
@@ -43,12 +43,12 @@ data class DuplicatePairsResponse(
     val pairs: List<DuplicatePair> = emptyList(),
     val total: Int = 0,
     val page: Int = 0,
-    val limit: Int = 0,
+    val limit: Int = 0
 )
 
 /** POST /contacts/duplicates/dismiss request body (T93). */
 @JsonClass(generateAdapter = true)
 data class DuplicateDismissalInput(
     @Json(name = "uid_a") val uidA: String,
-    @Json(name = "uid_b") val uidB: String,
+    @Json(name = "uid_b") val uidB: String
 )

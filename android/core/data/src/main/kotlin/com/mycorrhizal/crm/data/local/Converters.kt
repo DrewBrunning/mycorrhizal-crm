@@ -25,12 +25,10 @@ class Converters {
         value?.let { moshi.adapter<List<String>>(STRING_LIST_TYPE).fromJson(it) }
 
     @androidx.room.TypeConverter
-    fun fromCard(value: Card?): String? =
-        value?.let { moshi.adapter(Card::class.java).toJson(it) }
+    fun fromCard(value: Card?): String? = value?.let { moshi.adapter(Card::class.java).toJson(it) }
 
     @androidx.room.TypeConverter
-    fun toCard(value: String?): Card? =
-        value?.let { moshi.adapter(Card::class.java).fromJson(it) }
+    fun toCard(value: String?): Card? = value?.let { moshi.adapter(Card::class.java).fromJson(it) }
 
     @androidx.room.TypeConverter
     fun fromCrmEnvelope(value: CRMEnvelope?): String? =
@@ -41,22 +39,21 @@ class Converters {
         value?.let { moshi.adapter(CRMEnvelope::class.java).fromJson(it) }
 
     @androidx.room.TypeConverter
-    fun fromInstant(value: Instant?): Long? =
-        value?.toEpochMilliseconds()
+    fun fromInstant(value: Instant?): Long? = value?.toEpochMilliseconds()
 
     @androidx.room.TypeConverter
-    fun toInstant(value: Long?): Instant? =
-        value?.let { Instant.fromEpochMilliseconds(it) }
+    fun toInstant(value: Long?): Instant? = value?.let { Instant.fromEpochMilliseconds(it) }
 
     @androidx.room.TypeConverter
-    fun fromLocalDate(value: LocalDate?): String? =
-        value?.toString()
+    fun fromLocalDate(value: LocalDate?): String? = value?.toString()
 
     @androidx.room.TypeConverter
-    fun toLocalDate(value: String?): LocalDate? =
-        value?.let { LocalDate.parse(it) }
+    fun toLocalDate(value: String?): LocalDate? = value?.let { LocalDate.parse(it) }
 
     companion object {
-        private val STRING_LIST_TYPE = Types.newParameterizedType(List::class.java, String::class.java)
+        private val STRING_LIST_TYPE = Types.newParameterizedType(
+            List::class.java,
+            String::class.java
+        )
     }
 }

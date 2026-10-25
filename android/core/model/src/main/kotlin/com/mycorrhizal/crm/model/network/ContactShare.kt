@@ -30,7 +30,7 @@ data class ContactShare(
     @Json(name = "to_user_id") val toUserId: Long = 0,
     @Json(name = "contact_display_name") val contactDisplayName: String = "",
     val status: String = ContactShareStatuses.PENDING,
-    @Json(name = "responded_at") val respondedAt: String? = null,
+    @Json(name = "responded_at") val respondedAt: String? = null
 )
 
 /** GET /contact-shares/incoming|outgoing response — cursor-paginated. */
@@ -41,14 +41,14 @@ data class ContactSharesPage(
     val usernames: Map<String, String> = emptyMap(),
     val total: Int = 0,
     @Json(name = "next_cursor") val nextCursor: String? = null,
-    val limit: Int = 0,
+    val limit: Int = 0
 )
 
 /** POST /contact-shares response — wrapped `{ message, contact_share }`. */
 @JsonClass(generateAdapter = true)
 data class CreateContactShareResponse(
     val message: String? = null,
-    @Json(name = "contact_share") val contactShare: ContactShare? = null,
+    @Json(name = "contact_share") val contactShare: ContactShare? = null
 )
 
 /** POST /contact-shares body. */
@@ -57,7 +57,7 @@ data class ContactShareInput(
     @Json(name = "to_user_id") val toUserId: Long,
     @Json(name = "vcard_uid") val vcardUid: String,
     val sections: List<String>,
-    @Json(name = "include_sensitive") val includeSensitive: Boolean = false,
+    @Json(name = "include_sensitive") val includeSensitive: Boolean = false
 )
 
 /**
@@ -65,13 +65,8 @@ data class ContactShareInput(
  * any authenticated user (unlike the admin-only full user list).
  */
 @JsonClass(generateAdapter = true)
-data class UserDirectoryEntry(
-    val id: Long = 0,
-    val username: String = "",
-)
+data class UserDirectoryEntry(val id: Long = 0, val username: String = "")
 
 /** GET /users/directory response — `{ users: [...] }`. */
 @JsonClass(generateAdapter = true)
-data class UserDirectoryResponse(
-    val users: List<UserDirectoryEntry> = emptyList(),
-)
+data class UserDirectoryResponse(val users: List<UserDirectoryEntry> = emptyList())

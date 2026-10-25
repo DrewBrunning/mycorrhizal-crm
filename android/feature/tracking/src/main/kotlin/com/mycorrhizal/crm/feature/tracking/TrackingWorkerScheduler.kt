@@ -77,51 +77,53 @@ object TrackingWorkerScheduler {
         // (Google Play restricts its permissions), so its two catch-up chains
         // are never enqueued there. The default reads the same merged bool
         // resource the injected CallSmsTrackingCapability reads.
-        callSmsCaptureAvailable: Boolean = context.resources.getBoolean(R.bool.call_sms_tracking_available),
+        callSmsCaptureAvailable: Boolean = context.resources.getBoolean(
+            R.bool.call_sms_tracking_available
+        )
     ) {
         val workManager = WorkManager.getInstance(context)
 
         // Sync pending interactions every 15 min (WorkManager minimum interval).
         val interactionSync = PeriodicWorkRequestBuilder<InteractionSyncWorker>(
             15,
-            TimeUnit.MINUTES,
+            TimeUnit.MINUTES
         ).build()
         workManager.enqueueUniquePeriodicWork(
             UNIQUE_INTERACTION_SYNC,
             ExistingPeriodicWorkPolicy.UPDATE,
-            interactionSync,
+            interactionSync
         )
 
         // Notification checks (§6.4). Reminders hourly, cadences 4-hourly,
         // birthdays daily.
         val reminderCheck = PeriodicWorkRequestBuilder<ReminderNotificationWorker>(
             1,
-            TimeUnit.HOURS,
+            TimeUnit.HOURS
         ).build()
         workManager.enqueueUniquePeriodicWork(
             UNIQUE_REMINDER_CHECK,
             ExistingPeriodicWorkPolicy.UPDATE,
-            reminderCheck,
+            reminderCheck
         )
 
         val cadenceCheck = PeriodicWorkRequestBuilder<CadenceCheckWorker>(
             4,
-            TimeUnit.HOURS,
+            TimeUnit.HOURS
         ).build()
         workManager.enqueueUniquePeriodicWork(
             UNIQUE_CADENCE_CHECK,
             ExistingPeriodicWorkPolicy.UPDATE,
-            cadenceCheck,
+            cadenceCheck
         )
 
         val birthdayCheck = PeriodicWorkRequestBuilder<BirthdayCheckWorker>(
             24,
-            TimeUnit.HOURS,
+            TimeUnit.HOURS
         ).build()
         workManager.enqueueUniquePeriodicWork(
             UNIQUE_BIRTHDAY_CHECK,
             ExistingPeriodicWorkPolicy.UPDATE,
-            birthdayCheck,
+            birthdayCheck
         )
 
         // Issue #721: capture catch-ups (see the class doc). Issue #1200: only
@@ -129,32 +131,32 @@ object TrackingWorkerScheduler {
         if (callSmsCaptureAvailable) {
             val callLogCatchUp = PeriodicWorkRequestBuilder<CallLogSyncWorker>(
                 CALL_LOG_CATCH_UP_MINUTES,
-                TimeUnit.MINUTES,
+                TimeUnit.MINUTES
             ).build()
             workManager.enqueueUniquePeriodicWork(
                 UNIQUE_CALL_LOG_CATCH_UP,
                 ExistingPeriodicWorkPolicy.UPDATE,
-                callLogCatchUp,
+                callLogCatchUp
             )
 
             val smsBackfill = PeriodicWorkRequestBuilder<SmsBackfillWorker>(
                 SMS_BACKFILL_MINUTES,
-                TimeUnit.MINUTES,
+                TimeUnit.MINUTES
             ).build()
             workManager.enqueueUniquePeriodicWork(
                 UNIQUE_SMS_BACKFILL,
                 ExistingPeriodicWorkPolicy.UPDATE,
-                smsBackfill,
+                smsBackfill
             )
 
             val smsInboxReconciliation = PeriodicWorkRequestBuilder<SmsInboxReconciliationWorker>(
                 SMS_INBOX_RECONCILIATION_MINUTES,
-                TimeUnit.MINUTES,
+                TimeUnit.MINUTES
             ).build()
             workManager.enqueueUniquePeriodicWork(
                 UNIQUE_SMS_INBOX_RECONCILIATION,
                 ExistingPeriodicWorkPolicy.UPDATE,
-                smsInboxReconciliation,
+                smsInboxReconciliation
             )
         }
 
@@ -163,12 +165,12 @@ object TrackingWorkerScheduler {
         // having opened that contact's detail screen.
         val contactPhoneIndexBackfill = PeriodicWorkRequestBuilder<ContactPhoneIndexBackfillWorker>(
             CONTACT_PHONE_INDEX_BACKFILL_MINUTES,
-            TimeUnit.MINUTES,
+            TimeUnit.MINUTES
         ).build()
         workManager.enqueueUniquePeriodicWork(
             UNIQUE_CONTACT_PHONE_INDEX_BACKFILL,
             ExistingPeriodicWorkPolicy.UPDATE,
-            contactPhoneIndexBackfill,
+            contactPhoneIndexBackfill
         )
     }
 
@@ -182,7 +184,7 @@ object TrackingWorkerScheduler {
         WorkManager.getInstance(context).enqueueUniqueWork(
             UNIQUE_CALL_LOG_SYNC,
             ExistingWorkPolicy.REPLACE,
-            request,
+            request
         )
     }
 
@@ -195,7 +197,7 @@ object TrackingWorkerScheduler {
         WorkManager.getInstance(context).enqueueUniqueWork(
             UNIQUE_SMS_BACKFILL_ONCE,
             ExistingWorkPolicy.KEEP,
-            request,
+            request
         )
     }
 }

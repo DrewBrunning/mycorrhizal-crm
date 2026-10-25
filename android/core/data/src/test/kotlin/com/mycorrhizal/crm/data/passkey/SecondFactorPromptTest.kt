@@ -14,27 +14,48 @@ class SecondFactorPromptTest {
             assertEquals(SecondFactorPrompt.STANDARD, secondFactorPrompt(null, gate))
             assertEquals(SecondFactorPrompt.STANDARD, secondFactorPrompt(emptyList(), gate))
             assertEquals(SecondFactorPrompt.STANDARD, secondFactorPrompt(listOf("totp"), gate))
-            assertEquals(SecondFactorPrompt.STANDARD, secondFactorPrompt(listOf("hwkey", "sms"), gate))
+            assertEquals(
+                SecondFactorPrompt.STANDARD,
+                secondFactorPrompt(listOf("hwkey", "sms"), gate)
+            )
         }
     }
 
     @Test
     fun `passkey-only with a closed gate degrades to recovery`() {
-        assertEquals(SecondFactorPrompt.RECOVERY_CODE_ONLY, secondFactorPrompt(listOf("webauthn"), false))
+        assertEquals(
+            SecondFactorPrompt.RECOVERY_CODE_ONLY,
+            secondFactorPrompt(listOf("webauthn"), false)
+        )
         // An unknown extra token does not make the account TOTP-capable.
-        assertEquals(SecondFactorPrompt.RECOVERY_CODE_ONLY, secondFactorPrompt(listOf("webauthn", "hwkey"), false))
+        assertEquals(
+            SecondFactorPrompt.RECOVERY_CODE_ONLY,
+            secondFactorPrompt(listOf("webauthn", "hwkey"), false)
+        )
     }
 
     @Test
     fun `totp plus passkey with a closed gate keeps the field and adds a note`() {
-        assertEquals(SecondFactorPrompt.CODE_WITH_PASSKEY_NOTE, secondFactorPrompt(listOf("totp", "webauthn"), false))
-        assertEquals(SecondFactorPrompt.CODE_WITH_PASSKEY_NOTE, secondFactorPrompt(listOf("webauthn", "totp"), false))
+        assertEquals(
+            SecondFactorPrompt.CODE_WITH_PASSKEY_NOTE,
+            secondFactorPrompt(listOf("totp", "webauthn"), false)
+        )
+        assertEquals(
+            SecondFactorPrompt.CODE_WITH_PASSKEY_NOTE,
+            secondFactorPrompt(listOf("webauthn", "totp"), false)
+        )
     }
 
     @Test
     fun `an open gate offers the passkey action`() {
-        assertEquals(SecondFactorPrompt.PASSKEY_OR_RECOVERY_CODE, secondFactorPrompt(listOf("webauthn"), true))
-        assertEquals(SecondFactorPrompt.CODE_OR_PASSKEY, secondFactorPrompt(listOf("totp", "webauthn"), true))
+        assertEquals(
+            SecondFactorPrompt.PASSKEY_OR_RECOVERY_CODE,
+            secondFactorPrompt(listOf("webauthn"), true)
+        )
+        assertEquals(
+            SecondFactorPrompt.CODE_OR_PASSKEY,
+            secondFactorPrompt(listOf("totp", "webauthn"), true)
+        )
     }
 
     @Test

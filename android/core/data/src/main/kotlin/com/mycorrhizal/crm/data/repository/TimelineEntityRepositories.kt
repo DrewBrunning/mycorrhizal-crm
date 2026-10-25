@@ -31,14 +31,16 @@ import javax.inject.Inject
  */
 class LifeEventRepositoryImpl @Inject constructor(
     private val apiClient: ApiClient,
-    private val dao: CachedLifeEventDao,
+    private val dao: CachedLifeEventDao
 ) : LifeEventRepository {
     override suspend fun listForContact(entityId: String): Result<List<LifeEvent>> {
         val result = apiClient.listLifeEvents(entityId = entityId)
         val page = result.getOrNull()
         if (page != null) {
             dao.deleteForContact(entityId)
-            dao.upsertAll(page.lifeEvents.filterNot { it.deleted == true }.map { it.toCached(entityId) })
+            dao.upsertAll(
+                page.lifeEvents.filterNot { it.deleted == true }.map { it.toCached(entityId) }
+            )
         }
         return result.map { page -> page.lifeEvents }
     }
@@ -49,7 +51,11 @@ class LifeEventRepositoryImpl @Inject constructor(
         return result
     }
 
-    override suspend fun update(id: String, input: LifeEventInput, revision: Int?): Result<LifeEvent> {
+    override suspend fun update(
+        id: String,
+        input: LifeEventInput,
+        revision: Int?
+    ): Result<LifeEvent> {
         val result = apiClient.updateLifeEvent(id, input, revision)
         result.getOrNull()?.let { dao.upsert(it.toCached(input.entityId)) }
         return result
@@ -62,15 +68,20 @@ class LifeEventRepositoryImpl @Inject constructor(
     }
 
     private fun LifeEvent.toCached(entityId: String): CachedLifeEvent = CachedLifeEvent(
-        id = id, entityId = entityId, type = type, category = category,
+        id = id,
+        entityId = entityId,
+        type = type,
+        category = category,
         date = date?.let { listOfNotNull(it.year, it.month, it.day).joinToString("-") },
-        description = description, remind = remind, updatedAt = updatedAt,
+        description = description,
+        remind = remind,
+        updatedAt = updatedAt
     )
 }
 
 class GiftRepositoryImpl @Inject constructor(
     private val apiClient: ApiClient,
-    private val dao: CachedGiftDao,
+    private val dao: CachedGiftDao
 ) : GiftRepository {
     override suspend fun listForContact(entityId: String): Result<List<Gift>> {
         val result = apiClient.listGifts(entityId = entityId)
@@ -101,21 +112,27 @@ class GiftRepositoryImpl @Inject constructor(
     }
 
     private fun Gift.toCached(entityId: String): CachedGift = CachedGift(
-        id = id, entityId = entityId, status = status, occasion = occasion,
-        description = description, updatedAt = updatedAt,
+        id = id,
+        entityId = entityId,
+        status = status,
+        occasion = occasion,
+        description = description,
+        updatedAt = updatedAt
     )
 }
 
 class PreferenceRepositoryImpl @Inject constructor(
     private val apiClient: ApiClient,
-    private val dao: CachedPreferenceDao,
+    private val dao: CachedPreferenceDao
 ) : PreferenceRepository {
     override suspend fun listForContact(entityId: String): Result<List<Preference>> {
         val result = apiClient.listPreferences(entityId = entityId)
         val page = result.getOrNull()
         if (page != null) {
             dao.deleteForContact(entityId)
-            dao.upsertAll(page.preferences.filterNot { it.deleted == true }.map { it.toCached(entityId) })
+            dao.upsertAll(
+                page.preferences.filterNot { it.deleted == true }.map { it.toCached(entityId) }
+            )
         }
         return result.map { page -> page.preferences }
     }
@@ -139,21 +156,32 @@ class PreferenceRepositoryImpl @Inject constructor(
     }
 
     private fun Preference.toCached(entityId: String): CachedPreference = CachedPreference(
-        id = id, entityId = entityId, category = category, key = key,
-        value = value, sensitivity = sensitivity, updatedAt = updatedAt,
+        id = id,
+        entityId = entityId,
+        category = category,
+        key = key,
+        value = value,
+        sensitivity = sensitivity,
+        updatedAt = updatedAt
     )
 }
 
 class ConversationAgendaRepositoryImpl @Inject constructor(
     private val apiClient: ApiClient,
-    private val dao: CachedConversationAgendaDao,
+    private val dao: CachedConversationAgendaDao
 ) : ConversationAgendaRepository {
     override suspend fun listForContact(entityId: String): Result<List<ConversationAgenda>> {
         val result = apiClient.listConversationAgenda(entityId = entityId)
         val page = result.getOrNull()
         if (page != null) {
             dao.deleteForContact(entityId)
-            dao.upsertAll(page.conversationAgenda.filterNot { it.deleted == true }.map { it.toCached(entityId) })
+            dao.upsertAll(
+                page.conversationAgenda.filterNot { it.deleted == true }.map {
+                    it.toCached(
+                        entityId
+                    )
+                }
+            )
         }
         return result.map { page -> page.conversationAgenda }
     }
@@ -164,7 +192,10 @@ class ConversationAgendaRepositoryImpl @Inject constructor(
         return result
     }
 
-    override suspend fun update(id: String, input: ConversationAgendaInput): Result<ConversationAgenda> {
+    override suspend fun update(
+        id: String,
+        input: ConversationAgendaInput
+    ): Result<ConversationAgenda> {
         val result = apiClient.updateConversationAgenda(id, input)
         result.getOrNull()?.let { dao.upsert(it.toCached(input.entityId)) }
         return result
@@ -184,7 +215,11 @@ class ConversationAgendaRepositoryImpl @Inject constructor(
 
     private fun ConversationAgenda.toCached(entityId: String): CachedConversationAgenda =
         CachedConversationAgenda(
-            id = id, entityId = entityId, content = content,
-            referenceUrl = referenceUrl, discussedAt = discussedAt, updatedAt = updatedAt,
+            id = id,
+            entityId = entityId,
+            content = content,
+            referenceUrl = referenceUrl,
+            discussedAt = discussedAt,
+            updatedAt = updatedAt
         )
 }

@@ -2,7 +2,6 @@ package com.mycorrhizal.crm.network
 
 import android.net.LocalSocket
 import android.net.LocalSocketAddress
-import okhttp3.Dns
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
@@ -11,8 +10,9 @@ import java.net.InetSocketAddress
 import java.net.Socket
 import java.net.SocketAddress
 import javax.net.SocketFactory
+import okhttp3.Dns
 
-/**
+/*
  * ADR 0028 Decision 2: the `Local` server profile's transport. The embedded
  * server listens on a Unix domain socket in app-private storage — never TCP
  * loopback, which any app on the device can reach. Requests for the `Local`
@@ -89,17 +89,19 @@ class ProfileAwareDns(private val provider: LocalSocketPathProvider) : Dns {
  * for [LOCAL_SERVER_SENTINEL_HOST], and otherwise delegate to a real TCP
  * socket. Installed on the single app-scoped OkHttpClient.
  */
-class ProfileAwareSocketFactory(
-    private val provider: LocalSocketPathProvider,
-) : SocketFactory() {
+class ProfileAwareSocketFactory(private val provider: LocalSocketPathProvider) : SocketFactory() {
 
     override fun createSocket(): Socket = ProfileAwareSocket(provider)
 
     override fun createSocket(host: String, port: Int): Socket =
         createSocket().also { it.connect(InetSocketAddress(host, port)) }
 
-    override fun createSocket(host: String, port: Int, localHost: InetAddress, localPort: Int): Socket =
-        createSocket(host, port)
+    override fun createSocket(
+        host: String,
+        port: Int,
+        localHost: InetAddress,
+        localPort: Int
+    ): Socket = createSocket(host, port)
 
     override fun createSocket(host: InetAddress, port: Int): Socket =
         createSocket(host.hostAddress.orEmpty(), port)
@@ -108,7 +110,7 @@ class ProfileAwareSocketFactory(
         address: InetAddress,
         port: Int,
         localAddress: InetAddress,
-        localPort: Int,
+        localPort: Int
     ): Socket = createSocket(address, port)
 }
 
@@ -118,9 +120,7 @@ class ProfileAwareSocketFactory(
  * [connect], so the branch is decided there, per connect, from the host of the
  * endpoint and the provider's current path.
  */
-internal class ProfileAwareSocket(
-    private val provider: LocalSocketPathProvider,
-) : Socket() {
+internal class ProfileAwareSocket(private val provider: LocalSocketPathProvider) : Socket() {
 
     private var network: Socket? = null
     private var local: LocalSocket? = null
@@ -158,7 +158,8 @@ internal class ProfileAwareSocket(
 
     override fun getInputStream(): InputStream = local?.inputStream ?: delegate().getInputStream()
 
-    override fun getOutputStream(): OutputStream = local?.outputStream ?: delegate().getOutputStream()
+    override fun getOutputStream(): OutputStream =
+        local?.outputStream ?: delegate().getOutputStream()
 
     override fun setSoTimeout(timeout: Int) {
         pendingTimeout = timeout

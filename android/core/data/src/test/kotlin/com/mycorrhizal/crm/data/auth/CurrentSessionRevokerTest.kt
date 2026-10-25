@@ -20,8 +20,8 @@ class CurrentSessionRevokerTest {
         coEvery { api.listSessions() } returns Result.success(
             listOf(
                 SessionInfo(id = "sid-other", current = false),
-                SessionInfo(id = "sid-this", current = true),
-            ),
+                SessionInfo(id = "sid-this", current = true)
+            )
         )
         coEvery { api.revokeSession("sid-this") } returns Result.success(Unit)
 
@@ -35,7 +35,7 @@ class CurrentSessionRevokerTest {
     fun `does nothing when no session is flagged current`() = runTest {
         val api = mockk<ApiClient>()
         coEvery { api.listSessions() } returns Result.success(
-            listOf(SessionInfo(id = "sid-other", current = false)),
+            listOf(SessionInfo(id = "sid-other", current = false))
         )
 
         CurrentSessionRevoker(api).revoke()
@@ -57,8 +57,14 @@ class CurrentSessionRevokerTest {
     @Test
     fun `a revoke failure does not throw`() = runTest {
         val api = mockk<ApiClient>()
-        coEvery { api.listSessions() } returns Result.success(listOf(SessionInfo(id = "sid-this", current = true)))
-        coEvery { api.revokeSession("sid-this") } returns Result.failure(RuntimeException("network error"))
+        coEvery { api.listSessions() } returns Result.success(
+            listOf(SessionInfo(id = "sid-this", current = true))
+        )
+        coEvery {
+            api.revokeSession(
+                "sid-this"
+            )
+        } returns Result.failure(RuntimeException("network error"))
 
         CurrentSessionRevoker(api).revoke()
 

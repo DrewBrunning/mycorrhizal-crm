@@ -10,16 +10,16 @@ import com.mycorrhizal.crm.data.attach.AttachToRemoteCoordinator
 import com.mycorrhizal.crm.data.passkey.PasskeyIssue
 import com.mycorrhizal.crm.data.passkey.PasskeyResult
 import com.mycorrhizal.crm.data.passkey.SecondFactorPrompt
-import com.mycorrhizal.crm.testing.FakePasskeyClient
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.domain.profile.ServerProfile
 import com.mycorrhizal.crm.domain.profile.ServerProfileKind
 import com.mycorrhizal.crm.model.network.ImportRowPreview
 import com.mycorrhizal.crm.model.network.MycorrhizalBundleCounts
-import com.mycorrhizal.crm.model.network.SourceImportResult
-import com.mycorrhizal.crm.model.network.SourceImportPreviewResponse
 import com.mycorrhizal.crm.model.network.RowImportAction
+import com.mycorrhizal.crm.model.network.SourceImportPreviewResponse
+import com.mycorrhizal.crm.model.network.SourceImportResult
 import com.mycorrhizal.crm.network.ApiError
+import com.mycorrhizal.crm.testing.FakePasskeyClient
 import com.mycorrhizal.crm.testing.MainDispatcherRule
 import com.mycorrhizal.crm.ui.R
 import io.mockk.coEvery
@@ -41,7 +41,11 @@ class AttachToRemoteViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val local = ServerProfile("loc", ServerProfileKind.Local, "On this device")
-    private val remoteProfile = ServerProfile("r1", ServerProfileKind.Remote("https://home.example"), "Home")
+    private val remoteProfile = ServerProfile(
+        "r1",
+        ServerProfileKind.Remote("https://home.example"),
+        "Home"
+    )
 
     // Lets a mocked coordinator answer inspect the view model mid-flight.
     private lateinit var vm0: AttachToRemoteViewModel
@@ -54,11 +58,11 @@ class AttachToRemoteViewModelTest {
     private val rows = listOf(
         ImportRowPreview(rowIndex = 0, suggestedAction = "update"),
         ImportRowPreview(rowIndex = 1, suggestedAction = "add", validationErrors = listOf("bad")),
-        ImportRowPreview(rowIndex = 2, suggestedAction = "add"),
+        ImportRowPreview(rowIndex = 2, suggestedAction = "add")
     )
     private val preview = AttachPreview(
         totals = MycorrhizalBundleCounts(contacts = 3),
-        preview = SourceImportPreviewResponse(sessionId = "s", rows = rows),
+        preview = SourceImportPreviewResponse(sessionId = "s", rows = rows)
     )
 
     private fun viewModel(beginOk: Boolean = true): AttachToRemoteViewModel {
@@ -85,7 +89,9 @@ class AttachToRemoteViewModelTest {
         }
 
     @Test
-    fun `a non-Local or archived start is blocked with a message`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a non-Local or archived start is blocked with a message`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = viewModel(beginOk = false)
         advanceUntilIdle()
 
@@ -108,7 +114,9 @@ class AttachToRemoteViewModelTest {
         }
 
     @Test
-    fun `missing credentials are rejected before any network call`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `missing credentials are rejected before any network call`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = viewModel()
         advanceUntilIdle()
 
@@ -133,7 +141,11 @@ class AttachToRemoteViewModelTest {
             assertEquals(AttachStep.Review, state.step)
             assertEquals(preview, state.preview)
             assertEquals("update", state.rowActions[0])
-            assertEquals("a row with validation errors is forced to skip", "skip", state.rowActions[1])
+            assertEquals(
+                "a row with validation errors is forced to skip",
+                "skip",
+                state.rowActions[1]
+            )
             assertEquals("add", state.rowActions[2])
         }
 
@@ -143,8 +155,13 @@ class AttachToRemoteViewModelTest {
             coEvery { coordinator.signIn(any(), any(), any(), any(), any()) } returns
                 Result.success(AttachSignInResult.SignedIn)
             coEvery { coordinator.prepare(any()) } coAnswers {
-                firstArg<(AttachProgress) -> Unit>().invoke(AttachProgress(AttachStage.Uploading, 1, 2))
-                assertEquals(AttachProgress(AttachStage.Uploading, 1, 2), vm0.uiState.value.progress)
+                firstArg<(AttachProgress) -> Unit>().invoke(
+                    AttachProgress(AttachStage.Uploading, 1, 2)
+                )
+                assertEquals(
+                    AttachProgress(AttachStage.Uploading, 1, 2),
+                    vm0.uiState.value.progress
+                )
                 Result.success(preview)
             }
             val vm = viewModel()
@@ -189,7 +206,9 @@ class AttachToRemoteViewModelTest {
         }
 
     @Test
-    fun `an unknown failure falls back to its own message`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `an unknown failure falls back to its own message`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { coordinator.signIn(any(), any(), any(), any(), any()) } returns
             Result.failure(AttachException("Server returned no session"))
         val vm = viewModel()
@@ -206,7 +225,11 @@ class AttachToRemoteViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { coordinator.signIn(any(), any(), any(), any(), any()) } returns
                 Result.success(AttachSignInResult.TwoFactorRequired())
-            coEvery { coordinator.completeTwoFactor("123456") } returns Result.success(AttachSignInResult.SignedIn)
+            coEvery {
+                coordinator.completeTwoFactor(
+                    "123456"
+                )
+            } returns Result.success(AttachSignInResult.SignedIn)
             coEvery { coordinator.prepare(any()) } returns Result.success(preview)
             val vm = viewModel()
             advanceUntilIdle()
@@ -222,10 +245,16 @@ class AttachToRemoteViewModelTest {
         }
 
     @Test
-    fun `a wrong two-factor code stays on the code step`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a wrong two-factor code stays on the code step`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { coordinator.signIn(any(), any(), any(), any(), any()) } returns
             Result.success(AttachSignInResult.TwoFactorRequired())
-        coEvery { coordinator.completeTwoFactor(any()) } returns Result.failure(ApiError.Client(401, "bad"))
+        coEvery {
+            coordinator.completeTwoFactor(
+                any()
+            )
+        } returns Result.failure(ApiError.Client(401, "bad"))
         val vm = viewModel()
         advanceUntilIdle()
         vm.signIn("r1", "", "", "alice", "pw")
@@ -243,7 +272,7 @@ class AttachToRemoteViewModelTest {
     private suspend fun kotlinx.coroutines.test.TestScope.reachTwoFactor(
         methods: List<String>?,
         serverOffers: Boolean,
-        deviceSupported: Boolean = true,
+        deviceSupported: Boolean = true
     ): AttachToRemoteViewModel {
         passkeyClient.supported = deviceSupported
         coEvery { coordinator.signIn(any(), any(), any(), any(), any()) } returns
@@ -256,7 +285,9 @@ class AttachToRemoteViewModelTest {
     }
 
     @Test
-    fun `absent methods keep the standard code prompt`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `absent methods keep the standard code prompt`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = reachTwoFactor(null, serverOffers = false)
         assertEquals(AttachStep.TwoFactor, vm.uiState.value.step)
         assertEquals(SecondFactorPrompt.STANDARD, vm.uiState.value.twoFactorPrompt)
@@ -272,17 +303,31 @@ class AttachToRemoteViewModelTest {
     @Test
     fun `a device without Credential Manager degrades even when the server offers passkeys`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            val vm = reachTwoFactor(listOf("totp", "webauthn"), serverOffers = true, deviceSupported = false)
-            assertEquals(SecondFactorPrompt.CODE_WITH_PASSKEY_NOTE, vm.uiState.value.twoFactorPrompt)
+            val vm = reachTwoFactor(
+                listOf("totp", "webauthn"),
+                serverOffers = true,
+                deviceSupported = false
+            )
+            assertEquals(
+                SecondFactorPrompt.CODE_WITH_PASSKEY_NOTE,
+                vm.uiState.value.twoFactorPrompt
+            )
         }
 
     @Test
     fun `an open gate offers the passkey and completes the sign-in then continues to review`() =
         runTest(mainDispatcherRule.testDispatcher) {
             val vm = reachTwoFactor(listOf("webauthn"), serverOffers = true)
-            assertEquals(SecondFactorPrompt.PASSKEY_OR_RECOVERY_CODE, vm.uiState.value.twoFactorPrompt)
+            assertEquals(
+                SecondFactorPrompt.PASSKEY_OR_RECOVERY_CODE,
+                vm.uiState.value.twoFactorPrompt
+            )
             coEvery { coordinator.beginPasskey() } returns Result.success("""{"publicKey":{}}""")
-            coEvery { coordinator.completePasskey("""{"id":"asserted"}""") } returns Result.success(AttachSignInResult.SignedIn)
+            coEvery {
+                coordinator.completePasskey(
+                    """{"id":"asserted"}"""
+                )
+            } returns Result.success(AttachSignInResult.SignedIn)
             coEvery { coordinator.prepare(any()) } returns Result.success(preview)
 
             vm.usePasskey(context)
@@ -293,7 +338,9 @@ class AttachToRemoteViewModelTest {
         }
 
     @Test
-    fun `a cancelled passkey returns to the code step silently`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a cancelled passkey returns to the code step silently`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = reachTwoFactor(listOf("totp", "webauthn"), serverOffers = true)
         coEvery { coordinator.beginPasskey() } returns Result.success("{}")
         passkeyClient.getResult = PasskeyResult.Cancelled
@@ -324,7 +371,10 @@ class AttachToRemoteViewModelTest {
             passkeyClient.getResult = PasskeyResult.NoProvider
             vm2.usePasskey(context)
             advanceUntilIdle()
-            assertEquals(SecondFactorPrompt.CODE_WITH_PASSKEY_NOTE, vm2.uiState.value.twoFactorPrompt)
+            assertEquals(
+                SecondFactorPrompt.CODE_WITH_PASSKEY_NOTE,
+                vm2.uiState.value.twoFactorPrompt
+            )
             assertEquals(PasskeyIssue.NO_PROVIDER, vm2.uiState.value.passkeyIssue)
         }
 
@@ -345,13 +395,21 @@ class AttachToRemoteViewModelTest {
             assertEquals(R.string.login_error_passkey_failed, vm.uiState.value.errorRes)
 
             passkeyClient.getResult = PasskeyResult.Success("{}")
-            coEvery { coordinator.completePasskey(any()) } returns Result.failure(ApiError.Client(401, "no"))
+            coEvery {
+                coordinator.completePasskey(
+                    any()
+                )
+            } returns Result.failure(ApiError.Client(401, "no"))
             vm.usePasskey(context)
             advanceUntilIdle()
             assertEquals(AttachStep.TwoFactor, vm.uiState.value.step)
             assertEquals(R.string.login_error_passkey_failed, vm.uiState.value.errorRes)
 
-            coEvery { coordinator.completePasskey(any()) } returns Result.failure(ApiError.Client(429, "Too many attempts"))
+            coEvery {
+                coordinator.completePasskey(
+                    any()
+                )
+            } returns Result.failure(ApiError.Client(429, "Too many attempts"))
             vm.usePasskey(context)
             advanceUntilIdle()
             assertEquals("Too many attempts", vm.uiState.value.error)
@@ -361,7 +419,9 @@ class AttachToRemoteViewModelTest {
     fun `a begin failure returns to the code step with the server message`() =
         runTest(mainDispatcherRule.testDispatcher) {
             val vm = reachTwoFactor(listOf("webauthn"), serverOffers = true)
-            coEvery { coordinator.beginPasskey() } returns Result.failure(ApiError.Client(409, "No passkey registered"))
+            coEvery { coordinator.beginPasskey() } returns Result.failure(
+                ApiError.Client(409, "No passkey registered")
+            )
 
             vm.usePasskey(context)
             advanceUntilIdle()
@@ -511,16 +571,18 @@ class AttachToRemoteViewModelTest {
                         actions.toSet() == setOf(
                             RowImportAction(0, "update"),
                             RowImportAction(1, "skip"),
-                            RowImportAction(2, "skip"),
+                            RowImportAction(2, "skip")
                         )
                     },
-                    any(),
+                    any()
                 )
             }
         }
 
     @Test
-    fun `confirm is ignored outside the review step`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `confirm is ignored outside the review step`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = viewModel()
         advanceUntilIdle()
 
@@ -534,7 +596,12 @@ class AttachToRemoteViewModelTest {
     fun `a failed confirm returns to review with the error and Local is never finished`() =
         runTest(mainDispatcherRule.testDispatcher) {
             stubPrepareOk()
-            coEvery { coordinator.confirm(any(), any()) } returns Result.failure(AttachException("boom"))
+            coEvery {
+                coordinator.confirm(
+                    any(),
+                    any()
+                )
+            } returns Result.failure(AttachException("boom"))
             val vm = viewModel()
             toReview(vm)
 
@@ -550,7 +617,12 @@ class AttachToRemoteViewModelTest {
     fun `unsent local interactions ask for confirmation and discarding finishes the move`() =
         runTest(mainDispatcherRule.testDispatcher) {
             stubPrepareOk()
-            coEvery { coordinator.confirm(any(), any()) } returns Result.success(SourceImportResult())
+            coEvery {
+                coordinator.confirm(
+                    any(),
+                    any()
+                )
+            } returns Result.success(SourceImportResult())
             coEvery { coordinator.finish(false) } returns AttachFinishResult.NeedsConfirmation(3)
             coEvery { coordinator.finish(true) } returns AttachFinishResult.Done
             val vm = viewModel()
@@ -572,7 +644,12 @@ class AttachToRemoteViewModelTest {
     fun `declining the discard keeps the import applied so confirm only finishes and never re-imports`() =
         runTest(mainDispatcherRule.testDispatcher) {
             stubPrepareOk()
-            coEvery { coordinator.confirm(any(), any()) } returns Result.success(SourceImportResult())
+            coEvery {
+                coordinator.confirm(
+                    any(),
+                    any()
+                )
+            } returns Result.success(SourceImportResult())
             coEvery { coordinator.finish(false) } returnsMany
                 listOf(AttachFinishResult.NeedsConfirmation(1), AttachFinishResult.Done)
             val vm = viewModel()
@@ -594,7 +671,12 @@ class AttachToRemoteViewModelTest {
     fun `a failure while finishing returns to review with the error`() =
         runTest(mainDispatcherRule.testDispatcher) {
             stubPrepareOk()
-            coEvery { coordinator.confirm(any(), any()) } returns Result.success(SourceImportResult())
+            coEvery {
+                coordinator.confirm(
+                    any(),
+                    any()
+                )
+            } returns Result.success(SourceImportResult())
             coEvery { coordinator.finish(any()) } throws AttachException("switch failed")
             val vm = viewModel()
             toReview(vm)
@@ -634,7 +716,9 @@ class AttachToRemoteViewModelTest {
     }
 
     @Test
-    fun `sign-in is ignored once past the sign-in step`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `sign-in is ignored once past the sign-in step`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         stubPrepareOk()
         val vm = viewModel()
         toReview(vm)

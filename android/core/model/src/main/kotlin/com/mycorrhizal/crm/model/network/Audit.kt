@@ -34,7 +34,7 @@ object AuditEntityTypes {
 
     /** Every entity token, in the backend's own declaration order. */
     val ALL: List<String> = listOf(
-        CONTACT, NOTE, ACTIVITY, LIFE_EVENT, GIFT, CIRCLE, TAG, HOUSEHOLD, REMINDER,
+        CONTACT, NOTE, ACTIVITY, LIFE_EVENT, GIFT, CIRCLE, TAG, HOUSEHOLD, REMINDER
     )
 }
 
@@ -55,7 +55,7 @@ data class AuditEvent(
     @Json(name = "entity_type") val entityType: String = "",
     @Json(name = "entity_id") val entityId: String = "",
     val operation: String = "",
-    @Json(name = "before_snapshot") val beforeSnapshot: String? = null,
+    @Json(name = "before_snapshot") val beforeSnapshot: String? = null
 ) {
     /** Mirrors web's undo gate: only contact update events can be undone (400 otherwise). */
     val canUndo: Boolean
@@ -66,11 +66,9 @@ data class AuditEvent(
 @JsonClass(generateAdapter = true)
 data class AuditEventsResponse(
     @Json(name = "audit_events") val auditEvents: List<AuditEvent> = emptyList(),
-    val total: Int = 0,
+    val total: Int = 0
 )
 
 /** POST /audit/:id/undo response — `{ message }` (the message is not surfaced). */
 @JsonClass(generateAdapter = true)
-data class AuditUndoResponse(
-    val message: String? = null,
-)
+data class AuditUndoResponse(val message: String? = null)

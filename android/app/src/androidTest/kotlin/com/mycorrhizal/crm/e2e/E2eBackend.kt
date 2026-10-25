@@ -1,5 +1,7 @@
 package com.mycorrhizal.crm.e2e
 
+import java.net.URLEncoder
+import java.util.concurrent.TimeUnit
 import okhttp3.Cookie
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
@@ -9,8 +11,6 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import org.json.JSONArray
 import org.json.JSONObject
-import java.net.URLEncoder
-import java.util.concurrent.TimeUnit
 
 /**
  * Minimal API harness for the E2E suite's *seeding*, *cleanup*, and *contract*
@@ -25,9 +25,7 @@ import java.util.concurrent.TimeUnit
  * app's own ApiClient does — the backend mints the token in an httpOnly
  * cookie, never in the JSON body.
  */
-class E2eBackend(
-    private val serverUrl: String = E2eConfig.serverUrl,
-) {
+class E2eBackend(private val serverUrl: String = E2eConfig.serverUrl) {
     /** A contact as created by this suite. [uid] is the vCard UID used as the
      *  audit log's entity_id. */
     data class SeedContact(val id: Long, val uid: String)
@@ -48,22 +46,21 @@ class E2eBackend(
      *  Used by tests that target a backend instance that only exists in some
      *  CI legs (issue #528's force-update backend) so they skip cleanly when
      *  it is not running. */
-    fun isReachable(): Boolean =
-        try {
-            val response = client.newCall(
-                Request.Builder().url("$serverUrl/health/live").build(),
-            ).execute()
-            response.use { it.isSuccessful }
-        } catch (_: Exception) {
-            false
-        }
+    fun isReachable(): Boolean = try {
+        val response = client.newCall(
+            Request.Builder().url("$serverUrl/health/live").build()
+        ).execute()
+        response.use { it.isSuccessful }
+    } catch (_: Exception) {
+        false
+    }
 
     /** Registers the seed account. 409 (already exists from a prior run) is
      *  treated as success. */
     fun registerSeedUser(
         username: String = E2eConfig.SEED_USERNAME,
         email: String = E2eConfig.SEED_EMAIL,
-        password: String = E2eConfig.SEED_PASSWORD,
+        password: String = E2eConfig.SEED_PASSWORD
     ) {
         val body = JSONObject()
             .put("username", username)
@@ -80,14 +77,16 @@ class E2eBackend(
     /** Logs in as the seed user and keeps the bearer token for later calls. */
     fun login(
         identifier: String = E2eConfig.SEED_USERNAME,
-        password: String = E2eConfig.SEED_PASSWORD,
+        password: String = E2eConfig.SEED_PASSWORD
     ): String {
         val body = JSONObject()
             .put("identifier", identifier)
             .put("password", password)
             .toString()
         post("/login", body).use {
-            check(it.code == 200) { "seed-user login failed: ${it.code} ${it.body?.string().orEmpty()}" }
+            check(
+                it.code == 200
+            ) { "seed-user login failed: ${it.code} ${it.body?.string().orEmpty()}" }
             val token = Cookie.parseAll("$serverUrl/".toHttpUrl(), it.headers)
                 .firstOrNull { cookie -> cookie.name == "auth_token" }
                 ?.value
@@ -132,7 +131,9 @@ class E2eBackend(
      *  and `is_favorite` alongside the nested card. */
     fun contactState(id: Long): JSONObject {
         get("/contacts/$id", authenticated = true).use {
-            check(it.code == 200) { "get contact failed: ${it.code} ${it.body?.string().orEmpty()}" }
+            check(
+                it.code == 200
+            ) { "get contact failed: ${it.code} ${it.body?.string().orEmpty()}" }
             return JSONObject(it.body?.string().orEmpty())
         }
     }
@@ -149,8 +150,12 @@ class E2eBackend(
     private fun searchContacts(query: String): List<Triple<Long, String, String>> {
         val response = get("/contacts?search=${urlEncode(query)}&limit=200", authenticated = true)
         response.use {
-            check(it.code == 200) { "contact search failed: ${it.code} ${it.body?.string().orEmpty()}" }
-            val contacts = JSONObject(it.body?.string().orEmpty()).optJSONArray("contacts") ?: JSONArray()
+            check(
+                it.code == 200
+            ) { "contact search failed: ${it.code} ${it.body?.string().orEmpty()}" }
+            val contacts = JSONObject(
+                it.body?.string().orEmpty()
+            ).optJSONArray("contacts") ?: JSONArray()
             return (0 until contacts.length()).map { i ->
                 val c = contacts.getJSONObject(i)
                 Triple(c.optLong("id"), c.optString("firstname"), c.optString("lastname"))
@@ -159,11 +164,12 @@ class E2eBackend(
     }
 
     /** The raw list JSON (`GET /contacts?limit=200`) — for tests asserting on what an account holds. */
-    fun contactsJson(): String =
-        get("/contacts?limit=200", authenticated = true).use {
-            check(it.code == 200) { "contact list failed: ${it.code} ${it.body?.string().orEmpty()}" }
-            it.body?.string().orEmpty()
-        }
+    fun contactsJson(): String = get("/contacts?limit=200", authenticated = true).use {
+        check(
+            it.code == 200
+        ) { "contact list failed: ${it.code} ${it.body?.string().orEmpty()}" }
+        it.body?.string().orEmpty()
+    }
 
     /** How many of the caller's contacts have [marker] in their name (search is by name). */
     fun countContactsWithMarker(marker: String): Int =
@@ -172,7 +178,11 @@ class E2eBackend(
     // --- audit ---------------------------------------------------------------
 
     /** The caller's audit events, newest first, filtered when supplied. */
-    fun auditEvents(entityType: String? = null, entityId: String? = null, limit: Int = 100): List<JSONObject> {
+    fun auditEvents(
+        entityType: String? = null,
+        entityId: String? = null,
+        limit: Int = 100
+    ): List<JSONObject> {
         val params = buildString {
             append("limit=").append(limit)
             entityType?.let { append("&entity_type=").append(urlEncode(it)) }
@@ -180,7 +190,9 @@ class E2eBackend(
         }
         get("/audit?$params", authenticated = true).use {
             check(it.code == 200) { "audit list failed: ${it.code} ${it.body?.string().orEmpty()}" }
-            val events = JSONObject(it.body?.string().orEmpty()).optJSONArray("audit_events") ?: JSONArray()
+            val events = JSONObject(
+                it.body?.string().orEmpty()
+            ).optJSONArray("audit_events") ?: JSONArray()
             return (0 until events.length()).map { events.getJSONObject(it) }
         }
     }
@@ -230,7 +242,9 @@ class E2eBackend(
             check(response.code == 200) {
                 "note list failed: ${response.code} ${response.body?.string().orEmpty()}"
             }
-            val notes = JSONObject(response.body?.string().orEmpty()).optJSONArray("notes") ?: JSONArray()
+            val notes = JSONObject(
+                response.body?.string().orEmpty()
+            ).optJSONArray("notes") ?: JSONArray()
             (0 until notes.length()).map { notes.getJSONObject(it).optString("content") }
         }
 
@@ -246,6 +260,7 @@ class E2eBackend(
     private companion object {
         /** A full offline-sync test run creates tens of activities, never thousands. */
         const val MAX_ACTIVITY_PAGES = 50
+
         /** The version the E2E harness advertises on its own API calls. */
         const val HARNESS_CLIENT_VERSION = "0.9.0"
     }
@@ -264,13 +279,12 @@ class E2eBackend(
         header("X-Client-Version", HARNESS_CLIENT_VERSION)
     }
 
-    private fun get(path: String, authenticated: Boolean = false): Response =
-        client.newCall(
-            Request.Builder().url(apiBase + path)
-                .apply { clientVersion() }
-                .apply { if (authenticated) auth() }
-                .build(),
-        ).execute()
+    private fun get(path: String, authenticated: Boolean = false): Response = client.newCall(
+        Request.Builder().url(apiBase + path)
+            .apply { clientVersion() }
+            .apply { if (authenticated) auth() }
+            .build()
+    ).execute()
 
     private fun post(path: String, body: String, authenticated: Boolean = false): Response =
         client.newCall(
@@ -278,17 +292,16 @@ class E2eBackend(
                 .apply { clientVersion() }
                 .apply { if (authenticated) auth() }
                 .post(body.toRequestBody(jsonType))
-                .build(),
+                .build()
         ).execute()
 
-    private fun delete(path: String, authenticated: Boolean = false): Response =
-        client.newCall(
-            Request.Builder().url(apiBase + path)
-                .apply { clientVersion() }
-                .apply { if (authenticated) auth() }
-                .delete()
-                .build(),
-        ).execute()
+    private fun delete(path: String, authenticated: Boolean = false): Response = client.newCall(
+        Request.Builder().url(apiBase + path)
+            .apply { clientVersion() }
+            .apply { if (authenticated) auth() }
+            .delete()
+            .build()
+    ).execute()
 
     private fun Request.Builder.auth() {
         header("Authorization", "Bearer ${authToken.orEmpty()}")

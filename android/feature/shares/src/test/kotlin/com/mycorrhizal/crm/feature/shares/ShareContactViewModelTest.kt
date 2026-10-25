@@ -30,11 +30,11 @@ class ShareContactViewModelTest {
 
     private fun viewModel(uid: String = "uid-5"): ShareContactViewModel {
         coEvery { shareRepository.userDirectory() } returns Result.success(
-            listOf(UserDirectoryEntry(id = 9, username = "casey")),
+            listOf(UserDirectoryEntry(id = 9, username = "casey"))
         )
         return ShareContactViewModel(
             shareRepository,
-            SavedStateHandle(mapOf("uid" to uid)),
+            SavedStateHandle(mapOf("uid" to uid))
         )
     }
 
@@ -49,7 +49,9 @@ class ShareContactViewModelTest {
     }
 
     @Test
-    fun `non-sensitive sections are selected by default`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `non-sensitive sections are selected by default`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = viewModel()
         advanceUntilIdle()
 
@@ -61,7 +63,9 @@ class ShareContactViewModelTest {
     }
 
     @Test
-    fun `share is disabled until a recipient is chosen`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `share is disabled until a recipient is chosen`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = viewModel()
         advanceUntilIdle()
 
@@ -74,7 +78,13 @@ class ShareContactViewModelTest {
     fun `share creates the share with the selected sections and the passed-through uid`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { shareRepository.create(any()) } returns Result.success(
-                ContactShare(id = "s1", fromUserId = 1, toUserId = 9, contactDisplayName = "Dana", status = ContactShareStatuses.PENDING),
+                ContactShare(
+                    id = "s1",
+                    fromUserId = 1,
+                    toUserId = 9,
+                    contactDisplayName = "Dana",
+                    status = ContactShareStatuses.PENDING
+                )
             )
             val vm = viewModel(uid = "uid-5")
             advanceUntilIdle()
@@ -89,8 +99,8 @@ class ShareContactViewModelTest {
                         toUserId = 9,
                         vcardUid = "uid-5",
                         sections = ShareFieldSections.DEFAULT_SELECTED,
-                        includeSensitive = false,
-                    ),
+                        includeSensitive = false
+                    )
                 )
             }
             assertTrue(vm.uiState.value.shared)
@@ -100,7 +110,7 @@ class ShareContactViewModelTest {
     fun `include_sensitive is only set when sensitive sections are revealed and selected`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { shareRepository.create(any()) } returns Result.success(
-                ContactShare(id = "s1", toUserId = 9, contactDisplayName = "Dana"),
+                ContactShare(id = "s1", toUserId = 9, contactDisplayName = "Dana")
             )
             val vm = viewModel()
             advanceUntilIdle()
@@ -117,8 +127,8 @@ class ShareContactViewModelTest {
                         toUserId = 9,
                         vcardUid = "uid-5",
                         sections = ShareFieldSections.DEFAULT_SELECTED,
-                        includeSensitive = false,
-                    ),
+                        includeSensitive = false
+                    )
                 )
             }
 
@@ -133,8 +143,8 @@ class ShareContactViewModelTest {
                         toUserId = 9,
                         vcardUid = "uid-5",
                         sections = ShareFieldSections.DEFAULT_SELECTED + "related_to",
-                        includeSensitive = true,
-                    ),
+                        includeSensitive = true
+                    )
                 )
             }
             assertTrue(vm.uiState.value.shared)
@@ -142,7 +152,11 @@ class ShareContactViewModelTest {
 
     @Test
     fun `share failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { shareRepository.create(any()) } returns Result.failure(ApiError.Client(400, "Cannot share"))
+        coEvery {
+            shareRepository.create(
+                any()
+            )
+        } returns Result.failure(ApiError.Client(400, "Cannot share"))
         val vm = viewModel()
         advanceUntilIdle()
 
@@ -155,7 +169,9 @@ class ShareContactViewModelTest {
     }
 
     @Test
-    fun `missing contact uid is surfaced without calling the repository`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `missing contact uid is surfaced without calling the repository`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = viewModel(uid = "")
         advanceUntilIdle()
 
@@ -170,10 +186,12 @@ class ShareContactViewModelTest {
 
     @Test
     fun `directory load failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { shareRepository.userDirectory() } returns Result.failure(ApiError.Client(500, "boom"))
+        coEvery { shareRepository.userDirectory() } returns Result.failure(
+            ApiError.Client(500, "boom")
+        )
         val vm = ShareContactViewModel(
             shareRepository,
-            SavedStateHandle(mapOf("uid" to "uid-5")),
+            SavedStateHandle(mapOf("uid" to "uid-5"))
         )
         advanceUntilIdle()
 

@@ -1,11 +1,11 @@
 package com.mycorrhizal.crm.data.local
 
 import android.util.Log
-import org.json.JSONObject
 import java.io.BufferedReader
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
+import org.json.JSONObject
 
 /**
  * The production [LocalServerProcessLauncher]: execs the packaged Go binary with

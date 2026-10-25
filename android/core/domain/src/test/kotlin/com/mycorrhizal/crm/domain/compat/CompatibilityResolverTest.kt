@@ -16,7 +16,11 @@ class CompatibilityResolverTest {
 
     @Test
     fun `client below the declared floor forces an update`() {
-        val server = ServerHealth(version = "0.6.10", minClientVersion = "0.6.0", apiContractVersion = "v1")
+        val server = ServerHealth(
+            version = "0.6.10",
+            minClientVersion = "0.6.0",
+            apiContractVersion = "v1"
+        )
         assertEquals(Compatibility.ForceUpdate("0.6.0"), resolve("0.5.9", server))
     }
 

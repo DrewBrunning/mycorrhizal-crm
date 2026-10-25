@@ -27,16 +27,14 @@ internal object OidcPkce {
     private val urlEncoder: Base64.Encoder = Base64.getUrlEncoder().withoutPadding()
 
     /** A fresh code verifier: 32 random bytes as 43 base64url characters. */
-    fun generateVerifier(random: SecureRandom = SecureRandom()): String =
-        randomToken(random)
+    fun generateVerifier(random: SecureRandom = SecureRandom()): String = randomToken(random)
 
     /**
      * The app's CSRF state nonce. The backend echoes it in the deep link and
      * [verifyState] checks it before the code is redeemed, so an unsolicited
      * callback (one this app never started) is refused.
      */
-    fun generateState(random: SecureRandom = SecureRandom()): String =
-        randomToken(random)
+    fun generateState(random: SecureRandom = SecureRandom()): String = randomToken(random)
 
     /** The S256 code challenge for [verifier]: BASE64URL(SHA-256(verifier)). */
     fun challenge(verifier: String): String {
@@ -54,7 +52,7 @@ internal object OidcPkce {
         if (pendingState.isNullOrEmpty() || returnedState.isNullOrEmpty()) return false
         return MessageDigest.isEqual(
             pendingState.toByteArray(Charsets.US_ASCII),
-            returnedState.toByteArray(Charsets.US_ASCII),
+            returnedState.toByteArray(Charsets.US_ASCII)
         )
     }
 

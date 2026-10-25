@@ -53,7 +53,7 @@ fun QuickCaptureSheet(
     onDismiss: () -> Unit,
     onFirstInteraction: () -> Unit = {},
     resolving: Boolean = false,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     if (state.saved) {
         LaunchedEffect(Unit) { onDismiss() }
@@ -75,29 +75,29 @@ fun QuickCaptureSheet(
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 8.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         ),
-        shape = MaterialTheme.shapes.extraLarge,
+        shape = MaterialTheme.shapes.extraLarge
     ) {
         Column(
             modifier = Modifier
                 .padding(16.dp)
                 .onFocusChanged { focus -> if (focus.hasFocus) onFirstInteraction() },
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
             ) {
                 Text(
                     text = stringResource(R.string.quick_capture_sheet_title),
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleMedium
                 )
                 IconButton(onClick = onDismiss) {
                     Icon(
                         Icons.Outlined.Close,
-                        contentDescription = stringResource(R.string.action_cancel),
+                        contentDescription = stringResource(R.string.action_cancel)
                     )
                 }
             }
@@ -105,13 +105,19 @@ fun QuickCaptureSheet(
             Text(
                 text = when {
                     resolving -> stringResource(R.string.quick_capture_resolving)
+
                     state.prefill.contactName != null ->
-                        stringResource(R.string.quick_capture_with_contact, state.prefill.contactName)
+                        stringResource(
+                            R.string.quick_capture_with_contact,
+                            state.prefill.contactName
+                        )
+
                     state.prefill.manual -> stringResource(R.string.quick_capture_no_contact)
+
                     else -> stringResource(R.string.quick_capture_unknown)
                 },
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             // #207: isError + supportingText give the field the platform's own
@@ -130,7 +136,7 @@ fun QuickCaptureSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(titleFocusRequester)
-                    .semantics { state.error?.let { error(it) } },
+                    .semantics { state.error?.let { error(it) } }
             )
             OutlinedTextField(
                 value = state.type,
@@ -138,7 +144,7 @@ fun QuickCaptureSheet(
                 label = { Text(stringResource(R.string.quick_capture_type_label)) },
                 singleLine = true,
                 enabled = !state.isSaving,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth()
             )
             OutlinedTextField(
                 value = state.description,
@@ -146,18 +152,18 @@ fun QuickCaptureSheet(
                 label = { Text(stringResource(R.string.quick_capture_note_label)) },
                 minLines = 2,
                 enabled = !state.isSaving,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth()
             )
 
             val savingLabel = stringResource(R.string.a11y_state_saving)
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Button(
                     onClick = onDismiss,
                     enabled = !state.isSaving,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f)
                 ) {
                     Text(stringResource(R.string.action_cancel))
                 }
@@ -166,12 +172,12 @@ fun QuickCaptureSheet(
                     enabled = !state.isSaving,
                     modifier = Modifier
                         .weight(1f)
-                        .semantics { if (state.isSaving) stateDescription = savingLabel },
+                        .semantics { if (state.isSaving) stateDescription = savingLabel }
                 ) {
                     if (state.isSaving) {
                         CircularProgressIndicator(
                             modifier = Modifier.padding(end = 8.dp),
-                            strokeWidth = 2.dp,
+                            strokeWidth = 2.dp
                         )
                     }
                     Text(stringResource(R.string.action_save))

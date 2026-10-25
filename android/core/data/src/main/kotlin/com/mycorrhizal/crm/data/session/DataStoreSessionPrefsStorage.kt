@@ -20,13 +20,15 @@ class DataStoreSessionPrefsStorage(context: Context) : SessionPrefsStorage {
 
     override suspend fun save(serverUrl: String?) {
         dataStore.edit { prefs ->
-            if (serverUrl == null) prefs.remove(KEY_SERVER_URL)
-            else prefs[KEY_SERVER_URL] = serverUrl
+            if (serverUrl == null) {
+                prefs.remove(KEY_SERVER_URL)
+            } else {
+                prefs[KEY_SERVER_URL] = serverUrl
+            }
         }
     }
 
-    override suspend fun loadServerUrl(): String? =
-        dataStore.data.first()[KEY_SERVER_URL]
+    override suspend fun loadServerUrl(): String? = dataStore.data.first()[KEY_SERVER_URL]
 
     override suspend fun saveProfiles(snapshot: ProfilesSnapshot) {
         dataStore.edit { prefs ->
@@ -47,7 +49,7 @@ class DataStoreSessionPrefsStorage(context: Context) : SessionPrefsStorage {
         val prefs = dataStore.data.first()
         return ServerProfileCodec.decode(
             raw = prefs[KEY_PROFILES],
-            activeId = prefs[KEY_ACTIVE_PROFILE_ID],
+            activeId = prefs[KEY_ACTIVE_PROFILE_ID]
         )
     }
 

@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import com.mycorrhizal.crm.ui.components.FormScaffold
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -13,16 +12,16 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.swipeUp
-import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.performTextInput
 import androidx.lifecycle.SavedStateHandle
 import com.mycorrhizal.crm.domain.repository.FieldDefinitionRepository
 import com.mycorrhizal.crm.model.network.FieldDefinition
-import com.mycorrhizal.crm.model.network.FieldDefinitionInput
 import com.mycorrhizal.crm.network.ApiError
+import com.mycorrhizal.crm.ui.components.FormScaffold
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -50,7 +49,7 @@ class FieldDefinitionFormScreenTest {
         onTypeChange: (String) -> Unit = {},
         onSave: () -> Unit = {},
         onGroupChange: (String) -> Unit = {},
-        onDelete: () -> Unit = {},
+        onDelete: () -> Unit = {}
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -60,7 +59,7 @@ class FieldDefinitionFormScreenTest {
                     saveLabel = if (state.isEdit) "Save" else "Create",
                     isSaving = state.isSaving,
                     onSave = onSave,
-                    snackbarHostState = remember { SnackbarHostState() },
+                    snackbarHostState = remember { SnackbarHostState() }
                 ) { padding ->
                     FieldDefinitionFormContent(
                         state = state,
@@ -80,7 +79,7 @@ class FieldDefinitionFormScreenTest {
                         onSensitivityChange = {},
                         onGroupChange = onGroupChange,
                         onDelete = onDelete,
-                        modifier = Modifier.padding(padding),
+                        modifier = Modifier.padding(padding)
                     )
                 }
             }
@@ -107,7 +106,9 @@ class FieldDefinitionFormScreenTest {
 
     @Test
     fun `enum type shows the allowed-values list and add button`() {
-        setContent(FieldDefinitionFormState(type = "enum", enumValues = listOf("Latte", "Espresso")))
+        setContent(
+            FieldDefinitionFormState(type = "enum", enumValues = listOf("Latte", "Espresso"))
+        )
 
         composeTestRule.onNodeWithText("Latte").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Espresso").performScrollTo().assertIsDisplayed()
@@ -163,7 +164,10 @@ class FieldDefinitionFormScreenTest {
         composeTestRule.onNodeWithText("Create").assertIsDisplayed()
         composeTestRule.onNode(hasScrollAction()).performTouchInput { swipeUp() }
         composeTestRule.onNodeWithText("Create").assertIsDisplayed()
-        composeTestRule.onNode(hasScrollAction()).performTouchInput { swipeDown(); swipeDown() }
+        composeTestRule.onNode(hasScrollAction()).performTouchInput {
+            swipeDown()
+            swipeDown()
+        }
         composeTestRule.onNodeWithText("Create").assertIsDisplayed()
         composeTestRule.onNodeWithText("Create").performClick()
         assertEquals(true, saved)
@@ -212,7 +216,10 @@ class FieldDefinitionFormScreenTest {
     @Test
     fun `delete asks for confirmation before invoking onDelete`() {
         var deleted = false
-        setContent(FieldDefinitionFormState(fieldDefinitionId = "d1", label = "Coffee order"), onDelete = { deleted = true })
+        setContent(
+            FieldDefinitionFormState(fieldDefinitionId = "d1", label = "Coffee order"),
+            onDelete = { deleted = true }
+        )
 
         composeTestRule.onNodeWithText("Delete custom field").performScrollTo().performClick()
         assertEquals(false, deleted)
@@ -228,13 +235,18 @@ class FieldDefinitionFormScreenTest {
         fieldDefinitionId: String? = null,
         onBack: () -> Unit = {},
         onSaved: () -> Unit = {},
-        onDeleted: () -> Unit = onSaved,
+        onDeleted: () -> Unit = onSaved
     ): FieldDefinitionRepository {
         val repository = mockk<FieldDefinitionRepository>()
         coEvery { repository.list(any()) } returns Result.success(emptyList())
         if (fieldDefinitionId != null) {
             coEvery { repository.get(fieldDefinitionId) } returns Result.success(
-                FieldDefinition(id = fieldDefinitionId, label = "Coffee order", key = "coffee_order", type = "string"),
+                FieldDefinition(
+                    id = fieldDefinitionId,
+                    label = "Coffee order",
+                    key = "coffee_order",
+                    type = "string"
+                )
             )
         }
         coEvery { repository.delete(any()) } returns Result.success(Unit)
@@ -250,7 +262,7 @@ class FieldDefinitionFormScreenTest {
                     onSaved = onSaved,
                     onBack = onBack,
                     onDeleted = onDeleted,
-                    viewModel = viewModel,
+                    viewModel = viewModel
                 )
             }
         }
@@ -287,7 +299,12 @@ class FieldDefinitionFormScreenTest {
         var savedCalled = false
         val repository = setScreen(onSaved = { savedCalled = true })
         coEvery { repository.create(any()) } returns Result.success(
-            FieldDefinition(id = "d1", label = "Coffee order", key = "coffee_order", type = "string"),
+            FieldDefinition(
+                id = "d1",
+                label = "Coffee order",
+                key = "coffee_order",
+                type = "string"
+            )
         )
 
         composeTestRule.onNodeWithText("Label").performScrollTo().performTextInput("Coffee order")
@@ -302,7 +319,11 @@ class FieldDefinitionFormScreenTest {
     fun `a save failure surfaces the error as a snackbar without invoking onSaved`() {
         var savedCalled = false
         val repository = setScreen(onSaved = { savedCalled = true })
-        coEvery { repository.create(any()) } returns Result.failure(ApiError.Client(409, "already exists"))
+        coEvery {
+            repository.create(
+                any()
+            )
+        } returns Result.failure(ApiError.Client(409, "already exists"))
 
         composeTestRule.onNodeWithText("Label").performScrollTo().performTextInput("Coffee order")
         composeTestRule.onNodeWithText("Key").performScrollTo().performTextInput("coffee_order")
@@ -336,8 +357,11 @@ class FieldDefinitionFormScreenTest {
     fun `matching existing groups are suggested and picking one fills the field`() {
         var picked: String? = null
         setContent(
-            FieldDefinitionFormState(group = "Tra", groupSuggestions = listOf("Health", "Travel profile")),
-            onGroupChange = { picked = it },
+            FieldDefinitionFormState(
+                group = "Tra",
+                groupSuggestions = listOf("Health", "Travel profile")
+            ),
+            onGroupChange = { picked = it }
         )
 
         composeTestRule.onNodeWithText("Tra").performScrollTo().performTextInput("v")
@@ -364,7 +388,11 @@ class FieldDefinitionFormScreenTest {
     fun `a delete failure surfaces the error and stays on the form`() {
         var deletedCalled = false
         val repository = setScreen(fieldDefinitionId = "d1", onDeleted = { deletedCalled = true })
-        coEvery { repository.delete("d1") } returns Result.failure(ApiError.Client(500, "delete failed"))
+        coEvery {
+            repository.delete(
+                "d1"
+            )
+        } returns Result.failure(ApiError.Client(500, "delete failed"))
 
         composeTestRule.onNodeWithText("Delete custom field").performScrollTo().performClick()
         composeTestRule.onNodeWithText("Delete").performClick()

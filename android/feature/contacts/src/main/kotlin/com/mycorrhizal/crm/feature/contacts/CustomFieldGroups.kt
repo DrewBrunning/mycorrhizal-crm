@@ -51,7 +51,7 @@ internal fun CustomFieldGroupsCard(
     definitions: List<FieldDefinition>,
     values: Map<String, Any?>,
     savingDefinitionId: String?,
-    onSaveValue: (String, Any?) -> Unit,
+    onSaveValue: (String, Any?) -> Unit
 ) {
     val groups = remember(definitions, values) { groupFieldDefinitions(definitions, values) }
     // The open group is remembered by label: after a save the groups are recomputed and the
@@ -71,7 +71,7 @@ internal fun CustomFieldGroupsCard(
             values = values,
             savingDefinitionId = savingDefinitionId,
             onSaveValue = onSaveValue,
-            onDismiss = { openLabel = null },
+            onDismiss = { openLabel = null }
         )
     }
 }
@@ -87,24 +87,27 @@ private fun CustomFieldGroupRow(group: FieldGroup, onClick: () -> Unit) {
         R.plurals.contact_custom_field_group_filled,
         group.definitions.size,
         group.filledCount,
-        group.definitions.size,
+        group.definitions.size
     )
     val muted = !group.hasFilled
     ListItem(
         modifier = Modifier
-            .clickable(onClickLabel = stringResource(R.string.contact_custom_field_group_open, title), onClick = onClick)
+            .clickable(
+                onClickLabel = stringResource(R.string.contact_custom_field_group_open, title),
+                onClick = onClick
+            )
             .testTag("custom-field-group-${group.label}"),
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         headlineContent = {
             Text(
                 text = title,
-                color = if (muted) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                color = if (muted) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
             )
         },
         supportingContent = { Text(supporting) },
         trailingContent = {
             Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = null)
-        },
+        }
     )
 }
 
@@ -120,9 +123,12 @@ private fun CustomFieldGroupDialog(
     values: Map<String, Any?>,
     savingDefinitionId: String?,
     onSaveValue: (String, Any?) -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
             Scaffold(
                 topBar = {
@@ -132,20 +138,24 @@ private fun CustomFieldGroupDialog(
                             AccessibleIconButton(onClick = onDismiss) {
                                 Icon(
                                     Icons.AutoMirrored.Outlined.ArrowBack,
-                                    contentDescription = stringResource(R.string.action_back),
+                                    contentDescription = stringResource(R.string.action_back)
                                 )
                             }
-                        },
+                        }
                     )
-                },
+                }
             ) { padding ->
-                LazyColumn(modifier = Modifier.padding(padding).fillMaxSize().testTag(CUSTOM_FIELD_GROUP_LIST_TAG)) {
+                LazyColumn(
+                    modifier = Modifier.padding(
+                        padding
+                    ).fillMaxSize().testTag(CUSTOM_FIELD_GROUP_LIST_TAG)
+                ) {
                     items(group.definitions, key = { it.id }) { definition ->
                         CustomFieldValueRow(
                             definition = definition,
                             value = values[definition.id],
                             saving = savingDefinitionId == definition.id,
-                            onSave = { newValue -> onSaveValue(definition.id, newValue) },
+                            onSave = { newValue -> onSaveValue(definition.id, newValue) }
                         )
                     }
                 }

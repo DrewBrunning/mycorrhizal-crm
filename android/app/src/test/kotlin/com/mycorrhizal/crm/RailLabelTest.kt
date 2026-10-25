@@ -64,14 +64,14 @@ class RailLabelTest {
             CompositionLocalProvider(
                 LocalContext provides context,
                 LocalConfiguration provides context.resources.configuration,
-                LocalDensity provides Density(density = 1f, fontScale = 1f),
+                LocalDensity provides Density(density = 1f, fontScale = 1f)
             ) {
                 MycorrhizalTheme {
                     MainNavScaffold(
                         currentRoute = "home",
                         windowSizeClass = expanded,
                         drawerState = rememberDrawerState(initialValue = DrawerValue.Closed),
-                        onDestinationClick = {},
+                        onDestinationClick = {}
                     ) {}
                 }
             }
@@ -86,9 +86,12 @@ class RailLabelTest {
         labels.forEach { (route, label) ->
             val matches = composeTestRule.onAllNodes(
                 hasText(label) and hasAnyAncestor(hasTestTag("rail-$route")),
-                useUnmergedTree = true,
+                useUnmergedTree = true
             ).fetchSemanticsNodes()
-            assertTrue("expected one \"$label\" in rail-$route [$locale], got ${matches.size}", matches.size == 1)
+            assertTrue(
+                "expected one \"$label\" in rail-$route [$locale], got ${matches.size}",
+                matches.size == 1
+            )
             val node = matches.first()
             val results = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
             val action = if (node.config.contains(SemanticsActions.GetTextLayoutResult)) {
@@ -100,7 +103,11 @@ class RailLabelTest {
             assertTrue("no text layout for \"$label\" [$locale]", results.isNotEmpty())
             val layout = results.first()
             val maxWidth = layout.layoutInput.constraints.maxWidth
-            val lineWidths = (0 until layout.lineCount).map { layout.multiParagraph.getLineWidth(it) }
+            val lineWidths = (0 until layout.lineCount).map {
+                layout.multiParagraph.getLineWidth(
+                    it
+                )
+            }
             // hasVisualOverflow is not usable here: Compose rounds size.width up to
             // an Int and then compares it to the fractional paragraph width, so a
             // 57.93px label is reported as overflowing a 96px slot. Assert the
@@ -108,7 +115,7 @@ class RailLabelTest {
             assertFalse(
                 "\"$label\" [$locale] did not fit its rail slot at font scale 1.0: " +
                     "lineWidths=$lineWidths, maxWidth=$maxWidth",
-                lineWidths.any { it >= maxWidth },
+                lineWidths.any { it >= maxWidth }
             )
             assertTrue("\"$label\" [$locale] wrapped past two lines", layout.lineCount in 1..2)
             assertFalse("\"$label\" [$locale] overflowed vertically", layout.didOverflowHeight)
@@ -148,7 +155,7 @@ class RailLabelTest {
             val label = context.getString(destination.labelRes)
             val matches = composeTestRule.onAllNodes(
                 hasText(label) and hasAnyAncestor(hasTestTag("rail-${destination.route}")),
-                useUnmergedTree = true,
+                useUnmergedTree = true
             ).fetchSemanticsNodes()
             assertTrue("missing localized ${destination.route} label ($label)", matches.size == 1)
         }
@@ -157,8 +164,8 @@ class RailLabelTest {
             "missing localized More label ($more)",
             composeTestRule.onAllNodes(
                 hasText(more) and hasAnyAncestor(hasTestTag("rail-more")),
-                useUnmergedTree = true,
-            ).fetchSemanticsNodes().size == 1,
+                useUnmergedTree = true
+            ).fetchSemanticsNodes().size == 1
         )
     }
 }

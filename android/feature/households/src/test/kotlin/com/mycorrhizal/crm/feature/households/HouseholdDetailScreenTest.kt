@@ -3,7 +3,6 @@ package com.mycorrhizal.crm.feature.households
 import android.content.Context
 import androidx.annotation.StringRes
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -59,28 +58,43 @@ class HouseholdDetailScreenTest {
             HouseholdDetail(
                 household = Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT),
                 members = listOf(
-                    HouseholdMember(id = 1, householdId = "h1", memberVCardUid = "uid-1", role = "adult"),
-                ),
-            ),
+                    HouseholdMember(
+                        id = 1,
+                        householdId = "h1",
+                        memberVCardUid = "uid-1",
+                        role = "adult"
+                    )
+                )
+            )
         )
         coEvery { contactRepository.resolveByUid(listOf("uid-1")) } returns Result.success(
-            mapOf("uid-1" to ContactSummary(id = 7, uid = "uid-1", firstname = "Alice")),
+            mapOf("uid-1" to ContactSummary(id = 7, uid = "uid-1", firstname = "Alice"))
         )
         val vm = HouseholdDetailViewModel(
             householdRepository,
             contactRepository,
-            SavedStateHandle(mapOf("householdId" to "h1")),
+            SavedStateHandle(mapOf("householdId" to "h1"))
         )
         composeTestRule.setContent {
-            MycorrhizalTheme { HouseholdDetailScreen(onBack = {}, onNavigateToContact = {}, viewModel = vm) }
+            MycorrhizalTheme {
+                HouseholdDetailScreen(
+                    onBack = {},
+                    onNavigateToContact = {},
+                    viewModel = vm
+                )
+            }
         }
 
         composeTestRule.onNodeWithText("Home").assertIsDisplayed()
         composeTestRule.onNodeWithText("Alice").assertIsDisplayed()
         // Issue #1768: the remove button announces the name, never the UID.
-        composeTestRule.onNodeWithContentDescription(str(R.string.households_remove_member_named, "Alice"))
+        composeTestRule.onNodeWithContentDescription(
+            str(R.string.households_remove_member_named, "Alice")
+        )
             .assertIsDisplayed()
-        composeTestRule.onNodeWithContentDescription(str(R.string.households_remove_member_named, "uid-1"))
+        composeTestRule.onNodeWithContentDescription(
+            str(R.string.households_remove_member_named, "uid-1")
+        )
             .assertDoesNotExist()
     }
 
@@ -91,23 +105,31 @@ class HouseholdDetailScreenTest {
         coEvery { householdRepository.getWithMembers("h1") } returns Result.success(
             HouseholdDetail(
                 household = Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT),
-                members = listOf(HouseholdMember(id = 1, householdId = "h1", memberVCardUid = "uid-1")),
-            ),
+                members = listOf(
+                    HouseholdMember(id = 1, householdId = "h1", memberVCardUid = "uid-1")
+                )
+            )
         )
         coEvery { contactRepository.resolveByUid(any()) } returns Result.success(emptyMap())
         val vm = HouseholdDetailViewModel(
             householdRepository,
             contactRepository,
-            SavedStateHandle(mapOf("householdId" to "h1")),
+            SavedStateHandle(mapOf("householdId" to "h1"))
         )
         composeTestRule.setContent {
-            MycorrhizalTheme { HouseholdDetailScreen(onBack = {}, onNavigateToContact = {}, viewModel = vm) }
+            MycorrhizalTheme {
+                HouseholdDetailScreen(
+                    onBack = {},
+                    onNavigateToContact = {},
+                    viewModel = vm
+                )
+            }
         }
 
         composeTestRule.onNodeWithText(str(R.string.contact_unknown))
             .assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription(
-            str(R.string.households_remove_member_named, str(R.string.contact_unknown)),
+            str(R.string.households_remove_member_named, str(R.string.contact_unknown))
         ).assertIsDisplayed()
     }
 
@@ -118,17 +140,25 @@ class HouseholdDetailScreenTest {
         coEvery { householdRepository.getWithMembers("h1") } returns Result.success(
             HouseholdDetail(
                 household = Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT),
-                members = listOf(HouseholdMember(id = 1, householdId = "h1", memberVCardUid = "uid-1")),
-            ),
+                members = listOf(
+                    HouseholdMember(id = 1, householdId = "h1", memberVCardUid = "uid-1")
+                )
+            )
         )
         coEvery { contactRepository.resolveByUid(any()) } returns Result.success(emptyMap())
         val vm = HouseholdDetailViewModel(
             householdRepository,
             contactRepository,
-            SavedStateHandle(mapOf("householdId" to "h1")),
+            SavedStateHandle(mapOf("householdId" to "h1"))
         )
         composeTestRule.setContent {
-            MycorrhizalTheme { HouseholdDetailScreen(onBack = {}, onNavigateToContact = {}, viewModel = vm) }
+            MycorrhizalTheme {
+                HouseholdDetailScreen(
+                    onBack = {},
+                    onNavigateToContact = {},
+                    viewModel = vm
+                )
+            }
         }
 
         composeTestRule.assertAccessibleSemantics()
@@ -141,26 +171,32 @@ class HouseholdDetailScreenTest {
         coEvery { householdRepository.getWithMembers("h1") } returns Result.success(
             HouseholdDetail(
                 household = Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT),
-                members = emptyList(),
-            ),
+                members = emptyList()
+            )
         )
         coEvery { contactRepository.resolveByUid(any()) } returns Result.success(emptyMap())
         val vm = HouseholdDetailViewModel(
             householdRepository,
             contactRepository,
-            SavedStateHandle(mapOf("householdId" to "h1")),
+            SavedStateHandle(mapOf("householdId" to "h1"))
         )
         composeTestRule.setContent {
-            MycorrhizalTheme { HouseholdDetailScreen(onBack = {}, onNavigateToContact = {}, viewModel = vm) }
+            MycorrhizalTheme {
+                HouseholdDetailScreen(
+                    onBack = {},
+                    onNavigateToContact = {},
+                    viewModel = vm
+                )
+            }
         }
 
         // With fewer than two members the suggestion action is disabled and the
         // "text everyone" action (needs >= 2 resolved phones) is disabled too.
         composeTestRule.onNodeWithContentDescription(
-            str(R.string.households_suggest_relationships),
+            str(R.string.households_suggest_relationships)
         ).assertIsNotEnabled()
         composeTestRule.onNodeWithContentDescription(
-            str(R.string.households_text_everyone),
+            str(R.string.households_text_everyone)
         ).assertIsNotEnabled()
     }
 
@@ -173,23 +209,33 @@ class HouseholdDetailScreenTest {
                 household = Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT),
                 members = listOf(
                     HouseholdMember(id = 1, householdId = "h1", memberVCardUid = "uid-1"),
-                    HouseholdMember(id = 2, householdId = "h1", memberVCardUid = "uid-2"),
-                ),
-            ),
+                    HouseholdMember(id = 2, householdId = "h1", memberVCardUid = "uid-2")
+                )
+            )
         )
         coEvery { contactRepository.resolveByUid(any()) } returns Result.success(emptyMap())
-        coEvery { householdRepository.suggestRelationships("h1") } returns Result.success(emptyList())
+        coEvery {
+            householdRepository.suggestRelationships(
+                "h1"
+            )
+        } returns Result.success(emptyList())
         val vm = HouseholdDetailViewModel(
             householdRepository,
             contactRepository,
-            SavedStateHandle(mapOf("householdId" to "h1")),
+            SavedStateHandle(mapOf("householdId" to "h1"))
         )
         composeTestRule.setContent {
-            MycorrhizalTheme { HouseholdDetailScreen(onBack = {}, onNavigateToContact = {}, viewModel = vm) }
+            MycorrhizalTheme {
+                HouseholdDetailScreen(
+                    onBack = {},
+                    onNavigateToContact = {},
+                    viewModel = vm
+                )
+            }
         }
 
         composeTestRule.onNodeWithContentDescription(
-            str(R.string.households_suggest_relationships),
+            str(R.string.households_suggest_relationships)
         ).performClick()
 
         coVerify(exactly = 1) { householdRepository.suggestRelationships("h1") }
@@ -202,27 +248,33 @@ class HouseholdDetailScreenTest {
         coEvery { householdRepository.getWithMembers("h1") } returns Result.success(
             HouseholdDetail(
                 household = Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT),
-                members = emptyList(),
-            ),
+                members = emptyList()
+            )
         )
         coEvery { contactRepository.resolveByUid(any()) } returns Result.success(emptyMap())
         val vm = HouseholdDetailViewModel(
             householdRepository,
             contactRepository,
-            SavedStateHandle(mapOf("householdId" to "h1")),
+            SavedStateHandle(mapOf("householdId" to "h1"))
         )
         composeTestRule.setContent {
-            MycorrhizalTheme { HouseholdDetailScreen(onBack = {}, onNavigateToContact = {}, viewModel = vm) }
+            MycorrhizalTheme {
+                HouseholdDetailScreen(
+                    onBack = {},
+                    onNavigateToContact = {},
+                    viewModel = vm
+                )
+            }
         }
 
         composeTestRule.onNodeWithContentDescription(
-            str(R.string.households_add_member),
+            str(R.string.households_add_member)
         ).performClick()
 
         // The dialog is a search-and-select surface: a search field plus a
         // role picker, with Add gated on a selected contact.
         composeTestRule.onNodeWithText(
-            str(R.string.households_member_search),
+            str(R.string.households_member_search)
         ).assertIsDisplayed()
         composeTestRule.onNodeWithText(str(R.string.households_role))
             .assertIsDisplayed()
@@ -235,20 +287,26 @@ class HouseholdDetailScreenTest {
         val householdRepository = mockk<HouseholdRepository>()
         val contactRepository = mockk<ContactRepository>()
         coEvery { householdRepository.getWithMembers("h1") } returns Result.failure(
-            ApiError.Client(500, "boom"),
+            ApiError.Client(500, "boom")
         )
         val vm = HouseholdDetailViewModel(
             householdRepository,
             contactRepository,
-            SavedStateHandle(mapOf("householdId" to "h1")),
+            SavedStateHandle(mapOf("householdId" to "h1"))
         )
         composeTestRule.setContent {
-            MycorrhizalTheme { HouseholdDetailScreen(onBack = {}, onNavigateToContact = {}, viewModel = vm) }
+            MycorrhizalTheme {
+                HouseholdDetailScreen(
+                    onBack = {},
+                    onNavigateToContact = {},
+                    viewModel = vm
+                )
+            }
         }
         composeTestRule.waitForIdle()
 
         assertTrue(
-            composeTestRule.onAllNodesWithText("boom").fetchSemanticsNodes().isNotEmpty(),
+            composeTestRule.onAllNodesWithText("boom").fetchSemanticsNodes().isNotEmpty()
         )
     }
 }

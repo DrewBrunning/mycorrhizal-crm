@@ -23,22 +23,22 @@ import com.mycorrhizal.crm.model.network.BriefingCadenceHealth
 import com.mycorrhizal.crm.model.network.BriefingRelationship
 import com.mycorrhizal.crm.model.network.BriefingUpcomingDate
 import com.mycorrhizal.crm.model.network.ContactBriefing
+import com.mycorrhizal.crm.model.network.ConversationAgenda
 import com.mycorrhizal.crm.model.network.Gift
 import com.mycorrhizal.crm.model.network.GiftStatuses
-import com.mycorrhizal.crm.model.network.Preference
-import com.mycorrhizal.crm.model.network.ConversationAgenda
 import com.mycorrhizal.crm.model.network.LifeEvent
 import com.mycorrhizal.crm.model.network.Note
+import com.mycorrhizal.crm.model.network.Preference
 import com.mycorrhizal.crm.model.network.RelationshipEdge
 import com.mycorrhizal.crm.model.network.Reminder
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
-import java.time.LocalDate
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import java.time.LocalDate
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.emptyFlow
 import org.junit.Assert.assertEquals
@@ -74,7 +74,7 @@ class PrepViewScreenTest {
         onOpenContact: (Int) -> Unit = {},
         preferences: List<Preference> = emptyList(),
         giftIdeas: List<Gift> = emptyList(),
-        today: LocalDate = LocalDate.of(2026, 10, 22),
+        today: LocalDate = LocalDate.of(2026, 10, 22)
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -84,7 +84,7 @@ class PrepViewScreenTest {
                     onOpenContact = onOpenContact,
                     preferences = preferences,
                     giftIdeas = giftIdeas,
-                    today = today,
+                    today = today
                 )
             }
         }
@@ -109,7 +109,7 @@ class PrepViewScreenTest {
         contactId = 7,
         uid = "u7",
         name = "Alice Wonder",
-        cadence = BriefingCadence(health = health),
+        cadence = BriefingCadence(health = health)
     )
 
     @Test
@@ -121,9 +121,9 @@ class PrepViewScreenTest {
                     lastInteraction = "2026-08-10T14:00:00Z",
                     nextDue = "2026-09-09T14:00:00Z",
                     ambient = true,
-                    ambientReason = "household",
-                ),
-            ),
+                    ambientReason = "household"
+                )
+            )
         )
 
         assertSection("Lives with you (household)")
@@ -133,7 +133,12 @@ class PrepViewScreenTest {
 
     @Test
     fun `an ambient contact with a stale overdue_by shows no overdue text`() {
-        val health = BriefingCadenceHealth(hasQualifyingInteraction = true, overdueBy = 4, ambient = true, ambientReason = "flag")
+        val health = BriefingCadenceHealth(
+            hasQualifyingInteraction = true,
+            overdueBy = 4,
+            ambient = true,
+            ambientReason = "flag"
+        )
         assertFalse(health.isOverdue)
         setContent(briefingWith(health))
 
@@ -143,12 +148,13 @@ class PrepViewScreenTest {
 
     @Test
     fun `a non-ambient overdue contact still shows the overdue text`() {
-        setContent(briefingWith(BriefingCadenceHealth(hasQualifyingInteraction = true, overdueBy = 4)))
+        setContent(
+            briefingWith(BriefingCadenceHealth(hasQualifyingInteraction = true, overdueBy = 4))
+        )
 
         assertSection("overdue", substring = true)
         composeTestRule.onNodeWithText("Marked as ambient").assertDoesNotExist()
     }
-
 
     // --- Issue #1774: next birthday, one last-interaction line ---------------
 
@@ -163,10 +169,10 @@ class PrepViewScreenTest {
                     // 1990-09-14; today is 2026-10-22, so the next occurrence is
                     // 2027-09-14 and they turn 37. The stored birth date must not
                     // be shown as if it were the upcoming date.
-                    BriefingUpcomingDate(label = "birthday", date = "1990-09-14", daysUntil = 327),
-                ),
+                    BriefingUpcomingDate(label = "birthday", date = "1990-09-14", daysUntil = 327)
+                )
             ),
-            dateFormat = DateFormat.EU_MMMM,
+            dateFormat = DateFormat.EU_MMMM
         )
 
         assertSection("Turns 37 · 14 September")
@@ -182,10 +188,10 @@ class PrepViewScreenTest {
                 uid = "u7",
                 name = "Nadia Okonkwo",
                 upcomingDatesRaw = listOf(
-                    BriefingUpcomingDate(label = "birthday", date = "--09-14", daysUntil = 327),
-                ),
+                    BriefingUpcomingDate(label = "birthday", date = "--09-14", daysUntil = 327)
+                )
             ),
-            dateFormat = DateFormat.EU_MMMM,
+            dateFormat = DateFormat.EU_MMMM
         )
 
         assertSection("Birthday 14 September")
@@ -203,20 +209,22 @@ class PrepViewScreenTest {
                     id = 41,
                     title = "Dinner",
                     type = "meal",
-                    date = "2026-10-13T19:00:00Z",
+                    date = "2026-10-13T19:00:00Z"
                 ),
                 cadence = BriefingCadence(
                     health = BriefingCadenceHealth(
                         hasQualifyingInteraction = true,
                         lastInteraction = "2026-10-13T19:00:00Z",
-                        nextDue = "2026-11-12T19:00:00Z",
-                    ),
-                ),
-            ),
+                        nextDue = "2026-11-12T19:00:00Z"
+                    )
+                )
+            )
         )
 
         scrollTo("Dinner (meal)")
-        val occurrences = composeTestRule.onAllNodesWithText("Last interaction").fetchSemanticsNodes().size
+        val occurrences = composeTestRule.onAllNodesWithText(
+            "Last interaction"
+        ).fetchSemanticsNodes().size
         assertEquals("the health card must not repeat the last-interaction line", 1, occurrences)
     }
 
@@ -232,7 +240,7 @@ class PrepViewScreenTest {
                 title = "Coffee",
                 type = "visit",
                 description = "Catch-up over coffee",
-                date = "2026-08-10T14:00:00Z",
+                date = "2026-08-10T14:00:00Z"
             ),
             recentNotesRaw = listOf(Note(id = 9, content = "Talks about her garden")),
             cadence = BriefingCadence(
@@ -240,27 +248,35 @@ class PrepViewScreenTest {
                     hasQualifyingInteraction = true,
                     lastInteraction = "2026-08-10T14:00:00Z",
                     nextDue = "2026-09-09T14:00:00Z",
-                    overdueBy = 0,
-                ),
+                    overdueBy = 0
+                )
             ),
-            openAgendaItemsRaw = listOf(ConversationAgenda(id = "ag-1", content = "Ask about the surgery")),
+            openAgendaItemsRaw = listOf(
+                ConversationAgenda(id = "ag-1", content = "Ask about the surgery")
+            ),
             relationshipsRaw = listOf(
                 BriefingRelationship(
                     edge = RelationshipEdge(
                         id = "edge-1",
                         sourceId = "u7",
                         targetId = "u8",
-                        type = "spouse_of",
+                        type = "spouse_of"
                     ),
                     otherPartyContactId = 8,
                     otherPartyName = "Bob Marley",
                     otherPartyUid = "u8",
-                    displayToken = "spouse_of",
-                ),
+                    displayToken = "spouse_of"
+                )
             ),
-            lifeEventsRaw = listOf(LifeEvent(id = "le-1", entityId = "u7", type = "graduated", description = "MSc")),
-            upcomingRemindersRaw = listOf(Reminder(id = 3, message = "Send card", remindAt = "2026-08-20T09:00:00Z")),
-            upcomingDatesRaw = listOf(BriefingUpcomingDate(label = "birthday", date = "--12-25", daysUntil = 5)),
+            lifeEventsRaw = listOf(
+                LifeEvent(id = "le-1", entityId = "u7", type = "graduated", description = "MSc")
+            ),
+            upcomingRemindersRaw = listOf(
+                Reminder(id = 3, message = "Send card", remindAt = "2026-08-20T09:00:00Z")
+            ),
+            upcomingDatesRaw = listOf(
+                BriefingUpcomingDate(label = "birthday", date = "--12-25", daysUntil = 5)
+            )
         )
 
         setContent(
@@ -271,8 +287,8 @@ class PrepViewScreenTest {
                     entityId = "u7",
                     category = "food",
                     key = "favorite",
-                    value = "Ramen",
-                ),
+                    value = "Ramen"
+                )
             ),
             giftIdeas = listOf(
                 Gift(
@@ -280,9 +296,9 @@ class PrepViewScreenTest {
                     entityId = "u7",
                     status = GiftStatuses.IDEA,
                     description = "Pottery wheel",
-                    occasion = "birthday",
-                ),
-            ),
+                    occasion = "birthday"
+                )
+            )
         )
 
         // Header.
@@ -358,14 +374,14 @@ class PrepViewScreenTest {
                         id = "edge-1",
                         sourceId = "u7",
                         targetId = "u8",
-                        type = "spouse_of",
+                        type = "spouse_of"
                     ),
                     otherPartyContactId = 8,
                     otherPartyName = "Bob Marley",
                     otherPartyUid = "u8",
-                    displayToken = "spouse_of",
-                ),
-            ),
+                    displayToken = "spouse_of"
+                )
+            )
         )
         var openedContactId: Int? = null
 
@@ -389,15 +405,15 @@ class PrepViewScreenTest {
                         id = "edge-1",
                         sourceId = "u7",
                         targetId = "u8",
-                        type = "friend_of",
+                        type = "friend_of"
                     ),
                     // No otherPartyContactId — the other endpoint is a thin/ghost
                     // contact with no CRM row to link to.
                     otherPartyName = "Ghost",
                     otherPartyUid = "u8",
-                    displayToken = "friend_of",
-                ),
-            ),
+                    displayToken = "friend_of"
+                )
+            )
         )
         var clicked = false
 
@@ -447,7 +463,7 @@ class PrepViewScreenStateTest {
             authRepository,
             preferenceRepository,
             giftRepository,
-            SavedStateHandle(mapOf("contactId" to contactId)),
+            SavedStateHandle(mapOf("contactId" to contactId))
         )
     }
 
@@ -486,7 +502,7 @@ class PrepViewScreenStateTest {
     fun `populated state renders the briefing content`() {
         val apiClient = mockk<ApiClient>()
         coEvery { apiClient.getBriefing(7) } returns Result.success(
-            ContactBriefing(contactId = 7, uid = "u7", name = "Alice Wonder"),
+            ContactBriefing(contactId = 7, uid = "u7", name = "Alice Wonder")
         )
 
         setScreen(newViewModel(apiClient))

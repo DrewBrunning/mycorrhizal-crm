@@ -3,7 +3,7 @@ package com.mycorrhizal.crm.model.network
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
 
-/**
+/*
  * Issue #236: the create/link surfaces for the three file/document integrations on the
  * ExternalIdentity substrate (T14). Unlike Immich, none of these write the ExternalIdentity
  * row through the generic `/external-identities` endpoint — each system resolves authoritative
@@ -20,14 +20,14 @@ import com.squareup.moshi.JsonClass
 @JsonClass(generateAdapter = true)
 data class PaperlessConfigResponse(
     @Json(name = "base_url") val baseUrl: String? = null,
-    @Json(name = "has_api_token") val hasApiToken: Boolean = false,
+    @Json(name = "has_api_token") val hasApiToken: Boolean = false
 )
 
 /** PUT /paperless/config body — an empty [apiToken] keeps the stored token unchanged. */
 @JsonClass(generateAdapter = true)
 data class PaperlessConfigInput(
     @Json(name = "base_url") val baseUrl: String,
-    @Json(name = "api_token") val apiToken: String = "",
+    @Json(name = "api_token") val apiToken: String = ""
 )
 
 /** POST /paperless/test-connection — 200 even when [ok] is false (diagnostic, not exceptional). */
@@ -35,7 +35,7 @@ data class PaperlessConfigInput(
 data class PaperlessConnectionTestResult(
     val ok: Boolean = false,
     val stage: String? = null,
-    val message: String? = null,
+    val message: String? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -44,20 +44,16 @@ data class PaperlessDocument(
     val title: String? = null,
     @Json(name = "file_name") val fileName: String? = null,
     val created: String? = null,
-    val added: String? = null,
+    val added: String? = null
 )
 
 /** GET /paperless/documents?query=… — full list when [query] is omitted; unwrapped. */
 @JsonClass(generateAdapter = true)
-data class PaperlessDocumentsResponse(
-    val documents: List<PaperlessDocument> = emptyList(),
-)
+data class PaperlessDocumentsResponse(val documents: List<PaperlessDocument> = emptyList())
 
 /** POST /paperless/contacts/:vcard_uid/link body. */
 @JsonClass(generateAdapter = true)
-data class PaperlessLinkRequest(
-    @Json(name = "document_id") val documentId: String,
-)
+data class PaperlessLinkRequest(@Json(name = "document_id") val documentId: String)
 
 // ---------------------------------------------------------------------------
 // Seafile
@@ -67,14 +63,14 @@ data class PaperlessLinkRequest(
 @JsonClass(generateAdapter = true)
 data class SeafileConfigResponse(
     @Json(name = "base_url") val baseUrl: String? = null,
-    @Json(name = "has_api_token") val hasApiToken: Boolean = false,
+    @Json(name = "has_api_token") val hasApiToken: Boolean = false
 )
 
 /** PUT /seafile/config body — an empty [apiToken] keeps the stored token unchanged. */
 @JsonClass(generateAdapter = true)
 data class SeafileConfigInput(
     @Json(name = "base_url") val baseUrl: String,
-    @Json(name = "api_token") val apiToken: String = "",
+    @Json(name = "api_token") val apiToken: String = ""
 )
 
 /** POST /seafile/test-connection — 200 even when [ok] is false. */
@@ -82,21 +78,15 @@ data class SeafileConfigInput(
 data class SeafileConnectionTestResult(
     val ok: Boolean = false,
     val stage: String? = null,
-    val message: String? = null,
+    val message: String? = null
 )
 
 @JsonClass(generateAdapter = true)
-data class SeafileLibrary(
-    val id: String = "",
-    val name: String = "",
-    val type: String? = null,
-)
+data class SeafileLibrary(val id: String = "", val name: String = "", val type: String? = null)
 
 /** GET /seafile/libraries — unwrapped. */
 @JsonClass(generateAdapter = true)
-data class SeafileLibrariesResponse(
-    val libraries: List<SeafileLibrary> = emptyList(),
-)
+data class SeafileLibrariesResponse(val libraries: List<SeafileLibrary> = emptyList())
 
 @JsonClass(generateAdapter = true)
 data class SeafileItem(
@@ -105,14 +95,12 @@ data class SeafileItem(
     val type: String = "file",
     val size: Long = 0,
     val mtime: Long = 0,
-    @Json(name = "parent_dir") val parentDir: String? = null,
+    @Json(name = "parent_dir") val parentDir: String? = null
 )
 
 /** GET /seafile/libraries/:repo_id/dir?path=… — unwrapped. */
 @JsonClass(generateAdapter = true)
-data class SeafileItemsResponse(
-    val items: List<SeafileItem> = emptyList(),
-)
+data class SeafileItemsResponse(val items: List<SeafileItem> = emptyList())
 
 /** POST /seafile/contacts/:vcard_uid/link body. */
 @JsonClass(generateAdapter = true)
@@ -122,7 +110,7 @@ data class SeafileLinkRequest(
     val name: String,
     val type: String,
     val size: Long? = null,
-    val mtime: Long? = null,
+    val mtime: Long? = null
 )
 
 // ---------------------------------------------------------------------------
@@ -135,7 +123,7 @@ data class SeafileLinkRequest(
 data class NextcloudConfigResponse(
     @Json(name = "base_url") val baseUrl: String? = null,
     val username: String? = null,
-    @Json(name = "has_app_password") val hasAppPassword: Boolean = false,
+    @Json(name = "has_app_password") val hasAppPassword: Boolean = false
 )
 
 /**
@@ -147,7 +135,7 @@ data class NextcloudConfigResponse(
 data class NextcloudConfigInput(
     @Json(name = "base_url") val baseUrl: String,
     val username: String,
-    @Json(name = "app_password") val appPassword: String = "",
+    @Json(name = "app_password") val appPassword: String = ""
 )
 
 /**
@@ -159,7 +147,7 @@ data class NextcloudConfigInput(
 data class NextcloudConnectionTestResult(
     val ok: Boolean = false,
     val stage: String? = null,
-    val message: String? = null,
+    val message: String? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -169,14 +157,12 @@ data class WebDAVItem(
     val type: String = "file",
     val size: Long? = null,
     @Json(name = "modified_at") val modifiedAt: String? = null,
-    @Json(name = "file_id") val fileId: String? = null,
+    @Json(name = "file_id") val fileId: String? = null
 )
 
 /** GET /nextcloud/dir?path=… — unwrapped. */
 @JsonClass(generateAdapter = true)
-data class NextcloudItemsResponse(
-    val items: List<WebDAVItem> = emptyList(),
-)
+data class NextcloudItemsResponse(val items: List<WebDAVItem> = emptyList())
 
 /** POST /nextcloud/contacts/:vcard_uid/link body. */
 @JsonClass(generateAdapter = true)
@@ -186,5 +172,5 @@ data class NextcloudLinkRequest(
     val type: String,
     val size: Long? = null,
     @Json(name = "modified_at") val modifiedAt: String? = null,
-    @Json(name = "file_id") val fileId: String? = null,
+    @Json(name = "file_id") val fileId: String? = null
 )

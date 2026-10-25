@@ -25,7 +25,7 @@ class RootSurfaceTest {
         AppLockState.entries.forEach { lock ->
             assertEquals(
                 RootSurface.Auth,
-                rootSurface(isLoggedIn = false, compatibilityGate = noUpdate, appLockState = lock),
+                rootSurface(isLoggedIn = false, compatibilityGate = noUpdate, appLockState = lock)
             )
         }
     }
@@ -37,7 +37,11 @@ class RootSurfaceTest {
                 assertEquals(
                     "force-update must show while lock=$lock loggedIn=$loggedIn",
                     RootSurface.ForceUpdate,
-                    rootSurface(isLoggedIn = loggedIn, compatibilityGate = gate("0.6.0"), appLockState = lock),
+                    rootSurface(
+                        isLoggedIn = loggedIn,
+                        compatibilityGate = gate("0.6.0"),
+                        appLockState = lock
+                    )
                 )
             }
         }
@@ -53,8 +57,8 @@ class RootSurfaceTest {
                     rootSurface(
                         isLoggedIn = loggedIn,
                         compatibilityGate = CompatibilityGate.ServerTooOld,
-                        appLockState = lock,
-                    ),
+                        appLockState = lock
+                    )
                 )
             }
         }
@@ -64,7 +68,11 @@ class RootSurfaceTest {
     fun `a logged-in session whose gate is undecided renders nothing`() {
         assertEquals(
             RootSurface.GateResolving,
-            rootSurface(isLoggedIn = true, compatibilityGate = noUpdate, appLockState = AppLockState.Resolving),
+            rootSurface(
+                isLoggedIn = true,
+                compatibilityGate = noUpdate,
+                appLockState = AppLockState.Resolving
+            )
         )
     }
 
@@ -72,7 +80,11 @@ class RootSurfaceTest {
     fun `a logged-in session behind a required gate shows the app lock`() {
         assertEquals(
             RootSurface.AppLock,
-            rootSurface(isLoggedIn = true, compatibilityGate = noUpdate, appLockState = AppLockState.Locked),
+            rootSurface(
+                isLoggedIn = true,
+                compatibilityGate = noUpdate,
+                appLockState = AppLockState.Locked
+            )
         )
     }
 
@@ -80,7 +92,11 @@ class RootSurfaceTest {
     fun `a logged-in session with the gate cleared shows the main tree`() {
         assertEquals(
             RootSurface.Main,
-            rootSurface(isLoggedIn = true, compatibilityGate = noUpdate, appLockState = AppLockState.Unlocked),
+            rootSurface(
+                isLoggedIn = true,
+                compatibilityGate = noUpdate,
+                appLockState = AppLockState.Unlocked
+            )
         )
     }
 
@@ -90,7 +106,11 @@ class RootSurfaceTest {
             assertEquals(
                 "force-update must show while lock state is $lock",
                 RootSurface.ForceUpdate,
-                rootSurface(isLoggedIn = true, compatibilityGate = gate("0.6.0"), appLockState = lock),
+                rootSurface(
+                    isLoggedIn = true,
+                    compatibilityGate = gate("0.6.0"),
+                    appLockState = lock
+                )
             )
         }
     }

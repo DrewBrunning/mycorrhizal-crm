@@ -6,7 +6,6 @@ import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordInput
 import com.mycorrhizal.crm.model.network.DeviceRegistrationInput
 import com.mycorrhizal.crm.model.network.ImportConfirmRequest
-import com.mycorrhizal.crm.model.network.LoginResponse
 import com.mycorrhizal.crm.model.network.Name
 import com.mycorrhizal.crm.model.network.NoteInput
 import com.mycorrhizal.crm.model.network.PreferenceInput
@@ -16,6 +15,7 @@ import com.mycorrhizal.crm.model.network.ReminderRecurrence
 import com.mycorrhizal.crm.model.network.RowImportAction
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -27,7 +27,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import kotlinx.coroutines.runBlocking
 
 class ApiClientTest {
 
@@ -40,7 +39,7 @@ class ApiClientTest {
         server.start()
         val okHttp = OkHttpClient.Builder()
             .addInterceptor(
-                BaseUrlInterceptor(BaseUrlProvider { server.url("/").toString().trimEnd('/') }),
+                BaseUrlInterceptor(BaseUrlProvider { server.url("/").toString().trimEnd('/') })
             )
             .build()
         val moshi = Moshi.Builder()
@@ -60,7 +59,7 @@ class ApiClientTest {
             MockResponse()
                 .setResponseCode(200)
                 .setHeader("Set-Cookie", "auth_token=eyJhbGciOiJIUzI1NiJ9.abc; Path=/; HttpOnly")
-                .setBody("""{"language":"en","date_format":"eu"}"""),
+                .setBody("""{"language":"en","date_format":"eu"}""")
         )
 
         val result = client.login("alice", "secret")
@@ -81,7 +80,7 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"language":"en","date_format":"eu"}"""),
+                .setBody("""{"language":"en","date_format":"eu"}""")
         )
 
         val result = client.login("alice", "secret")
@@ -95,7 +94,9 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(401)
-                .setBody("""{"error":{"code":"invalid_credentials","message":"Invalid credentials"}}"""),
+                .setBody(
+                    """{"error":{"code":"invalid_credentials","message":"Invalid credentials"}}"""
+                )
         )
 
         val result = client.login("alice", "wrong")
@@ -109,29 +110,33 @@ class ApiClientTest {
     // --- N8 two-factor login (issue #814) ---
 
     @Test
-    fun `login on a 2fa account reports the challenge and captures the pending cookie`() = runBlocking {
-        server.enqueue(
-            MockResponse()
-                .setResponseCode(200)
-                .setHeader("Set-Cookie", "2fa_pending=challenge-jwt.abc; Path=/; Max-Age=600; HttpOnly; SameSite=Strict")
-                .setBody("""{"two_factor_required":true}"""),
-        )
+    fun `login on a 2fa account reports the challenge and captures the pending cookie`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse()
+                    .setResponseCode(200)
+                    .setHeader(
+                        "Set-Cookie",
+                        "2fa_pending=challenge-jwt.abc; Path=/; Max-Age=600; HttpOnly; SameSite=Strict"
+                    )
+                    .setBody("""{"two_factor_required":true}""")
+            )
 
-        val result = client.login("alice", "secret")
+            val result = client.login("alice", "secret")
 
-        assertTrue(result.isSuccess)
-        val login = result.getOrThrow()
-        assertTrue(login.twoFactorRequired)
-        assertEquals("challenge-jwt.abc", login.pending2faCookie)
-        assertEquals(null, login.token)
-    }
+            assertTrue(result.isSuccess)
+            val login = result.getOrThrow()
+            assertTrue(login.twoFactorRequired)
+            assertEquals("challenge-jwt.abc", login.pending2faCookie)
+            assertEquals(null, login.token)
+        }
 
     @Test
     fun `login on a 2fa account without a pending cookie reports it as null`() = runBlocking {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"two_factor_required":true}"""),
+                .setBody("""{"two_factor_required":true}""")
         )
 
         val result = client.login("alice", "secret")
@@ -148,7 +153,7 @@ class ApiClientTest {
             MockResponse()
                 .setResponseCode(200)
                 .setHeader("Set-Cookie", "auth_token=twofa-session-jwt; Path=/; HttpOnly")
-                .setBody("""{"language":"de","date_format":"eu"}"""),
+                .setBody("""{"language":"de","date_format":"eu"}""")
         )
 
         val result = client.complete2faLogin("123456", "challenge-jwt.abc")
@@ -169,7 +174,9 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(400)
-                .setBody("""{"error":{"code":"invalid_code","message":"Invalid value for field 'code'"}}"""),
+                .setBody(
+                    """{"error":{"code":"invalid_code","message":"Invalid value for field 'code'"}}"""
+                )
         )
 
         val result = client.complete2faLogin("000000", "challenge-jwt.abc")
@@ -185,7 +192,9 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(401)
-                .setBody("""{"error":{"code":"unauthorized","message":"Invalid or expired two-factor session. Please sign in again."}}"""),
+                .setBody(
+                    """{"error":{"code":"unauthorized","message":"Invalid or expired two-factor session. Please sign in again."}}"""
+                )
         )
 
         val result = client.complete2faLogin("123456", "stale-challenge")
@@ -205,8 +214,8 @@ class ApiClientTest {
             MockResponse()
                 .setResponseCode(429)
                 .setBody(
-                    """{"error":"Account temporarily locked","message":"Too many failed login attempts. Please try again later.","retry_after":300,"retry_after_at":"2026-09-05T12:00:00Z"}""",
-                ),
+                    """{"error":"Account temporarily locked","message":"Too many failed login attempts. Please try again later.","retry_after":300,"retry_after_at":"2026-09-05T12:00:00Z"}"""
+                )
         )
 
         val result = client.complete2faLogin("000000", "challenge-jwt.abc")
@@ -235,7 +244,9 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"secret":"JBSWY3DPEHPK3PXP","otpauth_url":"otpauth://totp/Example:alice?secret=JBSWY3DPEHPK3PXP&issuer=Example"}"""),
+                .setBody(
+                    """{"secret":"JBSWY3DPEHPK3PXP","otpauth_url":"otpauth://totp/Example:alice?secret=JBSWY3DPEHPK3PXP&issuer=Example"}"""
+                )
         )
 
         val result = client.setupTwoFactor()
@@ -243,34 +254,38 @@ class ApiClientTest {
         assertTrue(result.isSuccess)
         val setup = result.getOrThrow()
         assertEquals("JBSWY3DPEHPK3PXP", setup.secret)
-        assertEquals("otpauth://totp/Example:alice?secret=JBSWY3DPEHPK3PXP&issuer=Example", setup.otpauthUrl)
+        assertEquals(
+            "otpauth://totp/Example:alice?secret=JBSWY3DPEHPK3PXP&issuer=Example",
+            setup.otpauthUrl
+        )
 
         val request = server.takeRequest()
         assertEquals("/api/v1/users/2fa/setup", request.path)
     }
 
     @Test
-    fun `two factor confirm returns recovery codes and captures the reissued session token`() = runBlocking {
-        server.enqueue(
-            MockResponse()
-                .setResponseCode(200)
-                .setHeader("Set-Cookie", "auth_token=reissued-jwt; Path=/; HttpOnly")
-                .setBody(
-                    """{"message":"Two-factor authentication enabled","recovery_codes":["ABCDE-FGHIJ-KLMNO","PQRST-UVWXY-ZABCD"]}""",
-                ),
-        )
+    fun `two factor confirm returns recovery codes and captures the reissued session token`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse()
+                    .setResponseCode(200)
+                    .setHeader("Set-Cookie", "auth_token=reissued-jwt; Path=/; HttpOnly")
+                    .setBody(
+                        """{"message":"Two-factor authentication enabled","recovery_codes":["ABCDE-FGHIJ-KLMNO","PQRST-UVWXY-ZABCD"]}"""
+                    )
+            )
 
-        val result = client.confirmTwoFactor("123456")
+            val result = client.confirmTwoFactor("123456")
 
-        assertTrue(result.isSuccess)
-        val body = result.getOrThrow()
-        assertEquals(2, body.value.recoveryCodes.size)
-        assertEquals("ABCDE-FGHIJ-KLMNO", body.value.recoveryCodes[0])
-        assertEquals("reissued-jwt", body.reissuedToken)
+            assertTrue(result.isSuccess)
+            val body = result.getOrThrow()
+            assertEquals(2, body.value.recoveryCodes.size)
+            assertEquals("ABCDE-FGHIJ-KLMNO", body.value.recoveryCodes[0])
+            assertEquals("reissued-jwt", body.reissuedToken)
 
-        val request = server.takeRequest()
-        assertEquals("/api/v1/users/2fa/confirm", request.path)
-    }
+            val request = server.takeRequest()
+            assertEquals("/api/v1/users/2fa/confirm", request.path)
+        }
 
     @Test
     fun `two factor disable returns the message and the reissued session token`() = runBlocking {
@@ -278,7 +293,7 @@ class ApiClientTest {
             MockResponse()
                 .setResponseCode(200)
                 .setHeader("Set-Cookie", "auth_token=reissued-jwt-2; Path=/; HttpOnly")
-                .setBody("""{"message":"Two-factor authentication disabled"}"""),
+                .setBody("""{"message":"Two-factor authentication disabled"}""")
         )
 
         val result = client.disableTwoFactor("654321")
@@ -305,8 +320,8 @@ class ApiClientTest {
                       "limit": 50,
                       "sync": {"mode": "incremental", "incremental": ["contacts"]}
                     }
-                    """.trimIndent(),
-                ),
+                    """.trimIndent()
+                )
         )
 
         val result = client.listContacts()
@@ -322,7 +337,7 @@ class ApiClientTest {
     @Test
     fun `list contacts sends query parameters`() = runBlocking {
         server.enqueue(
-            MockResponse().setResponseCode(200).setBody("""{"contacts":[],"next_cursor":""}"""),
+            MockResponse().setResponseCode(200).setBody("""{"contacts":[],"next_cursor":""}""")
         )
 
         client.listContacts(cursor = "c1", limit = 25, search = "ali")
@@ -332,21 +347,22 @@ class ApiClientTest {
     }
 
     @Test
-    fun `list contacts sends the circle filter and archived toggle on the query string`() = runBlocking {
-        server.enqueue(
-            MockResponse().setResponseCode(200).setBody("""{"contacts":[],"next_cursor":""}"""),
-        )
+    fun `list contacts sends the circle filter and archived toggle on the query string`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody("""{"contacts":[],"next_cursor":""}""")
+            )
 
-        client.listContacts(includeArchived = true, circle = "Book club")
+            client.listContacts(includeArchived = true, circle = "Book club")
 
-        val request = server.takeRequest()
-        assertEquals("/api/v1/contacts?include_archived=true&circle=Book%20club", request.path)
-    }
+            val request = server.takeRequest()
+            assertEquals("/api/v1/contacts?include_archived=true&circle=Book%20club", request.path)
+        }
 
     @Test
     fun `list contacts sends the favorites filter on the query string`() = runBlocking {
         server.enqueue(
-            MockResponse().setResponseCode(200).setBody("""{"contacts":[],"next_cursor":""}"""),
+            MockResponse().setResponseCode(200).setBody("""{"contacts":[],"next_cursor":""}""")
         )
 
         client.listContacts(favorites = true)
@@ -361,7 +377,7 @@ class ApiClientTest {
         // the other filters, so the client must not attach them (a silently
         // dropped parameter is worse than an absent one).
         server.enqueue(
-            MockResponse().setResponseCode(200).setBody("""{"contacts":[],"next_cursor":""}"""),
+            MockResponse().setResponseCode(200).setBody("""{"contacts":[],"next_cursor":""}""")
         )
 
         client.listContacts(
@@ -370,7 +386,7 @@ class ApiClientTest {
             cursor = "c1",
             search = "ali",
             includeArchived = true,
-            favorites = true,
+            favorites = true
         )
 
         val request = server.takeRequest()
@@ -393,8 +409,8 @@ class ApiClientTest {
                   "next_cursor": "CURSOR-2",
                   "sync": {"mode": "incremental", "incremental": ["contacts", "notes"]}
                 }
-                """.trimIndent(),
-            ),
+                """.trimIndent()
+            )
         )
 
         val result = client.listContacts(since = "CURSOR-1", limit = 100)
@@ -411,7 +427,7 @@ class ApiClientTest {
     @Test
     fun `list contacts omits the favorites filter by default`() = runBlocking {
         server.enqueue(
-            MockResponse().setResponseCode(200).setBody("""{"contacts":[],"next_cursor":""}"""),
+            MockResponse().setResponseCode(200).setBody("""{"contacts":[],"next_cursor":""}""")
         )
 
         client.listContacts()
@@ -433,8 +449,8 @@ class ApiClientTest {
                   ],
                   "next_cursor": ""
                 }
-                """.trimIndent(),
-            ),
+                """.trimIndent()
+            )
         )
 
         val result = client.listContacts()
@@ -451,7 +467,7 @@ class ApiClientTest {
     @Test
     fun `list contacts omits a blank circle filter`() = runBlocking {
         server.enqueue(
-            MockResponse().setResponseCode(200).setBody("""{"contacts":[],"next_cursor":""}"""),
+            MockResponse().setResponseCode(200).setBody("""{"contacts":[],"next_cursor":""}""")
         )
 
         client.listContacts(circle = "   ")
@@ -461,23 +477,31 @@ class ApiClientTest {
     }
 
     @Test
-    fun `list contacts with vcardUids sends repeatable vcard_uid params and skips pagination params`() = runBlocking {
-        server.enqueue(
-            MockResponse().setResponseCode(200).setBody("""{"contacts":[],"next_cursor":""}"""),
-        )
+    fun `list contacts with vcardUids sends repeatable vcard_uid params and skips pagination params`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody("""{"contacts":[],"next_cursor":""}""")
+            )
 
-        client.listContacts(cursor = "c1", limit = 25, search = "ali", vcardUids = listOf("uid-1", "uid-2"))
+            client.listContacts(
+                cursor = "c1",
+                limit = 25,
+                search = "ali",
+                vcardUids = listOf("uid-1", "uid-2")
+            )
 
-        val request = server.takeRequest()
-        assertEquals("/api/v1/contacts?vcard_uid=uid-1&vcard_uid=uid-2", request.path)
-    }
+            val request = server.takeRequest()
+            assertEquals("/api/v1/contacts?vcard_uid=uid-1&vcard_uid=uid-2", request.path)
+        }
 
     @Test
     fun `upload contact photo posts a multipart body with the photo field`() = runBlocking {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"ID": 9, "firstname": "Carol", "photo": "x_photo.jpg", "photo_thumbnail": "data:image/jpeg;base64,abc"}"""),
+                .setBody(
+                    """{"ID": 9, "firstname": "Carol", "photo": "x_photo.jpg", "photo_thumbnail": "data:image/jpeg;base64,abc"}"""
+                )
         )
 
         val result = client.uploadContactPhoto(9, "fake-jpeg-bytes".toByteArray(), "image/jpeg")
@@ -489,7 +513,7 @@ class ApiClientTest {
         assertEquals("/api/v1/contacts/9/profile_picture", request.path)
         assertTrue(
             "Expected multipart/form-data, got ${request.getHeader("Content-Type")}",
-            request.getHeader("Content-Type").orEmpty().startsWith("multipart/form-data"),
+            request.getHeader("Content-Type").orEmpty().startsWith("multipart/form-data")
         )
         val body = request.body.readUtf8()
         assertTrue("multipart must use the `photo` form field", body.contains("""name="photo""""))
@@ -502,7 +526,9 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(400)
-                .setBody("""{"error":{"code":"validation_failed","message":"File too large. Maximum size is 10MB"}}"""),
+                .setBody(
+                    """{"error":{"code":"validation_failed","message":"File too large. Maximum size is 10MB"}}"""
+                )
         )
 
         val result = client.uploadContactPhoto(9, ByteArray(1024), "image/jpeg")
@@ -529,8 +555,8 @@ class ApiClientTest {
                       "next_cursor": "",
                       "limit": 100
                     }
-                    """.trimIndent(),
-                ),
+                    """.trimIndent()
+                )
         )
 
         val result = client.listExternalIdentities("u5")
@@ -548,7 +574,11 @@ class ApiClientTest {
 
     @Test
     fun `delete external identity sends a DELETE`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"message":"External identity deleted"}"""))
+        server.enqueue(
+            MockResponse().setResponseCode(
+                200
+            ).setBody("""{"message":"External identity deleted"}""")
+        )
 
         val result = client.deleteExternalIdentity("i1")
 
@@ -583,8 +613,8 @@ class ApiClientTest {
                       "next_cursor": "",
                       "limit": 100
                     }
-                    """.trimIndent(),
-                ),
+                    """.trimIndent()
+                )
         )
 
         val result = client.listExternalActivities("u5")
@@ -602,7 +632,9 @@ class ApiClientTest {
 
     @Test
     fun `sync immich now sends a bare POST`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"message": "Immich sync completed"}"""))
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"message": "Immich sync completed"}""")
+        )
 
         val result = client.syncImmichNow()
 
@@ -617,7 +649,9 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"base_url": "https://immich.example", "has_api_key": true, "sync_enabled": true}"""),
+                .setBody(
+                    """{"base_url": "https://immich.example", "has_api_key": true, "sync_enabled": true}"""
+                )
         )
 
         val result = client.getImmichConfig()
@@ -632,7 +666,9 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"people": [{"id": "p1", "name": "Alice"}, {"id": "p2", "name": ""}]}"""),
+                .setBody(
+                    """{"people": [{"id": "p1", "name": "Alice"}, {"id": "p2", "name": ""}]}"""
+                )
         )
 
         val result = client.listImmichPeople()
@@ -650,7 +686,7 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(201)
-                .setBody("""{"external_identity": {"id": "i1", "system": "immich"}}"""),
+                .setBody("""{"external_identity": {"id": "i1", "system": "immich"}}""")
         )
 
         val result = client.linkImmichContact("u5", "p1", "Alice")
@@ -672,8 +708,8 @@ class ApiClientTest {
                 .setBody(
                     """
                     {"summary": {"identity": {"id": "i1"}, "person_name": "Alice", "photo_count": 7}}
-                    """.trimIndent(),
-                ),
+                    """.trimIndent()
+                )
         )
 
         val result = client.getImmichContactSummary("u5")
@@ -698,7 +734,7 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"assets": [{"id": "a1", "occurred_at": "2026-08-01T10:00:00Z"}]}"""),
+                .setBody("""{"assets": [{"id": "a1", "occurred_at": "2026-08-01T10:00:00Z"}]}""")
         )
 
         val result = client.listImmichContactAssets("u5")
@@ -717,7 +753,7 @@ class ApiClientTest {
             MockResponse()
                 .setResponseCode(200)
                 .setHeader("Content-Type", "image/jpeg")
-                .setBody("fake-jpeg-image-bytes"),
+                .setBody("fake-jpeg-image-bytes")
         )
 
         val result = client.getImmichAssetImageBytes("u5", "a1")
@@ -736,11 +772,16 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"base_url": "https://immich.example", "has_api_key": true, "sync_enabled": true}"""),
+                .setBody(
+                    """{"base_url": "https://immich.example", "has_api_key": true, "sync_enabled": true}"""
+                )
         )
 
         val result = client.saveImmichConfig(
-            com.mycorrhizal.crm.model.network.ImmichConfigInput(baseUrl = "https://immich.example", apiKey = "secret"),
+            com.mycorrhizal.crm.model.network.ImmichConfigInput(
+                baseUrl = "https://immich.example",
+                apiKey = "secret"
+            )
         )
 
         assertTrue(result.isSuccess)
@@ -752,7 +793,9 @@ class ApiClientTest {
 
     @Test
     fun `delete immich config deletes the config path`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"message": "Immich config deleted"}"""))
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"message": "Immich config deleted"}""")
+        )
 
         val result = client.deleteImmichConfig()
 
@@ -767,7 +810,7 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"ok": false, "stage": "auth", "message": "invalid API key"}"""),
+                .setBody("""{"ok": false, "stage": "auth", "message": "invalid API key"}""")
         )
 
         val result = client.testImmichConnection()
@@ -784,7 +827,7 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"base_url": "https://paperless.example", "has_api_token": true}"""),
+                .setBody("""{"base_url": "https://paperless.example", "has_api_token": true}""")
         )
 
         val result = client.getPaperlessConfig()
@@ -798,7 +841,7 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"documents": [{"id": 1, "title": "Lease"}]}"""),
+                .setBody("""{"documents": [{"id": 1, "title": "Lease"}]}""")
         )
 
         val result = client.searchPaperlessDocuments()
@@ -825,7 +868,7 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(201)
-                .setBody("""{"external_identity": {"id": "i1", "system": "paperless"}}"""),
+                .setBody("""{"external_identity": {"id": "i1", "system": "paperless"}}""")
         )
 
         val result = client.linkPaperlessContact("u5", "42")
@@ -844,7 +887,9 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"libraries": [{"id": "r1", "name": "My Library", "type": "library"}]}"""),
+                .setBody(
+                    """{"libraries": [{"id": "r1", "name": "My Library", "type": "library"}]}"""
+                )
         )
 
         val result = client.listSeafileLibraries()
@@ -859,7 +904,9 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"items": [{"id": "f1", "name": "doc.pdf", "type": "file", "size": 1024}]}"""),
+                .setBody(
+                    """{"items": [{"id": "f1", "name": "doc.pdf", "type": "file", "size": 1024}]}"""
+                )
         )
 
         val result = client.listSeafileDir("r1", "/docs")
@@ -876,7 +923,7 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(201)
-                .setBody("""{"external_identity": {"id": "i1", "system": "seafile"}}"""),
+                .setBody("""{"external_identity": {"id": "i1", "system": "seafile"}}""")
         )
 
         val result = client.linkSeafileContact(
@@ -886,8 +933,8 @@ class ApiClientTest {
                 path = "/docs/doc.pdf",
                 name = "doc.pdf",
                 type = "file",
-                size = 1024,
-            ),
+                size = 1024
+            )
         )
 
         assertTrue(result.isSuccess)
@@ -906,7 +953,9 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"base_url": "https://nc.example", "username": "drew", "has_app_password": true}"""),
+                .setBody(
+                    """{"base_url": "https://nc.example", "username": "drew", "has_app_password": true}"""
+                )
         )
 
         val result = client.getNextcloudConfig()
@@ -921,7 +970,7 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"items": [{"name": "Photos", "path": "/Photos", "type": "dir"}]}"""),
+                .setBody("""{"items": [{"name": "Photos", "path": "/Photos", "type": "dir"}]}""")
         )
 
         val result = client.listNextcloudDir()
@@ -938,7 +987,7 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(201)
-                .setBody("""{"external_identity": {"id": "i1", "system": "nextcloud"}}"""),
+                .setBody("""{"external_identity": {"id": "i1", "system": "nextcloud"}}""")
         )
 
         val result = client.linkNextcloudContact(
@@ -947,8 +996,8 @@ class ApiClientTest {
                 path = "/Photos/img.jpg",
                 name = "img.jpg",
                 type = "file",
-                size = 2048,
-            ),
+                size = 2048
+            )
         )
 
         assertTrue(result.isSuccess)
@@ -977,8 +1026,8 @@ class ApiClientTest {
                       "crm": {"circles": ["friends"]},
                       "archived": false
                     }
-                    """.trimIndent(),
-                ),
+                    """.trimIndent()
+                )
         )
 
         val result = client.getContact(7)
@@ -1060,8 +1109,8 @@ class ApiClientTest {
                         {"label": "birthday", "date": "--12-25", "days_until": 5}
                       ]
                     }
-                    """.trimIndent(),
-                ),
+                    """.trimIndent()
+                )
         )
 
         val result = client.getBriefing(7)
@@ -1126,8 +1175,8 @@ class ApiClientTest {
                       "uid": "u1",
                       "name": "Empty"
                     }
-                    """.trimIndent(),
-                ),
+                    """.trimIndent()
+                )
         )
 
         val result = client.getBriefing(1)
@@ -1146,12 +1195,13 @@ class ApiClientTest {
     }
 
     @Test
-    fun `get briefing normalizes an explicit JSON null collection to an empty list`() = runBlocking {
-        server.enqueue(
-            MockResponse()
-                .setResponseCode(200)
-                .setBody(
-                    """
+    fun `get briefing normalizes an explicit JSON null collection to an empty list`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse()
+                    .setResponseCode(200)
+                    .setBody(
+                        """
                     {
                       "contact_id": 2,
                       "uid": "u2",
@@ -1160,25 +1210,25 @@ class ApiClientTest {
                       "relationships": null,
                       "upcoming_dates": null
                     }
-                    """.trimIndent(),
-                ),
-        )
+                        """.trimIndent()
+                    )
+            )
 
-        val result = client.getBriefing(2)
+            val result = client.getBriefing(2)
 
-        assertTrue(result.isSuccess)
-        val briefing = result.getOrThrow()
-        assertTrue(briefing.recentNotes.isEmpty())
-        assertTrue(briefing.relationships.isEmpty())
-        assertTrue(briefing.upcomingDates.isEmpty())
-    }
+            assertTrue(result.isSuccess)
+            val briefing = result.getOrThrow()
+            assertTrue(briefing.recentNotes.isEmpty())
+            assertTrue(briefing.relationships.isEmpty())
+            assertTrue(briefing.upcomingDates.isEmpty())
+        }
 
     @Test
     fun `get briefing failure maps to the backend error`() = runBlocking {
         server.enqueue(
             MockResponse()
                 .setResponseCode(404)
-                .setBody("""{"error":{"code":"not_found","message":"Contact not found"}}"""),
+                .setBody("""{"error":{"code":"not_found","message":"Contact not found"}}""")
         )
 
         val result = client.getBriefing(999)
@@ -1208,8 +1258,8 @@ class ApiClientTest {
                       "reach_out": {"value": 100, "weight": 15, "reason": "No pending reach-out"},
                       "last_updated": {"value": 90, "weight": 10, "reason": "Updated recently"}
                     }
-                    """.trimIndent(),
-                ),
+                    """.trimIndent()
+                )
         )
 
         val result = client.getContactScore(1)
@@ -1221,7 +1271,10 @@ class ApiClientTest {
         assertEquals("moss", score.band)
         assertEquals(80.0, score.recency.value, 0.0)
         assertEquals(35.0, score.recency.weight, 0.0)
-        assertEquals("Last qualifying interaction 5 day(s) ago (target every 30 days)", score.recency.reason)
+        assertEquals(
+            "Last qualifying interaction 5 day(s) ago (target every 30 days)",
+            score.recency.reason
+        )
         assertEquals(60.0, score.frequency.value, 0.0)
         assertEquals(85.0, score.closeness.value, 0.0)
         assertEquals(100.0, score.reachOut.value, 0.0)
@@ -1239,7 +1292,7 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(404)
-                .setBody("""{"error":{"code":"not_found","message":"Contact not found"}}"""),
+                .setBody("""{"error":{"code":"not_found","message":"Contact not found"}}""")
         )
 
         val result = client.getContactScore(999)
@@ -1256,8 +1309,8 @@ class ApiClientTest {
             MockResponse()
                 .setResponseCode(200)
                 .setBody(
-                    """{"id": 3, "username": "alice", "email": "a@x.com", "is_admin": true, "language": "de"}""",
-                ),
+                    """{"id": 3, "username": "alice", "email": "a@x.com", "is_admin": true, "language": "de"}"""
+                )
         )
 
         val result = client.currentUser()
@@ -1275,7 +1328,7 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(404)
-                .setBody("""{"error":{"code":"not_found","message":"Contact not found"}}"""),
+                .setBody("""{"error":{"code":"not_found","message":"Contact not found"}}""")
         )
 
         val result = client.getContact(999)
@@ -1290,7 +1343,7 @@ class ApiClientTest {
     @Test
     fun `malformed json maps to Parse error`() = runBlocking {
         server.enqueue(
-            MockResponse().setResponseCode(200).setBody("""{"contacts": [}"""),
+            MockResponse().setResponseCode(200).setBody("""{"contacts": [}""")
         )
 
         val result = client.listContacts()
@@ -1316,12 +1369,12 @@ class ApiClientTest {
                         "crm": {"circles": ["friends"]}
                       }
                     }
-                    """.trimIndent(),
-                ),
+                    """.trimIndent()
+                )
         )
         val input = ContactRecordInput(
             card = Card(name = Name(full = "Carol King")),
-            crm = CRMEnvelope(circles = listOf("friends")),
+            crm = CRMEnvelope(circles = listOf("friends"))
         )
 
         val result = client.createContact(input)
@@ -1344,8 +1397,8 @@ class ApiClientTest {
             MockResponse()
                 .setResponseCode(400)
                 .setBody(
-                    """{"error":{"code":"validation_failed","message":"at least one name component (kind=given) or name.full is required"}}""",
-                ),
+                    """{"error":{"code":"validation_failed","message":"at least one name component (kind=given) or name.full is required"}}"""
+                )
         )
 
         val result = client.createContact(ContactRecordInput(card = Card()))
@@ -1368,8 +1421,8 @@ class ApiClientTest {
                       "uid": "u9",
                       "card": {"name": {"full": "Carol King Renamed"}}
                     }
-                    """.trimIndent(),
-                ),
+                    """.trimIndent()
+                )
         )
         val input = ContactRecordInput(card = Card(name = Name(full = "Carol King Renamed")))
 
@@ -1396,8 +1449,8 @@ class ApiClientTest {
                         {"ID": 2, "title": "Phone call", "type": "call", "date": "2026-08-02T11:00:00Z"}
                       ]
                     }
-                    """.trimIndent(),
-                ),
+                    """.trimIndent()
+                )
         )
 
         val result = client.listContactActivities(5)
@@ -1414,31 +1467,39 @@ class ApiClientTest {
     }
 
     @Test
-    fun `list contact activities sends search date and cursor params and parses next_cursor`() = runBlocking {
-        server.enqueue(
-            MockResponse()
-                .setResponseCode(200)
-                .setBody(
-                    """{"activities":[{"ID":1,"title":"Coffee with Dana"}],"next_cursor":"cursor-2","limit":25}""",
-                ),
-        )
+    fun `list contact activities sends search date and cursor params and parses next_cursor`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse()
+                    .setResponseCode(200)
+                    .setBody(
+                        """{"activities":[{"ID":1,"title":"Coffee with Dana"}],"next_cursor":"cursor-2","limit":25}"""
+                    )
+            )
 
-        val result = client.listContactActivities(5, cursor = "c1", limit = 25, search = "coffee", fromDate = "2026-08-01", toDate = "2026-08-10")
+            val result = client.listContactActivities(
+                5,
+                cursor = "c1",
+                limit = 25,
+                search = "coffee",
+                fromDate = "2026-08-01",
+                toDate = "2026-08-10"
+            )
 
-        assertTrue(result.isSuccess)
-        assertEquals("cursor-2", result.getOrThrow().nextCursor)
+            assertTrue(result.isSuccess)
+            assertEquals("cursor-2", result.getOrThrow().nextCursor)
 
-        val request = server.takeRequest()
-        assertEquals(
-            "/api/v1/contacts/5/activities?cursor=c1&limit=25&search=coffee&fromDate=2026-08-01&toDate=2026-08-10",
-            request.path,
-        )
-    }
+            val request = server.takeRequest()
+            assertEquals(
+                "/api/v1/contacts/5/activities?cursor=c1&limit=25&search=coffee&fromDate=2026-08-01&toDate=2026-08-10",
+                request.path
+            )
+        }
 
     @Test
     fun `delete activity sends a DELETE and succeeds`() = runBlocking {
         server.enqueue(
-            MockResponse().setResponseCode(200).setBody("""{"message":"Activity deleted"}"""),
+            MockResponse().setResponseCode(200).setBody("""{"message":"Activity deleted"}""")
         )
 
         val result = client.deleteActivity(7)
@@ -1452,7 +1513,7 @@ class ApiClientTest {
     @Test
     fun `delete activity surfaces a 404 as a failure`() = runBlocking {
         server.enqueue(
-            MockResponse().setResponseCode(404).setBody("""{"error":"Activity not found"}"""),
+            MockResponse().setResponseCode(404).setBody("""{"error":"Activity not found"}""")
         )
 
         val result = client.deleteActivity(999)
@@ -1471,11 +1532,13 @@ class ApiClientTest {
                       "message": "Activity created successfully",
                       "activity": {"ID": 7, "title": "Lunch", "type": "meal"}
                     }
-                    """.trimIndent(),
-                ),
+                    """.trimIndent()
+                )
         )
 
-        val result = client.createActivity(ActivityInput(title = "Lunch", type = "meal", contactIds = listOf(5)))
+        val result = client.createActivity(
+            ActivityInput(title = "Lunch", type = "meal", contactIds = listOf(5))
+        )
 
         assertTrue(result.isSuccess)
         assertEquals(7, result.getOrThrow().id)
@@ -1492,12 +1555,12 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"message":"ok","activity":{"ID":7,"title":"Call"}}"""),
+                .setBody("""{"message":"ok","activity":{"ID":7,"title":"Call"}}""")
         )
 
         val result = client.createActivity(
             ActivityInput(title = "Call", date = "2026-09-04T00:00:00Z", type = "call"),
-            idempotencyKey = "row-key-1",
+            idempotencyKey = "row-key-1"
         )
 
         assertTrue(result.isSuccess)
@@ -1512,7 +1575,7 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"message":"ok","activity":{"ID":7,"title":"Call"}}"""),
+                .setBody("""{"message":"ok","activity":{"ID":7,"title":"Call"}}""")
         )
 
         val result = client.createActivity(ActivityInput(title = "Call", type = "call"))
@@ -1528,8 +1591,8 @@ class ApiClientTest {
             MockResponse()
                 .setResponseCode(200)
                 .setBody(
-                    """{"ID": 7, "title": "Lunch and coffee", "type": "meal"}""",
-                ),
+                    """{"ID": 7, "title": "Lunch and coffee", "type": "meal"}"""
+                )
         )
 
         val result = client.updateActivity(7, ActivityInput(title = "Lunch and coffee"))
@@ -1556,8 +1619,8 @@ class ApiClientTest {
                       "contacts": [{"ID": 5, "firstname": "Dana"}, {"ID": 9, "firstname": "Carol"}],
                       "external_ref": "cal-event-42"
                     }
-                    """.trimIndent(),
-                ),
+                    """.trimIndent()
+                )
         )
 
         val result = client.getActivity(7)
@@ -1584,8 +1647,8 @@ class ApiClientTest {
                       "next_cursor": "cursor-9",
                       "limit": 25
                     }
-                    """.trimIndent(),
-                ),
+                    """.trimIndent()
+                )
         )
 
         val result = client.listActivities(cursor = "cursor-9", limit = 25)
@@ -1600,7 +1663,7 @@ class ApiClientTest {
     fun `list activities with includeContacts appends the include query param`() = runBlocking {
         server.enqueue(
             MockResponse().setResponseCode(200)
-                .setBody("""{"activities": [], "next_cursor": "", "limit": 25}"""),
+                .setBody("""{"activities": [], "next_cursor": "", "limit": 25}""")
         )
 
         client.listActivities(includeContacts = true)
@@ -1615,7 +1678,7 @@ class ApiClientTest {
     fun `list activities normalizes an explicit JSON null to an empty list`() = runBlocking {
         server.enqueue(
             MockResponse().setResponseCode(200)
-                .setBody("""{"activities": null, "next_cursor": "", "limit": 25}"""),
+                .setBody("""{"activities": null, "next_cursor": "", "limit": 25}""")
         )
 
         val result = client.listActivities()
@@ -1626,7 +1689,9 @@ class ApiClientTest {
 
     @Test
     fun `list activities tolerates the collection key being fully absent`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"next_cursor": "", "limit": 25}"""))
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"next_cursor": "", "limit": 25}""")
+        )
 
         val result = client.listActivities()
 
@@ -1646,8 +1711,8 @@ class ApiClientTest {
                   "limit": 25,
                   "total": 9
                 }
-                """.trimIndent(),
-            ),
+                """.trimIndent()
+            )
         )
 
         val result = client.listNotes(cursor = "cursor-1", limit = 25)
@@ -1669,7 +1734,7 @@ class ApiClientTest {
     fun `list notes normalizes an explicit JSON null to an empty list`() = runBlocking {
         server.enqueue(
             MockResponse().setResponseCode(200)
-                .setBody("""{"notes": null, "next_cursor": "", "limit": 25, "total": 0}"""),
+                .setBody("""{"notes": null, "next_cursor": "", "limit": 25, "total": 0}""")
         )
 
         val result = client.listNotes()
@@ -1701,8 +1766,8 @@ class ApiClientTest {
                         {"ID": 4, "content": "Met at conference", "date": "2026-08-02T11:00:00Z"}
                       ]
                     }
-                    """.trimIndent(),
-                ),
+                    """.trimIndent()
+                )
         )
 
         val result = client.listContactNotes(5)
@@ -1718,31 +1783,39 @@ class ApiClientTest {
     }
 
     @Test
-    fun `list contact notes sends search date and cursor params and parses next_cursor`() = runBlocking {
-        server.enqueue(
-            MockResponse()
-                .setResponseCode(200)
-                .setBody(
-                    """{"notes":[{"ID":3,"content":"Loves climbing"}],"next_cursor":"cursor-2","limit":25}""",
-                ),
-        )
+    fun `list contact notes sends search date and cursor params and parses next_cursor`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse()
+                    .setResponseCode(200)
+                    .setBody(
+                        """{"notes":[{"ID":3,"content":"Loves climbing"}],"next_cursor":"cursor-2","limit":25}"""
+                    )
+            )
 
-        val result = client.listContactNotes(5, cursor = "c1", limit = 25, search = "climb", fromDate = "2026-08-01", toDate = "2026-08-10")
+            val result = client.listContactNotes(
+                5,
+                cursor = "c1",
+                limit = 25,
+                search = "climb",
+                fromDate = "2026-08-01",
+                toDate = "2026-08-10"
+            )
 
-        assertTrue(result.isSuccess)
-        assertEquals("cursor-2", result.getOrThrow().nextCursor)
+            assertTrue(result.isSuccess)
+            assertEquals("cursor-2", result.getOrThrow().nextCursor)
 
-        val request = server.takeRequest()
-        assertEquals(
-            "/api/v1/contacts/5/notes?cursor=c1&limit=25&search=climb&fromDate=2026-08-01&toDate=2026-08-10",
-            request.path,
-        )
-    }
+            val request = server.takeRequest()
+            assertEquals(
+                "/api/v1/contacts/5/notes?cursor=c1&limit=25&search=climb&fromDate=2026-08-01&toDate=2026-08-10",
+                request.path
+            )
+        }
 
     @Test
     fun `list contact notes omits blank filters`() = runBlocking {
         server.enqueue(
-            MockResponse().setResponseCode(200).setBody("""{"notes":[],"next_cursor":""}"""),
+            MockResponse().setResponseCode(200).setBody("""{"notes":[],"next_cursor":""}""")
         )
 
         client.listContactNotes(5, search = "   ")
@@ -1754,7 +1827,7 @@ class ApiClientTest {
     @Test
     fun `delete note sends a DELETE and succeeds`() = runBlocking {
         server.enqueue(
-            MockResponse().setResponseCode(200).setBody("""{"message":"Note deleted"}"""),
+            MockResponse().setResponseCode(200).setBody("""{"message":"Note deleted"}""")
         )
 
         val result = client.deleteNote(3)
@@ -1768,7 +1841,7 @@ class ApiClientTest {
     @Test
     fun `delete note surfaces a 404 as a failure`() = runBlocking {
         server.enqueue(
-            MockResponse().setResponseCode(404).setBody("""{"error":"Note not found"}"""),
+            MockResponse().setResponseCode(404).setBody("""{"error":"Note not found"}""")
         )
 
         val result = client.deleteNote(999)
@@ -1787,8 +1860,8 @@ class ApiClientTest {
                       "message": "Note created successfully",
                       "note": {"ID": 3, "content": "Loves climbing"}
                     }
-                    """.trimIndent(),
-                ),
+                    """.trimIndent()
+                )
         )
 
         val result = client.createNote(5, NoteInput(content = "Loves climbing"))
@@ -1808,8 +1881,8 @@ class ApiClientTest {
             MockResponse()
                 .setResponseCode(200)
                 .setBody(
-                    """{"message": "Note created successfully", "note": {"ID": 3, "content": "Loves climbing"}}""",
-                ),
+                    """{"message": "Note created successfully", "note": {"ID": 3, "content": "Loves climbing"}}"""
+                )
         )
 
         val result = client.createUnassignedNote(NoteInput(content = "Loves climbing"))
@@ -1828,8 +1901,8 @@ class ApiClientTest {
             MockResponse()
                 .setResponseCode(200)
                 .setBody(
-                    """{"message": "Note updated successfully", "note": {"ID": 3, "content": "Loves rock climbing"}}""",
-                ),
+                    """{"message": "Note updated successfully", "note": {"ID": 3, "content": "Loves rock climbing"}}"""
+                )
         )
 
         val result = client.updateNote(3, NoteInput(content = "Loves rock climbing"))
@@ -1849,8 +1922,8 @@ class ApiClientTest {
             MockResponse()
                 .setResponseCode(200)
                 .setBody(
-                    """{"ID": 3, "content": "Loves climbing", "date": "2026-08-01T10:00:00Z"}""",
-                ),
+                    """{"ID": 3, "content": "Loves climbing", "date": "2026-08-01T10:00:00Z"}"""
+                )
         )
 
         val result = client.getNote(3)
@@ -1872,8 +1945,8 @@ class ApiClientTest {
                         {"ID": 2, "message": "Birthday gift", "remind_at": "2026-08-15T09:00:00Z", "recurrence": "yearly"}
                       ]
                     }
-                    """.trimIndent(),
-                ),
+                    """.trimIndent()
+                )
         )
 
         val result = client.listContactReminders(5)
@@ -1899,14 +1972,14 @@ class ApiClientTest {
                       "message": "Reminder created successfully",
                       "reminder": {"ID": 1, "message": "Call Dana", "recurrence": "once"}
                     }
-                    """.trimIndent(),
-                ),
+                    """.trimIndent()
+                )
         )
         val reminder = Reminder(
             message = "Call Dana",
             remindAt = "2026-08-10T14:00:00Z",
             recurrence = ReminderRecurrence.ONCE,
-            contactId = 5,
+            contactId = 5
         )
 
         val result = client.createReminder(5, reminder)
@@ -1925,8 +1998,8 @@ class ApiClientTest {
             MockResponse()
                 .setResponseCode(200)
                 .setBody(
-                    """{"message": "Reminder completed", "reminder": {"ID": 1, "message": "Call Dana", "completed": false}}""",
-                ),
+                    """{"message": "Reminder completed", "reminder": {"ID": 1, "message": "Call Dana", "completed": false}}"""
+                )
         )
 
         val result = client.completeReminder(1)
@@ -1944,7 +2017,9 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"message": "Reminder skipped", "reminder": {"ID": 1, "message": "Call Dana", "completed": false}}"""),
+                .setBody(
+                    """{"message": "Reminder skipped", "reminder": {"ID": 1, "message": "Call Dana", "completed": false}}"""
+                )
         )
 
         val result = client.completeReminder(1, skip = true)
@@ -1979,8 +2054,8 @@ class ApiClientTest {
                         {"id": "s1", "contact_vcard_uid": "u3", "kind": "organization", "old_value": "OldCo", "new_value": "NewCo", "audit_event_id": 42, "reminder_id": 9, "status": "pending", "contact_id": 3, "contact_name": "Bobby Smith", "photo_thumbnail": "data:image/png;base64,jkl"}
                       ]
                     }
-                    """.trimIndent(),
-                ),
+                    """.trimIndent()
+                )
         )
 
         val result = client.getDashboard()
@@ -2038,8 +2113,8 @@ class ApiClientTest {
                       "favorites": [],
                       "reach_out_suggestions": []
                     }
-                    """.trimIndent(),
-                ),
+                    """.trimIndent()
+                )
         )
 
         val result = client.getDashboard()
@@ -2063,8 +2138,8 @@ class ApiClientTest {
                  "birthdays_total": 40, "upcoming_reminders_total": 60, "overdue_total": 26,
                  "reach_out_suggestions_total": 30, "data_decay_overdue_total": 27,
                  "contact_sync_conflicts_total": 3}
-                """.trimIndent(),
-            ),
+                """.trimIndent()
+            )
         )
 
         val dashboard = client.getDashboard().getOrThrow()
@@ -2081,7 +2156,7 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{}"""),
+                .setBody("""{}""")
         )
 
         val result = client.getDashboard()
@@ -2119,8 +2194,8 @@ class ApiClientTest {
                     }
                   ]
                 }
-                """.trimIndent(),
-            ),
+                """.trimIndent()
+            )
         )
 
         val result = client.listOverdueDataDecayPolicies()
@@ -2138,30 +2213,31 @@ class ApiClientTest {
     }
 
     @Test
-    fun `verify data decay policy posts to the policy-specific endpoint with no body`() = runBlocking {
-        server.enqueue(
-            MockResponse().setResponseCode(200).setBody(
-                """{"id": "d1", "entity_id": "u6", "interval_days": 365, "active": true, "last_verified_at": "2026-09-24T00:00:00Z"}""",
-            ),
-        )
+    fun `verify data decay policy posts to the policy-specific endpoint with no body`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody(
+                    """{"id": "d1", "entity_id": "u6", "interval_days": 365, "active": true, "last_verified_at": "2026-09-24T00:00:00Z"}"""
+                )
+            )
 
-        val result = client.verifyDataDecayPolicy("d1")
+            val result = client.verifyDataDecayPolicy("d1")
 
-        assertTrue(result.isSuccess)
-        assertEquals("2026-09-24T00:00:00Z", result.getOrThrow().lastVerifiedAt)
+            assertTrue(result.isSuccess)
+            assertEquals("2026-09-24T00:00:00Z", result.getOrThrow().lastVerifiedAt)
 
-        val request = server.takeRequest()
-        assertEquals("POST", request.method)
-        assertEquals("/api/v1/data-decay-policies/d1/verify", request.path)
-        assertEquals(0L, request.bodySize)
-    }
+            val request = server.takeRequest()
+            assertEquals("POST", request.method)
+            assertEquals("/api/v1/data-decay-policies/d1/verify", request.path)
+            assertEquals(0L, request.bodySize)
+        }
 
     @Test
     fun `dismiss reach-out suggestion posts to the suggestion-specific endpoint`() = runBlocking {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"message": "Suggestion dismissed"}"""),
+                .setBody("""{"message": "Suggestion dismissed"}""")
         )
 
         val result = client.dismissReachOutSuggestion("suggestion-1")
@@ -2191,8 +2267,8 @@ class ApiClientTest {
                     {"ID": 2, "firstname": "Alice", "lastname": "Jones"}
                   ]
                 }
-                """.trimIndent(),
-            ),
+                """.trimIndent()
+            )
         )
 
         val result = client.getDashboard()
@@ -2212,13 +2288,13 @@ class ApiClientTest {
             MockResponse()
                 .setResponseCode(200)
                 .setBody(
-                    """{"message": "Reminder updated successfully", "reminder": {"ID": 1, "message": "Call Dana weekly", "recurrence": "weekly"}}""",
-                ),
+                    """{"message": "Reminder updated successfully", "reminder": {"ID": 1, "message": "Call Dana weekly", "recurrence": "weekly"}}"""
+                )
         )
 
         val result = client.updateReminder(
             1,
-            Reminder(message = "Call Dana weekly", recurrence = ReminderRecurrence.WEEKLY),
+            Reminder(message = "Call Dana weekly", recurrence = ReminderRecurrence.WEEKLY)
         )
 
         assertTrue(result.isSuccess)
@@ -2236,8 +2312,8 @@ class ApiClientTest {
             MockResponse()
                 .setResponseCode(200)
                 .setBody(
-                    """{"ID": 1, "message": "Call Dana", "recurrence": "weekly"}""",
-                ),
+                    """{"ID": 1, "message": "Call Dana", "recurrence": "weekly"}"""
+                )
         )
 
         val result = client.getReminder(1)
@@ -2249,7 +2325,7 @@ class ApiClientTest {
     @Test
     fun `delete reminder sends a DELETE and succeeds`() = runBlocking {
         server.enqueue(
-            MockResponse().setResponseCode(200).setBody("""{"message":"Reminder deleted"}"""),
+            MockResponse().setResponseCode(200).setBody("""{"message":"Reminder deleted"}""")
         )
 
         val result = client.deleteReminder(7)
@@ -2263,7 +2339,7 @@ class ApiClientTest {
     @Test
     fun `delete reminder surfaces a 404 as a failure`() = runBlocking {
         server.enqueue(
-            MockResponse().setResponseCode(404).setBody("""{"error":"Reminder not found"}"""),
+            MockResponse().setResponseCode(404).setBody("""{"error":"Reminder not found"}""")
         )
 
         val result = client.deleteReminder(999)
@@ -2282,8 +2358,8 @@ class ApiClientTest {
                     {"ID": 2, "reminder_id": 3, "contact_id": 5, "message": "Gift", "completed_at": "2026-08-11T09:00:00Z"}
                   ]
                 }
-                """.trimIndent(),
-            ),
+                """.trimIndent()
+            )
         )
 
         val result = client.listContactReminderCompletions(5)
@@ -2303,7 +2379,7 @@ class ApiClientTest {
     @Test
     fun `list contact reminder completions normalizes an empty completions array`() = runBlocking {
         server.enqueue(
-            MockResponse().setResponseCode(200).setBody("""{"completions": []}"""),
+            MockResponse().setResponseCode(200).setBody("""{"completions": []}""")
         )
 
         val result = client.listContactReminderCompletions(5)
@@ -2313,24 +2389,27 @@ class ApiClientTest {
     }
 
     @Test
-    fun `list contact reminder completions normalizes an explicit JSON null to an empty list`() = runBlocking {
-        // The backend's GetCompletionsForContact uses a nil Go slice when a contact has no
-        // completions, which gin.H serializes as JSON null, not []. Must not crash (the
-        // /CLAUDE.md trap #8 family — a collection field that's absent OR null).
-        server.enqueue(
-            MockResponse().setResponseCode(200).setBody("""{"completions": null}"""),
-        )
+    fun `list contact reminder completions normalizes an explicit JSON null to an empty list`() =
+        runBlocking {
+            // The backend's GetCompletionsForContact uses a nil Go slice when a contact has no
+            // completions, which gin.H serializes as JSON null, not []. Must not crash (the
+            // /CLAUDE.md trap #8 family — a collection field that's absent OR null).
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody("""{"completions": null}""")
+            )
 
-        val result = client.listContactReminderCompletions(5)
+            val result = client.listContactReminderCompletions(5)
 
-        assertTrue(result.isSuccess)
-        assertTrue(result.getOrThrow().completions.isEmpty())
-    }
+            assertTrue(result.isSuccess)
+            assertTrue(result.getOrThrow().completions.isEmpty())
+        }
 
     @Test
     fun `delete reminder completion sends a DELETE and succeeds`() = runBlocking {
         server.enqueue(
-            MockResponse().setResponseCode(200).setBody("""{"message":"Reminder completion deleted"}"""),
+            MockResponse().setResponseCode(
+                200
+            ).setBody("""{"message":"Reminder completion deleted"}""")
         )
 
         val result = client.deleteReminderCompletion(7)
@@ -2344,7 +2423,9 @@ class ApiClientTest {
     @Test
     fun `delete reminder completion surfaces a 404 as a failure`() = runBlocking {
         server.enqueue(
-            MockResponse().setResponseCode(404).setBody("""{"error":"Reminder completion not found"}"""),
+            MockResponse().setResponseCode(
+                404
+            ).setBody("""{"error":"Reminder completion not found"}""")
         )
 
         val result = client.deleteReminderCompletion(999)
@@ -2370,8 +2451,8 @@ class ApiClientTest {
                         {"ID": 2, "title": "Coffee with mom", "date": "2026-01-02", "snippet": "Coffee with <b>mom</b>"}
                       ]
                     }
-                    """.trimIndent(),
-                ),
+                    """.trimIndent()
+                )
         )
 
         val result = client.search("mom", limit = 5)
@@ -2397,7 +2478,9 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"query": "ali", "contacts": [{"id": 1, "fn": "Alice"}], "notes": [], "activities": []}"""),
+                .setBody(
+                    """{"query": "ali", "contacts": [{"id": 1, "fn": "Alice"}], "notes": [], "activities": []}"""
+                )
         )
 
         val result = client.search("ali")
@@ -2409,7 +2492,9 @@ class ApiClientTest {
 
     @Test
     fun `search omits optional params when not provided`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"notes": [], "activities": []}"""))
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"notes": [], "activities": []}""")
+        )
 
         client.search("al")
 
@@ -2430,8 +2515,8 @@ class ApiClientTest {
                   ],
                   "total": 1, "next_cursor": "", "limit": 100
                 }
-                """.trimIndent(),
-            ),
+                """.trimIndent()
+            )
         )
 
         val result = client.listFieldDefinitions()
@@ -2452,7 +2537,9 @@ class ApiClientTest {
         // a different failure mode than /CLAUDE.md trap #8's absent-key one. Both must not crash.
         server.enqueue(
             MockResponse().setResponseCode(200)
-                .setBody("""{"field_definitions": null, "total": 0, "next_cursor": "", "limit": 100}"""),
+                .setBody(
+                    """{"field_definitions": null, "total": 0, "next_cursor": "", "limit": 100}"""
+                )
         )
 
         val result = client.listFieldDefinitions()
@@ -2475,8 +2562,8 @@ class ApiClientTest {
     fun `listContactFieldValues parses the values list`() = runBlocking {
         server.enqueue(
             MockResponse().setResponseCode(200).setBody(
-                """{"field_values": [{"id": 1, "field_definition_id": "d1", "entity_id": "u1", "value": "Latte"}]}""",
-            ),
+                """{"field_values": [{"id": 1, "field_definition_id": "d1", "entity_id": "u1", "value": "Latte"}]}"""
+            )
         )
 
         val result = client.listContactFieldValues(5)
@@ -2492,37 +2579,41 @@ class ApiClientTest {
     }
 
     @Test
-    fun `a value written via replaceContactFieldValues round-trips through a subsequent read`() = runBlocking {
-        server.enqueue(
-            MockResponse().setResponseCode(200).setBody(
-                """{"message": "Field values saved successfully", "field_values": [{"id": 1, "field_definition_id": "d1", "entity_id": "u1", "value": "Latte"}]}""",
-            ),
-        )
-        server.enqueue(
-            MockResponse().setResponseCode(200).setBody(
-                """{"field_values": [{"id": 1, "field_definition_id": "d1", "entity_id": "u1", "value": "Latte"}]}""",
-            ),
-        )
+    fun `a value written via replaceContactFieldValues round-trips through a subsequent read`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody(
+                    """{"message": "Field values saved successfully", "field_values": [{"id": 1, "field_definition_id": "d1", "entity_id": "u1", "value": "Latte"}]}"""
+                )
+            )
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody(
+                    """{"field_values": [{"id": 1, "field_definition_id": "d1", "entity_id": "u1", "value": "Latte"}]}"""
+                )
+            )
 
-        val writeResult = client.replaceContactFieldValues(
-            5,
-            com.mycorrhizal.crm.model.network.ContactFieldValuesInput(
-                fieldValues = listOf(
-                    com.mycorrhizal.crm.model.network.FieldValueInput(fieldDefinitionId = "d1", value = "Latte"),
-                ),
-            ),
-        )
-        val readResult = client.listContactFieldValues(5)
+            val writeResult = client.replaceContactFieldValues(
+                5,
+                com.mycorrhizal.crm.model.network.ContactFieldValuesInput(
+                    fieldValues = listOf(
+                        com.mycorrhizal.crm.model.network.FieldValueInput(
+                            fieldDefinitionId = "d1",
+                            value = "Latte"
+                        )
+                    )
+                )
+            )
+            val readResult = client.listContactFieldValues(5)
 
-        assertTrue(writeResult.isSuccess)
-        assertTrue(readResult.isSuccess)
-        assertEquals("Latte", readResult.getOrThrow().values.first().value)
+            assertTrue(writeResult.isSuccess)
+            assertTrue(readResult.isSuccess)
+            assertEquals("Latte", readResult.getOrThrow().values.first().value)
 
-        val putRequest = server.takeRequest()
-        assertEquals("PUT", putRequest.method)
-        assertEquals("/api/v1/contacts/5/field-values", putRequest.path)
-        assertTrue(putRequest.body.readUtf8().contains("\"field_definition_id\":\"d1\""))
-    }
+            val putRequest = server.takeRequest()
+            assertEquals("PUT", putRequest.method)
+            assertEquals("/api/v1/contacts/5/field-values", putRequest.path)
+            assertTrue(putRequest.body.readUtf8().contains("\"field_definition_id\":\"d1\""))
+        }
 
     @Test
     fun `getFieldDefinition parses the raw response`() = runBlocking {
@@ -2532,8 +2623,8 @@ class ApiClientTest {
                 {"id": "d1", "label": "Coffee order", "key": "coffee_order", "target": "contact",
                  "type": "string", "projection": "internal-only", "sensitivity": "normal",
                  "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z"}
-                """.trimIndent(),
-            ),
+                """.trimIndent()
+            )
         )
 
         val result = client.getFieldDefinition("d1")
@@ -2553,16 +2644,16 @@ class ApiClientTest {
                 {"message": "Field definition created successfully",
                  "field_definition": {"id": "d1", "label": "Coffee order", "key": "coffee_order",
                  "target": "contact", "type": "string", "projection": "internal-only", "sensitivity": "normal"}}
-                """.trimIndent(),
-            ),
+                """.trimIndent()
+            )
         )
 
         val result = client.createFieldDefinition(
             com.mycorrhizal.crm.model.network.FieldDefinitionInput(
                 label = "Coffee order",
                 key = "coffee_order",
-                type = "string",
-            ),
+                type = "string"
+            )
         )
 
         assertTrue(result.isSuccess)
@@ -2579,15 +2670,17 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(409)
-                .setBody("""{"error":{"code":"ALREADY_EXISTS","message":"Field definition already exists","details":{"key":"coffee_order"}}}"""),
+                .setBody(
+                    """{"error":{"code":"ALREADY_EXISTS","message":"Field definition already exists","details":{"key":"coffee_order"}}}"""
+                )
         )
 
         val result = client.createFieldDefinition(
             com.mycorrhizal.crm.model.network.FieldDefinitionInput(
                 label = "Coffee order",
                 key = "coffee_order",
-                type = "string",
-            ),
+                type = "string"
+            )
         )
 
         assertTrue(result.isFailure)
@@ -2603,8 +2696,8 @@ class ApiClientTest {
                 """
                 {"id": "d1", "label": "Coffee order (renamed)", "key": "coffee_order", "target": "contact",
                  "type": "string", "projection": "internal-only", "sensitivity": "normal"}
-                """.trimIndent(),
-            ),
+                """.trimIndent()
+            )
         )
 
         val result = client.updateFieldDefinition(
@@ -2612,8 +2705,8 @@ class ApiClientTest {
             com.mycorrhizal.crm.model.network.FieldDefinitionInput(
                 label = "Coffee order (renamed)",
                 key = "coffee_order",
-                type = "string",
-            ),
+                type = "string"
+            )
         )
 
         assertTrue(result.isSuccess)
@@ -2626,7 +2719,9 @@ class ApiClientTest {
     @Test
     fun `deleteFieldDefinition sends a DELETE`() = runBlocking {
         server.enqueue(
-            MockResponse().setResponseCode(200).setBody("""{"message": "Field definition deleted"}"""),
+            MockResponse().setResponseCode(
+                200
+            ).setBody("""{"message": "Field definition deleted"}""")
         )
 
         val result = client.deleteFieldDefinition("d1")
@@ -2638,30 +2733,31 @@ class ApiClientTest {
     }
 
     @Test
-    fun `reorderFieldDefinitions sends a PUT of the full order and parses the response`() = runBlocking {
-        server.enqueue(
-            MockResponse().setResponseCode(200).setBody(
-                """
+    fun `reorderFieldDefinitions sends a PUT of the full order and parses the response`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody(
+                    """
                 {"field_definitions": [
                   {"id": "b", "label": "Telegram", "key": "telegram", "target": "contact",
                    "type": "string", "projection": "internal-only", "sensitivity": "normal", "position": 0},
                   {"id": "a", "label": "Signal", "key": "signal", "target": "contact",
                    "type": "string", "projection": "internal-only", "sensitivity": "normal", "position": 1}
                 ]}
-                """.trimIndent(),
-            ),
-        )
+                    """.trimIndent()
+                )
+            )
 
-        val result = client.reorderFieldDefinitions(listOf("b", "a"))
+            val result = client.reorderFieldDefinitions(listOf("b", "a"))
 
-        assertTrue(result.isSuccess)
-        assertEquals(listOf("b", "a"), result.getOrThrow().definitions.map { it.id })
-        assertEquals(0, result.getOrThrow().definitions.first().position)
-        val request = server.takeRequest()
-        assertEquals("PUT", request.method)
-        assertEquals("/api/v1/field-definitions/reorder", request.path)
-        assertTrue(request.body.readUtf8().contains("\"order\":[\"b\",\"a\"]"))
-    }
+            assertTrue(result.isSuccess)
+            assertEquals(listOf("b", "a"), result.getOrThrow().definitions.map { it.id })
+            assertEquals(0, result.getOrThrow().definitions.first().position)
+            val request = server.takeRequest()
+            assertEquals("PUT", request.method)
+            assertEquals("/api/v1/field-definitions/reorder", request.path)
+            assertTrue(request.body.readUtf8().contains("\"order\":[\"b\",\"a\"]"))
+        }
 
     @Test
     fun `update relationship edge sends a PUT and parses the raw edge`() = runBlocking {
@@ -2669,8 +2765,8 @@ class ApiClientTest {
             MockResponse()
                 .setResponseCode(200)
                 .setBody(
-                    """{"id": "e1", "source_id": "u1", "target_id": "u2", "type": "spouse_of", "sensitivity": "private"}""",
-                ),
+                    """{"id": "e1", "source_id": "u1", "target_id": "u2", "type": "spouse_of", "sensitivity": "private"}"""
+                )
         )
 
         val result = client.updateRelationshipEdge(
@@ -2679,8 +2775,8 @@ class ApiClientTest {
                 sourceId = "u1",
                 targetId = "u2",
                 type = "spouse_of",
-                sensitivity = "private",
-            ),
+                sensitivity = "private"
+            )
         )
 
         assertTrue(result.isSuccess)
@@ -2709,7 +2805,9 @@ class ApiClientTest {
     @Test
     fun `delete contact failure maps to the backend error`() = runBlocking {
         server.enqueue(
-            MockResponse().setResponseCode(404).setBody("""{"error":{"code":"not_found","message":"Contact not found"}}"""),
+            MockResponse().setResponseCode(
+                404
+            ).setBody("""{"error":{"code":"not_found","message":"Contact not found"}}""")
         )
 
         val result = client.deleteContact(5)
@@ -2725,7 +2823,7 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"id":5,"archived":true,"firstname":"Dana","lastname":"White"}"""),
+                .setBody("""{"id":5,"archived":true,"firstname":"Dana","lastname":"White"}""")
         )
 
         val result = client.archiveContact(5)
@@ -2741,7 +2839,7 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"id":5,"archived":false,"firstname":"Dana","lastname":"White"}"""),
+                .setBody("""{"id":5,"archived":false,"firstname":"Dana","lastname":"White"}""")
         )
 
         val result = client.unarchiveContact(5)
@@ -2759,7 +2857,7 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"ID":5,"is_favorite":true,"firstname":"Dana","lastname":"White"}"""),
+                .setBody("""{"ID":5,"is_favorite":true,"firstname":"Dana","lastname":"White"}""")
         )
 
         val result = client.favoriteContact(5)
@@ -2775,7 +2873,7 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"ID":5,"is_favorite":false,"firstname":"Dana","lastname":"White"}"""),
+                .setBody("""{"ID":5,"is_favorite":false,"firstname":"Dana","lastname":"White"}""")
         )
 
         val result = client.unfavoriteContact(5)
@@ -2789,7 +2887,9 @@ class ApiClientTest {
     @Test
     fun `favorite contact failure maps to the backend error`() = runBlocking {
         server.enqueue(
-            MockResponse().setResponseCode(404).setBody("""{"error":{"code":"not_found","message":"Contact not found"}}"""),
+            MockResponse().setResponseCode(
+                404
+            ).setBody("""{"error":{"code":"not_found","message":"Contact not found"}}""")
         )
 
         val result = client.favoriteContact(999)
@@ -2815,8 +2915,8 @@ class ApiClientTest {
                       "default_interval_days": 30,
                       "cadence_policy_offer": {"entity_id": "u5", "target_interval_days": 30}
                     }
-                    """.trimIndent(),
-                ),
+                    """.trimIndent()
+                )
         )
 
         val result = client.setTargetCloseness(5, "close")
@@ -2843,8 +2943,8 @@ class ApiClientTest {
             MockResponse()
                 .setResponseCode(200)
                 .setBody(
-                    """{"contact_id":5,"target_closeness":null,"default_interval_days":null,"cadence_policy_offer":null}""",
-                ),
+                    """{"contact_id":5,"target_closeness":null,"default_interval_days":null,"cadence_policy_offer":null}"""
+                )
         )
 
         val result = client.clearTargetCloseness(5)
@@ -2867,7 +2967,7 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(400)
-                .setBody("""{"error":{"code":"validation_failed","message":"Invalid tier"}}"""),
+                .setBody("""{"error":{"code":"validation_failed","message":"Invalid tier"}}""")
         )
 
         val result = client.setTargetCloseness(5, "acquaintance")
@@ -2886,7 +2986,7 @@ class ApiClientTest {
             MockResponse()
                 .setResponseCode(200)
                 .setHeader("Content-Type", "text/vcard; charset=utf-8")
-                .setBody(vcf),
+                .setBody(vcf)
         )
 
         val result = client.exportContactVcf("u1")
@@ -2904,7 +3004,7 @@ class ApiClientTest {
             MockResponse()
                 .setResponseCode(200)
                 .setHeader("Content-Type", "text/vcard; charset=utf-8")
-                .setBody("BEGIN:VCARD\r\nVERSION:3.0\r\nEND:VCARD\r\n"),
+                .setBody("BEGIN:VCARD\r\nVERSION:3.0\r\nEND:VCARD\r\n")
         )
 
         val result = client.exportContactVcf("u1", version = 3)
@@ -2917,7 +3017,9 @@ class ApiClientTest {
     @Test
     fun `export failure parses the JSON error instead of returning bytes`() = runBlocking {
         server.enqueue(
-            MockResponse().setResponseCode(400).setBody("""{"error":{"code":"validation","message":"bad request"}}"""),
+            MockResponse().setResponseCode(
+                400
+            ).setBody("""{"error":{"code":"validation","message":"bad request"}}""")
         )
 
         val result = client.exportContactVcf("missing")
@@ -2935,7 +3037,9 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"total_processed": 3, "created": 2, "updated": 1, "skipped": 0, "errors": []}"""),
+                .setBody(
+                    """{"total_processed": 3, "created": 2, "updated": 1, "skipped": 0, "errors": []}"""
+                )
         )
 
         val result = client.confirmVcfImport(
@@ -2943,9 +3047,12 @@ class ApiClientTest {
                 sessionId = "session-1",
                 actions = listOf(
                     com.mycorrhizal.crm.model.network.RowImportAction(rowIndex = 0, action = "add"),
-                    com.mycorrhizal.crm.model.network.RowImportAction(rowIndex = 1, action = "update"),
-                ),
-            ),
+                    com.mycorrhizal.crm.model.network.RowImportAction(
+                        rowIndex = 1,
+                        action = "update"
+                    )
+                )
+            )
         )
 
         assertTrue(result.isSuccess)
@@ -2966,69 +3073,75 @@ class ApiClientTest {
     // would have 400'd on the very first real call. Pins the corrected
     // ImportPreviewRequest shape.
     @Test
-    fun `previewCsvImport posts session id and column mappings to the preview path`() = runBlocking {
-        server.enqueue(
-            MockResponse()
-                .setResponseCode(200)
-                .setBody(
-                    """{"session_id": "session-1", "rows": [{"row_index": 0, "suggested_action": "add"}],
-                        "total_rows": 1, "valid_rows": 1, "duplicate_count": 0, "error_count": 0}""",
-                ),
-        )
+    fun `previewCsvImport posts session id and column mappings to the preview path`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse()
+                    .setResponseCode(200)
+                    .setBody(
+                        """{"session_id": "session-1", "rows": [{"row_index": 0, "suggested_action": "add"}],
+                        "total_rows": 1, "valid_rows": 1, "duplicate_count": 0, "error_count": 0}"""
+                    )
+            )
 
-        val result = client.previewCsvImport(
-            com.mycorrhizal.crm.model.network.ImportPreviewRequest(
-                sessionId = "session-1",
-                mappings = listOf(
-                    com.mycorrhizal.crm.model.network.ColumnMapping(csvColumn = "Name", contactField = "firstname", group = 0),
-                ),
-            ),
-        )
+            val result = client.previewCsvImport(
+                com.mycorrhizal.crm.model.network.ImportPreviewRequest(
+                    sessionId = "session-1",
+                    mappings = listOf(
+                        com.mycorrhizal.crm.model.network.ColumnMapping(
+                            csvColumn = "Name",
+                            contactField = "firstname",
+                            group = 0
+                        )
+                    )
+                )
+            )
 
-        assertTrue(result.isSuccess)
-        assertEquals("session-1", result.getOrThrow().sessionId)
-        assertEquals(1, result.getOrThrow().rows.size)
+            assertTrue(result.isSuccess)
+            assertEquals("session-1", result.getOrThrow().sessionId)
+            assertEquals(1, result.getOrThrow().rows.size)
 
-        val request = server.takeRequest()
-        assertEquals("POST", request.method)
-        assertEquals("/api/v1/contacts/import/preview", request.path)
-        val body = request.body.readUtf8()
-        assertTrue(body.contains("\"session_id\":\"session-1\""))
-        assertTrue(body.contains("\"mappings\""))
-        assertTrue(body.contains("\"csv_column\":\"Name\""))
-        assertTrue(body.contains("\"contact_field\":\"firstname\""))
-        assertFalse(body.contains("\"actions\""))
-    }
+            val request = server.takeRequest()
+            assertEquals("POST", request.method)
+            assertEquals("/api/v1/contacts/import/preview", request.path)
+            val body = request.body.readUtf8()
+            assertTrue(body.contains("\"session_id\":\"session-1\""))
+            assertTrue(body.contains("\"mappings\""))
+            assertTrue(body.contains("\"csv_column\":\"Name\""))
+            assertTrue(body.contains("\"contact_field\":\"firstname\""))
+            assertFalse(body.contains("\"actions\""))
+        }
 
     // Issue #834 (web parity, issue #651): GET /contacts/import/history existed with zero
     // Android caller before this ticket wired an import-history screen to it.
     @Test
-    fun `getImportHistory gets the history path and parses the run list newest first`() = runBlocking {
-        server.enqueue(
-            MockResponse()
-                .setResponseCode(200)
-                .setBody(
-                    """[
+    fun `getImportHistory gets the history path and parses the run list newest first`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse()
+                    .setResponseCode(200)
+                    .setBody(
+                        """[
                         {"id": 2, "format": "csv", "total_processed": 4, "created": 3, "updated": 1, "skipped": 0, "error_count": 0, "created_at": "2026-09-20T12:00:00Z"},
                         {"id": 1, "format": "vcf", "total_processed": 3, "created": 1, "updated": 0, "skipped": 2, "error_count": 1, "created_at": "2026-09-19T12:00:00Z"}
-                    ]""",
-                ),
-        )
+                    ]"""
+                    )
+            )
 
-        val result = client.getImportHistory()
+            val result = client.getImportHistory()
 
-        assertTrue(result.isSuccess)
-        val runs = result.getOrThrow()
-        assertEquals(2, runs.size)
-        assertEquals(2L, runs[0].id)
-        assertEquals("csv", runs[0].format)
-        assertEquals(3, runs[0].created)
-        assertEquals(1, runs[1].errorCount)
+            assertTrue(result.isSuccess)
+            val runs = result.getOrThrow()
+            assertEquals(2, runs.size)
+            assertEquals(2L, runs[0].id)
+            assertEquals("csv", runs[0].format)
+            assertEquals(3, runs[0].created)
+            assertEquals(1, runs[1].errorCount)
 
-        val request = server.takeRequest()
-        assertEquals("GET", request.method)
-        assertEquals("/api/v1/contacts/import/history", request.path)
-    }
+            val request = server.takeRequest()
+            assertEquals("GET", request.method)
+            assertEquals("/api/v1/contacts/import/history", request.path)
+        }
 
     @Test
     fun `getImportHistory parses an empty history as an empty list`() = runBlocking {
@@ -3043,35 +3156,38 @@ class ApiClientTest {
     // --- M12: cadence policies (5 new client methods) ---
 
     @Test
-    fun `list cadence policies sends the entity_id filter and parses the wrapped list`() = runBlocking {
-        server.enqueue(
-            MockResponse()
-                .setResponseCode(200)
-                .setBody(
-                    """{"cadence_policies": [
+    fun `list cadence policies sends the entity_id filter and parses the wrapped list`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse()
+                    .setResponseCode(200)
+                    .setBody(
+                        """{"cadence_policies": [
                         {"id": "p1", "entity_id": "u1", "target_interval_days": 30,
                          "qualifying_types": ["call"], "health": {"has_qualifying_interaction": true, "overdue_by": 2}}
-                    ], "total": 1, "next_cursor": "", "limit": 25}""",
-                ),
-        )
+                    ], "total": 1, "next_cursor": "", "limit": 25}"""
+                    )
+            )
 
-        val result = client.listCadencePolicies("u1")
+            val result = client.listCadencePolicies("u1")
 
-        assertTrue(result.isSuccess)
-        val page = result.getOrThrow()
-        assertEquals(1, page.cadencePolicies.size)
-        assertEquals(30, page.cadencePolicies[0].targetIntervalDays)
-        assertEquals(listOf("call"), page.cadencePolicies[0].qualifyingTypes)
-        assertEquals(2, page.cadencePolicies[0].health?.overdueBy)
+            assertTrue(result.isSuccess)
+            val page = result.getOrThrow()
+            assertEquals(1, page.cadencePolicies.size)
+            assertEquals(30, page.cadencePolicies[0].targetIntervalDays)
+            assertEquals(listOf("call"), page.cadencePolicies[0].qualifyingTypes)
+            assertEquals(2, page.cadencePolicies[0].health?.overdueBy)
 
-        val request = server.takeRequest()
-        assertEquals("/api/v1/cadence-policies?entity_id=u1", request.path)
-    }
+            val request = server.takeRequest()
+            assertEquals("/api/v1/cadence-policies?entity_id=u1", request.path)
+        }
 
     @Test
     fun `list cadence policies normalizes an absent policy array to empty`() = runBlocking {
         server.enqueue(
-            MockResponse().setResponseCode(200).setBody("""{"total": 0, "next_cursor": "", "limit": 25}"""),
+            MockResponse().setResponseCode(
+                200
+            ).setBody("""{"total": 0, "next_cursor": "", "limit": 25}""")
         )
 
         val result = client.listCadencePolicies("u1")
@@ -3087,8 +3203,8 @@ class ApiClientTest {
                 .setResponseCode(200)
                 .setBody(
                     """{"id": "p1", "entity_id": "u1", "target_interval_days": 30,
-                        "health": {"has_qualifying_interaction": false, "overdue_by": 0}}""",
-                ),
+                        "health": {"has_qualifying_interaction": false, "overdue_by": 0}}"""
+                )
         )
 
         val result = client.getCadencePolicy("p1")
@@ -3109,12 +3225,15 @@ class ApiClientTest {
                 .setResponseCode(201)
                 .setBody(
                     """{"message": "Cadence policy created", "cadence_policy":
-                        {"id": "p1", "entity_id": "u1", "target_interval_days": 14, "qualifying_types": []}}""",
-                ),
+                        {"id": "p1", "entity_id": "u1", "target_interval_days": 14, "qualifying_types": []}}"""
+                )
         )
 
         val result = client.createCadencePolicy(
-            com.mycorrhizal.crm.model.network.CadencePolicyInput(entityId = "u1", targetIntervalDays = 14),
+            com.mycorrhizal.crm.model.network.CadencePolicyInput(
+                entityId = "u1",
+                targetIntervalDays = 14
+            )
         )
 
         assertTrue(result.isSuccess)
@@ -3138,8 +3257,8 @@ class ApiClientTest {
                 .setResponseCode(200)
                 .setBody(
                     """{"id": "p1", "entity_id": "u1", "target_interval_days": 90,
-                        "qualifying_types": ["visit"], "health": {"has_qualifying_interaction": true, "overdue_by": 0}}""",
-                ),
+                        "qualifying_types": ["visit"], "health": {"has_qualifying_interaction": true, "overdue_by": 0}}"""
+                )
         )
 
         val result = client.updateCadencePolicy(
@@ -3147,8 +3266,8 @@ class ApiClientTest {
             com.mycorrhizal.crm.model.network.CadencePolicyInput(
                 entityId = "u1",
                 targetIntervalDays = 90,
-                qualifyingTypes = listOf("visit"),
-            ),
+                qualifyingTypes = listOf("visit")
+            )
         )
 
         assertTrue(result.isSuccess)
@@ -3163,7 +3282,9 @@ class ApiClientTest {
 
     @Test
     fun `delete cadence policy sends a DELETE to the policy route`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"message": "Cadence policy deleted"}"""))
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"message": "Cadence policy deleted"}""")
+        )
 
         val result = client.deleteCadencePolicy("p1")
 
@@ -3172,7 +3293,6 @@ class ApiClientTest {
         assertEquals("DELETE", request.method)
         assertEquals("/api/v1/cadence-policies/p1", request.path)
     }
-
 
     // --- M15: contact sharing (7 new client methods) ---
 
@@ -3193,8 +3313,8 @@ class ApiClientTest {
                       "next_cursor": "cursor-2",
                       "limit": 25
                     }
-                    """.trimIndent(),
-                ),
+                    """.trimIndent()
+                )
         )
 
         val result = client.listIncomingContactShares()
@@ -3217,7 +3337,11 @@ class ApiClientTest {
     @Test
     fun `list incoming contact shares sends cursor and limit query parameters`() = runBlocking {
         server.enqueue(
-            MockResponse().setResponseCode(200).setBody("""{"contact_shares":[],"usernames":{},"total":0,"next_cursor":"","limit":25}"""),
+            MockResponse().setResponseCode(
+                200
+            ).setBody(
+                """{"contact_shares":[],"usernames":{},"total":0,"next_cursor":"","limit":25}"""
+            )
         )
 
         client.listIncomingContactShares(cursor = "c1", limit = 10)
@@ -3242,8 +3366,8 @@ class ApiClientTest {
                       "next_cursor": "",
                       "limit": 25
                     }
-                    """.trimIndent(),
-                ),
+                    """.trimIndent()
+                )
         )
 
         val result = client.listOutgoingContactShares()
@@ -3268,8 +3392,8 @@ class ApiClientTest {
                 .setResponseCode(200)
                 .setBody(
                     """{"message": "Share created", "contact_share":
-                        {"id": "s1", "from_user_id": 1, "to_user_id": 9, "contact_display_name": "Casey Tran", "status": "pending"}}""",
-                ),
+                        {"id": "s1", "from_user_id": 1, "to_user_id": 9, "contact_display_name": "Casey Tran", "status": "pending"}}"""
+                )
         )
 
         val result = client.createContactShare(
@@ -3277,8 +3401,8 @@ class ApiClientTest {
                 toUserId = 9,
                 vcardUid = "uid-1",
                 sections = listOf("emails", "phones"),
-                includeSensitive = true,
-            ),
+                includeSensitive = true
+            )
         )
 
         assertTrue(result.isSuccess)
@@ -3304,8 +3428,8 @@ class ApiClientTest {
                         {"row_index": 0, "parsed_contact": {"firstname": "Dana", "lastname": "White"},
                          "duplicate_match": {"existing_contact_id": 3, "existing_firstname": "Dana", "existing_lastname": "White", "match_reason": "name"},
                          "suggested_action": "update"}],
-                        "total_rows": 1, "valid_rows": 1, "duplicate_count": 1, "error_count": 0}""",
-                ),
+                        "total_rows": 1, "valid_rows": 1, "duplicate_count": 1, "error_count": 0}"""
+                )
         )
 
         val result = client.acceptContactShare("s1")
@@ -3324,33 +3448,45 @@ class ApiClientTest {
     }
 
     @Test
-    fun `confirm contact share posts the session and per-row actions to the confirm route`() = runBlocking {
-        server.enqueue(
-            MockResponse().setResponseCode(200).setBody("""{"total_processed": 1, "created": 1, "updated": 0, "skipped": 0, "errors": []}"""),
-        )
+    fun `confirm contact share posts the session and per-row actions to the confirm route`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setResponseCode(
+                    200
+                ).setBody(
+                    """{"total_processed": 1, "created": 1, "updated": 0, "skipped": 0, "errors": []}"""
+                )
+            )
 
-        val result = client.confirmContactShare(
-            "s1",
-            com.mycorrhizal.crm.model.network.ImportConfirmRequest(
-                sessionId = "import-1",
-                actions = listOf(com.mycorrhizal.crm.model.network.RowImportAction(rowIndex = 0, action = "update")),
-            ),
-        )
+            val result = client.confirmContactShare(
+                "s1",
+                com.mycorrhizal.crm.model.network.ImportConfirmRequest(
+                    sessionId = "import-1",
+                    actions = listOf(
+                        com.mycorrhizal.crm.model.network.RowImportAction(
+                            rowIndex = 0,
+                            action = "update"
+                        )
+                    )
+                )
+            )
 
-        assertTrue(result.isSuccess)
-        assertEquals(1, result.getOrThrow().created)
+            assertTrue(result.isSuccess)
+            assertEquals(1, result.getOrThrow().created)
 
-        val request = server.takeRequest()
-        assertEquals("POST", request.method)
-        assertEquals("/api/v1/contact-shares/s1/confirm", request.path)
-        val body = request.body.readUtf8()
-        assertTrue(body.contains("import-1"))
-        assertTrue(body.contains("\"action\":\"update\""))
-    }
+            val request = server.takeRequest()
+            assertEquals("POST", request.method)
+            assertEquals("/api/v1/contact-shares/s1/confirm", request.path)
+            val body = request.body.readUtf8()
+            assertTrue(body.contains("import-1"))
+            assertTrue(body.contains("\"action\":\"update\""))
+        }
 
     @Test
     fun `decline contact share posts to the decline route`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"message": "Share declined"}"""))
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"message": "Share declined"}""")
+        )
 
         val result = client.declineContactShare("s1")
 
@@ -3365,7 +3501,9 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"users": [{"id": 9, "username": "casey"}, {"id": 7, "username": "dana"}]}"""),
+                .setBody(
+                    """{"users": [{"id": 9, "username": "casey"}, {"id": 7, "username": "dana"}]}"""
+                )
         )
 
         val result = client.getUserDirectory()
@@ -3382,13 +3520,14 @@ class ApiClientTest {
         assertEquals("/api/v1/users/directory", request.path)
     }
 
-
     // --- M25: settings surfaces (profile prefs, webhooks, notification channels) ---
 
     @Test
     fun `update language sends a PATCH to the language route with the body`() = runBlocking {
         server.enqueue(
-            MockResponse().setResponseCode(200).setBody("""{"message": "Language updated successfully", "language": "de"}"""),
+            MockResponse().setResponseCode(
+                200
+            ).setBody("""{"message": "Language updated successfully", "language": "de"}""")
         )
 
         val result = client.updateLanguage("de")
@@ -3404,7 +3543,9 @@ class ApiClientTest {
     @Test
     fun `update date format sends a PATCH to the date-format route with the body`() = runBlocking {
         server.enqueue(
-            MockResponse().setResponseCode(200).setBody("""{"message": "Date format updated successfully", "date_format": "us"}"""),
+            MockResponse().setResponseCode(
+                200
+            ).setBody("""{"message": "Date format updated successfully", "date_format": "us"}""")
         )
 
         val result = client.updateDateFormat("us")
@@ -3420,44 +3561,52 @@ class ApiClientTest {
     // --- T90 / issue #831: Mark as Me / Unmark as Me (Android parity) ---
 
     @Test
-    fun `update self contact sends a PATCH to the self-contact route with the vcard uid`() = runBlocking {
-        server.enqueue(
-            MockResponse().setResponseCode(200)
-                .setBody("""{"message": "Self contact updated", "self_contact_vcard_uid": "uid-1"}"""),
-        )
+    fun `update self contact sends a PATCH to the self-contact route with the vcard uid`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setResponseCode(200)
+                    .setBody(
+                        """{"message": "Self contact updated", "self_contact_vcard_uid": "uid-1"}"""
+                    )
+            )
 
-        val result = client.updateSelfContact("uid-1")
+            val result = client.updateSelfContact("uid-1")
 
-        assertTrue(result.isSuccess)
-        assertEquals("Self contact updated", result.getOrThrow().message)
-        val request = server.takeRequest()
-        assertEquals("PATCH", request.method)
-        assertEquals("/api/v1/users/me/self-contact", request.path)
-        assertTrue(request.body.readUtf8().contains("\"vcard_uid\":\"uid-1\""))
-    }
+            assertTrue(result.isSuccess)
+            assertEquals("Self contact updated", result.getOrThrow().message)
+            val request = server.takeRequest()
+            assertEquals("PATCH", request.method)
+            assertEquals("/api/v1/users/me/self-contact", request.path)
+            assertTrue(request.body.readUtf8().contains("\"vcard_uid\":\"uid-1\""))
+        }
 
     @Test
-    fun `update self contact with null omits vcard_uid so the server clears the pointer`() = runBlocking {
-        server.enqueue(
-            MockResponse().setResponseCode(200)
-                .setBody("""{"message": "Self contact cleared", "self_contact_vcard_uid": null}"""),
-        )
+    fun `update self contact with null omits vcard_uid so the server clears the pointer`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setResponseCode(200)
+                    .setBody(
+                        """{"message": "Self contact cleared", "self_contact_vcard_uid": null}"""
+                    )
+            )
 
-        val result = client.updateSelfContact(null)
+            val result = client.updateSelfContact(null)
 
-        assertTrue(result.isSuccess)
-        assertEquals("Self contact cleared", result.getOrThrow().message)
-        val request = server.takeRequest()
-        assertEquals("PATCH", request.method)
-        assertEquals("/api/v1/users/me/self-contact", request.path)
-        assertFalse(request.body.readUtf8().contains("vcard_uid"))
-    }
+            assertTrue(result.isSuccess)
+            assertEquals("Self contact cleared", result.getOrThrow().message)
+            val request = server.takeRequest()
+            assertEquals("PATCH", request.method)
+            assertEquals("/api/v1/users/me/self-contact", request.path)
+            assertFalse(request.body.readUtf8().contains("vcard_uid"))
+        }
 
     @Test
     fun `update self contact maps a 404 unknown contact to a Client error`() = runBlocking {
         server.enqueue(
             MockResponse().setResponseCode(404)
-                .setBody("""{"error":{"code":"NOT_FOUND","message":"Contact not found","details":{"vcard_uid":"ghost"}}}"""),
+                .setBody(
+                    """{"error":{"code":"NOT_FOUND","message":"Contact not found","details":{"vcard_uid":"ghost"}}}"""
+                )
         )
 
         val result = client.updateSelfContact("ghost")
@@ -3473,7 +3622,7 @@ class ApiClientTest {
     @Test
     fun `get enabled contact fields parses a null list as never configured`() = runBlocking {
         server.enqueue(
-            MockResponse().setResponseCode(200).setBody("""{"enabled_contact_fields": null}"""),
+            MockResponse().setResponseCode(200).setBody("""{"enabled_contact_fields": null}""")
         )
 
         val result = client.getEnabledContactFields()
@@ -3486,68 +3635,78 @@ class ApiClientTest {
     }
 
     @Test
-    fun `get enabled contact fields parses an explicit empty list distinctly from null`() = runBlocking {
-        server.enqueue(
-            MockResponse().setResponseCode(200).setBody("""{"enabled_contact_fields": []}"""),
-        )
+    fun `get enabled contact fields parses an explicit empty list distinctly from null`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody("""{"enabled_contact_fields": []}""")
+            )
 
-        val result = client.getEnabledContactFields()
+            val result = client.getEnabledContactFields()
 
-        assertTrue(result.isSuccess)
-        assertEquals(emptyList<String>(), result.getOrThrow().enabledContactFields)
-    }
+            assertTrue(result.isSuccess)
+            assertEquals(emptyList<String>(), result.getOrThrow().enabledContactFields)
+        }
 
     @Test
     fun `get enabled contact fields parses a populated list`() = runBlocking {
         server.enqueue(
             MockResponse().setResponseCode(200)
-                .setBody("""{"enabled_contact_fields": ["emails", "phones", "speakToAs"]}"""),
+                .setBody("""{"enabled_contact_fields": ["emails", "phones", "speakToAs"]}""")
         )
 
         val result = client.getEnabledContactFields()
 
         assertTrue(result.isSuccess)
-        assertEquals(listOf("emails", "phones", "speakToAs"), result.getOrThrow().enabledContactFields)
+        assertEquals(
+            listOf("emails", "phones", "speakToAs"),
+            result.getOrThrow().enabledContactFields
+        )
     }
 
     @Test
-    fun `update enabled contact fields sends a PATCH with the fields array and parses the echoed list`() = runBlocking {
-        server.enqueue(
-            MockResponse().setResponseCode(200)
-                .setBody(
-                    """{"message": "Enabled contact fields updated successfully", "enabled_contact_fields": ["emails", "gender"]}""",
-                ),
-        )
+    fun `update enabled contact fields sends a PATCH with the fields array and parses the echoed list`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setResponseCode(200)
+                    .setBody(
+                        """{"message": "Enabled contact fields updated successfully", "enabled_contact_fields": ["emails", "gender"]}"""
+                    )
+            )
 
-        val result = client.updateEnabledContactFields(listOf("emails", "gender"))
+            val result = client.updateEnabledContactFields(listOf("emails", "gender"))
 
-        assertTrue(result.isSuccess)
-        assertEquals(listOf("emails", "gender"), result.getOrThrow().enabledContactFields)
-        val request = server.takeRequest()
-        assertEquals("PATCH", request.method)
-        assertEquals("/api/v1/users/enabled-contact-fields", request.path)
-        assertTrue(request.body.readUtf8().contains("\"fields\":[\"emails\",\"gender\"]"))
-    }
+            assertTrue(result.isSuccess)
+            assertEquals(listOf("emails", "gender"), result.getOrThrow().enabledContactFields)
+            val request = server.takeRequest()
+            assertEquals("PATCH", request.method)
+            assertEquals("/api/v1/users/enabled-contact-fields", request.path)
+            assertTrue(request.body.readUtf8().contains("\"fields\":[\"emails\",\"gender\"]"))
+        }
 
     @Test
-    fun `update enabled contact fields with an empty list sends an explicit empty array, not an omitted field`() = runBlocking {
-        server.enqueue(
-            MockResponse().setResponseCode(200)
-                .setBody("""{"message": "Enabled contact fields updated successfully", "enabled_contact_fields": []}"""),
-        )
+    fun `update enabled contact fields with an empty list sends an explicit empty array, not an omitted field`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setResponseCode(200)
+                    .setBody(
+                        """{"message": "Enabled contact fields updated successfully", "enabled_contact_fields": []}"""
+                    )
+            )
 
-        val result = client.updateEnabledContactFields(emptyList())
+            val result = client.updateEnabledContactFields(emptyList())
 
-        assertTrue(result.isSuccess)
-        assertEquals(emptyList<String>(), result.getOrThrow().enabledContactFields)
-        val request = server.takeRequest()
-        assertTrue(request.body.readUtf8().contains("\"fields\":[]"))
-    }
+            assertTrue(result.isSuccess)
+            assertEquals(emptyList<String>(), result.getOrThrow().enabledContactFields)
+            val request = server.takeRequest()
+            assertTrue(request.body.readUtf8().contains("\"fields\":[]"))
+        }
 
     @Test
     fun `change password posts current and new password and parses the message`() = runBlocking {
         server.enqueue(
-            MockResponse().setResponseCode(200).setBody("""{"message": "Password updated successfully"}"""),
+            MockResponse().setResponseCode(
+                200
+            ).setBody("""{"message": "Password updated successfully"}""")
         )
 
         val result = client.changePassword("old-pass", "new-pass")
@@ -3567,8 +3726,8 @@ class ApiClientTest {
         server.enqueue(
             MockResponse().setResponseCode(400).setBody(
                 """{"error":{"code":"INVALID_INPUT","message":"Invalid value for field 'current_password'",
-                    "details":{"reason":"Current password is incorrect","field":"current_password"}}}""",
-            ),
+                    "details":{"reason":"Current password is incorrect","field":"current_password"}}}"""
+            )
         )
 
         val result = client.changePassword("wrong", "new-pass")
@@ -3587,8 +3746,8 @@ class ApiClientTest {
                 """{"ntfy_url":"https://ntfy.sh","ntfy_topic":"my-reminders",
                     "gotify_url":"http://gotify:8080","gotify_has_token":true,
                     "notify_ntfy":true,"notify_gotify":false,"notify_push":false,
-                    "vapid_public_key":"key"}""",
-            ),
+                    "vapid_public_key":"key"}"""
+            )
         )
 
         val result = client.getNotificationConfig()
@@ -3608,16 +3767,16 @@ class ApiClientTest {
         server.enqueue(
             MockResponse().setResponseCode(200).setBody(
                 """{"ntfy_url":"https://ntfy.sh","ntfy_topic":"t","gotify_url":"","gotify_has_token":false,
-                    "notify_ntfy":true,"notify_gotify":false,"notify_push":false,"vapid_public_key":"key"}""",
-            ),
+                    "notify_ntfy":true,"notify_gotify":false,"notify_push":false,"vapid_public_key":"key"}"""
+            )
         )
 
         val result = client.saveNotificationConfig(
             com.mycorrhizal.crm.model.network.NotificationConfigInput(
                 ntfyUrl = "https://ntfy.sh",
                 ntfyTopic = "t",
-                notifyNtfy = true,
-            ),
+                notifyNtfy = true
+            )
         )
 
         assertTrue(result.isSuccess)
@@ -3651,8 +3810,8 @@ class ApiClientTest {
     fun `test notification channel parses a diagnosed failure as ok false`() = runBlocking {
         server.enqueue(
             MockResponse().setResponseCode(200).setBody(
-                """{"ok": false, "error": "ntfy is not configured - set a URL and topic and save first"}""",
-            ),
+                """{"ok": false, "error": "ntfy is not configured - set a URL and topic and save first"}"""
+            )
         )
 
         val result = client.testNotificationChannel("ntfy")
@@ -3666,12 +3825,16 @@ class ApiClientTest {
     fun `register device posts token client and label and parses the 201 row`() = runBlocking {
         server.enqueue(
             MockResponse().setResponseCode(201).setBody(
-                """{"id":7,"created_at":"2026-08-18T10:00:00Z","updated_at":"2026-08-18T10:00:00Z","token":"fcm-token-abc","client":"fcm","device_label":"Pixel 8a"}""",
-            ),
+                """{"id":7,"created_at":"2026-08-18T10:00:00Z","updated_at":"2026-08-18T10:00:00Z","token":"fcm-token-abc","client":"fcm","device_label":"Pixel 8a"}"""
+            )
         )
 
         val result = client.registerDevice(
-            DeviceRegistrationInput(token = "fcm-token-abc", client = "fcm", deviceLabel = "Pixel 8a"),
+            DeviceRegistrationInput(
+                token = "fcm-token-abc",
+                client = "fcm",
+                deviceLabel = "Pixel 8a"
+            )
         )
 
         assertTrue(result.isSuccess)
@@ -3691,7 +3854,11 @@ class ApiClientTest {
 
     @Test
     fun `delete device issues DELETE against the device id`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"message":"Device registration deleted"}"""))
+        server.enqueue(
+            MockResponse().setResponseCode(
+                200
+            ).setBody("""{"message":"Device registration deleted"}""")
+        )
 
         val result = client.deleteDevice(7)
 
@@ -3708,8 +3875,8 @@ class ApiClientTest {
                 """{"devices":[
                     {"id":1,"created_at":"2026-08-01T00:00:00Z","updated_at":"2026-08-01T00:00:00Z","token":"a","client":"fcm","device_label":"Pixel"},
                     {"id":2,"created_at":"2026-08-02T00:00:00Z","updated_at":"2026-08-02T00:00:00Z","token":"b","client":"apns","device_label":"iPhone"}
-                ]}""",
-            ),
+                ]}"""
+            )
         )
 
         val result = client.listDeviceRegistrations()
@@ -3730,8 +3897,8 @@ class ApiClientTest {
                 """{"sessions":[
                     {"id":"sid-1","created_at":"2026-08-01T00:00:00Z","last_seen_at":"2026-08-18T00:00:00Z","expires_at":"2026-09-01T00:00:00Z","user_agent":"okhttp/Android","ip":"10.0.0.1","current":true},
                     {"id":"sid-2","created_at":"2026-08-02T00:00:00Z","last_seen_at":"2026-08-17T00:00:00Z","expires_at":"2026-09-02T00:00:00Z","user_agent":"Mozilla/5.0","ip":"10.0.0.2","current":false}
-                ]}""",
-            ),
+                ]}"""
+            )
         )
 
         val result = client.listSessions()
@@ -3749,7 +3916,9 @@ class ApiClientTest {
 
     @Test
     fun `revoke session issues DELETE against the session id`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"message":"Session revoked"}"""))
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"message":"Session revoked"}""")
+        )
 
         val result = client.revokeSession("sid-1")
 
@@ -3766,8 +3935,8 @@ class ApiClientTest {
                 """{"webhooks":[
                     {"id":1,"name":"Hook A","url":"https://example.com/a","events":["contact.created"],"is_active":true,"created_at":"2026-08-01T00:00:00Z"},
                     {"id":2,"name":"Hook B","url":"https://example.com/b","events":["note.created","note.updated"],"is_active":false,"created_at":"2026-08-02T00:00:00Z"}
-                ]}""",
-            ),
+                ]}"""
+            )
         )
 
         val result = client.listWebhooks()
@@ -3788,8 +3957,8 @@ class ApiClientTest {
             MockResponse().setResponseCode(201).setBody(
                 """{"id": 9, "name": "Hook A", "url": "https://example.com/a",
                     "events": ["contact.created"], "is_active": true,
-                    "created_at": "2026-08-01T00:00:00Z", "secret": "base64secret"}""",
-            ),
+                    "created_at": "2026-08-01T00:00:00Z", "secret": "base64secret"}"""
+            )
         )
 
         val result = client.createWebhook(
@@ -3797,8 +3966,8 @@ class ApiClientTest {
                 name = "Hook A",
                 url = "https://example.com/a",
                 events = listOf("contact.created"),
-                isActive = true,
-            ),
+                isActive = true
+            )
         )
 
         assertTrue(result.isSuccess)
@@ -3818,8 +3987,8 @@ class ApiClientTest {
             MockResponse().setResponseCode(200).setBody(
                 """{"id": 9, "name": "Hook A2", "url": "https://example.com/a2",
                     "events": ["contact.created","contact.updated"], "is_active": false,
-                    "created_at": "2026-08-01T00:00:00Z"}""",
-            ),
+                    "created_at": "2026-08-01T00:00:00Z"}"""
+            )
         )
 
         val result = client.updateWebhook(
@@ -3828,8 +3997,8 @@ class ApiClientTest {
                 name = "Hook A2",
                 url = "https://example.com/a2",
                 events = listOf("contact.created", "contact.updated"),
-                isActive = false,
-            ),
+                isActive = false
+            )
         )
 
         assertTrue(result.isSuccess)
@@ -3844,7 +4013,9 @@ class ApiClientTest {
 
     @Test
     fun `delete webhook sends a DELETE to the webhook route`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"message": "Webhook deleted"}"""))
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"message": "Webhook deleted"}""")
+        )
 
         val result = client.deleteWebhook(9)
 
@@ -3859,8 +4030,8 @@ class ApiClientTest {
         server.enqueue(
             MockResponse().setResponseCode(200).setBody(
                 """{"delivery": {"id": 1, "webhook_id": 9, "event_type": "test", "status_code": 200,
-                    "error": null, "attempts": 1, "next_retry_at": null, "created_at": "2026-08-01T00:00:00Z"}}""",
-            ),
+                    "error": null, "attempts": 1, "next_retry_at": null, "created_at": "2026-08-01T00:00:00Z"}}"""
+            )
         )
 
         val result = client.testWebhook(9)
@@ -3879,8 +4050,8 @@ class ApiClientTest {
             MockResponse().setResponseCode(200).setBody(
                 """{"delivery": {"id": 2, "webhook_id": 9, "event_type": "test", "status_code": 500,
                     "error": "connection refused", "attempts": 3, "next_retry_at": "2026-08-01T01:00:00Z",
-                    "created_at": "2026-08-01T00:00:00Z"}}""",
-            ),
+                    "created_at": "2026-08-01T00:00:00Z"}}"""
+            )
         )
 
         val result = client.testWebhook(9)
@@ -3902,8 +4073,8 @@ class ApiClientTest {
                      "error": null, "attempts": 1, "next_retry_at": null, "created_at": "2026-08-01T00:00:00Z"},
                     {"id": 2, "webhook_id": 9, "event_type": "test", "status_code": 500,
                      "error": "boom", "attempts": 2, "next_retry_at": null, "created_at": "2026-08-01T00:01:00Z"}
-                ]}""",
-            ),
+                ]}"""
+            )
         )
 
         val result = client.getWebhookDeliveries(9)
@@ -3937,8 +4108,8 @@ class ApiClientTest {
                 """{"tokens":[
                     {"id":1,"name":"Sync script","created_at":"2026-08-01T00:00:00Z","last_used_at":null,"revoked_at":null,"expires_at":"2026-11-01T00:00:00Z","scope":"full"},
                     {"id":2,"name":"Old token","created_at":"2026-07-01T00:00:00Z","last_used_at":"2026-08-01T00:00:00Z","revoked_at":"2026-08-02T00:00:00Z","expires_at":null,"scope":"carddav"}
-                ]}""",
-            ),
+                ]}"""
+            )
         )
 
         val result = client.listApiTokens()
@@ -3959,12 +4130,16 @@ class ApiClientTest {
             MockResponse().setResponseCode(201).setBody(
                 """{"id": 9, "name": "New token", "created_at": "2026-08-01T00:00:00Z",
                     "last_used_at": null, "revoked_at": null, "expires_at": "2026-11-01T00:00:00Z",
-                    "scope": "full", "token": "mcrh_live_abc123"}""",
-            ),
+                    "scope": "full", "token": "mcrh_live_abc123"}"""
+            )
         )
 
         val result = client.createApiToken(
-            com.mycorrhizal.crm.model.network.ApiTokenInput(name = "New token", expiresInDays = 90, scope = "full"),
+            com.mycorrhizal.crm.model.network.ApiTokenInput(
+                name = "New token",
+                expiresInDays = 90,
+                scope = "full"
+            )
         )
 
         assertTrue(result.isSuccess)
@@ -3980,7 +4155,11 @@ class ApiClientTest {
 
     @Test
     fun `revoke api token sends a DELETE to the token route`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"message": "Token revoked successfully"}"""))
+        server.enqueue(
+            MockResponse().setResponseCode(
+                200
+            ).setBody("""{"message": "Token revoked successfully"}""")
+        )
 
         val result = client.revokeApiToken(9)
 
@@ -4010,8 +4189,8 @@ class ApiClientTest {
             MockResponse().setResponseCode(201).setBody(
                 """{"id": 10, "name": "Sync script", "created_at": "2026-08-02T00:00:00Z",
                     "last_used_at": null, "revoked_at": null, "expires_at": "2026-11-02T00:00:00Z",
-                    "scope": "full", "token": "mcrh_live_rotated456"}""",
-            ),
+                    "scope": "full", "token": "mcrh_live_rotated456"}"""
+            )
         )
 
         val result = client.rotateApiToken(9)
@@ -4038,8 +4217,8 @@ class ApiClientTest {
                      "last_attempt_at":"2026-08-01T00:00:00Z","last_success_at":"2026-08-01T00:00:00Z","last_failure_at":null,
                      "consecutive_failures":0,"incident_first_failure_at":null,"last_run_duration_ms":150,
                      "last_run_stats":{"created":2,"updated":1,"skipped":0},"terminal_failure_at":null,"terminal_reason":""}
-                ]}""",
-            ),
+                ]}"""
+            )
         )
 
         val result = client.listCalendarSubscriptions()
@@ -4055,29 +4234,33 @@ class ApiClientTest {
     }
 
     @Test
-    fun `create calendar subscription posts the input and returns the raw subscription`() = runBlocking {
-        server.enqueue(
-            MockResponse().setResponseCode(201).setBody(
-                """{"id":9,"name":"Personal","url":"https://example.com/a.ics","username":"","has_password":false,
+    fun `create calendar subscription posts the input and returns the raw subscription`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setResponseCode(201).setBody(
+                    """{"id":9,"name":"Personal","url":"https://example.com/a.ics","username":"","has_password":false,
                     "sync_enabled":true,"past_days":5,"future_days":10,"last_synced_at":null,
                     "last_sync_status":"","last_sync_error":"","created_at":"2026-08-01T00:00:00Z",
                     "last_attempt_at":null,"last_success_at":null,"last_failure_at":null,
                     "consecutive_failures":0,"incident_first_failure_at":null,"last_run_duration_ms":null,
-                    "last_run_stats":{},"terminal_failure_at":null,"terminal_reason":""}""",
-            ),
-        )
+                    "last_run_stats":{},"terminal_failure_at":null,"terminal_reason":""}"""
+                )
+            )
 
-        val result = client.createCalendarSubscription(
-            com.mycorrhizal.crm.model.network.CalendarSubscriptionInput(name = "Personal", url = "https://example.com/a.ics"),
-        )
+            val result = client.createCalendarSubscription(
+                com.mycorrhizal.crm.model.network.CalendarSubscriptionInput(
+                    name = "Personal",
+                    url = "https://example.com/a.ics"
+                )
+            )
 
-        assertTrue(result.isSuccess)
-        assertEquals(9, result.getOrThrow().id)
-        val request = server.takeRequest()
-        assertEquals("POST", request.method)
-        assertEquals("/api/v1/calendars", request.path)
-        assertTrue(request.body.readUtf8().contains("\"name\":\"Personal\""))
-    }
+            assertTrue(result.isSuccess)
+            assertEquals(9, result.getOrThrow().id)
+            val request = server.takeRequest()
+            assertEquals("POST", request.method)
+            assertEquals("/api/v1/calendars", request.path)
+            assertTrue(request.body.readUtf8().contains("\"name\":\"Personal\""))
+        }
 
     @Test
     fun `update calendar subscription sends a PUT and parses the raw subscription`() = runBlocking {
@@ -4088,13 +4271,17 @@ class ApiClientTest {
                     "last_sync_status":"","last_sync_error":"","created_at":"2026-08-01T00:00:00Z",
                     "last_attempt_at":null,"last_success_at":null,"last_failure_at":null,
                     "consecutive_failures":0,"incident_first_failure_at":null,"last_run_duration_ms":null,
-                    "last_run_stats":{},"terminal_failure_at":null,"terminal_reason":""}""",
-            ),
+                    "last_run_stats":{},"terminal_failure_at":null,"terminal_reason":""}"""
+            )
         )
 
         val result = client.updateCalendarSubscription(
             9,
-            com.mycorrhizal.crm.model.network.CalendarSubscriptionInput(name = "Renamed", url = "https://example.com/a.ics", syncEnabled = false),
+            com.mycorrhizal.crm.model.network.CalendarSubscriptionInput(
+                name = "Renamed",
+                url = "https://example.com/a.ics",
+                syncEnabled = false
+            )
         )
 
         assertTrue(result.isSuccess)
@@ -4121,8 +4308,8 @@ class ApiClientTest {
     fun `sync calendar subscription posts an empty body and returns the tallies`() = runBlocking {
         server.enqueue(
             MockResponse().setResponseCode(200).setBody(
-                """{"message":"Sync completed","created":2,"updated":1,"skipped":0}""",
-            ),
+                """{"message":"Sync completed","created":2,"updated":1,"skipped":0}"""
+            )
         )
 
         val result = client.syncCalendarSubscription(9)
@@ -4136,10 +4323,11 @@ class ApiClientTest {
     }
 
     @Test
-    fun `list contact subscriptions parses and unwraps the contact_subscriptions array`() = runBlocking {
-        server.enqueue(
-            MockResponse().setResponseCode(200).setBody(
-                """{"contact_subscriptions":[
+    fun `list contact subscriptions parses and unwraps the contact_subscriptions array`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody(
+                    """{"contact_subscriptions":[
                     {"id":1,"name":"Address Book","url":"https://example.com/carddav/","username":"","has_password":false,
                      "sync_enabled":true,"last_synced_at":"2026-08-01T00:00:00Z","last_sync_status":"success",
                      "last_sync_error":"","created_at":"2026-07-01T00:00:00Z","last_attempt_at":"2026-08-01T00:00:00Z",
@@ -4147,20 +4335,20 @@ class ApiClientTest {
                      "incident_first_failure_at":null,"last_run_duration_ms":80,
                      "last_run_stats":{"created":1,"updated":0,"archived":0,"skipped":0},
                      "terminal_failure_at":null,"terminal_reason":"","pending_conflicts":2}
-                ]}""",
-            ),
-        )
+                ]}"""
+                )
+            )
 
-        val result = client.listContactSubscriptions()
+            val result = client.listContactSubscriptions()
 
-        assertTrue(result.isSuccess)
-        val subscriptions = result.getOrThrow()
-        assertEquals(1, subscriptions.size)
-        assertEquals("Address Book", subscriptions[0].name)
-        assertEquals(2, subscriptions[0].pendingConflicts)
-        val request = server.takeRequest()
-        assertEquals("/api/v1/contact-subscriptions", request.path)
-    }
+            assertTrue(result.isSuccess)
+            val subscriptions = result.getOrThrow()
+            assertEquals(1, subscriptions.size)
+            assertEquals("Address Book", subscriptions[0].name)
+            assertEquals(2, subscriptions[0].pendingConflicts)
+            val request = server.takeRequest()
+            assertEquals("/api/v1/contact-subscriptions", request.path)
+        }
 
     // --- M16: audit trail ---
 
@@ -4179,8 +4367,8 @@ class ApiClientTest {
                       ],
                       "total": 3
                     }
-                    """.trimIndent(),
-                ),
+                    """.trimIndent()
+                )
         )
 
         val result = client.getAuditEvents()
@@ -4205,7 +4393,7 @@ class ApiClientTest {
     @Test
     fun `get audit events sends the entity filters on the query string`() = runBlocking {
         server.enqueue(
-            MockResponse().setResponseCode(200).setBody("""{"audit_events":[],"total":0}"""),
+            MockResponse().setResponseCode(200).setBody("""{"audit_events":[],"total":0}""")
         )
 
         client.getAuditEvents(entityType = "contact", entityId = "uid-1", limit = 250)
@@ -4218,7 +4406,7 @@ class ApiClientTest {
     @Test
     fun `get audit events omits blank filters`() = runBlocking {
         server.enqueue(
-            MockResponse().setResponseCode(200).setBody("""{"audit_events":[],"total":0}"""),
+            MockResponse().setResponseCode(200).setBody("""{"audit_events":[],"total":0}""")
         )
 
         client.getAuditEvents(entityType = "  ", entityId = "")
@@ -4230,7 +4418,9 @@ class ApiClientTest {
     @Test
     fun `undo audit event posts to the event's undo route`() = runBlocking {
         server.enqueue(
-            MockResponse().setResponseCode(200).setBody("""{"message": "Contact restored to its previous state"}"""),
+            MockResponse().setResponseCode(
+                200
+            ).setBody("""{"message": "Contact restored to its previous state"}""")
         )
 
         val result = client.undoAuditEvent(42L)
@@ -4244,7 +4434,9 @@ class ApiClientTest {
     @Test
     fun `undo audit event maps a 410 to a client error with the backend message`() = runBlocking {
         server.enqueue(
-            MockResponse().setResponseCode(410).setBody("""{"error":{"code":"gone","message":"past retention window"}}"""),
+            MockResponse().setResponseCode(
+                410
+            ).setBody("""{"error":{"code":"gone","message":"past retention window"}}""")
         )
 
         val result = client.undoAuditEvent(42L)
@@ -4255,16 +4447,16 @@ class ApiClientTest {
         assertEquals(410, (error as ApiError.Client).code)
     }
 
-
     // --- M22: household relationship & shared-address suggestions ---
 
     @Test
-    fun `suggest household relationships posts an empty body and parses the response`() = runBlocking {
-        server.enqueue(
-            MockResponse()
-                .setResponseCode(200)
-                .setBody(
-                    """
+    fun `suggest household relationships posts an empty body and parses the response`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse()
+                    .setResponseCode(200)
+                    .setBody(
+                        """
                     {
                       "message": "Relationship suggestions generated",
                       "household_id": "h1",
@@ -4273,23 +4465,23 @@ class ApiClientTest {
                       ],
                       "total": 1
                     }
-                    """.trimIndent(),
-                ),
-        )
+                        """.trimIndent()
+                    )
+            )
 
-        val result = client.suggestHouseholdRelationships("h1")
+            val result = client.suggestHouseholdRelationships("h1")
 
-        assertTrue(result.isSuccess)
-        assertEquals("h1", result.getOrThrow().householdId)
-        assertEquals(1, result.getOrThrow().suggestedEdges.size)
-        assertEquals("spouse_of", result.getOrThrow().suggestedEdges[0].type)
-        assertEquals("suggested", result.getOrThrow().suggestedEdges[0].status)
+            assertTrue(result.isSuccess)
+            assertEquals("h1", result.getOrThrow().householdId)
+            assertEquals(1, result.getOrThrow().suggestedEdges.size)
+            assertEquals("spouse_of", result.getOrThrow().suggestedEdges[0].type)
+            assertEquals("suggested", result.getOrThrow().suggestedEdges[0].status)
 
-        val request = server.takeRequest()
-        assertEquals("POST", request.method)
-        assertEquals("/api/v1/households/h1/suggest-relationships", request.path)
-        assertEquals(0, request.body.size)
-    }
+            val request = server.takeRequest()
+            assertEquals("POST", request.method)
+            assertEquals("/api/v1/households/h1/suggest-relationships", request.path)
+            assertEquals(0, request.body.size)
+        }
 
     @Test
     fun `suggest household relationships tolerates an absent suggested_edges key`() = runBlocking {
@@ -4297,8 +4489,8 @@ class ApiClientTest {
             MockResponse()
                 .setResponseCode(200)
                 .setBody(
-                    """{"message": "Relationship suggestions generated", "household_id": "h1", "total": 0}""",
-                ),
+                    """{"message": "Relationship suggestions generated", "household_id": "h1", "total": 0}"""
+                )
         )
 
         val result = client.suggestHouseholdRelationships("h1")
@@ -4325,8 +4517,8 @@ class ApiClientTest {
                       ],
                       "total": 1
                     }
-                    """.trimIndent(),
-                ),
+                    """.trimIndent()
+                )
         )
 
         val result = client.suggestAddressHouseholds()
@@ -4347,7 +4539,7 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"total": 0}"""),
+                .setBody("""{"total": 0}""")
         )
 
         val result = client.suggestAddressHouseholds()
@@ -4362,12 +4554,12 @@ class ApiClientTest {
             MockResponse()
                 .setResponseCode(201)
                 .setBody(
-                    """{"household": {"id": "h9", "name": "Alice & Bob", "type": "family_unit"}}""",
-                ),
+                    """{"household": {"id": "h9", "name": "Alice & Bob", "type": "family_unit"}}"""
+                )
         )
 
         val input = com.mycorrhizal.crm.model.network.AcceptHouseholdSuggestionInput(
-            memberVCardUids = listOf("u1", "u2"),
+            memberVCardUids = listOf("u1", "u2")
         )
         val result = client.acceptHouseholdSuggestion(input)
 
@@ -4389,11 +4581,11 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"message": "Household suggestion dismissed"}"""),
+                .setBody("""{"message": "Household suggestion dismissed"}""")
         )
 
         val input = com.mycorrhizal.crm.model.network.DismissHouseholdSuggestionInput(
-            memberVCardUids = listOf("u1", "u2"),
+            memberVCardUids = listOf("u1", "u2")
         )
         val result = client.dismissHouseholdSuggestion(input)
 
@@ -4423,8 +4615,8 @@ class ApiClientTest {
                       ],
                       "total": 1
                     }
-                    """.trimIndent(),
-                ),
+                    """.trimIndent()
+                )
         )
 
         val result = client.suggestRelationshipEdges()
@@ -4445,7 +4637,7 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"message": "Relationship suggestions generated", "total": 0}"""),
+                .setBody("""{"message": "Relationship suggestions generated", "total": 0}""")
         )
 
         val result = client.suggestRelationshipEdges()
@@ -4476,8 +4668,8 @@ class ApiClientTest {
                       ],
                       "total": 1
                     }
-                    """.trimIndent(),
-                ),
+                    """.trimIndent()
+                )
         )
 
         val result = client.suggestContactAddresses()
@@ -4500,7 +4692,7 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"total": 0}"""),
+                .setBody("""{"total": 0}""")
         )
 
         val result = client.suggestContactAddresses()
@@ -4514,14 +4706,16 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"message": "Address added to contact", "contact_vcard_uid": "alice-uid"}"""),
+                .setBody(
+                    """{"message": "Address added to contact", "contact_vcard_uid": "alice-uid"}"""
+                )
         )
 
         val input = com.mycorrhizal.crm.model.network.ApplyContactAddressSuggestionInput(
             contactVCardUid = "alice-uid",
             sourceKind = "relationship",
             sourceId = "bob-uid",
-            addressKey = "742 clark st|springfield",
+            addressKey = "742 clark st|springfield"
         )
         val result = client.applyContactAddressSuggestion(input)
 
@@ -4551,8 +4745,8 @@ class ApiClientTest {
                       "depth": 3,
                       "chains": []
                     }
-                    """.trimIndent(),
-                ),
+                    """.trimIndent()
+                )
         )
 
         // relation is a registry synonym — it must be passed through verbatim,
@@ -4572,7 +4766,9 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"from_vcard_uid":"from-1","from_name":"Alice","depth":2,"chains":[]}"""),
+                .setBody(
+                    """{"from_vcard_uid":"from-1","from_name":"Alice","depth":2,"chains":[]}"""
+                )
         )
 
         val result = client.getConnections(from = "from-1")
@@ -4614,8 +4810,8 @@ class ApiClientTest {
                         }
                       ]
                     }
-                    """.trimIndent(),
-                ),
+                    """.trimIndent()
+                )
         )
 
         val result = client.getConnections(from = "from-1")
@@ -4636,7 +4832,7 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"from_vcard_uid":"from-1","from_name":"Alice","depth":2}"""),
+                .setBody("""{"from_vcard_uid":"from-1","from_name":"Alice","depth":2}""")
         )
 
         val result = client.getConnections(from = "from-1")
@@ -4650,7 +4846,9 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"from_vcard_uid":"from-1","from_name":"Alice","depth":2,"chains":null}"""),
+                .setBody(
+                    """{"from_vcard_uid":"from-1","from_name":"Alice","depth":2,"chains":null}"""
+                )
         )
 
         val result = client.getConnections(from = "from-1")
@@ -4664,7 +4862,9 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(404)
-                .setBody("""{"error":{"code":"NOT_FOUND","message":"Contact not found","details":{"vcard_uid":"ghost"}}}"""),
+                .setBody(
+                    """{"error":{"code":"NOT_FOUND","message":"Contact not found","details":{"vcard_uid":"ghost"}}}"""
+                )
         )
 
         val result = client.getConnections(from = "ghost")
@@ -4681,8 +4881,8 @@ class ApiClientTest {
             MockResponse()
                 .setResponseCode(200)
                 .setBody(
-                    """{"id":1,"username":"alice","email":"a@x.com","language":"en","date_format":"eu","is_admin":false,"self_contact_vcard_uid":"self-uid"}""",
-                ),
+                    """{"id":1,"username":"alice","email":"a@x.com","language":"en","date_format":"eu","is_admin":false,"self_contact_vcard_uid":"self-uid"}"""
+                )
         )
 
         val result = client.currentUser()
@@ -4698,7 +4898,9 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"id":"a1","entity_id":"uid","content":"Ask","activity_id":7,"discussed_at":"2026-08-01T10:00:00Z"}"""),
+                .setBody(
+                    """{"id":"a1","entity_id":"uid","content":"Ask","activity_id":7,"discussed_at":"2026-08-01T10:00:00Z"}"""
+                )
         )
 
         val result = client.discussConversationAgenda("a1", activityId = 7)
@@ -4717,7 +4919,7 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"id":"a1","entity_id":"uid","content":"Ask"}"""),
+                .setBody("""{"id":"a1","entity_id":"uid","content":"Ask"}""")
         )
 
         val result = client.discussConversationAgenda("a1", activityId = null)
@@ -4738,7 +4940,7 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(201)
-                .setBody("""{"message":"User registered successfully"}"""),
+                .setBody("""{"message":"User registered successfully"}""")
         )
 
         val result = client.register("alice", "alice@example.com", "hunter2hunter2")
@@ -4748,7 +4950,11 @@ class ApiClientTest {
         assertEquals("POST", request.method)
         assertEquals("/api/v1/register", request.path)
         val body = request.body.readUtf8()
-        assertTrue(body.contains("""{"username":"alice","email":"alice@example.com","password":"hunter2hunter2"}"""))
+        assertTrue(
+            body.contains(
+                """{"username":"alice","email":"alice@example.com","password":"hunter2hunter2"}"""
+            )
+        )
     }
 
     @Test
@@ -4756,7 +4962,9 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(409)
-                .setBody("""{"error":{"code":"ALREADY_EXISTS","message":"User already exists","details":{"email":"alice@example.com"}}}"""),
+                .setBody(
+                    """{"error":{"code":"ALREADY_EXISTS","message":"User already exists","details":{"email":"alice@example.com"}}}"""
+                )
         )
 
         val result = client.register("alice", "alice@example.com", "hunter2hunter2")
@@ -4773,8 +4981,8 @@ class ApiClientTest {
             MockResponse()
                 .setResponseCode(200)
                 .setBody(
-                    """{"is_valid":false,"entropy":18.3,"score":1,"feedback":"Password is too short","min_entropy":50.0,"char_set_size":26,"length":8}""",
-                ),
+                    """{"is_valid":false,"entropy":18.3,"score":1,"feedback":"Password is too short","min_entropy":50.0,"char_set_size":26,"length":8}"""
+                )
         )
 
         val result = client.checkPasswordStrength("shortpw")
@@ -4790,28 +4998,34 @@ class ApiClientTest {
     }
 
     @Test
-    fun `requestPasswordReset posts the email and reads the anti-enumeration message`() = runBlocking {
-        server.enqueue(
-            MockResponse()
-                .setResponseCode(200)
-                .setBody("""{"message":"If an account exists, password reset instructions were sent"}"""),
-        )
+    fun `requestPasswordReset posts the email and reads the anti-enumeration message`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse()
+                    .setResponseCode(200)
+                    .setBody(
+                        """{"message":"If an account exists, password reset instructions were sent"}"""
+                    )
+            )
 
-        val result = client.requestPasswordReset("alice@example.com")
+            val result = client.requestPasswordReset("alice@example.com")
 
-        assertTrue(result.isSuccess)
-        assertEquals("If an account exists, password reset instructions were sent", result.getOrThrow().message)
-        val request = server.takeRequest()
-        assertEquals("/api/v1/password-reset/request", request.path)
-        assertTrue(request.body.readUtf8().contains("""{"email":"alice@example.com"}"""))
-    }
+            assertTrue(result.isSuccess)
+            assertEquals(
+                "If an account exists, password reset instructions were sent",
+                result.getOrThrow().message
+            )
+            val request = server.takeRequest()
+            assertEquals("/api/v1/password-reset/request", request.path)
+            assertTrue(request.body.readUtf8().contains("""{"email":"alice@example.com"}"""))
+        }
 
     @Test
     fun `confirmPasswordReset posts the token and password`() = runBlocking {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"message":"Password reset successful"}"""),
+                .setBody("""{"message":"Password reset successful"}""")
         )
 
         val result = client.confirmPasswordReset("reset-token-123", "newpassword123")
@@ -4830,7 +5044,7 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""["Friends from school","Ski club"]"""),
+                .setBody("""["Friends from school","Ski club"]""")
         )
 
         val result = client.listLegacyCircles()
@@ -4846,7 +5060,7 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"contacts":[{"id":1,"uid":"u1","fn":"Alice"}],"limit":500}"""),
+                .setBody("""{"contacts":[{"id":1,"uid":"u1","fn":"Alice"}],"limit":500}""")
         )
 
         val result = client.listContacts(circleLegacy = "Ski club", limit = 500)
@@ -4869,8 +5083,8 @@ class ApiClientTest {
                     "language": "en", "date_format": "eu", "is_admin": true,
                     "created_at": "2026-08-01T00:00:00Z", "updated_at": "2026-08-01T00:00:00Z"}
                  ], "total": 1, "page": 1, "limit": 100, "total_pages": 1}
-                """.trimIndent(),
-            ),
+                """.trimIndent()
+            )
         )
 
         val result = client.listUsers(page = 1, limit = 100)
@@ -4891,8 +5105,8 @@ class ApiClientTest {
             MockResponse().setResponseCode(201).setBody(
                 """{"id": 3, "username": "bob", "email": "bob@example.com",
                     "language": "en", "date_format": "eu", "is_admin": false,
-                    "created_at": "2026-08-02T00:00:00Z", "updated_at": "2026-08-02T00:00:00Z"}""",
-            ),
+                    "created_at": "2026-08-02T00:00:00Z", "updated_at": "2026-08-02T00:00:00Z"}"""
+            )
         )
 
         val result = client.createUser(
@@ -4900,8 +5114,8 @@ class ApiClientTest {
                 username = "bob",
                 email = "bob@example.com",
                 password = "password123",
-                isAdmin = false,
-            ),
+                isAdmin = false
+            )
         )
 
         assertTrue(result.isSuccess)
@@ -4922,8 +5136,8 @@ class ApiClientTest {
             MockResponse().setResponseCode(200).setBody(
                 """{"id": 3, "username": "bob", "email": "bob@example.com",
                     "language": "de", "date_format": "eu", "is_admin": true,
-                    "created_at": "2026-08-02T00:00:00Z", "updated_at": "2026-08-02T00:00:00Z"}""",
-            ),
+                    "created_at": "2026-08-02T00:00:00Z", "updated_at": "2026-08-02T00:00:00Z"}"""
+            )
         )
 
         val result = client.getUser(3)
@@ -4942,16 +5156,16 @@ class ApiClientTest {
             MockResponse().setResponseCode(200).setBody(
                 """{"id": 3, "username": "bob2", "email": "bob@example.com",
                     "language": "en", "date_format": "eu", "is_admin": true,
-                    "created_at": "2026-08-02T00:00:00Z", "updated_at": "2026-08-03T00:00:00Z"}""",
-            ),
+                    "created_at": "2026-08-02T00:00:00Z", "updated_at": "2026-08-03T00:00:00Z"}"""
+            )
         )
 
         val result = client.updateUser(
             3,
             com.mycorrhizal.crm.model.network.AdminUserUpdateInput(
                 username = "bob2",
-                isAdmin = true,
-            ),
+                isAdmin = true
+            )
         )
 
         assertTrue(result.isSuccess)
@@ -4972,13 +5186,13 @@ class ApiClientTest {
             MockResponse().setResponseCode(200).setBody(
                 """{"id": 3, "username": "bob", "email": "bob@example.com",
                     "language": "en", "date_format": "eu", "is_admin": false,
-                    "created_at": "2026-08-02T00:00:00Z", "updated_at": "2026-08-03T00:00:00Z"}""",
-            ),
+                    "created_at": "2026-08-02T00:00:00Z", "updated_at": "2026-08-03T00:00:00Z"}"""
+            )
         )
 
         val result = client.updateUser(
             3,
-            com.mycorrhizal.crm.model.network.AdminUserUpdateInput(isAdmin = false),
+            com.mycorrhizal.crm.model.network.AdminUserUpdateInput(isAdmin = false)
         )
 
         assertTrue(result.isSuccess)
@@ -4989,7 +5203,11 @@ class ApiClientTest {
 
     @Test
     fun `deleteUser sends a DELETE to the admin route`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"message": "User deleted successfully"}"""))
+        server.enqueue(
+            MockResponse().setResponseCode(
+                200
+            ).setBody("""{"message": "User deleted successfully"}""")
+        )
 
         val result = client.deleteUser(3)
 
@@ -5003,8 +5221,8 @@ class ApiClientTest {
     fun `deleteUser surfaces a server-side guard as a client error`() = runBlocking {
         server.enqueue(
             MockResponse().setResponseCode(403).setBody(
-                """{"error":{"code":"forbidden","message":"Cannot delete the last admin"}}""",
-            ),
+                """{"error":{"code":"forbidden","message":"Cannot delete the last admin"}}"""
+            )
         )
 
         val result = client.deleteUser(1)
@@ -5021,8 +5239,8 @@ class ApiClientTest {
             MockResponse().setResponseCode(200).setBody(
                 """{"id": 3, "username": "bob", "email": "bob@example.com",
                     "language": "en", "date_format": "eu", "is_admin": false,
-                    "created_at": "2026-08-02T00:00:00Z", "updated_at": "2026-08-03T00:00:00Z"}""",
-            ),
+                    "created_at": "2026-08-02T00:00:00Z", "updated_at": "2026-08-03T00:00:00Z"}"""
+            )
         )
 
         val result = client.resetUserTwoFactor(3)
@@ -5037,26 +5255,27 @@ class ApiClientTest {
     }
 
     @Test
-    fun `resetUserTwoFactor maps 403 and 404 to client errors carrying the server message`() = runBlocking {
-        server.enqueue(
-            MockResponse().setResponseCode(403).setBody(
-                """{"error":{"code":"forbidden","message":"Admin access required"}}""",
-            ),
-        )
-        server.enqueue(
-            MockResponse().setResponseCode(404).setBody(
-                """{"error":{"code":"not_found","message":"User not found"}}""",
-            ),
-        )
+    fun `resetUserTwoFactor maps 403 and 404 to client errors carrying the server message`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setResponseCode(403).setBody(
+                    """{"error":{"code":"forbidden","message":"Admin access required"}}"""
+                )
+            )
+            server.enqueue(
+                MockResponse().setResponseCode(404).setBody(
+                    """{"error":{"code":"not_found","message":"User not found"}}"""
+                )
+            )
 
-        val forbidden = client.resetUserTwoFactor(3).exceptionOrNull() as ApiError.Client
-        assertEquals(403, forbidden.code)
-        assertEquals("Admin access required", forbidden.message)
+            val forbidden = client.resetUserTwoFactor(3).exceptionOrNull() as ApiError.Client
+            assertEquals(403, forbidden.code)
+            assertEquals("Admin access required", forbidden.message)
 
-        val missing = client.resetUserTwoFactor(999).exceptionOrNull() as ApiError.Client
-        assertEquals(404, missing.code)
-        assertEquals("User not found", missing.message)
-    }
+            val missing = client.resetUserTwoFactor(999).exceptionOrNull() as ApiError.Client
+            assertEquals(404, missing.code)
+            assertEquals("User not found", missing.message)
+        }
 
     // --- T93 duplicate scan (issue #710, web parity) ---
 
@@ -5076,8 +5295,8 @@ class ApiClientTest {
                   ],
                   "total": 1, "page": 1, "limit": 100
                 }
-                """.trimIndent(),
-            ),
+                """.trimIndent()
+            )
         )
 
         val result = client.listDuplicatePairs(page = 1, limit = 100)
@@ -5097,7 +5316,9 @@ class ApiClientTest {
 
     @Test
     fun `dismissDuplicatePair posts the ordered uid pair`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"message":"Pair dismissed"}"""))
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"message":"Pair dismissed"}""")
+        )
 
         val result = client.dismissDuplicatePair("uid-a", "uid-b")
 
@@ -5114,8 +5335,8 @@ class ApiClientTest {
     fun `listDuplicatePairs failure maps to the backend error`() = runBlocking {
         server.enqueue(
             MockResponse().setResponseCode(401).setBody(
-                """{"error":{"code":"unauthorized","message":"Not authenticated"}}""",
-            ),
+                """{"error":{"code":"unauthorized","message":"Not authenticated"}}"""
+            )
         )
 
         val result = client.listDuplicatePairs()
@@ -5140,8 +5361,8 @@ class ApiClientTest {
                   ],
                   "total": 1
                 }
-                """.trimIndent(),
-            ),
+                """.trimIndent()
+            )
         )
 
         val result = client.listContactAttachments(5)
@@ -5161,7 +5382,12 @@ class ApiClientTest {
     fun `uploadContactAttachment posts multipart with the file field`() = runBlocking {
         server.enqueue(MockResponse().setResponseCode(201).setBody("""{"attachment":{"id":8}}"""))
 
-        val result = client.uploadContactAttachment(5, "notes.txt", "text/plain", "hello".toByteArray())
+        val result = client.uploadContactAttachment(
+            5,
+            "notes.txt",
+            "text/plain",
+            "hello".toByteArray()
+        )
 
         assertTrue(result.isSuccess)
         val request = server.takeRequest()
@@ -5173,7 +5399,7 @@ class ApiClientTest {
     @Test
     fun `downloadAttachment returns the raw bytes`() = runBlocking {
         server.enqueue(
-            MockResponse().setResponseCode(200).setBody("file-bytes-here"),
+            MockResponse().setResponseCode(200).setBody("file-bytes-here")
         )
 
         val result = client.downloadAttachment(7)
@@ -5202,7 +5428,7 @@ class ApiClientTest {
 
     @Test
     fun `exportDataCsv returns the CSV bytes`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(200).setBody("CONTACTS\nalice;..." ))
+        server.enqueue(MockResponse().setResponseCode(200).setBody("CONTACTS\nalice;..."))
 
         val result = client.exportDataCsv()
 
@@ -5229,32 +5455,39 @@ class ApiClientTest {
 
     @Test
     fun `exportAccountBundle maps a server error to a failure`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(500).setBody("""{"error":{"code":"x","message":"boom"}}"""))
+        server.enqueue(
+            MockResponse().setResponseCode(
+                500
+            ).setBody("""{"error":{"code":"x","message":"boom"}}""")
+        )
 
         assertTrue(client.exportAccountBundle().isFailure)
     }
 
     @Test
-    fun `uploadMycorrhizalBundle posts a multipart file and parses the session and totals`() = runBlocking {
-        server.enqueue(
-            MockResponse().setResponseCode(200).setBody(
-                """{"session_id":"s1","version":1,"totals":{"contacts":3,"notes":2,"life_events":1}}""",
-            ),
-        )
+    fun `uploadMycorrhizalBundle posts a multipart file and parses the session and totals`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody(
+                    """{"session_id":"s1","version":1,"totals":{"contacts":3,"notes":2,"life_events":1}}"""
+                )
+            )
 
-        val result = client.uploadMycorrhizalBundle("{}".toByteArray(), "b.json").getOrThrow()
+            val result = client.uploadMycorrhizalBundle("{}".toByteArray(), "b.json").getOrThrow()
 
-        assertEquals("s1", result.sessionId)
-        assertEquals(1, result.version)
-        assertEquals(3, result.totals.contacts)
-        assertEquals(2, result.totals.notes)
-        assertEquals(1, result.totals.lifeEvents)
-        val request = server.takeRequest()
-        assertEquals("POST", request.method)
-        assertEquals("/api/v1/import/mycorrhizal/upload", request.path)
-        assertTrue(request.getHeader("Content-Type").orEmpty().startsWith("multipart/form-data"))
-        assertTrue(request.body.readUtf8().contains("filename=\"b.json\""))
-    }
+            assertEquals("s1", result.sessionId)
+            assertEquals(1, result.version)
+            assertEquals(3, result.totals.contacts)
+            assertEquals(2, result.totals.notes)
+            assertEquals(1, result.totals.lifeEvents)
+            val request = server.takeRequest()
+            assertEquals("POST", request.method)
+            assertEquals("/api/v1/import/mycorrhizal/upload", request.path)
+            assertTrue(
+                request.getHeader("Content-Type").orEmpty().startsWith("multipart/form-data")
+            )
+            assertTrue(request.body.readUtf8().contains("filename=\"b.json\""))
+        }
 
     @Test
     fun `startMycorrhizalFetch posts the session id as JSON`() = runBlocking {
@@ -5268,22 +5501,26 @@ class ApiClientTest {
     }
 
     @Test
-    fun `getMycorrhizalImportStatus sends session_id and parses phase progress and result`() = runBlocking {
-        server.enqueue(
-            MockResponse().setResponseCode(200).setBody(
-                """{"session_id":"s1","phase":"done","phase_done":5,"phase_total":5,
-                    "result":{"created":4,"updated":1,"skipped":0,"notes_created":7}}""",
-            ),
-        )
+    fun `getMycorrhizalImportStatus sends session_id and parses phase progress and result`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody(
+                    """{"session_id":"s1","phase":"done","phase_done":5,"phase_total":5,
+                    "result":{"created":4,"updated":1,"skipped":0,"notes_created":7}}"""
+                )
+            )
 
-        val status = client.getMycorrhizalImportStatus("s 1").getOrThrow()
+            val status = client.getMycorrhizalImportStatus("s 1").getOrThrow()
 
-        assertEquals("done", status.phase)
-        assertEquals(5, status.phaseDone)
-        assertEquals(4, status.result?.created)
-        assertEquals(7, status.result?.notesCreated)
-        assertEquals("/api/v1/import/mycorrhizal/status?session_id=s%201", server.takeRequest().path)
-    }
+            assertEquals("done", status.phase)
+            assertEquals(5, status.phaseDone)
+            assertEquals(4, status.result?.created)
+            assertEquals(7, status.result?.notesCreated)
+            assertEquals(
+                "/api/v1/import/mycorrhizal/status?session_id=s%201",
+                server.takeRequest().path
+            )
+        }
 
     @Test
     fun `getMycorrhizalImportPreview parses rows and the loss report`() = runBlocking {
@@ -5292,8 +5529,8 @@ class ApiClientTest {
                 """{"session_id":"s1","rows":[{"row_index":0,"suggested_action":"add",
                     "parsed_contact":{},"validation_errors":[],"has_photo":true}],
                     "total_rows":1,"valid_rows":1,
-                    "loss_report":[{"record":"contact","field":"photo","category":"skipped","message":"omitted"}]}""",
-            ),
+                    "loss_report":[{"record":"contact","field":"photo","category":"skipped","message":"omitted"}]}"""
+            )
         )
 
         val preview = client.getMycorrhizalImportPreview("s1").getOrThrow()
@@ -5308,7 +5545,10 @@ class ApiClientTest {
     fun `confirmMycorrhizalImport posts the session id and per-row actions`() = runBlocking {
         server.enqueue(MockResponse().setResponseCode(202).setBody("{}"))
 
-        val request = ImportConfirmRequest("s1", listOf(RowImportAction(0, "add"), RowImportAction(1, "skip")))
+        val request = ImportConfirmRequest(
+            "s1",
+            listOf(RowImportAction(0, "add"), RowImportAction(1, "skip"))
+        )
         assertTrue(client.confirmMycorrhizalImport(request).isSuccess)
 
         val recorded = server.takeRequest()
@@ -5368,13 +5608,13 @@ class ApiClientTest {
         val result = client.exportAllContactsVcf(
             version = 3,
             sections = listOf("emails", "phones"),
-            includeSensitive = true,
+            includeSensitive = true
         )
 
         assertTrue(result.isSuccess)
         assertEquals(
             "/api/v1/export/vcf?version=3&sections=emails%2Cphones&include_sensitive=true",
-            server.takeRequest().path,
+            server.takeRequest().path
         )
     }
 
@@ -5383,33 +5623,37 @@ class ApiClientTest {
         runBlocking {
             server.enqueue(MockResponse().setResponseCode(200).setBody("[]"))
 
-            val result = client.exportAllContactsJsContact(sections = listOf("notes"), includeSensitive = false)
+            val result = client.exportAllContactsJsContact(
+                sections = listOf("notes"),
+                includeSensitive = false
+            )
 
             assertTrue(result.isSuccess)
             assertEquals("/api/v1/export/jscontact?sections=notes", server.takeRequest().path)
         }
 
     @Test
-    fun `exportPreflight sends format, sections, and include_sensitive and decodes the response`() = runBlocking {
-        server.enqueue(
-            MockResponse().setResponseCode(200).setBody(
-                """{"format":"vcard4","contact_count":2,"diagnostics":[{"format":"vcard4","contact_id":1,"contact_name":"Alice","vcard_uid":"a-uid","severity":"warn","concept":"custom_field","bucket":"unsupported","reason":"no home","message":"lost"}]}""",
-            ),
-        )
+    fun `exportPreflight sends format, sections, and include_sensitive and decodes the response`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody(
+                    """{"format":"vcard4","contact_count":2,"diagnostics":[{"format":"vcard4","contact_id":1,"contact_name":"Alice","vcard_uid":"a-uid","severity":"warn","concept":"custom_field","bucket":"unsupported","reason":"no home","message":"lost"}]}"""
+                )
+            )
 
-        val result = client.exportPreflight("vcard4", listOf("custom_fields"), true)
+            val result = client.exportPreflight("vcard4", listOf("custom_fields"), true)
 
-        assertTrue(result.isSuccess)
-        val response = result.getOrThrow()
-        assertEquals("vcard4", response.format)
-        assertEquals(2, response.contactCount)
-        assertEquals(1, response.diagnostics.size)
-        assertEquals("Alice", response.diagnostics[0].contactName)
-        assertEquals(
-            "/api/v1/export/preflight?format=vcard4&sections=custom_fields&include_sensitive=true",
-            server.takeRequest().path,
-        )
-    }
+            assertTrue(result.isSuccess)
+            val response = result.getOrThrow()
+            assertEquals("vcard4", response.format)
+            assertEquals(2, response.contactCount)
+            assertEquals(1, response.diagnostics.size)
+            assertEquals("Alice", response.diagnostics[0].contactName)
+            assertEquals(
+                "/api/v1/export/preflight?format=vcard4&sections=custom_fields&include_sensitive=true",
+                server.takeRequest().path
+            )
+        }
 
     // --- Issue #965: Android OIDC native-return exchange ---
 
@@ -5418,7 +5662,7 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
-                .setBody("""{"token":"session-jwt","language":"de","date_format":"eu"}"""),
+                .setBody("""{"token":"session-jwt","language":"de","date_format":"eu"}""")
         )
 
         val result = client.exchangeOidcNativeCode("single-use-code", "pkce-verifier")
@@ -5431,7 +5675,10 @@ class ApiClientTest {
         assertEquals("/api/v1/auth/oidc/native/exchange", request.path)
         val body = request.body.readUtf8()
         assertTrue("body must carry the code", body.contains("\"code\":\"single-use-code\""))
-        assertTrue("body must carry the verifier", body.contains("\"code_verifier\":\"pkce-verifier\""))
+        assertTrue(
+            "body must carry the verifier",
+            body.contains("\"code_verifier\":\"pkce-verifier\"")
+        )
     }
 
     @Test
@@ -5439,7 +5686,9 @@ class ApiClientTest {
         server.enqueue(
             MockResponse()
                 .setResponseCode(401)
-                .setBody("""{"error":{"code":"invalid_credentials","message":"Invalid or expired authorization code"}}"""),
+                .setBody(
+                    """{"error":{"code":"invalid_credentials","message":"Invalid or expired authorization code"}}"""
+                )
         )
 
         val result = client.exchangeOidcNativeCode("stale-code", "pkce-verifier")
@@ -5471,8 +5720,8 @@ class ApiClientTest {
                 .setResponseCode(201)
                 .setBody(
                     """{"message":"Preference created successfully","preference":""" +
-                        """{"id":"p1","entity_id":"c1","category":"hobby","value":"Piano","level":"high","sensitivity":"normal"}}""",
-                ),
+                        """{"id":"p1","entity_id":"c1","category":"hobby","value":"Piano","level":"high","sensitivity":"normal"}}"""
+                )
         )
 
         val result = client.createPreference(
@@ -5480,8 +5729,8 @@ class ApiClientTest {
                 entityId = "c1",
                 category = "hobby",
                 value = "Piano",
-                level = PreferenceLevels.HIGH,
-            ),
+                level = PreferenceLevels.HIGH
+            )
         )
 
         assertTrue(result.isSuccess)
@@ -5510,52 +5759,76 @@ class ApiClientTest {
     }
 
     @Test
-    fun `uploadMycorrhizalBundle posts multipart with the Idempotency-Key and parses the session`() = runBlocking {
-        server.enqueue(
-            MockResponse().setResponseCode(200).setBody(
-                """{"session_id":"s-1","version":1,"totals":{"contacts":3,"notes":2}}""",
-            ),
-        )
+    fun `uploadMycorrhizalBundle posts multipart with the Idempotency-Key and parses the session`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody(
+                    """{"session_id":"s-1","version":1,"totals":{"contacts":3,"notes":2}}"""
+                )
+            )
 
-        val result = client.uploadMycorrhizalBundle("""{"plan":{}}""".toByteArray(), "b.json", "key-123").getOrThrow()
+            val result = client.uploadMycorrhizalBundle(
+                """{"plan":{}}""".toByteArray(),
+                "b.json",
+                "key-123"
+            ).getOrThrow()
 
-        assertEquals("s-1", result.sessionId)
-        assertEquals(3, result.totals.contacts)
-        assertEquals(2, result.totals.notes)
-        val recorded = server.takeRequest()
-        assertEquals("POST", recorded.method)
-        assertEquals("/api/v1/import/mycorrhizal/upload", recorded.path)
-        assertEquals("key-123", recorded.getHeader("Idempotency-Key"))
-        assertTrue(recorded.getHeader("Content-Type").orEmpty().startsWith("multipart/form-data"))
-        assertTrue(recorded.body.readUtf8().contains("""{"plan":{}}"""))
-    }
+            assertEquals("s-1", result.sessionId)
+            assertEquals(3, result.totals.contacts)
+            assertEquals(2, result.totals.notes)
+            val recorded = server.takeRequest()
+            assertEquals("POST", recorded.method)
+            assertEquals("/api/v1/import/mycorrhizal/upload", recorded.path)
+            assertEquals("key-123", recorded.getHeader("Idempotency-Key"))
+            assertTrue(
+                recorded.getHeader("Content-Type").orEmpty().startsWith("multipart/form-data")
+            )
+            assertTrue(recorded.body.readUtf8().contains("""{"plan":{}}"""))
+        }
 
     @Test
-    fun `a keyed upload retry sends a byte-identical body so the server fingerprint matches`() = runBlocking {
-        // The backend fingerprints a keyed POST by its raw body; a random
-        // multipart boundary per attempt would make every retry a 422.
-        server.enqueue(MockResponse().setResponseCode(500))
-        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"session_id":"s-1","version":1,"totals":{}}"""))
-        val bundle = """{"plan":{}}""".toByteArray()
+    fun `a keyed upload retry sends a byte-identical body so the server fingerprint matches`() =
+        runBlocking {
+            // The backend fingerprints a keyed POST by its raw body; a random
+            // multipart boundary per attempt would make every retry a 422.
+            server.enqueue(MockResponse().setResponseCode(500))
+            server.enqueue(
+                MockResponse().setResponseCode(
+                    200
+                ).setBody("""{"session_id":"s-1","version":1,"totals":{}}""")
+            )
+            val bundle = """{"plan":{}}""".toByteArray()
 
-        client.uploadMycorrhizalBundle(bundle, "b.json", "8f14e45f-ceea-467a-9575-1f2e3d4c5b6a")
-        client.uploadMycorrhizalBundle(bundle, "b.json", "8f14e45f-ceea-467a-9575-1f2e3d4c5b6a")
+            client.uploadMycorrhizalBundle(bundle, "b.json", "8f14e45f-ceea-467a-9575-1f2e3d4c5b6a")
+            client.uploadMycorrhizalBundle(bundle, "b.json", "8f14e45f-ceea-467a-9575-1f2e3d4c5b6a")
 
-        val first = server.takeRequest()
-        val second = server.takeRequest()
-        assertEquals(first.getHeader("Content-Type"), second.getHeader("Content-Type"))
-        assertEquals(first.body.readUtf8(), second.body.readUtf8())
-    }
+            val first = server.takeRequest()
+            val second = server.takeRequest()
+            assertEquals(first.getHeader("Content-Type"), second.getHeader("Content-Type"))
+            assertEquals(first.body.readUtf8(), second.body.readUtf8())
+        }
 
     @Test
     fun `different keys use different boundaries`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"session_id":"a","version":1,"totals":{}}"""))
-        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"session_id":"b","version":1,"totals":{}}"""))
+        server.enqueue(
+            MockResponse().setResponseCode(
+                200
+            ).setBody("""{"session_id":"a","version":1,"totals":{}}""")
+        )
+        server.enqueue(
+            MockResponse().setResponseCode(
+                200
+            ).setBody("""{"session_id":"b","version":1,"totals":{}}""")
+        )
 
         client.uploadMycorrhizalBundle("{}".toByteArray(), "b.json", "key-one")
         client.uploadMycorrhizalBundle("{}".toByteArray(), "b.json", "key-two")
 
-        assertFalse(server.takeRequest().getHeader("Content-Type") == server.takeRequest().getHeader("Content-Type"))
+        assertFalse(
+            server.takeRequest().getHeader(
+                "Content-Type"
+            ) == server.takeRequest().getHeader("Content-Type")
+        )
     }
 
     @Test
@@ -5568,53 +5841,60 @@ class ApiClientTest {
     }
 
     @Test
-    fun `mycorrhizal fetch status preview confirm and cancel hit the documented routes`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(202).setBody("{}"))
-        server.enqueue(
-            MockResponse().setResponseCode(200).setBody(
-                """{"session_id":"s-1","phase":"building_preview","phase_done":2,"phase_total":9}""",
-            ),
-        )
-        server.enqueue(
-            MockResponse().setResponseCode(200).setBody(
-                """{"session_id":"s-1","rows":[{"row_index":0,"suggested_action":"add"}],"total_rows":1,
+    fun `mycorrhizal fetch status preview confirm and cancel hit the documented routes`() =
+        runBlocking {
+            server.enqueue(MockResponse().setResponseCode(202).setBody("{}"))
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody(
+                    """{"session_id":"s-1","phase":"building_preview","phase_done":2,"phase_total":9}"""
+                )
+            )
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody(
+                    """{"session_id":"s-1","rows":[{"row_index":0,"suggested_action":"add"}],"total_rows":1,
                    "valid_rows":1,"duplicate_count":0,"error_count":0,
-                   "loss_report":[{"record":"contact:1","field":"x","category":"lossy","message":"m"}]}""",
-            ),
-        )
-        server.enqueue(MockResponse().setResponseCode(202).setBody("{}"))
-        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+                   "loss_report":[{"record":"contact:1","field":"x","category":"lossy","message":"m"}]}"""
+                )
+            )
+            server.enqueue(MockResponse().setResponseCode(202).setBody("{}"))
+            server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
 
-        assertTrue(client.startMycorrhizalFetch("s-1").isSuccess)
-        val status = client.getMycorrhizalImportStatus("s-1").getOrThrow()
-        val preview = client.getMycorrhizalImportPreview("s-1").getOrThrow()
-        assertTrue(
-            client.confirmMycorrhizalImport(
-                com.mycorrhizal.crm.model.network.ImportConfirmRequest(
-                    "s-1",
-                    listOf(com.mycorrhizal.crm.model.network.RowImportAction(0, "add")),
-                ),
-            ).isSuccess,
-        )
-        assertTrue(client.cancelMycorrhizalImport("s-1").isSuccess)
+            assertTrue(client.startMycorrhizalFetch("s-1").isSuccess)
+            val status = client.getMycorrhizalImportStatus("s-1").getOrThrow()
+            val preview = client.getMycorrhizalImportPreview("s-1").getOrThrow()
+            assertTrue(
+                client.confirmMycorrhizalImport(
+                    com.mycorrhizal.crm.model.network.ImportConfirmRequest(
+                        "s-1",
+                        listOf(com.mycorrhizal.crm.model.network.RowImportAction(0, "add"))
+                    )
+                ).isSuccess
+            )
+            assertTrue(client.cancelMycorrhizalImport("s-1").isSuccess)
 
-        assertEquals("building_preview", status.phase)
-        assertEquals(9, status.phaseTotal)
-        assertFalse(status.isReady)
-        assertEquals(1, preview.rows.size)
-        assertEquals(1, preview.lossReport.size)
-        assertEquals("lossy", preview.lossReport.single().category)
+            assertEquals("building_preview", status.phase)
+            assertEquals(9, status.phaseTotal)
+            assertFalse(status.isReady)
+            assertEquals(1, preview.rows.size)
+            assertEquals(1, preview.lossReport.size)
+            assertEquals("lossy", preview.lossReport.single().category)
 
-        assertEquals("/api/v1/import/mycorrhizal/fetch", server.takeRequest().path)
-        assertEquals("/api/v1/import/mycorrhizal/status?session_id=s-1", server.takeRequest().path)
-        assertEquals("/api/v1/import/mycorrhizal/preview?session_id=s-1", server.takeRequest().path)
-        val confirm = server.takeRequest()
-        assertEquals("/api/v1/import/mycorrhizal/confirm", confirm.path)
-        assertTrue(confirm.body.readUtf8().contains(""""session_id":"s-1""""))
-        val cancel = server.takeRequest()
-        assertEquals("POST", cancel.method)
-        assertEquals("/api/v1/import/mycorrhizal/cancel?session_id=s-1", cancel.path)
-    }
+            assertEquals("/api/v1/import/mycorrhizal/fetch", server.takeRequest().path)
+            assertEquals(
+                "/api/v1/import/mycorrhizal/status?session_id=s-1",
+                server.takeRequest().path
+            )
+            assertEquals(
+                "/api/v1/import/mycorrhizal/preview?session_id=s-1",
+                server.takeRequest().path
+            )
+            val confirm = server.takeRequest()
+            assertEquals("/api/v1/import/mycorrhizal/confirm", confirm.path)
+            assertTrue(confirm.body.readUtf8().contains(""""session_id":"s-1""""))
+            val cancel = server.takeRequest()
+            assertEquals("POST", cancel.method)
+            assertEquals("/api/v1/import/mycorrhizal/cancel?session_id=s-1", cancel.path)
+        }
 
     @Test
     fun `mycorrhizal status phase helpers classify ready done and failed`() {
@@ -5674,7 +5954,11 @@ class ApiClientTest {
 
     @Test
     fun `two factor setup maps a rejected proof to Client 400`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(400).setBody("""{"error":{"code":"x","message":"Invalid code"}}"""))
+        server.enqueue(
+            MockResponse().setResponseCode(
+                400
+            ).setBody("""{"error":{"code":"x","message":"Invalid code"}}""")
+        )
 
         val error = client.setupTwoFactor(code = "0").exceptionOrNull()
 
@@ -5709,15 +5993,22 @@ class ApiClientTest {
     }
 
     @Test
-    fun `regenerate recovery codes rejects a non-object assertion without a request`() = runBlocking {
-        val error = client.regenerateRecoveryCodes(assertionJson = "[1]").exceptionOrNull()
-        assertTrue(error is ApiError.Parse)
-        assertEquals(0, server.requestCount)
-    }
+    fun `regenerate recovery codes rejects a non-object assertion without a request`() =
+        runBlocking {
+            val error = client.regenerateRecoveryCodes(assertionJson = "[1]").exceptionOrNull()
+            assertTrue(error is ApiError.Parse)
+            assertEquals(0, server.requestCount)
+        }
 
     @Test
     fun `regenerate recovery codes maps a lockout to Client 429`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(429).setBody("""{"error":"Account temporarily locked","message":"Too many failed verification attempts."}"""))
+        server.enqueue(
+            MockResponse().setResponseCode(
+                429
+            ).setBody(
+                """{"error":"Account temporarily locked","message":"Too many failed verification attempts."}"""
+            )
+        )
 
         val error = client.regenerateRecoveryCodes(code = "0").exceptionOrNull()
 
@@ -5730,7 +6021,9 @@ class ApiClientTest {
     @Test
     fun `getMapConfig GETs the public config endpoint and parses the style url`() = runBlocking {
         server.enqueue(
-            MockResponse().setResponseCode(200).setBody("""{"tile_style_url":"https://tiles.example/style"}"""),
+            MockResponse().setResponseCode(
+                200
+            ).setBody("""{"tile_style_url":"https://tiles.example/style"}""")
         )
 
         val result = client.getMapConfig()
@@ -5745,8 +6038,8 @@ class ApiClientTest {
     fun `getContactMap GETs the bulk endpoint and parses points and truncation`() = runBlocking {
         server.enqueue(
             MockResponse().setResponseCode(200).setBody(
-                """{"points":[{"contact_id":2,"contact_uid":"u","contact_name":"Ada","address_id":"a1","label":"10 Downing St","coordinates":"geo:51.5034,-0.1276"}],"truncated":true}""",
-            ),
+                """{"points":[{"contact_id":2,"contact_uid":"u","contact_name":"Ada","address_id":"a1","label":"10 Downing St","coordinates":"geo:51.5034,-0.1276"}],"truncated":true}"""
+            )
         )
 
         val response = client.getContactMap().getOrThrow()
@@ -5763,14 +6056,19 @@ class ApiClientTest {
     fun `geocodeAddressDraft POSTs the postal draft to the stateless route`() = runBlocking {
         server.enqueue(
             MockResponse().setResponseCode(200)
-                .setBody("""{"coordinates":"geo:48.85,2.35","cached":false}"""),
+                .setBody("""{"coordinates":"geo:48.85,2.35","cached":false}""")
         )
 
         val result = client.geocodeAddressDraft(
             contactId = 7,
             draft = com.mycorrhizal.crm.model.network.GeocodeDraftRequest(
-                street = "1 Rue X", city = "Paris", region = "", postal = "75001", country = "FR", sensitivity = "normal",
-            ),
+                street = "1 Rue X",
+                city = "Paris",
+                region = "",
+                postal = "75001",
+                country = "FR",
+                sensitivity = "normal"
+            )
         )
 
         assertEquals("geo:48.85,2.35", result.getOrThrow().coordinates)
@@ -5781,7 +6079,7 @@ class ApiClientTest {
         val body = request.body.readUtf8()
         assertEquals(
             """{"street":"1 Rue X","city":"Paris","region":"","postal":"75001","country":"FR","sensitivity":"normal"}""",
-            body,
+            body
         )
         // No address id/coordinates are ever sent (the body can't write an address),
         // and Android never opts a private/secret address in via include_sensitive.
@@ -5790,16 +6088,22 @@ class ApiClientTest {
     }
 
     @Test
-    fun `geocodeAddressDraft maps the server's refusal to a Client error carrying its message`() = runBlocking {
-        server.enqueue(
-            MockResponse().setResponseCode(422)
-                .setBody("""{"error":{"code":"BUSINESS_LOGIC_ERROR","message":"geocoding is not enabled on this server"}}"""),
-        )
+    fun `geocodeAddressDraft maps the server's refusal to a Client error carrying its message`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setResponseCode(422)
+                    .setBody(
+                        """{"error":{"code":"BUSINESS_LOGIC_ERROR","message":"geocoding is not enabled on this server"}}"""
+                    )
+            )
 
-        val result = client.geocodeAddressDraft(contactId = 7, draft = com.mycorrhizal.crm.model.network.GeocodeDraftRequest())
+            val result = client.geocodeAddressDraft(
+                contactId = 7,
+                draft = com.mycorrhizal.crm.model.network.GeocodeDraftRequest()
+            )
 
-        val error = result.exceptionOrNull() as ApiError
-        assertTrue(error is ApiError.Client)
-        assertEquals("geocoding is not enabled on this server", error.displayMessage)
-    }
+            val error = result.exceptionOrNull() as ApiError
+            assertTrue(error is ApiError.Client)
+            assertEquals("geocoding is not enabled on this server", error.displayMessage)
+        }
 }

@@ -39,5 +39,5 @@ data class CachedContactFts(
      *  [primaryPhone] for phone-shaped queries, since punctuation splits the raw
      *  column into unmatchable FTS4 tokens. */
     val phonesNormalized: String? = null,
-    val org: String? = null,
+    val org: String? = null
 )

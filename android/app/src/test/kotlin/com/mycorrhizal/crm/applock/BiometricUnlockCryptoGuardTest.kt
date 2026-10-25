@@ -12,22 +12,22 @@ import org.junit.Test
 class BiometricUnlockCryptoGuardTest {
 
     private val prompterSource = java.io.File(
-        "src/main/kotlin/com/mycorrhizal/crm/applock/AppUnlockPrompter.kt",
+        "src/main/kotlin/com/mycorrhizal/crm/applock/AppUnlockPrompter.kt"
     ).readText()
     private val vaultSource = java.io.File(
-        "src/main/kotlin/com/mycorrhizal/crm/applock/BiometricUnlockVault.kt",
+        "src/main/kotlin/com/mycorrhizal/crm/applock/BiometricUnlockVault.kt"
     ).readText()
 
     @Test
     fun `the prompt authenticates with a CryptoObject and consumes the result`() {
         assertTrue(
             "authenticate must pass a CryptoObject bound to the auth key",
-            prompterSource.contains("BiometricPrompt.CryptoObject(prepared.cipher)"),
+            prompterSource.contains("BiometricPrompt.CryptoObject(prepared.cipher)")
         )
         assertTrue(
             "the success callback must consume the authentication result's crypto object",
             prompterSource.contains("result.cryptoObject") &&
-                prompterSource.contains("vault.finish(prepared, cipher)"),
+                prompterSource.contains("vault.finish(prepared, cipher)")
         )
         assertTrue(vaultSource.contains("fun finish"))
     }

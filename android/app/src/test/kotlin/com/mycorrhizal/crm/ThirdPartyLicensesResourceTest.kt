@@ -30,7 +30,7 @@ class ThirdPartyLicensesResourceTest {
             "no embedded library carries a license text",
             libs.libraries.any { library ->
                 library.licenses.any { it.licenseContent?.isNotBlank() == true }
-            },
+            }
         )
     }
 }

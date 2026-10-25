@@ -15,15 +15,15 @@ import com.mycorrhizal.crm.data.attach.AttachProgress
 import com.mycorrhizal.crm.data.attach.AttachSignInResult
 import com.mycorrhizal.crm.data.attach.AttachStage
 import com.mycorrhizal.crm.data.attach.AttachToRemoteCoordinator
-import com.mycorrhizal.crm.testing.FakePasskeyClient
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.domain.profile.ServerProfile
 import com.mycorrhizal.crm.domain.profile.ServerProfileKind
 import com.mycorrhizal.crm.model.network.ImportRowPreview
 import com.mycorrhizal.crm.model.network.MycorrhizalBundleCounts
 import com.mycorrhizal.crm.model.network.SourceImportIssue
-import com.mycorrhizal.crm.model.network.SourceImportResult
 import com.mycorrhizal.crm.model.network.SourceImportPreviewResponse
+import com.mycorrhizal.crm.model.network.SourceImportResult
+import com.mycorrhizal.crm.testing.FakePasskeyClient
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -54,9 +54,13 @@ class AttachToRemoteScreenTest {
         totals = MycorrhizalBundleCounts(contacts = 3, notes = 4, activities = 5),
         preview = SourceImportPreviewResponse(
             sessionId = "s",
-            rows = listOf(ImportRowPreview(rowIndex = 0, parsedContact = mapOf("firstname" to "Ada"))),
-            lossReport = listOf(SourceImportIssue(record = "c1", field = "f", category = "lossy", message = "m")),
-        ),
+            rows = listOf(
+                ImportRowPreview(rowIndex = 0, parsedContact = mapOf("firstname" to "Ada"))
+            ),
+            lossReport = listOf(
+                SourceImportIssue(record = "c1", field = "f", category = "lossy", message = "m")
+            )
+        )
     )
 
     private var backCount = 0
@@ -117,14 +121,20 @@ class AttachToRemoteScreenTest {
     fun `a blocked start explains that only the on-device profile can be moved`() {
         show(beginOk = false)
 
-        composeTestRule.onNodeWithText("Only the on-device profile can be moved to a server.").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Only the on-device profile can be moved to a server."
+        ).assertIsDisplayed()
     }
 
     @Test
     fun `two-factor accounts are asked for a code`() {
         coEvery { coordinator.signIn(any(), any(), any(), any(), any()) } returns
             Result.success(AttachSignInResult.TwoFactorRequired())
-        coEvery { coordinator.completeTwoFactor(any()) } returns Result.failure(AttachException("nope"))
+        coEvery {
+            coordinator.completeTwoFactor(
+                any()
+            )
+        } returns Result.failure(AttachException("nope"))
         show()
 
         composeTestRule.onNodeWithTag("attach-identifier").performTextInput("alice")
@@ -144,11 +154,16 @@ class AttachToRemoteScreenTest {
         prompt: com.mycorrhizal.crm.data.passkey.SecondFactorPrompt,
         issue: com.mycorrhizal.crm.data.passkey.PasskeyIssue? = null,
         onSubmit: (String) -> Unit = {},
-        onUsePasskey: () -> Unit = {},
+        onUsePasskey: () -> Unit = {}
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                TwoFactorStep(prompt = prompt, passkeyIssue = issue, onSubmit = onSubmit, onUsePasskey = onUsePasskey)
+                TwoFactorStep(
+                    prompt = prompt,
+                    passkeyIssue = issue,
+                    onSubmit = onSubmit,
+                    onUsePasskey = onUsePasskey
+                )
             }
         }
     }
@@ -165,7 +180,7 @@ class AttachToRemoteScreenTest {
         var used = 0
         showTwoFactorStep(
             com.mycorrhizal.crm.data.passkey.SecondFactorPrompt.CODE_OR_PASSKEY,
-            onUsePasskey = { used++ },
+            onUsePasskey = { used++ }
         )
         composeTestRule.onNodeWithTag("attach-2fa-passkey").performClick()
         composeTestRule.onNodeWithTag("attach-2fa-code").assertIsDisplayed()
@@ -174,8 +189,12 @@ class AttachToRemoteScreenTest {
 
     @Test
     fun `a passkey-only open gate labels the field for a recovery code`() {
-        showTwoFactorStep(com.mycorrhizal.crm.data.passkey.SecondFactorPrompt.PASSKEY_OR_RECOVERY_CODE)
-        composeTestRule.onNodeWithText("Use your passkey to sign in, or enter one of your recovery codes.").assertIsDisplayed()
+        showTwoFactorStep(
+            com.mycorrhizal.crm.data.passkey.SecondFactorPrompt.PASSKEY_OR_RECOVERY_CODE
+        )
+        composeTestRule.onNodeWithText(
+            "Use your passkey to sign in, or enter one of your recovery codes."
+        ).assertIsDisplayed()
         composeTestRule.onNodeWithText("Recovery code").assertIsDisplayed()
         composeTestRule.onNodeWithTag("attach-2fa-passkey").assertIsDisplayed()
     }
@@ -185,11 +204,11 @@ class AttachToRemoteScreenTest {
         var submitted: String? = null
         showTwoFactorStep(
             com.mycorrhizal.crm.data.passkey.SecondFactorPrompt.RECOVERY_CODE_ONLY,
-            onSubmit = { submitted = it },
+            onSubmit = { submitted = it }
         )
         composeTestRule.onNodeWithText(
             "Your account uses a passkey, but passkeys aren't available on this app for this server. " +
-                "Enter one of your recovery codes to sign in.",
+                "Enter one of your recovery codes to sign in."
         ).assertIsDisplayed()
         composeTestRule.onNodeWithTag("attach-2fa-passkey").assertDoesNotExist()
         composeTestRule.onNodeWithTag("attach-2fa-code").performTextInput("AAAAA-BBBBB-CCCCC")
@@ -201,10 +220,10 @@ class AttachToRemoteScreenTest {
     fun `a mixed degraded step notes why with the runtime reason`() {
         showTwoFactorStep(
             com.mycorrhizal.crm.data.passkey.SecondFactorPrompt.CODE_WITH_PASSKEY_NOTE,
-            com.mycorrhizal.crm.data.passkey.PasskeyIssue.NOT_ASSOCIATED,
+            com.mycorrhizal.crm.data.passkey.PasskeyIssue.NOT_ASSOCIATED
         )
         composeTestRule.onNodeWithText(
-            "Your account also has a passkey, but this server isn't set up for passkeys on Android.",
+            "Your account also has a passkey, but this server isn't set up for passkeys on Android."
         ).assertIsDisplayed()
         composeTestRule.onNodeWithTag("attach-2fa-code").assertIsDisplayed()
     }
@@ -244,12 +263,16 @@ class AttachToRemoteScreenTest {
         composeTestRule.onNodeWithTag("attach-password").performTextInput("pw")
         composeTestRule.onNodeWithTag("attach-sign-in").performScrollTo().performClick()
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("The move could not be prepared. Nothing on this device was changed.")
+        composeTestRule.onNodeWithText(
+            "The move could not be prepared. Nothing on this device was changed."
+        )
             .assertIsDisplayed()
         composeTestRule.onNodeWithTag("attach-retry").performClick()
         composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithText("Ready to move 3 contacts, 4 notes and 5 activities.").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Ready to move 3 contacts, 4 notes and 5 activities."
+        ).assertIsDisplayed()
     }
 
     private fun reachReview() {
@@ -267,7 +290,9 @@ class AttachToRemoteScreenTest {
     fun `review shows the totals the loss report and the shared per-row review`() {
         reachReview()
 
-        composeTestRule.onNodeWithText("Ready to move 3 contacts, 4 notes and 5 activities.").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Ready to move 3 contacts, 4 notes and 5 activities."
+        ).assertIsDisplayed()
         composeTestRule.onNodeWithTag("attach-loss").assertIsDisplayed()
         composeTestRule.onNodeWithText("Ada").assertIsDisplayed()
         composeTestRule.onNodeWithText("Apply decisions (1)").assertIsDisplayed()

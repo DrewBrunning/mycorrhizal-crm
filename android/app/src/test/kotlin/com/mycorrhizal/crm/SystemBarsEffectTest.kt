@@ -38,7 +38,7 @@ class SystemBarsEffectTest {
                 darkTheme = darkTheme,
                 onPrimaryBar = onPrimaryBar,
                 statusBarColor = 0,
-                navigationBarColor = 0,
+                navigationBarColor = 0
             )
         }
         composeTestRule.waitForIdle()

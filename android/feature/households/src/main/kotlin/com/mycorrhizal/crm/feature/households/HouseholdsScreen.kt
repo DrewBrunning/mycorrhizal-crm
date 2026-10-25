@@ -11,27 +11,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AutoAwesome
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import com.mycorrhizal.crm.ui.components.AccessibleIconButton
-import com.mycorrhizal.crm.ui.components.DiscardChangesDialog
-import com.mycorrhizal.crm.ui.components.RowAction
-import com.mycorrhizal.crm.ui.components.RowOverflowMenu
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
@@ -62,12 +55,16 @@ import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.Household
 import com.mycorrhizal.crm.model.network.HouseholdTypes
 import com.mycorrhizal.crm.model.network.formatSuggestionAddress
+import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.BrandFab
-import com.mycorrhizal.crm.ui.components.FabListContentPadding
+import com.mycorrhizal.crm.ui.components.DiscardChangesDialog
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
-import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.RowAction
+import com.mycorrhizal.crm.ui.components.RowOverflowMenu
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,7 +72,7 @@ fun HouseholdsScreen(
     // Issue #150: null hides the hamburger — there is no drawer at Expanded.
     onMenuClick: (() -> Unit)? = {},
     onOpenHousehold: (String) -> Unit,
-    viewModel: HouseholdsViewModel = hiltViewModel(),
+    viewModel: HouseholdsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -87,28 +84,36 @@ fun HouseholdsScreen(
                 navigationIcon = {
                     onMenuClick?.let { onMenu ->
                         AccessibleIconButton(onClick = onMenu) {
-                            Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
+                            Icon(
+                                Icons.Outlined.Menu,
+                                contentDescription = stringResource(R.string.cd_menu)
+                            )
                         }
                     }
                 },
                 title = {
-                    Text(stringResource(R.string.households_title), style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        stringResource(R.string.households_title),
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 },
                 actions = {
                     AccessibleIconButton(
                         onClick = { viewModel.scanAddressSuggestions() },
-                        enabled = !state.suggestionsLoading,
+                        enabled = !state.suggestionsLoading
                     ) {
                         if (state.suggestionsLoading) {
                             CircularProgressIndicator(
                                 modifier = Modifier.padding(6.dp),
                                 strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.onPrimary,
+                                color = MaterialTheme.colorScheme.onPrimary
                             )
                         } else {
                             Icon(
                                 Icons.Outlined.LocationOn,
-                                contentDescription = stringResource(R.string.households_suggest_addresses),
+                                contentDescription = stringResource(
+                                    R.string.households_suggest_addresses
+                                )
                             )
                         }
                     }
@@ -117,62 +122,81 @@ fun HouseholdsScreen(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
         floatingActionButton = {
             BrandFab(onClick = { showCreateDialog = true }) {
-                Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.households_new))
+                Icon(
+                    Icons.Outlined.Add,
+                    contentDescription = stringResource(R.string.households_new)
+                )
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             RefreshableContent(
                 isRefreshing = state.isLoading && state.households.isNotEmpty(),
                 onRefresh = viewModel::load,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize()
             ) {
                 when {
                     state.isLoading && state.households.isEmpty() -> LoadingSkeleton()
+
                     state.households.isEmpty() && !state.suggestionsLoaded && state.error == null ->
                         EmptyState(
                             title = stringResource(R.string.households_empty),
                             body = stringResource(R.string.households_empty_body),
                             actionLabel = stringResource(R.string.households_new),
-                            onAction = { showCreateDialog = true },
+                            onAction = { showCreateDialog = true }
                         )
+
                     state.households.isEmpty() && !state.suggestionsLoaded && state.error != null -> {
                         Text(
                             text = state.error.orEmpty(),
                             color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.align(Alignment.Center),
+                            modifier = Modifier.align(Alignment.Center)
                         )
                     }
+
                     else -> {
-                        LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = FabListContentPadding) {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = FabListContentPadding
+                        ) {
                             if (state.suggestionsLoaded) {
                                 item(key = "suggestion-header") {
                                     Text(
-                                        text = stringResource(R.string.households_address_suggestions),
+                                        text = stringResource(
+                                            R.string.households_address_suggestions
+                                        ),
                                         style = MaterialTheme.typography.titleMedium,
-                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                        modifier = Modifier.padding(
+                                            horizontal = 16.dp,
+                                            vertical = 8.dp
+                                        )
                                     )
                                 }
                                 if (state.addressSuggestions.isEmpty()) {
                                     item(key = "suggestion-empty") {
                                         Text(
-                                            text = stringResource(R.string.households_no_address_suggestions),
+                                            text = stringResource(
+                                                R.string.households_no_address_suggestions
+                                            ),
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                            modifier = Modifier.padding(
+                                                horizontal = 16.dp,
+                                                vertical = 8.dp
+                                            )
                                         )
                                     }
                                 } else {
                                     items(
                                         state.addressSuggestions,
-                                        key = { suggestionKey(it) },
+                                        key = { suggestionKey(it) }
                                     ) { suggestion ->
                                         val key = suggestionKey(suggestion)
                                         AddressSuggestionCard(
@@ -181,7 +205,7 @@ fun HouseholdsScreen(
                                             pending = state.pendingSuggestionKey == "accept:$key" ||
                                                 state.pendingSuggestionKey == "dismiss:$key",
                                             onAccept = { viewModel.acceptSuggestion(suggestion) },
-                                            onDismiss = { viewModel.dismissSuggestion(suggestion) },
+                                            onDismiss = { viewModel.dismissSuggestion(suggestion) }
                                         )
                                     }
                                 }
@@ -193,8 +217,14 @@ fun HouseholdsScreen(
                                 HouseholdListItem(
                                     household = household,
                                     onClick = { onOpenHousehold(household.id) },
-                                    onUpdate = { name, type -> viewModel.rename(household.id, name, type) },
-                                    onDelete = { viewModel.delete(household.id) },
+                                    onUpdate = { name, type ->
+                                        viewModel.rename(
+                                            household.id,
+                                            name,
+                                            type
+                                        )
+                                    },
+                                    onDelete = { viewModel.delete(household.id) }
                                 )
                             }
                         }
@@ -214,7 +244,7 @@ fun HouseholdsScreen(
                 viewModel.create(name, type)
                 showCreateDialog = false
             },
-            onDismiss = { showCreateDialog = false },
+            onDismiss = { showCreateDialog = false }
         )
     }
 
@@ -244,7 +274,7 @@ private fun AddressSuggestionCard(
     contactsByUid: Map<String, ContactSummary>,
     pending: Boolean,
     onAccept: () -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     val unknownMember = stringResource(R.string.contact_unknown)
     val membersText = suggestion.memberVCardUids.joinToString(" · ") { uid ->
@@ -254,19 +284,23 @@ private fun AddressSuggestionCard(
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
                 text = membersText,
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyLarge
             )
             Text(
                 text = formatSuggestionAddress(suggestion.address),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(top = 8.dp),
+                modifier = Modifier.padding(top = 8.dp)
             ) {
                 TextButton(onClick = onAccept, enabled = !pending) {
-                    Icon(Icons.Outlined.AutoAwesome, contentDescription = null, modifier = Modifier.padding(end = 4.dp))
+                    Icon(
+                        Icons.Outlined.AutoAwesome,
+                        contentDescription = null,
+                        modifier = Modifier.padding(end = 4.dp)
+                    )
                     Text(stringResource(R.string.households_accept_suggestion))
                 }
                 TextButton(onClick = onDismiss, enabled = !pending) {
@@ -285,7 +319,7 @@ private fun HouseholdListItem(
     household: Household,
     onClick: () -> Unit,
     onUpdate: (String, String) -> Unit,
-    onDelete: () -> Unit,
+    onDelete: () -> Unit
 ) {
     var editing by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
@@ -296,8 +330,11 @@ private fun HouseholdListItem(
             initialName = household.name,
             initialType = household.type,
             confirmLabel = stringResource(R.string.action_save),
-            onConfirm = { name, type -> onUpdate(name, type); editing = false },
-            onDismiss = { editing = false },
+            onConfirm = { name, type ->
+                onUpdate(name, type)
+                editing = false
+            },
+            onDismiss = { editing = false }
         )
     }
     if (deleting) {
@@ -306,7 +343,10 @@ private fun HouseholdListItem(
             title = { Text(stringResource(R.string.households_delete_title)) },
             text = { Text(stringResource(R.string.households_delete_confirm, household.name)) },
             confirmButton = {
-                TextButton(onClick = { onDelete(); deleting = false }) {
+                TextButton(onClick = {
+                    onDelete()
+                    deleting = false
+                }) {
                     Text(stringResource(R.string.action_delete))
                 }
             },
@@ -314,7 +354,7 @@ private fun HouseholdListItem(
                 TextButton(onClick = { deleting = false }) {
                     Text(stringResource(R.string.action_cancel))
                 }
-            },
+            }
         )
     }
 
@@ -324,24 +364,24 @@ private fun HouseholdListItem(
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Icon(
             imageVector = Icons.Outlined.Home,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = household.name,
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = HouseholdTypeLabels.label(household.type),
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         // #1760: secondary actions behind one overflow button; its label carries
@@ -350,8 +390,12 @@ private fun HouseholdListItem(
             rowName = household.name,
             actions = listOf(
                 RowAction(stringResource(R.string.action_rename), onClick = { editing = true }),
-                RowAction(stringResource(R.string.action_delete), onClick = { deleting = true }, destructive = true),
-            ),
+                RowAction(
+                    stringResource(R.string.action_delete),
+                    onClick = { deleting = true },
+                    destructive = true
+                )
+            )
         )
         Icon(Icons.AutoMirrored.Outlined.ArrowForward, contentDescription = null)
     }
@@ -365,7 +409,7 @@ fun HouseholdFormDialog(
     initialType: String,
     confirmLabel: String,
     onConfirm: (String, String) -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     var name by remember { mutableStateOf(initialName) }
     var type by remember { mutableStateOf(initialType) }
@@ -383,30 +427,37 @@ fun HouseholdFormDialog(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text(stringResource(R.string.households_name)) },
-                    singleLine = true,
+                    singleLine = true
                 )
                 ExposedDropdownMenuBox(
                     expanded = expanded,
-                    onExpandedChange = { expanded = it },
+                    onExpandedChange = { expanded = it }
                 ) {
                     OutlinedTextField(
                         value = HouseholdTypeLabels.label(type),
                         onValueChange = {},
                         readOnly = true,
                         label = { Text(stringResource(R.string.households_type)) },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(
+                                expanded = expanded
+                            )
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .menuAnchor(),
+                            .menuAnchor()
                     )
                     ExposedDropdownMenu(
                         expanded = expanded,
-                        onDismissRequest = { expanded = false },
+                        onDismissRequest = { expanded = false }
                     ) {
                         HouseholdTypes.ALL.forEach { t ->
                             DropdownMenuItem(
                                 text = { Text(HouseholdTypeLabels.label(t)) },
-                                onClick = { type = t; expanded = false },
+                                onClick = {
+                                    type = t
+                                    expanded = false
+                                }
                             )
                         }
                     }
@@ -416,7 +467,7 @@ fun HouseholdFormDialog(
         confirmButton = {
             TextButton(
                 onClick = { onConfirm(name, type) },
-                enabled = name.isNotBlank(),
+                enabled = name.isNotBlank()
             ) {
                 Text(confirmLabel)
             }
@@ -425,7 +476,7 @@ fun HouseholdFormDialog(
             TextButton(onClick = requestDismiss) {
                 Text(stringResource(R.string.action_cancel))
             }
-        },
+        }
     )
 
     if (showDiscardDialog) {
@@ -435,7 +486,7 @@ fun HouseholdFormDialog(
             onDiscard = {
                 showDiscardDialog = false
                 onDismiss()
-            },
+            }
         )
     }
 }

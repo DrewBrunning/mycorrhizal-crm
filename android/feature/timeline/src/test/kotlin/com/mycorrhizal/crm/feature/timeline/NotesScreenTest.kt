@@ -41,7 +41,7 @@ class NotesScreenTest {
         onSearchChange: (String) -> Unit = {},
         onFromDateChange: (String) -> Unit = {},
         onToDateChange: (String) -> Unit = {},
-        onLoadMore: () -> Unit = {},
+        onLoadMore: () -> Unit = {}
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -52,7 +52,7 @@ class NotesScreenTest {
                     onFromDateChange = onFromDateChange,
                     onToDateChange = onToDateChange,
                     onLoadMore = onLoadMore,
-                    onDelete = onDelete,
+                    onDelete = onDelete
                 )
             }
         }
@@ -73,11 +73,13 @@ class NotesScreenTest {
             MycorrhizalTheme {
                 NotesScreenContent(
                     uiState = NotesUiState(contactId = 5, notes = emptyList()),
-                    onCreateNote = { created += 1 },
+                    onCreateNote = { created += 1 }
                 )
             }
         }
-        composeTestRule.onNodeWithText("Notes capture what you want to remember about someone.").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Notes capture what you want to remember about someone."
+        ).assertIsDisplayed()
         composeTestRule.onNodeWithText("New note").performClick()
         assertEquals(1, created)
     }
@@ -103,8 +105,8 @@ class NotesScreenTest {
             NotesUiState(
                 contactId = 0,
                 notes = emptyList(),
-                errorRes = R.string.note_error_missing_id,
-            ),
+                errorRes = R.string.note_error_missing_id
+            )
         )
         composeTestRule.onNodeWithText("Missing contact id").assertIsDisplayed()
         composeTestRule.onNodeWithText("No notes yet").assertDoesNotExist()
@@ -117,9 +119,9 @@ class NotesScreenTest {
                 contactId = 5,
                 notes = listOf(
                     Note(id = 3, content = "Loves climbing"),
-                    Note(id = 4, content = "Met at conference"),
-                ),
-            ),
+                    Note(id = 4, content = "Met at conference")
+                )
+            )
         )
         composeTestRule.onNodeWithText("Loves climbing").assertIsDisplayed()
         composeTestRule.onNodeWithText("Met at conference").assertIsDisplayed()
@@ -130,7 +132,7 @@ class NotesScreenTest {
         var editedId: Int? = null
         setContent(
             NotesUiState(contactId = 5, notes = listOf(Note(id = 3, content = "Loves climbing"))),
-            onEditNote = { editedId = it },
+            onEditNote = { editedId = it }
         )
         composeTestRule.onNodeWithText("Loves climbing").performClick()
         assertEquals(3, editedId)
@@ -141,7 +143,7 @@ class NotesScreenTest {
         var query = ""
         setContent(
             NotesUiState(contactId = 5, notes = emptyList()),
-            onSearchChange = { query = it },
+            onSearchChange = { query = it }
         )
         composeTestRule.onNodeWithText("Search notes").performTextInput("climb")
         assertEquals("climb", query)
@@ -152,7 +154,7 @@ class NotesScreenTest {
         var from = ""
         setContent(
             NotesUiState(contactId = 5, notes = emptyList(), fromDate = "2026-08-01"),
-            onFromDateChange = { from = it },
+            onFromDateChange = { from = it }
         )
         composeTestRule.onNodeWithTag("timeline-from-date").performClick()
         composeTestRule.onNodeWithText("Confirm").performClick()
@@ -164,7 +166,7 @@ class NotesScreenTest {
         var to = ""
         setContent(
             NotesUiState(contactId = 5, notes = emptyList(), toDate = "2026-08-10"),
-            onToDateChange = { to = it },
+            onToDateChange = { to = it }
         )
         composeTestRule.onNodeWithTag("timeline-to-date").performClick()
         composeTestRule.onNodeWithText("Confirm").performClick()
@@ -176,7 +178,7 @@ class NotesScreenTest {
         var deletedId: Int? = null
         setContent(
             NotesUiState(contactId = 5, notes = listOf(Note(id = 3, content = "Loves climbing"))),
-            onDelete = { deletedId = it },
+            onDelete = { deletedId = it }
         )
         composeTestRule.onNodeWithContentDescription("Delete Loves climbing").performClick()
 
@@ -190,7 +192,7 @@ class NotesScreenTest {
         var deletedId: Int? = null
         setContent(
             NotesUiState(contactId = 5, notes = listOf(Note(id = 3, content = "Loves climbing"))),
-            onDelete = { deletedId = it },
+            onDelete = { deletedId = it }
         )
         composeTestRule.onNodeWithContentDescription("Delete Loves climbing").performClick()
         composeTestRule.onNodeWithText("Cancel").performClick()
@@ -204,7 +206,7 @@ class NotesScreenTest {
         var deletedId: Int? = null
         setContent(
             NotesUiState(contactId = 5, notes = listOf(Note(id = 3, content = "Loves climbing"))),
-            onDelete = { deletedId = it },
+            onDelete = { deletedId = it }
         )
         composeTestRule.onNodeWithContentDescription("Delete Loves climbing").performClick()
         // The dialog's confirm TextButton ("Delete") is the only exact-match
@@ -218,8 +220,12 @@ class NotesScreenTest {
     fun `a load more button appears with a next cursor and calls back on tap`() {
         var loadMoreCalls = 0
         setContent(
-            NotesUiState(contactId = 5, notes = listOf(Note(id = 3, content = "Loves climbing")), nextCursor = "cursor-2"),
-            onLoadMore = { loadMoreCalls++ },
+            NotesUiState(
+                contactId = 5,
+                notes = listOf(Note(id = 3, content = "Loves climbing")),
+                nextCursor = "cursor-2"
+            ),
+            onLoadMore = { loadMoreCalls++ }
         )
         composeTestRule.onNodeWithText("Load more").performClick()
         assertEquals(1, loadMoreCalls)
@@ -234,11 +240,20 @@ class NotesScreenTest {
     @Test
     fun `top-level screen renders the view model's notes`() {
         val repository = mockk<NoteRepository>()
-        coEvery { repository.listForContact(1, null, null, null, null, null) } returns Result.success(
+        coEvery {
+            repository.listForContact(
+                1,
+                null,
+                null,
+                null,
+                null,
+                null
+            )
+        } returns Result.success(
             ContactNotesPage(
                 notes = listOf(Note(id = 3, content = "Loves climbing")),
-                nextCursor = null,
-            ),
+                nextCursor = null
+            )
         )
         val viewModel = NotesViewModel(repository, SavedStateHandle(mapOf("contactId" to 1)))
 
@@ -248,7 +263,7 @@ class NotesScreenTest {
                     onBack = {},
                     onCreateNote = {},
                     onEditNote = {},
-                    viewModel = viewModel,
+                    viewModel = viewModel
                 )
             }
         }

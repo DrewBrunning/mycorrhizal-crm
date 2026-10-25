@@ -14,11 +14,13 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.first
 
-private val Context.trackingDataStore: DataStore<Preferences> by preferencesDataStore(name = "tracking_prefs")
+private val Context.trackingDataStore: DataStore<Preferences> by preferencesDataStore(
+    name = "tracking_prefs"
+)
 
 @Singleton
 class TrackingSettingsRepositoryImpl @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @ApplicationContext private val context: Context
 ) : TrackingSettingsRepository {
 
     private val callTracking = booleanPreferencesKey("call_tracking_enabled")

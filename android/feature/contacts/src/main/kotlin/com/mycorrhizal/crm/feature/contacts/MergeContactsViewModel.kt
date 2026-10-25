@@ -10,6 +10,7 @@ import com.mycorrhizal.crm.model.network.ContactMergeRequest
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,7 +18,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class MergeUiState(
     val keepId: Long = 0,
@@ -38,7 +38,7 @@ data class MergeUiState(
     /** field -> chosen value; covers scalar + field-value conflicts. */
     val resolutions: Map<String, String> = emptyMap(),
     val merged: Boolean = false,
-    val error: String? = null,
+    val error: String? = null
 )
 
 @HiltViewModel
@@ -46,7 +46,7 @@ class MergeContactsViewModel @Inject constructor(
     private val mergeRepository: MergeRepository,
     // M23: the search-based target picker needs the same contact search the list
     // uses; the repository is the established surface for it.
-    private val contactRepository: ContactRepository,
+    private val contactRepository: ContactRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MergeUiState())
@@ -58,13 +58,23 @@ class MergeContactsViewModel @Inject constructor(
 
     /** M23: debounced server search for the merge target, excluding the keeper. */
     fun onSearchQueryChange(query: String) {
-        _uiState.update { it.copy(searchQuery = query, searchResults = emptyList(), hiddenMatchCount = 0, isSearching = false) }
+        _uiState.update {
+            it.copy(
+                searchQuery = query,
+                searchResults = emptyList(),
+                hiddenMatchCount = 0,
+                isSearching = false
+            )
+        }
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
             if (query.isBlank()) return@launch
             delay(SEARCH_DEBOUNCE_MS)
             _uiState.update { it.copy(isSearching = true) }
-            contactRepository.listContacts(search = query.trim(), limit = SEARCH_LIMIT).foldApiError(
+            contactRepository.listContacts(
+                search = query.trim(),
+                limit = SEARCH_LIMIT
+            ).foldApiError(
                 onSuccess = { page ->
                     val keepId = _uiState.value.keepId
                     val trimmed = _uiState.value.searchQuery.trim()
@@ -75,7 +85,10 @@ class MergeContactsViewModel @Inject constructor(
                     // wide server query (so a phone/email search still reaches the
                     // right contact) but only offer rows whose displayed name
                     // contains what was typed.
-                    val withoutKeeper = page.contacts.filter { contact -> contact.id != keepId.toInt() }
+                    val withoutKeeper = page.contacts.filter { contact ->
+                        contact.id !=
+                            keepId.toInt()
+                    }
                     val matched = withoutKeeper.filter { contact ->
                         contact.displayName.contains(trimmed, ignoreCase = true)
                     }
@@ -83,13 +96,19 @@ class MergeContactsViewModel @Inject constructor(
                         it.copy(
                             isSearching = false,
                             searchResults = matched,
-                            hiddenMatchCount = withoutKeeper.size - matched.size,
+                            hiddenMatchCount = withoutKeeper.size - matched.size
                         )
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isSearching = false, searchResults = emptyList(), error = error.displayMessage) }
-                },
+                    _uiState.update {
+                        it.copy(
+                            isSearching = false,
+                            searchResults = emptyList(),
+                            error = error.displayMessage
+                        )
+                    }
+                }
             )
         }
     }
@@ -105,7 +124,7 @@ class MergeContactsViewModel @Inject constructor(
                 hiddenMatchCount = 0,
                 isSearching = false,
                 preview = null,
-                resolutions = emptyMap(),
+                resolutions = emptyMap()
             )
         }
         preview()
@@ -117,13 +136,15 @@ class MergeContactsViewModel @Inject constructor(
         if (keep == 0L || merge == 0L) return
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
-            mergeRepository.preview(ContactMergeRequest(keepId = keep, mergeId = merge)).foldApiError(
+            mergeRepository.preview(
+                ContactMergeRequest(keepId = keep, mergeId = merge)
+            ).foldApiError(
                 onSuccess = { preview ->
                     _uiState.update { it.copy(isLoading = false, preview = preview) }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }
@@ -149,14 +170,18 @@ class MergeContactsViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isCommitting = true, error = null) }
             mergeRepository.commit(
-                ContactMergeRequest(keepId = keep, mergeId = merge, resolutions = _uiState.value.resolutions),
+                ContactMergeRequest(
+                    keepId = keep,
+                    mergeId = merge,
+                    resolutions = _uiState.value.resolutions
+                )
             ).foldApiError(
                 onSuccess = {
                     _uiState.update { it.copy(isCommitting = false, merged = true) }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isCommitting = false, error = error.displayMessage) }
-                },
+                }
             )
         }
     }

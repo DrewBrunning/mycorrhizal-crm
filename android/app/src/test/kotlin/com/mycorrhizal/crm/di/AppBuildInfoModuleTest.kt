@@ -8,14 +8,30 @@ import org.junit.Test
 class AppBuildInfoModuleTest {
     @Test
     fun `blank commit and build date become null`() {
-        val info = appBuildInfo("1.0", 7, "release", "foss", "com.mycorrhizal.crm", commit = "", buildDate = "  ")
+        val info = appBuildInfo(
+            "1.0",
+            7,
+            "release",
+            "foss",
+            "com.mycorrhizal.crm",
+            commit = "",
+            buildDate = "  "
+        )
         assertNull(info.commit)
         assertNull(info.buildDate)
     }
 
     @Test
     fun `stamped commit and build date are kept`() {
-        val info = appBuildInfo("1.0", 7, "release", "foss", "com.mycorrhizal.crm", "abc1234", "2026-10-02T00:00:00Z")
+        val info = appBuildInfo(
+            "1.0",
+            7,
+            "release",
+            "foss",
+            "com.mycorrhizal.crm",
+            "abc1234",
+            "2026-10-02T00:00:00Z"
+        )
         assertEquals("abc1234", info.commit)
         assertEquals("2026-10-02T00:00:00Z", info.buildDate)
     }

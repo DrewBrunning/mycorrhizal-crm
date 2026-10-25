@@ -19,7 +19,9 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
-private val Context.bundleBackupDataStore: DataStore<Preferences> by preferencesDataStore(name = "bundle_backup")
+private val Context.bundleBackupDataStore: DataStore<Preferences> by preferencesDataStore(
+    name = "bundle_backup"
+)
 
 /**
  * DataStore-backed [BundleBackupRepository]. Keys are `last_export:<profileId>`
@@ -29,7 +31,7 @@ private val Context.bundleBackupDataStore: DataStore<Preferences> by preferences
 @Singleton
 class BundleBackupRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val sessionManager: SessionManager,
+    private val sessionManager: SessionManager
 ) : BundleBackupRepository {
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -42,7 +44,7 @@ class BundleBackupRepositoryImpl @Inject constructor(
                     BundleBackupStatus(
                         isLocalProfile = profile.kind is ServerProfileKind.Local,
                         lastExportAt = prefs[lastExportKey(profile.id)],
-                        dismissedAt = prefs[dismissedKey(profile.id)],
+                        dismissedAt = prefs[dismissedKey(profile.id)]
                     )
                 }
             }

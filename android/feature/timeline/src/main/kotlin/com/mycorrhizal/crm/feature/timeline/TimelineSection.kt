@@ -1,8 +1,5 @@
 package com.mycorrhizal.crm.feature.timeline
 
-import com.mycorrhizal.crm.ui.components.activityTypeLabel
-import com.mycorrhizal.crm.ui.components.lifeEventTypeLabel
-import com.mycorrhizal.crm.ui.components.giftStatusLabelRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,8 +7,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarToday
-import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.CardGiftcard
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.EventNote
 import androidx.compose.material.icons.outlined.Link
@@ -24,14 +21,16 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.res.stringResource
 import com.mycorrhizal.crm.model.network.ExternalActivity
 import com.mycorrhizal.crm.model.network.Gift
-import com.mycorrhizal.crm.model.network.GiftStatuses
 import com.mycorrhizal.crm.model.network.LifeEvent
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.activityTypeLabel
+import com.mycorrhizal.crm.ui.components.giftStatusLabelRes
+import com.mycorrhizal.crm.ui.components.lifeEventTypeLabel
 
 /**
  * The unified timeline section for a contact detail page (Phase 2 item 10).
@@ -49,7 +48,7 @@ fun TimelineSection(
     onCompleteReminder: (Int) -> Unit,
     onUndoCompletion: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
-    previewLimit: Int = TIMELINE_PREVIEW_LIMIT,
+    previewLimit: Int = TIMELINE_PREVIEW_LIMIT
 ) {
     Column(modifier = modifier) {
         if (items.isEmpty()) {
@@ -57,7 +56,7 @@ fun TimelineSection(
                 text = stringResource(R.string.timeline_empty),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             )
             return
         }
@@ -71,7 +70,7 @@ fun TimelineSection(
                 onEditNote = onEditNote,
                 onEditReminder = onEditReminder,
                 onCompleteReminder = onCompleteReminder,
-                onUndoCompletion = onUndoCompletion,
+                onUndoCompletion = onUndoCompletion
             )
         }
     }
@@ -88,31 +87,37 @@ fun TimelineItemRow(
     onEditNote: (Int) -> Unit,
     onEditReminder: (Int) -> Unit = {},
     onCompleteReminder: (Int) -> Unit = {},
-    onUndoCompletion: (Int) -> Unit = {},
+    onUndoCompletion: (Int) -> Unit = {}
 ) {
     when (item) {
         is TimelineItem.ActivityItem -> TimelineActivityRow(
             item.activity.title.orEmpty(),
             item.activity.type?.takeIf { it.isNotBlank() }?.let { activityTypeLabel(it) }.orEmpty(),
-            onClick = { onEditActivity(item.activity.id) },
+            onClick = { onEditActivity(item.activity.id) }
         )
+
         is TimelineItem.NoteItem -> TimelineNoteRow(
             item.note.content.orEmpty(),
-            onClick = { onEditNote(item.note.id) },
+            onClick = { onEditNote(item.note.id) }
         )
+
         is TimelineItem.ReminderItem -> TimelineReminderRow(
             message = item.reminder.message.orEmpty(),
             recurrence = item.reminder.recurrence,
             completed = item.reminder.completed,
             onClick = { onEditReminder(item.reminder.id) },
-            onComplete = { onCompleteReminder(item.reminder.id) },
+            onComplete = { onCompleteReminder(item.reminder.id) }
         )
+
         is TimelineItem.CompletionItem -> TimelineCompletionRow(
             message = item.completion.message.orEmpty(),
-            onUndo = { onUndoCompletion(item.completion.id) },
+            onUndo = { onUndoCompletion(item.completion.id) }
         )
+
         is TimelineItem.ExternalActivityItem -> TimelineExternalActivityRow(item.activity)
+
         is TimelineItem.LifeEventItem -> TimelineLifeEventRow(item.lifeEvent)
+
         is TimelineItem.GiftItem -> TimelineGiftRow(item.gift)
     }
 }
@@ -120,24 +125,30 @@ fun TimelineItemRow(
 /** Issue #1401: a life event row (explorer only); not editable from the timeline, like web. */
 @Composable
 private fun TimelineLifeEventRow(lifeEvent: LifeEvent) {
-    val typeLabel = lifeEvent.type?.takeIf { it.isNotBlank() }?.let { lifeEventTypeLabel(it) }.orEmpty()
+    val typeLabel = lifeEvent.type?.takeIf { it.isNotBlank() }?.let {
+        lifeEventTypeLabel(
+            it
+        )
+    }.orEmpty()
     TimelineRowBase(
         icon = { Icon(Icons.Outlined.Event, contentDescription = null) },
         title = lifeEvent.description?.takeIf { it.isNotBlank() } ?: typeLabel,
         subtitle = typeLabel,
-        onClick = {},
+        onClick = {}
     )
 }
 
 /** Issue #1401: a gift row (explorer only); not editable from the timeline, like web. */
 @Composable
 private fun TimelineGiftRow(gift: Gift) {
-    val status = giftStatusLabelRes(gift.status)?.let { stringResource(it) } ?: stringResource(R.string.gifts_status_idea)
+    val status = giftStatusLabelRes(
+        gift.status
+    )?.let { stringResource(it) } ?: stringResource(R.string.gifts_status_idea)
     TimelineRowBase(
         icon = { Icon(Icons.Outlined.CardGiftcard, contentDescription = null) },
         title = gift.description,
         subtitle = status,
-        onClick = {},
+        onClick = {}
     )
 }
 
@@ -147,7 +158,7 @@ private fun TimelineRowBase(
     title: String,
     subtitle: String,
     onClick: () -> Unit,
-    trailing: (@Composable () -> Unit)? = null,
+    trailing: (@Composable () -> Unit)? = null
 ) {
     androidx.compose.material3.ListItem(
         headlineContent = {
@@ -155,7 +166,7 @@ private fun TimelineRowBase(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
         },
         supportingContent = {
@@ -163,7 +174,7 @@ private fun TimelineRowBase(
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         },
@@ -171,27 +182,37 @@ private fun TimelineRowBase(
         trailingContent = trailing?.let { { it() } },
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .clickable(onClick = onClick)
     )
 }
 
 @Composable
 private fun TimelineActivityRow(title: String, type: String, onClick: () -> Unit) {
     TimelineRowBase(
-        icon = { Icon(Icons.Outlined.EventNote, contentDescription = stringResource(R.string.cd_activity)) },
+        icon = {
+            Icon(
+                Icons.Outlined.EventNote,
+                contentDescription = stringResource(R.string.cd_activity)
+            )
+        },
         title = title,
         subtitle = type,
-        onClick = onClick,
+        onClick = onClick
     )
 }
 
 @Composable
 private fun TimelineNoteRow(content: String, onClick: () -> Unit) {
     TimelineRowBase(
-        icon = { Icon(Icons.Outlined.StickyNote2, contentDescription = stringResource(R.string.cd_note)) },
+        icon = {
+            Icon(
+                Icons.Outlined.StickyNote2,
+                contentDescription = stringResource(R.string.cd_note)
+            )
+        },
         title = content,
         subtitle = "",
-        onClick = onClick,
+        onClick = onClick
     )
 }
 
@@ -201,10 +222,15 @@ private fun TimelineReminderRow(
     recurrence: String?,
     completed: Boolean,
     onClick: () -> Unit,
-    onComplete: () -> Unit,
+    onComplete: () -> Unit
 ) {
     TimelineRowBase(
-        icon = { Icon(Icons.Outlined.Notifications, contentDescription = stringResource(R.string.cd_reminder)) },
+        icon = {
+            Icon(
+                Icons.Outlined.Notifications,
+                contentDescription = stringResource(R.string.cd_reminder)
+            )
+        },
         title = message,
         subtitle = recurrence ?: "",
         onClick = onClick,
@@ -212,26 +238,26 @@ private fun TimelineReminderRow(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (!completed) {
                     androidx.compose.material3.IconButton(onClick = onComplete) {
-                        Icon(Icons.Outlined.CalendarToday, contentDescription = stringResource(R.string.cd_complete_reminder))
+                        Icon(
+                            Icons.Outlined.CalendarToday,
+                            contentDescription = stringResource(R.string.cd_complete_reminder)
+                        )
                     }
                 }
             }
-        },
+        }
     )
 }
 
 /** A completed reminder's timeline row (web's "Reminder completed"). Undo deletes it. */
 @Composable
-private fun TimelineCompletionRow(
-    message: String,
-    onUndo: () -> Unit,
-) {
+private fun TimelineCompletionRow(message: String, onUndo: () -> Unit) {
     TimelineRowBase(
         icon = {
             Icon(
                 Icons.Outlined.Notifications,
                 contentDescription = stringResource(R.string.cd_reminder),
-                tint = MaterialTheme.colorScheme.primary,
+                tint = MaterialTheme.colorScheme.primary
             )
         },
         title = stringResource(R.string.reminder_completed),
@@ -242,10 +268,10 @@ private fun TimelineCompletionRow(
                 Icon(
                     Icons.Outlined.Delete,
                     contentDescription = stringResource(R.string.cd_undo_completion),
-                    tint = MaterialTheme.colorScheme.error,
+                    tint = MaterialTheme.colorScheme.error
                 )
             }
-        },
+        }
     )
 }
 
@@ -270,8 +296,8 @@ private fun TimelineExternalActivityRow(activity: ExternalActivity) {
         subtitle = stringResource(
             R.string.timeline_external_activity_from_system,
             personName,
-            activity.sourceSystem.orEmpty(),
+            activity.sourceSystem.orEmpty()
         ),
-        onClick = {},
+        onClick = {}
     )
 }

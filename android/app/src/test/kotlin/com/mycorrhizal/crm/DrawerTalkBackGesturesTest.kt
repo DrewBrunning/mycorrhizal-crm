@@ -71,7 +71,7 @@ class DrawerTalkBackGesturesTest {
                     currentRoute = "home",
                     windowSizeClass = WindowSizeClass.calculateFromSize(DpSize(400.dp, 800.dp)),
                     drawerState = drawerState,
-                    onDestinationClick = {},
+                    onDestinationClick = {}
                 ) {
                     Box(Modifier.fillMaxSize().testTag("drawer-gesture-surface"))
                 }
@@ -108,7 +108,7 @@ class DrawerTalkBackGesturesTest {
         assertEquals(
             "TalkBack's swipe gestures must not be intercepted by the drawer",
             DrawerValue.Closed,
-            drawerState.currentValue,
+            drawerState.currentValue
         )
     }
 }

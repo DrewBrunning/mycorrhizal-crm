@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm.network
 
 import com.mycorrhizal.crm.model.MoshiProvider
+import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -12,7 +13,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import kotlinx.coroutines.runBlocking
 
 /**
  * Issues #257 + #266 — pins Android's real Moshi parsing against the backend's
@@ -48,7 +48,7 @@ class ContractFixtureTest {
         server.start()
         val okHttp = OkHttpClient.Builder()
             .addInterceptor(
-                BaseUrlInterceptor(BaseUrlProvider { server.url("/").toString().trimEnd('/') }),
+                BaseUrlInterceptor(BaseUrlProvider { server.url("/").toString().trimEnd('/') })
             )
             .build()
         client = ApiClient(okHttp, MoshiProvider.get())
@@ -107,7 +107,10 @@ class ContractFixtureTest {
             (root["contacts"] as List<*>).first { (it as Map<*, *>)["uid"] == FIXTURE_PRIMARY_UID }
         } as Map<*, *>
         assertTrue("archived must be present on the wire", fixturePrimary.containsKey("archived"))
-        assertTrue("is_favorite must be present on the wire", fixturePrimary.containsKey("is_favorite"))
+        assertTrue(
+            "is_favorite must be present on the wire",
+            fixturePrimary.containsKey("is_favorite")
+        )
 
         val primary = page.contacts.find { it.firstname == "Fixture" && it.lastname == "Primary" }
         assertNotNull("fixture contact should be in the fixture", primary)
@@ -124,11 +127,11 @@ class ContractFixtureTest {
         assertEquals("incremental", page.sync?.mode)
         assertTrue(
             "incremental must list collection names, not ids",
-            page.sync?.incremental?.contains("contacts") == true,
+            page.sync?.incremental?.contains("contacts") == true
         )
         assertTrue(
             "full_resync must list collection names",
-            page.sync?.fullResync?.contains("relationship_edges") == true,
+            page.sync?.fullResync?.contains("relationship_edges") == true
         )
     }
 
@@ -196,7 +199,9 @@ class ContractFixtureTest {
 
     @Test
     fun `getHealth parses the embedded capability fixture`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(200).setBody(readFixture("health-embedded.json")))
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(readFixture("health-embedded.json"))
+        )
 
         val result = client.getHealth()
 
@@ -206,8 +211,14 @@ class ContractFixtureTest {
         val capabilities = checkNotNull(health.capabilities) { "capabilities must parse" }
         // Core product surfaces survive; the network-only ones are absent.
         assertTrue(capabilities.contains("contacts"))
-        assertFalse("calendar is not registered in embedded mode (storage only, #1367)", capabilities.contains("calendar"))
-        assertFalse("notifications is not registered in embedded mode (storage only, #1367)", capabilities.contains("notifications"))
+        assertFalse(
+            "calendar is not registered in embedded mode (storage only, #1367)",
+            capabilities.contains("calendar")
+        )
+        assertFalse(
+            "notifications is not registered in embedded mode (storage only, #1367)",
+            capabilities.contains("notifications")
+        )
         assertFalse("login is not registered in embedded mode", capabilities.contains("login"))
         assertFalse("push is not registered in embedded mode", capabilities.contains("push"))
         assertFalse("carddav is not registered in embedded mode", capabilities.contains("carddav"))

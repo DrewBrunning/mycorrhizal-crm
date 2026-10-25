@@ -17,8 +17,8 @@ import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.LoginResult
 import com.mycorrhizal.crm.network.toApiError
-import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
+import kotlinx.coroutines.flow.Flow
 
 /**
  * Online-first auth: login exchanges credentials for a JWT (captured from the
@@ -27,7 +27,7 @@ import javax.inject.Inject
  */
 class AuthRepositoryImpl @Inject constructor(
     private val apiClient: ApiClient,
-    private val sessionManager: SessionManager,
+    private val sessionManager: SessionManager
 ) : AuthRepository {
 
     /**
@@ -48,7 +48,9 @@ class AuthRepositoryImpl @Inject constructor(
         if (login.twoFactorRequired) {
             val pending = login.pending2faCookie
             if (pending.isNullOrBlank()) {
-                return Result.failure(ApiError.Parse("2FA required but no pending challenge was returned"))
+                return Result.failure(
+                    ApiError.Parse("2FA required but no pending challenge was returned")
+                )
             }
             pending2faCookie = pending
             return Result.success(LoginOutcome.TwoFactorRequired(login.methods))
@@ -69,7 +71,9 @@ class AuthRepositoryImpl @Inject constructor(
         if (pending.isNullOrBlank()) {
             // No in-flight challenge (login never ran, or a previous attempt
             // consumed/expired it) — the server would reject anyway.
-            return Result.failure(ApiError.Client(401, "No pending two-factor login found. Please sign in again."))
+            return Result.failure(
+                ApiError.Client(401, "No pending two-factor login found. Please sign in again.")
+            )
         }
 
         return finishSecondFactor(apiClient.complete2faLogin(code.trim(), pending))
@@ -78,7 +82,9 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun beginPasskeyLogin(): Result<String> {
         val pending = pending2faCookie
         if (pending.isNullOrBlank()) {
-            return Result.failure(ApiError.Client(401, "No pending two-factor login found. Please sign in again."))
+            return Result.failure(
+                ApiError.Client(401, "No pending two-factor login found. Please sign in again.")
+            )
         }
         val options = apiClient.webauthnLoginBegin(pending).getOrElse { error ->
             // Same as a wrong-challenge code: an expired/consumed challenge is
@@ -92,13 +98,18 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun completePasskeyLogin(assertionJson: String): Result<Unit> {
         val pending = pending2faCookie
         if (pending.isNullOrBlank()) {
-            return Result.failure(ApiError.Client(401, "No pending two-factor login found. Please sign in again."))
+            return Result.failure(
+                ApiError.Client(401, "No pending two-factor login found. Please sign in again.")
+            )
         }
         // Unlike a wrong TOTP code, a 401 here can mean "assertion rejected" with
         // the challenge still valid (a retry re-runs /login/begin, which itself
         // 401s and clears the pending state if the challenge really is gone), so
         // only a real session outcome consumes it.
-        return finishSecondFactor(apiClient.webauthnLoginFinish(assertionJson, pending), clearOn401 = false)
+        return finishSecondFactor(
+            apiClient.webauthnLoginFinish(assertionJson, pending),
+            clearOn401 = false
+        )
     }
 
     /**
@@ -108,7 +119,7 @@ class AuthRepositoryImpl @Inject constructor(
      */
     private suspend fun finishSecondFactor(
         result: Result<LoginResult>,
-        clearOn401: Boolean = true,
+        clearOn401: Boolean = true
     ): Result<Unit> {
         val login = result.getOrElse { error ->
             // A 401 on the code step means the challenge was consumed/expired/
@@ -144,26 +155,28 @@ class AuthRepositoryImpl @Inject constructor(
      * flow and persists it after this succeeds, mirroring how it already
      * handled the raw token before.
      */
-    override suspend fun completeOidcNativeLogin(code: String, codeVerifier: String): Result<String> =
-        apiClient.exchangeOidcNativeCode(code, codeVerifier)
-            .fold(
-                onSuccess = { token -> Result.success(token) },
-                onFailure = { Result.failure(it.toApiError()) },
-            )
+    override suspend fun completeOidcNativeLogin(
+        code: String,
+        codeVerifier: String
+    ): Result<String> = apiClient.exchangeOidcNativeCode(code, codeVerifier)
+        .fold(
+            onSuccess = { token -> Result.success(token) },
+            onFailure = { Result.failure(it.toApiError()) }
+        )
 
     override suspend fun getTwoFactorStatus(): Result<TwoFactorStatusResponse> =
         apiClient.getTwoFactorStatus().fold(
             onSuccess = { Result.success(it) },
-            onFailure = { Result.failure(it.toApiError()) },
+            onFailure = { Result.failure(it.toApiError()) }
         )
 
     override suspend fun setupTwoFactor(proof: SecondFactorProof?): Result<TwoFactorSetupResponse> =
         apiClient.setupTwoFactor(
             code = (proof as? SecondFactorProof.Code)?.code?.trim(),
-            assertionJson = (proof as? SecondFactorProof.Assertion)?.json,
+            assertionJson = (proof as? SecondFactorProof.Assertion)?.json
         ).fold(
             onSuccess = { Result.success(it) },
-            onFailure = { Result.failure(it.toApiError()) },
+            onFailure = { Result.failure(it.toApiError()) }
         )
 
     override suspend fun confirmTwoFactor(code: String): Result<TwoFactorConfirmResponse> {
@@ -182,10 +195,12 @@ class AuthRepositoryImpl @Inject constructor(
         return Result.success(body.value)
     }
 
-    override suspend fun regenerateRecoveryCodes(proof: SecondFactorProof): Result<TwoFactorConfirmResponse> {
+    override suspend fun regenerateRecoveryCodes(
+        proof: SecondFactorProof
+    ): Result<TwoFactorConfirmResponse> {
         val result = apiClient.regenerateRecoveryCodes(
             code = (proof as? SecondFactorProof.Code)?.code?.trim(),
-            assertionJson = (proof as? SecondFactorProof.Assertion)?.json,
+            assertionJson = (proof as? SecondFactorProof.Assertion)?.json
         )
         val body = result.getOrElse { return Result.failure(it.toApiError()) }
         body.reissuedToken?.let { sessionManager.setToken(it) }
@@ -196,7 +211,7 @@ class AuthRepositoryImpl @Inject constructor(
         val result = apiClient.getAuthConfig()
         return result.fold(
             onSuccess = { Result.success(it) },
-            onFailure = { Result.failure(it.toApiError()) },
+            onFailure = { Result.failure(it.toApiError()) }
         )
     }
 
@@ -204,7 +219,7 @@ class AuthRepositoryImpl @Inject constructor(
         val result = apiClient.register(username, email, password)
         return result.fold(
             onSuccess = { Result.success(Unit) },
-            onFailure = { Result.failure(it.toApiError()) },
+            onFailure = { Result.failure(it.toApiError()) }
         )
     }
 
@@ -212,7 +227,7 @@ class AuthRepositoryImpl @Inject constructor(
         val result = apiClient.checkPasswordStrength(password)
         return result.fold(
             onSuccess = { Result.success(it) },
-            onFailure = { Result.failure(it.toApiError()) },
+            onFailure = { Result.failure(it.toApiError()) }
         )
     }
 
@@ -220,7 +235,7 @@ class AuthRepositoryImpl @Inject constructor(
         val result = apiClient.requestPasswordReset(email)
         return result.fold(
             onSuccess = { message -> Result.success(message.message ?: "") },
-            onFailure = { Result.failure(it.toApiError()) },
+            onFailure = { Result.failure(it.toApiError()) }
         )
     }
 
@@ -228,7 +243,7 @@ class AuthRepositoryImpl @Inject constructor(
         val result = apiClient.confirmPasswordReset(token, password)
         return result.fold(
             onSuccess = { Result.success(Unit) },
-            onFailure = { Result.failure(it.toApiError()) },
+            onFailure = { Result.failure(it.toApiError()) }
         )
     }
 
@@ -278,11 +293,14 @@ class AuthRepositoryImpl @Inject constructor(
         return Result.success(stored)
     }
 
-    override suspend fun changePassword(currentPassword: String, newPassword: String): Result<Unit> {
+    override suspend fun changePassword(
+        currentPassword: String,
+        newPassword: String
+    ): Result<Unit> {
         val result = apiClient.changePassword(currentPassword, newPassword)
         return result.fold(
             onSuccess = { Result.success(Unit) },
-            onFailure = { Result.failure(it.toApiError()) },
+            onFailure = { Result.failure(it.toApiError()) }
         )
     }
 
@@ -318,7 +336,7 @@ class AuthRepositoryImpl @Inject constructor(
         sessionManager.setSession(
             serverUrl = sessionManager.serverUrl().orEmpty(),
             token = token,
-            state = SessionState(),
+            state = SessionState()
         )
 
         val profileResult = apiClient.currentUser()
@@ -344,8 +362,8 @@ class AuthRepositoryImpl @Inject constructor(
                 language = profile.language,
                 dateFormat = profile.dateFormat,
                 selfContactVCardUid = profile.selfContactVCardUid,
-                enabledContactFields = profile.enabledContactFields,
-            ),
+                enabledContactFields = profile.enabledContactFields
+            )
         )
     }
 }

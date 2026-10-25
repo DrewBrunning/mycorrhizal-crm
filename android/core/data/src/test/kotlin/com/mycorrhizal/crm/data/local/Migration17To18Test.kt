@@ -56,11 +56,11 @@ class Migration17To18Test {
         // triggers on the hand-built fixture yet). fn is what searchFts matches.
         db.execSQL(
             "INSERT INTO cached_contacts (id, fn, firstname, lastname, archived, deleted) " +
-                "VALUES (1, 'García Ruiz', 'García', 'Ruiz', 0, 0)",
+                "VALUES (1, 'García Ruiz', 'García', 'Ruiz', 0, 0)"
         )
         db.execSQL(
             "INSERT INTO cached_contacts (id, fn, firstname, lastname, archived, deleted) " +
-                "VALUES (2, 'Straße', 'Straße', '', 0, 0)",
+                "VALUES (2, 'Straße', 'Straße', '', 0, 0)"
         )
         db.version = 17
         db.close()
@@ -92,7 +92,7 @@ class Migration17To18Test {
         // A fresh row written through the DAO after the hop keeps the recreated
         // content-sync triggers working under the new tokenizer.
         db.cachedContactDao().upsert(
-            CachedContact(id = 3, fn = "İstanbul", firstname = "İstanbul"),
+            CachedContact(id = 3, fn = "İstanbul", firstname = "İstanbul")
         )
         found = db.cachedContactDao().searchFts("istanbul")
         assertEquals(1, found.size)

@@ -71,10 +71,10 @@ import androidx.room.TypeConverters
         CachedCadencePolicy::class,
         CachedOccasionEvent::class,
         PendingInteraction::class,
-        CustomLinkAction::class,
+        CustomLinkAction::class
     ],
     version = CURRENT_VERSION,
-    exportSchema = true,
+    exportSchema = true
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {

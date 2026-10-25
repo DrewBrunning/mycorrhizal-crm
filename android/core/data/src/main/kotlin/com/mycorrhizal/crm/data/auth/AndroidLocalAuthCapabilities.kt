@@ -20,9 +20,8 @@ import javax.inject.Singleton
  * enable" and "what will the prompt accept" can never disagree.
  */
 @Singleton
-class AndroidLocalAuthCapabilities @Inject constructor(
-    @ApplicationContext context: Context,
-) : LocalAuthCapabilities {
+class AndroidLocalAuthCapabilities @Inject constructor(@ApplicationContext context: Context) :
+    LocalAuthCapabilities {
 
     private val biometricManager = BiometricManager.from(context)
 

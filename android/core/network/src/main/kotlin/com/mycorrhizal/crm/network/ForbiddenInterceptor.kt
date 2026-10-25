@@ -17,7 +17,7 @@ import okhttp3.Response
  */
 class ForbiddenInterceptor(
     private val notifier: ForbiddenNotifier,
-    private val baseUrlProvider: BaseUrlProvider,
+    private val baseUrlProvider: BaseUrlProvider
 ) : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {
@@ -26,7 +26,9 @@ class ForbiddenInterceptor(
         val base = baseUrlProvider.baseUrl().toHttpUrlOrNull()
         val authenticated = response.request.header("Authorization")
             ?.startsWith("Bearer ", ignoreCase = true) == true
-        if (response.code == 403 && base != null && request.url.host == base.host && authenticated) {
+        if (response.code == 403 && base != null && request.url.host == base.host &&
+            authenticated
+        ) {
             notifier.onForbidden()
         }
         return response

@@ -14,7 +14,7 @@ data class ContactsPage(
     val contacts: List<ContactSummary>,
     val nextCursor: String?,
     val limit: Int,
-    val sync: SyncInfo?,
+    val sync: SyncInfo?
 )
 
 /**
@@ -41,7 +41,7 @@ interface ContactRepository {
         includeArchived: Boolean? = null,
         favorites: Boolean? = null,
         sort: String? = null,
-        order: String? = null,
+        order: String? = null
     ): Result<ContactsPage>
 
     /**
@@ -89,7 +89,11 @@ interface ContactRepository {
     suspend fun createContact(input: ContactRecordInput): Result<ContactRecordResponse>
 
     /** Update a contact on the server; returns the updated record. */
-    suspend fun updateContact(id: Int, input: ContactRecordInput, revision: Int?): Result<ContactRecordResponse>
+    suspend fun updateContact(
+        id: Int,
+        input: ContactRecordInput,
+        revision: Int?
+    ): Result<ContactRecordResponse>
 
     // M24: top-level contact actions. Delete/archive/unarchive were repository-level gaps
     // (no client surface at all), not just missing UI; the backend endpoints pre-date the
@@ -125,10 +129,7 @@ interface ContactRepository {
      * server response, which may carry a cadence-policy offer. The detail screen
      * reloads the record afterwards; there is no cache write here.
      */
-    suspend fun setTargetCloseness(
-        id: Int,
-        tier: String,
-    ): Result<ContactTargetClosenessResponse>
+    suspend fun setTargetCloseness(id: Int, tier: String): Result<ContactTargetClosenessResponse>
 
     /** Clear the contact's target closeness (idempotent). See [setTargetCloseness]. */
     suspend fun clearTargetCloseness(id: Int): Result<ContactTargetClosenessResponse>
@@ -208,5 +209,7 @@ interface ContactRepository {
      * from the current graph (the relationship or household must still hold),
      * so the client only names the suggestion by identity.
      */
-    suspend fun applyContactAddressSuggestion(input: ApplyContactAddressSuggestionInput): Result<Unit>
+    suspend fun applyContactAddressSuggestion(
+        input: ApplyContactAddressSuggestionInput
+    ): Result<Unit>
 }

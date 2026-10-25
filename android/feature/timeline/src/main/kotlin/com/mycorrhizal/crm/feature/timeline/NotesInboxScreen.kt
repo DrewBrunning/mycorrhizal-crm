@@ -14,7 +14,6 @@ import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -37,14 +36,15 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.Note
-import com.mycorrhizal.crm.ui.R
-import com.mycorrhizal.crm.ui.components.BrandFab
-import com.mycorrhizal.crm.ui.components.FabListContentPadding
-import com.mycorrhizal.crm.ui.components.EmptyState
-import com.mycorrhizal.crm.ui.components.LoadingSkeleton
-import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.ui.LocalDateFormat
+import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.AccessibleIconButton
+import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.FabListContentPadding
+import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.RefreshableContent
 
 /**
  * M9 item 1: the "Unassigned notes" drawer entry — a contact-agnostic view of the N4 unfiled-notes
@@ -60,7 +60,7 @@ fun NotesInboxScreen(
     onMenuClick: (() -> Unit)? = {},
     onNoteClick: (Int) -> Unit,
     onCreateNote: () -> Unit = {},
-    viewModel: NotesInboxViewModel = hiltViewModel(),
+    viewModel: NotesInboxViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     // Issue #1757: reload after returning from the new-note form.
@@ -72,7 +72,7 @@ fun NotesInboxScreen(
         onCreateNote = onCreateNote,
         onLoadMore = viewModel::loadMore,
         onRefresh = viewModel::load,
-        onErrorShown = viewModel::onErrorShown,
+        onErrorShown = viewModel::onErrorShown
     )
 }
 
@@ -90,7 +90,7 @@ fun NotesInboxScreenContent(
     onCreateNote: () -> Unit = {},
     onLoadMore: () -> Unit = {},
     onRefresh: () -> Unit = {},
-    onErrorShown: () -> Unit = {},
+    onErrorShown: () -> Unit = {}
 ) {
     val state = uiState
     val snackbarHostState = remember { SnackbarHostState() }
@@ -101,18 +101,24 @@ fun NotesInboxScreenContent(
                 navigationIcon = {
                     onMenuClick?.let { onMenu ->
                         AccessibleIconButton(onClick = onMenu) {
-                            Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
+                            Icon(
+                                Icons.Outlined.Menu,
+                                contentDescription = stringResource(R.string.cd_menu)
+                            )
                         }
                     }
                 },
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(stringResource(R.string.nav_notes_unassigned), style = MaterialTheme.typography.titleLarge)
+                        Text(
+                            stringResource(R.string.nav_notes_unassigned),
+                            style = MaterialTheme.typography.titleLarge
+                        )
                         if (state.total > 0) {
                             Text(
                                 text = stringResource(R.string.notes_inbox_total, state.total),
                                 style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.padding(start = 8.dp),
+                                modifier = Modifier.padding(start = 8.dp)
                             )
                         }
                     }
@@ -121,8 +127,8 @@ fun NotesInboxScreenContent(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
         floatingActionButton = {
@@ -130,36 +136,48 @@ fun NotesInboxScreenContent(
                 Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.cd_new_note))
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             RefreshableContent(
                 isRefreshing = state.isLoading && state.notes.isNotEmpty(),
                 onRefresh = onRefresh,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize()
             ) {
                 when {
                     state.isLoading && state.notes.isEmpty() ->
                         LoadingSkeleton(modifier = Modifier.testTag("notes-inbox-loading"))
+
                     state.notes.isEmpty() && state.error == null ->
                         // Issue #1757: says which set is empty and where its notes come from.
                         EmptyState(
                             title = stringResource(R.string.notes_unassigned_empty),
                             body = stringResource(R.string.notes_unassigned_empty_body),
                             actionLabel = stringResource(R.string.cd_new_note),
-                            onAction = onCreateNote,
+                            onAction = onCreateNote
                         )
+
                     state.notes.isEmpty() && state.error != null ->
                         EmptyState(state.error.orEmpty())
+
                     else -> {
-                        LazyColumn(modifier = Modifier.fillMaxSize().testTag("notes-inbox-list"), contentPadding = FabListContentPadding) {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize().testTag("notes-inbox-list"),
+                            contentPadding = FabListContentPadding
+                        ) {
                             items(state.notes, key = { it.id }) { note ->
                                 InboxNoteRow(note = note, onClick = { onNoteClick(note.id) })
                             }
                             if (!state.nextCursor.isNullOrEmpty()) {
                                 item {
-                                    Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                                        Button(onClick = onLoadMore, enabled = !state.isLoadingMore) {
+                                    Box(
+                                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Button(
+                                            onClick = onLoadMore,
+                                            enabled = !state.isLoadingMore
+                                        ) {
                                             Text(stringResource(R.string.action_load_more))
                                         }
                                     }
@@ -182,11 +200,7 @@ fun NotesInboxScreenContent(
 }
 
 @Composable
-private fun InboxNoteRow(
-    note: Note,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+private fun InboxNoteRow(note: Note, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val dateFormat = LocalDateFormat.current
     androidx.compose.material3.ListItem(
         headlineContent = {
@@ -194,14 +208,19 @@ private fun InboxNoteRow(
                 text = note.content.orEmpty(),
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
         },
-        supportingContent = note.date?.let { DateFormat.formatTimestamp(it, dateFormat) }?.takeIf { it.isNotBlank() }?.let { date ->
+        supportingContent = note.date?.let {
+            DateFormat.formatTimestamp(
+                it,
+                dateFormat
+            )
+        }?.takeIf { it.isNotBlank() }?.let { date ->
             { Text(date, style = MaterialTheme.typography.bodySmall) }
         },
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .clickable(onClick = onClick)
     )
 }

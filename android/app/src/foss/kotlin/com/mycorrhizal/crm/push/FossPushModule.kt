@@ -36,6 +36,8 @@ object FossPushModule {
      */
     @Provides
     fun provideFcmTokenSource(): FcmTokenSource = FcmTokenSource {
-        error("FCM is not available in the FOSS build; notifications come from the WorkManager polling workers.")
+        error(
+            "FCM is not available in the FOSS build; notifications come from the WorkManager polling workers."
+        )
     }
 }

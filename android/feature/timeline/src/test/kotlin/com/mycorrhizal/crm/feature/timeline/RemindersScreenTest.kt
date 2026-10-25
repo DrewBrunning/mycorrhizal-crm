@@ -17,6 +17,7 @@ import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import java.time.LocalDate
 import kotlinx.coroutines.flow.flowOf
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -27,7 +28,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import java.time.LocalDate
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -43,7 +43,7 @@ class RemindersScreenTest {
         onCreateReminder: () -> Unit = {},
         onEditReminder: (Int) -> Unit = {},
         onCompleteReminder: (Int) -> Unit = {},
-        onDeleteReminder: (Int) -> Unit = {},
+        onDeleteReminder: (Int) -> Unit = {}
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -53,7 +53,7 @@ class RemindersScreenTest {
                     onCreateReminder = onCreateReminder,
                     onEditReminder = onEditReminder,
                     onComplete = onCompleteReminder,
-                    onDelete = onDeleteReminder,
+                    onDelete = onDeleteReminder
                 )
             }
         }
@@ -74,8 +74,8 @@ class RemindersScreenTest {
             RemindersUiState(
                 contactId = 0,
                 reminders = emptyList(),
-                errorRes = R.string.reminder_error_missing_id,
-            ),
+                errorRes = R.string.reminder_error_missing_id
+            )
         )
         composeTestRule.onNodeWithText("Missing contact id").assertIsDisplayed()
         composeTestRule.onNodeWithText("No reminders yet").assertDoesNotExist()
@@ -88,9 +88,9 @@ class RemindersScreenTest {
                 contactId = 5,
                 reminders = listOf(
                     Reminder(id = 1, message = "Call Dana", recurrence = ReminderRecurrence.WEEKLY),
-                    Reminder(id = 2, message = "Gift", recurrence = ReminderRecurrence.ONCE),
-                ),
-            ),
+                    Reminder(id = 2, message = "Gift", recurrence = ReminderRecurrence.ONCE)
+                )
+            )
         )
         composeTestRule.onNodeWithText("Call Dana").assertIsDisplayed()
         composeTestRule.onNodeWithText("Gift").assertIsDisplayed()
@@ -103,9 +103,9 @@ class RemindersScreenTest {
         setContent(
             RemindersUiState(
                 contactId = 5,
-                reminders = listOf(Reminder(id = 1, message = "Call Dana")),
+                reminders = listOf(Reminder(id = 1, message = "Call Dana"))
             ),
-            onEditReminder = { editedId = it },
+            onEditReminder = { editedId = it }
         )
         composeTestRule.onNodeWithText("Call Dana").performClick()
         assertEquals(1, editedId)
@@ -117,9 +117,9 @@ class RemindersScreenTest {
         setContent(
             RemindersUiState(
                 contactId = 5,
-                reminders = listOf(Reminder(id = 1, message = "Call Dana")),
+                reminders = listOf(Reminder(id = 1, message = "Call Dana"))
             ),
-            onCompleteReminder = { completedId = it },
+            onCompleteReminder = { completedId = it }
         )
         composeTestRule.onNodeWithContentDescription("Complete reminder").performClick()
         assertEquals(1, completedId)
@@ -131,9 +131,9 @@ class RemindersScreenTest {
         setContent(
             RemindersUiState(
                 contactId = 5,
-                reminders = listOf(Reminder(id = 7, message = "Call Dana")),
+                reminders = listOf(Reminder(id = 7, message = "Call Dana"))
             ),
-            onDeleteReminder = { deletedId = it },
+            onDeleteReminder = { deletedId = it }
         )
         composeTestRule.onNodeWithContentDescription("Delete reminder").performClick()
 
@@ -147,9 +147,9 @@ class RemindersScreenTest {
         setContent(
             RemindersUiState(
                 contactId = 5,
-                reminders = listOf(Reminder(id = 7, message = "Call Dana")),
+                reminders = listOf(Reminder(id = 7, message = "Call Dana"))
             ),
-            onDeleteReminder = { deletedId = it },
+            onDeleteReminder = { deletedId = it }
         )
         composeTestRule.onNodeWithContentDescription("Delete reminder").performClick()
         composeTestRule.onNodeWithText("Cancel").performClick()
@@ -164,9 +164,9 @@ class RemindersScreenTest {
         setContent(
             RemindersUiState(
                 contactId = 5,
-                reminders = listOf(Reminder(id = 7, message = "Call Dana")),
+                reminders = listOf(Reminder(id = 7, message = "Call Dana"))
             ),
-            onDeleteReminder = { deletedId = it },
+            onDeleteReminder = { deletedId = it }
         )
         composeTestRule.onNodeWithContentDescription("Delete reminder").performClick()
         composeTestRule.onNodeWithText("Delete").performClick()
@@ -181,9 +181,9 @@ class RemindersScreenTest {
             RemindersUiState(
                 contactId = 5,
                 reminders = listOf(
-                    Reminder(id = 1, message = "Call Dana", remindAt = "${yesterday}T00:00:00Z"),
-                ),
-            ),
+                    Reminder(id = 1, message = "Call Dana", remindAt = "${yesterday}T00:00:00Z")
+                )
+            )
         )
         composeTestRule.onNodeWithText("Overdue").assertIsDisplayed()
     }
@@ -196,9 +196,9 @@ class RemindersScreenTest {
             RemindersUiState(
                 contactId = 5,
                 reminders = listOf(
-                    Reminder(id = 1, message = "Call Dana", remindAt = "${today}T00:00:00Z"),
-                ),
-            ),
+                    Reminder(id = 1, message = "Call Dana", remindAt = "${today}T00:00:00Z")
+                )
+            )
         )
         assertTrue(composeTestRule.onAllNodesWithText("Overdue").fetchSemanticsNodes().isEmpty())
     }
@@ -209,9 +209,14 @@ class RemindersScreenTest {
             RemindersUiState(
                 contactId = 5,
                 reminders = listOf(
-                    Reminder(id = 1, message = "Call Dana", byMail = true, recurrence = ReminderRecurrence.ONCE),
-                ),
-            ),
+                    Reminder(
+                        id = 1,
+                        message = "Call Dana",
+                        byMail = true,
+                        recurrence = ReminderRecurrence.ONCE
+                    )
+                )
+            )
         )
         composeTestRule.onNodeWithText("Email").assertIsDisplayed()
     }
@@ -226,10 +231,10 @@ class RemindersScreenTest {
                         id = 1,
                         message = "Call Dana",
                         recurrence = ReminderRecurrence.WEEKLY,
-                        reoccurFromCompletion = true,
-                    ),
-                ),
-            ),
+                        reoccurFromCompletion = true
+                    )
+                )
+            )
         )
         composeTestRule.onNodeWithText("Flexible").assertIsDisplayed()
     }
@@ -244,10 +249,10 @@ class RemindersScreenTest {
                         id = 1,
                         message = "Call Dana",
                         recurrence = ReminderRecurrence.ONCE,
-                        reoccurFromCompletion = true,
-                    ),
-                ),
-            ),
+                        reoccurFromCompletion = true
+                    )
+                )
+            )
         )
         assertTrue(composeTestRule.onAllNodesWithText("Flexible").fetchSemanticsNodes().isEmpty())
     }
@@ -258,9 +263,9 @@ class RemindersScreenTest {
             RemindersUiState(
                 contactId = 5,
                 reminders = listOf(
-                    Reminder(id = 1, message = "Call Dana", remindAt = "2026-08-10T00:00:00Z"),
-                ),
-            ),
+                    Reminder(id = 1, message = "Call Dana", remindAt = "2026-08-10T00:00:00Z")
+                )
+            )
             // Default EU format renders "10.08.2026".
         )
         composeTestRule.onNodeWithText("10.08.2026").assertIsDisplayed()
@@ -276,14 +281,14 @@ class RemindersScreenTest {
     fun `top-level screen renders the view model's reminders`() {
         val reminderRepository = mockk<ReminderRepository>()
         coEvery { reminderRepository.listForContact(1) } returns Result.success(
-            listOf(Reminder(id = 1, message = "Call Dana")),
+            listOf(Reminder(id = 1, message = "Call Dana"))
         )
         val authRepository = mockk<AuthRepository>()
         every { authRepository.observeSession() } returns flowOf(SessionState())
         val viewModel = RemindersViewModel(
             reminderRepository,
             authRepository,
-            SavedStateHandle(mapOf("contactId" to 1)),
+            SavedStateHandle(mapOf("contactId" to 1))
         )
 
         composeTestRule.setContent {
@@ -292,7 +297,7 @@ class RemindersScreenTest {
                     onBack = {},
                     onCreateReminder = {},
                     onEditReminder = {},
-                    viewModel = viewModel,
+                    viewModel = viewModel
                 )
             }
         }

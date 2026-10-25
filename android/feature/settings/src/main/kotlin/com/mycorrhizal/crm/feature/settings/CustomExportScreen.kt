@@ -63,10 +63,7 @@ import com.mycorrhizal.crm.ui.components.AccessibleIconButton
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CustomExportScreen(
-    onBack: () -> Unit,
-    viewModel: CustomExportViewModel = hiltViewModel(),
-) {
+fun CustomExportScreen(onBack: () -> Unit, viewModel: CustomExportViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var showSensitiveConfirm by remember { mutableStateOf(false) }
@@ -78,21 +75,24 @@ fun CustomExportScreen(
                     AccessibleIconButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = stringResource(R.string.cd_back),
+                            contentDescription = stringResource(R.string.cd_back)
                         )
                     }
                 },
                 title = {
-                    Text(stringResource(R.string.data_custom_export_title), style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        stringResource(R.string.data_custom_export_title),
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(
             modifier = Modifier
@@ -100,36 +100,42 @@ fun CustomExportScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
                 text = stringResource(R.string.data_custom_export_description),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Text(stringResource(R.string.data_custom_export_format), style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(R.string.data_custom_export_format),
+                style = MaterialTheme.typography.titleMedium
+            )
             Column(modifier = Modifier.selectableGroup()) {
                 FormatOptionRow(
                     labelRes = R.string.data_custom_export_format_vcf4,
                     selected = state.format == ExportFormatChoice.VCF4,
-                    onClick = { viewModel.setFormat(ExportFormatChoice.VCF4) },
+                    onClick = { viewModel.setFormat(ExportFormatChoice.VCF4) }
                 )
                 FormatOptionRow(
                     labelRes = R.string.data_custom_export_format_vcf3,
                     selected = state.format == ExportFormatChoice.VCF3,
-                    onClick = { viewModel.setFormat(ExportFormatChoice.VCF3) },
+                    onClick = { viewModel.setFormat(ExportFormatChoice.VCF3) }
                 )
                 FormatOptionRow(
                     labelRes = R.string.data_custom_export_format_jscontact,
                     selected = state.format == ExportFormatChoice.JSCONTACT,
-                    onClick = { viewModel.setFormat(ExportFormatChoice.JSCONTACT) },
+                    onClick = { viewModel.setFormat(ExportFormatChoice.JSCONTACT) }
                 )
             }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
-            Text(stringResource(R.string.shares_fields_label), style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(R.string.shares_fields_label),
+                style = MaterialTheme.typography.titleMedium
+            )
             val lockedLabel = stringResource(R.string.a11y_share_field_locked)
             ShareFieldSections.ALL.forEach { section ->
                 val checked = state.selected.contains(section.token)
@@ -146,14 +152,14 @@ fun CustomExportScreen(
                             value = if (locked) false else checked,
                             onValueChange = { viewModel.toggleSection(section.token, it) },
                             enabled = !locked,
-                            role = Role.Checkbox,
+                            role = Role.Checkbox
                         )
-                        .semantics { if (locked) stateDescription = lockedLabel },
+                        .semantics { if (locked) stateDescription = lockedLabel }
                 ) {
                     Checkbox(
                         checked = if (locked) false else checked,
                         onCheckedChange = null,
-                        enabled = !locked,
+                        enabled = !locked
                     )
                     Text(
                         text = stringResource(customExportSectionLabelRes(section.token)),
@@ -162,14 +168,14 @@ fun CustomExportScreen(
                             MaterialTheme.colorScheme.onSurfaceVariant
                         } else {
                             MaterialTheme.colorScheme.onSurface
-                        },
+                        }
                     )
                     if (locked) {
                         Icon(
                             imageVector = Icons.Outlined.Lock,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(start = 4.dp),
+                            modifier = Modifier.padding(start = 4.dp)
                         )
                     }
                 }
@@ -178,10 +184,13 @@ fun CustomExportScreen(
             if (!state.sensitiveRevealed) {
                 OutlinedButton(
                     onClick = { showSensitiveConfirm = true },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(imageVector = Icons.Outlined.Lock, contentDescription = null)
-                    Text(stringResource(R.string.shares_reveal_button), modifier = Modifier.padding(start = 4.dp))
+                    Text(
+                        stringResource(R.string.shares_reveal_button),
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
                 }
             }
 
@@ -190,7 +199,7 @@ fun CustomExportScreen(
             TextButton(
                 onClick = viewModel::checkLossReport,
                 enabled = state.selected.isNotEmpty() && !state.isCheckingLoss,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 if (state.isCheckingLoss) {
                     CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
@@ -206,7 +215,7 @@ fun CustomExportScreen(
                 enabled = state.canExport,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .semantics { if (state.isExporting) stateDescription = exportingLabel },
+                    .semantics { if (state.isExporting) stateDescription = exportingLabel }
             ) {
                 if (state.isExporting) {
                     CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
@@ -228,7 +237,7 @@ fun CustomExportScreen(
                     onClick = {
                         viewModel.revealSensitive()
                         showSensitiveConfirm = false
-                    },
+                    }
                 ) {
                     Text(stringResource(R.string.shares_reveal_confirm_button))
                 }
@@ -237,7 +246,7 @@ fun CustomExportScreen(
                 TextButton(onClick = { showSensitiveConfirm = false }) {
                     Text(stringResource(R.string.action_cancel))
                 }
-            },
+            }
         )
     }
 
@@ -251,7 +260,10 @@ fun CustomExportScreen(
                 } else {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         report.diagnostics.forEach { diagnostic ->
-                            Text("${diagnostic.contactName}: ${diagnostic.message}", style = MaterialTheme.typography.bodySmall)
+                            Text(
+                                "${diagnostic.contactName}: ${diagnostic.message}",
+                                style = MaterialTheme.typography.bodySmall
+                            )
                         }
                     }
                 }
@@ -260,7 +272,7 @@ fun CustomExportScreen(
                 TextButton(onClick = viewModel::onLossReportShown) {
                     Text(stringResource(R.string.data_custom_export_preview_close))
                 }
-            },
+            }
         )
     }
 
@@ -284,18 +296,14 @@ fun CustomExportScreen(
 }
 
 @Composable
-private fun FormatOptionRow(
-    @StringRes labelRes: Int,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
+private fun FormatOptionRow(@StringRes labelRes: Int, selected: Boolean, onClick: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.selectable(
             selected = selected,
             onClick = onClick,
-            role = Role.RadioButton,
-        ),
+            role = Role.RadioButton
+        )
     ) {
         RadioButton(selected = selected, onClick = null)
         Text(stringResource(labelRes))

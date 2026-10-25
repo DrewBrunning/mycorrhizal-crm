@@ -26,11 +26,7 @@ val FabListContentPadding = PaddingValues(bottom = FabListBottomPadding)
  * with dark content, which reads as non-tappable here.
  */
 @Composable
-fun BrandFab(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
-) {
+fun BrandFab(onClick: () -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     FloatingActionButton(
         onClick = onClick,
         modifier = modifier,
@@ -39,8 +35,8 @@ fun BrandFab(
         shape = androidx.compose.foundation.shape.CircleShape,
         elevation = FloatingActionButtonDefaults.elevation(
             defaultElevation = 4.dp,
-            pressedElevation = 8.dp,
-        ),
+            pressedElevation = 8.dp
+        )
     ) {
         content()
     }

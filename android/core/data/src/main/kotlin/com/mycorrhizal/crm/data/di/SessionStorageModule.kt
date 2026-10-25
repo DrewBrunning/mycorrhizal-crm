@@ -36,9 +36,8 @@ object SessionStorageModule {
     @Provides
     @Singleton
     fun provideOidcPendingRequestStore(
-        @ApplicationContext context: Context,
-    ): OidcPendingRequestStore =
-        EncryptedOidcPendingRequestStore(context)
+        @ApplicationContext context: Context
+    ): OidcPendingRequestStore = EncryptedOidcPendingRequestStore(context)
 
     // ADR 0028 Decision 1: migrates the legacy single-profile device grant and
     // OIDC pending request onto the migrated profile, and drops a profile's
@@ -47,7 +46,7 @@ object SessionStorageModule {
     @Singleton
     fun provideProfileSecretStorage(
         deviceGrantStorage: DeviceGrantTokenStorage,
-        oidcPendingRequestStore: OidcPendingRequestStore,
+        oidcPendingRequestStore: OidcPendingRequestStore
     ): ProfileSecretStorage =
         EncryptedProfileSecretStorage(deviceGrantStorage, oidcPendingRequestStore)
 }

@@ -21,7 +21,6 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import com.mycorrhizal.crm.model.network.ImportAddedValue
 import com.mycorrhizal.crm.model.network.ImportMergeDiff
 import com.mycorrhizal.crm.model.network.ImportRowPreview
 import com.mycorrhizal.crm.ui.R
@@ -40,7 +39,7 @@ fun ImportReviewStep(
     rowActions: Map<Int, String>,
     onRowActionChange: (Int, String) -> Unit,
     onResolveAll: () -> Unit,
-    onConfirm: () -> Unit,
+    onConfirm: () -> Unit
 ) {
     val conflictsRemaining = rows.count { row ->
         row.validationErrors.isEmpty() &&
@@ -57,7 +56,7 @@ fun ImportReviewStep(
                 stringResource(R.string.import_review_no_conflicts)
             },
             style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
         TextButton(onClick = onResolveAll, modifier = Modifier.padding(horizontal = 8.dp)) {
             Text(stringResource(R.string.import_resolve_all))
@@ -67,13 +66,13 @@ fun ImportReviewStep(
                 ImportRowCard(
                     row = row,
                     action = rowActions[row.rowIndex] ?: row.suggestedAction,
-                    onActionChange = { action -> onRowActionChange(row.rowIndex, action) },
+                    onActionChange = { action -> onRowActionChange(row.rowIndex, action) }
                 )
             }
         }
         Button(
             onClick = onConfirm,
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp)
         ) {
             Text(stringResource(R.string.import_apply_decisions, decisions))
         }
@@ -81,11 +80,7 @@ fun ImportReviewStep(
 }
 
 @Composable
-private fun ImportRowCard(
-    row: ImportRowPreview,
-    action: String,
-    onActionChange: (String) -> Unit,
-) {
+private fun ImportRowCard(row: ImportRowPreview, action: String, onActionChange: (String) -> Unit) {
     val hasErrors = row.validationErrors.isNotEmpty()
     // Local copies so the `when` branches can smart-cast (public API property
     // from another module cannot be smart-cast directly).
@@ -93,14 +88,17 @@ private fun ImportRowCard(
     val batchDuplicateOf = row.batchDuplicateOf
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
         Text(row.displayName(), style = MaterialTheme.typography.bodyLarge)
-        val sub = listOfNotNull(row.parsedContact["email"] as? String, row.parsedContact["phone"] as? String)
+        val sub = listOfNotNull(
+            row.parsedContact["email"] as? String,
+            row.parsedContact["phone"] as? String
+        )
             .filter { it.isNotBlank() }
             .joinToString(" · ")
         if (sub.isNotEmpty()) {
             Text(
                 text = sub,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         when {
@@ -109,48 +107,57 @@ private fun ImportRowCard(
                     text = error,
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
                 )
             }
+
             duplicateMatch != null -> {
-                val existing = listOfNotNull(duplicateMatch.existingFirstname, duplicateMatch.existingLastname)
+                val existing = listOfNotNull(
+                    duplicateMatch.existingFirstname,
+                    duplicateMatch.existingLastname
+                )
                     .joinToString(" ")
                     .ifBlank { "#${duplicateMatch.existingContactId}" }
                 Text(
                     text = stringResource(
                         R.string.import_matches,
                         existing,
-                        stringResource(reasonRes(duplicateMatch.matchReason)),
+                        stringResource(reasonRes(duplicateMatch.matchReason))
                     ),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
                 )
             }
+
             batchDuplicateOf != null -> Text(
                 text = stringResource(R.string.import_batch_duplicate_of, batchDuplicateOf + 1),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
             )
+
             else -> Text(
                 text = stringResource(R.string.import_new_contact),
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         row.mergeDiff?.let { MergeDiffSummary(it) }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(top = 4.dp)
+        ) {
             listOf(
                 "update" to stringResource(R.string.import_action_merge),
                 "add" to stringResource(R.string.import_action_keep_both),
-                "skip" to stringResource(R.string.import_action_discard),
+                "skip" to stringResource(R.string.import_action_discard)
             ).forEach { (value, label) ->
                 FilterChip(
                     selected = action == value,
                     onClick = { if (!hasErrors) onActionChange(value) },
                     enabled = !hasErrors && (value != "update" || row.duplicateMatch != null),
-                    label = { Text(label) },
+                    label = { Text(label) }
                 )
             }
         }
@@ -163,24 +170,24 @@ private fun MergeDiffSummary(diff: ImportMergeDiff) {
         Text(
             text = stringResource(R.string.import_diff_none),
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         return
     }
     Text(
         text = stringResource(R.string.import_diff_title),
         style = MaterialTheme.typography.labelMedium,
-        modifier = Modifier.padding(top = 4.dp),
+        modifier = Modifier.padding(top = 4.dp)
     )
     diff.added.forEach { added ->
         Text(
             text = stringResource(
                 R.string.import_diff_added,
                 stringResource(kindRes(added.kind)),
-                added.value,
+                added.value
             ),
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
     diff.updated.forEach { updated ->
@@ -189,10 +196,10 @@ private fun MergeDiffSummary(diff: ImportMergeDiff) {
                 R.string.import_diff_updated,
                 updated.label,
                 updated.old.ifBlank { "\u2014" },
-                updated.new,
+                updated.new
             ),
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }

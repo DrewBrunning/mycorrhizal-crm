@@ -36,15 +36,19 @@ internal fun navigationBarLightAppearance(darkTheme: Boolean, sdkInt: Int): Bool
  * light theme uses the dark brand-green bar instead (light icons on both sides
  * of the contrast pair). From API 27+ the bar is the surface color as before.
  */
-internal fun navigationBarBackground(darkTheme: Boolean, sdkInt: Int, surface: Int, primary: Int): Int =
-    if (!darkTheme && sdkInt < Build.VERSION_CODES.O_MR1) primary else surface
+internal fun navigationBarBackground(
+    darkTheme: Boolean,
+    sdkInt: Int,
+    surface: Int,
+    primary: Int
+): Int = if (!darkTheme && sdkInt < Build.VERSION_CODES.O_MR1) primary else surface
 
 internal fun applySystemBarAppearance(
     window: Window,
     darkTheme: Boolean,
     onPrimaryBar: Boolean,
     statusBarColor: Int,
-    navigationBarColor: Int,
+    navigationBarColor: Int
 ) {
     @Suppress("DEPRECATION") // ignored under edge-to-edge on API 35+, still honored below that
     run {
@@ -69,10 +73,16 @@ internal fun SystemBarsEffect(
     darkTheme: Boolean,
     onPrimaryBar: Boolean,
     statusBarColor: Int,
-    navigationBarColor: Int,
+    navigationBarColor: Int
 ) {
     DisposableEffect(window, darkTheme, onPrimaryBar, statusBarColor, navigationBarColor) {
-        applySystemBarAppearance(window, darkTheme, onPrimaryBar, statusBarColor, navigationBarColor)
+        applySystemBarAppearance(
+            window,
+            darkTheme,
+            onPrimaryBar,
+            statusBarColor,
+            navigationBarColor
+        )
         onDispose { }
     }
 }

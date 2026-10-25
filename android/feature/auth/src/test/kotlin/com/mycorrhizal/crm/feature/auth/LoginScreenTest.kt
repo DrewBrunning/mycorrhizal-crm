@@ -7,12 +7,12 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.assertIsEnabled
-import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextClearance
@@ -43,7 +43,7 @@ class LoginScreenTest {
         onSubmit: (String, String, String, String) -> Unit = { _, _, _, _ -> },
         onTwoFactorSubmit: (String) -> Unit = {},
         onUsePasskey: () -> Unit = {},
-        onBackToCredentials: () -> Unit = {},
+        onBackToCredentials: () -> Unit = {}
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -54,7 +54,7 @@ class LoginScreenTest {
                     onSubmit = onSubmit,
                     onTwoFactorSubmit = onTwoFactorSubmit,
                     onUsePasskey = onUsePasskey,
-                    onBackToCredentials = onBackToCredentials,
+                    onBackToCredentials = onBackToCredentials
                 )
             }
         }
@@ -65,7 +65,9 @@ class LoginScreenTest {
         setContent()
         composeTestRule.onNodeWithText("Server URL").assertIsDisplayed()
         composeTestRule.onNodeWithText("Username or email").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNode(hasText("Password") and hasSetTextAction()).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNode(
+            hasText("Password") and hasSetTextAction()
+        ).performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Sign in").performScrollTo().assertIsDisplayed()
     }
 
@@ -74,9 +76,16 @@ class LoginScreenTest {
     fun `sso is disabled and explains why until a server url is entered`() {
         setContent()
         composeTestRule.onNodeWithText("Sign in with SSO").performScrollTo().assertIsNotEnabled()
-        composeTestRule.onNodeWithText("Enter a server URL to use SSO").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Enter a server URL to use SSO"
+        ).performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Sign in with SSO")
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Enter a server URL to use SSO"))
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.StateDescription,
+                    "Enter a server URL to use SSO"
+                )
+            )
     }
 
     @Test
@@ -97,7 +106,7 @@ class LoginScreenTest {
                     onServerUrlChange = {},
                     onModeChange = {},
                     onSubmit = { _, _, _, _ -> },
-                    onSignInWithSso = { ssoUrl = it },
+                    onSignInWithSso = { ssoUrl = it }
                 )
             }
         }
@@ -123,9 +132,13 @@ class LoginScreenTest {
             MycorrhizalTheme {
                 LoginScreenContent(
                     uiState = uiState.value,
-                    onServerUrlChange = { value -> uiState.value = uiState.value.copy(serverUrl = value) },
+                    onServerUrlChange = { value ->
+                        uiState.value = uiState.value.copy(
+                            serverUrl = value
+                        )
+                    },
                     onModeChange = {},
-                    onSubmit = { _, _, _, _ -> },
+                    onSubmit = { _, _, _, _ -> }
                 )
             }
         }
@@ -148,9 +161,13 @@ class LoginScreenTest {
             MycorrhizalTheme {
                 LoginScreenContent(
                     uiState = uiState.value,
-                    onServerUrlChange = { value -> uiState.value = uiState.value.copy(serverUrl = value) },
+                    onServerUrlChange = { value ->
+                        uiState.value = uiState.value.copy(
+                            serverUrl = value
+                        )
+                    },
                     onModeChange = {},
-                    onSubmit = { _, _, _, _ -> },
+                    onSubmit = { _, _, _, _ -> }
                 )
             }
         }
@@ -181,7 +198,7 @@ class LoginScreenTest {
                         uiState.value = uiState.value.copy(serverUrl = value)
                     },
                     onModeChange = {},
-                    onSubmit = { _, _, _, _ -> },
+                    onSubmit = { _, _, _, _ -> }
                 )
             }
         }
@@ -210,7 +227,9 @@ class LoginScreenTest {
         })
         composeTestRule.onNodeWithText("Server URL").performTextInput("https://crm.example.com")
         composeTestRule.onNodeWithText("Username or email").performTextInput("alice")
-        composeTestRule.onNode(hasText("Password") and hasSetTextAction()).performTextInput("secret")
+        composeTestRule.onNode(
+            hasText("Password") and hasSetTextAction()
+        ).performTextInput("secret")
         composeTestRule.onNodeWithText("Sign in").performScrollTo().performClick()
 
         assertEquals(listOf("https://crm.example.com", "alice", "secret", ""), captured)
@@ -238,7 +257,9 @@ class LoginScreenTest {
         composeTestRule.onNodeWithText("Username or email").performScrollTo()
             .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.ContentType))
         composeTestRule.onNode(hasText("Password") and hasSetTextAction()).performScrollTo()
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.ContentType, ContentType.Password))
+            .assert(
+                SemanticsMatcher.expectValue(SemanticsProperties.ContentType, ContentType.Password)
+            )
     }
 
     @Test
@@ -260,7 +281,7 @@ class LoginScreenTest {
                     onModeChange = {},
                     onSubmit = { _, _, _, _ -> },
                     onRegisterClick = { registered = true },
-                    onForgotPasswordClick = { forgot = true },
+                    onForgotPasswordClick = { forgot = true }
                 )
             }
         }
@@ -285,7 +306,7 @@ class LoginScreenTest {
                     onModeChange = {},
                     onSubmit = { _, _, _, _ -> },
                     oidcError = "Single sign-on failed",
-                    onOidcErrorShown = {},
+                    onOidcErrorShown = {}
                 )
             }
         }
@@ -302,16 +323,30 @@ class LoginScreenTest {
         // active message has zero visible size, which Compose UI testing
         // treats as "not displayed" even though the node (and its live
         // region) genuinely exists in the tree.
-        composeTestRule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Assertive))
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Assertive))
+        composeTestRule.onNode(
+            SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Assertive)
+        )
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.LiveRegion,
+                    LiveRegionMode.Assertive
+                )
+            )
     }
 
     @Test
     fun `the loading spinner announces itself while signing in`() {
         setContent(uiState = LoginUiState(isLoading = true))
 
-        composeTestRule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription, listOf("Saving")))
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription, listOf("Saving")))
+        composeTestRule.onNode(
+            SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription, listOf("Saving"))
+        )
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.ContentDescription,
+                    listOf("Saving")
+                )
+            )
     }
 
     // N8 (#814): a 2FA account moves the login form to the code-entry step.
@@ -319,9 +354,11 @@ class LoginScreenTest {
     fun `two-factor step shows the code prompt instead of the credentials form`() {
         setContent(uiState = LoginUiState(twoFactorStep = true, mode = LoginMode.PASSWORD))
 
-        composeTestRule.onNodeWithText("Two-factor authentication").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText(
-            "Enter the 6-digit code from your authenticator app, or one of your recovery codes.",
+            "Two-factor authentication"
+        ).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Enter the 6-digit code from your authenticator app, or one of your recovery codes."
         ).performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Verification code").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Back to sign in").performScrollTo().assertIsDisplayed()
@@ -338,9 +375,11 @@ class LoginScreenTest {
         var submitted: String? = null
         setContent(
             uiState = LoginUiState(twoFactorStep = true, mode = LoginMode.PASSWORD),
-            onTwoFactorSubmit = { submitted = it },
+            onTwoFactorSubmit = { submitted = it }
         )
-        composeTestRule.onNodeWithText("Verification code").performScrollTo().performTextInput("123456")
+        composeTestRule.onNodeWithText(
+            "Verification code"
+        ).performScrollTo().performTextInput("123456")
         composeTestRule.onNodeWithText("Sign in").performScrollTo().performClick()
 
         assertEquals("123456", submitted)
@@ -354,20 +393,22 @@ class LoginScreenTest {
             uiState = LoginUiState(
                 twoFactorStep = true,
                 twoFactorPrompt = SecondFactorPrompt.RECOVERY_CODE_ONLY,
-                twoFactorMethods = listOf("webauthn"),
+                twoFactorMethods = listOf("webauthn")
             ),
-            onTwoFactorSubmit = { submitted = it },
+            onTwoFactorSubmit = { submitted = it }
         )
 
         composeTestRule.onNodeWithText(
             "Your account uses a passkey, but passkeys aren't available on this app for this server. " +
-                "Enter one of your recovery codes to sign in.",
+                "Enter one of your recovery codes to sign in."
         ).performScrollTo().assertIsDisplayed()
         // The bare TOTP-only copy is gone; the field is labelled for a recovery code.
         composeTestRule.onNodeWithText(
-            "Enter the 6-digit code from your authenticator app, or one of your recovery codes.",
+            "Enter the 6-digit code from your authenticator app, or one of your recovery codes."
         ).assertDoesNotExist()
-        composeTestRule.onNodeWithText("Recovery code").performScrollTo().performTextInput("AAAAA-BBBBB-CCCCC")
+        composeTestRule.onNodeWithText(
+            "Recovery code"
+        ).performScrollTo().performTextInput("AAAAA-BBBBB-CCCCC")
         composeTestRule.onNodeWithText("Sign in").performScrollTo().performClick()
 
         assertEquals("AAAAA-BBBBB-CCCCC", submitted)
@@ -379,15 +420,15 @@ class LoginScreenTest {
             uiState = LoginUiState(
                 twoFactorStep = true,
                 twoFactorPrompt = SecondFactorPrompt.CODE_WITH_PASSKEY_NOTE,
-                twoFactorMethods = listOf("totp", "webauthn"),
-            ),
+                twoFactorMethods = listOf("totp", "webauthn")
+            )
         )
 
         composeTestRule.onNodeWithText(
-            "Enter the 6-digit code from your authenticator app, or one of your recovery codes.",
+            "Enter the 6-digit code from your authenticator app, or one of your recovery codes."
         ).performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText(
-            "Your account also has a passkey, but passkeys aren't available on this app for this server.",
+            "Your account also has a passkey, but passkeys aren't available on this app for this server."
         ).performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Verification code").performScrollTo().assertIsDisplayed()
     }
@@ -396,10 +437,15 @@ class LoginScreenTest {
     fun `an open gate shows Use a passkey next to the code field`() {
         var used = 0
         setContent(
-            uiState = LoginUiState(twoFactorStep = true, twoFactorPrompt = SecondFactorPrompt.CODE_OR_PASSKEY),
-            onUsePasskey = { used++ },
+            uiState = LoginUiState(
+                twoFactorStep = true,
+                twoFactorPrompt = SecondFactorPrompt.CODE_OR_PASSKEY
+            ),
+            onUsePasskey = { used++ }
         )
-        composeTestRule.onNodeWithText("Use a passkey").performScrollTo().assertIsDisplayed().performClick()
+        composeTestRule.onNodeWithText(
+            "Use a passkey"
+        ).performScrollTo().assertIsDisplayed().performClick()
         composeTestRule.onNodeWithText("Verification code").performScrollTo().assertIsDisplayed()
         assertEquals(1, used)
     }
@@ -407,9 +453,14 @@ class LoginScreenTest {
     @Test
     fun `a passkey-only open gate leads with the passkey and labels the field for a recovery code`() {
         setContent(
-            uiState = LoginUiState(twoFactorStep = true, twoFactorPrompt = SecondFactorPrompt.PASSKEY_OR_RECOVERY_CODE),
+            uiState = LoginUiState(
+                twoFactorStep = true,
+                twoFactorPrompt = SecondFactorPrompt.PASSKEY_OR_RECOVERY_CODE
+            )
         )
-        composeTestRule.onNodeWithText("Use your passkey to sign in, or enter one of your recovery codes.")
+        composeTestRule.onNodeWithText(
+            "Use your passkey to sign in, or enter one of your recovery codes."
+        )
             .performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Use a passkey").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Recovery code").performScrollTo().assertIsDisplayed()
@@ -421,8 +472,8 @@ class LoginScreenTest {
             uiState = LoginUiState(
                 twoFactorStep = true,
                 twoFactorPrompt = SecondFactorPrompt.CODE_OR_PASSKEY,
-                isLoading = true,
-            ),
+                isLoading = true
+            )
         )
         composeTestRule.onNodeWithText("Use a passkey").performScrollTo().assertIsNotEnabled()
     }
@@ -436,11 +487,15 @@ class LoginScreenTest {
                     uiState = LoginUiState(twoFactorStep = true, twoFactorPrompt = prompt.value),
                     onServerUrlChange = {},
                     onModeChange = {},
-                    onSubmit = { _, _, _, _ -> },
+                    onSubmit = { _, _, _, _ -> }
                 )
             }
         }
-        for (p in listOf(SecondFactorPrompt.STANDARD, SecondFactorPrompt.CODE_WITH_PASSKEY_NOTE, SecondFactorPrompt.RECOVERY_CODE_ONLY)) {
+        for (p in listOf(
+            SecondFactorPrompt.STANDARD,
+            SecondFactorPrompt.CODE_WITH_PASSKEY_NOTE,
+            SecondFactorPrompt.RECOVERY_CODE_ONLY
+        )) {
             prompt.value = p
             composeTestRule.waitForIdle()
             composeTestRule.onNodeWithText("Use a passkey").assertDoesNotExist()
@@ -453,12 +508,12 @@ class LoginScreenTest {
             uiState = LoginUiState(
                 twoFactorStep = true,
                 twoFactorPrompt = SecondFactorPrompt.RECOVERY_CODE_ONLY,
-                passkeyIssue = PasskeyIssue.NOT_ASSOCIATED,
-            ),
+                passkeyIssue = PasskeyIssue.NOT_ASSOCIATED
+            )
         )
         composeTestRule.onNodeWithText(
             "Your account uses a passkey, but this server isn't set up for passkeys on Android. " +
-                "Enter one of your recovery codes to sign in.",
+                "Enter one of your recovery codes to sign in."
         ).performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Recovery code").performScrollTo().assertIsDisplayed()
     }
@@ -469,12 +524,12 @@ class LoginScreenTest {
             uiState = LoginUiState(
                 twoFactorStep = true,
                 twoFactorPrompt = SecondFactorPrompt.RECOVERY_CODE_ONLY,
-                passkeyIssue = PasskeyIssue.NO_PROVIDER,
-            ),
+                passkeyIssue = PasskeyIssue.NO_PROVIDER
+            )
         )
         composeTestRule.onNodeWithText(
             "Your account uses a passkey, but this device has no passkey provider set up. " +
-                "Enter one of your recovery codes to sign in.",
+                "Enter one of your recovery codes to sign in."
         ).performScrollTo().assertIsDisplayed()
     }
 
@@ -484,21 +539,20 @@ class LoginScreenTest {
             uiState = LoginUiState(
                 twoFactorStep = true,
                 twoFactorPrompt = SecondFactorPrompt.CODE_WITH_PASSKEY_NOTE,
-                passkeyIssue = PasskeyIssue.NOT_ASSOCIATED,
-            ),
+                passkeyIssue = PasskeyIssue.NOT_ASSOCIATED
+            )
         )
         composeTestRule.onNodeWithText(
-            "Your account also has a passkey, but this server isn't set up for passkeys on Android.",
+            "Your account also has a passkey, but this server isn't set up for passkeys on Android."
         ).performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Verification code").performScrollTo().assertIsDisplayed()
-
     }
 
     @Test
     fun `standard prompt shows no passkey note`() {
         setContent(uiState = LoginUiState(twoFactorStep = true))
         composeTestRule.onNodeWithText(
-            "Your account also has a passkey, but passkeys aren't available on this app for this server.",
+            "Your account also has a passkey, but passkeys aren't available on this app for this server."
         ).assertDoesNotExist()
     }
 
@@ -507,7 +561,7 @@ class LoginScreenTest {
         var backed = false
         setContent(
             uiState = LoginUiState(twoFactorStep = true, mode = LoginMode.PASSWORD),
-            onBackToCredentials = { backed = true },
+            onBackToCredentials = { backed = true }
         )
         composeTestRule.onNodeWithText("Back to sign in").performScrollTo().performClick()
 

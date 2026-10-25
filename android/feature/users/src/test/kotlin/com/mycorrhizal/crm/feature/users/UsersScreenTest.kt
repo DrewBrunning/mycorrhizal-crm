@@ -52,11 +52,16 @@ class UsersScreenTest {
         coEvery { repository.list(any(), any()) } returns Result.success(
             AdminUsersListResponse(
                 users = listOf(
-                    AdminUser(id = 1, username = "alice", email = "alice@example.com", isAdmin = true),
-                    AdminUser(id = 2, username = "bob", email = "bob@example.com"),
+                    AdminUser(
+                        id = 1,
+                        username = "alice",
+                        email = "alice@example.com",
+                        isAdmin = true
+                    ),
+                    AdminUser(id = 2, username = "bob", email = "bob@example.com")
                 ),
-                total = 2,
-            ),
+                total = 2
+            )
         )
         val viewModel = UsersViewModel(repository)
 
@@ -117,7 +122,7 @@ class UsersScreenTest {
     fun `an empty list renders the empty state`() {
         val repository = mockk<UserManagementRepository>()
         coEvery { repository.list(any(), any()) } returns Result.success(
-            AdminUsersListResponse(users = emptyList(), total = 0),
+            AdminUsersListResponse(users = emptyList(), total = 0)
         )
 
         setScreen(UsersViewModel(repository))
@@ -130,14 +135,23 @@ class UsersScreenTest {
         val repository = mockk<UserManagementRepository>()
         coEvery { repository.list(any(), any()) } returns Result.success(
             AdminUsersListResponse(
-                users = listOf(AdminUser(id = 1, username = "alice", email = "alice@example.com", isAdmin = true)),
-                total = 1,
-            ),
+                users = listOf(
+                    AdminUser(
+                        id = 1,
+                        username = "alice",
+                        email = "alice@example.com",
+                        isAdmin = true
+                    )
+                ),
+                total = 1
+            )
         )
 
         setScreen(UsersViewModel(repository))
 
-        composeTestRule.onNodeWithContentDescription(str(R.string.users_edit_named, "alice")).performClick()
+        composeTestRule.onNodeWithContentDescription(
+            str(R.string.users_edit_named, "alice")
+        ).performClick()
 
         composeTestRule.onNodeWithText(str(R.string.users_edit)).assertIsDisplayed()
         composeTestRule.onNodeWithText(str(R.string.users_password_hint)).assertIsDisplayed()
@@ -145,13 +159,18 @@ class UsersScreenTest {
 
     // --- Admin 2FA reset (issue #596) ---------------------------------------
 
-    private val alice = AdminUser(id = 1, username = "alice", email = "alice@example.com", isAdmin = true)
+    private val alice = AdminUser(
+        id = 1,
+        username = "alice",
+        email = "alice@example.com",
+        isAdmin = true
+    )
     private val bob = AdminUser(id = 2, username = "bob", email = "bob@example.com")
 
     private fun repoWithTwoUsers(): UserManagementRepository {
         val repository = mockk<UserManagementRepository>()
         coEvery { repository.list(any(), any()) } returns Result.success(
-            AdminUsersListResponse(users = listOf(alice, bob), total = 2),
+            AdminUsersListResponse(users = listOf(alice, bob), total = 2)
         )
         return repository
     }
@@ -160,8 +179,12 @@ class UsersScreenTest {
     fun `every row has its own reset 2FA button`() {
         setScreen(UsersViewModel(repoWithTwoUsers()))
 
-        composeTestRule.onNodeWithContentDescription(str(R.string.users_reset_2fa_named, "alice")).assertIsDisplayed()
-        composeTestRule.onNodeWithContentDescription(str(R.string.users_reset_2fa_named, "bob")).assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(
+            str(R.string.users_reset_2fa_named, "alice")
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(
+            str(R.string.users_reset_2fa_named, "bob")
+        ).assertIsDisplayed()
     }
 
     @Test
@@ -169,10 +192,14 @@ class UsersScreenTest {
         val repository = repoWithTwoUsers()
         setScreen(UsersViewModel(repository))
 
-        composeTestRule.onNodeWithContentDescription(str(R.string.users_reset_2fa_named, "bob")).performClick()
+        composeTestRule.onNodeWithContentDescription(
+            str(R.string.users_reset_2fa_named, "bob")
+        ).performClick()
 
         composeTestRule.onNodeWithText(str(R.string.users_reset_2fa_title)).assertIsDisplayed()
-        composeTestRule.onNodeWithText(str(R.string.users_reset_2fa_body, "bob")).assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            str(R.string.users_reset_2fa_body, "bob")
+        ).assertIsDisplayed()
         composeTestRule.onNodeWithText(str(R.string.users_reset_2fa_warning)).assertIsDisplayed()
         coVerify(exactly = 0) { repository.resetTwoFactor(any()) }
     }
@@ -182,7 +209,9 @@ class UsersScreenTest {
         val repository = repoWithTwoUsers()
         setScreen(UsersViewModel(repository))
 
-        composeTestRule.onNodeWithContentDescription(str(R.string.users_reset_2fa_named, "bob")).performClick()
+        composeTestRule.onNodeWithContentDescription(
+            str(R.string.users_reset_2fa_named, "bob")
+        ).performClick()
         composeTestRule.onNodeWithText(str(R.string.action_cancel)).performClick()
         composeTestRule.waitForIdle()
 
@@ -196,7 +225,9 @@ class UsersScreenTest {
         coEvery { repository.resetTwoFactor(2) } returns Result.success(bob)
         setScreen(UsersViewModel(repository))
 
-        composeTestRule.onNodeWithContentDescription(str(R.string.users_reset_2fa_named, "bob")).performClick()
+        composeTestRule.onNodeWithContentDescription(
+            str(R.string.users_reset_2fa_named, "bob")
+        ).performClick()
         composeTestRule.onNodeWithText(str(R.string.users_reset_2fa_confirm)).performClick()
         composeTestRule.waitForIdle()
 
@@ -209,10 +240,16 @@ class UsersScreenTest {
     @Test
     fun `a failed reset keeps the dialog open with the server error and can be retried`() {
         val repository = repoWithTwoUsers()
-        coEvery { repository.resetTwoFactor(1) } returns Result.failure(ApiError.Client(404, "User not found"))
+        coEvery {
+            repository.resetTwoFactor(
+                1
+            )
+        } returns Result.failure(ApiError.Client(404, "User not found"))
         setScreen(UsersViewModel(repository))
 
-        composeTestRule.onNodeWithContentDescription(str(R.string.users_reset_2fa_named, "alice")).performClick()
+        composeTestRule.onNodeWithContentDescription(
+            str(R.string.users_reset_2fa_named, "alice")
+        ).performClick()
         composeTestRule.onNodeWithText(str(R.string.users_reset_2fa_confirm)).performClick()
         composeTestRule.waitForIdle()
 
@@ -234,7 +271,9 @@ class UsersScreenTest {
         coEvery { repository.resetTwoFactor(2) } coAnswers { awaitCancellation() }
         setScreen(UsersViewModel(repository))
 
-        composeTestRule.onNodeWithContentDescription(str(R.string.users_reset_2fa_named, "bob")).performClick()
+        composeTestRule.onNodeWithContentDescription(
+            str(R.string.users_reset_2fa_named, "bob")
+        ).performClick()
         composeTestRule.onNodeWithText(str(R.string.users_reset_2fa_confirm)).performClick()
         composeTestRule.waitForIdle()
 
@@ -246,10 +285,16 @@ class UsersScreenTest {
     @Test
     fun `cancelling after a failed reset clears the stale error and makes no further call`() {
         val repository = repoWithTwoUsers()
-        coEvery { repository.resetTwoFactor(2) } returns Result.failure(ApiError.Client(404, "User not found"))
+        coEvery {
+            repository.resetTwoFactor(
+                2
+            )
+        } returns Result.failure(ApiError.Client(404, "User not found"))
         setScreen(UsersViewModel(repository))
 
-        composeTestRule.onNodeWithContentDescription(str(R.string.users_reset_2fa_named, "bob")).performClick()
+        composeTestRule.onNodeWithContentDescription(
+            str(R.string.users_reset_2fa_named, "bob")
+        ).performClick()
         composeTestRule.onNodeWithText(str(R.string.users_reset_2fa_confirm)).performClick()
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("User not found").assertIsDisplayed()
@@ -261,7 +306,9 @@ class UsersScreenTest {
         coVerify(exactly = 1) { repository.resetTwoFactor(2) }
 
         // Re-opening starts clean: no stale error, and still no extra call until confirmed.
-        composeTestRule.onNodeWithContentDescription(str(R.string.users_reset_2fa_named, "bob")).performClick()
+        composeTestRule.onNodeWithContentDescription(
+            str(R.string.users_reset_2fa_named, "bob")
+        ).performClick()
         composeTestRule.onNodeWithText("User not found").assertDoesNotExist()
         coVerify(exactly = 1) { repository.resetTwoFactor(2) }
     }

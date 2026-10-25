@@ -2,12 +2,12 @@ package com.mycorrhizal.crm.e2e
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.mycorrhizal.crm.network.ApiClient
+import java.util.UUID
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.util.UUID
 
 /**
  * Issue #722: the fully-biometric-login device-grant round trip, driven through
@@ -36,7 +36,15 @@ class DeviceGrantEnrollmentE2eTest : E2eBaseTest() {
 
     @After
     fun deviceGrantTearDown() {
-        createdGrantIds.forEach { id -> runCatching { runBlocking { apiClient.revokeDeviceGrant(id) } } }
+        createdGrantIds.forEach { id ->
+            runCatching {
+                runBlocking {
+                    apiClient.revokeDeviceGrant(
+                        id
+                    )
+                }
+            }
+        }
         createdGrantIds.clear()
     }
 

@@ -47,7 +47,7 @@ import com.mycorrhizal.crm.ui.R
 fun RegisterScreen(
     onRegistered: () -> Unit,
     onBack: () -> Unit,
-    viewModel: RegisterViewModel = viewModel(),
+    viewModel: RegisterViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -65,7 +65,7 @@ fun RegisterScreen(
         onPasswordChange = viewModel::onPasswordChange,
         onSubmit = viewModel::submit,
         onBack = onBack,
-        onErrorShown = viewModel::onErrorShown,
+        onErrorShown = viewModel::onErrorShown
     )
 }
 
@@ -76,7 +76,7 @@ fun RegisterScreenContent(
     onPasswordChange: (String) -> Unit,
     onSubmit: (username: String, email: String, password: String) -> Unit,
     onBack: () -> Unit,
-    onErrorShown: () -> Unit,
+    onErrorShown: () -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -94,11 +94,11 @@ fun RegisterScreenContent(
                 .padding(24.dp)
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
                 text = stringResource(R.string.register_title),
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleLarge
             )
 
             // Android testing feedback: DISABLE_REGISTRATION was only ever
@@ -108,7 +108,7 @@ fun RegisterScreenContent(
             if (uiState.registrationDisabled) {
                 Text(
                     text = stringResource(R.string.register_disabled_notice),
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.bodyLarge
                 )
                 TextButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.register_back_to_login))
@@ -116,7 +116,7 @@ fun RegisterScreenContent(
             } else {
                 Text(
                     text = stringResource(R.string.register_subtitle),
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.bodyLarge
                 )
 
                 OutlinedTextField(
@@ -126,14 +126,14 @@ fun RegisterScreenContent(
                     placeholder = { Text(stringResource(R.string.login_server_url_hint)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = username,
                     onValueChange = { username = it },
                     label = { Text(stringResource(R.string.register_username)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = email,
@@ -141,16 +141,19 @@ fun RegisterScreenContent(
                     label = { Text(stringResource(R.string.register_email)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = password,
-                    onValueChange = { password = it; onPasswordChange(it) },
+                    onValueChange = {
+                        password = it
+                        onPasswordChange(it)
+                    },
                     label = { Text(stringResource(R.string.login_mode_password)) },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
                 )
                 // M26: the server's strength verdict, surfaced BEFORE submit.
                 val strength = uiState.passwordStrength
@@ -158,17 +161,17 @@ fun RegisterScreenContent(
                     Text(
                         text = stringResource(R.string.register_checking_strength),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 } else if (uiState.passwordChecked && strength != null) {
                     Text(
                         text = strength.feedback
                             ?: stringResource(
-                                if (strength.isValid) R.string.register_password_strong else R.string.register_error_password_weak,
+                                if (strength.isValid) R.string.register_password_strong else R.string.register_error_password_weak
                             ),
                         style = MaterialTheme.typography.bodySmall,
                         color = if (strength.isValid) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
-                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
                     )
                 }
 
@@ -177,7 +180,7 @@ fun RegisterScreenContent(
                 } else {
                     Button(
                         onClick = { onSubmit(username, email, password) },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(stringResource(R.string.register_create))
                     }

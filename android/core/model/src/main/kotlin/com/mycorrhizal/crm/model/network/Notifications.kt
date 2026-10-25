@@ -10,13 +10,11 @@ data class Birthday(
     val name: String = "",
     val birthday: String? = null,
     @Json(name = "photo_thumbnail") val photoThumbnail: String? = null,
-    @Json(name = "contact_id") val contactId: Long = 0,
+    @Json(name = "contact_id") val contactId: Long = 0
 )
 
 @JsonClass(generateAdapter = true)
-data class BirthdaysResponse(
-    val birthdays: List<Birthday> = emptyList(),
-)
+data class BirthdaysResponse(val birthdays: List<Birthday> = emptyList())
 
 /** GET /cadence-policies/overdue — `{ overdue: [...] }`. */
 @JsonClass(generateAdapter = true)
@@ -25,13 +23,11 @@ data class OverdueCadence(
     val health: CadenceHealth? = null,
     @Json(name = "contact_id") val contactId: Long = 0,
     @Json(name = "contact_name") val contactName: String = "",
-    @Json(name = "photo_thumbnail") val photoThumbnail: String? = null,
+    @Json(name = "photo_thumbnail") val photoThumbnail: String? = null
 )
 
 @JsonClass(generateAdapter = true)
-data class OverdueCadencesResponse(
-    val overdue: List<OverdueCadence> = emptyList(),
-)
+data class OverdueCadencesResponse(val overdue: List<OverdueCadence> = emptyList())
 
 /** GET /data-decay-policies/overdue — `{ overdue: [...] }` (issue #352). */
 @JsonClass(generateAdapter = true)
@@ -40,13 +36,11 @@ data class OverdueDataDecayPolicy(
     val health: DataDecayHealth? = null,
     @Json(name = "contact_id") val contactId: Long = 0,
     @Json(name = "contact_name") val contactName: String = "",
-    @Json(name = "photo_thumbnail") val photoThumbnail: String? = null,
+    @Json(name = "photo_thumbnail") val photoThumbnail: String? = null
 )
 
 @JsonClass(generateAdapter = true)
-data class OverdueDataDecayPoliciesResponse(
-    val overdue: List<OverdueDataDecayPolicy> = emptyList(),
-)
+data class OverdueDataDecayPoliciesResponse(val overdue: List<OverdueDataDecayPolicy> = emptyList())
 
 /** Kind tokens on [ReachOutSuggestion.kind] — mirrors the backend's ReachOutKind* constants (issue #177). */
 object ReachOutKind {
@@ -78,10 +72,8 @@ data class ReachOutSuggestion(
     val status: String = "",
     @Json(name = "contact_id") val contactId: Long = 0,
     @Json(name = "contact_name") val contactName: String = "",
-    @Json(name = "photo_thumbnail") val photoThumbnail: String? = null,
+    @Json(name = "photo_thumbnail") val photoThumbnail: String? = null
 )
 
 @JsonClass(generateAdapter = true)
-data class ReachOutSuggestionsResponse(
-    val suggestions: List<ReachOutSuggestion> = emptyList(),
-)
+data class ReachOutSuggestionsResponse(val suggestions: List<ReachOutSuggestion> = emptyList())

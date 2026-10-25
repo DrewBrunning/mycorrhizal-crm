@@ -21,5 +21,5 @@ data class AddressGeocodeState(
     /** Row keys (`addressRowKey`) with a lookup in flight. */
     val inFlight: Set<String> = emptySet(),
     /** Row key (`addressRowKey`) -> message for a failed lookup. */
-    val errors: Map<String, String> = emptyMap(),
+    val errors: Map<String, String> = emptyMap()
 )
