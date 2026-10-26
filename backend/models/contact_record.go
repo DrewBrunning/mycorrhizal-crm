@@ -67,6 +67,15 @@ func RecordForContact(c *Contact, photoDir string, db *gorm.DB) *contactmodel.Re
 // handlers that accept a user's field picker opt in.
 func RecordForContactFiltered(c *Contact, photoDir string, db *gorm.DB, sel *FieldSelection) *contactmodel.Record {
 	includeSensitive := sel != nil && sel.IncludeSensitive
+	// Projection queries are scoped by owner as well as vCard UID: a UID is
+	// unique only per user (and a share import deliberately reuses the
+	// sender's UID), so a UID-only lookup would merge another account's
+	// tags/preferences/edges/custom fields into this record (issue #2046). A
+	// nil or unsaved contact has userID 0, which matches no real owner's rows.
+	var userID uint
+	if c != nil {
+		userID = c.UserID
+	}
 	if c != nil && !reflect.DeepEqual(c.Card, contactmodel.Card{}) {
 		card := c.Card
 		// "uid" row (correspondence.tsv): Card.UID is the neutral identity
@@ -84,11 +93,11 @@ func RecordForContactFiltered(c *Contact, photoDir string, db *gorm.DB, sel *Fie
 		if card.UID == "" {
 			card.UID = c.VCardUID
 		}
-		card.RelatedTo = projectRelationshipEdges(db, c.VCardUID, card.RelatedTo, includeSensitive)
-		card.Keywords = projectTags(db, c.VCardUID, card.Keywords)
-		card.PersonalInfo = projectPreferences(db, c.VCardUID, card.PersonalInfo, includeSensitive)
+		card.RelatedTo = projectRelationshipEdges(db, c.UserID, c.VCardUID, card.RelatedTo, includeSensitive)
+		card.Keywords = projectTags(db, c.UserID, c.VCardUID, card.Keywords)
+		card.PersonalInfo = projectPreferences(db, c.UserID, c.VCardUID, card.PersonalInfo, includeSensitive)
 		passthrough := c.Passthrough
-		passthrough.VCard = projectCustomFields(db, c.VCardUID, passthrough.VCard, includeSensitive)
+		passthrough.VCard = projectCustomFields(db, c.UserID, c.VCardUID, passthrough.VCard, includeSensitive)
 		// The flat column is authoritative for Ambient (issue #1733); overlay it so
 		// a crm JSON column that predates the flag still reads correctly.
 		envelope := c.CRM
@@ -112,13 +121,13 @@ func RecordForContactFiltered(c *Contact, photoDir string, db *gorm.DB, sel *Fie
 	}
 	record := RecordFromContact(c, photoDir)
 	if record != nil {
-		record.Card.RelatedTo = projectRelationshipEdges(db, record.UID, record.Card.RelatedTo, includeSensitive)
-		record.Card.Keywords = projectTags(db, record.UID, record.Card.Keywords)
-		record.Card.PersonalInfo = projectPreferences(db, record.UID, record.Card.PersonalInfo, includeSensitive)
+		record.Card.RelatedTo = projectRelationshipEdges(db, userID, record.UID, record.Card.RelatedTo, includeSensitive)
+		record.Card.Keywords = projectTags(db, userID, record.UID, record.Card.Keywords)
+		record.Card.PersonalInfo = projectPreferences(db, userID, record.UID, record.Card.PersonalInfo, includeSensitive)
 		if sel != nil && !sel.IncludeSensitive {
 			record.Card.PersonalInfo, record.Envelope.PersonalInfoMeta = filterSensitivePersonalInfo(record.Card.PersonalInfo, record.Envelope.PersonalInfoMeta)
 		}
-		record.Passthrough.VCard = projectCustomFields(db, record.UID, record.Passthrough.VCard, includeSensitive)
+		record.Passthrough.VCard = projectCustomFields(db, userID, record.UID, record.Passthrough.VCard, includeSensitive)
 		return ApplyFieldSelection(record, sel)
 	}
 	return record
@@ -172,12 +181,12 @@ func RecordForContactForSync(c *Contact, photoDir string, db *gorm.DB) *contactm
 // includeSensitive is T9's explicit opt-in override: when true, the
 // sensitivity='normal' clause is dropped so private/secret edges project for
 // exactly this read. Confirmed-status remains unconditional either way.
-func projectRelationshipEdges(db *gorm.DB, vcardUID string, existing []contactmodel.Relation, includeSensitive bool) []contactmodel.Relation {
+func projectRelationshipEdges(db *gorm.DB, userID uint, vcardUID string, existing []contactmodel.Relation, includeSensitive bool) []contactmodel.Relation {
 	if db == nil || vcardUID == "" {
 		return existing
 	}
 
-	query := db.Where(
+	query := db.Where("user_id = ?", userID).Where(
 		"(source_id = ? OR target_id = ?) AND status = ?",
 		vcardUID, vcardUID, RelationshipStatusConfirmed,
 	)
@@ -243,13 +252,13 @@ func projectRelationshipEdges(db *gorm.DB, vcardUID string, existing []contactmo
 // nil-safe, best-effort (a query failure degrades to "just the existing
 // keywords" rather than failing the whole read), and returns a new slice
 // rather than mutating existing.
-func projectTags(db *gorm.DB, vcardUID string, existing []string) []string {
+func projectTags(db *gorm.DB, userID uint, vcardUID string, existing []string) []string {
 	if db == nil || vcardUID == "" {
 		return existing
 	}
 
 	var taggings []ContactTag
-	if err := db.Where("contact_vcard_uid = ?", vcardUID).Find(&taggings).Error; err != nil {
+	if err := db.Where("user_id = ? AND contact_vcard_uid = ?", userID, vcardUID).Find(&taggings).Error; err != nil {
 		logger.Warn().Err(err).Str("vcard_uid", vcardUID).Msg("projectTags: failed to load taggings")
 		return existing
 	}
@@ -262,7 +271,7 @@ func projectTags(db *gorm.DB, vcardUID string, existing []string) []string {
 		tagIDs[i] = tagging.TagID
 	}
 	var tags []Tag
-	if err := db.Where("id IN ?", tagIDs).Find(&tags).Error; err != nil {
+	if err := db.Where("id IN ? AND user_id = ?", tagIDs, userID).Find(&tags).Error; err != nil {
 		logger.Warn().Err(err).Str("vcard_uid", vcardUID).Msg("projectTags: failed to load tags")
 		return existing
 	}
@@ -300,12 +309,12 @@ func projectTags(db *gorm.DB, vcardUID string, existing []string) []string {
 // sensitivity='normal' preferences project), never in the caller. The
 // includeSensitive flag is T9's explicit opt-in override: when true,
 // the sensitivity='normal' clause is dropped for exactly this read.
-func projectPreferences(db *gorm.DB, vcardUID string, existing []contactmodel.PersonalInfo, includeSensitive bool) []contactmodel.PersonalInfo {
+func projectPreferences(db *gorm.DB, userID uint, vcardUID string, existing []contactmodel.PersonalInfo, includeSensitive bool) []contactmodel.PersonalInfo {
 	if db == nil || vcardUID == "" {
 		return existing
 	}
 
-	query := db.Where("entity_id = ? AND category = ?", vcardUID, PreferenceCategoryHobby)
+	query := db.Where("user_id = ? AND entity_id = ? AND category = ?", userID, vcardUID, PreferenceCategoryHobby)
 	if !includeSensitive {
 		query = query.Where("sensitivity = ?", RelationshipSensitivityNormal)
 	}
@@ -365,7 +374,7 @@ func projectPreferences(db *gorm.DB, vcardUID string, existing []contactmodel.Pe
 // includeSensitive flag is T9's explicit opt-in override: when true,
 // the field_definitions.sensitivity='normal' clause is dropped for exactly
 // this read.
-func projectCustomFields(db *gorm.DB, vcardUID string, existing []contactmodel.JCardProp, includeSensitive bool) []contactmodel.JCardProp {
+func projectCustomFields(db *gorm.DB, userID uint, vcardUID string, existing []contactmodel.JCardProp, includeSensitive bool) []contactmodel.JCardProp {
 	if db == nil || vcardUID == "" {
 		return existing
 	}
@@ -378,8 +387,8 @@ func projectCustomFields(db *gorm.DB, vcardUID string, existing []contactmodel.J
 	query := db.Table("field_values").
 		Select("field_values.*, field_definitions.projection").
 		Joins("JOIN field_definitions ON field_definitions.id = field_values.field_definition_id").
-		Where("field_values.entity_id = ? AND field_definitions.projection LIKE ?",
-			vcardUID, "vcard:%")
+		Where("field_values.user_id = ? AND field_values.entity_id = ? AND field_definitions.user_id = ? AND field_definitions.projection LIKE ?",
+			userID, vcardUID, userID, "vcard:%")
 	if !includeSensitive {
 		query = query.Where("field_definitions.sensitivity = ?", RelationshipSensitivityNormal)
 	}

@@ -44,12 +44,13 @@ fun ForceUpdateScreen(
     requiredVersion: String,
     currentVersion: String,
     serverUrl: String?,
-    loggedIn: Boolean = true,
     onLogout: () -> Unit,
+    modifier: Modifier = Modifier,
+    loggedIn: Boolean = true,
     onBackToLogin: (() -> Unit)? = null
 ) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(24.dp)

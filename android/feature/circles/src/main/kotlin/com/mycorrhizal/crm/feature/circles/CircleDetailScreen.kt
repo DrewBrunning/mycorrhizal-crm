@@ -51,6 +51,7 @@ import com.mycorrhizal.crm.ui.components.RefreshableContent
 @Composable
 fun CircleDetailScreen(
     onBack: () -> Unit,
+    modifier: Modifier = Modifier,
     onNavigateToContact: (Int) -> Unit = {},
     viewModel: CircleDetailViewModel = hiltViewModel()
 ) {
@@ -72,6 +73,7 @@ fun CircleDetailScreen(
     }
 
     Scaffold(
+        modifier = modifier,
         topBar = {
             TopAppBar(
                 navigationIcon = {

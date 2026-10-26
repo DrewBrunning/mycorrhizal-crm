@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -55,8 +56,9 @@ fun QuickCaptureSheet(
     onFirstInteraction: () -> Unit = {},
     resolving: Boolean = false
 ) {
+    val currentOnDismiss = rememberUpdatedState(onDismiss)
     if (state.saved) {
-        LaunchedEffect(Unit) { onDismiss() }
+        LaunchedEffect(Unit) { currentOnDismiss.value() }
     }
 
     // #207: a failed save previously reported its reason as a loose Text

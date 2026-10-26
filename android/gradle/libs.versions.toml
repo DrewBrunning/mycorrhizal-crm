@@ -88,6 +88,15 @@ credentials = "1.6.0"
 # (15.x requires Kotlin 2.4). The Gradle plugin collects the release graph at
 # build time; the core module parses the generated JSON.
 aboutLibraries = "14.2.1"
+# Issue #1908: Compose-specific static analysis. 0.6.3+ is the line built
+# against detekt 2.0.0-alpha.6 (the pinned detekt), so it rides the existing
+# `./gradlew detekt` gate instead of adding the Android Lint variant.
+# Compatibility matrix: https://mrmans0n.github.io/compose-rules/detekt/
+composeRules = "0.6.8"
+# Issue #1908: per-module dependency hygiene (unused/misdeclared dependencies).
+# 3.19.0+ is explicitly built and tested against AGP 9.3.1; the plugin is
+# applied at the root and gated by `buildHealth`.
+dependencyAnalysis = "3.19.2"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -100,11 +109,20 @@ hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
 detekt = { id = "dev.detekt", version.ref = "detekt" }
 about-libraries = { id = "com.mikepenz.aboutlibraries.plugin.android", version.ref = "aboutLibraries" }
+dependency-analysis = { id = "com.autonomousapps.dependency-analysis", version.ref = "dependencyAnalysis" }
 
 [libraries]
 # Issue #1901: detekt's ktlint wrapper supplies the formatting rule set through
 # the existing detekt task, so there is no second analyzer/config/CI step.
 detekt-rules-ktlint-wrapper = { group = "dev.detekt", name = "detekt-rules-ktlint-wrapper", version.ref = "detekt" }
+# Issue #1908: the Compose rule set's detekt variant, loaded as a detekt plugin
+# through the same `detekt` task/config/report.
+compose-rules-detekt = { group = "io.nlopez.compose.rules", name = "detekt", version.ref = "composeRules" }
+# Issue #1908: dependency-analysis on build-logic's classpath, where AGP and the
+# Kotlin plugins already live, so the analyzer can see them (a settings-script
+# application would need AGP in the settings classloader and conflict with the
+# versioned convention-plugin aliases).
+dependency-analysis-gradle-plugin = { group = "com.autonomousapps", name = "dependency-analysis-gradle-plugin", version.ref = "dependencyAnalysis" }
 
 # Compose BOM
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }

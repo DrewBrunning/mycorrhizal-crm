@@ -78,7 +78,11 @@ import com.mycorrhizal.crm.ui.theme.LocalWarningColors
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CadenceScreen(onBack: () -> Unit, viewModel: CadenceViewModel = hiltViewModel()) {
+fun CadenceScreen(
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: CadenceViewModel = hiltViewModel()
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var showDialog by remember { mutableStateOf(false) }
@@ -90,6 +94,7 @@ fun CadenceScreen(onBack: () -> Unit, viewModel: CadenceViewModel = hiltViewMode
     val transientError = state.error
 
     Scaffold(
+        modifier = modifier,
         topBar = {
             TopAppBar(
                 navigationIcon = {
@@ -217,10 +222,11 @@ fun CadenceScreen(onBack: () -> Unit, viewModel: CadenceViewModel = hiltViewMode
 @Composable
 fun CadencePanelContent(
     policy: CadencePolicy,
-    dateFormat: String = DateFormat.EU,
-    isMutating: Boolean = false,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
+    dateFormat: String = DateFormat.EU,
+    isMutating: Boolean = false
 ) {
     val health = policy.health
     val hasInteraction = health?.hasQualifyingInteraction == true
@@ -237,7 +243,7 @@ fun CadencePanelContent(
     val showTypes = qualifyingTypes.isNotEmpty()
 
     Card(
-        modifier = Modifier.fillMaxWidth().padding(16.dp),
+        modifier = modifier.fillMaxWidth().padding(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
         )
@@ -406,9 +412,9 @@ private fun CadencePill(text: String) {
 @Composable
 fun CadenceDialog(
     policy: CadencePolicy?,
-    isMutating: Boolean = false,
     onConfirm: (intervalDays: Int, qualifyingTypes: List<String>) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    isMutating: Boolean = false
 ) {
     val isEditing = policy != null
     var intervalText by remember { mutableStateOf((policy?.targetIntervalDays ?: 30).toString()) }

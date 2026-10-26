@@ -25,11 +25,14 @@ class LocalSessionReminter(
      * the 401'd request carried; a restart only happens when it is the running
      * server's own token (or unknown, or the server is not running).
      */
-    suspend fun remint(rejectedBearer: String? = null): Boolean? {
+    suspend fun remint(
+        rejectedBearer: String? = null,
+        generation: Long = sessionManager.sessionGeneration()
+    ): Boolean? {
         if (sessionManager.activeProfile()?.kind !is ServerProfileKind.Local) return null
         val running = localServerHost.sessionTokenIfRunning()
         if (running != null && running != sessionManager.token()) {
-            sessionManager.activateLocalProfile(running)
+            sessionManager.activateLocalProfileIfCurrent(running, generation)
             return true
         }
         // Issue #1353: the rejected request carried a token other than the one
@@ -39,7 +42,7 @@ class LocalSessionReminter(
         if (running != null && rejectedBearer != null && rejectedBearer != running) return true
         localServerHost.stop()
         val endpoint = localServerHost.ensureStarted().getOrNull() ?: return false
-        sessionManager.activateLocalProfile(endpoint.sessionToken)
+        sessionManager.activateLocalProfileIfCurrent(endpoint.sessionToken, generation)
         return true
     }
 }

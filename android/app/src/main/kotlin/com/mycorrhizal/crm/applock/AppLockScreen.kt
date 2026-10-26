@@ -21,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -116,10 +117,12 @@ fun AppLockContent(
     state: AppLockUiState,
     onUnlockRequest: () -> Unit,
     onLogout: () -> Unit,
+    modifier: Modifier = Modifier,
     onErrorShown: () -> Unit = {}
 ) {
+    val currentOnErrorShown = rememberUpdatedState(onErrorShown)
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(24.dp),
@@ -193,7 +196,7 @@ fun AppLockContent(
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
                 )
-                LaunchedEffect(message) { onErrorShown() }
+                LaunchedEffect(message) { currentOnErrorShown.value() }
             }
         }
     }

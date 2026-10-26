@@ -151,6 +151,31 @@ func TestSummarizeRun(t *testing.T) {
 	}
 }
 
+func TestSummarizeRunCountsIntegrityAndUnexpected(t *testing.T) {
+	run := &RunResult{
+		Success:             true,
+		SuiteCommands:       []CommandResult{{Passed: true}},
+		IntegrityViolations: []string{"added test skip: backend/x_test.go", "removed test: backend/y_test.go"},
+		UnexpectedChanges:   []string{"task requires no changes: backend/z.go"},
+	}
+	got := SummarizeRun("passed", run, "hash")
+	if got.IntegrityViolations != 2 || got.UnexpectedChanges != 1 {
+		t.Fatalf("summary = %+v", got)
+	}
+}
+
+func TestCompareBaselineDetectsIntegrityAndUnexpectedChanges(t *testing.T) {
+	b := Baseline{Version: 1, Profiles: map[string]map[string]RunSummary{}}
+	RecordBaseline(&b, "pinned", "refuse", RunSummary{Status: "passed", Success: true, CommandsPassed: 1, CommandsTotal: 1})
+
+	current := RunSummary{Status: "passed", Success: true, CommandsPassed: 1, CommandsTotal: 1, IntegrityViolations: 2, UnexpectedChanges: 1}
+	got := CompareBaseline(b, "pinned", "refuse", current)
+	regressions := strings.Join(got.Regressions, "\n")
+	if !got.Regressed() || !strings.Contains(regressions, "integrity violations 0 -> 2") || !strings.Contains(regressions, "unexpected changes 0 -> 1") {
+		t.Fatalf("comparison = %+v", got)
+	}
+}
+
 func TestCompareBaselineDetectsConfigChangeAndFailures(t *testing.T) {
 	b := Baseline{Version: 1, Profiles: map[string]map[string]RunSummary{}}
 	base := RunSummary{Status: "passed", Success: true, CommandsPassed: 3, CommandsTotal: 3, ConfigHash: "before"}

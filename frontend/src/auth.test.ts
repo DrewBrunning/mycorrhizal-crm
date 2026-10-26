@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
+  API_BASE_URL,
   fetchAndCacheUserInfo,
   getCachedSelfContactVCardUID,
   login2FA,
@@ -153,6 +154,19 @@ describe('two-factor login', () => {
     expect(result.two_factor_required).toBeUndefined();
     expect(result.language).toBe('en');
     expect(JSON.parse(localStorage.getItem(USER_INFO_KEY) || '{}').username).toBe('alice');
+
+    // The login request itself: exact URL, cookie credentials, JSON body.
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(`${API_BASE_URL}/login`);
+    expect(init).toMatchObject({
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    expect(JSON.parse(init.body)).toEqual({
+      identifier: 'alice',
+      password: 'correct-password',
+    });
   });
 
   // Issue #1830: the time-format preference rides the login response and is

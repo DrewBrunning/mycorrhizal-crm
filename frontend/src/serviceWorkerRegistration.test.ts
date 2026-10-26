@@ -463,13 +463,22 @@ describe('unregister', () => {
   });
 
   test('logs the error message when the ready promise rejects', async () => {
+    // Reject only after unregister() has attached its catch: a promise
+    // rejected before the dynamic import resolves is an unhandled rejection
+    // for a tick, which a shuffled run reports as a file-level error.
+    let rejectReady!: (error: Error) => void;
     stubNavigator({
-      serviceWorker: { ready: Promise.reject(new Error('boom')) },
+      serviceWorker: {
+        ready: new Promise((_resolve, reject) => {
+          rejectReady = reject;
+        }),
+      },
     });
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const { unregister: unregisterSW } = await import('./serviceWorkerRegistration');
     unregisterSW();
+    rejectReady(new Error('boom'));
     await Promise.resolve();
     await Promise.resolve();
 

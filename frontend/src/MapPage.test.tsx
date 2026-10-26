@@ -13,6 +13,10 @@ vi.mock('./api/map', () => ({
   getMapConfig: h.getMapConfig,
   getMapPoints: h.getMapPoints,
 }));
+vi.mock('./utils/errorHandler', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./utils/errorHandler')>();
+  return { ...actual, handleFetchError: vi.fn(actual.handleFetchError) };
+});
 vi.mock('./components/ContactMap', () => ({
   default: (props: {
     styleUrl: string;
@@ -28,6 +32,9 @@ vi.mock('./components/ContactMap', () => ({
 }));
 
 import MapPage from './MapPage';
+import { handleFetchError } from './utils/errorHandler';
+
+const handleFetchErrorMock = vi.mocked(handleFetchError);
 
 afterEach(cleanup);
 beforeEach(() => {
@@ -93,6 +100,24 @@ test('shows an error and no map when loading fails', async () => {
   expect(await screen.findByRole('alert')).toBeInTheDocument();
   expect(screen.queryByTestId('map-stub')).not.toBeInTheDocument();
   expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  // Mounted control: the same handler the unmount test asserts is not called.
+  expect(handleFetchErrorMock).toHaveBeenCalledTimes(1);
+});
+
+test('applies a delayed response that arrives while still mounted', async () => {
+  let resolveConfig!: (v: { tile_style_url: string }) => void;
+  let resolvePoints!: (v: { points: MapPoint[]; truncated: boolean }) => void;
+  h.getMapConfig.mockReturnValue(new Promise((r) => (resolveConfig = r)));
+  h.getMapPoints.mockReturnValue(new Promise((r) => (resolvePoints = r)));
+  renderPage();
+  expect(screen.getByRole('status', { name: 'Loading…' })).toBeInTheDocument();
+
+  resolveConfig({ tile_style_url: 's' });
+  resolvePoints({ points: [pt], truncated: false });
+
+  const stub = await screen.findByTestId('map-stub');
+  expect(stub).toHaveAttribute('data-count', '1');
+  expect(handleFetchErrorMock).not.toHaveBeenCalled();
 });
 
 test('opening a contact from the map navigates to its page', async () => {
@@ -107,27 +132,26 @@ test('does not update state after unmount', async () => {
   let resolve!: (v: { tile_style_url: string }) => void;
   h.getMapConfig.mockReturnValue(new Promise((r) => (resolve = r)));
   h.getMapPoints.mockResolvedValue({ points: [], truncated: false });
-  const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
   const { unmount } = renderPage();
   unmount();
   resolve({ tile_style_url: 's' });
   await Promise.resolve();
-  expect(errorSpy).not.toHaveBeenCalled();
-  errorSpy.mockRestore();
+  await Promise.resolve();
+  // No error handler, no rendered map: the cancelled-response path is inert.
+  expect(handleFetchErrorMock).not.toHaveBeenCalled();
+  expect(screen.queryByTestId('map-stub')).not.toBeInTheDocument();
 });
 
 test('ignores a failure that arrives after unmount', async () => {
   let reject!: (e: Error) => void;
   h.getMapConfig.mockReturnValue(new Promise((_, r) => (reject = r)));
   h.getMapPoints.mockResolvedValue({ points: [], truncated: false });
-  const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
   const { unmount } = renderPage();
   unmount();
   reject(new Error('late'));
   await Promise.resolve();
   await Promise.resolve();
-  expect(errorSpy).not.toHaveBeenCalled();
-  errorSpy.mockRestore();
+  expect(handleFetchErrorMock).not.toHaveBeenCalled();
 });
 
 test('warns when the server truncated the point list', async () => {

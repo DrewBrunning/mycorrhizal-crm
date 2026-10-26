@@ -255,21 +255,30 @@ func TestListGiftsScopedToUser(t *testing.T) {
 	router.GET("/gifts", ListGifts)
 
 	var user models.User
-	db.First(&user)
+	require.NoError(t, db.First(&user).Error)
+	ownedContact := models.Contact{UserID: user.ID, Firstname: "Mine"}
+	require.NoError(t, db.Create(&ownedContact).Error)
+	require.NoError(t, db.Create(&models.Gift{UserID: user.ID, EntityID: ownedContact.VCardUID, Description: "Mine"}).Error)
+
 	otherUser := models.User{Username: "other", Password: "x", Email: "other@example.com"}
 	require.NoError(t, db.Create(&otherUser).Error)
 	othersContact := models.Contact{UserID: otherUser.ID, Firstname: "Not Yours"}
-	db.Create(&othersContact)
-	db.Create(&models.Gift{UserID: otherUser.ID, EntityID: othersContact.VCardUID, Description: "Secret"})
+	require.NoError(t, db.Create(&othersContact).Error)
+	require.NoError(t, db.Create(&models.Gift{UserID: otherUser.ID, EntityID: othersContact.VCardUID, Description: "Secret"}).Error)
 
 	req, _ := http.NewRequest("GET", "/gifts", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, http.StatusOK, w.Code)
 	var responseBody map[string]any
-	json.Unmarshal(w.Body.Bytes(), &responseBody)
-	assert.Empty(t, responseBody["gifts"], "another user's gifts must not leak into the list")
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &responseBody))
+	gifts, ok := responseBody["gifts"].([]any)
+	require.True(t, ok, "gifts must be an array: %s", w.Body.String())
+	require.Len(t, gifts, 1, "exactly the caller's own gift must be returned")
+	gift, ok := gifts[0].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "Mine", gift["description"], "another user's gifts must not leak into the list")
 }
 
 func TestUpdateGift(t *testing.T) {

@@ -95,9 +95,12 @@ class DeviceGrantManager @Inject constructor(
         }
 
     override suspend fun exchangeDeviceSession(deviceToken: String): Result<Unit> =
+        exchangeIntoSession(deviceToken, sessionManager.sessionGeneration())
+
+    private suspend fun exchangeIntoSession(deviceToken: String, generation: Long): Result<Unit> =
         api.exchangeDeviceSession(deviceToken).fold(
             onSuccess = { freshToken ->
-                sessionManager.setToken(freshToken)
+                sessionManager.setTokenIfCurrent(freshToken, generation)
                 Result.success(Unit)
             },
             onFailure = { Result.failure(it) }
@@ -107,11 +110,15 @@ class DeviceGrantManager @Inject constructor(
      * Bridge past an expired session: if this install holds a grant, exchange
      * it for a fresh JWT. Returns true only when a stored grant existed AND
      * the exchange succeeded (the session is now valid again). Callers that
-     * get false fall back to the normal clear-to-login path.
+     * get false fall back to the normal clear-to-login path. [generation] is
+     * the epoch the triggering 401 was observed under; if the session ends or
+     * switches while the exchange is in flight, the fresh token is discarded.
      */
-    suspend fun refreshSessionFromStoredGrant(): Boolean {
+    suspend fun refreshSessionFromStoredGrant(
+        generation: Long = sessionManager.sessionGeneration()
+    ): Boolean {
         val token = activeProfileId()?.let { storage.loadToken(it) } ?: return false
-        return exchangeDeviceSession(token).isSuccess
+        return exchangeIntoSession(token, generation).isSuccess
     }
 
     override suspend fun revokeAllDeviceGrants(): Result<Unit> =

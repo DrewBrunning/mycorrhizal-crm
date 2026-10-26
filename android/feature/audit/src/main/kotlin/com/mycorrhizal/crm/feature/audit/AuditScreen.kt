@@ -80,9 +80,10 @@ import java.time.format.FormatStyle
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AuditScreen(
+    onOpenContact: (contactId: Int) -> Unit,
+    modifier: Modifier = Modifier,
     // Issue #1758: a top-level drawer destination; null hides the hamburger (no drawer at Expanded).
     onMenuClick: (() -> Unit)? = {},
-    onOpenContact: (contactId: Int) -> Unit,
     viewModel: AuditViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -119,6 +120,7 @@ fun AuditScreen(
     }
 
     Scaffold(
+        modifier = modifier,
         topBar = {
             TopAppBar(
                 navigationIcon = {

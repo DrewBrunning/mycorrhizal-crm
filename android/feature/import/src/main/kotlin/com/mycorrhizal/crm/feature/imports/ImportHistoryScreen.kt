@@ -50,11 +50,16 @@ import java.time.format.FormatStyle
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ImportHistoryScreen(onBack: () -> Unit, viewModel: ImportHistoryViewModel = hiltViewModel()) {
+fun ImportHistoryScreen(
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: ImportHistoryViewModel = hiltViewModel()
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     Scaffold(
+        modifier = modifier,
         topBar = {
             TopAppBar(
                 navigationIcon = {

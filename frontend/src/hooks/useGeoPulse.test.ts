@@ -25,6 +25,9 @@ vi.mock('../api/geopulse', async (importOriginal) => {
 // This codebase's vitest setup does not auto-cleanup between tests.
 afterEach(() => {
   cleanup();
+  // Restore the console.error no-op so the framework-warning gate in
+  // setupTests.ts is active for every later test.
+  vi.restoreAllMocks();
 });
 
 beforeEach(() => {

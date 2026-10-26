@@ -16,6 +16,7 @@ import i18n from './i18n/config';
 // no auto-cleanup (CLAUDE.md frontend trap #1).
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
   vi.clearAllMocks();
 });
 
@@ -343,7 +344,10 @@ test('an all-clear data decay block is not rendered at all', async () => {
 
   renderPage();
 
-  await waitFor(() => expect(getDashboardMock).toHaveBeenCalled());
+  // Wait for the loaded (not skeleton) state before asserting absence: the
+  // block is absent both before and after load, so a call-count wait would
+  // pass even if the page never rendered its data.
+  await screen.findByText('No upcoming birthdays');
   expect(screen.queryByText('Info Needs a Check')).not.toBeInTheDocument();
 });
 

@@ -26,6 +26,9 @@ const logoutAndRedirectMock = vi.mocked(logoutAndRedirect);
 const useOIDCConfigMock = vi.mocked(useOIDCConfig);
 
 beforeEach(() => {
+  loginUserMock.mockReset();
+  login2FAMock.mockReset();
+  logoutAndRedirectMock.mockReset();
   useOIDCConfigMock.mockReturnValue({
     enabled: false,
     provider_name: 'SSO',
@@ -120,6 +123,41 @@ describe('SessionExpiredGate', () => {
     await waitFor(() =>
       expect(screen.queryByLabelText(/verification code/i)).not.toBeInTheDocument(),
     );
+  });
+
+  test('a failed sign-in shows the error and keeps the modal open', async () => {
+    loginUserMock.mockRejectedValue(new Error('Invalid username or password'));
+    renderGate();
+    notifySessionExpired('blocking');
+    await waitFor(() => expect(screen.getByLabelText(/username or email/i)).toBeInTheDocument());
+
+    fireEvent.change(screen.getByLabelText(/username or email/i), { target: { value: 'alice' } });
+    fireEvent.change(screen.getByLabelText(/^password/i), { target: { value: 'wrong' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+
+    expect(await screen.findByText('Invalid username or password')).toBeInTheDocument();
+    expect(screen.getByLabelText(/username or email/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^password/i)).toBeInTheDocument();
+  });
+
+  test('a rejected two-factor code shows the translated error and stays on the step', async () => {
+    loginUserMock.mockResolvedValue({ two_factor_required: true });
+    login2FAMock.mockRejectedValue(new Error('Invalid code'));
+    renderGate();
+    notifySessionExpired('blocking');
+    await waitFor(() => expect(screen.getByLabelText(/username or email/i)).toBeInTheDocument());
+
+    fireEvent.change(screen.getByLabelText(/username or email/i), { target: { value: 'alice' } });
+    fireEvent.change(screen.getByLabelText(/^password/i), { target: { value: 'secret123' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    await waitFor(() => expect(screen.getByLabelText(/verification code/i)).toBeInTheDocument());
+
+    fireEvent.change(screen.getByLabelText(/verification code/i), { target: { value: '000000' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Login' }));
+
+    expect(await screen.findByText('Invalid code. Please try again.')).toBeInTheDocument();
+    expect(screen.getByLabelText(/verification code/i)).toBeInTheDocument();
+    expect(login2FAMock).toHaveBeenCalledWith('000000');
   });
 
   test('"Not now" closes the modal but leaves the banner up', async () => {

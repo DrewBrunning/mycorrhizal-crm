@@ -547,6 +547,12 @@ func reconcileContactSyncWithBaselines(db *gorm.DB, sub *models.ContactSubscript
 				record.Card.PersonalInfo, record.Envelope.PersonalInfoMeta = models.MergePersonalInfoFromRemote(
 					contact.Card.PersonalInfo, contact.CRM.PersonalInfoMeta, record.Card.PersonalInfo,
 				)
+				// The remote vCard cannot carry the CRM-only fields (circles,
+				// how-we-met, work/contact information, CRM.Kind,
+				// CRM.Periods), so their absence from this full overwrite is
+				// not a delete (issue #2055). Re-attach the stored values
+				// before the apply; ordinary remote fields stay authoritative.
+				models.PreserveLocalOnlyCRMFields(&contact, record)
 				models.ApplyRecordToContact(&contact, record, photoDir)
 				// Issue #512: same fix-up as the create branch above -- clean
 				// before the remote snapshot is taken, so both the conflict

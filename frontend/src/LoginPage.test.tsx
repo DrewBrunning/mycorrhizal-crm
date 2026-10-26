@@ -1,10 +1,10 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import './i18n/config';
 import { AppThemeProvider } from './AppThemeProvider';
-import { isAuthenticated, login2FA, loginUser, loginWithPasskey } from './auth';
+import { API_BASE_URL, isAuthenticated, login2FA, loginUser, loginWithPasskey } from './auth';
 import { useOIDCConfig } from './hooks/useOIDCConfig';
+import i18n from './i18n/config';
 import LoginPage from './LoginPage';
 import { getTimeFormat, setTimeFormat } from './timeFormat';
 import { cancelledError, stubWebAuthn, unstubWebAuthn } from './webauthnTestUtils';
@@ -29,6 +29,13 @@ const isAuthenticatedMock = vi.mocked(isAuthenticated);
 const useOIDCConfigMock = vi.mocked(useOIDCConfig);
 
 beforeEach(() => {
+  // Module mocks are shared across tests; reset implementations so a
+  // mockRejectedValue/mockResolvedValue from one test cannot leak into the
+  // next under --sequence.shuffle.
+  loginUserMock.mockReset();
+  login2FAMock.mockReset();
+  loginWithPasskeyMock.mockReset();
+  isAuthenticatedMock.mockReset();
   useOIDCConfigMock.mockReturnValue({
     enabled: false,
     provider_name: 'SSO',
@@ -42,9 +49,9 @@ afterEach(() => {
   unstubWebAuthn();
 });
 
-function renderLogin() {
+function renderLogin(initialEntries: string[] = ['/login']) {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={initialEntries}>
       <AppThemeProvider>
         <LoginPage setToken={() => {}} />
       </AppThemeProvider>
@@ -187,6 +194,36 @@ describe('LoginPage registration gate', () => {
     });
     renderLogin();
     expect(screen.queryByRole('link', { name: /don't have an account/i })).not.toBeInTheDocument();
+  });
+});
+
+// OIDC: the login page receives redirect errors as a query param and offers
+// the provider button when discovery says SSO is enabled.
+describe('LoginPage OIDC', () => {
+  test('shows the error for an OIDC redirect failure', () => {
+    renderLogin(['/login?error=oidc_denied']);
+
+    expect(screen.getByRole('alert')).toHaveTextContent(i18n.t('login.oidcDenied'));
+  });
+
+  test('renders the provider SSO button and starts the OIDC flow', () => {
+    useOIDCConfigMock.mockReturnValue({
+      enabled: true,
+      provider_name: 'Authentik',
+      registration_disabled: false,
+    });
+    const originalLocation = window.location;
+    const fakeLocation = { ...originalLocation, href: originalLocation.href };
+    Object.defineProperty(window, 'location', { configurable: true, value: fakeLocation });
+    try {
+      renderLogin();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Login with Authentik' }));
+
+      expect(fakeLocation.href).toBe(`${API_BASE_URL}/auth/oidc/login`);
+    } finally {
+      Object.defineProperty(window, 'location', { configurable: true, value: originalLocation });
+    }
   });
 });
 

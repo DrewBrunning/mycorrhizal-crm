@@ -16,6 +16,10 @@ gradlePlugin {
             id = "mycorrhizal.android.hilt"
             implementationClass = "com.mycorrhizal.crm.buildlogic.MycorrhizalAndroidHiltPlugin"
         }
+        register("mycorrhizal.dependency-analysis") {
+            id = "mycorrhizal.dependency-analysis"
+            implementationClass = "com.mycorrhizal.crm.buildlogic.MycorrhizalDependencyAnalysisPlugin"
+        }
     }
 }
 
@@ -37,4 +41,8 @@ dependencies {
     // Instrumenter runs inside the convention plugin's custom instrument task.
     // Same version as AndroidConfig.kt JACOCO_TOOL_VERSION (Java 25 support).
     implementation("org.jacoco:org.jacoco.core:0.8.14")
+    // Issue #1908: dependency hygiene. On this classpath (not the settings one)
+    // because AGP and the Kotlin plugins are already here; the convention
+    // plugins apply it to every Android module.
+    implementation(libs.dependency.analysis.gradle.plugin)
 }

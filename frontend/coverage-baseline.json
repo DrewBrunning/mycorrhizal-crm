@@ -81,9 +81,9 @@
       "branchesTotal": 30
     },
     "src/LoginPage.tsx": {
-      "lines": 94.36,
+      "lines": 95.77,
       "linesTotal": 71,
-      "branches": 78.84,
+      "branches": 84.61,
       "branchesTotal": 52
     },
     "src/MapPage.tsx": {
@@ -1371,9 +1371,9 @@
       "branchesTotal": 2
     },
     "src/components/SessionExpiredGate.tsx": {
-      "lines": 93.54,
+      "lines": 98.38,
       "linesTotal": 62,
-      "branches": 60,
+      "branches": 85.71,
       "branchesTotal": 28
     },
     "src/components/SessionExpiredNotice.tsx": {

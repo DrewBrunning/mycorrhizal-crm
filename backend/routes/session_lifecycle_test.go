@@ -46,6 +46,7 @@ import (
 
 	"mycorrhizal/config"
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/fireandforget"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 
@@ -482,14 +483,38 @@ func TestSessionLifecycle_SoftDeletedUserCannotAuthenticate(t *testing.T) {
 	oldToken := mintToken(t, db, cfg, user)
 	require.Equal(t, http.StatusOK, probe(t, router, oldToken))
 
+	// A live API token owned by the same account (issue #2047).
+	w := doJSON(t, router, http.MethodPost, "/api/v1/api-tokens", oldToken, map[string]string{"name": "soft-delete-probe"})
+	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+	var created struct {
+		ID    uint   `json:"id"`
+		Token string `json:"token"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &created))
+	require.NotEmpty(t, created.Token)
+	require.Equal(t, http.StatusOK, probe(t, router, created.Token))
+	fireandforget.Wait()
+	var beforeDelete models.ApiToken
+	require.NoError(t, db.First(&beforeDelete, created.ID).Error)
+	require.NotNil(t, beforeDelete.LastUsedAt, "the successful use stamps last_used_at")
+
 	// Soft-delete the account (the "disabled" persona). No API endpoint does
 	// this — admin DeleteUser hard-deletes by design — so drive GORM directly.
 	require.NoError(t, db.Delete(&user).Error)
 
-	// Neither a pre-delete token nor a freshly minted one may authenticate:
+	// Neither a pre-delete session nor a freshly minted one may authenticate:
 	// AuthMiddleware's user lookup misses the soft-deleted row.
 	assert.Equal(t, http.StatusUnauthorized, probe(t, router, oldToken))
 	assert.Equal(t, http.StatusUnauthorized, probe(t, router, mintToken(t, db, cfg, user)))
+
+	// The API-token branch does not trust the token row alone either.
+	assert.Equal(t, http.StatusUnauthorized, probe(t, router, created.Token))
+	fireandforget.Wait()
+	var tokenRow models.ApiToken
+	require.NoError(t, db.First(&tokenRow, created.ID).Error)
+	require.NotNil(t, tokenRow.LastUsedAt)
+	assert.Equal(t, beforeDelete.LastUsedAt.UnixNano(), tokenRow.LastUsedAt.UnixNano(),
+		"a rejected API token must not be touched")
 }
 
 func TestSessionLifecycle_RecoveryCodeRegenerationInvalidatesPriorCodes(t *testing.T) {

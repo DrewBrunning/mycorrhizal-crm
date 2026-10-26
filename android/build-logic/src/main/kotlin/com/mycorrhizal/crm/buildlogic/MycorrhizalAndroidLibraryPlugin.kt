@@ -13,6 +13,9 @@ import org.gradle.kotlin.dsl.configure
 class MycorrhizalAndroidLibraryPlugin : Plugin<Project> {
     override fun apply(target: Project) {
         target.pluginManager.apply("com.android.library")
+        // Issue #1908: per-module dependency advice; the root's aggregate
+        // `buildHealth` task depends on every module's advice.
+        target.pluginManager.apply("com.autonomousapps.dependency-analysis")
 
         target.extensions.configure<LibraryExtension>("android") {
             target.configureAndroidCommon(this)

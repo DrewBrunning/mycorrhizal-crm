@@ -29,6 +29,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -77,6 +78,7 @@ fun BundleRestoreScreen(
 @Composable
 fun BundleRestoreScreenContent(
     uiState: BundleRestoreUiState,
+    modifier: Modifier = Modifier,
     onBack: () -> Unit = {},
     onDone: () -> Unit = {},
     onFilePicked: (String, ByteArray) -> Unit = { _, _ -> },
@@ -88,6 +90,7 @@ fun BundleRestoreScreenContent(
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    val currentOnErrorShown = rememberUpdatedState(onErrorShown)
     val scope = rememberCoroutineScope()
 
     val filePicker = rememberLauncherForActivityResult(
@@ -111,6 +114,7 @@ fun BundleRestoreScreenContent(
     }
 
     Scaffold(
+        modifier = modifier,
         topBar = {
             TopAppBar(
                 navigationIcon = {
@@ -210,7 +214,7 @@ fun BundleRestoreScreenContent(
     if (errorMessage != null) {
         LaunchedEffect(errorMessage) {
             snackbarHostState.showSnackbar(errorMessage)
-            onErrorShown()
+            currentOnErrorShown.value()
         }
     }
 }
