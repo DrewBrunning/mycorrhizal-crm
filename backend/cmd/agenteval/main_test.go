@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"mycorrhizal/internal/agenteval"
 )
@@ -295,6 +296,111 @@ func TestWriteArtifactWriteFailures(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, _, err := writeArtifact(root, out2, art); err == nil {
+		t.Fatal("markdown path that is a directory should fail")
+	}
+}
+
+func TestRunSelectTriggerSetError(t *testing.T) {
+	root, _ := fixtureRepo(t)
+	code, _, stderr := runCLI(t, "-mode", "select", "-root", root,
+		"-triggers", "testdata/agent-eval/missing.yaml", "-agent-command", ": {prompt}")
+	if code != 1 || !strings.Contains(stderr, "read trigger set") {
+		t.Fatalf("run = %d, stderr = %q", code, stderr)
+	}
+}
+
+func TestRunSelectResolveError(t *testing.T) {
+	root, _ := fixtureRepo(t)
+	code, _, stderr := runCLI(t, "-mode", "select", "-root", root,
+		"-base-ref", strings.Repeat("d", 40), "-agent-command", ": {prompt}")
+	if code != 2 || !strings.Contains(stderr, "-base-ref:") {
+		t.Fatalf("run = %d, stderr = %q", code, stderr)
+	}
+}
+
+func TestRunSelectWriteArtifactError(t *testing.T) {
+	root, sha := fixtureRepo(t)
+	out := filepath.Join(t.TempDir(), "out")
+	if err := os.WriteFile(out, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	code, _, stderr := runCLI(t, "-mode", "select", "-root", root, "-base-ref", sha,
+		"-out", filepath.Join(out, "sub"),
+		"-agent-command", `: {prompt} && printf '%s' '{"skills":["demo"]}' > .agent-eval-selection.json`)
+	if code != 0 || !strings.Contains(stderr, "write artifact") {
+		t.Fatalf("run = %d, stderr = %q", code, stderr)
+	}
+}
+
+func TestRunSelectRunError(t *testing.T) {
+	root, sha := fixtureRepo(t)
+	out := t.TempDir()
+	missing := filepath.Join(t.TempDir(), "missing")
+	t.Setenv("TMPDIR", missing)
+	code, _, stderr := runCLI(t, "-mode", "select", "-root", root, "-base-ref", sha,
+		"-out", out, "-agent-command", ": {prompt}")
+	if code != 1 || !strings.Contains(stderr, "agenteval:") {
+		t.Fatalf("run = %d, stderr = %q", code, stderr)
+	}
+}
+
+func TestRunSelectFailedStatus(t *testing.T) {
+	root, sha := fixtureRepo(t)
+	code, stdout, stderr := runCLI(t, "-mode", "select", "-root", root, "-base-ref", sha,
+		"-out", t.TempDir(), "-agent-command", ": {prompt}")
+	if code != 1 || !strings.Contains(stdout, "Status: **failed**") {
+		t.Fatalf("run = %d, stderr = %q stdout = %q", code, stderr, stdout)
+	}
+}
+
+func TestWriteSelectionArtifactRelativeOut(t *testing.T) {
+	root := t.TempDir()
+	art := agenteval.SelectionArtifact{Version: 1, Status: "passed"}
+	jsonPath, mdPath, err := writeSelectionArtifact(root, "out", art)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(jsonPath, root) || !strings.HasPrefix(mdPath, root) {
+		t.Fatalf("paths = %q %q", jsonPath, mdPath)
+	}
+	if _, err := os.Stat(jsonPath); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(mdPath); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestWriteSelectionArtifactWriteFailures(t *testing.T) {
+	badTime := agenteval.SelectionArtifact{StartedAt: time.Date(10000, 1, 1, 0, 0, 0, 0, time.UTC)}
+	if _, _, err := writeSelectionArtifact(t.TempDir(), "out", badTime); err == nil {
+		t.Fatal("timestamp outside the JSON range should fail")
+	}
+
+	art := agenteval.SelectionArtifact{}
+	base := "selection-" + art.StartedAt.Format("20060102T150405Z")
+
+	outFile := filepath.Join(t.TempDir(), "out")
+	if err := os.WriteFile(outFile, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := writeSelectionArtifact(t.TempDir(), outFile, art); err == nil {
+		t.Fatal("output path that is a file should fail")
+	}
+
+	outJSON := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(outJSON, base+".json"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := writeSelectionArtifact(t.TempDir(), outJSON, art); err == nil {
+		t.Fatal("json path that is a directory should fail")
+	}
+
+	outMD := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(outMD, base+".md"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := writeSelectionArtifact(t.TempDir(), outMD, art); err == nil {
 		t.Fatal("markdown path that is a directory should fail")
 	}
 }
