@@ -130,6 +130,7 @@ fun TrackingSettingsScreen(
 @Composable
 fun TrackingSettingsContent(
     state: SettingsUiState,
+    modifier: Modifier = Modifier,
     onCallTrackingChange: (Boolean) -> Unit = {},
     onSmsTrackingChange: (Boolean) -> Unit = {},
     onNotificationsChange: (Boolean) -> Unit = {},
@@ -139,8 +140,7 @@ fun TrackingSettingsContent(
     // Issue #721: tracking-permission denial dialogs (rationale / open settings).
     onPermissionDialogDismiss: () -> Unit = {},
     onPermissionDialogRetry: () -> Unit = {},
-    onPermissionDialogOpenSettings: () -> Unit = {},
-    modifier: Modifier = Modifier
+    onPermissionDialogOpenSettings: () -> Unit = {}
 ) {
     val gating = rememberSettingsGating()
     SettingsColumn(modifier = modifier) {

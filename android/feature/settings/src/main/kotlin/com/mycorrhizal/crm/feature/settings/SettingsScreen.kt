@@ -160,9 +160,9 @@ fun SettingsScreen(
 @Composable
 fun SettingsRootContent(
     state: SettingsUiState,
-    onNavigate: (String) -> Unit = {},
     onLogout: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onNavigate: (String) -> Unit = {}
 ) {
     var confirmLogout by remember { mutableStateOf(false) }
     val gating = rememberSettingsGating()

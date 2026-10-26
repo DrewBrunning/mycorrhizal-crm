@@ -46,8 +46,8 @@ fun TimelineSection(
     onEditNote: (Int) -> Unit,
     onEditReminder: (Int) -> Unit,
     onCompleteReminder: (Int) -> Unit,
-    onUndoCompletion: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
+    onUndoCompletion: (Int) -> Unit = {},
     previewLimit: Int = TIMELINE_PREVIEW_LIMIT
 ) {
     Column(modifier = modifier) {

@@ -51,9 +51,9 @@ import com.mycorrhizal.crm.ui.R
 fun QuickCaptureSheet(
     state: QuickCaptureFormState,
     onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
     onFirstInteraction: () -> Unit = {},
-    resolving: Boolean = false,
-    modifier: Modifier = Modifier
+    resolving: Boolean = false
 ) {
     if (state.saved) {
         LaunchedEffect(Unit) { onDismiss() }

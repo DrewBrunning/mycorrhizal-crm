@@ -130,13 +130,13 @@ fun NextcloudSettingsScreen(
 @Composable
 fun NextcloudSettingsContent(
     state: NextcloudSettingsUiState,
+    modifier: Modifier = Modifier,
     onBaseUrlChange: (String) -> Unit = {},
     onUsernameChange: (String) -> Unit = {},
     onAppPasswordChange: (String) -> Unit = {},
     onTest: () -> Unit = {},
     onSave: () -> Unit = {},
-    onRemove: () -> Unit = {},
-    modifier: Modifier = Modifier
+    onRemove: () -> Unit = {}
 ) {
     Column(
         modifier = modifier

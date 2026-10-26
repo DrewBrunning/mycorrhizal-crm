@@ -30,13 +30,6 @@
     <issue id="UnusedQuantity" severity="ignore" />
 
     <!--
-      Deferred Compose API cleanup (issue #1976): 26 composables take other
-      optional parameters before Modifier. Reordering the signatures touches
-      many files and their tests, so it is tracked separately.
-    -->
-    <issue id="ModifierParameter" severity="ignore" />
-
-    <!--
       This app logs through android.util.Log and has no Timber dependency.
       These four call sites are OS/boundary error paths, not app-wide logging.
     -->

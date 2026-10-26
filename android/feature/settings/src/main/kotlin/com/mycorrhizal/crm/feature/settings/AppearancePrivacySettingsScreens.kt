@@ -66,10 +66,10 @@ fun AppearanceSettingsScreen(
 @Composable
 fun AppearanceSettingsContent(
     state: SettingsUiState,
+    modifier: Modifier = Modifier,
     onLanguageChange: (String) -> Unit = {},
     onDateFormatChange: (String) -> Unit = {},
-    onThemeChange: (String) -> Unit = {},
-    modifier: Modifier = Modifier
+    onThemeChange: (String) -> Unit = {}
 ) {
     SettingsColumn(modifier = modifier) {
         SettingsDropdown(
@@ -141,11 +141,11 @@ fun PrivacySettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hil
 @Composable
 fun PrivacySettingsContent(
     state: SettingsUiState,
+    modifier: Modifier = Modifier,
     onAppLockChange: (Boolean) -> Unit = {},
     onAutoLockDelayChange: (AutoLockDelay) -> Unit = {},
     onBlockScreenshotsChange: (Boolean) -> Unit = {},
-    onRemoveBiometricSignIn: () -> Unit = {},
-    modifier: Modifier = Modifier
+    onRemoveBiometricSignIn: () -> Unit = {}
 ) {
     SettingsColumn(modifier = modifier) {
         // Issue #722: the opt-in local app lock — a biometric / device-PIN check before a persisted
