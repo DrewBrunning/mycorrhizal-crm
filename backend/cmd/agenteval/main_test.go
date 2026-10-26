@@ -137,11 +137,17 @@ func TestRunBaselineRequiresProfile(t *testing.T) {
 
 func TestRunWritesAndComparesBaseline(t *testing.T) {
 	root, sha := fixtureRepo(t)
-	writeFile(t, root, "testdata/agent-eval/agents.yaml", "version: 1\nprofiles:\n  dry-run:\n    command: \"true\"\n    name: dry-run\n    model: none\n    version: \"0\"\n    dry_run: true\n")
+	writeFile(t, root, "testdata/agent-eval/agents.yaml", "version: 1\nprofiles:\n  pinned:\n    command: \": {prompt}\"\n    name: pinned\n    model: test-model\n    version: \"1.0.0\"\n")
 	out := t.TempDir()
-	args := []string{"-root", root, "-task", "demo", "-base-ref", sha, "-profile", "dry-run", "-out", out, "-no-control"}
-	if code, _, stderr := runCLI(t, append(args, "-write-baseline", "testdata/agent-eval/baseline.json")...); code != 1 {
-		t.Fatalf("write baseline run = %d, stderr %q", code, stderr)
+	args := []string{"-root", root, "-task", "demo", "-base-ref", sha, "-profile", "pinned", "-out", out, "-no-control"}
+	if code, _, stderr := runCLI(t, append(args, "-write-baseline", "testdata/agent-eval/baseline.json")...); code != 1 || !strings.Contains(stderr, "refusing to write") {
+		t.Fatalf("unguarded write = %d, stderr %q", code, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(root, "testdata/agent-eval/baseline.json")); !os.IsNotExist(err) {
+		t.Fatalf("baseline written from a failing run: %v", err)
+	}
+	if code, _, stderr := runCLI(t, append(args, "-write-baseline", "testdata/agent-eval/baseline.json", "-force-baseline")...); code != 1 {
+		t.Fatalf("forced write = %d, stderr %q", code, stderr)
 	}
 	if _, err := os.Stat(filepath.Join(root, "testdata/agent-eval/baseline.json")); err != nil {
 		t.Fatal(err)
@@ -150,8 +156,17 @@ func TestRunWritesAndComparesBaseline(t *testing.T) {
 	if code != 1 {
 		t.Fatalf("compare run = %d, stderr %q", code, stderr)
 	}
-	if !strings.Contains(stdout, "Committed baseline present") {
+	if !strings.Contains(stdout, "Baseline: success=") {
 		t.Fatalf("stdout = %q", stdout)
+	}
+}
+
+func TestRunRejectsDryRunBaseline(t *testing.T) {
+	root, sha := fixtureRepo(t)
+	writeFile(t, root, "testdata/agent-eval/agents.yaml", "version: 1\nprofiles:\n  dry-run:\n    command: \"true\"\n    name: dry-run\n    model: none\n    version: \"0\"\n    dry_run: true\n")
+	code, _, stderr := runCLI(t, "-root", root, "-task", "demo", "-base-ref", sha, "-profile", "dry-run", "-baseline", "testdata/agent-eval/baseline.json")
+	if code != 2 || !strings.Contains(stderr, "dry-run profiles") {
+		t.Fatalf("dry-run baseline = %d, stderr %q", code, stderr)
 	}
 }
 
@@ -285,5 +300,15 @@ func TestWriteArtifactWriteFailures(t *testing.T) {
 	}
 	if _, _, err := writeArtifact(root, out2, art); err == nil {
 		t.Fatal("markdown path that is a directory should fail")
+	}
+}
+
+func TestRunRequiresBaselineEntry(t *testing.T) {
+	root, sha := fixtureRepo(t)
+	writeFile(t, root, "testdata/agent-eval/agents.yaml", "version: 1\nprofiles:\n  pinned:\n    command: \": {prompt}\"\n    name: pinned\n    model: test-model\n    version: \"1.0.0\"\n")
+	code, _, stderr := runCLI(t, "-root", root, "-task", "demo", "-base-ref", sha, "-profile", "pinned",
+		"-baseline", "testdata/agent-eval/baseline.json", "-require-baseline", "-no-control")
+	if code != 1 || !strings.Contains(stderr, "no committed baseline entry") {
+		t.Fatalf("run = %d, stderr %q", code, stderr)
 	}
 }

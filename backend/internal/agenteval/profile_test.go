@@ -1,6 +1,7 @@
 package agenteval
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -59,5 +60,15 @@ func TestProfileValidation(t *testing.T) {
 	dry := Profile{Command: "true", Name: "dry", Model: "none", Version: "0", DryRun: true}
 	if err := dry.Validate("dry"); err != nil {
 		t.Fatalf("dry run rejected: %v", err)
+	}
+}
+
+func TestCommittedProfilesLoad(t *testing.T) {
+	root, err := filepath.Abs("../../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadProfile(root, "testdata/agent-eval/agents.yaml", "dry-run"); err != nil {
+		t.Fatal(err)
 	}
 }

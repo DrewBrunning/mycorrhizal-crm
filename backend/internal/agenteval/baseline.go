@@ -3,6 +3,7 @@ package agenteval
 import (
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
 	"os"
 	"path/filepath"
 	"sort"
@@ -18,6 +19,7 @@ type RunSummary struct {
 	CommandsTotal       int    `json:"commands_total"`
 	ScopeViolations     int    `json:"scope_violations"`
 	HandEditedGenerated int    `json:"hand_edited_generated"`
+	ConfigHash          string `json:"config_hash,omitempty"`
 }
 
 // Baseline is the committed record of the last accepted run per profile and
@@ -40,9 +42,37 @@ type BaselineComparison struct {
 // Regressed reports whether the current run is worse than the baseline.
 func (b BaselineComparison) Regressed() bool { return len(b.Regressions) > 0 }
 
+// ConfigFingerprint is the identity of the measurement: changing the agent,
+// prompt, base ref or suite commands makes the old baseline incomparable.
+func ConfigFingerprint(profile Profile, spec Spec, suites []Suite) string {
+	var commands []string
+	for _, suite := range suites {
+		if suite.Name == spec.Suite {
+			commands = suite.Commands
+			break
+		}
+	}
+	payload := struct {
+		Command  string   `json:"command"`
+		Name     string   `json:"name"`
+		Model    string   `json:"model"`
+		Version  string   `json:"version"`
+		BaseRef  string   `json:"base_ref"`
+		Prompt   string   `json:"prompt"`
+		Suite    string   `json:"suite"`
+		Expect   []string `json:"expect_paths"`
+		Forbid   []string `json:"forbid_paths"`
+		Commands []string `json:"commands"`
+	}{profile.Command, profile.Name, profile.Model, profile.Version, spec.BaseRef, spec.Prompt, spec.Suite, spec.ExpectPaths, spec.ForbidPaths, commands}
+	body, _ := json.Marshal(payload)
+	h := fnv.New64a()
+	_, _ = h.Write(body)
+	return fmt.Sprintf("%016x", h.Sum64())
+}
+
 // SummarizeRun extracts the comparable part of one finished run.
-func SummarizeRun(status string, run *RunResult) RunSummary {
-	s := RunSummary{Status: status}
+func SummarizeRun(status string, run *RunResult, configHash string) RunSummary {
+	s := RunSummary{Status: status, ConfigHash: configHash}
 	if run == nil {
 		return s
 	}
@@ -133,8 +163,13 @@ func CompareBaseline(b Baseline, profile, task string, current RunSummary) Basel
 	if base.Success && !current.Success {
 		c.Regressions = append(c.Regressions, "task passed before; now failed")
 	}
-	if current.CommandsPassed < base.CommandsPassed {
-		c.Regressions = append(c.Regressions, fmt.Sprintf("suite commands passed %d -> %d", base.CommandsPassed, current.CommandsPassed))
+	if base.ConfigHash != "" && current.ConfigHash != "" && base.ConfigHash != current.ConfigHash {
+		c.Regressions = append(c.Regressions, "configuration changed (agent, prompt, base ref or suite); re-baseline after review")
+	}
+	baseFailed := base.CommandsTotal - base.CommandsPassed
+	currentFailed := current.CommandsTotal - current.CommandsPassed
+	if currentFailed > baseFailed {
+		c.Regressions = append(c.Regressions, fmt.Sprintf("suite command failures %d -> %d", baseFailed, currentFailed))
 	}
 	if current.ScopeViolations > base.ScopeViolations {
 		c.Regressions = append(c.Regressions, fmt.Sprintf("scope violations %d -> %d", base.ScopeViolations, current.ScopeViolations))

@@ -58,6 +58,7 @@ jobs:
       contents: read
     strategy:
       fail-fast: false
+      max-parallel: 6
       matrix:
         task: ${{ fromJSON(needs.discover.outputs.tasks) }}
     steps:
@@ -85,6 +86,13 @@ jobs:
         working-directory: frontend
         run: yarn install --frozen-lockfile
 
+      - name: Set up Java
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: gradle
+
       - name: Run one eval task against the baseline
         env:
           TASK: ${{ matrix.task }}
@@ -100,6 +108,7 @@ jobs:
               -task "$TASK" \
               -profile "$PROFILE" \
               -baseline testdata/agent-eval/baseline.json \
+              -require-baseline \
               -out "agent-eval-results/$TASK" \
               -no-control
           )

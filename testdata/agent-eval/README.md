@@ -9,20 +9,23 @@ disposable worktree and scores the result. It is dispatch-only (or weekly via
 
 `agents.yaml` holds the pinned agent configurations. A profile names the
 command, model and CLI version, and a real profile's command must contain
-`{prompt}`. Use it instead of free-form overrides:
+`{prompt}`. Use it for a comparable run:
 
 ```bash
 cd backend && go run ./cmd/agenteval -task database-migration -profile pinned
 ```
 
-`-agent-command`/`-agent-model`/`-agent-version` still override a profile for a
-one-off experiment, but that run is not comparable with a baseline.
+Explicit `-agent-command`/`-agent-model`/`-agent-version` flags cannot be
+combined with `-profile`; a free-form run is not comparable with a baseline.
+`dry-run` profiles are for smoke tests only and are rejected when a baseline is
+involved.
 
 ## Baseline
 
 `baseline.json` records the last accepted run per profile and task: success,
-suite commands passed, scope violations and generated-artifact hand-edits. A
-missing entry is "no baseline", never a regression.
+suite commands passed/failed, scope violations, generated-artifact hand-edits
+and a fingerprint of the agent, prompt, base ref and suite. A missing entry is
+"no baseline", never a regression by itself.
 
 Compare a run against it:
 
@@ -31,24 +34,35 @@ cd backend && go run ./cmd/agenteval -task database-migration -profile pinned \
   -baseline testdata/agent-eval/baseline.json -no-control
 ```
 
-Promote a known-good run by writing it and committing the diff:
+Pass `-require-baseline` to fail when the profile/task has no entry (the
+collector does). Promote a known-good run and commit the diff:
 
 ```bash
 cd backend && go run ./cmd/agenteval -task database-migration -profile pinned \
   -write-baseline testdata/agent-eval/baseline.json -no-control
 ```
 
-A comparison fails the command when the task stops passing, fewer suite
-commands pass, or scope/hand-edit counts rise. The artifact records the exact
-regressions; wall-clock and changed-file counts are deliberately not compared.
+A non-passing run is refused unless `-force-baseline` is explicit. A comparison
+fails the command when the task stops passing, suite command failures rise,
+scope/hand-edit counts rise, or the configuration fingerprint changes (the
+baseline is no longer comparable; re-baseline after review). The artifact
+records the exact regressions; wall-clock and changed-file counts are
+deliberately not compared.
+
+## Refusal tasks
+
+`expect_no_change: true` requires an unchanged tree. `expected_any` requires the
+agent to name at least one of the listed risks (for example data loss or a
+missing deprecation window), so a silent no-op does not pass.
 
 ## Collector
 
 `agent-eval-collect.yml` runs every discovered task weekly against the trusted
-main tree. It is disabled until the `AGENT_EVAL_PROFILE` repository variable
-names a profile in `agents.yaml`; set `AGENT_EVAL_MODEL_KEY` for the agent
-subprocess. It is registered in the nightly failure alarm and the reconcile
-list by `cmd/nightlyalertcheck`.
+main tree with `-require-baseline`, so enabling it without a promoted baseline
+is visible instead of green. It is disabled until the `AGENT_EVAL_PROFILE`
+repository variable names a non-dry-run profile in `agents.yaml`; set
+`AGENT_EVAL_MODEL_KEY` for the agent subprocess. It is registered in the nightly
+failure alarm and the reconcile list by `cmd/nightlyalertcheck`.
 
 ## Control
 

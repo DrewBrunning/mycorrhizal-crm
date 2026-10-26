@@ -15,17 +15,18 @@ import (
 
 // Options configures one task run.
 type Options struct {
-	Root          string
-	Spec          Spec
-	Suites        []Suite
-	AgentCommand  string
-	AgentProfile  string
-	AgentName     string
-	AgentModel    string
-	AgentVersion  string
-	RunControl    bool
-	LookPath      func(string) (string, error)
-	CommandRunner func(ctx context.Context, dir, command string, timeout time.Duration) CommandResult
+	Root               string
+	Spec               Spec
+	Suites             []Suite
+	AgentCommand       string
+	AgentProfile       string
+	AgentName          string
+	AgentModel         string
+	AgentVersion       string
+	RunControl         bool
+	LookPath           func(string) (string, error)
+	CommandRunner      func(ctx context.Context, dir, command string, timeout time.Duration) CommandResult
+	SuiteCommandRunner func(ctx context.Context, dir, command string, timeout time.Duration) CommandResult
 }
 
 // Suite is the subset of agentcontext.Suite the harness needs, kept local so
@@ -43,6 +44,9 @@ func Run(ctx context.Context, opts Options) (Artifact, error) {
 	}
 	if opts.CommandRunner == nil {
 		opts.CommandRunner = runShellCommand
+	}
+	if opts.SuiteCommandRunner == nil {
+		opts.SuiteCommandRunner = runSuiteShellCommand
 	}
 	command := opts.Spec.AgentCommand
 	if opts.AgentCommand != "" {
@@ -174,7 +178,7 @@ func runSuite(ctx context.Context, opts Options, wt string) ([]CommandResult, bo
 	}
 	var out []CommandResult
 	for _, command := range suite.Commands {
-		out = append(out, opts.CommandRunner(ctx, wt, command, opts.Spec.TimeoutValue))
+		out = append(out, opts.SuiteCommandRunner(ctx, wt, command, opts.Spec.TimeoutValue))
 	}
 	return out, true
 }
@@ -343,8 +347,35 @@ func firstNonEmpty(values ...string) string {
 
 const outputLimit = 1 << 20
 
-// runShellCommand executes a command in dir and returns a bounded result.
+// runShellCommand executes the agent command with the step environment.
 func runShellCommand(ctx context.Context, dir, command string, timeout time.Duration) CommandResult {
+	return runShellCommandEnv(ctx, dir, command, timeout, os.Environ())
+}
+
+// runSuiteShellCommand executes a suite command without the model credential.
+// The suite may run agent-modified code; it must not inherit a secret meant for
+// the agent subprocess.
+func runSuiteShellCommand(ctx context.Context, dir, command string, timeout time.Duration) CommandResult {
+	return runShellCommandEnv(ctx, dir, command, timeout, scrubEnv(os.Environ()))
+}
+
+func scrubEnv(env []string) []string {
+	out := make([]string, 0, len(env))
+	for _, entry := range env {
+		name := entry
+		if i := strings.IndexByte(entry, '='); i >= 0 {
+			name = entry[:i]
+		}
+		switch name {
+		case "AGENT_EVAL_MODEL_KEY", "GITHUB_TOKEN", "GH_TOKEN":
+			continue
+		}
+		out = append(out, entry)
+	}
+	return out
+}
+
+func runShellCommandEnv(ctx context.Context, dir, command string, timeout time.Duration, env []string) CommandResult {
 	res := CommandResult{Command: RedactCommand(command)}
 	start := time.Now()
 	runCtx := ctx
@@ -355,7 +386,7 @@ func runShellCommand(ctx context.Context, dir, command string, timeout time.Dura
 	}
 	cmd := exec.CommandContext(runCtx, "bash", "-lc", command) // #nosec G204 -- commands come from the trusted task spec and Suite registry
 	cmd.Dir = dir
-	cmd.Env = os.Environ()
+	cmd.Env = env
 	var buf limitedBuffer
 	cmd.Stdout = &buf
 	cmd.Stderr = &buf

@@ -83,11 +83,51 @@ func TestSummarizeRun(t *testing.T) {
 		ScopeViolations:     []string{"x"},
 		HandEditedGenerated: []string{"y"},
 	}
-	got := SummarizeRun("passed", run)
-	if got.Status != "passed" || !got.Success || got.CommandsPassed != 1 || got.CommandsTotal != 2 || got.ScopeViolations != 1 || got.HandEditedGenerated != 1 {
+	got := SummarizeRun("passed", run, "hash")
+	if got.Status != "passed" || !got.Success || got.CommandsPassed != 1 || got.CommandsTotal != 2 || got.ScopeViolations != 1 || got.HandEditedGenerated != 1 || got.ConfigHash != "hash" {
 		t.Fatalf("summary = %+v", got)
 	}
-	if got := SummarizeRun("skipped", nil); got.Status != "skipped" || got.Success {
+	if got := SummarizeRun("skipped", nil, "hash"); got.Status != "skipped" || got.Success {
 		t.Fatalf("nil summary = %+v", got)
+	}
+}
+
+func TestCompareBaselineDetectsConfigChangeAndFailures(t *testing.T) {
+	b := Baseline{Version: 1, Profiles: map[string]map[string]RunSummary{}}
+	base := RunSummary{Status: "passed", Success: true, CommandsPassed: 3, CommandsTotal: 3, ConfigHash: "before"}
+	RecordBaseline(&b, "pinned", "demo", base)
+
+	changed := RunSummary{Status: "passed", Success: true, CommandsPassed: 3, CommandsTotal: 3, ConfigHash: "after"}
+	if got := CompareBaseline(b, "pinned", "demo", changed); !got.Regressed() || !strings.Contains(strings.Join(got.Regressions, "\n"), "configuration changed") {
+		t.Fatalf("config change = %+v", got)
+	}
+
+	failedCommand := RunSummary{Status: "passed", Success: true, CommandsPassed: 3, CommandsTotal: 4, ConfigHash: "before"}
+	if got := CompareBaseline(b, "pinned", "demo", failedCommand); !got.Regressed() || !strings.Contains(strings.Join(got.Regressions, "\n"), "suite command failures") {
+		t.Fatalf("failure count = %+v", got)
+	}
+}
+
+func TestCommittedBaselineLoads(t *testing.T) {
+	root, err := filepath.Abs("../../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadBaseline(filepath.Join(root, "testdata", "agent-eval", "baseline.json")); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestConfigFingerprintChanges(t *testing.T) {
+	profile := Profile{Command: "agent {prompt}", Name: "agent", Model: "m", Version: "1"}
+	spec := Spec{BaseRef: "abc", Prompt: "do it", Suite: "demo"}
+	suites := []Suite{{Name: "demo", Commands: []string{"true"}}}
+	first := ConfigFingerprint(profile, spec, suites)
+	if first == "" {
+		t.Fatal("empty fingerprint")
+	}
+	spec.Prompt = "do something else"
+	if second := ConfigFingerprint(profile, spec, suites); second == first {
+		t.Fatal("fingerprint ignored the prompt")
 	}
 }

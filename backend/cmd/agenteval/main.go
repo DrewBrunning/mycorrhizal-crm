@@ -38,12 +38,14 @@ func run(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("agenteval", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	var task, tasksDir, rootFlag, outDir, agentCommand, agentName, agentModel, agentVersion, baseRef, profileName, profilesPath, baselinePath, baselineOut string
-	var noControl bool
+	var noControl, requireBaseline, forceBaseline bool
 	fs.StringVar(&task, "task", "", "task name under testdata/agent-eval (required)")
 	fs.StringVar(&profileName, "profile", "", "pinned agent profile from testdata/agent-eval/agents.yaml")
 	fs.StringVar(&profilesPath, "profiles", "testdata/agent-eval/agents.yaml", "agent profile file, repo-relative")
 	fs.StringVar(&baselinePath, "baseline", "", "committed baseline to compare against (requires -profile)")
 	fs.StringVar(&baselineOut, "write-baseline", "", "write this run into the named baseline file (requires -profile)")
+	fs.BoolVar(&requireBaseline, "require-baseline", false, "fail if the profile/task has no committed baseline entry")
+	fs.BoolVar(&forceBaseline, "force-baseline", false, "write a baseline even when the run did not pass")
 	fs.StringVar(&tasksDir, "tasks-dir", "testdata/agent-eval", "task directory, repo-relative")
 	fs.StringVar(&rootFlag, "root", "", "repository root (default: walk up to .git and AGENTS.md)")
 	fs.StringVar(&outDir, "out", "agent-eval-results", "artifact directory, repo-relative or absolute")
@@ -71,6 +73,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "agenteval: -baseline and -write-baseline require -profile (results are only comparable per pinned profile)")
 		return 2
 	}
+	if requireBaseline && baselinePath == "" {
+		fmt.Fprintln(stderr, "agenteval: -require-baseline requires -baseline")
+		return 2
+	}
 	if profileName != "" && (agentCommand != "" || agentName != "" || agentModel != "" || agentVersion != "") {
 		fmt.Fprintln(stderr, "agenteval: explicit agent flags cannot be combined with -profile; edit the profile instead")
 		return 2
@@ -89,12 +95,14 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "agenteval:", err) // # pragma: no cover — Abs fails only if cwd was deleted
 		return 1                                // # pragma: no cover
 	}
+	var loadedProfile agenteval.Profile
 	if profileName != "" {
 		profile, err := agenteval.LoadProfile(abs, profilesPath, profileName)
 		if err != nil {
 			fmt.Fprintln(stderr, "agenteval:", err)
 			return 1
 		}
+		loadedProfile = profile
 		if agentCommand == "" {
 			agentCommand = profile.Command
 		}
@@ -107,6 +115,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 		if agentVersion == "" {
 			agentVersion = profile.Version
 		}
+	}
+	if loadedProfile.DryRun && (baselinePath != "" || baselineOut != "" || requireBaseline) {
+		fmt.Fprintln(stderr, "agenteval: dry-run profiles cannot be compared with a baseline")
+		return 2
 	}
 	if missing, err := agenteval.VerifyGeneratorTargets(abs, agenteval.GeneratedArtifacts); err != nil {
 		fmt.Fprintln(stderr, "agenteval:", err)
@@ -147,7 +159,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 		AgentVersion: agentVersion,
 		RunControl:   !noControl,
 	})
-	current := agenteval.SummarizeRun(artifact.Status, artifact.Context)
+	effectiveProfile := agenteval.Profile{Command: agentCommand, Name: agentName, Model: agentModel, Version: agentVersion}
+	configHash := agenteval.ConfigFingerprint(effectiveProfile, spec, local)
+	current := agenteval.SummarizeRun(artifact.Status, artifact.Context, configHash)
 	if baselinePath != "" {
 		base, err := agenteval.LoadBaseline(resolvePath(abs, baselinePath))
 		if err != nil {
@@ -156,19 +170,6 @@ func run(args []string, stdout, stderr io.Writer) int {
 		}
 		comparison := agenteval.CompareBaseline(base, profileName, task, current)
 		artifact.Baseline = &comparison
-	}
-	if baselineOut != "" {
-		out := resolvePath(abs, baselineOut)
-		base, err := agenteval.LoadBaseline(out)
-		if err != nil {
-			fmt.Fprintln(stderr, "agenteval: baseline:", err)
-			return 1
-		}
-		agenteval.RecordBaseline(&base, profileName, task, current)
-		if err := agenteval.WriteBaseline(out, base); err != nil {
-			fmt.Fprintln(stderr, "agenteval: write baseline:", err)
-			return 1
-		}
 	}
 	jsonPath, mdPath, writeErr := writeArtifact(abs, outDir, artifact)
 	if writeErr != nil {
@@ -184,8 +185,29 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "agenteval:", runErr)
 		return 1
 	}
+	if requireBaseline && artifact.Baseline != nil && !artifact.Baseline.Present {
+		fmt.Fprintln(stderr, "agenteval: no committed baseline entry for", profileName, "/", task)
+		return 1
+	}
 	if artifact.Baseline != nil && artifact.Baseline.Regressed() {
 		return 1
+	}
+	if baselineOut != "" {
+		if (artifact.Status != "passed" || !current.Success) && !forceBaseline {
+			fmt.Fprintln(stderr, "agenteval: refusing to write a baseline from a non-passing run (use -force-baseline to override)")
+			return 1
+		}
+		out := resolvePath(abs, baselineOut)
+		base, err := agenteval.LoadBaseline(out)
+		if err != nil {
+			fmt.Fprintln(stderr, "agenteval: baseline:", err)
+			return 1
+		}
+		agenteval.RecordBaseline(&base, profileName, task, current)
+		if err := agenteval.WriteBaseline(out, base); err != nil {
+			fmt.Fprintln(stderr, "agenteval: write baseline:", err)
+			return 1
+		}
 	}
 	switch artifact.Status {
 	case "passed", "skipped":

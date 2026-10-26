@@ -289,10 +289,15 @@ func Markdown(a Artifact) string {
 	}
 	if a.Baseline != nil {
 		fmt.Fprintf(&b, "\n## Baseline\n\n- Profile/task: %s / %s\n", a.Baseline.Profile, a.Baseline.Task)
-		if !a.Baseline.Present {
+		cur := a.Baseline.Current
+		fmt.Fprintf(&b, "- Current: success=%v commands=%d/%d scope=%d hand-edits=%d\n",
+			cur.Success, cur.CommandsPassed, cur.CommandsTotal, cur.ScopeViolations, cur.HandEditedGenerated)
+		if !a.Baseline.Present || a.Baseline.Baseline == nil {
 			b.WriteString("- No committed baseline entry\n")
 		} else {
-			b.WriteString("- Committed baseline present\n")
+			base := *a.Baseline.Baseline
+			fmt.Fprintf(&b, "- Baseline: success=%v commands=%d/%d scope=%d hand-edits=%d\n",
+				base.Success, base.CommandsPassed, base.CommandsTotal, base.ScopeViolations, base.HandEditedGenerated)
 		}
 		for _, r := range a.Baseline.Regressions {
 			fmt.Fprintf(&b, "- Regression: %s\n", r)
