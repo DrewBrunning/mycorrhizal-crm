@@ -56,9 +56,9 @@ import com.mycorrhizal.crm.ui.components.RowOverflowMenu
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TagsScreen(
+    onOpenTag: (String) -> Unit,
     // Issue #150: null hides the hamburger — there is no drawer at Expanded.
     onMenuClick: (() -> Unit)? = {},
-    onOpenTag: (String) -> Unit,
     viewModel: TagsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()

@@ -16,10 +16,17 @@ anything mirrored across clients; the Kotlin-specific rules are here.
 - `detekt` is the Kotlin lint **and formatting** gate: `cd android && ./gradlew detekt` on any
   Kotlin change. The `ktlint` wrapper rule set enforces code style `android_studio` (mirrored in
   `android/.editorconfig`; the wrapper reads `config/detekt/detekt.yml`, not the editorconfig).
-  Auto-correct formatting with `./gradlew detekt --auto-correct`; there is no detekt baseline, so
-  findings are fixed rather than grandfathered. detekt 2.x supports the JDK 25 build JVM, so no JDK
-  downgrade is needed; CI runs the same task in `android-tests.yml`'s `Android (Gradle)` job. There
-  is no Gradle step in the local pre-commit hook (too slow to launch a build per commit).
+  The same task also runs the Compose rule set (`io.nlopez.compose.rules:detekt`) for composable
+  correctness; disabled rules and the one intentional anchor-modifier suppression carry reasons in
+  `config/detekt/detekt.yml`/`LabelledDropdown.kt`. Auto-correct formatting with
+  `./gradlew detekt --auto-correct`; there is no detekt baseline, so findings are fixed rather than
+  grandfathered. detekt 2.x supports the JDK 25 build JVM, so no JDK downgrade is needed; CI runs
+  the same task in `android-tests.yml`'s `Android (Gradle)` job. There is no Gradle step in the local
+  pre-commit hook (too slow to launch a build per commit).
+- Dependency hygiene uses the `dependency-analysis` Gradle plugin: `cd android && ./gradlew
+  buildHealth` reports unused, misdeclared and transitively-used dependencies per module. It is
+  **advisory** in CI for now (the report is appended to the job summary); transitive advice is
+  ignored in the root build because the Compose BOM/AndroidX constraints supply those deliberately.
 - `lint` is the Android resource/manifest/framework gate and treats **warnings** as errors (issue
   #1902): `./gradlew --warning-mode=fail lintDebug :app:lintObtainiumDebug :app:lintFossDebug`.
   The shared config is `android/lint.xml`, where every `ignore` carries a reason (dependency

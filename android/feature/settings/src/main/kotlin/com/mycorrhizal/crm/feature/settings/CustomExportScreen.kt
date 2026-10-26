@@ -37,6 +37,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -66,6 +67,7 @@ import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 fun CustomExportScreen(onBack: () -> Unit, viewModel: CustomExportViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val currentOnBack = rememberUpdatedState(onBack)
     var showSensitiveConfirm by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -283,7 +285,7 @@ fun CustomExportScreen(onBack: () -> Unit, viewModel: CustomExportViewModel = hi
         LaunchedEffect(export.kind) {
             shareExportFile(context, export)
             viewModel.onExportHandled()
-            onBack()
+            currentOnBack.value()
         }
     }
 

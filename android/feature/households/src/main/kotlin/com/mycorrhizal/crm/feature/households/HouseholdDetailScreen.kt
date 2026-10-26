@@ -67,6 +67,7 @@ import com.mycorrhizal.crm.ui.components.RefreshableContent
 fun HouseholdDetailScreen(
     onBack: () -> Unit,
     onNavigateToContact: (Int) -> Unit,
+    modifier: Modifier = Modifier,
     viewModel: HouseholdDetailViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -88,6 +89,7 @@ fun HouseholdDetailScreen(
     }
 
     Scaffold(
+        modifier = modifier,
         topBar = {
             TopAppBar(
                 navigationIcon = {

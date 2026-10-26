@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -247,9 +248,7 @@ class NavigationGraphTest {
                     }
                     composable("tags") {
                         var count by androidx.compose.runtime.saveable.rememberSaveable {
-                            mutableStateOf(
-                                0
-                            )
+                            mutableIntStateOf(0)
                         }
                         Text("count $count", Modifier.testTag("count").clickable { count++ })
                     }

@@ -283,6 +283,20 @@ jobs:
         working-directory: android
         run: ./gradlew --warning-mode=fail detekt
 
+      # Issue #1908: dependency hygiene (unused / misdeclared / transitively
+      # used dependencies). Advisory for now: the first report records the
+      # existing debt instead of gating on it, and the step summary carries the
+      # per-module advice for follow-up. Flip this to a hard gate (or
+      # continue-on-error: false) once the debt is paid down.
+      - name: Dependency analysis (advisory)
+        continue-on-error: true
+        working-directory: android
+        run: |
+          ./gradlew --console=plain buildHealth
+          if [ -f build/reports/dependency-analysis/build-health-report.txt ]; then
+            cat build/reports/dependency-analysis/build-health-report.txt >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       # Issue #1133: obtainium (gold-standard) + foss (proves the
       # Firebase-free flavor builds end to end, the F-Droid precondition).
       # Issue #1200: play too, for its restricted-permission carve-out below.

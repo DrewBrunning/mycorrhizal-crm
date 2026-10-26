@@ -37,6 +37,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,6 +65,7 @@ import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 fun ShareContactScreen(onBack: () -> Unit, viewModel: ShareContactViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val currentOnBack = rememberUpdatedState(onBack)
     var recipientExpanded by remember { mutableStateOf(false) }
     var showSensitiveConfirm by remember { mutableStateOf(false) }
 
@@ -260,7 +262,7 @@ fun ShareContactScreen(onBack: () -> Unit, viewModel: ShareContactViewModel = hi
     }
 
     LaunchedEffect(state.shared) {
-        if (state.shared) onBack()
+        if (state.shared) currentOnBack.value()
     }
 }
 

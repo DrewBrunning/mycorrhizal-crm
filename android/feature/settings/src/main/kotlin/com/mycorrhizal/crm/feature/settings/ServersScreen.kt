@@ -30,6 +30,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,6 +69,7 @@ fun ServersScreen(
     viewModel: ServersViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val currentOnBack = rememberUpdatedState(onBack)
     var addOpen by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf<ServerProfile?>(null) }
     var removing by remember { mutableStateOf<ServerProfile?>(null) }
@@ -75,7 +77,7 @@ fun ServersScreen(
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
-                ServersEvent.Switched, ServersEvent.Removed -> onBack()
+                ServersEvent.Switched, ServersEvent.Removed -> currentOnBack.value()
             }
         }
     }

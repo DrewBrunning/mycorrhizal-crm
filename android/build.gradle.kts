@@ -10,6 +10,25 @@ plugins {
     alias(libs.plugins.hilt) apply false
     alias(libs.plugins.google.services) apply false
     alias(libs.plugins.about.libraries) apply false
+    // Issue #1908: root-side aggregate tasks (buildHealth), applied from
+    // build-logic's classpath so AGP is visible to the analyzer.
+    id("mycorrhizal.dependency-analysis")
+}
+
+// Issue #1908: dependency-analysis. The Compose BOM and the AndroidX
+// constraints deliberately supply many artifacts transitively; declaring each
+// one directly would duplicate the BOM and add churn without changing the
+// resolved graph, so that advisory is ignored. Unused and misconfigured
+// dependencies stay enabled in the advisory report; the existing debt is
+// recorded by the CI step rather than rewritten in this change.
+dependencyAnalysis {
+    issues {
+        all {
+            onUsedTransitiveDependencies {
+                severity("ignore")
+            }
+        }
+    }
 }
 
 // Issue #942: Gradle dependency locking, so Trivy's license scanner

@@ -492,56 +492,61 @@ private fun CoordinatesField(
     }
     val invalid = text.isNotBlank() && parseCoordinateInput(text) == null
 
-    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.Top) {
-        OutlinedTextField(
-            value = text,
-            onValueChange = { input ->
-                text = input
-                when {
-                    input.isBlank() -> onCoordinatesChange(null)
+    Column {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            OutlinedTextField(
+                value = text,
+                onValueChange = { input ->
+                    text = input
+                    when {
+                        input.isBlank() -> onCoordinatesChange(null)
 
-                    else -> parseCoordinateInput(
-                        input
-                    )?.let { onCoordinatesChange(formatGeoUri(it.latitude, it.longitude)) }
-                }
-            },
-            label = { Text(stringResource(R.string.contact_address_coordinates)) },
-            placeholder = { Text("51.5007, -0.1246") },
-            supportingText = {
+                        else -> parseCoordinateInput(
+                            input
+                        )?.let { onCoordinatesChange(formatGeoUri(it.latitude, it.longitude)) }
+                    }
+                },
+                label = { Text(stringResource(R.string.contact_address_coordinates)) },
+                placeholder = { Text("51.5007, -0.1246") },
+                supportingText = {
+                    Text(
+                        stringResource(
+                            if (invalid) R.string.contact_address_coordinates_invalid else R.string.contact_address_coordinates_hint
+                        )
+                    )
+                },
+                isError = invalid,
+                singleLine = true,
+                modifier = Modifier.weight(1f)
+            )
+            OutlinedButton(
+                onClick = onFind,
+                enabled = findReason == null && !finding,
+                modifier = Modifier.padding(top = 8.dp)
+            ) {
                 Text(
                     stringResource(
-                        if (invalid) R.string.contact_address_coordinates_invalid else R.string.contact_address_coordinates_hint
+                        if (finding) R.string.contact_address_find_coordinates_loading else R.string.contact_address_find_coordinates
                     )
                 )
-            },
-            isError = invalid,
-            singleLine = true,
-            modifier = Modifier.weight(1f)
-        )
-        OutlinedButton(
-            onClick = onFind,
-            enabled = findReason == null && !finding,
-            modifier = Modifier.padding(top = 8.dp)
-        ) {
+            }
+        }
+        findReason?.let {
             Text(
-                stringResource(
-                    if (finding) R.string.contact_address_find_coordinates_loading else R.string.contact_address_find_coordinates
-                )
+                it,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-    }
-    findReason?.let {
-        Text(
-            it,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-    findError?.let {
-        Text(
-            it,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.error
-        )
+        findError?.let {
+            Text(
+                it,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
     }
 }

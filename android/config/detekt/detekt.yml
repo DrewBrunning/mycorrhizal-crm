@@ -63,6 +63,133 @@ style:
   LoopWithTooManyJumpStatements:
     active: false
 
+# Issue #1908: Compose correctness rules (io.nlopez.compose.rules:detekt),
+# loaded as a detekt plugin by configureDetekt. The rule set's defaults are
+# copied here explicitly: a third-party rule set is not merged automatically,
+# and a rule only runs once its `Compose:` entry is active. Deliberately no
+# baseline — findings are fixed, or the rule is disabled with a reason below.
+Compose:
+  ComposableAnnotationNaming:
+    active: true
+  ComposableNaming:
+    active: true
+  ComposableNestingDepth:
+    # Opt-in in the plugin (max nesting = 3). Deep dialogs/screens are a
+    # readability question this repo handles in review; enabling it would
+    # flag legitimate layout trees without a correctness payoff.
+    active: false
+  ComposableParamOrder:
+    active: true
+  CompositionLocalAllowlist:
+    active: true
+    # These are the app's deliberate, app-wide ambient values (server origin,
+    # capabilities, date/time format, drawer state, theme and warning colors);
+    # they are provided once at the root rather than threaded through every
+    # screen. New locals still need adding here (and a reason).
+    allowedCompositionLocals: LocalDarkTheme,LocalDateFormat,LocalDrawerOpen,LocalIs24Hour,LocalServerCapabilities,LocalServerUrl,LocalServerVersion,LocalWarningColors
+  CompositionLocalNaming:
+    active: true
+  ConditionHoist:
+    active: true
+  ContentEmitterReturningValues:
+    active: true
+  ContentSlotReused:
+    active: true
+  ContentTrailingLambda:
+    active: true
+  DefaultsVisibility:
+    active: true
+  InvalidReadOnlyComposable:
+    active: true
+  LambdaParameterEventTrailing:
+    active: true
+  LambdaParameterInRestartableEffect:
+    active: true
+  Material2:
+    # The app is Material 3 throughout and has no Material 2 dependency; the
+    # rule is opt-in in the plugin and would duplicate the dependency check.
+    active: false
+  MissingNonRestartableComposable:
+    active: true
+  MissingReadOnlyComposable:
+    active: true
+  ModifierClickableOrder:
+    active: true
+  ModifierComposed:
+    active: true
+  ModifierMissing:
+    # Issue #1908 scopes the modifier checks to *placement*: a Modifier that is
+    # not the first optional parameter (ComposableParamOrder) or not applied to
+    # the root (ModifierNotUsedAtRoot). The app's screens are leaf NavHost
+    # routes, not reusable components, so requiring every public entry point to
+    # expose a modifier is an unrelated API-shape refactor across 50+ screens;
+    # the screens in app/core/ui/feature:contacts were brought up to the
+    # convention here, the rest can adopt it as they are touched.
+    active: false
+  ModifierNaming:
+    active: true
+  ModifierNotUsedAtRoot:
+    active: true
+  ModifierReused:
+    active: true
+  ModifierShouldBeForwardedToEveryBranch:
+    active: true
+  ModifierWithoutDefault:
+    active: true
+  MultipleEmitters:
+    active: true
+  MutableParams:
+    active: true
+  MutableStateAutoboxing:
+    active: true
+  MutableStateParam:
+    active: true
+  ParameterNaming:
+    # This codebase names completion/report callbacks for the event that just
+    # happened (onErrorShown, onSaved, onDeleted, onFilePicked,
+    # onDeepLinkHandled) rather than as commands. Renaming them across public
+    # screen APIs and their tests is churn with no correctness benefit; new
+    # command callbacks still follow the onX convention in review.
+    active: false
+  PreviewAnnotationNaming:
+    active: true
+  PreviewNaming:
+    # Opt-in in the plugin; preview function naming is cosmetic and the
+    # annotation-naming rule above already covers the correctness-shaped part.
+    active: false
+  PreviewPublic:
+    active: true
+  RememberContentMissing:
+    active: true
+  RememberMissing:
+    active: true
+  StaleRememberUpdatedStateInRemember:
+    active: true
+  StateParam:
+    active: true
+  UnnecessaryComposable:
+    active: true
+  UnnecessaryLaunchedEffect:
+    active: true
+  UnstableCollections:
+    # Opt-in in the plugin and reports every List/Map/Set parameter, including
+    # the many small stable-in-practice value collections the UI passes around;
+    # the mutability rules (MutableParams/MutableStateParam) cover the real
+    # skipping bugs.
+    active: false
+  VarsWithoutStateBacking:
+    active: true
+  ViewModelForwarding:
+    active: true
+  ViewModelInjection:
+    # Root- and pane-scoped ViewModels are acquired in place because their
+    # lifetime is tied to the composition, not to a screen parameter: the
+    # share-intake and permission-listener hosts exist only to observe, and
+    # the persistent two-pane contact list lives outside the NavHost (see
+    # MycorrhizalApp.kt). Screen ViewModels already use hiltViewModel()
+    # default parameters.
+    active: false
+
 # Issue #1901: ktlint formatting rules via detekt's wrapper. Code style is
 # android_studio (the recorded v1.5.1 choice); indentStyle stays explicit so
 # the wrapper's per-rule editorconfig emulation matches android/.editorconfig.
