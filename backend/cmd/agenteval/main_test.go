@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"mycorrhizal/internal/agenteval"
 )
@@ -45,6 +46,8 @@ func fixtureRepo(t *testing.T) (string, string) {
 	}
 	writeFile(t, root, "backend/Makefile", makefile.String())
 	writeFile(t, root, "AGENTS.md", "# Root\n\n## Project map\n\nx\n\n## Safety\n")
+	writeFile(t, root, ".agents/skills/demo/SKILL.md", "---\nname: demo\ndescription: demo\n---\n")
+	writeFile(t, root, "testdata/agent-eval/triggers.yaml", "version: 1\nprompts:\n  - prompt: do demo\n    expect: demo\n")
 	git(t, root, "add", ".")
 	git(t, root, "commit", "-q", "-m", "init")
 	sha := git(t, root, "rev-parse", "HEAD")
@@ -111,6 +114,74 @@ func TestRunWritesArtifactAndFails(t *testing.T) {
 	}
 	if !foundJSON || !foundMD {
 		t.Fatalf("missing artifact files: %v", entries)
+	}
+}
+
+func TestRunSelectMode(t *testing.T) {
+	root, sha := fixtureRepo(t)
+	out := t.TempDir()
+	code, stdout, stderr := runCLI(t, "-mode", "select", "-root", root, "-base-ref", sha, "-out", out,
+		"-agent-command", `: {prompt} && printf '%s' '{"skills":[".agents/skills/demo/SKILL.md"]}' > .agent-eval-selection.json`)
+	if code != 0 {
+		t.Fatalf("run = %d, stderr %q stdout %q", code, stderr, stdout)
+	}
+	if !strings.Contains(stdout, "Selected correctly: 1/1") || !strings.Contains(stdout, "Artifacts:") {
+		t.Fatalf("stdout = %q", stdout)
+	}
+	entries, err := os.ReadDir(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 2 {
+		t.Fatalf("artifacts = %v", entries)
+	}
+	for _, e := range entries {
+		if !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+		body, err := os.ReadFile(filepath.Join(out, e.Name()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var art agenteval.SelectionArtifact
+		if err := json.Unmarshal(body, &art); err != nil {
+			t.Fatal(err)
+		}
+		if art.Status != "passed" || art.Passed != 1 || art.Total != 1 {
+			t.Fatalf("artifact = %+v", art)
+		}
+	}
+}
+
+func TestRunSelectFlagErrors(t *testing.T) {
+	root, sha := fixtureRepo(t)
+	if code, _, stderr := runCLI(t, "-mode", "select", "-root", root); code != 2 || !strings.Contains(stderr, "agent-command") {
+		t.Fatalf("missing agent command = %d, stderr %q", code, stderr)
+	}
+	if code, _, stderr := runCLI(t, "-mode", "bogus"); code != 2 || !strings.Contains(stderr, "task or select") {
+		t.Fatalf("bad mode = %d, stderr %q", code, stderr)
+	}
+	if code, _, stderr := runCLI(t, "-mode", "select", "-root", root, "-base-ref", sha, "-agent-command", "true"); code != 2 || !strings.Contains(stderr, "must contain {prompt}") {
+		t.Fatalf("missing prompt = %d, stderr %q", code, stderr)
+	}
+	if code, _, stderr := runCLI(t, "-mode", "select", "-root", root, "-base-ref", sha, "-agent-command", ": {prompt}", "-timeout", "nope"); code != 2 || !strings.Contains(stderr, "positive Go duration") {
+		t.Fatalf("bad timeout = %d, stderr %q", code, stderr)
+	}
+	if code, _, stderr := runCLI(t, "-mode", "select", "-root", root, "-base-ref", "main", "-agent-command", ": {prompt}"); code != 2 || !strings.Contains(stderr, "full commit SHA") {
+		t.Fatalf("branch base ref = %d, stderr %q", code, stderr)
+	}
+}
+
+func TestRunSelectSkillFilter(t *testing.T) {
+	root, sha := fixtureRepo(t)
+	out := t.TempDir()
+	code, stdout, stderr := runCLI(t, "-mode", "select", "-root", root, "-base-ref", sha, "-out", out, "-skill", "demo",
+		"-agent-command", `: {prompt} && printf '%s' '{"skills":[".agents/skills/demo/SKILL.md"]}' > .agent-eval-selection.json`)
+	if code != 0 || !strings.Contains(stdout, "Selected correctly: 1/1") {
+		t.Fatalf("run = %d, stderr %q stdout %q", code, stderr, stdout)
+	}
+	if code, _, stderr := runCLI(t, "-mode", "select", "-root", root, "-base-ref", sha, "-skill", "missing", "-agent-command", ": {prompt}"); code != 1 || !strings.Contains(stderr, "matches no trigger prompt") {
+		t.Fatalf("missing skill = %d, stderr %q", code, stderr)
 	}
 }
 
@@ -225,6 +296,111 @@ func TestWriteArtifactWriteFailures(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, _, err := writeArtifact(root, out2, art); err == nil {
+		t.Fatal("markdown path that is a directory should fail")
+	}
+}
+
+func TestRunSelectTriggerSetError(t *testing.T) {
+	root, _ := fixtureRepo(t)
+	code, _, stderr := runCLI(t, "-mode", "select", "-root", root,
+		"-triggers", "testdata/agent-eval/missing.yaml", "-agent-command", ": {prompt}")
+	if code != 1 || !strings.Contains(stderr, "read trigger set") {
+		t.Fatalf("run = %d, stderr = %q", code, stderr)
+	}
+}
+
+func TestRunSelectResolveError(t *testing.T) {
+	root, _ := fixtureRepo(t)
+	code, _, stderr := runCLI(t, "-mode", "select", "-root", root,
+		"-base-ref", strings.Repeat("d", 40), "-agent-command", ": {prompt}")
+	if code != 2 || !strings.Contains(stderr, "-base-ref:") {
+		t.Fatalf("run = %d, stderr = %q", code, stderr)
+	}
+}
+
+func TestRunSelectWriteArtifactError(t *testing.T) {
+	root, sha := fixtureRepo(t)
+	out := filepath.Join(t.TempDir(), "out")
+	if err := os.WriteFile(out, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	code, _, stderr := runCLI(t, "-mode", "select", "-root", root, "-base-ref", sha,
+		"-out", filepath.Join(out, "sub"),
+		"-agent-command", `: {prompt} && printf '%s' '{"skills":["demo"]}' > .agent-eval-selection.json`)
+	if code != 0 || !strings.Contains(stderr, "write artifact") {
+		t.Fatalf("run = %d, stderr = %q", code, stderr)
+	}
+}
+
+func TestRunSelectRunError(t *testing.T) {
+	root, sha := fixtureRepo(t)
+	out := t.TempDir()
+	missing := filepath.Join(t.TempDir(), "missing")
+	t.Setenv("TMPDIR", missing)
+	code, _, stderr := runCLI(t, "-mode", "select", "-root", root, "-base-ref", sha,
+		"-out", out, "-agent-command", ": {prompt}")
+	if code != 1 || !strings.Contains(stderr, "agenteval:") {
+		t.Fatalf("run = %d, stderr = %q", code, stderr)
+	}
+}
+
+func TestRunSelectFailedStatus(t *testing.T) {
+	root, sha := fixtureRepo(t)
+	code, stdout, stderr := runCLI(t, "-mode", "select", "-root", root, "-base-ref", sha,
+		"-out", t.TempDir(), "-agent-command", ": {prompt}")
+	if code != 1 || !strings.Contains(stdout, "Status: **failed**") {
+		t.Fatalf("run = %d, stderr = %q stdout = %q", code, stderr, stdout)
+	}
+}
+
+func TestWriteSelectionArtifactRelativeOut(t *testing.T) {
+	root := t.TempDir()
+	art := agenteval.SelectionArtifact{Version: 1, Status: "passed"}
+	jsonPath, mdPath, err := writeSelectionArtifact(root, "out", art)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(jsonPath, root) || !strings.HasPrefix(mdPath, root) {
+		t.Fatalf("paths = %q %q", jsonPath, mdPath)
+	}
+	if _, err := os.Stat(jsonPath); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(mdPath); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestWriteSelectionArtifactWriteFailures(t *testing.T) {
+	badTime := agenteval.SelectionArtifact{StartedAt: time.Date(10000, 1, 1, 0, 0, 0, 0, time.UTC)}
+	if _, _, err := writeSelectionArtifact(t.TempDir(), "out", badTime); err == nil {
+		t.Fatal("timestamp outside the JSON range should fail")
+	}
+
+	art := agenteval.SelectionArtifact{}
+	base := "selection-" + art.StartedAt.Format("20060102T150405Z")
+
+	outFile := filepath.Join(t.TempDir(), "out")
+	if err := os.WriteFile(outFile, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := writeSelectionArtifact(t.TempDir(), outFile, art); err == nil {
+		t.Fatal("output path that is a file should fail")
+	}
+
+	outJSON := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(outJSON, base+".json"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := writeSelectionArtifact(t.TempDir(), outJSON, art); err == nil {
+		t.Fatal("json path that is a directory should fail")
+	}
+
+	outMD := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(outMD, base+".md"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := writeSelectionArtifact(t.TempDir(), outMD, art); err == nil {
 		t.Fatal("markdown path that is a directory should fail")
 	}
 }

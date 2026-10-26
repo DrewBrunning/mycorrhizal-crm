@@ -140,8 +140,9 @@ scripts/pre-pr.sh --full
 ```
 
 The wrapper resolves the repository root (it works from the root, from `backend/`, and from a
-worktree) and delegates selection and execution to `cmd/prepr`. Every mode computes the branch diff
-with `git diff --name-only origin/main...HEAD` and map it through `.github/filters.yaml`; the
+worktree) and delegates selection and execution to `cmd/prepr`. Every mode diffs the merge base of
+`origin/main` and `HEAD` against the working tree, so committed, staged, unstaged, untracked,
+deleted, and renamed files are included, then maps the paths through `.github/filters.yaml`; the
 area-to-command table lives in `backend/internal/prepr/areas.go`, and a drift test fails if a filter
 is added without an entry. `--dry-run` prints the selected areas and exact commands without running
 anything.

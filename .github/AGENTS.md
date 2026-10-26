@@ -62,8 +62,9 @@ shadows the shared setting, and repairs the `CLAUDE.md` aliases).
   #1907).
 - **Staged `android/`:** no Gradle step (too slow); run `cd android && ./gradlew --warning-mode=fail
   detekt lintDebug :app:lintObtainiumDebug :app:lintFossDebug` locally. `detekt` includes the ktlint
-  formatting gate (no baseline); `./gradlew detekt --auto-correct` fixes formatting. Lint warnings
-  are errors; `android/lint.xml` lists the reasoned exceptions.
+  formatting gate (no baseline);
+  `./gradlew detekt --auto-correct` fixes formatting. Lint warnings are errors; `android/lint.xml`
+  lists the reasoned exceptions.
 - **Always:** `citecheck`, `depexceptions`, `deprecations`, `docscheck`, `contextcheck`,
   `releasegatecheck`, `governancecheck`, `pragmacheck`, `nightlyalertcheck`.
 - **`pre-merge-commit`:** reruns the pre-commit checks on a clean merge commit (git skips
