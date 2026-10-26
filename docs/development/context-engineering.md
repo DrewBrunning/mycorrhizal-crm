@@ -179,11 +179,13 @@ into the trigger set.
 
 `cmd/agenteval -mode select` runs the set automatically: each prompt gets a
 fixed footer asking the agent to record the skills and context files it opened,
-and the harness scores `expect`/`not`, unexpected skills, declared ambiguous
-pairs, and any repository change made during a selection run. It measures
-reported selection, not task completion, and the agent must be pinned for the
-result to be comparable. The manual procedure below remains the record for the
-ambiguous pairs and for *why* a neighbour did or did not win.
+and the harness scores `expect`/`not`, extra or unknown skills, declared
+ambiguous pairs, and any repository change made during a selection run (including
+changes hidden in a commit). Use `-skill` to shard a pass and `-timeout` to bound
+one prompt. It measures reported selection, not observed file access or task
+completion, and the agent must be pinned for the result to be comparable. The
+manual procedure below remains the record for the ambiguous pairs and for *why*
+a neighbour did or did not win.
 
 Procedure (manual):
 

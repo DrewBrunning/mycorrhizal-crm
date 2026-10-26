@@ -120,7 +120,7 @@ func TestRunSelectMode(t *testing.T) {
 	root, sha := fixtureRepo(t)
 	out := t.TempDir()
 	code, stdout, stderr := runCLI(t, "-mode", "select", "-root", root, "-base-ref", sha, "-out", out,
-		"-agent-command", `printf '%s' '{"skills":[".agents/skills/demo/SKILL.md"]}' > .agent-eval-selection.json`)
+		"-agent-command", `: {prompt} && printf '%s' '{"skills":[".agents/skills/demo/SKILL.md"]}' > .agent-eval-selection.json`)
 	if code != 0 {
 		t.Fatalf("run = %d, stderr %q stdout %q", code, stderr, stdout)
 	}
@@ -153,12 +153,34 @@ func TestRunSelectMode(t *testing.T) {
 }
 
 func TestRunSelectFlagErrors(t *testing.T) {
-	root, _ := fixtureRepo(t)
+	root, sha := fixtureRepo(t)
 	if code, _, stderr := runCLI(t, "-mode", "select", "-root", root); code != 2 || !strings.Contains(stderr, "agent-command") {
 		t.Fatalf("missing agent command = %d, stderr %q", code, stderr)
 	}
 	if code, _, stderr := runCLI(t, "-mode", "bogus"); code != 2 || !strings.Contains(stderr, "task or select") {
 		t.Fatalf("bad mode = %d, stderr %q", code, stderr)
+	}
+	if code, _, stderr := runCLI(t, "-mode", "select", "-root", root, "-base-ref", sha, "-agent-command", "true"); code != 2 || !strings.Contains(stderr, "must contain {prompt}") {
+		t.Fatalf("missing prompt = %d, stderr %q", code, stderr)
+	}
+	if code, _, stderr := runCLI(t, "-mode", "select", "-root", root, "-base-ref", sha, "-agent-command", ": {prompt}", "-timeout", "nope"); code != 2 || !strings.Contains(stderr, "positive Go duration") {
+		t.Fatalf("bad timeout = %d, stderr %q", code, stderr)
+	}
+	if code, _, stderr := runCLI(t, "-mode", "select", "-root", root, "-base-ref", "main", "-agent-command", ": {prompt}"); code != 2 || !strings.Contains(stderr, "full commit SHA") {
+		t.Fatalf("branch base ref = %d, stderr %q", code, stderr)
+	}
+}
+
+func TestRunSelectSkillFilter(t *testing.T) {
+	root, sha := fixtureRepo(t)
+	out := t.TempDir()
+	code, stdout, stderr := runCLI(t, "-mode", "select", "-root", root, "-base-ref", sha, "-out", out, "-skill", "demo",
+		"-agent-command", `: {prompt} && printf '%s' '{"skills":[".agents/skills/demo/SKILL.md"]}' > .agent-eval-selection.json`)
+	if code != 0 || !strings.Contains(stdout, "Selected correctly: 1/1") {
+		t.Fatalf("run = %d, stderr %q stdout %q", code, stderr, stdout)
+	}
+	if code, _, stderr := runCLI(t, "-mode", "select", "-root", root, "-base-ref", sha, "-skill", "missing", "-agent-command", ": {prompt}"); code != 1 || !strings.Contains(stderr, "matches no trigger prompt") {
+		t.Fatalf("missing skill = %d, stderr %q", code, stderr)
 	}
 }
 

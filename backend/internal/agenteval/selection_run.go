@@ -1,6 +1,7 @@
 package agenteval
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -13,6 +14,9 @@ import (
 )
 
 const (
+	// DefaultSelectionTimeout bounds one selection prompt. Selection does not
+	// run a suite; 20 minutes per prompt made a full pass exceed the job budget.
+	DefaultSelectionTimeout = 5 * time.Minute
 	// selectionReportFile is where the agent is asked to record what it opened.
 	// It is excluded from the repo-change check because it is the measurement.
 	selectionReportFile = ".agent-eval-selection.json"
@@ -101,7 +105,7 @@ func RunSelection(ctx context.Context, opts SelectionOptions) (SelectionArtifact
 		opts.CommandRunner = runShellCommand
 	}
 	if opts.Timeout <= 0 {
-		opts.Timeout = DefaultTimeout
+		opts.Timeout = DefaultSelectionTimeout
 	}
 	if strings.TrimSpace(opts.AgentCommand) == "" {
 		artifact.Status = "error"
@@ -145,18 +149,18 @@ func runSelectionPrompt(ctx context.Context, opts SelectionOptions, prompt Trigg
 	}
 	defer removeWorktree(opts.Root, wt)
 
-	baseline, err := changedFiles(ctx, wt)
-	if err != nil {
-		return out, err
+	if _, err := os.Stat(filepath.Join(wt, ".agents", "skills", prompt.Expect, "SKILL.md")); err != nil {
+		out.Reason = "base ref does not contain expected skill " + prompt.Expect
+		return out, nil
 	}
 	command := ExpandPrompt(opts.AgentCommand, prompt.Prompt+selectionInstruction)
 	out.Agent = opts.CommandRunner(ctx, wt, command, opts.Timeout)
 
-	changed, err := changedFiles(ctx, wt)
+	changed, err := changedFilesSince(ctx, wt, opts.BaseRef)
 	if err != nil {
 		return out, err
 	}
-	for _, path := range subtract(changed, baseline) {
+	for _, path := range changed {
 		if path != selectionReportFile {
 			out.RepoChanges = append(out.RepoChanges, path)
 		}
@@ -172,9 +176,9 @@ func runSelectionPrompt(ctx context.Context, opts SelectionOptions, prompt Trigg
 	}
 
 	reportPath := filepath.Join(wt, selectionReportFile)
-	info, err := os.Stat(reportPath)
-	if err != nil {
-		out.Reason = "agent did not write " + selectionReportFile
+	info, err := os.Lstat(reportPath)
+	if err != nil || !info.Mode().IsRegular() {
+		out.Reason = "agent did not write " + selectionReportFile + " as a regular file"
 		return out, nil
 	}
 	if info.Size() > 1<<20 {
@@ -191,7 +195,7 @@ func runSelectionPrompt(ctx context.Context, opts SelectionOptions, prompt Trigg
 		out.Reason = "parse " + selectionReportFile + ": " + err.Error()
 		return out, nil
 	}
-	out.Skills, out.ContextFiles, out.Unknown = NormalizeSelection(raw)
+	out.Skills, out.ContextFiles, out.Unknown = NormalizeSelection(raw, KnownSkills(opts.Set))
 	ScoreSelection(&out, opts.Set.AmbiguousPairs)
 	if out.Reason == "" && len(out.RepoChanges) > 0 {
 		out.Reason = "selection run changed repository files"
@@ -200,4 +204,27 @@ func runSelectionPrompt(ctx context.Context, opts SelectionOptions, prompt Trigg
 		out.Status = "passed"
 	}
 	return out, nil
+}
+
+// changedFilesSince returns the agent changes relative to the pinned base,
+// including changes hidden in a commit. Selection has no seed patch, so the
+// base ref is the correct comparison point.
+func changedFilesSince(ctx context.Context, wt, base string) ([]string, error) {
+	tbody, err := exec.CommandContext(ctx, "git", "-C", wt, "diff", "--name-only", "-z", base).Output() // #nosec G204 -- base is a validated commit SHA
+	if err != nil {
+		return nil, fmt.Errorf("git diff for selection: %w", err)
+	}
+	ubody, err := exec.CommandContext(ctx, "git", "-C", wt, "ls-files", "--others", "--exclude-standard", "-z").Output() // #nosec G204 -- wt is our temp worktree
+	if err != nil {
+		return nil, fmt.Errorf("git ls-files for selection: %w", err)
+	}
+	var out []string
+	for _, body := range [][]byte{tbody, ubody} {
+		for _, part := range bytes.Split(body, []byte{0}) {
+			if len(part) > 0 {
+				out = append(out, filepath.ToSlash(string(part)))
+			}
+		}
+	}
+	return SortStrings(unique(out)), nil
 }

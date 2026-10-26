@@ -87,7 +87,7 @@ func TestNormalizeSelection(t *testing.T) {
 			"../escape",
 		},
 		ContextFiles: []string{"backend/AGENTS.md", ".agents/skills/other/SKILL.md"},
-	})
+	}, map[string]bool{"demo": true, "other": true})
 	if strings.Join(skills, ",") != "demo,other" {
 		t.Fatalf("skills = %v", skills)
 	}
@@ -96,6 +96,25 @@ func TestNormalizeSelection(t *testing.T) {
 	}
 	if len(unknown) != 2 {
 		t.Fatalf("unknown = %v", unknown)
+	}
+}
+
+func TestScoreSelectionRejectsExtraAndUnknown(t *testing.T) {
+	out := SelectionOutcome{Expect: "demo"}
+	out.Skills = []string{"demo", "unrelated"}
+	out.Unknown = []string{"not-a-skill"}
+	ScoreSelection(&out, nil)
+	if len(out.ExtraSkills) != 1 || out.ExtraSkills[0] != "unrelated" {
+		t.Fatalf("extra = %v", out.ExtraSkills)
+	}
+	if !strings.Contains(out.Reason, "extra skill") {
+		t.Fatalf("reason = %q", out.Reason)
+	}
+
+	unknown := SelectionOutcome{Expect: "demo", Skills: []string{"demo"}, Unknown: []string{"made-up"}}
+	ScoreSelection(&unknown, nil)
+	if !strings.Contains(unknown.Reason, "unknown") {
+		t.Fatalf("reason = %q", unknown.Reason)
 	}
 }
 
@@ -243,5 +262,50 @@ func TestRunSelectionRejectsMissingCommandAndBadRef(t *testing.T) {
 	})
 	if err == nil || art.Status != "error" {
 		t.Fatalf("bad ref: err=%v artifact=%+v", err, art)
+	}
+}
+
+func TestRunSelectionFailsOnCommittedRepoChanges(t *testing.T) {
+	root, sha := initRepo(t)
+	artifact, err := RunSelection(context.Background(), SelectionOptions{
+		Root:         root,
+		BaseRef:      sha,
+		Set:          TriggerSet{Version: 1, Prompts: []TriggerPrompt{{Prompt: "do demo", Expect: "demo"}}},
+		AgentCommand: "true",
+		CommandRunner: func(_ context.Context, dir, _ string, _ time.Duration) CommandResult {
+			writeRepoFile(t, dir, selectionReportFile, `{"skills":["demo"]}`)
+			writeRepoFile(t, dir, "backend/changed.txt", "x\n")
+			runGit(t, dir, "add", ".")
+			runGit(t, dir, "-c", "user.name=A", "-c", "user.email=a@b.invalid", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "agent")
+			return CommandResult{Passed: true}
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifact.Status != "failed" || len(artifact.Outcomes[0].RepoChanges) == 0 {
+		t.Fatalf("artifact = %+v", artifact)
+	}
+}
+
+func TestRunSelectionRejectsBaseWithoutExpectedSkill(t *testing.T) {
+	root, _ := initRepo(t)
+	runGit(t, root, "rm", "-r", ".agents/skills/demo")
+	runGit(t, root, "commit", "-q", "-m", "drop skill")
+	sha := strings.TrimSpace(runGit(t, root, "rev-parse", "HEAD"))
+	artifact, err := RunSelection(context.Background(), SelectionOptions{
+		Root:         root,
+		BaseRef:      sha,
+		Set:          TriggerSet{Version: 1, Prompts: []TriggerPrompt{{Prompt: "do demo", Expect: "demo"}}},
+		AgentCommand: "true",
+		CommandRunner: func(context.Context, string, string, time.Duration) CommandResult {
+			return CommandResult{Passed: true}
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifact.Status != "failed" || !strings.Contains(artifact.Outcomes[0].Reason, "base ref does not contain") {
+		t.Fatalf("artifact = %+v", artifact)
 	}
 }

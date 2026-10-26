@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"mycorrhizal/internal/agentcontext"
 	"mycorrhizal/internal/agenteval"
@@ -36,12 +37,14 @@ func main() { // # pragma: no cover — thin os.Exit wrapper over run
 func run(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("agenteval", flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	var task, tasksDir, rootFlag, outDir, agentCommand, agentName, agentModel, agentVersion, baseRef, mode, triggersPath string
+	var task, tasksDir, rootFlag, outDir, agentCommand, agentName, agentModel, agentVersion, baseRef, mode, triggersPath, timeoutFlag, skill string
 	var noControl bool
 	fs.StringVar(&mode, "mode", "task", "task or select (trigger-selection pass)")
 	fs.StringVar(&task, "task", "", "task name under testdata/agent-eval (required in task mode)")
 	fs.StringVar(&tasksDir, "tasks-dir", "testdata/agent-eval", "task directory, repo-relative")
 	fs.StringVar(&triggersPath, "triggers", "testdata/agent-eval/triggers.yaml", "trigger prompt set, repo-relative (select mode)")
+	fs.StringVar(&timeoutFlag, "timeout", "5m", "per-prompt timeout in select mode")
+	fs.StringVar(&skill, "skill", "", "only run prompts expecting this skill in select mode")
 	fs.StringVar(&rootFlag, "root", "", "repository root (default: walk up to .git and AGENTS.md)")
 	fs.StringVar(&outDir, "out", "agent-eval-results", "artifact directory, repo-relative or absolute")
 	fs.StringVar(&baseRef, "base-ref", "", "override the spec's pinned commit SHA (workflow passes the dispatch commit)")
@@ -84,7 +87,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 1                                // # pragma: no cover
 	}
 	if mode == "select" {
-		return runSelect(abs, triggersPath, baseRef, outDir, agentCommand, agentName, agentModel, agentVersion, stdout, stderr)
+		return runSelect(abs, triggersPath, baseRef, outDir, agentCommand, agentName, agentModel, agentVersion, timeoutFlag, skill, stdout, stderr)
 	}
 
 	if missing, err := agenteval.VerifyGeneratorTargets(abs, agenteval.GeneratedArtifacts); err != nil {
@@ -147,15 +150,43 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 }
 
-func runSelect(abs, triggersPath, baseRef, outDir, agentCommand, agentName, agentModel, agentVersion string, stdout, stderr io.Writer) int {
+func runSelect(abs, triggersPath, baseRef, outDir, agentCommand, agentName, agentModel, agentVersion, timeoutFlag, skill string, stdout, stderr io.Writer) int {
 	if strings.TrimSpace(agentCommand) == "" {
 		fmt.Fprintln(stderr, "agenteval: -agent-command is required in select mode")
 		return 2
+	}
+	if !strings.Contains(agentCommand, "{prompt}") {
+		fmt.Fprintln(stderr, "agenteval: -agent-command in select mode must contain {prompt}")
+		return 2
+	}
+	timeout, err := time.ParseDuration(timeoutFlag)
+	if err != nil || timeout <= 0 {
+		fmt.Fprintln(stderr, "agenteval: -timeout must be a positive Go duration")
+		return 2
+	}
+	if baseRef != "" {
+		if err := agenteval.ValidateBaseRef(baseRef); err != nil {
+			fmt.Fprintln(stderr, "agenteval: -base-ref:", err)
+			return 2
+		}
 	}
 	set, err := agenteval.LoadTriggerSet(abs, triggersPath)
 	if err != nil {
 		fmt.Fprintln(stderr, "agenteval:", err)
 		return 1
+	}
+	if skill != "" {
+		var filtered []agenteval.TriggerPrompt
+		for _, prompt := range set.Prompts {
+			if prompt.Expect == skill {
+				filtered = append(filtered, prompt)
+			}
+		}
+		if len(filtered) == 0 {
+			fmt.Fprintln(stderr, "agenteval: -skill", skill, "matches no trigger prompt")
+			return 1
+		}
+		set.Prompts = filtered
 	}
 	sha, err := agenteval.ResolveCommit(abs, baseRef)
 	if err != nil {
@@ -171,6 +202,7 @@ func runSelect(abs, triggersPath, baseRef, outDir, agentCommand, agentName, agen
 		AgentName:    agentName,
 		AgentModel:   agentModel,
 		AgentVersion: agentVersion,
+		Timeout:      timeout,
 	})
 	jsonPath, mdPath, writeErr := writeSelectionArtifact(abs, outDir, artifact)
 	if writeErr != nil {

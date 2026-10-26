@@ -126,6 +126,7 @@ type SelectionOutcome struct {
 	ContextFiles []string      `json:"context_files,omitempty"`
 	Unknown      []string      `json:"unknown,omitempty"`
 	Unexpected   []string      `json:"unexpected,omitempty"`
+	ExtraSkills  []string      `json:"extra_skills,omitempty"`
 	Ambiguous    []string      `json:"ambiguous,omitempty"`
 	RepoChanges  []string      `json:"repo_changes,omitempty"`
 	Matched      bool          `json:"matched"`
@@ -154,8 +155,9 @@ type SelectionArtifact struct {
 }
 
 // NormalizeSelection turns the agent's reported paths into skill names and
-// context-file paths, recording anything that matches neither.
-func NormalizeSelection(raw SelectionOutput) (skills, contextFiles, unknown []string) {
+// context-file paths, recording anything that matches neither or is not in the
+// trigger set's known skill list.
+func NormalizeSelection(raw SelectionOutput, known map[string]bool) (skills, contextFiles, unknown []string) {
 	add := func(dst *[]string, v string) {
 		if v != "" && !contains(*dst, v) {
 			*dst = append(*dst, v)
@@ -172,7 +174,7 @@ func NormalizeSelection(raw SelectionOutput) (skills, contextFiles, unknown []st
 			add(&contextFiles, v)
 			continue
 		}
-		if name, ok := skillFromPath(v); ok {
+		if name, ok := skillFromPath(v); ok && (len(known) == 0 || known[name]) {
 			add(&skills, name)
 			continue
 		}
@@ -211,22 +213,61 @@ func ScoreSelection(out *SelectionOutcome, pairs []TriggerPair) {
 			out.Unexpected = append(out.Unexpected, other)
 		}
 	}
+	allowedExtra := map[string]bool{}
 	for _, pair := range pairs {
-		if len(pair.Skills) == 2 && contains(out.Skills, pair.Skills[0]) && contains(out.Skills, pair.Skills[1]) {
-			out.Ambiguous = append(out.Ambiguous, pair.Skills[0]+" + "+pair.Skills[1])
+		if len(pair.Skills) == 2 {
+			if pair.Skills[0] == out.Expect {
+				allowedExtra[pair.Skills[1]] = true
+			}
+			if pair.Skills[1] == out.Expect {
+				allowedExtra[pair.Skills[0]] = true
+			}
+			if contains(out.Skills, pair.Skills[0]) && contains(out.Skills, pair.Skills[1]) {
+				out.Ambiguous = append(out.Ambiguous, pair.Skills[0]+" + "+pair.Skills[1])
+			}
 		}
 		if pair.Skill != "" && pair.ContextFile != "" && contains(out.Skills, pair.Skill) && contains(out.ContextFiles, pair.ContextFile) {
 			out.Ambiguous = append(out.Ambiguous, pair.Skill+" + "+pair.ContextFile)
 		}
+	}
+	for _, skill := range out.Skills {
+		if skill == out.Expect || allowedExtra[skill] {
+			continue
+		}
+		out.ExtraSkills = append(out.ExtraSkills, skill)
 	}
 	switch {
 	case !out.Matched:
 		out.Reason = "expected skill " + out.Expect + " was not selected"
 	case len(out.Unexpected) > 0:
 		out.Reason = "non-matching skill(s) selected: " + strings.Join(out.Unexpected, ", ")
+	case len(out.ExtraSkills) > 0:
+		out.Reason = "extra skill(s) selected: " + strings.Join(out.ExtraSkills, ", ")
+	case len(out.Unknown) > 0:
+		out.Reason = "unknown selection(s): " + strings.Join(out.Unknown, ", ")
 	case len(out.RepoChanges) > 0:
 		out.Reason = "selection run changed repository files"
 	}
+}
+
+// KnownSkills returns the skill names the trigger set can legitimately report.
+func KnownSkills(set TriggerSet) map[string]bool {
+	known := map[string]bool{}
+	for _, prompt := range set.Prompts {
+		known[prompt.Expect] = true
+		for _, not := range prompt.Not {
+			known[not] = true
+		}
+	}
+	for _, pair := range set.AmbiguousPairs {
+		for _, skill := range pair.Skills {
+			known[skill] = true
+		}
+		if pair.Skill != "" {
+			known[pair.Skill] = true
+		}
+	}
+	return known
 }
 
 // SelectionMarkdown renders the human summary.
@@ -238,18 +279,28 @@ func SelectionMarkdown(a SelectionArtifact) string {
 		fmt.Fprintf(&b, "- Reason: %s\n", a.Reason)
 	}
 	fmt.Fprintf(&b, "- Base ref: `%s`\n", a.BaseRef)
+	fmt.Fprintf(&b, "- Trigger set version: %d\n", a.Version)
 	fmt.Fprintf(&b, "- Agent: %s / %s / %s\n", a.AgentName, a.AgentModel, a.AgentVersion)
 	fmt.Fprintf(&b, "- Command: `%s`\n", a.AgentCommand)
 	fmt.Fprintf(&b, "- Selected correctly: %d/%d\n", a.Passed, a.Total)
+	b.WriteString("- Selection is self-reported by the agent; file access is not observed.\n")
 	for _, o := range a.Outcomes {
 		fmt.Fprintf(&b, "\n## %s (%s)\n\n", o.Expect, o.Status)
 		fmt.Fprintf(&b, "- Prompt: %s\n", o.Prompt)
+		fmt.Fprintf(&b, "- Agent exit: %d (%dms)\n", o.Agent.ExitCode, o.Agent.DurationMS)
+		fmt.Fprintf(&b, "- Expected: %s; must not load: %s\n", o.Expect, emptyDash(o.Not))
 		fmt.Fprintf(&b, "- Selected: %s\n", emptyDash(o.Skills))
 		if len(o.ContextFiles) > 0 {
 			fmt.Fprintf(&b, "- Context files: %s\n", strings.Join(o.ContextFiles, ", "))
 		}
 		if len(o.Unexpected) > 0 {
 			fmt.Fprintf(&b, "- Unexpected: %s\n", strings.Join(o.Unexpected, ", "))
+		}
+		if len(o.ExtraSkills) > 0 {
+			fmt.Fprintf(&b, "- Extra skills: %s\n", strings.Join(o.ExtraSkills, ", "))
+		}
+		if len(o.Unknown) > 0 {
+			fmt.Fprintf(&b, "- Unknown: %s\n", strings.Join(o.Unknown, ", "))
 		}
 		if len(o.Ambiguous) > 0 {
 			fmt.Fprintf(&b, "- Ambiguous pair also selected: %s\n", strings.Join(o.Ambiguous, ", "))
