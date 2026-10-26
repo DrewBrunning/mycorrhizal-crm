@@ -19,7 +19,8 @@ plugins {
 // constraints deliberately supply many artifacts transitively; declaring each
 // one directly would duplicate the BOM and add churn without changing the
 // resolved graph, so that advisory is ignored. Unused and misconfigured
-// dependencies stay enabled and are fixed in this change.
+// dependencies stay enabled in the advisory report; the existing debt is
+// recorded by the CI step rather than rewritten in this change.
 dependencyAnalysis {
     issues {
         all {
