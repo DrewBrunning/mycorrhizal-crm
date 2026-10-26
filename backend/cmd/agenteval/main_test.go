@@ -303,6 +303,69 @@ func TestWriteArtifactWriteFailures(t *testing.T) {
 	}
 }
 
+func TestRunRequireBaselineNeedsBaseline(t *testing.T) {
+	root, _ := fixtureRepo(t)
+	code, _, stderr := runCLI(t, "-root", root, "-task", "demo", "-require-baseline")
+	if code != 2 || !strings.Contains(stderr, "requires -baseline") {
+		t.Fatalf("run = %d, stderr = %q", code, stderr)
+	}
+}
+
+func TestRunBaselineLoadError(t *testing.T) {
+	root, sha := fixtureRepo(t)
+	writeFile(t, root, "testdata/agent-eval/agents.yaml", "version: 1\nprofiles:\n  pinned:\n    command: \": {prompt}\"\n    name: pinned\n    model: test-model\n    version: \"1.0.0\"\n")
+	writeFile(t, root, "testdata/agent-eval/baseline.json", "{")
+	code, _, stderr := runCLI(t, "-root", root, "-task", "demo", "-base-ref", sha, "-profile", "pinned",
+		"-baseline", "testdata/agent-eval/baseline.json", "-out", t.TempDir(), "-no-control")
+	if code != 1 || !strings.Contains(stderr, "parse baseline") {
+		t.Fatalf("run = %d, stderr = %q", code, stderr)
+	}
+}
+
+func TestRunBaselineRegression(t *testing.T) {
+	root, sha := fixtureRepo(t)
+	writeFile(t, root, "testdata/agent-eval/agents.yaml", "version: 1\nprofiles:\n  pinned:\n    command: \": {prompt}\"\n    name: pinned\n    model: test-model\n    version: \"1.0.0\"\n")
+	writeFile(t, root, "testdata/agent-eval/baseline.json", `{"version":1,"profiles":{"pinned":{"demo":{"status":"passed","success":true,"commands_passed":3,"commands_total":3}}}}`)
+	code, stdout, stderr := runCLI(t, "-root", root, "-task", "demo", "-base-ref", sha, "-profile", "pinned",
+		"-baseline", "testdata/agent-eval/baseline.json", "-out", t.TempDir(), "-no-control")
+	if code != 1 || !strings.Contains(stdout, "Regression: task passed before; now failed") {
+		t.Fatalf("run = %d, stdout = %q, stderr = %q", code, stdout, stderr)
+	}
+}
+
+func TestRunWriteBaselineLoadError(t *testing.T) {
+	root, sha := fixtureRepo(t)
+	writeFile(t, root, "testdata/agent-eval/agents.yaml", "version: 1\nprofiles:\n  pinned:\n    command: \": {prompt}\"\n    name: pinned\n    model: test-model\n    version: \"1.0.0\"\n")
+	writeFile(t, root, "testdata/agent-eval/baseline.json", "{")
+	code, _, stderr := runCLI(t, "-root", root, "-task", "demo", "-base-ref", sha, "-profile", "pinned",
+		"-write-baseline", "testdata/agent-eval/baseline.json", "-force-baseline", "-out", t.TempDir(), "-no-control")
+	if code != 1 || !strings.Contains(stderr, "parse baseline") {
+		t.Fatalf("run = %d, stderr = %q", code, stderr)
+	}
+}
+
+func TestRunWriteBaselineWriteError(t *testing.T) {
+	root, sha := fixtureRepo(t)
+	writeFile(t, root, "testdata/agent-eval/agents.yaml", "version: 1\nprofiles:\n  pinned:\n    command: \": {prompt}\"\n    name: pinned\n    model: test-model\n    version: \"1.0.0\"\n")
+	if err := os.MkdirAll(filepath.Join(root, "testdata", "agent-eval", "baseline.json.tmp"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	code, _, stderr := runCLI(t, "-root", root, "-task", "demo", "-base-ref", sha, "-profile", "pinned",
+		"-write-baseline", "testdata/agent-eval/baseline.json", "-force-baseline", "-out", t.TempDir(), "-no-control")
+	if code != 1 || !strings.Contains(stderr, "write baseline") {
+		t.Fatalf("run = %d, stderr = %q", code, stderr)
+	}
+}
+
+func TestResolvePath(t *testing.T) {
+	if got := resolvePath("/root", "/abs/baseline.json"); got != "/abs/baseline.json" {
+		t.Fatalf("absolute path = %q", got)
+	}
+	if got := resolvePath("/root", "testdata/baseline.json"); got != filepath.Join("/root", "testdata", "baseline.json") {
+		t.Fatalf("relative path = %q", got)
+	}
+}
+
 func TestRunRequiresBaselineEntry(t *testing.T) {
 	root, sha := fixtureRepo(t)
 	writeFile(t, root, "testdata/agent-eval/agents.yaml", "version: 1\nprofiles:\n  pinned:\n    command: \": {prompt}\"\n    name: pinned\n    model: test-model\n    version: \"1.0.0\"\n")

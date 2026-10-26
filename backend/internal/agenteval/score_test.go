@@ -185,6 +185,31 @@ func TestCompareControlOnlyPassed(t *testing.T) {
 	}
 }
 
+func TestMarkdownBaseline(t *testing.T) {
+	base := RunSummary{Status: "passed", Success: true, CommandsPassed: 2, CommandsTotal: 2}
+	a := Artifact{
+		Task: "demo",
+		Baseline: &BaselineComparison{
+			Profile:     "pinned",
+			Task:        "demo",
+			Present:     true,
+			Baseline:    &base,
+			Current:     RunSummary{Status: "failed", CommandsPassed: 1, CommandsTotal: 2},
+			Regressions: []string{"task passed before; now failed"},
+		},
+	}
+	md := Markdown(a)
+	for _, want := range []string{"## Baseline", "Current: success=false commands=1/2", "Baseline: success=true commands=2/2", "Regression: task passed before; now failed"} {
+		if !strings.Contains(md, want) {
+			t.Fatalf("markdown missing %q:\n%s", want, md)
+		}
+	}
+	noEntry := Markdown(Artifact{Task: "demo", Baseline: &BaselineComparison{Profile: "pinned", Task: "demo"}})
+	if !strings.Contains(noEntry, "No committed baseline entry") {
+		t.Fatalf("markdown missing absent baseline:\n%s", noEntry)
+	}
+}
+
 func TestMarkdownReason(t *testing.T) {
 	md := Markdown(Artifact{Task: "x", Status: "skipped", Reason: "missing go"})
 	if !strings.Contains(md, "Reason: missing go") {

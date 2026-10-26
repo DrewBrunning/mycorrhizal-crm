@@ -35,6 +35,37 @@ func TestLoadProfile(t *testing.T) {
 	}
 }
 
+func TestLoadProfileErrors(t *testing.T) {
+	root := t.TempDir()
+	path := "testdata/agent-eval/agents.yaml"
+	if _, err := LoadProfile(root, path, "pinned"); err == nil || !strings.Contains(err.Error(), "read agent profiles") {
+		t.Fatalf("missing file err = %v", err)
+	}
+
+	writeRepoFile(t, root, path, "version: [")
+	if _, err := LoadProfile(root, path, "pinned"); err == nil || !strings.Contains(err.Error(), "parse agent profiles") {
+		t.Fatalf("malformed yaml err = %v", err)
+	}
+
+	writeRepoFile(t, root, path, "version: 0\nprofiles: {}\n")
+	if _, err := LoadProfile(root, path, "pinned"); err == nil || !strings.Contains(err.Error(), "version") {
+		t.Fatalf("bad version err = %v", err)
+	}
+
+	writeRepoFile(t, root, path, strings.Join([]string{
+		"version: 1",
+		"profiles:",
+		"  unpinned:",
+		"    command: \"agent {prompt}\"",
+		"    name: agent",
+		"    model: m",
+		"    version: latest",
+	}, "\n"))
+	if _, err := LoadProfile(root, path, "unpinned"); err == nil || !strings.Contains(err.Error(), "not pinned") {
+		t.Fatalf("validation err = %v", err)
+	}
+}
+
 func TestProfileValidation(t *testing.T) {
 	cases := []struct {
 		name    string

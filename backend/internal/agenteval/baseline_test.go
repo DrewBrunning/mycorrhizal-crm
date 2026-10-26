@@ -54,6 +54,65 @@ func TestLoadBaselineRejectsMalformed(t *testing.T) {
 	}
 }
 
+func TestLoadBaselineEdgeCases(t *testing.T) {
+	if _, err := LoadBaseline(t.TempDir()); err == nil || !strings.Contains(err.Error(), "read baseline") {
+		t.Fatalf("directory read err = %v", err)
+	}
+
+	path := filepath.Join(t.TempDir(), "baseline.json")
+	if err := os.WriteFile(path, []byte(`{"version":1,"profiles":null}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := LoadBaseline(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Profiles == nil {
+		t.Fatalf("nil profiles not normalized: %+v", got)
+	}
+}
+
+func TestWriteBaselineDefaults(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "baseline.json")
+	if err := WriteBaseline(path, Baseline{}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := LoadBaseline(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Version != 1 || got.Profiles == nil {
+		t.Fatalf("defaults not applied: %+v", got)
+	}
+}
+
+func TestWriteBaselineErrors(t *testing.T) {
+	dir := t.TempDir()
+	blocker := filepath.Join(dir, "blocker")
+	if err := os.WriteFile(blocker, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteBaseline(filepath.Join(blocker, "baseline.json"), Baseline{Version: 1}); err == nil {
+		t.Fatal("parent path that is a file should fail")
+	}
+
+	path := filepath.Join(dir, "baseline.json")
+	if err := os.MkdirAll(path+".tmp", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteBaseline(path, Baseline{Version: 1}); err == nil {
+		t.Fatal("temp path that is a directory should fail")
+	}
+}
+
+func TestRecordBaselineInitializesProfiles(t *testing.T) {
+	var b Baseline
+	RecordBaseline(&b, "pinned", "demo", summary(true, 1, 1))
+	if b.Profiles == nil || !b.Profiles["pinned"]["demo"].Success {
+		t.Fatalf("baseline = %+v", b)
+	}
+}
+
 func TestCompareBaseline(t *testing.T) {
 	b := Baseline{Version: 1, Profiles: map[string]map[string]RunSummary{}}
 	RecordBaseline(&b, "pinned", "demo", summary(true, 2, 3))
