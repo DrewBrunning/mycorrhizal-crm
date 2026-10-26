@@ -37,6 +37,31 @@ func TestUpdateDAVPasswordPolicy_TogglesForUserWithoutSecondFactor(t *testing.T)
 	assert.True(t, user.AllowDAVPassword)
 }
 
+func TestUpdateDAVPasswordPolicy_CanDisable(t *testing.T) {
+	db, router := setupRouter(t)
+	require.NoError(t, db.Model(&models.User{}).Where("1 = 1").Update("allow_dav_password", true).Error)
+
+	router.PATCH("/users/dav-password-policy",
+		middleware.ValidateJSONMiddleware(&models.DAVPasswordPolicyInput{}),
+		UpdateDAVPasswordPolicy)
+
+	allow := false
+	body, _ := json.Marshal(models.DAVPasswordPolicyInput{Allow: &allow})
+	req, _ := http.NewRequest(http.MethodPatch, "/users/dav-password-policy", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var resp map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Equal(t, false, resp["allow_dav_password"])
+
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+	assert.False(t, user.AllowDAVPassword)
+}
+
 func TestUpdateDAVPasswordPolicy_RejectedWhileSecondFactorEnrolled(t *testing.T) {
 	db, router := setupRouter(t)
 	require.NoError(t, db.Model(&models.User{}).Where("1 = 1").Updates(map[string]any{

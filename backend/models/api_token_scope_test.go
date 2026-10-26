@@ -46,3 +46,26 @@ func TestIsValidTokenScope(t *testing.T) {
 		assert.Falsef(t, IsValidTokenScope(s), "%q should be invalid", s)
 	}
 }
+
+func TestIsDAVOnlyScopes(t *testing.T) {
+	// Only a non-empty subset of the two DAV scopes may omit an expiry; an
+	// empty set (unknown legacy row) must not be treated as DAV-only.
+	for _, scopes := range [][]string{
+		{"carddav"},
+		{"caldav"},
+		{"carddav", "caldav"},
+	} {
+		assert.Truef(t, IsDAVOnlyScopes(scopes), "%v should be DAV-only", scopes)
+	}
+	for _, scopes := range [][]string{
+		nil,
+		{},
+		{"api:read"},
+		{"api:write"},
+		{"mcp"},
+		{"carddav", "mcp"},
+		{"caldav", "api:read"},
+	} {
+		assert.Falsef(t, IsDAVOnlyScopes(scopes), "%v must not be DAV-only", scopes)
+	}
+}

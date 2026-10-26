@@ -600,7 +600,7 @@ const DefaultApiTokenScope = "full"
 type ApiTokenInput struct {
 	Name string `json:"name" validate:"required,min=1,max=100"`
 	// ExpiresInDays is optional; omitting it applies DefaultApiTokenExpiryDays.
-	// There is deliberately no "never expires" option.
+	// A DAV-only scope set may instead set NeverExpires.
 	ExpiresInDays *int `json:"expires_in_days" validate:"omitempty,min=1,max=365"`
 	// Scope is the legacy single-scope field. It remains accepted so older
 	// clients keep working; Scopes wins when both are supplied.
