@@ -1,7 +1,12 @@
 package com.mycorrhizal.crm.feature.tracking
 
 import android.app.Application
+import android.content.ContentProvider
+import android.content.ContentValues
 import android.content.Context
+import android.database.Cursor
+import android.database.MatrixCursor
+import android.net.Uri
 import android.provider.CallLog
 import androidx.test.core.app.ApplicationProvider
 import com.mycorrhizal.crm.domain.repository.ContactRepository
@@ -20,7 +25,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows
 import org.robolectric.annotation.Config
-import org.robolectric.fakes.RoboCursor
+import org.robolectric.shadows.ShadowContentResolver
 
 /**
  * CallLogSyncWorker builds its own CallLogReader(applicationContext.contentResolver)
@@ -47,19 +52,37 @@ class CallLogSyncWorkerTest {
     }
 
     private fun stubCallLog(rows: List<Array<Any?>>) {
-        val cursor = RoboCursor().apply {
-            setColumnNames(
-                listOf(
-                    CallLog.Calls.NUMBER,
-                    CallLog.Calls.TYPE,
-                    CallLog.Calls.DATE,
-                    CallLog.Calls.DURATION,
-                    CallLog.Calls.CACHED_NAME
-                )
-            )
-            setResults(rows.toTypedArray())
+        val columns = arrayOf(
+            CallLog.Calls.NUMBER,
+            CallLog.Calls.TYPE,
+            CallLog.Calls.DATE,
+            CallLog.Calls.DURATION,
+            CallLog.Calls.CACHED_NAME
+        )
+        val provider = object : ContentProvider() {
+            override fun onCreate(): Boolean = true
+            override fun query(
+                uri: Uri,
+                projection: Array<out String>?,
+                selection: String?,
+                selectionArgs: Array<out String>?,
+                sortOrder: String?
+            ): Cursor = MatrixCursor(columns).apply { rows.forEach { addRow(it) } }
+            override fun getType(uri: Uri): String? = null
+            override fun insert(uri: Uri, values: ContentValues?): Uri? = null
+            override fun delete(
+                uri: Uri,
+                selection: String?,
+                selectionArgs: Array<out String>?
+            ): Int = 0
+            override fun update(
+                uri: Uri,
+                values: ContentValues?,
+                selection: String?,
+                selectionArgs: Array<out String>?
+            ): Int = 0
         }
-        Shadows.shadowOf(context.contentResolver).setCursor(CallLog.Calls.CONTENT_URI, cursor)
+        ShadowContentResolver.registerProviderInternal(CallLog.AUTHORITY, provider)
     }
 
     @Test

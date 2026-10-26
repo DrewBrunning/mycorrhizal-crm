@@ -15,7 +15,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -129,7 +129,7 @@ class RailLabelTest {
     fun `german rail labels fit at font scale one`() = assertLabelFits(Locale.GERMAN)
 
     @Test
-    fun `spanish rail labels fit at font scale one`() = assertLabelFits(Locale("es"))
+    fun `spanish rail labels fit at font scale one`() = assertLabelFits(Locale.forLanguageTag("es"))
 
     @Test
     fun `french rail labels fit at font scale one`() = assertLabelFits(Locale.FRENCH)
@@ -140,7 +140,7 @@ class RailLabelTest {
     @Test
     fun `the localized More label is not English for the non-English locales`() {
         assertNotEquals("More", localized(Locale.GERMAN).getString(R.string.nav_more))
-        assertNotEquals("More", localized(Locale("es")).getString(R.string.nav_more))
+        assertNotEquals("More", localized(Locale.forLanguageTag("es")).getString(R.string.nav_more))
         assertNotEquals("More", localized(Locale.FRENCH).getString(R.string.nav_more))
         assertNotEquals("More", localized(Locale.ITALIAN).getString(R.string.nav_more))
     }

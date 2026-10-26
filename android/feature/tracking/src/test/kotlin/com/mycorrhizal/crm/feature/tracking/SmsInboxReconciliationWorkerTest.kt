@@ -25,7 +25,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows
 import org.robolectric.annotation.Config
-import org.robolectric.fakes.RoboCursor
 import org.robolectric.shadows.ShadowContentResolver
 
 /**
@@ -47,11 +46,32 @@ class SmsInboxReconciliationWorkerTest {
     }
 
     private fun stubInbox(rows: List<Array<Any?>>) {
-        val cursor = RoboCursor().apply {
-            setColumnNames(listOf(Telephony.Sms._ID, Telephony.Sms.ADDRESS, Telephony.Sms.DATE))
-            setResults(rows.toTypedArray())
+        val provider = object : ContentProvider() {
+            override fun onCreate(): Boolean = true
+            override fun query(
+                uri: Uri,
+                projection: Array<out String>?,
+                selection: String?,
+                selectionArgs: Array<out String>?,
+                sortOrder: String?
+            ): Cursor = MatrixCursor(
+                arrayOf(Telephony.Sms._ID, Telephony.Sms.ADDRESS, Telephony.Sms.DATE)
+            ).apply { rows.forEach { addRow(it) } }
+            override fun getType(uri: Uri): String? = null
+            override fun insert(uri: Uri, values: ContentValues?): Uri? = null
+            override fun delete(
+                uri: Uri,
+                selection: String?,
+                selectionArgs: Array<out String>?
+            ): Int = 0
+            override fun update(
+                uri: Uri,
+                values: ContentValues?,
+                selection: String?,
+                selectionArgs: Array<out String>?
+            ): Int = 0
         }
-        Shadows.shadowOf(context.contentResolver).setCursor(Telephony.Sms.Inbox.CONTENT_URI, cursor)
+        ShadowContentResolver.registerProviderInternal("sms", provider)
     }
 
     private fun worker(

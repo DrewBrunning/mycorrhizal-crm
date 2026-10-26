@@ -17,12 +17,12 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
@@ -220,7 +220,9 @@ fun FieldDefinitionFormContent(
                         expanded = typeExpanded
                     )
                 },
-                modifier = Modifier.fillMaxWidth().menuAnchor()
+                modifier = Modifier.fillMaxWidth().menuAnchor(
+                    ExposedDropdownMenuAnchorType.PrimaryNotEditable
+                )
             )
             ExposedDropdownMenu(
                 expanded = typeExpanded,
@@ -344,7 +346,9 @@ fun FieldDefinitionFormContent(
                             expanded = projectionExpanded
                         )
                     },
-                    modifier = Modifier.fillMaxWidth().menuAnchor()
+                    modifier = Modifier.fillMaxWidth().menuAnchor(
+                        ExposedDropdownMenuAnchorType.PrimaryNotEditable
+                    )
                 )
                 ExposedDropdownMenu(
                     expanded = projectionExpanded,
@@ -401,7 +405,9 @@ fun FieldDefinitionFormContent(
                         expanded = sensitivityExpanded
                     )
                 },
-                modifier = Modifier.fillMaxWidth().menuAnchor()
+                modifier = Modifier.fillMaxWidth().menuAnchor(
+                    ExposedDropdownMenuAnchorType.PrimaryNotEditable
+                )
             )
             ExposedDropdownMenu(
                 expanded = sensitivityExpanded,
@@ -504,7 +510,9 @@ private fun GroupField(
             label = { Text(stringResource(R.string.settings_custom_fields_group)) },
             supportingText = { Text(stringResource(R.string.settings_custom_fields_group_hint)) },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryEditable)
+            modifier = Modifier.fillMaxWidth().menuAnchor(
+                ExposedDropdownMenuAnchorType.PrimaryEditable
+            )
         )
         ExposedDropdownMenu(
             expanded = expanded && matches.isNotEmpty(),

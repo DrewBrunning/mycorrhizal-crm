@@ -1,10 +1,9 @@
 package com.mycorrhizal.crm.feature.contacts
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ActivityInfo
-import android.content.pm.ApplicationInfo
-import android.content.pm.ResolveInfo
+import android.content.IntentFilter
 import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
@@ -66,16 +65,19 @@ class FieldActionsTest {
     @Test
     fun `group sms intent pins to the resolved messaging activity`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        val smsActivity = ActivityInfo().apply {
-            packageName = "com.android.messaging"
-            name = "com.android.messaging.ui.ComposeSmsActivity"
-            applicationInfo = ApplicationInfo().apply {
-                packageName = "com.android.messaging"
+        val component = ComponentName(
+            "com.android.messaging",
+            "com.android.messaging.ui.ComposeSmsActivity"
+        )
+        val shadowPm = Shadows.shadowOf(context.packageManager)
+        shadowPm.addActivityIfNotPresent(component)
+        shadowPm.addIntentFilterForActivity(
+            component,
+            IntentFilter(Intent.ACTION_SENDTO).apply {
+                addCategory(Intent.CATEGORY_DEFAULT)
+                addDataScheme("smsto")
             }
-        }
-        val resolveInfo = ResolveInfo().apply { activityInfo = smsActivity }
-        val probe = Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:+1-555-0100"))
-        Shadows.shadowOf(context.packageManager).addResolveInfoForIntent(probe, resolveInfo)
+        )
 
         val intent = FieldActions.groupSmsIntent(listOf("+1-555-0100"), context)
         assertEquals("com.android.messaging", intent.component?.packageName)

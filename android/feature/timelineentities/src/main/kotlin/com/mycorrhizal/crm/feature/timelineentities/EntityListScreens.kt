@@ -22,6 +22,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Delete
@@ -29,7 +30,6 @@ import androidx.compose.material.icons.outlined.Done
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
@@ -294,7 +294,7 @@ internal fun EntityListScaffold(
                                                     onClick = { uriHandler.openUri(item.url) }
                                                 ) {
                                                     Icon(
-                                                        Icons.Outlined.OpenInNew,
+                                                        Icons.AutoMirrored.Outlined.OpenInNew,
                                                         contentDescription = stringResource(
                                                             R.string.cd_open_link
                                                         ),

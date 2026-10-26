@@ -1,12 +1,14 @@
 package com.mycorrhizal.crm.feature.tracking
 
+import android.annotation.SuppressLint
 import android.app.Service
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
-import android.telephony.PhoneStateListener
+import android.telephony.TelephonyCallback
 import android.telephony.TelephonyManager
 import androidx.core.content.ContextCompat
 import com.mycorrhizal.crm.domain.repository.ActivityRepository
@@ -61,9 +63,37 @@ class CallDetectionService : Service() {
     // branches actually differ, not just that neither throws.
     internal var quickCaptureOverlay: QuickCaptureOverlay? = null
 
-    private val phoneStateListener = object : PhoneStateListener() {
-        override fun onCallStateChanged(state: Int, phoneNumber: String?) =
-            handleCallStateChanged(state, phoneNumber)
+    // API 31+ uses TelephonyCallback; API 26-30 still needs the deprecated
+    // PhoneStateListener (TelephonyCallback does not exist there). The
+    // suppression is scoped to the legacy factory and its register/unregister
+    // helpers, never the whole module. [sdkInt] is overridable so the unit
+    // tests -- which run under one Robolectric SDK -- can exercise both paths.
+    internal var sdkInt: Int = Build.VERSION.SDK_INT
+
+    @Suppress("DEPRECATION")
+    private var legacyPhoneStateListener: android.telephony.PhoneStateListener? = null
+    private var telephonyCallback: TelephonyCallback? = null
+    private var listening = false
+
+    /**
+     * API 31+'s [TelephonyCallback.CallStateListener] reports only the new
+     * state, not the number (the platform removed it from the callback for
+     * privacy). By the time IDLE arrives the call log has the just-ended call,
+     * so read its newest entry to keep both the overlay prefill and the
+     * known-contacts-only policy working. Without READ_CALL_LOG the read is a
+     * logged no-op and returns null, treated the same as a withheld number.
+     */
+    internal var recentCallNumber: () -> String? = {
+        runCatching {
+            CallLogReader(applicationContext.contentResolver)
+                .readSince(System.currentTimeMillis() - RECENT_CALL_WINDOW_MS, limit = 1)
+                .firstOrNull()
+                ?.number
+        }.getOrNull()
+    }
+
+    internal fun handleTelephonyCallStateChanged(state: Int) {
+        handleCallStateChanged(state, recentCallNumber())
     }
 
     // Extracted from phoneStateListener (issue #320 Phase C) so the call-idle
@@ -126,19 +156,89 @@ class CallDetectionService : Service() {
                 applicationContext.getString(R.string.call_service_notification_text)
             )
         )
-        val telephonyManager = getSystemService(TelephonyManager::class.java)
-        // Issue #721: if READ_PHONE_STATE was revoked while the service was
-        // running and the system then restarts it (START_STICKY), listen()
-        // throws SecurityException — a missing grant is a logged no-op (the
-        // call-log capture keeps working via its own grant check), never a
-        // crash loop.
+        startListening()
+        resetSelfStop()
+        return START_STICKY
+    }
+
+    /**
+     * Issue #721: if READ_PHONE_STATE was revoked while the service was
+     * running and the system then restarts it (START_STICKY), registration
+     * throws SecurityException — a missing grant is a logged no-op (the
+     * call-log capture keeps working via its own grant check), never a crash
+     * loop.
+     */
+    // sdkInt defaults to Build.VERSION.SDK_INT, so the >= S branch is the
+    // same runtime guard lint accepts for Build.VERSION.
+    @SuppressLint("NewApi")
+    private fun startListening() {
+        if (listening) return
+        val telephonyManager = getSystemService(TelephonyManager::class.java) ?: return
         try {
-            telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_CALL_STATE)
+            if (sdkInt >= Build.VERSION_CODES.S) {
+                val callback = telephonyCallback
+                    ?: createTelephonyCallback().also { telephonyCallback = it }
+                telephonyManager.registerTelephonyCallback(
+                    ContextCompat.getMainExecutor(this),
+                    callback
+                )
+            } else {
+                val listener = legacyPhoneStateListener
+                    ?: createLegacyPhoneStateListener().also { legacyPhoneStateListener = it }
+                registerLegacyListener(telephonyManager, listener)
+            }
+            listening = true
         } catch (e: SecurityException) {
             android.util.Log.w(TAG, "READ_PHONE_STATE missing; phone-state listening disabled", e)
         }
-        resetSelfStop()
-        return START_STICKY
+    }
+
+    @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
+    private fun createLegacyPhoneStateListener(): android.telephony.PhoneStateListener =
+        object : android.telephony.PhoneStateListener() {
+            override fun onCallStateChanged(state: Int, phoneNumber: String?) =
+                handleCallStateChanged(state, phoneNumber)
+        }
+
+    @Suppress("DEPRECATION")
+    private fun registerLegacyListener(
+        telephonyManager: TelephonyManager,
+        listener: android.telephony.PhoneStateListener
+    ) {
+        telephonyManager.listen(listener, android.telephony.PhoneStateListener.LISTEN_CALL_STATE)
+    }
+
+    @SuppressLint("NewApi") // only created inside the >= S branch above.
+    private fun createTelephonyCallback(): TelephonyCallback =
+        object : TelephonyCallback(), TelephonyCallback.CallStateListener {
+            override fun onCallStateChanged(state: Int) = handleTelephonyCallStateChanged(state)
+        }
+
+    @SuppressLint("NewApi") // only unregisters what the >= S branch registered.
+    private fun stopListening() {
+        if (!listening) return
+        val telephonyManager = getSystemService(TelephonyManager::class.java) ?: return
+        try {
+            if (sdkInt >= Build.VERSION_CODES.S) {
+                telephonyCallback?.let { telephonyManager.unregisterTelephonyCallback(it) }
+            } else {
+                legacyPhoneStateListener?.let {
+                    unregisterLegacyListener(telephonyManager, it)
+                }
+            }
+        } catch (e: SecurityException) {
+            android.util.Log.w(TAG, "READ_PHONE_STATE missing while unregistering listener", e)
+        } finally {
+            listening = false
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun unregisterLegacyListener(
+        telephonyManager: TelephonyManager,
+        listener: android.telephony.PhoneStateListener
+    ) {
+        telephonyManager.listen(listener, android.telephony.PhoneStateListener.LISTEN_NONE)
     }
 
     private fun resetSelfStop() {
@@ -152,12 +252,7 @@ class CallDetectionService : Service() {
         serviceScope = null
         quickCaptureOverlay?.dismiss()
         quickCaptureOverlay = null
-        val telephonyManager = getSystemService(TelephonyManager::class.java)
-        try {
-            telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_NONE)
-        } catch (e: SecurityException) {
-            android.util.Log.w(TAG, "READ_PHONE_STATE missing while unregistering listener", e)
-        }
+        stopListening()
         super.onDestroy()
     }
 
@@ -166,6 +261,7 @@ class CallDetectionService : Service() {
     companion object {
         const val NOTIFICATION_ID = 1001
         private const val SELF_STOP_MS = 5 * 60 * 1000L
+        private const val RECENT_CALL_WINDOW_MS = 5 * 60 * 1000L
         private const val TAG = "CallDetectionService"
     }
 }

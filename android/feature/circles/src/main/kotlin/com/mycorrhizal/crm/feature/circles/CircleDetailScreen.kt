@@ -10,8 +10,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Message
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Message
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -98,7 +98,7 @@ fun CircleDetailScreen(
                         enabled = textablePhones.size >= 2
                     ) {
                         Icon(
-                            Icons.Outlined.Message,
+                            Icons.AutoMirrored.Outlined.Message,
                             contentDescription = stringResource(R.string.circles_text_everyone)
                         )
                     }

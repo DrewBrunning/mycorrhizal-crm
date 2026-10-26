@@ -6,14 +6,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.EventNote
+import androidx.compose.material.icons.automirrored.outlined.StickyNote2
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.CardGiftcard
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Event
-import androidx.compose.material.icons.outlined.EventNote
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.outlined.StickyNote2
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -191,7 +191,7 @@ private fun TimelineActivityRow(title: String, type: String, onClick: () -> Unit
     TimelineRowBase(
         icon = {
             Icon(
-                Icons.Outlined.EventNote,
+                Icons.AutoMirrored.Outlined.EventNote,
                 contentDescription = stringResource(R.string.cd_activity)
             )
         },
@@ -206,7 +206,7 @@ private fun TimelineNoteRow(content: String, onClick: () -> Unit) {
     TimelineRowBase(
         icon = {
             Icon(
-                Icons.Outlined.StickyNote2,
+                Icons.AutoMirrored.Outlined.StickyNote2,
                 contentDescription = stringResource(R.string.cd_note)
             )
         },

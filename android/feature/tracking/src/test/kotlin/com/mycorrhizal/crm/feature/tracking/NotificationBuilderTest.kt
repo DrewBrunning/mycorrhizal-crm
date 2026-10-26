@@ -2,10 +2,10 @@ package com.mycorrhizal.crm.feature.tracking
 
 import android.app.Application
 import android.app.NotificationManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ActivityInfo
-import android.content.pm.ResolveInfo
+import android.content.IntentFilter
 import androidx.core.app.NotificationCompat
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
@@ -34,16 +34,15 @@ class NotificationBuilderTest {
     // has no launcher activity, so this must be registered explicitly.
     private fun stubLaunchIntent() {
         val shadowPm = Shadows.shadowOf(context.packageManager) as ShadowPackageManager
-        val resolveInfo = ResolveInfo().apply {
-            activityInfo = ActivityInfo().apply {
-                packageName = context.packageName
-                name = "com.mycorrhizal.crm.MainActivity"
+        val component = ComponentName(context.packageName, "com.mycorrhizal.crm.MainActivity")
+        shadowPm.addActivityIfNotPresent(component)
+        shadowPm.addIntentFilterForActivity(
+            component,
+            IntentFilter(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
+                addCategory(Intent.CATEGORY_DEFAULT)
             }
-        }
-        val launcherIntent = Intent(Intent.ACTION_MAIN)
-            .addCategory(Intent.CATEGORY_LAUNCHER)
-            .setPackage(context.packageName)
-        shadowPm.addResolveInfoForIntent(launcherIntent, resolveInfo)
+        )
     }
 
     @Test

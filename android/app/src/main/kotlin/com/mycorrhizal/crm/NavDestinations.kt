@@ -2,18 +2,18 @@ package com.mycorrhizal.crm
 
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.EventNote
+import androidx.compose.material.icons.automirrored.outlined.Label
 import androidx.compose.material.icons.outlined.Celebration
 import androidx.compose.material.icons.outlined.Contacts
 import androidx.compose.material.icons.outlined.Dataset
 import androidx.compose.material.icons.outlined.EditNote
-import androidx.compose.material.icons.outlined.EventNote
 import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.HomeWork
 import androidx.compose.material.icons.outlined.IosShare
-import androidx.compose.material.icons.outlined.Label
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Share
@@ -71,7 +71,12 @@ internal val navDestinations: List<TopLevelDestination> = listOf(
         NavGroup.PEOPLE
     ),
     TopLevelDestination("circles", R.string.circles_title, Icons.Outlined.Group, NavGroup.PEOPLE),
-    TopLevelDestination("tags", R.string.tags_title, Icons.Outlined.Label, NavGroup.PEOPLE),
+    TopLevelDestination(
+        "tags",
+        R.string.tags_title,
+        Icons.AutoMirrored.Outlined.Label,
+        NavGroup.PEOPLE
+    ),
     TopLevelDestination(
         "households",
         R.string.households_title,
@@ -83,7 +88,7 @@ internal val navDestinations: List<TopLevelDestination> = listOf(
     TopLevelDestination(
         "activities",
         R.string.nav_activities,
-        Icons.Outlined.EventNote,
+        Icons.AutoMirrored.Outlined.EventNote,
         NavGroup.INTERACTIONS
     ),
     TopLevelDestination(

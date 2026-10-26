@@ -1,7 +1,7 @@
 package com.mycorrhizal.crm.ui.components
 
 import androidx.compose.material3.Text
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import com.mycorrhizal.crm.model.network.ScoreReasonCode
 import com.mycorrhizal.crm.model.network.ScoreReasonParams

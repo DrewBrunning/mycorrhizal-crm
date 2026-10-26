@@ -5,6 +5,8 @@ import android.graphics.PixelFormat
 import android.view.Gravity
 import android.view.WindowManager
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -12,6 +14,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.res.stringResource
 import com.mycorrhizal.crm.domain.repository.ActivityRepository
@@ -60,13 +63,18 @@ class QuickCaptureOverlay(
         val sheet = ComposeView(context).apply {
             setContent {
                 MycorrhizalTheme(darkTheme = isSystemInDarkTheme()) {
-                    QuickCaptureSheetHost(
-                        phoneNumber = phoneNumber,
-                        contactRepository = contactRepository,
-                        activityRepository = activityRepository,
-                        onDismiss = { dismiss() },
-                        onFirstInteraction = autoDismiss::cancel
-                    )
+                    // Edge-to-edge: the IME inset is applied here rather than by
+                    // SOFT_INPUT_ADJUST_RESIZE, which is deprecated and a no-op
+                    // for overlay windows on API 30+.
+                    Box(Modifier.imePadding()) {
+                        QuickCaptureSheetHost(
+                            phoneNumber = phoneNumber,
+                            contactRepository = contactRepository,
+                            activityRepository = activityRepository,
+                            onDismiss = { dismiss() },
+                            onFirstInteraction = autoDismiss::cancel
+                        )
+                    }
                 }
             }
         }
@@ -81,7 +89,7 @@ class QuickCaptureOverlay(
         ).apply {
             gravity = Gravity.BOTTOM
             y = (BOTTOM_OFFSET_DP * context.resources.displayMetrics.density).toInt()
-            softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+            softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING
         }
         runCatching { windowManager.addView(sheet, params) }
             .onSuccess { composeView = sheet }
