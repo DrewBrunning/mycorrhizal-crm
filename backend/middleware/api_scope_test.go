@@ -72,6 +72,62 @@ func TestRequireAPIScopeForMethod_MCPOnlyTokenIsNotREST(t *testing.T) {
 	assert.Equal(t, http.StatusForbidden, dispatchScoped(router, http.MethodGet, "/read", token).Code)
 }
 
+func newContextTokenRouter(t *testing.T, mw gin.HandlerFunc, token any) *gin.Engine {
+	t.Helper()
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.New()
+	if token != nil {
+		router.Use(func(c *gin.Context) {
+			c.Set(apiTokenContextKey, token)
+			c.Next()
+		})
+	}
+	router.Use(mw)
+	router.GET("/probe", func(c *gin.Context) { c.Status(http.StatusOK) })
+	router.POST("/probe", func(c *gin.Context) { c.Status(http.StatusOK) })
+	return router
+}
+
+func TestRequireAPIScope_MCPRequiresTheMCPGrant(t *testing.T) {
+	mcpToken := &models.ApiToken{Scopes: []string{models.TokenScopeMCP}}
+	mcpRouter := newContextTokenRouter(t, RequireAPIScope(models.TokenScopeMCP), mcpToken)
+	req, _ := http.NewRequest(http.MethodPost, "/probe", nil)
+	w := httptest.NewRecorder()
+	mcpRouter.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	restToken := &models.ApiToken{Scopes: []string{models.TokenScopeAPIRead, models.TokenScopeAPIWrite}}
+	restRouter := newContextTokenRouter(t, RequireAPIScope(models.TokenScopeMCP), restToken)
+	req, _ = http.NewRequest(http.MethodPost, "/probe", nil)
+	w = httptest.NewRecorder()
+	restRouter.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusForbidden, w.Code, "a REST-scoped token must not reach the MCP surface")
+}
+
+func TestRequireAPIScope_NonTokenCallerPassesThrough(t *testing.T) {
+	for name, mw := range map[string]gin.HandlerFunc{
+		"RequireAPIScope":          RequireAPIScope(models.TokenScopeMCP),
+		"RequireAPIScopeForMethod": RequireAPIScopeForMethod(),
+	} {
+		t.Run(name, func(t *testing.T) {
+			router := newContextTokenRouter(t, mw, nil)
+			req, _ := http.NewRequest(http.MethodPost, "/probe", nil)
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+			assert.Equal(t, http.StatusOK, w.Code, "a cookie-session caller carries no API token and must pass through")
+		})
+	}
+}
+
+func TestAPITokenFromContext_RejectsWrongType(t *testing.T) {
+	gin.SetMode(gin.ReleaseMode)
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Set(apiTokenContextKey, "not-a-token")
+	token, ok := APITokenFromContext(c)
+	assert.False(t, ok)
+	assert.Nil(t, token)
+}
+
 func TestIsCredentialManagementRoute(t *testing.T) {
 	for _, path := range []string{
 		"/api/v1/account",
