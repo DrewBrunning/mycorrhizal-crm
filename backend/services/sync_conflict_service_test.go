@@ -194,8 +194,16 @@ func TestReconcileContactSyncNoConflictOnPlainRemoteChange(t *testing.T) {
 	require.NoError(t, err)
 
 	second := carddav.AddressObject{Path: href, ETag: "\"etag-2\"", Card: testCard(t, "dave-uid", "Dave", "Grohl", "dave.new@example.com")}
-	_, err = reconcileContactSync(db, sub, []carddav.AddressObject{second}, nil, false, "")
+	stats, err := reconcileContactSync(db, sub, []carddav.AddressObject{second}, nil, false, "")
 	require.NoError(t, err)
+	assert.Equal(t, ContactSyncStats{Updated: 1}, stats,
+		"the remote change must be applied and reported as an update, not a no-op")
+
+	var link models.ContactSyncLink
+	require.NoError(t, db.Where("subscription_id = ? AND href = ?", sub.ID, href).First(&link).Error)
+	var contact models.Contact
+	require.NoError(t, db.First(&contact, link.ContactID).Error)
+	assert.Equal(t, "dave.new@example.com", contact.Email, "the remote email must persist on the contact")
 
 	var count int64
 	require.NoError(t, db.Model(&models.ContactSyncConflict{}).Where("user_id = ?", user.ID).Count(&count).Error)
