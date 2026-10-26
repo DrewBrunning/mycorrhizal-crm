@@ -47,7 +47,6 @@ var (
 
 const (
 	maxContactResponseBytes   = 20 * 1024 * 1024
-	maxContactsPerSync        = 2000
 	contactSyncRequestTimeout = 60 * time.Second
 )
 
@@ -291,12 +290,6 @@ func (s *ContactSyncService) syncSubscription(ctx context.Context, db *gorm.DB, 
 	updated, deleted, newToken, fullRefetch, err := s.fetchChanges(ctx, client, parsedURL, sub.SyncToken)
 	if err != nil {
 		return ContactSyncStats{}, sub.SyncToken, err
-	}
-
-	if len(updated) > maxContactsPerSync {
-		logger.Warn().Uint("subscription_id", sub.ID).Int("objects", len(updated)).Int("limit", maxContactsPerSync).
-			Msg("Contact subscription returned more objects than the per-sync limit, truncating")
-		updated = updated[:maxContactsPerSync]
 	}
 
 	stats, err := reconcileContactSyncWithBaselines(db, sub, updated, deleted, fullRefetch, cfg.ProfilePhotoDir, preSyncBaselines)

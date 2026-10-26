@@ -986,8 +986,8 @@ design is ADR-0010 / CON-04, issue #479).
   `Idempotency-Key` header (CON-04, issue #459, ADR 0010). `user_id` is the calling user; the middleware
   reads/writes only that user's own rows. Distinct from §21 (`import_source_links`, the per-source-entity
   import ledger) — this is the general inbound-mutation retry guard for the REST API.
-- **What it contains**: the opaque client key, the request `method` + route template `path`, a
-  SHA-256 `request_fingerprint` over method+path+body (to reject a key reused for a *different*
+- **What it contains**: the opaque client key, the request `method` + concrete request path, a
+  SHA-256 `request_fingerprint` over method+request target+body (to reject a key reused for a *different*
   request), a `state` (`pending` → `completed`), and — on a 2xx — the stored `response_status` and
   `response_body` that later retries replay verbatim. A `completed` row with `response_status = 0` is
   the terminal-but-unreplayable marker: the handler's write committed but the response could not be

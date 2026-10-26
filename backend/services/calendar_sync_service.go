@@ -45,7 +45,6 @@ var (
 
 const (
 	maxCalendarResponseBytes = 20 * 1024 * 1024
-	maxEventsPerSync         = 500
 	maxOccurrencesPerEvent   = 100
 	calendarRequestTimeout   = 60 * time.Second
 )
@@ -300,12 +299,6 @@ func (s *CalendarSyncService) syncSubscription(ctx context.Context, db *gorm.DB,
 	events, err := s.fetchEvents(ctx, parsedURL, sub.Username, password, windowStart, windowEnd)
 	if err != nil {
 		return CalendarSyncStats{}, err
-	}
-
-	if len(events) > maxEventsPerSync {
-		logger.Warn().Uint("subscription_id", sub.ID).Int("events", len(events)).Int("limit", maxEventsPerSync).
-			Msg("Calendar returned more events than the per-sync limit, truncating")
-		events = events[:maxEventsPerSync]
 	}
 
 	localizeUntitledEvents(db, sub.UserID, events)

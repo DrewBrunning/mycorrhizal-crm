@@ -9,6 +9,7 @@ import (
 
 	"mycorrhizal/config"
 	apperrors "mycorrhizal/errors"
+	"mycorrhizal/internal/fireandforget"
 	"mycorrhizal/models"
 	"mycorrhizal/monica"
 	"mycorrhizal/photostore"
@@ -121,10 +122,14 @@ func (m *MonicaImportManager) CleanupExpired() {
 	for id, s := range m.sessions {
 		s.mu.Lock()
 		expired := now.After(s.expiresAt) || now.After(s.hardExpiry)
+		var cancel context.CancelFunc
+		if expired {
+			cancel = s.cancel
+		}
 		s.mu.Unlock()
 		if expired {
-			if s.cancel != nil {
-				s.cancel()
+			if cancel != nil {
+				cancel()
 			}
 			delete(m.sessions, id)
 		}
@@ -186,8 +191,13 @@ func (m *MonicaImportManager) Delete(sessionID string) {
 	s, exists := m.sessions[sessionID]
 	delete(m.sessions, sessionID)
 	m.mu.Unlock()
-	if exists && s.cancel != nil {
-		s.cancel()
+	if exists {
+		s.mu.Lock()
+		cancel := s.cancel
+		s.mu.Unlock()
+		if cancel != nil {
+			cancel()
+		}
 	}
 }
 
@@ -328,16 +338,19 @@ func (m *MonicaImportManager) StartFetch(db *gorm.DB, userID uint, req models.Mo
 	s.previews = nil
 	s.includeRels = req.IncludeRelationships
 	s.includeExtras = req.IncludeExtras
+	counts := s.counts
+	includeRels := s.includeRels
+	includeExtras := s.includeExtras
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
 	s.mu.Unlock()
 
-	go m.runFetch(ctx, db, s, log)
+	fireandforget.Run(func() { m.runFetch(ctx, db, s, counts, includeRels, includeExtras, log) })
 	return nil
 }
 
 // runFetch pulls the full account snapshot, maps it, and builds the preview.
-func (m *MonicaImportManager) runFetch(ctx context.Context, db *gorm.DB, s *monicaImportSession, log *zerolog.Logger) {
+func (m *MonicaImportManager) runFetch(ctx context.Context, db *gorm.DB, s *monicaImportSession, counts monica.EntityCounts, includeRels, includeExtras bool, log *zerolog.Logger) {
 	snapshot := &monica.Snapshot{Relationships: map[int][]monica.Relationship{}}
 	fail := func(stage string, err error) {
 		if ctx.Err() != nil {
@@ -347,7 +360,7 @@ func (m *MonicaImportManager) runFetch(ctx context.Context, db *gorm.DB, s *moni
 		s.fail(userSafeMonicaError(err))
 	}
 
-	s.setPhase(models.MonicaPhaseFetchingContacts, 0, s.counts.Contacts)
+	s.setPhase(models.MonicaPhaseFetchingContacts, 0, counts.Contacts)
 	allContacts, err := s.client.FetchAllContacts(ctx, s.setProgress)
 	if err != nil {
 		fail("contacts", err)
@@ -361,26 +374,26 @@ func (m *MonicaImportManager) runFetch(ctx context.Context, db *gorm.DB, s *moni
 		}
 	}
 
-	s.setPhase(models.MonicaPhaseFetchingActivities, 0, s.counts.Activities)
+	s.setPhase(models.MonicaPhaseFetchingActivities, 0, counts.Activities)
 	if snapshot.Activities, err = s.client.FetchAllActivities(ctx, s.setProgress); err != nil {
 		fail("activities", err)
 		return
 	}
 
-	s.setPhase(models.MonicaPhaseFetchingNotes, 0, s.counts.Notes)
+	s.setPhase(models.MonicaPhaseFetchingNotes, 0, counts.Notes)
 	if snapshot.Notes, err = s.client.FetchAllNotes(ctx, s.setProgress); err != nil {
 		fail("notes", err)
 		return
 	}
 
-	s.setPhase(models.MonicaPhaseFetchingReminders, 0, s.counts.Reminders)
+	s.setPhase(models.MonicaPhaseFetchingReminders, 0, counts.Reminders)
 	if snapshot.Reminders, err = s.client.FetchAllReminders(ctx, s.setProgress); err != nil {
 		fail("reminders", err)
 		return
 	}
 
-	if s.includeExtras {
-		extrasTotal := s.counts.Calls + s.counts.Tasks + s.counts.Gifts + s.counts.Debts
+	if includeExtras {
+		extrasTotal := counts.Calls + counts.Tasks + counts.Gifts + counts.Debts
 		s.setPhase(models.MonicaPhaseFetchingExtras, 0, extrasTotal)
 		fetched := 0
 		offset := func(done, total int) { s.setProgress(fetched+done, extrasTotal) }
@@ -405,7 +418,7 @@ func (m *MonicaImportManager) runFetch(ctx context.Context, db *gorm.DB, s *moni
 		}
 	}
 
-	if s.includeRels {
+	if includeRels {
 		s.setPhase(models.MonicaPhaseFetchingRelationships, 0, len(snapshot.Contacts))
 		for i, mc := range snapshot.Contacts {
 			rels, relErr := s.client.FetchContactRelationships(ctx, mc.ID)
@@ -513,15 +526,7 @@ func (m *MonicaImportManager) Confirm(db *gorm.DB, userID uint, req models.Monic
 	}
 	plan := s.plan
 	previews := s.previews
-	s.mu.Unlock()
-
-	actions, appErr := resolveSourceContactActions(db, userID, plan, previews, req.Actions)
-	if appErr != nil {
-		return appErr
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
-	s.mu.Lock()
 	s.phase = models.MonicaPhaseImporting
 	s.phaseDone = 0
 	s.phaseTotal = len(previews) + importGraphKinds
@@ -529,7 +534,17 @@ func (m *MonicaImportManager) Confirm(db *gorm.DB, userID uint, req models.Monic
 	s.cancel = cancel
 	s.mu.Unlock()
 
-	go m.runImport(ctx, db, s, plan, previews, actions, cfg, log)
+	actions, appErr := resolveSourceContactActions(db, userID, plan, previews, req.Actions)
+	if appErr != nil {
+		cancel()
+		s.mu.Lock()
+		if s.phase == models.MonicaPhaseImporting {
+			s.phase = models.MonicaPhaseReady
+		}
+		s.mu.Unlock()
+		return appErr
+	}
+	fireandforget.Run(func() { m.runImport(ctx, db, s, plan, previews, actions, cfg, log) })
 	return nil
 }
 
@@ -604,7 +619,7 @@ func (m *MonicaImportManager) runImport(ctx context.Context, db *gorm.DB, s *mon
 		// #nosec G118 -- avatar downloads deliberately outlive runImport's ctx: the
 		// import has already committed, and the "cancel import" context must not
 		// abort the photo tail. processAvatars runs on its own timeout context.
-		go m.processAvatars(db, s, tasks, cfg, log)
+		fireandforget.Run(func() { m.processAvatars(db, s, tasks, cfg, log) })
 	}
 }
 

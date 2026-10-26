@@ -12,6 +12,7 @@ import (
 	"time"
 
 	apperrors "mycorrhizal/errors"
+	"mycorrhizal/internal/fireandforget"
 	"mycorrhizal/meerkat"
 	"mycorrhizal/models"
 
@@ -123,8 +124,11 @@ func (m *MeerkatImportManager) CleanupExpired() {
 
 // teardown cancels a session's work and removes its temp directory.
 func (m *MeerkatImportManager) teardown(s *meerkatImportSession) {
-	if s.cancel != nil {
-		s.cancel()
+	s.mu.Lock()
+	cancel := s.cancel
+	s.mu.Unlock()
+	if cancel != nil {
+		cancel()
 	}
 	if s.tempDir != "" {
 		_ = os.RemoveAll(s.tempDir)
@@ -359,6 +363,7 @@ func (m *MeerkatImportManager) StartFetch(db *gorm.DB, userID uint, req models.M
 	if req.SourceUserID != nil {
 		s.sourceUserID = req.SourceUserID
 	}
+	sourceUserID := s.sourceUserID
 	s.phase = models.SourceImportPhaseMapping
 	s.phaseDone, s.phaseTotal, s.errMsg = 0, 0, ""
 	s.plan, s.previews = nil, nil
@@ -366,16 +371,16 @@ func (m *MeerkatImportManager) StartFetch(db *gorm.DB, userID uint, req models.M
 	s.cancel = cancel
 	s.mu.Unlock()
 
-	go m.runFetch(ctx, db, s, log)
+	fireandforget.Run(func() { m.runFetch(ctx, db, s, sourceUserID, log) })
 	return nil
 }
 
-func (m *MeerkatImportManager) runFetch(ctx context.Context, db *gorm.DB, s *meerkatImportSession, log *zerolog.Logger) {
+func (m *MeerkatImportManager) runFetch(ctx context.Context, db *gorm.DB, s *meerkatImportSession, sourceUserID *int64, log *zerolog.Logger) {
 	if ctx.Err() != nil {
 		return
 	}
 	s.setPhase(models.SourceImportPhaseMapping, 0, 0)
-	plan := MapMeerkatSnapshot(s.snapshot, s.sourceUserID)
+	plan := MapMeerkatSnapshot(s.snapshot, sourceUserID)
 
 	if ctx.Err() != nil {
 		return
@@ -458,22 +463,24 @@ func (m *MeerkatImportManager) Confirm(db *gorm.DB, userID uint, req models.Sour
 	}
 	plan := s.plan
 	previews := s.previews
-	s.mu.Unlock()
-
-	actions, appErr := resolveSourceContactActions(db, userID, plan, previews, req.Actions)
-	if appErr != nil {
-		return appErr
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
-	s.mu.Lock()
 	s.phase = models.SourceImportPhaseImporting
 	s.phaseDone, s.phaseTotal = 0, len(previews)+importGraphKinds
 	s.errMsg = ""
 	s.cancel = cancel
 	s.mu.Unlock()
 
-	go m.runImport(ctx, db, s, plan, len(previews), actions, log)
+	actions, appErr := resolveSourceContactActions(db, userID, plan, previews, req.Actions)
+	if appErr != nil {
+		cancel()
+		s.mu.Lock()
+		if s.phase == models.SourceImportPhaseImporting {
+			s.phase = models.SourceImportPhaseReady
+		}
+		s.mu.Unlock()
+		return appErr
+	}
+	fireandforget.Run(func() { m.runImport(ctx, db, s, plan, len(previews), actions, log) })
 	return nil
 }
 
