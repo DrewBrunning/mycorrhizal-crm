@@ -160,6 +160,18 @@ func run(args []string, stdout, stderr io.Writer) int {
 		RunControl:   !noControl,
 	})
 	effectiveProfile := agenteval.Profile{Command: agentCommand, Name: agentName, Model: agentModel, Version: agentVersion}
+	if effectiveProfile.Command == "" {
+		effectiveProfile.Command = spec.AgentCommand
+	}
+	if effectiveProfile.Name == "" {
+		effectiveProfile.Name = spec.AgentName
+	}
+	if effectiveProfile.Model == "" {
+		effectiveProfile.Model = spec.AgentModel
+	}
+	if effectiveProfile.Version == "" {
+		effectiveProfile.Version = spec.AgentVersion
+	}
 	configHash := agenteval.ConfigFingerprint(effectiveProfile, spec, local)
 	current := agenteval.SummarizeRun(artifact.Status, artifact.Context, configHash)
 	if baselinePath != "" {
