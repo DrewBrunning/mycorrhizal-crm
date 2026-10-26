@@ -1,7 +1,15 @@
 package com.mycorrhizal.crm.data.session
 
+import com.mycorrhizal.crm.data.auth.DeviceGrantManager
+import com.mycorrhizal.crm.data.local.LocalServerEndpoint
+import com.mycorrhizal.crm.data.local.LocalServerHost
+import com.mycorrhizal.crm.data.local.LocalSessionReminter
 import com.mycorrhizal.crm.domain.repository.SessionState
+import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.SessionExpiryNotifier
+import io.mockk.coEvery
+import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -172,7 +180,7 @@ class SessionExpiryWiringTest {
                     grantTried = true
                     true
                 },
-                localRemint = {
+                localRemint = { _, _ ->
                     manager.activateLocalProfile("new-token")
                     true
                 }
@@ -191,12 +199,93 @@ class SessionExpiryWiringTest {
         val manager = DefaultSessionManager(FakeTokenStorage(), FakeSessionPrefsStorage())
         manager.activateLocalProfile("old-token")
 
-        SessionExpiryWiring(notifier, manager, localRemint = { false }).start(this)
+        SessionExpiryWiring(notifier, manager, localRemint = { _, _ -> false }).start(this)
         notifier.onSessionExpired()
         advanceUntilIdle()
 
         assertNull(manager.bearerToken())
         assertFalse(manager.observeSession().first().isLoggedIn)
+    }
+
+    // Issue #2051: a device-grant exchange that resolves AFTER the user logged
+    // out must not persist the fresh token or flip the session back on. The
+    // epoch captured when the 401 arrived makes the late write stale.
+    @Test
+    fun `a device-grant refresh that resolves after logout cannot restore the session`() = runTest {
+        val notifier = SessionExpiryNotifier()
+        val tokenStorage = FakeTokenStorage()
+        val manager = DefaultSessionManager(tokenStorage, FakeSessionPrefsStorage())
+        manager.setSession("https://crm.example.com", "jwt-1", SessionState(userId = 7))
+        val entered = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        val api = mockk<ApiClient>()
+        coEvery { api.exchangeDeviceSession("grant-token") } coAnswers {
+            entered.complete(Unit)
+            release.await()
+            Result.success("refreshed-jwt")
+        }
+        val grants = DeviceGrantManager(
+            api = api,
+            storage = StoredGrant("grant-token"),
+            settings = mockk(relaxed = true),
+            sessionManager = manager
+        )
+        SessionExpiryWiring(
+            notifier,
+            manager,
+            refresher = { generation -> grants.refreshSessionFromStoredGrant(generation) }
+        ).start(this)
+
+        notifier.onSessionExpired()
+        entered.await()
+        manager.clearSession()
+        release.complete(Unit)
+        advanceUntilIdle()
+
+        assertNull("a refresh that outlived logout must not store its token", manager.bearerToken())
+        assertTrue("nothing may be persisted after logout", tokenStorage.tokens.isEmpty())
+        assertFalse("the session must stay logged out", manager.observeSession().first().isLoggedIn)
+    }
+
+    // Issue #2051: the Local re-mint path has the same race — the embedded
+    // server restart mints a token after the user has already logged out.
+    @Test
+    fun `a local re-mint that resolves after logout cannot restore the session`() = runTest {
+        val notifier = SessionExpiryNotifier()
+        val tokenStorage = FakeTokenStorage()
+        val manager = DefaultSessionManager(tokenStorage, FakeSessionPrefsStorage())
+        manager.activateLocalProfile("local-old")
+        val entered = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        val host = object : LocalServerHost {
+            override suspend fun ensureStarted(): Result<LocalServerEndpoint> {
+                entered.complete(Unit)
+                release.await()
+                return Result.success(LocalServerEndpoint("/sock", "local-fresh"))
+            }
+
+            override suspend fun stop() = Unit
+            override suspend fun deleteLocalData() = Unit
+            override fun socketPathIfRunning(): String? = null
+            override fun sessionTokenIfRunning(): String? = null
+        }
+        SessionExpiryWiring(
+            notifier,
+            manager,
+            localRemint = { generation, rejectedBearer ->
+                LocalSessionReminter(host, manager).remint(rejectedBearer, generation)
+            }
+        ).start(this)
+
+        notifier.onSessionExpired("local-old")
+        entered.await()
+        manager.clearSession()
+        release.complete(Unit)
+        advanceUntilIdle()
+
+        assertNull("a re-mint that outlived logout must not store its token", manager.bearerToken())
+        assertTrue("nothing may be persisted after logout", tokenStorage.tokens.isEmpty())
+        assertFalse("the session must stay logged out", manager.observeSession().first().isLoggedIn)
     }
 
     // A Remote profile (localRemint returns null) keeps the existing behavior.
@@ -215,7 +304,7 @@ class SessionExpiryWiringTest {
                     grantTried = true
                     false
                 },
-                localRemint = { null }
+                localRemint = { _, _ -> null }
             ).start(this)
             notifier.onSessionExpired()
             advanceUntilIdle()
@@ -368,8 +457,8 @@ class SessionExpiryWiringTest {
         manager.setSession("https://crm.example.com", "jwt-1", SessionState(userId = 7))
         val seen = mutableListOf<String?>()
 
-        SessionExpiryWiring(notifier, manager, localRemint = {
-            seen += it
+        SessionExpiryWiring(notifier, manager, localRemint = { _, rejectedBearer ->
+            seen += rejectedBearer
             true
         }).start(this)
         notifier.onSessionExpired("stale-token")
@@ -390,7 +479,13 @@ class SessionExpiryWiringTest {
         val host = CountingHost(runningToken = "t2")
         val reminter = com.mycorrhizal.crm.data.local.LocalSessionReminter(host, manager)
 
-        SessionExpiryWiring(notifier, manager, localRemint = { reminter.remint(it) }).start(this)
+        SessionExpiryWiring(
+            notifier,
+            manager,
+            localRemint = { generation, rejectedBearer ->
+                reminter.remint(rejectedBearer, generation)
+            }
+        ).start(this)
         repeat(5) { notifier.onSessionExpired("t1") }
         advanceUntilIdle()
         repeat(3) {
@@ -412,7 +507,13 @@ class SessionExpiryWiringTest {
         val host = CountingHost(runningToken = "t2", mintsOnStart = "t3")
         val reminter = com.mycorrhizal.crm.data.local.LocalSessionReminter(host, manager)
 
-        SessionExpiryWiring(notifier, manager, localRemint = { reminter.remint(it) }).start(this)
+        SessionExpiryWiring(
+            notifier,
+            manager,
+            localRemint = { generation, rejectedBearer ->
+                reminter.remint(rejectedBearer, generation)
+            }
+        ).start(this)
         repeat(4) { notifier.onSessionExpired("t2") }
         advanceUntilIdle()
 
@@ -439,7 +540,9 @@ class SessionExpiryWiringTest {
             SessionExpiryWiring(
                 notifier,
                 manager,
-                localRemint = { reminter.remint(it) }
+                localRemint = { generation, rejectedBearer ->
+                    reminter.remint(rejectedBearer, generation)
+                }
             ).start(this)
             notifier.onSessionExpired("t1")
             advanceUntilIdle()
@@ -468,7 +571,9 @@ class SessionExpiryWiringTest {
                     refreshes++
                     false
                 },
-                localRemint = { reminter.remint(it) }
+                localRemint = { generation, rejectedBearer ->
+                    reminter.remint(rejectedBearer, generation)
+                }
             ).start(this)
             notifier.onSessionExpired("jwt-1")
             advanceUntilIdle()
@@ -477,6 +582,15 @@ class SessionExpiryWiringTest {
             assertEquals(0, host.starts + host.stops)
             assertNull(manager.bearerToken())
         }
+
+    private class StoredGrant(private val token: String) : DeviceGrantTokenStorage {
+        override suspend fun save(profileId: String, token: String, id: Long) = Unit
+        override suspend fun loadToken(profileId: String): String? = token
+        override suspend fun loadGrantId(profileId: String): Long? = null
+        override suspend fun clear(profileId: String) = Unit
+        override suspend fun loadLegacy(): LegacyDeviceGrant? = null
+        override suspend fun clearLegacy() = Unit
+    }
 
     private class CountingHost(
         private val runningToken: String?,

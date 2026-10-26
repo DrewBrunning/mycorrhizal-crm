@@ -70,8 +70,14 @@ class ServersViewModel @Inject constructor(
         }
     }
 
-    /** Switch to [profileId]. May surface [ServersUiState.pendingSwitch]. */
+    /**
+     * Switch to [profileId]. May surface [ServersUiState.pendingSwitch].
+     * Issue #2050: a second tap while a switch is already running is ignored —
+     * two overlapping switches must never interleave profile IDs/credentials.
+     */
     fun select(profileId: String) {
+        if (_uiState.value.isBusy) return
+        _uiState.update { it.copy(isBusy = true, errorRes = null) }
         viewModelScope.launch { activate(profileId, discardPending = false) }
     }
 

@@ -99,6 +99,12 @@ class DefaultAppLockControllerTest {
         h.tokenStorage.stored = "stored-jwt"
         h.settings.setRequireLocalAuth(false)
 
+        // Production order (DataModule): the controller starts collecting while
+        // DefaultSessionManager.init() is still in flight. Let it observe the
+        // initial pre-hydration state before init() completes.
+        advanceUntilIdle()
+        assertEquals(AppLockState.Resolving, h.controller.state.value)
+
         h.sessionManager.init()
         advanceUntilIdle()
 
@@ -106,11 +112,22 @@ class DefaultAppLockControllerTest {
     }
 
     // Scope item 2 + verify #2: with the opt-in off (the default), cold start
-    // behaves exactly as today.
+    // behaves exactly as today. Issue #2049: the pre-hydration
+    // SessionState(isLoggedIn=false) must never be treated as the final
+    // session — the controller has to await hydration first.
     @Test
     fun `cold start with the app lock on gates a persisted session`() = controllerTest { h ->
         h.tokenStorage.stored = "stored-jwt"
         h.settings.setRequireLocalAuth(true)
+
+        // DataModule starts the controller before the async init() completes,
+        // so the controller sees the initial logged-out emission first.
+        advanceUntilIdle()
+        assertEquals(
+            "the pre-hydration logged-out session must not resolve the gate",
+            AppLockState.Resolving,
+            h.controller.state.value
+        )
 
         h.sessionManager.init()
         advanceUntilIdle()
@@ -138,6 +155,10 @@ class DefaultAppLockControllerTest {
             )
             h.tokenStorage.tokens["local"] = "local-jwt"
 
+            // Production order: observe the pre-hydration state before init().
+            advanceUntilIdle()
+            assertEquals(AppLockState.Resolving, h.controller.state.value)
+
             h.sessionManager.init()
             advanceUntilIdle()
 
@@ -147,6 +168,9 @@ class DefaultAppLockControllerTest {
     @Test
     fun `a logged-out start resolves unlocked`() = controllerTest { h ->
         h.settings.setRequireLocalAuth(true)
+
+        advanceUntilIdle()
+        assertEquals(AppLockState.Resolving, h.controller.state.value)
 
         h.sessionManager.init()
         advanceUntilIdle()

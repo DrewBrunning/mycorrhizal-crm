@@ -4,8 +4,13 @@ import com.mycorrhizal.crm.data.session.DefaultSessionManager
 import com.mycorrhizal.crm.data.session.FakeSessionPrefsStorage
 import com.mycorrhizal.crm.data.session.FakeTokenStorage
 import com.mycorrhizal.crm.domain.repository.SessionState
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -159,5 +164,48 @@ class LocalSessionReminterTest {
         assertEquals(true, LocalSessionReminter(host, manager).remint(rejectedBearer = "t1"))
         assertEquals(listOf("stop", "start"), host.calls)
         assertEquals("t2", manager.bearerToken())
+    }
+
+    // Issue #2051: logout while the embedded server is restarting must not be
+    // undone by the token the restart mints.
+    @Test
+    fun `a re-mint that resolves after logout adopts nothing`() = runTest {
+        val tokenStorage = FakeTokenStorage()
+        val manager = DefaultSessionManager(tokenStorage, FakeSessionPrefsStorage())
+        manager.activateLocalProfile("stale-token")
+        val entered = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        val host = GatedHost(entered, release, "fresh-token")
+
+        val remint = async {
+            LocalSessionReminter(host, manager).remint(generation = manager.sessionGeneration())
+        }
+        advanceUntilIdle()
+        entered.await()
+
+        manager.clearSession()
+        release.complete(Unit)
+        assertEquals(true, remint.await())
+
+        assertNull("a re-mint that outlived logout must not store its token", manager.bearerToken())
+        assertTrue("nothing may be persisted after logout", tokenStorage.tokens.isEmpty())
+        assertFalse("the session must stay logged out", manager.observeSession().first().isLoggedIn)
+    }
+
+    private class GatedHost(
+        private val entered: CompletableDeferred<Unit>,
+        private val release: CompletableDeferred<Unit>,
+        private val mintedToken: String
+    ) : LocalServerHost {
+        override suspend fun ensureStarted(): Result<LocalServerEndpoint> {
+            entered.complete(Unit)
+            release.await()
+            return Result.success(LocalServerEndpoint("/sock", mintedToken))
+        }
+
+        override suspend fun stop() = Unit
+        override suspend fun deleteLocalData() = Unit
+        override fun socketPathIfRunning(): String? = null
+        override fun sessionTokenIfRunning(): String? = null
     }
 }

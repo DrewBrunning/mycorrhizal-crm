@@ -109,6 +109,14 @@ class DefaultAppLockController(
             }
         }
         scope.launch {
+            // Issue #2049: observeSession() replays the initial
+            // SessionState(isLoggedIn=false) immediately, but DataModule starts
+            // this controller before DefaultSessionManager.init() has finished
+            // hydrating the persisted token. Resolving on that placeholder
+            // would choose Unlocked and bypass the gate, so wait for the
+            // hydrated session and let its current value be the first the
+            // controller treats as authoritative.
+            sessionManager.awaitHydrated()
             sessionManager.observeSession().collect { session ->
                 loggedIn = session.isLoggedIn
                 sessionKnown = true

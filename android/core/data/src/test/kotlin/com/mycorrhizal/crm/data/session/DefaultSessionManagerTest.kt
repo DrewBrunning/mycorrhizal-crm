@@ -515,6 +515,92 @@ class DefaultSessionManagerTest {
         assertEquals("alice", state.username)
     }
 
+    // Issue #2051: a refresh that started before logout must not persist its
+    // fresh token into the ended session.
+    @Test
+    fun `a token write from an ended session generation is rejected`() = runTest {
+        val (manager, tokenStorage) = managerPair()
+        manager.setSession("https://crm.example.com", "jwt-1", SessionState(userId = 7))
+        val generation = manager.sessionGeneration()
+
+        manager.clearSession()
+
+        assertFalse(
+            "a refresh from before logout must be discarded",
+            manager.setTokenIfCurrent("resurrected-jwt", generation)
+        )
+        assertNull(manager.bearerToken())
+        assertTrue("nothing may be persisted after logout", tokenStorage.tokens.isEmpty())
+        assertFalse(manager.observeSession().first().isLoggedIn)
+    }
+
+    // Issue #2051: logging back in advances the epoch too, so a refresh from
+    // the previous session cannot overwrite the fresh login token.
+    @Test
+    fun `a token write from before a subsequent login is rejected`() = runTest {
+        val (manager, tokenStorage) = managerPair()
+        manager.setSession("https://crm.example.com", "jwt-1", SessionState(userId = 7))
+        val generation = manager.sessionGeneration()
+        manager.clearSession()
+        manager.setSession("https://crm.example.com", "jwt-2", SessionState(userId = 7))
+
+        assertFalse(manager.setTokenIfCurrent("stale-jwt", generation))
+        assertEquals("jwt-2", manager.bearerToken())
+        assertEquals("jwt-2", tokenStorage.tokens.values.single())
+    }
+
+    // Issue #2050/#2051: a refresh that started for the previous profile must
+    // not overwrite the token of the profile that became active meanwhile.
+    @Test
+    fun `a token write from before a profile switch is rejected`() = runTest {
+        val tokenStorage = FakeTokenStorage()
+        val manager = manager(tokenStorage = tokenStorage)
+        manager.init()
+        manager.setServerUrl("https://one.example.com")
+        manager.setSession("https://one.example.com", "jwt-one", SessionState(userId = 1))
+        val generation = manager.sessionGeneration()
+        val two = manager.addRemoteProfile("Two", "https://two.example.com").id
+        tokenStorage.tokens[two] = "jwt-two"
+
+        manager.switchProfile(two)
+
+        assertFalse(manager.setTokenIfCurrent("jwt-one-refreshed", generation))
+        assertEquals("jwt-two", manager.bearerToken())
+        assertEquals("jwt-two", tokenStorage.tokens[two])
+        assertEquals("https://two.example.com", manager.baseUrl())
+    }
+
+    // The direct re-issue path (2FA / passkey token_version bump) has the same
+    // durable not-logged-in guard: a response that lands after logout must not
+    // resurrect the session.
+    @Test
+    fun `setToken after logout is ignored`() = runTest {
+        val (manager, tokenStorage) = managerPair()
+        manager.setSession("https://crm.example.com", "jwt-1", SessionState(userId = 7))
+        manager.clearSession()
+
+        manager.setToken("resurrected-jwt")
+
+        assertNull(manager.bearerToken())
+        assertTrue("nothing may be persisted after logout", tokenStorage.tokens.isEmpty())
+        assertFalse(manager.observeSession().first().isLoggedIn)
+    }
+
+    @Test
+    fun `a local re-mint from an ended session generation is rejected`() = runTest {
+        val tokenStorage = FakeTokenStorage()
+        val manager = manager(tokenStorage = tokenStorage)
+        manager.activateLocalProfile("old-token")
+        val generation = manager.sessionGeneration()
+
+        manager.clearSession()
+
+        assertNull(manager.activateLocalProfileIfCurrent("fresh-token", generation))
+        assertNull(manager.bearerToken())
+        assertTrue("nothing may be persisted after logout", tokenStorage.tokens.isEmpty())
+        assertFalse(manager.observeSession().first().isLoggedIn)
+    }
+
     // M5 §5: a cold-start OIDC deep link must await hydration before reading
     // the server URL / writing the session — otherwise it races the async
     // startup init() (review-pass fix).

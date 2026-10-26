@@ -41,25 +41,41 @@ import kotlinx.coroutines.launch
 class SessionExpiryWiring(
     private val sessionExpiryNotifier: SessionExpiryNotifier,
     private val sessionManager: SessionManager,
-    private val refresher: suspend () -> Boolean = { false },
+    private val refresher: suspend (generation: Long) -> Boolean = { false },
     /**
      * Issue #1312: re-mint hook for a `Local` profile, which has no login and no
      * device grant. Returns null when the active profile is not Local (fall
      * through to [refresher]); otherwise whether the embedded server restarted
-     * and a fresh session was adopted.
+     * and a fresh session was adopted. [generation] is the session epoch the
+     * 401 was observed under (issue #2051): a re-mint that resolves after
+     * logout must be discarded, not adopted.
      */
-    private val localRemint: suspend (rejectedBearer: String?) -> Boolean? = { null }
+    private val localRemint: suspend (generation: Long, rejectedBearer: String?) -> Boolean? =
+        { _, _ -> null }
 ) {
     private val refreshInFlight = AtomicBoolean(false)
 
     fun start(scope: CoroutineScope) {
         sessionExpiryNotifier.register { rejectedBearer ->
+            // Issue #2051: capture the epoch before launching. A refresh that
+            // resolves after logout/profile-switch must be rejected, not
+            // persisted into the newer session.
+            val generation = sessionManager.sessionGeneration()
             if (sessionManager.isClearingSession()) return@register
+            // No session to renew: a late 401 from a request that outlived
+            // logout (or a pre-hydration request) must not mint a new one.
+            if (sessionManager.bearerToken() == null) return@register
             if (!refreshInFlight.compareAndSet(false, true)) return@register
             scope.launch {
                 try {
-                    val refreshed = localRemint(rejectedBearer) ?: refresher()
-                    if (!refreshed) sessionManager.clearSession()
+                    val refreshed = localRemint(generation, rejectedBearer) ?: refresher(generation)
+                    // Only clear if this is still the session the 401 belonged
+                    // to. If a login/switch/logout replaced it meanwhile, the
+                    // ended session is already gone and clearing would log out
+                    // the newer one.
+                    if (!refreshed && sessionManager.sessionGeneration() == generation) {
+                        sessionManager.clearSession()
+                    }
                 } finally {
                     refreshInFlight.set(false)
                 }

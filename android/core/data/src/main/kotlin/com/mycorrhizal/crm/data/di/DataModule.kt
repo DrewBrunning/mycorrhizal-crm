@@ -398,12 +398,16 @@ object DataModule {
         SessionExpiryWiring(
             sessionExpiryNotifier,
             manager,
-            refresher = { deviceGrantManager.get().refreshSessionFromStoredGrant() },
+            refresher = { generation ->
+                deviceGrantManager.get().refreshSessionFromStoredGrant(generation)
+            },
             // Issue #1312: a Local profile re-mints (restart the embedded server,
             // adopt its fresh token) instead of clearing to a login it doesn't have.
-            localRemint = { rejectedBearer ->
+            // Issue #2051: the epoch captured when the 401 arrived rejects a
+            // re-mint that resolves after the user logged out.
+            localRemint = { generation, rejectedBearer ->
                 com.mycorrhizal.crm.data.local.LocalSessionReminter(localServerHost.get(), manager)
-                    .remint(rejectedBearer)
+                    .remint(rejectedBearer, generation)
             }
         ).start(scope)
         // Hydrate the stored JWT/server URL into memory asynchronously so a
