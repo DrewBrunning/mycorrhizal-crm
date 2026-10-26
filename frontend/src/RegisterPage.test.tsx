@@ -171,9 +171,11 @@ describe('RegisterPage post-registration sign-in', () => {
 
     expect(await screen.findByText('DASHBOARD PAGE')).toBeInTheDocument();
     expect(setToken).toHaveBeenCalledWith('authenticated');
-    expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual(
-      expect.arrayContaining(['/api/v1/register', '/api/v1/login', '/api/v1/users/me']),
-    );
+    // API_BASE_URL is `${VITE_API_URL}/api/v1`, so a local .env makes these
+    // absolute. Compare pathnames to keep the assertion environment-independent.
+    expect(
+      fetchMock.mock.calls.map(([url]) => new URL(String(url), window.location.href).pathname),
+    ).toEqual(expect.arrayContaining(['/api/v1/register', '/api/v1/login', '/api/v1/users/me']));
     // The credentials just chosen were reused -- the user never saw Login.
     expect(screen.queryByText('LOGIN PAGE')).not.toBeInTheDocument();
   });

@@ -1,11 +1,17 @@
-import { afterEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { applyUpdate } from '../serviceWorkerUpdates';
-import {
-  forceReloadToCurrentBuild,
-  hasRecentlyForcedReload,
-  markForcedReload,
-  RELOAD_COOLDOWN_MS,
-} from './reload';
+import type * as ReloadModule from './reload';
+
+// reload.ts keeps the loop-guard fallback in module-level state. Reset the
+// registry before every test so a forced-reload test cannot leak
+// inMemoryLastReload (or a real sessionStorage write) into the loop-guard
+// assertions, regardless of execution order.
+let reloadModule: typeof ReloadModule;
+
+beforeEach(async () => {
+  vi.resetModules();
+  reloadModule = await import('./reload');
+});
 
 // The reload module drives real navigations through the service worker, so
 // its tests stub navigator.serviceWorker + window.location and assert the
@@ -88,23 +94,24 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.clearAllMocks();
   vi.useRealTimers();
+  window.sessionStorage.clear();
 });
 
 describe('hasRecentlyForcedReload / markForcedReload (loop guard)', () => {
   test('is false until a reload is marked', () => {
-    expect(hasRecentlyForcedReload()).toBe(false);
+    expect(reloadModule.hasRecentlyForcedReload()).toBe(false);
   });
 
   test('is true right after markForcedReload', () => {
-    markForcedReload();
-    expect(hasRecentlyForcedReload()).toBe(true);
+    reloadModule.markForcedReload();
+    expect(reloadModule.hasRecentlyForcedReload()).toBe(true);
   });
 
   test('expires after the cooldown window', () => {
     vi.useFakeTimers();
-    markForcedReload();
-    vi.advanceTimersByTime(RELOAD_COOLDOWN_MS);
-    expect(hasRecentlyForcedReload()).toBe(false);
+    reloadModule.markForcedReload();
+    vi.advanceTimersByTime(reloadModule.RELOAD_COOLDOWN_MS);
+    expect(reloadModule.hasRecentlyForcedReload()).toBe(false);
   });
 });
 
@@ -112,13 +119,13 @@ describe('forceReloadToCurrentBuild', () => {
   test('reloads immediately when the browser has no service worker', async () => {
     const { reload } = stubEnvironment(null);
     vi.stubGlobal('navigator', {});
-    await forceReloadToCurrentBuild();
+    await reloadModule.forceReloadToCurrentBuild();
     expect(reload).toHaveBeenCalledTimes(1);
   });
 
   test('reloads immediately when there is no registration', async () => {
     const { reload } = stubEnvironment(null);
-    await forceReloadToCurrentBuild();
+    await reloadModule.forceReloadToCurrentBuild();
     expect(reload).toHaveBeenCalledTimes(1);
   });
 
@@ -126,7 +133,7 @@ describe('forceReloadToCurrentBuild', () => {
     const { reload } = stubEnvironment(
       fakeRegistration({ waiting: fakeWorker('installed'), update: vi.fn() }),
     );
-    await forceReloadToCurrentBuild();
+    await reloadModule.forceReloadToCurrentBuild();
 
     // The old worker still controls the page; reloading now would re-serve the
     // stale cache. applyUpdate does the SKIP_WAITING + controllerchange dance.
@@ -143,7 +150,7 @@ describe('forceReloadToCurrentBuild', () => {
     });
     stubEnvironment(registration);
 
-    await forceReloadToCurrentBuild();
+    await reloadModule.forceReloadToCurrentBuild();
 
     expect(registration.update).toHaveBeenCalledTimes(1);
     expect(applyUpdate).toHaveBeenCalledTimes(1);
@@ -154,7 +161,7 @@ describe('forceReloadToCurrentBuild', () => {
     const registration = fakeRegistration({ installing });
     stubEnvironment(registration);
 
-    const pending = forceReloadToCurrentBuild();
+    const pending = reloadModule.forceReloadToCurrentBuild();
     // Let the routine reach the wait before the install finishes.
     await Promise.resolve();
     await Promise.resolve();
@@ -177,7 +184,7 @@ describe('forceReloadToCurrentBuild', () => {
     const registration = fakeRegistration({ installing });
     const { reload } = stubEnvironment(registration);
 
-    const pending = forceReloadToCurrentBuild();
+    const pending = reloadModule.forceReloadToCurrentBuild();
     // Let the routine reach the wait (the getRegistration await resolves after
     // a microtask) before tearing the worker down.
     await Promise.resolve();
@@ -195,7 +202,7 @@ describe('forceReloadToCurrentBuild', () => {
 
   test('falls back to a plain reload when update() finds no new worker', async () => {
     const { reload } = stubEnvironment(fakeRegistration({}));
-    await forceReloadToCurrentBuild();
+    await reloadModule.forceReloadToCurrentBuild();
 
     expect(reload).toHaveBeenCalledTimes(1);
     expect(applyUpdate).not.toHaveBeenCalled();
@@ -209,7 +216,7 @@ describe('forceReloadToCurrentBuild', () => {
         }),
       }),
     );
-    await forceReloadToCurrentBuild();
+    await reloadModule.forceReloadToCurrentBuild();
 
     // Failing open: no blind reload onto a cache that would re-serve the same
     // stale build; the caller keeps its block visible and retries later.
@@ -226,13 +233,13 @@ describe('forceReloadToCurrentBuild', () => {
         }),
       },
     });
-    await forceReloadToCurrentBuild();
+    await reloadModule.forceReloadToCurrentBuild();
     expect(reload).toHaveBeenCalledTimes(1);
   });
 
   test('marks the loop guard before reloading', async () => {
     stubEnvironment(null);
-    await forceReloadToCurrentBuild();
-    expect(hasRecentlyForcedReload()).toBe(true);
+    await reloadModule.forceReloadToCurrentBuild();
+    expect(reloadModule.hasRecentlyForcedReload()).toBe(true);
   });
 });

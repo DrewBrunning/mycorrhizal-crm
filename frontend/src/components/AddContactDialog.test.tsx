@@ -152,26 +152,33 @@ test('defaults the card language to the UI language when not touched', async () 
     card: {},
     crm: {},
   });
-  render(
-    <DateFormatProvider>
-      <SnackbarProvider>
-        <AddContactDialog
-          open
-          onClose={vi.fn()}
-          onContactAdded={vi.fn()}
-          availableCircles={[]}
-          availableTags={[]}
-          enabledFields={resolveEnabledFields(['language'])}
-        />
-      </SnackbarProvider>
-    </DateFormatProvider>,
-  );
+  // Set a language explicitly rather than re-deriving the expectation from
+  // the same i18n.language expression the component uses.
+  await i18n.changeLanguage('fr');
+  try {
+    render(
+      <DateFormatProvider>
+        <SnackbarProvider>
+          <AddContactDialog
+            open
+            onClose={vi.fn()}
+            onContactAdded={vi.fn()}
+            availableCircles={[]}
+            availableTags={[]}
+            enabledFields={resolveEnabledFields(['language'])}
+          />
+        </SnackbarProvider>
+      </DateFormatProvider>,
+    );
 
-  fireEvent.change(screen.getByLabelText('First Name *'), { target: { value: 'Ada' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+    fireEvent.change(screen.getByLabelText(/Prénom/i), { target: { value: 'Ada' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Créer' }));
 
-  await waitFor(() => expect(mocked).toHaveBeenCalled());
-  expect(mocked.mock.calls[0][0].card.language).toBe((i18n.language || 'en').split('-')[0]);
+    await waitFor(() => expect(mocked).toHaveBeenCalled());
+    expect(mocked.mock.calls[0][0].card.language).toBe('fr');
+  } finally {
+    await i18n.changeLanguage('en');
+  }
 });
 
 // #242: the required-field error must reach assistive tech via a live region,
