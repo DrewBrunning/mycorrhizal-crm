@@ -761,3 +761,20 @@ func TestRunCombinesExpectedFindingsAndExpectedAny(t *testing.T) {
 		t.Fatalf("artifact = %+v", artifact)
 	}
 }
+
+func TestSuiteDoesNotInheritModelKey(t *testing.T) {
+	t.Setenv("AGENT_EVAL_MODEL_KEY", "secret")
+	root, sha := initRepo(t)
+	artifact, err := Run(context.Background(), Options{
+		Root:         root,
+		Spec:         baseSpec(t, root, sha),
+		Suites:       []Suite{{Name: "demo", Commands: []string{`test -z "$AGENT_EVAL_MODEL_KEY"`}}},
+		AgentCommand: `test -n "$AGENT_EVAL_MODEL_KEY"`,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifact.Status != "passed" || artifact.Context == nil || !artifact.Context.Success {
+		t.Fatalf("artifact = %+v", artifact)
+	}
+}

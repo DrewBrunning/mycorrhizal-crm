@@ -46,6 +46,7 @@ on:
   # this workflow's context.
   workflow_run:
     workflows:
+      - Agent eval collector
       - Android Tests
       - ARM64 Tests
       - ASVS attestation staleness

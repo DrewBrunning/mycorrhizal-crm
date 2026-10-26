@@ -40,13 +40,15 @@ on:
           - add-quality-gate
           - database-migration-refuse
           - api-contract-change-refuse
+      profile:
+        description: Pinned agent profile from testdata/agent-eval/agents.yaml (task mode, preferred)
       skill:
         description: Only run prompts expecting this skill (select mode; for sharding)
         type: string
         required: false
         default: ""
       agent_command:
-        description: 'Pinned agent command template ({prompt} is substituted). Keep the version pinned. Required in select mode.'
+        description: 'Pinned agent command template ({prompt} is substituted). Keep the version pinned. Required in select mode; ignored when profile is set.'
         type: string
         required: true
         default: "true"
@@ -124,6 +126,7 @@ jobs:
         env:
           MODE: ${{ inputs.mode }}
           TASK: ${{ inputs.task }}
+          PROFILE: ${{ inputs.profile }}
           SKILL: ${{ inputs.skill }}
           AGENT_COMMAND: ${{ inputs.agent_command }}
           AGENT_NAME: ${{ inputs.agent_name }}
@@ -135,14 +138,17 @@ jobs:
           AGENT_EVAL_MODEL_KEY: ${{ secrets.AGENT_EVAL_MODEL_KEY }}
         run: |
           set -euo pipefail
-          args=(-mode "$MODE" -agent-command "$AGENT_COMMAND" -agent-name "$AGENT_NAME" -agent-model "$AGENT_MODEL" -agent-version "$AGENT_VERSION")
+          args=(-mode "$MODE")
           if [ "$MODE" = "select" ]; then
+            args+=(-agent-command "$AGENT_COMMAND" -agent-name "$AGENT_NAME" -agent-model "$AGENT_MODEL" -agent-version "$AGENT_VERSION")
             args+=(-triggers testdata/agent-eval/triggers.yaml)
             if [ -n "$SKILL" ]; then
               args+=(-skill "$SKILL")
             fi
+          elif [ -n "$PROFILE" ]; then
+            args+=(-task "$TASK" -profile "$PROFILE")
           else
-            args+=(-task "$TASK")
+            args+=(-task "$TASK" -agent-command "$AGENT_COMMAND" -agent-name "$AGENT_NAME" -agent-model "$AGENT_MODEL" -agent-version "$AGENT_VERSION")
           fi
           if [ -n "$BASE_REF" ]; then
             args+=(-base-ref "$BASE_REF")

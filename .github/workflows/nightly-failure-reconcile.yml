@@ -45,6 +45,7 @@ jobs:
       fail-fast: false
       matrix:
         workflow_file:
+          - agent-eval-collect.yml
           - android-tests.yml
           - asvs-staleness.yml
           - arm64-tests.yml
