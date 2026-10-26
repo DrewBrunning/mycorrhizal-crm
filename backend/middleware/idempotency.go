@@ -106,14 +106,15 @@ func IdempotencyMiddleware() gin.HandlerFunc {
 		_ = c.Request.Body.Close()
 		c.Request.Body = io.NopCloser(bytes.NewReader(body))
 
-		fingerprint := fingerprintRequest(c.Request.Method, c.FullPath(), body)
+		requestPath := c.Request.URL.EscapedPath()
+		fingerprint := fingerprintRequest(c.Request.Method, c.Request.URL.RequestURI(), body)
 
 		now := clk.Now().UTC()
 		row := models.IdempotencyKey{
 			UserID:             userID,
 			Key:                key,
 			Method:             c.Request.Method,
-			Path:               c.FullPath(),
+			Path:               requestPath,
 			RequestFingerprint: fingerprint,
 			State:              models.IdempotencyStatePending,
 			CreatedAt:          now,
@@ -229,9 +230,9 @@ func markTerminalUnreplayable(c *gin.Context, db *gorm.DB, id uint, now time.Tim
 }
 
 // fingerprintRequest hashes the parts of a request that must match for a
-// replay to be the right answer: method, the route template (not the concrete
-// path — they are the same for a keyed POST, which has no path params), and
-// the raw body.
+// replay to be the right answer: method, the concrete request target (path and
+// query — never the route template, which erases path parameters), and the raw
+// body.
 func fingerprintRequest(method, path string, body []byte) string {
 	h := sha256.New()
 	h.Write([]byte(method))

@@ -651,3 +651,112 @@ func TestIdempotency_TooLarge2xx_TerminalNotRerun(t *testing.T) {
 	assert.EqualValues(t, 0, stored.ResponseStatus)
 	assert.Empty(t, stored.ResponseBody)
 }
+
+// --- issue #2057: keyed routes with path parameters -------------------------
+
+// newIdempotencyPathRouter wires the middleware to the concrete-path shape of
+// POST /contacts/:id/notes. The X-Test-User header selects one of two seeded
+// users so a cross-user key collision can be exercised without a second router.
+func newIdempotencyPathRouter(t *testing.T) (*gin.Engine, *gorm.DB, map[string]uint) {
+	t.Helper()
+	db := dbtest.New(t)
+
+	alice := models.User{Username: "alice", Password: "password123!A", Email: "alice@example.com"}
+	bob := models.User{Username: "bob", Password: "password123!A", Email: "bob@example.com"}
+	require.NoError(t, db.Create(&alice).Error)
+	require.NoError(t, db.Create(&bob).Error)
+	users := map[string]uint{"alice": alice.ID, "bob": bob.ID}
+
+	gin.SetMode(gin.ReleaseMode)
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("db", db)
+		c.Set("userID", users[c.GetHeader("X-Test-User")])
+		c.Next()
+	})
+	r.Use(IdempotencyMiddleware())
+	r.POST("/api/v1/contacts/:id/notes", func(c *gin.Context) {
+		n := models.Note{UserID: c.GetUint("userID"), Content: "note for contact " + c.Param("id")}
+		if err := db.Create(&n).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusCreated, gin.H{"id": n.ID, "contact": c.Param("id")})
+	})
+	return r, db, users
+}
+
+func TestIdempotency_PathParametersArePartOfTheRequestIdentity(t *testing.T) {
+	r, db, _ := newIdempotencyPathRouter(t)
+
+	do := func(path string) *httptest.ResponseRecorder {
+		req, _ := http.NewRequest("POST", path, bytes.NewReader([]byte(`{"content":"same body"}`)))
+		req.Header.Set("Idempotency-Key", "one-key")
+		req.Header.Set("X-Test-User", "alice")
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		return w
+	}
+
+	first := do("/api/v1/contacts/1/notes")
+	require.Equal(t, http.StatusCreated, first.Code, first.Body.String())
+
+	other := do("/api/v1/contacts/2/notes")
+	require.Equal(t, http.StatusUnprocessableEntity, other.Code, other.Body.String())
+	assertIdempotencyErrorCode(t, other, "IDEMPOTENCY_KEY_REUSED")
+	assert.Empty(t, other.Header().Get(idempotencyReplayedHeader),
+		"the response for contact 1 must not be replayed for contact 2")
+
+	var notes int64
+	require.NoError(t, db.Model(&models.Note{}).Count(&notes).Error)
+	assert.EqualValues(t, 1, notes, "the second contact's note must not be replaced by a replay or a duplicate")
+
+	var stored models.IdempotencyKey
+	require.NoError(t, db.First(&stored).Error)
+	assert.Equal(t, "/api/v1/contacts/1/notes", stored.Path, "the stored path must be the concrete request path")
+
+	retry := do("/api/v1/contacts/1/notes")
+	require.Equal(t, http.StatusCreated, retry.Code, retry.Body.String())
+	assert.Equal(t, "true", retry.Header().Get(idempotencyReplayedHeader))
+	assert.JSONEq(t, first.Body.String(), retry.Body.String())
+}
+
+func TestIdempotency_SameKeyAndBodyDoesNotCrossUsers(t *testing.T) {
+	r, db, users := newIdempotencyPathRouter(t)
+
+	do := func(user string) *httptest.ResponseRecorder {
+		req, _ := http.NewRequest("POST", "/api/v1/contacts/9/notes", bytes.NewReader([]byte(`{"content":"shared key"}`)))
+		req.Header.Set("Idempotency-Key", "shared-key")
+		req.Header.Set("X-Test-User", user)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		return w
+	}
+
+	aliceFirst := do("alice")
+	require.Equal(t, http.StatusCreated, aliceFirst.Code, aliceFirst.Body.String())
+	require.Empty(t, aliceFirst.Header().Get(idempotencyReplayedHeader))
+
+	bobFirst := do("bob")
+	require.Equal(t, http.StatusCreated, bobFirst.Code, bobFirst.Body.String())
+	assert.Empty(t, bobFirst.Header().Get(idempotencyReplayedHeader),
+		"a key is scoped per user; Bob must execute rather than replay Alice's response")
+	assert.NotEqual(t, aliceFirst.Body.String(), bobFirst.Body.String())
+
+	aliceRetry := do("alice")
+	require.Equal(t, http.StatusCreated, aliceRetry.Code, aliceRetry.Body.String())
+	assert.Equal(t, "true", aliceRetry.Header().Get(idempotencyReplayedHeader))
+	assert.JSONEq(t, aliceFirst.Body.String(), aliceRetry.Body.String())
+
+	bobRetry := do("bob")
+	require.Equal(t, http.StatusCreated, bobRetry.Code, bobRetry.Body.String())
+	assert.Equal(t, "true", bobRetry.Header().Get(idempotencyReplayedHeader))
+	assert.JSONEq(t, bobFirst.Body.String(), bobRetry.Body.String())
+
+	var keys, notes int64
+	require.NoError(t, db.Model(&models.IdempotencyKey{}).Count(&keys).Error)
+	require.NoError(t, db.Model(&models.Note{}).Count(&notes).Error)
+	assert.EqualValues(t, 2, keys)
+	assert.EqualValues(t, 2, notes)
+	_ = users
+}

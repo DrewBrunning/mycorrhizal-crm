@@ -64,7 +64,7 @@ byte-for-byte unaffected.
   timeout (longer than the HTTP write timeout, so it cannot still be in flight) is treated the same
   way, covering a lost terminal-mark write or a crash after the claim.
 - **Later caller, same key** —
-  - fingerprint (hash of method + path + body) differs → `422 IDEMPOTENCY_KEY_REUSED`. The key no
+  - fingerprint (hash of method + concrete request target + body; the concrete path is what keeps `/contacts/:id/notes` identity per contact) differs → `422 IDEMPOTENCY_KEY_REUSED`. The key no
     longer names one operation; the stored response would be the wrong answer, so it is **not**
     replayed.
   - `state = pending` (first call still in flight) → `409 IDEMPOTENCY_IN_PROGRESS`, retry shortly.
