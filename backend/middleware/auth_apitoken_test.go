@@ -266,6 +266,30 @@ func TestAuthMiddleware_CardDAVScopeApiTokenRejected(t *testing.T) {
 	assert.Equal(t, "This token is scoped to CardDAV and cannot be used for the API", mwErrorEnvelope(t, w)["message"])
 }
 
+func TestAuthMiddleware_CalDAVScopeApiTokenRejected(t *testing.T) {
+	db, router := setupAuthTestRouter(t)
+
+	var user models.User
+	db.First(&user)
+
+	plaintext := "mycorrhizal_caldavscopetoken1"
+	db.Create(&models.ApiToken{
+		UserID:    user.ID,
+		Name:      "caldav-scope",
+		TokenHash: hashToken(plaintext),
+		Scope:     models.LegacyTokenScopeCustom,
+		Scopes:    []string{models.TokenScopeCalDAV},
+	})
+
+	req, _ := http.NewRequest("GET", "/protected", nil)
+	req.Header.Set("Authorization", "Bearer "+plaintext)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assertMWErrorCode(t, w, http.StatusForbidden, "FORBIDDEN")
+	assert.Equal(t, "This token is scoped to CalDAV and cannot be used for the API", mwErrorEnvelope(t, w)["message"])
+}
+
 func TestAuthMiddleware_MissingAuthorizationHeader(t *testing.T) {
 	_, router := setupAuthTestRouter(t)
 

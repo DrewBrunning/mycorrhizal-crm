@@ -24,6 +24,7 @@ import {
   DialogTitle,
   Divider,
   FormControl,
+  FormControlLabel,
   IconButton,
   InputLabel,
   Link,
@@ -31,6 +32,7 @@ import {
   Paper,
   Select,
   Stack,
+  Switch,
   Table,
   TableBody,
   TableCell,
@@ -49,12 +51,14 @@ import { type ThemePreference, useThemePreference } from './AppThemeProvider';
 import { getCurrentUser } from './api/admin';
 import {
   API_TOKEN_EXPIRY_OPTIONS,
+  API_TOKEN_PRESET_SCOPES,
   type ApiToken,
+  type ApiTokenAccessScope,
   type ApiTokenCreateResponse,
-  type ApiTokenScope,
-  createApiToken,
+  type ApiTokenPreset,
+  createApiTokenWithScopes,
   DEFAULT_API_TOKEN_EXPIRY_DAYS,
-  DEFAULT_API_TOKEN_SCOPE,
+  DEFAULT_API_TOKEN_PRESET,
   getApiTokens,
   revokeAllApiTokens,
   revokeApiToken,
@@ -66,6 +70,7 @@ import { updateDateFormat, updateLanguage, updateSelfContact, updateTimeFormat }
 import { fetchAndCacheUserInfo, isAdmin } from './auth';
 import AppDialog from './components/AppDialog';
 import BuildVersionCard from './components/BuildVersionCard';
+import DAVPasswordSettings from './components/DAVPasswordSettings';
 import DeleteAccountSettings from './components/DeleteAccountSettings';
 import FeedsSettings from './components/FeedsSettings';
 import GeoPulseSettings from './components/GeoPulseSettings';
@@ -119,7 +124,8 @@ export default function SettingsPage() {
   const [newTokenExpiryDays, setNewTokenExpiryDays] = useState<number>(
     DEFAULT_API_TOKEN_EXPIRY_DAYS,
   );
-  const [newTokenScope, setNewTokenScope] = useState<ApiTokenScope>(DEFAULT_API_TOKEN_SCOPE);
+  const [newTokenPreset, setNewTokenPreset] = useState<ApiTokenPreset>(DEFAULT_API_TOKEN_PRESET);
+  const [newTokenNeverExpires, setNewTokenNeverExpires] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
   const [createdToken, setCreatedToken] = useState<ApiTokenCreateResponse | null>(null);
   const [createdTokenIsRotation, setCreatedTokenIsRotation] = useState(false);
@@ -154,11 +160,17 @@ export default function SettingsPage() {
     if (!newTokenName.trim()) return;
     setCreateLoading(true);
     try {
-      const result = await createApiToken(newTokenName.trim(), newTokenExpiryDays, newTokenScope);
+      const result = await createApiTokenWithScopes(
+        newTokenName.trim(),
+        newTokenNeverExpires ? null : newTokenExpiryDays,
+        API_TOKEN_PRESET_SCOPES[newTokenPreset],
+        newTokenNeverExpires,
+      );
       setCreateDialogOpen(false);
       setNewTokenName('');
       setNewTokenExpiryDays(DEFAULT_API_TOKEN_EXPIRY_DAYS);
-      setNewTokenScope(DEFAULT_API_TOKEN_SCOPE);
+      setNewTokenPreset(DEFAULT_API_TOKEN_PRESET);
+      setNewTokenNeverExpires(false);
       setCreatedToken(result);
       setCreatedTokenIsRotation(false);
       setCopied(false);
@@ -176,6 +188,45 @@ export default function SettingsPage() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
+  };
+
+  const scopeLabel = (scope: ApiTokenAccessScope) => {
+    switch (scope) {
+      case 'carddav':
+        return t('apiTokens.createDialog.scopeCardDAV');
+      case 'caldav':
+        return t('apiTokens.createDialog.scopeCalDAV');
+      case 'api:read':
+      case 'api:write':
+        return t('apiTokens.createDialog.scopeAPI');
+      case 'mcp':
+        return t('apiTokens.createDialog.scopeMCP');
+    }
+  };
+
+  const cachedUsername = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('user_info') || '{}').username || '';
+    } catch {
+      return '';
+    }
+  })();
+  const serverOrigin = typeof window === 'undefined' ? '' : window.location.origin;
+  const createdScopes: ApiTokenAccessScope[] =
+    createdToken?.scopes && createdToken.scopes.length > 0
+      ? createdToken.scopes
+      : createdToken?.scope === 'carddav'
+        ? ['carddav', 'caldav']
+        : createdToken?.scope === 'full'
+          ? API_TOKEN_PRESET_SCOPES.full
+          : [];
+
+  const davOnlyPreset = ['contacts', 'calendar', 'both'].includes(newTokenPreset);
+
+  const tokenScopes = (token: ApiToken): ApiTokenAccessScope[] => {
+    if (token.scopes && token.scopes.length > 0) return token.scopes;
+    if (token.scope === 'carddav') return ['carddav', 'caldav'];
+    return API_TOKEN_PRESET_SCOPES.full;
   };
 
   const handleRevoke = async () => {
@@ -678,24 +729,11 @@ export default function SettingsPage() {
       {/* Issue #594: passkeys (WebAuthn) */}
       <PasskeySettings />
 
+      {/* Issue #2010: CardDAV/CalDAV account-password policy */}
+      <DAVPasswordSettings />
+
       {/* Issue #866: active-session inventory */}
       <SessionsSettings />
-
-      <WebhooksSettings />
-
-      <ImmichSettings />
-
-      <PaperlessSettings />
-
-      <GeoPulseSettings />
-
-      <SeafileSettings />
-
-      <NextcloudSettings />
-
-      <NotificationSettings />
-
-      <LinkFieldTypesSettings />
 
       <Card sx={{ mb: 2 }}>
         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
@@ -730,6 +768,9 @@ export default function SettingsPage() {
             </Stack>
           </Box>
           <Divider sx={{ mb: 1.5 }} />
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+            {t('apiTokens.hint')}
+          </Typography>
           {tokensLoading && <CircularProgress />}
           {tokensError && <Alert severity="error">{tokensError}</Alert>}
           {!tokensLoading && !tokensError && (
@@ -777,15 +818,11 @@ export default function SettingsPage() {
                       <TableRow key={token.id}>
                         <TableCell sx={{ overflowWrap: 'anywhere' }}>{token.name}</TableCell>
                         <TableCell>
-                          <Chip
-                            label={
-                              token.scope === 'carddav'
-                                ? t('apiTokens.createDialog.scopeCardDAV')
-                                : t('apiTokens.createDialog.scopeFull')
-                            }
-                            size="small"
-                            variant="outlined"
-                          />
+                          <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', gap: 0.5 }}>
+                            {[...new Set(tokenScopes(token).map(scopeLabel))].map((label) => (
+                              <Chip key={label} label={label} size="small" variant="outlined" />
+                            ))}
+                          </Stack>
                         </TableCell>
                         <TableCell>{formatLocalDateTime(new Date(token.created_at))}</TableCell>
                         <TableCell>{formatDate(token.last_used_at)}</TableCell>
@@ -842,6 +879,22 @@ export default function SettingsPage() {
 
       <FeedsSettings />
 
+      <WebhooksSettings />
+
+      <ImmichSettings />
+
+      <PaperlessSettings />
+
+      <GeoPulseSettings />
+
+      <SeafileSettings />
+
+      <NextcloudSettings />
+
+      <NotificationSettings />
+
+      <LinkFieldTypesSettings />
+
       {/* Create token dialog */}
       <AppDialog
         open={createDialogOpen}
@@ -870,6 +923,7 @@ export default function SettingsPage() {
             label={t('apiTokens.createDialog.expiryLabel')}
             value={newTokenExpiryDays}
             onChange={(e) => setNewTokenExpiryDays(Number(e.target.value))}
+            disabled={newTokenNeverExpires}
             fullWidth
             margin="normal"
           >
@@ -879,21 +933,40 @@ export default function SettingsPage() {
               </MenuItem>
             ))}
           </TextField>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={newTokenNeverExpires}
+                disabled={!davOnlyPreset}
+                onChange={(event) => setNewTokenNeverExpires(event.target.checked)}
+              />
+            }
+            label={t('apiTokens.createDialog.neverExpires')}
+          />
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+            {t('apiTokens.createDialog.neverExpiresHelp')}
+          </Typography>
           <TextField
             select
             label={t('apiTokens.createDialog.scopeLabel')}
-            value={newTokenScope}
-            onChange={(e) => setNewTokenScope(e.target.value as ApiTokenScope)}
-            helperText={
-              newTokenScope === 'carddav'
-                ? t('apiTokens.createDialog.scopeCardDAVHelp')
-                : t('apiTokens.createDialog.scopeFullHelp')
-            }
+            value={newTokenPreset}
+            onChange={(e) => {
+              const preset = e.target.value as ApiTokenPreset;
+              setNewTokenPreset(preset);
+              if (!['contacts', 'calendar', 'both'].includes(preset)) {
+                setNewTokenNeverExpires(false);
+              }
+            }}
+            helperText={t(`apiTokens.createDialog.scopeHelp.${newTokenPreset}`)}
             fullWidth
             margin="normal"
           >
             <MenuItem value="full">{t('apiTokens.createDialog.scopeFull')}</MenuItem>
-            <MenuItem value="carddav">{t('apiTokens.createDialog.scopeCardDAV')}</MenuItem>
+            <MenuItem value="contacts">{t('apiTokens.createDialog.scopeCardDAV')}</MenuItem>
+            <MenuItem value="calendar">{t('apiTokens.createDialog.scopeCalDAV')}</MenuItem>
+            <MenuItem value="both">{t('apiTokens.createDialog.scopeBoth')}</MenuItem>
+            <MenuItem value="api">{t('apiTokens.createDialog.scopeAPI')}</MenuItem>
+            <MenuItem value="mcp">{t('apiTokens.createDialog.scopeMCP')}</MenuItem>
           </TextField>
         </DialogContent>
         <DialogActions>
@@ -932,6 +1005,40 @@ export default function SettingsPage() {
               ? t('apiTokens.rotatedDialog.warning')
               : t('apiTokens.createdDialog.warning')}
           </Alert>
+          {createdScopes.includes('carddav') || createdScopes.includes('caldav') ? (
+            <>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                {t('apiTokens.createdDialog.clientHelp')}
+              </Typography>
+              <Stack spacing={1.5} sx={{ mb: 2 }}>
+                <TextField
+                  label={t('apiTokens.createdDialog.usernameLabel')}
+                  value={cachedUsername}
+                  size="small"
+                  fullWidth
+                  slotProps={{ input: { readOnly: true } }}
+                />
+                {createdScopes.includes('carddav') && (
+                  <TextField
+                    label={t('apiTokens.createdDialog.carddavUrlLabel')}
+                    value={`${serverOrigin}/carddav/`}
+                    size="small"
+                    fullWidth
+                    slotProps={{ input: { readOnly: true } }}
+                  />
+                )}
+                {createdScopes.includes('caldav') && (
+                  <TextField
+                    label={t('apiTokens.createdDialog.caldavUrlLabel')}
+                    value={`${serverOrigin}/caldav/`}
+                    size="small"
+                    fullWidth
+                    slotProps={{ input: { readOnly: true } }}
+                  />
+                )}
+              </Stack>
+            </>
+          ) : null}
           <Stack
             direction="row"
             spacing={1}
@@ -940,6 +1047,7 @@ export default function SettingsPage() {
             }}
           >
             <TextField
+              label={t('apiTokens.createdDialog.secretLabel')}
               value={createdToken?.token || ''}
               fullWidth
               size="small"

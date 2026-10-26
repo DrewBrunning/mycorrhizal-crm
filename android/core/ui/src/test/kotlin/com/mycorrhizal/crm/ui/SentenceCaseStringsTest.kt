@@ -21,7 +21,7 @@ class SentenceCaseStringsTest {
 
     private val properNouns = setOf(
         "Immich", "Paperless", "Seafile", "Nextcloud", "ownCloud", "GeoPulse",
-        "Gotify", "Mycorrhizal", "Android"
+        "Gotify", "Mycorrhizal", "Android", "Go"
     )
 
     /** key -> why it legitimately carries a capitalised non-initial word. */

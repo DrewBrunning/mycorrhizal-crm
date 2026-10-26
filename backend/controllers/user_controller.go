@@ -787,6 +787,64 @@ func UpdateTimeFormat(context *gin.Context) {
 	context.JSON(http.StatusOK, gin.H{"message": "Time format updated successfully", "time_format": input.TimeFormat})
 }
 
+// UpdateDAVPasswordPolicy toggles whether the account password may
+// authenticate CardDAV/CalDAV for a user with no enrolled second factor
+// (issue #2010). The password is always rejected once a second factor exists,
+// so enabling this setting is refused in that state rather than silently
+// storing a value that cannot take effect.
+func UpdateDAVPasswordPolicy(c *gin.Context) {
+	log := logger.FromContext(c)
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+
+	input, appErr := middleware.GetValidated[models.DAVPasswordPolicyInput](c)
+	if appErr != nil {
+		apperrors.AbortWithError(c, appErr)
+		return
+	}
+	if input.Allow == nil {
+		apperrors.AbortWithError(c, apperrors.ErrMissingField("allow"))
+		return
+	}
+	allow := *input.Allow
+
+	db := c.MustGet("db").(*gorm.DB)
+	var user models.User
+	if err := db.First(&user, userID).Error; err != nil {
+		log.Error().Err(err).Uint("user_id", userID).Msg("Failed to lookup user for DAV password policy")
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("query user").WithError(err))
+		return
+	}
+
+	if allow {
+		methods, err := services.SecondFactorMethods(db, user)
+		if err != nil {
+			log.Error().Err(err).Uint("user_id", userID).Msg("Failed to check second factors for DAV password policy")
+			apperrors.AbortWithError(c, apperrors.ErrDatabase("query second factors").WithError(err))
+			return
+		}
+		if len(methods) > 0 {
+			apperrors.AbortWithError(c, apperrors.ErrConflict(
+				"Account-password authentication cannot be enabled while two-factor authentication is enrolled; use an app password instead"))
+			return
+		}
+	}
+
+	if err := db.Model(&models.User{}).Where("id = ?", userID).
+		Update("allow_dav_password", allow).Error; err != nil {
+		log.Error().Err(err).Uint("user_id", userID).Msg("Failed to update DAV password policy")
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("update user").WithError(err))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":            "DAV password policy updated successfully",
+		"allow_dav_password": allow,
+	})
+}
+
 // UpdateEnabledContactFields updates which extended contact fields are visible in the UI
 func UpdateEnabledContactFields(c *gin.Context) {
 	log := logger.FromContext(c)

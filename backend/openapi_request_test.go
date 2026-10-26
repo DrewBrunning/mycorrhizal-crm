@@ -64,6 +64,7 @@ var requestBodyBindings = map[string]requestBodyBinding{
 	"POST /password-reset/request":        bindingFor(models.PasswordResetRequestInput{}),
 	"POST /password-reset/confirm":        bindingFor(models.PasswordResetConfirmInput{}),
 	"POST /users/change-password":         bindingFor(models.ChangePasswordInput{}),
+	"PATCH /users/dav-password-policy":    bindingFor(models.DAVPasswordPolicyInput{}),
 	"PATCH /users/enabled-contact-fields": bindingFor(models.EnabledContactFieldsInput{}),
 	"PATCH /users/me/self-contact":        bindingFor(models.SelfContactInput{}),
 

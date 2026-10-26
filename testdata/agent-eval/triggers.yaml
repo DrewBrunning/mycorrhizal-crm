@@ -3,7 +3,10 @@
 # These test SELECTION, not task completion: a fresh agent session with only
 # the repository context should load the expected SKILL.md for each prompt.
 # Run the procedure in docs/development/context-engineering.md#trigger-tests.
-# Keep these independent of testdata/agent-eval/*/task.md.
+# `cmd/agenteval -mode select` runs this set automatically and scores
+# expect/not; the manual run remains the record for ambiguous pairs and for why
+# a neighbour did or did not win. Keep these independent of
+# testdata/agent-eval/*/task.md.
 version: 1
 
 # Pairs that are easy to confuse. The manual run must record which one loaded

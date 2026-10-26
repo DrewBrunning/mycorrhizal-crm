@@ -132,6 +132,7 @@ func GetCurrentUser(c *gin.Context) {
 		},
 		EnabledContactFields: user.EnabledContactFields,
 		SelfContactVCardUID:  user.SelfContactVCardUID,
+		AllowDAVPassword:     user.AllowDAVPassword,
 	})
 }
 

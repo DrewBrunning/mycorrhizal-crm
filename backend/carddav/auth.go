@@ -67,11 +67,23 @@ func BasicAuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Validate password, falling back to an API token (of either scope --
-		// "full" or "carddav") if the account password doesn't match. This is
-		// also what makes CardDAV work for SSO/OIDC-provisioned users, whose
-		// Password is "" and can never satisfy bcrypt.
+		surface := "CardDAV"
+		if strings.HasPrefix(c.Request.URL.Path, "/caldav") {
+			surface = "CalDAV"
+		}
+
+		// Validate password, falling back to an API token/app password if the
+		// account password doesn't match. The account password itself is
+		// allowed only when the user has opted in AND has no second factor
+		// enrolled (issue #2010). OIDC users have Password "" and therefore
+		// always use an app password.
 		passwordOK := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)) == nil
+		passwordDeniedReason := ""
+		if passwordOK {
+			var allowed bool
+			allowed, passwordDeniedReason = davAccountPasswordAllowed(db, &user)
+			passwordOK = allowed
+		}
 
 		var matchedToken *models.ApiToken
 		if !passwordOK {
@@ -80,7 +92,38 @@ func BasicAuthMiddleware() gin.HandlerFunc {
 			}
 		}
 
+		if matchedToken != nil {
+			requiredScope := models.TokenScopeCardDAV
+			if surface == "CalDAV" {
+				requiredScope = models.TokenScopeCalDAV
+			}
+			if !matchedToken.HasScope(requiredScope) {
+				logger.Warn().
+					Str("username", user.Username).
+					Uint("user_id", user.ID).
+					Str("surface", surface).
+					Msg("DAV auth rejected: app password lacks the surface scope")
+				c.Header("X-Mycorrhizal-Auth-Error", "token-scope-mismatch")
+				c.String(http.StatusForbidden, "This app password is not scoped for "+surface+".")
+				c.Abort()
+				return
+			}
+		}
+
 		if !passwordOK && matchedToken == nil {
+			if passwordDeniedReason != "" {
+				logger.Warn().
+					Str("username", user.Username).
+					Uint("user_id", user.ID).
+					Str("surface", surface).
+					Str("reason", passwordDeniedReason).
+					Msg("DAV auth rejected: account password is not allowed")
+				c.Header("WWW-Authenticate", `Basic realm="`+surface+` - use an app password"`)
+				c.Header("X-Mycorrhizal-Auth-Error", "account-password-not-allowed-for-dav")
+				c.String(http.StatusForbidden, "Account password cannot be used for CardDAV/CalDAV. Create an app password in Settings.")
+				c.Abort()
+				return
+			}
 			// Record failed attempt for password/token mismatch
 			isLocked, _ := accountLimiter.RecordLoginFailure(identifier, clientIP)
 			logger.Warn().
@@ -112,4 +155,22 @@ func BasicAuthMiddleware() gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+// davAccountPasswordAllowed implements the account-password half of issue
+// #2010. The setting is ignored once a second factor is enrolled, and a
+// failure to check that state fails closed.
+func davAccountPasswordAllowed(db *gorm.DB, user *models.User) (bool, string) {
+	methods, err := services.SecondFactorMethods(db, *user)
+	if err != nil {
+		logger.Error().Err(err).Uint("user_id", user.ID).Msg("DAV auth: could not check second factors")
+		return false, "second-factor-check-failed"
+	}
+	if len(methods) > 0 {
+		return false, "second-factor"
+	}
+	if !user.AllowDAVPassword {
+		return false, "account-password-disabled"
+	}
+	return true, ""
 }

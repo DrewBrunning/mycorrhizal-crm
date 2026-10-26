@@ -165,28 +165,29 @@ fun ContactFormContent(
     state: ContactFormState,
     onGivenNameChange: (String) -> Unit,
     onSurnameChange: (String) -> Unit,
-    onPrefixChange: (String) -> Unit = {},
-    onMiddleNameChange: (String) -> Unit = {},
-    onSuffixChange: (String) -> Unit = {},
     onNicknameChange: (String) -> Unit,
-    onKindChange: (String) -> Unit = {},
-    onCardKindChange: (String) -> Unit = {},
-    onAmbientChange: (Boolean) -> Unit = {},
-    onLanguageChange: (String) -> Unit = {},
     onEmailsChange: (List<Email>) -> Unit,
     onPhonesChange: (List<Phone>) -> Unit,
     onAddressesChange: (List<com.mycorrhizal.crm.model.network.Address>) -> Unit,
-    // ADR 0031: the explicit geocode lookup for one address row, by row key (null = unavailable).
-    onFindCoordinates: ((rowKey: String) -> Unit)? = null,
     onImppChange: (List<com.mycorrhizal.crm.model.network.OnlineService>) -> Unit,
     onSocialChange: (List<com.mycorrhizal.crm.model.network.OnlineService>) -> Unit,
     onOtherServicesChange: (List<com.mycorrhizal.crm.model.network.OnlineService>) -> Unit,
     onLinksChange: (List<com.mycorrhizal.crm.model.network.Resource>) -> Unit,
+    onBirthdayChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    onPrefixChange: (String) -> Unit = {},
+    onMiddleNameChange: (String) -> Unit = {},
+    onSuffixChange: (String) -> Unit = {},
+    onKindChange: (String) -> Unit = {},
+    onCardKindChange: (String) -> Unit = {},
+    onAmbientChange: (Boolean) -> Unit = {},
+    onLanguageChange: (String) -> Unit = {},
+    // ADR 0031: the explicit geocode lookup for one address row, by row key (null = unavailable).
+    onFindCoordinates: ((rowKey: String) -> Unit)? = null,
     // ADR 0025 (#1233): address periods ride with the address editor.
     onPeriodsChange: (List<com.mycorrhizal.crm.model.network.EntryPeriod>) -> Unit = {},
     onHowWeMetChange: (String) -> Unit = {},
     onContactInformationChange: (String) -> Unit = {},
-    onBirthdayChange: (String) -> Unit,
     onCardNotesChange: (List<com.mycorrhizal.crm.model.network.CardNote>) -> Unit = {},
     // Issue #832: fields with no prior Android UI.
     onGenderChange: (String) -> Unit = {},
@@ -198,8 +199,7 @@ fun ContactFormContent(
     },
     onKeywordsChange: (List<String>) -> Unit = {},
     onCircleToggle: (String) -> Unit = {},
-    onTagToggle: (String) -> Unit = {},
-    modifier: Modifier = Modifier
+    onTagToggle: (String) -> Unit = {}
 ) {
     Column(
         modifier = modifier

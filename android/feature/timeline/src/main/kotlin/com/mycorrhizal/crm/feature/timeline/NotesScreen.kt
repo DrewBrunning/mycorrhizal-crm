@@ -327,8 +327,8 @@ fun NoteListItem(
     note: Note,
     onClick: () -> Unit,
     onDelete: () -> Unit,
-    isDeleting: Boolean = false,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isDeleting: Boolean = false
 ) {
     val dateFormat = LocalDateFormat.current
     androidx.compose.material3.ListItem(

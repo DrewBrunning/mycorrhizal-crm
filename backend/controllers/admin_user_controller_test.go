@@ -256,7 +256,8 @@ func TestGetCurrentUser_Success(t *testing.T) {
 	// The response DTO must never carry the password hash, regardless of
 	// what the model looks like server-side.
 	assert.NotContains(t, w.Body.String(), user.Password)
-	assert.NotContains(t, w.Body.String(), "password")
+	assert.NotContains(t, w.Body.String(), "password_hash")
+	assert.NotContains(t, w.Body.String(), "totp_secret")
 }
 
 func TestGetCurrentUser_NotFound(t *testing.T) {

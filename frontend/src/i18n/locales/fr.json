@@ -1328,7 +1328,8 @@
         "codeLabel": "Code de vérification",
         "codeHelp": "Code à 6 chiffres de votre application d'authentification.",
         "confirmButton": "Activer et continuer",
-        "enabling": "Activation en cours..."
+        "enabling": "Activation en cours...",
+        "davWarning": "Si vous synchronisez des contacts ou des calendriers avec CardDAV/CalDAV, créez un mot de passe d'application avant d'activer l'authentification à deux facteurs. Votre mot de passe de compte cessera d'y fonctionner."
       },
       "disable": {
         "title": "Désactiver l'authentification à deux facteurs",
@@ -1382,7 +1383,8 @@
         "confirm": "Supprimer la clé d'accès",
         "submitting": "Veuillez patienter...",
         "useAnotherPasskey": "Vérifier plutôt avec une autre clé d'accès"
-      }
+      },
+      "davWarning": "Si vous synchronisez des contacts ou des calendriers avec CardDAV/CalDAV, créez un mot de passe d'application avant d'ajouter une clé d'accès. Votre mot de passe de compte cessera d'y fonctionner."
     },
     "secondFactorProof": {
       "title": "Confirmez que c'est bien vous",
@@ -2086,7 +2088,7 @@
     }
   },
   "apiTokens": {
-    "title": "Jetons API",
+    "title": "Mots de passe d'application et jetons d'API",
     "createButton": "Créer un jeton",
     "neverUsed": "Jamais",
     "active": "Actif",
@@ -2113,25 +2115,42 @@
       "expires": "Expire le"
     },
     "createDialog": {
-      "title": "Créer un jeton API",
-      "nameLabel": "Nom du jeton",
+      "title": "Créer un mot de passe d'application",
+      "nameLabel": "Description",
       "createButton": "Créer",
       "expiryLabel": "Expire dans",
       "expiryDays_one": "{{count}} jour",
       "expiryDays_other": "{{count}} jours",
       "expiryDays_many": "{{count}} jours",
       "scopeLabel": "Accès",
-      "scopeFull": "Accès complet",
-      "scopeCardDAV": "CardDAV uniquement",
-      "scopeFullHelp": "Peut être utilisé partout où l'API accepte un jeton, y compris pour la synchronisation CardDAV.",
-      "scopeCardDAVHelp": "Fonctionne uniquement pour la synchronisation des contacts CardDAV. Un identifiant d'appareil compromis ne peut pas être utilisé contre le reste de l'API."
+      "scopeFull": "Accès complet (hérité)",
+      "scopeCardDAV": "Synchronisation des contacts (CardDAV)",
+      "scopeCalDAV": "Calendrier (CalDAV)",
+      "scopeBoth": "Contacts + calendrier",
+      "scopeAPI": "API / automatisation",
+      "scopeMCP": "MCP / assistant IA",
+      "scopeHelp": {
+        "full": "Toutes les portées. La gestion des identifiants et de l'identité exige toujours une session interactive.",
+        "contacts": "Lire et écrire les contacts via CardDAV uniquement.",
+        "calendar": "Lire les données de calendrier via CalDAV uniquement.",
+        "both": "Lire et écrire les contacts et lire les données de calendrier.",
+        "api": "Lire et écrire l'API REST, sans accès CardDAV/CalDAV ni MCP.",
+        "mcp": "Utiliser les outils MCP en lecture seule, sans accès REST ni CardDAV/CalDAV."
+      },
+      "neverExpires": "N'expire jamais",
+      "neverExpiresHelp": "Disponible uniquement pour les mots de passe d'application CardDAV/CalDAV. Les jetons d'API et MCP doivent expirer."
     },
     "createdDialog": {
       "title": "Jeton créé",
       "warning": "Ce jeton ne sera plus affiché. Copiez-le maintenant et conservez-le en lieu sûr.",
       "copy": "Copier",
       "copied": "Copié !",
-      "done": "Terminé, je l'ai sauvegardé"
+      "done": "Terminé, je l'ai sauvegardé",
+      "clientHelp": "Utilisez ces valeurs dans votre client DAV. Le même secret vaut pour les portées sélectionnées.",
+      "usernameLabel": "Nom d'utilisateur",
+      "carddavUrlLabel": "URL du serveur CardDAV",
+      "caldavUrlLabel": "URL du serveur CalDAV",
+      "secretLabel": "Mot de passe d'application"
     },
     "revokeDialog": {
       "title": "Révoquer le jeton",
@@ -2154,7 +2173,8 @@
       "title": "Jeton pivoté",
       "warning": "L'ancien jeton est désormais révoqué. Ce nouveau jeton ne sera plus affiché — copiez-le maintenant et conservez-le en lieu sûr."
     },
-    "expired": "Expiré"
+    "expired": "Expiré",
+    "hint": "Utilisez un mot de passe d'application par appareil ou application. Le texte en clair n'est affiché qu'une fois ; seul son hachage est stocké."
   },
   "feeds": {
     "title": "Flux",
@@ -3417,5 +3437,14 @@
       "background_jobs": "Tâches de fond",
       "version": "Version"
     }
+  },
+  "davPassword": {
+    "title": "Mot de passe CardDAV / CalDAV",
+    "description": "Autorisez votre mot de passe de compte à se connecter aux clients CardDAV et CalDAV lorsqu'aucun second facteur n'est inscrit. Les mots de passe d'application sont plus sûrs et recommandés.",
+    "toggle": "Autoriser le mot de passe du compte pour CardDAV/CalDAV",
+    "twoFactorNotice": "L'authentification à deux facteurs est activée : le mot de passe du compte est toujours refusé sur CardDAV/CalDAV. Créez un mot de passe d'application ci-dessous.",
+    "success": "Politique de mot de passe CardDAV/CalDAV mise à jour.",
+    "error": "Impossible de mettre à jour la politique de mot de passe CardDAV/CalDAV.",
+    "loadError": "Impossible de charger la politique de mot de passe CardDAV/CalDAV."
   }
 }

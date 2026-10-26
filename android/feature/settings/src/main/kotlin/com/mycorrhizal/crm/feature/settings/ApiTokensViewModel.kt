@@ -93,14 +93,18 @@ class ApiTokensViewModel @Inject constructor(private val repository: ApiTokenRep
     fun create(
         name: String,
         expiresInDays: Int = DEFAULT_API_TOKEN_EXPIRY_DAYS,
-        scope: String = DEFAULT_API_TOKEN_SCOPE
+        scope: String = DEFAULT_API_TOKEN_SCOPE,
+        scopes: List<String>? = null
     ) {
         if (_uiState.value.isSaving || name.isBlank()) return
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, error = null) }
-            repository.create(
+            val input = if (scopes != null) {
+                ApiTokenInput(name = name.trim(), expiresInDays = expiresInDays, scopes = scopes)
+            } else {
                 ApiTokenInput(name = name.trim(), expiresInDays = expiresInDays, scope = scope)
-            )
+            }
+            repository.create(input)
                 .onSuccess { created ->
                     _uiState.update {
                         it.copy(

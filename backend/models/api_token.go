@@ -19,9 +19,13 @@ type ApiToken struct {
 	// through the API always get a concrete value.
 	ExpiresAt *time.Time
 
-	// Scope is "full" (default, near-full REST access) or "carddav" (only
-	// usable against the CardDAV Basic-Auth path). "full" still works for
-	// CardDAV too, since it already grants broader access than CardDAV
-	// exposes -- the restriction is one-directional.
+	// Scope is the legacy single-scope column: "full" (default, near-full
+	// REST access) or "carddav" (CardDAV/CalDAV only). New tokens also store
+	// the explicit set in Scopes; EffectiveScopes falls back to this column
+	// for rows that predate the scope set.
 	Scope string `gorm:"not null;default:'full'"`
+
+	// Scopes is the explicit access set (issue #2010). Empty/NULL on rows
+	// created before the scope set existed; those fall back to Scope.
+	Scopes []string `gorm:"type:text;serializer:json" json:"-"`
 }

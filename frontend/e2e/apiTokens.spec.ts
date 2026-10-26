@@ -24,8 +24,8 @@ test.describe('API tokens', () => {
 
     // --- create ---
     await page.getByRole('button', { name: 'Create Token' }).click();
-    const createDialog = page.getByRole('dialog', { name: 'Create API Token' });
-    await createDialog.getByLabel('Token Name').fill(name);
+    const createDialog = page.getByRole('dialog', { name: 'Create app password' });
+    await createDialog.getByLabel('Description').fill(name);
     await createDialog.getByRole('button', { name: 'Create', exact: true }).click();
 
     // --- the one-time secret ---
@@ -34,7 +34,7 @@ test.describe('API tokens', () => {
     await expect(
       created.getByText('This token will not be shown again.', { exact: false }),
     ).toBeVisible();
-    const secretField = created.getByRole('textbox');
+    const secretField = created.getByLabel('App password');
     const secret = await secretField.inputValue();
     expect(secret.length).toBeGreaterThan(20);
 

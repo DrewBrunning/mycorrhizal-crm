@@ -33,7 +33,7 @@ import com.mycorrhizal.crm.ui.R
  * later polish; static placeholders keep the tests deterministic.
  */
 @Composable
-fun LoadingSkeleton(rows: Int = 8, modifier: Modifier = Modifier) {
+fun LoadingSkeleton(modifier: Modifier = Modifier, rows: Int = 8) {
     val shimmerColor = MaterialTheme.colorScheme.surfaceVariant
     val baseColor = MaterialTheme.colorScheme.surface
     val brush = Brush.horizontalGradient(listOf(baseColor, shimmerColor, baseColor))

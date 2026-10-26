@@ -60,8 +60,9 @@ shadows the shared setting, and repairs the `CLAUDE.md` aliases).
 - **Staged `frontend/`:** `tsc --noEmit`, `biome ci`, `eslint` (`yarn lint`, type-aware;
   `no-floating-promises`/`no-misused-promises`/`await-thenable` are errors), and `knip` (issue
   #1907).
-- **Staged `android/`:** no Gradle step (too slow); run `cd android && ./gradlew detekt lintDebug
-  :app:lintObtainiumDebug` locally. `detekt` includes the ktlint formatting gate (no baseline);
+- **Staged `android/`:** no Gradle step (too slow); run `cd android && ./gradlew --warning-mode=fail
+  detekt lintDebug :app:lintObtainiumDebug :app:lintFossDebug` locally. `detekt` includes the ktlint
+  formatting gate (no baseline);
   `./gradlew detekt --auto-correct` fixes formatting. Lint warnings are errors; `android/lint.xml`
   lists the reasoned exceptions.
 - **Always:** `citecheck`, `depexceptions`, `deprecations`, `docscheck`, `contextcheck`,

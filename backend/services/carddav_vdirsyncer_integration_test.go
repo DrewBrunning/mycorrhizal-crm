@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/cookiejar"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -95,7 +96,8 @@ func vdirsyncerEnv(t *testing.T) (baseURL, cmd string) {
 
 // vdirsyncerRegisterUser provisions a throwaway user on OUR server via the
 // public registration endpoint (the same path a self-host operator or e2e
-// harness uses). The user's CardDAV credentials are username + password.
+// harness uses). Registration leaves account-password DAV auth off (issue
+// #2010), so the caller also opts in before using username + password.
 func vdirsyncerRegisterUser(t *testing.T, baseURL, username, password string) {
 	t.Helper()
 	body := fmt.Sprintf(`{"username":%q,"email":%q,"password":%q}`,
@@ -109,6 +111,42 @@ func vdirsyncerRegisterUser(t *testing.T, baseURL, username, password string) {
 	respBody, _ := io.ReadAll(resp.Body)
 	require.Contains(t, []int{http.StatusOK, http.StatusCreated}, resp.StatusCode,
 		"registration failed: %s", respBody)
+}
+
+// vdirsyncerAllowAccountPassword opts a freshly registered user into
+// account-password authentication on CardDAV/CalDAV — the same settings
+// action a real user takes (issue #2010). Without it, DAV basic auth returns
+// 403 account-password-not-allowed-for-dav.
+func vdirsyncerAllowAccountPassword(t *testing.T, baseURL, username, password string) {
+	t.Helper()
+	jar, err := cookiejar.New(nil)
+	require.NoError(t, err)
+	client := &http.Client{Jar: jar}
+
+	postJSON := func(path, body string) (int, []byte) {
+		req, reqErr := http.NewRequest(http.MethodPost, baseURL+path, strings.NewReader(body))
+		require.NoError(t, reqErr)
+		req.Header.Set("Content-Type", "application/json")
+		resp, reqErr := client.Do(req)
+		require.NoError(t, reqErr)
+		defer resp.Body.Close()
+		respBody, _ := io.ReadAll(resp.Body)
+		return resp.StatusCode, respBody
+	}
+
+	status, respBody := postJSON("/api/v1/login",
+		fmt.Sprintf(`{"identifier":%q,"password":%q}`, username, password))
+	require.Equal(t, http.StatusOK, status, "login failed: %s", respBody)
+
+	req, err := http.NewRequest(http.MethodPatch, baseURL+"/api/v1/users/dav-password-policy",
+		strings.NewReader(`{"allow":true}`))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	respBody, _ = io.ReadAll(resp.Body)
+	require.Equal(t, http.StatusOK, resp.StatusCode, "DAV password opt-in failed: %s", respBody)
 }
 
 // vdirsyncerConfig writes a minimal vdirsyncer config syncing the server
@@ -182,6 +220,7 @@ func TestCardDAVVdirsyncer_ClientRoundTrip(t *testing.T) {
 	username := "vd" + randomSuffix(t)
 	password := "VdirUserPass123!"
 	vdirsyncerRegisterUser(t, baseURL, username, password)
+	vdirsyncerAllowAccountPassword(t, baseURL, username, password)
 	configPath, statusDir, localDir := vdirsyncerConfig(t, baseURL, username, password)
 	_ = statusDir
 	collectionURL := baseURL + "/carddav/addressbooks/" + username + "/contacts/"

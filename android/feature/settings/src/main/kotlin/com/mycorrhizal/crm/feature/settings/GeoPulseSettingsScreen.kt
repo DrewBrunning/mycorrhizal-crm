@@ -126,12 +126,12 @@ fun GeoPulseSettingsScreen(
 @Composable
 fun GeoPulseSettingsContent(
     state: GeoPulseSettingsUiState,
+    modifier: Modifier = Modifier,
     onBaseUrlChange: (String) -> Unit = {},
     onApiKeyChange: (String) -> Unit = {},
     onTest: () -> Unit = {},
     onSave: () -> Unit = {},
-    onRemove: () -> Unit = {},
-    modifier: Modifier = Modifier
+    onRemove: () -> Unit = {}
 ) {
     Column(
         modifier = modifier

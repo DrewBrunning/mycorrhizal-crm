@@ -207,6 +207,11 @@ func WebAuthnRegisterFinish(c *gin.Context) {
 		if err := services.StoreRecoveryCodes(tx, user.ID, recoveryCodes); err != nil {
 			return err // # pragma: no cover — transaction-body failures are DB/disk faults only (schema/FK integrity is proven elsewhere)
 		}
+		// A second factor exists from this point, so the account password must
+		// not authenticate DAV clients (issue #2010).
+		if err := tx.Model(&user).Update("allow_dav_password", false).Error; err != nil {
+			return err
+		}
 		if firstFactor {
 			return tx.Model(&user).Update("token_version", gorm.Expr("token_version + 1")).Error
 		}

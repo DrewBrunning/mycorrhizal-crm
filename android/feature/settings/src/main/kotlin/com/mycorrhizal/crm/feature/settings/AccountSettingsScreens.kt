@@ -62,12 +62,12 @@ fun AccountSettingsScreen(
 @Composable
 fun AccountSettingsContent(
     state: SettingsUiState,
+    modifier: Modifier = Modifier,
     onServers: () -> Unit = {},
     onChangePassword: () -> Unit = {},
     onTwoFactor: () -> Unit = {},
     onPasskeys: () -> Unit = {},
-    onApiTokens: () -> Unit = {},
-    modifier: Modifier = Modifier
+    onApiTokens: () -> Unit = {}
 ) {
     val gating = rememberSettingsGating()
     SettingsColumn(modifier = modifier) {
@@ -164,8 +164,8 @@ fun ChangePasswordScreen(
 @Composable
 fun ChangePasswordContent(
     state: SettingsUiState,
-    onChangePassword: (String, String, String) -> Unit = { _, _, _ -> },
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onChangePassword: (String, String, String) -> Unit = { _, _, _ -> }
 ) {
     var currentPassword by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }

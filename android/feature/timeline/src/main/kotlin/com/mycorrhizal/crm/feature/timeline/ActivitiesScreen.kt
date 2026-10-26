@@ -299,8 +299,8 @@ fun ActivityListItem(
     onClick: () -> Unit,
     onContactClick: (Int) -> Unit,
     onDelete: () -> Unit,
-    isDeleting: Boolean = false,
     modifier: Modifier = Modifier,
+    isDeleting: Boolean = false,
     // Issue #1763: hide the participant chips when the list is already scoped to
     // this contact (the per-contact Activities screen) instead of repeating it.
     showContactChips: Boolean = true

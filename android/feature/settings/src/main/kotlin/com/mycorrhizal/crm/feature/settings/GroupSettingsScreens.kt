@@ -40,11 +40,11 @@ fun ContactsFieldsSettingsScreen(
 
 @Composable
 fun ContactsFieldsSettingsContent(
+    modifier: Modifier = Modifier,
     onCustomFields: () -> Unit = {},
     onContactFieldSettings: () -> Unit = {},
     onCustomLinks: () -> Unit = {},
-    onCircleTagTriage: () -> Unit = {},
-    modifier: Modifier = Modifier
+    onCircleTagTriage: () -> Unit = {}
 ) {
     SettingsColumn(modifier = modifier) {
         // Issue #830: create/edit/delete custom field definitions.
@@ -100,14 +100,14 @@ fun IntegrationsSettingsScreen(
 
 @Composable
 fun IntegrationsSettingsContent(
+    modifier: Modifier = Modifier,
     onCalendarSync: () -> Unit = {},
     onWebhooks: () -> Unit = {},
     onImmichSettings: () -> Unit = {},
     onPaperlessSettings: () -> Unit = {},
     onSeafileSettings: () -> Unit = {},
     onNextcloudSettings: () -> Unit = {},
-    onGeoPulseSettings: () -> Unit = {},
-    modifier: Modifier = Modifier
+    onGeoPulseSettings: () -> Unit = {}
 ) {
     val gating = rememberSettingsGating()
     SettingsColumn(modifier = modifier) {
@@ -179,9 +179,9 @@ fun AdministrationSettingsScreen(
 
 @Composable
 fun AdministrationSettingsContent(
+    modifier: Modifier = Modifier,
     onManageUsers: () -> Unit = {},
-    onSystemEvents: () -> Unit = {},
-    modifier: Modifier = Modifier
+    onSystemEvents: () -> Unit = {}
 ) {
     val gating = rememberSettingsGating()
     SettingsColumn(modifier = modifier) {

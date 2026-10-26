@@ -177,7 +177,17 @@ This tests **selection**, not task completion. The prompts are deliberately
 independent of `testdata/agent-eval/*/task.md`; do not copy an eval task prompt
 into the trigger set.
 
-Procedure (manual; no pass/fail automation yet):
+`cmd/agenteval -mode select` runs the set automatically: each prompt gets a
+fixed footer asking the agent to record the skills and context files it opened,
+and the harness scores `expect`/`not`, extra or unknown skills, declared
+ambiguous pairs, and any repository change made during a selection run (including
+changes hidden in a commit). Use `-skill` to shard a pass and `-timeout` to bound
+one prompt. It measures reported selection, not observed file access or task
+completion, and the agent must be pinned for the result to be comparable. The
+manual procedure below remains the record for the ambiguous pairs and for *why*
+a neighbour did or did not win.
+
+Procedure (manual):
 
 1. Start a fresh agent session with only the repository context loaded (the
    `AGENTS.md` hierarchy and `.agents/skills/`). Do not paste the skill text or
@@ -193,7 +203,38 @@ Procedure (manual; no pass/fail automation yet):
 A completeness test (`TestTriggerPromptSetIsComplete` in
 `backend/internal/agentcontext`) is deterministic: it proves every skill has
 2–3 prompts, every named skill exists, and the ambiguous pairs are declared. It
-does **not** prove selection; that is the manual run.
+does **not** prove selection; `-mode select` and the manual run do.
+
+## Agent evaluation
+
+`cmd/agenteval` runs one representative task per suite in a disposable worktree
+and scores it against the same `Suites` commands a skill declares; it is never a
+merge or release gate. Beyond command exit codes it records scope violations,
+generated-artifact hand-edits, expected findings, and gate-integrity findings:
+added test skips, removed or deleted tests, and renamed test files are hard
+violations; lint/coverage suppressions and build constraints added to a test file
+are warnings. A hard violation fails the run because a green suite earned by
+weakening the gate is not evidence the task was completed; a warning needs a
+human read and can be a legitimate choice for a specific task.
+
+## Context-change evidence
+
+A semantic change to a skill description or name, an `AGENTS.md` rule, a
+trigger prompt, or a task's prompt/expect/not/suite/base-ref is a hypothesis
+about agent behaviour. The PR records the before and after: the prompt-set
+version, the pinned agent/model/CLI version (a profile when available, otherwise
+the exact command and flags), the base and head refs, the prompt-to-skill result
+(or the affected task's result and control delta), and the artifact link. A new
+rule uses `before: n/a (new)`; a removed rule uses `after: n/a (removed)`.
+Mechanical edits — link/path/typo fixes and base-ref refreshes — are exempt; the
+PR says so explicitly.
+
+This is a reviewer checklist, not a CI gate. A missing before/after is an
+unproven change, not a documentation nicety. The harness is advisory and never a
+merge gate, so the evidence is for the reviewer and for the next person who
+wonders whether the wording still earns its place. The artifact link is only as
+durable as the artifact retention window; paste the result when the window is
+short.
 
 ## Milestone-gate audit
 

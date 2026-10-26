@@ -36,8 +36,12 @@ type User struct {
 	PasswordResetExpiresAt   *time.Time `gorm:"column:password_reset_expires_at"`
 	PasswordResetRequestedAt *time.Time `gorm:"column:password_reset_requested_at"`
 	EnabledContactFields     []string   `gorm:"type:text;serializer:json" json:"enabled_contact_fields"`
-	OIDCSubject              *string    `gorm:"column:oidc_subject"`
-	OIDCProvider             *string    `gorm:"column:oidc_provider"`
+	// AllowDAVPassword lets this user authenticate CardDAV/CalDAV with the
+	// account password when no second factor is enrolled. It is always
+	// ignored once TOTP or a passkey is enrolled (issue #2010).
+	AllowDAVPassword bool    `gorm:"column:allow_dav_password;not null" json:"allow_dav_password"`
+	OIDCSubject      *string `gorm:"column:oidc_subject"`
+	OIDCProvider     *string `gorm:"column:oidc_provider"`
 
 	// TokenVersion is embedded in every JWT issued for this user and checked on
 	// each authenticated request. Bumping it invalidates all outstanding tokens,

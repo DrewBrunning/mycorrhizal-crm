@@ -18,7 +18,6 @@
 package main
 
 import (
-	"bytes"
 	"flag"
 	"fmt"
 	"io"
@@ -27,6 +26,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"mycorrhizal/internal/gitchanges"
 	"mycorrhizal/internal/prepr"
 )
 
@@ -126,33 +126,11 @@ func run(args []string, out, errOut io.Writer) int {
 	return prepr.Execute(plan, out, runner(repoRoot))
 }
 
-// changedFiles is `git diff --name-only <base>...HEAD`, NUL-delimited so a
-// filename containing whitespace or a newline cannot be split into extra
-// paths.
+// changedFiles selects the branch's committed and uncommitted changes relative
+// to the merge base of base and HEAD. The gate runs before the commit, so it
+// must see staged, unstaged, untracked, deleted, and renamed files too.
 func changedFiles(root, base string) ([]string, error) {
-	cmd := exec.Command("git", "-C", root, "diff", "--name-only", "-z", "--no-renames", base+"...HEAD") // #nosec G204 -- base is a validated CLI ref and root is the resolved repo root
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		msg := strings.TrimSpace(stderr.String())
-		if msg == "" {
-			msg = err.Error()
-		}
-		return nil, fmt.Errorf("git diff against %s failed: %s", base, msg)
-	}
-	raw := strings.TrimSuffix(stdout.String(), "\x00")
-	if raw == "" {
-		return nil, nil
-	}
-	parts := strings.Split(raw, "\x00")
-	out := make([]string, 0, len(parts))
-	for _, p := range parts {
-		if p != "" {
-			out = append(out, p)
-		}
-	}
-	return out, nil
+	return gitchanges.ChangedFiles(root, base)
 }
 
 // runner executes a step in its area directory, streaming output to the

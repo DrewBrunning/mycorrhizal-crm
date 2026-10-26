@@ -183,6 +183,7 @@ func TestTwoFactor_EnrollmentFlow(t *testing.T) {
 
 	// Issue #722: a remembered device enrolled under the pre-2FA posture must
 	// be revoked the moment 2FA is enabled.
+	require.NoError(t, db.Model(&models.User{}).Where("id = ?", user.ID).Update("allow_dav_password", true).Error)
 	grant, _, err := services.CreateDeviceGrant(db, user.ID, "test-phone")
 	require.NoError(t, err)
 
@@ -211,6 +212,7 @@ func TestTwoFactor_EnrollmentFlow(t *testing.T) {
 	require.NotEqual(t, secret, *stored.TOTPSecretEncrypted)
 	assert.True(t, stored.TOTPEnabled)
 	require.NotNil(t, stored.TOTPConfirmedAt)
+	assert.False(t, stored.AllowDAVPassword, "enabling a second factor must disable DAV account-password auth")
 
 	// second setup/confirm both conflict
 	w, _ = doRequest(router, sessionRequest("POST", "/users/2fa/setup", nil, sessionToken))

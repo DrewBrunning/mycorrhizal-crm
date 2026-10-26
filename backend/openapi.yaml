@@ -1548,6 +1548,40 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /users/dav-password-policy:
+    patch:
+      summary: Allow or disallow account-password authentication on CardDAV/CalDAV
+      operationId: updateDAVPasswordPolicy
+      tags:
+        - Users
+      description: >
+        Issue #2010. When enabled, the account password may authenticate
+        CardDAV/CalDAV for a user with no enrolled second factor. The password
+        is always rejected once TOTP or a passkey is enrolled, and enabling the
+        setting in that state is a 409. Credential management requires an
+        interactive session, so API tokens are refused.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DAVPasswordPolicyInput"
+      responses:
+        "200":
+          description: Policy updated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  allow_dav_password: { type: boolean }
+        "409":
+          description: A second factor is enrolled; use an app password instead.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /users/enabled-contact-fields:
     get:
       summary: Get the user's enabled (visible) contact fields
@@ -14100,6 +14134,9 @@ components:
               type: string
               nullable: true
               description: VCardUID of the caller's "Me" contact, if set (T90).
+            allow_dav_password:
+              type: boolean
+              description: Whether the account password may authenticate CardDAV/CalDAV when no second factor is enrolled (issue #2010).
     SelfContactInput:
       type: object
       description: >
@@ -17038,13 +17075,24 @@ components:
         terminal_failure_at: { type: string, format: date-time, nullable: true, description: "INT-04 (#467): non-null once the sync has hit a permanent error (revoked credentials, remote deleted). Frozen at entry. Cleared by any success or a subscription edit." }
         terminal_reason: { type: string, description: "Failure-mode slug behind terminal_failure_at (auth-expiry, authz-revoked, remote-resource-deleted); empty when not terminal." }
         pending_conflicts: { type: integer, description: "Unreviewed local edits this subscription's syncs have overwritten (issue #395). Contacts only." }
+    DAVPasswordPolicyInput:
+      type: object
+      required: [allow]
+      properties:
+        allow: { type: boolean }
     ApiTokenInput:
       type: object
       required: [name]
       properties:
         name: { type: string, minLength: 1, maxLength: 100 }
         expires_in_days: { type: integer, minimum: 1, maximum: 365, description: "Defaults to 90." }
-        scope: { type: string, enum: [full, carddav], description: "Defaults to full. carddav tokens are rejected by the REST API." }
+        scope: { type: string, enum: [full, carddav], description: "Legacy single scope, still accepted; ignored when scopes is present. Omit both for full access. carddav tokens are rejected by the REST API." }
+        scopes:
+          type: array
+          maxItems: 5
+          description: "Explicit access set (issue #2010). Omit with scope for the legacy full-access default."
+          items: { type: string, enum: [carddav, caldav, api:read, api:write, mcp] }
+        never_expires: { type: boolean, description: "DAV-only app passwords may omit the expiry (issue #2010). Rejected for API/MCP scope sets and cannot be combined with expires_in_days." }
     ApiTokenResponse:
       type: object
       properties:
@@ -17054,7 +17102,11 @@ components:
         last_used_at: { type: string, format: date-time, nullable: true }
         revoked_at: { type: string, format: date-time, nullable: true }
         expires_at: { type: string, format: date-time, nullable: true }
-        scope: { type: string }
+        scope: { type: string, description: "Legacy single-scope view: full, carddav, or custom." }
+        scopes:
+          type: array
+          items: { type: string, enum: [carddav, caldav, api:read, api:write, mcp] }
+          description: The token's explicit access set.
     ApiTokenCreateResponse:
       allOf:
         - $ref: "#/components/schemas/ApiTokenResponse"

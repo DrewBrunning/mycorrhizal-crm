@@ -181,6 +181,7 @@ func ConfirmTwoFactor(c *gin.Context) {
 			"totp_confirmed_at":   now,
 			"token_version":       gorm.Expr("token_version + 1"),
 			"totp_last_used_step": confirmStep,
+			"allow_dav_password":  false,
 		}).Error; err != nil {
 			return err
 		}

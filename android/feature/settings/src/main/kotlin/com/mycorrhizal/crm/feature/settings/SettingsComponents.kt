@@ -224,9 +224,9 @@ internal fun SettingsHelperText(
 internal fun SettingsToggleRow(
     label: String,
     checked: Boolean,
-    enabled: Boolean = true,
     onCheckedChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
 ) {
     Row(
         // #214: a bare Switch has no text/contentDescription of its own — the

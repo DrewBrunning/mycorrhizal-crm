@@ -129,13 +129,13 @@ fun ImmichSettingsScreen(onBack: () -> Unit, viewModel: ImmichSettingsViewModel 
 @Composable
 fun ImmichSettingsContent(
     state: ImmichSettingsUiState,
+    modifier: Modifier = Modifier,
     onBaseUrlChange: (String) -> Unit = {},
     onApiKeyChange: (String) -> Unit = {},
     onSyncEnabledChange: (Boolean) -> Unit = {},
     onTest: () -> Unit = {},
     onSave: () -> Unit = {},
-    onRemove: () -> Unit = {},
-    modifier: Modifier = Modifier
+    onRemove: () -> Unit = {}
 ) {
     Column(
         modifier = modifier

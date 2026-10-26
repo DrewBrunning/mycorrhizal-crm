@@ -165,6 +165,7 @@ export default function TwoFactorSettings() {
       setRecoveryCodes(result.recovery_codes);
       setCopied(false);
       setEnabled(true);
+      window.dispatchEvent(new Event('mycorrhizal:second-factor-changed'));
       showSuccess(t('settings.twoFactor.enableSuccess'));
     } catch (err) {
       setSetupError(err instanceof Error ? err.message : t('settings.twoFactor.invalidCode'));
@@ -196,6 +197,7 @@ export default function TwoFactorSettings() {
       if (action === 'disable') {
         await disableTwoFactor(actionCode.trim());
         setEnabled(false);
+        window.dispatchEvent(new Event('mycorrhizal:second-factor-changed'));
         showSuccess(t('settings.twoFactor.disableSuccess'));
       } else {
         const result = await regenerateRecoveryCodes(actionCode.trim());
@@ -373,6 +375,9 @@ export default function TwoFactorSettings() {
                 <QRCodeSVG value={setupUrl} size={180} />
               </Box>
             )}
+            <Alert severity="warning" sx={{ py: 0 }}>
+              {t('settings.twoFactor.setup.davWarning')}
+            </Alert>
             <TextField
               label={t('settings.twoFactor.setup.manualKey')}
               value={setupSecret}

@@ -1341,7 +1341,8 @@
         "codeLabel": "Verification code",
         "codeHelp": "6-digit code from your authenticator app.",
         "confirmButton": "Enable and continue",
-        "enabling": "Enabling..."
+        "enabling": "Enabling...",
+        "davWarning": "If you sync contacts or calendars with CardDAV/CalDAV, create an app password before enabling 2FA. Your account password will stop working there."
       },
       "disable": {
         "title": "Disable two-factor authentication",
@@ -1395,7 +1396,8 @@
         "confirm": "Remove passkey",
         "submitting": "Please wait...",
         "useAnotherPasskey": "Verify with another passkey instead"
-      }
+      },
+      "davWarning": "If you sync contacts or calendars with CardDAV/CalDAV, create an app password before adding a passkey. Your account password will stop working there."
     },
     "secondFactorProof": {
       "title": "Verify it's you",
@@ -2059,7 +2061,7 @@
     }
   },
   "apiTokens": {
-    "title": "API Tokens",
+    "title": "App passwords & API tokens",
     "createButton": "Create Token",
     "neverUsed": "Never",
     "active": "Active",
@@ -2085,24 +2087,41 @@
       "expires": "Expires"
     },
     "createDialog": {
-      "title": "Create API Token",
-      "nameLabel": "Token Name",
+      "title": "Create app password",
+      "nameLabel": "Description",
       "createButton": "Create",
       "expiryLabel": "Expires in",
       "expiryDays_one": "{{count}} day",
       "expiryDays_other": "{{count}} days",
       "scopeLabel": "Access",
-      "scopeFull": "Full access",
-      "scopeCardDAV": "CardDAV only",
-      "scopeFullHelp": "Can be used anywhere the API accepts a token, including CardDAV sync.",
-      "scopeCardDAVHelp": "Only works for CardDAV contact sync. A leaked device credential can't be used against the rest of the API."
+      "scopeFull": "Full access (legacy)",
+      "scopeCardDAV": "Contacts sync (CardDAV)",
+      "scopeCalDAV": "Calendar (CalDAV)",
+      "scopeBoth": "Contacts + calendar",
+      "scopeAPI": "API / automation",
+      "scopeMCP": "MCP / AI assistant",
+      "scopeHelp": {
+        "full": "All scopes. Credential and identity management still require an interactive session.",
+        "contacts": "Read/write contacts over CardDAV only.",
+        "calendar": "Read calendar data over CalDAV only.",
+        "both": "Read/write contacts and read calendar data.",
+        "api": "Read and write the REST API, but no CardDAV/CalDAV or MCP access.",
+        "mcp": "Use the read-only MCP tools, with no REST or CardDAV/CalDAV access."
+      },
+      "neverExpires": "Never expires",
+      "neverExpiresHelp": "Only available for CardDAV/CalDAV-only app passwords. API and MCP tokens must expire."
     },
     "createdDialog": {
       "title": "Token Created",
       "warning": "This token will not be shown again. Copy it now and store it securely.",
       "copy": "Copy",
       "copied": "Copied!",
-      "done": "Done, I saved it"
+      "done": "Done, I saved it",
+      "clientHelp": "Use these values in your DAV client. The same secret works for the scopes you selected.",
+      "usernameLabel": "Username",
+      "carddavUrlLabel": "CardDAV server URL",
+      "caldavUrlLabel": "CalDAV server URL",
+      "secretLabel": "App password"
     },
     "revokeDialog": {
       "title": "Revoke Token",
@@ -2124,7 +2143,8 @@
       "title": "Token Rotated",
       "warning": "The old token is now revoked. This new token will not be shown again — copy it now and store it securely."
     },
-    "expired": "Expired"
+    "expired": "Expired",
+    "hint": "Use one app password per device or app. The plaintext is shown once; only its hash is stored."
   },
   "feeds": {
     "title": "Feeds",
@@ -3321,5 +3341,14 @@
       "background_jobs": "Background jobs",
       "version": "Version"
     }
+  },
+  "davPassword": {
+    "title": "CardDAV / CalDAV password",
+    "description": "Allow your account password to sign in to CardDAV and CalDAV clients when no second factor is enrolled. App passwords are safer and recommended.",
+    "toggle": "Allow account password for CardDAV/CalDAV",
+    "twoFactorNotice": "Two-factor authentication is enabled, so the account password is always rejected on CardDAV/CalDAV. Create an app password below.",
+    "success": "CardDAV/CalDAV password policy updated.",
+    "error": "Unable to update the CardDAV/CalDAV password policy.",
+    "loadError": "Unable to load the CardDAV/CalDAV password policy."
   }
 }

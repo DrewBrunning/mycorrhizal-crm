@@ -65,6 +65,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 		mcpGroup := router.Group("/mcp")
 		mcpGroup.Use(middleware.APIRateLimitMiddleware())
 		mcpGroup.Use(middleware.AuthMiddleware(cfg))
+		mcpGroup.Use(middleware.RequireAPIScope(models.TokenScopeMCP))
 		mcpGroup.POST("", controllers.MCPHandler())
 	}
 
@@ -154,6 +155,8 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 		protected := v1.Group("/")
 		protected.Use(middleware.APIRateLimitMiddleware())
 		protected.Use(middleware.AuthMiddleware(cfg))
+		protected.Use(middleware.RequireAPIScopeForMethod())
+		protected.Use(middleware.RequireInteractiveSessionForCredentials())
 		// CON-04 (issue #459, ADR 0010): one idempotency mechanism for the
 		// whole authenticated surface. Inert unless a request is a POST
 		// carrying an Idempotency-Key header, so every mutation is covered by
@@ -166,6 +169,9 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.PATCH("/users/language", controllers.UpdateLanguage)
 			protected.PATCH("/users/date-format", controllers.UpdateDateFormat)
 			protected.PATCH("/users/time-format", controllers.UpdateTimeFormat)
+			if !cfg.IsEmbedded() {
+				protected.PATCH("/users/dav-password-policy", middleware.ValidateJSONMiddleware(&models.DAVPasswordPolicyInput{}), controllers.UpdateDAVPasswordPolicy)
+			}
 			protected.GET("/users/enabled-contact-fields", controllers.GetEnabledContactFields)
 			protected.PATCH("/users/enabled-contact-fields", middleware.ValidateJSONMiddleware(&models.EnabledContactFieldsInput{}), controllers.UpdateEnabledContactFields)
 			protected.GET("/users/me", controllers.GetCurrentUser)

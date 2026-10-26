@@ -16,11 +16,11 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
 	"mycorrhizal/internal/coverageratchet"
+	"mycorrhizal/internal/gitchanges"
 	"mycorrhizal/internal/patchcov"
 )
 
@@ -121,20 +121,11 @@ func run(args []string, out, errOut io.Writer) int {
 	return 0
 }
 
-// goDiff runs `git diff -U0 <base>...HEAD -- '*.go'` from the repo root.
+// goDiff runs the Go-only changed-line diff against the merge base of base and
+// HEAD, including staged, unstaged, and untracked files. The gate runs before
+// the commit, so a committed-only diff would miss the lines being reviewed.
 func goDiff(root, base string) ([]byte, error) {
-	cmd := exec.Command("git", "-C", root, "diff", "-U0", "--no-renames", base+"...HEAD", "--", "*.go") // #nosec G204 -- base is a validated CLI ref and root is the resolved repo root
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		msg := strings.TrimSpace(stderr.String())
-		if msg == "" {
-			msg = err.Error()
-		}
-		return nil, fmt.Errorf("git diff against %s failed: %s", base, msg)
-	}
-	return stdout.Bytes(), nil
+	return gitchanges.UnifiedDiff(root, base, "*.go")
 }
 
 func findRepoRoot() (string, error) {

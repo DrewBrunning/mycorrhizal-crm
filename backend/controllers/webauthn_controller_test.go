@@ -248,6 +248,7 @@ func (e *waEnv) enableTOTP(token string) (secret string, session string) {
 
 func TestWebAuthn_RegistrationRoundTripCreatesExactlyOneRow(t *testing.T) {
 	e := newWAEnv(t)
+	require.NoError(t, e.db.Model(&models.User{}).Where("id = ?", e.user.ID).Update("allow_dav_password", true).Error)
 	va := e.auth()
 	tok := e.session()
 
@@ -265,6 +266,10 @@ func TestWebAuthn_RegistrationRoundTripCreatesExactlyOneRow(t *testing.T) {
 	assert.Len(t, codes, recoveryCodeCount)
 	assert.Equal(t, int64(recoveryCodeCount), e.recoveryCount())
 	assert.Equal(t, int64(1), e.auditCount(models.AuditOpWebAuthnRegister))
+
+	var after models.User
+	require.NoError(t, e.db.First(&after, e.user.ID).Error)
+	assert.False(t, after.AllowDAVPassword, "adding a passkey must disable DAV account-password auth")
 
 	// First factor bumps the token version: the pre-enrollment token dies, the
 	// re-issued one is live.

@@ -80,7 +80,7 @@ Two blast radii. Know which one you need before you act.
 
 | You want to… | Do this | What it kills | What it does **not** kill |
 |---|---|---|---|
-| Lock out **one** compromised account | Admin `PATCH /api/v1/admin/users/:id` with a new `password` | That user's web sessions (token-version bump) **and** all their API tokens (revoke-all), and their CardDAV/CalDAV Basic-auth (same password) | Other users; the instance |
+| Lock out **one** compromised account | Admin `PATCH /api/v1/admin/users/:id` with a new `password` | That user's web sessions (token-version bump) **and** all their API tokens (revoke-all), and their CardDAV/CalDAV Basic-auth (same password, unless 2FA is enrolled) | Other users; the instance |
 | Kill **one** leaked API token | Owner: `DELETE /api/v1/api-tokens/:id`, or `POST /api/v1/api-tokens/:id/rotate` | Just that token | Sessions; other tokens |
 | Kill **all** of one user's API tokens | Owner: `POST /api/v1/api-tokens/revoke-all` (also fires on the admin password reset above) | Every active API token for that user | Their web session (unless triggered via the password reset) |
 | Invalidate **every session on the instance** | Rotate `JWT_SECRET_KEY` (see procedure — has a boot-time footgun) | Every web session; every 2FA challenge in flight; **every stored integration credential and TOTP secret** | **API tokens** — they are not JWTs; revoke them separately |
@@ -339,8 +339,11 @@ Anyone with the key can forge a session for any user and decrypt any stored inte
    Audit events attribute actions to the user, not the token — correlate by time and IP.
 3. **Rotate.** Issue a fresh token for the legitimate integration (`POST /api-tokens` or
    `/:id/rotate`).
-4. **Recover.** Undo anything the token did that shouldn't stand.
-5. **Notify.** If the token was `carddav`-scoped, the synced client holds a copy of the address book —
+4. **Recover.** Undo anything the token did that shouldn't stand. Since issue #2010 a leaked token
+   cannot have minted or rotated another token, enrolled a second factor, created a device grant, or
+   changed the DAV password policy — those routes require an interactive session. If it had
+   `api:write`, still review contacts/notes/activities it may have changed.
+5. **Notify.** If the token had a DAV scope, the synced client holds a copy of the address book —
    nothing to do there, but note it.
 
 ### Scenario: the host is compromised

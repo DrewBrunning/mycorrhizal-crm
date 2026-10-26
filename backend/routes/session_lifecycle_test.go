@@ -145,9 +145,10 @@ func reloadUser(t *testing.T, db *gorm.DB, id uint) models.User {
 }
 
 // probe is a minimal protected route that 200s for any valid session (JWT or
-// full-scope API token) and 401s otherwise. /users/2fa/status is chosen for its
-// lack of side effects.
-const probePath = "/api/v1/users/2fa/status"
+// full-scope API token) and 401s otherwise. /users/me is chosen for its lack of
+// side effects; credential-management routes such as /users/2fa/status
+// deliberately reject API tokens (issue #2010).
+const probePath = "/api/v1/users/me"
 
 func probe(t *testing.T, router http.Handler, token string) int {
 	t.Helper()

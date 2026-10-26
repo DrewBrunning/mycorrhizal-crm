@@ -11,6 +11,10 @@ mobile clients (which should use the TTFs here directly rather than duplicating 
   only so far.
 
 Both are SIL Open Font License 1.1 — free to embed and redistribute, including in a mobile app bundle.
+The full upstream license texts travel with the fonts: `eb-garamond/OFL.txt` and
+`ibm-plex/OFL.txt`. Web copies are published beside the WOFF2 files, and both
+texts are reproduced in `THIRD_PARTY_SOURCES.md` for the container and Android
+builds.
 
 ## Provenance
 

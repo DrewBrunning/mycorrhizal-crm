@@ -1,3 +1,4 @@
+import org.gradle.api.tasks.Copy
 import org.gradle.api.tasks.Exec
 
 plugins {
@@ -21,6 +22,29 @@ aboutLibraries {
         configPath = file("../config")
         filterVariants.addAll("release", "debug")
     }
+}
+
+// Issue #1880 follow-up: the APK/AAB embeds the Go server and the IBM Plex
+// fonts, neither of which is a Gradle dependency. Package the generated Go/npm
+// notice, the bundled-content notices (including the full OFL texts), and the
+// font licenses so Settings > About > Third-party licenses can show them. The
+// files stay single-sourced at the repository root; this task only copies them
+// into the app's assets at build time.
+val thirdPartyAttributionAssets = layout.buildDirectory.dir("generated/thirdPartyAttribution/assets")
+val copyThirdPartyAttribution by tasks.registering(Copy::class) {
+    group = "build"
+    description = "Copies Go/font third-party notices into the app's assets."
+    from(rootProject.file("../THIRD_PARTY_NOTICES.md")) { into("thirdparty") }
+    from(rootProject.file("../THIRD_PARTY_SOURCES.md")) { into("thirdparty") }
+    from(rootProject.file("../assets/fonts/eb-garamond/OFL.txt")) {
+        into("thirdparty")
+        rename { "EBGaramond-OFL.txt" }
+    }
+    from(rootProject.file("../assets/fonts/ibm-plex/OFL.txt")) {
+        into("thirdparty")
+        rename { "IBMPlex-OFL.txt" }
+    }
+    into(thirdPartyAttributionAssets)
 }
 
 // M5 §5a (issue #152): the Google Services Gradle plugin is applied ONLY when
@@ -133,6 +157,10 @@ android {
         // the file optional) until the task runs, so an ordinary build without
         // the Go toolchain still succeeds — it just ships without local mode.
         getByName("main").jniLibs.directories.add(embeddedServerJniLibs.get().asFile.absolutePath)
+
+        // Issue #1880 follow-up: the Go standard library/modules notice and the
+        // bundled font licenses (generated/copied above) are app assets.
+        getByName("main").assets.directories.add(thirdPartyAttributionAssets.get().asFile.absolutePath)
     }
 
     // ADR 0028 Decision 2: the embedded Go server ships as an executable in
@@ -407,6 +435,11 @@ val buildEmbeddedServer by tasks.registering(Exec::class) {
 
 if (embeddedServerRequired) {
     tasks.named("preBuild").configure { dependsOn(buildEmbeddedServer) }
+}
+
+tasks.named("preBuild").configure { dependsOn(copyThirdPartyAttribution) }
+tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.configureEach {
+    dependsOn(copyThirdPartyAttribution)
 }
 
 // Issue #1357 (ADR 0029): the merged manifest of every shipped flavor x {debug, release} is

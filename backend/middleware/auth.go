@@ -51,12 +51,17 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 				apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid token"))
 				return
 			}
-			if apiToken.Scope == "carddav" {
-				apperrors.AbortWithError(c, apperrors.ErrForbidden("This token is scoped to CardDAV and cannot be used for the API"))
+			if !apiToken.HasAnyAPIScope() {
+				message := "This token is scoped to CardDAV and cannot be used for the API"
+				if !apiToken.HasScope(models.TokenScopeCardDAV) {
+					message = "This token is scoped to CalDAV and cannot be used for the API"
+				}
+				apperrors.AbortWithError(c, apperrors.ErrForbidden(message))
 				return
 			}
 			c.Set("userID", apiToken.UserID)
 			c.Set("isAPIToken", true)
+			c.Set(apiTokenContextKey, apiToken)
 			TouchAPIToken(db, apiToken.ID, now)
 			c.Next()
 			return

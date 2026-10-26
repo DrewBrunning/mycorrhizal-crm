@@ -3,6 +3,7 @@ import { errorEnvelope, mockApi, setupMswServer } from '../test/mswServer';
 import {
   API_TOKEN_EXPIRY_OPTIONS,
   createApiToken,
+  createApiTokenWithScopes,
   DEFAULT_API_TOKEN_EXPIRY_DAYS,
   DEFAULT_API_TOKEN_SCOPE,
   getApiTokens,
@@ -61,6 +62,26 @@ describe('apiTokens', () => {
     const calls = mockApi('post', '/api-tokens', { ...token, token: 's' });
     await createApiToken('dav', 30, 'carddav');
     expect(calls[0].body).toEqual({ name: 'dav', expires_in_days: 30, scope: 'carddav' });
+  });
+
+  test('createApiTokenWithScopes POSTs an explicit scope set', async () => {
+    const calls = mockApi('post', '/api-tokens', { ...token, token: 'secret', scope: 'custom' });
+    await createApiTokenWithScopes('dav', 90, ['carddav', 'caldav']);
+    expect(calls[0].body).toEqual({
+      name: 'dav',
+      expires_in_days: 90,
+      scopes: ['carddav', 'caldav'],
+    });
+  });
+
+  test('createApiTokenWithScopes omits expiry when the DAV password never expires', async () => {
+    const calls = mockApi('post', '/api-tokens', { ...token, token: 'secret', scope: 'carddav' });
+    await createApiTokenWithScopes('dav', null, ['carddav'], true);
+    expect(calls[0].body).toEqual({
+      name: 'dav',
+      scopes: ['carddav'],
+      never_expires: true,
+    });
   });
 
   test('createApiToken maps a validation envelope to its field message', async () => {

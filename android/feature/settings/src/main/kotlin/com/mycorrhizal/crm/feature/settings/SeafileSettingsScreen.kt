@@ -129,12 +129,12 @@ fun SeafileSettingsScreen(
 @Composable
 fun SeafileSettingsContent(
     state: SeafileSettingsUiState,
+    modifier: Modifier = Modifier,
     onBaseUrlChange: (String) -> Unit = {},
     onApiTokenChange: (String) -> Unit = {},
     onTest: () -> Unit = {},
     onSave: () -> Unit = {},
-    onRemove: () -> Unit = {},
-    modifier: Modifier = Modifier
+    onRemove: () -> Unit = {}
 ) {
     Column(
         modifier = modifier

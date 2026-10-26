@@ -205,6 +205,12 @@ jobs:
       - name: Test PR-failure alert script
         run: bash .github/scripts/tests/pr-alert.test.sh
 
+      # Issue #1877 follow-up: pins the app-token full-history scan's contract --
+      # all commits, the base branch's config, only the app-token rule, redaction,
+      # and fail-closed on a shallow checkout/missing rule/missing binary/finding.
+      - name: Test app-token history scan script
+        run: bash .github/scripts/tests/secret-scan-app-tokens.test.sh
+
       # Pins the nightly alarm's issue lookups: no Search API call (its
       # 30/min budget 403'd the reconcile matrix and the alert for it,
       # 2026-10-13), exact-title matching, and the reconcile dedupe finding a

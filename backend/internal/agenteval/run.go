@@ -15,18 +15,19 @@ import (
 
 // Options configures one task run.
 type Options struct {
-	Root               string
-	Spec               Spec
-	Suites             []Suite
-	AgentCommand       string
-	AgentProfile       string
-	AgentName          string
-	AgentModel         string
-	AgentVersion       string
-	RunControl         bool
-	LookPath           func(string) (string, error)
-	CommandRunner      func(ctx context.Context, dir, command string, timeout time.Duration) CommandResult
-	SuiteCommandRunner func(ctx context.Context, dir, command string, timeout time.Duration) CommandResult
+	Root                    string
+	Spec                    Spec
+	Suites                  []Suite
+	AgentCommand            string
+	AgentProfile            string
+	AgentName               string
+	AgentModel              string
+	AgentVersion            string
+	RunControl              bool
+	LookPath                func(string) (string, error)
+	CommandRunner           func(ctx context.Context, dir, command string, timeout time.Duration) CommandResult
+	SuiteCommandRunner      func(ctx context.Context, dir, command string, timeout time.Duration) CommandResult
+	InstallNodeDependencies func(ctx context.Context, wt string) error
 }
 
 // Suite is the subset of agentcontext.Suite the harness needs, kept local so
@@ -47,6 +48,11 @@ func Run(ctx context.Context, opts Options) (Artifact, error) {
 	}
 	if opts.SuiteCommandRunner == nil {
 		opts.SuiteCommandRunner = runSuiteShellCommand
+	}
+	if opts.InstallNodeDependencies == nil {
+		opts.InstallNodeDependencies = func(ctx context.Context, wt string) error {
+			return installFrontendDependencies(ctx, wt, opts.CommandRunner)
+		}
 	}
 	command := opts.Spec.AgentCommand
 	if opts.AgentCommand != "" {
@@ -134,6 +140,11 @@ func runWorktree(ctx context.Context, opts Options, wt string, control bool, com
 			return result, nil, err
 		}
 	}
+	if contains(opts.Spec.Requires, "node") {
+		if err := opts.InstallNodeDependencies(ctx, wt); err != nil {
+			return result, nil, err
+		}
+	}
 	var stripped []string
 	var err error
 	if control {
@@ -142,22 +153,59 @@ func runWorktree(ctx context.Context, opts Options, wt string, control bool, com
 			return result, stripped, fmt.Errorf("strip control context: %w", err)
 		}
 	}
-	baseline, err := changedFiles(ctx, wt)
+	evalBase, err := snapshotBase(ctx, wt)
 	if err != nil {
 		return result, stripped, err
 	}
 
 	agent := opts.CommandRunner(ctx, wt, command, opts.Spec.TimeoutValue)
 	result.Agent = agent
-	changed, err := changedFiles(ctx, wt)
+	changed, err := changedFiles(ctx, wt, evalBase)
 	if err != nil {
 		return result, stripped, err
 	}
-	result.ChangedFiles = subtract(changed, baseline)
+	result.ChangedFiles = changed
+	if opts.Spec.ExpectNoChange {
+		for _, path := range result.ChangedFiles {
+			result.UnexpectedChanges = append(result.UnexpectedChanges, "task requires no changes: "+path)
+		}
+	}
 	result.ScopeViolations = ClassifyPaths(result.ChangedFiles, opts.Spec.ExpectPaths, opts.Spec.ForbidPaths)
 	result.HandEditedGenerated = DetectHandEdits(result.ChangedFiles, GeneratedArtifacts)
+	result.HeadMoved, err = headMoved(ctx, wt, evalBase)
+	if err != nil {
+		return result, stripped, err
+	}
+	patch, scanWarnings, truncated, err := worktreePatch(ctx, wt, evalBase)
+	if err != nil {
+		return result, stripped, err
+	}
+	deleted, err := deletedFiles(ctx, wt, evalBase)
+	if err != nil {
+		return result, stripped, err
+	}
+	renamed, err := renamedFiles(ctx, wt, evalBase)
+	if err != nil {
+		return result, stripped, err
+	}
+	violations, detectorWarnings := DetectIntegrityViolations(patch, deleted, renamed)
+	if truncated {
+		violations = append(violations, "integrity scan truncated: diff is too large to verify")
+	}
+	result.IntegrityViolations = append(result.IntegrityViolations, violations...)
+	result.IntegrityWarnings = append(result.IntegrityWarnings, scanWarnings...)
+	result.IntegrityWarnings = append(result.IntegrityWarnings, detectorWarnings...)
 	if len(opts.Spec.ExpectedFindings) > 0 {
 		result.ExpectedFindingsOK, result.MissingFindings = FindingsSatisfied(opts.Spec.ExpectedFindings, agent.Output)
+	}
+	if len(opts.Spec.ExpectedAny) > 0 {
+		ok, missing := FindingsSatisfiedAny(opts.Spec.ExpectedAny, agent.Output)
+		if len(opts.Spec.ExpectedFindings) == 0 {
+			result.ExpectedFindingsOK = ok
+		} else {
+			result.ExpectedFindingsOK = result.ExpectedFindingsOK && ok
+		}
+		result.MissingFindings = append(result.MissingFindings, missing...)
 	}
 	if results, ok := runSuite(ctx, opts, wt); ok {
 		result.SuiteCommands = results
@@ -220,27 +268,22 @@ func applySeedPatch(ctx context.Context, wt, patch string) error {
 	return nil
 }
 
-func changedFiles(ctx context.Context, wt string) ([]string, error) {
-	tracked := exec.CommandContext(ctx, "git", "-C", wt, "diff", "--name-only", "-z", "HEAD") // #nosec G204 -- wt is our temp worktree
-	tbody, err := tracked.Output()
-	if err != nil {
-		return nil, fmt.Errorf("git diff: %w", err)
-	}
-	untracked := exec.CommandContext(ctx, "git", "-C", wt, "ls-files", "--others", "--exclude-standard", "-z") // #nosec G204 -- wt is our temp worktree
-	ubody, err := untracked.Output()
-	if err != nil {
-		return nil, fmt.Errorf("git ls-files: %w", err)
-	}
-	var out []string
-	for _, body := range [][]byte{tbody, ubody} {
-		for _, part := range bytes.Split(body, []byte{0}) {
-			if len(part) > 0 {
-				out = append(out, filepath.ToSlash(string(part)))
-			}
+// installFrontendDependencies installs the base ref's lockfile inside the
+// disposable worktree. A worktree does not inherit node_modules, and symlinking
+// the caller's tree would give the agent write access to it.
+func installFrontendDependencies(ctx context.Context, wt string, run func(context.Context, string, string, time.Duration) CommandResult) error {
+	frontend := filepath.Join(wt, "frontend")
+	if _, err := os.Stat(filepath.Join(frontend, "package.json")); err != nil {
+		if os.IsNotExist(err) {
+			return nil
 		}
+		return err
 	}
-	sort.Strings(out)
-	return out, nil
+	res := run(ctx, frontend, "yarn install --frozen-lockfile --prefer-offline --ignore-scripts", 10*time.Minute)
+	if !res.Passed {
+		return fmt.Errorf("install frontend dependencies: exit %d: %s", res.ExitCode, res.OutputTail)
+	}
+	return nil
 }
 
 // stripContext removes the skills tree, nested AGENTS.md/CLAUDE.md files, and

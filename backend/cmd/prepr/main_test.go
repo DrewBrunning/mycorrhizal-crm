@@ -277,6 +277,63 @@ changelog-relevant:
 	}
 }
 
+// TestChangedFilesSeesWorkingTreeChanges is the regression test for the
+// pre-commit false green: the gate must see staged, unstaged, untracked,
+// deleted, and renamed files relative to the merge base, not only commits.
+func TestChangedFilesSeesWorkingTreeChanges(t *testing.T) {
+	dir := t.TempDir()
+	git(t, dir, "init", "-q")
+	git(t, dir, "config", "user.email", "test@example.com")
+	git(t, dir, "config", "user.name", "Test")
+	git(t, dir, "config", "commit.gpgsign", "false")
+
+	for _, name := range []string{"staged.go", "unstaged.go", "deleted.go", "old.go", "reverted.go"} {
+		write(t, filepath.Join(dir, "backend", "services", name), "package services\n")
+	}
+	git(t, dir, "add", ".")
+	git(t, dir, "commit", "-q", "-m", "initial")
+
+	write(t, filepath.Join(dir, "backend", "services", "staged.go"), "package services\n\nvar staged = true\n")
+	git(t, dir, "add", "backend/services/staged.go")
+	write(t, filepath.Join(dir, "backend", "services", "unstaged.go"), "package services\n\nvar unstaged = true\n")
+	write(t, filepath.Join(dir, "backend", "services", "reverted.go"), "package services\n\nvar reverted = true\n")
+	git(t, dir, "add", "backend/services/reverted.go")
+	write(t, filepath.Join(dir, "backend", "services", "reverted.go"), "package services\n")
+	write(t, filepath.Join(dir, "backend", "services", "untracked.go"), "package services\n")
+	if err := os.Remove(filepath.Join(dir, "backend", "services", "deleted.go")); err != nil {
+		t.Fatal(err)
+	}
+	git(t, dir, "mv", "backend/services/old.go", "backend/services/renamed.go")
+	weird := "backend/services/new\nline.go"
+	write(t, filepath.Join(dir, filepath.FromSlash(weird)), "package services\n")
+
+	got, err := changedFiles(dir, "HEAD")
+	if err != nil {
+		t.Fatalf("changedFiles: %v", err)
+	}
+	have := map[string]bool{}
+	for _, name := range got {
+		have[name] = true
+	}
+	for _, want := range []string{
+		"backend/services/staged.go",
+		"backend/services/unstaged.go",
+		"backend/services/reverted.go",
+		"backend/services/untracked.go",
+		"backend/services/deleted.go",
+		"backend/services/old.go",
+		"backend/services/renamed.go",
+		weird,
+	} {
+		if !have[want] {
+			t.Errorf("changedFiles missing %q; got %q", want, got)
+		}
+	}
+	if len(got) != 8 {
+		t.Errorf("changedFiles returned %d paths, want 8: %q", len(got), got)
+	}
+}
+
 func TestChangedFilesEmptyGitStderr(t *testing.T) {
 	bin := t.TempDir()
 	if err := os.WriteFile(filepath.Join(bin, "git"), []byte("#!/bin/sh\nexit 1\n"), 0o755); err != nil {

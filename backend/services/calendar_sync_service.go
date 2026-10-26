@@ -894,6 +894,13 @@ func resolveRemoteObjectURL(subscriptionURL, remotePath string) (*url.URL, error
 // carrying the stored ETag as an If-Match precondition when known. Returns the
 // response ETag (the remote's new sync identity), or the HTTP status on
 // failure so the caller can distinguish a 412 conflict.
+//
+// The stored value is the opaque, strong-quoted form the fetch transport
+// normalized. RFC 9110 requires If-Match to use strong comparison, so a server
+// that issued a weak (W/"...") or bare validator may not match it even when the
+// object is unchanged and may answer 412; pushLocalEdits then applies the
+// documented local-wins retry without If-Match. That is a compatibility
+// fallback, not a change to conflict detection (which uses the content hash).
 func putCalendarObject(httpClient webdav.HTTPClient, remoteURL *url.URL, cal *ical.Calendar, ifMatch string) (string, int, error) {
 	var buf bytes.Buffer
 	if err := ical.NewEncoder(&buf).Encode(cal); err != nil {
@@ -921,7 +928,7 @@ func putCalendarObject(httpClient webdav.HTTPClient, remoteURL *url.URL, cal *ic
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusNoContent {
 		return "", resp.StatusCode, nil
 	}
-	return strings.Trim(resp.Header.Get("ETag"), `"`), resp.StatusCode, nil
+	return decodeNormalizedETag(resp.Header.Get("ETag")), resp.StatusCode, nil
 }
 
 // pushLocalEdits propagates local CRM edits on imported activities back out

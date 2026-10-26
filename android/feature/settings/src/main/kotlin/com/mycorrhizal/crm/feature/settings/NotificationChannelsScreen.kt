@@ -101,6 +101,7 @@ fun NotificationChannelsScreen(
 @Composable
 fun NotificationChannelsContent(
     state: NotificationChannelsUiState,
+    modifier: Modifier = Modifier,
     onNtfyUrlChange: (String) -> Unit = {},
     onNtfyTopicChange: (String) -> Unit = {},
     onNotifyNtfyChange: (Boolean) -> Unit = {},
@@ -108,8 +109,7 @@ fun NotificationChannelsContent(
     onGotifyTokenChange: (String) -> Unit = {},
     onNotifyGotifyChange: (Boolean) -> Unit = {},
     onTest: (String) -> Unit = {},
-    onSave: () -> Unit = {},
-    modifier: Modifier = Modifier
+    onSave: () -> Unit = {}
 ) {
     Column(
         modifier = modifier

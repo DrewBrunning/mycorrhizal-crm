@@ -245,9 +245,9 @@ fun ReminderListItem(
     onComplete: () -> Unit,
     onDelete: () -> Unit,
     isCompleting: Boolean,
+    modifier: Modifier = Modifier,
     isDeleting: Boolean = false,
-    dateFormat: String? = null,
-    modifier: Modifier = Modifier
+    dateFormat: String? = null
 ) {
     val overdue = reminder.isOverdue()
     val dateText = DateFormat.formatTimestamp(reminder.remindAt, dateFormat ?: DateFormat.EU)

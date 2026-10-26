@@ -7,6 +7,7 @@ import {
   getTwoFactorStatus,
   regenerateRecoveryCodes,
   setupTwoFactor,
+  updateDAVPasswordPolicy,
   updateDateFormat,
   updateEnabledContactFields,
   updateLanguage,
@@ -61,6 +62,17 @@ describe('users API', () => {
     expect(await updateTimeFormat('auto')).toBe('Time format updated successfully.');
     mockApi('patch', '/users/time-format', fail());
     await expect(updateTimeFormat('auto')).rejects.toThrow('server said no');
+  });
+
+  test('updateDAVPasswordPolicy PATCHes the policy flag', async () => {
+    const calls = mockApi('patch', '/users/dav-password-policy', {
+      message: 'ok',
+      allow_dav_password: true,
+    });
+    expect(await updateDAVPasswordPolicy(true)).toBe(true);
+    expect(calls[0].method).toBe('PATCH');
+    expect(calls[0].url).toBe('/api/v1/users/dav-password-policy');
+    expect(calls[0].body).toEqual({ allow: true });
   });
 
   test('getEnabledContactFields GETs and returns the list, or null when never configured', async () => {

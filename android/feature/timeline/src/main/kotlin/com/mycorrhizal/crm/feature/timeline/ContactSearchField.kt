@@ -37,8 +37,8 @@ fun ContactSearchField(
     onQueryChange: (String) -> Unit,
     onPick: (ContactSummary) -> Unit,
     labelRes: Int,
-    hiddenMatchCount: Int = 0,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    hiddenMatchCount: Int = 0
 ) {
     Column(modifier = modifier) {
         OutlinedTextField(
