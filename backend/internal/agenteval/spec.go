@@ -23,7 +23,7 @@ import (
 const DefaultTimeout = 20 * time.Minute
 
 // AllowedRequires is the closed set a task may require.
-var AllowedRequires = map[string]bool{"go": true, "node": true, "docker": true, "gh": true}
+var AllowedRequires = map[string]bool{"go": true, "node": true, "yarn": true, "java": true, "docker": true, "gh": true}
 
 var commitSHARe = regexp.MustCompile(`^[0-9a-f]{40}([0-9a-f]{24})?$`)
 
@@ -44,6 +44,7 @@ type Spec struct {
 	AgentVersion     string   `yaml:"agent_version"`
 	SeedPatch        string   `yaml:"seed_patch"`
 	ExpectedFindings []string `yaml:"expected_findings"`
+	ExpectedAny      []string `yaml:"expected_any"`
 	ExpectNoChange   bool     `yaml:"expect_no_change"`
 
 	// TaskDir is the absolute task directory containing spec.yaml.
@@ -110,7 +111,7 @@ func parseSpec(body []byte, dir, name string, suites []string) (Spec, error) {
 	}
 	for _, req := range spec.Requires {
 		if !AllowedRequires[req] {
-			return Spec{}, fmt.Errorf("spec.requires %q is not one of go/node/docker/gh", req)
+			return Spec{}, fmt.Errorf("spec.requires %q is not one of go/node/yarn/java/docker/gh", req)
 		}
 	}
 	if strings.TrimSpace(spec.AgentCommand) == "" {

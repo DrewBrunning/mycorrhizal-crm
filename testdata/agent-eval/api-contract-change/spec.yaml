@@ -2,7 +2,7 @@ name: api-contract-change
 base_ref: 22ac64d049f07f2eaac134a4d195b8a126f00a7c
 suite: api-contract-change
 timeout: 25m
-requires: [go, node]
+requires: [go, node, yarn, java]
 agent_command: "true"
 agent_name: dry-run
 agent_model: none

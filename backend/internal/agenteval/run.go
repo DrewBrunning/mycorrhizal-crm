@@ -15,16 +15,17 @@ import (
 
 // Options configures one task run.
 type Options struct {
-	Root          string
-	Spec          Spec
-	Suites        []Suite
-	AgentCommand  string
-	AgentName     string
-	AgentModel    string
-	AgentVersion  string
-	RunControl    bool
-	LookPath      func(string) (string, error)
-	CommandRunner func(ctx context.Context, dir, command string, timeout time.Duration) CommandResult
+	Root                    string
+	Spec                    Spec
+	Suites                  []Suite
+	AgentCommand            string
+	AgentName               string
+	AgentModel              string
+	AgentVersion            string
+	RunControl              bool
+	LookPath                func(string) (string, error)
+	CommandRunner           func(ctx context.Context, dir, command string, timeout time.Duration) CommandResult
+	InstallNodeDependencies func(ctx context.Context, wt string) error
 }
 
 // Suite is the subset of agentcontext.Suite the harness needs, kept local so
@@ -42,6 +43,9 @@ func Run(ctx context.Context, opts Options) (Artifact, error) {
 	}
 	if opts.CommandRunner == nil {
 		opts.CommandRunner = runShellCommand
+	}
+	if opts.InstallNodeDependencies == nil {
+		opts.InstallNodeDependencies = installFrontendDependencies
 	}
 	command := opts.Spec.AgentCommand
 	if opts.AgentCommand != "" {
@@ -121,13 +125,15 @@ func runWorktree(ctx context.Context, opts Options, wt string, control bool, com
 		return result, nil, err
 	}
 	defer removeWorktree(opts.Root, wt)
-	if err := linkNodeModules(opts.Root, wt); err != nil {
-		return result, nil, err
-	}
 
 	if opts.Spec.SeedPatch != "" {
 		patch := filepath.Join(opts.Spec.TaskDir, filepath.FromSlash(opts.Spec.SeedPatch))
 		if err := applySeedPatch(ctx, wt, patch); err != nil {
+			return result, nil, err
+		}
+	}
+	if contains(opts.Spec.Requires, "node") {
+		if err := opts.InstallNodeDependencies(ctx, wt); err != nil {
 			return result, nil, err
 		}
 	}
@@ -139,18 +145,22 @@ func runWorktree(ctx context.Context, opts Options, wt string, control bool, com
 			return result, stripped, fmt.Errorf("strip control context: %w", err)
 		}
 	}
-	baseline, err := changedFiles(ctx, wt)
+	evalBase, err := snapshotBase(ctx, wt)
 	if err != nil {
 		return result, stripped, err
 	}
 
 	agent := opts.CommandRunner(ctx, wt, command, opts.Spec.TimeoutValue)
 	result.Agent = agent
-	changed, err := changedFiles(ctx, wt)
+	changed, err := changedFiles(ctx, wt, evalBase)
 	if err != nil {
 		return result, stripped, err
 	}
-	result.ChangedFiles = subtract(changed, baseline)
+	result.ChangedFiles = changed
+	result.HeadMoved, err = headMoved(ctx, wt, evalBase)
+	if err != nil {
+		return result, stripped, err
+	}
 	if opts.Spec.ExpectNoChange {
 		for _, path := range result.ChangedFiles {
 			result.UnexpectedChanges = append(result.UnexpectedChanges, "task requires no changes: "+path)
@@ -160,6 +170,11 @@ func runWorktree(ctx context.Context, opts Options, wt string, control bool, com
 	result.HandEditedGenerated = DetectHandEdits(result.ChangedFiles, GeneratedArtifacts)
 	if len(opts.Spec.ExpectedFindings) > 0 {
 		result.ExpectedFindingsOK, result.MissingFindings = FindingsSatisfied(opts.Spec.ExpectedFindings, agent.Output)
+	}
+	if len(opts.Spec.ExpectedAny) > 0 {
+		ok, missing := FindingsSatisfiedAny(opts.Spec.ExpectedAny, agent.Output)
+		result.ExpectedFindingsOK = result.ExpectedFindingsOK && ok
+		result.MissingFindings = append(result.MissingFindings, missing...)
 	}
 	if results, ok := runSuite(ctx, opts, wt); ok {
 		result.SuiteCommands = results
@@ -222,52 +237,22 @@ func applySeedPatch(ctx context.Context, wt, patch string) error {
 	return nil
 }
 
-// linkNodeModules points the disposable worktree at the caller's installed
-// frontend dependencies. A worktree does not inherit node_modules, and suites
-// such as localization run npx; linking avoids a network install per task. The
-// path is gitignored, so it never appears in the changed-file set.
-func linkNodeModules(root, wt string) error {
-	src := filepath.Join(root, "frontend", "node_modules")
-	if _, err := os.Stat(src); err != nil {
+// installFrontendDependencies installs the base ref's lockfile inside the
+// disposable worktree. A worktree does not inherit node_modules, and symlinking
+// the caller's tree would give the agent write access to it.
+func installFrontendDependencies(ctx context.Context, wt string) error {
+	frontend := filepath.Join(wt, "frontend")
+	if _, err := os.Stat(filepath.Join(frontend, "package.json")); err != nil {
 		if os.IsNotExist(err) {
 			return nil
 		}
 		return err
 	}
-	dst := filepath.Join(wt, "frontend", "node_modules")
-	if _, err := os.Lstat(dst); err == nil { // #nosec G703 -- dst is inside our disposable worktree
-		return nil
-	}
-	if err := os.MkdirAll(filepath.Dir(dst), 0o750); err != nil {
-		return err
-	}
-	if err := os.Symlink(src, dst); err != nil { // #nosec G703 -- src/dst are controlled paths
-		return fmt.Errorf("link frontend node_modules: %w", err)
+	res := runShellCommand(ctx, frontend, "yarn install --frozen-lockfile --prefer-offline --ignore-scripts", 10*time.Minute)
+	if !res.Passed {
+		return fmt.Errorf("install frontend dependencies: exit %d: %s", res.ExitCode, res.OutputTail)
 	}
 	return nil
-}
-
-func changedFiles(ctx context.Context, wt string) ([]string, error) {
-	tracked := exec.CommandContext(ctx, "git", "-C", wt, "diff", "--name-only", "-z", "HEAD") // #nosec G204 -- wt is our temp worktree
-	tbody, err := tracked.Output()
-	if err != nil {
-		return nil, fmt.Errorf("git diff: %w", err)
-	}
-	untracked := exec.CommandContext(ctx, "git", "-C", wt, "ls-files", "--others", "--exclude-standard", "-z") // #nosec G204 -- wt is our temp worktree
-	ubody, err := untracked.Output()
-	if err != nil {
-		return nil, fmt.Errorf("git ls-files: %w", err)
-	}
-	var out []string
-	for _, body := range [][]byte{tbody, ubody} {
-		for _, part := range bytes.Split(body, []byte{0}) {
-			if len(part) > 0 {
-				out = append(out, filepath.ToSlash(string(part)))
-			}
-		}
-	}
-	sort.Strings(out)
-	return out, nil
 }
 
 // stripContext removes the skills tree, nested AGENTS.md/CLAUDE.md files, and

@@ -13,6 +13,8 @@ paths and the context-vs-control delta.
 Keep control prompts identical to the context prompt: changing only the context
 files is what makes the delta attributable.
 
-Refusal tasks set `expect_no_change: true`. The control worktree runs the same
-spec, so the delta shows whether the full context made the agent stop while the
-stripped context changed files.
+Refusal tasks set `expect_no_change: true` and `expected_any` so a silent no-op
+does not pass: the agent must leave the tree unchanged *and* name the risk it
+refused (for example data loss or a missing deprecation window). The control
+worktree runs the same spec, so the delta shows whether the full context made
+the agent stop while the stripped context changed files.

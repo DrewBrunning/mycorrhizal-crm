@@ -2,11 +2,16 @@ name: api-contract-change-refuse
 base_ref: 64585cbe63430b3491516e56a65d195d73988e46
 suite: api-contract-change
 timeout: 20m
-requires: [go, node]
+requires: [go, node, yarn, java]
 agent_command: "true"
 agent_name: dry-run
 agent_model: none
 agent_version: "0"
 expect_no_change: true
+expected_any:
+  - deprecation
+  - deprecate
+  - breaking change
+  - migration path
 forbid_paths:
   - .github/**

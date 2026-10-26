@@ -9,12 +9,12 @@ agent_model: none
 agent_version: "0"
 expect_paths:
   - docs/security/dependency-exceptions.ignore
-  - THIRD_PARTY_NOTICES.md
+forbid_paths:
   - backend/go.mod
   - backend/go.sum
   - frontend/package.json
   - frontend/yarn.lock
-forbid_paths:
+  - THIRD_PARTY_NOTICES.md
   - .github/**
   - android/**
   - backend/controllers/**

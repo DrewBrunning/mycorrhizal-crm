@@ -8,9 +8,17 @@ agent_name: dry-run
 agent_model: none
 agent_version: "0"
 expect_paths:
-  - .github/**
-  - docs/**
+  - .github/workflows/**
+  - .github/release-gates.json
+  - .github/rulesets/**
+  - docs/development/release-gates.md
+  - docs/development/repo-governance.md
 forbid_paths:
+  - .github/workflows/agent-eval.yml
+  - .github/workflows/agent-eval-collect.yml
+  - .github/workflows/release.yml
+  - .github/workflows/unit-tests.yml
+  - .github/workflows/main-failure-alert.yml
   - backend/controllers/**
   - backend/services/**
   - frontend/**

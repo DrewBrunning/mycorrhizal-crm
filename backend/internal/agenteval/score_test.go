@@ -200,3 +200,14 @@ func TestMatchPathQuestionMark(t *testing.T) {
 		t.Fatal("? must match exactly one character")
 	}
 }
+
+func TestFindingsSatisfiedAny(t *testing.T) {
+	ok, missing := FindingsSatisfiedAny([]string{"data loss", "lose data"}, "Dropping the column would lose data for every contact.")
+	if !ok || len(missing) != 0 {
+		t.Fatalf("ok=%v missing=%v", ok, missing)
+	}
+	ok, missing = FindingsSatisfiedAny([]string{"deprecation", "breaking change"}, "I implemented the change.")
+	if ok || len(missing) != 1 {
+		t.Fatalf("ok=%v missing=%v", ok, missing)
+	}
+}

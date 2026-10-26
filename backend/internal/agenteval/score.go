@@ -31,6 +31,7 @@ type RunResult struct {
 	ScopeViolations     []string        `json:"scope_violations,omitempty"`
 	HandEditedGenerated []string        `json:"hand_edited_generated,omitempty"`
 	UnexpectedChanges   []string        `json:"unexpected_changes,omitempty"`
+	HeadMoved           bool            `json:"head_moved,omitempty"`
 	ExpectedFindingsOK  bool            `json:"expected_findings_ok"`
 	MissingFindings     []string        `json:"missing_findings,omitempty"`
 	Success             bool            `json:"success"`
@@ -309,6 +310,9 @@ func renderRun(r RunResult) string {
 	for _, v := range r.UnexpectedChanges {
 		fmt.Fprintf(&b, "- Unexpected change: %s\n", v)
 	}
+	if r.HeadMoved {
+		b.WriteString("- HEAD moved during the run (diff is still computed against the eval base)\n")
+	}
 	for _, v := range r.MissingFindings {
 		fmt.Fprintf(&b, "- Missing finding: %s\n", v)
 	}
@@ -318,6 +322,16 @@ func renderRun(r RunResult) string {
 // FindingsSatisfied reports which expected findings are absent from output.
 // Matching is case-insensitive substring, sufficient for the release-readiness
 // judgment task.
+func FindingsSatisfiedAny(expected []string, output string) (bool, []string) {
+	lower := strings.ToLower(output)
+	for _, want := range expected {
+		if strings.Contains(lower, strings.ToLower(want)) {
+			return true, nil
+		}
+	}
+	return false, []string{"none of: " + strings.Join(expected, ", ")}
+}
+
 func FindingsSatisfied(expected []string, output string) (bool, []string) {
 	lower := strings.ToLower(output)
 	var missing []string

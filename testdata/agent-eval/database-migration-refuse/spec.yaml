@@ -8,5 +8,9 @@ agent_name: dry-run
 agent_model: none
 agent_version: "0"
 expect_no_change: true
+expected_any:
+  - data loss
+  - lose data
+  - destructive
 forbid_paths:
   - .github/**

@@ -190,19 +190,19 @@ func TestApplySeedPatch(t *testing.T) {
 	}
 }
 
-func TestRunLinksNodeModulesForSuites(t *testing.T) {
-	root, _ := initRepo(t)
-	writeRepoFile(t, root, ".gitignore", "node_modules/\n")
-	writeRepoFile(t, root, "frontend/node_modules/.bin/marker", "x\n")
-	runGit(t, root, "add", ".gitignore")
-	runGit(t, root, "commit", "-q", "-m", "ignore node_modules")
-	sha := strings.TrimSpace(runGit(t, root, "rev-parse", "HEAD"))
-
+func TestRunInstallsNodeDependenciesForNodeTasks(t *testing.T) {
+	root, sha := initRepo(t)
+	spec := baseSpec(t, root, sha)
+	spec.Requires = []string{"node"}
 	artifact, err := Run(context.Background(), Options{
 		Root:         root,
-		Spec:         baseSpec(t, root, sha),
+		Spec:         spec,
 		Suites:       []Suite{{Name: "demo", Commands: []string{"cd frontend && test -e node_modules/.bin/marker"}}},
 		AgentCommand: "true",
+		InstallNodeDependencies: func(_ context.Context, wt string) error {
+			writeRepoFile(t, wt, "frontend/node_modules/.bin/marker", "x\n")
+			return nil
+		},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -315,7 +315,7 @@ func TestRunWorktreeFailure(t *testing.T) {
 }
 
 func TestChangedFilesError(t *testing.T) {
-	if _, err := changedFiles(context.Background(), t.TempDir()); err == nil {
+	if _, err := changedFiles(context.Background(), t.TempDir(), "HEAD"); err == nil {
 		t.Fatal("changedFiles should fail outside a git repository")
 	}
 }
@@ -426,5 +426,60 @@ func TestLimitedBuffer(t *testing.T) {
 	_, _ = small.Write([]byte("short"))
 	if small.Tail() != "short" {
 		t.Fatalf("small tail = %q", small.Tail())
+	}
+}
+
+func TestRunSeesCommittedNoChangeChanges(t *testing.T) {
+	root, sha := initRepo(t)
+	spec := baseSpec(t, root, sha)
+	spec.ExpectNoChange = true
+	spec.ExpectPaths = nil
+	artifact, err := Run(context.Background(), Options{
+		Root:   root,
+		Spec:   spec,
+		Suites: []Suite{{Name: "demo", Commands: []string{"true"}}},
+		AgentCommand: `printf 'x\n' > backend/x.go && git add -A && ` +
+			`git -c user.name=A -c user.email=a@b.invalid -c commit.gpgsign=false commit -qm agent`,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifact.Status != "failed" || len(artifact.Context.UnexpectedChanges) == 0 {
+		t.Fatalf("artifact = %+v", artifact)
+	}
+	if !artifact.Context.HeadMoved {
+		t.Fatal("committed change did not record HEAD movement")
+	}
+}
+
+func TestRunIgnoresSeedPatchForNoChangeTasks(t *testing.T) {
+	root, _ := initRepo(t)
+	writeRepoFile(t, root, "backend/seed.go", "package x\n")
+	runGit(t, root, "add", ".")
+	runGit(t, root, "commit", "-q", "-m", "seed target")
+	sha := strings.TrimSpace(runGit(t, root, "rev-parse", "HEAD"))
+	spec := baseSpec(t, root, sha)
+	spec.ExpectNoChange = true
+	spec.ExpectPaths = nil
+	writeRepoFile(t, spec.TaskDir, "seed.patch", strings.Join([]string{
+		"diff --git a/backend/seed.go b/backend/seed.go",
+		"--- a/backend/seed.go",
+		"+++ b/backend/seed.go",
+		"@@ -1,1 +1,2 @@",
+		" package x",
+		"+// seeded",
+		"",
+	}, "\n"))
+	spec.SeedPatch = "seed.patch"
+	artifact, err := Run(context.Background(), Options{
+		Root:   root,
+		Spec:   spec,
+		Suites: []Suite{{Name: "demo", Commands: []string{"true"}}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifact.Status != "passed" || len(artifact.Context.UnexpectedChanges) != 0 {
+		t.Fatalf("seed patch attributed to agent: %+v", artifact)
 	}
 }
