@@ -224,6 +224,11 @@ func newMCPServer(db *gorm.DB, userID uint, cfg config.Config, clk clock.Clock) 
 		// and opt in to them with the same flag (issue #1433).
 		if !in.IncludeSensitive {
 			detail.Contact.Card.Addresses = models.FilterSensitiveAddresses(detail.Contact.Card.Addresses)
+			// The owner-facing detail record also keeps every personalInfo
+			// entry (and its CRM metadata). MCP is a copy out, so apply the
+			// same default-deny here (issue #2053).
+			detail.Contact.Card.PersonalInfo, detail.Contact.CRM.PersonalInfoMeta =
+				models.FilterSensitivePersonalInfo(detail.Contact.Card.PersonalInfo, detail.Contact.CRM.PersonalInfoMeta)
 		}
 		return mcpJSONResult(detail)
 	})

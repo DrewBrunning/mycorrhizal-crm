@@ -20,7 +20,7 @@ func TestProjectTags_LookupFailureKeepsExisting(t *testing.T) {
 	db := dbtest.New(t)
 	dbtest.HideTable(t, db, "contact_tags")
 
-	got := projectTags(db, "any-uid", []string{"passthrough-kw"})
+	got := projectTags(db, 0, "any-uid", []string{"passthrough-kw"})
 	assert.Equal(t, []string{"passthrough-kw"}, got)
 }
 
@@ -30,7 +30,7 @@ func TestProjectPreferences_LookupFailureKeepsExisting(t *testing.T) {
 	dbtest.HideTable(t, db, "preferences")
 
 	existing := []contactmodel.PersonalInfo{{Kind: "hobby", Value: "chess"}}
-	got := projectPreferences(db, "any-uid", existing, false)
+	got := projectPreferences(db, 0, "any-uid", existing, false)
 	assert.Equal(t, existing, got)
 }
 
@@ -40,7 +40,7 @@ func TestProjectCustomFields_LookupFailureKeepsExisting(t *testing.T) {
 	dbtest.HideTable(t, db, "field_values")
 
 	existing := []contactmodel.JCardProp{{Name: "x-existing"}}
-	got := projectCustomFields(db, "any-uid", existing, false)
+	got := projectCustomFields(db, 0, "any-uid", existing, false)
 	assert.Equal(t, existing, got)
 }
 

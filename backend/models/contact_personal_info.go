@@ -77,6 +77,15 @@ func (c *Contact) ensurePersonalInfoIDs() {
 	c.CRM = envelope
 }
 
+// FilterSensitivePersonalInfo is the exported form of
+// filterSensitivePersonalInfo, for callers that build the owner-facing Record
+// (which deliberately keeps every entry so a full-overwrite edit cannot drop
+// one) but still need this outward-copy guarantee. Currently the MCP
+// get_contact tool with include_sensitive=false (issue #2053).
+func FilterSensitivePersonalInfo(entries []contactmodel.PersonalInfo, meta map[string]contactmodel.PersonalInfoMeta) ([]contactmodel.PersonalInfo, map[string]contactmodel.PersonalInfoMeta) {
+	return filterSensitivePersonalInfo(entries, meta)
+}
+
 // filterSensitivePersonalInfo drops Card.PersonalInfo entries whose CRM
 // metadata marks them above normal sensitivity, and prunes the returned
 // metadata to the entries that remain. It is the personalInfo half of the
