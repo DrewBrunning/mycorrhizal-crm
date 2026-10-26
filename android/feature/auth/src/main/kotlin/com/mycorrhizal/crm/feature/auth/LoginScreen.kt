@@ -27,6 +27,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -75,6 +76,7 @@ fun LoginScreen(
     viewModel: LoginViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val currentOnLoggedIn = rememberUpdatedState(onLoggedIn)
     val autofillManager = LocalAutofillManager.current
     // Issue #1293: the provider UI launches from this Activity context (never retained).
     val context = LocalContext.current
@@ -96,7 +98,7 @@ fun LoginScreen(
                     // never after the password step alone (the server would
                     // have rejected a stale save anyway).
                     autofillManager?.commit()
-                    onLoggedIn()
+                    currentOnLoggedIn.value()
                 }
 
                 LoginEvent.ServerUrlUpdated -> Unit
@@ -136,6 +138,7 @@ fun LoginScreenContent(
     onServerUrlChange: (String) -> Unit,
     onModeChange: (LoginMode) -> Unit,
     onSubmit: (serverUrl: String, identifier: String, password: String, apiToken: String) -> Unit,
+    modifier: Modifier = Modifier,
     onTwoFactorSubmit: (String) -> Unit = {},
     onUsePasskey: () -> Unit = {},
     onBackToCredentials: () -> Unit = {},
@@ -149,6 +152,8 @@ fun LoginScreenContent(
     onOidcErrorShown: () -> Unit = {}
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
+    val currentOnErrorShown = rememberUpdatedState(onErrorShown)
+    val currentOnOidcErrorShown = rememberUpdatedState(onOidcErrorShown)
 
     var serverUrl by rememberSaveable { mutableStateOf(uiState.serverUrl) }
     // Issue #723: the ViewModel hydrates serverUrl from the persisted session
@@ -173,6 +178,7 @@ fun LoginScreenContent(
     }
 
     Scaffold(
+        modifier = modifier,
         // #203: Toast is announced inconsistently by TalkBack and can't be
         // re-read — an assertive live region on the SnackbarHost makes sure
         // both this screen's own errors and the injected oidcError below are
@@ -348,7 +354,7 @@ fun LoginScreenContent(
             errorMessage?.let { message ->
                 LaunchedEffect(message) {
                     snackbarHostState.showSnackbar(message)
-                    onErrorShown()
+                    currentOnErrorShown.value()
                 }
             }
 
@@ -357,7 +363,7 @@ fun LoginScreenContent(
             oidcError?.let { message ->
                 LaunchedEffect(message) {
                     snackbarHostState.showSnackbar(message)
-                    onOidcErrorShown()
+                    currentOnOidcErrorShown.value()
                 }
             }
         }
@@ -381,86 +387,88 @@ private fun TwoFactorLoginStep(
     passkeyIssue: PasskeyIssue? = null,
     onUsePasskey: () -> Unit = {}
 ) {
-    Text(
-        text = stringResource(R.string.login_two_factor_title),
-        style = MaterialTheme.typography.titleMedium,
-        modifier = Modifier.semantics { heading() }
-    )
-    // Issue #1293 (ADR 0034 Decision 4): a passkey-only account on a build/server
-    // that cannot run the ceremony is steered to a recovery code; the same code
-    // field stays (it accepts a recovery code), so the path is always reachable.
-    val recoveryOnly = prompt == SecondFactorPrompt.RECOVERY_CODE_ONLY ||
-        prompt == SecondFactorPrompt.PASSKEY_OR_RECOVERY_CODE
-    val descriptionRes = when (prompt) {
-        SecondFactorPrompt.RECOVERY_CODE_ONLY -> when (passkeyIssue) {
-            PasskeyIssue.NOT_ASSOCIATED -> R.string.login_two_factor_passkey_not_associated_only_description
-            PasskeyIssue.NO_PROVIDER -> R.string.login_two_factor_passkey_no_provider_only_description
-            null -> R.string.login_two_factor_passkey_only_description
-        }
-
-        SecondFactorPrompt.PASSKEY_OR_RECOVERY_CODE -> R.string.login_two_factor_passkey_or_recovery_description
-
-        else -> R.string.login_two_factor_description
-    }
-    Text(
-        text = stringResource(descriptionRes),
-        style = MaterialTheme.typography.bodyLarge
-    )
-    if (prompt == SecondFactorPrompt.CODE_WITH_PASSKEY_NOTE) {
+    Column {
         Text(
-            text = stringResource(
-                when (passkeyIssue) {
-                    PasskeyIssue.NOT_ASSOCIATED -> R.string.login_two_factor_passkey_not_associated_note
-                    PasskeyIssue.NO_PROVIDER -> R.string.login_two_factor_passkey_no_provider_note
-                    null -> R.string.login_two_factor_passkey_unavailable_note
-                }
-            ),
-            style = MaterialTheme.typography.bodyMedium
+            text = stringResource(R.string.login_two_factor_title),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.semantics { heading() }
         )
-    }
-    // Issue #1293: the passkey action sits ABOVE the code field but never replaces it.
-    if (prompt.offersPasskey) {
-        Button(
-            onClick = onUsePasskey,
-            enabled = !isLoading,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(stringResource(R.string.login_two_factor_use_passkey))
+        // Issue #1293 (ADR 0034 Decision 4): a passkey-only account on a build/server
+        // that cannot run the ceremony is steered to a recovery code; the same code
+        // field stays (it accepts a recovery code), so the path is always reachable.
+        val recoveryOnly = prompt == SecondFactorPrompt.RECOVERY_CODE_ONLY ||
+            prompt == SecondFactorPrompt.PASSKEY_OR_RECOVERY_CODE
+        val descriptionRes = when (prompt) {
+            SecondFactorPrompt.RECOVERY_CODE_ONLY -> when (passkeyIssue) {
+                PasskeyIssue.NOT_ASSOCIATED -> R.string.login_two_factor_passkey_not_associated_only_description
+                PasskeyIssue.NO_PROVIDER -> R.string.login_two_factor_passkey_no_provider_only_description
+                null -> R.string.login_two_factor_passkey_only_description
+            }
+
+            SecondFactorPrompt.PASSKEY_OR_RECOVERY_CODE -> R.string.login_two_factor_passkey_or_recovery_description
+
+            else -> R.string.login_two_factor_description
         }
-    }
-    OutlinedTextField(
-        value = code,
-        onValueChange = onCodeChange,
-        label = {
+        Text(
+            text = stringResource(descriptionRes),
+            style = MaterialTheme.typography.bodyLarge
+        )
+        if (prompt == SecondFactorPrompt.CODE_WITH_PASSKEY_NOTE) {
             Text(
-                stringResource(
-                    if (recoveryOnly) R.string.login_two_factor_recovery_code_label else R.string.login_two_factor_code_label
-                )
+                text = stringResource(
+                    when (passkeyIssue) {
+                        PasskeyIssue.NOT_ASSOCIATED -> R.string.login_two_factor_passkey_not_associated_note
+                        PasskeyIssue.NO_PROVIDER -> R.string.login_two_factor_passkey_no_provider_note
+                        null -> R.string.login_two_factor_passkey_unavailable_note
+                    }
+                ),
+                style = MaterialTheme.typography.bodyMedium
             )
-        },
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
-        modifier = Modifier.fillMaxWidth()
-    )
-    if (isLoading) {
-        val savingLabel = stringResource(R.string.a11y_state_saving)
-        CircularProgressIndicator(
-            modifier = Modifier.semantics { contentDescription = savingLabel }
-        )
-    } else {
-        Button(
-            onClick = onTwoFactorSubmit,
-            enabled = code.isNotBlank(),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(stringResource(R.string.login_sign_in))
         }
-        TextButton(
-            onClick = onBackToCredentials,
-            enabled = !isLoading,
+        // Issue #1293: the passkey action sits ABOVE the code field but never replaces it.
+        if (prompt.offersPasskey) {
+            Button(
+                onClick = onUsePasskey,
+                enabled = !isLoading,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(stringResource(R.string.login_two_factor_use_passkey))
+            }
+        }
+        OutlinedTextField(
+            value = code,
+            onValueChange = onCodeChange,
+            label = {
+                Text(
+                    stringResource(
+                        if (recoveryOnly) R.string.login_two_factor_recovery_code_label else R.string.login_two_factor_code_label
+                    )
+                )
+            },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
             modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(stringResource(R.string.login_two_factor_back))
+        )
+        if (isLoading) {
+            val savingLabel = stringResource(R.string.a11y_state_saving)
+            CircularProgressIndicator(
+                modifier = Modifier.semantics { contentDescription = savingLabel }
+            )
+        } else {
+            Button(
+                onClick = onTwoFactorSubmit,
+                enabled = code.isNotBlank(),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(stringResource(R.string.login_sign_in))
+            }
+            TextButton(
+                onClick = onBackToCredentials,
+                enabled = !isLoading,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(stringResource(R.string.login_two_factor_back))
+            }
         }
     }
 }

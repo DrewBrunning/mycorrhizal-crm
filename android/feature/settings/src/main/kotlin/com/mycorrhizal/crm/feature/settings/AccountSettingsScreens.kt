@@ -12,6 +12,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -135,6 +136,7 @@ fun ChangePasswordScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val events by viewModel.events.collectAsStateWithLifecycle()
+    val currentOnLoggedOut = rememberUpdatedState(onLoggedOut)
 
     LaunchedEffect(events) {
         when (events) {
@@ -142,7 +144,7 @@ fun ChangePasswordScreen(
             // screen takes over (see onLoggedOut).
             SettingsEvent.PasswordChanged -> {
                 viewModel.onEventShown()
-                onLoggedOut()
+                currentOnLoggedOut.value()
             }
 
             else -> Unit

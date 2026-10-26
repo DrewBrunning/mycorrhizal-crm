@@ -10,6 +10,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -35,10 +36,11 @@ fun BiometricEnrollmentPromptHost(
     viewModel: BiometricEnrollmentViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val currentOnDone = rememberUpdatedState(onDone)
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
-            if (event == BiometricEnrollmentEvent.Done) onDone()
+            if (event == BiometricEnrollmentEvent.Done) currentOnDone.value()
         }
     }
 

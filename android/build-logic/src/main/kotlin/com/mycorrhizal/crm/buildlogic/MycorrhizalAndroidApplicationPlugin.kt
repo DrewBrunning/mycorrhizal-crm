@@ -15,6 +15,9 @@ class MycorrhizalAndroidApplicationPlugin : Plugin<Project> {
     override fun apply(target: Project) {
         target.pluginManager.apply("com.android.application")
         target.pluginManager.apply("org.jetbrains.kotlin.plugin.compose")
+        // Issue #1908: per-module dependency advice; the root's aggregate
+        // `buildHealth` task depends on every module's advice.
+        target.pluginManager.apply("com.autonomousapps.dependency-analysis")
 
         // Release CI (docker-publish.yml's build-android-apk job) stamps the real
         // release version via -PMYCORRHIZAL_VERSION_NAME/-PMYCORRHIZAL_VERSION_CODE,

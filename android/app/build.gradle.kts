@@ -438,7 +438,14 @@ if (embeddedServerRequired) {
 }
 
 tasks.named("preBuild").configure { dependsOn(copyThirdPartyAttribution) }
-tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.configureEach {
+// Issue #1908: AGP 9's `explodeAssetSource<Flavor><BuildType>` tasks consume the
+// same generated assets directory as the merge*Assets tasks, so the
+// attribution copy must run before them too (buildHealth surfaced the implicit
+// dependency).
+tasks.matching {
+    (it.name.startsWith("merge") && it.name.endsWith("Assets")) ||
+        it.name.startsWith("explodeAssetSource")
+}.configureEach {
     dependsOn(copyThirdPartyAttribution)
 }
 

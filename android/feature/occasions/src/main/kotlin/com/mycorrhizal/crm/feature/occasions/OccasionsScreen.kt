@@ -79,9 +79,9 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OccasionsScreen(
+    onOpenAttendees: (String) -> Unit,
     // Issue #1758: a top-level drawer destination; null hides the hamburger (no drawer at Expanded).
     onMenuClick: (() -> Unit)? = {},
-    onOpenAttendees: (String) -> Unit,
     viewModel: OccasionsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()

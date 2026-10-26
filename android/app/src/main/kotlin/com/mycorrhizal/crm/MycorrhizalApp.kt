@@ -59,9 +59,11 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -275,6 +277,7 @@ private fun androidx.compose.ui.graphics.Color.toArgbCompat(): Int = android.gra
 @Composable
 fun MycorrhizalApp(
     darkTheme: Boolean,
+    modifier: Modifier = Modifier,
     mainViewModel: MainViewModel = hiltViewModel(),
     deepLinks: kotlinx.coroutines.flow.Flow<PendingDeepLink?> = kotlinx.coroutines.flow.flowOf(
         null
@@ -366,132 +369,134 @@ fun MycorrhizalApp(
     // local-auth flow. While the app-lock controller is still deciding
     // (GateResolving) nothing is rendered — never a frame of the session's
     // data in front of the gate it may be about to require.
-    when (rootSurface(session.isLoggedIn, compatibilityGate, appLockState)) {
-        RootSurface.Auth -> {
-            // M26: the unauthenticated tree is a tiny router over the auth
-            // screens — login, register, forgot-password — since they are not
-            // part of the main NavHost. The system back button returns to the
-            // login screen from the register/forgot screens instead of exiting
-            // the app (review-pass fix).
-            var authScreen by rememberSaveable { mutableStateOf(AuthScreen.LOGIN) }
-            val oidcErrorState by oidcError.collectAsStateWithLifecycle(initialValue = null)
-            BackHandler(enabled = authScreen != AuthScreen.LOGIN) {
-                authScreen = AuthScreen.LOGIN
-            }
-            when (authScreen) {
-                AuthScreen.LOGIN -> LoginScreen(
-                    onLoggedIn = {
-                        // session flow flips isLoggedIn, recomposition swaps
-                        // the tree; issue #722 then offers biometric sign-in.
-                        showEnrollmentPrompt = true
-                    },
-                    // Issue #965: the Activity builds the binding (state +
-                    // S256 PKCE challenge) and launches the browser; the
-                    // callback's code is redeemable only with the on-device
-                    // verifier.
-                    onSignInWithSso = onStartOidc,
-                    onRegisterClick = { authScreen = AuthScreen.REGISTER },
-                    onForgotPasswordClick = { authScreen = AuthScreen.FORGOT_PASSWORD },
-                    // ADR 0028 Decision 2: off until the embedded host (#1262).
-                    localModeEnabled = localModeAvailable(),
-                    onUseLocalOnly = mainViewModel::useLocalOnly,
-                    oidcError = oidcErrorState,
-                    onOidcErrorShown = onOidcErrorShown
-                )
-
-                AuthScreen.REGISTER -> RegisterScreen(
-                    onRegistered = {
-                        // auto-login flips isLoggedIn; offer biometric sign-in.
-                        showEnrollmentPrompt = true
-                    },
-                    onBack = { authScreen = AuthScreen.LOGIN }
-                )
-
-                AuthScreen.FORGOT_PASSWORD -> ForgotPasswordScreen(
-                    onBack = { authScreen = AuthScreen.LOGIN }
-                )
-            }
-        }
-
-        RootSurface.GateResolving -> {
-            // Authenticated but the app-lock controller has not yet decided
-            // whether the local check is due (its flows hydrate asynchronously
-            // at startup). Compose nothing for the few milliseconds this takes.
-        }
-
-        RootSurface.AppLock -> {
-            AppLockScreen()
-        }
-
-        // Issue #528/#692: the server declared this client version unsupported,
-        // or (ServerTooOld) reports an older-than-baseline version. Both are
-        // deliberately above the app-lock gate in the root ordering and above
-        // the logged-out auth tree — they render no session data, so there is
-        // nothing for the device's local gate to protect on them, and the auth
-        // screen is not worth showing against a server that will refuse this
-        // build or that this app cannot work with.
-        RootSurface.ForceUpdate -> {
-            val gate = compatibilityGate as? CompatibilityGate.ForceUpdate
-            val loggedIn = session.isLoggedIn
-            ForceUpdateScreen(
-                requiredVersion = gate?.requiredVersion.orEmpty(),
-                currentVersion = BuildConfig.VERSION_NAME,
-                serverUrl = session.serverUrl,
-                loggedIn = loggedIn,
-                onLogout = mainViewModel::logout,
-                onBackToLogin = if (loggedIn) null else mainViewModel::dismissPreLoginGate
-            )
-        }
-
-        RootSurface.ServerTooOld -> {
-            val loggedIn = session.isLoggedIn
-            ServerTooOldScreen(
-                // The gate only resolves when a server version was parsed, so
-                // serverVersion is non-null here; the fallback keeps the
-                // composable total for tests.
-                serverVersion = serverVersion?.toString().orEmpty(),
-                requiredVersion = ServerCapabilities.MIN_SUPPORTED_SERVER_VERSION.toString(),
-                serverUrl = session.serverUrl,
-                loggedIn = loggedIn,
-                onLogout = mainViewModel::logout,
-                onBackToLogin = if (loggedIn) null else mainViewModel::dismissPreLoginGate
-            )
-        }
-
-        RootSurface.Main -> {
-            Box(Modifier.fillMaxSize()) {
-                MainScaffold(
-                    darkTheme = darkTheme,
-                    drawerState = drawerState,
-                    serverUrl = session.serverUrl.orEmpty(),
-                    dateFormat = session.dateFormat ?: DateFormat.EU,
-                    username = session.username,
-                    serverVersion = serverVersion,
-                    serverCapabilities = serverCapabilities,
-                    deepLinks = deepLinks,
-                    onDeepLinkHandled = onDeepLinkHandled,
-                    shares = shares,
-                    onShareHandled = onShareHandled
-                )
-                val outdatedVersion = serverOutdatedNoticeVersion
-                if (outdatedVersion != null) {
-                    // Floats above the bottom of the screen rather than
-                    // docking at the top: docked there, it rendered behind
-                    // the status bar icons and its dismiss button was
-                    // unreachable, since the system status/nav bars are
-                    // always the topmost z-layer. windowInsetsPadding keeps
-                    // the extra 48dp clear of any system navigation bar
-                    // (gesture pill or 3-button); overlapping app content
-                    // below that is fine since the notice is dismissible.
-                    ServerOutdatedNotice(
-                        serverVersion = outdatedVersion,
-                        currentVersion = BuildConfig.VERSION_NAME,
-                        onDismiss = mainViewModel::onServerOutdatedNoticeDismissed,
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .windowInsetsPadding(WindowInsets.navigationBars)
-                            .padding(start = 16.dp, end = 16.dp, bottom = 48.dp)
+    Box(modifier = modifier.fillMaxSize()) {
+        when (rootSurface(session.isLoggedIn, compatibilityGate, appLockState)) {
+            RootSurface.Auth -> {
+                // M26: the unauthenticated tree is a tiny router over the auth
+                // screens — login, register, forgot-password — since they are not
+                // part of the main NavHost. The system back button returns to the
+                // login screen from the register/forgot screens instead of exiting
+                // the app (review-pass fix).
+                var authScreen by rememberSaveable { mutableStateOf(AuthScreen.LOGIN) }
+                val oidcErrorState by oidcError.collectAsStateWithLifecycle(initialValue = null)
+                BackHandler(enabled = authScreen != AuthScreen.LOGIN) {
+                    authScreen = AuthScreen.LOGIN
+                }
+                when (authScreen) {
+                    AuthScreen.LOGIN -> LoginScreen(
+                        onLoggedIn = {
+                            // session flow flips isLoggedIn, recomposition swaps
+                            // the tree; issue #722 then offers biometric sign-in.
+                            showEnrollmentPrompt = true
+                        },
+                        // Issue #965: the Activity builds the binding (state +
+                        // S256 PKCE challenge) and launches the browser; the
+                        // callback's code is redeemable only with the on-device
+                        // verifier.
+                        onSignInWithSso = onStartOidc,
+                        onRegisterClick = { authScreen = AuthScreen.REGISTER },
+                        onForgotPasswordClick = { authScreen = AuthScreen.FORGOT_PASSWORD },
+                        // ADR 0028 Decision 2: off until the embedded host (#1262).
+                        localModeEnabled = localModeAvailable(),
+                        onUseLocalOnly = mainViewModel::useLocalOnly,
+                        oidcError = oidcErrorState,
+                        onOidcErrorShown = onOidcErrorShown
                     )
+
+                    AuthScreen.REGISTER -> RegisterScreen(
+                        onRegistered = {
+                            // auto-login flips isLoggedIn; offer biometric sign-in.
+                            showEnrollmentPrompt = true
+                        },
+                        onBack = { authScreen = AuthScreen.LOGIN }
+                    )
+
+                    AuthScreen.FORGOT_PASSWORD -> ForgotPasswordScreen(
+                        onBack = { authScreen = AuthScreen.LOGIN }
+                    )
+                }
+            }
+
+            RootSurface.GateResolving -> {
+                // Authenticated but the app-lock controller has not yet decided
+                // whether the local check is due (its flows hydrate asynchronously
+                // at startup). Compose nothing for the few milliseconds this takes.
+            }
+
+            RootSurface.AppLock -> {
+                AppLockScreen()
+            }
+
+            // Issue #528/#692: the server declared this client version unsupported,
+            // or (ServerTooOld) reports an older-than-baseline version. Both are
+            // deliberately above the app-lock gate in the root ordering and above
+            // the logged-out auth tree — they render no session data, so there is
+            // nothing for the device's local gate to protect on them, and the auth
+            // screen is not worth showing against a server that will refuse this
+            // build or that this app cannot work with.
+            RootSurface.ForceUpdate -> {
+                val gate = compatibilityGate as? CompatibilityGate.ForceUpdate
+                val loggedIn = session.isLoggedIn
+                ForceUpdateScreen(
+                    requiredVersion = gate?.requiredVersion.orEmpty(),
+                    currentVersion = BuildConfig.VERSION_NAME,
+                    serverUrl = session.serverUrl,
+                    loggedIn = loggedIn,
+                    onLogout = mainViewModel::logout,
+                    onBackToLogin = if (loggedIn) null else mainViewModel::dismissPreLoginGate
+                )
+            }
+
+            RootSurface.ServerTooOld -> {
+                val loggedIn = session.isLoggedIn
+                ServerTooOldScreen(
+                    // The gate only resolves when a server version was parsed, so
+                    // serverVersion is non-null here; the fallback keeps the
+                    // composable total for tests.
+                    serverVersion = serverVersion?.toString().orEmpty(),
+                    requiredVersion = ServerCapabilities.MIN_SUPPORTED_SERVER_VERSION.toString(),
+                    serverUrl = session.serverUrl,
+                    loggedIn = loggedIn,
+                    onLogout = mainViewModel::logout,
+                    onBackToLogin = if (loggedIn) null else mainViewModel::dismissPreLoginGate
+                )
+            }
+
+            RootSurface.Main -> {
+                Box(Modifier.fillMaxSize()) {
+                    MainScaffold(
+                        darkTheme = darkTheme,
+                        drawerState = drawerState,
+                        serverUrl = session.serverUrl.orEmpty(),
+                        dateFormat = session.dateFormat ?: DateFormat.EU,
+                        username = session.username,
+                        serverVersion = serverVersion,
+                        serverCapabilities = serverCapabilities,
+                        deepLinks = deepLinks,
+                        onDeepLinkHandled = onDeepLinkHandled,
+                        shares = shares,
+                        onShareHandled = onShareHandled
+                    )
+                    val outdatedVersion = serverOutdatedNoticeVersion
+                    if (outdatedVersion != null) {
+                        // Floats above the bottom of the screen rather than
+                        // docking at the top: docked there, it rendered behind
+                        // the status bar icons and its dismiss button was
+                        // unreachable, since the system status/nav bars are
+                        // always the topmost z-layer. windowInsetsPadding keeps
+                        // the extra 48dp clear of any system navigation bar
+                        // (gesture pill or 3-button); overlapping app content
+                        // below that is fine since the notice is dismissible.
+                        ServerOutdatedNotice(
+                            serverVersion = outdatedVersion,
+                            currentVersion = BuildConfig.VERSION_NAME,
+                            onDismiss = mainViewModel::onServerOutdatedNoticeDismissed,
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .windowInsetsPadding(WindowInsets.navigationBars)
+                                .padding(start = 16.dp, end = 16.dp, bottom = 48.dp)
+                        )
+                    }
                 }
             }
         }
@@ -559,6 +564,8 @@ private fun MainScaffold(
     onShareHandled: () -> Unit = {}
 ) {
     val navController = rememberNavController()
+    val currentOnDeepLinkHandled = rememberUpdatedState(onDeepLinkHandled)
+    val currentOnShareHandled = rememberUpdatedState(onShareHandled)
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
     val currentRoute = currentDestination?.route
@@ -588,7 +595,7 @@ private fun MainScaffold(
                     navController.navigateToRoot(route)
                 }
             }
-            onDeepLinkHandled()
+            currentOnDeepLinkHandled.value()
         }
     }
 
@@ -603,7 +610,7 @@ private fun MainScaffold(
             if (!share.isExpired(System.currentTimeMillis())) {
                 navController.navigate(sharePickerRoute(shareIntake.stash(share.text)))
             }
-            onShareHandled()
+            currentOnShareHandled.value()
         }
     }
 
@@ -803,6 +810,12 @@ internal fun MainNavScaffold(
     val permanent = usesPermanentNavigation(windowSizeClass)
     val scope = rememberCoroutineScope()
     val touchExplorationEnabled = rememberTouchExplorationEnabled()
+    // The same content slot is composed under the rail or directly under the
+    // drawer depending on the width class. movableContentOf keeps its internal
+    // state when that frame switches; rememberUpdatedState keeps the latest
+    // caller lambda without re-creating the movable content.
+    val currentContent = rememberUpdatedState(content)
+    val movableContent = remember { movableContentOf { currentContent.value() } }
     // The drawer stays mounted at permanent widths too: the rail's "More" item is
     // the way to reach the destinations the primary rail set leaves out.
     ModalNavigationDrawer(
@@ -832,10 +845,10 @@ internal fun MainNavScaffold(
                     insets = railInsets
                 )
                 VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                Box(Modifier.weight(1f).fillMaxHeight()) { content() }
+                Box(Modifier.weight(1f).fillMaxHeight()) { movableContent() }
             }
         } else {
-            content()
+            movableContent()
         }
     }
 }
@@ -1149,12 +1162,19 @@ internal fun AdaptiveMainContent(
     isTwoPane: Boolean,
     currentRoute: String?,
     constrainWidth: Boolean = false,
-    content: @Composable () -> Unit,
-    listPane: @Composable () -> Unit = {}
+    listPane: @Composable () -> Unit = {},
+    content: @Composable () -> Unit
 ) {
+    // Both slots move between mutually-exclusive frames (two-pane, capped
+    // single pane, bare single pane); movable content preserves their state
+    // across that switch.
+    val currentContent = rememberUpdatedState(content)
+    val currentListPane = rememberUpdatedState(listPane)
+    val movableContent = remember { movableContentOf { currentContent.value() } }
+    val movableListPane = remember { movableContentOf { currentListPane.value() } }
     when {
         isTwoPane && isInContactsSection(currentRoute) ->
-            ContactTwoPane(listPane = listPane, detailPane = content)
+            ContactTwoPane(listPane = movableListPane, detailPane = movableContent)
 
         constrainWidth -> Box(
             modifier = Modifier.fillMaxSize().testTag("content-width-frame"),
@@ -1167,11 +1187,11 @@ internal fun AdaptiveMainContent(
                     .fillMaxHeight()
                     .testTag("content-width-capped")
             ) {
-                content()
+                movableContent()
             }
         }
 
-        else -> content()
+        else -> movableContent()
     }
 }
 

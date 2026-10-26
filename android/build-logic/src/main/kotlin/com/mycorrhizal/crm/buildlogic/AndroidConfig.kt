@@ -142,6 +142,12 @@ internal fun Project.configureDetekt() {
     // (no standalone ktlint/Spotless analyzer). Version tracked with `detekt`.
     dependencies {
         "detektPlugins"(libs("detekt-rules-ktlint-wrapper"))
+        // Issue #1908: Compose correctness rules (modifier placement/root,
+        // remember-less state, unstable params, ViewModel forwarding, ...),
+        // which neither detekt's defaults nor Android Lint understand. The
+        // 0.6.3+ artifact is built against detekt 2.0.0-alpha.6 (the pinned
+        // version), so it shares this task/config/report and adds no CI step.
+        "detektPlugins"(libs("compose-rules-detekt"))
     }
     // detekt's embedded Kotlin compiler derives its JVM target from the build
     // JVM, which on JDK 25 would default to target 25. The Android modules

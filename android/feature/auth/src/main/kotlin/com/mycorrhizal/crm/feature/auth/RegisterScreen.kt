@@ -22,6 +22,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -50,11 +51,12 @@ fun RegisterScreen(
     viewModel: RegisterViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val currentOnRegistered = rememberUpdatedState(onRegistered)
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
-                RegisterEvent.Registered -> onRegistered()
+                RegisterEvent.Registered -> currentOnRegistered.value()
             }
         }
     }
@@ -76,9 +78,11 @@ fun RegisterScreenContent(
     onPasswordChange: (String) -> Unit,
     onSubmit: (username: String, email: String, password: String) -> Unit,
     onBack: () -> Unit,
-    onErrorShown: () -> Unit
+    onErrorShown: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
+    val currentOnErrorShown = rememberUpdatedState(onErrorShown)
 
     var username by rememberSaveable { mutableStateOf("") }
     var email by rememberSaveable { mutableStateOf("") }
@@ -86,7 +90,7 @@ fun RegisterScreenContent(
     // process death), matching LoginScreenContent.
     var password by remember { mutableStateOf("") }
 
-    Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { padding ->
+    Scaffold(modifier = modifier, snackbarHost = { SnackbarHost(snackbarHostState) }) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -194,7 +198,7 @@ fun RegisterScreenContent(
             errorMessage?.let { message ->
                 LaunchedEffect(message) {
                     snackbarHostState.showSnackbar(message)
-                    onErrorShown()
+                    currentOnErrorShown.value()
                 }
             }
         }

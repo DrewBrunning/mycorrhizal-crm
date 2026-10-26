@@ -460,71 +460,73 @@ internal fun SyncHealthSection(
     terminalReason: String,
     includeArchived: Boolean
 ) {
-    if (terminalFailureAt != null) {
-        Text(
-            text = stringResource(R.string.settings_sync_health_terminal_title),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.error,
-            fontWeight = FontWeight.Bold
-        )
-        Text(
-            text = terminalReasonText(terminalReason),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.error
-        )
-        Text(
-            text = staleLine(lastSuccessAt),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.error
-        )
-        return
-    }
-    if (consecutiveFailures > 0) {
-        val since = incidentFirstFailureAt?.let { formatSyncTime(it) }
-            ?: stringResource(R.string.settings_calendar_sync_never_synced)
-        val lastGood = lastSuccessAt?.let {
-            stringResource(
-                R.string.settings_sync_health_last_success,
-                formatSyncTime(it)
+    Column {
+        if (terminalFailureAt != null) {
+            Text(
+                text = stringResource(R.string.settings_sync_health_terminal_title),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = terminalReasonText(terminalReason),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error
+            )
+            Text(
+                text = staleLine(lastSuccessAt),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error
+            )
+            return
+        }
+        if (consecutiveFailures > 0) {
+            val since = incidentFirstFailureAt?.let { formatSyncTime(it) }
+                ?: stringResource(R.string.settings_calendar_sync_never_synced)
+            val lastGood = lastSuccessAt?.let {
+                stringResource(
+                    R.string.settings_sync_health_last_success,
+                    formatSyncTime(it)
+                )
+            }
+                ?: stringResource(R.string.settings_sync_health_never_succeeded)
+            Text(
+                text = pluralStringResource(
+                    R.plurals.settings_sync_health_failing,
+                    consecutiveFailures,
+                    since,
+                    consecutiveFailures
+                ) + " · " + lastGood,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error
+            )
+            return
+        }
+        if (lastSyncStatus == "success" && lastRunStats.isNotEmpty()) {
+            val text = if (includeArchived) {
+                pluralStringResource(
+                    R.plurals.settings_sync_health_last_run_contacts,
+                    lastRunStats["created"] ?: 0,
+                    lastRunStats["created"] ?: 0,
+                    lastRunStats["updated"] ?: 0,
+                    lastRunStats["archived"] ?: 0,
+                    lastRunStats["skipped"] ?: 0
+                )
+            } else {
+                pluralStringResource(
+                    R.plurals.settings_sync_health_last_run,
+                    lastRunStats["created"] ?: 0,
+                    lastRunStats["created"] ?: 0,
+                    lastRunStats["updated"] ?: 0,
+                    lastRunStats["skipped"] ?: 0
+                )
+            }
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-            ?: stringResource(R.string.settings_sync_health_never_succeeded)
-        Text(
-            text = pluralStringResource(
-                R.plurals.settings_sync_health_failing,
-                consecutiveFailures,
-                since,
-                consecutiveFailures
-            ) + " · " + lastGood,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.error
-        )
-        return
-    }
-    if (lastSyncStatus == "success" && lastRunStats.isNotEmpty()) {
-        val text = if (includeArchived) {
-            pluralStringResource(
-                R.plurals.settings_sync_health_last_run_contacts,
-                lastRunStats["created"] ?: 0,
-                lastRunStats["created"] ?: 0,
-                lastRunStats["updated"] ?: 0,
-                lastRunStats["archived"] ?: 0,
-                lastRunStats["skipped"] ?: 0
-            )
-        } else {
-            pluralStringResource(
-                R.plurals.settings_sync_health_last_run,
-                lastRunStats["created"] ?: 0,
-                lastRunStats["created"] ?: 0,
-                lastRunStats["updated"] ?: 0,
-                lastRunStats["skipped"] ?: 0
-            )
-        }
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 

@@ -85,11 +85,13 @@ fun PrepViewScreen(
     onBack: () -> Unit,
     /** Opens the given contact's detail record (relationship rows). */
     onOpenContact: (Int) -> Unit,
+    modifier: Modifier = Modifier,
     viewModel: PrepViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     Scaffold(
+        modifier = modifier,
         topBar = {
             TopAppBar(
                 navigationIcon = {
@@ -375,109 +377,115 @@ private fun CadenceBlock(
     health: com.mycorrhizal.crm.model.network.BriefingCadenceHealth,
     dateFormat: String
 ) {
-    if (health.ambient) {
-        // Issue #1734: ambient contacts are never overdue; explain why instead of a date readout.
-        AmbientExplanation(
-            reason = health.ambientReason,
-            modifier = Modifier.padding(vertical = 2.dp).testTag("prep-cadence-ambient")
-        )
-    } else if (health.hasQualifyingInteraction) {
-        if (health.isOverdue) {
-            Text(
-                text = pluralStringResource(
-                    R.plurals.prep_cadence_overdue,
-                    health.overdueBy,
-                    health.overdueBy
-                ),
-                style = MaterialTheme.typography.bodyLarge,
-                // #200: amber text on the cream page was 2.07:1 — illegible. The
-                // warning semantics ride the Icons.Outlined.Warning icon on the
-                // contact header; the words themselves use the page's own
-                // onSurface (web parity kept the amber as the *accent* only).
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(vertical = 2.dp)
+    Column {
+        if (health.ambient) {
+            // Issue #1734: ambient contacts are never overdue; explain why instead of a date readout.
+            AmbientExplanation(
+                reason = health.ambientReason,
+                modifier = Modifier.padding(vertical = 2.dp).testTag("prep-cadence-ambient")
             )
+        } else if (health.hasQualifyingInteraction) {
+            if (health.isOverdue) {
+                Text(
+                    text = pluralStringResource(
+                        R.plurals.prep_cadence_overdue,
+                        health.overdueBy,
+                        health.overdueBy
+                    ),
+                    style = MaterialTheme.typography.bodyLarge,
+                    // #200: amber text on the cream page was 2.07:1 — illegible. The
+                    // warning semantics ride the Icons.Outlined.Warning icon on the
+                    // contact header; the words themselves use the page's own
+                    // onSurface (web parity kept the amber as the *accent* only).
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(vertical = 2.dp)
+                )
+            } else {
+                Text(
+                    text = stringResource(R.string.prep_cadence_on_track),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.padding(vertical = 2.dp)
+                )
+            }
+            val nextDue = formatTimestamp(health.nextDue, dateFormat)
+            if (nextDue.isNotBlank()) {
+                Text(
+                    text = stringResource(R.string.prep_cadence_next_due, nextDue),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         } else {
             Text(
-                text = stringResource(R.string.prep_cadence_on_track),
+                text = stringResource(R.string.prep_cadence_no_interactions_yet),
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.tertiary,
-                modifier = Modifier.padding(vertical = 2.dp)
-            )
-        }
-        val nextDue = formatTimestamp(health.nextDue, dateFormat)
-        if (nextDue.isNotBlank()) {
-            Text(
-                text = stringResource(R.string.prep_cadence_next_due, nextDue),
-                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-    } else {
-        Text(
-            text = stringResource(R.string.prep_cadence_no_interactions_yet),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 
 @Composable
 private fun LastInteractionBlock(briefing: ContactBriefing, dateFormat: String) {
-    val lastActivity = briefing.lastActivity
-    if (lastActivity != null) {
-        val title = lastActivity.title.ifBlank { lastActivity.type.orEmpty() }
-        Text(
-            text = buildString {
-                append(title)
-                if (lastActivity.type?.isNotBlank() == true) append(" (${lastActivity.type})")
-            },
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Medium
-        )
-        val whenItHappened = formatTimestamp(lastActivity.date, dateFormat)
-        if (whenItHappened.isNotBlank()) {
+    Column {
+        val lastActivity = briefing.lastActivity
+        if (lastActivity != null) {
+            val title = lastActivity.title.ifBlank { lastActivity.type.orEmpty() }
             Text(
-                text = whenItHappened,
-                style = MaterialTheme.typography.bodyMedium,
+                text = buildString {
+                    append(title)
+                    if (lastActivity.type?.isNotBlank() == true) append(" (${lastActivity.type})")
+                },
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium
+            )
+            val whenItHappened = formatTimestamp(lastActivity.date, dateFormat)
+            if (whenItHappened.isNotBlank()) {
+                Text(
+                    text = whenItHappened,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            val description = lastActivity.description
+            if (description?.isNotBlank() == true) {
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+        } else {
+            Text(
+                text = stringResource(R.string.prep_last_interaction_none),
+                style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        val description = lastActivity.description
-        if (description?.isNotBlank() == true) {
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-        }
-    } else {
-        Text(
-            text = stringResource(R.string.prep_last_interaction_none),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
 
-    if (briefing.recentNotes.isNotEmpty()) {
-        androidx.compose.material3.HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Icon(
-                Icons.AutoMirrored.Outlined.Notes,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp)
+        if (briefing.recentNotes.isNotEmpty()) {
+            androidx.compose.material3.HorizontalDivider(
+                modifier = Modifier.padding(vertical = 8.dp)
             )
-            Text(
-                stringResource(R.string.prep_recent_notes_title),
-                style = MaterialTheme.typography.labelMedium
-            )
-        }
-        briefing.recentNotes.forEach { note ->
-            Bullet(note.content.orEmpty())
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Outlined.Notes,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    stringResource(R.string.prep_recent_notes_title),
+                    style = MaterialTheme.typography.labelMedium
+                )
+            }
+            briefing.recentNotes.forEach { note ->
+                Bullet(note.content.orEmpty())
+            }
         }
     }
 }

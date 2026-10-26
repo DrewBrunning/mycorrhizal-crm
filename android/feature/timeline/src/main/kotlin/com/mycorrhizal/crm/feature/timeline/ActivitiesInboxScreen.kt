@@ -33,6 +33,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,10 +65,10 @@ import com.mycorrhizal.crm.ui.components.activityTypeLabel
  */
 @Composable
 fun ActivitiesInboxScreen(
-    // Issue #150: null hides the hamburger — there is no drawer at Expanded.
-    onMenuClick: (() -> Unit)? = {},
     onActivityClick: (Int) -> Unit,
     onContactClick: (Int) -> Unit,
+    // Issue #150: null hides the hamburger — there is no drawer at Expanded.
+    onMenuClick: (() -> Unit)? = {},
     // Issue #160: "Log from location history" (GeoPulse). Null hides it — embedded/local profiles
     // omit the GeoPulse routes entirely.
     onLogFromLocation: (() -> Unit)? = null,
@@ -112,6 +113,7 @@ fun ActivitiesInboxScreenContent(
 ) {
     val state = uiState
     val snackbarHostState = remember { SnackbarHostState() }
+    val currentOnErrorShown = rememberUpdatedState(onErrorShown)
     var pendingDelete by remember { mutableStateOf<Activity?>(null) }
 
     Scaffold(
@@ -245,7 +247,7 @@ fun ActivitiesInboxScreenContent(
     if (listError != null && state.activities.isNotEmpty()) {
         LaunchedEffect(listError) {
             snackbarHostState.showSnackbar(listError)
-            onErrorShown()
+            currentOnErrorShown.value()
         }
     }
 }

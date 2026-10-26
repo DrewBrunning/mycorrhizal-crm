@@ -47,11 +47,16 @@ import com.mycorrhizal.crm.ui.components.RefreshableContent
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TriageScreen(onBack: () -> Unit, viewModel: TriageViewModel = hiltViewModel()) {
+fun TriageScreen(
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: TriageViewModel = hiltViewModel()
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     Scaffold(
+        modifier = modifier,
         topBar = {
             TopAppBar(
                 navigationIcon = {

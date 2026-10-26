@@ -9,6 +9,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -36,13 +37,14 @@ fun AppearanceSettingsScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val events by viewModel.events.collectAsStateWithLifecycle()
+    val currentOnLocaleChanged = rememberUpdatedState(onLocaleChanged)
 
     LaunchedEffect(events) {
         when (events) {
             // The activity recreates to re-resolve values-XX resources.
             SettingsEvent.LocaleChanged -> {
                 viewModel.onEventShown()
-                onLocaleChanged()
+                currentOnLocaleChanged.value()
             }
 
             else -> Unit

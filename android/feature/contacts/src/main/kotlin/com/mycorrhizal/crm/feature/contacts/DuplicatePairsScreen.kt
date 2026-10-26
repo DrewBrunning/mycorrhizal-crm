@@ -36,6 +36,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -87,6 +88,7 @@ fun DuplicatePairsScreen(
 @Composable
 fun DuplicatePairsScreenContent(
     uiState: DuplicatePairsUiState,
+    modifier: Modifier = Modifier,
     onBack: () -> Unit = {},
     onMerge: (keepId: Long, mergeId: Long, mergeName: String) -> Unit = { _, _, _ -> },
     onDismiss: (DuplicatePair) -> Unit = {},
@@ -94,6 +96,7 @@ fun DuplicatePairsScreenContent(
     onErrorShown: () -> Unit = {}
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
+    val currentOnErrorShown = rememberUpdatedState(onErrorShown)
     // Which pair a Merge is in progress for, and the chosen keeper UID (null
     // until the dialog's selection is pinned). Local screen chrome: the merge
     // itself happens on the separate Merge screen.
@@ -103,6 +106,7 @@ fun DuplicatePairsScreenContent(
     var pendingDismiss by remember { mutableStateOf<DuplicatePair?>(null) }
 
     Scaffold(
+        modifier = modifier,
         topBar = {
             TopAppBar(
                 navigationIcon = {
@@ -211,7 +215,7 @@ fun DuplicatePairsScreenContent(
     uiState.error?.let { message ->
         LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)
-            onErrorShown()
+            currentOnErrorShown.value()
         }
     }
 

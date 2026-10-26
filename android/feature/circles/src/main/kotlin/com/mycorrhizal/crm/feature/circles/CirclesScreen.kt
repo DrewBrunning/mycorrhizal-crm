@@ -54,9 +54,10 @@ import com.mycorrhizal.crm.ui.components.RowOverflowMenu
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CirclesScreen(
+    onOpenCircle: (String) -> Unit,
+    modifier: Modifier = Modifier,
     // Issue #150: null hides the hamburger — there is no drawer at Expanded.
     onMenuClick: (() -> Unit)? = {},
-    onOpenCircle: (String) -> Unit,
     viewModel: CirclesViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -64,6 +65,7 @@ fun CirclesScreen(
     var showCreateDialog by remember { mutableStateOf(false) }
 
     Scaffold(
+        modifier = modifier,
         topBar = {
             TopAppBar(
                 navigationIcon = {
@@ -294,8 +296,8 @@ fun CircleNameDialog(
 }
 
 @Composable
-fun CircleLoadingIndicator() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+fun CircleLoadingIndicator(modifier: Modifier = Modifier) {
+    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         CircularProgressIndicator()
     }
 }

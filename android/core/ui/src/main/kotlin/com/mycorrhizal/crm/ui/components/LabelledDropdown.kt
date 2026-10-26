@@ -41,6 +41,11 @@ import androidx.compose.ui.unit.dp
  * [valueText] is what the closed field shows (the selected option's label, or a
  * placeholder such as "None"). A disabled field shows the same text greyed out.
  */
+// The caller's modifier belongs on the interactive anchor Box (the root-most
+// layout that carries the test tag, drop-down role, description and focus),
+// not on ExposedDropdownMenuBox: moving it to the wrapper would split the tag
+// from the accessible node and break TalkBack/tests.
+@Suppress("Compose:ModifierNotUsedAtRoot")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun <T> LabelledDropdown(

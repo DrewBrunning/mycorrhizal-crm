@@ -33,6 +33,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -106,6 +107,7 @@ fun TimelineExplorerContent(
     onErrorShown: () -> Unit = {}
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
+    val currentOnErrorShown = rememberUpdatedState(onErrorShown)
     // Undoing a completion deletes its timeline entry — confirm first (M17), as the contact page does.
     var pendingUndoCompletionId by remember { mutableStateOf<Int?>(null) }
 
@@ -223,7 +225,7 @@ fun TimelineExplorerContent(
     if (listError != null && state.items.isNotEmpty()) {
         LaunchedEffect(listError) {
             snackbarHostState.showSnackbar(listError)
-            onErrorShown()
+            currentOnErrorShown.value()
         }
     }
 }

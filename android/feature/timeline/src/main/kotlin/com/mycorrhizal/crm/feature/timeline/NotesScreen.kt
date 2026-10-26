@@ -32,6 +32,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -108,6 +109,7 @@ fun NotesScreenContent(
 ) {
     val state = uiState
     val snackbarHostState = remember { SnackbarHostState() }
+    val currentOnErrorShown = rememberUpdatedState(onErrorShown)
     var pendingDelete by remember { mutableStateOf<Note?>(null) }
 
     val hasFilters =
@@ -272,7 +274,7 @@ fun NotesScreenContent(
     if (listError != null && state.notes.isNotEmpty()) {
         LaunchedEffect(listError) {
             snackbarHostState.showSnackbar(listError)
-            onErrorShown()
+            currentOnErrorShown.value()
         }
     }
 }

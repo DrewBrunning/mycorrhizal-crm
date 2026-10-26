@@ -22,6 +22,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -124,20 +125,21 @@ internal fun rememberSettingsGating(): SettingsGating {
  */
 @Composable
 fun SettingsScreen(
+    onLoggedOut: () -> Unit,
     // Issue #150: null hides the hamburger — there is no drawer at Expanded.
     onMenuClick: (() -> Unit)? = {},
-    onLoggedOut: () -> Unit,
     onNavigate: (String) -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val events by viewModel.events.collectAsStateWithLifecycle()
+    val currentOnLoggedOut = rememberUpdatedState(onLoggedOut)
 
     LaunchedEffect(events) {
         when (events) {
             SettingsEvent.LoggedOut -> {
                 viewModel.onEventShown()
-                onLoggedOut()
+                currentOnLoggedOut.value()
             }
 
             else -> Unit
