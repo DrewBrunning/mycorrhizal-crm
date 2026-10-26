@@ -15,17 +15,24 @@ command, model and CLI version, and a real profile's command must contain
 cd backend && go run ./cmd/agenteval -task database-migration -profile pinned
 ```
 
+The same profile pins trigger-selection runs:
+
+```bash
+cd backend && go run ./cmd/agenteval -mode select -profile pinned
+```
+
 Explicit `-agent-command`/`-agent-model`/`-agent-version` flags cannot be
 combined with `-profile`; a free-form run is not comparable with a baseline.
 `dry-run` profiles are for smoke tests only and are rejected when a baseline is
-involved.
+involved or when selection needs a command that writes a report.
 
 ## Baseline
 
 `baseline.json` records the last accepted run per profile and task: success,
-suite commands passed/failed, scope violations, generated-artifact hand-edits
-and a fingerprint of the agent, prompt, base ref and suite. A missing entry is
-"no baseline", never a regression by itself.
+suite commands passed/failed, scope violations, generated-artifact hand-edits,
+gate-integrity violations, refusal-task unexpected changes and a fingerprint of
+the agent, prompt, base ref and suite. A missing entry is "no baseline", never a
+regression by itself.
 
 Compare a run against it:
 
@@ -44,8 +51,9 @@ cd backend && go run ./cmd/agenteval -task database-migration -profile pinned \
 
 A non-passing run is refused unless `-force-baseline` is explicit. A comparison
 fails the command when the task stops passing, suite command failures rise,
-scope/hand-edit counts rise, or the configuration fingerprint changes (the
-baseline is no longer comparable; re-baseline after review). The artifact
+scope/hand-edit/integrity/unexpected-change counts rise, or the configuration
+fingerprint changes (the baseline is no longer comparable; re-baseline after
+review). The artifact
 records the exact regressions; wall-clock and changed-file counts are
 deliberately not compared.
 

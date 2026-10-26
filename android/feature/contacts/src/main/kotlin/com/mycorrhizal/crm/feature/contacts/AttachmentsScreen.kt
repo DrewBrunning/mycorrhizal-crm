@@ -44,6 +44,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -151,6 +152,7 @@ fun AttachmentsScreen(
 @Composable
 fun AttachmentsScreenContent(
     uiState: AttachmentUiState,
+    modifier: Modifier = Modifier,
     onBack: () -> Unit = {},
     onAddClick: () -> Unit = {},
     onDownload: (ContactAttachment) -> Unit = {},
@@ -162,8 +164,11 @@ fun AttachmentsScreenContent(
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     var pendingDelete by remember { mutableStateOf<ContactAttachment?>(null) }
+    val currentOnErrorShown = rememberUpdatedState(onErrorShown)
+    val currentOnDownloadHandled = rememberUpdatedState(onDownloadHandled)
 
     Scaffold(
+        modifier = modifier,
         topBar = {
             TopAppBar(
                 navigationIcon = {
@@ -284,7 +289,7 @@ fun AttachmentsScreenContent(
     LaunchedEffect(errorMessage) {
         if (errorMessage != null) {
             snackbarHostState.showSnackbar(errorMessage)
-            onErrorShown()
+            currentOnErrorShown.value()
         }
     }
 
@@ -294,7 +299,7 @@ fun AttachmentsScreenContent(
         val key = attachment.id
         LaunchedEffect(key) {
             openDownloadedAttachment(context, attachment, bytes)
-            onDownloadHandled()
+            currentOnDownloadHandled.value()
         }
     }
 

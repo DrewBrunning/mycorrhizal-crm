@@ -134,7 +134,12 @@ fun AttachToRemoteScreen(onBack: () -> Unit, viewModel: AttachToRemoteViewModel 
 
                 AttachStep.PrepareFailed -> PrepareFailedStep(onRetry = viewModel::retryPrepare)
 
-                AttachStep.Review -> ReviewStep(state = state, viewModel = viewModel)
+                AttachStep.Review -> ReviewStep(
+                    state = state,
+                    onRowActionChange = viewModel::setRowAction,
+                    onResolveAll = viewModel::resolveAll,
+                    onConfirm = viewModel::confirm
+                )
 
                 AttachStep.Done -> DoneStep(state = state, onDone = onBack)
             }
@@ -287,9 +292,9 @@ private fun ServerChoice(
 
 @Composable
 internal fun TwoFactorStep(
+    onSubmit: (String) -> Unit,
     prompt: SecondFactorPrompt = SecondFactorPrompt.STANDARD,
     passkeyIssue: PasskeyIssue? = null,
-    onSubmit: (String) -> Unit,
     onUsePasskey: () -> Unit = {}
 ) {
     var code by remember { mutableStateOf("") }
@@ -400,7 +405,12 @@ private fun PrepareFailedStep(onRetry: () -> Unit) {
 }
 
 @Composable
-private fun ReviewStep(state: AttachUiState, viewModel: AttachToRemoteViewModel) {
+private fun ReviewStep(
+    state: AttachUiState,
+    onRowActionChange: (Int, String) -> Unit,
+    onResolveAll: () -> Unit,
+    onConfirm: () -> Unit
+) {
     val attachPreview = state.preview ?: return
     val totals = attachPreview.totals
     Column(Modifier.fillMaxSize()) {
@@ -428,9 +438,9 @@ private fun ReviewStep(state: AttachUiState, viewModel: AttachToRemoteViewModel)
             ImportReviewStep(
                 rows = attachPreview.preview.rows,
                 rowActions = state.rowActions,
-                onRowActionChange = viewModel::setRowAction,
-                onResolveAll = viewModel::resolveAll,
-                onConfirm = viewModel::confirm
+                onRowActionChange = onRowActionChange,
+                onResolveAll = onResolveAll,
+                onConfirm = onConfirm
             )
         }
     }

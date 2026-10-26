@@ -208,6 +208,7 @@ private val HeaderFadeEndDp = 180.dp
 @Composable
 fun ContactDetailScreen(
     onBack: () -> Unit,
+    modifier: Modifier = Modifier,
     onEdit: (Int) -> Unit = {},
     onStayInTouch: (ContactRecordResponse) -> Unit = {},
     onDeleted: () -> Unit = {},
@@ -248,6 +249,7 @@ fun ContactDetailScreen(
     // mark/unmark-as-me menu item both key off whether this contact IS the
     // caller's self-contact pointer.
     val isMe = state.contact?.uid != null && state.contact?.uid == state.selfContactVCardUid
+    val currentOnDeleted = rememberUpdatedState(onDeleted)
 
     // Reload when returning from the edit form so the detail shows saved changes.
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -272,7 +274,7 @@ fun ContactDetailScreen(
         when (event) {
             is ContactDetailEvent.ContactDeleted -> {
                 viewModel.onEventShown()
-                onDeleted()
+                currentOnDeleted.value()
             }
 
             is ContactDetailEvent.ExportReady -> {
@@ -468,6 +470,7 @@ fun ContactDetailScreen(
     }
 
     Scaffold(
+        modifier = modifier,
         topBar = {
             // Transparent at the top (the large header shows through); green
             // with a small avatar + name once collapsed.
@@ -1196,6 +1199,7 @@ fun ContactDetailScreen(
 )
 fun ContactDetailContent(
     contact: ContactRecordResponse,
+    modifier: Modifier = Modifier,
     listState: LazyListState = rememberLazyListState(),
     /** 0→1 as the name fades out of the content into the collapsing app bar. */
     headerContentAlpha: Float = 1f,
@@ -1324,7 +1328,7 @@ fun ContactDetailContent(
     // no side effect to drive through the ViewModel.
     var showScoreDetails by remember { mutableStateOf(false) }
     LazyColumn(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .testTag("contact-detail-list"),
         state = listState

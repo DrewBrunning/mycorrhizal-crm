@@ -29,6 +29,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,9 +70,11 @@ fun ImmichPhotoPickerDialog(
     // Optimistically flip to the browse phase when a person is picked; the
     // `isLinked` prop (from the refreshed ExternalIdentity list) re-syncs it.
     var linked by remember { mutableStateOf(isLinked) }
+    val currentOnLoadAssets = rememberUpdatedState(onLoadAssets)
+    val currentOnLoadPeople = rememberUpdatedState(onLoadPeople)
     LaunchedEffect(isLinked) { linked = isLinked }
     LaunchedEffect(Unit) {
-        if (linked) onLoadAssets() else onLoadPeople()
+        if (linked) currentOnLoadAssets.value() else currentOnLoadPeople.value()
     }
 
     if (!linked) {

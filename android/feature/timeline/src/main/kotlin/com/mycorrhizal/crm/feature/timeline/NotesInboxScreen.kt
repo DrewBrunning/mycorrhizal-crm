@@ -25,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -57,9 +58,9 @@ import com.mycorrhizal.crm.ui.components.RefreshableContent
  */
 @Composable
 fun NotesInboxScreen(
+    onNoteClick: (Int) -> Unit,
     // Issue #150: null hides the hamburger — there is no drawer at Expanded.
     onMenuClick: (() -> Unit)? = {},
-    onNoteClick: (Int) -> Unit,
     onCreateNote: () -> Unit = {},
     viewModel: NotesInboxViewModel = hiltViewModel()
 ) {
@@ -95,6 +96,7 @@ fun NotesInboxScreenContent(
 ) {
     val state = uiState
     val snackbarHostState = remember { SnackbarHostState() }
+    val currentOnErrorShown = rememberUpdatedState(onErrorShown)
 
     Scaffold(
         topBar = {
@@ -199,7 +201,7 @@ fun NotesInboxScreenContent(
     if (listError != null && state.notes.isNotEmpty()) {
         LaunchedEffect(listError) {
             snackbarHostState.showSnackbar(listError)
-            onErrorShown()
+            currentOnErrorShown.value()
         }
     }
 }

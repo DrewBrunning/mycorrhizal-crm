@@ -39,6 +39,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -103,6 +104,7 @@ fun RemindersScreenContent(
 ) {
     val state = uiState
     val snackbarHostState = remember { SnackbarHostState() }
+    val currentOnErrorShown = rememberUpdatedState(onErrorShown)
     var pendingDelete by remember { mutableStateOf<Reminder?>(null) }
 
     Scaffold(
@@ -233,7 +235,7 @@ fun RemindersScreenContent(
     if (listError != null && state.reminders.isNotEmpty()) {
         LaunchedEffect(listError) {
             snackbarHostState.showSnackbar(listError)
-            onErrorShown()
+            currentOnErrorShown.value()
         }
     }
 }
@@ -379,9 +381,9 @@ private fun Reminder.recurrenceLabel(): Int = when (recurrence) {
 @Composable
 private fun ReminderBadge(
     text: String,
-    leadingIcon: androidx.compose.ui.graphics.vector.ImageVector? = null,
     containerColor: androidx.compose.ui.graphics.Color,
-    contentColor: androidx.compose.ui.graphics.Color
+    contentColor: androidx.compose.ui.graphics.Color,
+    leadingIcon: androidx.compose.ui.graphics.vector.ImageVector? = null
 ) {
     androidx.compose.material3.Surface(
         shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),

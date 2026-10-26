@@ -52,6 +52,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -161,6 +162,7 @@ internal fun EntityListScaffold(
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val errorMessage = uiState.errorRes?.let { stringResource(it) } ?: uiState.error
+    val currentOnErrorShown = rememberUpdatedState(onErrorShown)
     var pendingDeleteId by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
@@ -361,7 +363,7 @@ internal fun EntityListScaffold(
     errorMessage?.let { message ->
         LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)
-            onErrorShown()
+            currentOnErrorShown.value()
         }
     }
 }
@@ -388,12 +390,13 @@ internal fun EntityFormScreen(
     content: @Composable ColumnScope.() -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
+    val currentOnErrorShown = rememberUpdatedState(onErrorShown)
     // A form that stays open on a failed save (mark discussed, #1723) replaces the list,
     // so the list's snackbar is not composed: the form shows the error itself.
     errorMessage?.let { message ->
         LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)
-            onErrorShown()
+            currentOnErrorShown.value()
         }
     }
     FormScaffold(
@@ -1264,15 +1267,15 @@ fun GiftsScreen(onBack: () -> Unit, viewModel: GiftsViewModel = hiltViewModel())
 @Composable
 internal fun PreferenceForm(
     initial: Preference?,
+    onConfirm: (PreferenceFormData) -> Unit,
+    onDismiss: () -> Unit,
     // Restricts the category dropdown (and the default selected category) to
     // these sections — e.g. the Gifts tab's form only offers
     // jewelry/giftPreferences/giftAvoid, so a shopping-focused "Add
     // Preference" can't accidentally create a food preference that then
     // hides in the Overview tab's list instead (web's PreferenceDialog
     // `sections` prop). Defaults to every section.
-    sections: Set<String> = PreferenceSection.OVERVIEW_TAB + PreferenceSection.GIFTS_TAB,
-    onConfirm: (PreferenceFormData) -> Unit,
-    onDismiss: () -> Unit
+    sections: Set<String> = PreferenceSection.OVERVIEW_TAB + PreferenceSection.GIFTS_TAB
 ) {
     // Issue #1738: the add-preference dialog no longer offers `hobby` (hobbies
     // are created from the contact's Skills & interests drill-down). An

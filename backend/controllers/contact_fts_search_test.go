@@ -191,14 +191,19 @@ func TestGetContactsSearch_CursorPagesWithNoDuplicatesOrSkips(t *testing.T) {
 // part of the ticket: the FTS subquery's own contacts_fts.user_id scope,
 // stacked with the outer query's existing user_id scope.
 func TestGetContactsSearch_CrossUserContactNeverReturned(t *testing.T) {
-	db, router, _ := ftsRealRouter(t, "cross-user.db")
+	db, router, user := ftsRealRouter(t, "cross-user.db")
+
+	// Positive control: the caller's own matching row proves the term really
+	// is findable, so the foreign row's absence below is scoping, not a miss.
+	require.NoError(t, db.Create(&models.Contact{UserID: user.ID, Firstname: "Mine", Organization: "ZzyzxCorp"}).Error)
 
 	other := models.User{Username: "fts-other", Password: "password123!A", Email: "fts-other@example.com"}
 	require.NoError(t, db.Create(&other).Error)
 	require.NoError(t, db.Create(&models.Contact{UserID: other.ID, Firstname: "Sneaky", Organization: "ZzyzxCorp"}).Error)
 
 	items := ftsSearch(t, router, "search=ZzyzxCorp")
-	assert.Empty(t, items, "a contact owned by another user must never be returned via the FTS clause")
+	require.Len(t, items, 1, "exactly the caller's matching contact")
+	assert.Equal(t, "Mine", items[0]["firstname"], "a contact owned by another user must never be returned via the FTS clause")
 }
 
 // TestGetContactsSearch_SoftDeletedContactNeverReturned pins that

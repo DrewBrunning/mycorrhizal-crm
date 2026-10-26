@@ -294,9 +294,10 @@ func TestTwoFactor_CodeStepIsRateLimited(t *testing.T) {
 	enableTwoFactor(t, db, router, cfg, user)
 
 	// Start the login ONCE and reuse the 2fa_pending challenge: the attack
-	// pattern is one password step then repeated code guesses. Re-running step
-	// 1 each time would clear the failure counter (RecordSuccessfulLogin),
-	// which is exactly the real-world behavior this test must not emulate.
+	// pattern is one password step then repeated code guesses. (Re-running
+	// step 1 no longer clears the counter since issue #2048; the interleaving
+	// test below pins that. This test stays single-challenge to isolate the
+	// code-step budget.)
 	_, step1Cookies := doRequest(router, mustPost("/login", map[string]string{
 		"identifier": user.Username,
 		"password":   strongPassword,
@@ -324,6 +325,94 @@ func TestTwoFactor_CodeStepIsRateLimited(t *testing.T) {
 		"password":   strongPassword,
 	}))
 	assert.Equal(t, http.StatusTooManyRequests, w.Code)
+}
+
+// TestTwoFactor_CorrectPasswordDoesNotClearCodeFailureBucket is the issue
+// #2048 regression test: an attacker who knows the password must not be able
+// to reset the second-factor failure counter by alternating a correct
+// POST /login with a wrong POST /login/2fa code. Before the fix, every
+// password step called RecordLoginSuccess on the shared (username, client-IP)
+// bucket, so the lockout below never tripped.
+func TestTwoFactor_CorrectPasswordDoesNotClearCodeFailureBucket(t *testing.T) {
+	db, router, cfg, user := twoFactorTestEnv(t)
+	enableTwoFactor(t, db, router, cfg, user)
+
+	// Each cycle runs the real interleaving: correct password, then a wrong
+	// code against that cycle's fresh challenge.
+	for i := 0; i < middleware.MaxLoginAttempts-1; i++ {
+		w, cookies := doRequest(router, mustPost("/login", map[string]string{
+			"identifier": user.Username,
+			"password":   strongPassword,
+		}))
+		require.Equal(t, http.StatusOK, w.Code, "cycle %d password step: %s", i+1, w.Body.String())
+		require.NotNil(t, cookies["2fa_pending"], "cycle %d must issue a challenge", i+1)
+
+		req := sessionRequest("POST", "/login/2fa", map[string]string{"code": "000000"}, "")
+		req.AddCookie(&http.Cookie{Name: "2fa_pending", Value: cookies["2fa_pending"].Value})
+		w, _ = doRequest(router, req)
+		require.Equal(t, http.StatusBadRequest, w.Code, "cycle %d wrong code: %s", i+1, w.Body.String())
+	}
+
+	// The MaxLoginAttempts-th wrong code trips the account lockout even though
+	// the password step immediately before it was correct.
+	w, cookies := doRequest(router, mustPost("/login", map[string]string{
+		"identifier": user.Username,
+		"password":   strongPassword,
+	}))
+	require.Equal(t, http.StatusOK, w.Code, "the fifth password step must still answer before the code lockout")
+	require.NotNil(t, cookies["2fa_pending"])
+	req := sessionRequest("POST", "/login/2fa", map[string]string{"code": "000000"}, "")
+	req.AddCookie(&http.Cookie{Name: "2fa_pending", Value: cookies["2fa_pending"].Value})
+	w, _ = doRequest(router, req)
+	assert.Equal(t, http.StatusTooManyRequests, w.Code, "the accumulated code failures must now lock the account")
+
+	// And the same per-account bucket refuses the password step from this IP.
+	w, _ = doRequest(router, mustPost("/login", map[string]string{
+		"identifier": user.Username,
+		"password":   strongPassword,
+	}))
+	assert.Equal(t, http.StatusTooManyRequests, w.Code)
+}
+
+// TestTwoFactor_SuccessfulCodeClearsFailureBucket pins the other half of
+// #2048: a completed second factor is a real login and must clear the shared
+// bucket, so a legitimate user who mistyped a code recovers immediately.
+func TestTwoFactor_SuccessfulCodeClearsFailureBucket(t *testing.T) {
+	db, router, cfg, user := twoFactorTestEnv(t)
+	secret, _, _ := enableTwoFactor(t, db, router, cfg, user)
+
+	// Two failed cycles leave two failures in the bucket.
+	for i := 0; i < 2; i++ {
+		w, cookies := doRequest(router, mustPost("/login", map[string]string{
+			"identifier": user.Username,
+			"password":   strongPassword,
+		}))
+		require.Equal(t, http.StatusOK, w.Code)
+		require.NotNil(t, cookies["2fa_pending"])
+		req := sessionRequest("POST", "/login/2fa", map[string]string{"code": "000000"}, "")
+		req.AddCookie(&http.Cookie{Name: "2fa_pending", Value: cookies["2fa_pending"].Value})
+		w, _ = doRequest(router, req)
+		require.Equal(t, http.StatusBadRequest, w.Code)
+	}
+
+	// A correct code clears them.
+	w, _ := doRequest(router, loginWith2FA(router, user, totpCode(t, secret)))
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	// The budget starts over: MaxLoginAttempts-1 further failures stay under
+	// the threshold instead of tripping it on the third one.
+	for i := 0; i < middleware.MaxLoginAttempts-1; i++ {
+		w, cookies := doRequest(router, mustPost("/login", map[string]string{
+			"identifier": user.Username,
+			"password":   strongPassword,
+		}))
+		require.Equal(t, http.StatusOK, w.Code)
+		require.NotNil(t, cookies["2fa_pending"])
+		req := sessionRequest("POST", "/login/2fa", map[string]string{"code": "000000"}, "")
+		req.AddCookie(&http.Cookie{Name: "2fa_pending", Value: cookies["2fa_pending"].Value})
+		w, _ = doRequest(router, req)
+		require.Equal(t, http.StatusBadRequest, w.Code, "failure %d after a successful 2FA must not be locked yet", i+1)
+	}
 }
 
 func TestTwoFactor_DisableFlow(t *testing.T) {

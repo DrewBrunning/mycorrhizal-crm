@@ -37,6 +37,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -89,6 +90,7 @@ fun CsvImportScreen(
 @Composable
 fun CsvImportScreenContent(
     uiState: CsvImportUiState,
+    modifier: Modifier = Modifier,
     onBack: () -> Unit = {},
     onDone: () -> Unit = {},
     onFilePicked: (String, ByteArray) -> Unit = { _, _ -> },
@@ -102,6 +104,7 @@ fun CsvImportScreenContent(
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    val currentOnErrorShown = rememberUpdatedState(onErrorShown)
     val scope = rememberCoroutineScope()
 
     val filePicker = rememberLauncherForActivityResult(
@@ -123,6 +126,7 @@ fun CsvImportScreenContent(
     }
 
     Scaffold(
+        modifier = modifier,
         topBar = {
             TopAppBar(
                 navigationIcon = {
@@ -193,7 +197,7 @@ fun CsvImportScreenContent(
     if (errorMessage != null) {
         LaunchedEffect(errorMessage) {
             snackbarHostState.showSnackbar(errorMessage)
-            onErrorShown()
+            currentOnErrorShown.value()
         }
     }
 }

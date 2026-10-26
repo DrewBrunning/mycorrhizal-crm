@@ -70,9 +70,10 @@ import com.mycorrhizal.crm.ui.components.RowOverflowMenu
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HouseholdsScreen(
+    onOpenHousehold: (String) -> Unit,
+    modifier: Modifier = Modifier,
     // Issue #150: null hides the hamburger — there is no drawer at Expanded.
     onMenuClick: (() -> Unit)? = {},
-    onOpenHousehold: (String) -> Unit,
     viewModel: HouseholdsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -80,6 +81,7 @@ fun HouseholdsScreen(
     var showCreateDialog by remember { mutableStateOf(false) }
 
     Scaffold(
+        modifier = modifier,
         topBar = {
             TopAppBar(
                 navigationIcon = {

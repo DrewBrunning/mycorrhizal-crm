@@ -41,14 +41,14 @@ on:
           - database-migration-refuse
           - api-contract-change-refuse
       profile:
-        description: Pinned agent profile from testdata/agent-eval/agents.yaml (task mode, preferred)
+        description: Pinned agent profile from testdata/agent-eval/agents.yaml (task or select mode, preferred)
       skill:
         description: Only run prompts expecting this skill (select mode; for sharding)
         type: string
         required: false
         default: ""
       agent_command:
-        description: 'Pinned agent command template ({prompt} is substituted). Keep the version pinned. Required in select mode; ignored when profile is set.'
+        description: 'Pinned agent command template ({prompt} is substituted). Keep the version pinned. Required in select mode unless profile is set; ignored when profile is set.'
         type: string
         required: true
         default: "true"
@@ -140,7 +140,11 @@ jobs:
           set -euo pipefail
           args=(-mode "$MODE")
           if [ "$MODE" = "select" ]; then
-            args+=(-agent-command "$AGENT_COMMAND" -agent-name "$AGENT_NAME" -agent-model "$AGENT_MODEL" -agent-version "$AGENT_VERSION")
+            if [ -n "$PROFILE" ]; then
+              args+=(-profile "$PROFILE")
+            else
+              args+=(-agent-command "$AGENT_COMMAND" -agent-name "$AGENT_NAME" -agent-model "$AGENT_MODEL" -agent-version "$AGENT_VERSION")
+            fi
             args+=(-triggers testdata/agent-eval/triggers.yaml)
             if [ -n "$SKILL" ]; then
               args+=(-skill "$SKILL")

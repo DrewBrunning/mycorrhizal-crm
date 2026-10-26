@@ -133,21 +133,30 @@ func TestListConversationAgendaScopedToUser(t *testing.T) {
 	router.GET("/conversation-agenda", ListConversationAgenda)
 
 	var user models.User
-	db.First(&user)
+	require.NoError(t, db.First(&user).Error)
+	ownedContact := models.Contact{UserID: user.ID, Firstname: "Mine"}
+	require.NoError(t, db.Create(&ownedContact).Error)
+	require.NoError(t, db.Create(&models.ConversationAgenda{UserID: user.ID, EntityID: ownedContact.VCardUID, Content: "Mine"}).Error)
+
 	otherUser := models.User{Username: "other", Password: "x", Email: "other@example.com"}
 	require.NoError(t, db.Create(&otherUser).Error)
 	othersContact := models.Contact{UserID: otherUser.ID, Firstname: "Not Yours"}
-	db.Create(&othersContact)
-	db.Create(&models.ConversationAgenda{UserID: otherUser.ID, EntityID: othersContact.VCardUID, Content: "Secret"})
+	require.NoError(t, db.Create(&othersContact).Error)
+	require.NoError(t, db.Create(&models.ConversationAgenda{UserID: otherUser.ID, EntityID: othersContact.VCardUID, Content: "Secret"}).Error)
 
 	req, _ := http.NewRequest("GET", "/conversation-agenda", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, http.StatusOK, w.Code)
 	var responseBody map[string]any
-	json.Unmarshal(w.Body.Bytes(), &responseBody)
-	assert.Empty(t, responseBody["conversation_agenda"], "another user's agenda items must not leak into the list")
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &responseBody))
+	items, ok := responseBody["conversation_agenda"].([]any)
+	require.True(t, ok, "conversation_agenda must be an array: %s", w.Body.String())
+	require.Len(t, items, 1, "exactly the caller's own agenda item must be returned")
+	item, ok := items[0].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "Mine", item["content"], "another user's agenda items must not leak into the list")
 }
 
 func TestUpdateConversationAgendaPreservesDiscussedState(t *testing.T) {

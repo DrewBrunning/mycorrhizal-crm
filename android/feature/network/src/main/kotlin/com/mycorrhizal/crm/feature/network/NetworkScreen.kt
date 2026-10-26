@@ -37,6 +37,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -115,11 +116,14 @@ fun NetworkScreenContent(
     onSearchContacts: (String) -> Unit,
     onSelectFrom: (ContactSummary) -> Unit,
     onErrorShown: () -> Unit,
+    modifier: Modifier = Modifier,
     onRefresh: () -> Unit = {}
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
+    val currentOnErrorShown = rememberUpdatedState(onErrorShown)
 
     Scaffold(
+        modifier = modifier,
         topBar = {
             TopAppBar(
                 navigationIcon = {
@@ -244,7 +248,7 @@ fun NetworkScreenContent(
         uiState.error?.let { message ->
             LaunchedEffect(message) {
                 snackbarHostState.showSnackbar(message)
-                onErrorShown()
+                currentOnErrorShown.value()
             }
         }
     }

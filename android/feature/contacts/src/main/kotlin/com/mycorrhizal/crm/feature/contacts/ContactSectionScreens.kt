@@ -41,6 +41,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -90,10 +91,13 @@ private fun SectionListScaffold(
     onBack: () -> Unit,
     state: ContactSectionsUiState,
     onErrorShown: () -> Unit,
+    modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
+    val currentOnErrorShown = rememberUpdatedState(onErrorShown)
     Scaffold(
+        modifier = modifier,
         topBar = {
             TopAppBar(
                 navigationIcon = {
@@ -139,7 +143,7 @@ private fun SectionListScaffold(
         message?.let {
             LaunchedEffect(it) {
                 snackbarHostState.showSnackbar(it)
-                onErrorShown()
+                currentOnErrorShown.value()
             }
         }
     }
@@ -172,12 +176,12 @@ private fun AddTextButton(label: String, tag: String, onClick: () -> Unit) {
 @Composable
 private fun EntryRow(
     title: String,
-    subtitle: String? = null,
-    badges: @Composable () -> Unit = {},
     editTag: String,
     deleteTag: String,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    subtitle: String? = null,
+    badges: @Composable () -> Unit = {}
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
@@ -220,11 +224,11 @@ private fun EntryRow(
 @Composable
 private fun ConfirmableEntryRow(
     title: String,
-    subtitle: String? = null,
     editTag: String,
     deleteTag: String,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    subtitle: String? = null
 ) {
     var confirmDelete by remember { mutableStateOf(false) }
     EntryRow(
@@ -270,13 +274,11 @@ private fun DeleteConfirmDialog(label: String, onConfirm: () -> Unit, onDismiss:
 @Composable
 private fun ConflictDialogIfNeeded(
     state: ContactSectionsUiState,
-    viewModel: ContactSectionsViewModel
+    onLoadLatest: () -> Unit,
+    onKeep: () -> Unit
 ) {
     if (state.conflict) {
-        WriteConflictDialog(
-            onLoadLatest = viewModel::onConflictLoadLatest,
-            onKeep = viewModel::onConflictDismissed
-        )
+        WriteConflictDialog(onLoadLatest = onLoadLatest, onKeep = onKeep)
     }
 }
 
@@ -285,7 +287,11 @@ private fun ConflictDialogIfNeeded(
 // ---------------------------------------------------------------------------
 
 @Composable
-fun ContactSkillsScreen(onBack: () -> Unit, viewModel: ContactSectionsViewModel = hiltViewModel()) {
+fun ContactSkillsScreen(
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: ContactSectionsViewModel = hiltViewModel()
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var editingId by rememberSaveable { mutableStateOf<String?>(null) }
     var adding by rememberSaveable { mutableStateOf(false) }
@@ -308,7 +314,11 @@ fun ContactSkillsScreen(onBack: () -> Unit, viewModel: ContactSectionsViewModel 
                 editingId = null
             }
         )
-        ConflictDialogIfNeeded(state, viewModel)
+        ConflictDialogIfNeeded(
+            state,
+            viewModel::onConflictLoadLatest,
+            viewModel::onConflictDismissed
+        )
         return
     }
 
@@ -318,7 +328,8 @@ fun ContactSkillsScreen(onBack: () -> Unit, viewModel: ContactSectionsViewModel 
         onAdd = { adding = true },
         onBack = onBack,
         state = state,
-        onErrorShown = viewModel::onErrorShown
+        onErrorShown = viewModel::onErrorShown,
+        modifier = modifier
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize().testTag("contact-skills-list"),
@@ -366,7 +377,7 @@ fun ContactSkillsScreen(onBack: () -> Unit, viewModel: ContactSectionsViewModel 
             item { Box(modifier = Modifier.size(80.dp)) }
         }
     }
-    ConflictDialogIfNeeded(state, viewModel)
+    ConflictDialogIfNeeded(state, viewModel::onConflictLoadLatest, viewModel::onConflictDismissed)
 }
 
 @Composable
@@ -611,7 +622,11 @@ private sealed interface WorkEditor {
 }
 
 @Composable
-fun ContactWorkScreen(onBack: () -> Unit, viewModel: ContactSectionsViewModel = hiltViewModel()) {
+fun ContactWorkScreen(
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: ContactSectionsViewModel = hiltViewModel()
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var editor by rememberSaveable { mutableStateOf<WorkEditor?>(null) }
     var editingOrgId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -649,7 +664,11 @@ fun ContactWorkScreen(onBack: () -> Unit, viewModel: ContactSectionsViewModel = 
                     editingOrgId = null
                 }
             )
-            ConflictDialogIfNeeded(state, viewModel)
+            ConflictDialogIfNeeded(
+                state,
+                viewModel::onConflictLoadLatest,
+                viewModel::onConflictDismissed
+            )
             return
         }
 
@@ -671,7 +690,11 @@ fun ContactWorkScreen(onBack: () -> Unit, viewModel: ContactSectionsViewModel = 
                     editingTitleId = null
                 }
             )
-            ConflictDialogIfNeeded(state, viewModel)
+            ConflictDialogIfNeeded(
+                state,
+                viewModel::onConflictLoadLatest,
+                viewModel::onConflictDismissed
+            )
             return
         }
 
@@ -685,7 +708,11 @@ fun ContactWorkScreen(onBack: () -> Unit, viewModel: ContactSectionsViewModel = 
                 },
                 onBack = { editor = null }
             )
-            ConflictDialogIfNeeded(state, viewModel)
+            ConflictDialogIfNeeded(
+                state,
+                viewModel::onConflictLoadLatest,
+                viewModel::onConflictDismissed
+            )
             return
         }
 
@@ -698,7 +725,8 @@ fun ContactWorkScreen(onBack: () -> Unit, viewModel: ContactSectionsViewModel = 
         onAdd = { editor = WorkEditor.Organization },
         onBack = onBack,
         state = state,
-        onErrorShown = viewModel::onErrorShown
+        onErrorShown = viewModel::onErrorShown,
+        modifier = modifier
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize().testTag("contact-work-list"),
@@ -808,7 +836,7 @@ fun ContactWorkScreen(onBack: () -> Unit, viewModel: ContactSectionsViewModel = 
             item { Box(modifier = Modifier.size(80.dp)) }
         }
     }
-    ConflictDialogIfNeeded(state, viewModel)
+    ConflictDialogIfNeeded(state, viewModel::onConflictLoadLatest, viewModel::onConflictDismissed)
 }
 
 private fun periodLabel(range: com.mycorrhizal.crm.model.network.TemporalRange?): String? {
@@ -1056,6 +1084,7 @@ private fun WorkInformationFormScreen(
 @Composable
 fun ContactAnniversariesScreen(
     onBack: () -> Unit,
+    modifier: Modifier = Modifier,
     viewModel: ContactSectionsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -1078,7 +1107,11 @@ fun ContactAnniversariesScreen(
                 editingId = null
             }
         )
-        ConflictDialogIfNeeded(state, viewModel)
+        ConflictDialogIfNeeded(
+            state,
+            viewModel::onConflictLoadLatest,
+            viewModel::onConflictDismissed
+        )
         return
     }
 
@@ -1088,7 +1121,8 @@ fun ContactAnniversariesScreen(
         onAdd = { adding = true },
         onBack = onBack,
         state = state,
-        onErrorShown = viewModel::onErrorShown
+        onErrorShown = viewModel::onErrorShown,
+        modifier = modifier
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize().testTag("contact-anniversaries-list"),
@@ -1123,7 +1157,7 @@ fun ContactAnniversariesScreen(
             item { Box(modifier = Modifier.size(80.dp)) }
         }
     }
-    ConflictDialogIfNeeded(state, viewModel)
+    ConflictDialogIfNeeded(state, viewModel::onConflictLoadLatest, viewModel::onConflictDismissed)
 }
 
 @StringRes

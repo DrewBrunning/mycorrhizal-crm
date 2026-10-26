@@ -33,6 +33,8 @@ plugins {
     // this module's Kotlin sources; no separate kotlin-android plugin (and no
     // explicit jvmTarget — it defaults to compileOptions.targetCompatibility).
     id("com.android.test")
+    // Issue #1908: dependency advice also covers this (non-shipped) module.
+    id("mycorrhizal.dependency-analysis")
 }
 
 android {
@@ -98,7 +100,7 @@ androidComponents {
 dependencies {
     implementation(libs.junit)
     implementation(libs.androidx.test.ext.junit)
-    implementation(libs.androidx.test.runner)
+    runtimeOnly(libs.androidx.test.runner)
     implementation(libs.androidx.test.uiautomator)
     implementation(libs.androidx.benchmark.macro.junit4)
 }

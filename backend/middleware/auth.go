@@ -229,6 +229,15 @@ func LookupAPIToken(db *gorm.DB, raw string, now time.Time) (*models.ApiToken, b
 	).First(&apiToken).Error; err != nil {
 		return nil, false
 	}
+	// The token row can outlive its owner — soft delete is a user's undo
+	// button, not a deletion — so resolve the owner before trusting the
+	// token. GORM's default scope excludes deleted_at, which is exactly the
+	// check needed here; both Rest AuthMiddleware and the CardDAV Basic-Auth
+	// fallback share this lookup (issue #2047).
+	var owner models.User
+	if err := db.Select("id").First(&owner, apiToken.UserID).Error; err != nil {
+		return nil, false
+	}
 	return &apiToken, true
 }
 
