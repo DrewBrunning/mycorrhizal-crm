@@ -181,9 +181,9 @@ into the trigger set.
 fixed footer asking the agent to record the skills and context files it opened,
 and the harness scores `expect`/`not`, extra or unknown skills, declared
 ambiguous pairs, and any repository change made during a selection run (including
-changes hidden in a commit). Use `-skill` to shard a pass and `-timeout` to bound
-one prompt. It measures reported selection, not observed file access or task
-completion, and the agent must be pinned for the result to be comparable. The
+changes hidden in a commit). Use `-profile pinned` (or explicit agent flags) to
+pin the agent, `-skill` to shard a pass and `-timeout` to bound one prompt. It
+measures reported selection, not observed file access or task completion; the
 manual procedure below remains the record for the ambiguous pairs and for *why*
 a neighbour did or did not win.
 
@@ -216,6 +216,12 @@ violations; lint/coverage suppressions and build constraints added to a test fil
 are warnings. A hard violation fails the run because a green suite earned by
 weakening the gate is not evidence the task was completed; a warning needs a
 human read and can be a legitimate choice for a specific task.
+
+A pinned-profile run can be compared with
+`testdata/agent-eval/baseline.json`. The committed summary records success,
+suite command counts, scope violations, generated-artifact hand-edits, hard
+integrity violations and refusal-task unexpected changes, so a baseline catches
+gate-weakening and refusal regressions, not just suite command failures.
 
 ## Context-change evidence
 
