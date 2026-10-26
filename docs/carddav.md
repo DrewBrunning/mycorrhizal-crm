@@ -42,6 +42,7 @@ Android does not include a native CardDAV client. You will need a third-party ap
 - **Two-way sync**: Changes made in Mycorrhizal CRM appear on your phone, and changes made on your phone are synced back to Mycorrhizal CRM. This also applies to profile pictures.
 - **Conflict detection**: Mycorrhizal CRM uses ETags to detect conflicts. If a contact has been modified on both the server and the client since the last sync, the client will be notified and can resolve the conflict.
 - **Supported fields**: Mycorrhizal CRM syncs all fields though now all fields might be visible in your client. In case you add additional fields on your client (like a secondary address) the fields will be preserved in the Mycorrhizal database but will not show in the Mycorrhizal CRM frontend.
+- **CRM-only fields survive a vCard overwrite**: circles, how-we-met, work information, contact information, the entity kind, and entry periods have no vCard property. A CardDAV PUT replaces the whole resource, so when the incoming card does not carry those fields the server keeps the stored values instead of clearing them; the same rule applies to contacts pulled in by a CardDAV subscription. Edit or clear them in the Mycorrhizal UI. Ordinary vCard fields remain fully client-controlled.
 
 ## Troubleshooting
 

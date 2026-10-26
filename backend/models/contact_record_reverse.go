@@ -166,6 +166,48 @@ func ApplyRecordToContact(c *Contact, r *contactmodel.Record, photoDir string) {
 	c.cardSetDirectly = true
 }
 
+// PreserveLocalOnlyCRMFields restores CRM-only data that a full-overwrite
+// update from a format that cannot carry it would otherwise clear. It is the
+// preservation rule for the two paths that apply an external copy of a
+// contact — CardDAV PUT and contact-subscription reconcile — and is
+// deliberately NOT called by normal REST updates, where an explicit empty
+// value is a real clear.
+//
+// For each field the incoming Record does not carry (empty scalar, empty
+// slice, empty kind), the value already stored on existing is put back on
+// incoming's envelope so the following ApplyRecordToContact writes it
+// through. A non-empty incoming value always wins. existing must be the
+// persisted row (a new contact has nothing to preserve; nil is a no-op, as is
+// a nil incoming Record).
+//
+// The flat fields (Circles, HowWeMet, WorkInformation, ContactInformation)
+// are the stored authority; Kind and Periods live only in the CRM envelope.
+// A field that is genuinely absent from the incoming Record is therefore
+// treated as "the client never saw it", never as a delete.
+func PreserveLocalOnlyCRMFields(existing *Contact, incoming *contactmodel.Record) {
+	if existing == nil || incoming == nil {
+		return
+	}
+	if len(incoming.Envelope.Circles) == 0 {
+		incoming.Envelope.Circles = existing.Circles
+	}
+	if incoming.Envelope.HowWeMet == "" {
+		incoming.Envelope.HowWeMet = existing.HowWeMet
+	}
+	if incoming.Envelope.WorkInformation == "" {
+		incoming.Envelope.WorkInformation = existing.WorkInformation
+	}
+	if incoming.Envelope.ContactInformation == "" {
+		incoming.Envelope.ContactInformation = existing.ContactInformation
+	}
+	if incoming.Envelope.Kind == "" {
+		incoming.Envelope.Kind = existing.CRM.Kind
+	}
+	if len(incoming.Envelope.Periods) == 0 {
+		incoming.Envelope.Periods = existing.CRM.Periods
+	}
+}
+
 // applyName is the inverse of buildName: Card.Name.Components ->
 // Firstname/Lastname/MiddleName/Prefix/Suffix ("name.given"/"name.surname"/
 // "name.given2"/"name.title"/"name.credential" rows). Falls back to
