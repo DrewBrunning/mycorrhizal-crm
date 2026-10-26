@@ -20,15 +20,32 @@ See docs/development/context-engineering.md.
 -->
 
 - [ ] `contextcheck` and the context-tooling tests pass.
-- [ ] If a skill `description` or name changed, the trigger test was run and its result is below.
+- [ ] A semantic change to a skill `description`/name, an `AGENTS.md` rule, a trigger prompt, or a task's prompt/expect/not/suite/base-ref has before/after evidence below. Mechanical edits (link/path/typo, base-ref refresh) are exempt; write `not applicable` and why.
 - [ ] Every added/changed `references/` file is linked from its `SKILL.md` and names only still-valid paths/commands.
 - [ ] If a CLI/make/yarn target moved, the context references were updated (or a follow-up is filed).
 - [ ] No secrets or real tokens in context files.
 - [ ] Context files are ≤200 lines. 100 is a target, not a gate: no load-bearing content was cut to hit it.
 - [ ] For a new nested `AGENTS.md`, `contextcheck -explain` was checked for double-load/override surprises.
 
-Trigger-test result (prompt → skill that loaded; `not applicable` if no description/name changed):
+### Context-change evidence
 
+This is a reviewer checklist, not a CI gate. A semantic context edit is a hypothesis; record the before/after, not just the final text. Use `go run ./cmd/agenteval -mode select` when the change affects skill routing (the manual procedure in `docs/development/context-engineering.md` is the fallback if the select mode is not on your branch). Otherwise run the affected task with a pinned profile (or record the exact agent command, model and CLI version if profiles are not yet available) and link the artifact. For a new rule write `before: n/a (new)`; for a removed rule write `after: n/a (removed)`.
+
+- Trigger-set version:
+- Agent profile, or command / model / CLI version (all pinned):
+- Before (base ref + prompt → skill result, or task result):
+- After (head ref + prompt → skill result, or task result):
+- Control delta (`n/a` if no control run):
+- Artifact link or run output:
+
+<!-- Example:
+- Trigger-set version: 1
+- Agent profile: pinned-opencode (1.2.3 / deepseek-flash)
+- Before: abc1234, "add a column" -> database-migration
+- After: def5678, "add a column" -> database-migration
+- Control delta: n/a (selection-only)
+- Artifact: agent-eval-results/selection-....json
+-->
 
 
 ## Implementation-workflow evidence
