@@ -18,6 +18,7 @@ import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
@@ -278,7 +279,9 @@ private fun ColumnMappingRow(
                 readOnly = true,
                 singleLine = true,
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                modifier = Modifier.menuAnchor().fillMaxWidth().testTag(
+                modifier = Modifier.menuAnchor(
+                    ExposedDropdownMenuAnchorType.PrimaryNotEditable
+                ).fillMaxWidth().testTag(
                     "csv-mapping-field-$header"
                 )
             )

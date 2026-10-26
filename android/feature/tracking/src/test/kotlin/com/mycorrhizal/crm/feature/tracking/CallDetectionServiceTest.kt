@@ -1,6 +1,12 @@
 package com.mycorrhizal.crm.feature.tracking
 
 import android.app.Application
+import android.content.ContentProvider
+import android.content.ContentValues
+import android.database.Cursor
+import android.database.MatrixCursor
+import android.net.Uri
+import android.provider.CallLog
 import android.telephony.TelephonyManager
 import com.mycorrhizal.crm.model.network.ContactSummary
 import io.mockk.coEvery
@@ -19,6 +25,7 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows
 import org.robolectric.annotation.Config
+import org.robolectric.shadows.ShadowContentResolver
 
 /**
  * CallDetectionService has @Inject lateinit var fields (no Hilt test
@@ -145,6 +152,20 @@ class CallDetectionServiceTest {
     }
 
     @Test
+    fun `a telephony callback resolves the just-ended call number before deciding`() {
+        val (service, scheduler) = buildService(contact = ContactSummary(id = 9))
+        service.recentCallNumber = { "+15551234567" }
+        Shadows.shadowOf(
+            service.application
+        ).grantPermissions(android.Manifest.permission.SYSTEM_ALERT_WINDOW)
+
+        service.handleTelephonyCallStateChanged(TelephonyManager.CALL_STATE_IDLE)
+        scheduler.advanceUntilIdle()
+
+        assertNotNull(service.quickCaptureOverlay)
+    }
+
+    @Test
     fun `a non-idle call state never creates the overlay`() {
         val (service, scheduler) = buildService(contact = ContactSummary(id = 9))
         Shadows.shadowOf(
@@ -155,6 +176,77 @@ class CallDetectionServiceTest {
         scheduler.advanceUntilIdle()
 
         assertNull(service.quickCaptureOverlay)
+    }
+
+    @Test
+    fun `recentCallNumber reads the newest call-log entry for the API 31+ callback`() {
+        val (service, _) = buildService()
+        val provider = object : ContentProvider() {
+            override fun onCreate(): Boolean = true
+            override fun query(
+                uri: Uri,
+                projection: Array<out String>?,
+                selection: String?,
+                selectionArgs: Array<out String>?,
+                sortOrder: String?
+            ): Cursor = MatrixCursor(
+                arrayOf(
+                    CallLog.Calls.NUMBER,
+                    CallLog.Calls.TYPE,
+                    CallLog.Calls.DATE,
+                    CallLog.Calls.DURATION,
+                    CallLog.Calls.CACHED_NAME
+                )
+            ).apply {
+                addRow(arrayOf<Any?>("+15551234567", CallLog.Calls.INCOMING_TYPE, 1L, 1L, null))
+            }
+            override fun getType(uri: Uri): String? = null
+            override fun insert(uri: Uri, values: ContentValues?): Uri? = null
+            override fun delete(
+                uri: Uri,
+                selection: String?,
+                selectionArgs: Array<out String>?
+            ): Int = 0
+            override fun update(
+                uri: Uri,
+                values: ContentValues?,
+                selection: String?,
+                selectionArgs: Array<out String>?
+            ): Int = 0
+        }
+        ShadowContentResolver.registerProviderInternal(CallLog.AUTHORITY, provider)
+
+        assertEquals("+15551234567", service.recentCallNumber())
+    }
+
+    @Test
+    fun `below API 31 the legacy listener is registered and receives call states`() {
+        val (service, _) = buildService()
+        service.sdkInt = 30
+
+        val result = service.onStartCommand(null, 0, 0)
+        val telephonyManager = service.getSystemService(TelephonyManager::class.java)
+        Shadows.shadowOf(telephonyManager).setCallState(
+            TelephonyManager.CALL_STATE_RINGING,
+            "+15551234567"
+        )
+        service.onDestroy()
+
+        assertEquals(android.app.Service.START_STICKY, result)
+    }
+
+    @Test
+    fun `the API 31+ telephony callback receives platform call states`() {
+        val (service, _) = buildService()
+        service.recentCallNumber = { null }
+
+        service.onStartCommand(null, 0, 0)
+        val telephonyManager = service.getSystemService(TelephonyManager::class.java)
+        Shadows.shadowOf(telephonyManager).setCallState(
+            TelephonyManager.CALL_STATE_RINGING,
+            "+15551234567"
+        )
+        service.onDestroy()
     }
 
     // --- the decision matrix, directly on shouldShowOverlay ---------------

@@ -10,8 +10,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.automirrored.outlined.Label
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Label
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -222,7 +222,7 @@ private fun TagListItem(
         horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)
     ) {
         Icon(
-            imageVector = Icons.Outlined.Label,
+            imageVector = Icons.AutoMirrored.Outlined.Label,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant
         )

@@ -32,12 +32,14 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.automirrored.outlined.CallMerge
+import androidx.compose.material.icons.automirrored.outlined.Message
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.AttachFile
 import androidx.compose.material.icons.outlined.Call
-import androidx.compose.material.icons.outlined.CallMerge
 import androidx.compose.material.icons.outlined.CardGiftcard
 import androidx.compose.material.icons.outlined.Celebration
 import androidx.compose.material.icons.outlined.Close
@@ -52,10 +54,8 @@ import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Hub
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.Map
-import androidx.compose.material.icons.outlined.Message
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Schedule
@@ -75,6 +75,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -112,7 +113,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -128,6 +128,7 @@ import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.mycorrhizal.crm.feature.timeline.TimelineSection
@@ -186,13 +187,6 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-
-private fun androidx.compose.ui.graphics.Color.toArgbCompat(): Int = android.graphics.Color.argb(
-    (alpha * 255).toInt(),
-    (red * 255).toInt(),
-    (green * 255).toInt(),
-    (blue * 255).toInt()
-)
 
 /**
  * The scroll window over which the contact name cross-fades out of the content
@@ -426,10 +420,11 @@ fun ContactDetailScreen(
     val onPrimary = MaterialTheme.colorScheme.onPrimary
     val barIconColor = lerp(onSurface, onPrimary, collapseProgress)
 
-    // The status bar follows the collapse: background (bone/boneDark) at the
-    // top, primary (brand green) once the bar collapses in (overrides the
-    // theme's default green for this screen). isAppearanceLightStatusBars has
-    // two rules depending on the color role behind the bar -- see
+    // Edge-to-edge: the app draws behind a transparent status bar, so the
+    // collapsing TopAppBar (transparent at the top, green once collapsed) is
+    // the bar's background now that Window.statusBarColor is a no-op on API
+    // 35+. Only the icon appearance needs updating: isAppearanceLightStatusBars
+    // has two rules depending on the color role behind the bar -- see
     // MycorrhizalApp.kt's MainScaffold for the full explanation: `primary` is
     // the one M3 role that inverts between themes, so it needs `darkTheme`;
     // `background` follows the intuitive direction, so it needs `!darkTheme`.
@@ -439,14 +434,11 @@ fun ContactDetailScreen(
     val drawerOpen = LocalDrawerOpen.current
     val darkTheme = LocalDarkTheme.current
     val window = (LocalContext.current as android.app.Activity).window
-    val collapsedColor = MaterialTheme.colorScheme.primary.toArgbCompat()
-    val expandedColor = MaterialTheme.colorScheme.background.toArgbCompat()
-    LaunchedEffect(drawerOpen, darkTheme, collapsedColor, expandedColor) {
+    LaunchedEffect(drawerOpen, darkTheme) {
         if (drawerOpen) return@LaunchedEffect
         snapshotFlow { collapseProgress }
             .collect { progress ->
                 val collapsedNow = progress > 0.5f
-                window.statusBarColor = if (collapsedNow) collapsedColor else expandedColor
                 WindowCompat.getInsetsController(window, window.decorView)
                     .isAppearanceLightStatusBars = if (collapsedNow) darkTheme else !darkTheme
             }
@@ -466,11 +458,9 @@ fun ContactDetailScreen(
     // time rather than the stale ones captured at first composition.
     val latestDrawerOpen = rememberUpdatedState(drawerOpen)
     val latestDarkTheme = rememberUpdatedState(darkTheme)
-    val latestCollapsedColor = rememberUpdatedState(collapsedColor)
     DisposableEffect(Unit) {
         onDispose {
             if (latestDrawerOpen.value) return@onDispose
-            window.statusBarColor = latestCollapsedColor.value
             WindowCompat.getInsetsController(window, window.decorView)
                 .isAppearanceLightStatusBars = latestDarkTheme.value
         }
@@ -590,7 +580,7 @@ fun ContactDetailScreen(
                                     text = { Text(stringResource(R.string.contact_merge)) },
                                     leadingIcon = {
                                         Icon(
-                                            Icons.Outlined.CallMerge,
+                                            Icons.AutoMirrored.Outlined.CallMerge,
                                             contentDescription = null
                                         )
                                     },
@@ -2028,7 +2018,7 @@ private fun TargetClosenessPicker(selected: String?, onSelect: (String?) -> Unit
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier
                 .fillMaxWidth()
-                .menuAnchor()
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
                 .testTag("target-closeness-picker")
         )
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -2390,7 +2380,9 @@ private fun CustomFieldScalarEditor(
                             expanded = expanded
                         )
                     },
-                    modifier = Modifier.fillMaxWidth().menuAnchor()
+                    modifier = Modifier.fillMaxWidth().menuAnchor(
+                        ExposedDropdownMenuAnchorType.PrimaryNotEditable
+                    )
                 )
                 ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                     options.forEach { option ->
@@ -2572,7 +2564,7 @@ private fun PhoneRow(phone: Phone) {
             if (phone.isMobile()) {
                 IconButton(onClick = { context.startActivity(FieldActions.smsIntent(number)) }) {
                     Icon(
-                        Icons.Outlined.Message,
+                        Icons.AutoMirrored.Outlined.Message,
                         contentDescription = stringResource(R.string.cd_text),
                         tint = MaterialTheme.colorScheme.primary
                     )
@@ -2696,7 +2688,7 @@ private fun LinkRow(uri: String, label: String, linkType: MobileLinkType?) {
             if (uri.isNotBlank()) {
                 IconButton(onClick = { context.startActivity(FieldActions.browserIntent(uri)) }) {
                     Icon(
-                        Icons.Outlined.OpenInNew,
+                        Icons.AutoMirrored.Outlined.OpenInNew,
                         contentDescription = stringResource(R.string.cd_open_link),
                         tint = MaterialTheme.colorScheme.primary
                     )
@@ -2777,10 +2769,10 @@ private fun MobileLinkActions(linkType: MobileLinkType, handle: String) {
                     leadingIcon = {
                         Icon(
                             imageVector = when (action.kind) {
-                                MobileActionKind.MESSAGE -> Icons.Outlined.Message
+                                MobileActionKind.MESSAGE -> Icons.AutoMirrored.Outlined.Message
                                 MobileActionKind.VOICE_CALL -> Icons.Outlined.Call
                                 MobileActionKind.VIDEO_CALL -> Icons.Outlined.Videocam
-                                MobileActionKind.APP_OPEN -> Icons.Outlined.OpenInNew
+                                MobileActionKind.APP_OPEN -> Icons.AutoMirrored.Outlined.OpenInNew
                                 MobileActionKind.APP_CALL -> Icons.Outlined.Call
                             },
                             contentDescription = stringResource(action.label),
@@ -3017,7 +3009,7 @@ private fun ImmichLinkRow(
         if (safeUrl != null) {
             IconButton(onClick = { context.startActivity(FieldActions.browserIntent(safeUrl)) }) {
                 Icon(
-                    Icons.Outlined.OpenInNew,
+                    Icons.AutoMirrored.Outlined.OpenInNew,
                     contentDescription = stringResource(R.string.cd_open_link),
                     tint = MaterialTheme.colorScheme.primary
                 )
@@ -3086,7 +3078,7 @@ private fun GenericExternalLinkRow(identity: ExternalIdentity, onDelete: () -> U
         if (safeUrl != null) {
             IconButton(onClick = { context.startActivity(FieldActions.browserIntent(safeUrl)) }) {
                 Icon(
-                    Icons.Outlined.OpenInNew,
+                    Icons.AutoMirrored.Outlined.OpenInNew,
                     contentDescription = stringResource(R.string.cd_open_link),
                     tint = MaterialTheme.colorScheme.primary
                 )

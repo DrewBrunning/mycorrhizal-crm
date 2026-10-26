@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.automirrored.outlined.Notes
 import androidx.compose.material.icons.outlined.Cake
 import androidx.compose.material.icons.outlined.CardGiftcard
 import androidx.compose.material.icons.outlined.Celebration
@@ -20,7 +21,6 @@ import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.Favorite
-import androidx.compose.material.icons.outlined.Notes
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.AssistChip
@@ -462,7 +462,7 @@ private fun LastInteractionBlock(briefing: ContactBriefing, dateFormat: String) 
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Icon(
-                Icons.Outlined.Notes,
+                Icons.AutoMirrored.Outlined.Notes,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(18.dp)

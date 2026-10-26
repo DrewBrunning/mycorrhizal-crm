@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.settings
 
+import android.content.ClipData
 import android.content.Context
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
@@ -33,18 +34,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -53,6 +55,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.TwoFactorSetupResponse
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
+import kotlinx.coroutines.launch
 
 /**
  * Two-factor (TOTP) enrollment and management (issue #158 web parity,
@@ -527,7 +530,8 @@ internal fun CodePromptDialog(
 /** Issue #814 Phase 2: the ten one-time recovery codes — plaintext, shown exactly once. */
 @Composable
 internal fun RecoveryCodesDialog(codes: List<String>, onDone: () -> Unit) {
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
     var copied by remember { mutableStateOf(false) }
 
     AlertDialog(
@@ -555,8 +559,17 @@ internal fun RecoveryCodesDialog(codes: List<String>, onDone: () -> Unit) {
                     )
                 }
                 TextButton(onClick = {
-                    clipboard.setText(AnnotatedString(codes.joinToString("\n")))
-                    copied = true
+                    scope.launch {
+                        clipboard.setClipEntry(
+                            ClipEntry(
+                                ClipData.newPlainText(
+                                    "recovery codes",
+                                    codes.joinToString("\n")
+                                )
+                            )
+                        )
+                        copied = true
+                    }
                 }) {
                     Icon(Icons.Outlined.ContentCopy, contentDescription = null)
                     Text(

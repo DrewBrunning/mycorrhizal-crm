@@ -77,7 +77,7 @@ class DestructiveFallbackTest {
             // meets a gap the migration chain doesn't cover — not a hypothetical.
             val db = Room.databaseBuilder(context, AppDatabase::class.java, dbFile.absolutePath)
                 .addMigrations(*REGISTERED_MIGRATIONS.toTypedArray())
-                .fallbackToDestructiveMigration()
+                .fallbackToDestructiveMigration(dropAllTables = true)
                 .build()
 
             // Opens without throwing (no crash, no hang) and the current schema exists — the
@@ -119,7 +119,7 @@ class DestructiveFallbackTest {
 
             val db = Room.databaseBuilder(context, AppDatabase::class.java, dbFile.absolutePath)
                 .addMigrations(*REGISTERED_MIGRATIONS.toTypedArray())
-                .fallbackToDestructiveMigration()
+                .fallbackToDestructiveMigration(dropAllTables = true)
                 .build()
 
             // If the destructive path had fired instead of the migration chain, this outbox row —

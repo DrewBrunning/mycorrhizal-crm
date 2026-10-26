@@ -212,7 +212,11 @@ object DataModule {
                 // MigrationVersionCoverageTest guards against a future gap being left unregistered
                 // by accident.
                 .addMigrations(*com.mycorrhizal.crm.data.local.REGISTERED_MIGRATIONS.toTypedArray()) // # pragma: no cover — provideDatabase needs a real Android Keystore (RoomPassphraseStore); see RoomEncryptionGuardTest
-                .fallbackToDestructiveMigration()
+                // dropAllTables = true keeps the historical no-argument behaviour: an
+                // unexpected version gap wipes the whole local cache, not just the tables
+                // Room knows about (see DestructiveFallbackTest). The outbox is only ever
+                // at risk for gaps MigrationVersionCoverageTest requires a migration for.
+                .fallbackToDestructiveMigration(dropAllTables = true)
                 .build()
         // Issue #998: if dbFile is left encrypted with some other, now-lost
         // passphrase (e.g. a pre-fix build hit the RoomPassphraseStore

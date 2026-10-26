@@ -11,8 +11,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.InsertDriveFile
 import androidx.compose.material.icons.outlined.Folder
-import androidx.compose.material.icons.outlined.InsertDriveFile
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -93,7 +93,7 @@ fun NextcloudFilePickerDialog(
                                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
                                     Icon(
-                                        if (isDir) Icons.Outlined.Folder else Icons.Outlined.InsertDriveFile,
+                                        if (isDir) Icons.Outlined.Folder else Icons.AutoMirrored.Outlined.InsertDriveFile,
                                         contentDescription = null
                                     )
                                     Column {

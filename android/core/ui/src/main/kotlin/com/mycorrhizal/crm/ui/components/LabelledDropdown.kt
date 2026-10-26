@@ -7,10 +7,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -77,7 +77,7 @@ fun <T> LabelledDropdown(
                 // Typed anchor (the no-argument overload is deprecated): read-only, so
                 // tap, Enter/Space and D-pad centre open the menu, and a disabled
                 // field is not expandable from the keyboard either.
-                .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled)
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled)
                 // The text field used to supply focus; a Box needs it explicitly
                 // for keyboard / D-pad users to reach the anchor at all.
                 .focusable(enabled)

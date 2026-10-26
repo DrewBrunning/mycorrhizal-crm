@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm.network
 
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
@@ -82,7 +83,7 @@ class AuthInterceptorOrderingTest {
         client.newCall(
             Request.Builder().url(
                 "http://mycorrhizal.invalid/api/v1/login"
-            ).post(okhttp3.RequestBody.create(null, "{}")).build()
+            ).post("{}".toRequestBody()).build()
         ).execute()
 
         val recorded = server.takeRequest()

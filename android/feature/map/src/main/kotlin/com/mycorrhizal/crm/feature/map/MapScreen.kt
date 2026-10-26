@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.FormatListBulleted
+import androidx.compose.material.icons.automirrored.outlined.FormatListBulleted
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material3.Button
@@ -113,7 +113,7 @@ fun MapScreenContent(
                     if (uiState.points.isNotEmpty()) {
                         AccessibleIconButton(onClick = { onShowListChange(!uiState.showList) }) {
                             Icon(
-                                imageVector = if (uiState.showList) Icons.Outlined.Map else Icons.Outlined.FormatListBulleted,
+                                imageVector = if (uiState.showList) Icons.Outlined.Map else Icons.AutoMirrored.Outlined.FormatListBulleted,
                                 contentDescription = stringResource(
                                     if (uiState.showList) R.string.map_show_map else R.string.map_show_list
                                 )

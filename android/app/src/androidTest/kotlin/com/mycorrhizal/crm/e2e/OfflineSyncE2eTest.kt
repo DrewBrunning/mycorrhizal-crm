@@ -400,7 +400,7 @@ class OfflineSyncE2eTest : E2eBaseTest() {
         val cold = Room.databaseBuilder(appContext, AppDatabase::class.java, dbFile.absolutePath)
             .openHelperFactory(SupportOpenHelperFactory(passphrase.toByteArray()))
             .addMigrations(*REGISTERED_MIGRATIONS.toTypedArray())
-            .fallbackToDestructiveMigration()
+            .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
         try {
             val rows = cold.pendingInteractionDao().getUnsynced()

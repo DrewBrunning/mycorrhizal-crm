@@ -20,11 +20,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.InsertDriveFile
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AttachFile
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.outlined.InsertDriveFile
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -346,7 +346,7 @@ private fun AttachmentRow(
             if (downloading) {
                 Icons.Outlined.Download
             } else {
-                Icons.Outlined.InsertDriveFile
+                Icons.AutoMirrored.Outlined.InsertDriveFile
             },
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary

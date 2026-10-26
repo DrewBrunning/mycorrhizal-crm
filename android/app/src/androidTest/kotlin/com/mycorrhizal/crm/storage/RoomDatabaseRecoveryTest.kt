@@ -56,7 +56,7 @@ class RoomDatabaseRecoveryTest {
     private fun builder(key: String): () -> AppDatabase = {
         Room.databaseBuilder(context, AppDatabase::class.java, dbFile.absolutePath)
             .openHelperFactory(SupportOpenHelperFactory(key.toByteArray()))
-            .fallbackToDestructiveMigration()
+            .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
     }
 
