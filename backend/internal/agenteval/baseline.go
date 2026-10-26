@@ -19,6 +19,8 @@ type RunSummary struct {
 	CommandsTotal       int    `json:"commands_total"`
 	ScopeViolations     int    `json:"scope_violations"`
 	HandEditedGenerated int    `json:"hand_edited_generated"`
+	IntegrityViolations int    `json:"integrity_violations"`
+	UnexpectedChanges   int    `json:"unexpected_changes"`
 	ConfigHash          string `json:"config_hash,omitempty"`
 }
 
@@ -85,6 +87,8 @@ func SummarizeRun(status string, run *RunResult, configHash string) RunSummary {
 	}
 	s.ScopeViolations = len(run.ScopeViolations)
 	s.HandEditedGenerated = len(run.HandEditedGenerated)
+	s.IntegrityViolations = len(run.IntegrityViolations)
+	s.UnexpectedChanges = len(run.UnexpectedChanges)
 	return s
 }
 
@@ -176,6 +180,12 @@ func CompareBaseline(b Baseline, profile, task string, current RunSummary) Basel
 	}
 	if current.HandEditedGenerated > base.HandEditedGenerated {
 		c.Regressions = append(c.Regressions, fmt.Sprintf("generated-artifact hand-edits %d -> %d", base.HandEditedGenerated, current.HandEditedGenerated))
+	}
+	if current.IntegrityViolations > base.IntegrityViolations {
+		c.Regressions = append(c.Regressions, fmt.Sprintf("integrity violations %d -> %d", base.IntegrityViolations, current.IntegrityViolations))
+	}
+	if current.UnexpectedChanges > base.UnexpectedChanges {
+		c.Regressions = append(c.Regressions, fmt.Sprintf("unexpected changes %d -> %d", base.UnexpectedChanges, current.UnexpectedChanges))
 	}
 	sort.Strings(c.Regressions)
 	return c
