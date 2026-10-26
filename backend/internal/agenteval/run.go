@@ -45,7 +45,9 @@ func Run(ctx context.Context, opts Options) (Artifact, error) {
 		opts.CommandRunner = runShellCommand
 	}
 	if opts.InstallNodeDependencies == nil {
-		opts.InstallNodeDependencies = installFrontendDependencies
+		opts.InstallNodeDependencies = func(ctx context.Context, wt string) error {
+			return installFrontendDependencies(ctx, wt, opts.CommandRunner)
+		}
 	}
 	command := opts.Spec.AgentCommand
 	if opts.AgentCommand != "" {
@@ -157,10 +159,6 @@ func runWorktree(ctx context.Context, opts Options, wt string, control bool, com
 		return result, stripped, err
 	}
 	result.ChangedFiles = changed
-	result.HeadMoved, err = headMoved(ctx, wt, evalBase)
-	if err != nil {
-		return result, stripped, err
-	}
 	if opts.Spec.ExpectNoChange {
 		for _, path := range result.ChangedFiles {
 			result.UnexpectedChanges = append(result.UnexpectedChanges, "task requires no changes: "+path)
@@ -168,12 +166,39 @@ func runWorktree(ctx context.Context, opts Options, wt string, control bool, com
 	}
 	result.ScopeViolations = ClassifyPaths(result.ChangedFiles, opts.Spec.ExpectPaths, opts.Spec.ForbidPaths)
 	result.HandEditedGenerated = DetectHandEdits(result.ChangedFiles, GeneratedArtifacts)
+	result.HeadMoved, err = headMoved(ctx, wt, evalBase)
+	if err != nil {
+		return result, stripped, err
+	}
+	patch, scanWarnings, truncated, err := worktreePatch(ctx, wt, evalBase)
+	if err != nil {
+		return result, stripped, err
+	}
+	deleted, err := deletedFiles(ctx, wt, evalBase)
+	if err != nil {
+		return result, stripped, err
+	}
+	renamed, err := renamedFiles(ctx, wt, evalBase)
+	if err != nil {
+		return result, stripped, err
+	}
+	violations, detectorWarnings := DetectIntegrityViolations(patch, deleted, renamed)
+	if truncated {
+		violations = append(violations, "integrity scan truncated: diff is too large to verify")
+	}
+	result.IntegrityViolations = append(result.IntegrityViolations, violations...)
+	result.IntegrityWarnings = append(result.IntegrityWarnings, scanWarnings...)
+	result.IntegrityWarnings = append(result.IntegrityWarnings, detectorWarnings...)
 	if len(opts.Spec.ExpectedFindings) > 0 {
 		result.ExpectedFindingsOK, result.MissingFindings = FindingsSatisfied(opts.Spec.ExpectedFindings, agent.Output)
 	}
 	if len(opts.Spec.ExpectedAny) > 0 {
 		ok, missing := FindingsSatisfiedAny(opts.Spec.ExpectedAny, agent.Output)
-		result.ExpectedFindingsOK = result.ExpectedFindingsOK && ok
+		if len(opts.Spec.ExpectedFindings) == 0 {
+			result.ExpectedFindingsOK = ok
+		} else {
+			result.ExpectedFindingsOK = result.ExpectedFindingsOK && ok
+		}
 		result.MissingFindings = append(result.MissingFindings, missing...)
 	}
 	if results, ok := runSuite(ctx, opts, wt); ok {
@@ -240,7 +265,7 @@ func applySeedPatch(ctx context.Context, wt, patch string) error {
 // installFrontendDependencies installs the base ref's lockfile inside the
 // disposable worktree. A worktree does not inherit node_modules, and symlinking
 // the caller's tree would give the agent write access to it.
-func installFrontendDependencies(ctx context.Context, wt string) error {
+func installFrontendDependencies(ctx context.Context, wt string, run func(context.Context, string, string, time.Duration) CommandResult) error {
 	frontend := filepath.Join(wt, "frontend")
 	if _, err := os.Stat(filepath.Join(frontend, "package.json")); err != nil {
 		if os.IsNotExist(err) {
@@ -248,7 +273,7 @@ func installFrontendDependencies(ctx context.Context, wt string) error {
 		}
 		return err
 	}
-	res := runShellCommand(ctx, frontend, "yarn install --frozen-lockfile --prefer-offline --ignore-scripts", 10*time.Minute)
+	res := run(ctx, frontend, "yarn install --frozen-lockfile --prefer-offline --ignore-scripts", 10*time.Minute)
 	if !res.Passed {
 		return fmt.Errorf("install frontend dependencies: exit %d: %s", res.ExitCode, res.OutputTail)
 	}

@@ -2,6 +2,7 @@ package agenteval
 
 import (
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -190,68 +191,28 @@ func TestApplySeedPatch(t *testing.T) {
 	}
 }
 
-func TestRunInstallsNodeDependenciesForNodeTasks(t *testing.T) {
+func TestRunRecordsIntegrityViolations(t *testing.T) {
 	root, sha := initRepo(t)
-	spec := baseSpec(t, root, sha)
-	spec.Requires = []string{"node"}
 	artifact, err := Run(context.Background(), Options{
 		Root:         root,
-		Spec:         spec,
-		Suites:       []Suite{{Name: "demo", Commands: []string{"cd frontend && test -e node_modules/.bin/marker"}}},
-		AgentCommand: "true",
-		InstallNodeDependencies: func(_ context.Context, wt string) error {
-			writeRepoFile(t, wt, "frontend/node_modules/.bin/marker", "x\n")
-			return nil
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if artifact.Status != "passed" || artifact.Context == nil || !artifact.Context.Success {
-		t.Fatalf("artifact = %+v", artifact)
-	}
-	if len(artifact.Context.ChangedFiles) != 0 {
-		t.Fatalf("changed files = %v", artifact.Context.ChangedFiles)
-	}
-}
-
-func TestRunFailsWhenNoChangeTaskChangesFiles(t *testing.T) {
-	root, sha := initRepo(t)
-	spec := baseSpec(t, root, sha)
-	spec.ExpectNoChange = true
-	spec.ExpectPaths = nil
-	artifact, err := Run(context.Background(), Options{
-		Root:         root,
-		Spec:         spec,
+		Spec:         baseSpec(t, root, sha),
 		Suites:       []Suite{{Name: "demo", Commands: []string{"true"}}},
-		AgentCommand: `printf 'x\n' > backend/x.go`,
+		AgentCommand: `printf 'package x\n\nimport "testing"\n\nfunc TestX(t *testing.T) { t.Skip("x") }\n' > backend/x_test.go`,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if artifact.Status != "failed" || len(artifact.Context.UnexpectedChanges) == 0 {
-		t.Fatalf("artifact = %+v", artifact)
+	if artifact.Context == nil {
+		t.Fatal("missing context run")
 	}
-	if !strings.Contains(artifact.Context.UnexpectedChanges[0], "task requires no changes: backend/x.go") {
-		t.Fatalf("unexpected changes = %v", artifact.Context.UnexpectedChanges)
+	if artifact.Status != "failed" || artifact.Context.Success {
+		t.Fatalf("artifact = %+v context = %+v", artifact, artifact.Context)
 	}
-}
-
-func TestRunPassesWhenNoChangeTaskDoesNothing(t *testing.T) {
-	root, sha := initRepo(t)
-	spec := baseSpec(t, root, sha)
-	spec.ExpectNoChange = true
-	spec.ExpectPaths = nil
-	artifact, err := Run(context.Background(), Options{
-		Root:   root,
-		Spec:   spec,
-		Suites: []Suite{{Name: "demo", Commands: []string{"true"}}},
-	})
-	if err != nil {
-		t.Fatal(err)
+	if len(artifact.Context.IntegrityViolations) == 0 {
+		t.Fatalf("integrity findings = %v", artifact.Context.IntegrityViolations)
 	}
-	if artifact.Status != "passed" || artifact.Context == nil || !artifact.Context.Success {
-		t.Fatalf("artifact = %+v", artifact)
+	if !strings.Contains(strings.Join(artifact.Context.IntegrityViolations, "\n"), "added test skip: backend/x_test.go") {
+		t.Fatalf("integrity findings = %v", artifact.Context.IntegrityViolations)
 	}
 }
 
@@ -429,6 +390,200 @@ func TestLimitedBuffer(t *testing.T) {
 	}
 }
 
+func TestRunSeesCommittedAgentChanges(t *testing.T) {
+	root, sha := initRepo(t)
+	artifact, err := Run(context.Background(), Options{
+		Root:   root,
+		Spec:   baseSpec(t, root, sha),
+		Suites: []Suite{{Name: "demo", Commands: []string{"true"}}},
+		AgentCommand: `printf 'package x\n\nimport "testing"\n\nfunc TestX(t *testing.T) { t.Skip("x") }\n' > backend/x_test.go && ` +
+			`git add -A && git -c user.name=A -c user.email=a@b.invalid -c commit.gpgsign=false commit -qm agent`,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifact.Context == nil || artifact.Status != "failed" {
+		t.Fatalf("artifact = %+v", artifact)
+	}
+	if !artifact.Context.HeadMoved {
+		t.Fatal("committed agent change was not detected as HEAD movement")
+	}
+	if !strings.Contains(strings.Join(artifact.Context.IntegrityViolations, "\n"), "added test skip: backend/x_test.go") {
+		t.Fatalf("integrity findings = %v", artifact.Context.IntegrityViolations)
+	}
+	if len(artifact.Context.ChangedFiles) == 0 {
+		t.Fatal("committed change was hidden from changed files")
+	}
+}
+
+func TestRunIgnoresSeedPatchIntegrityFindings(t *testing.T) {
+	root, _ := initRepo(t)
+	writeRepoFile(t, root, "backend/seed_test.go", "package x\n")
+	runGit(t, root, "add", ".")
+	runGit(t, root, "commit", "-q", "-m", "seed target")
+	sha := strings.TrimSpace(runGit(t, root, "rev-parse", "HEAD"))
+	spec := baseSpec(t, root, sha)
+	writeRepoFile(t, spec.TaskDir, "seed.patch", strings.Join([]string{
+		"diff --git a/backend/seed_test.go b/backend/seed_test.go",
+		"--- a/backend/seed_test.go",
+		"+++ b/backend/seed_test.go",
+		"@@ -1,1 +1,2 @@",
+		" package x",
+		"+func TestSeed(t *testing.T) { t.Skip(\"seed\") }",
+		"",
+	}, "\n"))
+	spec.SeedPatch = "seed.patch"
+	artifact, err := Run(context.Background(), Options{
+		Root:   root,
+		Spec:   spec,
+		Suites: []Suite{{Name: "demo", Commands: []string{"true"}}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifact.Status != "passed" || artifact.Context == nil || !artifact.Context.Success {
+		t.Fatalf("artifact = %+v", artifact)
+	}
+	if len(artifact.Context.IntegrityViolations) != 0 {
+		t.Fatalf("seed patch attributed to agent: %v", artifact.Context.IntegrityViolations)
+	}
+}
+
+func TestRenamedFilesReportsRename(t *testing.T) {
+	root, _ := initRepo(t)
+	writeRepoFile(t, root, "backend/old_test.go", "package x\n")
+	runGit(t, root, "add", ".")
+	runGit(t, root, "commit", "-q", "-m", "add test")
+	base := strings.TrimSpace(runGit(t, root, "rev-parse", "HEAD"))
+	runGit(t, root, "mv", "backend/old_test.go", "backend/old.go")
+	got, err := renamedFiles(context.Background(), root, base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].Old != "backend/old_test.go" || got[0].New != "backend/old.go" {
+		t.Fatalf("renames = %+v", got)
+	}
+}
+
+func TestRunWorktreeReportsIntegrityGitErrors(t *testing.T) {
+	tests := []struct {
+		name  string
+		token string
+		want  string
+	}{
+		{"head lookup", "rev-parse", "rev-parse"},
+		{"patch scan", "--unified=0", "integrity scan"},
+		{"deleted files", "--diff-filter=D", "diff-filter=D"},
+		{"renamed files", "--name-status", "name-status"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			root, sha := initRepo(t)
+			marker := filepath.Join(t.TempDir(), "marker")
+			installGitShim(t, tt.token, "fail", marker)
+			_, _, err := runWorktree(context.Background(), Options{
+				Root: root,
+				Spec: baseSpec(t, root, sha),
+				CommandRunner: func(context.Context, string, string, time.Duration) CommandResult {
+					touchMarker(t, marker)
+					return CommandResult{Passed: true}
+				},
+			}, filepath.Join(t.TempDir(), "wt"), false, "true")
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("err = %v, want substring %q", err, tt.want)
+			}
+		})
+	}
+}
+
+func TestRunWorktreeMarksTruncatedIntegrityScan(t *testing.T) {
+	root, sha := initRepo(t)
+	marker := filepath.Join(t.TempDir(), "marker")
+	installGitShim(t, "--unified=0", "huge", marker)
+	result, _, err := runWorktree(context.Background(), Options{
+		Root: root,
+		Spec: baseSpec(t, root, sha),
+		CommandRunner: func(context.Context, string, string, time.Duration) CommandResult {
+			touchMarker(t, marker)
+			return CommandResult{Passed: true}
+		},
+	}, filepath.Join(t.TempDir(), "wt"), false, "true")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !contains(result.IntegrityViolations, "integrity scan truncated: diff is too large to verify") {
+		t.Fatalf("violations = %v", result.IntegrityViolations)
+	}
+	if !contains(result.IntegrityWarnings, "integrity scan truncated at 16 MiB") {
+		t.Fatalf("warnings = %v", result.IntegrityWarnings)
+	}
+}
+
+func TestRunInstallsNodeDependenciesForNodeTasks(t *testing.T) {
+	root, sha := initRepo(t)
+	spec := baseSpec(t, root, sha)
+	spec.Requires = []string{"node"}
+	artifact, err := Run(context.Background(), Options{
+		Root:         root,
+		Spec:         spec,
+		Suites:       []Suite{{Name: "demo", Commands: []string{"cd frontend && test -e node_modules/.bin/marker"}}},
+		AgentCommand: "true",
+		InstallNodeDependencies: func(_ context.Context, wt string) error {
+			writeRepoFile(t, wt, "frontend/node_modules/.bin/marker", "x\n")
+			return nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifact.Status != "passed" || artifact.Context == nil || !artifact.Context.Success {
+		t.Fatalf("artifact = %+v", artifact)
+	}
+	if len(artifact.Context.ChangedFiles) != 0 {
+		t.Fatalf("changed files = %v", artifact.Context.ChangedFiles)
+	}
+}
+
+func TestRunFailsWhenNoChangeTaskChangesFiles(t *testing.T) {
+	root, sha := initRepo(t)
+	spec := baseSpec(t, root, sha)
+	spec.ExpectNoChange = true
+	spec.ExpectPaths = nil
+	artifact, err := Run(context.Background(), Options{
+		Root:         root,
+		Spec:         spec,
+		Suites:       []Suite{{Name: "demo", Commands: []string{"true"}}},
+		AgentCommand: `printf 'x\n' > backend/x.go`,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifact.Status != "failed" || len(artifact.Context.UnexpectedChanges) == 0 {
+		t.Fatalf("artifact = %+v", artifact)
+	}
+	if !strings.Contains(artifact.Context.UnexpectedChanges[0], "task requires no changes: backend/x.go") {
+		t.Fatalf("unexpected changes = %v", artifact.Context.UnexpectedChanges)
+	}
+}
+
+func TestRunPassesWhenNoChangeTaskDoesNothing(t *testing.T) {
+	root, sha := initRepo(t)
+	spec := baseSpec(t, root, sha)
+	spec.ExpectNoChange = true
+	spec.ExpectPaths = nil
+	artifact, err := Run(context.Background(), Options{
+		Root:   root,
+		Spec:   spec,
+		Suites: []Suite{{Name: "demo", Commands: []string{"true"}}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifact.Status != "passed" || artifact.Context == nil || !artifact.Context.Success {
+		t.Fatalf("artifact = %+v", artifact)
+	}
+}
+
 func TestRunSeesCommittedNoChangeChanges(t *testing.T) {
 	root, sha := initRepo(t)
 	spec := baseSpec(t, root, sha)
@@ -481,5 +636,128 @@ func TestRunIgnoresSeedPatchForNoChangeTasks(t *testing.T) {
 	}
 	if artifact.Status != "passed" || len(artifact.Context.UnexpectedChanges) != 0 {
 		t.Fatalf("seed patch attributed to agent: %+v", artifact)
+	}
+}
+
+func TestInstallFrontendDependencies(t *testing.T) {
+	t.Run("no frontend", func(t *testing.T) {
+		if err := installFrontendDependencies(context.Background(), t.TempDir(), nil); err != nil {
+			t.Fatalf("err = %v", err)
+		}
+	})
+
+	t.Run("installs with the injected runner", func(t *testing.T) {
+		wt := t.TempDir()
+		writeRepoFile(t, wt, "frontend/package.json", "{}\n")
+		var gotDir, gotCommand string
+		var gotTimeout time.Duration
+		err := installFrontendDependencies(context.Background(), wt, func(_ context.Context, dir, command string, timeout time.Duration) CommandResult {
+			gotDir, gotCommand, gotTimeout = dir, command, timeout
+			return CommandResult{Passed: true}
+		})
+		if err != nil {
+			t.Fatalf("err = %v", err)
+		}
+		if gotDir != filepath.Join(wt, "frontend") {
+			t.Fatalf("dir = %q", gotDir)
+		}
+		if !strings.Contains(gotCommand, "yarn install --frozen-lockfile") {
+			t.Fatalf("command = %q", gotCommand)
+		}
+		if gotTimeout != 10*time.Minute {
+			t.Fatalf("timeout = %v", gotTimeout)
+		}
+	})
+
+	t.Run("reports a failed install", func(t *testing.T) {
+		wt := t.TempDir()
+		writeRepoFile(t, wt, "frontend/package.json", "{}\n")
+		err := installFrontendDependencies(context.Background(), wt, func(context.Context, string, string, time.Duration) CommandResult {
+			return CommandResult{ExitCode: 7, OutputTail: "boom"}
+		})
+		if err == nil || !strings.Contains(err.Error(), "exit 7") || !strings.Contains(err.Error(), "boom") {
+			t.Fatalf("err = %v", err)
+		}
+	})
+
+	t.Run("reports stat errors that are not a missing frontend", func(t *testing.T) {
+		wt := t.TempDir()
+		writeRepoFile(t, wt, "frontend", "not a directory\n")
+		if err := installFrontendDependencies(context.Background(), wt, nil); err == nil {
+			t.Fatal("expected an error")
+		}
+	})
+}
+
+func TestRunRecordsExpectedAnyFindings(t *testing.T) {
+	root, sha := initRepo(t)
+	spec := baseSpec(t, root, sha)
+	spec.ExpectedAny = []string{"data loss", "breaking change"}
+	artifact, err := Run(context.Background(), Options{
+		Root:         root,
+		Spec:         spec,
+		Suites:       []Suite{{Name: "demo", Commands: []string{"true"}}},
+		AgentCommand: `echo "this is a breaking change"`,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifact.Context == nil || !artifact.Context.ExpectedFindingsOK || len(artifact.Context.MissingFindings) != 0 {
+		t.Fatalf("artifact = %+v", artifact)
+	}
+}
+
+func TestRunInstallsNodeDependenciesByDefault(t *testing.T) {
+	root, sha := initRepo(t)
+	spec := baseSpec(t, root, sha)
+	spec.Requires = []string{"node"}
+	artifact, err := Run(context.Background(), Options{
+		Root:         root,
+		Spec:         spec,
+		Suites:       []Suite{{Name: "demo", Commands: []string{"true"}}},
+		AgentCommand: "true",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifact.Status != "passed" || artifact.Context == nil || !artifact.Context.Success {
+		t.Fatalf("artifact = %+v", artifact)
+	}
+}
+
+func TestRunFailsWhenNodeDependencyInstallFails(t *testing.T) {
+	root, sha := initRepo(t)
+	spec := baseSpec(t, root, sha)
+	spec.Requires = []string{"node"}
+	_, err := Run(context.Background(), Options{
+		Root:         root,
+		Spec:         spec,
+		Suites:       []Suite{{Name: "demo", Commands: []string{"true"}}},
+		AgentCommand: "true",
+		InstallNodeDependencies: func(context.Context, string) error {
+			return errors.New("yarn exploded")
+		},
+	})
+	if err == nil || !strings.Contains(err.Error(), "yarn exploded") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestRunCombinesExpectedFindingsAndExpectedAny(t *testing.T) {
+	root, sha := initRepo(t)
+	spec := baseSpec(t, root, sha)
+	spec.ExpectedFindings = []string{"alpha"}
+	spec.ExpectedAny = []string{"beta", "gamma"}
+	artifact, err := Run(context.Background(), Options{
+		Root:         root,
+		Spec:         spec,
+		Suites:       []Suite{{Name: "demo", Commands: []string{"true"}}},
+		AgentCommand: `echo "alpha beta"`,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifact.Context == nil || !artifact.Context.ExpectedFindingsOK || len(artifact.Context.MissingFindings) != 0 {
+		t.Fatalf("artifact = %+v", artifact)
 	}
 }

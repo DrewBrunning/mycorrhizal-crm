@@ -88,7 +88,19 @@ func TestMigrationBackfillsFieldDefinitionPosition(t *testing.T) {
 	assert.Equal(t, int64(1), idxCount, "the display-order index must exist after 000066")
 
 	// The down migration drops the index and the column.
-	require.NoError(t, MigrateDown(dbPath))
+	require.NoError(t, MigrateDown(dbPath)) // rolls back 000078_app_password_scopes
+	require.NoError(t, MigrateDown(dbPath)) // rolls back 000077_user_time_format
+	require.NoError(t, MigrateDown(dbPath)) // rolls back 000076_target_closeness
+	require.NoError(t, MigrateDown(dbPath)) // rolls back 000075_contact_ambient
+	require.NoError(t, MigrateDown(dbPath)) // rolls back 000074_field_definition_group
+	require.NoError(t, MigrateDown(dbPath)) // rolls back 000073_address_coordinates_backfill
+	require.NoError(t, MigrateDown(dbPath)) // rolls back 000072_geopulse_configs
+	require.NoError(t, MigrateDown(dbPath)) // rolls back 000071_address_ids
+	require.NoError(t, MigrateDown(dbPath)) // rolls back 000070_webauthn_credentials
+	require.NoError(t, MigrateDown(dbPath)) // rolls back 000069_feeds
+	require.NoError(t, MigrateDown(dbPath)) // rolls back 000068_import_runs_mycorrhizal_format
+	require.NoError(t, MigrateDown(dbPath)) // rolls back 000067_note_reminder_uuid
+	require.NoError(t, MigrateDown(dbPath)) // rolls back 000066_field_definition_position
 
 	require.NoError(t, sqlDB.QueryRow(
 		"SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name='idx_field_definitions_user_position'",

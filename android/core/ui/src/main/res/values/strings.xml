@@ -747,6 +747,12 @@
     <string name="settings_api_tokens_revoked">Revoked</string>
     <string name="settings_api_tokens_expired">Expired</string>
     <string name="settings_api_tokens_scope_full">Full access</string>
+    <string name="settings_api_tokens_scope_calendar">Calendar (CalDAV)</string>
+    <string name="settings_api_tokens_scope_both">Contacts + calendar</string>
+    <string name="settings_api_tokens_scope_api">API / automation</string>
+    <string name="settings_api_tokens_scope_mcp">MCP / AI assistant</string>
+    <string name="settings_api_tokens_scope_preset_help">Only the selected scopes. Credential management always requires a signed-in session.</string>
+    <string name="settings_api_tokens_scope_custom">Custom access</string>
     <string name="settings_api_tokens_scope_carddav">CardDAV only</string>
     <string name="settings_api_tokens_created">Created %1$s</string>
     <string name="settings_api_tokens_last_used">Last used: %1$s</string>
@@ -759,7 +765,7 @@
     <string name="settings_api_tokens_expiry_label">Expires in</string>
     <string name="settings_api_tokens_expiry_days">%1$d days</string>
     <string name="settings_api_tokens_scope_label">Access</string>
-    <string name="settings_api_tokens_scope_full_help">Can be used anywhere the API accepts a token, including CardDAV sync.</string>
+    <string name="settings_api_tokens_scope_full_help">Can be used for data access, including CardDAV sync. Credential management requires a signed-in session.</string>
     <string name="settings_api_tokens_scope_carddav_help">Only works for CardDAV contact sync. A leaked device credential can\'t be used against the rest of the API.</string>
     <string name="settings_api_tokens_created_title">Token created</string>
     <string name="settings_api_tokens_created_warning">This token will not be shown again. Copy it now and store it securely.</string>

@@ -33,6 +33,43 @@ func generateApiToken() (plaintext, hash string, err error) {
 	return plaintext, hash, nil
 }
 
+func apiTokenResponse(token models.ApiToken) models.ApiTokenResponse {
+	scopes := token.EffectiveScopes()
+	return models.ApiTokenResponse{
+		ID:         token.ID,
+		Name:       token.Name,
+		CreatedAt:  token.CreatedAt,
+		LastUsedAt: token.LastUsedAt,
+		RevokedAt:  token.RevokedAt,
+		ExpiresAt:  token.ExpiresAt,
+		Scope:      models.LegacyScopeForScopes(scopes),
+		Scopes:     scopes,
+	}
+}
+
+func resolveTokenScopes(input models.ApiTokenInput) ([]string, *apperrors.AppError) {
+	if input.Scopes != nil {
+		scopes := models.NormalizeTokenScopes(*input.Scopes)
+		if len(scopes) == 0 {
+			return nil, apperrors.ErrInvalidInput("scopes", "scopes must contain at least one scope")
+		}
+		for _, scope := range scopes {
+			if !models.IsValidTokenScope(scope) {
+				return nil, apperrors.ErrInvalidInput("scopes", "Unknown scope: "+scope)
+			}
+		}
+		return scopes, nil
+	}
+	scope := models.DefaultApiTokenScope
+	if input.Scope != "" {
+		if input.Scope != models.LegacyTokenScopeFull && input.Scope != models.LegacyTokenScopeCardDAV {
+			return nil, apperrors.ErrInvalidInput("scope", "Unknown scope: "+input.Scope)
+		}
+		scope = input.Scope
+	}
+	return models.ScopesForLegacyScope(scope), nil
+}
+
 func ListApiTokens(c *gin.Context) {
 	db := c.MustGet("db").(*gorm.DB)
 	userID, ok := currentUserID(c)
@@ -50,15 +87,7 @@ func ListApiTokens(c *gin.Context) {
 
 	response := make([]models.ApiTokenResponse, len(tokens))
 	for i, t := range tokens {
-		response[i] = models.ApiTokenResponse{
-			ID:         t.ID,
-			Name:       t.Name,
-			CreatedAt:  t.CreatedAt,
-			LastUsedAt: t.LastUsedAt,
-			RevokedAt:  t.RevokedAt,
-			ExpiresAt:  t.ExpiresAt,
-			Scope:      t.Scope,
-		}
+		response[i] = apiTokenResponse(t)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"tokens": response})
@@ -83,23 +112,38 @@ func CreateApiToken(c *gin.Context) {
 		return
 	}
 
-	expiryDays := models.DefaultApiTokenExpiryDays
-	if input.ExpiresInDays != nil {
-		expiryDays = *input.ExpiresInDays
+	scopes, scopeErr := resolveTokenScopes(*input)
+	if scopeErr != nil {
+		apperrors.AbortWithError(c, scopeErr)
+		return
 	}
-	expiresAt := clock.FromContext(c).Now().Add(time.Duration(expiryDays) * 24 * time.Hour)
 
-	scope := models.DefaultApiTokenScope
-	if input.Scope != "" {
-		scope = input.Scope
+	var expiresAt *time.Time
+	if input.NeverExpires {
+		if input.ExpiresInDays != nil {
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("expires_in_days", "expires_in_days cannot be combined with never_expires"))
+			return
+		}
+		if !models.IsDAVOnlyScopes(scopes) {
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("never_expires", "never_expires is only allowed for CardDAV/CalDAV app passwords"))
+			return
+		}
+	} else {
+		expiryDays := models.DefaultApiTokenExpiryDays
+		if input.ExpiresInDays != nil {
+			expiryDays = *input.ExpiresInDays
+		}
+		expiry := clock.FromContext(c).Now().Add(time.Duration(expiryDays) * 24 * time.Hour)
+		expiresAt = &expiry
 	}
 
 	token := models.ApiToken{
 		UserID:    userID,
 		Name:      input.Name,
 		TokenHash: hash,
-		ExpiresAt: &expiresAt,
-		Scope:     scope,
+		ExpiresAt: expiresAt,
+		Scope:     models.LegacyScopeForScopes(scopes),
+		Scopes:    scopes,
 	}
 	if err := db.Create(&token).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("insert"))
@@ -110,16 +154,8 @@ func CreateApiToken(c *gin.Context) {
 	models.RecordAuditEvent(db, models.AuditEntityAPIToken, fmt.Sprintf("%d", token.ID), models.AuditOpCreate, userID)
 
 	c.JSON(http.StatusCreated, models.ApiTokenCreateResponse{
-		ApiTokenResponse: models.ApiTokenResponse{
-			ID:         token.ID,
-			Name:       token.Name,
-			CreatedAt:  token.CreatedAt,
-			LastUsedAt: token.LastUsedAt,
-			RevokedAt:  token.RevokedAt,
-			ExpiresAt:  token.ExpiresAt,
-			Scope:      token.Scope,
-		},
-		Token: plaintext,
+		ApiTokenResponse: apiTokenResponse(token),
+		Token:            plaintext,
 	})
 }
 
@@ -231,15 +267,22 @@ func RotateApiToken(c *gin.Context) {
 	}
 
 	// A rotated token gets a fresh default expiry window, not the old
-	// token's remaining time -- reissuing resets the countdown.
-	expiresAt := clock.FromContext(c).Now().Add(time.Duration(models.DefaultApiTokenExpiryDays) * 24 * time.Hour)
+	// token's remaining time -- reissuing resets the countdown. A DAV app
+	// password that never expired stays that way.
+	scopes := oldToken.EffectiveScopes()
+	var expiresAt *time.Time
+	if oldToken.ExpiresAt != nil || !models.IsDAVOnlyScopes(scopes) {
+		expiry := clock.FromContext(c).Now().Add(time.Duration(models.DefaultApiTokenExpiryDays) * 24 * time.Hour)
+		expiresAt = &expiry
+	}
 
 	newToken := models.ApiToken{
 		UserID:    userID,
 		Name:      oldToken.Name,
 		TokenHash: hash,
-		ExpiresAt: &expiresAt,
-		Scope:     oldToken.Scope,
+		ExpiresAt: expiresAt,
+		Scope:     models.LegacyScopeForScopes(scopes),
+		Scopes:    scopes,
 	}
 	if err := db.Create(&newToken).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("insert"))
@@ -258,15 +301,7 @@ func RotateApiToken(c *gin.Context) {
 	models.RecordAuditEvent(db, models.AuditEntityAPIToken, fmt.Sprintf("%d", newToken.ID), models.AuditOpCreate, userID)
 
 	c.JSON(http.StatusCreated, models.ApiTokenCreateResponse{
-		ApiTokenResponse: models.ApiTokenResponse{
-			ID:         newToken.ID,
-			Name:       newToken.Name,
-			CreatedAt:  newToken.CreatedAt,
-			LastUsedAt: newToken.LastUsedAt,
-			RevokedAt:  newToken.RevokedAt,
-			ExpiresAt:  newToken.ExpiresAt,
-			Scope:      newToken.Scope,
-		},
-		Token: plaintext,
+		ApiTokenResponse: apiTokenResponse(newToken),
+		Token:            plaintext,
 	})
 }

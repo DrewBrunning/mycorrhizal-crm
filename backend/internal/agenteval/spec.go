@@ -1,9 +1,9 @@
 // Package agenteval is the deterministic half of the dispatch-only agent
-// evaluation harness (issue #1959): task-spec parsing, scope and
-// generated-artifact classification, suite-command aggregation, and the
-// context-vs-control delta. A task can also declare expect_no_change for a
-// refusal case: any changed file then fails the run. The CLI in cmd/agenteval
-// owns the disposable worktrees and subprocesses.
+// evaluation harness (issue #1959): task-spec parsing, scope,
+// generated-artifact and gate-integrity classification, suite-command
+// aggregation, and the context-vs-control delta. A task can also declare
+// expect_no_change for a refusal case: any changed file then fails the run.
+// The CLI in cmd/agenteval owns the disposable worktrees and subprocesses.
 package agenteval
 
 import (
