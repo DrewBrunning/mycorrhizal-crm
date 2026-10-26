@@ -140,13 +140,13 @@ func TestCompare(t *testing.T) {
 func TestMarkdown(t *testing.T) {
 	a := Artifact{
 		Task: "demo", Status: "passed", BaseRef: sha, AgentName: "a", AgentModel: "m", AgentVersion: "1", AgentCommand: "true", DurationMS: 5,
-		Context:  &RunResult{Status: "passed", Success: true, SuiteCommands: []CommandResult{{Command: "true", Passed: true}}, ScopeViolations: []string{"v"}, HandEditedGenerated: []string{"h"}, IntegrityViolations: []string{"i"}, IntegrityWarnings: []string{"w"}, HeadMoved: true, MissingFindings: []string{"f"}},
+		Context:  &RunResult{Status: "passed", Success: true, SuiteCommands: []CommandResult{{Command: "true", Passed: true}}, ScopeViolations: []string{"v"}, HandEditedGenerated: []string{"h"}, UnexpectedChanges: []string{"u"}, IntegrityViolations: []string{"i"}, IntegrityWarnings: []string{"w"}, HeadMoved: true, MissingFindings: []string{"f"}},
 		Control:  &RunResult{Status: "passed", Success: true},
 		Delta:    &ControlDelta{Summary: "both passed"},
 		Stripped: []string{".agents/skills"},
 	}
 	md := Markdown(a)
-	for _, want := range []string{"# Agent eval: demo", "Context run", "Control run", "Scope: v", "Generated: h", "Integrity: i", "Integrity warning: w", "HEAD moved during the run", "Missing finding: f", "Stripped for control"} {
+	for _, want := range []string{"# Agent eval: demo", "Context run", "Control run", "Scope: v", "Generated: h", "Unexpected change: u", "Integrity: i", "Integrity warning: w", "HEAD moved during the run", "Missing finding: f", "Stripped for control"} {
 		if !strings.Contains(md, want) {
 			t.Fatalf("markdown missing %q:\n%s", want, md)
 		}
@@ -198,5 +198,16 @@ func TestMatchPathQuestionMark(t *testing.T) {
 	}
 	if MatchPath("backend/v?/x.go", "backend/v12/x.go") {
 		t.Fatal("? must match exactly one character")
+	}
+}
+
+func TestFindingsSatisfiedAny(t *testing.T) {
+	ok, missing := FindingsSatisfiedAny([]string{"data loss", "lose data"}, "Dropping the column would lose data for every contact.")
+	if !ok || len(missing) != 0 {
+		t.Fatalf("ok=%v missing=%v", ok, missing)
+	}
+	ok, missing = FindingsSatisfiedAny([]string{"deprecation", "breaking change"}, "I implemented the change.")
+	if ok || len(missing) != 1 {
+		t.Fatalf("ok=%v missing=%v", ok, missing)
 	}
 }

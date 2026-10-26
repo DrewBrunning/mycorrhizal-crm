@@ -1,8 +1,9 @@
 // Package agenteval is the deterministic half of the dispatch-only agent
 // evaluation harness (issue #1959): task-spec parsing, scope,
 // generated-artifact and gate-integrity classification, suite-command
-// aggregation, and the context-vs-control delta. The CLI in cmd/agenteval owns
-// the disposable worktrees and subprocesses.
+// aggregation, and the context-vs-control delta. A task can also declare
+// expect_no_change for a refusal case: any changed file then fails the run.
+// The CLI in cmd/agenteval owns the disposable worktrees and subprocesses.
 package agenteval
 
 import (
@@ -22,7 +23,7 @@ import (
 const DefaultTimeout = 20 * time.Minute
 
 // AllowedRequires is the closed set a task may require.
-var AllowedRequires = map[string]bool{"go": true, "node": true, "docker": true, "gh": true}
+var AllowedRequires = map[string]bool{"go": true, "node": true, "yarn": true, "java": true, "docker": true, "gh": true}
 
 var commitSHARe = regexp.MustCompile(`^[0-9a-f]{40}([0-9a-f]{24})?$`)
 
@@ -43,6 +44,8 @@ type Spec struct {
 	AgentVersion     string   `yaml:"agent_version"`
 	SeedPatch        string   `yaml:"seed_patch"`
 	ExpectedFindings []string `yaml:"expected_findings"`
+	ExpectedAny      []string `yaml:"expected_any"`
+	ExpectNoChange   bool     `yaml:"expect_no_change"`
 
 	// TaskDir is the absolute task directory containing spec.yaml.
 	TaskDir string `yaml:"-"`
@@ -90,8 +93,8 @@ func parseSpec(body []byte, dir, name string, suites []string) (Spec, error) {
 	if !contains(suites, spec.Suite) {
 		return Spec{}, fmt.Errorf("spec.suite %q is not in internal/agentcontext.Suites()", spec.Suite)
 	}
-	if len(spec.ExpectPaths) == 0 {
-		return Spec{}, errors.New("spec.expect_paths must name at least one allowed path")
+	if len(spec.ExpectPaths) == 0 && !spec.ExpectNoChange {
+		return Spec{}, errors.New("spec.expect_paths must name at least one allowed path unless expect_no_change is true")
 	}
 	for _, pattern := range append(append([]string{}, spec.ExpectPaths...), spec.ForbidPaths...) {
 		if _, err := globRegexp(pattern); err != nil {
@@ -108,7 +111,7 @@ func parseSpec(body []byte, dir, name string, suites []string) (Spec, error) {
 	}
 	for _, req := range spec.Requires {
 		if !AllowedRequires[req] {
-			return Spec{}, fmt.Errorf("spec.requires %q is not one of go/node/docker/gh", req)
+			return Spec{}, fmt.Errorf("spec.requires %q is not one of go/node/yarn/java/docker/gh", req)
 		}
 	}
 	if strings.TrimSpace(spec.AgentCommand) == "" {

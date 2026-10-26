@@ -2,6 +2,7 @@ package agenteval
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -63,7 +64,7 @@ func TestParseSpecErrors(t *testing.T) {
 		{"missing expect", "name: demo\nprompt: x\nbase_ref: " + sha + "\nsuite: database-migration\nagent_command: true\n", "expect_paths must name"},
 		{"bad glob", "name: demo\nprompt: x\nbase_ref: " + sha + "\nsuite: database-migration\nagent_command: true\nexpect_paths: ['[']\n", "invalid path glob"},
 		{"bad timeout", "name: demo\nprompt: x\nbase_ref: " + sha + "\nsuite: database-migration\ntimeout: nope\nagent_command: true\nexpect_paths: [backend/**]\n", "not a positive Go duration"},
-		{"bad require", "name: demo\nprompt: x\nbase_ref: " + sha + "\nsuite: database-migration\nrequires: [rust]\nagent_command: true\nexpect_paths: [backend/**]\n", "go/node/docker/gh"},
+		{"bad require", "name: demo\nprompt: x\nbase_ref: " + sha + "\nsuite: database-migration\nrequires: [rust]\nagent_command: true\nexpect_paths: [backend/**]\n", "go/node/yarn/java/docker/gh"},
 		{"missing agent", "name: demo\nprompt: x\nbase_ref: " + sha + "\nsuite: database-migration\nexpect_paths: [backend/**]\n", "agent_command is required"},
 		{"bad yaml", "name: [", "parse spec.yaml"},
 	}
@@ -74,6 +75,18 @@ func TestParseSpecErrors(t *testing.T) {
 				t.Fatalf("err = %v, want %q", err, tc.want)
 			}
 		})
+	}
+}
+
+func TestParseSpecAllowsNoChangeWithoutExpectPaths(t *testing.T) {
+	dir := t.TempDir()
+	body := "name: demo\nprompt: x\nbase_ref: " + sha + "\nsuite: database-migration\nagent_command: true\nexpect_no_change: true\n"
+	spec, err := parseSpec([]byte(body), dir, "demo", []string{"database-migration"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !spec.ExpectNoChange {
+		t.Fatal("expect_no_change not parsed")
 	}
 }
 
@@ -187,8 +200,60 @@ func TestCommittedTasksLoad(t *testing.T) {
 		if !e.IsDir() || e.Name() == "controls" {
 			continue
 		}
-		if _, err := LoadTask(root, "testdata/agent-eval", e.Name(), names); err != nil {
+		spec, err := LoadTask(root, "testdata/agent-eval", e.Name(), names)
+		if err != nil {
 			t.Errorf("%s: %v", e.Name(), err)
+			continue
 		}
+		requireCommit(t, root, spec.BaseRef)
+	}
+}
+
+func TestRepositoryTasksCoverEverySuite(t *testing.T) {
+	root, err := filepath.Abs("../../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	suites := agentcontext.Suites()
+	names := make([]string, 0, len(suites))
+	for _, s := range suites {
+		names = append(names, s.Name)
+	}
+	entries, err := os.ReadDir(filepath.Join(root, "testdata", "agent-eval"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	covered := map[string]bool{}
+	tasks := 0
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		if _, err := os.Stat(filepath.Join(root, "testdata", "agent-eval", e.Name(), "spec.yaml")); err != nil {
+			continue
+		}
+		spec, err := LoadTask(root, "testdata/agent-eval", e.Name(), names)
+		if err != nil {
+			t.Errorf("%s: %v", e.Name(), err)
+			continue
+		}
+		tasks++
+		requireCommit(t, root, spec.BaseRef)
+		covered[spec.Suite] = true
+	}
+	if tasks == 0 {
+		t.Fatal("no eval tasks found")
+	}
+	for _, s := range suites {
+		if !covered[s.Name] {
+			t.Errorf("suite %q has no eval task", s.Name)
+		}
+	}
+}
+
+func requireCommit(t *testing.T, root, ref string) {
+	t.Helper()
+	if out, err := exec.Command("git", "-C", root, "cat-file", "-e", ref+"^{commit}").CombinedOutput(); err != nil {
+		t.Errorf("task base_ref %s is not a commit in this repository: %v: %s", ref, err, strings.TrimSpace(string(out)))
 	}
 }

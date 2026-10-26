@@ -15,16 +15,17 @@ import (
 
 // Options configures one task run.
 type Options struct {
-	Root          string
-	Spec          Spec
-	Suites        []Suite
-	AgentCommand  string
-	AgentName     string
-	AgentModel    string
-	AgentVersion  string
-	RunControl    bool
-	LookPath      func(string) (string, error)
-	CommandRunner func(ctx context.Context, dir, command string, timeout time.Duration) CommandResult
+	Root                    string
+	Spec                    Spec
+	Suites                  []Suite
+	AgentCommand            string
+	AgentName               string
+	AgentModel              string
+	AgentVersion            string
+	RunControl              bool
+	LookPath                func(string) (string, error)
+	CommandRunner           func(ctx context.Context, dir, command string, timeout time.Duration) CommandResult
+	InstallNodeDependencies func(ctx context.Context, wt string) error
 }
 
 // Suite is the subset of agentcontext.Suite the harness needs, kept local so
@@ -42,6 +43,11 @@ func Run(ctx context.Context, opts Options) (Artifact, error) {
 	}
 	if opts.CommandRunner == nil {
 		opts.CommandRunner = runShellCommand
+	}
+	if opts.InstallNodeDependencies == nil {
+		opts.InstallNodeDependencies = func(ctx context.Context, wt string) error {
+			return installFrontendDependencies(ctx, wt, opts.CommandRunner)
+		}
 	}
 	command := opts.Spec.AgentCommand
 	if opts.AgentCommand != "" {
@@ -128,6 +134,11 @@ func runWorktree(ctx context.Context, opts Options, wt string, control bool, com
 			return result, nil, err
 		}
 	}
+	if contains(opts.Spec.Requires, "node") {
+		if err := opts.InstallNodeDependencies(ctx, wt); err != nil {
+			return result, nil, err
+		}
+	}
 	var stripped []string
 	var err error
 	if control {
@@ -148,6 +159,11 @@ func runWorktree(ctx context.Context, opts Options, wt string, control bool, com
 		return result, stripped, err
 	}
 	result.ChangedFiles = changed
+	if opts.Spec.ExpectNoChange {
+		for _, path := range result.ChangedFiles {
+			result.UnexpectedChanges = append(result.UnexpectedChanges, "task requires no changes: "+path)
+		}
+	}
 	result.ScopeViolations = ClassifyPaths(result.ChangedFiles, opts.Spec.ExpectPaths, opts.Spec.ForbidPaths)
 	result.HandEditedGenerated = DetectHandEdits(result.ChangedFiles, GeneratedArtifacts)
 	result.HeadMoved, err = headMoved(ctx, wt, evalBase)
@@ -175,6 +191,15 @@ func runWorktree(ctx context.Context, opts Options, wt string, control bool, com
 	result.IntegrityWarnings = append(result.IntegrityWarnings, detectorWarnings...)
 	if len(opts.Spec.ExpectedFindings) > 0 {
 		result.ExpectedFindingsOK, result.MissingFindings = FindingsSatisfied(opts.Spec.ExpectedFindings, agent.Output)
+	}
+	if len(opts.Spec.ExpectedAny) > 0 {
+		ok, missing := FindingsSatisfiedAny(opts.Spec.ExpectedAny, agent.Output)
+		if len(opts.Spec.ExpectedFindings) == 0 {
+			result.ExpectedFindingsOK = ok
+		} else {
+			result.ExpectedFindingsOK = result.ExpectedFindingsOK && ok
+		}
+		result.MissingFindings = append(result.MissingFindings, missing...)
 	}
 	if results, ok := runSuite(ctx, opts, wt); ok {
 		result.SuiteCommands = results
@@ -233,6 +258,24 @@ func applySeedPatch(ctx context.Context, wt, patch string) error {
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("seed patch does not apply (%s): %v: %s", filepath.Base(patch), err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
+// installFrontendDependencies installs the base ref's lockfile inside the
+// disposable worktree. A worktree does not inherit node_modules, and symlinking
+// the caller's tree would give the agent write access to it.
+func installFrontendDependencies(ctx context.Context, wt string, run func(context.Context, string, string, time.Duration) CommandResult) error {
+	frontend := filepath.Join(wt, "frontend")
+	if _, err := os.Stat(filepath.Join(frontend, "package.json")); err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	res := run(ctx, frontend, "yarn install --frozen-lockfile --prefer-offline --ignore-scripts", 10*time.Minute)
+	if !res.Passed {
+		return fmt.Errorf("install frontend dependencies: exit %d: %s", res.ExitCode, res.OutputTail)
 	}
 	return nil
 }

@@ -2,7 +2,7 @@ name: relationship-semantics-change
 base_ref: 22ac64d049f07f2eaac134a4d195b8a126f00a7c
 suite: relationship-semantics-change
 timeout: 20m
-requires: [go, node]
+requires: [go, node, yarn]
 agent_command: "true"
 agent_name: dry-run
 agent_model: none
