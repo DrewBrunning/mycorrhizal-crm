@@ -198,14 +198,14 @@ does **not** prove selection; that is the manual run.
 ## Agent evaluation
 
 `cmd/agenteval` runs one representative task per suite in a disposable worktree
-and scores it against the same `Suites` commands a skill declares; it is
-dispatch-only and never a merge or release gate. Beyond command exit codes it
-records scope violations, generated-artifact hand-edits, expected findings, and
-gate-integrity findings: added test skips, lint/coverage suppressions, removed
-test declarations, and deleted test files. Integrity findings fail the run
-because a green suite that was earned by weakening the gate is not evidence the
-task was completed. A finding can be a legitimate choice for a specific task;
-read the artifact before treating it as a defect.
+and scores it against the same `Suites` commands a skill declares; it is never a
+merge or release gate. Beyond command exit codes it records scope violations,
+generated-artifact hand-edits, expected findings, and gate-integrity findings:
+added test skips, removed or deleted tests, and renamed test files are hard
+violations; lint/coverage suppressions and build constraints added to a test file
+are warnings. A hard violation fails the run because a green suite earned by
+weakening the gate is not evidence the task was completed; a warning needs a
+human read and can be a legitimate choice for a specific task.
 
 ## Milestone-gate audit
 

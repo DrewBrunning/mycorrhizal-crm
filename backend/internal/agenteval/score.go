@@ -31,6 +31,8 @@ type RunResult struct {
 	ScopeViolations     []string        `json:"scope_violations,omitempty"`
 	HandEditedGenerated []string        `json:"hand_edited_generated,omitempty"`
 	IntegrityViolations []string        `json:"integrity_violations,omitempty"`
+	IntegrityWarnings   []string        `json:"integrity_warnings,omitempty"`
+	HeadMoved           bool            `json:"head_moved,omitempty"`
 	ExpectedFindingsOK  bool            `json:"expected_findings_ok"`
 	MissingFindings     []string        `json:"missing_findings,omitempty"`
 	Success             bool            `json:"success"`
@@ -308,6 +310,12 @@ func renderRun(r RunResult) string {
 	}
 	for _, v := range r.IntegrityViolations {
 		fmt.Fprintf(&b, "- Integrity: %s\n", v)
+	}
+	for _, v := range r.IntegrityWarnings {
+		fmt.Fprintf(&b, "- Integrity warning: %s\n", v)
+	}
+	if r.HeadMoved {
+		b.WriteString("- HEAD moved during the run (diff is still computed against the eval base)\n")
 	}
 	for _, v := range r.MissingFindings {
 		fmt.Fprintf(&b, "- Missing finding: %s\n", v)
