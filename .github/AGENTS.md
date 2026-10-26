@@ -73,8 +73,10 @@ shadows the shared setting, and repairs the `CLAUDE.md` aliases).
 - **Reminder only:** staging a migration, `backend/config/config.go`, or `.env.example` prints a
   reminder to add an `## Upgrade notes` block (or `no-changelog:`) to the PR body.
 
-Deliberately CI-only: `govulncheck`, benchmarks/fuzz targets, and any full suite (`go test ./...`,
-`vitest run`, Playwright, `yarn build`).
+Deliberately CI-only: `govulncheck`, benchmarks/fuzz targets, the full Playwright E2E suite
+(`--full` only stress-runs a changed spec), and the instrumented Android suites. The pre-PR gate's
+`--focused` mode runs the Go suite and Vitest with coverage locally (and `--fast` builds the
+production frontend bundle); `--full` adds flake stress. None of these replaces CI.
 
 ## Scheduled workflows and alerting
 

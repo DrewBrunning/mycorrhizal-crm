@@ -87,7 +87,7 @@ scenario() {
   # Every scenario whose run has a failed job must carry the marker, the job,
   # its log URL, and the local repro command.
   if [ "$ok" -eq 1 ] && [ "$mutation" = "mutate" ] && grep -qF 'Backend (Go)' "$work/jobs.json"; then
-    for want in '<!-- pr-failure-alert -->' 'Backend (Go)' 'https://example.test/job/7' 'scripts/pre-pr.sh --full'; do
+    for want in '<!-- pr-failure-alert -->' 'Backend (Go)' 'https://example.test/job/7' 'scripts/pre-pr.sh --focused'; do
       if ! grep -qF -- "$want" "$work/gh.log"; then
         ok=0; reason="mutation body missing '$want'"
       fi
@@ -137,6 +137,39 @@ scenario "no open PR is a no-op" 0 "" nomutate -- DRY_RUN=0 PR_NUMBER=""
 seed
 printf '{"jobs":[]}\n' > "$work/jobs.json"
 scenario "no failed job still posts an explanation" 0 "" mutate -- DRY_RUN=0 CONCLUSION=startup_failure
+
+# E2E is CI-only: the comment must name that boundary and must not also
+# recommend the pre-PR gate as a repro for the failing run.
+seed
+printf '{"jobs":[{"name":"Run E2E Tests","conclusion":"failure","html_url":"https://example.test/job/9"}]}\n' > "$work/jobs.json"
+scenario "E2E failure posts the failure comment" 0 "" mutate -- DRY_RUN=0
+if grep -qF 'E2E is CI-only' "$work/gh.log" && grep -qF 'run the failing Playwright spec' "$work/gh.log"; then
+  pass=$((pass + 1))
+  echo "PASS: E2E failure names the CI-only boundary"
+else
+  fail=$((fail + 1))
+  echo "FAIL: E2E failure did not name the CI-only boundary"
+fi
+if grep -qF 'scripts/pre-pr.sh --focused' "$work/gh.log"; then
+  fail=$((fail + 1))
+  echo "FAIL: E2E failure still recommends the pre-PR gate as a repro"
+else
+  pass=$((pass + 1))
+  echo "PASS: E2E failure does not claim a pre-PR repro"
+fi
+
+# Android E2E/macrobenchmark are emulator-only; the broad Android* prefix must
+# not route them to the pre-PR gate.
+seed
+printf '{"jobs":[{"name":"Android E2E (emulator)","conclusion":"failure","html_url":"https://example.test/job/10"}]}\n' > "$work/jobs.json"
+scenario "Android E2E failure names the emulator boundary" 0 "" mutate -- DRY_RUN=0
+if grep -qF 'needs an emulator and is CI-only' "$work/gh.log" && ! grep -qF 'scripts/pre-pr.sh --focused' "$work/gh.log"; then
+  pass=$((pass + 1))
+  echo "PASS: Android E2E failure does not claim a pre-PR repro"
+else
+  fail=$((fail + 1))
+  echo "FAIL: Android E2E failure recommends the pre-PR gate or omits the boundary"
+fi
 
 echo
 echo "pr-alert: $pass passed, $fail failed"

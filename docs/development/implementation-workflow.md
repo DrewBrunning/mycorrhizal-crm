@@ -134,27 +134,44 @@ for the paths the branch touches:
 
 ```bash
 scripts/pre-pr.sh --fast
+scripts/pre-pr.sh --focused
+scripts/pre-pr.sh --focused --fix   # write-mode formatters/linters first
 scripts/pre-pr.sh --full
 ```
 
 The wrapper resolves the repository root (it works from the root, from `backend/`, and from a
-worktree) and delegates selection and execution to `cmd/prepr`. Both modes diff the merge base of
+worktree) and delegates selection and execution to `cmd/prepr`. Every mode diffs the merge base of
 `origin/main` and `HEAD` against the working tree, so committed, staged, unstaged, untracked,
-deleted, and renamed files are included, then map the paths through `.github/filters.yaml`; the
+deleted, and renamed files are included, then maps the paths through `.github/filters.yaml`; the
 area-to-command table lives in `backend/internal/prepr/areas.go`, and a drift test fails if a filter
 is added without an entry. `--dry-run` prints the selected areas and exact commands without running
 anything.
 
-- **`--fast`** runs the lint/build/drift checks for the touched areas: Go
-  `gofmt`/build/vet/golangci-lint plus the generated-artifact drift tests,
-  `tsc`/biome/eslint/knip, and `detekt` plus Android lint. It always runs the unconditional
-  docs/governance gates (`docscheck`, `citecheck`, `governancecheck`, and the rest of
-  `unit-tests.yml`'s docs-citations job), so a docs-only diff still has a real gate.
-- **`--full`** adds the area suites and ratchets: `go test ./...` plus the cross-package profile and
-  `cmd/coverageratchet`; vitest with coverage and `yarn coverage:ratchet`; the aggregated JaCoCo
-  report and `cmd/androidcoverageratchet`. It also warns (never fails) on changed-line Go coverage
-  below 95% via `cmd/patchcov`; Codecov remains the authoritative patch gate.
-- **Flake stress** runs only the tests the branch added or changed, not the whole suite:
+- **`--fast`** runs the cheap lint/build/drift checks for the touched areas: Go
+  `gofmt`/build/vet/golangci-lint plus the generated-artifact drift tests; frontend
+  `tsc`/biome/eslint/knip plus `yarn build` and `yarn budget`; `detekt` plus both Android lint
+  flavors with `--warning-mode=fail` (`lintDebug :app:lintObtainiumDebug :app:lintFossDebug`);
+  and, for an `openapi.yaml` change, `vacuum lint` and the OpenAPI spec tests. An openapi-only
+  change also matches the backend filter, so the backend Fast checks run too; the full
+  frontend/Android client suites are not pulled in, and the plan prints a note that CI re-tests
+  both clients. It always runs the unconditional
+  docs/governance gates (`typos`, `docscheck`, `citecheck`, `governancecheck`, and the rest of
+  `unit-tests.yml`'s docs-citations job), so a docs-only diff still has a real gate. These are
+  cheap CI mirrors, not substitutes for the CI-only fuzz, real-server, E2E, or full client suites.
+- **`--fix`** (any mode) first runs the selected area's write-mode formatters/linters:
+  `gofmt -w`, `golangci-lint run --fix`, `biome check --write`, `eslint --fix`, and
+  `detekt --auto-correct`. It modifies the working tree; review `git diff` before committing.
+  The normal check-mode steps still run afterward.
+- **`--focused`** adds the checks that catch broken tests, low changed-line coverage, and
+  per-file coverage regressions: one cross-package Go coverage run (the suite itself) plus the
+  schemafixture suite and `cmd/coverageratchet`; vitest with coverage and `yarn coverage:ratchet`;
+  the Android unit suites for both flavors, the aggregated JaCoCo report, and
+  `cmd/androidcoverageratchet`. `cmd/patchcov -fail-under` blocks a changed-line regression below
+  95% (Codecov remains the authoritative patch gate). It does not run flake stress. This is the
+  recommended pre-PR mode when iterating.
+- **`--full`** adds the exhaustive flake-stress pass on top of `--focused`. It is the slow,
+  pre-merge/major-change gate, not the default iteration loop.
+- **Flake stress (`--full` only)** runs only the tests the branch added or changed, not the whole suite:
   `go test -race -count=10 -shuffle=on <pkg>`, vitest looped with `--sequence.shuffle`, Playwright
   with `--repeat-each=5`, and Android unit classes repeated through Gradle. A changed instrumented
   Android class is reported as an emulator/CI-only reminder.
@@ -162,8 +179,8 @@ anything.
   listed as skipped with the reason. A failing step exits nonzero and the summary names the exact
   command to reproduce.
 
-When `--full` sees added or changed tests it prints the baseline-update commands; run the relevant
-one and commit the diff, because the baseline diff is the review:
+When `--focused` or `--full` sees added or changed tests it prints the baseline-update commands;
+run the relevant one and commit the diff, because the baseline diff is the review:
 
 ```bash
 cd backend && make gen-coverage-baseline
@@ -179,7 +196,8 @@ with retries — PR/push retries once and records passed-on-retry, and the flake
 `flaky-test` p1 after three events.
 
 Codecov patch coverage is computed server-side; the local proxy is the area coverage run, the
-per-file ratchet, and `cmd/patchcov`'s non-blocking changed-line warning.
+per-file ratchet, and `cmd/patchcov -fail-under`'s blocking changed-line check in
+`--focused`/`--full`.
 
 **No polling:** open the PR and stop. GitHub notifies on a check failure. If CI fails, start a new
 session with the failing job link and the exact local command that should have caught it; do not

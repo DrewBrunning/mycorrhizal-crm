@@ -66,6 +66,16 @@ func loadFixture(t *testing.T) *Filters {
 	return f
 }
 
+// withTemporaryAreas adds test-only entries to the area table for the duration
+// of one test. The production table has no Implies entries, but Build still
+// has to handle them (a future filter may depend on another area's checks).
+func withTemporaryAreas(t *testing.T, extra ...Area) {
+	t.Helper()
+	original := Areas
+	Areas = append(append([]Area{}, original...), extra...)
+	t.Cleanup(func() { Areas = original })
+}
+
 func TestLoadFiltersPreservesOrder(t *testing.T) {
 	f := loadFixture(t)
 	want := []string{"backend", "frontend", "android", "openapi", "infra", "docs-only"}
@@ -141,8 +151,8 @@ func TestEveryAreaDoesSomething(t *testing.T) {
 		if len(area.Fast) == 0 && len(area.Full) == 0 && len(area.Implies) == 0 && area.Note == "" {
 			t.Errorf("area %q has no commands, implications, or note", area.Name)
 		}
-		if len(area.Fast) == 0 && len(area.Full) > 0 {
-			t.Errorf("area %q has full-only commands; fast must be a subset of full", area.Name)
+		if len(area.Fast) == 0 && (len(area.Focused) > 0 || len(area.Full) > 0) {
+			t.Errorf("area %q has focused/full-only commands; fast must be the base subset", area.Name)
 		}
 	}
 }
@@ -192,8 +202,14 @@ func TestBuildFullStressesChangedGoTestAndPrintsBaseline(t *testing.T) {
 	plan := Build(f, []string{"backend/services/foo_test.go"}, ModeFull, "origin/main")
 
 	labels := labelsFor(plan, "backend")
-	if !contains(labels, "backend: go test ./...") {
-		t.Errorf("full plan missing go test ./...; got %v", labels)
+	if contains(labels, "backend: go test ./...") {
+		t.Errorf("full plan should use the coverage suite, not a duplicate go test ./...; got %v", labels)
+	}
+	if !contains(labels, "backend: tests with cross-package coverage") {
+		t.Errorf("full plan missing coverage suite; got %v", labels)
+	}
+	if !contains(labels, "backend: schemafixture suite") {
+		t.Errorf("full plan missing schemafixture suite; got %v", labels)
 	}
 	if !contains(labels, "backend: per-file coverage ratchet") {
 		t.Errorf("full plan missing coverage ratchet; got %v", labels)
@@ -204,15 +220,18 @@ func TestBuildFullStressesChangedGoTestAndPrintsBaseline(t *testing.T) {
 	if len(plan.Hints) != 1 || plan.Hints[0] != BaselineHints["backend"] {
 		t.Errorf("Hints = %v, want [%s]", plan.Hints, BaselineHints["backend"])
 	}
-	patch := stepByLabel(plan, "backend: changed-line coverage warning (non-blocking)")
+	patch := stepByLabel(plan, "backend: changed-line coverage (patchcov)")
 	if patch == nil {
-		t.Fatal("patchcov warning step not found")
+		t.Fatal("patchcov step not found")
 	}
-	if !patch.Command.Warn {
-		t.Error("patchcov step must be non-blocking")
+	if patch.Command.Warn {
+		t.Error("patchcov step must be blocking")
 	}
 	if !contains(patch.Command.Argv, "origin/main") {
 		t.Errorf("patchcov argv = %v, want the selected base", patch.Command.Argv)
+	}
+	if !contains(patch.Command.Argv, "-fail-under") {
+		t.Errorf("patchcov argv = %v, want -fail-under so the step can fail", patch.Command.Argv)
 	}
 
 	stress := stepByLabel(plan, "stress: go test ./services")
@@ -222,6 +241,107 @@ func TestBuildFullStressesChangedGoTestAndPrintsBaseline(t *testing.T) {
 	want := []string{"go", "test", "-race", "-count=10", "-shuffle=on", "./services"}
 	if strings.Join(stress.Command.Argv, " ") != strings.Join(want, " ") {
 		t.Errorf("stress argv = %v, want %v", stress.Command.Argv, want)
+	}
+}
+
+func TestBuildFocusedRunsTestsAndCoverageWithoutStress(t *testing.T) {
+	f := loadFixture(t)
+	plan := Build(f, []string{"backend/services/foo_test.go"}, ModeFocused, "origin/main")
+
+	if strings.Join(plan.Selected, ",") != "backend" {
+		t.Fatalf("Selected = %v, want [backend]", plan.Selected)
+	}
+	labels := labelsFor(plan, "backend")
+	for _, want := range []string{
+		"backend: go build",
+		"backend: tests with cross-package coverage",
+		"backend: schemafixture suite",
+		"backend: per-file coverage ratchet",
+		"backend: changed-line coverage (patchcov)",
+	} {
+		if !contains(labels, want) {
+			t.Errorf("focused plan missing %q; got %v", want, labels)
+		}
+	}
+	for _, unwanted := range []string{
+		"backend: go test ./...",
+		"stress: go test ./services",
+	} {
+		if contains(labels, unwanted) {
+			t.Errorf("focused plan must not run %q", unwanted)
+		}
+	}
+	if len(plan.Hints) != 1 || plan.Hints[0] != BaselineHints["backend"] {
+		t.Errorf("Hints = %v, want [%s]", plan.Hints, BaselineHints["backend"])
+	}
+	patch := stepByLabel(plan, "backend: changed-line coverage (patchcov)")
+	if patch == nil {
+		t.Fatal("patchcov step not found")
+	}
+	if patch.Command.Warn {
+		t.Error("focused patchcov step must be blocking")
+	}
+	if !contains(patch.Command.Argv, "-fail-under") {
+		t.Errorf("patchcov argv = %v, want -fail-under so the step can fail", patch.Command.Argv)
+	}
+}
+
+func TestPrependFixSteps(t *testing.T) {
+	f := loadFixture(t)
+	plan := PrependFixSteps(Build(f, []string{"backend/services/foo.go"}, ModeFocused, "origin/main"))
+
+	labels := []string{}
+	for _, step := range plan.Steps {
+		labels = append(labels, step.Command.Label)
+	}
+	if len(labels) < 2 || labels[0] != "fix: gofmt" || labels[1] != "fix: golangci-lint --fix" {
+		t.Fatalf("fix steps not prepended first: %v", labels)
+	}
+	if !contains(plan.Notes, "fix mode: formatters may modify the working tree; review `git diff` before committing.") {
+		t.Errorf("Notes = %v, missing fix-mode warning", plan.Notes)
+	}
+
+	docs := PrependFixSteps(Build(f, []string{"docs/development/workflow.md"}, ModeFocused, "origin/main"))
+	if len(docs.Steps) != len(GovernanceSteps) {
+		t.Errorf("docs-only fix plan changed the step count: got %d, want %d", len(docs.Steps), len(GovernanceSteps))
+	}
+}
+
+func TestBuildFocusedClientSuitesWithoutStress(t *testing.T) {
+	f := loadFixture(t)
+	plan := Build(f, []string{
+		"frontend/src/App.test.tsx",
+		"android/app/src/test/kotlin/com/x/ContactTest.kt",
+	}, ModeFocused, "origin/main")
+
+	labels := labelsFor(plan, "frontend")
+	for _, want := range []string{"frontend: vitest with coverage", "frontend: per-file coverage ratchet"} {
+		if !contains(labels, want) {
+			t.Errorf("focused frontend plan missing %q; got %v", want, labels)
+		}
+	}
+	labels = labelsFor(plan, "android")
+	for _, want := range []string{"android: unit tests", "android: aggregated jacoco report", "android: coverage ratchet"} {
+		if !contains(labels, want) {
+			t.Errorf("focused android plan missing %q; got %v", want, labels)
+		}
+	}
+	unit := stepByLabel(plan, "android: unit tests")
+	if unit == nil {
+		t.Fatal("focused android unit-test step not found")
+	}
+	for _, task := range []string{"testDebugUnitTest", ":app:testObtainiumDebugUnitTest", ":app:testFossDebugUnitTest"} {
+		if !contains(unit.Command.Argv, task) {
+			t.Errorf("android unit-test argv = %v, missing %q", unit.Command.Argv, task)
+		}
+	}
+	for _, step := range plan.Steps {
+		if strings.HasPrefix(step.Command.Label, "stress:") {
+			t.Errorf("focused plan must not include stress step %q", step.Command.Label)
+		}
+	}
+	if len(plan.Hints) != 2 {
+		t.Errorf("Hints = %v, want frontend and android baseline hints", plan.Hints)
 	}
 }
 
@@ -252,20 +372,107 @@ func TestBuildStressPlaywrightAndVitest(t *testing.T) {
 	}
 }
 
-func TestBuildOpenAPIImpliesClients(t *testing.T) {
+func TestBuildOpenAPIRunsCheapBackendChecksOnly(t *testing.T) {
 	f := loadFixture(t)
 	plan := Build(f, []string{"backend/openapi.yaml"}, ModeFast, "origin/main")
 
-	for _, want := range []string{"android", "backend", "frontend", "openapi"} {
-		if !contains(plan.Selected, want) {
-			t.Errorf("Selected = %v, missing implied area %q", plan.Selected, want)
+	if strings.Join(plan.Selected, ",") != "backend,openapi" {
+		t.Fatalf("Selected = %v, want [backend openapi]", plan.Selected)
+	}
+	for _, unwanted := range []string{"frontend", "android"} {
+		if contains(plan.Selected, unwanted) {
+			t.Errorf("Selected = %v, must not pull in %q for an openapi-only change", plan.Selected, unwanted)
 		}
 	}
-	if len(labelsFor(plan, "openapi")) != 0 {
-		t.Error("openapi area itself should not run commands")
+	foundNote := false
+	for _, note := range plan.Notes {
+		if strings.Contains(note, "CI re-tests frontend and Android") {
+			foundNote = true
+		}
 	}
-	if !contains(plan.Notes, "openapi implies backend, frontend, android") {
-		t.Errorf("Notes = %v, missing openapi implication", plan.Notes)
+	if !foundNote {
+		t.Errorf("Notes = %v, want the openapi client-suite caveat", plan.Notes)
+	}
+	labels := labelsFor(plan, "openapi")
+	for _, want := range []string{"openapi: vacuum lint", "openapi: spec validation tests"} {
+		if !contains(labels, want) {
+			t.Errorf("openapi plan missing %q; got %v", want, labels)
+		}
+	}
+	vacuum := stepByLabel(plan, "openapi: vacuum lint")
+	if vacuum == nil {
+		t.Fatal("openapi vacuum step not found")
+	}
+	wantVacuum := []string{"go", "tool", "-modfile=tools.mod", "vacuum", "lint", "-r", "vacuum.yaml", "-b", "-q", "--no-update-check", "openapi.yaml"}
+	if strings.Join(vacuum.Command.Argv, " ") != strings.Join(wantVacuum, " ") {
+		t.Errorf("vacuum argv = %v, want %v", vacuum.Command.Argv, wantVacuum)
+	}
+	if vacuum.Command.Dir != "backend" {
+		t.Errorf("vacuum Dir = %q, want backend", vacuum.Command.Dir)
+	}
+	tests := stepByLabel(plan, "openapi: spec validation tests")
+	if tests == nil {
+		t.Fatal("openapi spec-test step not found")
+	}
+	wantTests := []string{"go", "test", "-run", "^TestOpenAPISpecValidates$|^TestOpenAPINullableRequiresType$", "."}
+	if strings.Join(tests.Command.Argv, " ") != strings.Join(wantTests, " ") {
+		t.Errorf("spec-test argv = %v, want %v", tests.Command.Argv, wantTests)
+	}
+	if tests.Command.Dir != "backend" {
+		t.Errorf("spec-test Dir = %q, want backend", tests.Command.Dir)
+	}
+}
+
+func TestGovernanceStepsIncludeTypos(t *testing.T) {
+	for _, step := range GovernanceSteps {
+		if step.Label == "docs: typos" {
+			want := []string{"typos", "--config", "_typos.toml"}
+			if strings.Join(step.Argv, " ") != strings.Join(want, " ") {
+				t.Errorf("typos argv = %v, want %v", step.Argv, want)
+			}
+			if step.Dir != "" {
+				t.Errorf("typos Dir = %q, want repo root", step.Dir)
+			}
+			return
+		}
+	}
+	t.Errorf("GovernanceSteps missing docs: typos; got %v", labelsOf(GovernanceSteps))
+}
+
+func TestAndroidFastUsesFailWarningAndBothLintFlavors(t *testing.T) {
+	area, ok := Lookup("android")
+	if !ok {
+		t.Fatal("android area missing")
+	}
+	var got []string
+	for _, cmd := range area.Fast {
+		if cmd.Label == "android: detekt + lint" {
+			got = cmd.Argv
+		}
+	}
+	if len(got) == 0 {
+		t.Fatal("android: detekt + lint step not found")
+	}
+	for _, want := range []string{"--warning-mode=fail", "detekt", "lintDebug", ":app:lintObtainiumDebug", ":app:lintFossDebug"} {
+		if !contains(got, want) {
+			t.Errorf("android Fast argv = %v, missing %q", got, want)
+		}
+	}
+}
+
+func TestFrontendFastIncludesBuildAndBundleBudget(t *testing.T) {
+	area, ok := Lookup("frontend")
+	if !ok {
+		t.Fatal("frontend area missing")
+	}
+	var labels []string
+	for _, cmd := range area.Fast {
+		labels = append(labels, cmd.Label)
+	}
+	for _, want := range []string{"frontend: build", "frontend: bundle budget"} {
+		if !contains(labels, want) {
+			t.Errorf("frontend Fast missing %q; got %v", want, labels)
+		}
 	}
 }
 
@@ -377,6 +584,14 @@ func stepByLabel(plan *Plan, label string) *Step {
 	return nil
 }
 
+func labelsOf(commands []Command) []string {
+	out := make([]string, 0, len(commands))
+	for _, cmd := range commands {
+		out = append(out, cmd.Label)
+	}
+	return out
+}
+
 func contains(items []string, want string) bool {
 	for _, item := range items {
 		if item == want {
@@ -411,6 +626,7 @@ func TestParseMode(t *testing.T) {
 		ok   bool
 	}{
 		{"fast", ModeFast, true},
+		{"focused", ModeFocused, true},
 		{"FULL", ModeFull, true},
 		{"", "", false},
 		{"slow", "", false},
@@ -502,8 +718,28 @@ func TestAndroidTestTargetFallbacks(t *testing.T) {
 	if module, class := androidTestTarget("android/src/test/kotlin/A.kt"); module != "" || class != "" {
 		t.Errorf("missing module = (%q, %q)", module, class)
 	}
+	if module, class := androidTestTarget("android//src/test/kotlin/A.kt"); module != "" || class != "" {
+		t.Errorf("empty module prefix = (%q, %q)", module, class)
+	}
 	if module, class := androidTestTarget("android/app/src/test/resources/A.kt"); module != ":app" || class != "" {
 		t.Errorf("no kotlin/java dir = (%q, %q)", module, class)
+	}
+}
+
+func TestPrependFixStepsSkipsUnknownSelectedArea(t *testing.T) {
+	plan := &Plan{
+		Selected: []string{"not-an-area"},
+		Steps:    []Step{{Area: "docs", Command: Command{Label: "docs: docscheck"}}},
+	}
+	got := PrependFixSteps(plan)
+	if got != plan {
+		t.Fatal("PrependFixSteps returned a different plan for an unknown area")
+	}
+	if len(got.Steps) != 1 || got.Steps[0].Command.Label != "docs: docscheck" {
+		t.Errorf("Steps = %v, want the original plan untouched", got.Steps)
+	}
+	if len(got.Notes) != 0 {
+		t.Errorf("Notes = %v, want no fix-mode note when nothing was prepended", got.Notes)
 	}
 }
 
@@ -559,9 +795,56 @@ func TestBuildUnknownFilterIsSkipped(t *testing.T) {
 	}
 }
 
+func TestBuildExpandsImpliesAndSurfacesTheDependency(t *testing.T) {
+	withTemporaryAreas(t,
+		Area{Name: "fake-parent", Implies: []string{"fake-child", "fake-grandchild"}, Fast: []Command{{Label: "fake-parent: fast"}}},
+		Area{Name: "fake-child", Implies: []string{"fake-grandchild"}, Fast: []Command{{Label: "fake-child: fast"}}},
+		Area{Name: "fake-grandchild", Fast: []Command{{Label: "fake-grandchild: fast"}}},
+	)
+	f, err := LoadFilters(strings.NewReader("fake-parent:\n  - 'fake/**'\n"))
+	if err != nil {
+		t.Fatalf("LoadFilters: %v", err)
+	}
+
+	plan := Build(f, []string{"fake/x.go"}, ModeFast, "origin/main")
+	if got := strings.Join(plan.Selected, ","); got != "fake-child,fake-grandchild,fake-parent" {
+		t.Fatalf("Selected = %v, want every implied area", plan.Selected)
+	}
+	if !contains(plan.Notes, "fake-parent implies fake-child, fake-grandchild") {
+		t.Errorf("Notes = %v, want the implication", plan.Notes)
+	}
+	// An implying area delegates to its targets; it must not run its own Fast
+	// steps as well (that is how openapi used to pull in every client suite).
+	for _, label := range labelsFor(plan, "fake-parent") {
+		t.Errorf("implying area ran %q; it should only select its targets", label)
+	}
+	for _, label := range labelsFor(plan, "fake-child") {
+		t.Errorf("implying area ran %q; it should only select its targets", label)
+	}
+	if got := labelsFor(plan, "fake-grandchild"); !contains(got, "fake-grandchild: fast") {
+		t.Errorf("implied target missing its step; got %v", got)
+	}
+}
+
+func TestBuildSkipsAreaWithNoCommandsOrNote(t *testing.T) {
+	withTemporaryAreas(t, Area{Name: "fake-empty"})
+	f, err := LoadFilters(strings.NewReader("fake-empty:\n  - 'empty/**'\n"))
+	if err != nil {
+		t.Fatalf("LoadFilters: %v", err)
+	}
+
+	plan := Build(f, []string{"empty/x.txt"}, ModeFast, "origin/main")
+	if len(plan.Skipped) != 1 || plan.Skipped[0].Area != "fake-empty" {
+		t.Fatalf("Skipped = %v, want fake-empty", plan.Skipped)
+	}
+	if plan.Skipped[0].Reason != "no local command is defined for this filter" {
+		t.Errorf("Reason = %q, want the fallback reason", plan.Skipped[0].Reason)
+	}
+}
+
 func TestBuildAndroidTestWithoutModuleIsIgnored(t *testing.T) {
 	f := loadFixture(t)
-	plan := Build(f, []string{"android/src/test/kotlin/A.kt"}, ModeFull, "origin/main")
+	plan := Build(f, []string{"android/src/test/kotlin/ContactTest.kt"}, ModeFull, "origin/main")
 	if got := countStress(plan, "android"); got != 0 {
 		t.Errorf("stress steps = %d, want 0", got)
 	}

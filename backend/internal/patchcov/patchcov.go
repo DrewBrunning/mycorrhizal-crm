@@ -2,10 +2,10 @@
 // unified diff (issue #1964, optional half).
 //
 // Codecov's patch statuses remain the authoritative, server-side gate. This is
-// a local warning: it intersects the same cross-package profile the per-file
+// a local check: it intersects the same cross-package profile the per-file
 // ratchet uses with the lines the branch actually changed, so a low
-// codecov/patch value can be seen before the PR opens. It deliberately does not
-// fail the gate while it is new.
+// codecov/patch value can be seen before the PR opens. The command warns by
+// default and only fails the focused pre-PR gate when asked with -fail-under.
 package patchcov
 
 import (
