@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -372,4 +373,136 @@ func TestMycorrhizalImportManager_ImportIsShutdownTracked(t *testing.T) {
 
 	close(release)
 	fireandforget.Wait()
+}
+
+func assertConfirmResolveFailureRevertsToReady(t *testing.T, db *gorm.DB, confirm func() *apperrors.AppError, phase func() string) {
+	t.Helper()
+	const callback = "issue2058_force_resolve_failure"
+	require.NoError(t, db.Callback().Query().Before("gorm:query").
+		Register(callback, func(tx *gorm.DB) {
+			if tx.Statement.Table == "contacts" {
+				tx.AddError(errors.New("forced resolve failure"))
+			}
+		}))
+	appErr := confirm()
+	require.NoError(t, db.Callback().Query().Remove(callback))
+	require.NotNil(t, appErr, "an action-resolution failure must be returned")
+	assert.Equal(t, models.SourceImportPhaseReady, phase(), "a failed confirm must leave the session retryable")
+}
+
+func TestMonicaImportManager_ConfirmResolveFailureRevertsToReady(t *testing.T) {
+	db := setupSourceImportTestDB(t)
+	user := createSourceImportUser(t, db)
+	plan, previews := sourceConfirmFixture(t, db, user.ID)
+	mgr := NewMonicaImportManager()
+	now := Now()
+	s := &monicaImportSession{
+		id: "monica-resolve-failure", userID: user.ID, phase: models.MonicaPhaseReady,
+		plan: plan, previews: previews,
+		expiresAt: now.Add(time.Hour), hardExpiry: now.Add(time.Hour),
+	}
+	mgr.mu.Lock()
+	mgr.sessions[s.id] = s
+	mgr.mu.Unlock()
+
+	assertConfirmResolveFailureRevertsToReady(t, db, func() *apperrors.AppError {
+		return mgr.Confirm(db, user.ID, models.MonicaConfirmRequest{
+			SessionID: s.id,
+			Actions:   []models.RowImportAction{{RowIndex: 0, Action: "update"}},
+		}, &config.Config{ProfilePhotoDir: t.TempDir()}, testImportLogger())
+	}, func() string {
+		st, appErr := mgr.Status(user.ID, s.id)
+		require.Nil(t, appErr)
+		return st.Phase
+	})
+}
+
+func TestMeerkatImportManager_ConfirmResolveFailureRevertsToReady(t *testing.T) {
+	db := setupSourceImportTestDB(t)
+	user := createSourceImportUser(t, db)
+	plan, previews := sourceConfirmFixture(t, db, user.ID)
+	mgr := NewMeerkatImportManager()
+	now := Now()
+	s := &meerkatImportSession{
+		id: "meerkat-resolve-failure", userID: user.ID, phase: models.SourceImportPhaseReady,
+		plan: plan, previews: previews, snapshot: &meerkat.Snapshot{},
+		expiresAt: now.Add(time.Hour), hardExpiry: now.Add(time.Hour),
+	}
+	mgr.mu.Lock()
+	mgr.sessions[s.id] = s
+	mgr.mu.Unlock()
+
+	assertConfirmResolveFailureRevertsToReady(t, db, func() *apperrors.AppError {
+		return mgr.Confirm(db, user.ID, models.SourceImportConfirmRequest{
+			SessionID: s.id,
+			Actions:   []models.RowImportAction{{RowIndex: 0, Action: "update"}},
+		}, testImportLogger())
+	}, func() string {
+		st, appErr := mgr.Status(user.ID, s.id)
+		require.Nil(t, appErr)
+		return st.Phase
+	})
+}
+
+func TestMycorrhizalImportManager_ConfirmResolveFailureRevertsToReady(t *testing.T) {
+	db := setupSourceImportTestDB(t)
+	user := createSourceImportUser(t, db)
+	plan, previews := sourceConfirmFixture(t, db, user.ID)
+	mgr := NewMycorrhizalImportManager()
+	now := Now()
+	s := &mycorrhizalImportSession{
+		id: "bundle-resolve-failure", userID: user.ID, phase: models.SourceImportPhaseReady,
+		plan: plan, previews: previews, bundle: &models.AccountBundle{},
+		expiresAt: now.Add(time.Hour), hardExpiry: now.Add(time.Hour),
+	}
+	mgr.mu.Lock()
+	mgr.sessions[s.id] = s
+	mgr.mu.Unlock()
+
+	assertConfirmResolveFailureRevertsToReady(t, db, func() *apperrors.AppError {
+		return mgr.Confirm(db, user.ID, models.SourceImportConfirmRequest{
+			SessionID: s.id,
+			Actions:   []models.RowImportAction{{RowIndex: 0, Action: "update"}},
+		}, testImportLogger())
+	}, func() string {
+		st, appErr := mgr.Status(user.ID, s.id)
+		require.Nil(t, appErr)
+		return st.Phase
+	})
+}
+
+func TestMonicaImportManager_DeleteCancelsSession(t *testing.T) {
+	mgr := NewMonicaImportManager()
+	var cancelled atomic.Bool
+	now := Now()
+	s := &monicaImportSession{
+		id: "monica-delete-cancel", userID: 1, phase: models.MonicaPhaseImporting,
+		cancel:     func() { cancelled.Store(true) },
+		expiresAt:  now.Add(time.Hour),
+		hardExpiry: now.Add(time.Hour),
+	}
+	mgr.mu.Lock()
+	mgr.sessions[s.id] = s
+	mgr.mu.Unlock()
+
+	mgr.Delete(s.id)
+	assert.True(t, cancelled.Load(), "deleting a session must cancel its running work")
+}
+
+func TestMeerkatImportManager_DeleteCancelsSession(t *testing.T) {
+	mgr := NewMeerkatImportManager()
+	var cancelled atomic.Bool
+	now := Now()
+	s := &meerkatImportSession{
+		id: "meerkat-delete-cancel", userID: 1, phase: models.SourceImportPhaseImporting,
+		cancel:     func() { cancelled.Store(true) },
+		expiresAt:  now.Add(time.Hour),
+		hardExpiry: now.Add(time.Hour),
+	}
+	mgr.mu.Lock()
+	mgr.sessions[s.id] = s
+	mgr.mu.Unlock()
+
+	mgr.Delete(s.id)
+	assert.True(t, cancelled.Load(), "deleting a session must cancel its running work")
 }
