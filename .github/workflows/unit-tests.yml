@@ -651,6 +651,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # The `rest` leg runs internal/agenteval's committed-task tests,
+          # which resolve every task's base_ref with `git cat-file`; a shallow
+          # checkout does not contain those older commits. Keep the other
+          # legs' checkout cheap. The string literals are deliberate: in
+          # GitHub expressions the number 0 is falsy, so `&& 0 || 1` would
+          # always yield 1.
+          fetch-depth: ${{ matrix.leg == 'rest' && '0' || '1' }}
           persist-credentials: false
 
       - name: Set up Go
