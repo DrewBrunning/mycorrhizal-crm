@@ -294,6 +294,7 @@ func buildTable(s seeded) map[string]authzRow {
 		"PATCH /api/v1/users/language":                     {class: classProtected},
 		"PATCH /api/v1/users/date-format":                  {class: classProtected},
 		"PATCH /api/v1/users/time-format":                  {class: classProtected},
+		"PATCH /api/v1/users/dav-password-policy":          {class: classProtected},
 		"GET /api/v1/users/enabled-contact-fields":         {class: classProtected},
 		"PATCH /api/v1/users/enabled-contact-fields":       {class: classProtected},
 		"GET /api/v1/users/me":                             {class: classProtected},

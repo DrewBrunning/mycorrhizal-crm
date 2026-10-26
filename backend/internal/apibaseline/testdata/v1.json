@@ -8192,6 +8192,22 @@
       ]
     },
     {
+      "method": "PATCH",
+      "path": "/users/dav-password-policy",
+      "parameters": null,
+      "request_body": "ref:DAVPasswordPolicyInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
       "method": "GET",
       "path": "/users/directory",
       "parameters": null,
@@ -9383,6 +9399,11 @@
           "required": false
         },
         {
+          "name": "scopes",
+          "type": "array\u003cstring\u003e",
+          "required": false
+        },
+        {
           "name": "token",
           "type": "string",
           "required": false
@@ -9403,6 +9424,11 @@
           "required": true
         },
         {
+          "name": "never_expires",
+          "type": "boolean",
+          "required": false
+        },
+        {
           "name": "scope",
           "type": "string",
           "required": false,
@@ -9410,6 +9436,11 @@
             "full",
             "carddav"
           ]
+        },
+        {
+          "name": "scopes",
+          "type": "array\u003cstring\u003e",
+          "required": false
         }
       ]
     },
@@ -9449,6 +9480,11 @@
         {
           "name": "scope",
           "type": "string",
+          "required": false
+        },
+        {
+          "name": "scopes",
+          "type": "array\u003cstring\u003e",
           "required": false
         }
       ]
@@ -12638,6 +12674,11 @@
       "name": "CurrentUserResponse",
       "properties": [
         {
+          "name": "allow_dav_password",
+          "type": "boolean",
+          "required": false
+        },
+        {
           "name": "created_at",
           "type": "string",
           "required": false
@@ -12696,6 +12737,16 @@
           "name": "username",
           "type": "string",
           "required": false
+        }
+      ]
+    },
+    {
+      "name": "DAVPasswordPolicyInput",
+      "properties": [
+        {
+          "name": "allow",
+          "type": "boolean",
+          "required": true
         }
       ]
     },

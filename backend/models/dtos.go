@@ -553,6 +553,7 @@ type CurrentUserResponse struct {
 	AdminUserResponse
 	EnabledContactFields []string `json:"enabled_contact_fields"`
 	SelfContactVCardUID  *string  `json:"self_contact_vcard_uid,omitempty"`
+	AllowDAVPassword     bool     `json:"allow_dav_password"`
 }
 
 // AdminUserCreateInput - DTO for admin creating a new user. Unlike
@@ -601,9 +602,14 @@ type ApiTokenInput struct {
 	// ExpiresInDays is optional; omitting it applies DefaultApiTokenExpiryDays.
 	// There is deliberately no "never expires" option.
 	ExpiresInDays *int `json:"expires_in_days" validate:"omitempty,min=1,max=365"`
-	// Scope is optional; omitting it applies DefaultApiTokenScope ("full").
-	// "carddav" restricts the token to the CardDAV Basic-Auth path only.
+	// Scope is the legacy single-scope field. It remains accepted so older
+	// clients keep working; Scopes wins when both are supplied.
 	Scope string `json:"scope" validate:"omitempty,oneof=full carddav"`
+	// Scopes is the explicit access set. Omit it and Scope for the legacy
+	// full-access default.
+	Scopes *[]string `json:"scopes" validate:"omitempty,max=5,dive,oneof=carddav caldav api:read api:write mcp"`
+	// NeverExpires is allowed only for DAV-only scope sets (issue #2010).
+	NeverExpires bool `json:"never_expires"`
 }
 
 // ApiTokenResponse represents the DTO returned for an API token
@@ -615,6 +621,13 @@ type ApiTokenResponse struct {
 	RevokedAt  *time.Time `json:"revoked_at"`
 	ExpiresAt  *time.Time `json:"expires_at"`
 	Scope      string     `json:"scope"`
+	Scopes     []string   `json:"scopes"`
+}
+
+// DAVPasswordPolicyInput toggles account-password authentication on
+// CardDAV/CalDAV for users without a second factor (issue #2010).
+type DAVPasswordPolicyInput struct {
+	Allow *bool `json:"allow" validate:"required"`
 }
 
 // ApiTokenCreateResponse is returned on token creation and includes the plaintext token

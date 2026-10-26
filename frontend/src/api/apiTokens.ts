@@ -1,7 +1,22 @@
 import { API_BASE_URL, apiFetch, getAuthHeaders } from './client';
 import { handleResponse } from './errorHandling';
 
-export type ApiTokenScope = 'full' | 'carddav';
+export type ApiTokenScope = 'full' | 'carddav' | 'custom';
+
+export type ApiTokenAccessScope = 'carddav' | 'caldav' | 'api:read' | 'api:write' | 'mcp';
+
+export type ApiTokenPreset = 'full' | 'contacts' | 'calendar' | 'both' | 'api' | 'mcp';
+
+export const API_TOKEN_PRESET_SCOPES: Record<ApiTokenPreset, ApiTokenAccessScope[]> = {
+  full: ['carddav', 'caldav', 'api:read', 'api:write', 'mcp'],
+  contacts: ['carddav'],
+  calendar: ['caldav'],
+  both: ['carddav', 'caldav'],
+  api: ['api:read', 'api:write'],
+  mcp: ['mcp'],
+};
+
+export const DEFAULT_API_TOKEN_PRESET: ApiTokenPreset = 'full';
 
 export interface ApiToken {
   id: number;
@@ -12,6 +27,7 @@ export interface ApiToken {
   /** Null only for tokens created before expiry was introduced. */
   expires_at: string | null;
   scope: ApiTokenScope;
+  scopes?: ApiTokenAccessScope[];
 }
 
 /** Selectable lifetimes; the backend caps this at 365 days. */
@@ -47,6 +63,26 @@ export async function createApiToken(
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({ name, expires_in_days: expiresInDays, scope }),
+  });
+  const data = await handleResponse(response, 'Unable to create API token.');
+  return data as ApiTokenCreateResponse;
+}
+
+/** Issue #2010: create a token with an explicit access set. */
+export async function createApiTokenWithScopes(
+  name: string,
+  expiresInDays: number | null,
+  scopes: ApiTokenAccessScope[],
+  neverExpires = false,
+): Promise<ApiTokenCreateResponse> {
+  const response = await apiFetch(`${API_BASE_URL}/api-tokens`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({
+      name,
+      scopes,
+      ...(neverExpires ? { never_expires: true } : { expires_in_days: expiresInDays }),
+    }),
   });
   const data = await handleResponse(response, 'Unable to create API token.');
   return data as ApiTokenCreateResponse;

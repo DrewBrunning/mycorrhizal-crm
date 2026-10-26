@@ -140,6 +140,23 @@ class ApiTokensScreenTest {
     }
 
     @Test
+    fun `an explicitly scoped token is not mislabeled as full access`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ApiTokenRow(
+                    token = token(name = "Scoped token", scope = "custom"),
+                    rotating = false,
+                    revoking = false,
+                    onRotate = {},
+                    onRevoke = {}
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Custom access").assertIsDisplayed()
+    }
+
+    @Test
     fun `an active token row shows its scope and status with rotate and revoke actions`() {
         var rotated = false
         var revoked = false
@@ -222,14 +239,14 @@ class ApiTokensScreenTest {
     @Test
     fun `create dialog defaults to 90 days and full access`() {
         var days: Int? = null
-        var scope: String? = null
+        var scopes: List<String>? = null
         composeTestRule.setContent {
             MycorrhizalTheme {
                 CreateApiTokenDialog(
                     isSaving = false,
-                    onConfirm = { _, expiresInDays, s ->
+                    onConfirm = { _, expiresInDays, selected ->
                         days = expiresInDays
-                        scope = s
+                        scopes = selected
                     },
                     onDismiss = {}
                 )
@@ -240,17 +257,17 @@ class ApiTokensScreenTest {
         composeTestRule.onNodeWithText("Create token").performClick()
 
         assertEquals(90, days)
-        assertEquals("full", scope)
+        assertEquals(listOf("carddav", "caldav", "api:read", "api:write", "mcp"), scopes)
     }
 
     @Test
     fun `create dialog scope selection follows the chosen chip`() {
-        var scope: String? = null
+        var scopes: List<String>? = null
         composeTestRule.setContent {
             MycorrhizalTheme {
                 CreateApiTokenDialog(
                     isSaving = false,
-                    onConfirm = { _, _, s -> scope = s },
+                    onConfirm = { _, _, selected -> scopes = selected },
                     onDismiss = {}
                 )
             }
@@ -260,7 +277,7 @@ class ApiTokensScreenTest {
         composeTestRule.onNodeWithText("CardDAV only").performClick()
         composeTestRule.onNodeWithText("Create token").performClick()
 
-        assertEquals("carddav", scope)
+        assertEquals(listOf("carddav"), scopes)
     }
 
     @Test

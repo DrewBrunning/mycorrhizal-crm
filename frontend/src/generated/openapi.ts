@@ -170,7 +170,9 @@ export type ApiTokenCreateResponse = ApiTokenResponse & {
 export type ApiTokenInput = {
   expires_in_days?: number;
   name: string;
+  never_expires?: boolean;
   scope?: 'full' | 'carddav';
+  scopes?: ('carddav' | 'caldav' | 'api:read' | 'api:write' | 'mcp')[];
 };
 
 export type ApiTokenResponse = {
@@ -181,6 +183,7 @@ export type ApiTokenResponse = {
   name?: string;
   revoked_at?: string | null;
   scope?: string;
+  scopes?: ('carddav' | 'caldav' | 'api:read' | 'api:write' | 'mcp')[];
 };
 
 export type ApplyContactAddressSuggestionInput = {
@@ -855,8 +858,13 @@ export type ConversationAgendaInput = {
 };
 
 export type CurrentUserResponse = AdminUserResponse & {
+  allow_dav_password?: boolean;
   enabled_contact_fields?: string[] | null;
   self_contact_vcard_uid?: string | null;
+};
+
+export type DAVPasswordPolicyInput = {
+  allow: boolean;
 };
 
 export type DashboardContactRelationship = {

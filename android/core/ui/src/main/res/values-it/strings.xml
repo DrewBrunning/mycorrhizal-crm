@@ -706,6 +706,12 @@
     <string name="settings_api_tokens_revoked">Revocato</string>
     <string name="settings_api_tokens_expired">Scaduto</string>
     <string name="settings_api_tokens_scope_full">Accesso completo</string>
+    <string name="settings_api_tokens_scope_calendar">Calendario (CalDAV)</string>
+    <string name="settings_api_tokens_scope_both">Contatti + calendario</string>
+    <string name="settings_api_tokens_scope_api">API / automazione</string>
+    <string name="settings_api_tokens_scope_mcp">MCP / assistente IA</string>
+    <string name="settings_api_tokens_scope_preset_help">Solo gli ambiti selezionati. La gestione delle credenziali richiede sempre una sessione attiva.</string>
+    <string name="settings_api_tokens_scope_custom">Accesso personalizzato</string>
     <string name="settings_api_tokens_scope_carddav">Solo CardDAV</string>
     <string name="settings_api_tokens_created">Creato %1$s</string>
     <string name="settings_api_tokens_last_used">Ultimo utilizzo: %1$s</string>
@@ -718,7 +724,7 @@
     <string name="settings_api_tokens_expiry_label">Scade tra</string>
     <string name="settings_api_tokens_expiry_days">%1$d giorni</string>
     <string name="settings_api_tokens_scope_label">Accesso</string>
-    <string name="settings_api_tokens_scope_full_help">Può essere usato ovunque l\'API accetti un token, inclusa la sincronizzazione CardDAV.</string>
+    <string name="settings_api_tokens_scope_full_help">Può essere usato per accedere ai dati, inclusa la sincronizzazione CardDAV. La gestione delle credenziali richiede una sessione attiva.</string>
     <string name="settings_api_tokens_scope_carddav_help">Funziona solo per la sincronizzazione dei contatti CardDAV. Una credenziale del dispositivo trapelata non può essere usata contro il resto dell\'API.</string>
     <string name="settings_api_tokens_created_title">Token creato</string>
     <string name="settings_api_tokens_created_warning">Questo token non verrà mostrato di nuovo. Copialo ora e conservalo in modo sicuro.</string>

@@ -706,6 +706,12 @@
     <string name="settings_api_tokens_revoked">Révoqué</string>
     <string name="settings_api_tokens_expired">Expiré</string>
     <string name="settings_api_tokens_scope_full">Accès complet</string>
+    <string name="settings_api_tokens_scope_calendar">Calendrier (CalDAV)</string>
+    <string name="settings_api_tokens_scope_both">Contacts + calendrier</string>
+    <string name="settings_api_tokens_scope_api">API / automatisation</string>
+    <string name="settings_api_tokens_scope_mcp">MCP / assistant IA</string>
+    <string name="settings_api_tokens_scope_preset_help">Uniquement les portées sélectionnées. La gestion des identifiants nécessite toujours une session ouverte.</string>
+    <string name="settings_api_tokens_scope_custom">Accès personnalisé</string>
     <string name="settings_api_tokens_scope_carddav">CardDAV uniquement</string>
     <string name="settings_api_tokens_created">Créé %1$s</string>
     <string name="settings_api_tokens_last_used">Dernière utilisation : %1$s</string>
@@ -718,7 +724,7 @@
     <string name="settings_api_tokens_expiry_label">Expire dans</string>
     <string name="settings_api_tokens_expiry_days">%1$d jours</string>
     <string name="settings_api_tokens_scope_label">Accès</string>
-    <string name="settings_api_tokens_scope_full_help">Peut être utilisé partout où l\'API accepte un jeton, y compris pour la synchronisation CardDAV.</string>
+    <string name="settings_api_tokens_scope_full_help">Peut être utilisé pour accéder aux données, y compris la synchronisation CardDAV. La gestion des identifiants nécessite une session ouverte.</string>
     <string name="settings_api_tokens_scope_carddav_help">Fonctionne uniquement pour la synchronisation des contacts CardDAV. Un identifiant d\'appareil compromis ne peut pas être utilisé contre le reste de l\'API.</string>
     <string name="settings_api_tokens_created_title">Jeton créé</string>
     <string name="settings_api_tokens_created_warning">Ce jeton ne sera plus affiché. Copiez-le maintenant et conservez-le en lieu sûr.</string>

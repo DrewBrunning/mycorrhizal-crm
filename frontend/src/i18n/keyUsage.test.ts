@@ -32,6 +32,12 @@ interface DynamicKeySource {
 
 const DYNAMIC_KEY_SOURCES: readonly DynamicKeySource[] = [
   {
+    prefix: 'apiTokens.createDialog.scopeHelp.',
+    file: 'SettingsPage.tsx',
+    values: ['full', 'contacts', 'calendar', 'both', 'api', 'mcp'],
+    reason: 'the selected app-password preset is a closed set',
+  },
+  {
     prefix: 'audit.entityTypes.',
     file: 'AuditPage.tsx',
     reason: 'entity type comes from the event payload',
