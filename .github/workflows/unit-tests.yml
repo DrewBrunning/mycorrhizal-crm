@@ -1232,11 +1232,16 @@ jobs:
         working-directory: frontend
         run: yarn install --frozen-lockfile
 
-      - name: Run tests with coverage
+      - name: Run tests with coverage (shuffled)
         working-directory: frontend
-        run: yarn test:coverage
+        # Issue #2060: a gitignored frontend/.env can set VITE_API_URL, and
+        # file order can hide cross-test state leaks. Run with the value a
+        # developer gets and a fixed shuffle seed (the audit's reproduction
+        # seed) so a local-only env file or ordering cannot mask a regression.
+        run: yarn test:coverage --sequence.shuffle --sequence.seed=2060
         env:
           CI: true
+          VITE_API_URL: http://localhost:8080
 
       # Per-file no-regression ratchet (backend counterpart:
       # cmd/coverageratchet). Compares coverage/coverage-summary.json
