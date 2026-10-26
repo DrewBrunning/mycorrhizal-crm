@@ -34,6 +34,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -66,17 +67,19 @@ fun FieldDefinitionFormScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val events by viewModel.events.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val currentOnSaved = rememberUpdatedState(onSaved)
+    val currentOnDeleted = rememberUpdatedState(onDeleted)
 
     LaunchedEffect(events) {
         when (events) {
             FieldDefinitionFormEvent.Saved -> {
                 viewModel.onEventShown()
-                onSaved()
+                currentOnSaved.value()
             }
 
             FieldDefinitionFormEvent.Deleted -> {
                 viewModel.onEventShown()
-                onDeleted()
+                currentOnDeleted.value()
             }
 
             null -> Unit

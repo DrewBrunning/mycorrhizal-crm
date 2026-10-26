@@ -28,6 +28,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -82,6 +83,7 @@ fun VcfImportScreen(
 @Composable
 fun VcfImportScreenContent(
     uiState: VcfImportUiState,
+    modifier: Modifier = Modifier,
     onBack: () -> Unit = {},
     onDone: () -> Unit = {},
     onFilePicked: (String, ByteArray) -> Unit = { _, _ -> },
@@ -93,6 +95,7 @@ fun VcfImportScreenContent(
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    val currentOnErrorShown = rememberUpdatedState(onErrorShown)
     val scope = rememberCoroutineScope()
 
     val filePicker = rememberLauncherForActivityResult(
@@ -118,6 +121,7 @@ fun VcfImportScreenContent(
     }
 
     Scaffold(
+        modifier = modifier,
         topBar = {
             TopAppBar(
                 navigationIcon = {
@@ -180,7 +184,7 @@ fun VcfImportScreenContent(
     if (errorMessage != null) {
         LaunchedEffect(errorMessage) {
             snackbarHostState.showSnackbar(errorMessage)
-            onErrorShown()
+            currentOnErrorShown.value()
         }
     }
 }

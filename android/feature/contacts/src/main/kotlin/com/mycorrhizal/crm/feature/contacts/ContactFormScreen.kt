@@ -34,6 +34,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
@@ -67,20 +68,23 @@ import com.mycorrhizal.crm.ui.theme.MycorrhizalFonts
 fun ContactFormScreen(
     onSaved: () -> Unit,
     onBack: () -> Unit,
+    modifier: Modifier = Modifier,
     viewModel: ContactFormViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val events by viewModel.events.collectAsStateWithLifecycle()
+    val currentOnSaved = rememberUpdatedState(onSaved)
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(events) {
         if (events is ContactFormEvent.Saved) {
             viewModel.onSaveShown()
-            onSaved()
+            currentOnSaved.value()
         }
     }
 
     FormScaffold(
+        modifier = modifier,
         title = if (state.isEdit) {
             stringResource(
                 R.string.contact_edit_title
@@ -580,62 +584,64 @@ private fun SelectorChipEditor(
     emptyText: String,
     onToggle: (String) -> Unit
 ) {
-    SectionLabel(label)
-    if (selected.isEmpty()) {
-        Text(
-            text = emptyText,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(vertical = 4.dp)
-        )
-    }
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        selected.forEach { name ->
-            InputChip(
-                selected = true,
-                onClick = { onToggle(name) },
-                label = { Text(name) },
-                trailingIcon = {
-                    Icon(
-                        Icons.Outlined.Close,
-                        contentDescription = stringResource(R.string.contact_remove),
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
+    Column {
+        SectionLabel(label)
+        if (selected.isEmpty()) {
+            Text(
+                text = emptyText,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 4.dp)
             )
         }
-    }
-    val addable = available.filter { it !in selected }
-    if (addable.isNotEmpty()) {
-        var menuExpanded by remember { mutableStateOf(false) }
-        Box(modifier = Modifier.padding(top = 4.dp)) {
-            androidx.compose.material3.AssistChip(
-                onClick = { menuExpanded = true },
-                label = { Text(selectLabel) },
-                leadingIcon = {
-                    Icon(
-                        Icons.Outlined.Add,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                },
-                modifier = Modifier.height(32.dp)
-            )
-            DropdownMenu(
-                expanded = menuExpanded,
-                onDismissRequest = { menuExpanded = false }
-            ) {
-                addable.forEach { name ->
-                    DropdownMenuItem(
-                        text = { Text(name) },
-                        onClick = {
-                            menuExpanded = false
-                            onToggle(name)
-                        }
-                    )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            selected.forEach { name ->
+                InputChip(
+                    selected = true,
+                    onClick = { onToggle(name) },
+                    label = { Text(name) },
+                    trailingIcon = {
+                        Icon(
+                            Icons.Outlined.Close,
+                            contentDescription = stringResource(R.string.contact_remove),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                )
+            }
+        }
+        val addable = available.filter { it !in selected }
+        if (addable.isNotEmpty()) {
+            var menuExpanded by remember { mutableStateOf(false) }
+            Box(modifier = Modifier.padding(top = 4.dp)) {
+                androidx.compose.material3.AssistChip(
+                    onClick = { menuExpanded = true },
+                    label = { Text(selectLabel) },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Outlined.Add,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    },
+                    modifier = Modifier.height(32.dp)
+                )
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false }
+                ) {
+                    addable.forEach { name ->
+                        DropdownMenuItem(
+                            text = { Text(name) },
+                            onClick = {
+                                menuExpanded = false
+                                onToggle(name)
+                            }
+                        )
+                    }
                 }
             }
         }

@@ -40,7 +40,8 @@ fun ImportReviewStep(
     rowActions: Map<Int, String>,
     onRowActionChange: (Int, String) -> Unit,
     onResolveAll: () -> Unit,
-    onConfirm: () -> Unit
+    onConfirm: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val conflictsRemaining = rows.count { row ->
         row.validationErrors.isEmpty() &&
@@ -49,7 +50,7 @@ fun ImportReviewStep(
     }
     val decisions = rows.count { it.validationErrors.isEmpty() }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = modifier.fillMaxSize()) {
         Text(
             text = if (conflictsRemaining > 0) {
                 pluralStringResource(

@@ -35,6 +35,7 @@ type SelectionOptions struct {
 	TriggersPath  string
 	Set           TriggerSet
 	AgentCommand  string
+	AgentProfile  string
 	AgentName     string
 	AgentModel    string
 	AgentVersion  string
@@ -72,6 +73,7 @@ func RunSelection(ctx context.Context, opts SelectionOptions) (SelectionArtifact
 		Version:      opts.Set.Version,
 		Triggers:     opts.TriggersPath,
 		BaseRef:      opts.BaseRef,
+		Profile:      opts.AgentProfile,
 		AgentName:    opts.AgentName,
 		AgentModel:   opts.AgentModel,
 		AgentVersion: opts.AgentVersion,

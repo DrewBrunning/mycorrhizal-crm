@@ -73,6 +73,7 @@ fun MapScreenContent(
     onOpenContact: (Int) -> Unit,
     onSelect: (String?) -> Unit,
     onShowListChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
     onRetry: () -> Unit = {},
     // Replaceable so tests (and previews) do not need the native renderer.
     mapCanvas: @Composable (
@@ -92,6 +93,7 @@ fun MapScreenContent(
         }
 ) {
     Scaffold(
+        modifier = modifier,
         topBar = {
             TopAppBar(
                 navigationIcon = {

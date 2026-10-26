@@ -45,11 +45,11 @@ func run(args []string, stdout, stderr io.Writer) int {
 	var noControl, requireBaseline, forceBaseline bool
 	fs.StringVar(&mode, "mode", "task", "task or select (trigger-selection pass)")
 	fs.StringVar(&task, "task", "", "task name under testdata/agent-eval (required in task mode)")
-	fs.StringVar(&profileName, "profile", "", "pinned agent profile from testdata/agent-eval/agents.yaml")
+	fs.StringVar(&profileName, "profile", "", "pinned agent profile from testdata/agent-eval/agents.yaml (task or select mode)")
 	fs.StringVar(&profilesPath, "profiles", "testdata/agent-eval/agents.yaml", "agent profile file, repo-relative")
-	fs.StringVar(&baselinePath, "baseline", "", "committed baseline to compare against (requires -profile)")
-	fs.StringVar(&baselineOut, "write-baseline", "", "write this run into the named baseline file (requires -profile)")
-	fs.BoolVar(&requireBaseline, "require-baseline", false, "fail if the profile/task has no committed baseline entry")
+	fs.StringVar(&baselinePath, "baseline", "", "committed baseline to compare against (requires -profile; task mode)")
+	fs.StringVar(&baselineOut, "write-baseline", "", "write this run into the named baseline file (requires -profile; task mode)")
+	fs.BoolVar(&requireBaseline, "require-baseline", false, "fail if the profile/task has no committed baseline entry (task mode)")
 	fs.BoolVar(&forceBaseline, "force-baseline", false, "write a baseline even when the run did not pass")
 	fs.StringVar(&tasksDir, "tasks-dir", "testdata/agent-eval", "task directory, repo-relative")
 	fs.StringVar(&triggersPath, "triggers", "testdata/agent-eval/triggers.yaml", "trigger prompt set, repo-relative (select mode)")
@@ -65,7 +65,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 	fs.BoolVar(&noControl, "no-control", false, "skip the stripped-context control run (not recommended)")
 	fs.Usage = func() {
 		fmt.Fprintln(stderr, "usage: agenteval -task NAME [-agent-command CMD] [-out DIR] [-no-control]")
-		fmt.Fprintln(stderr, "       agenteval -mode select -agent-command CMD [-triggers PATH] [-base-ref REF]")
+		fmt.Fprintln(stderr, "       agenteval -task NAME -profile PROFILE [-baseline FILE] [-out DIR]")
+		fmt.Fprintln(stderr, "       agenteval -mode select (-profile PROFILE | -agent-command CMD) [-triggers PATH] [-base-ref REF]")
 		fs.PrintDefaults()
 	}
 	if err := fs.Parse(args); err != nil {
@@ -82,8 +83,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "agenteval: -task is required")
 		return 2
 	}
-	if mode == "select" && (profileName != "" || baselinePath != "" || baselineOut != "" || requireBaseline) {
-		fmt.Fprintln(stderr, "agenteval: -profile and baseline flags are only supported in task mode")
+	if mode == "select" && (baselinePath != "" || baselineOut != "" || requireBaseline || forceBaseline) {
+		fmt.Fprintln(stderr, "agenteval: baseline flags are only supported in task mode")
 		return 2
 	}
 	if (baselinePath != "" || baselineOut != "") && profileName == "" {
@@ -112,10 +113,6 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "agenteval:", err) // # pragma: no cover — Abs fails only if cwd was deleted
 		return 1                                // # pragma: no cover
 	}
-	if mode == "select" {
-		return runSelect(abs, triggersPath, baseRef, outDir, agentCommand, agentName, agentModel, agentVersion, timeoutFlag, skill, stdout, stderr)
-	}
-
 	var loadedProfile agenteval.Profile
 	if profileName != "" {
 		profile, err := agenteval.LoadProfile(abs, profilesPath, profileName)
@@ -136,6 +133,13 @@ func run(args []string, stdout, stderr io.Writer) int {
 		if agentVersion == "" {
 			agentVersion = profile.Version
 		}
+	}
+	if mode == "select" {
+		if loadedProfile.DryRun {
+			fmt.Fprintln(stderr, "agenteval: dry-run profiles cannot be used in select mode")
+			return 2
+		}
+		return runSelect(abs, triggersPath, baseRef, outDir, profileName, agentCommand, agentName, agentModel, agentVersion, timeoutFlag, skill, stdout, stderr)
 	}
 	if loadedProfile.DryRun && (baselinePath != "" || baselineOut != "" || requireBaseline) {
 		fmt.Fprintln(stderr, "agenteval: dry-run profiles cannot be compared with a baseline")
@@ -257,7 +261,7 @@ func resolvePath(root, path string) string {
 	return filepath.Join(root, filepath.FromSlash(path))
 }
 
-func runSelect(abs, triggersPath, baseRef, outDir, agentCommand, agentName, agentModel, agentVersion, timeoutFlag, skill string, stdout, stderr io.Writer) int {
+func runSelect(abs, triggersPath, baseRef, outDir, profileName, agentCommand, agentName, agentModel, agentVersion, timeoutFlag, skill string, stdout, stderr io.Writer) int {
 	if strings.TrimSpace(agentCommand) == "" {
 		fmt.Fprintln(stderr, "agenteval: -agent-command is required in select mode")
 		return 2
@@ -306,6 +310,7 @@ func runSelect(abs, triggersPath, baseRef, outDir, agentCommand, agentName, agen
 		TriggersPath: triggersPath,
 		Set:          set,
 		AgentCommand: agentCommand,
+		AgentProfile: profileName,
 		AgentName:    agentName,
 		AgentModel:   agentModel,
 		AgentVersion: agentVersion,

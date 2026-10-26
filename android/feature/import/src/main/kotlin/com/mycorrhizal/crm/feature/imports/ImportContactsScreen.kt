@@ -67,6 +67,7 @@ import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImportContactsScreen(
+    modifier: Modifier = Modifier,
     // Issue #150: null hides the hamburger — there is no drawer at Expanded.
     onMenuClick: (() -> Unit)? = {},
     onImported: () -> Unit = {},
@@ -132,6 +133,7 @@ fun ImportContactsScreen(
     val needsPermission = !granted || state.permissionRequired
 
     Scaffold(
+        modifier = modifier,
         topBar = {
             TopAppBar(
                 navigationIcon = {

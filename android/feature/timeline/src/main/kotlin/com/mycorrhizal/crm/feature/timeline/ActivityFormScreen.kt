@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -46,11 +47,12 @@ fun ActivityFormScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val events by viewModel.events.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val currentOnSaved = rememberUpdatedState(onSaved)
 
     LaunchedEffect(events) {
         if (events is ActivityFormEvent.Saved) {
             viewModel.onSaveShown()
-            onSaved()
+            currentOnSaved.value()
         }
     }
 

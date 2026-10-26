@@ -170,8 +170,73 @@ func TestRunSelectFlagErrors(t *testing.T) {
 	if code, _, stderr := runCLI(t, "-mode", "select", "-root", root, "-base-ref", "main", "-agent-command", ": {prompt}"); code != 2 || !strings.Contains(stderr, "full commit SHA") {
 		t.Fatalf("branch base ref = %d, stderr %q", code, stderr)
 	}
-	if code, _, stderr := runCLI(t, "-mode", "select", "-root", root, "-profile", "dry-run", "-agent-command", ": {prompt}"); code != 2 || !strings.Contains(stderr, "only supported in task mode") {
-		t.Fatalf("profile in select mode = %d, stderr %q", code, stderr)
+	if code, _, stderr := runCLI(t, "-mode", "select", "-root", root, "-profile", "dry-run", "-agent-command", ": {prompt}"); code != 2 || !strings.Contains(stderr, "cannot be combined") {
+		t.Fatalf("profile with explicit agent flags in select mode = %d, stderr %q", code, stderr)
+	}
+	if code, _, stderr := runCLI(t, "-mode", "select", "-root", root, "-base-ref", sha, "-agent-command", ": {prompt}", "-baseline", "testdata/agent-eval/baseline.json"); code != 2 || !strings.Contains(stderr, "baseline flags are only supported in task mode") {
+		t.Fatalf("baseline in select mode = %d, stderr %q", code, stderr)
+	}
+	if code, _, stderr := runCLI(t, "-mode", "select", "-root", root, "-base-ref", sha, "-agent-command", ": {prompt}", "-write-baseline", "testdata/agent-eval/baseline.json"); code != 2 || !strings.Contains(stderr, "baseline flags are only supported in task mode") {
+		t.Fatalf("write baseline in select mode = %d, stderr %q", code, stderr)
+	}
+}
+
+func TestRunSelectModeWithProfile(t *testing.T) {
+	root, sha := fixtureRepo(t)
+	writeFile(t, root, "testdata/agent-eval/agents.yaml", `version: 1
+profiles:
+  pinned:
+    command: >-
+      : {prompt} && printf '%s' '{"skills":[".agents/skills/demo/SKILL.md"]}' > .agent-eval-selection.json
+    name: pinned
+    model: test-model
+    version: "1.0.0"
+`)
+	out := t.TempDir()
+	code, stdout, stderr := runCLI(t, "-mode", "select", "-root", root, "-base-ref", sha, "-out", out, "-profile", "pinned")
+	if code != 0 {
+		t.Fatalf("run = %d, stderr %q stdout %q", code, stderr, stdout)
+	}
+	if !strings.Contains(stdout, "Selected correctly: 1/1") {
+		t.Fatalf("stdout = %q", stdout)
+	}
+	entries, err := os.ReadDir(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+		body, err := os.ReadFile(filepath.Join(out, entry.Name()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var art agenteval.SelectionArtifact
+		if err := json.Unmarshal(body, &art); err != nil {
+			t.Fatal(err)
+		}
+		if art.Profile != "pinned" || art.AgentName != "pinned" || art.AgentModel != "test-model" || art.AgentVersion != "1.0.0" || art.AgentCommand == "" {
+			t.Fatalf("artifact = %+v", art)
+		}
+	}
+}
+
+func TestRunSelectRejectsDryRunProfile(t *testing.T) {
+	root, _ := fixtureRepo(t)
+	writeFile(t, root, "testdata/agent-eval/agents.yaml", "version: 1\nprofiles:\n  dry-run:\n    command: \"true\"\n    name: dry-run\n    model: none\n    version: \"0\"\n    dry_run: true\n")
+	code, _, stderr := runCLI(t, "-mode", "select", "-root", root, "-profile", "dry-run")
+	if code != 2 || !strings.Contains(stderr, "dry-run profiles cannot be used in select mode") {
+		t.Fatalf("run = %d, stderr %q", code, stderr)
+	}
+}
+
+func TestRunSelectUnknownProfile(t *testing.T) {
+	root, _ := fixtureRepo(t)
+	writeFile(t, root, "testdata/agent-eval/agents.yaml", "version: 1\nprofiles: {}\n")
+	code, _, stderr := runCLI(t, "-mode", "select", "-root", root, "-profile", "missing")
+	if code != 1 || !strings.Contains(stderr, "not defined") {
+		t.Fatalf("run = %d, stderr %q", code, stderr)
 	}
 }
 

@@ -115,6 +115,7 @@ import java.time.LocalDate
 @Composable
 fun DashboardScreen(
     onOpenContact: (Int) -> Unit,
+    modifier: Modifier = Modifier,
     // Issue #150: null hides the hamburger — there is no drawer at Expanded.
     onMenuClick: (() -> Unit)? = {},
     // Issue #1264: opens Settings → Data, where the account bundle is exported.
@@ -142,6 +143,7 @@ fun DashboardScreen(
     }
 
     Scaffold(
+        modifier = modifier,
         topBar = {
             TopAppBar(
                 navigationIcon = {
@@ -1090,9 +1092,9 @@ private fun FavoriteContactRow(contact: DashboardRandomContact, onClick: () -> U
 @Composable
 private fun DashboardChip(
     text: String,
-    leadingIcon: ImageVector? = null,
     containerColor: Color,
-    contentColor: Color
+    contentColor: Color,
+    leadingIcon: ImageVector? = null
 ) {
     Surface(shape = RoundedCornerShape(8.dp), color = containerColor, contentColor = contentColor) {
         Row(

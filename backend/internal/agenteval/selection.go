@@ -140,6 +140,7 @@ type SelectionArtifact struct {
 	Version      int                `json:"version"`
 	Triggers     string             `json:"triggers"`
 	BaseRef      string             `json:"base_ref"`
+	Profile      string             `json:"profile,omitempty"`
 	AgentName    string             `json:"agent_name,omitempty"`
 	AgentModel   string             `json:"agent_model,omitempty"`
 	AgentVersion string             `json:"agent_version,omitempty"`
@@ -280,6 +281,9 @@ func SelectionMarkdown(a SelectionArtifact) string {
 	}
 	fmt.Fprintf(&b, "- Base ref: `%s`\n", a.BaseRef)
 	fmt.Fprintf(&b, "- Trigger set version: %d\n", a.Version)
+	if a.Profile != "" {
+		fmt.Fprintf(&b, "- Profile: `%s`\n", a.Profile)
+	}
 	fmt.Fprintf(&b, "- Agent: %s / %s / %s\n", a.AgentName, a.AgentModel, a.AgentVersion)
 	fmt.Fprintf(&b, "- Command: `%s`\n", a.AgentCommand)
 	fmt.Fprintf(&b, "- Selected correctly: %d/%d\n", a.Passed, a.Total)

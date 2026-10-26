@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -84,6 +85,7 @@ fun MergeContactsScreen(
 fun MergeContactsScreenContent(
     uiState: MergeUiState,
     onBack: () -> Unit,
+    modifier: Modifier = Modifier,
     otherName: String? = null,
     onSearchQueryChange: (String) -> Unit = {},
     onPick: (ContactSummary) -> Unit = {},
@@ -93,11 +95,13 @@ fun MergeContactsScreenContent(
 ) {
     val state = uiState
     val snackbarHostState = remember { SnackbarHostState() }
+    val currentOnErrorShown = rememberUpdatedState(onErrorShown)
     val conflicts = state.preview
         ?.let { it.resolution.conflicts + it.resolution.fieldValueConflicts }
         .orEmpty()
 
     Scaffold(
+        modifier = modifier,
         topBar = {
             TopAppBar(
                 navigationIcon = {
@@ -216,7 +220,7 @@ fun MergeContactsScreenContent(
     state.error?.let { message ->
         LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)
-            onErrorShown()
+            currentOnErrorShown.value()
         }
     }
 }

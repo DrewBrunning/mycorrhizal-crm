@@ -61,6 +61,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -118,6 +119,7 @@ fun ContactListScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val currentOnContactClick = rememberUpdatedState(onContactClick)
 
     // Reload when returning from the create/edit form so a newly added or
     // renamed contact shows up without a manual refresh.
@@ -133,7 +135,10 @@ fun ContactListScreen(
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
-                is ContactListEvent.NavigateToContact -> onContactClick(event.contactId)
+                is ContactListEvent.NavigateToContact -> currentOnContactClick.value(
+                    event.contactId
+                )
+
                 ContactListEvent.ForceLogout -> Unit // handled by the app-level nav
             }
         }
@@ -176,6 +181,7 @@ fun ContactListScreenContent(
     uiState: ContactListUiState,
     onSearchQueryChange: (String) -> Unit,
     onContactClick: (Int) -> Unit,
+    modifier: Modifier = Modifier,
     onCircleFilterChange: (String?) -> Unit = {},
     onIncludeArchivedChange: (Boolean) -> Unit = {},
     // Issue #212: the favorites-only lens + per-row star toggle (web #173).
@@ -203,6 +209,9 @@ fun ContactListScreenContent(
     onRefresh: () -> Unit = {}
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
+    val currentOnBulkResultShown = rememberUpdatedState(onBulkResultShown)
+    val currentOnErrorShown = rememberUpdatedState(onErrorShown)
+    val currentOnLoadMore = rememberUpdatedState(onLoadMore)
     var search by rememberSaveable { mutableStateOf(uiState.searchQuery) }
     // M23: inline bulk-selection mode (web parity). The selection *set* lives in the
     // ViewModel so filter changes can clear it; this flag is pure screen chrome.
@@ -238,11 +247,12 @@ fun ContactListScreenContent(
     }
     LaunchedEffect(shouldLoadMore, uiState.pagination.hasMore, uiState.pagination.isLoadingMore) {
         if (shouldLoadMore && uiState.pagination.hasMore && !uiState.pagination.isLoadingMore) {
-            onLoadMore()
+            currentOnLoadMore.value()
         }
     }
 
     Scaffold(
+        modifier = modifier,
         topBar = {
             TopAppBar(
                 navigationIcon = {
@@ -669,7 +679,7 @@ fun ContactListScreenContent(
     uiState.error?.let { message ->
         LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)
-            onErrorShown()
+            currentOnErrorShown.value()
         }
     }
 
@@ -682,7 +692,7 @@ fun ContactListScreenContent(
         )
         LaunchedEffect(result) {
             snackbarHostState.showSnackbar(message)
-            onBulkResultShown()
+            currentOnBulkResultShown.value()
         }
     }
 }
