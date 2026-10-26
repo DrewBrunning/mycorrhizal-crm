@@ -11,6 +11,7 @@ import (
 	"time"
 
 	apperrors "mycorrhizal/errors"
+	"mycorrhizal/internal/fireandforget"
 	"mycorrhizal/models"
 
 	"github.com/rs/zerolog"
@@ -114,10 +115,14 @@ func (m *MycorrhizalImportManager) CleanupExpired() {
 	for id, s := range m.sessions {
 		s.mu.Lock()
 		expired := now.After(s.expiresAt) || now.After(s.hardExpiry)
+		var cancel context.CancelFunc
+		if expired {
+			cancel = s.cancel
+		}
 		s.mu.Unlock()
 		if expired {
-			if s.cancel != nil {
-				s.cancel()
+			if cancel != nil {
+				cancel()
 			}
 			delete(m.sessions, id)
 		}
@@ -177,8 +182,13 @@ func (m *MycorrhizalImportManager) Delete(sessionID string) {
 	s, exists := m.sessions[sessionID]
 	delete(m.sessions, sessionID)
 	m.mu.Unlock()
-	if exists && s.cancel != nil {
-		s.cancel()
+	if exists {
+		s.mu.Lock()
+		cancel := s.cancel
+		s.mu.Unlock()
+		if cancel != nil {
+			cancel()
+		}
 	}
 }
 
@@ -316,7 +326,7 @@ func (m *MycorrhizalImportManager) StartFetch(db *gorm.DB, userID uint, req mode
 	s.cancel = cancel
 	s.mu.Unlock()
 
-	go m.runFetch(ctx, db, s, log)
+	fireandforget.Run(func() { m.runFetch(ctx, db, s, log) })
 	return nil
 }
 
@@ -408,22 +418,24 @@ func (m *MycorrhizalImportManager) Confirm(db *gorm.DB, userID uint, req models.
 	}
 	plan := s.plan
 	previews := s.previews
-	s.mu.Unlock()
-
-	actions, appErr := resolveSourceContactActions(db, userID, plan, previews, req.Actions)
-	if appErr != nil {
-		return appErr
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
-	s.mu.Lock()
 	s.phase = models.SourceImportPhaseImporting
 	s.phaseDone, s.phaseTotal = 0, len(previews)+importGraphKinds
 	s.errMsg = ""
 	s.cancel = cancel
 	s.mu.Unlock()
 
-	go m.runImport(ctx, db, s, plan, len(previews), actions, log)
+	actions, appErr := resolveSourceContactActions(db, userID, plan, previews, req.Actions)
+	if appErr != nil {
+		cancel()
+		s.mu.Lock()
+		if s.phase == models.SourceImportPhaseImporting {
+			s.phase = models.SourceImportPhaseReady
+		}
+		s.mu.Unlock()
+		return appErr
+	}
+	fireandforget.Run(func() { m.runImport(ctx, db, s, plan, len(previews), actions, log) })
 	return nil
 }
 

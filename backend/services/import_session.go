@@ -64,6 +64,13 @@ type importSessionData struct {
 	// Empty for ordinary CSV/VCF/JSContact import sessions.
 	boundShareID string
 
+	// dataMu guards the mutable preview/confirm payload: session.Mappings,
+	// session.PreviewRows, session.PreviewCached, csvContacts, vcfContacts,
+	// and boundShareID. PreviewCSV writes it while Confirm/ConfirmVCF read it,
+	// so both paths must share this lock (confirmMu alone only serializes
+	// confirms against each other).
+	dataMu sync.RWMutex
+
 	// confirmMu serializes concurrent confirms of this same session so a race
 	// cannot apply an import twice (T57 idempotent confirm). confirmed, when
 	// non-nil, means a confirm has already committed and its result is
@@ -328,11 +335,14 @@ func (m *ImportSessionManager) createVCFLikeSession(userID uint, vcfContacts []V
 // ConfirmVCF ever touches the session.
 func (m *ImportSessionManager) CreateVCFSessionForShare(userID uint, shareID string, vcfContacts []VCFContactData, previews []models.ImportRowPreview) string {
 	sessionID := m.CreateVCFSession(userID, vcfContacts, previews)
-	m.mu.Lock()
-	if sd, exists := m.sessions[sessionID]; exists {
+	m.mu.RLock()
+	sd, exists := m.sessions[sessionID]
+	m.mu.RUnlock()
+	if exists {
+		sd.dataMu.Lock()
 		sd.boundShareID = shareID
+		sd.dataMu.Unlock()
 	}
-	m.mu.Unlock()
 	return sessionID
 }
 
@@ -346,7 +356,10 @@ func (m *ImportSessionManager) SessionBelongsToShare(sessionID string, userID ui
 	if err != nil {
 		return false
 	}
-	return shareID != "" && sessionData.boundShareID == shareID
+	sessionData.dataMu.RLock()
+	boundShareID := sessionData.boundShareID
+	sessionData.dataMu.RUnlock()
+	return shareID != "" && boundShareID == shareID
 }
 
 // PreviewCSV applies mappings to a CSV session, caches the built contacts and preview
@@ -360,14 +373,17 @@ func (m *ImportSessionManager) PreviewCSV(db *gorm.DB, userID uint, req models.I
 	contacts, previews, stats := GenerateCSVPreview(db, userID, sessionData.rows, sessionData.session.Headers, req.Mappings)
 
 	// Cache preview data and built contacts in the session for the confirm step.
-	m.mu.Lock()
-	if sd, exists := m.sessions[req.SessionID]; exists {
+	m.mu.RLock()
+	sd, exists := m.sessions[req.SessionID]
+	m.mu.RUnlock()
+	if exists {
+		sd.dataMu.Lock()
 		sd.session.Mappings = req.Mappings
 		sd.session.PreviewRows = previews
 		sd.session.PreviewCached = true
 		sd.csvContacts = contacts
+		sd.dataMu.Unlock()
 	}
-	m.mu.Unlock()
 
 	return &models.ImportPreviewResponse{
 		SessionID:      req.SessionID,
@@ -412,14 +428,21 @@ func (m *ImportSessionManager) Confirm(db *gorm.DB, userID uint, req models.Impo
 		return nil, apperrors.ErrInvalidInput("session", "This endpoint is only for CSV or VCF imports")
 	}
 
-	if !sessionData.session.PreviewCached {
+	sessionData.dataMu.RLock()
+	previewCached := sessionData.session.PreviewCached
+	previews := append([]models.ImportRowPreview(nil), sessionData.session.PreviewRows...)
+	csvContacts := append([]models.Contact(nil), sessionData.csvContacts...)
+	vcfContacts := append([]VCFContactData(nil), sessionData.vcfContacts...)
+	sessionData.dataMu.RUnlock()
+
+	if !previewCached {
 		return nil, apperrors.ErrInvalidInput("session", "Please generate a preview first")
 	}
 
 	// Issue #498: refuse now with a 507 if the disk plainly cannot hold this
 	// import, rather than filling it and failing mid-transaction. The session
 	// is left unconsumed, so a retry after space is freed applies cleanly.
-	if spaceErr := preflightImportDiskSpace(db, len(sessionData.session.PreviewRows)); spaceErr != nil {
+	if spaceErr := preflightImportDiskSpace(db, len(previews)); spaceErr != nil {
 		return nil, spaceErr
 	}
 
@@ -435,7 +458,7 @@ func (m *ImportSessionManager) Confirm(db *gorm.DB, userID uint, req models.Impo
 			return err
 		}
 
-		for _, preview := range sessionData.session.PreviewRows {
+		for _, preview := range previews {
 			action := actionMap[preview.RowIndex]
 			if action == "" {
 				action = "skip"
@@ -450,9 +473,9 @@ func (m *ImportSessionManager) Confirm(db *gorm.DB, userID uint, req models.Impo
 			case "add":
 				var contact models.Contact
 				if isVCFImport {
-					contact = *sessionData.vcfContacts[preview.RowIndex].Contact
+					contact = *vcfContacts[preview.RowIndex].Contact
 				} else {
-					contact = sessionData.csvContacts[preview.RowIndex]
+					contact = csvContacts[preview.RowIndex]
 				}
 				contact.UserID = userID
 
@@ -469,7 +492,7 @@ func (m *ImportSessionManager) Confirm(db *gorm.DB, userID uint, req models.Impo
 					}
 					result.Created++
 					if isVCFImport {
-						sessionData.vcfContacts[preview.RowIndex].Contact.ID = contact.ID
+						vcfContacts[preview.RowIndex].Contact.ID = contact.ID
 					}
 				}
 
@@ -491,9 +514,9 @@ func (m *ImportSessionManager) Confirm(db *gorm.DB, userID uint, req models.Impo
 				var incoming *models.Contact
 				if isVCFImport {
 					importType = "VCF"
-					incoming = sessionData.vcfContacts[preview.RowIndex].Contact
+					incoming = vcfContacts[preview.RowIndex].Contact
 				} else {
-					csvContact := sessionData.csvContacts[preview.RowIndex]
+					csvContact := csvContacts[preview.RowIndex]
 					incoming = &csvContact
 				}
 
@@ -512,7 +535,7 @@ func (m *ImportSessionManager) Confirm(db *gorm.DB, userID uint, req models.Impo
 					}
 					result.Updated++
 					if isVCFImport {
-						sessionData.vcfContacts[preview.RowIndex].Contact.ID = existing.ID
+						vcfContacts[preview.RowIndex].Contact.ID = existing.ID
 					}
 				}
 			}
@@ -582,12 +605,18 @@ func (m *ImportSessionManager) ConfirmVCF(db *gorm.DB, userID uint, req models.I
 		importTypeLabel = "Device"
 	}
 
-	if !sessionData.session.PreviewCached {
+	sessionData.dataMu.RLock()
+	previewCached := sessionData.session.PreviewCached
+	previews := append([]models.ImportRowPreview(nil), sessionData.session.PreviewRows...)
+	vcfContacts := append([]VCFContactData(nil), sessionData.vcfContacts...)
+	sessionData.dataMu.RUnlock()
+
+	if !previewCached {
 		return nil, apperrors.ErrInvalidInput("session", "Please generate a preview first")
 	}
 
 	// Issue #498: disk preflight before the transaction (see Confirm).
-	if spaceErr := preflightImportDiskSpace(db, len(sessionData.session.PreviewRows)); spaceErr != nil {
+	if spaceErr := preflightImportDiskSpace(db, len(previews)); spaceErr != nil {
 		return nil, spaceErr
 	}
 
@@ -613,14 +642,14 @@ func (m *ImportSessionManager) ConfirmVCF(db *gorm.DB, userID uint, req models.I
 			return planErr
 		}
 
-		for _, preview := range sessionData.session.PreviewRows {
+		for _, preview := range previews {
 			action := actionMap[preview.RowIndex]
 			if action == "" {
 				action = "skip"
 			}
 
 			result.TotalProcessed++
-			vcfData := sessionData.vcfContacts[preview.RowIndex]
+			vcfData := vcfContacts[preview.RowIndex]
 
 			switch action {
 			case "skip":
