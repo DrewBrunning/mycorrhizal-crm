@@ -38,6 +38,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -192,8 +193,9 @@ internal fun CalendarSyncContent(
                     state.lastSyncResult?.let { result ->
                         item {
                             Text(
-                                text = stringResource(
-                                    R.string.settings_calendar_sync_sync_success,
+                                text = pluralStringResource(
+                                    R.plurals.settings_calendar_sync_sync_success,
+                                    result.created,
                                     result.created,
                                     result.updated,
                                     result.skipped
@@ -321,8 +323,9 @@ internal fun CalendarSubscriptionRow(
                 if (calendar.lastSyncStatus == "error") {
                     Text(
                         text = if (calendar.consecutiveFailures > 1) {
-                            stringResource(
-                                R.string.settings_calendar_sync_sync_failed_count,
+                            pluralStringResource(
+                                R.plurals.settings_calendar_sync_sync_failed_count,
+                                calendar.consecutiveFailures,
                                 calendar.consecutiveFailures
                             )
                         } else {
@@ -427,8 +430,9 @@ internal fun ContactSubscriptionRow(subscription: ContactSubscription) {
         )
         if (subscription.pendingConflicts > 0) {
             Text(
-                text = stringResource(
-                    R.string.settings_contact_sync_pending_conflicts,
+                text = pluralStringResource(
+                    R.plurals.settings_contact_sync_pending_conflicts,
+                    subscription.pendingConflicts,
                     subscription.pendingConflicts
                 ),
                 style = MaterialTheme.typography.labelSmall,
@@ -486,8 +490,9 @@ internal fun SyncHealthSection(
         }
             ?: stringResource(R.string.settings_sync_health_never_succeeded)
         Text(
-            text = stringResource(
-                R.string.settings_sync_health_failing,
+            text = pluralStringResource(
+                R.plurals.settings_sync_health_failing,
+                consecutiveFailures,
                 since,
                 consecutiveFailures
             ) + " · " + lastGood,
@@ -498,16 +503,18 @@ internal fun SyncHealthSection(
     }
     if (lastSyncStatus == "success" && lastRunStats.isNotEmpty()) {
         val text = if (includeArchived) {
-            stringResource(
-                R.string.settings_sync_health_last_run_contacts,
+            pluralStringResource(
+                R.plurals.settings_sync_health_last_run_contacts,
+                lastRunStats["created"] ?: 0,
                 lastRunStats["created"] ?: 0,
                 lastRunStats["updated"] ?: 0,
                 lastRunStats["archived"] ?: 0,
                 lastRunStats["skipped"] ?: 0
             )
         } else {
-            stringResource(
-                R.string.settings_sync_health_last_run,
+            pluralStringResource(
+                R.plurals.settings_sync_health_last_run,
+                lastRunStats["created"] ?: 0,
                 lastRunStats["created"] ?: 0,
                 lastRunStats["updated"] ?: 0,
                 lastRunStats["skipped"] ?: 0
@@ -554,7 +561,7 @@ private fun staleLine(lastSuccessAt: String?): String {
         lastSuccessAt
     ) ?: return stringResource(R.string.settings_sync_health_stale_never)
     return if (days >= 2) {
-        stringResource(R.string.settings_sync_health_stale_days, days)
+        pluralStringResource(R.plurals.settings_sync_health_stale_days, days, days)
     } else {
         stringResource(R.string.settings_sync_health_stale_recent, formatSyncDate(lastSuccessAt!!))
     }

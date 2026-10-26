@@ -28,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -116,7 +117,11 @@ fun NotesInboxScreenContent(
                         )
                         if (state.total > 0) {
                             Text(
-                                text = stringResource(R.string.notes_inbox_total, state.total),
+                                text = pluralStringResource(
+                                    R.plurals.notes_inbox_total,
+                                    state.total,
+                                    state.total
+                                ),
                                 style = MaterialTheme.typography.bodyMedium,
                                 modifier = Modifier.padding(start = 8.dp)
                             )

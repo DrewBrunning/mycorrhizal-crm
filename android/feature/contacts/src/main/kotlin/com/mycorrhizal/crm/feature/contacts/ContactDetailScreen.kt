@@ -114,6 +114,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -1976,8 +1977,9 @@ fun ContactDetailContent(
             title = { Text(stringResource(R.string.target_closeness_offer_title)) },
             text = {
                 Text(
-                    stringResource(
-                        R.string.target_closeness_offer_body,
+                    pluralStringResource(
+                        R.plurals.target_closeness_offer_body,
+                        cadencePolicyOffer.targetIntervalDays,
                         contactName,
                         cadencePolicyOffer.targetIntervalDays
                     )
@@ -3001,7 +3003,11 @@ private fun ImmichLinkRow(
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                stringResource(R.string.immich_photo_count, summary?.photoCount ?: 0),
+                pluralStringResource(
+                    R.plurals.immich_photo_count,
+                    summary?.photoCount ?: 0,
+                    summary?.photoCount ?: 0
+                ),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

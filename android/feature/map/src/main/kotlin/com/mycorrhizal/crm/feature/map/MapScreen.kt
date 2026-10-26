@@ -29,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -150,7 +151,11 @@ fun MapScreenContent(
                 else -> {
                     if (uiState.truncated) {
                         Text(
-                            text = stringResource(R.string.map_truncated, uiState.points.size),
+                            text = pluralStringResource(
+                                R.plurals.map_truncated,
+                                uiState.points.size,
+                                uiState.points.size
+                            ),
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)

@@ -42,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -228,7 +229,11 @@ private fun MappingStep(
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         Text(
-            text = stringResource(R.string.import_csv_mapping_hint, upload.rowCount),
+            text = pluralStringResource(
+                R.plurals.import_csv_mapping_hint,
+                upload.rowCount,
+                upload.rowCount
+            ),
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
@@ -314,7 +319,13 @@ private fun CsvResultStep(created: Int, updated: Int, skipped: Int, onDone: () -
         modifier = Modifier.fillMaxSize().padding(24.dp)
     ) {
         Text(
-            text = stringResource(R.string.import_vcf_result, created, updated, skipped),
+            text = pluralStringResource(
+                R.plurals.import_vcf_result,
+                created,
+                created,
+                updated,
+                skipped
+            ),
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.padding(top = 48.dp, bottom = 16.dp)
         )

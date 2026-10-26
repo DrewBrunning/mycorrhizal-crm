@@ -90,7 +90,12 @@ fun scoreReasonText(reasonCode: String?, params: ScoreReasonParams, fallback: St
             val score = params.score
             val interval = params.intervalDays
             if (score != null && interval != null) {
-                stringResource(R.string.score_reason_target_cadence_policy, score, every(interval))
+                pluralStringResource(
+                    R.plurals.score_reason_target_cadence_policy,
+                    score,
+                    score,
+                    every(interval)
+                )
             } else {
                 null
             }
@@ -101,8 +106,9 @@ fun scoreReasonText(reasonCode: String?, params: ScoreReasonParams, fallback: St
             val interval = params.intervalDays
             val tier = params.tier
             if (score != null && interval != null && tier != null) {
-                stringResource(
-                    R.string.score_reason_target_tier,
+                pluralStringResource(
+                    R.plurals.score_reason_target_tier,
+                    score,
                     score,
                     targetTierLabel(tier),
                     every(interval)

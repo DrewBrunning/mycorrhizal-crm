@@ -38,6 +38,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -301,8 +302,9 @@ internal fun WebhookRow(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = stringResource(
-                        R.string.settings_webhooks_events_count,
+                    text = pluralStringResource(
+                        R.plurals.settings_webhooks_events_count,
+                        webhook.events.size,
                         webhook.events.size
                     ),
                     style = MaterialTheme.typography.labelSmall,

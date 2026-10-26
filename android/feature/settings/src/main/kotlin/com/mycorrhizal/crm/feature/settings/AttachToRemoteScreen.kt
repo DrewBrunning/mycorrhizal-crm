@@ -405,8 +405,9 @@ private fun ReviewStep(state: AttachUiState, viewModel: AttachToRemoteViewModel)
     val totals = attachPreview.totals
     Column(Modifier.fillMaxSize()) {
         Text(
-            text = stringResource(
-                R.string.attach_review_totals,
+            text = pluralStringResource(
+                R.plurals.attach_review_totals,
+                totals.contacts,
                 totals.contacts,
                 totals.notes,
                 totals.activities
@@ -446,8 +447,9 @@ private fun DoneStep(state: AttachUiState, onDone: () -> Unit) {
         )
         if (result != null) {
             Text(
-                stringResource(
-                    R.string.attach_done_result,
+                pluralStringResource(
+                    R.plurals.attach_done_result,
+                    result.created,
                     result.created,
                     result.updated,
                     result.skipped

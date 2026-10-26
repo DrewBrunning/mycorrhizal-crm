@@ -380,8 +380,8 @@ class ContactListScreenTest {
         )
 
         composeTestRule.onNodeWithTag("contact-list")
-            .performScrollToNode(hasText("1 matches in notes and activities"))
-        composeTestRule.onNodeWithText("1 matches in notes and activities").performClick()
+            .performScrollToNode(hasText("1 match in notes and activities"))
+        composeTestRule.onNodeWithText("1 match in notes and activities").performClick()
         composeTestRule.onNodeWithText("Dana White").performScrollTo().performClick()
 
         assertEquals(5, navigatedId)
@@ -407,8 +407,8 @@ class ContactListScreenTest {
         )
 
         composeTestRule.onNodeWithTag("contact-list")
-            .performScrollToNode(hasText("1 matches in notes and activities"))
-        composeTestRule.onNodeWithText("1 matches in notes and activities").performClick()
+            .performScrollToNode(hasText("1 match in notes and activities"))
+        composeTestRule.onNodeWithText("1 match in notes and activities").performClick()
         composeTestRule.onNodeWithText("Unfiled").performScrollTo().assertIsDisplayed()
     }
 

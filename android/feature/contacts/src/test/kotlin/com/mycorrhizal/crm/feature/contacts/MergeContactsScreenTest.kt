@@ -136,17 +136,17 @@ class MergeContactsScreenTest {
         composeTestRule.onNodeWithText("3 notes").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("2 relationship edges").performScrollTo().assertIsDisplayed()
         // The categories this ticket said were missing from Android's breakdown:
-        composeTestRule.onNodeWithText("1 circle memberships").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("1 circle membership").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText(
-            "1 household memberships"
+            "1 household membership"
         ).performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("4 tags").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("2 life events").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText(
-            "1 custom field values"
+            "1 custom field value"
         ).performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("1 sync links").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("1 attachments").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("1 sync link").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("1 attachment").performScrollTo().assertIsDisplayed()
     }
 
     @Test

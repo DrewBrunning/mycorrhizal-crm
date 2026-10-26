@@ -13,6 +13,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.mycorrhizal.crm.model.network.ContactSummary
@@ -90,8 +91,9 @@ fun ContactSearchField(
                 // merge picker; note/activity pickers leave the default 0.
                 if (hiddenMatchCount > 0) {
                     Text(
-                        text = stringResource(
-                            R.string.merge_hidden_matches,
+                        text = pluralStringResource(
+                            R.plurals.merge_hidden_matches,
+                            results.size,
                             results.size,
                             hiddenMatchCount
                         ),

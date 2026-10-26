@@ -197,7 +197,11 @@ internal fun ClassifyContent(
                         circleCount
                     ),
                     pluralStringResource(R.plurals.triage_summary_tags, tagCount, tagCount),
-                    stringResource(R.string.triage_summary_skipped, state.skippedCount)
+                    pluralStringResource(
+                        R.plurals.triage_summary_skipped,
+                        state.skippedCount,
+                        state.skippedCount
+                    )
                 ),
                 style = MaterialTheme.typography.bodyLarge
             )

@@ -384,7 +384,11 @@ private fun CadenceBlock(
     } else if (health.hasQualifyingInteraction) {
         if (health.isOverdue) {
             Text(
-                text = stringResource(R.string.prep_cadence_overdue, health.overdueBy),
+                text = pluralStringResource(
+                    R.plurals.prep_cadence_overdue,
+                    health.overdueBy,
+                    health.overdueBy
+                ),
                 style = MaterialTheme.typography.bodyLarge,
                 // #200: amber text on the cream page was 2.07:1 — illegible. The
                 // warning semantics ride the Icons.Outlined.Warning icon on the

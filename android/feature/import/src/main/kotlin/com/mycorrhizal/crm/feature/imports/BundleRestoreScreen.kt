@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -154,8 +155,9 @@ fun BundleRestoreScreenContent(
                     Column(modifier = Modifier.fillMaxSize()) {
                         if (preview.lossReport.isNotEmpty()) {
                             Text(
-                                text = stringResource(
-                                    R.string.bundle_restore_loss,
+                                text = pluralStringResource(
+                                    R.plurals.bundle_restore_loss,
+                                    preview.lossReport.size,
                                     preview.lossReport.size
                                 ),
                                 style = MaterialTheme.typography.bodyMedium,
@@ -185,8 +187,9 @@ fun BundleRestoreScreenContent(
                         ).padding(24.dp)
                     ) {
                         Text(
-                            text = stringResource(
-                                R.string.bundle_restore_result,
+                            text = pluralStringResource(
+                                R.plurals.bundle_restore_result,
+                                result.created,
                                 result.created,
                                 result.updated,
                                 result.skipped
