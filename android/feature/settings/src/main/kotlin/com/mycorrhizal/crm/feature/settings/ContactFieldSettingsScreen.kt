@@ -91,8 +91,8 @@ fun ContactFieldSettingsScreen(
 @Composable
 fun ContactFieldSettingsContent(
     state: ContactFieldSettingsUiState,
-    onToggle: (ContactFieldKey) -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onToggle: (ContactFieldKey) -> Unit = {}
 ) {
     Column(
         modifier = modifier

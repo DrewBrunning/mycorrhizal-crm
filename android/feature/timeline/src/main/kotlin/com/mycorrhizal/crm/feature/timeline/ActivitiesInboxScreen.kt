@@ -256,8 +256,8 @@ private fun InboxActivityRow(
     onClick: () -> Unit,
     onContactClick: (Int) -> Unit,
     onDelete: () -> Unit,
-    isDeleting: Boolean = false,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isDeleting: Boolean = false
 ) {
     val dateFormat = LocalDateFormat.current
     Row(
