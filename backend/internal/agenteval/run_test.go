@@ -190,6 +190,31 @@ func TestApplySeedPatch(t *testing.T) {
 	}
 }
 
+func TestRunRecordsIntegrityViolations(t *testing.T) {
+	root, sha := initRepo(t)
+	artifact, err := Run(context.Background(), Options{
+		Root:         root,
+		Spec:         baseSpec(t, root, sha),
+		Suites:       []Suite{{Name: "demo", Commands: []string{"true"}}},
+		AgentCommand: `printf 'package x\n\nimport "testing"\n\nfunc TestX(t *testing.T) { t.Skip("x") }\n' > backend/x_test.go`,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifact.Context == nil {
+		t.Fatal("missing context run")
+	}
+	if artifact.Status != "failed" || artifact.Context.Success {
+		t.Fatalf("artifact = %+v context = %+v", artifact, artifact.Context)
+	}
+	if len(artifact.Context.IntegrityViolations) == 0 {
+		t.Fatalf("integrity findings = %v", artifact.Context.IntegrityViolations)
+	}
+	if !strings.Contains(strings.Join(artifact.Context.IntegrityViolations, "\n"), "added test skip: backend/x_test.go") {
+		t.Fatalf("integrity findings = %v", artifact.Context.IntegrityViolations)
+	}
+}
+
 func TestRunFailsWhenSuiteCommandFails(t *testing.T) {
 	root, sha := initRepo(t)
 	artifact, err := Run(context.Background(), Options{
@@ -250,7 +275,7 @@ func TestRunWorktreeFailure(t *testing.T) {
 }
 
 func TestChangedFilesError(t *testing.T) {
-	if _, err := changedFiles(context.Background(), t.TempDir()); err == nil {
+	if _, err := changedFiles(context.Background(), t.TempDir(), "HEAD"); err == nil {
 		t.Fatal("changedFiles should fail outside a git repository")
 	}
 }
@@ -361,5 +386,134 @@ func TestLimitedBuffer(t *testing.T) {
 	_, _ = small.Write([]byte("short"))
 	if small.Tail() != "short" {
 		t.Fatalf("small tail = %q", small.Tail())
+	}
+}
+
+func TestRunSeesCommittedAgentChanges(t *testing.T) {
+	root, sha := initRepo(t)
+	artifact, err := Run(context.Background(), Options{
+		Root:   root,
+		Spec:   baseSpec(t, root, sha),
+		Suites: []Suite{{Name: "demo", Commands: []string{"true"}}},
+		AgentCommand: `printf 'package x\n\nimport "testing"\n\nfunc TestX(t *testing.T) { t.Skip("x") }\n' > backend/x_test.go && ` +
+			`git add -A && git -c user.name=A -c user.email=a@b.invalid -c commit.gpgsign=false commit -qm agent`,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifact.Context == nil || artifact.Status != "failed" {
+		t.Fatalf("artifact = %+v", artifact)
+	}
+	if !artifact.Context.HeadMoved {
+		t.Fatal("committed agent change was not detected as HEAD movement")
+	}
+	if !strings.Contains(strings.Join(artifact.Context.IntegrityViolations, "\n"), "added test skip: backend/x_test.go") {
+		t.Fatalf("integrity findings = %v", artifact.Context.IntegrityViolations)
+	}
+	if len(artifact.Context.ChangedFiles) == 0 {
+		t.Fatal("committed change was hidden from changed files")
+	}
+}
+
+func TestRunIgnoresSeedPatchIntegrityFindings(t *testing.T) {
+	root, _ := initRepo(t)
+	writeRepoFile(t, root, "backend/seed_test.go", "package x\n")
+	runGit(t, root, "add", ".")
+	runGit(t, root, "commit", "-q", "-m", "seed target")
+	sha := strings.TrimSpace(runGit(t, root, "rev-parse", "HEAD"))
+	spec := baseSpec(t, root, sha)
+	writeRepoFile(t, spec.TaskDir, "seed.patch", strings.Join([]string{
+		"diff --git a/backend/seed_test.go b/backend/seed_test.go",
+		"--- a/backend/seed_test.go",
+		"+++ b/backend/seed_test.go",
+		"@@ -1,1 +1,2 @@",
+		" package x",
+		"+func TestSeed(t *testing.T) { t.Skip(\"seed\") }",
+		"",
+	}, "\n"))
+	spec.SeedPatch = "seed.patch"
+	artifact, err := Run(context.Background(), Options{
+		Root:   root,
+		Spec:   spec,
+		Suites: []Suite{{Name: "demo", Commands: []string{"true"}}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifact.Status != "passed" || artifact.Context == nil || !artifact.Context.Success {
+		t.Fatalf("artifact = %+v", artifact)
+	}
+	if len(artifact.Context.IntegrityViolations) != 0 {
+		t.Fatalf("seed patch attributed to agent: %v", artifact.Context.IntegrityViolations)
+	}
+}
+
+func TestRenamedFilesReportsRename(t *testing.T) {
+	root, _ := initRepo(t)
+	writeRepoFile(t, root, "backend/old_test.go", "package x\n")
+	runGit(t, root, "add", ".")
+	runGit(t, root, "commit", "-q", "-m", "add test")
+	base := strings.TrimSpace(runGit(t, root, "rev-parse", "HEAD"))
+	runGit(t, root, "mv", "backend/old_test.go", "backend/old.go")
+	got, err := renamedFiles(context.Background(), root, base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].Old != "backend/old_test.go" || got[0].New != "backend/old.go" {
+		t.Fatalf("renames = %+v", got)
+	}
+}
+
+func TestRunWorktreeReportsIntegrityGitErrors(t *testing.T) {
+	tests := []struct {
+		name  string
+		token string
+		want  string
+	}{
+		{"head lookup", "rev-parse", "rev-parse"},
+		{"patch scan", "--unified=0", "integrity scan"},
+		{"deleted files", "--diff-filter=D", "diff-filter=D"},
+		{"renamed files", "--name-status", "name-status"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			root, sha := initRepo(t)
+			marker := filepath.Join(t.TempDir(), "marker")
+			installGitShim(t, tt.token, "fail", marker)
+			_, _, err := runWorktree(context.Background(), Options{
+				Root: root,
+				Spec: baseSpec(t, root, sha),
+				CommandRunner: func(context.Context, string, string, time.Duration) CommandResult {
+					touchMarker(t, marker)
+					return CommandResult{Passed: true}
+				},
+			}, filepath.Join(t.TempDir(), "wt"), false, "true")
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("err = %v, want substring %q", err, tt.want)
+			}
+		})
+	}
+}
+
+func TestRunWorktreeMarksTruncatedIntegrityScan(t *testing.T) {
+	root, sha := initRepo(t)
+	marker := filepath.Join(t.TempDir(), "marker")
+	installGitShim(t, "--unified=0", "huge", marker)
+	result, _, err := runWorktree(context.Background(), Options{
+		Root: root,
+		Spec: baseSpec(t, root, sha),
+		CommandRunner: func(context.Context, string, string, time.Duration) CommandResult {
+			touchMarker(t, marker)
+			return CommandResult{Passed: true}
+		},
+	}, filepath.Join(t.TempDir(), "wt"), false, "true")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !contains(result.IntegrityViolations, "integrity scan truncated: diff is too large to verify") {
+		t.Fatalf("violations = %v", result.IntegrityViolations)
+	}
+	if !contains(result.IntegrityWarnings, "integrity scan truncated at 16 MiB") {
+		t.Fatalf("warnings = %v", result.IntegrityWarnings)
 	}
 }

@@ -10,8 +10,10 @@
 //	    -agent-command 'opencode run {prompt}'
 //
 // The task spec (testdata/agent-eval/<task>/spec.yaml) pins a commit SHA, the
-// suite, the expected/forbidden paths, and the agent command template. Output
-// is a JSON artifact plus a Markdown summary under agent-eval-results/.
+// suite, the expected/forbidden paths, and the agent command template. Scoring
+// also records gate-integrity findings: added test skips, lint/coverage
+// suppressions, removed test declarations, and deleted test files. Output is a
+// JSON artifact plus a Markdown summary under agent-eval-results/.
 package main
 
 import (

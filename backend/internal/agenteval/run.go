@@ -136,20 +136,43 @@ func runWorktree(ctx context.Context, opts Options, wt string, control bool, com
 			return result, stripped, fmt.Errorf("strip control context: %w", err)
 		}
 	}
-	baseline, err := changedFiles(ctx, wt)
+	evalBase, err := snapshotBase(ctx, wt)
 	if err != nil {
 		return result, stripped, err
 	}
 
 	agent := opts.CommandRunner(ctx, wt, command, opts.Spec.TimeoutValue)
 	result.Agent = agent
-	changed, err := changedFiles(ctx, wt)
+	changed, err := changedFiles(ctx, wt, evalBase)
 	if err != nil {
 		return result, stripped, err
 	}
-	result.ChangedFiles = subtract(changed, baseline)
+	result.ChangedFiles = changed
 	result.ScopeViolations = ClassifyPaths(result.ChangedFiles, opts.Spec.ExpectPaths, opts.Spec.ForbidPaths)
 	result.HandEditedGenerated = DetectHandEdits(result.ChangedFiles, GeneratedArtifacts)
+	result.HeadMoved, err = headMoved(ctx, wt, evalBase)
+	if err != nil {
+		return result, stripped, err
+	}
+	patch, scanWarnings, truncated, err := worktreePatch(ctx, wt, evalBase)
+	if err != nil {
+		return result, stripped, err
+	}
+	deleted, err := deletedFiles(ctx, wt, evalBase)
+	if err != nil {
+		return result, stripped, err
+	}
+	renamed, err := renamedFiles(ctx, wt, evalBase)
+	if err != nil {
+		return result, stripped, err
+	}
+	violations, detectorWarnings := DetectIntegrityViolations(patch, deleted, renamed)
+	if truncated {
+		violations = append(violations, "integrity scan truncated: diff is too large to verify")
+	}
+	result.IntegrityViolations = append(result.IntegrityViolations, violations...)
+	result.IntegrityWarnings = append(result.IntegrityWarnings, scanWarnings...)
+	result.IntegrityWarnings = append(result.IntegrityWarnings, detectorWarnings...)
 	if len(opts.Spec.ExpectedFindings) > 0 {
 		result.ExpectedFindingsOK, result.MissingFindings = FindingsSatisfied(opts.Spec.ExpectedFindings, agent.Output)
 	}
@@ -212,29 +235,6 @@ func applySeedPatch(ctx context.Context, wt, patch string) error {
 		return fmt.Errorf("seed patch does not apply (%s): %v: %s", filepath.Base(patch), err, strings.TrimSpace(string(out)))
 	}
 	return nil
-}
-
-func changedFiles(ctx context.Context, wt string) ([]string, error) {
-	tracked := exec.CommandContext(ctx, "git", "-C", wt, "diff", "--name-only", "-z", "HEAD") // #nosec G204 -- wt is our temp worktree
-	tbody, err := tracked.Output()
-	if err != nil {
-		return nil, fmt.Errorf("git diff: %w", err)
-	}
-	untracked := exec.CommandContext(ctx, "git", "-C", wt, "ls-files", "--others", "--exclude-standard", "-z") // #nosec G204 -- wt is our temp worktree
-	ubody, err := untracked.Output()
-	if err != nil {
-		return nil, fmt.Errorf("git ls-files: %w", err)
-	}
-	var out []string
-	for _, body := range [][]byte{tbody, ubody} {
-		for _, part := range bytes.Split(body, []byte{0}) {
-			if len(part) > 0 {
-				out = append(out, filepath.ToSlash(string(part)))
-			}
-		}
-	}
-	sort.Strings(out)
-	return out, nil
 }
 
 // stripContext removes the skills tree, nested AGENTS.md/CLAUDE.md files, and

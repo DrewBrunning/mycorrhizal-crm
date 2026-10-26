@@ -30,6 +30,9 @@ type RunResult struct {
 	ChangedFiles        []string        `json:"changed_files"`
 	ScopeViolations     []string        `json:"scope_violations,omitempty"`
 	HandEditedGenerated []string        `json:"hand_edited_generated,omitempty"`
+	IntegrityViolations []string        `json:"integrity_violations,omitempty"`
+	IntegrityWarnings   []string        `json:"integrity_warnings,omitempty"`
+	HeadMoved           bool            `json:"head_moved,omitempty"`
 	ExpectedFindingsOK  bool            `json:"expected_findings_ok"`
 	MissingFindings     []string        `json:"missing_findings,omitempty"`
 	Success             bool            `json:"success"`
@@ -43,6 +46,7 @@ type ControlDelta struct {
 	CommandPassDelta    int    `json:"command_pass_delta"`
 	ScopeViolationDelta int    `json:"scope_violation_delta"`
 	HandEditDelta       int    `json:"hand_edit_delta"`
+	IntegrityDelta      int    `json:"integrity_delta"`
 	ChangedFileDelta    int    `json:"changed_file_delta"`
 	Summary             string `json:"summary"`
 }
@@ -213,7 +217,7 @@ func Score(run *RunResult) {
 			run.Success = false
 		}
 	}
-	if len(run.ScopeViolations) > 0 || len(run.HandEditedGenerated) > 0 || len(run.MissingFindings) > 0 {
+	if len(run.ScopeViolations) > 0 || len(run.HandEditedGenerated) > 0 || len(run.IntegrityViolations) > 0 || len(run.MissingFindings) > 0 {
 		run.Success = false
 	}
 }
@@ -226,6 +230,7 @@ func Compare(contextRun, controlRun *RunResult) ControlDelta {
 		d.CommandPassDelta = passedCount(contextRun)
 		d.ScopeViolationDelta = len(contextRun.ScopeViolations)
 		d.HandEditDelta = len(contextRun.HandEditedGenerated)
+		d.IntegrityDelta = len(contextRun.IntegrityViolations)
 		d.ChangedFileDelta = len(contextRun.ChangedFiles)
 	}
 	if controlRun != nil {
@@ -233,6 +238,7 @@ func Compare(contextRun, controlRun *RunResult) ControlDelta {
 		d.CommandPassDelta -= passedCount(controlRun)
 		d.ScopeViolationDelta -= len(controlRun.ScopeViolations)
 		d.HandEditDelta -= len(controlRun.HandEditedGenerated)
+		d.IntegrityDelta -= len(controlRun.IntegrityViolations)
 		d.ChangedFileDelta -= len(controlRun.ChangedFiles)
 	}
 	switch {
@@ -279,8 +285,8 @@ func Markdown(a Artifact) string {
 		b.WriteString(renderRun(*a.Control))
 	}
 	if a.Delta != nil {
-		fmt.Fprintf(&b, "\n## Delta\n\n- %s\n- command pass delta: %d\n- scope violation delta: %d\n- hand-edit delta: %d\n- changed-file delta: %d\n",
-			a.Delta.Summary, a.Delta.CommandPassDelta, a.Delta.ScopeViolationDelta, a.Delta.HandEditDelta, a.Delta.ChangedFileDelta)
+		fmt.Fprintf(&b, "\n## Delta\n\n- %s\n- command pass delta: %d\n- scope violation delta: %d\n- hand-edit delta: %d\n- integrity delta: %d\n- changed-file delta: %d\n",
+			a.Delta.Summary, a.Delta.CommandPassDelta, a.Delta.ScopeViolationDelta, a.Delta.HandEditDelta, a.Delta.IntegrityDelta, a.Delta.ChangedFileDelta)
 	}
 	if len(a.Stripped) > 0 {
 		fmt.Fprintf(&b, "\nStripped for control: %s\n", strings.Join(a.Stripped, ", "))
@@ -301,6 +307,15 @@ func renderRun(r RunResult) string {
 	}
 	for _, v := range r.HandEditedGenerated {
 		fmt.Fprintf(&b, "- Generated: %s\n", v)
+	}
+	for _, v := range r.IntegrityViolations {
+		fmt.Fprintf(&b, "- Integrity: %s\n", v)
+	}
+	for _, v := range r.IntegrityWarnings {
+		fmt.Fprintf(&b, "- Integrity warning: %s\n", v)
+	}
+	if r.HeadMoved {
+		b.WriteString("- HEAD moved during the run (diff is still computed against the eval base)\n")
 	}
 	for _, v := range r.MissingFindings {
 		fmt.Fprintf(&b, "- Missing finding: %s\n", v)
