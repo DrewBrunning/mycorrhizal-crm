@@ -306,6 +306,22 @@ func TestBasicAuthMiddleware_RevokedTokenRejected(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
 
+// TestBasicAuthMiddleware_SoftDeletedUserTokenRejected is the CardDAV half of
+// issue #2047: the Basic-Auth fallback shares middleware.LookupAPIToken, so a
+// live token for a soft-deleted account must not authenticate a DAV request
+// either.
+func TestBasicAuthMiddleware_SoftDeletedUserTokenRejected(t *testing.T) {
+	db, router := newAuthTestRouter(t)
+
+	user := models.User{Username: "deleted-token-user", Email: "deleted-token-user@example.com", Password: "unused"}
+	require.NoError(t, db.Create(&user).Error)
+	plaintext := createTestToken(t, db, user.ID, "full")
+	require.NoError(t, db.Delete(&user).Error)
+
+	w := doBasicAuthRequest(router, "deleted-token-user", plaintext)
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+}
+
 func TestBasicAuthMiddleware_ExpiredTokenRejected(t *testing.T) {
 	db, router := newAuthTestRouter(t)
 

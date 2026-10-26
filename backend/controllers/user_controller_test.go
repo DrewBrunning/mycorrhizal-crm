@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -373,6 +374,34 @@ func TestLoginUser_SameIP_StillLocksAfterMaxAttempts(t *testing.T) {
 	}
 	assert.Equal(t, http.StatusTooManyRequests, loginFrom(router, ip, "bf_target", "nope").Code,
 		"MaxLoginAttempts-th failure from one IP must lock it")
+}
+
+// TestLoginUser_PasswordOnlySuccessClearsFailures pins the non-2FA half of
+// issue #2048's fix: moving the clear out of the shared password step must
+// not stop a completed password-only login from resetting the bucket.
+func TestLoginUser_PasswordOnlySuccessClearsFailures(t *testing.T) {
+	cfg := config.Config{JWTSecretKey: "mysecretkey", JWTExpiryHours: 24}
+	db, router := setupRouter(t)
+	router.POST("/login", func(c *gin.Context) { LoginUser(c, &cfg) })
+
+	u := models.User{Username: "clear_target", Email: "clear_target@example.com"}
+	u.Password, _ = services.HashPassword(strongPassword)
+	require.NoError(t, db.Create(&u).Error)
+
+	const ip = "203.0.113.9"
+	for i := 0; i < 2; i++ {
+		require.Equal(t, http.StatusUnauthorized, loginFrom(router, ip, "clear_target", "wrong-password").Code)
+	}
+	require.Equal(t, http.StatusOK, loginFrom(router, ip, "clear_target", strongPassword).Code)
+
+	// The successful login reset the bucket: another full budget of failures
+	// is needed before the lockout trips.
+	for i := 0; i < middleware.MaxLoginAttempts-1; i++ {
+		require.Equal(t, http.StatusUnauthorized,
+			loginFrom(router, ip, "clear_target", "wrong-password").Code, "attempt %d", i+1)
+	}
+	assert.Equal(t, http.StatusTooManyRequests,
+		loginFrom(router, ip, "clear_target", "wrong-password").Code)
 }
 
 // TestLoginUser_DistributedSprayTripsInstanceThrottle is issue #940 end to
@@ -888,6 +917,90 @@ func TestConfirmPasswordReset_RejectsSecondUse(t *testing.T) {
 		"the replayed token's password must never have taken effect")
 }
 
+// TestConfirmPasswordReset_ConcurrentConfirmsConsumeTokenOnce is the issue
+// #2059 regression test: the confirm path used to load the user by token hash
+// and then unconditionally Save(), so two requests holding the same valid
+// token could both commit. The conditional UPDATE keyed on the token hash (and
+// expiry) must let exactly one of them consume it.
+func TestConfirmPasswordReset_ConcurrentConfirmsConsumeTokenOnce(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: No email channel configured; password-changed notification not sent")
+	db, router := setupRouter(t)
+
+	initialPassword, err := services.HashPassword(strongPassword)
+	require.NoError(t, err)
+	token, tokenHash, err := services.GeneratePasswordResetToken()
+	require.NoError(t, err)
+	expires := services.PasswordResetExpiry()
+	requested := time.Now()
+
+	user := models.User{
+		Username:                 "concurrentreset",
+		Email:                    "concurrentreset@example.com",
+		Password:                 initialPassword,
+		PasswordResetTokenHash:   &tokenHash,
+		PasswordResetExpiresAt:   &expires,
+		PasswordResetRequestedAt: &requested,
+		TokenVersion:             7,
+	}
+	require.NoError(t, db.Create(&user).Error)
+
+	live := models.ApiToken{UserID: user.ID, Name: "live", TokenHash: "concurrent-reset-live-hash"}
+	require.NoError(t, db.Create(&live).Error)
+
+	// Two routes with fixed credentials so the racing requests differ only in
+	// which password they would set; the winner's password is distinguishable.
+	router.POST("/confirm-a", func(c *gin.Context) {
+		c.Set("validated", &models.PasswordResetConfirmInput{Token: token, Password: strongPasswordAlt})
+		ConfirmPasswordReset(c, &config.Config{})
+	})
+	router.POST("/confirm-b", func(c *gin.Context) {
+		c.Set("validated", &models.PasswordResetConfirmInput{Token: token, Password: strongPasswordAnother})
+		ConfirmPasswordReset(c, &config.Config{})
+	})
+
+	// Pause A after its token lookup. B then loads and consumes the same token
+	// to completion; A resumes holding a stale "token is still valid" read and
+	// must lose the conditional update.
+	barrier := newRaceBarrier(t, db, "users")
+
+	var wg sync.WaitGroup
+	var wA *httptest.ResponseRecorder
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		wA = httptest.NewRecorder()
+		router.ServeHTTP(wA, httptest.NewRequest("POST", "/confirm-a", nil))
+	}()
+
+	barrier.waitForStart()
+
+	wB := httptest.NewRecorder()
+	router.ServeHTTP(wB, httptest.NewRequest("POST", "/confirm-b", nil))
+	require.Equal(t, http.StatusOK, wB.Code, wB.Body.String())
+
+	barrier.letGo()
+	wg.Wait()
+
+	assert.Equal(t, http.StatusBadRequest, wA.Code, "the losing confirm must get the invalid/expired-token 4xx: %s", wA.Body.String())
+
+	var updated models.User
+	require.NoError(t, db.First(&updated, user.ID).Error)
+	assert.NoError(t, bcrypt.CompareHashAndPassword([]byte(updated.Password), []byte(strongPasswordAnother)),
+		"the winner's password must be the one stored")
+	assert.ErrorIs(t, bcrypt.CompareHashAndPassword([]byte(updated.Password), []byte(strongPasswordAlt)),
+		bcrypt.ErrMismatchedHashAndPassword, "the loser's password must never take effect")
+	assert.Nil(t, updated.PasswordResetTokenHash, "the token is consumed exactly once")
+	assert.Nil(t, updated.PasswordResetExpiresAt)
+	assert.EqualValues(t, 8, updated.TokenVersion, "the winner bumps token_version exactly once")
+
+	var revokedToken models.ApiToken
+	require.NoError(t, db.First(&revokedToken, live.ID).Error)
+	assert.NotNil(t, revokedToken.RevokedAt, "the winner still revokes standing API tokens")
+
+	assert.EqualValues(t, 1, countAudit(t, db, models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpPasswordReset),
+		"exactly one password_reset audit event")
+}
+
 // TestConfirmPasswordReset_RejectsExpiredToken pins the TTL invariant: a
 // token past its expiry is rejected and cleared, not honored.
 func TestConfirmPasswordReset_RejectsExpiredToken(t *testing.T) {
@@ -924,6 +1037,51 @@ func TestConfirmPasswordReset_RejectsExpiredToken(t *testing.T) {
 	assert.Nil(t, updated.PasswordResetTokenHash, "expired token must be cleared, not left around for a later guess")
 	assert.NoError(t, bcrypt.CompareHashAndPassword([]byte(updated.Password), []byte(strongPassword)),
 		"password must be unchanged")
+}
+
+// TestConfirmPasswordReset_UpdateFailureIs500AndLeavesToken covers the
+// conditional write's error branch (issue #2059): if the UPDATE itself fails,
+// the request is a 5xx and the token is not consumed, so the user can retry.
+func TestConfirmPasswordReset_UpdateFailureIs500AndLeavesToken(t *testing.T) {
+	logtest.AllowWarnings(t, "the forced UPDATE failure logs: Failed to persist password reset")
+	db, router := setupRouter(t)
+
+	initialPassword, err := services.HashPassword(strongPassword)
+	require.NoError(t, err)
+	token, tokenHash, err := services.GeneratePasswordResetToken()
+	require.NoError(t, err)
+	expires := services.PasswordResetExpiry()
+	requested := time.Now()
+
+	user := models.User{
+		Username:                 "resetupdatefail",
+		Email:                    "resetupdatefail@example.com",
+		Password:                 initialPassword,
+		PasswordResetTokenHash:   &tokenHash,
+		PasswordResetExpiresAt:   &expires,
+		PasswordResetRequestedAt: &requested,
+	}
+	require.NoError(t, db.Create(&user).Error)
+	require.NoError(t, db.Exec(`CREATE TRIGGER fail_user_update_2059 BEFORE UPDATE ON users
+		BEGIN SELECT RAISE(ABORT, 'forced reset update failure'); END`).Error)
+
+	router.POST("/password-reset/confirm", func(c *gin.Context) {
+		c.Set("validated", &models.PasswordResetConfirmInput{Token: token, Password: strongPasswordAlt})
+		ConfirmPasswordReset(c, &config.Config{})
+	})
+
+	req, _ := http.NewRequest("POST", "/password-reset/confirm", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
+
+	var updated models.User
+	require.NoError(t, db.First(&updated, user.ID).Error)
+	require.NotNil(t, updated.PasswordResetTokenHash, "a failed update must not consume the token")
+	assert.Equal(t, tokenHash, *updated.PasswordResetTokenHash)
+	assert.NoError(t, bcrypt.CompareHashAndPassword([]byte(updated.Password), []byte(strongPassword)),
+		"the password must be unchanged")
 }
 
 // TestConfirmPasswordReset_BumpsTokenVersion pins session invalidation: a
