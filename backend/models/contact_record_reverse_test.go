@@ -469,3 +469,77 @@ func TestApplyRecordToContact_ClearsPhoneScalarWhenPhonesRemoved(t *testing.T) {
 		t.Errorf("c.Phone = %q, want empty — must not retain a stale value once Phones is cleared", c.Phone)
 	}
 }
+
+// TestPreserveLocalOnlyCRMFields pins the reusable helper the two lossy
+// full-overwrite paths (CardDAV PUT and contact-subscription reconcile) call
+// before ApplyRecordToContact: a field the incoming Record does not carry
+// falls back to the stored contact, an incoming value always wins, and the
+// helper is a no-op for a new contact or a nil Record.
+func TestPreserveLocalOnlyCRMFields(t *testing.T) {
+	t.Parallel()
+	year := 2019
+	existing := &Contact{
+		Circles:            []string{"Friends", "Work"},
+		HowWeMet:           "At a conference",
+		WorkInformation:    "Analytical Engines Ltd",
+		ContactInformation: "Prefers email",
+	}
+	existing.CRM = contactmodel.CRMEnvelope{
+		Kind: "animal",
+		Periods: []contactmodel.EntryPeriod{{
+			Kind:    contactmodel.PeriodKindAddress,
+			EntryID: "addr-1",
+			Range:   contactmodel.TemporalRange{Start: &contactmodel.PartialDate{Year: &year}},
+		}},
+	}
+
+	incoming := &contactmodel.Record{}
+	PreserveLocalOnlyCRMFields(existing, incoming)
+
+	if !reflect.DeepEqual(incoming.Envelope.Circles, existing.Circles) {
+		t.Errorf("Circles = %+v, want %+v", incoming.Envelope.Circles, existing.Circles)
+	}
+	if incoming.Envelope.HowWeMet != "At a conference" {
+		t.Errorf("HowWeMet = %q, want preserved", incoming.Envelope.HowWeMet)
+	}
+	if incoming.Envelope.WorkInformation != "Analytical Engines Ltd" {
+		t.Errorf("WorkInformation = %q, want preserved", incoming.Envelope.WorkInformation)
+	}
+	if incoming.Envelope.ContactInformation != "Prefers email" {
+		t.Errorf("ContactInformation = %q, want preserved", incoming.Envelope.ContactInformation)
+	}
+	if incoming.Envelope.Kind != "animal" {
+		t.Errorf("Kind = %q, want preserved", incoming.Envelope.Kind)
+	}
+	if !reflect.DeepEqual(incoming.Envelope.Periods, existing.CRM.Periods) {
+		t.Errorf("Periods = %+v, want %+v", incoming.Envelope.Periods, existing.CRM.Periods)
+	}
+
+	// Incoming values are authoritative when present.
+	overrides := &contactmodel.Record{
+		Envelope: contactmodel.CRMEnvelope{
+			Circles:            []string{"Work"},
+			HowWeMet:           "Online",
+			WorkInformation:    "Other Co",
+			ContactInformation: "Call me",
+			Kind:               "human",
+			Periods:            []contactmodel.EntryPeriod{{Kind: contactmodel.PeriodKindTitle, EntryID: "title-1"}},
+		},
+	}
+	PreserveLocalOnlyCRMFields(existing, overrides)
+	if !reflect.DeepEqual(overrides.Envelope.Circles, []string{"Work"}) {
+		t.Errorf("Circles = %+v, want the incoming value to win", overrides.Envelope.Circles)
+	}
+	if overrides.Envelope.HowWeMet != "Online" || overrides.Envelope.WorkInformation != "Other Co" ||
+		overrides.Envelope.ContactInformation != "Call me" || overrides.Envelope.Kind != "human" {
+		t.Errorf("incoming scalar values must win, got %+v", overrides.Envelope)
+	}
+	if len(overrides.Envelope.Periods) != 1 || overrides.Envelope.Periods[0].EntryID != "title-1" {
+		t.Errorf("Periods = %+v, want the incoming periods to win", overrides.Envelope.Periods)
+	}
+
+	// Nil safety: there is nothing to preserve for a new contact or a nil
+	// Record, and neither call may panic.
+	PreserveLocalOnlyCRMFields(nil, &contactmodel.Record{})
+	PreserveLocalOnlyCRMFields(existing, nil)
+}

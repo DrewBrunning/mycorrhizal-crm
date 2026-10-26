@@ -2783,6 +2783,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "409":
+          description: The submitted card UID differs from the contact's permanent UID; the row was not changed. Omit the UID or send the stored one.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "412":
           description: Stale If-Match revision — the contact was modified since the client last read it; the row was not changed.
           content:

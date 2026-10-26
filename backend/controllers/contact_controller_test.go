@@ -970,6 +970,121 @@ func TestUpdateContact(t *testing.T) {
 	assert.Equal(t, "Alice Updated", gotFirst)
 }
 
+// TestUpdateContact_RejectsVCardUIDChange pins issue #2054: Contact.VCardUID is
+// the permanent RFC 6350 UID every UID-keyed graph row references, so a REST
+// PUT may echo it unchanged or omit it, but may not replace it. The rejected
+// write must not save any field or orphan the existing relationships.
+func TestUpdateContact_RejectsVCardUIDChange(t *testing.T) {
+	db, router := setupRouter(t)
+
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+
+	router.PUT("/contacts/:id", withValidated(func() any { return &models.ContactRecordInput{} }), UpdateContact)
+
+	contact := models.Contact{UserID: user.ID, Firstname: "Alice", Lastname: "Johnson"}
+	require.NoError(t, db.Create(&contact).Error)
+	originalUID := contact.VCardUID
+	require.NotEmpty(t, originalUID)
+
+	other := models.Contact{UserID: user.ID, Firstname: "Bob", Lastname: "Smith"}
+	require.NoError(t, db.Create(&other).Error)
+	require.NoError(t, db.Create(&models.RelationshipEdge{
+		UserID: user.ID, SourceID: originalUID, TargetID: other.VCardUID, Type: "related_to",
+	}).Error)
+	circle := models.Circle{UserID: user.ID, Name: "Friends"}
+	require.NoError(t, db.Create(&circle).Error)
+	require.NoError(t, db.Create(&models.CircleMember{
+		CircleID: circle.ID, UserID: user.ID, MemberVCardUID: originalUID,
+	}).Error)
+
+	put := func(uid, firstname string) *httptest.ResponseRecorder {
+		t.Helper()
+		body, err := json.Marshal(models.ContactRecordInput{
+			Card: contactmodel.Card{
+				UID:  uid,
+				Name: &contactmodel.Name{Components: []contactmodel.NameComponent{{Kind: "given", Value: firstname}}},
+			},
+		})
+		require.NoError(t, err)
+		req, _ := http.NewRequest("PUT", "/contacts/"+strconv.Itoa(int(contact.ID)), bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		return w
+	}
+
+	// Echoing the stored UID is not a change and must still update.
+	w := put(originalUID, "Alice Updated")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	// A different UID is a typed conflict rejected before the save.
+	w = put("attacker-chosen-uid", "Mallory")
+	alAssertError(t, w, http.StatusConflict, "CONFLICT", "card.uid")
+
+	var stored models.Contact
+	require.NoError(t, db.First(&stored, contact.ID).Error)
+	assert.Equal(t, originalUID, stored.VCardUID, "the stored UID must not change")
+	assert.Equal(t, "Alice Updated", stored.Firstname, "the rejected PUT must not save any field")
+
+	var edges int64
+	require.NoError(t, db.Model(&models.RelationshipEdge{}).
+		Where("user_id = ? AND source_id = ?", user.ID, originalUID).Count(&edges).Error)
+	assert.Equal(t, int64(1), edges, "relationship edges must remain keyed to the old UID")
+	var members int64
+	require.NoError(t, db.Model(&models.CircleMember{}).
+		Where("user_id = ? AND member_vcard_uid = ?", user.ID, originalUID).Count(&members).Error)
+	assert.Equal(t, int64(1), members, "circle membership must remain keyed to the old UID")
+}
+
+// TestUpdateContact_ClearsLocalOnlyCRMFieldsWhenExplicitlyEmpty is the REST
+// counterpart to the CardDAV/subscription preservation fix (issue #2055): an
+// explicit empty CRM value on the normal REST update path is a real clear, not
+// an absent field to preserve.
+func TestUpdateContact_ClearsLocalOnlyCRMFieldsWhenExplicitlyEmpty(t *testing.T) {
+	db, router := setupRouter(t)
+
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+
+	router.PUT("/contacts/:id", withValidated(func() any { return &models.ContactRecordInput{} }), UpdateContact)
+
+	contact := models.Contact{UserID: user.ID}
+	models.ApplyRecordToContact(&contact, &contactmodel.Record{
+		Card: contactmodel.Card{
+			Name: &contactmodel.Name{Components: []contactmodel.NameComponent{{Kind: "given", Value: "Alice"}}},
+		},
+		Envelope: contactmodel.CRMEnvelope{
+			Kind:               "animal",
+			Circles:            []string{"Friends"},
+			HowWeMet:           "At a conference",
+			WorkInformation:    "Analytical Engines Ltd",
+			ContactInformation: "Prefers email",
+		},
+	}, "")
+	require.NoError(t, db.Create(&contact).Error)
+
+	body, err := json.Marshal(models.ContactRecordInput{
+		Card: contactmodel.Card{
+			Name: &contactmodel.Name{Components: []contactmodel.NameComponent{{Kind: "given", Value: "Alice"}}},
+		},
+	})
+	require.NoError(t, err)
+	req, _ := http.NewRequest("PUT", "/contacts/"+strconv.Itoa(int(contact.ID)), bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var stored models.Contact
+	require.NoError(t, db.First(&stored, contact.ID).Error)
+	assert.Empty(t, stored.Circles)
+	assert.Empty(t, stored.HowWeMet)
+	assert.Empty(t, stored.WorkInformation)
+	assert.Empty(t, stored.ContactInformation)
+	assert.Empty(t, stored.CRM.Kind)
+}
+
 func TestDeleteContact(t *testing.T) {
 	db, router := setupRouter(t)
 
@@ -1224,9 +1339,11 @@ func TestRecreateContactAfterDeleteUsesSameVCardUID(t *testing.T) {
 	router.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	// Attempt to create a second contact that would collide on vcard_uid
-	// if the old soft-deleted row still occupied the unique index.
-	secondJSON := `{"card":{"name":{"components":[{"kind":"given","value":"Second"}]}}}`
+	// Re-create with the deleted contact's UID. The partial unique index only
+	// covers live rows (deleted_at IS NULL), so this must succeed and must
+	// actually persist the requested UID (issue #2060: the old version never
+	// sent the UID, so it never exercised partial-index reuse).
+	secondJSON := fmt.Sprintf(`{"card":{"uid":%q,"name":{"components":[{"kind":"given","value":"Second"}]}}}`, vcard)
 	req2, _ := http.NewRequest("POST", "/contacts", bytes.NewBufferString(secondJSON))
 	req2.Header.Set("Content-Type", "application/json")
 	w2 := httptest.NewRecorder()
@@ -1234,13 +1351,16 @@ func TestRecreateContactAfterDeleteUsesSameVCardUID(t *testing.T) {
 
 	assert.Equal(t, http.StatusCreated, w2.Code, "re-creating a contact after soft-delete must not collide on vcard_uid (T26)")
 
-	// Verify the new contact was created successfully with a fresh vcard_uid.
+	// Verify the new contact reused the requested UID.
 	var resp struct {
 		Contact struct {
 			UID string `json:"uid"`
 		} `json:"contact"`
 	}
-	json.Unmarshal(w2.Body.Bytes(), &resp)
-	assert.NotEmpty(t, resp.Contact.UID)
-	assert.NotEqual(t, vcard, resp.Contact.UID, "new contact gets a fresh vcard_uid — the old one is still reserved by the old row")
+	require.NoError(t, json.Unmarshal(w2.Body.Bytes(), &resp))
+	assert.Equal(t, vcard, resp.Contact.UID, "the re-created contact must reuse the requested UID")
+
+	var total int64
+	require.NoError(t, db.Unscoped().Model(&models.Contact{}).Where("user_id = ?", user.ID).Count(&total).Error)
+	assert.Equal(t, int64(2), total, "the soft-deleted original and the re-created contact both remain")
 }

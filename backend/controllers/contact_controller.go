@@ -733,8 +733,22 @@ func UpdateContact(c *gin.Context) {
 		return
 	}
 
+	record := input.ToRecord()
+	// Contact.VCardUID is the permanent RFC 6350 UID every UID-keyed graph row
+	// (relationship edges, memberships, tags, field values, ...) references.
+	// ApplyRecordToContact would copy a client-supplied card.uid straight over
+	// it without remapping those rows, silently orphaning the contact's
+	// relationships (issue #2054). An omitted UID preserves the stored one; an
+	// echoed UID is a no-op; anything else is rejected before any save. CardDAV
+	// and import have their own UID semantics and do not use this guard.
+	if record.Card.UID != "" && record.Card.UID != contact.VCardUID {
+		apperrors.AbortWithError(c, apperrors.ErrConflict("Contact UID cannot be changed").
+			WithDetails("field", "card.uid"))
+		return
+	}
+
 	contact.Gender = input.Gender
-	models.ApplyRecordToContact(&contact, input.ToRecord(), currentConfig(c).ProfilePhotoDir)
+	models.ApplyRecordToContact(&contact, record, currentConfig(c).ProfilePhotoDir)
 
 	if contact.Firstname == "" {
 		apperrors.AbortWithError(c, apperrors.ErrValidation("Request validation failed").WithDetails("card.name", "at least one name component (kind=given) or name.full is required"))

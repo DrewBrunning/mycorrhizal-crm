@@ -2766,6 +2766,10 @@
           "schema": "ref:Error"
         },
         {
+          "status": "409",
+          "schema": "ref:Error"
+        },
+        {
           "status": "412",
           "schema": "ref:Error"
         }

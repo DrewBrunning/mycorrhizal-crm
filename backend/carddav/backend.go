@@ -418,6 +418,13 @@ func (b *Backend) PutAddressObject(ctx context.Context, urlPath string, card vca
 		contact.Card.PersonalInfo, contact.CRM.PersonalInfoMeta, record.Card.PersonalInfo,
 	)
 
+	// A vCard also cannot carry the CRM-only fields (circles, how-we-met,
+	// work/contact information, CRM.Kind, CRM.Periods), so their absence from
+	// this full-overwrite PUT is not a delete (issue #2055). Re-attach the
+	// stored values before the apply; ordinary client-editable fields stay
+	// entirely client-controlled.
+	models.PreserveLocalOnlyCRMFields(&contact, record)
+
 	// ApplyRecordToContact populates the flat legacy fields (for every other
 	// reader that isn't adapter-aware yet) and the neutral Card/CRM/
 	// Passthrough columns, and — given a real photoDir — persists an
