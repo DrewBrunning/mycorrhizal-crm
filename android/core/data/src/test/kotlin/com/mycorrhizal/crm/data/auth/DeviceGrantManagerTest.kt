@@ -9,6 +9,7 @@ import com.mycorrhizal.crm.model.network.DeviceGrantCreateResponse
 import com.mycorrhizal.crm.network.ApiClient
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -32,6 +33,7 @@ class DeviceGrantManagerTest {
         init {
             // ADR 0028 Decision 1: per-profile grants target the active profile.
             coEvery { sessionManager.activeProfileId() } returns profileId
+            every { sessionManager.sessionGeneration() } returns 0L
         }
     }
 
@@ -84,12 +86,39 @@ class DeviceGrantManagerTest {
         val h = Harness()
         coEvery { h.storage.loadToken("profile-1") } returns "grant-token"
         coEvery { h.api.exchangeDeviceSession("grant-token") } returns Result.success("fresh-jwt")
-        coEvery { h.sessionManager.setToken("fresh-jwt") } returns Unit
+        coEvery { h.sessionManager.setTokenIfCurrent("fresh-jwt", 0L) } returns true
 
         val refreshed = h.manager.refreshSessionFromStoredGrant()
 
         assertTrue(refreshed)
-        coVerify { h.sessionManager.setToken("fresh-jwt") }
+        coVerify { h.sessionManager.setTokenIfCurrent("fresh-jwt", 0L) }
+    }
+
+    // Issue #2051: the direct exchange path also writes through the epoch guard,
+    // so a response that lands after the session ended is discarded.
+    @Test
+    fun `exchangeDeviceSession persists the token under the current epoch`() = runTest {
+        val h = Harness()
+        coEvery { h.api.exchangeDeviceSession("grant-token") } returns Result.success("fresh-jwt")
+        coEvery { h.sessionManager.setTokenIfCurrent("fresh-jwt", 0L) } returns true
+
+        val result = h.manager.exchangeDeviceSession("grant-token")
+
+        assertTrue(result.isSuccess)
+        coVerify { h.sessionManager.setTokenIfCurrent("fresh-jwt", 0L) }
+    }
+
+    @Test
+    fun `a stale exchange is reported as handled without storing its token`() = runTest {
+        val h = Harness()
+        coEvery { h.storage.loadToken("profile-1") } returns "grant-token"
+        coEvery { h.api.exchangeDeviceSession("grant-token") } returns Result.success("fresh-jwt")
+        coEvery { h.sessionManager.setTokenIfCurrent("fresh-jwt", 0L) } returns false
+
+        val refreshed = h.manager.refreshSessionFromStoredGrant()
+
+        assertTrue("a superseded refresh must not trigger the clear fallback", refreshed)
+        coVerify(exactly = 1) { h.sessionManager.setTokenIfCurrent("fresh-jwt", 0L) }
     }
 
     @Test

@@ -41,18 +41,21 @@ class SessionExpiryWiringGuardTest {
         )
         // Issue #722: the wiring must first try a device-grant exchange so an
         // expired-but-valid session resumes on a biometric-enrolled device.
+        // Issue #2051: the epoch observed with the 401 is passed through so a
+        // refresh that resolves after logout cannot persist a token.
         assertTrue(
             "the 401 path must attempt a device-grant refresh before clearing",
-            dataModuleSource.contains(
-                "refresher = { deviceGrantManager.get().refreshSessionFromStoredGrant() }"
-            )
+            dataModuleSource.contains("refresher = { generation ->") &&
+                dataModuleSource.contains(
+                    "refreshSessionFromStoredGrant(generation)"
+                )
         )
         // Issue #1312: a Local profile re-mints instead of clearing.
         assertTrue(
             "the 401 path must wire the Local re-mint before clearing",
-            dataModuleSource.contains("localRemint = { rejectedBearer ->") &&
+            dataModuleSource.contains("localRemint = { generation, rejectedBearer ->") &&
                 dataModuleSource.contains("LocalSessionReminter(localServerHost.get(), manager)") &&
-                dataModuleSource.contains(".remint(rejectedBearer)")
+                dataModuleSource.contains(".remint(rejectedBearer, generation)")
         )
         // Issue #957: DefaultSessionManager must actually receive the
         // Hilt-bound SessionTeardown, not silently fall back to the Noop

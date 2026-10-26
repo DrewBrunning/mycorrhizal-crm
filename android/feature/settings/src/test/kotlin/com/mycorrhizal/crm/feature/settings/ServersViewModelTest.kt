@@ -12,6 +12,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -80,9 +81,38 @@ class ServersViewModelTest {
             assertEquals(ServersEvent.Removed, vm.events.first())
         }
 
+    // Issue #2050: a second tap must not start an overlapping switch while the
+    // first one (which may still be swapping origins/credentials) is in flight.
+    @Test
+    fun `select ignores a second request while a switch is already running`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        profiles.value = listOf(profile("p1", "One"), profile("p2", "Two"), profile("p3", "Three"))
+        val gate = CompletableDeferred<Unit>()
+        coEvery { session.switchProfile("p2", false) } coAnswers {
+            gate.await()
+            SwitchProfileResult.Switched
+        }
+        val vm = ServersViewModel(session, mockk(relaxed = true), mockk(relaxed = true))
+
+        vm.select("p2")
+        advanceUntilIdle()
+        vm.select("p3")
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { session.switchProfile("p2", false) }
+        coVerify(exactly = 0) { session.switchProfile("p3", false) }
+
+        gate.complete(Unit)
+        advanceUntilIdle()
+        assertEquals(ServersEvent.Switched, vm.events.first())
+    }
+
     @Test
     fun `select surfaces the confirmation without switching when the outbox is non-empty`() =
-        runTest(mainDispatcherRule.testDispatcher) {
+        runTest(
+            mainDispatcherRule.testDispatcher
+        ) {
             profiles.value = listOf(profile("p1", "One"), profile("p2", "Two"))
             coEvery {
                 session.switchProfile(

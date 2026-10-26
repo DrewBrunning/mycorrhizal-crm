@@ -163,6 +163,24 @@ interface SessionManager :
     suspend fun setToken(token: String)
 
     /**
+     * Monotonic epoch of the active session. It advances whenever the active
+     * session is established, replaced, or ended (login, logout, profile
+     * switch, Local activation, account removal), so a recovery operation that
+     * started under an older epoch can be rejected instead of writing a
+     * credential into the newer (or ended) session.
+     */
+    fun sessionGeneration(): Long
+
+    /**
+     * Store [token] only while the session is still the one identified by
+     * [expectedGeneration] and is still logged in. A device-grant refresh that
+     * resolves after logout (or after a profile switch) is discarded rather
+     * than persisted; returns false in that case, leaving the current session
+     * untouched.
+     */
+    suspend fun setTokenIfCurrent(token: String, expectedGeneration: Long): Boolean
+
+    /**
      * Drop the session: bearer token, cached profile and (via the
      * [SessionDataCleaner]) the local data mirror. The server URL survives by
      * default (issue #723) — it is non-credential device config, not part of
@@ -217,6 +235,18 @@ interface SessionManager :
      * Room mirror is cleared like any other switch.
      */
     suspend fun activateLocalProfile(token: String): ServerProfile
+
+    /**
+     * [activateLocalProfile] variant for 401 recovery: adopt [token] only while
+     * the session is still the one identified by [expectedGeneration] and is
+     * still logged in. Returns null when the epoch has moved (the user logged
+     * out or switched profile while the embedded server was restarting), so a
+     * stale re-mint cannot restore an ended session.
+     */
+    suspend fun activateLocalProfileIfCurrent(
+        token: String,
+        expectedGeneration: Long
+    ): ServerProfile?
 
     /** Rename a profile (the label is non-secret UI metadata). */
     suspend fun renameProfile(id: String, label: String)

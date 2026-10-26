@@ -81,7 +81,11 @@ class PasskeyRepositoryImplTest {
     @Test
     fun `finishing the first passkey stores the re-issued session token`() = runTest {
         val h = Harness()
-        h.sessionManager.setServerUrl("https://crm.example.com")
+        h.sessionManager.setSession(
+            "https://crm.example.com",
+            "jwt-old",
+            com.mycorrhizal.crm.domain.repository.SessionState()
+        )
         val body = WebAuthnRegisterResponse(
             "id",
             "Phone",
@@ -103,8 +107,11 @@ class PasskeyRepositoryImplTest {
     @Test
     fun `finishing a later passkey leaves the session token alone`() = runTest {
         val h = Harness()
-        h.sessionManager.setServerUrl("https://crm.example.com")
-        h.sessionManager.setToken("jwt-old")
+        h.sessionManager.setSession(
+            "https://crm.example.com",
+            "jwt-old",
+            com.mycorrhizal.crm.domain.repository.SessionState()
+        )
         val body = WebAuthnRegisterResponse("id", "Phone", "2026-09-01T10:00:00Z", emptyList())
         coEvery {
             h.apiClient.webauthnRegisterFinish(
@@ -158,8 +165,11 @@ class PasskeyRepositoryImplTest {
     @Test
     fun `removing the last factor by code adopts the re-issued session token`() = runTest {
         val h = Harness()
-        h.sessionManager.setServerUrl("https://crm.example.com")
-        h.sessionManager.setToken("jwt-old")
+        h.sessionManager.setSession(
+            "https://crm.example.com",
+            "jwt-old",
+            com.mycorrhizal.crm.domain.repository.SessionState()
+        )
         coEvery { h.apiClient.deleteWebAuthnCredential("a", "1") } returns
             Result.success(ReissuedTokenResult(MessageResponse("ok"), "jwt-new"))
 
@@ -170,8 +180,11 @@ class PasskeyRepositoryImplTest {
     @Test
     fun `removing the last factor by assertion adopts the re-issued session token`() = runTest {
         val h = Harness()
-        h.sessionManager.setServerUrl("https://crm.example.com")
-        h.sessionManager.setToken("jwt-old")
+        h.sessionManager.setSession(
+            "https://crm.example.com",
+            "jwt-old",
+            com.mycorrhizal.crm.domain.repository.SessionState()
+        )
         coEvery { h.apiClient.deleteWebAuthnCredentialWithAssertion("a", "{}") } returns
             Result.success(ReissuedTokenResult(MessageResponse("ok"), "jwt-new"))
 
@@ -182,8 +195,11 @@ class PasskeyRepositoryImplTest {
     @Test
     fun `removing a non-last passkey or failing leaves the session token alone`() = runTest {
         val h = Harness()
-        h.sessionManager.setServerUrl("https://crm.example.com")
-        h.sessionManager.setToken("jwt-old")
+        h.sessionManager.setSession(
+            "https://crm.example.com",
+            "jwt-old",
+            com.mycorrhizal.crm.domain.repository.SessionState()
+        )
         coEvery { h.apiClient.deleteWebAuthnCredential("a", "1") } returns
             Result.success(ReissuedTokenResult(MessageResponse("ok"), null))
         coEvery { h.apiClient.deleteWebAuthnCredentialWithAssertion("a", "{}") } returns
