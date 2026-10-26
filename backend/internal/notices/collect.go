@@ -30,7 +30,7 @@ func CollectGo(ctx context.Context, moduleDir string) ([]Dependency, error) {
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("go list: %w", err)
 	}
-	out, parseErr := parseGoList(stdout)
+	out, hasStdlib, parseErr := parseGoList(stdout)
 	waitErr := cmd.Wait()
 	if parseErr != nil {
 		return nil, parseErr
@@ -38,11 +38,19 @@ func CollectGo(ctx context.Context, moduleDir string) ([]Dependency, error) {
 	if waitErr != nil {
 		return nil, fmt.Errorf("go list: %w: %s", waitErr, strings.TrimSpace(stderr.String()))
 	}
+	if hasStdlib {
+		stdlib, err := collectGoStandardLibrary(ctx, moduleDir)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, stdlib)
+	}
 	return out, nil
 }
 
 type goPackage struct {
-	Module *goModule
+	Module   *goModule
+	Standard bool
 }
 
 type goModule struct {
@@ -53,19 +61,23 @@ type goModule struct {
 	Replace *goModule
 }
 
-func parseGoList(r io.Reader) ([]Dependency, error) {
+func parseGoList(r io.Reader) ([]Dependency, bool, error) {
 	dec := json.NewDecoder(r)
 	seen := map[string]bool{}
 	var deps []Dependency
+	hasStdlib := false
 	for {
 		var pkg goPackage
 		if err := dec.Decode(&pkg); err != nil {
 			if errors.Is(err, io.EOF) {
 				break
 			}
-			return nil, fmt.Errorf("decode go list output: %w", err)
+			return nil, false, fmt.Errorf("decode go list output: %w", err)
 		}
 		if pkg.Module == nil {
+			if pkg.Standard {
+				hasStdlib = true
+			}
 			continue
 		}
 		module := *pkg.Module
@@ -82,7 +94,7 @@ func parseGoList(r io.Reader) ([]Dependency, error) {
 		seen[key] = true
 		text, filename, err := moduleLicenseText(module.Dir)
 		if err != nil {
-			return nil, fmt.Errorf("module %s: %w", key, err)
+			return nil, false, fmt.Errorf("module %s: %w", key, err)
 		}
 		license := strings.Join(DetectLicenses(text), ", ")
 		if license == "" {
@@ -97,17 +109,103 @@ func parseGoList(r io.Reader) ([]Dependency, error) {
 			Text:      text,
 		})
 	}
-	return deps, nil
+	return deps, hasStdlib, nil
 }
 
-var licenseFilePrefixes = []string{
-	"license", "licence", "copying", "notice", "unlicense", "copyright",
+// collectGoStandardLibrary synthesises the one attribution entry for the Go
+// standard library compiled into the binary. The version comes from go.mod's
+// toolchain directive (the same pin the Dockerfile is checked against), not
+// the host's runtime, so the generated notice does not change with the
+// machine running the generator. The license text is the toolchain's own
+// $GOROOT/LICENSE.
+func collectGoStandardLibrary(ctx context.Context, moduleDir string) (Dependency, error) {
+	version, err := pinnedGoVersion(moduleDir)
+	if err != nil {
+		return Dependency{}, err
+	}
+	cmd := exec.CommandContext(ctx, "go", "env", "GOROOT")
+	cmd.Dir = moduleDir
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
+	if err != nil {
+		return Dependency{}, fmt.Errorf("go env GOROOT: %w: %s", err, strings.TrimSpace(stderr.String()))
+	}
+	goroot := strings.TrimSpace(string(out))
+	if goroot == "" {
+		return Dependency{}, errors.New("go env GOROOT returned an empty path")
+	}
+	text, err := os.ReadFile(filepath.Join(goroot, "LICENSE")) // #nosec G304 -- goroot comes from the Go tool, not request input
+	if err != nil {
+		return Dependency{}, fmt.Errorf("read Go standard library license: %w", err)
+	}
+	return Dependency{
+		Ecosystem: "go",
+		Name:      "Go standard library",
+		Version:   version,
+		License:   "BSD-3-Clause",
+		Source:    "https://go.dev/LICENSE",
+		Text:      normalizeText(string(text)),
+	}, nil
+}
+
+func pinnedGoVersion(moduleDir string) (string, error) {
+	path := filepath.Join(moduleDir, "go.mod")
+	data, err := os.ReadFile(path) // #nosec G304 -- moduleDir is the backend module directory, a build input
+	if err != nil {
+		return "", fmt.Errorf("read pinned Go toolchain: %w", err)
+	}
+	var goDirective string
+	for _, line := range strings.Split(string(data), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) != 2 {
+			continue
+		}
+		switch fields[0] {
+		case "toolchain":
+			if strings.HasPrefix(fields[1], "go") {
+				return fields[1], nil
+			}
+		case "go":
+			if goDirective == "" {
+				goDirective = "go" + fields[1]
+			}
+		}
+	}
+	if goDirective != "" {
+		return goDirective, nil
+	}
+	return "", fmt.Errorf("%s has no toolchain or go directive", path)
+}
+
+var licenseFileBases = map[string]bool{
+	"license": true, "licence": true, "copying": true, "notice": true,
+	"unlicense": true, "copyright": true,
+}
+
+var sourceExtensions = map[string]bool{
+	".go": true, ".c": true, ".h": true, ".cc": true, ".cpp": true,
+	".hpp": true, ".m": true, ".mm": true, ".rs": true, ".java": true,
+	".kt": true, ".kts": true, ".scala": true, ".cs": true, ".rb": true,
+	".py": true, ".js": true, ".jsx": true, ".ts": true, ".tsx": true,
+	".php": true, ".swift": true, ".sh": true, ".bash": true, ".zsh": true,
+	".fish": true, ".ps1": true, ".lua": true, ".pl": true, ".r": true,
+	".sql": true, ".html": true, ".css": true, ".json": true, ".yaml": true,
+	".yml": true, ".toml": true, ".xml": true, ".proto": true,
 }
 
 func isLicenseFile(name string) bool {
 	lower := strings.ToLower(name)
-	for _, prefix := range licenseFilePrefixes {
-		if strings.HasPrefix(lower, prefix) {
+	ext := filepath.Ext(lower)
+	if sourceExtensions[ext] {
+		return false
+	}
+	stem := strings.TrimSuffix(lower, ext)
+	if licenseFileBases[stem] {
+		return true
+	}
+	for base := range licenseFileBases {
+		if strings.HasPrefix(stem, base+"-") || strings.HasPrefix(stem, base+"_") {
 			return true
 		}
 	}
@@ -115,21 +213,13 @@ func isLicenseFile(name string) bool {
 }
 
 func moduleLicenseText(dir string) (string, string, error) {
-	entries, err := os.ReadDir(dir)
+	names, err := moduleLicenseFiles(dir)
 	if err != nil {
 		return "", "", err
-	}
-	var names []string
-	for _, entry := range entries {
-		if entry.IsDir() || !isLicenseFile(entry.Name()) {
-			continue
-		}
-		names = append(names, entry.Name())
 	}
 	if len(names) == 0 {
 		return "", "", fmt.Errorf("no license file in %s", dir)
 	}
-	sort.Strings(names)
 	var b strings.Builder
 	for i, name := range names {
 		data, err := os.ReadFile(filepath.Join(dir, name)) // #nosec G304 -- dir is a Go module cache directory from go list, name is a license file in it
@@ -142,6 +232,42 @@ func moduleLicenseText(dir string) (string, string, error) {
 		fmt.Fprintf(&b, "%s\n\n%s\n", name, normalizeText(string(data)))
 	}
 	return b.String(), strings.Join(names, ", "), nil
+}
+
+func moduleLicenseFiles(dir string) ([]string, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	var names []string
+	for _, entry := range entries {
+		if entry.IsDir() {
+			// REUSE keeps the actual license texts in a top-level LICENSES/
+			// directory (<SPDX-ID>.txt) instead of naming each file LICENSE*.
+			if !strings.EqualFold(entry.Name(), "LICENSES") {
+				continue
+			}
+			nested, err := os.ReadDir(filepath.Join(dir, entry.Name()))
+			if err != nil {
+				return nil, err
+			}
+			for _, licenseEntry := range nested {
+				if licenseEntry.IsDir() || strings.HasPrefix(licenseEntry.Name(), ".") {
+					continue
+				}
+				if sourceExtensions[strings.ToLower(filepath.Ext(licenseEntry.Name()))] {
+					continue
+				}
+				names = append(names, filepath.Join(entry.Name(), licenseEntry.Name()))
+			}
+			continue
+		}
+		if isLicenseFile(entry.Name()) {
+			names = append(names, entry.Name())
+		}
+	}
+	sort.Strings(names)
+	return names, nil
 }
 
 type npmPackage struct {
