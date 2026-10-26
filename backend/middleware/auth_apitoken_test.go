@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"mycorrhizal/config"
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/fireandforget"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
@@ -141,6 +142,41 @@ func TestAuthMiddleware_RevokedApiToken(t *testing.T) {
 
 	assertMWErrorCode(t, w, http.StatusUnauthorized, "UNAUTHORIZED")
 	assert.Equal(t, "Invalid token", rejectedBody(t, w))
+}
+
+// TestAuthMiddleware_ApiTokenForSoftDeletedUserRejected is the issue #2047
+// regression test: a token row can outlive its owner (soft-delete is the
+// user's undo window), so LookupAPIToken must resolve the owning user under
+// the default soft-delete scope before the token authenticates anything.
+func TestAuthMiddleware_ApiTokenForSoftDeletedUserRejected(t *testing.T) {
+	db, router := setupAuthTestRouter(t)
+
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+
+	plaintext := "mycorrhizal_softdeletedusertoken"
+	token := models.ApiToken{
+		UserID:    user.ID,
+		Name:      "orphan",
+		TokenHash: hashToken(plaintext),
+	}
+	require.NoError(t, db.Create(&token).Error)
+	require.NoError(t, db.Delete(&user).Error)
+
+	req, _ := http.NewRequest("GET", "/protected", nil)
+	req.Header.Set("Authorization", "Bearer "+plaintext)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assertMWErrorCode(t, w, http.StatusUnauthorized, "UNAUTHORIZED")
+	assert.Equal(t, "Invalid token", rejectedBody(t, w))
+
+	// A rejected token must not advance its last_used_at: drain any
+	// fire-and-forget writes first so the assertion cannot race one.
+	fireandforget.Wait()
+	var reloaded models.ApiToken
+	require.NoError(t, db.First(&reloaded, token.ID).Error)
+	assert.Nil(t, reloaded.LastUsedAt, "a rejected token must not be touched")
 }
 
 func TestAuthMiddleware_UnknownApiToken(t *testing.T) {

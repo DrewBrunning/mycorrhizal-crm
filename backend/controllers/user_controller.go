@@ -198,9 +198,6 @@ func LoginUser(context *gin.Context, cfg *config.Config) {
 		return
 	}
 
-	// Successful login - clear any failed attempt tracking for this (identifier, IP)
-	accountLimiter.RecordLoginSuccess(identifier, clientIP)
-
 	// N8: account has 2FA enabled (TOTP and/or, issue #593, a passkey) — the password alone must not mint a
 	// session. Issue a short-lived, single-purpose challenge (no usable
 	// session, purpose=2fa JWT in an httpOnly cookie) and demand a TOTP or
@@ -211,6 +208,11 @@ func LoginUser(context *gin.Context, cfg *config.Config) {
 		return
 	}
 	if len(methods) > 0 {
+		// Issue #2048: do NOT clear the shared (username, client-IP) failure
+		// bucket on a password-only success here. Otherwise an attacker who
+		// knows the password can alternate this step with a wrong /login/2fa
+		// code and never trip the second-factor lockout. Complete2FALogin
+		// clears the bucket once the second factor actually succeeds.
 		pendingToken, err := services.Generate2FAChallengeToken(foundUser, cfg)
 		if err != nil {
 			apperrors.AbortWithError(context, apperrors.ErrInternal("Could not generate two-factor challenge").WithError(err))
@@ -233,6 +235,11 @@ func LoginUser(context *gin.Context, cfg *config.Config) {
 		context.JSON(http.StatusOK, gin.H{"two_factor_required": true, "methods": methods})
 		return
 	}
+
+	// A completed password-only login is a real success, so clear the failed
+	// attempt tracking for this (identifier, IP). Accounts that require a
+	// second factor clear it in Complete2FALogin instead (issue #2048).
+	accountLimiter.RecordLoginSuccess(identifier, clientIP)
 
 	// Mint the server-side session row (issue #866) and a JWT carrying its id.
 	tokenString, err := services.IssueSession(db, foundUser, cfg, context.Request.UserAgent(), context.ClientIP())
@@ -534,11 +541,17 @@ func ConfirmPasswordReset(context *gin.Context, cfg *config.Config) {
 		return
 	}
 
-	if user.PasswordResetExpiresAt == nil || clock.FromContext(context).Now().After(*user.PasswordResetExpiresAt) {
-		user.PasswordResetTokenHash = nil
-		user.PasswordResetExpiresAt = nil
-		user.PasswordResetRequestedAt = nil
-		if err := db.Save(&user).Error; err != nil {
+	now := clock.FromContext(context).Now()
+	if user.PasswordResetExpiresAt == nil || now.After(*user.PasswordResetExpiresAt) {
+		// Clear conditionally on the same hash: an expired confirmation racing
+		// a fresh request must not wipe the newer token (issue #2059).
+		if err := db.Model(&models.User{}).
+			Where("id = ? AND password_reset_token_hash = ?", user.ID, tokenHash).
+			Updates(map[string]any{
+				"password_reset_token_hash":   nil,
+				"password_reset_expires_at":   nil,
+				"password_reset_requested_at": nil,
+			}).Error; err != nil {
 			log.Error().Err(err).Uint("user_id", user.ID).Msg("Failed to clear expired reset token")
 		}
 		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("token", "Password reset token is invalid or expired"))
@@ -564,17 +577,31 @@ func ConfirmPasswordReset(context *gin.Context, cfg *config.Config) {
 		return
 	}
 
-	user.Password = hashedPassword
-	user.PasswordResetTokenHash = nil
-	user.PasswordResetExpiresAt = nil
-	user.PasswordResetRequestedAt = nil
-	// End every existing session. A reset is the recovery path for a suspected
-	// compromise, so any token the attacker still holds must stop working.
-	user.TokenVersion++
-
-	if err := db.Save(&user).Error; err != nil {
-		log.Error().Err(err).Uint("user_id", user.ID).Msg("Failed to persist password reset")
-		apperrors.AbortWithError(context, apperrors.ErrDatabase("update user").WithError(err))
+	// Consume the token and change the password in one conditional write. The
+	// WHERE re-checks the exact token hash (and expiry) that was loaded above,
+	// so of two concurrent confirmations only the first can match; the loser
+	// gets RowsAffected == 0 and the same invalid/expired-token 4xx rather
+	// than a second success (issue #2059). token_version is incremented in the
+	// same statement, so every old session dies exactly once.
+	result := db.Model(&models.User{}).
+		Where("id = ? AND password_reset_token_hash = ? AND password_reset_expires_at IS NOT NULL AND password_reset_expires_at >= ?",
+			user.ID, tokenHash, now).
+		Updates(map[string]any{
+			"password":                    hashedPassword,
+			"password_reset_token_hash":   nil,
+			"password_reset_expires_at":   nil,
+			"password_reset_requested_at": nil,
+			"token_version":               gorm.Expr("token_version + 1"),
+		})
+	if result.Error != nil {
+		log.Error().Err(result.Error).Uint("user_id", user.ID).Msg("Failed to persist password reset")
+		apperrors.AbortWithError(context, apperrors.ErrDatabase("update user").WithError(result.Error))
+		return
+	}
+	if result.RowsAffected != 1 {
+		// Another confirmation consumed or rotated the token between the load
+		// above and this write. Same generic response as an invalid token.
+		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("token", "Password reset token is invalid or expired"))
 		return
 	}
 
