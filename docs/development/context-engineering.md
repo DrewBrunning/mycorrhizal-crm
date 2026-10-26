@@ -217,6 +217,25 @@ are warnings. A hard violation fails the run because a green suite earned by
 weakening the gate is not evidence the task was completed; a warning needs a
 human read and can be a legitimate choice for a specific task.
 
+## Context-change evidence
+
+A semantic change to a skill description or name, an `AGENTS.md` rule, a
+trigger prompt, or a task's prompt/expect/not/suite/base-ref is a hypothesis
+about agent behaviour. The PR records the before and after: the prompt-set
+version, the pinned agent/model/CLI version (a profile when available, otherwise
+the exact command and flags), the base and head refs, the prompt-to-skill result
+(or the affected task's result and control delta), and the artifact link. A new
+rule uses `before: n/a (new)`; a removed rule uses `after: n/a (removed)`.
+Mechanical edits — link/path/typo fixes and base-ref refreshes — are exempt; the
+PR says so explicitly.
+
+This is a reviewer checklist, not a CI gate. A missing before/after is an
+unproven change, not a documentation nicety. The harness is advisory and never a
+merge gate, so the evidence is for the reviewer and for the next person who
+wonders whether the wording still earns its place. The artifact link is only as
+durable as the artifact retention window; paste the result when the window is
+short.
+
 ## Milestone-gate audit
 
 At every milestone gate, do the context truth audit and record it in the gate
