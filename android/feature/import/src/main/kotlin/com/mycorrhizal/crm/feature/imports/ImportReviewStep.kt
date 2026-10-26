@@ -16,6 +16,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -51,7 +52,11 @@ fun ImportReviewStep(
     Column(modifier = Modifier.fillMaxSize()) {
         Text(
             text = if (conflictsRemaining > 0) {
-                stringResource(R.string.import_review_remaining, conflictsRemaining)
+                pluralStringResource(
+                    R.plurals.import_review_remaining,
+                    conflictsRemaining,
+                    conflictsRemaining
+                )
             } else {
                 stringResource(R.string.import_review_no_conflicts)
             },

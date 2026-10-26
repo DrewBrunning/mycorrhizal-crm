@@ -67,6 +67,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
@@ -274,8 +275,9 @@ fun ContactListScreenContent(
                         )
 
                         selectMode -> Text(
-                            text = stringResource(
-                                R.string.contacts_selected_count,
+                            text = pluralStringResource(
+                                R.plurals.contacts_selected_count,
+                                uiState.selected.size,
                                 uiState.selected.size
                             ),
                             style = MaterialTheme.typography.titleLarge
@@ -629,7 +631,15 @@ fun ContactListScreenContent(
                 pendingTagId = null
             },
             title = { Text(stringResource(R.string.bulk_confirm_title)) },
-            text = { Text(stringResource(R.string.bulk_confirm_body, uiState.selected.size)) },
+            text = {
+                Text(
+                    pluralStringResource(
+                        R.plurals.bulk_confirm_body,
+                        uiState.selected.size,
+                        uiState.selected.size
+                    )
+                )
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -664,7 +674,12 @@ fun ContactListScreenContent(
     }
 
     uiState.bulkResult?.let { result ->
-        val message = stringResource(R.string.bulk_result, result.succeeded, result.failed)
+        val message = pluralStringResource(
+            R.plurals.bulk_result,
+            result.succeeded,
+            result.succeeded,
+            result.failed
+        )
         LaunchedEffect(result) {
             snackbarHostState.showSnackbar(message)
             onBulkResultShown()
@@ -1094,7 +1109,11 @@ private fun SearchNotesActivitiesSection(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = stringResource(R.string.contacts_search_results_header, total),
+                            text = pluralStringResource(
+                                R.plurals.contacts_search_results_header,
+                                total,
+                                total
+                            ),
                             style = MaterialTheme.typography.titleSmall
                         )
                         Text(

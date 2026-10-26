@@ -45,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -231,7 +232,11 @@ fun ImportContactsScreen(
                         modifier = Modifier.fillMaxSize().padding(24.dp)
                     ) {
                         Text(
-                            text = stringResource(R.string.import_done, state.importedCount),
+                            text = pluralStringResource(
+                                R.plurals.import_done,
+                                state.importedCount,
+                                state.importedCount
+                            ),
                             style = MaterialTheme.typography.bodyLarge,
                             modifier = Modifier.padding(top = 48.dp, bottom = 16.dp)
                         )
@@ -278,8 +283,9 @@ fun ImportContactsScreen(
                             if (state.selected.isEmpty()) {
                                 stringResource(R.string.import_button_none)
                             } else {
-                                stringResource(
-                                    R.string.import_button,
+                                pluralStringResource(
+                                    R.plurals.import_button,
+                                    state.selected.size,
                                     state.selected.size,
                                     state.contacts.count { it.duplicateOf != null }
                                 )

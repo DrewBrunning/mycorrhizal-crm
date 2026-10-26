@@ -25,7 +25,10 @@
         <item quantity="one">Showing %1$d of %2$d</item>
         <item quantity="other">Showing %1$d of %2$d</item>
     </plurals>
-    <string name="dashboard_years_old">(%1$d years old)</string>
+    <plurals name="dashboard_years_old">
+        <item quantity="one">(%1$d year old)</item>
+        <item quantity="other">(%1$d years old)</item>
+    </plurals>
     <string name="dashboard_unknown_contact">Unknown contact</string>
     <!-- Issue #1761: the Stay in Touch card's reason subtitle and the dashboard quick-capture entry. -->
     <string name="dashboard_stay_in_touch_due_today">Due today</string>
@@ -152,7 +155,10 @@
     <string name="contacts_show_favorites">Show favorites</string>
     <string name="contacts_select_mode">Select contacts</string>
     <string name="contacts_exit_select_mode">Exit selection</string>
-    <string name="contacts_selected_count">%1$d selected</string>
+    <plurals name="contacts_selected_count">
+        <item quantity="one">%1$d selected</item>
+        <item quantity="other">%1$d selected</item>
+    </plurals>
     <string name="contacts_select_all">Select all</string>
     <!-- Issue #150: right-hand pane of the two-pane tablet contacts layout when no contact is selected -->
     <string name="contacts_select_contact">Select a contact to view their details</string>
@@ -167,7 +173,10 @@
     <string name="contacts_unfavorite_contact">Unmark %1$s as favorite</string>
 
     <!-- Contact list: cross-entity search (T87) -->
-    <string name="contacts_search_results_header">%1$d matches in notes and activities</string>
+    <plurals name="contacts_search_results_header">
+        <item quantity="one">%1$d match in notes and activities</item>
+        <item quantity="other">%1$d matches in notes and activities</item>
+    </plurals>
     <string name="contacts_search_results_hint">Notes and activities are searched too — circle and archived filters don\'t apply to them.</string>
     <string name="contacts_search_notes_group">Notes</string>
     <string name="contacts_search_activities_group">Interactions</string>
@@ -277,7 +286,10 @@
          "choose from Immich" profile-photo flow). -->
     <string name="immich_linked_person">Linked Immich person</string>
     <string name="immich_link_thumbnail_desc">Immich person photo</string>
-    <string name="immich_photo_count">%1$d photos</string>
+    <plurals name="immich_photo_count">
+        <item quantity="one">%1$d photo</item>
+        <item quantity="other">%1$d photos</item>
+    </plurals>
     <string name="immich_unlink">Unlink</string>
     <string name="immich_unlink_title">Unlink Immich person</string>
     <string name="immich_unlink_confirm">Unlink this Immich person? Its photo history will be kept.</string>
@@ -418,7 +430,10 @@
     <string name="map_show_list">Show as list</string>
     <string name="map_show_map">Show map</string>
     <string name="map_open_contact">Open contact</string>
-    <string name="map_truncated">Showing the first %1$d addresses only; the map is limited to this many points.</string>
+    <plurals name="map_truncated">
+        <item quantity="one">Showing the first %1$d address only; the map is limited to this many points.</item>
+        <item quantity="other">Showing the first %1$d addresses only; the map is limited to this many points.</item>
+    </plurals>
     <string name="map_empty">No mapped contacts yet</string>
     <string name="map_empty_body">Add coordinates to a contact\'s address to see it here.</string>
     <string name="contact_address_coordinates">Coordinates (latitude, longitude)</string>
@@ -447,7 +462,10 @@
     <string name="prep_unknown_contact">Unknown</string>
     <string name="prep_not_found">Contact not found</string>
     <string name="prep_cadence_title">Relationship health</string>
-    <string name="prep_cadence_overdue">%1$d days overdue</string>
+    <plurals name="prep_cadence_overdue">
+        <item quantity="one">%1$d day overdue</item>
+        <item quantity="other">%1$d days overdue</item>
+    </plurals>
     <string name="prep_cadence_on_track">On track</string>
     <string name="prep_cadence_next_due">Next due: %1$s</string>
     <string name="prep_cadence_no_interactions_yet">No qualifying interactions yet — cadence starts once you record one.</string>
@@ -559,7 +577,10 @@
     <string name="settings_two_factor_qr_content_description">QR code for your authenticator app. Scan it, or enter the manual setup key below.</string>
     <string name="data_relationships_section">Relationships</string>
     <string name="data_relationships_description">Let the app find relationships your existing ones imply. Suggestions are only proposals — review each one before accepting.</string>
-    <string name="data_relationships_generated">%1$d new relationship suggestions generated — review them on a contact\'s Relationships screen.</string>
+    <plurals name="data_relationships_generated">
+        <item quantity="one">%1$d new relationship suggestion generated — review it on a contact\'s Relationships screen.</item>
+        <item quantity="other">%1$d new relationship suggestions generated — review them on a contact\'s Relationships screen.</item>
+    </plurals>
     <string name="data_relationships_none">No new relationship suggestions.</string>
     <string name="data_address_section">Addresses</string>
     <string name="data_address_description">Propose addresses a contact probably shares — from a confirmed relationship or household membership.</string>
@@ -716,7 +737,10 @@
     <string name="settings_webhooks_active">Active</string>
     <string name="settings_webhooks_inactive">Inactive</string>
     <string name="settings_webhooks_events">Events</string>
-    <string name="settings_webhooks_events_count">%1$d events</string>
+    <plurals name="settings_webhooks_events_count">
+        <item quantity="one">%1$d event</item>
+        <item quantity="other">%1$d events</item>
+    </plurals>
     <string name="settings_webhooks_name">Name</string>
     <string name="settings_webhooks_url">URL</string>
     <string name="settings_webhooks_empty">No webhooks yet</string>
@@ -765,7 +789,10 @@
     <string name="settings_api_tokens_create_title">Create API token</string>
     <string name="settings_api_tokens_name_label">Token name</string>
     <string name="settings_api_tokens_expiry_label">Expires in</string>
-    <string name="settings_api_tokens_expiry_days">%1$d days</string>
+    <plurals name="settings_api_tokens_expiry_days">
+        <item quantity="one">%1$d day</item>
+        <item quantity="other">%1$d days</item>
+    </plurals>
     <string name="settings_api_tokens_scope_label">Access</string>
     <string name="settings_api_tokens_scope_full_help">Can be used for data access, including CardDAV sync. Credential management requires a signed-in session.</string>
     <string name="settings_api_tokens_scope_carddav_help">Only works for CardDAV contact sync. A leaked device credential can\'t be used against the rest of the API.</string>
@@ -779,8 +806,14 @@
     <string name="settings_api_tokens_revoke_body">Revoke \"%1$s\"? This cannot be undone.</string>
     <string name="settings_api_tokens_revoke_confirm">Revoke</string>
     <string name="settings_api_tokens_revoke_all_title">Revoke all tokens</string>
-    <string name="settings_api_tokens_revoke_all_body">Revoke all %1$d active API tokens? This cannot be undone and will immediately break anything using them.</string>
-    <string name="settings_api_tokens_revoke_all_success">%1$d tokens revoked</string>
+    <plurals name="settings_api_tokens_revoke_all_body">
+        <item quantity="one">Revoke the %1$d active API token? This cannot be undone and will immediately break anything using it.</item>
+        <item quantity="other">Revoke all %1$d active API tokens? This cannot be undone and will immediately break anything using them.</item>
+    </plurals>
+    <plurals name="settings_api_tokens_revoke_all_success">
+        <item quantity="one">%1$d token revoked</item>
+        <item quantity="other">%1$d tokens revoked</item>
+    </plurals>
     <string name="settings_api_tokens_rotate_title">Rotate token</string>
     <string name="settings_api_tokens_rotate_body">Rotating \"%1$s\" immediately revokes it and issues a new token with the same name and scope. The new token will only be shown once.</string>
     <string name="settings_api_tokens_rotate_confirm">Rotate</string>
@@ -812,28 +845,49 @@
     <string name="settings_calendar_sync_delete_body">Delete \"%1$s\"? Activities already imported are kept.</string>
     <string name="settings_calendar_sync_never_synced">Never synced</string>
     <string name="settings_calendar_sync_last_synced">Last synced %1$s</string>
-    <string name="settings_calendar_sync_sync_success">Synced: %1$d created, %2$d updated, %3$d skipped</string>
+    <plurals name="settings_calendar_sync_sync_success">
+        <item quantity="one">Synced: %1$d created, %2$d updated, %3$d skipped</item>
+        <item quantity="other">Synced: %1$d created, %2$d updated, %3$d skipped</item>
+    </plurals>
     <string name="settings_calendar_sync_sync_failed">Sync failed</string>
-    <string name="settings_calendar_sync_sync_failed_count">Sync failed (%1$d times)</string>
+    <plurals name="settings_calendar_sync_sync_failed_count">
+        <item quantity="one">Sync failed (%1$d time)</item>
+        <item quantity="other">Sync failed (%1$d times)</item>
+    </plurals>
 
     <!-- Settings: contact (CardDAV) subscriptions — read-only health list (#628 scope note 4) -->
     <string name="settings_contact_sync_title">Contact sync</string>
     <string name="settings_contact_sync_description">CardDAV address books syncing contacts into this account. Add or edit these from the web app.</string>
-    <string name="settings_contact_sync_pending_conflicts">%1$d unreviewed conflicts</string>
+    <plurals name="settings_contact_sync_pending_conflicts">
+        <item quantity="one">%1$d unreviewed conflict</item>
+        <item quantity="other">%1$d unreviewed conflicts</item>
+    </plurals>
 
     <!-- Sync-health line (issue #390 / INT-04 #467), shared by calendar and contact subscriptions -->
-    <string name="settings_sync_health_failing">Failing since %1$s — %2$d consecutive failures</string>
+    <plurals name="settings_sync_health_failing">
+        <item quantity="one">Failing since %1$s — %2$d consecutive failure</item>
+        <item quantity="other">Failing since %1$s — %2$d consecutive failures</item>
+    </plurals>
     <string name="settings_sync_health_last_success">last success %1$s</string>
     <string name="settings_sync_health_never_succeeded">last success: never</string>
-    <string name="settings_sync_health_last_run">Last sync: %1$d created, %2$d updated, %3$d skipped</string>
-    <string name="settings_sync_health_last_run_contacts">Last sync: %1$d created, %2$d updated, %3$d archived, %4$d skipped</string>
+    <plurals name="settings_sync_health_last_run">
+        <item quantity="one">Last sync: %1$d created, %2$d updated, %3$d skipped</item>
+        <item quantity="other">Last sync: %1$d created, %2$d updated, %3$d skipped</item>
+    </plurals>
+    <plurals name="settings_sync_health_last_run_contacts">
+        <item quantity="one">Last sync: %1$d created, %2$d updated, %3$d archived, %4$d skipped</item>
+        <item quantity="other">Last sync: %1$d created, %2$d updated, %3$d archived, %4$d skipped</item>
+    </plurals>
     <string name="settings_sync_health_terminal_title">Sync stopped</string>
     <string name="settings_sync_health_terminal_auth_expiry">The stored credentials have expired. Edit this subscription with a fresh password to resume syncing.</string>
     <string name="settings_sync_health_terminal_authz_revoked">Access was revoked on the remote server. Edit this subscription with a fresh password to resume syncing.</string>
     <string name="settings_sync_health_terminal_remote_deleted">The remote calendar or address book no longer exists. Delete this subscription or point it at a new one.</string>
     <string name="settings_sync_health_terminal_generic">Syncing has stopped after repeated failures. Check the subscription\'s URL and credentials.</string>
     <string name="settings_sync_health_stale_never">Never succeeded</string>
-    <string name="settings_sync_health_stale_days">Last successful sync %1$d days ago</string>
+    <plurals name="settings_sync_health_stale_days">
+        <item quantity="one">Last successful sync %1$d day ago</item>
+        <item quantity="other">Last successful sync %1$d days ago</item>
+    </plurals>
     <string name="settings_sync_health_stale_recent">Last successful sync %1$s</string>
 
     <!-- Settings: notification channels — ntfy/Gotify (M25) -->
@@ -988,7 +1042,10 @@
     <!-- Issue #1757: the unassigned-notes inbox says which set of notes it shows. -->
     <string name="notes_unassigned_empty">No unassigned notes yet</string>
     <string name="notes_unassigned_empty_body">Notes you capture without a contact land here.</string>
-    <string name="notes_inbox_total">%1$d total</string>
+    <plurals name="notes_inbox_total">
+        <item quantity="one">%1$d total</item>
+        <item quantity="other">%1$d total</item>
+    </plurals>
     <string name="notes_search">Search notes</string>
     <string name="notes_no_results">No notes match your filters</string>
     <string name="notes_delete_title">Delete note?</string>
@@ -1127,7 +1184,10 @@
         <item quantity="one">%1$d tag</item>
         <item quantity="other">%1$d tags</item>
     </plurals>
-    <string name="triage_summary_skipped">%1$d skipped</string>
+    <plurals name="triage_summary_skipped">
+        <item quantity="one">%1$d skipped</item>
+        <item quantity="other">%1$d skipped</item>
+    </plurals>
     <string name="triage_done_message_format">Created %1$s and %2$s.</string>
     <plurals name="triage_done_circles">
         <item quantity="one">%1$d circle</item>
@@ -1355,7 +1415,10 @@
     <string name="network_pick_no_results">Type to search for a contact.</string>
     <string name="network_depth">Depth</string>
     <string name="network_direct">Direct</string>
-    <string name="network_hops">%1$d hops away</string>
+    <plurals name="network_hops">
+        <item quantity="one">%1$d hop away</item>
+        <item quantity="other">%1$d hops away</item>
+    </plurals>
     <string name="network_relation">Relation</string>
     <string name="network_relation_hint">e.g. sibling_of or brother</string>
     <string name="network_relation_apply">Apply</string>
@@ -1422,7 +1485,10 @@
     <string name="cadence_create_title">Add cadence</string>
     <string name="cadence_edit_title">Edit cadence</string>
     <string name="cadence_interval">Stay in touch</string>
-    <string name="cadence_interval_value">every %1$d days</string>
+    <plurals name="cadence_interval_value">
+        <item quantity="one">every %1$d day</item>
+        <item quantity="other">every %1$d days</item>
+    </plurals>
     <string name="cadence_interval_days">Interval (days)</string>
     <string name="cadence_interval_hint">How often you want to stay in touch.</string>
     <string name="cadence_interval_required">Enter a positive number of days.</string>
@@ -1439,7 +1505,10 @@
     <string name="cadence_no_policy_body">Set how often you\'d like to be in touch with this contact.</string>
     <string name="cadence_no_interactions_yet">No qualifying interactions yet — cadence starts once you record one.</string>
     <string name="cadence_on_track">On track</string>
-    <string name="cadence_overdue_by">%1$d days overdue</string>
+    <plurals name="cadence_overdue_by">
+        <item quantity="one">%1$d day overdue</item>
+        <item quantity="other">%1$d days overdue</item>
+    </plurals>
     <string name="cadence_next_due">Next due: %1$s</string>
     <!-- Issue #177: event-driven reach-out suggestions. -->
     <string name="reach_out_kind_organization">New employer</string>
@@ -1451,7 +1520,10 @@
     <string name="cadence_last_interaction">Last interaction: %1$s</string>
     <string name="cadence_confirm_delete">Remove this cadence policy?</string>
     <!-- Issue #352: data decay, contacts whose info is due for re-verification. -->
-    <string name="data_decay_overdue_by">%1$d days overdue</string>
+    <plurals name="data_decay_overdue_by">
+        <item quantity="one">%1$d day overdue</item>
+        <item quantity="other">%1$d days overdue</item>
+    </plurals>
     <string name="data_decay_due_on">Due on %1$s</string>
     <string name="cd_confirm_data_decay_current">Confirm still current</string>
     <string name="cadence_delete_title">Delete cadence</string>
@@ -1603,28 +1675,88 @@
     <string name="merge_keep_hint">The contact you opened will be kept. Search for the other contact to merge into it.</string>
     <string name="merge_pick_other">Pick the other contact</string>
     <string name="merge_picked_other">Will merge %1$s into the kept contact.</string>
-    <string name="merge_hidden_matches">%1$d shown, %2$d matched on other fields</string>
+    <plurals name="merge_hidden_matches">
+        <item quantity="one">%1$d shown, %2$d matched on other fields</item>
+        <item quantity="other">%1$d shown, %2$d matched on other fields</item>
+    </plurals>
     <string name="merge_move_header">Will move to the kept contact:</string>
     <string name="merge_nothing_to_move">Nothing to move.</string>
-    <string name="merge_count_notes">%1$d notes</string>
-    <string name="merge_count_activities">%1$d activities</string>
-    <string name="merge_count_reminders">%1$d reminders</string>
-    <string name="merge_count_reminder_completions">%1$d reminder completions</string>
-    <string name="merge_count_edges">%1$d relationship edges</string>
-    <string name="merge_count_household">%1$d household memberships</string>
-    <string name="merge_count_circles">%1$d circle memberships</string>
-    <string name="merge_count_tags">%1$d tags</string>
-    <string name="merge_count_life_events">%1$d life events</string>
-    <string name="merge_count_life_event_references">%1$d life event references</string>
-    <string name="merge_count_agenda">%1$d conversation agenda items</string>
-    <string name="merge_count_gifts">%1$d gift items</string>
-    <string name="merge_count_field_values">%1$d custom field values</string>
-    <string name="merge_count_sync_links">%1$d sync links</string>
-    <string name="merge_count_attachments">%1$d attachments</string>
-    <string name="merge_count_preferences">%1$d preferences</string>
-    <string name="merge_count_external_identities">%1$d external identities</string>
-    <string name="merge_count_external_activities">%1$d external activities</string>
-    <string name="merge_count_cadence">%1$d cadence policies</string>
+    <plurals name="merge_count_notes">
+        <item quantity="one">%1$d note</item>
+        <item quantity="other">%1$d notes</item>
+    </plurals>
+    <plurals name="merge_count_activities">
+        <item quantity="one">%1$d activity</item>
+        <item quantity="other">%1$d activities</item>
+    </plurals>
+    <plurals name="merge_count_reminders">
+        <item quantity="one">%1$d reminder</item>
+        <item quantity="other">%1$d reminders</item>
+    </plurals>
+    <plurals name="merge_count_reminder_completions">
+        <item quantity="one">%1$d reminder completion</item>
+        <item quantity="other">%1$d reminder completions</item>
+    </plurals>
+    <plurals name="merge_count_edges">
+        <item quantity="one">%1$d relationship edge</item>
+        <item quantity="other">%1$d relationship edges</item>
+    </plurals>
+    <plurals name="merge_count_household">
+        <item quantity="one">%1$d household membership</item>
+        <item quantity="other">%1$d household memberships</item>
+    </plurals>
+    <plurals name="merge_count_circles">
+        <item quantity="one">%1$d circle membership</item>
+        <item quantity="other">%1$d circle memberships</item>
+    </plurals>
+    <plurals name="merge_count_tags">
+        <item quantity="one">%1$d tag</item>
+        <item quantity="other">%1$d tags</item>
+    </plurals>
+    <plurals name="merge_count_life_events">
+        <item quantity="one">%1$d life event</item>
+        <item quantity="other">%1$d life events</item>
+    </plurals>
+    <plurals name="merge_count_life_event_references">
+        <item quantity="one">%1$d life event reference</item>
+        <item quantity="other">%1$d life event references</item>
+    </plurals>
+    <plurals name="merge_count_agenda">
+        <item quantity="one">%1$d conversation agenda item</item>
+        <item quantity="other">%1$d conversation agenda items</item>
+    </plurals>
+    <plurals name="merge_count_gifts">
+        <item quantity="one">%1$d gift item</item>
+        <item quantity="other">%1$d gift items</item>
+    </plurals>
+    <plurals name="merge_count_field_values">
+        <item quantity="one">%1$d custom field value</item>
+        <item quantity="other">%1$d custom field values</item>
+    </plurals>
+    <plurals name="merge_count_sync_links">
+        <item quantity="one">%1$d sync link</item>
+        <item quantity="other">%1$d sync links</item>
+    </plurals>
+    <plurals name="merge_count_attachments">
+        <item quantity="one">%1$d attachment</item>
+        <item quantity="other">%1$d attachments</item>
+    </plurals>
+    <plurals name="merge_count_preferences">
+        <item quantity="one">%1$d preference</item>
+        <item quantity="other">%1$d preferences</item>
+    </plurals>
+    <plurals name="merge_count_external_identities">
+        <item quantity="one">%1$d external identity</item>
+        <item quantity="other">%1$d external identities</item>
+    </plurals>
+    <plurals name="merge_count_external_activities">
+        <item quantity="one">%1$d external activity</item>
+        <item quantity="other">%1$d external activities</item>
+    </plurals>
+    <plurals name="merge_count_cadence">
+        <item quantity="one">%1$d cadence policy</item>
+        <item quantity="other">%1$d cadence policies</item>
+    </plurals>
     <string name="bulk_archive">Archive</string>
     <string name="bulk_unarchive">Unarchive</string>
     <string name="bulk_add_circle">Add to circle</string>
@@ -1636,8 +1768,14 @@
     <string name="bulk_no_circles">No circles yet</string>
     <string name="bulk_no_tags">No tags yet</string>
     <string name="bulk_confirm_title">Confirm bulk action?</string>
-    <string name="bulk_confirm_body">Run the action on %1$d selected contacts?</string>
-    <string name="bulk_result">Done: %1$d succeeded, %2$d failed.</string>
+    <plurals name="bulk_confirm_body">
+        <item quantity="one">Run the action on %1$d selected contact?</item>
+        <item quantity="other">Run the action on %1$d selected contacts?</item>
+    </plurals>
+    <plurals name="bulk_result">
+        <item quantity="one">Done: %1$d succeeded, %2$d failed.</item>
+        <item quantity="other">Done: %1$d succeeded, %2$d failed.</item>
+    </plurals>
     <string name="action_confirm">Confirm</string>
 
     <!-- T93 duplicate review (issue #710, web parity) -->
@@ -1705,12 +1843,18 @@
     <string name="import_title">Import contacts</string>
     <string name="import_empty">No device contacts to import</string>
     <string name="import_unnamed">(unnamed)</string>
-    <string name="import_button">Import %1$d selected (%2$d possible duplicates)</string>
+    <plurals name="import_button">
+        <item quantity="one">Import %1$d selected (%2$d possible duplicates)</item>
+        <item quantity="other">Import %1$d selected (%2$d possible duplicates)</item>
+    </plurals>
     <string name="import_button_none">Import</string>
     <string name="import_permission_rationale">Contacts permission is needed to list the contacts on this device. The list is read on this device only. When you import, only the contacts you select are sent to your server, and nothing is saved until you confirm on the review step.</string>
     <string name="import_permission_grant">Grant access</string>
     <string name="import_permission_open_settings">Open settings</string>
-    <string name="import_done">Imported %1$d contacts.</string>
+    <plurals name="import_done">
+        <item quantity="one">Imported %1$d contact.</item>
+        <item quantity="other">Imported %1$d contacts.</item>
+    </plurals>
     <string name="import_duplicate">Possible duplicate of %1$s</string>
 
     <!-- VCF file import (M9) -->
@@ -1720,7 +1864,10 @@
     <string name="import_vcf_pick_hint">Choose a .vcf (vCard) file exported from another app.</string>
 
     <!-- T96 import merge review -->
-    <string name="import_review_remaining">Resolve conflicts (%1$d remaining)</string>
+    <plurals name="import_review_remaining">
+        <item quantity="one">Resolve conflicts (%1$d remaining)</item>
+        <item quantity="other">Resolve conflicts (%1$d remaining)</item>
+    </plurals>
     <string name="import_review_no_conflicts">No duplicate matches — everything below will be added as new.</string>
     <string name="import_action_merge">Merge</string>
     <string name="import_action_keep_both">Keep both</string>
@@ -1742,7 +1889,10 @@
     <string name="import_diff_kind_address">address</string>
     <string name="import_diff_kind_url">website</string>
     <string name="import_diff_kind_impp">IM</string>
-    <string name="import_vcf_result">Import complete: %1$d created, %2$d updated, %3$d skipped.</string>
+    <plurals name="import_vcf_result">
+        <item quantity="one">Import complete: %1$d created, %2$d updated, %3$d skipped.</item>
+        <item quantity="other">Import complete: %1$d created, %2$d updated, %3$d skipped.</item>
+    </plurals>
     <string name="import_vcf_error_too_large">File is too large. Maximum size is 50MB.</string>
     <string name="import_vcf_error_invalid_file">Couldn\'t read that file. Choose a .vcf file.</string>
 
@@ -1753,7 +1903,10 @@
     <string name="import_csv_pick_hint">Choose a .csv file exported from another app or service.</string>
     <string name="import_csv_error_too_large">File is too large. Maximum size is 20MB.</string>
     <string name="import_csv_error_invalid_file">Couldn\'t read that file. Choose a .csv file.</string>
-    <string name="import_csv_mapping_hint">Map each column to a contact field (%1$d rows).</string>
+    <plurals name="import_csv_mapping_hint">
+        <item quantity="one">Map each column to a contact field (%1$d row).</item>
+        <item quantity="other">Map each column to a contact field (%1$d rows).</item>
+    </plurals>
     <string name="import_csv_mapping_ignore">-- Ignore --</string>
     <string name="import_csv_mapping_continue">Continue</string>
 
@@ -1913,7 +2066,10 @@
     <string name="jobruns_status_healthy">Healthy</string>
     <string name="jobruns_status_failing">Failing</string>
     <string name="jobruns_status_unknown">Unknown</string>
-    <string name="jobruns_consecutive_failures">Failed %1$d times in a row</string>
+    <plurals name="jobruns_consecutive_failures">
+        <item quantity="one">Failed %1$d time in a row</item>
+        <item quantity="other">Failed %1$d times in a row</item>
+    </plurals>
     <string name="jobruns_last_run">Last run: %1$s</string>
     <string name="jobruns_duration">Duration: %1$s</string>
     <string name="jobruns_never">never</string>
@@ -1931,17 +2087,26 @@
     <string name="jobruns_job_alert_eval">Alert evaluation</string>
     <string name="jobruns_job_job_run_purge">Job history purge</string>
     <!-- Error aggregation (issue #426) -->
-    <string name="sysevents_errors_banner">Showing %1$d events from one error group.</string>
+    <plurals name="sysevents_errors_banner">
+        <item quantity="one">Showing %1$d event from one error group.</item>
+        <item quantity="other">Showing %1$d events from one error group.</item>
+    </plurals>
     <string name="error_aggregation_title">Errors by cause</string>
     <string name="error_aggregation_refresh">Refresh</string>
     <string name="error_aggregation_recurring">Recurring</string>
-    <string name="error_aggregation_view_events">View %1$d events</string>
+    <plurals name="error_aggregation_view_events">
+        <item quantity="one">View %1$d event</item>
+        <item quantity="other">View %1$d events</item>
+    </plurals>
 
     <!-- Issue #383 (ADR-0023): relationship health score -->
     <string name="health_score_band_moss">Healthy</string>
     <string name="health_score_band_chanterelle">Needs attention</string>
     <string name="health_score_band_russula">At risk</string>
-    <string name="health_score_badge_description">Relationship health score %1$d out of 100: %2$s</string>
+    <plurals name="health_score_badge_description">
+        <item quantity="one">Relationship health score %1$d out of 100: %2$s</item>
+        <item quantity="other">Relationship health score %1$d out of 100: %2$s</item>
+    </plurals>
     <string name="health_score_view_details">View score details</string>
     <string name="health_score_dialog_title">Relationship health</string>
     <string name="health_score_facet_recency">Recency</string>
@@ -2034,7 +2199,10 @@
     <string name="attach_stage_preparing">Preparing the review…</string>
     <string name="attach_stage_importing">Importing on the server…</string>
     <string name="attach_progress">%1$d of %2$d</string>
-    <string name="attach_review_totals">Ready to move %1$d contacts, %2$d notes and %3$d activities.</string>
+    <plurals name="attach_review_totals">
+        <item quantity="one">Ready to move %1$d contact, %2$d notes and %3$d activities.</item>
+        <item quantity="other">Ready to move %1$d contacts, %2$d notes and %3$d activities.</item>
+    </plurals>
     <plurals name="attach_review_loss">
         <item quantity="one">%1$d field can\'t be carried over exactly.</item>
         <item quantity="other">%1$d fields can\'t be carried over exactly.</item>
@@ -2042,7 +2210,10 @@
     <string name="attach_prepare_failed">The move could not be prepared. Nothing on this device was changed.</string>
     <string name="attach_retry">Try again</string>
     <string name="attach_done_title">Data moved</string>
-    <string name="attach_done_result">%1$d created, %2$d merged, %3$d skipped.</string>
+    <plurals name="attach_done_result">
+        <item quantity="one">%1$d created, %2$d merged, %3$d skipped.</item>
+        <item quantity="other">%1$d created, %2$d merged, %3$d skipped.</item>
+    </plurals>
     <string name="attach_done_archive_note">This device\'s copy is now a read-only archive. You can browse it, but not change it, until you delete it under Settings → Servers.</string>
     <string name="attach_done_button">Done</string>
     <string name="attach_discard_title">Unsent activity</string>
@@ -2066,8 +2237,14 @@
     <string name="bundle_restore_pick_hint">Choose an account bundle file exported from Mycorrhizal. You can review everything before it is restored.</string>
     <string name="bundle_restore_pick">Choose bundle file</string>
     <string name="bundle_restore_working">Working on your bundle…</string>
-    <string name="bundle_restore_loss">%1$d items cannot be restored exactly</string>
-    <string name="bundle_restore_result">Restored: %1$d created, %2$d updated, %3$d skipped</string>
+    <plurals name="bundle_restore_loss">
+        <item quantity="one">%1$d item cannot be restored exactly</item>
+        <item quantity="other">%1$d items cannot be restored exactly</item>
+    </plurals>
+    <plurals name="bundle_restore_result">
+        <item quantity="one">Restored: %1$d created, %2$d updated, %3$d skipped</item>
+        <item quantity="other">Restored: %1$d created, %2$d updated, %3$d skipped</item>
+    </plurals>
     <string name="bundle_restore_error_too_large">That file is too large to be an account bundle</string>
     <string name="bundle_restore_error_invalid_file">That file is empty or not an account bundle</string>
     <string name="bundle_restore_error_failed">The restore did not complete. Nothing was changed.</string>
@@ -2231,7 +2408,10 @@
     <string name="target_closeness_status_drifting">Drifting</string>
     <string name="target_closeness_status_behind">Behind</string>
     <string name="target_closeness_offer_title">Create a cadence?</string>
-    <string name="target_closeness_offer_body">Stay in touch with %1$s every %2$d days?</string>
+    <plurals name="target_closeness_offer_body">
+        <item quantity="one">Stay in touch with %1$s every %2$d day?</item>
+        <item quantity="other">Stay in touch with %1$s every %2$d days?</item>
+    </plurals>
     <string name="target_closeness_offer_accept">Create cadence</string>
     <string name="target_closeness_offer_dismiss">Not now</string>
     <string name="reach_out_kind_target_behind">Behind target</string>
@@ -2337,7 +2517,13 @@
     </plurals>
     <string name="score_reason_ambient_household">Ambient contact (lives with you)</string>
     <string name="score_reason_ambient_flag">Ambient contact (marked)</string>
-    <string name="score_reason_target_cadence_policy">Recency and frequency score %1$d against your cadence (%2$s)</string>
-    <string name="score_reason_target_tier">Recency and frequency score %1$d against the %2$s target (%3$s)</string>
+    <plurals name="score_reason_target_cadence_policy">
+        <item quantity="one">Recency and frequency score %1$d against your cadence (%2$s)</item>
+        <item quantity="other">Recency and frequency score %1$d against your cadence (%2$s)</item>
+    </plurals>
+    <plurals name="score_reason_target_tier">
+        <item quantity="one">Recency and frequency score %1$d against the %2$s target (%3$s)</item>
+        <item quantity="other">Recency and frequency score %1$d against the %2$s target (%3$s)</item>
+    </plurals>
     <string name="score_reason_target_ambient">Ambient contact, always on track</string>
 </resources>

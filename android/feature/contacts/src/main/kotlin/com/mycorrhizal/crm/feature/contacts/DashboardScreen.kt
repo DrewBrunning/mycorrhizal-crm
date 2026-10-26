@@ -728,8 +728,9 @@ private fun OverdueRow(cadence: OverdueCadence, dateFormat: String, onClick: () 
                 }
                 // #200: white-on-amber was 2.25:1; bark on the amber container is 6.5:1.
                 DashboardChip(
-                    text = stringResource(
-                        R.string.cadence_overdue_by,
+                    text = pluralStringResource(
+                        R.plurals.cadence_overdue_by,
+                        cadence.health?.overdueBy ?: 0,
                         cadence.health?.overdueBy ?: 0
                     ),
                     leadingIcon = Icons.Outlined.Warning,
@@ -780,8 +781,9 @@ private fun DataDecayRow(
                 }
             }
             DashboardChip(
-                text = stringResource(
-                    R.string.data_decay_overdue_by,
+                text = pluralStringResource(
+                    R.plurals.data_decay_overdue_by,
+                    overdue.health?.overdueBy ?: 0,
                     overdue.health?.overdueBy ?: 0
                 ),
                 leadingIcon = Icons.Outlined.Warning,
@@ -1131,7 +1133,7 @@ private fun birthdayLine(birthday: Birthday, dateFormat: String): String {
         // A future birth year is nonsense data; show the date without an age rather
         // than a negative one (web computes the same raw subtraction, but renders it).
         age != null && age >= 0 && monthDay != null ->
-            "$monthDay ${stringResource(R.string.dashboard_years_old, age)}"
+            "$monthDay ${pluralStringResource(R.plurals.dashboard_years_old, age, age)}"
 
         monthDay != null -> monthDay
 

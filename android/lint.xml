@@ -20,16 +20,6 @@
     <issue id="GradleDynamicVersion" severity="ignore" />
 
     <!--
-      Deferred i18n batch (issue #1975): 62 PluralsCandidate plus the
-      es/fr/it MissingQuantity and de UnusedQuantity findings. Converting the
-      count strings to <plurals> and wiring pluralStringResource is real
-      translation work, tracked separately rather than bundled into #1902.
-    -->
-    <issue id="PluralsCandidate" severity="ignore" />
-    <issue id="MissingQuantity" severity="ignore" />
-    <issue id="UnusedQuantity" severity="ignore" />
-
-    <!--
       This app logs through android.util.Log and has no Timber dependency.
       These four call sites are OS/boundary error paths, not app-wide logging.
     -->

@@ -30,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
@@ -229,102 +230,136 @@ fun MergeContactsScreenContent(
 @Composable
 private fun AssociationCountsSection(counts: ContactMergeAssociationCounts) {
     val lines = listOfNotNull(
-        counts.notes.takeIf { it > 0 }?.let { stringResource(R.string.merge_count_notes, it) },
+        counts.notes.takeIf { it > 0 }?.let {
+            pluralStringResource(
+                R.plurals.merge_count_notes,
+                it.toInt(),
+                it
+            )
+        },
         counts.activities.takeIf { it > 0 }?.let {
-            stringResource(
-                R.string.merge_count_activities,
+            pluralStringResource(
+                R.plurals.merge_count_activities,
+                it.toInt(),
                 it
             )
         },
         counts.reminders.takeIf { it > 0 }?.let {
-            stringResource(
-                R.string.merge_count_reminders,
+            pluralStringResource(
+                R.plurals.merge_count_reminders,
+                it.toInt(),
                 it
             )
         },
         counts.reminderCompletions.takeIf { it > 0 }?.let {
-            stringResource(
-                R.string.merge_count_reminder_completions,
+            pluralStringResource(
+                R.plurals.merge_count_reminder_completions,
+                it.toInt(),
                 it
             )
         },
         counts.relationshipEdges.takeIf { it > 0 }?.let {
-            stringResource(
-                R.string.merge_count_edges,
+            pluralStringResource(
+                R.plurals.merge_count_edges,
+                it.toInt(),
                 it
             )
         },
         counts.householdMemberships.takeIf { it > 0 }?.let {
-            stringResource(
-                R.string.merge_count_household,
+            pluralStringResource(
+                R.plurals.merge_count_household,
+                it.toInt(),
                 it
             )
         },
         counts.circleMemberships.takeIf { it > 0 }?.let {
-            stringResource(
-                R.string.merge_count_circles,
+            pluralStringResource(
+                R.plurals.merge_count_circles,
+                it.toInt(),
                 it
             )
         },
-        counts.tags.takeIf { it > 0 }?.let { stringResource(R.string.merge_count_tags, it) },
+        counts.tags.takeIf { it > 0 }?.let {
+            pluralStringResource(
+                R.plurals.merge_count_tags,
+                it.toInt(),
+                it
+            )
+        },
         counts.lifeEvents.takeIf { it > 0 }?.let {
-            stringResource(
-                R.string.merge_count_life_events,
+            pluralStringResource(
+                R.plurals.merge_count_life_events,
+                it.toInt(),
                 it
             )
         },
         counts.lifeEventReferences.takeIf { it > 0 }?.let {
-            stringResource(
-                R.string.merge_count_life_event_references,
+            pluralStringResource(
+                R.plurals.merge_count_life_event_references,
+                it.toInt(),
                 it
             )
         },
         counts.conversationAgendaItems.takeIf { it > 0 }?.let {
-            stringResource(
-                R.string.merge_count_agenda,
+            pluralStringResource(
+                R.plurals.merge_count_agenda,
+                it.toInt(),
                 it
             )
         },
-        counts.giftItems.takeIf { it > 0 }?.let { stringResource(R.string.merge_count_gifts, it) },
+        counts.giftItems.takeIf { it > 0 }?.let {
+            pluralStringResource(
+                R.plurals.merge_count_gifts,
+                it.toInt(),
+                it
+            )
+        },
         counts.fieldValues.takeIf { it > 0 }?.let {
-            stringResource(
-                R.string.merge_count_field_values,
+            pluralStringResource(
+                R.plurals.merge_count_field_values,
+                it.toInt(),
                 it
             )
         },
         counts.contactSyncLinks.takeIf { it > 0 }?.let {
-            stringResource(
-                R.string.merge_count_sync_links,
+            pluralStringResource(
+                R.plurals.merge_count_sync_links,
+                it.toInt(),
                 it
             )
         },
         counts.attachments.takeIf { it > 0 }?.let {
-            stringResource(
-                R.string.merge_count_attachments,
+            pluralStringResource(
+                R.plurals.merge_count_attachments,
+                it.toInt(),
                 it
             )
         },
         counts.preferences.takeIf { it > 0 }?.let {
-            stringResource(
-                R.string.merge_count_preferences,
+            pluralStringResource(
+                R.plurals.merge_count_preferences,
+                it.toInt(),
                 it
             )
         },
         counts.externalIdentities.takeIf { it > 0 }?.let {
-            stringResource(
-                R.string.merge_count_external_identities,
+            pluralStringResource(
+                R.plurals.merge_count_external_identities,
+                it.toInt(),
                 it
             )
         },
         counts.externalActivities.takeIf { it > 0 }?.let {
-            stringResource(
-                R.string.merge_count_external_activities,
+            pluralStringResource(
+                R.plurals.merge_count_external_activities,
+                it.toInt(),
                 it
             )
         },
         counts.cadencePolicies.takeIf { it > 0 }?.let {
-            stringResource(
-                R.string.merge_count_cadence,
+            pluralStringResource(
+                R.plurals.merge_count_cadence,
+                it.toInt(),
                 it
             )
         }

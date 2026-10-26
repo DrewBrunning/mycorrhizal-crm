@@ -102,6 +102,56 @@ class PluralResourcesTest {
     }
 
     @Test
+    fun `converted count strings render singular and plural in all five locales`() {
+        val expected = mapOf(
+            "en" to ("1 note" to "2 notes"),
+            "de" to ("1 Notiz" to "2 Notizen"),
+            "es" to ("1 nota" to "2 notas"),
+            "fr" to ("1 note" to "2 notes"),
+            "it" to ("1 nota" to "2 note")
+        )
+        for ((tag, forms) in expected) {
+            val ctx = contextFor(tag)
+            assertEquals("$tag singular", forms.first, plural(ctx, R.plurals.merge_count_notes, 1))
+            assertEquals("$tag plural", forms.second, plural(ctx, R.plurals.merge_count_notes, 2))
+        }
+    }
+
+    @Test
+    fun `es fr it render the many quantity for the dashboard due-in plural`() {
+        assertPlural(
+            contextFor("en"),
+            R.plurals.dashboard_stay_in_touch_due_in,
+            1_000_000,
+            "Due in 1000000 days"
+        )
+        assertPlural(
+            contextFor("de"),
+            R.plurals.dashboard_stay_in_touch_due_in,
+            1_000_000,
+            "In 1000000 Tagen fällig"
+        )
+        assertPlural(
+            contextFor("es"),
+            R.plurals.dashboard_stay_in_touch_due_in,
+            1_000_000,
+            "Vence en 1000000 días"
+        )
+        assertPlural(
+            contextFor("fr"),
+            R.plurals.dashboard_stay_in_touch_due_in,
+            1_000_000,
+            "À faire dans 1000000 jours"
+        )
+        assertPlural(
+            contextFor("it"),
+            R.plurals.dashboard_stay_in_touch_due_in,
+            1_000_000,
+            "In scadenza tra 1000000 giorni"
+        )
+    }
+
+    @Test
     fun `zero uses the plural form, not the singular`() {
         // French CLDR treats 0 as "one"; every other shipped locale uses "other".
         // Pin each so a future quantity edit can't silently change the meaning.

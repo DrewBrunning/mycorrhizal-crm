@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -136,7 +137,12 @@ fun deceasedColor(): Color = MaterialTheme.colorScheme.onSurfaceVariant
 fun HealthScoreBadge(score: Int, band: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val color = healthBandColor(band)
     val bandLabel = healthBandLabel(band)
-    val description = stringResource(R.string.health_score_badge_description, score, bandLabel)
+    val description = pluralStringResource(
+        R.plurals.health_score_badge_description,
+        score,
+        score,
+        bandLabel
+    )
     val actionLabel = stringResource(R.string.health_score_view_details)
     Row(
         modifier = modifier

@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -230,7 +231,13 @@ private fun ResultStep(created: Int, updated: Int, skipped: Int, onDone: () -> U
         modifier = Modifier.fillMaxSize().padding(24.dp)
     ) {
         Text(
-            text = stringResource(R.string.import_vcf_result, created, updated, skipped),
+            text = pluralStringResource(
+                R.plurals.import_vcf_result,
+                created,
+                created,
+                updated,
+                skipped
+            ),
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.padding(top = 48.dp, bottom = 16.dp)
         )

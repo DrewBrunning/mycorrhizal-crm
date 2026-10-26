@@ -376,7 +376,7 @@ class ApiTokensScreenTest {
         composeTestRule.onAllNodesWithText("Revoke all")[0].performClick()
         composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithText("1 tokens revoked").assertIsDisplayed()
+        composeTestRule.onNodeWithText("1 token revoked").assertIsDisplayed()
     }
 
     @Test

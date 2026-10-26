@@ -41,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -397,7 +398,7 @@ private fun NetworkList(uiState: NetworkUiState, onOpenContact: (Int) -> Unit) {
                         text = if (depth == 1) {
                             stringResource(R.string.network_direct)
                         } else {
-                            stringResource(R.string.network_hops, depth)
+                            pluralStringResource(R.plurals.network_hops, depth, depth)
                         },
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.primary,

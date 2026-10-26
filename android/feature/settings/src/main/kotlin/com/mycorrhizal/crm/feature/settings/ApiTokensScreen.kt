@@ -42,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -199,8 +200,9 @@ fun ApiTokensScreen(onBack: () -> Unit, viewModel: ApiTokensViewModel = hiltView
                     state.revokedAllCount?.let { count ->
                         item {
                             Text(
-                                text = stringResource(
-                                    R.string.settings_api_tokens_revoke_all_success,
+                                text = pluralStringResource(
+                                    R.plurals.settings_api_tokens_revoke_all_success,
+                                    count,
                                     count
                                 ),
                                 color = MaterialTheme.colorScheme.tertiary,
@@ -279,7 +281,11 @@ fun ApiTokensScreen(onBack: () -> Unit, viewModel: ApiTokensViewModel = hiltView
             title = { Text(stringResource(R.string.settings_api_tokens_revoke_all_title)) },
             text = {
                 Text(
-                    stringResource(R.string.settings_api_tokens_revoke_all_body, state.activeCount)
+                    pluralStringResource(
+                        R.plurals.settings_api_tokens_revoke_all_body,
+                        state.activeCount,
+                        state.activeCount
+                    )
                 )
             },
             confirmButton = {
@@ -460,7 +466,11 @@ internal fun CreateApiTokenDialog(
                             onClick = { expiresInDays = days },
                             label = {
                                 Text(
-                                    stringResource(R.string.settings_api_tokens_expiry_days, days),
+                                    pluralStringResource(
+                                        R.plurals.settings_api_tokens_expiry_days,
+                                        days,
+                                        days
+                                    ),
                                     style = MaterialTheme.typography.labelMedium
                                 )
                             }

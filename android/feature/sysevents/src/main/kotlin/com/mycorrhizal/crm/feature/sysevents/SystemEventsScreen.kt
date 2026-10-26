@@ -50,6 +50,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
@@ -210,8 +211,9 @@ fun SystemEventsScreen(onBack: () -> Unit, viewModel: SystemEventsViewModel = hi
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = stringResource(
-                            R.string.sysevents_errors_banner,
+                        text = pluralStringResource(
+                            R.plurals.sysevents_errors_banner,
+                            state.eventIds.size,
                             state.eventIds.size
                         ),
                         style = MaterialTheme.typography.bodySmall
@@ -613,8 +615,9 @@ private fun BackgroundJobCard(item: JobRunHealth) {
             )
             if (failing) {
                 Text(
-                    text = stringResource(
-                        R.string.jobruns_consecutive_failures,
+                    text = pluralStringResource(
+                        R.plurals.jobruns_consecutive_failures,
+                        item.consecutiveFailures,
                         item.consecutiveFailures
                     ),
                     style = MaterialTheme.typography.bodySmall,
@@ -783,7 +786,13 @@ private fun ErrorBucketCard(bucket: ErrorBucket, onViewEvents: () -> Unit) {
                 enabled = bucket.eventIds.isNotEmpty(),
                 modifier = Modifier.testTag("error-bucket-view-${bucket.component}")
             ) {
-                Text(stringResource(R.string.error_aggregation_view_events, bucket.eventIds.size))
+                Text(
+                    pluralStringResource(
+                        R.plurals.error_aggregation_view_events,
+                        bucket.eventIds.size,
+                        bucket.eventIds.size
+                    )
+                )
             }
         }
     }
