@@ -197,16 +197,22 @@ does **not** prove selection; that is the manual run.
 
 ## Context-change evidence
 
-A semantic change to a skill description or name, an `AGENTS.md` rule, or the
-trigger/eval set is a hypothesis about agent behaviour. The PR records the
-before and after: the prompt-set version, the pinned agent/model/CLI version,
-the base and head refs, the prompt-to-skill result (or the affected task's
-result and control delta), and the artifact link. Link-only and typo-only edits
-are exempt; the PR says so explicitly.
+A semantic change to a skill description or name, an `AGENTS.md` rule, a
+trigger prompt, or a task's prompt/expect/not/suite/base-ref is a hypothesis
+about agent behaviour. The PR records the before and after: the prompt-set
+version, the pinned agent/model/CLI version (a profile when available, otherwise
+the exact command and flags), the base and head refs, the prompt-to-skill result
+(or the affected task's result and control delta), and the artifact link. A new
+rule uses `before: n/a (new)`; a removed rule uses `after: n/a (removed)`.
+Mechanical edits — link/path/typo fixes and base-ref refreshes — are exempt; the
+PR says so explicitly.
 
-A missing before/after is an unproven change, not a documentation nicety. The
-harness is advisory and never a merge gate, so the evidence is for the reviewer
-and for the next person who wonders whether the wording still earns its place.
+This is a reviewer checklist, not a CI gate. A missing before/after is an
+unproven change, not a documentation nicety. The harness is advisory and never a
+merge gate, so the evidence is for the reviewer and for the next person who
+wonders whether the wording still earns its place. The artifact link is only as
+durable as the artifact retention window; paste the result when the window is
+short.
 
 ## Milestone-gate audit
 
