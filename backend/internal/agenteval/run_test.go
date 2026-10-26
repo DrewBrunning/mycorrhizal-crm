@@ -463,3 +463,57 @@ func TestRenamedFilesReportsRename(t *testing.T) {
 		t.Fatalf("renames = %+v", got)
 	}
 }
+
+func TestRunWorktreeReportsIntegrityGitErrors(t *testing.T) {
+	tests := []struct {
+		name  string
+		token string
+		want  string
+	}{
+		{"head lookup", "rev-parse", "rev-parse"},
+		{"patch scan", "--unified=0", "integrity scan"},
+		{"deleted files", "--diff-filter=D", "diff-filter=D"},
+		{"renamed files", "--name-status", "name-status"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			root, sha := initRepo(t)
+			marker := filepath.Join(t.TempDir(), "marker")
+			installGitShim(t, tt.token, "fail", marker)
+			_, _, err := runWorktree(context.Background(), Options{
+				Root: root,
+				Spec: baseSpec(t, root, sha),
+				CommandRunner: func(context.Context, string, string, time.Duration) CommandResult {
+					touchMarker(t, marker)
+					return CommandResult{Passed: true}
+				},
+			}, filepath.Join(t.TempDir(), "wt"), false, "true")
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("err = %v, want substring %q", err, tt.want)
+			}
+		})
+	}
+}
+
+func TestRunWorktreeMarksTruncatedIntegrityScan(t *testing.T) {
+	root, sha := initRepo(t)
+	marker := filepath.Join(t.TempDir(), "marker")
+	installGitShim(t, "--unified=0", "huge", marker)
+	result, _, err := runWorktree(context.Background(), Options{
+		Root: root,
+		Spec: baseSpec(t, root, sha),
+		CommandRunner: func(context.Context, string, string, time.Duration) CommandResult {
+			touchMarker(t, marker)
+			return CommandResult{Passed: true}
+		},
+	}, filepath.Join(t.TempDir(), "wt"), false, "true")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !contains(result.IntegrityViolations, "integrity scan truncated: diff is too large to verify") {
+		t.Fatalf("violations = %v", result.IntegrityViolations)
+	}
+	if !contains(result.IntegrityWarnings, "integrity scan truncated at 16 MiB") {
+		t.Fatalf("warnings = %v", result.IntegrityWarnings)
+	}
+}

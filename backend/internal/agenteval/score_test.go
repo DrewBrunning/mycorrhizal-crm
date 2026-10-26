@@ -140,13 +140,13 @@ func TestCompare(t *testing.T) {
 func TestMarkdown(t *testing.T) {
 	a := Artifact{
 		Task: "demo", Status: "passed", BaseRef: sha, AgentName: "a", AgentModel: "m", AgentVersion: "1", AgentCommand: "true", DurationMS: 5,
-		Context:  &RunResult{Status: "passed", Success: true, SuiteCommands: []CommandResult{{Command: "true", Passed: true}}, ScopeViolations: []string{"v"}, HandEditedGenerated: []string{"h"}, MissingFindings: []string{"f"}},
+		Context:  &RunResult{Status: "passed", Success: true, SuiteCommands: []CommandResult{{Command: "true", Passed: true}}, ScopeViolations: []string{"v"}, HandEditedGenerated: []string{"h"}, IntegrityViolations: []string{"i"}, IntegrityWarnings: []string{"w"}, HeadMoved: true, MissingFindings: []string{"f"}},
 		Control:  &RunResult{Status: "passed", Success: true},
 		Delta:    &ControlDelta{Summary: "both passed"},
 		Stripped: []string{".agents/skills"},
 	}
 	md := Markdown(a)
-	for _, want := range []string{"# Agent eval: demo", "Context run", "Control run", "Scope: v", "Generated: h", "Missing finding: f", "Stripped for control"} {
+	for _, want := range []string{"# Agent eval: demo", "Context run", "Control run", "Scope: v", "Generated: h", "Integrity: i", "Integrity warning: w", "HEAD moved during the run", "Missing finding: f", "Stripped for control"} {
 		if !strings.Contains(md, want) {
 			t.Fatalf("markdown missing %q:\n%s", want, md)
 		}
