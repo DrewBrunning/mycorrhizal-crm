@@ -66,6 +66,16 @@ func loadFixture(t *testing.T) *Filters {
 	return f
 }
 
+// withTemporaryAreas adds test-only entries to the area table for the duration
+// of one test. The production table has no Implies entries, but Build still
+// has to handle them (a future filter may depend on another area's checks).
+func withTemporaryAreas(t *testing.T, extra ...Area) {
+	t.Helper()
+	original := Areas
+	Areas = append(append([]Area{}, original...), extra...)
+	t.Cleanup(func() { Areas = original })
+}
+
 func TestLoadFiltersPreservesOrder(t *testing.T) {
 	f := loadFixture(t)
 	want := []string{"backend", "frontend", "android", "openapi", "infra", "docs-only"}
@@ -708,8 +718,28 @@ func TestAndroidTestTargetFallbacks(t *testing.T) {
 	if module, class := androidTestTarget("android/src/test/kotlin/A.kt"); module != "" || class != "" {
 		t.Errorf("missing module = (%q, %q)", module, class)
 	}
+	if module, class := androidTestTarget("android//src/test/kotlin/A.kt"); module != "" || class != "" {
+		t.Errorf("empty module prefix = (%q, %q)", module, class)
+	}
 	if module, class := androidTestTarget("android/app/src/test/resources/A.kt"); module != ":app" || class != "" {
 		t.Errorf("no kotlin/java dir = (%q, %q)", module, class)
+	}
+}
+
+func TestPrependFixStepsSkipsUnknownSelectedArea(t *testing.T) {
+	plan := &Plan{
+		Selected: []string{"not-an-area"},
+		Steps:    []Step{{Area: "docs", Command: Command{Label: "docs: docscheck"}}},
+	}
+	got := PrependFixSteps(plan)
+	if got != plan {
+		t.Fatal("PrependFixSteps returned a different plan for an unknown area")
+	}
+	if len(got.Steps) != 1 || got.Steps[0].Command.Label != "docs: docscheck" {
+		t.Errorf("Steps = %v, want the original plan untouched", got.Steps)
+	}
+	if len(got.Notes) != 0 {
+		t.Errorf("Notes = %v, want no fix-mode note when nothing was prepended", got.Notes)
 	}
 }
 
@@ -765,9 +795,56 @@ func TestBuildUnknownFilterIsSkipped(t *testing.T) {
 	}
 }
 
+func TestBuildExpandsImpliesAndSurfacesTheDependency(t *testing.T) {
+	withTemporaryAreas(t,
+		Area{Name: "fake-parent", Implies: []string{"fake-child", "fake-grandchild"}, Fast: []Command{{Label: "fake-parent: fast"}}},
+		Area{Name: "fake-child", Implies: []string{"fake-grandchild"}, Fast: []Command{{Label: "fake-child: fast"}}},
+		Area{Name: "fake-grandchild", Fast: []Command{{Label: "fake-grandchild: fast"}}},
+	)
+	f, err := LoadFilters(strings.NewReader("fake-parent:\n  - 'fake/**'\n"))
+	if err != nil {
+		t.Fatalf("LoadFilters: %v", err)
+	}
+
+	plan := Build(f, []string{"fake/x.go"}, ModeFast, "origin/main")
+	if got := strings.Join(plan.Selected, ","); got != "fake-child,fake-grandchild,fake-parent" {
+		t.Fatalf("Selected = %v, want every implied area", plan.Selected)
+	}
+	if !contains(plan.Notes, "fake-parent implies fake-child, fake-grandchild") {
+		t.Errorf("Notes = %v, want the implication", plan.Notes)
+	}
+	// An implying area delegates to its targets; it must not run its own Fast
+	// steps as well (that is how openapi used to pull in every client suite).
+	for _, label := range labelsFor(plan, "fake-parent") {
+		t.Errorf("implying area ran %q; it should only select its targets", label)
+	}
+	for _, label := range labelsFor(plan, "fake-child") {
+		t.Errorf("implying area ran %q; it should only select its targets", label)
+	}
+	if got := labelsFor(plan, "fake-grandchild"); !contains(got, "fake-grandchild: fast") {
+		t.Errorf("implied target missing its step; got %v", got)
+	}
+}
+
+func TestBuildSkipsAreaWithNoCommandsOrNote(t *testing.T) {
+	withTemporaryAreas(t, Area{Name: "fake-empty"})
+	f, err := LoadFilters(strings.NewReader("fake-empty:\n  - 'empty/**'\n"))
+	if err != nil {
+		t.Fatalf("LoadFilters: %v", err)
+	}
+
+	plan := Build(f, []string{"empty/x.txt"}, ModeFast, "origin/main")
+	if len(plan.Skipped) != 1 || plan.Skipped[0].Area != "fake-empty" {
+		t.Fatalf("Skipped = %v, want fake-empty", plan.Skipped)
+	}
+	if plan.Skipped[0].Reason != "no local command is defined for this filter" {
+		t.Errorf("Reason = %q, want the fallback reason", plan.Skipped[0].Reason)
+	}
+}
+
 func TestBuildAndroidTestWithoutModuleIsIgnored(t *testing.T) {
 	f := loadFixture(t)
-	plan := Build(f, []string{"android/src/test/kotlin/A.kt"}, ModeFull, "origin/main")
+	plan := Build(f, []string{"android/src/test/kotlin/ContactTest.kt"}, ModeFull, "origin/main")
 	if got := countStress(plan, "android"); got != 0 {
 		t.Errorf("stress steps = %d, want 0", got)
 	}
