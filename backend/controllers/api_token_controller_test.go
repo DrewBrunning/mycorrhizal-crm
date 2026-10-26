@@ -421,7 +421,7 @@ func TestRotateApiToken_Success(t *testing.T) {
 	assert.Equal(t, "sync-device", resp.Name, "name carries over")
 	assert.Equal(t, "carddav", resp.Scope, "scope carries over")
 	assert.Contains(t, resp.Token, "mycorrhizal_")
-	require.NotNil(t, resp.ExpiresAt)
+	assert.Nil(t, resp.ExpiresAt, "a DAV app password with no expiry stays no-expiry")
 
 	var reloadedOld models.ApiToken
 	db.First(&reloadedOld, old.ID)
@@ -486,4 +486,234 @@ func TestRotateApiToken_InvalidID(t *testing.T) {
 
 	alAssertError(t, w, http.StatusBadRequest, "INVALID_INPUT", "id")
 	alAssertApiTokenUntouched(t, db, tok)
+}
+
+func TestCreateApiToken_ExplicitScopes(t *testing.T) {
+	db, router := setupRouter(t)
+
+	router.POST("/api-tokens", middleware.ValidateJSONMiddleware(&models.ApiTokenInput{}), CreateApiToken)
+
+	input := models.ApiTokenInput{Name: "thunderbird", Scopes: &[]string{"carddav", "caldav", "carddav"}}
+	body, _ := json.Marshal(input)
+	req, _ := http.NewRequest("POST", "/api-tokens", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+
+	var resp models.ApiTokenCreateResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Equal(t, []string{"carddav", "caldav"}, resp.Scopes)
+	assert.Equal(t, "carddav", resp.Scope)
+
+	var stored models.ApiToken
+	require.NoError(t, db.First(&stored, resp.ID).Error)
+	assert.Equal(t, []string{"carddav", "caldav"}, stored.Scopes)
+}
+
+func TestCreateApiToken_InvalidScopesRejected(t *testing.T) {
+	db, router := setupRouter(t)
+
+	router.POST("/api-tokens", middleware.ValidateJSONMiddleware(&models.ApiTokenInput{}), CreateApiToken)
+
+	body, _ := json.Marshal(map[string]any{"name": "bad-scope", "scopes": []string{"admin"}})
+	req, _ := http.NewRequest("POST", "/api-tokens", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	alAssertValidation(t, w, "Scopes[0]")
+	var n int64
+	require.NoError(t, db.Model(&models.ApiToken{}).Count(&n).Error)
+	assert.Zero(t, n, "a rejected create must not insert a token")
+}
+
+func TestCreateApiToken_EmptyScopesRejected(t *testing.T) {
+	db, router := setupRouter(t)
+
+	router.POST("/api-tokens", middleware.ValidateJSONMiddleware(&models.ApiTokenInput{}), CreateApiToken)
+
+	body, _ := json.Marshal(map[string]any{"name": "empty-scope", "scopes": []string{}})
+	req, _ := http.NewRequest("POST", "/api-tokens", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	var n int64
+	require.NoError(t, db.Model(&models.ApiToken{}).Count(&n).Error)
+	assert.Zero(t, n)
+}
+
+func TestCreateApiToken_LegacyScopeExpandsToScopeSet(t *testing.T) {
+	db, router := setupRouter(t)
+
+	router.POST("/api-tokens", middleware.ValidateJSONMiddleware(&models.ApiTokenInput{}), CreateApiToken)
+
+	input := models.ApiTokenInput{Name: "legacy-sync", Scope: "carddav"}
+	body, _ := json.Marshal(input)
+	req, _ := http.NewRequest("POST", "/api-tokens", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+
+	var resp models.ApiTokenCreateResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Equal(t, []string{"carddav", "caldav"}, resp.Scopes)
+	assert.Equal(t, "carddav", resp.Scope)
+
+	var stored models.ApiToken
+	require.NoError(t, db.First(&stored, resp.ID).Error)
+	assert.Equal(t, []string{"carddav", "caldav"}, stored.Scopes)
+}
+
+func TestRotateApiToken_PreservesExplicitScopes(t *testing.T) {
+	db, router := setupRouter(t)
+
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+
+	expires := time.Now().Add(24 * time.Hour)
+	old := models.ApiToken{
+		UserID:    user.ID,
+		Name:      "scoped",
+		TokenHash: "rotate-scopes-hash",
+		Scope:     "custom",
+		Scopes:    []string{"api:read", "caldav"},
+		ExpiresAt: &expires,
+	}
+	require.NoError(t, db.Create(&old).Error)
+
+	router.POST("/api-tokens/:id/rotate", RotateApiToken)
+	req, _ := http.NewRequest("POST", "/api-tokens/"+strconv.FormatUint(uint64(old.ID), 10)+"/rotate", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+	var resp models.ApiTokenCreateResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Equal(t, []string{"api:read", "caldav"}, resp.Scopes)
+
+	var stored models.ApiToken
+	require.NoError(t, db.First(&stored, resp.ID).Error)
+	assert.Equal(t, []string{"api:read", "caldav"}, stored.Scopes)
+}
+
+func TestCreateApiToken_DAVOnlyMayNeverExpire(t *testing.T) {
+	db, router := setupRouter(t)
+
+	router.POST("/api-tokens", middleware.ValidateJSONMiddleware(&models.ApiTokenInput{}), CreateApiToken)
+
+	input := models.ApiTokenInput{Name: "dav forever", Scopes: &[]string{"carddav", "caldav"}, NeverExpires: true}
+	body, _ := json.Marshal(input)
+	req, _ := http.NewRequest("POST", "/api-tokens", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+	var resp models.ApiTokenCreateResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Nil(t, resp.ExpiresAt)
+
+	var stored models.ApiToken
+	require.NoError(t, db.First(&stored, resp.ID).Error)
+	assert.Nil(t, stored.ExpiresAt)
+}
+
+func TestCreateApiToken_NonDAVNeverExpiresRejected(t *testing.T) {
+	db, router := setupRouter(t)
+
+	router.POST("/api-tokens", middleware.ValidateJSONMiddleware(&models.ApiTokenInput{}), CreateApiToken)
+
+	input := models.ApiTokenInput{Name: "api forever", Scopes: &[]string{"api:read"}, NeverExpires: true}
+	body, _ := json.Marshal(input)
+	req, _ := http.NewRequest("POST", "/api-tokens", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	var n int64
+	require.NoError(t, db.Model(&models.ApiToken{}).Count(&n).Error)
+	assert.Zero(t, n)
+}
+
+func TestCreateApiToken_NeverExpiresWithExpiryRejected(t *testing.T) {
+	db, router := setupRouter(t)
+
+	router.POST("/api-tokens", middleware.ValidateJSONMiddleware(&models.ApiTokenInput{}), CreateApiToken)
+
+	days := 90
+	scopes := []string{"carddav"}
+	input := models.ApiTokenInput{Name: "conflict", Scopes: &scopes, ExpiresInDays: &days, NeverExpires: true}
+	body, _ := json.Marshal(input)
+	req, _ := http.NewRequest("POST", "/api-tokens", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	var n int64
+	require.NoError(t, db.Model(&models.ApiToken{}).Count(&n).Error)
+	assert.Zero(t, n)
+}
+
+func TestCreateApiToken_InvalidScopesResolvedByHandler(t *testing.T) {
+	db, router := setupRouter(t)
+
+	router.POST("/api-tokens", withValidated(func() any { return &models.ApiTokenInput{} }), CreateApiToken)
+
+	scopes := []string{"admin"}
+	input := models.ApiTokenInput{Name: "bad-scopes", Scopes: &scopes}
+	body, _ := json.Marshal(input)
+	req, _ := http.NewRequest("POST", "/api-tokens", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	var n int64
+	require.NoError(t, db.Model(&models.ApiToken{}).Count(&n).Error)
+	assert.Zero(t, n)
+}
+
+func TestCreateApiToken_InvalidScopeResolvedByHandler(t *testing.T) {
+	db, router := setupRouter(t)
+
+	router.POST("/api-tokens", withValidated(func() any { return &models.ApiTokenInput{} }), CreateApiToken)
+
+	input := models.ApiTokenInput{Name: "bad", Scope: "admin"}
+	body, _ := json.Marshal(input)
+	req, _ := http.NewRequest("POST", "/api-tokens", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	var n int64
+	require.NoError(t, db.Model(&models.ApiToken{}).Count(&n).Error)
+	assert.Zero(t, n)
+}
+
+func TestRotateApiToken_NonDAVLegacyNilExpiryGetsExpiry(t *testing.T) {
+	db, router := setupRouter(t)
+
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+	old := models.ApiToken{UserID: user.ID, Name: "legacy-api", TokenHash: "legacy-api-hash", Scope: "full"}
+	require.NoError(t, db.Create(&old).Error)
+
+	router.POST("/api-tokens/:id/rotate", RotateApiToken)
+	req, _ := http.NewRequest("POST", "/api-tokens/"+strconv.FormatUint(uint64(old.ID), 10)+"/rotate", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+	var resp models.ApiTokenCreateResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	require.NotNil(t, resp.ExpiresAt, "a non-DAV legacy NULL-expiry token must get a bounded lifetime on rotation")
 }

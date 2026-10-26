@@ -705,6 +705,12 @@
     <string name="settings_api_tokens_revoked">Widerrufen</string>
     <string name="settings_api_tokens_expired">Abgelaufen</string>
     <string name="settings_api_tokens_scope_full">Voller Zugriff</string>
+    <string name="settings_api_tokens_scope_calendar">Kalender (CalDAV)</string>
+    <string name="settings_api_tokens_scope_both">Kontakte + Kalender</string>
+    <string name="settings_api_tokens_scope_api">API / Automatisierung</string>
+    <string name="settings_api_tokens_scope_mcp">MCP / KI-Assistent</string>
+    <string name="settings_api_tokens_scope_preset_help">Nur die ausgewählten Berechtigungen. Die Verwaltung von Anmeldedaten erfordert immer eine angemeldete Sitzung.</string>
+    <string name="settings_api_tokens_scope_custom">Benutzerdefinierter Zugriff</string>
     <string name="settings_api_tokens_scope_carddav">Nur CardDAV</string>
     <string name="settings_api_tokens_created">Erstellt %1$s</string>
     <string name="settings_api_tokens_last_used">Zuletzt verwendet: %1$s</string>
@@ -717,7 +723,7 @@
     <string name="settings_api_tokens_expiry_label">Läuft ab in</string>
     <string name="settings_api_tokens_expiry_days">%1$d Tage</string>
     <string name="settings_api_tokens_scope_label">Zugriff</string>
-    <string name="settings_api_tokens_scope_full_help">Kann überall verwendet werden, wo die API einen Token akzeptiert, einschließlich CardDAV-Synchronisierung.</string>
+    <string name="settings_api_tokens_scope_full_help">Kann für den Datenzugriff verwendet werden, einschließlich CardDAV-Synchronisierung. Die Verwaltung von Anmeldedaten erfordert eine angemeldete Sitzung.</string>
     <string name="settings_api_tokens_scope_carddav_help">Funktioniert nur für die CardDAV-Kontaktsynchronisierung. Ein durchgesickertes Geräte-Credential kann nicht für den Rest der API verwendet werden.</string>
     <string name="settings_api_tokens_created_title">Token erstellt</string>
     <string name="settings_api_tokens_created_warning">Dieser Token wird nicht erneut angezeigt. Kopieren Sie ihn jetzt und bewahren Sie ihn sicher auf.</string>

@@ -12,6 +12,9 @@ export interface User {
   // Present only on the /users/me response. VCardUID of the caller's "Me"
   // contact (T90); null/absent means none is set.
   self_contact_vcard_uid?: string | null;
+  // Issue #2010: whether the account password may authenticate CardDAV/CalDAV
+  // when no second factor is enrolled.
+  allow_dav_password?: boolean;
 }
 
 export interface UsersListResponse {

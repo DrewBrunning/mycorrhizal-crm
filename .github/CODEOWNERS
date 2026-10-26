@@ -35,6 +35,15 @@
 # npm supply-chain scan: the ignore list is the accepted-findings allowlist.
 /frontend/guarddog.ignore                          @DrewBrunning
 /.github/workflows/npm-supply-chain.yml            @DrewBrunning
+# App-token history scan: the rule/allowlist, scanner and its tests, workflow
+# steps, and pin.
+/.gitleaks.toml                                    @DrewBrunning
+/.github/scripts/secret-scan-app-tokens.sh         @DrewBrunning
+/.github/scripts/tests/secret-scan-app-tokens.test.sh @DrewBrunning
+/.github/workflows/unit-tests.yml                  @DrewBrunning
+/.github/workflows/actionlint.yml                  @DrewBrunning
+/backend/tools.mod                                 @DrewBrunning
+/backend/tools.sum                                 @DrewBrunning
 
 # Generated contracts and baselines whose committed diff *is* the review.
 /backend/internal/apibaseline/testdata/v1.json                    @DrewBrunning

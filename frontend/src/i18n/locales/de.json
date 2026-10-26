@@ -1301,7 +1301,8 @@
         "codeLabel": "Verifizierungscode",
         "codeHelp": "6-stelliger Code aus Ihrer Authentifizierungs-App.",
         "confirmButton": "Aktivieren und fortfahren",
-        "enabling": "Wird aktiviert..."
+        "enabling": "Wird aktiviert...",
+        "davWarning": "Wenn du Kontakte oder Kalender über CardDAV/CalDAV synchronisierst, erstelle vor dem Aktivieren der Zwei-Faktor-Authentifizierung ein App-Passwort. Dein Kontopasswort funktioniert dort dann nicht mehr."
       },
       "disable": {
         "title": "Zwei-Faktor-Authentifizierung deaktivieren",
@@ -1355,7 +1356,8 @@
         "confirm": "Passkey entfernen",
         "submitting": "Bitte warten...",
         "useAnotherPasskey": "Stattdessen mit einem anderen Passkey bestätigen"
-      }
+      },
+      "davWarning": "Wenn du Kontakte oder Kalender über CardDAV/CalDAV synchronisierst, erstelle vor dem Hinzufügen eines Passkeys ein App-Passwort. Dein Kontopasswort funktioniert dort dann nicht mehr."
     },
     "secondFactorProof": {
       "title": "Bestätige, dass du es bist",
@@ -2019,7 +2021,7 @@
     }
   },
   "apiTokens": {
-    "title": "API-Tokens",
+    "title": "App-Passwörter & API-Token",
     "createButton": "Token erstellen",
     "neverUsed": "Nie",
     "active": "Aktiv",
@@ -2045,24 +2047,41 @@
       "expires": "Läuft ab"
     },
     "createDialog": {
-      "title": "API-Token erstellen",
-      "nameLabel": "Token-Name",
+      "title": "App-Passwort erstellen",
+      "nameLabel": "Beschreibung",
       "createButton": "Erstellen",
       "expiryLabel": "Läuft ab in",
       "expiryDays_one": "{{count}} Tag",
       "expiryDays_other": "{{count}} Tage",
       "scopeLabel": "Zugriff",
-      "scopeFull": "Voller Zugriff",
-      "scopeCardDAV": "Nur CardDAV",
-      "scopeFullHelp": "Kann überall verwendet werden, wo die API einen Token akzeptiert, einschließlich CardDAV-Synchronisierung.",
-      "scopeCardDAVHelp": "Funktioniert nur für die CardDAV-Kontaktsynchronisierung. Ein durchgesickertes Geräte-Credential kann nicht für den Rest der API verwendet werden."
+      "scopeFull": "Vollzugriff (Legacy)",
+      "scopeCardDAV": "Kontaktsynchronisierung (CardDAV)",
+      "scopeCalDAV": "Kalender (CalDAV)",
+      "scopeBoth": "Kontakte + Kalender",
+      "scopeAPI": "API / Automatisierung",
+      "scopeMCP": "MCP / KI-Assistent",
+      "scopeHelp": {
+        "full": "Alle Berechtigungen. Die Verwaltung von Anmeldedaten und Identität erfordert weiterhin eine interaktive Sitzung.",
+        "contacts": "Kontakte nur über CardDAV lesen und schreiben.",
+        "calendar": "Kalenderdaten nur über CalDAV lesen.",
+        "both": "Kontakte lesen/schreiben und Kalenderdaten lesen.",
+        "api": "Die REST-API lesen und schreiben, aber kein CardDAV/CalDAV oder MCP.",
+        "mcp": "Die schreibgeschützten MCP-Werkzeuge nutzen, ohne REST- oder CardDAV/CalDAV-Zugriff."
+      },
+      "neverExpires": "Läuft nie ab",
+      "neverExpiresHelp": "Nur für reine CardDAV-/CalDAV-App-Passwörter verfügbar. API- und MCP-Token müssen ablaufen."
     },
     "createdDialog": {
       "title": "Token erstellt",
       "warning": "Dieser Token wird nicht erneut angezeigt. Kopieren Sie ihn jetzt und bewahren Sie ihn sicher auf.",
       "copy": "Kopieren",
       "copied": "Kopiert!",
-      "done": "Fertig, ich habe ihn gespeichert"
+      "done": "Fertig, ich habe ihn gespeichert",
+      "clientHelp": "Verwende diese Werte in deinem DAV-Client. Dasselbe Geheimnis gilt für die ausgewählten Berechtigungen.",
+      "usernameLabel": "Benutzername",
+      "carddavUrlLabel": "CardDAV-Server-URL",
+      "caldavUrlLabel": "CalDAV-Server-URL",
+      "secretLabel": "App-Passwort"
     },
     "revokeDialog": {
       "title": "Token widerrufen",
@@ -2084,7 +2103,8 @@
       "title": "Token rotiert",
       "warning": "Das alte Token wurde widerrufen. Dieses neue Token wird nicht erneut angezeigt — kopieren Sie es jetzt und bewahren Sie es sicher auf."
     },
-    "expired": "Abgelaufen"
+    "expired": "Abgelaufen",
+    "hint": "Verwende ein App-Passwort pro Gerät oder App. Der Klartext wird einmal angezeigt; gespeichert wird nur sein Hash."
   },
   "feeds": {
     "title": "Feeds",
@@ -3321,5 +3341,14 @@
       "background_jobs": "Hintergrundjobs",
       "version": "Version"
     }
+  },
+  "davPassword": {
+    "title": "CardDAV-/CalDAV-Passwort",
+    "description": "Erlaube dein Kontopasswort für die Anmeldung bei CardDAV- und CalDAV-Clients, solange kein zweiter Faktor eingerichtet ist. App-Passwörter sind sicherer und empfohlen.",
+    "toggle": "Kontopasswort für CardDAV/CalDAV erlauben",
+    "twoFactorNotice": "Die Zwei-Faktor-Authentifizierung ist aktiv, daher wird das Kontopasswort bei CardDAV/CalDAV immer abgelehnt. Erstelle unten ein App-Passwort.",
+    "success": "Richtlinie für das CardDAV-/CalDAV-Passwort aktualisiert.",
+    "error": "Die Richtlinie für das CardDAV-/CalDAV-Passwort konnte nicht aktualisiert werden.",
+    "loadError": "Die Richtlinie für das CardDAV-/CalDAV-Passwort konnte nicht geladen werden."
   }
 }

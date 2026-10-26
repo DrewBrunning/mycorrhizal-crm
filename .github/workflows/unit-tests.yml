@@ -138,6 +138,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # Issue #1877 follow-up: the app-token history scan walks every
+          # commit, so the default shallow checkout is not enough.
+          fetch-depth: 0
           persist-credentials: false
 
       # Issue #1910: repo-wide spelling gate. This job runs unconditionally
@@ -153,7 +156,49 @@ jobs:
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: backend/go.mod
-          cache-dependency-path: backend/go.sum
+          cache-dependency-path: |
+            backend/go.sum
+            backend/tools.sum
+
+      # Issue #1877 follow-up: the app-token gitleaks rule was only enforced by
+      # the local pre-commit hook (`gitleaks protect --staged`). A token
+      # committed with `--no-verify` or through the web UI was missed:
+      # TruffleHog and Trivy do not know the `mycorrhizal_` format, and GitHub
+      # push protection cannot take custom patterns on this repository. This
+      # job is already required and runs unconditionally, so adding the
+      # full-history scan here blocks a merge without a new status context.
+      # gitleaks is pinned in backend/tools.mod (a CI-only module graph), so the
+      # rule engine version is reproducible and checksum-verified. The published
+      # module still declares the legacy github.com/zricethezav/gitleaks/v8
+      # path (the repository moved to github.com/gitleaks/gitleaks), so the
+      # import path follows the module.
+      - name: Build pinned gitleaks (app-token history scan)
+        working-directory: backend
+        env:
+          GITLEAKS_BIN: ${{ runner.temp }}/gitleaks
+        # Issue #1551: this job takes no tools.mod `go tool` path, so the
+        # shared retried-download convention does not cover it. Retry the build
+        # (which performs the module-proxy fetch) so a transient proxy/sumdb
+        # failure cannot redden this required, always-on job.
+        run: |
+          for attempt in 1 2 3; do
+            go build -modfile=tools.mod -o "$GITLEAKS_BIN" github.com/zricethezav/gitleaks/v8 && exit 0
+            echo "::warning::gitleaks build attempt $attempt failed; retrying"
+            sleep 10
+          done
+          exit 1
+
+      # The script reads `.gitleaks.toml` from origin/<default branch>, not the
+      # PR's copy, extracts only `mycorrhizal-app-token` (so no global allowlist
+      # is inherited), scans the git directory with no `.gitleaksignore` or
+      # inline allows, and fails closed on a shallow checkout, missing/unreadable
+      # base config, unextractable rule, missing binary, or any finding.
+      - name: Scan full git history for app-minted tokens
+        env:
+          REPO_ROOT: ${{ github.workspace }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          GITLEAKS_BIN: ${{ runner.temp }}/gitleaks
+        run: bash .github/scripts/secret-scan-app-tokens.sh
 
       # Issue #1944: license-checker reads the resolved production
       # node_modules, so the same install license-compliance.yml's removed
@@ -166,10 +211,14 @@ jobs:
           cache: 'yarn'
           cache-dependency-path: frontend/yarn.lock
 
+      # license-checker reads package metadata only, so the tree is installed
+      # without lifecycle scripts: an install hook is untrusted code and must
+      # not execute in a job that holds a token (same rule as
+      # npm-supply-chain.yml's GuardDog job).
       - name: Install frontend dependencies (third-party notices)
         if: env.RUN_NOTICES == 'true'
         working-directory: frontend
-        run: yarn install --frozen-lockfile
+        run: yarn install --frozen-lockfile --ignore-scripts
 
       # Issue #1880: regenerate from the actual shipped dependency graph and
       # compare with the committed notice. A dependency bump (or a new
