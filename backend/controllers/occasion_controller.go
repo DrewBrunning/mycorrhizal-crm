@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/csv"
 	"fmt"
+	"mycorrhizal/contactmodel"
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/internal/clock"
 	"mycorrhizal/logger"
@@ -123,10 +124,21 @@ func GetOccasionCardListCSV(c *gin.Context) {
 		if err := db.Where("user_id = ? AND vcard_uid = ?", userID, obligation.EntityID).First(&contact).Error; err != nil {
 			continue // the referenced contact no longer exists or isn't owned; skip rather than fail the whole export
 		}
-		if len(contact.Addresses) == 0 {
+		// This CSV leaves the instance, so above-normal addresses (and their
+		// geo: coordinates) are withheld unless the caller explicitly opts in
+		// (issue #2052). Filter the stored Addresses through the same neutral
+		// Card shape ApplyFieldSelection uses, then take the first survivor.
+		addresses := make([]contactmodel.Address, len(contact.Addresses))
+		for i, a := range contact.Addresses {
+			addresses[i] = models.AddressFromContactAddress(a)
+		}
+		if !includeSensitive {
+			addresses = models.FilterSensitiveAddresses(addresses)
+		}
+		if len(addresses) == 0 {
 			continue
 		}
-		address := models.FormatAddress(contact.Addresses[0])
+		address := addresses[0].Full
 		if address == "" {
 			continue
 		}

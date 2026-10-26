@@ -346,3 +346,62 @@ func TestGetOccasionCardListCSV_RealMigratedSchema(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "Rowan")
 	assert.Contains(t, w.Body.String(), "9 Elm St")
 }
+
+// TestGetOccasionCardListCSVFiltersSensitiveAddresses is the issue #2052
+// regression: the card-list CSV is a copy that leaves the instance, so an
+// above-normal postal address (and its geo: coordinate) must be withheld by
+// default even when the obligation itself is normal. The first remaining
+// address is exported, and a contact with no exportable address is skipped.
+func TestGetOccasionCardListCSVFiltersSensitiveAddresses(t *testing.T) {
+	db, router := setupRouter(t)
+	registerOccasionCardListRoute(router)
+
+	var user models.User
+	db.First(&user)
+
+	privateFirst := models.Contact{
+		UserID: user.ID, Firstname: "PrivateFirst",
+		Addresses: []models.ContactAddress{
+			{Street: "1 Hidden St", City: "Secretville", Sensitivity: models.RelationshipSensitivitySecret, Coordinates: "geo:1,2"},
+			{Street: "2 Public St", City: "Openville", Sensitivity: models.RelationshipSensitivityNormal},
+		},
+	}
+	onlyPrivate := models.Contact{
+		UserID: user.ID, Firstname: "OnlyPrivate",
+		Addresses: []models.ContactAddress{
+			{Street: "3 Private Rd", City: "Hiddenville", Sensitivity: models.RelationshipSensitivityPrivate, Coordinates: "geo:3,4"},
+		},
+	}
+	control := models.Contact{
+		UserID: user.ID, Firstname: "NormalControl",
+		Addresses: []models.ContactAddress{{Street: "4 Control Rd", City: "Openville"}},
+	}
+	require.NoError(t, db.Create(&privateFirst).Error)
+	require.NoError(t, db.Create(&onlyPrivate).Error)
+	require.NoError(t, db.Create(&control).Error)
+
+	for _, contact := range []models.Contact{privateFirst, onlyPrivate, control} {
+		require.NoError(t, db.Create(&models.OccasionObligation{
+			UserID: user.ID, EntityID: contact.VCardUID, Kind: "card", Label: "Christmas card",
+			Active: true, Sensitivity: models.RelationshipSensitivityNormal,
+		}).Error)
+	}
+
+	w := doCardListGET(router, "/occasion-obligations/card-list")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	body := w.Body.String()
+	assert.Contains(t, body, "2 Public St", "the first remaining normal address must be exported")
+	assert.NotContains(t, body, "1 Hidden St", "a secret first address must not be exported by default")
+	assert.NotContains(t, body, "geo:1,2")
+	assert.NotContains(t, body, "OnlyPrivate", "a contact with no exportable address must be skipped")
+	assert.NotContains(t, body, "3 Private Rd")
+	assert.Contains(t, body, "4 Control Rd", "a normal control address must still be exported")
+
+	w = doCardListGET(router, "/occasion-obligations/card-list?include_sensitive=true")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	body = w.Body.String()
+	assert.Contains(t, body, "1 Hidden St", "include_sensitive=true is the explicit opt-in for the first address")
+	assert.NotContains(t, body, "2 Public St", "only the first address is exported, even after opting in")
+	assert.Contains(t, body, "OnlyPrivate", "the opt-in restores a contact with only a sensitive address")
+	assert.Contains(t, body, "3 Private Rd")
+}
