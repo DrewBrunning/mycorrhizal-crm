@@ -1,4 +1,4 @@
-import { act, cleanup, renderHook } from '@testing-library/react';
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { afterEach, beforeEach, describe, expect, type Mock, test, vi } from 'vitest';
@@ -70,6 +70,26 @@ let confirmSpy: ReturnType<typeof vi.spyOn>;
 let alertSpy: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
+  // Module mocks are shared across every test in this file, so a
+  // mockRejectedValue() left by one test would otherwise fail the next one
+  // depending on execution order. Reset implementations, then seed only the
+  // success defaults this suite relies on.
+  for (const apiMock of [
+    archiveContact,
+    unarchiveContact,
+    deleteContact,
+    favoriteContact,
+    getContactRecord,
+    unfavoriteContact,
+    setTargetCloseness,
+    clearTargetCloseness,
+    updateSelfContact,
+    fetchAndCacheUserInfo,
+  ]) {
+    vi.mocked(apiMock).mockReset();
+  }
+  vi.mocked(updateSelfContact).mockResolvedValue(undefined);
+  vi.mocked(fetchAndCacheUserInfo).mockResolvedValue(null);
   vi.spyOn(console, 'error').mockImplementation(() => {});
   confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
   alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
@@ -146,7 +166,7 @@ describe('delete', () => {
     await act(() => result.current.handleDeleteContact());
     expect(confirmSpy.mock.calls[0][0]).toContain('Alice Wonder');
     expect(deleteContact).toHaveBeenCalledWith('1', record.revision);
-    expect(location).toBe('/contacts');
+    await waitFor(() => expect(location).toBe('/contacts'));
   });
 
   test('a 412 (stale revision) calls onConflict instead of alerting and stays', async () => {

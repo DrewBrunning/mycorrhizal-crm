@@ -6,6 +6,7 @@ import ActivitiesPage from './ActivitiesPage';
 import { AnnouncerProvider } from './context/AnnouncerContext';
 import { DateFormatProvider } from './DateFormatProvider';
 import { pickDate } from './testSupport/dateField';
+import { useTimeZone } from './testSupport/timeZone';
 
 beforeEach(() => {
   localStorage.setItem(
@@ -386,8 +387,9 @@ test('editing an activity prefills the dialog, fetches all contacts once, and sa
 // #1727/#1778: west of UTC, a date picked in the date input (saved at 00:00Z)
 // shows the same calendar day in the list, in the edit form, and after saving.
 test('west of UTC an activity date shows the same day in the list and the edit form', async () => {
-  const originalTZ = process.env.TZ;
-  process.env.TZ = 'America/Chicago';
+  // process.env.TZ is read once by V8 at isolate start, so mutating it at
+  // runtime is a no-op (testSupport/timeZone.ts documents why).
+  const restoreTimeZone = useTimeZone('America/Chicago');
   try {
     const calls = mockFetchRoutes([
       {
@@ -412,7 +414,7 @@ test('west of UTC an activity date shows the same day in the list and the edit f
       expect(putCall?.body).toMatchObject({ date: '2026-01-05T00:00:00.000Z' });
     });
   } finally {
-    process.env.TZ = originalTZ;
+    restoreTimeZone();
   }
 });
 

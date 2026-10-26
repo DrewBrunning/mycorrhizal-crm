@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 import './i18n/config';
 import ContactSharesPage from './ContactSharesPage';
@@ -123,11 +123,20 @@ test('declining does nothing when the confirmation is cancelled', async () => {
   renderPage();
 
   await screen.findByText('Alice Anderson');
-  fireEvent.click(screen.getByRole('button', { name: 'Decline' }));
 
-  // Give any accidental async call a chance to fire before asserting it didn't.
-  await new Promise((r) => setTimeout(r, 10));
-  expect(wasDeclineRequested()).toBe(false);
+  vi.useFakeTimers();
+  try {
+    fireEvent.click(screen.getByRole('button', { name: 'Decline' }));
+
+    // Give any accidental async call a chance to fire before asserting it
+    // didn't, without a real sleep.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10);
+    });
+    expect(wasDeclineRequested()).toBe(false);
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 test('accepting opens the preview dialog and confirming completes the import', async () => {

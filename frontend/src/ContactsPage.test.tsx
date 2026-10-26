@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import './i18n/config';
@@ -422,15 +422,23 @@ test('a single character does not trigger a filtered search', async () => {
   renderPage();
   await screen.findByLabelText('Select Alice');
 
-  fireEvent.change(screen.getByLabelText(/search contacts/i), {
-    target: { value: 'a' },
-  });
+  vi.useFakeTimers();
+  try {
+    fireEvent.change(screen.getByLabelText(/search contacts/i), {
+      target: { value: 'a' },
+    });
 
-  // The two-character minimum means the single rune never becomes the URL
-  // param, so the list keeps its unfiltered query — no refetch, no search arg.
-  await new Promise((r) => setTimeout(r, 400));
-  expect(getContacts).toHaveBeenCalledTimes(1);
-  expect(getContacts).not.toHaveBeenCalledWith(expect.objectContaining({ search: 'a' }));
+    // The two-character minimum means the single rune never becomes the URL
+    // param, so the list keeps its unfiltered query — no refetch, no search
+    // arg. Advance past the debounce instead of sleeping in real time.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(400);
+    });
+    expect(getContacts).toHaveBeenCalledTimes(1);
+    expect(getContacts).not.toHaveBeenCalledWith(expect.objectContaining({ search: 'a' }));
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 test('clearing the search field restores the unfiltered list', async () => {

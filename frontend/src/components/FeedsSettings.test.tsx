@@ -14,7 +14,12 @@ import {
 import { SnackbarProvider } from '../context/SnackbarContext';
 import FeedsSettings from './FeedsSettings';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  // Restore the console.error no-op so the framework-warning gate in
+  // setupTests.ts is active for every later test.
+  vi.restoreAllMocks();
+});
 
 vi.mock('../api/feeds', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api/feeds')>();

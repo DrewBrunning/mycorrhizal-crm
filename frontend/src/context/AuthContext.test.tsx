@@ -1,7 +1,10 @@
-import { renderHook } from '@testing-library/react';
+import { cleanup, renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { describe, expect, test, vi } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import { AuthContext, useAuth } from './AuthContext';
+
+// This codebase's vitest setup does not auto-cleanup between tests.
+afterEach(cleanup);
 
 describe('AuthContext', () => {
   test('useAuth returns the provided token and setToken', () => {

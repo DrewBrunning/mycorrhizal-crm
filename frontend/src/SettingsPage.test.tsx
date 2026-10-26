@@ -338,6 +338,12 @@ test('creating a token shows the secret exactly once and refreshes the list', as
   );
   await waitFor(() => expect(screen.getByDisplayValue('mcrh_live_abc123')).toBeInTheDocument());
   await waitFor(() => expect(getApiTokens).toHaveBeenCalledTimes(2));
+
+  // "Exactly once": closing the dialog must not leave the plaintext in the DOM.
+  fireEvent.click(screen.getByRole('button', { name: /done, i saved it/i }));
+  await waitFor(() =>
+    expect(screen.queryByDisplayValue('mcrh_live_abc123')).not.toBeInTheDocument(),
+  );
 });
 
 test('the created-token dialog shows only the DAV URLs for its scopes', async () => {
@@ -432,6 +438,12 @@ test('rotating a token shows the new secret exactly once and refreshes the list'
   // snackbar -- match the heading specifically to avoid ambiguity.
   expect(screen.getByRole('heading', { name: 'Token Rotated' })).toBeInTheDocument();
   await waitFor(() => expect(getApiTokens).toHaveBeenCalledTimes(2));
+
+  // "Exactly once": closing the dialog must not leave the plaintext in the DOM.
+  fireEvent.click(screen.getByRole('button', { name: /done, i saved it/i }));
+  await waitFor(() =>
+    expect(screen.queryByDisplayValue('mcrh_live_rotated456')).not.toBeInTheDocument(),
+  );
 });
 
 // --- Self contact picker (T90) ----------------------------------------------

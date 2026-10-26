@@ -7,7 +7,12 @@ import { DateFormatProvider } from '../DateFormatProvider';
 import ReachOutSuggestionsList from './ReachOutSuggestionsList';
 
 // This codebase's vitest has no auto-cleanup (CLAUDE.md frontend trap #1).
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  // The behind-target test seeds the date-format preference; leaving it set
+  // changes later tests' formatting based on execution order.
+  localStorage.removeItem('dateFormat');
+});
 
 function suggestion(overrides: Partial<ReachOutSuggestion> = {}): ReachOutSuggestion {
   return {
