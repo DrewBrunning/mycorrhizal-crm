@@ -338,6 +338,66 @@ class MeerkatImportViewModelTest {
         }
 
     @Test
+    fun `a poll timeout after the import committed shows the committed result`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = reviewVm()
+            vm.maxPolls = 5
+            val committed = SourceImportResult(created = 2, skipped = 1)
+            coEvery { apiClient.confirmMeerkatImport(any()) } returns Result.success(Unit)
+            coEvery { apiClient.getMeerkatImportStatus("s1") } returnsMany listOf(
+                Result.success(status("importing")),
+                Result.success(status("importing_photos", result = committed)),
+                Result.success(status("importing_photos", result = committed)),
+                Result.success(status("importing_photos", result = committed)),
+                Result.success(status("importing_photos", result = committed))
+            )
+
+            vm.confirm()
+            advanceUntilIdle()
+
+            val state = vm.uiState.value
+            assertEquals(MeerkatImportStep.RESULT, state.step)
+            assertEquals(committed, state.result)
+            assertFalse(state.isImporting)
+            assertNull(state.error)
+            assertNull(state.errorRes)
+        }
+
+    @Test
+    fun `a failed poll after the import committed shows the committed result`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = reviewVm()
+            val committed = SourceImportResult(created = 3)
+            coEvery { apiClient.confirmMeerkatImport(any()) } returns Result.success(Unit)
+            coEvery { apiClient.getMeerkatImportStatus("s1") } returnsMany listOf(
+                Result.success(status("importing_photos", result = committed)),
+                Result.failure(RuntimeException("net"))
+            )
+
+            vm.confirm()
+            advanceUntilIdle()
+
+            assertEquals(MeerkatImportStep.RESULT, vm.uiState.value.step)
+            assertEquals(committed, vm.uiState.value.result)
+        }
+
+    @Test
+    fun `a poll timeout before anything committed still returns to review`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = reviewVm()
+            vm.maxPolls = 3
+            coEvery { apiClient.confirmMeerkatImport(any()) } returns Result.success(Unit)
+            coEvery { apiClient.getMeerkatImportStatus("s1") } returns
+                Result.success(status("importing"))
+
+            vm.confirm()
+            advanceUntilIdle()
+
+            assertEquals(MeerkatImportStep.REVIEW, vm.uiState.value.step)
+            assertNull(vm.uiState.value.result)
+        }
+
+    @Test
     fun `a failed confirm returns to review with the message`() =
         runTest(mainDispatcherRule.testDispatcher) {
             val vm = reviewVm()

@@ -84,6 +84,9 @@ class MeerkatImportViewModel @Inject constructor(
     /** Poll cadence; overridable so tests need not wait in real time. */
     internal var pollIntervalMillis: Long = POLL_INTERVAL_MILLIS
 
+    /** Poll budget per wait; overridable so tests need not run the real 10 minutes. */
+    internal var maxPolls: Int = MAX_POLLS
+
     /**
      * True once the server accepted a confirm. From then on leaving the screen
      * must not cancel: while `importing` a cancel rolls the confirmed import
@@ -169,7 +172,7 @@ class MeerkatImportViewModel @Inject constructor(
             val sessionId = connected.sessionId
             apiClient.startMeerkatFetch(sessionId, state.acceptUntested).exceptionOrNull()
                 ?.let { return@launch failToConnect(it.toApiError().displayMessage) }
-            val status = pollUntil(sessionId, terminal = setOf(PHASE_READY))
+            val status = pollUntil(sessionId, terminal = setOf(PHASE_READY)).terminal
             if (status == null || status.phase != PHASE_READY) {
                 return@launch failToConnect(status?.error)
             }
@@ -227,21 +230,28 @@ class MeerkatImportViewModel @Inject constructor(
                 .exceptionOrNull()
                 ?.let { return@launch failToReview(it.toApiError().displayMessage) }
             importConfirmed = true
-            val status = pollUntil(preview.sessionId, terminal = setOf(PHASE_DONE))
-            if (status?.phase == PHASE_DONE && status.result != null) {
-                _uiState.update {
-                    it.copy(
-                        step = MeerkatImportStep.RESULT,
-                        isImporting = false,
-                        result = status.result
-                    )
-                }
+            val polled = pollUntil(preview.sessionId, terminal = setOf(PHASE_DONE))
+            val status = polled.terminal
+            // The import commits before the profile-photo downloads finish, so a poll
+            // that ran out (or failed) after `status.result` appeared still imported.
+            val committed = polled.last?.result
+            val finished = status?.takeIf { it.phase == PHASE_DONE }?.result
+            if (finished != null) {
+                showResult(finished)
+            } else if (status == null && committed != null) {
+                showResult(committed)
             } else {
                 // A reported failure means the import is no longer running; with no
                 // status (poll failed or timed out) it may still be, so stay confirmed.
                 if (status != null) importConfirmed = false
                 failToReview(status?.error)
             }
+        }
+    }
+
+    private fun showResult(result: SourceImportResult) {
+        _uiState.update {
+            it.copy(step = MeerkatImportStep.RESULT, isImporting = false, result = result)
         }
     }
 
@@ -277,21 +287,28 @@ class MeerkatImportViewModel @Inject constructor(
         _uiState.update { it.copy(errorRes = null, error = null) }
     }
 
+    /** [terminal] is null when a poll request failed or [maxPolls] ran out; [last] is the last status seen. */
+    private class Polled(val terminal: SourceImportStatus?, val last: SourceImportStatus?)
+
     /**
-     * Polls until the phase is in [terminal] (or `failed`/`cancelled`), returning
-     * that status; null when a poll request itself fails or [MAX_POLLS] runs out.
+     * Polls until the phase is in [terminal] (or `failed`/`cancelled`). The result
+     * carries that status, or null when a poll request itself fails or [maxPolls]
+     * runs out, plus the last status seen either way.
      */
-    private suspend fun pollUntil(sessionId: String, terminal: Set<String>): SourceImportStatus? {
-        repeat(MAX_POLLS) {
-            val status = apiClient.getMeerkatImportStatus(sessionId).getOrNull() ?: return null
+    private suspend fun pollUntil(sessionId: String, terminal: Set<String>): Polled {
+        var last: SourceImportStatus? = null
+        repeat(maxPolls) {
+            val status = apiClient.getMeerkatImportStatus(sessionId).getOrNull()
+                ?: return Polled(null, last)
+            last = status
             if (status.phase in terminal || status.phase == PHASE_FAILED ||
                 status.phase == PHASE_CANCELLED
             ) {
-                return status
+                return Polled(status, status)
             }
             delay(pollIntervalMillis)
         }
-        return null
+        return Polled(null, last)
     }
 
     /**
