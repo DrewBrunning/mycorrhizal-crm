@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -256,9 +257,7 @@ private fun ConnectStep(
             supportingText = { Text(stringResource(R.string.meerkat_import_url_help)) },
             singleLine = true,
             enabled = !locked,
-            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                keyboardType = KeyboardType.Uri
-            ),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
             modifier = Modifier.fillMaxWidth().testTag("meerkat-import-url")
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -285,6 +284,10 @@ private fun ConnectStep(
                 supportingText = { Text(stringResource(R.string.meerkat_import_token_help)) },
                 singleLine = true,
                 enabled = !locked,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Password,
+                    autoCorrectEnabled = false
+                ),
                 visualTransformation = PasswordVisualTransformation(),
                 modifier = Modifier.fillMaxWidth().testTag("meerkat-import-token")
             )
@@ -295,6 +298,7 @@ private fun ConnectStep(
                 label = { Text(stringResource(R.string.meerkat_import_username_label)) },
                 singleLine = true,
                 enabled = !locked,
+                keyboardOptions = KeyboardOptions(autoCorrectEnabled = false),
                 modifier = Modifier.fillMaxWidth().testTag("meerkat-import-username")
             )
             OutlinedTextField(
@@ -304,6 +308,10 @@ private fun ConnectStep(
                 supportingText = { Text(stringResource(R.string.meerkat_import_password_help)) },
                 singleLine = true,
                 enabled = !locked,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Password,
+                    autoCorrectEnabled = false
+                ),
                 visualTransformation = PasswordVisualTransformation(),
                 modifier = Modifier.fillMaxWidth().testTag("meerkat-import-password")
             )
