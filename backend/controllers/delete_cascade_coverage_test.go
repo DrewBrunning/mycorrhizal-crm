@@ -106,7 +106,7 @@ var declaredCascadeCoverage = map[string]cascadeBucket{
 	"idempotency_keys":       goCascadeUser,
 	"immich_configs":         goCascadeUser,
 	"import_runs":            goCascadeUser,
-	"import_source_links":    fkCascadeUser,
+	"import_source_links":    goCascadeContact,
 	"link_field_types":       goCascadeUser,
 	"notification_configs":   goCascadeUser,
 	"occasion_events":        goCascadeUser,

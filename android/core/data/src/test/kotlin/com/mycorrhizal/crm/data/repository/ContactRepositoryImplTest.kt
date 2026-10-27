@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.mycorrhizal.crm.data.local.AppDatabase
+import com.mycorrhizal.crm.data.local.CacheSessionGuard
 import com.mycorrhizal.crm.domain.repository.ContactsPage
 import com.mycorrhizal.crm.model.network.CRMEnvelope
 import com.mycorrhizal.crm.model.network.Card
@@ -37,13 +38,15 @@ class ContactRepositoryImplTest {
     private lateinit var db: AppDatabase
     private lateinit var apiClient: ApiClient
     private lateinit var repository: ContactRepositoryImpl
+    private lateinit var guard: CacheSessionGuard
 
     @Before
     fun setup() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).build()
         apiClient = mockk()
-        repository = ContactRepositoryImpl(apiClient, db.cachedContactDao())
+        guard = CacheSessionGuard()
+        repository = ContactRepositoryImpl(apiClient, db.cachedContactDao(), guard)
     }
 
     @After
@@ -1186,4 +1189,40 @@ class ContactRepositoryImplTest {
 
         assertTrue(result.exceptionOrNull() is ApiError.PreconditionFailed)
     }
+
+    @Test
+    fun `a session change resets the feed cursor so the next sync bootstraps`() = runTest {
+        coEvery {
+            apiClient.listContacts(limit = 100, includeArchived = true)
+        } returns Result.success(
+            networkPage(listOf(summary(1, "Alice")), nextCursor = "old-cursor")
+        )
+        repository.syncContacts()
+
+        // Logout / profile switch.
+        guard.advance()
+
+        // A cold sync for the new account must bootstrap, not read ?since=old-cursor.
+        coEvery {
+            apiClient.listContacts(limit = 100, includeArchived = true)
+        } returns Result.success(networkPage(listOf(summary(9, "Zed"))))
+        val result = repository.syncContacts()
+
+        assertTrue(result.isSuccess)
+        assertEquals(listOf(9), db.cachedContactDao().getAll().map { it.id })
+    }
+
+    @Test
+    fun `a response that lands after the session changed is not written to the new mirror`() =
+        runTest {
+            coEvery { apiClient.listContacts(any(), any(), any(), any()) } coAnswers {
+                // The old account's request is still in flight when the session ends.
+                guard.advance()
+                Result.success(networkPage(listOf(summary(1, "OldAccount")), nextCursor = ""))
+            }
+
+            repository.listContacts()
+
+            assertTrue(db.cachedContactDao().getAll().isEmpty())
+        }
 }

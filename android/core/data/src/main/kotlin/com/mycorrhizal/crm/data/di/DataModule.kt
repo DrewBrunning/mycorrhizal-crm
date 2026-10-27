@@ -239,8 +239,9 @@ object DataModule {
     @Singleton
     fun provideSessionDataCleaner(
         @ApplicationContext context: android.content.Context,
-        database: AppDatabase
-    ): SessionDataCleaner = LocalDataCleaner(context, database)
+        database: AppDatabase,
+        guard: com.mycorrhizal.crm.data.local.CacheSessionGuard
+    ): SessionDataCleaner = LocalDataCleaner(context, database, guard)
 
     @Provides
     fun provideCachedContactDao(db: AppDatabase): CachedContactDao = db.cachedContactDao()
@@ -373,6 +374,7 @@ object DataModule {
         // switch actually tries to drain, by which point the manager exists.
         outboxDrainer: javax.inject.Provider<com.mycorrhizal.crm.data.session.OutboxDrainer>,
         profileSecretStorage: com.mycorrhizal.crm.data.session.ProfileSecretStorage,
+        transitionGate: com.mycorrhizal.crm.data.session.SessionTransitionGate,
         // Issue #1312: a Provider for the same cycle-avoidance reason as above.
         localServerHost: javax.inject.Provider<com.mycorrhizal.crm.data.local.LocalServerHost>
     ): DefaultSessionManager {
@@ -385,7 +387,8 @@ object DataModule {
             outboxDrainer = com.mycorrhizal.crm.data.session.OutboxDrainer {
                 outboxDrainer.get().drain()
             },
-            profileSecretStorage = profileSecretStorage
+            profileSecretStorage = profileSecretStorage,
+            transitionGate = transitionGate
         )
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         // Issue #678: a 401 on any API call must clear the session so the app

@@ -3,6 +3,7 @@ package services
 import (
 	"path/filepath"
 	"testing"
+	"time"
 
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/internal/meerkatfixture"
@@ -299,6 +300,26 @@ func TestMeerkatImport_ReRunIsIdempotent(t *testing.T) {
 	var contacts []models.Contact
 	require.NoError(t, db.Where("user_id = ?", user.ID).Find(&contacts).Error)
 	require.Len(t, contacts, 3)
+}
+
+// TestMeerkatImport_DeleteThenReimportRecreatesContact pins issue #2063: a
+// deleted imported contact must drop its ledger row so re-importing the source
+// creates it again instead of skipping it, and the integrity scan stays clean.
+func TestMeerkatImport_DeleteThenReimportRecreatesContact(t *testing.T) {
+	db, user, _, plan := importMeerkatFixture(t, nil)
+
+	var victim models.Contact
+	require.NoError(t, db.Where("user_id = ?", user.ID).Order("id").First(&victim).Error)
+	require.NoError(t, DeleteContact(db, victim, user.ID, time.Now()))
+
+	var dangling int64
+	require.NoError(t, db.Model(&models.ImportSourceLink{}).Where("entity_kind = ? AND entity_uid = ?", models.ImportSourceLinkKindContact, victim.VCardUID).Count(&dangling).Error)
+	assert.Zero(t, dangling, "deleted contact must leave no ledger row")
+
+	second, err := ExecuteSourceImport(db, user.ID, plan)
+	require.NoError(t, err)
+	assert.Equal(t, 1, second.ContactsCreated, "the deleted contact is re-imported")
+	assert.Equal(t, 2, second.ContactsSkipped)
 }
 
 // TestMeerkatImport_RelationshipDirectionPinned is the hand-verify pin from
