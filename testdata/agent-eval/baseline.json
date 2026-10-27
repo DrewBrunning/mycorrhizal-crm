@@ -2,17 +2,6 @@
   "version": 1,
   "profiles": {
     "pinned-opencode": {
-      "documentation-maintenance": {
-        "status": "passed",
-        "success": true,
-        "commands_passed": 2,
-        "commands_total": 2,
-        "scope_violations": 0,
-        "hand_edited_generated": 0,
-        "integrity_violations": 0,
-        "unexpected_changes": 0,
-        "config_hash": "5f6f4adc37f1ec58"
-      },
       "add-quality-gate": {
         "status": "passed",
         "success": true,
@@ -22,7 +11,7 @@
         "hand_edited_generated": 0,
         "integrity_violations": 0,
         "unexpected_changes": 0,
-        "config_hash": "978eba89f5be0f90"
+        "config_hash": "e3c681357998c672"
       },
       "api-contract-change": {
         "status": "passed",
@@ -33,7 +22,7 @@
         "hand_edited_generated": 0,
         "integrity_violations": 0,
         "unexpected_changes": 0,
-        "config_hash": "653f43fbae87c110"
+        "config_hash": "2a3a9dd5ffc8319c"
       },
       "api-contract-change-refuse": {
         "status": "passed",
@@ -90,6 +79,17 @@
         "unexpected_changes": 0,
         "config_hash": "ba9177bff826944a"
       },
+      "documentation-maintenance": {
+        "status": "passed",
+        "success": true,
+        "commands_passed": 2,
+        "commands_total": 2,
+        "scope_violations": 0,
+        "hand_edited_generated": 0,
+        "integrity_violations": 0,
+        "unexpected_changes": 0,
+        "config_hash": "5f6f4adc37f1ec58"
+      },
       "localization-change": {
         "status": "passed",
         "success": true,
@@ -143,7 +143,7 @@
         "hand_edited_generated": 0,
         "integrity_violations": 0,
         "unexpected_changes": 0,
-        "config_hash": "f2555bd8ff575078"
+        "config_hash": "2f055383ddca6b1c"
       }
     }
   }

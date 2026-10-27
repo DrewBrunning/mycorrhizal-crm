@@ -13,6 +13,7 @@ expect_paths:
   - .github/rulesets/**
   - docs/development/release-gates.md
   - docs/development/repo-governance.md
+  - backend/cmd/depexceptions/**
 forbid_paths:
   - .github/workflows/agent-eval.yml
   - .github/workflows/agent-eval-collect.yml
