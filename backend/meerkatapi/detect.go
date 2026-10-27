@@ -22,12 +22,14 @@ const (
 
 // Reason codes name why a server is unsupported, so clients can show a
 // translated sentence; Reason stays as the English fallback for a code a
-// client does not know. Empty when Supported.
+// client does not know. Empty when Supported. Area-prefixed ("meerkat_") per
+// the error reason-code naming rule (ADR 0037, #2095), so the registry can
+// adopt them unchanged (#2100); renaming a shipped value is a MAINT-02 break.
 const (
 	// ReasonOlderThanSupported: the contacts lack fields the adapter reads.
-	ReasonOlderThanSupported = "older_than_supported"
+	ReasonOlderThanSupported = "meerkat_version_older_than_supported"
 	// ReasonNewerThanTested: the contacts carry fields the adapter does not know.
-	ReasonNewerThanTested = "newer_than_tested"
+	ReasonNewerThanTested = "meerkat_version_newer_than_tested"
 )
 
 // VersionInfo is the result of feature detection.

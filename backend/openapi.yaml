@@ -17969,7 +17969,7 @@ components:
         generation: { type: string, description: "Matched adapter label (e.g. v1.5-v1.7) or unknown." }
         supported: { type: boolean, description: "False means untested; the client must send accept_untested on fetch." }
         reason: { type: string, description: "One user-facing sentence explaining an unsupported result; empty when supported." }
-        reason_code: { type: string, description: "Stable code for reason, for clients to translate: older_than_supported or newer_than_tested; empty when supported. Clients fall back to reason for a code they do not know (more may be added)." }
+        reason_code: { type: string, description: "Stable code for reason, for clients to translate: meerkat_version_older_than_supported or meerkat_version_newer_than_tested; empty when supported. Clients fall back to reason for a code they do not know (more may be added)." }
     MeerkatConnectResponse:
       type: object
       required: [session_id, version, source_user, totals, insecure_transport, estimated_fetch_seconds]

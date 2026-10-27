@@ -234,7 +234,8 @@ func TestDetect(t *testing.T) {
 		assert.Equal(t, GenerationUnknown, v.Generation)
 		assert.False(t, v.Supported)
 		assert.Contains(t, v.Reason, "older")
-		assert.Equal(t, ReasonOlderThanSupported, v.ReasonCode)
+		// Wire value: area-prefixed per ADR 0037 / #2095, so #2100 can register it unchanged.
+		assert.Equal(t, "meerkat_version_older_than_supported", v.ReasonCode)
 	})
 	t.Run("unknown extra field means newer, untested", func(t *testing.T) {
 		newer := contactObj(1, "Ada")
@@ -245,7 +246,7 @@ func TestDetect(t *testing.T) {
 		require.NoError(t, err)
 		assert.False(t, v.Supported)
 		assert.Contains(t, v.Reason, "newer")
-		assert.Equal(t, ReasonNewerThanTested, v.ReasonCode)
+		assert.Equal(t, "meerkat_version_newer_than_tested", v.ReasonCode)
 	})
 	t.Run("non-Meerkat host is rejected before any credential is sent", func(t *testing.T) {
 		var sawAuth atomic.Bool
