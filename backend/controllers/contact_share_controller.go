@@ -14,6 +14,7 @@ import (
 	"mycorrhizal/services"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -232,6 +233,39 @@ func getPendingShareForRecipient(c *gin.Context, db *gorm.DB, userID uint) (*mod
 	return &share, true
 }
 
+// shareConfirmLocks serializes ConfirmContactShare per share ID. Entries are
+// reference-counted and removed when idle so the map does not grow.
+var shareConfirmLocks = struct {
+	sync.Mutex
+	m map[string]*shareConfirmLock
+}{m: map[string]*shareConfirmLock{}}
+
+type shareConfirmLock struct {
+	mu   sync.Mutex
+	refs int
+}
+
+func lockShareConfirm(shareID string) (unlock func()) {
+	shareConfirmLocks.Lock()
+	l := shareConfirmLocks.m[shareID]
+	if l == nil {
+		l = &shareConfirmLock{}
+		shareConfirmLocks.m[shareID] = l
+	}
+	l.refs++
+	shareConfirmLocks.Unlock()
+
+	l.mu.Lock()
+	return func() {
+		l.mu.Unlock()
+		shareConfirmLocks.Lock()
+		if l.refs--; l.refs == 0 {
+			delete(shareConfirmLocks.m, shareID)
+		}
+		shareConfirmLocks.Unlock()
+	}
+}
+
 // AcceptContactShare parses the share's stored payload through the existing
 // VCF/JSContact import pipeline (services.ParseJSContact — the same
 // duplicate-detection + preview machinery UploadJSContactForImport uses) and
@@ -314,6 +348,14 @@ func ConfirmContactShare(c *gin.Context, cfg *config.Config) {
 		return
 	}
 
+	// Issue #2062: two Accepts mint two sessions for one share, so the
+	// per-session confirm lock cannot stop both from importing. Serialize
+	// confirms per share and re-read the status under the lock: the loser
+	// sees "accepted" and gets a 409. A failed import returns before the
+	// status flips, so the share stays pending and retryable.
+	unlock := lockShareConfirm(c.Param("id"))
+	defer unlock()
+
 	share, ok := getPendingShareForRecipient(c, db, userID)
 	if !ok {
 		return
@@ -344,7 +386,9 @@ func ConfirmContactShare(c *gin.Context, cfg *config.Config) {
 	now := clock.FromContext(c).Now()
 	share.Status = models.ContactShareStatusAccepted
 	share.RespondedAt = &now
-	if err := db.Save(share).Error; err != nil {
+	if err := db.Model(&models.ContactShare{}).
+		Where("id = ? AND status = ?", share.ID, models.ContactShareStatusPending).
+		Updates(map[string]any{"status": share.Status, "responded_at": now}).Error; err != nil {
 		// The import already committed — logging rather than aborting
 		// matches import_session.go's own precedent for a secondary,
 		// non-critical failure (CreateMergeNote).
