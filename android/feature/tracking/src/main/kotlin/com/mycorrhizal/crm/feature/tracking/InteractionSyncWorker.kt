@@ -5,6 +5,7 @@ import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.mycorrhizal.crm.data.repository.PendingInteractionFlusher
+import com.mycorrhizal.crm.data.session.SessionTransitionGate
 import com.mycorrhizal.crm.domain.repository.PendingInteractionRepository
 import com.mycorrhizal.crm.domain.repository.TrackingSettingsRepository
 import com.mycorrhizal.crm.network.ApiClient
@@ -37,10 +38,15 @@ class InteractionSyncWorker @AssistedInject constructor(
     @Assisted workerParams: WorkerParameters,
     private val pendingInteractionRepository: PendingInteractionRepository,
     private val trackingSettings: TrackingSettingsRepository,
-    apiClient: ApiClient
+    apiClient: ApiClient,
+    transitionGate: SessionTransitionGate
 ) : CoroutineWorker(appContext, workerParams) {
 
-    private val flusher = PendingInteractionFlusher(pendingInteractionRepository, apiClient)
+    private val flusher = PendingInteractionFlusher(
+        pendingInteractionRepository,
+        apiClient,
+        transitionGate
+    )
 
     override suspend fun doWork(): Result {
         if (!trackingSettings.callTrackingEnabled() && !trackingSettings.smsTrackingEnabled()) {

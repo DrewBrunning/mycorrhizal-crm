@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm.data.repository
 
 import com.mycorrhizal.crm.data.session.OutboxDrainer
+import com.mycorrhizal.crm.data.session.SessionTransitionGate
 import com.mycorrhizal.crm.domain.repository.PendingInteraction
 import com.mycorrhizal.crm.domain.repository.PendingInteractionRepository
 import com.mycorrhizal.crm.model.network.Activity
@@ -12,6 +13,7 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 import javax.inject.Inject
+import kotlinx.coroutines.sync.withLock
 
 /**
  * The outbox→server mapping, extracted from `InteractionSyncWorker` so the
@@ -26,17 +28,26 @@ import javax.inject.Inject
  */
 class PendingInteractionFlusher @Inject constructor(
     private val pendingInteractionRepository: PendingInteractionRepository,
-    private val apiClient: ApiClient
+    private val apiClient: ApiClient,
+    private val transitionGate: SessionTransitionGate
 ) : OutboxDrainer {
 
-    /** [OutboxDrainer]: true when the outbox is empty after the attempt. */
-    override suspend fun drain(): Boolean = flush() == 0
+    /**
+     * [OutboxDrainer]: true when the outbox is empty after the attempt. Called
+     * by the session manager while it already holds [transitionGate] (issue
+     * #2065), so it must not take it again.
+     */
+    override suspend fun drain(): Boolean = flushLocked() == 0
 
     /**
      * Syncs every currently-unsynced row and returns the number still unsynced
-     * afterwards (0 = fully drained).
+     * afterwards (0 = fully drained). Waits out any in-progress session
+     * switch/logout (issue #2065) so rows are only ever sent as the profile
+     * that recorded them.
      */
-    suspend fun flush(): Int {
+    suspend fun flush(): Int = transitionGate.mutex.withLock { flushLocked() }
+
+    private suspend fun flushLocked(): Int {
         val pending = pendingInteractionRepository.unsynced()
         if (pending.isEmpty()) return 0
 

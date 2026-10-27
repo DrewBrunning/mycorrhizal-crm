@@ -51,7 +51,8 @@ class InteractionSyncWorkerLogicTest {
         workerParams = mockk(relaxed = true),
         pendingInteractionRepository = pendingRepo,
         trackingSettings = trackingSettings,
-        apiClient = apiClient
+        apiClient = apiClient,
+        transitionGate = com.mycorrhizal.crm.data.session.SessionTransitionGate()
     )
 
     private fun enabledTracking() {

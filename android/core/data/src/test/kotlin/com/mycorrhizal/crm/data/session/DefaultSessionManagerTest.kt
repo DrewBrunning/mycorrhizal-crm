@@ -9,6 +9,7 @@ import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.network.LOCAL_SERVER_SENTINEL_URL
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -849,6 +850,63 @@ class DefaultSessionManagerTest {
         assertTrue(manager.profiles().isEmpty())
         assertNull(manager.bearerToken())
     }
+
+    @Test
+    fun `removing the active profile loads the next profile's token so it is usable without restart`() =
+        runTest {
+            val tokenStorage = FakeTokenStorage()
+            val manager = manager(tokenStorage = tokenStorage)
+            manager.init()
+            manager.setServerUrl("https://one.example.com")
+            val one = manager.activeProfileId()!!
+            manager.setSession("https://one.example.com", "jwt-one", SessionState(userId = 1))
+            val two = manager.addRemoteProfile("Two", "https://two.example.com").id
+            tokenStorage.tokens[two] = "jwt-two"
+
+            manager.removeProfile(one)
+
+            assertEquals(two, manager.activeProfileId())
+            assertEquals("jwt-two", manager.bearerToken())
+            assertTrue(manager.observeSession().first().isLoggedIn)
+            // The already-active early return in switchProfile must now be correct.
+            assertEquals(SwitchProfileResult.Switched, manager.switchProfile(two))
+            assertEquals("jwt-two", manager.bearerToken())
+        }
+
+    @Test
+    fun `a flush holding the transition gate blocks a profile switch until it finishes`() =
+        runTest {
+            val gate = SessionTransitionGate()
+            val cleared = mutableListOf<String>()
+            val tokenStorage = FakeTokenStorage()
+            val manager = DefaultSessionManager(
+                tokenStorage = tokenStorage,
+                prefsStorage = FakeSessionPrefsStorage(),
+                localDataCleaner = object : SessionDataCleaner {
+                    override suspend fun clear() {
+                        cleared += "clear"
+                    }
+                },
+                transitionGate = gate
+            )
+            manager.init()
+            manager.setServerUrl("https://one.example.com")
+            manager.setSession("https://one.example.com", "jwt-one", SessionState(userId = 1))
+            val two = manager.addRemoteProfile("Two", "https://two.example.com").id
+            tokenStorage.tokens[two] = "jwt-two"
+
+            gate.mutex.lock()
+            val switching = async { manager.switchProfile(two) }
+            advanceUntilIdle()
+            assertTrue("switch must wait for the in-flight flush", switching.isActive)
+            assertTrue(cleared.isEmpty())
+            assertEquals("jwt-one", manager.bearerToken())
+
+            gate.mutex.unlock()
+            advanceUntilIdle()
+            assertEquals(SwitchProfileResult.Switched, switching.await())
+            assertEquals("jwt-two", manager.bearerToken())
+        }
 
     private var managerHolder: DefaultSessionManager? = null
 
