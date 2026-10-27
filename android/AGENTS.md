@@ -25,9 +25,13 @@ anything mirrored across clients; the Kotlin-specific rules are here.
   the same task in `android-tests.yml`'s `Android (Gradle)` job. There is no Gradle step in the local
   pre-commit hook (too slow to launch a build per commit).
 - Dependency hygiene uses the `dependency-analysis` Gradle plugin: `cd android && ./gradlew
-  buildHealth` reports unused, misdeclared and transitively-used dependencies per module. It is
-  **advisory** in CI for now (the report is appended to the job summary); transitive advice is
-  ignored in the root build because the Compose BOM/AndroidX constraints supply those deliberately.
+  buildHealth` reports unused, misdeclared and transitively-used dependencies per module. It is a
+  **hard gate** in the `Android (Gradle)` job (the report is appended to the job summary): any advice
+  fails the build unless it is an accepted exception in the root `build.gradle.kts`, where each carries
+  its reason (transitive advice is ignored because the Compose BOM/AndroidX constraints supply those
+  deliberately; annotation-processor and convention-plugin dependencies are invisible to the analyzer).
+  A dependency change that alters a `release` classpath needs
+  `./gradlew resolveAndLockAll --write-locks` and the regenerated `gradle.lockfile`s.
 - `lint` is the Android resource/manifest/framework gate and treats **warnings** as errors (issue
   #1902): `./gradlew --warning-mode=fail lintDebug :app:lintObtainiumDebug :app:lintFossDebug`.
   The shared config is `android/lint.xml`, where every `ignore` carries a reason (dependency

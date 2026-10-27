@@ -8,6 +8,6 @@ android {
 
 dependencies {
     api(project(":core:model"))
-    implementation(libs.kotlinx.coroutines.core)
+    api(libs.kotlinx.coroutines.core)
     compileOnly(libs.javax.inject)
 }

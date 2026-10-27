@@ -14,10 +14,10 @@ android {
 // `test` source sets across modules, so putting it in `main` (the
 // Now-In-Android `core:testing` pattern) is the standard way around that.
 dependencies {
-    implementation(project(":core:data"))
+    api(project(":core:data"))
     implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.compose.ui)
-    implementation(libs.androidx.compose.ui.test.junit4)
+    api(libs.androidx.compose.ui)
+    api(libs.androidx.compose.ui.test.junit4)
     // Issue #1483: AssumeOrFailInCi uses JUnit's Assume and reads the instrumentation arguments.
     implementation(libs.junit)
     implementation(libs.androidx.test.runner)

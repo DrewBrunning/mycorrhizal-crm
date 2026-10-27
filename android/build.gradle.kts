@@ -15,17 +15,65 @@ plugins {
     id("mycorrhizal.dependency-analysis")
 }
 
-// Issue #1908: dependency-analysis. The Compose BOM and the AndroidX
-// constraints deliberately supply many artifacts transitively; declaring each
-// one directly would duplicate the BOM and add churn without changing the
-// resolved graph, so that advisory is ignored. Unused and misconfigured
-// dependencies stay enabled in the advisory report; the existing debt is
-// recorded by the CI step rather than rewritten in this change.
+// Issue #1908: dependency-analysis. Every item below is an accepted exception
+// with its reason; everything else `buildHealth` reports fails the build
+// (`onAny` fail), and so fails the `Android (Gradle)` CI job.
+//
+// - Transitive usage: the Compose BOM and the AndroidX constraints
+//   deliberately supply many artifacts; declaring each one directly would
+//   duplicate the BOM and add churn without changing the resolved graph.
+// - The uniform unit-test toolkit is declared once by the convention plugin
+//   (`configureAndroidTestCommon`, `configureJacoco`) so every module can write
+//   a test without touching its build file; a module that has no test yet, or
+//   uses only some of the toolkit, is not misdeclared.
+// - `ui-test-manifest` is a `debugImplementation` on purpose: the manifest
+//   merges into the debug APK, and the analyzer's `debugRuntimeOnly` advice
+//   does not change the merged result.
 dependencyAnalysis {
     issues {
         all {
+            onAny {
+                severity("fail")
+            }
             onUsedTransitiveDependencies {
                 severity("ignore")
+            }
+            onUnusedDependencies {
+                exclude(
+                    "org.jacoco:org.jacoco.agent",
+                    "androidx.test.ext:junit",
+                    "app.cash.turbine:turbine",
+                    "junit:junit",
+                    "io.mockk:mockk",
+                    // Annotation processors and generated code, which the analyzer
+                    // cannot see: @HiltWorker needs work-runtime (and the app's
+                    // instrumented tests use its ktx builders), Room's generated DAOs
+                    // need room-ktx, and the Converters adapters need moshi-kotlin.
+                    "androidx.work:work-runtime-ktx",
+                    "androidx.room:room-ktx",
+                    "com.squareup.moshi:moshi-kotlin",
+                    // Supplies coil-core (`SingletonImageLoader`), which the analyzer
+                    // sees as a transitive use and so flags this unused.
+                    "io.coil-kt.coil3:coil-compose",
+                    // Supplies `Icons` via its icons-core dependency; the analyzer
+                    // attributes the classes to icons-core and flags this unused.
+                    "androidx.compose.material:material-icons-extended",
+                    "org.jetbrains.kotlinx:kotlinx-coroutines-test",
+                )
+            }
+            onIncorrectConfiguration {
+                // The hilt convention plugin declares hilt-android as
+                // `implementation` in every Hilt module; it is not part of any
+                // module's public API.
+                exclude("com.google.dagger:hilt-android")
+            }
+            onRuntimeOnly {
+                exclude(
+                    "androidx.compose.ui:ui-test-manifest",
+                    "androidx.test:core",
+                    "androidx.test:runner",
+                    "org.robolectric:robolectric",
+                )
             }
         }
     }
