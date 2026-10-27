@@ -2307,6 +2307,44 @@
     <string name="bundle_restore_error_too_large">Il file è troppo grande per essere un pacchetto account</string>
     <string name="bundle_restore_error_invalid_file">Il file è vuoto o non è un pacchetto account</string>
     <string name="bundle_restore_error_failed">Il ripristino non è stato completato. Non è stato modificato nulla.</string>
+    <string name="meerkat_import_entry">Importa da Meerkat</string>
+    <string name="meerkat_import_title">Importa da Meerkat</string>
+    <string name="meerkat_import_description">Collegati al tuo server Meerkat in esecuzione: i contatti e la loro cronologia vengono letti tramite la sua API, foto incluse. Non viene scritto nulla finché non controlli e confermi.</string>
+    <string name="meerkat_import_url_label">Indirizzo di Meerkat</string>
+    <string name="meerkat_import_url_help">L\'indirizzo con cui apri Meerkat, ad es. https://meerkat.example.com</string>
+    <string name="meerkat_import_mode_token">Token</string>
+    <string name="meerkat_import_mode_password">Nome utente e password</string>
+    <string name="meerkat_import_token_label">Token API</string>
+    <string name="meerkat_import_token_help">Usato solo per questa importazione e mai salvato.</string>
+    <string name="meerkat_import_username_label">Nome utente o e-mail</string>
+    <string name="meerkat_import_password_label">Password</string>
+    <string name="meerkat_import_password_help">Usata una sola volta per accedere per questa importazione, poi la sessione viene chiusa. Mai salvata.</string>
+    <string name="meerkat_import_connect">Connetti</string>
+    <string name="meerkat_import_connecting">Connessione…</string>
+    <string name="meerkat_import_insecure">Questo indirizzo usa http non cifrato, quindi credenziali e contatti viaggiano in rete senza cifratura. Prosegui solo su una rete di cui ti fidi.</string>
+    <string name="meerkat_import_untested">Questa versione di Meerkat non è stata riconosciuta (%1$s). L\'importazione potrebbe essere incompleta o fallire.</string>
+    <string name="meerkat_import_untested_older">Questo Meerkat sembra precedente alla v1.5: ai suoi contatti mancano campi che l\'importazione legge. L\'importazione potrebbe essere incompleta o fallire.</string>
+    <string name="meerkat_import_untested_newer">Questo Meerkat sembra più recente delle versioni con cui è stata testata l\'importazione (dalla v1.5 alla v1.7). L\'importazione potrebbe essere incompleta o fallire.</string>
+    <string name="meerkat_import_try_anyway">Prova comunque</string>
+    <plurals name="meerkat_import_found">
+        <item quantity="one">Trovato %1$d contatto</item>
+        <item quantity="many">Trovati %1$d contatti</item>
+        <item quantity="other">Trovati %1$d contatti</item>
+    </plurals>
+    <string name="meerkat_import_start">Avvia importazione</string>
+    <string name="meerkat_import_working">Lettura dei dati di Meerkat…</string>
+    <plurals name="meerkat_import_loss">
+        <item quantity="one">%1$d elemento non può essere importato esattamente</item>
+        <item quantity="many">%1$d elementi non possono essere importati esattamente</item>
+        <item quantity="other">%1$d elementi non possono essere importati esattamente</item>
+    </plurals>
+    <plurals name="meerkat_import_result">
+        <item quantity="one">Importati: %1$d creati, %2$d aggiornati, %3$d saltati</item>
+        <item quantity="many">Importati: %1$d creati, %2$d aggiornati, %3$d saltati</item>
+        <item quantity="other">Importati: %1$d creati, %2$d aggiornati, %3$d saltati</item>
+    </plurals>
+    <string name="meerkat_import_unavailable">L\'importazione da un Meerkat in esecuzione richiede un profilo server. Passa a un profilo server per usarla.</string>
+    <string name="meerkat_import_error_failed">L\'importazione non è stata completata. Non è stato modificato nulla.</string>
     <string name="dashboard_backup_reminder_title">Fai il backup dei tuoi dati</string>
     <string name="dashboard_backup_reminder_body">I tuoi dati esistono solo su questo dispositivo. Salva un pacchetto account per poterli ripristinare se il dispositivo va perso o viene reimpostato.</string>
     <string name="dashboard_backup_reminder_action">Esegui backup</string>
