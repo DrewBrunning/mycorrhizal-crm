@@ -37,6 +37,8 @@ type Server struct {
 	Reshape func(map[string]any)
 	// BreakSignature makes /health answer like a non-Meerkat host.
 	BreakSignature bool
+	// FailMe makes /users/me answer 500.
+	FailMe bool
 
 	logouts, logins, pageHits int
 	Requests                  []string // "METHOD path" log, for assertions
@@ -128,6 +130,8 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 		s.logouts++
 		s.mu.Unlock()
 		_, _ = w.Write([]byte(`{}`))
+	case path == "/api/v1/users/me" && s.FailMe:
+		http.Error(w, "boom", http.StatusInternalServerError)
 	case path == "/api/v1/users/me":
 		_, _ = w.Write([]byte(`{"id":7,"username":"ada","email":"ada@example.com"}`))
 	case path == "/api/v1/contacts":

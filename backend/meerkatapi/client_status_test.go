@@ -90,3 +90,44 @@ func TestDetect_ErrorPaths(t *testing.T) {
 
 	assert.ErrorIs(t, statusServer(t, 404, "", false).CheckHealth(ctx), ErrNotMeerkat)
 }
+
+func TestFetchSnapshot_NestedRowsWithoutContactIDFallBackToParent(t *testing.T) {
+	c0 := contactObj(4, "Orphan")
+	c0["relationships"] = []map[string]any{{"ID": 1, "name": "X", "type": "Friend"}}
+	c0["notes"] = []map[string]any{{"ID": 2, "content": "n", "date": "2024-01-01T00:00:00Z"}}
+	c0["reminders"] = []map[string]any{{"ID": 3, "message": "m", "remind_at": "2024-01-01T00:00:00Z", "recurrence": "once"}}
+	c, _ := newTestClient(t, &fakeMeerkat{contacts: []map[string]any{c0}})
+	c.SetToken(goodToken)
+	snap, err := c.FetchSnapshot(context.Background(), Me{ID: 1}, Limits{}, nil)
+	require.NoError(t, err)
+	assert.EqualValues(t, 4, *snap.Relationships[0].ContactID)
+	assert.EqualValues(t, 4, *snap.Notes[0].ContactID)
+	assert.EqualValues(t, 4, *snap.Reminders[0].ContactID)
+}
+
+func TestUnreachableServer(t *testing.T) {
+	srv := httptest.NewServer(http.NotFoundHandler())
+	c, _ := NewClient(srv.URL, false)
+	srv.Close()
+	ctx := context.Background()
+	assert.ErrorIs(t, c.Login(ctx, "a", "b"), ErrUnreachable)
+	_, _, err := c.FetchProfilePicture(ctx, 1)
+	assert.ErrorIs(t, err, ErrUnreachable)
+	assert.ErrorIs(t, c.CheckHealth(ctx), ErrUnreachable)
+	_, err = c.Me(ctx)
+	assert.ErrorIs(t, err, ErrUnreachable)
+	c.Close(ctx) // must not panic or hang
+}
+
+func TestCancelledContextStopsRetries(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Retry-After", "30")
+		http.Error(w, "x", http.StatusServiceUnavailable)
+	}))
+	defer srv.Close()
+	c, _ := NewClient(srv.URL, false)
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	_, err := c.Me(ctx)
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
+}

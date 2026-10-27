@@ -386,3 +386,30 @@ func TestMeerkatAPI_FetchRejectsReuseWhileRunningAndUploadSessionsStillWork(t *t
 	require.NotNil(t, appErr, "a prepared session cannot be re-fetched")
 	assert.Equal(t, 409, appErr.HTTPStatus)
 }
+
+func TestMeerkatAPI_ConnectFailsWhenUserLookupFails(t *testing.T) {
+	db := setupSourceImportTestDB(t)
+	user := createSourceImportUser(t, db)
+	srv := fakeWithContacts(t, 1)
+	srv.FailMe = true
+	mgr := NewMeerkatImportManager()
+	_, appErr := mgr.Connect(context.Background(), user.ID, tokenReq(srv), apiCfg(t))
+	require.NotNil(t, appErr)
+	assert.Equal(t, 0, mgr.CountActive(user.ID))
+}
+
+func TestMeerkatAPI_PhotoTasksSkipUnmappedAndMalformedRefs(t *testing.T) {
+	client, err := meerkatapi.NewClient("http://meerkat.invalid", false)
+	require.NoError(t, err)
+	s := &meerkatImportSession{client: client, photoDir: "x"}
+	plan := &ImportSourcePlan{Contacts: []MappedContact{
+		{Ref: SourceRef{System: "meerkat", ExternalID: "contact/1"}},                  // no photo
+		{Ref: SourceRef{System: "meerkat", ExternalID: "contact/2"}, PhotoURL: "p"},   // not imported
+		{Ref: SourceRef{System: "meerkat", ExternalID: "contact/abc"}, PhotoURL: "p"}, // malformed
+		{Ref: SourceRef{System: "meerkat", ExternalID: "contact/4"}, PhotoURL: "p"},   // ok
+	}}
+	tasks := NewMeerkatImportManager().photoTasks(s, plan, map[string]uint{"contact/abc": 9, "contact/4": 40})
+	require.Len(t, tasks, 1)
+	assert.EqualValues(t, 4, tasks[0].sourceID)
+	assert.EqualValues(t, 40, tasks[0].contactID)
+}
