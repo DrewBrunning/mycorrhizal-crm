@@ -23,6 +23,37 @@ describe('ApiError.getDisplayMessage', () => {
     expect(err.getDisplayMessage()).toBe('Email is invalid. Password too weak');
   });
 
+  // apperrors.ErrInvalidInput(field, reason) sends {field, reason}, not a
+  // field -> message map; joining every value leaked the raw field name.
+  test('INVALID_INPUT shows only the reason', () => {
+    const err = new ApiError('Invalid input', 'INVALID_INPUT', 400, {
+      field: 'credentials',
+      reason: 'Meerkat rejected the credentials',
+    });
+    expect(err.getDisplayMessage()).toBe('Meerkat rejected the credentials');
+  });
+
+  test('INVALID_INPUT without a reason shows the message', () => {
+    const err = new ApiError("Invalid value for field 'base_url'", 'INVALID_INPUT', 400, {
+      field: 'base_url',
+    });
+    expect(err.getDisplayMessage()).toBe("Invalid value for field 'base_url'");
+  });
+
+  test('INVALID_INPUT with an empty reason shows the message', () => {
+    const err = new ApiError('Invalid input', 'INVALID_INPUT', 400, { field: 'x', reason: '' });
+    expect(err.getDisplayMessage()).toBe('Invalid input');
+  });
+
+  test('INVALID_INPUT ignores the raw-input detail key', () => {
+    const err = new ApiError('Invalid input', 'INVALID_INPUT', 400, {
+      field: 'id',
+      reason: 'must be a positive integer',
+      id: 'abc',
+    });
+    expect(err.getDisplayMessage()).toBe('must be a positive integer');
+  });
+
   test('returns the message for an empty details object', () => {
     const err = new ApiError('Validation failed', 'VALIDATION_ERROR', 400, {});
     expect(err.getDisplayMessage()).toBe('Validation failed');
