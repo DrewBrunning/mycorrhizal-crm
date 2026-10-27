@@ -40,9 +40,9 @@ type Server struct {
 	// FailMe makes /users/me answer 500.
 	FailMe bool
 
-	logouts, logins, pageHits int
-	Requests                  []string // "METHOD path" log, for assertions
-	AuthSeen                  []string // Authorization header of every authenticated request
+	logouts  int
+	Requests []string // "METHOD path" log, for assertions
+	AuthSeen []string // Authorization header of every authenticated request
 }
 
 // New starts a fake with no contacts.
@@ -56,12 +56,6 @@ func New(t testing.TB) *Server {
 
 // Logouts reports how many times /logout was called.
 func (s *Server) Logouts() int { s.mu.Lock(); defer s.mu.Unlock(); return s.logouts }
-
-// Logins reports how many times /login was called.
-func (s *Server) Logins() int { s.mu.Lock(); defer s.mu.Unlock(); return s.logins }
-
-// PageHits reports how many contact pages were served.
-func (s *Server) PageHits() int { s.mu.Lock(); defer s.mu.Unlock(); return s.pageHits }
 
 // Contact builds a contact object carrying every v1.5–v1.7 key.
 func Contact(id int, first string) map[string]any {
@@ -103,9 +97,6 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if path == "/api/v1/login" {
-		s.mu.Lock()
-		s.logins++
-		s.mu.Unlock()
 		var in map[string]string
 		_ = json.NewDecoder(r.Body).Decode(&in)
 		if in["identifier"] != Username || in["password"] != Password {
@@ -151,15 +142,10 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) serveContacts(w http.ResponseWriter, r *http.Request) {
-	s.mu.Lock()
-	s.pageHits++
-	s.mu.Unlock()
 	q := r.URL.Query()
 	limit, _ := strconv.Atoi(q.Get("limit"))
 	page, _ := strconv.Atoi(q.Get("page"))
-	if page < 1 {
-		page = 1
-	}
+	page = max(page, 1)
 	start, end := (page-1)*limit, page*limit
 	n := len(s.Contacts)
 	if start > n {
