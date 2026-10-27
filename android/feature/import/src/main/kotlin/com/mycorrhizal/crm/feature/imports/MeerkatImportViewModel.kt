@@ -84,6 +84,14 @@ class MeerkatImportViewModel @Inject constructor(
     /** Poll cadence; overridable so tests need not wait in real time. */
     internal var pollIntervalMillis: Long = POLL_INTERVAL_MILLIS
 
+    /**
+     * True once the server accepted a confirm. From then on leaving the screen
+     * must not cancel: while `importing` a cancel rolls the confirmed import
+     * back, and during `importing_photos` it drops the session mid download.
+     * Mirrors the web wizard, which never cancels an in-flight import on close.
+     */
+    private var importConfirmed = false
+
     init {
         viewModelScope.launch {
             bundleBackupRepository.observeStatus().collect { status ->
@@ -218,6 +226,7 @@ class MeerkatImportViewModel @Inject constructor(
             apiClient.confirmMeerkatImport(ImportConfirmRequest(preview.sessionId, actions))
                 .exceptionOrNull()
                 ?.let { return@launch failToReview(it.toApiError().displayMessage) }
+            importConfirmed = true
             val status = pollUntil(preview.sessionId, terminal = setOf(PHASE_DONE))
             if (status?.phase == PHASE_DONE && status.result != null) {
                 _uiState.update {
@@ -228,6 +237,9 @@ class MeerkatImportViewModel @Inject constructor(
                     )
                 }
             } else {
+                // A reported failure means the import is no longer running; with no
+                // status (poll failed or timed out) it may still be, so stay confirmed.
+                if (status != null) importConfirmed = false
                 failToReview(status?.error)
             }
         }
@@ -236,12 +248,13 @@ class MeerkatImportViewModel @Inject constructor(
     /**
      * Drop the server session (and its stored credential). Called from [onCleared],
      * so it runs however the screen is left: the app-bar back icon, the system
-     * back button or gesture, or any other pop of the destination.
+     * back button or gesture, or any other pop of the destination. A no-op once
+     * the import has been confirmed ([importConfirmed]) or finished.
      */
     fun cancel() {
         val state = _uiState.value
         val sessionId = state.connected?.sessionId ?: return
-        if (state.step == MeerkatImportStep.RESULT) return
+        if (state.step == MeerkatImportStep.RESULT || importConfirmed) return
         cancelSession(sessionId)
     }
 

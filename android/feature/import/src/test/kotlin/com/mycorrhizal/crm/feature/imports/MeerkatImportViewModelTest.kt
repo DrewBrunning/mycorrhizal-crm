@@ -406,6 +406,40 @@ class MeerkatImportViewModelTest {
         }
 
     @Test
+    fun `leaving after a confirm does not cancel the import the user just confirmed`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = reviewVm()
+            coEvery { apiClient.confirmMeerkatImport(any()) } returns Result.success(Unit)
+            coEvery { apiClient.cancelMeerkatImport(any()) } returns Result.success(Unit)
+            coEvery { apiClient.getMeerkatImportStatus("s1") } returns
+                Result.success(status("importing"))
+
+            vm.confirm()
+            advanceTimeBy(50)
+            assertEquals(MeerkatImportStep.WORKING, vm.uiState.value.step)
+            vm.leaveScreen()
+            advanceUntilIdle()
+
+            coVerify(exactly = 0) { apiClient.cancelMeerkatImport(any()) }
+        }
+
+    @Test
+    fun `a confirm the server rejected leaves the session cancellable`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = reviewVm()
+            coEvery { apiClient.confirmMeerkatImport(any()) } returns
+                Result.failure(ApiError.Client(409, "Already running"))
+            coEvery { apiClient.cancelMeerkatImport("s1") } returns Result.success(Unit)
+            vm.confirm()
+            advanceUntilIdle()
+
+            vm.leaveScreen()
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { apiClient.cancelMeerkatImport("s1") }
+        }
+
+    @Test
     fun `a Local profile marks the import unavailable`() =
         runTest(mainDispatcherRule.testDispatcher) {
             val vm = newVm(local = true)
