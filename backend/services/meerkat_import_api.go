@@ -165,6 +165,7 @@ func (m *MeerkatImportManager) Connect(ctx context.Context, userID uint, req mod
 		SessionID: sessionID,
 		Version: models.MeerkatVersionInfo{
 			Generation: version.Generation, Supported: version.Supported, Reason: version.Reason,
+			ReasonCode: version.ReasonCode,
 		},
 		SourceUser:            models.MeerkatSourceUser{ID: me.ID, Username: me.Username, Email: me.Email, Contacts: total},
 		Totals:                models.MeerkatEntityCounts{Contacts: total},

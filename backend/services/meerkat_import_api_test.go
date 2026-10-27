@@ -257,6 +257,7 @@ func TestMeerkatAPI_UntestedVersionNeedsAcceptance(t *testing.T) {
 	require.Nil(t, appErr)
 	assert.False(t, resp.Version.Supported)
 	assert.Contains(t, resp.Version.Reason, "newer")
+	assert.Equal(t, meerkatapi.ReasonNewerThanTested, resp.Version.ReasonCode, "clients translate the code; reason is the English fallback")
 
 	appErr = mgr.StartFetch(db, user.ID, models.MeerkatFetchRequest{SessionID: resp.SessionID}, meerkatTestLogger())
 	require.NotNil(t, appErr, "an untested version must be accepted explicitly")

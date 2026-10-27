@@ -1779,6 +1779,7 @@ export type MeerkatUploadResponse = {
 export type MeerkatVersionInfo = {
   generation: string;
   reason: string;
+  reason_code: string;
   supported: boolean;
 };
 

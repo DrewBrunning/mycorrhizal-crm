@@ -20,6 +20,16 @@ const (
 	GenerationUnknown = "unknown"
 )
 
+// Reason codes name why a server is unsupported, so clients can show a
+// translated sentence; Reason stays as the English fallback for a code a
+// client does not know. Empty when Supported.
+const (
+	// ReasonOlderThanSupported: the contacts lack fields the adapter reads.
+	ReasonOlderThanSupported = "older_than_supported"
+	// ReasonNewerThanTested: the contacts carry fields the adapter does not know.
+	ReasonNewerThanTested = "newer_than_tested"
+)
+
 // VersionInfo is the result of feature detection.
 type VersionInfo struct {
 	// Generation is the matched adapter label, or GenerationUnknown.
@@ -29,6 +39,8 @@ type VersionInfo struct {
 	Supported bool `json:"supported"`
 	// Reason explains an unsupported result in one user-facing sentence.
 	Reason string `json:"reason,omitempty"`
+	// ReasonCode is the stable, translatable form of Reason.
+	ReasonCode string `json:"reason_code,omitempty"`
 }
 
 // requiredContactKeys are the contact fields the v1.5–v1.7 adapter reads;
@@ -85,6 +97,7 @@ func (c *Client) Detect(ctx context.Context) (VersionInfo, error) {
 			return VersionInfo{
 				Generation: GenerationUnknown,
 				Reason:     "This Meerkat looks older than v1.5 (its contacts lack fields the importer reads).",
+				ReasonCode: ReasonOlderThanSupported,
 			}, nil
 		}
 	}
@@ -93,6 +106,7 @@ func (c *Client) Detect(ctx context.Context) (VersionInfo, error) {
 			return VersionInfo{
 				Generation: GenerationV15toV17,
 				Reason:     "This Meerkat looks newer than the versions the importer was tested with (v1.5–v1.7).",
+				ReasonCode: ReasonNewerThanTested,
 			}, nil
 		}
 	}

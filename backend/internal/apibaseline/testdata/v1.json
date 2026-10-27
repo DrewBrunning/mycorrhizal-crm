@@ -16784,6 +16784,11 @@
           "required": true
         },
         {
+          "name": "reason_code",
+          "type": "string",
+          "required": true
+        },
+        {
           "name": "supported",
           "type": "boolean",
           "required": true

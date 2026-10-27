@@ -30,7 +30,9 @@ URL + token|password → meerkatapi.Client (SSRF-guarded, no redirects, size/tim
   generation is inferred from the shape of a contacts page (`meerkatapi.Detect`). One adapter,
   `v1.5-v1.7`, is supported: the data API is identical across v1.5.0–v1.7.0 (checked by diffing the
   tags). A server missing the v1.5 fields, or returning fields the adapter does not know, is
-  `supported: false`; `connect` still opens the session and reports why, and `fetch` then requires
+  `supported: false`; `connect` still opens the session and reports why (`reason_code`
+  `older_than_supported` | `newer_than_tested` for clients to translate, `reason` as the English
+  fallback), and `fetch` then requires
   `accept_untested: true` (the "Try anyway" confirmation). Nothing is ever written before the user
   has reviewed the preview and loss report. A new Meerkat release means one new adapter beside
   `meerkatapi/snapshot.go` plus its golden fixtures.

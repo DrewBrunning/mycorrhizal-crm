@@ -71,6 +71,10 @@ type MeerkatVersionInfo struct {
 	Generation string `json:"generation"`
 	Supported  bool   `json:"supported"`
 	Reason     string `json:"reason"`
+	// ReasonCode is the translatable form of Reason ("older_than_supported" |
+	// "newer_than_tested"; empty when Supported). Clients fall back to Reason
+	// for a code they do not know.
+	ReasonCode string `json:"reason_code"`
 }
 
 // MeerkatConnectResponse is returned once the credentials validate: a new
