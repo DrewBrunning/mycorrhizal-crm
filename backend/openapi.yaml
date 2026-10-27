@@ -4093,6 +4093,55 @@ paths:
   # server opens it read-only, and the mapped plan is reviewed and confirmed
   # through the shared source-import engine. The uploaded file is held only as
   # a 0600 temp file for the session's lifetime.
+  /contacts/import/meerkat/connect:
+    post:
+      summary: Connect to a running Meerkat over its API and open an import session
+      operationId: connectMeerkatImport
+      tags:
+        - Imports
+      description: >
+        Live-API alternative to the database upload (issue #2013). Takes the
+        Meerkat URL plus either an API token (preferred) or a username/email
+        and password, probes /health before sending any credential, detects the
+        Meerkat version by feature probing (its /health version is a hard-coded
+        constant), and returns the detected version, the authenticated source
+        user and the contact count with a session ID. The fetch / status /
+        preview / confirm / cancel endpoints then work exactly as for an
+        uploaded database. Credentials are held only in the in-memory session
+        and never logged or echoed; a password login is logged out of Meerkat
+        when the import finishes, is cancelled, or the session expires. The base
+        URL is subject to the SSRF egress guard (MEERKAT_BLOCK_PRIVATE_URLS).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MeerkatConnectRequest"
+      responses:
+        "200":
+          description: Session opened; version, source user and contact count returned.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeerkatConnectResponse"
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+          description: Invalid URL, missing or rejected credentials, not a Meerkat host, private-address block, or an account larger than the import supports.
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+          description: Too many concurrent Meerkat import sessions for this user.
+        "503":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+          description: The Meerkat instance could not be reached.
   /contacts/import/meerkat/upload:
     post:
       summary: Upload a Meerkat SQLite database and open an import session
@@ -17898,6 +17947,39 @@ components:
           format: int64
           description: The first source user; pre-selected in the picker. Absent when the database has no user scoping.
         totals: { $ref: "#/components/schemas/MeerkatEntityCounts" }
+    MeerkatConnectRequest:
+      type: object
+      required: [base_url]
+      description: >
+        Live-API connection details (issue #2013). Provide api_token, or both
+        username and password. Third-party credential material — held only in
+        the in-memory import session, never logged, persisted or echoed.
+      properties:
+        base_url: { type: string, maxLength: 500 }
+        api_token: { type: string, maxLength: 4000, description: "A Meerkat API token (preferred; no password needed)." }
+        username: { type: string, maxLength: 255, description: "Meerkat username or email (with password)." }
+        password: { type: string, maxLength: 1000 }
+    MeerkatVersionInfo:
+      type: object
+      required: [generation, supported, reason]
+      description: >
+        Feature-detection result. Meerkat's /health reports a hard-coded
+        version, so the generation is inferred from the API's shape.
+      properties:
+        generation: { type: string, description: "Matched adapter label (e.g. v1.5-v1.7) or unknown." }
+        supported: { type: boolean, description: "False means untested; the client must send accept_untested on fetch." }
+        reason: { type: string, description: "One user-facing sentence explaining an unsupported result; empty when supported." }
+    MeerkatConnectResponse:
+      type: object
+      required: [session_id, version, source_user, totals, insecure_transport, estimated_fetch_seconds]
+      properties:
+        session_id: { type: string }
+        version: { $ref: "#/components/schemas/MeerkatVersionInfo" }
+        source_user: { $ref: "#/components/schemas/MeerkatSourceUser" }
+        totals:
+          $ref: "#/components/schemas/MeerkatEntityCounts"
+        insecure_transport: { type: boolean, description: "True for plain http:// to a non-local host (the credential travels in clear text)." }
+        estimated_fetch_seconds: { type: integer }
     MeerkatFetchRequest:
       type: object
       required: [session_id]
@@ -17911,6 +17993,12 @@ components:
           type: integer
           format: int64
           description: Which source user's data to import; omit to use the default.
+        accept_untested:
+          type: boolean
+          description: >
+            API sessions only: the user's "Try anyway" for a Meerkat version the
+            importer was not tested with (connect returned version.supported =
+            false). Required for such a session; ignored otherwise.
 
     # --- Account bundle export + mycorrhizal import (issues #1259/#1260) ---
     AccountBundle:

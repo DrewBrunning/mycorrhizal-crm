@@ -107,6 +107,7 @@ var requestBodyBindings = map[string]requestBodyBinding{
 	"POST /contacts/import/monica/connect":     bindingFor(models.MonicaConnectRequest{}),
 	"POST /contacts/import/monica/fetch":       bindingFor(models.MonicaFetchRequest{}),
 	"POST /contacts/import/monica/confirm":     bindingFor(models.MonicaConfirmRequest{}),
+	"POST /contacts/import/meerkat/connect":    bindingFor(models.MeerkatConnectRequest{}),
 	"POST /contacts/import/meerkat/fetch":      bindingFor(models.MeerkatFetchRequest{}),
 	"POST /contacts/import/meerkat/confirm":    bindingFor(models.SourceImportConfirmRequest{}),
 	"POST /import/mycorrhizal/fetch":           bindingFor(models.MycorrhizalFetchRequest{}),

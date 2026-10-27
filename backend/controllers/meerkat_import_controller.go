@@ -3,6 +3,7 @@ package controllers
 import (
 	"net/http"
 
+	"mycorrhizal/config"
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/logger"
 	"mycorrhizal/middleware"
@@ -66,6 +67,47 @@ func UploadMeerkatDatabase(c *gin.Context) {
 		Int("contacts", resp.Totals.Contacts).
 		Int("source_users", len(resp.SourceUsers)).
 		Msg("Meerkat database uploaded")
+
+	c.JSON(http.StatusOK, resp)
+}
+
+// ConnectMeerkatImport validates the Meerkat URL and credentials (API token,
+// or username + password), detects the Meerkat version, and returns the
+// detected version, source user and contact count with a new session ID
+// (issue #2013). Credentials are held only in the in-memory session; the
+// response and logs never contain them.
+func ConnectMeerkatImport(c *gin.Context, cfg *config.Config) {
+	log := logger.FromContext(c)
+
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+
+	go meerkatImportSessions.CleanupExpired()
+	if rejectMeerkatSessionOverLimit(c) {
+		return
+	}
+
+	req, validationErr := middleware.GetValidated[models.MeerkatConnectRequest](c)
+	if validationErr != nil {
+		apperrors.AbortWithError(c, validationErr)
+		return
+	}
+
+	resp, appErr := meerkatImportSessions.Connect(c.Request.Context(), userID, *req, cfg)
+	if appErr != nil {
+		log.Warn().Str("code", appErr.Code).Msg("Meerkat connect failed")
+		apperrors.AbortWithError(c, appErr)
+		return
+	}
+
+	log.Info().
+		Str("session_id", resp.SessionID).
+		Str("generation", resp.Version.Generation).
+		Bool("supported", resp.Version.Supported).
+		Int("contacts", resp.Totals.Contacts).
+		Msg("Meerkat import session connected")
 
 	c.JSON(http.StatusOK, resp)
 }

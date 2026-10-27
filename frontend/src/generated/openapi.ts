@@ -1731,6 +1731,22 @@ export type MapConfigResponse = {
   tile_style_url: string;
 };
 
+export type MeerkatConnectRequest = {
+  api_token?: string;
+  base_url: string;
+  password?: string;
+  username?: string;
+};
+
+export type MeerkatConnectResponse = {
+  estimated_fetch_seconds: number;
+  insecure_transport: boolean;
+  session_id: string;
+  source_user: MeerkatSourceUser;
+  totals: MeerkatEntityCounts;
+  version: MeerkatVersionInfo;
+};
+
 export type MeerkatEntityCounts = {
   activities?: number;
   contacts?: number;
@@ -1740,6 +1756,7 @@ export type MeerkatEntityCounts = {
 };
 
 export type MeerkatFetchRequest = {
+  accept_untested?: boolean;
   session_id: string;
   source_user_id?: number;
 };
@@ -1757,6 +1774,12 @@ export type MeerkatUploadResponse = {
   session_id?: string;
   source_users?: MeerkatSourceUser[];
   totals?: MeerkatEntityCounts;
+};
+
+export type MeerkatVersionInfo = {
+  generation: string;
+  reason: string;
+  supported: boolean;
 };
 
 export type MessageResponse = {

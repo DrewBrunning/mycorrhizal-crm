@@ -14,6 +14,7 @@ import (
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/internal/fireandforget"
 	"mycorrhizal/meerkat"
+	"mycorrhizal/meerkatapi"
 	"mycorrhizal/models"
 
 	"github.com/rs/zerolog"
@@ -61,6 +62,14 @@ type meerkatImportSession struct {
 	tempDir      string
 	sourceUserID *int64
 	cancel       context.CancelFunc
+
+	// API sessions (issue #2013) hold a live client — and so the credential,
+	// in memory only — instead of an uploaded file. snapshot stays nil until
+	// the background fetch completes.
+	client   *meerkatapi.Client
+	version  meerkatapi.VersionInfo
+	me       meerkatapi.Me
+	photoDir string
 
 	mu         sync.Mutex
 	phase      string
@@ -133,6 +142,7 @@ func (m *MeerkatImportManager) teardown(s *meerkatImportSession) {
 	if s.tempDir != "" {
 		_ = os.RemoveAll(s.tempDir)
 	}
+	s.closeClient()
 }
 
 // CountActive reports how many live sessions a user holds (issue #415).
@@ -360,6 +370,10 @@ func (m *MeerkatImportManager) StartFetch(db *gorm.DB, userID uint, req models.M
 		s.mu.Unlock()
 		return apperrors.ErrConflict("This import is already being prepared")
 	}
+	if s.client != nil {
+		s.mu.Unlock()
+		return m.startAPIFetch(db, s, req, log)
+	}
 	if req.SourceUserID != nil {
 		s.sourceUserID = req.SourceUserID
 	}
@@ -485,7 +499,7 @@ func (m *MeerkatImportManager) Confirm(db *gorm.DB, userID uint, req models.Sour
 }
 
 func (m *MeerkatImportManager) runImport(ctx context.Context, db *gorm.DB, s *meerkatImportSession, plan *ImportSourcePlan, totalRows int, actions map[string]SourceContactAction, log *zerolog.Logger) {
-	report, _, err := ExecuteSourceImportWithActions(ctx, db, s.userID, plan, actions, s.setProgress)
+	report, refToID, err := ExecuteSourceImportWithActions(ctx, db, s.userID, plan, actions, s.setProgress)
 	if err != nil {
 		if ctx.Err() != nil {
 			s.mu.Lock()
@@ -510,12 +524,23 @@ func (m *MeerkatImportManager) runImport(ctx context.Context, db *gorm.DB, s *me
 		ErrorCount:     len(result.Errors),
 	})
 
+	tasks := m.photoTasks(s, plan, refToID)
+	result.PhotosQueued = len(tasks)
+
 	s.mu.Lock()
 	rc := result
 	s.result = &rc
 	s.plan, s.previews = nil, nil
-	s.phase = models.SourceImportPhaseDone
+	if len(tasks) == 0 {
+		s.phase = models.SourceImportPhaseDone
+	} else {
+		s.phase = models.SourceImportPhaseImportingPhotos
+		s.phaseDone, s.phaseTotal = 0, len(tasks)
+	}
 	s.mu.Unlock()
+	if len(tasks) == 0 {
+		s.closeClient()
+	}
 
 	log.Info().
 		Str("session_id", s.id).
@@ -523,6 +548,14 @@ func (m *MeerkatImportManager) runImport(ctx context.Context, db *gorm.DB, s *me
 		Int("updated", result.Updated).
 		Int("skipped", result.Skipped).
 		Int("relationships", result.RelationshipsCreated).
+		Int("photos_queued", result.PhotosQueued).
 		Int("errors", len(result.Errors)).
 		Msg("Meerkat import completed")
+
+	if len(tasks) > 0 {
+		// #nosec G118 -- photo downloads deliberately outlive runImport's ctx: the
+		// import has already committed, and the "cancel import" context must not
+		// abort the photo tail. processPhotos runs on its own timeout context.
+		fireandforget.Run(func() { m.processPhotos(db, s, tasks, log) })
+	}
 }

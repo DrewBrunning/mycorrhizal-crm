@@ -151,6 +151,7 @@ type Config struct {
 	SeafileBlockPrivateURLs   bool `cfgreg:"env=SEAFILE_BLOCK_PRIVATE_URLS;type=bool;default=false;required=false;restart=true;desc=Block Seafile fetches to private/loopback addresses"`
 	WebDAVBlockPrivateURLs    bool `cfgreg:"env=WEBDAV_BLOCK_PRIVATE_URLS;type=bool;default=false;required=false;restart=true;desc=Block Nextcloud/ownCloud WebDAV fetches to private/loopback addresses"`
 	MonicaBlockPrivateURLs    bool `cfgreg:"env=MONICA_BLOCK_PRIVATE_URLS;type=bool;default=false;required=false;restart=true;desc=Block Monica import-assistant fetches to private/loopback addresses"`
+	MeerkatBlockPrivateURLs   bool `cfgreg:"env=MEERKAT_BLOCK_PRIVATE_URLS;type=bool;default=false;required=false;restart=true;desc=Block Meerkat live-API import fetches to private/loopback addresses"`
 	// Contact map (ADR 0031, issue #694). Instance-level, not per-user: every
 	// user on an instance looks at the same tiles, and a household instance has
 	// one operator holding one geocoding budget/key.
@@ -643,6 +644,7 @@ func LoadConfig() *Config {
 	cfg.SeafileBlockPrivateURLs = getBoolEnv("SEAFILE_BLOCK_PRIVATE_URLS", cfg.SeafileBlockPrivateURLs)
 	cfg.WebDAVBlockPrivateURLs = getBoolEnv("WEBDAV_BLOCK_PRIVATE_URLS", cfg.WebDAVBlockPrivateURLs)
 	cfg.MonicaBlockPrivateURLs = getBoolEnv("MONICA_BLOCK_PRIVATE_URLS", cfg.MonicaBlockPrivateURLs)
+	cfg.MeerkatBlockPrivateURLs = getBoolEnv("MEERKAT_BLOCK_PRIVATE_URLS", cfg.MeerkatBlockPrivateURLs)
 	cfg.MapTileStyleURL = getEnv("MAP_TILE_STYLE_URL", cfg.MapTileStyleURL)
 	cfg.GeocoderProvider = strings.ToLower(strings.TrimSpace(getEnv("GEOCODER_PROVIDER", cfg.GeocoderProvider)))
 	cfg.GeocoderAPIKey = getEnv("GEOCODER_API_KEY", cfg.GeocoderAPIKey)
@@ -1665,6 +1667,7 @@ func (c *Config) blockPrivateURLsFlags() []blockPrivateURLsFlag {
 		{"SEAFILE_BLOCK_PRIVATE_URLS", c.SeafileBlockPrivateURLs},
 		{"WEBDAV_BLOCK_PRIVATE_URLS", c.WebDAVBlockPrivateURLs},
 		{"MONICA_BLOCK_PRIVATE_URLS", c.MonicaBlockPrivateURLs},
+		{"MEERKAT_BLOCK_PRIVATE_URLS", c.MeerkatBlockPrivateURLs},
 		{"OIDC_BLOCK_PRIVATE_URLS", c.OIDC.BlockPrivateURLs},
 	}
 }
