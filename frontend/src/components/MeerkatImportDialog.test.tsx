@@ -400,3 +400,40 @@ test('the live summary shows only the contact count, not zeroed relationships an
   expect(screen.queryByText(/relationships/)).not.toBeInTheDocument();
   expect(screen.queryByText(/notes/)).not.toBeInTheDocument();
 });
+
+test('both mode tabs are disabled while a connect is in flight', async () => {
+  let resolveConnect: (r: MeerkatConnectResponse) => void = () => {};
+  connectMock.mockReturnValue(
+    new Promise<MeerkatConnectResponse>((resolve) => {
+      resolveConnect = resolve;
+    }),
+  );
+  renderOpen();
+  fillUrl();
+  fireEvent.change(screen.getByLabelText('API token'), {
+    target: { value: 't' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Connect' }));
+
+  await screen.findByRole('button', { name: 'Connecting…' });
+  expect(screen.getByRole('tab', { name: 'Upload a file' })).toBeDisabled();
+  expect(screen.getByRole('tab', { name: 'Connect to Meerkat' })).toBeDisabled();
+
+  resolveConnect(connected());
+  await screen.findByRole('button', { name: 'Start import' });
+  // A session now exists, so the other tab stays locked.
+  expect(screen.getByRole('tab', { name: 'Upload a file' })).toBeDisabled();
+});
+
+test('a failed connect re-enables the mode tabs', async () => {
+  connectMock.mockRejectedValue(new Error('nope'));
+  renderOpen();
+  fillUrl();
+  fireEvent.change(screen.getByLabelText('API token'), {
+    target: { value: 't' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Connect' }));
+
+  await screen.findByText('nope');
+  expect(screen.getByRole('tab', { name: 'Upload a file' })).toBeEnabled();
+});

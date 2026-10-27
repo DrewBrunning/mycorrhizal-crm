@@ -20,6 +20,9 @@ import { getErrorMessage } from '../utils/errorHandler';
 interface Props {
   connected: MeerkatConnectResponse | null;
   onConnected: (resp: MeerkatConnectResponse) => void;
+  // Reported to the parent so it can lock the mode tabs while a connect is in
+  // flight: leaving this tab would unmount the form but not the request.
+  onConnectingChange: (connecting: boolean) => void;
   acceptUntested: boolean;
   onAcceptUntestedChange: (accept: boolean) => void;
   onStart: () => void;
@@ -35,6 +38,7 @@ type AuthMode = 'token' | 'password';
 export default function MeerkatLiveConnect({
   connected,
   onConnected,
+  onConnectingChange,
   acceptUntested,
   onAcceptUntestedChange,
   onStart,
@@ -54,6 +58,7 @@ export default function MeerkatLiveConnect({
 
   const handleConnect = async () => {
     setConnecting(true);
+    onConnectingChange(true);
     setError(null);
     try {
       const base_url = baseUrl.trim();
@@ -69,6 +74,7 @@ export default function MeerkatLiveConnect({
       setError(getErrorMessage(err));
     } finally {
       setConnecting(false);
+      onConnectingChange(false);
     }
   };
 

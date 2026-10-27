@@ -47,6 +47,7 @@ export default function MeerkatImportDialog({ open, onClose, onImportComplete }:
 
   const [mode, setMode] = useState<Mode>('live');
   const [live, setLive] = useState<MeerkatConnectResponse | null>(null);
+  const [connecting, setConnecting] = useState(false);
   const [acceptUntested, setAcceptUntested] = useState(false);
   const [fileName, setFileName] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -82,6 +83,7 @@ export default function MeerkatImportDialog({ open, onClose, onImportComplete }:
     liveAcceptRef.current = null;
     setMode('live');
     setLive(null);
+    setConnecting(false);
     setAcceptUntested(false);
   }, []);
 
@@ -222,7 +224,8 @@ export default function MeerkatImportDialog({ open, onClose, onImportComplete }:
     </Stack>
   );
 
-  // The mode is fixed once a session exists: switching would strand it.
+  // The mode is fixed once a session exists, or is being created: switching
+  // would strand it.
   const sessionStarted = !!live || !!upload;
   const connectStep = (
     <Stack spacing={2}>
@@ -234,18 +237,19 @@ export default function MeerkatImportDialog({ open, onClose, onImportComplete }:
         <Tab
           value="live"
           label={t('settings.meerkatImport.mode.live')}
-          disabled={sessionStarted && mode !== 'live'}
+          disabled={connecting || (sessionStarted && mode !== 'live')}
         />
         <Tab
           value="file"
           label={t('settings.meerkatImport.mode.file')}
-          disabled={sessionStarted && mode !== 'file'}
+          disabled={connecting || (sessionStarted && mode !== 'file')}
         />
       </Tabs>
       {mode === 'live' ? (
         <MeerkatLiveConnect
           connected={live}
           onConnected={setLive}
+          onConnectingChange={setConnecting}
           acceptUntested={acceptUntested}
           onAcceptUntestedChange={setAcceptUntested}
           onStart={handleLiveStart}
