@@ -40,6 +40,9 @@ class DefaultSessionManager(
     // Per-profile non-JWT secrets (device grant, OIDC pending) — migrated off
     // the legacy slots and dropped when a profile is removed. Default no-op.
     private val profileSecretStorage: ProfileSecretStorage = NoopProfileSecretStorage,
+    // Issue #2065: held across every identity transition so the outbox flusher
+    // cannot run between a switch's drain and its wipe.
+    private val transitionGate: SessionTransitionGate = SessionTransitionGate(),
     // Deterministic injection points for tests.
     private val newProfileId: () -> String = { UUID.randomUUID().toString() },
     private val labelForUrl: (String) -> String = ::defaultProfileLabel
@@ -75,6 +78,11 @@ class DefaultSessionManager(
     // Serializes session-identity transitions and guarded token writes, so a
     // refresh's check-then-write cannot interleave with clearSession's wipe.
     private val stateMutex = Mutex()
+
+    // Issue #2065: transitions take the outbox gate first, then stateMutex (the
+    // flusher only ever takes the gate, so the order cannot deadlock).
+    private suspend fun <T> transition(block: suspend () -> T): T =
+        transitionGate.mutex.withLock { stateMutex.withLock { block() } }
 
     /** Load the profile list, migrate a legacy install if needed, surface initial state. */
     suspend fun init() {
@@ -269,7 +277,7 @@ class DefaultSessionManager(
         }
 
     override suspend fun clearSession(keepServerUrl: Boolean) {
-        stateMutex.withLock {
+        transition {
             // Issue #2051: keep the clearing guard up for the whole teardown and
             // wipe, not just the teardown call. A 401 that arrives after the
             // teardown step but before the token is dropped must not start a
@@ -310,7 +318,15 @@ class DefaultSessionManager(
                 // Issue #385: purge the offline PII mirror + image cache on logout /
                 // account removal so a dropped session leaves no contact data on disk.
                 localDataCleaner.clear()
-                sessionState.value = SessionState(serverUrl = profileBaseUrl(activeProfileSync()))
+                // Issue #2065: forgetting the server promotes another profile; load
+                // its credential rather than leaving it active but token-less.
+                if (!keepServerUrl) {
+                    cachedToken = cachedActiveProfileId?.let { tokenStorage.load(it) }
+                }
+                sessionState.value = SessionState(
+                    serverUrl = profileBaseUrl(activeProfileSync()),
+                    isLoggedIn = !cachedToken.isNullOrBlank()
+                )
                 if (cachedActiveProfileId == null) {
                     // No profile left: don't keep a stale active pointer in the flow.
                     activeProfileState.value = null
@@ -339,14 +355,14 @@ class DefaultSessionManager(
     }
 
     override suspend fun activateLocalProfile(token: String): ServerProfile =
-        stateMutex.withLock { activateLocalProfileLocked(token) }
+        transition { activateLocalProfileLocked(token) }
 
     override suspend fun activateLocalProfileIfCurrent(
         token: String,
         expectedGeneration: Long
-    ): ServerProfile? = stateMutex.withLock {
+    ): ServerProfile? = transition {
         if (sessionEpoch.get() != expectedGeneration || cachedToken == null) {
-            return@withLock null
+            return@transition null
         }
         activateLocalProfileLocked(token)
     }
@@ -405,8 +421,8 @@ class DefaultSessionManager(
     }
 
     override suspend fun removeProfile(id: String) {
-        stateMutex.withLock {
-            if (cachedProfiles.none { it.id == id }) return@withLock
+        transition {
+            if (cachedProfiles.none { it.id == id }) return@transition
             val wasActive = id == cachedActiveProfileId
 
             // Revoke the session while it is still the active bearer (the teardown
@@ -432,7 +448,14 @@ class DefaultSessionManager(
                 cachedToken = null
                 cachedActiveProfileId = cachedProfiles.firstOrNull()?.id
                 localDataCleaner.clear()
-                sessionState.value = SessionState(serverUrl = profileBaseUrl(activeProfileSync()))
+                // Issue #2065: the remaining profile becomes active, so its stored
+                // credential must be loaded now — switchProfile early-returns for
+                // the already-active id and would never do it.
+                cachedToken = cachedActiveProfileId?.let { tokenStorage.load(it) }
+                sessionState.value = SessionState(
+                    serverUrl = profileBaseUrl(activeProfileSync()),
+                    isLoggedIn = !cachedToken.isNullOrBlank()
+                )
             }
             persistProfiles()
             refreshProfiles()
@@ -442,10 +465,10 @@ class DefaultSessionManager(
     override suspend fun pendingInteractionCount(): Int = pendingInteractions?.unsynced()?.size ?: 0
 
     override suspend fun switchProfile(id: String, discardPending: Boolean): SwitchProfileResult =
-        stateMutex.withLock {
+        transition {
             val target = cachedProfiles.find { it.id == id }
-                ?: return@withLock SwitchProfileResult.Switched
-            if (id == cachedActiveProfileId) return@withLock SwitchProfileResult.Switched
+                ?: return@transition SwitchProfileResult.Switched
+            if (id == cachedActiveProfileId) return@transition SwitchProfileResult.Switched
 
             // 1. Best-effort drain (ADR 0028 Decision 1). A no-op drainer leaves
             //    the rows in place and routes to the confirmation below.
@@ -453,7 +476,7 @@ class DefaultSessionManager(
                 runCatching { outboxDrainer.drain() }
                 val remaining = pendingInteractionCount()
                 if (remaining > 0 && !discardPending) {
-                    return@withLock SwitchProfileResult.NeedsConfirmation(remaining)
+                    return@transition SwitchProfileResult.NeedsConfirmation(remaining)
                 }
             }
 
