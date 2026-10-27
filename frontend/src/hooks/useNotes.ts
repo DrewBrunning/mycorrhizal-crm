@@ -1,5 +1,5 @@
 // Custom hook for fetching and managing notes
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { type GetNotesParams, getContactNotes, getUnassignedNotes, type Note } from '../api/notes';
 import { isAuthenticated } from '../auth';
 import { handleFetchError } from '../utils/errorHandler';
@@ -34,7 +34,12 @@ export function useNotes(contactId?: string | number, params: GetNotesParams = {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Monotonic request id: every fetch claims one at start and drops its state
+  // writes once a newer fetch has begun (same pattern as useContacts.ts).
+  const requestRef = useRef(0);
+
   const fetchFirst = useCallback(async () => {
+    const requestId = ++requestRef.current;
     setLoading(true);
     setError(null);
 
@@ -45,6 +50,7 @@ export function useNotes(contactId?: string | number, params: GetNotesParams = {
 
       if (contactId) {
         const data = await getContactNotes(contactId);
+        if (requestRef.current !== requestId) return;
         const normalized = Array.isArray(data) ? data : data.notes || [];
         setNotes(normalized);
         setNextCursor('');
@@ -52,21 +58,24 @@ export function useNotes(contactId?: string | number, params: GetNotesParams = {
         setLimit(normalized.length || paramLimit || 25);
       } else {
         const data = await getUnassignedNotes({ limit: paramLimit, search, fromDate, toDate });
+        if (requestRef.current !== requestId) return;
         setNotes(data.notes || []);
         setNextCursor(data.next_cursor || '');
         setTotal(data.total ?? null);
         setLimit(data.limit || paramLimit || 25);
       }
     } catch (err) {
+      if (requestRef.current !== requestId) return;
       const message = handleFetchError(err, 'fetching notes');
       setError(message);
     } finally {
-      setLoading(false);
+      if (requestRef.current === requestId) setLoading(false);
     }
   }, [contactId, paramLimit, search, fromDate, toDate]);
 
   const loadMore = useCallback(async () => {
     if (!nextCursor) return;
+    const requestId = ++requestRef.current;
     setLoading(true);
     setError(null);
     try {
@@ -77,15 +86,17 @@ export function useNotes(contactId?: string | number, params: GetNotesParams = {
         fromDate,
         toDate,
       });
+      if (requestRef.current !== requestId) return;
       setNotes((prev) => [...prev, ...(data.notes || [])]);
       setNextCursor(data.next_cursor || '');
       // The server recomputes the total each page; keeping it in sync means a
       // note filed in another tab is reflected as the user pages.
       if (data.total !== undefined) setTotal(data.total);
     } catch (err) {
+      if (requestRef.current !== requestId) return;
       setError(handleFetchError(err, 'loading more notes'));
     } finally {
-      setLoading(false);
+      if (requestRef.current === requestId) setLoading(false);
     }
   }, [nextCursor, paramLimit, search, fromDate, toDate]);
 

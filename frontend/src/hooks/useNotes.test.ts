@@ -235,10 +235,12 @@ test('refetch re-runs the first-page load', async () => {
 
 function deferred<T>() {
   let resolve!: (v: T) => void;
-  const promise = new Promise<T>((res) => {
+  let reject!: (e: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
     resolve = res;
+    reject = rej;
   });
-  return { promise, resolve };
+  return { promise, resolve, reject };
 }
 
 function signIn() {
@@ -376,4 +378,119 @@ test('moving from the unassigned list to a contact drops the stale server total'
   rerender({ id: 42 });
   await waitFor(() => expect(getContactNotes).toHaveBeenCalled());
   await waitFor(() => expect(result.current.total).toBe(1));
+});
+
+// --- stale-response guard (issue #2061) ---
+
+test('an older success settling after a newer one does not clobber notes, total, or loading', async () => {
+  signIn();
+  const older = deferred<NotesResponse>();
+  const newer = deferred<NotesResponse>();
+  vi.mocked(getUnassignedNotes)
+    .mockReturnValueOnce(older.promise)
+    .mockReturnValueOnce(newer.promise);
+  const { result, rerender } = renderHook(
+    ({ q }: { q: string }) => useNotes(undefined, { search: q }),
+    {
+      initialProps: { q: 'a' },
+    },
+  );
+  rerender({ q: 'ab' });
+  await waitFor(() => expect(getUnassignedNotes).toHaveBeenCalledTimes(2));
+
+  await act(async () => {
+    newer.resolve(unassignedResponse({ notes: [{ ...note, ID: 2 }], total: 2 }));
+  });
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  await act(async () => {
+    older.resolve(unassignedResponse({ notes: [{ ...note, ID: 9 }], total: 99 }));
+  });
+
+  expect(result.current.notes.map((n) => n.ID)).toEqual([2]);
+  expect(result.current.total).toBe(2);
+  expect(result.current.loading).toBe(false);
+});
+
+test('an older failure settling after a newer success does not set an error', async () => {
+  signIn();
+  const older = deferred<NotesResponse>();
+  const newer = deferred<NotesResponse>();
+  vi.mocked(getUnassignedNotes)
+    .mockReturnValueOnce(older.promise)
+    .mockReturnValueOnce(newer.promise);
+  const { result, rerender } = renderHook(
+    ({ q }: { q: string }) => useNotes(undefined, { search: q }),
+    {
+      initialProps: { q: 'a' },
+    },
+  );
+  rerender({ q: 'ab' });
+  await waitFor(() => expect(getUnassignedNotes).toHaveBeenCalledTimes(2));
+
+  await act(async () => {
+    newer.resolve(unassignedResponse());
+  });
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  await act(async () => {
+    older.reject(new Error('stale failure'));
+  });
+
+  expect(result.current.error).toBeNull();
+  expect(result.current.notes).toHaveLength(1);
+  expect(result.current.loading).toBe(false);
+});
+
+test('a stale failure does not clear loading for the in-flight newer request', async () => {
+  signIn();
+  const older = deferred<NotesResponse>();
+  const newer = deferred<NotesResponse>();
+  vi.mocked(getUnassignedNotes)
+    .mockReturnValueOnce(older.promise)
+    .mockReturnValueOnce(newer.promise);
+  const { result, rerender } = renderHook(
+    ({ q }: { q: string }) => useNotes(undefined, { search: q }),
+    {
+      initialProps: { q: 'a' },
+    },
+  );
+  rerender({ q: 'ab' });
+  await waitFor(() => expect(getUnassignedNotes).toHaveBeenCalledTimes(2));
+
+  await act(async () => {
+    older.reject(new Error('stale failure'));
+  });
+  expect(result.current.loading).toBe(true);
+  expect(result.current.error).toBeNull();
+});
+
+test('a loadMore page settling after a refetch is dropped', async () => {
+  signIn();
+  vi.mocked(getUnassignedNotes).mockResolvedValueOnce(
+    unassignedResponse({ next_cursor: 'c1', total: 5 }),
+  );
+  const { result } = renderHook(() => useNotes());
+  await waitFor(() => expect(result.current.nextCursor).toBe('c1'));
+
+  const page = deferred<NotesResponse>();
+  const fresh = deferred<NotesResponse>();
+  vi.mocked(getUnassignedNotes)
+    .mockReturnValueOnce(page.promise)
+    .mockReturnValueOnce(fresh.promise);
+  act(() => {
+    void result.current.loadMore();
+  });
+  act(() => {
+    void result.current.refetch();
+  });
+  await act(async () => {
+    fresh.resolve(unassignedResponse({ notes: [{ ...note, ID: 3 }], total: 1 }));
+  });
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  await act(async () => {
+    page.resolve(unassignedResponse({ notes: [{ ...note, ID: 4 }], next_cursor: 'c2', total: 6 }));
+  });
+
+  expect(result.current.notes.map((n) => n.ID)).toEqual([3]);
+  expect(result.current.nextCursor).toBe('');
+  expect(result.current.total).toBe(1);
 });
