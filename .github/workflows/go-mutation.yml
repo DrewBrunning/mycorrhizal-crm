@@ -187,8 +187,13 @@ jobs:
             --output "gremlins-${{ matrix.scope }}.json" \
             ${{ matrix.package }}
 
+      # The report is a diagnostic copy for humans; nothing downstream reads it
+      # and the gremlins step above already decides pass/fail. A transient
+      # artifact-service error (nightly #2087: ECONNRESET at FinalizeArtifact,
+      # after a 100%-efficacy run) must not fail the job.
       - name: Upload mutation report
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: gremlins-report-${{ matrix.scope }}

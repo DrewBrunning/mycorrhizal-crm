@@ -263,6 +263,14 @@ func ContactCascadeRegistry() []CascadeStep {
 			},
 			Reason: "T93: join-shaped dismissal naming this contact on either side of the ordered uid pair",
 		},
+		{
+			Table: "import_source_links", NewModel: func() any { return &models.ImportSourceLink{} },
+			Mode: CascadeHard,
+			Match: func(t ContactCascadeTarget) (string, []any) {
+				return "entity_kind = ? AND entity_uid = ? AND user_id = ?", []any{models.ImportSourceLinkKindContact, t.VCardUID, t.UserID}
+			},
+			Reason: "issue #2063, ADR 0004: ledger row is join-shaped bookkeeping (hard-delete per ImportSourceLink); left behind it makes a re-import skip the deleted contact and the integrity scan report a dangling INV-D4 reference. Only the contact-kind row; child-entity links are not contact-keyed",
+		},
 	}
 }
 

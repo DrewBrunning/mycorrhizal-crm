@@ -24,6 +24,7 @@ package controllers
 import (
 	"encoding/json"
 	"net/http"
+	"sync"
 	"testing"
 
 	"mycorrhizal/contactmodel"
@@ -381,4 +382,62 @@ func boolLabel(b bool) string {
 		return "true"
 	}
 	return "false"
+}
+
+// Issue #2062: two Accepts mint two sessions bound to one share; confirming
+// both concurrently must import the payload once, accept the share once, and
+// reject the loser with a 409.
+func TestConfirmContactShare_ConcurrentConfirmsImportOnce(t *testing.T) {
+	db, cfg, sender, recipient, _ := newContactShareFixtures(t)
+	share := createPendingShareFixture(t, db, cfg, sender.ID, recipient.ID, "Alice", []string{models.SectionEmails}, false)
+	router := contactShareRouterFor(db, cfg, recipient.ID)
+
+	const n = 3
+	sessions := make([]string, n)
+	for i := range sessions {
+		w := doJSON(t, router, "POST", "/contact-shares/"+share.ID+"/accept", nil)
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+		var preview models.ImportPreviewResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &preview))
+		sessions[i] = preview.SessionID
+		t.Cleanup(func() { importSessions.Delete(preview.SessionID) })
+	}
+
+	codes := make([]int, n)
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	for i := range sessions {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			w := doJSON(t, router, "POST", "/contact-shares/"+share.ID+"/confirm", models.ImportConfirmRequest{
+				SessionID: sessions[i],
+				Actions:   []models.RowImportAction{{RowIndex: 0, Action: "add"}},
+			})
+			codes[i] = w.Code
+		}()
+	}
+	close(start)
+	wg.Wait()
+
+	ok, conflict := 0, 0
+	for _, code := range codes {
+		switch code {
+		case http.StatusOK:
+			ok++
+		case http.StatusConflict:
+			conflict++
+		}
+	}
+	assert.Equal(t, 1, ok, "exactly one confirm may succeed: %v", codes)
+	assert.Equal(t, n-1, conflict, "losers must get 409: %v", codes)
+
+	var count int64
+	require.NoError(t, db.Model(&models.Contact{}).Where("user_id = ? AND firstname = ?", recipient.ID, "Alice").Count(&count).Error)
+	assert.Equal(t, int64(1), count, "payload must be imported once")
+
+	var got models.ContactShare
+	require.NoError(t, db.First(&got, "id = ?", share.ID).Error)
+	assert.Equal(t, models.ContactShareStatusAccepted, got.Status)
 }

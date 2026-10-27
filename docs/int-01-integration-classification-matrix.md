@@ -138,9 +138,10 @@ one hosting accounts the operator does not vet, that set must be switched on —
 `WEBHOOK_BLOCK_PRIVATE_URLS`, `CALDAV_BLOCK_PRIVATE_URLS`,
 `IMMICH_BLOCK_PRIVATE_URLS`, `PAPERLESS_BLOCK_PRIVATE_URLS`, `GEOPULSE_BLOCK_PRIVATE_URLS`,
 `SEAFILE_BLOCK_PRIVATE_URLS`, `WEBDAV_BLOCK_PRIVATE_URLS`,
-`MONICA_BLOCK_PRIVATE_URLS`, `OIDC_BLOCK_PRIVATE_URLS` all `true`. With them off,
-the app-layer guard is inactive and only a network egress policy stands between an
-authenticated user's integration URL and an internal or cloud-metadata address
+`MONICA_BLOCK_PRIVATE_URLS`, `MEERKAT_BLOCK_PRIVATE_URLS`, `OIDC_BLOCK_PRIVATE_URLS` all
+`true`. With them off, the app-layer guard is inactive and only a network egress
+policy stands between an authenticated user's integration URL and an internal or
+cloud-metadata address
 (`169.254.169.254`). Operator checklist: the "SSRF hardening" row in
 `docs/security/deployment-baseline.md`; `.env.example` groups the flags under
 "SSRF hardening".

@@ -11,7 +11,49 @@ the import runs in the background so the flow survives navigating away. Endpoint
 `/api/v1/contacts/import/meerkat/*`; orchestration in `services.MeerkatImportManager`. The
 uploaded file is held only as a `0600` temp file for the session's lifetime.
 
-## Path
+## Live API import (issue #2013)
+
+The same wizard can instead **connect to a running Meerkat** (`POST /contacts/import/meerkat/connect`
+→ the shared `fetch` / `status` / `preview` / `confirm` / `cancel`). The user enters the Meerkat URL
+and either an API token (preferred) or a username and password. No file copy, no stopping Meerkat,
+no WAL concerns — and, unlike the DB path, **profile photos transfer**.
+
+```
+URL + token|password → meerkatapi.Client (SSRF-guarded, no redirects, size/time limits)
+  → CheckHealth (no credential sent yet) → login → Detect (feature probe) → Me → CountContacts
+  → [fetch] FetchSnapshot (paged GET /contacts?includes=notes,activities,relationships,reminders)
+  → the same meerkat.Snapshot → MapMeerkatSnapshot → preview/loss report → confirm
+  → after the commit: GET /contacts/:id/profile_picture → photostore (validate + re-encode)
+```
+
+- **Version detection.** Meerkat's `/health` returns a hard-coded `"version": "0.1.0"`, so the
+  generation is inferred from the shape of a contacts page (`meerkatapi.Detect`). One adapter,
+  `v1.5-v1.7`, is supported: the data API is identical across v1.5.0–v1.7.0 (checked by diffing the
+  tags). A server missing the v1.5 fields, or returning fields the adapter does not know, is
+  `supported: false`; `connect` still opens the session and reports why (`reason_code`
+  `meerkat_version_older_than_supported` | `meerkat_version_newer_than_tested` for clients to
+  translate, `reason` as the English fallback), and `fetch` then requires
+  `accept_untested: true` (the "Try anyway" confirmation). Nothing is ever written before the user
+  has reviewed the preview and loss report. A new Meerkat release means one new adapter beside
+  `meerkatapi/snapshot.go` plus its golden fixtures.
+- **Scope.** Only the authenticated user's data (the API is already user-scoped), so there is no
+  source-user step. The API hides `vcard_uid`/`etag`, so UIDs are not preserved (the file path
+  keeps them); re-runs still match on the stable source ids (`contact/<id>`) and the preview flags
+  every already-imported contact as a duplicate. Contact-less (unassigned) notes are not reached by
+  this path.
+- **Photos.** `contacts.photo` is no longer `unsupported` on this path: the bytes are downloaded
+  after the import transaction commits and saved through `photostore` exactly like an upload. A
+  failed download is counted (`photos_failed`) and never fails the import.
+- **SSRF.** `MEERKAT_BLOCK_PRIVATE_URLS` (default `false`, restart-only), the same trade-off as
+  `MONICA_BLOCK_PRIVATE_URLS`: a self-hosted Meerkat usually lives on a LAN or Docker network, so
+  private addresses are allowed unless the operator opts into blocking (set it `true` for cloud /
+  multi-tenant). There is no per-request override. Redirects are never followed.
+- **Credentials** live only in the in-memory session: never persisted, logged or echoed; a
+  password login is logged out of Meerkat when the import finishes, is cancelled, or the session
+  expires. `connect` reports `insecure_transport` for plain `http://` to a non-local host.
+- Not available on the embedded (Android) server, like the Monica import.
+
+## Path (database file)
 
 ```
 meerkat DB file → meerkat.Open (read-only, schema-tolerant)
@@ -52,7 +94,7 @@ data is never silently mixed in. Pass an explicit source user id to select one.
 | `activities` + `activity_contacts` | `Activity` + attendees | |
 | `reminders` | `Reminder` | recurrence vocabulary passthrough |
 | soft-deleted rows (any table) | — (reported `skipped`) | tombstones are not content |
-| `contacts.photo` | — (reported `unsupported`) | bytes live on the source server's filesystem |
+| `contacts.photo` | — (reported `unsupported`); **downloaded on the live-API path** | bytes live on the source server's filesystem; only the API can fetch them |
 
 ### Relationship direction
 

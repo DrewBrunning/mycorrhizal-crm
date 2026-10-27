@@ -23,4 +23,5 @@ Both mappers (Meerkat, Monica) feed one shared engine (`backend/services/import_
 | Source | Path | Fixture | Mapping table | Known limitations |
 |---|---|---|---|---|
 | [Meerkat](meerkat-mapping.md) | direct read of the Meerkat SQLite database | `testdata/meerkat-fixture/` | [table](meerkat-mapping.md#mapping) | photos, dangling relationships, multi-user ambiguity |
+| [Meerkat live API](meerkat-mapping.md#live-api-import-issue-2013) | a running Meerkat (token or login) via `meerkatapi` | `internal/meerkatapifake` | [table](meerkat-mapping.md#mapping) | photos transfer; one `v1.5-v1.7` adapter, feature-detected |
 | [Monica](monica-mapping.md) | a fetched `monica.Snapshot` (live client in #549) | `testdata/monica-fixture/` | [table](monica-mapping.md#mapping) | avatars deferred, tasks/debts → notes, reciprocal collapse |

@@ -66,6 +66,7 @@ unleash:
         - ^life_event_suggestion_service\.go$
         - ^mailer\.go$
         - ^meerkat_import\.go$
+        - ^meerkat_import_api\.go$
         - ^meerkat_import_session\.go$
         - ^monica_import\.go$
         - ^monica_import_session\.go$

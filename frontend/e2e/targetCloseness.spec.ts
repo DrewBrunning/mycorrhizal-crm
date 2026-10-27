@@ -1,5 +1,12 @@
 import type { Page } from '@playwright/test';
-import { createTestContact, deleteTestContact, expect, test, waitForLoading } from './fixtures';
+import {
+  createTestContact,
+  deleteTestContact,
+  expect,
+  stableClick,
+  test,
+  waitForLoading,
+} from './fixtures';
 import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 
 /**
@@ -78,7 +85,28 @@ test.describe('v1.5.0 contact flows', () => {
       const toggle = cadence.getByRole('switch', { name: /Ambient contact/ });
       await expect(toggle).not.toBeChecked();
 
-      await toggle.click();
+      // #cadence sits low on a page whose sections load in after
+      // waitForLoading returns; a plain click can land mid-layout-shift
+      // (mousedown and mouseup on different elements), firing no change
+      // event, so the controlled switch just stays unchecked (flake ledger
+      // #2088). stableClick waits for the target to stop moving first.
+      //
+      // Assert the save request itself so a recurrence says which half failed:
+      // no PUT means the click never registered a change; a non-2xx (e.g. a 412
+      // from a stale If-Match revision) also leaves the switch unchecked.
+      const saved = page.waitForResponse(
+        (r) =>
+          r.request().method() === 'PUT' &&
+          new URL(r.url()).pathname.endsWith(`/contacts/${contact.ID}`),
+        { timeout: 10000 },
+      );
+      await stableClick(toggle);
+      const saveResponse = await saved.catch(() => {
+        throw new Error(
+          'no ambient save request (PUT /contacts/:id) was sent: the click did not register a change',
+        );
+      });
+      expect(saveResponse.ok(), `ambient save failed: ${saveResponse.status()}`).toBeTruthy();
       await expect(toggle).toBeChecked();
 
       await page.reload();

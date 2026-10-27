@@ -1542,6 +1542,7 @@ func TestPublicExposureWarnings_AllGuardsOnIsQuiet(t *testing.T) {
 		SeafileBlockPrivateURLs:   true,
 		WebDAVBlockPrivateURLs:    true,
 		MonicaBlockPrivateURLs:    true,
+		MeerkatBlockPrivateURLs:   true,
 		OIDC:                      OIDCConfig{BlockPrivateURLs: true},
 	}
 	assert.Empty(t, cfg.PublicExposureWarnings(), "every guard on must not warn")
