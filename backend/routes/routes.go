@@ -361,6 +361,11 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.POST("/contacts/import/meerkat/upload", middleware.BodySizeLimitMiddleware(services.MaxMeerkatDBSize), controllers.UploadMeerkatDatabase)
 			// Storage-only embedded server (ADR 0028 amendment, issue #1367): the Meerkat live-fetch reaches a remote Meerkat server (upload-based import stays).
 			if !cfg.IsEmbedded() {
+				// Live-API connect (issue #2013): URL + token or username/password,
+				// version detection, then the shared fetch/preview/confirm flow.
+				protected.POST("/contacts/import/meerkat/connect", middleware.ValidateJSONMiddleware(&models.MeerkatConnectRequest{}), func(c *gin.Context) {
+					controllers.ConnectMeerkatImport(c, cfg)
+				})
 				protected.POST("/contacts/import/meerkat/fetch", middleware.ValidateJSONMiddleware(&models.MeerkatFetchRequest{}), controllers.StartMeerkatFetch)
 			}
 			protected.GET("/contacts/import/meerkat/status", controllers.GetMeerkatImportStatus)

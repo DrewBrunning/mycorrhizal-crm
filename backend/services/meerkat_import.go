@@ -84,7 +84,7 @@ func MapMeerkatSnapshot(snap *meerkat.Snapshot, requestedSourceUser *int64) *Imp
 			})
 			continue
 		}
-		plan.Contacts = append(plan.Contacts, mapMeerkatContact(c, refOf(c.ID), plan))
+		plan.Contacts = append(plan.Contacts, mapMeerkatContact(c, refOf(c.ID), plan, snap.PhotosFetchable))
 		mapMeerkatCustomFields(plan, c, refOf(c.ID))
 	}
 
@@ -327,7 +327,7 @@ func itoa(v int64) string { return strconv.FormatInt(v, 10) }
 
 // mapMeerkatContact maps one contact row onto a neutral Record plus the
 // CRM-local flags. Mapped losses are appended to plan.Report.
-func mapMeerkatContact(c meerkat.Contact, ref SourceRef, plan *ImportSourcePlan) MappedContact {
+func mapMeerkatContact(c meerkat.Contact, ref SourceRef, plan *ImportSourcePlan, photosFetchable bool) MappedContact {
 	str := func(p *string) string {
 		if p == nil {
 			return ""
@@ -414,7 +414,12 @@ func mapMeerkatContact(c meerkat.Contact, ref SourceRef, plan *ImportSourcePlan)
 	if c.Archived != nil && *c.Archived != 0 {
 		mc.Archived = true
 	}
-	if c.Photo != nil && *c.Photo != "" {
+	if c.Photo != nil && *c.Photo != "" && photosFetchable {
+		// API import: the assistant downloads the bytes after the commit
+		// (meerkatapi.Client.FetchProfilePicture).
+		mc.PhotoURL = MeerkatPhotoRef(c.ID)
+		mc.PhotoSource = "meerkat"
+	} else if c.Photo != nil && *c.Photo != "" {
 		plan.Report.appendIssue(ImportIssue{
 			Record:   ref.String(),
 			Field:    "photo",
@@ -755,3 +760,8 @@ func parseMeerkatVCardExtra(raw *string) contactmodel.Passthrough {
 	}
 	return pt
 }
+
+// MeerkatPhotoRef is the opaque PhotoURL marker an API-sourced contact carries
+// (the engine only tests it for non-emptiness); the contact's Meerkat id is
+// recovered from the plan ref when photos are downloaded.
+func MeerkatPhotoRef(contactID int64) string { return "meerkat:profile_picture/" + itoa(contactID) }

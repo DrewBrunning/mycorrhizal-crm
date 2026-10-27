@@ -45,4 +45,49 @@ type MeerkatUploadResponse struct {
 type MeerkatFetchRequest struct {
 	SessionID    string `json:"session_id" validate:"required"`
 	SourceUserID *int64 `json:"source_user_id"`
+	// AcceptUntested is the user's "Try anyway" for an API session whose
+	// Meerkat version is not one the importer was tested against (issue #2013).
+	// Ignored for uploaded databases.
+	AcceptUntested bool `json:"accept_untested"`
+}
+
+// MeerkatConnectRequest carries the credentials entered for the live-API
+// import (issue #2013): a Meerkat API token (preferred), or a username/email
+// and password. They are third-party credential material: held in memory by
+// the session only, never logged, never persisted, never echoed back, and
+// dropped (the Meerkat session is logged out) when the session ends.
+type MeerkatConnectRequest struct {
+	BaseURL  string `json:"base_url" validate:"required,max=500"`
+	APIToken string `json:"api_token" validate:"max=4000"`
+	Username string `json:"username" validate:"max=255"`
+	Password string `json:"password" validate:"max=1000"`
+}
+
+// MeerkatVersionInfo is the result of API feature detection. Meerkat's
+// /health reports a hard-coded version, so the generation is inferred from
+// the shape of the API. When Supported is false the user decides whether to
+// try anyway (the flow is preview-only until they confirm).
+type MeerkatVersionInfo struct {
+	Generation string `json:"generation"`
+	Supported  bool   `json:"supported"`
+	Reason     string `json:"reason"`
+	// ReasonCode is the translatable form of Reason ("meerkat_version_older_than_supported" |
+	// "meerkat_version_newer_than_tested"; empty when Supported). Clients fall back to Reason
+	// for a code they do not know.
+	ReasonCode string `json:"reason_code"`
+}
+
+// MeerkatConnectResponse is returned once the credentials validate: a new
+// session ID, the detected version, the authenticated source user and the
+// contact count (the API exposes cheap totals for contacts only; the other
+// counts are known after the fetch).
+type MeerkatConnectResponse struct {
+	SessionID  string              `json:"session_id"`
+	Version    MeerkatVersionInfo  `json:"version"`
+	SourceUser MeerkatSourceUser   `json:"source_user"`
+	Totals     MeerkatEntityCounts `json:"totals"`
+	// InsecureTransport is true when the URL is plain http:// to a non-local
+	// host: the credential travels in clear text. The UI warns.
+	InsecureTransport     bool `json:"insecure_transport"`
+	EstimatedFetchSeconds int  `json:"estimated_fetch_seconds"`
 }

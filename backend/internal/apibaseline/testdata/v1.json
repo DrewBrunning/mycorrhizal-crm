@@ -2349,6 +2349,30 @@
     },
     {
       "method": "POST",
+      "path": "/contacts/import/meerkat/connect",
+      "parameters": null,
+      "request_body": "ref:MeerkatConnectRequest",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:MeerkatConnectResponse"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "429",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "503",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
       "path": "/contacts/import/meerkat/fetch",
       "parameters": null,
       "request_body": "ref:MeerkatFetchRequest",
@@ -16582,6 +16606,66 @@
       ]
     },
     {
+      "name": "MeerkatConnectRequest",
+      "properties": [
+        {
+          "name": "api_token",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "base_url",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "password",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "username",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "MeerkatConnectResponse",
+      "properties": [
+        {
+          "name": "estimated_fetch_seconds",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "insecure_transport",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "name": "session_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "source_user",
+          "type": "ref:MeerkatSourceUser",
+          "required": true
+        },
+        {
+          "name": "totals",
+          "type": "ref:MeerkatEntityCounts",
+          "required": true
+        },
+        {
+          "name": "version",
+          "type": "ref:MeerkatVersionInfo",
+          "required": true
+        }
+      ]
+    },
+    {
       "name": "MeerkatEntityCounts",
       "properties": [
         {
@@ -16614,6 +16698,11 @@
     {
       "name": "MeerkatFetchRequest",
       "properties": [
+        {
+          "name": "accept_untested",
+          "type": "boolean",
+          "required": false
+        },
         {
           "name": "session_id",
           "type": "string",
@@ -16678,6 +16767,31 @@
           "name": "totals",
           "type": "ref:MeerkatEntityCounts",
           "required": false
+        }
+      ]
+    },
+    {
+      "name": "MeerkatVersionInfo",
+      "properties": [
+        {
+          "name": "generation",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "reason_code",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "supported",
+          "type": "boolean",
+          "required": true
         }
       ]
     },
