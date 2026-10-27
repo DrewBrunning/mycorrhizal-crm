@@ -42,3 +42,4 @@ ticket backlog moved to GitHub Issues.
 | [0034](0034-android-passkeys.md) | Android passkeys — native Credential Manager, an operator opt-in gated on Digital Asset Links | accepted |
 | [0035](0035-service-boundary-and-delete-cascade-registry.md) | Controller-to-service boundary and a declarative delete-cascade registry | accepted |
 | [0036](0036-app-password-scopes.md) | App-password scopes and the CardDAV/CalDAV account-password policy | accepted |
+| [0037](0037-contact-trash-and-restore.md) | Contact trash — restore from a deletion snapshot | accepted |

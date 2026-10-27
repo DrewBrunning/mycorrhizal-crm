@@ -93,15 +93,15 @@ jobs:
           INFRA_CHANGED: ${{ steps.filter.outputs.infra }}
           WORKFLOWS_CHANGED: ${{ steps.filter.outputs.workflows }}
 
-  test:
+  android-unit:
     permissions:
       contents: read
-    name: Android (Gradle)
+    name: Android unit tests + coverage
     runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
-    # Typical time ~26-30m before the buildHealth gate (#1908) added ~10m of
-    # dependency analysis; a 40m cap cancelled the job mid-analysis. 60m keeps
-    # the bound meaningful with variance headroom.
-    timeout-minutes: 60
+    # Split out of the former single "Android (Gradle)" job (~40m+ serial) so
+    # tests, static analysis and APK assembly run in parallel. The required
+    # `Android (Gradle)` context is now the `test` aggregator job below.
+    timeout-minutes: 45
     needs: changes
     # Issue #974: was the one job here with no schedule exemption -- without
     # it the test-retry plugin's maxRetries=0-on-schedule tier would never
@@ -256,23 +256,114 @@ jobs:
           disable_search: true
           fail_ci_if_error: false
 
-      # Issue #1262 / ADR 0028 Decision 2: the embedded server binary is
-      # cross-compiled from backend/ at the same commit and packaged as
-      # jniLibs/arm64-v8a/libmycorrhizal.so. This step proves both the
-      # `GOOS=android GOARCH=arm64 CGO_ENABLED=0 -tags nodynamic` build and the
-      # Gradle packaging wiring (a missing binary would silently ship a build
-      # with no local mode).
-      - name: Build the embedded server binary and assert it is packaged
-        working-directory: android
-        run: |
-          ./gradlew :app:assembleObtainiumDebug -PMYCORRHIZAL_BUILD_EMBEDDED_SERVER=true
-          apk="app/build/outputs/apk/obtainium/debug/app-obtainium-debug.apk"
-          unzip -Z1 "$apk" | grep -qx 'lib/arm64-v8a/libmycorrhizal.so' \
-            || { echo "::error::$apk does not contain the embedded server binary"; exit 1; }
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-coverage
+          path: android/build/reports/jacoco/jacocoTestReportAggregated/
+          retention-days: 7
+
+      # Issue #268: JUnit XML consumed by test-report.yml.
+      - name: Upload unit test results (JUnit)
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-unit-test-results
+          path: |
+            android/**/build/test-results/test*UnitTest/TEST-*.xml
+            android/**/build/reports/tests/
+          retention-days: 7
+
+  android-lint:
+    permissions:
+      contents: read
+    name: Android lint
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
+    # Android Lint (~13m cold), isolated so it runs beside the other legs.
+    timeout-minutes: 40
+    needs: changes
+    # Issue #974: was the one job here with no schedule exemption -- without
+    # it the test-retry plugin's maxRetries=0-on-schedule tier would never
+    # fire on a normal night (paths-filter is usually false with no
+    # android/** change).
+    if: github.event_name == 'schedule' || needs.changes.outputs.android == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.workflows == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+
+      - name: Set up JDK
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: 25
+
+      # Issue #1262: the embedded server binary is built from backend/ at the
+      # same commit. This MUST precede Set up Gradle / the first `./gradlew`
+      # call: the Gradle daemon captures PATH when it starts, and the
+      # buildEmbeddedServer Exec task inherits that environment. With the
+      # runner's preinstalled Go (1.24.x) the task fails go.mod's `go >= 1.26`
+      # requirement ("go.mod requires go >= 1.26.0 (running go 1.24.13)").
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
 
       - name: Lint
         working-directory: android
         run: ./gradlew --warning-mode=fail lintDebug :app:lintObtainiumDebug :app:lintFossDebug
+
+  android-analysis:
+    permissions:
+      contents: read
+    name: Android detekt + dependency analysis
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
+    # detekt + buildHealth (#1908). buildHealth alone ran 15m+ cold.
+    timeout-minutes: 40
+    needs: changes
+    # Issue #974: was the one job here with no schedule exemption -- without
+    # it the test-retry plugin's maxRetries=0-on-schedule tier would never
+    # fire on a normal night (paths-filter is usually false with no
+    # android/** change).
+    if: github.event_name == 'schedule' || needs.changes.outputs.android == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.workflows == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+
+      - name: Set up JDK
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: 25
+
+      # Issue #1262: the embedded server binary is built from backend/ at the
+      # same commit. This MUST precede Set up Gradle / the first `./gradlew`
+      # call: the Gradle daemon captures PATH when it starts, and the
+      # buildEmbeddedServer Exec task inherits that environment. With the
+      # runner's preinstalled Go (1.24.x) the task fails go.mod's `go >= 1.26`
+      # requirement ("go.mod requires go >= 1.26.0 (running go 1.24.13)").
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
 
       # Issue #358/#1901: detekt, the Kotlin correctness/smell analyzer and
       # formatter gate (the ktlint wrapper rule set enforces the android_studio
@@ -298,6 +389,63 @@ jobs:
             cat build/reports/dependency-analysis/build-health-report.txt >> "$GITHUB_STEP_SUMMARY"
           fi
           exit "$status"
+
+  android-assemble:
+    permissions:
+      contents: read
+    name: Android APK assembly + packaging checks
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
+    # Embedded-server packaging and the flavor APK assertions.
+    timeout-minutes: 30
+    needs: changes
+    # Issue #974: was the one job here with no schedule exemption -- without
+    # it the test-retry plugin's maxRetries=0-on-schedule tier would never
+    # fire on a normal night (paths-filter is usually false with no
+    # android/** change).
+    if: github.event_name == 'schedule' || needs.changes.outputs.android == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.workflows == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+
+      - name: Set up JDK
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: 25
+
+      # Issue #1262: the embedded server binary is built from backend/ at the
+      # same commit. This MUST precede Set up Gradle / the first `./gradlew`
+      # call: the Gradle daemon captures PATH when it starts, and the
+      # buildEmbeddedServer Exec task inherits that environment. With the
+      # runner's preinstalled Go (1.24.x) the task fails go.mod's `go >= 1.26`
+      # requirement ("go.mod requires go >= 1.26.0 (running go 1.24.13)").
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+
+      # Issue #1262 / ADR 0028 Decision 2: the embedded server binary is
+      # cross-compiled from backend/ at the same commit and packaged as
+      # jniLibs/arm64-v8a/libmycorrhizal.so. This step proves both the
+      # `GOOS=android GOARCH=arm64 CGO_ENABLED=0 -tags nodynamic` build and the
+      # Gradle packaging wiring (a missing binary would silently ship a build
+      # with no local mode).
+      - name: Build the embedded server binary and assert it is packaged
+        working-directory: android
+        run: |
+          ./gradlew :app:assembleObtainiumDebug -PMYCORRHIZAL_BUILD_EMBEDDED_SERVER=true
+          apk="app/build/outputs/apk/obtainium/debug/app-obtainium-debug.apk"
+          unzip -Z1 "$apk" | grep -qx 'lib/arm64-v8a/libmycorrhizal.so' \
+            || { echo "::error::$apk does not contain the embedded server binary"; exit 1; }
 
       # Issue #1133: obtainium (gold-standard) + foss (proves the
       # Firebase-free flavor builds end to end, the F-Droid precondition).
@@ -365,24 +513,28 @@ jobs:
           done
           echo "OK: play omits the restricted permissions; obtainium keeps them."
 
-      - name: Upload coverage report
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: android-coverage
-          path: android/build/reports/jacoco/jacocoTestReportAggregated/
-          retention-days: 7
-
-      # Issue #268: JUnit XML consumed by test-report.yml.
-      - name: Upload unit test results (JUnit)
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: android-unit-test-results
-          path: |
-            android/**/build/test-results/test*UnitTest/TEST-*.xml
-            android/**/build/reports/tests/
-          retention-days: 7
+  # The required `Android (Gradle)` status context (main-protection ruleset,
+  # release-gates.json) keeps its name and job id; it passes only when every
+  # parallel leg above passed or was skipped by the path gate, so splitting the
+  # work needs no governance change. `if: always()` so a failed leg fails this
+  # check instead of leaving it skipped (a skipped required check passes).
+  test:
+    permissions:
+      contents: read
+    name: Android (Gradle)
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
+    timeout-minutes: 5
+    needs: [changes, android-unit, android-lint, android-analysis, android-assemble]
+    if: always()
+    steps:
+      - name: Every Android leg passed or was path-skipped
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "leg results: $RESULTS"
+          case " $RESULTS " in
+            *" failure "*|*" cancelled "*) echo "::error::an Android leg failed or was cancelled"; exit 1 ;;
+          esac
 
   # Issue #238: instrumented E2E (app/src/androidTest) -- the real app
   # against the real docker-compose.test.yml backend on an emulator, the

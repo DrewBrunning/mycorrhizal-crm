@@ -5,25 +5,12 @@ import (
 	"time"
 
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/fireandforget"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/gorm"
 )
-
-// awaitFeedTimestamp polls until TouchFeed's fire-and-forget write lands, so it
-// cannot outlive the test (or its DB) and race a later test.
-func awaitFeedTimestamp(t *testing.T, db *gorm.DB, feedID string) {
-	t.Helper()
-	require.Eventually(t, func() bool {
-		var f models.Feed
-		if err := db.First(&f, "id = ?", feedID).Error; err != nil {
-			return false
-		}
-		return f.LastAccessedAt != nil
-	}, 2*time.Second, 10*time.Millisecond, "TouchFeed must write last_accessed_at")
-}
 
 func TestRevokeAllFeeds_RevokesOnlyCallersActiveFeeds(t *testing.T) {
 	db := dbtest.New(t)
@@ -57,7 +44,10 @@ func TestTouchFeed_WritesAndThrottlesRecentAccess(t *testing.T) {
 
 	// A NULL last_accessed_at schedules the async write.
 	TouchFeed(db, feed)
-	awaitFeedTimestamp(t, db, feed.ID)
+	fireandforget.Wait() // the write is tracked, so shutdown (and this test) can drain it
+	var touched models.Feed
+	require.NoError(t, db.First(&touched, "id = ?", feed.ID).Error)
+	require.NotNil(t, touched.LastAccessedAt, "TouchFeed must write last_accessed_at")
 
 	// A fresh, recent row takes the throttle branch and returns synchronously.
 	var recent models.Feed

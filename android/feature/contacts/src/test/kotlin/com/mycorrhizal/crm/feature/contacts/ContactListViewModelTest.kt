@@ -692,6 +692,73 @@ class ContactListViewModelTest {
     }
 
     @Test
+    fun `offline fallback applies the circle archived and favorites filters`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val (viewModel, contactRepository, _) = newViewModel()
+        coEvery {
+            contactRepository.listContacts(any(), any(), any(), any(), any(), any(), any(), any(), any())
+        } returns
+            Result.failure(ApiError.Network(java.io.IOException("offline")))
+        coEvery { contactRepository.searchLocal("") } returns listOf(
+            ContactSummary(id = 1, fn = "Match", circles = listOf("Family"), isFavorite = true),
+            ContactSummary(
+                id = 2,
+                fn = "Other circle",
+                circles = listOf("Work"),
+                isFavorite = true
+            ),
+            ContactSummary(
+                id = 3,
+                fn = "Archived",
+                circles = listOf("Family"),
+                archived = true,
+                isFavorite = true
+            ),
+            ContactSummary(id = 4, fn = "Not starred", circles = listOf("Family"))
+        )
+
+        viewModel.onCircleFilterChange("Family")
+        viewModel.onIncludeFavoritesChange(true)
+        advanceUntilIdle()
+
+        assertEquals(listOf(1), viewModel.uiState.value.contacts.map { it.id })
+
+        viewModel.onIncludeArchivedChange(true)
+        advanceUntilIdle()
+
+        assertEquals(listOf(1, 3), viewModel.uiState.value.contacts.map { it.id })
+    }
+
+    @Test
+    fun `a stale offline fallback cannot overwrite a newer online result`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val (viewModel, contactRepository, _) = newViewModel()
+        var calls = 0
+        coEvery {
+            contactRepository.listContacts(any(), any(), any(), any(), any(), any(), any(), any(), any())
+        } coAnswers {
+            if (calls++ == 0) {
+                Result.failure(ApiError.Network(java.io.IOException("offline")))
+            } else {
+                Result.success(page(ContactSummary(id = 9, fn = "Online")))
+            }
+        }
+        coEvery { contactRepository.searchLocal(any()) } coAnswers {
+            delay(1_000)
+            listOf(ContactSummary(id = 1, fn = "Stale cache"))
+        }
+
+        viewModel.loadContacts()
+        runCurrent()
+        viewModel.loadContacts()
+        advanceUntilIdle()
+
+        assertEquals(listOf(9), viewModel.uiState.value.contacts.map { it.id })
+    }
+
+    @Test
     fun `network failure with no local matches leaves the list empty`() = runTest(
         mainDispatcherRule.testDispatcher
     ) {
