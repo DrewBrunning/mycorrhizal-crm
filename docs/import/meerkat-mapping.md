@@ -18,6 +18,11 @@ The same wizard can instead **connect to a running Meerkat** (`POST /contacts/im
 and either an API token (preferred) or a username and password. No file copy, no stopping Meerkat,
 no WAL concerns — and, unlike the DB path, **profile photos transfer**.
 
+In the web app this is the **Connect to Meerkat** tab of the Import from Meerkat dialog (the default);
+**Upload a file** keeps the DB path. A plain-`http` address shows an unencrypted-transport warning, and a
+version the adapter was not built against needs an explicit "Try anyway" before the fetch starts.
+Android parity is a follow-up.
+
 ```
 URL + token|password → meerkatapi.Client (SSRF-guarded, no redirects, size/time limits)
   → CheckHealth (no credential sent yet) → login → Detect (feature probe) → Me → CountContacts

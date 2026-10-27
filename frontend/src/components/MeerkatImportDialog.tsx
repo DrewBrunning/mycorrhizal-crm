@@ -8,18 +8,22 @@ import {
   Radio,
   RadioGroup,
   Stack,
+  Tab,
+  Tabs,
   Typography,
 } from '@mui/material';
 import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   MEERKAT_IMPORT_BASE,
+  type MeerkatConnectResponse,
   type MeerkatUploadResponse,
   startMeerkatFetch,
   uploadMeerkatDatabase,
 } from '../api/meerkatImport';
 import { useSourceImportWizard } from '../hooks/useSourceImportWizard';
 import { getErrorMessage } from '../utils/errorHandler';
+import MeerkatLiveConnect from './MeerkatLiveConnect';
 import SourceImportWizard from './sourceImport/SourceImportWizard';
 
 interface Props {
@@ -30,13 +34,19 @@ interface Props {
 
 const FILE_INPUT_ID = 'meerkat-file-input';
 
-// The Meerkat import assistant (issue #550). Everything after the connect
-// step is the shared SourceImportWizard; this component owns step 0 — upload
-// the .db file, then pick which source user to import — and hands the wizard
-// a session id. Web-only, direct-DB per ADR-0007.
+type Mode = 'live' | 'file';
+
+// The Meerkat import assistant (issues #550, #2013). Everything after the
+// connect step is the shared SourceImportWizard; this component owns step 0,
+// in one of two modes: connect to a running Meerkat over its API (default), or
+// upload its .db file and pick which source user to import. Either way it
+// hands the wizard a session id. Web-only, per ADR-0007.
 export default function MeerkatImportDialog({ open, onClose, onImportComplete }: Props) {
   const { t } = useTranslation();
 
+  const [mode, setMode] = useState<Mode>('live');
+  const [live, setLive] = useState<MeerkatConnectResponse | null>(null);
+  const [acceptUntested, setAcceptUntested] = useState(false);
   const [fileName, setFileName] = useState('');
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -46,12 +56,20 @@ export default function MeerkatImportDialog({ open, onClose, onImportComplete }:
   // beginFetch runs after upload, so the wizard's startFetch reads the chosen
   // source user through a ref rather than a stale closure.
   const sourceUserRef = useRef<number | undefined>(undefined);
+  // Set only for a live connect; the upload path keeps its two-argument call.
+  const liveAcceptRef = useRef<boolean | null>(null);
 
   const startFetch = useCallback(
-    (sessionId: string) => startMeerkatFetch(sessionId, sourceUserRef.current),
+    (sessionId: string) =>
+      liveAcceptRef.current === null
+        ? startMeerkatFetch(sessionId, sourceUserRef.current)
+        : startMeerkatFetch(sessionId, undefined, liveAcceptRef.current),
     [],
   );
-  const wizard = useSourceImportWizard({ basePath: MEERKAT_IMPORT_BASE, startFetch });
+  const wizard = useSourceImportWizard({
+    basePath: MEERKAT_IMPORT_BASE,
+    startFetch,
+  });
 
   const resetLocal = useCallback(() => {
     setFileName('');
@@ -60,6 +78,10 @@ export default function MeerkatImportDialog({ open, onClose, onImportComplete }:
     setUpload(null);
     setSourceUserId(undefined);
     sourceUserRef.current = undefined;
+    liveAcceptRef.current = null;
+    setMode('live');
+    setLive(null);
+    setAcceptUntested(false);
   }, []);
 
   const handleClose = useCallback(() => {
@@ -95,9 +117,15 @@ export default function MeerkatImportDialog({ open, onClose, onImportComplete }:
     void wizard.beginFetch(upload.session_id);
   };
 
+  const handleLiveStart = () => {
+    if (!live) return;
+    liveAcceptRef.current = acceptUntested;
+    void wizard.beginFetch(live.session_id);
+  };
+
   const multiUser = (upload?.source_users.length ?? 0) > 1;
 
-  const connectStep = (
+  const fileStep = (
     <Stack spacing={2}>
       <Typography variant="body2" sx={{ color: 'text.secondary' }}>
         {t('settings.meerkatImport.connect.description')}
@@ -183,6 +211,42 @@ export default function MeerkatImportDialog({ open, onClose, onImportComplete }:
             </Button>
           </Box>
         </Alert>
+      )}
+    </Stack>
+  );
+
+  // The mode is fixed once a session exists: switching would strand it.
+  const sessionStarted = !!live || !!upload;
+  const connectStep = (
+    <Stack spacing={2}>
+      <Tabs
+        value={mode}
+        onChange={(_, m: Mode) => setMode(m)}
+        aria-label={t('settings.meerkatImport.mode.label')}
+      >
+        <Tab
+          value="live"
+          label={t('settings.meerkatImport.mode.live')}
+          disabled={sessionStarted && mode !== 'live'}
+        />
+        <Tab
+          value="file"
+          label={t('settings.meerkatImport.mode.file')}
+          disabled={sessionStarted && mode !== 'file'}
+        />
+      </Tabs>
+      {mode === 'live' ? (
+        <MeerkatLiveConnect
+          connected={live}
+          onConnected={setLive}
+          acceptUntested={acceptUntested}
+          onAcceptUntestedChange={setAcceptUntested}
+          onStart={handleLiveStart}
+          starting={wizard.busy}
+          onUseFile={() => setMode('file')}
+        />
+      ) : (
+        fileStep
       )}
     </Stack>
   );

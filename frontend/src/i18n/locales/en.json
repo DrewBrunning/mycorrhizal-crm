@@ -1885,6 +1885,32 @@
         "userOption_one": "{{name}} — {{count}} contact",
         "userOption_other": "{{name}} — {{count}} contacts",
         "start": "Start import"
+      },
+      "mode": {
+        "label": "How to import from Meerkat",
+        "live": "Connect to Meerkat",
+        "file": "Upload a file"
+      },
+      "live": {
+        "description": "Connect to your running Meerkat server and this will read your contacts and their history over its API, photos included. Nothing is written until you review and confirm.",
+        "urlLabel": "Meerkat address",
+        "urlHelp": "The address you open Meerkat at, e.g. https://meerkat.example.com",
+        "authMode": "Sign-in method",
+        "modeToken": "Token",
+        "modePassword": "Username and password",
+        "tokenLabel": "API token",
+        "tokenHelp": "An API token from your Meerkat settings. It is used for this import only and is never stored.",
+        "usernameLabel": "Username or email",
+        "passwordLabel": "Password",
+        "passwordHelp": "Used to sign in once for this import, then signed out again. It is never stored.",
+        "connect": "Connect",
+        "connecting": "Connecting…",
+        "useFile": "Upload the database file instead",
+        "insecure": "This address uses plain http, so your credentials and contacts travel over the network not encrypted. Only continue on a network you trust.",
+        "untested": "This Meerkat version was not recognised ({{reason}}). The import may be incomplete or fail.",
+        "tryAnyway": "Try anyway",
+        "version": "Detected Meerkat {{generation}}",
+        "estimate": "Reading your data should take about {{minutes}} min."
       }
     },
     "mycorrhizalImport": {

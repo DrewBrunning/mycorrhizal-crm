@@ -731,6 +731,23 @@ const rows: Row[] = [
     ok: NO_CONTENT(),
   },
   {
+    name: 'meerkat.startMeerkatFetch accepting an untested version',
+    call: () => meerkat.startMeerkatFetch('s1', undefined, true),
+    method: 'post',
+    route: '/contacts/import/meerkat/fetch',
+    body: { session_id: 's1', source_user_id: null, accept_untested: true },
+    ok: NO_CONTENT(),
+  },
+  {
+    name: 'meerkat.connectMeerkat with an API token',
+    call: () => meerkat.connectMeerkat({ base_url: 'https://m', api_token: 'tok' }),
+    method: 'post',
+    route: '/contacts/import/meerkat/connect',
+    body: { base_url: 'https://m', api_token: 'tok' },
+    ok: { session_id: 's1' },
+    result: { session_id: 's1' },
+  },
+  {
     name: 'meerkat.getMeerkatImportStatus',
     call: () => meerkat.getMeerkatImportStatus('a b'),
     method: 'get',

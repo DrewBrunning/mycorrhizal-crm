@@ -1895,6 +1895,32 @@
         "userOption_other": "{{name}} — {{count}} contactos",
         "userOption_many": "{{name}} — {{count}} contactos",
         "start": "Iniciar importación"
+      },
+      "mode": {
+        "label": "Cómo importar desde Meerkat",
+        "live": "Conectar con Meerkat",
+        "file": "Subir un archivo"
+      },
+      "live": {
+        "description": "Conéctese a su servidor Meerkat en funcionamiento y se leerán sus contactos y su historial a través de la API, fotos incluidas. No se escribe nada hasta que revise y confirme.",
+        "urlLabel": "Dirección de Meerkat",
+        "urlHelp": "La dirección con la que abre Meerkat, p. ej. https://meerkat.example.com",
+        "authMode": "Método de inicio de sesión",
+        "modeToken": "Token",
+        "modePassword": "Usuario y contraseña",
+        "tokenLabel": "Token de API",
+        "tokenHelp": "Un token de API de los ajustes de Meerkat. Se usa solo para esta importación y nunca se guarda.",
+        "usernameLabel": "Usuario o correo",
+        "passwordLabel": "Contraseña",
+        "passwordHelp": "Se usa para iniciar sesión una vez en esta importación y luego se cierra la sesión. Nunca se guarda.",
+        "connect": "Conectar",
+        "connecting": "Conectando…",
+        "useFile": "Subir el archivo de base de datos en su lugar",
+        "insecure": "Esta dirección usa http sin cifrar, por lo que sus credenciales y contactos viajan sin cifrar por la red. Continúe solo en una red de confianza.",
+        "untested": "No se reconoció esta versión de Meerkat ({{reason}}). La importación puede quedar incompleta o fallar.",
+        "tryAnyway": "Intentar de todos modos",
+        "version": "Detectado Meerkat {{generation}}",
+        "estimate": "Leer sus datos debería tardar unos {{minutes}} min."
       }
     },
     "mycorrhizalImport": {

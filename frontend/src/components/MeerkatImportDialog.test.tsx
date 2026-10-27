@@ -1,7 +1,12 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import { startMeerkatFetch, uploadMeerkatDatabase } from '../api/meerkatImport';
+import {
+  connectMeerkat,
+  type MeerkatConnectResponse,
+  startMeerkatFetch,
+  uploadMeerkatDatabase,
+} from '../api/meerkatImport';
 import MeerkatImportDialog from './MeerkatImportDialog';
 
 afterEach(cleanup);
@@ -11,15 +16,26 @@ vi.mock('../api/meerkatImport', async (importOriginal) => {
   return {
     ...actual,
     uploadMeerkatDatabase: vi.fn(),
+    connectMeerkat: vi.fn(),
     startMeerkatFetch: vi.fn().mockResolvedValue(undefined),
   };
 });
 
 const uploadMock = vi.mocked(uploadMeerkatDatabase);
-beforeEach(() => uploadMock.mockReset());
+const connectMock = vi.mocked(connectMeerkat);
+beforeEach(() => {
+  uploadMock.mockReset();
+  connectMock.mockReset();
+});
 
 function renderOpen() {
   return render(<MeerkatImportDialog open onClose={() => {}} onImportComplete={() => {}} />);
+}
+
+function renderFileMode() {
+  const view = renderOpen();
+  fireEvent.click(screen.getByRole('tab', { name: 'Upload a file' }));
+  return view;
 }
 
 function pickFile(name = 'meerkat.db') {
@@ -32,14 +48,20 @@ test('after upload the multi-user picker renders, pre-selects the default, and c
   uploadMock.mockResolvedValue({
     session_id: 's1',
     default_source_user_id: 1,
-    totals: { contacts: 5, relationships: 2, notes: 3, activities: 0, reminders: 0 },
+    totals: {
+      contacts: 5,
+      relationships: 2,
+      notes: 3,
+      activities: 0,
+      reminders: 0,
+    },
     source_users: [
       { id: 1, username: 'fixture', email: '', name: 'Fixture', contacts: 4 },
       { id: 2, username: 'user2', email: '', name: '', contacts: 1 },
     ],
   });
 
-  renderOpen();
+  renderFileMode();
   pickFile();
 
   expect(await screen.findByText('5 contacts, 2 relationships, 3 notes.')).toBeInTheDocument();
@@ -54,10 +76,16 @@ test('a single-user database skips the picker', async () => {
   uploadMock.mockResolvedValue({
     session_id: 's1',
     default_source_user_id: 1,
-    totals: { contacts: 3, relationships: 0, notes: 0, activities: 0, reminders: 0 },
+    totals: {
+      contacts: 3,
+      relationships: 0,
+      notes: 0,
+      activities: 0,
+      reminders: 0,
+    },
     source_users: [{ id: 1, username: 'solo', email: '', name: '', contacts: 3 }],
   });
-  renderOpen();
+  renderFileMode();
   pickFile();
   await screen.findByText('3 contacts, 0 relationships, 0 notes.');
   expect(screen.queryByRole('radio')).not.toBeInTheDocument();
@@ -67,7 +95,7 @@ test('a rejected upload shows the error inline and stays on the connect step', a
   uploadMock.mockImplementationOnce(() =>
     Promise.reject(new Error('That file is not a Meerkat database')),
   );
-  renderOpen();
+  renderFileMode();
   pickFile('notes.db');
 
   await waitFor(() =>
@@ -92,13 +120,19 @@ test('Start import kicks off the source fetch with the selected user', async () 
   uploadMock.mockResolvedValue({
     session_id: 's1',
     default_source_user_id: 1,
-    totals: { contacts: 5, relationships: 0, notes: 0, activities: 0, reminders: 0 },
+    totals: {
+      contacts: 5,
+      relationships: 0,
+      notes: 0,
+      activities: 0,
+      reminders: 0,
+    },
     source_users: [
       { id: 1, username: 'a', email: '', name: 'A', contacts: 4 },
       { id: 2, username: 'b', email: '', name: 'B', contacts: 1 },
     ],
   });
-  renderOpen();
+  renderFileMode();
   pickFile();
 
   await screen.findByText('5 contacts, 0 relationships, 0 notes.');
@@ -111,13 +145,19 @@ test('choosing a different source user updates the radio selection', async () =>
   uploadMock.mockResolvedValue({
     session_id: 's1',
     default_source_user_id: 1,
-    totals: { contacts: 5, relationships: 0, notes: 0, activities: 0, reminders: 0 },
+    totals: {
+      contacts: 5,
+      relationships: 0,
+      notes: 0,
+      activities: 0,
+      reminders: 0,
+    },
     source_users: [
       { id: 1, username: 'a', email: '', name: 'A', contacts: 4 },
       { id: 2, username: 'b', email: '', name: 'B', contacts: 1 },
     ],
   });
-  renderOpen();
+  renderFileMode();
   pickFile();
 
   await screen.findByText('5 contacts, 0 relationships, 0 notes.');
@@ -125,4 +165,152 @@ test('choosing a different source user updates the radio selection', async () =>
   fireEvent.click(radios[1]);
   expect(radios[1]).toBeChecked();
   expect(radios[0]).not.toBeChecked();
+});
+
+const connected = (over: Partial<MeerkatConnectResponse> = {}): MeerkatConnectResponse => ({
+  session_id: 'live1',
+  version: { generation: 'v1.5-v1.7', supported: true, reason: '' },
+  source_user: { id: 1, username: 'me', email: '', name: 'Me', contacts: 12 },
+  totals: {
+    contacts: 12,
+    relationships: 0,
+    notes: 0,
+    activities: 0,
+    reminders: 0,
+  },
+  insecure_transport: false,
+  estimated_fetch_seconds: 120,
+  ...over,
+});
+
+function fillUrl(url = 'https://meerkat.example') {
+  fireEvent.change(screen.getByLabelText('Meerkat address'), {
+    target: { value: url },
+  });
+}
+
+test('live mode is the default and Connect needs an address and a token', () => {
+  renderOpen();
+  const connect = screen.getByRole('button', { name: 'Connect' });
+  expect(connect).toBeDisabled();
+  fillUrl();
+  expect(connect).toBeDisabled();
+  fireEvent.change(screen.getByLabelText('API token'), {
+    target: { value: 'tok' },
+  });
+  expect(connect).toBeEnabled();
+});
+
+test('connecting with a token sends only the token and shows counts + version', async () => {
+  connectMock.mockResolvedValue(connected());
+  renderOpen();
+  fillUrl('  https://meerkat.example  ');
+  fireEvent.change(screen.getByLabelText('API token'), {
+    target: { value: 'tok' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Connect' }));
+
+  expect(await screen.findByText(/12 contacts/)).toBeInTheDocument();
+  expect(connectMock).toHaveBeenCalledWith({
+    base_url: 'https://meerkat.example',
+    api_token: 'tok',
+  });
+  expect(screen.getByText(/Meerkat v1\.5-v1\.7/)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Start import' })).toBeEnabled();
+  // The credential is wiped from the form once the server holds it.
+  expect(screen.getByLabelText('API token')).toHaveValue('');
+});
+
+test('connecting with a username and password sends them instead of a token', async () => {
+  connectMock.mockResolvedValue(connected());
+  renderOpen();
+  fillUrl();
+  fireEvent.click(screen.getByRole('radio', { name: 'Username and password' }));
+  expect(screen.queryByLabelText('API token')).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Username or email'), {
+    target: { value: 'me' },
+  });
+  fireEvent.change(screen.getByLabelText('Password'), {
+    target: { value: 'pw' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Connect' }));
+
+  await screen.findByRole('button', { name: 'Start import' });
+  expect(connectMock).toHaveBeenCalledWith({
+    base_url: 'https://meerkat.example',
+    username: 'me',
+    password: 'pw',
+  });
+  expect(screen.getByLabelText('Password')).toHaveValue('');
+});
+
+test('a failed connect shows the error and offers the file upload instead', async () => {
+  connectMock.mockRejectedValue(new Error('Those credentials were rejected'));
+  renderOpen();
+  fillUrl();
+  fireEvent.change(screen.getByLabelText('API token'), {
+    target: { value: 'bad' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Connect' }));
+
+  expect(await screen.findByText('Those credentials were rejected')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Start import' })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Upload the database file instead' }));
+  expect(screen.getByRole('button', { name: 'Choose database file' })).toBeInTheDocument();
+});
+
+test('a plain-http address warns that credentials travel unencrypted', async () => {
+  connectMock.mockResolvedValue(connected({ insecure_transport: true }));
+  renderOpen();
+  fillUrl('http://192.168.1.5:3001');
+  fireEvent.change(screen.getByLabelText('API token'), {
+    target: { value: 't' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Connect' }));
+
+  expect(await screen.findByText(/not encrypted/)).toBeInTheDocument();
+});
+
+test('an untested version blocks Start until "try anyway" is ticked, then sends accept_untested', async () => {
+  const fetchMock = vi.mocked(startMeerkatFetch);
+  fetchMock.mockClear();
+  connectMock.mockResolvedValue(
+    connected({
+      version: {
+        generation: 'unknown',
+        supported: false,
+        reason: 'newer than tested',
+      },
+    }),
+  );
+  renderOpen();
+  fillUrl();
+  fireEvent.change(screen.getByLabelText('API token'), {
+    target: { value: 't' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Connect' }));
+
+  expect(await screen.findByText(/newer than tested/)).toBeInTheDocument();
+  const start = screen.getByRole('button', { name: 'Start import' });
+  expect(start).toBeDisabled();
+  fireEvent.click(screen.getByRole('checkbox', { name: /Try anyway/ }));
+  expect(start).toBeEnabled();
+  fireEvent.click(start);
+
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('live1', undefined, true));
+});
+
+test('a supported version starts the fetch without accept_untested', async () => {
+  const fetchMock = vi.mocked(startMeerkatFetch);
+  fetchMock.mockClear();
+  connectMock.mockResolvedValue(connected());
+  renderOpen();
+  fillUrl();
+  fireEvent.change(screen.getByLabelText('API token'), {
+    target: { value: 't' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Connect' }));
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Start import' }));
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('live1', undefined, false));
 });

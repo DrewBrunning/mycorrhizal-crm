@@ -1845,6 +1845,32 @@
         "userOption_one": "{{name}} — {{count}} Kontakt",
         "userOption_other": "{{name}} — {{count}} Kontakte",
         "start": "Import starten"
+      },
+      "mode": {
+        "label": "So importieren Sie aus Meerkat",
+        "live": "Mit Meerkat verbinden",
+        "file": "Datei hochladen"
+      },
+      "live": {
+        "description": "Verbinden Sie sich mit Ihrem laufenden Meerkat-Server; Ihre Kontakte und deren Verlauf werden über die API gelesen, inklusive Fotos. Es wird nichts geschrieben, bevor Sie die Vorschau geprüft und bestätigt haben.",
+        "urlLabel": "Meerkat-Adresse",
+        "urlHelp": "Die Adresse, unter der Sie Meerkat öffnen, z. B. https://meerkat.example.com",
+        "authMode": "Anmeldemethode",
+        "modeToken": "Token",
+        "modePassword": "Benutzername und Passwort",
+        "tokenLabel": "API-Token",
+        "tokenHelp": "Ein API-Token aus Ihren Meerkat-Einstellungen. Es wird nur für diesen Import verwendet und nie gespeichert.",
+        "usernameLabel": "Benutzername oder E-Mail",
+        "passwordLabel": "Passwort",
+        "passwordHelp": "Wird einmalig für diesen Import zur Anmeldung genutzt und danach wieder abgemeldet. Es wird nie gespeichert.",
+        "connect": "Verbinden",
+        "connecting": "Verbindung wird hergestellt…",
+        "useFile": "Stattdessen die Datenbankdatei hochladen",
+        "insecure": "Diese Adresse verwendet unverschlüsseltes http, daher werden Zugangsdaten und Kontakte unverschlüsselt über das Netzwerk übertragen. Fahren Sie nur in einem vertrauenswürdigen Netzwerk fort.",
+        "untested": "Diese Meerkat-Version wurde nicht erkannt ({{reason}}). Der Import kann unvollständig sein oder fehlschlagen.",
+        "tryAnyway": "Trotzdem versuchen",
+        "version": "Erkannt: Meerkat {{generation}}",
+        "estimate": "Das Lesen Ihrer Daten dauert etwa {{minutes}} Min."
       }
     },
     "mycorrhizalImport": {
