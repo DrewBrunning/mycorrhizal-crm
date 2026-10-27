@@ -1,5 +1,8 @@
 package com.mycorrhizal.crm.feature.imports
 
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelStore
 import com.mycorrhizal.crm.domain.backup.BundleBackupStatus
 import com.mycorrhizal.crm.domain.repository.BundleBackupRepository
 import com.mycorrhizal.crm.model.network.ImportConfirmRequest
@@ -22,6 +25,7 @@ import io.mockk.mockk
 import io.mockk.slot
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -334,6 +338,71 @@ class MeerkatImportViewModelTest {
             advanceUntilIdle()
 
             coVerify(exactly = 1) { apiClient.cancelMeerkatImport("s1") }
+        }
+
+    /** Clears [this] through a [ViewModelStore], exactly as popping its nav destination does. */
+    @Suppress("UNCHECKED_CAST")
+    private fun MeerkatImportViewModel.leaveScreen() {
+        val self = this
+        val store = ViewModelStore()
+        ViewModelProvider(
+            store,
+            object : ViewModelProvider.Factory {
+                override fun <T : ViewModel> create(modelClass: Class<T>): T = self as T
+            }
+        )[MeerkatImportViewModel::class.java]
+        store.clear()
+    }
+
+    @Test
+    fun `leaving the screen after connect sends exactly one cancel for the session`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { apiClient.connectMeerkat(any()) } returns Result.success(connected())
+            coEvery { apiClient.cancelMeerkatImport("s1") } returns Result.success(Unit)
+            val vm = newVm()
+            vm.fillToken()
+            vm.connect()
+            advanceUntilIdle()
+
+            vm.leaveScreen()
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { apiClient.cancelMeerkatImport("s1") }
+        }
+
+    @Test
+    fun `leaving the screen before connecting sends no cancel`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = newVm()
+            advanceUntilIdle()
+
+            vm.leaveScreen()
+            advanceUntilIdle()
+
+            coVerify(exactly = 0) { apiClient.cancelMeerkatImport(any()) }
+        }
+
+    @Test
+    fun `leaving mid-fetch and from review both cancel the session`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { apiClient.cancelMeerkatImport("s1") } returns Result.success(Unit)
+            val review = reviewVm()
+            review.leaveScreen()
+            advanceUntilIdle()
+            coVerify(exactly = 1) { apiClient.cancelMeerkatImport("s1") }
+
+            coEvery { apiClient.getMeerkatImportStatus("s1") } returns
+                Result.success(status("fetching"))
+            val fetching = newVm()
+            fetching.fillToken()
+            fetching.connect()
+            advanceUntilIdle()
+            fetching.startImport()
+            advanceTimeBy(50)
+            fetching.leaveScreen()
+            advanceUntilIdle()
+
+            coVerify(exactly = 2) { apiClient.cancelMeerkatImport("s1") }
         }
 
     @Test

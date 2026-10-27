@@ -16,6 +16,7 @@ import com.mycorrhizal.crm.network.toApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -232,12 +233,31 @@ class MeerkatImportViewModel @Inject constructor(
         }
     }
 
-    /** Drop the server session (and its stored credential) when the user leaves mid-flow. */
+    /**
+     * Drop the server session (and its stored credential). Called from [onCleared],
+     * so it runs however the screen is left: the app-bar back icon, the system
+     * back button or gesture, or any other pop of the destination.
+     */
     fun cancel() {
         val state = _uiState.value
         val sessionId = state.connected?.sessionId ?: return
         if (state.step == MeerkatImportStep.RESULT) return
-        viewModelScope.launch { apiClient.cancelMeerkatImport(sessionId) }
+        cancelSession(sessionId)
+    }
+
+    /**
+     * Fire-and-forget cancel that outlives this ViewModel. By the time
+     * [onCleared] runs `viewModelScope` is already cancelled, which would abort
+     * the in-flight HTTP call; [NonCancellable] keeps it alive. (The codebase
+     * has no application-scoped `CoroutineScope` to inject.)
+     */
+    private fun cancelSession(sessionId: String) {
+        viewModelScope.launch(NonCancellable) { apiClient.cancelMeerkatImport(sessionId) }
+    }
+
+    override fun onCleared() {
+        cancel()
+        super.onCleared()
     }
 
     fun onErrorShown() {

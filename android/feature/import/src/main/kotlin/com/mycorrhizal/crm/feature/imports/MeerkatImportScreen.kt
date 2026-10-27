@@ -57,10 +57,9 @@ fun MeerkatImportScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     MeerkatImportScreenContent(
         uiState = state,
-        onBack = {
-            viewModel.cancel()
-            onBack()
-        },
+        // The ViewModel cancels the server session in onCleared, so the app-bar
+        // icon, the system back button and gesture all clean up the same way.
+        onBack = onBack,
         onDone = onDone,
         onBaseUrlChange = viewModel::onBaseUrlChange,
         onAuthModeChange = viewModel::onAuthModeChange,
