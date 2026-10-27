@@ -214,14 +214,16 @@ is a recommendation, not a restriction.
 
 How long a given runtime version stays supported after a newer one appears:
 
-- **Security fixes land on the latest tagged release only** — see
+- **Security fixes land on supported tags only** — see
   [SECURITY.md](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/SECURITY.md)
-  → Supported Versions. Pre-`1.0` there are no long-term-support branches and
-  older tags are not backported. **From `1.0.0`** the support window is defined
-  (issue #956): each `1.x` release is supported for 12 months from the next
-  minor release, a release outside that window is end-of-life, and a fix is
-  cherry-picked onto each still-supported `release/vX.Y.0` branch. The window
-  and the EOL review are in
+  → Supported Versions. Pre-`1.0` there were no long-term-support branches and
+  older tags were not backported. **From `1.0.0`** the support window is
+  defined (issue #956): within a major, the newest minor and the one before
+  it are supported, and the next minor release retires the older of the two
+  immediately. A new major starts a 12-month security-only tail for the
+  previous major's final minor. Only security fixes are backported, and a fix
+  is cherry-picked onto each still-supported `release/vX.Y.0` branch. The
+  window and the annual EOL review are in
   [the security stewardship cadence](security/security-cadence.md).
 - **Raising any floor above is a breaking change** under
   [the breaking-change policy](breaking-change-policy.md) (MAINT-02, issue
