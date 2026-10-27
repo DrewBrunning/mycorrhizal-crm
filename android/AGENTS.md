@@ -9,10 +9,11 @@ anything mirrored across clients; the Kotlin-specific rules are here.
   `testing`, `ui`) are shared libraries; `android/feature/*` holds screen-level features
   (`contacts`, `settings`, `tracking`, `timeline`, `circles`, …); `android/macrobenchmark` is a
   separate `com.android.test` module; `android/build-logic` holds convention plugins.
-- Distribution flavors are `obtainium` (the self-hosted GitHub-release build) and `play` under the
-  `distribution` dimension. Proprietary push code lives in the `obtainium`/`play` source sets and the
-  shared `fcm` directory; the base code stays flavor-free. Flavor-qualified tasks are the norm —
-  `./gradlew :app:connectedObtainiumDebugAndroidTest` for instrumented tests.
+- Distribution flavors are `obtainium` (the self-hosted GitHub-release build), `foss` (F-Droid; no
+  Firebase/GMS), and `play` under the `distribution` dimension. Proprietary push code lives in the
+  `obtainium`/`play` source sets and the shared `fcm` directory; the base code stays flavor-free.
+  Flavor-qualified tasks are the norm — `./gradlew :app:connectedObtainiumDebugAndroidTest` for
+  instrumented tests.
 - `detekt` is the Kotlin lint **and formatting** gate: `cd android && ./gradlew detekt` on any
   Kotlin change. The `ktlint` wrapper rule set enforces code style `android_studio` (mirrored in
   `android/.editorconfig`; the wrapper reads `config/detekt/detekt.yml`, not the editorconfig).
@@ -30,7 +31,7 @@ anything mirrored across clients; the Kotlin-specific rules are here.
 - `lint` is the Android resource/manifest/framework gate and treats **warnings** as errors (issue
   #1902): `./gradlew --warning-mode=fail lintDebug :app:lintObtainiumDebug :app:lintFossDebug`.
   The shared config is `android/lint.xml`, where every `ignore` carries a reason (dependency
-  freshness is Renovate's).
+  freshness is Dependabot's).
   There is deliberately no `lint-baseline.xml`: a new exemption needs a reasoned per-check `ignore`
   and, when it is deferred work, a linked follow-up issue.
 

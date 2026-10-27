@@ -10,7 +10,7 @@ Outcome: a contact change that survives every representation without silently
 dropping data. Read `backend/AGENTS.md` (traps #2 and #3) and
 `docs/adrs/0001-neutral-hub-and-spoke-contact-model.md` first.
 
-The canonical flow is: request/import → neutral `models.Card` → flat
+The canonical flow is: request/import → neutral `contactmodel.Card` → flat
 `contacts` columns → projections (`RecordForContact`) → exporters. The e2e
 setup in `frontend/e2e/global-setup.ts` hardcodes `http://localhost:7300`; it is
 test infrastructure, not a production default.
@@ -24,9 +24,9 @@ test infrastructure, not a production default.
    On update, merge through `backend/models/contact_card_merge.go`; preserve its
    `mergeMedia` remote-photo rule.
 3. Decide sensitivity (`normal|private|secret`). Anything above `normal` is
-   filtered in the query for sync/shares/neutral-`Card` exports; CSV export,
-   account bundle, and contact map are the three deliberate full-fidelity
-   exceptions.
+   filtered in the query for sync/shares/neutral-`Card` exports and re-included
+   only through that surface's explicit include flag; CSV export, account bundle,
+   and contact map are the three deliberate full-fidelity exceptions.
 4. Update the correspondence oracle (`backend/correspondence/testdata/correspondence.tsv`)
    when the field's cross-format mapping changes, then regenerate the DATA-01
    matrix with `go run ./cmd/gencompatmatrix`.

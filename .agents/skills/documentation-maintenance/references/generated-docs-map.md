@@ -14,8 +14,8 @@ hand-edit these files. The full inventory is in `backend/AGENTS.md` and
 | `backend/database/testdata/schemas/*.sql` | `cd backend && go run ./cmd/genschema` | schema-fixture completeness test |
 | `THIRD_PARTY_NOTICES.md` | `cd backend && make gen-notices` | `cmd/gennotices -check` (unit-tests `docs-citations`) |
 | `internal/apibaseline/testdata/v1.json` | `cd backend && go run ./cmd/genapibaseline` | `backend/internal/apibaseline` drift test |
-| `frontend/src/generated/openapi.ts` | `cd backend && go run ./cmd/gentsapi` | `backend/internal/tsapi` + `npx tsc --noEmit` |
-| `backend/testdata/contract-fixtures/` | `cd backend && go run ./cmd/gencontract` | `backend/contract_fixtures_test.go` |
+| `frontend/src/generated/openapi.ts` | `cd backend && go run ./cmd/gentsapi` | `backend/tsapi_types_test.go` (`TestGeneratedTSTypesMatchSpec`) + `npx tsc --noEmit` |
+| `testdata/contract-fixtures/` | `cd backend && go run ./cmd/gencontract` | `backend/contract_fixtures_test.go` |
 | `.gremlins/*.yaml` | `cd backend && go run ./cmd/genmutationscope` | `backend/internal/mutationscope` drift test |
 
 ## Rules

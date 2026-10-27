@@ -91,10 +91,12 @@ shipped broken at least once. Test against the real migrated schema, never `Auto
 - Controllers: follow `circle_controller.go` / `life_event_controller.go` (the newer idiom) over
   older ones. `currentUserID(c)`, `middleware.GetValidated[T]`, `apperrors.AbortWithError`,
   `GetPaginationParams`.
-- Join rows get **real nested sub-resource endpoints** (`POST/DELETE /circles/:id/members`), not a
-  bulk-replace field. A duplicate add is a checked `409 ErrAlreadyExists`.
-- UUID-PK entities (`RelationshipEdge`, `Household`, `Circle`, `Tag`, `LifeEvent`, `FieldValue`)
-  generate their ID in `BeforeCreate`. Everything older uses `gorm.Model`'s uint PK.
+- Join rows get **real nested sub-resource endpoints** (`POST /circles/:id/members`,
+  `DELETE /circles/:id/members/:vcard_uid`), not a bulk-replace field. A duplicate add is a checked
+  `409 ErrAlreadyExists`.
+- UUID-PK entities (`RelationshipEdge`, `Household`, `Circle`, `Tag`, `LifeEvent`, `Activity`,
+  `CadencePolicy`, `FieldDefinition`, `Gift`, `Preference`, `OccasionEvent`, `OccasionObligation`)
+  generate their ID in `BeforeCreate`. `FieldValue` and older models use `gorm.Model`'s uint PK.
 - Validation lives in struct tags + `middleware.ValidateJSONMiddleware`; custom validators (`phone`,
   `birthday`, `safeurl`, `relation_type`) are registered in `middleware/`.
 - Response DTO collection fields must not carry `omitempty`: GORM leaves a slice nil when nothing
@@ -102,7 +104,9 @@ shipped broken at least once. Test against the real migrated schema, never `Auto
   `internal/omitemptyguard` enforces it; a test asserting this must read the **raw JSON**.
 - **Sensitivity** (`normal|private|secret`): anything above `normal` is excluded from external sync,
   contact shares, and the neutral-`Card` exports (vCard 3/4, JSContact), filtered **in the query**
-  and re-includable only via `?include_sensitive=true`. It is about copies that leave the instance,
+  and re-includable only through that surface's explicit include flag
+  (`?include_sensitive=true` for query surfaces, or the same field in a share/MCP request). It is
+  about copies that leave the instance,
   not an access-control tier against the owner. Three deliberate full-fidelity exceptions, each
   pinned by a test: the flat CSV export (`GET /api/v1/export`, "the user's own backup"), the account
   bundle (`GET /api/v1/export/account`, moving data between the user's own instances), and the

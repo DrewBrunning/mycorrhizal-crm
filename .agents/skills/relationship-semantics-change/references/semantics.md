@@ -30,7 +30,8 @@ stored data does not support.
 ## Projection and traversal
 
 - `RecordForContact` projects confirmed, non-secret edges onto `Card.RelatedTo`
-  for both sides (or one for asymmetric tokens).
+  from both endpoints, using the inverse tag on the source side and the stored
+  tag on the target side (including asymmetric `parent_of`/`child_of`).
 - `backend/services/graph_traversal.go` filters before de-duplicating; a
   suggested/secret edge must not become a hop.
 - The browser graph is budgeted by `frontend/src/utils/graphBudget.ts`; changing
@@ -48,7 +49,8 @@ fails the completeness test until registered.
 - Inverse and registry consistency: `backend/models/relationship_edge_test.go`.
 - Confirmed-only projection: same file, `TestRecordForContact_DoesNotProjectSuggestedEdge`.
 - Traversal: `backend/services/graph_traversal_test.go`.
-- Ownership across routes: `backend/routes/ownership_matrix_test.go`.
+- Ownership across routes: `backend/routes/authorization_matrix_test.go` (live router) and
+  `backend/routes/ownership_matrix_test.go` (body-carried IDs).
 - Delete cascade: `backend/services/contact_delete_test.go`.
 
 Canonical: `docs/adrs/0001-neutral-hub-and-spoke-contact-model.md`,

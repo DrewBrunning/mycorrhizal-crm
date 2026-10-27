@@ -7,8 +7,9 @@ Synthesis only; `docs/data-model.md` and ADR 0001 are canonical.
 1. **Input** — REST JSON, vCard 3/4, JSContact, CSV, or an integration import.
    Sanitization happens here; never trust a field's type or size.
 2. **Neutral model** — `backend/models/contact_record.go` builds a
-   `models.Card`. `ApplyRecordToContact` writes it through `BeforeSave`, which
-   derives the flat denormalized columns. Direct field mutation skips that.
+   `contactmodel.Record` with a `contactmodel.Card`. `ApplyRecordToContact`
+   (`backend/models/contact_record_reverse.go`) writes it through `BeforeSave`,
+   which derives the flat denormalized columns. Direct field mutation skips that.
 3. **Persistence** — flat `contacts` columns plus child rows (emails, phones,
    addresses, tags, field values). Anything with no flat home lives only in the
    serialized card.
@@ -28,14 +29,15 @@ Synthesis only; `docs/data-model.md` and ADR 0001 are canonical.
 ## Sensitivity
 
 `normal|private|secret` is filtered **in the query** for external sync, contact
-shares and neutral-`Card` exports, and re-includable only with
-`?include_sensitive=true`. The CSV export, account bundle and contact map are
-deliberate full-fidelity exceptions; do not "fix" them.
+shares and neutral-`Card` exports, and re-includable only through that surface's
+explicit include flag (`?include_sensitive=true` for query surfaces, or the same
+field in a share/MCP request). The CSV export, account bundle and contact map
+are deliberate full-fidelity exceptions; do not "fix" them.
 
 ## Where the tests live
 
 - Neutral model and projections: `backend/models/contact_record_reverse_test.go`,
-  `backend/models/contact_record_reverse_test.go`.
+  `backend/models/contact_record_projection_failure_test.go`.
 - Merge and media: `backend/models/contact_card_merge_test.go`.
 - Cross-format oracle: `backend/correspondence/`, plus
   `backend/internal/rfctest/` and `docs/golden-fixtures/`.

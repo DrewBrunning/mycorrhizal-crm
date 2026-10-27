@@ -55,7 +55,7 @@ Reusable components live in `src/components/`. They are MUI-based and receive da
 
 ## Translations
 
-All user-facing strings must be translated. Add keys to both `src/i18n/locales/en.json` and `de.json`. Do not hardcode English strings in components.
+All user-facing strings must be translated. Add keys to every locale file under `src/i18n/locales/` (`en.json`, `de.json`, `es.json`, `fr.json`, `it.json`). Do not hardcode English strings in components.
 
 ## Testing
 
