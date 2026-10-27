@@ -45,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -75,6 +76,8 @@ fun ImportContactsScreen(
     // Issue #834: CSV-file import + import history, sibling entry points to onImportVcf.
     onImportCsv: () -> Unit = {},
     onImportHistory: () -> Unit = {},
+    // Issue #2013: connect to a running Meerkat over its API.
+    onImportMeerkat: () -> Unit = {},
     viewModel: ImportContactsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -199,6 +202,18 @@ fun ImportContactsScreen(
                         modifier = Modifier.padding(end = 8.dp)
                     )
                     Text(stringResource(R.string.import_csv_entry))
+                }
+                TextButton(
+                    onClick = onImportMeerkat,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
+                        .testTag("import-meerkat-entry")
+                ) {
+                    Icon(
+                        Icons.Outlined.FileUpload,
+                        contentDescription = null,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+                    Text(stringResource(R.string.meerkat_import_entry))
                 }
             }
             when {

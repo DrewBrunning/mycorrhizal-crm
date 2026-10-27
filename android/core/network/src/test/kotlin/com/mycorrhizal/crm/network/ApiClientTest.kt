@@ -6,6 +6,7 @@ import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordInput
 import com.mycorrhizal.crm.model.network.DeviceRegistrationInput
 import com.mycorrhizal.crm.model.network.ImportConfirmRequest
+import com.mycorrhizal.crm.model.network.MeerkatConnectRequest
 import com.mycorrhizal.crm.model.network.Name
 import com.mycorrhizal.crm.model.network.NoteInput
 import com.mycorrhizal.crm.model.network.PreferenceInput
@@ -5756,6 +5757,127 @@ class ApiClientTest {
         val recorded = server.takeRequest()
         assertEquals("GET", recorded.method)
         assertEquals("/api/v1/export/account", recorded.path)
+    }
+
+    @Test
+    fun `connectMeerkat posts the credential and parses version, counts and transport`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody(
+                    """{"session_id":"m1","version":{"generation":"v1.5-v1.7","supported":true,"reason":""},""" +
+                        """"source_user":{"id":4,"username":"me","name":"Me","contacts":12},""" +
+                        """"totals":{"contacts":12,"notes":3},"insecure_transport":true,""" +
+                        """"estimated_fetch_seconds":2}"""
+                )
+            )
+
+            val result = client.connectMeerkat(
+                MeerkatConnectRequest(baseUrl = "https://m", apiToken = "tok")
+            ).getOrThrow()
+
+            assertEquals("m1", result.sessionId)
+            assertEquals("v1.5-v1.7", result.version.generation)
+            assertTrue(result.version.supported)
+            assertEquals(12, result.totals.contacts)
+            assertEquals(4L, result.sourceUser.id)
+            assertTrue(result.insecureTransport)
+            val request = server.takeRequest()
+            assertEquals("POST", request.method)
+            assertEquals("/api/v1/contacts/import/meerkat/connect", request.path)
+            // Only the credential in use is sent: nulls are omitted.
+            assertEquals("""{"base_url":"https://m","api_token":"tok"}""", request.body.readUtf8())
+        }
+
+    @Test
+    fun `connectMeerkat tolerates a sparse response and defaults the missing fields`() =
+        runBlocking {
+            server.enqueue(MockResponse().setResponseCode(200).setBody("""{"session_id":"m2"}"""))
+
+            val result = client.connectMeerkat(
+                MeerkatConnectRequest(baseUrl = "https://m", username = "u", password = "p")
+            ).getOrThrow()
+
+            assertEquals("m2", result.sessionId)
+            assertFalse(result.version.supported)
+            assertEquals("", result.version.reason)
+            assertEquals(0, result.totals.contacts)
+            assertEquals(0, result.totals.relationships)
+            assertEquals(0, result.totals.activities)
+            assertEquals(0, result.sourceUser.contacts)
+            assertEquals("", result.sourceUser.email)
+            assertFalse(result.insecureTransport)
+            assertEquals(0, result.estimatedFetchSeconds)
+            assertEquals(
+                """{"base_url":"https://m","username":"u","password":"p"}""",
+                server.takeRequest().body.readUtf8()
+            )
+        }
+
+    @Test
+    fun `startMeerkatFetch posts the session id and accept_untested`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(202).setBody("{}"))
+
+        assertTrue(client.startMeerkatFetch("m1", true).isSuccess)
+
+        val request = server.takeRequest()
+        assertEquals("/api/v1/contacts/import/meerkat/fetch", request.path)
+        assertEquals("""{"session_id":"m1","accept_untested":true}""", request.body.readUtf8())
+    }
+
+    @Test
+    fun `startMeerkatFetch defaults accept_untested to false on the wire`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(202).setBody("{}"))
+
+        assertTrue(client.startMeerkatFetch("m1", false).isSuccess)
+
+        assertEquals(
+            """{"session_id":"m1","accept_untested":false}""",
+            server.takeRequest().body.readUtf8()
+        )
+    }
+
+    @Test
+    fun `meerkat status and preview send session_id and parse`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200)
+                .setBody("""{"session_id":"m1","phase":"ready","phase_done":1,"phase_total":2}""")
+        )
+        server.enqueue(
+            MockResponse().setResponseCode(200)
+                .setBody("""{"session_id":"m1","rows":[],"total_rows":0,"valid_rows":0}""")
+        )
+
+        assertEquals("ready", client.getMeerkatImportStatus("m1").getOrThrow().phase)
+        assertEquals("m1", client.getMeerkatImportPreview("m1").getOrThrow().sessionId)
+
+        assertEquals(
+            "/api/v1/contacts/import/meerkat/status?session_id=m1",
+            server.takeRequest().path
+        )
+        assertEquals(
+            "/api/v1/contacts/import/meerkat/preview?session_id=m1",
+            server.takeRequest().path
+        )
+    }
+
+    @Test
+    fun `meerkat confirm and cancel post to the meerkat path`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(202).setBody("{}"))
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+
+        assertTrue(
+            client.confirmMeerkatImport(
+                ImportConfirmRequest("m1", listOf(RowImportAction(0, "add")))
+            ).isSuccess
+        )
+        assertTrue(client.cancelMeerkatImport("m1").isSuccess)
+
+        val confirm = server.takeRequest()
+        assertEquals("/api/v1/contacts/import/meerkat/confirm", confirm.path)
+        assertTrue(confirm.body.readUtf8().contains("\"session_id\":\"m1\""))
+        val cancel = server.takeRequest()
+        assertEquals("POST", cancel.method)
+        assertEquals("/api/v1/contacts/import/meerkat/cancel?session_id=m1", cancel.path)
     }
 
     @Test

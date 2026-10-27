@@ -124,6 +124,7 @@ import com.mycorrhizal.crm.feature.imports.BundleRestoreScreen
 import com.mycorrhizal.crm.feature.imports.CsvImportScreen
 import com.mycorrhizal.crm.feature.imports.ImportContactsScreen
 import com.mycorrhizal.crm.feature.imports.ImportHistoryScreen
+import com.mycorrhizal.crm.feature.imports.MeerkatImportScreen
 import com.mycorrhizal.crm.feature.imports.VcfImportScreen
 import com.mycorrhizal.crm.feature.map.MapScreen
 import com.mycorrhizal.crm.feature.network.NetworkScreen
@@ -1279,12 +1280,20 @@ private fun AppNavGraph(
                 onImported = {},
                 onImportVcf = { navController.navigate("import/vcf") },
                 onImportCsv = { navController.navigate("import/csv") },
+                onImportMeerkat = { navController.navigate("import/meerkat") },
                 onImportHistory = { navController.navigate("import/history") }
             )
         }
         // M9 item 4: VCF-file import — a sibling path to this screen's device-contacts one.
         composable("import/vcf") {
             VcfImportScreen(
+                onBack = { navController.popBackStack() },
+                onDone = { navController.popBackStack() }
+            )
+        }
+        // Issue #2013: connect to a running Meerkat over its API.
+        composable("import/meerkat") {
+            MeerkatImportScreen(
                 onBack = { navController.popBackStack() },
                 onDone = { navController.popBackStack() }
             )

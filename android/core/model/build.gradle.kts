@@ -8,9 +8,7 @@ android {
 }
 
 dependencies {
-    implementation(libs.moshi)
+    api(libs.moshi)
     implementation(libs.moshi.kotlin)
-    implementation(libs.kotlinx.datetime)
-    implementation(libs.kotlinx.coroutines.core)
     ksp(libs.moshi.kotlin.codegen)
 }
