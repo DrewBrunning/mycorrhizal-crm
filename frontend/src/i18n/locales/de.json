@@ -3121,7 +3121,9 @@
       "totp_disable": "2FA deaktiviert",
       "recovery_regenerate": "Wiederherstellungscodes neu generiert",
       "revoke": "Widerrufen",
-      "role_change": "Rolle geändert"
+      "role_change": "Rolle geändert",
+      "restore": "Wiederhergestellt",
+      "purge": "Endgültig gelöscht"
     },
     "entityTypes": {
       "contact": "Kontakt",

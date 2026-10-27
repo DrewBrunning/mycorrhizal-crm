@@ -3121,7 +3121,9 @@
       "totp_disable": "2FA disabled",
       "recovery_regenerate": "Recovery codes regenerated",
       "revoke": "Revoked",
-      "role_change": "Role changed"
+      "role_change": "Role changed",
+      "restore": "Restored",
+      "purge": "Permanently deleted"
     },
     "entityTypes": {
       "contact": "Contact",
