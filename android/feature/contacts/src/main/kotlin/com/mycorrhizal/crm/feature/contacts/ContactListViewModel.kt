@@ -190,6 +190,16 @@ class ContactListViewModel @Inject constructor(
         viewModelScope.launch { contactRepository.syncContacts() }
     }
 
+    /**
+     * Mirrors the server's list filters over a cached row (issue #2067): archived rows are
+     * hidden unless requested, favorites narrows to starred rows, and a circle keeps only
+     * members. The search text is applied by `searchLocal` itself.
+     */
+    private fun ContactSummary.matchesOfflineFilters(f: ContactListUiState): Boolean =
+        (f.includeArchived || !archived) &&
+            (!f.includeFavorites || isFavorite) &&
+            (f.circleFilter == null || circles.orEmpty().contains(f.circleFilter))
+
     private fun hasActiveFilter(state: ContactListUiState): Boolean =
         state.circleFilter != null || state.includeArchived || state.includeFavorites ||
             state.searchQuery.isNotBlank()
@@ -234,16 +244,18 @@ class ContactListViewModel @Inject constructor(
                     pagination = it.pagination.copy(isLoadingMore = false)
                 )
             }
+            val request = _uiState.value
             val page = contactRepository.listContacts(
                 cursor = null,
-                limit = _uiState.value.pagination.limit,
-                search = _uiState.value.searchQuery.takeIf { it.isNotBlank() },
-                circle = _uiState.value.circleFilter,
-                includeArchived = _uiState.value.includeArchived.takeIf { it },
-                favorites = _uiState.value.includeFavorites.takeIf { it },
-                sort = _uiState.value.sort.apiSort,
-                order = _uiState.value.sort.apiOrder
+                limit = request.pagination.limit,
+                search = request.searchQuery.takeIf { it.isNotBlank() },
+                circle = request.circleFilter,
+                includeArchived = request.includeArchived.takeIf { it },
+                favorites = request.includeFavorites.takeIf { it },
+                sort = request.sort.apiSort,
+                order = request.sort.apiOrder
             )
+            var failed = false
             page.foldApiError(
                 onSuccess = { result ->
                     _uiState.update {
@@ -273,17 +285,19 @@ class ContactListViewModel @Inject constructor(
                         )
                     }
                     handleAuthError(error)
-                    // Surface cached rows for the current query (FTS) so the
-                    // offline list isn't blank when the fetch fails.
-                    val query = _uiState.value.searchQuery
-                    viewModelScope.launch {
-                        val cached = contactRepository.searchLocal(query)
-                        if (cached.isNotEmpty()) {
-                            _uiState.update { it.copy(contacts = cached) }
-                        }
-                    }
+                    failed = true
                 }
             )
+            if (failed) {
+                // Surface cached rows for the request's own filters so the offline list isn't
+                // blank. Runs inside this load's coroutine (not a detached launch), so a newer
+                // load cancels it and a stale fallback can never overwrite a newer result.
+                val cached = contactRepository.searchLocal(request.searchQuery)
+                    .filter { it.matchesOfflineFilters(request) }
+                if (cached.isNotEmpty()) {
+                    _uiState.update { it.copy(contacts = cached) }
+                }
+            }
         }
     }
 
