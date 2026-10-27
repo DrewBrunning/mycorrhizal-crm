@@ -48,9 +48,11 @@ tools that look for `CLAUDE.md` read the same text. The alias is one of:
 An alias is never a second source of truth. Editing `CLAUDE.md` content — or
 leaving anything other than the one-line import in it — fails the check. The
 symlink form is preferred; the import exists for filesystems and checkouts that
-do not preserve symlinks. The skills tree follows the same rule: `.claude/skills`
-must resolve to `.agents/skills`, by symlink (or the documented materialized
-fallback that `scripts/install-agent-links.sh` owns).
+do not preserve symlinks. The skills tree is stricter: `.claude/skills` must be
+a symlink to `.agents/skills`. `scripts/install-agent-links.sh` repairs a
+checkout where `core.symlinks=false` materialized the link as a regular file and
+fails with an actionable error if it cannot create the symlink; there is no
+supported materialized skill tree.
 
 ## Skill contract
 
@@ -181,8 +183,10 @@ into the trigger set.
 fixed footer asking the agent to record the skills and context files it opened,
 and the harness scores `expect`/`not`, extra or unknown skills, declared
 ambiguous pairs, and any repository change made during a selection run (including
-changes hidden in a commit). Use `-profile pinned` (or explicit agent flags) to
-pin the agent, `-skill` to shard a pass and `-timeout` to bound one prompt. It
+changes hidden in a commit). Use a pinned profile from
+`testdata/agent-eval/agents.yaml` (add a real profile if only the `dry-run`
+placeholder is committed), or explicit agent flags, to pin the agent; use
+`-skill` to shard a pass and `-timeout` to bound one prompt. It
 measures reported selection, not observed file access or task completion; the
 manual procedure below remains the record for the ambiguous pairs and for *why*
 a neighbour did or did not win.
@@ -218,7 +222,8 @@ weakening the gate is not evidence the task was completed; a warning needs a
 human read and can be a legitimate choice for a specific task.
 
 A pinned-profile run can be compared with
-`testdata/agent-eval/baseline.json`. The committed summary records success,
+`testdata/agent-eval/baseline.json`; a profile/task without an entry has no
+baseline yet. Once a run is promoted, the committed summary records success,
 suite command counts, scope violations, generated-artifact hand-edits, hard
 integrity violations and refusal-task unexpected changes, so a baseline catches
 gate-weakening and refusal regressions, not just suite command failures.

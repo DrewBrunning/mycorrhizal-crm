@@ -4,13 +4,13 @@ Update every matrix the route belongs to; do not add a parallel list.
 
 | Concern | Where it is enforced | What to add/change |
 |---|---|---|
-| Spec ↔ router | `backend/openapi_request_test.go` (`TestOpenAPIRouteCoverage`) | register the route and document it in `backend/openapi.yaml` |
+| Spec ↔ router | `backend/openapi_test.go` (`TestOpenAPIRouteCoverage`) | register the route and document it in `backend/openapi.yaml` |
 | Request fields | `backend/openapi_request_test.go` (`TestOpenAPIRequestFieldCoverage`) | bind every documented field; no mass assignment |
 | Response shape | `backend/openapi_test.go`, `backend/openapi_spotcheck_test.go` | DTO keys and examples match the spec |
-| Captured fixtures | `backend/testdata/contract-fixtures/` via `cmd/gencontract` | regenerate, never hand-edit |
+| Captured fixtures | `testdata/contract-fixtures/` via `cmd/gencontract` | regenerate, never hand-edit |
 | Generated TS | `frontend/src/generated/openapi.ts` via `cmd/gentsapi` | regenerate; `npx tsc --noEmit` must pass |
 | Frozen baseline | `backend/internal/apibaseline/testdata/v1.json` via `cmd/genapibaseline` | deliberate diff; removals are declared breaking changes |
-| Ownership | `backend/routes/ownership_matrix_test.go` | a new route/access path gets a `user_id` scoping regression |
+| Ownership | `backend/routes/authorization_matrix_test.go` (the live-router matrix; `ownership_matrix_test.go` is body-carried-ID only) | a new route/access path gets a `user_id` scoping regression |
 | Authorization | `backend/middleware/`, `backend/routes/routes.go` | role/route policy matches the documented surface |
 | Idempotency | `backend/controllers/idempotency_e2e_test.go`, ADR 0010 | a retry returns the original result, not a second effect |
 | Conditional writes | `backend/controllers/conditional_write_*_test.go`, ADR 0008 | `If-Match`/revision comparison and 409 semantics |

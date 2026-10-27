@@ -20,9 +20,10 @@ This file is the frontend contract. Android shares the trap IDs below.
    frontend/Android copies by hand, with a comment saying they must stay in sync.
 
 5. <a id="trap-5"></a>**All five locale files get real translations** (`en`, `de`, `es`, `fr`, `it`),
-   not English placeholders. `src/i18n/locales.test.ts` enforces identical key sets both directions,
-   identical interpolation placeholders, and no *namespace* byte-identical to English. It cannot
-   assert per-key difference — proper nouns and cognates are legitimately identical in bulk.
+   not English placeholders. `src/i18n/locales.test.ts` enforces that every `en` key exists in each
+   locale, no orphan keys except the CLDR-only `_many` forms, identical interpolation placeholders,
+   and no *namespace* byte-identical to English. It cannot assert per-key difference — proper nouns
+   and cognates are legitimately identical in bulk.
 
 6. <a id="trap-6"></a>**Translate to a leaf key, never to an object node.**
    `t('contacts.personalInfo.kindOptions')` where `kindOptions` is a parent renders i18next's
@@ -59,13 +60,14 @@ This file is the frontend contract. Android shares the trap IDs below.
 - **TypeScript is intentionally capped at 6.x** (`typescript ^6.0.3`). TypeScript 7 is the Go-native
   rewrite (`tsgo`): no classic JS compiler API (`lib/typescript.js` gone, only `./unstable/*`) and no
   `tsserver`, so `typescript-eslint`'s typed linting — which `eslint.config.js`'s `projectService`
-  promise-safety rules depend on — cannot load it. Latest `typescript-eslint@8.68.0` declares peer
-  `typescript >=4.8.4 <6.1.0`. The cap is load-bearing; revisit when the toolchain supports TS 7.
+  promise-safety rules depend on — cannot load it. The installed `typescript-eslint@8.71.2` declares
+  peer `typescript >=4.8.4 <6.1.0`. The cap is load-bearing; revisit when the toolchain supports TS 7.
 - **`nanoid` is locked to `^3.3.18` in `resolutions`** (security pin for GHSA-2v37-7h3g-55p8 /
   CVE-2026-67213, which hit 3.3.17 and the whole 4.x–5.1.5 line). It cannot move to 4/5/6: vite →
-  postcss 8.5.26 requires `nanoid ^3.3.17` and loads it via CommonJS `require('nanoid/non-secure')`,
-  while nanoid 4+ is ESM-only with no `.cjs` files. 3.3.18 is the last CommonJS-capable *and* patched
-  line.
+  postcss loads it via CommonJS `require('nanoid/non-secure')`, while nanoid 4+ is ESM-only. The
+  lock currently resolves postcss 8.5.31, which requests `nanoid ^3.3.20`, while the resolution keeps
+  3.3.18; nanoid 3.3.20 also ships CommonJS (`main: index.cjs`). Re-verify the compatibility and
+  patched-line claims before moving the pin.
 
 ## Web performance budgets
 
@@ -75,8 +77,9 @@ per-chunk **gzip** baseline, generated from a clean `yarn build` by
 `cd frontend && yarn build && yarn budget:update` and commit the diff (the diff is the review). The
 `Frontend bundle-size budget` job in `unit-tests.yml` fails on growth past tolerance. The
 network-graph render ceiling lives in `frontend/src/utils/graphBudget.ts`
-(`GRAPH_RENDER_NODE_CEILING` / `GRAPH_RENDER_EDGE_CEILING`); above it `NetworkGraph` renders a notice
-plus the always-present `NetworkListView` instead of the force-graph canvas. Keep the constants in
+(`GRAPH_RENDER_NODE_CEILING` / `GRAPH_RENDER_EDGE_CEILING`); above it `NetworkGraph` replaces the
+force-graph canvas with a notice, while `NetworkPage` always renders `NetworkListView` below it.
+Keep the constants in
 sync with the doc table and `networkGraphScale.spec.ts`. Two tiers: bundle budget + unit tests +
 `@perf`-tagged route-stubbed Playwright specs per-PR; `@perf-heavy` seeded specs (`listPerf`,
 `networkGraphScale`) nightly only via `e2e-tests.yml` with `RUN_PERF_HEAVY=1`.

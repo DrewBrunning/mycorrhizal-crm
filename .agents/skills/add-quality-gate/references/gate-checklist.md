@@ -5,8 +5,10 @@ are canonical. The gate registry is `.github/release-gates.json`.
 
 ## Required per-PR contexts
 
-The `main-protection` ruleset requires exactly these contexts. Keep the
-registry, ruleset and docs equal; `governancecheck` fails on drift.
+The `main-protection` ruleset requires these contexts. Keep the registry,
+ruleset and docs equal for gates with a stable `check_context`;
+`governancecheck` fails on drift and excludes mandatory gates with
+`check_context: null`.
 
 - `Detect Changes`
 - `Backend (Go)`
@@ -35,8 +37,10 @@ registry, ruleset and docs equal; `governancecheck` fails on drift.
 4. Update `docs/development/release-gates.md` and
    `docs/development/repo-governance.md` (the marked table).
 
-`governancecheck` catches 1–2 and 4; `governance-drift.yml` catches the live
-ruleset diverging weekly. Step 3 is the half no in-repo test can see.
+`releasegatecheck` checks the release-gates doc table; `governancecheck` checks
+the repo-governance table and the registry/ruleset coupling.
+`governance-drift.yml` catches the live ruleset diverging weekly. Step 3 is the
+half no in-repo test can see.
 
 ## The three load-bearing jobs
 
@@ -50,7 +54,8 @@ Prefer adding a step there. A new job/context is the exception.
 ## Scheduled and per-PR alert registration
 
 - Scheduled workflow → add its name to
-  `.github/workflows/nightly-failure-alert.yml`'s `workflow_run.workflows`;
+  `.github/workflows/nightly-failure-alert.yml`'s `workflow_run.workflows` and to
+  `.github/workflows/nightly-failure-reconcile.yml`'s `workflow_file` matrix;
   `nightlyalertcheck` enforces equality with the `schedule:` set.
 - New mandatory per-PR workflow → add it to
   `.github/workflows/main-failure-alert.yml`; `mainalertcheck` enforces it.
@@ -62,8 +67,8 @@ Prefer adding a step there. A new job/context is the exception.
    missing context.
 3. Restore the file and rerun; it must pass.
 
-For a scheduled workflow, remove its registration entry and watch
-`nightlyalertcheck` fail, then restore.
+For a scheduled workflow, remove its registration entry from both alert lists and
+watch `nightlyalertcheck` fail, then restore.
 
 ## Common mistakes
 

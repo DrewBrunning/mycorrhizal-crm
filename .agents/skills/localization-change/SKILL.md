@@ -6,9 +6,10 @@ license: MIT
 
 # Localization change
 
-Outcome: the same key set in every locale, real translations (not English
-placeholders), correct plural families, and a type-clean frontend. Read
-`frontend/AGENTS.md` (trap #5) and `docs/development/frontend.md` first.
+Outcome: the same base key set in every locale (plus the CLDR-only `_many`
+forms where required), real translations (not English placeholders), correct
+plural families, and a type-clean frontend. Read `frontend/AGENTS.md` (trap #5)
+and `docs/development/frontend.md` first.
 
 All five locale files (`en`, `de`, `es`, `fr`, `it`) under
 `frontend/src/i18n/locales/` must carry the key. The test is the spec; do not
@@ -17,8 +18,9 @@ add a second key list.
 ## Steps
 
 1. Add the key to `frontend/src/i18n/locales/en.json` and every other locale
-   file in the same change. A key present in only one direction leaks English or
-   dead weight, and `frontend/src/i18n/locales.test.ts` fails both ways.
+   file in the same change. Missing keys and orphan keys fail; the only exception
+   is `_many`, which `es`/`fr`/`it` may carry without an `en` key because `en`
+   does not use the CLDR `many` category.
 2. Translate the value for each locale. Do not copy English or truncate a longer
    translation to fit; adjust the component layout instead.
 3. For a count-bearing string, use a real i18next plural family (`_one`,

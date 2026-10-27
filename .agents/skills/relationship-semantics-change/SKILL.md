@@ -28,8 +28,8 @@ and the [semantics reference](references/semantics.md) before editing.
 6. If deletion reaches edges, register the cascade in
    `backend/services/contact_delete.go` (ADR 0035) and assert it with
    `Unscoped()` where hard-deleted rows must be distinguished.
-7. Cover the new access path's ownership boundary; `backend/routes/ownership_matrix_test.go`
-   is the cross-route tripwire.
+7. Cover the new access path's ownership boundary; `backend/routes/authorization_matrix_test.go`
+   is the live-router cross-route tripwire (`ownership_matrix_test.go` covers body-carried IDs).
 
 ## DoD
 
