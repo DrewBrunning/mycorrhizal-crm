@@ -41,6 +41,7 @@ import CelebrationIcon from '@mui/icons-material/Celebration';
 import ClearIcon from '@mui/icons-material/Clear';
 import ContactsIcon from '@mui/icons-material/Contacts';
 import DashboardIcon from '@mui/icons-material/Dashboard';
+import DeleteIcon from '@mui/icons-material/Delete';
 import EventNoteIcon from '@mui/icons-material/EventNote';
 import GroupIcon from '@mui/icons-material/Group';
 import HealthAndSafetyIcon from '@mui/icons-material/HealthAndSafety';
@@ -139,6 +140,7 @@ import { AuthContext, useAuth } from './context/AuthContext';
 // map page (and the `map-vendor` chunk it pulls in) loads only when /map is opened.
 const MapPage = lazy(() => import('./MapPage'));
 const ShareTargetPage = lazy(() => import('./ShareTargetPage'));
+const TrashPage = lazy(() => import('./TrashPage'));
 
 const drawerWidth = 256;
 
@@ -279,6 +281,7 @@ function AppContent({
       { text: t('nav.households'), icon: <HomeWorkIcon />, path: '/households' },
       { text: t('nav.circlesTags'), icon: <GroupIcon />, path: '/circles' },
       { text: t('nav.shares'), icon: <ShareIcon />, path: '/shares' },
+      { text: t('nav.trash'), icon: <DeleteIcon />, path: '/trash' },
       { text: t('nav.audit'), icon: <HistoryIcon />, path: '/audit' },
       { text: t('nav.data'), icon: <StorageIcon />, path: '/settings/data' },
       { text: t('nav.profile'), icon: <SettingsIcon />, path: '/settings' },
@@ -811,6 +814,14 @@ function AppContent({
               element={
                 <Suspense fallback={<RouteLoadingFallback />}>
                   <ContactSharesPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/trash"
+              element={
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <TrashPage />
                 </Suspense>
               }
             />

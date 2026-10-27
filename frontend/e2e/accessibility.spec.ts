@@ -53,6 +53,7 @@ const AUTH_ROUTES: Array<[string, string]> = [
   ['households', '/households'],
   ['circles', '/circles'],
   ['shares', '/shares'],
+  ['trash', '/trash'],
   ['audit', '/audit'],
   ['users', '/users'],
   ['settings', '/settings'],
