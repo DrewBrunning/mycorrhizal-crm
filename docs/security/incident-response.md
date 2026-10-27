@@ -396,8 +396,9 @@ at-rest exception) *are* readable in a raw snapshot.
    switch to the relevant scenario above (compromise, leaked key) in parallel with the fix.
 4. **Fix** on a private branch. Add a regression test. If it's a class of bug, check the
    neighbours.
-5. **Disclose.** Coordinate a timeline with the reporter. Ship the fix in a tagged release (only the
-   latest tag gets fixes — `SECURITY.md` "Supported Versions"). Credit the reporter if they want it.
+5. **Disclose.** Coordinate a timeline with the reporter. Ship the fix in a patch release on every
+   supported minor — and on a previous major's final minor during its 12-month security tail — per
+   `SECURITY.md` "Supported Versions". Credit the reporter if they want it.
 6. **Update** `docs/security/asvs-l2.md` / `threat-model.md` for anything the fix changed, in the
    same release.
 
