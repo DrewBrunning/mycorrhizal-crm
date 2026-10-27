@@ -22,11 +22,11 @@ anything mirrored across clients; the Kotlin-specific rules are here.
   `config/detekt/detekt.yml`/`LabelledDropdown.kt`. Auto-correct formatting with
   `./gradlew detekt --auto-correct`; there is no detekt baseline, so findings are fixed rather than
   grandfathered. detekt 2.x supports the JDK 25 build JVM, so no JDK downgrade is needed; CI runs
-  the same task in `android-tests.yml`'s `android-static` job (one of three parallel legs behind the required `Android (Gradle)` aggregator). There is no Gradle step in the local
+  the same task in `android-tests.yml`'s `android-analysis` job (one of four parallel legs behind the required `Android (Gradle)` aggregator). There is no Gradle step in the local
   pre-commit hook (too slow to launch a build per commit).
 - Dependency hygiene uses the `dependency-analysis` Gradle plugin: `cd android && ./gradlew
   buildHealth` reports unused, misdeclared and transitively-used dependencies per module. It is a
-  **hard gate** in the `android-static` leg of `Android (Gradle)` (the report is appended to the job summary): any advice
+  **hard gate** in the `android-analysis` leg of `Android (Gradle)` (the report is appended to the job summary): any advice
   fails the build unless it is an accepted exception in the root `build.gradle.kts`, where each carries
   its reason (transitive advice is ignored because the Compose BOM/AndroidX constraints supply those
   deliberately; annotation-processor and convention-plugin dependencies are invisible to the analyzer).

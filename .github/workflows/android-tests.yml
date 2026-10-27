@@ -275,14 +275,13 @@ jobs:
             android/**/build/reports/tests/
           retention-days: 7
 
-  android-static:
+  android-lint:
     permissions:
       contents: read
-    name: Android lint, detekt + dependency analysis
+    name: Android lint
     runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
-    # Lint + detekt + buildHealth (#1908): no test execution, runs beside
-    # android-unit.
-    timeout-minutes: 30
+    # Android Lint (~13m cold), isolated so it runs beside the other legs.
+    timeout-minutes: 40
     needs: changes
     # Issue #974: was the one job here with no schedule exemption -- without
     # it the test-retry plugin's maxRetries=0-on-schedule tier would never
@@ -322,6 +321,49 @@ jobs:
       - name: Lint
         working-directory: android
         run: ./gradlew --warning-mode=fail lintDebug :app:lintObtainiumDebug :app:lintFossDebug
+
+  android-analysis:
+    permissions:
+      contents: read
+    name: Android detekt + dependency analysis
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
+    # detekt + buildHealth (#1908). buildHealth alone ran 15m+ cold.
+    timeout-minutes: 40
+    needs: changes
+    # Issue #974: was the one job here with no schedule exemption -- without
+    # it the test-retry plugin's maxRetries=0-on-schedule tier would never
+    # fire on a normal night (paths-filter is usually false with no
+    # android/** change).
+    if: github.event_name == 'schedule' || needs.changes.outputs.android == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.workflows == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+
+      - name: Set up JDK
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: 25
+
+      # Issue #1262: the embedded server binary is built from backend/ at the
+      # same commit. This MUST precede Set up Gradle / the first `./gradlew`
+      # call: the Gradle daemon captures PATH when it starts, and the
+      # buildEmbeddedServer Exec task inherits that environment. With the
+      # runner's preinstalled Go (1.24.x) the task fails go.mod's `go >= 1.26`
+      # requirement ("go.mod requires go >= 1.26.0 (running go 1.24.13)").
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
 
       # Issue #358/#1901: detekt, the Kotlin correctness/smell analyzer and
       # formatter gate (the ktlint wrapper rule set enforces the android_studio
@@ -482,7 +524,7 @@ jobs:
     name: Android (Gradle)
     runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 5
-    needs: [changes, android-unit, android-static, android-assemble]
+    needs: [changes, android-unit, android-lint, android-analysis, android-assemble]
     if: always()
     steps:
       - name: Every Android leg passed or was path-skipped
