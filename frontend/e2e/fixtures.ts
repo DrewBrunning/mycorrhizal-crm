@@ -163,6 +163,27 @@ async function waitForAnimationsToSettle(page: Page): Promise<void> {
 }
 
 /**
+ * True when every violation is `color-contrast` and every flagged node is
+ * either no longer in the DOM or sits inside an MUI Snackbar -- the signature
+ * of a toast caught mid-exit (see assertNoBlockingA11yViolations).
+ */
+async function onlyTransientToastContrast(
+  page: Page,
+  violations: Awaited<ReturnType<AxeBuilder['analyze']>>['violations'],
+): Promise<boolean> {
+  if (violations.some((v) => v.id !== 'color-contrast')) return false;
+  const targets = violations.flatMap((v) => v.nodes.map((n) => n.target.map(String)));
+  return page
+    .evaluate((list) => {
+      return list.every((chain) => {
+        const el = chain.length === 1 ? document.querySelector(chain[0]) : null;
+        return chain.length === 1 && (el === null || el.closest('.MuiSnackbar-root') !== null);
+      });
+    }, targets)
+    .catch(() => false);
+}
+
+/**
  * Runs axe-core against `page` (or, scoped via `context` -- a CSS selector,
  * typically `[role="dialog"]` -- against just that subtree) and fails on any
  * `critical`/`serious` violation. Shared by the automatic per-test check
@@ -171,12 +192,27 @@ async function waitForAnimationsToSettle(page: Page): Promise<void> {
  */
 export async function assertNoBlockingA11yViolations(page: Page, context?: string): Promise<void> {
   await waitForAnimationsToSettle(page);
-  const builder = new AxeBuilder({ page }).withTags(WCAG_A11Y_TAGS);
-  if (context) {
-    builder.include(context);
+  const scan = async () => {
+    const builder = new AxeBuilder({ page }).withTags(WCAG_A11Y_TAGS);
+    if (context) {
+      builder.include(context);
+    }
+    const results = await builder.analyze();
+    return results.violations.filter((v) => BLOCKING_A11Y_IMPACTS.includes(v.impact ?? ''));
+  };
+  let blocking = await scan();
+  // Nightly #2086: a toast's autoHideDuration timer (6s) can fire *during* the
+  // scan -- after waitForAnimationsToSettle saw nothing running, because the
+  // exit transition had not started yet -- so axe samples the Alert at partial
+  // opacity (fg #d9e8e0 on #35855c, 3.55:1; the settled filled-success pair is
+  // fine). Rescan once, but only when every violation is a contrast failure on
+  // an element that is now gone or still inside a Snackbar, so a toast that
+  // genuinely fails contrast still fails on the second scan, and nothing else
+  // gets a free retry.
+  if (blocking.length > 0 && (await onlyTransientToastContrast(page, blocking))) {
+    await waitForAnimationsToSettle(page);
+    blocking = await scan();
   }
-  const results = await builder.analyze();
-  const blocking = results.violations.filter((v) => BLOCKING_A11Y_IMPACTS.includes(v.impact ?? ''));
   const detail = blocking.map((v) => ({
     id: v.id,
     impact: v.impact,

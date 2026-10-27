@@ -1,5 +1,12 @@
 import type { Page } from '@playwright/test';
-import { createTestContact, deleteTestContact, expect, test, waitForLoading } from './fixtures';
+import {
+  createTestContact,
+  deleteTestContact,
+  expect,
+  stableClick,
+  test,
+  waitForLoading,
+} from './fixtures';
 import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 
 /**
@@ -78,7 +85,12 @@ test.describe('v1.5.0 contact flows', () => {
       const toggle = cadence.getByRole('switch', { name: /Ambient contact/ });
       await expect(toggle).not.toBeChecked();
 
-      await toggle.click();
+      // #cadence sits low on a page whose sections load in after
+      // waitForLoading returns; a plain click can land mid-layout-shift
+      // (mousedown and mouseup on different elements), firing no change
+      // event, so the controlled switch just stays unchecked (flake ledger
+      // #2088). stableClick waits for the target to stop moving first.
+      await stableClick(toggle);
       await expect(toggle).toBeChecked();
 
       await page.reload();
