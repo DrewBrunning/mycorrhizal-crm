@@ -151,6 +151,9 @@ import com.mycorrhizal.crm.model.network.LifeEventsPage
 import com.mycorrhizal.crm.model.network.LoginRequest
 import com.mycorrhizal.crm.model.network.LoginResponse
 import com.mycorrhizal.crm.model.network.MapConfig
+import com.mycorrhizal.crm.model.network.MeerkatConnectRequest
+import com.mycorrhizal.crm.model.network.MeerkatConnectResponse
+import com.mycorrhizal.crm.model.network.MeerkatFetchRequest
 import com.mycorrhizal.crm.model.network.MessageResponse
 import com.mycorrhizal.crm.model.network.MycorrhizalFetchRequest
 import com.mycorrhizal.crm.model.network.MycorrhizalUploadResponse
@@ -2731,6 +2734,51 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
             .build()
             .toString()
 
+    // --- Meerkat live-API import (issue #2013) ---
+
+    /**
+     * POST /api/v1/contacts/import/meerkat/connect — validates the address and
+     * credentials, detects the Meerkat version and opens an import session.
+     */
+    suspend fun connectMeerkat(request: MeerkatConnectRequest): Result<MeerkatConnectResponse> =
+        executePost("$IMPORT_MEERKAT_PATH/connect", request) { _, body ->
+            moshi.adapter(MeerkatConnectResponse::class.java).fromJson(body)
+        }
+
+    /** POST /api/v1/contacts/import/meerkat/fetch — starts the background read + preview build (202). */
+    suspend fun startMeerkatFetch(sessionId: String, acceptUntested: Boolean): Result<Unit> =
+        executePost(
+            "$IMPORT_MEERKAT_PATH/fetch",
+            MeerkatFetchRequest(sessionId, acceptUntested)
+        ) { _, _ -> Unit }
+
+    /** GET /api/v1/contacts/import/meerkat/status — the session's phase and progress. */
+    suspend fun getMeerkatImportStatus(sessionId: String): Result<SourceImportStatus> =
+        executeGet(meerkatSessionUrl("status", sessionId)) { _, body ->
+            moshi.adapter(SourceImportStatus::class.java).fromJson(body)
+        }
+
+    /** GET /api/v1/contacts/import/meerkat/preview — review rows + loss report. */
+    suspend fun getMeerkatImportPreview(sessionId: String): Result<SourceImportPreviewResponse> =
+        executeGet(meerkatSessionUrl("preview", sessionId)) { _, body ->
+            moshi.adapter(SourceImportPreviewResponse::class.java).fromJson(body)
+        }
+
+    /** POST /api/v1/contacts/import/meerkat/confirm — starts the import with per-row actions (202). */
+    suspend fun confirmMeerkatImport(request: ImportConfirmRequest): Result<Unit> =
+        executePost("$IMPORT_MEERKAT_PATH/confirm", request) { _, _ -> Unit }
+
+    /** POST /api/v1/contacts/import/meerkat/cancel — cancels an in-flight import or drops the session. */
+    suspend fun cancelMeerkatImport(sessionId: String): Result<Unit> = executePostEmpty(
+        meerkatSessionUrl("cancel", sessionId).removePrefix(PLACEHOLDER_ORIGIN)
+    ) { _, _ -> Unit }
+
+    private fun meerkatSessionUrl(action: String, sessionId: String): String =
+        "$PLACEHOLDER_ORIGIN$IMPORT_MEERKAT_PATH/$action".toHttpUrl().newBuilder()
+            .addQueryParameter("session_id", sessionId)
+            .build()
+            .toString()
+
     /**
      * GET /api/v1/contacts/import/history (issue #651) — the caller's recent
      * import outcomes, newest first, as a bare JSON array (never null, even
@@ -3376,6 +3424,7 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         private const val EXPORT_VCF_PATH = "$API_V1/export/vcf"
         private const val EXPORT_PATH = "$API_V1/export"
         private const val IMPORT_MYCORRHIZAL_PATH = "$API_V1/import/mycorrhizal"
+        private const val IMPORT_MEERKAT_PATH = "$API_V1/contacts/import/meerkat"
         private const val EXPORT_JSCONTACT_PATH = "$API_V1/export/jscontact"
         private const val EXPORT_PREFLIGHT_PATH = "$API_V1/export/preflight"
         private const val ATTACHMENTS_PATH = "$API_V1/attachments"

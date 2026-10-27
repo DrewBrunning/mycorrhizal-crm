@@ -2231,6 +2231,39 @@
     <string name="bundle_restore_error_too_large">Diese Datei ist zu groß für ein Konto-Bundle</string>
     <string name="bundle_restore_error_invalid_file">Diese Datei ist leer oder kein Konto-Bundle</string>
     <string name="bundle_restore_error_failed">Die Wiederherstellung wurde nicht abgeschlossen. Es wurde nichts geändert.</string>
+    <string name="meerkat_import_entry">Aus Meerkat importieren</string>
+    <string name="meerkat_import_title">Aus Meerkat importieren</string>
+    <string name="meerkat_import_description">Verbinden Sie sich mit Ihrem laufenden Meerkat-Server; Ihre Kontakte und deren Verlauf werden über die API gelesen, inklusive Fotos. Es wird nichts geschrieben, bevor Sie geprüft und bestätigt haben.</string>
+    <string name="meerkat_import_url_label">Meerkat-Adresse</string>
+    <string name="meerkat_import_url_help">Die Adresse, unter der Sie Meerkat öffnen, z. B. https://meerkat.example.com</string>
+    <string name="meerkat_import_mode_token">Token</string>
+    <string name="meerkat_import_mode_password">Benutzername und Passwort</string>
+    <string name="meerkat_import_token_label">API-Token</string>
+    <string name="meerkat_import_token_help">Nur für diesen Import verwendet und nie gespeichert.</string>
+    <string name="meerkat_import_username_label">Benutzername oder E-Mail</string>
+    <string name="meerkat_import_password_label">Passwort</string>
+    <string name="meerkat_import_password_help">Wird einmalig für diesen Import zur Anmeldung genutzt und danach wieder abgemeldet. Nie gespeichert.</string>
+    <string name="meerkat_import_connect">Verbinden</string>
+    <string name="meerkat_import_connecting">Verbindung wird hergestellt…</string>
+    <string name="meerkat_import_insecure">Diese Adresse verwendet unverschlüsseltes http, daher werden Zugangsdaten und Kontakte unverschlüsselt übertragen. Fahren Sie nur in einem vertrauenswürdigen Netzwerk fort.</string>
+    <string name="meerkat_import_untested">Diese Meerkat-Version wurde nicht erkannt (%1$s). Der Import kann unvollständig sein oder fehlschlagen.</string>
+    <string name="meerkat_import_try_anyway">Trotzdem versuchen</string>
+    <plurals name="meerkat_import_found">
+        <item quantity="one">%1$d Kontakt gefunden</item>
+        <item quantity="other">%1$d Kontakte gefunden</item>
+    </plurals>
+    <string name="meerkat_import_start">Import starten</string>
+    <string name="meerkat_import_working">Ihre Meerkat-Daten werden gelesen…</string>
+    <plurals name="meerkat_import_loss">
+        <item quantity="one">%1$d Element kann nicht exakt importiert werden</item>
+        <item quantity="other">%1$d Elemente können nicht exakt importiert werden</item>
+    </plurals>
+    <plurals name="meerkat_import_result">
+        <item quantity="one">Importiert: %1$d erstellt, %2$d aktualisiert, %3$d übersprungen</item>
+        <item quantity="other">Importiert: %1$d erstellt, %2$d aktualisiert, %3$d übersprungen</item>
+    </plurals>
+    <string name="meerkat_import_unavailable">Der Import aus einem laufenden Meerkat benötigt ein Serverprofil. Wechseln Sie dafür zu einem Serverprofil.</string>
+    <string name="meerkat_import_error_failed">Der Import wurde nicht abgeschlossen. Es wurde nichts geändert.</string>
     <string name="dashboard_backup_reminder_title">Sichere deine Daten</string>
     <string name="dashboard_backup_reminder_body">Deine Daten liegen nur auf diesem Gerät. Speichere ein Konto-Bundle, um sie wiederherzustellen, falls das Gerät verloren geht oder zurückgesetzt wird.</string>
     <string name="dashboard_backup_reminder_action">Jetzt sichern</string>

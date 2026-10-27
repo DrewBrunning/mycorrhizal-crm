@@ -206,3 +206,63 @@ data class SourceImportPreviewResponse(
     @Json(name = "error_count") val errorCount: Int = 0,
     @Json(name = "loss_report") val lossReport: List<SourceImportIssue> = emptyList()
 )
+
+// --- Meerkat live-API import source (issue #2013) ---
+// Mirrors backend/openapi.yaml's MeerkatConnectRequest / MeerkatConnectResponse /
+// MeerkatFetchRequest. The status/preview/confirm/cancel calls reuse the shared
+// source-import shapes above.
+
+/**
+ * Exactly one of [apiToken] or [username]+[password] is sent. Both are
+ * third-party credentials: the server keeps them in memory for the session
+ * only, and the client never persists them.
+ */
+@JsonClass(generateAdapter = true)
+data class MeerkatConnectRequest(
+    @Json(name = "base_url") val baseUrl: String,
+    @Json(name = "api_token") val apiToken: String? = null,
+    val username: String? = null,
+    val password: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class MeerkatVersionInfo(
+    val generation: String = "",
+    val supported: Boolean = false,
+    val reason: String = ""
+)
+
+@JsonClass(generateAdapter = true)
+data class MeerkatEntityCounts(
+    val contacts: Int = 0,
+    val relationships: Int = 0,
+    val notes: Int = 0,
+    val activities: Int = 0,
+    val reminders: Int = 0
+)
+
+@JsonClass(generateAdapter = true)
+data class MeerkatSourceUser(
+    val id: Long = 0,
+    val username: String = "",
+    val email: String = "",
+    val name: String = "",
+    val contacts: Int = 0
+)
+
+@JsonClass(generateAdapter = true)
+data class MeerkatConnectResponse(
+    @Json(name = "session_id") val sessionId: String = "",
+    val version: MeerkatVersionInfo = MeerkatVersionInfo(),
+    @Json(name = "source_user") val sourceUser: MeerkatSourceUser = MeerkatSourceUser(),
+    val totals: MeerkatEntityCounts = MeerkatEntityCounts(),
+    @Json(name = "insecure_transport") val insecureTransport: Boolean = false,
+    @Json(name = "estimated_fetch_seconds") val estimatedFetchSeconds: Int = 0
+)
+
+/** [acceptUntested] is the explicit "try anyway" for a Meerkat version the adapter was not built against. */
+@JsonClass(generateAdapter = true)
+data class MeerkatFetchRequest(
+    @Json(name = "session_id") val sessionId: String,
+    @Json(name = "accept_untested") val acceptUntested: Boolean = false
+)

@@ -2248,6 +2248,39 @@
     <string name="bundle_restore_error_too_large">That file is too large to be an account bundle</string>
     <string name="bundle_restore_error_invalid_file">That file is empty or not an account bundle</string>
     <string name="bundle_restore_error_failed">The restore did not complete. Nothing was changed.</string>
+    <string name="meerkat_import_entry">Import from Meerkat</string>
+    <string name="meerkat_import_title">Import from Meerkat</string>
+    <string name="meerkat_import_description">Connect to your running Meerkat server and your contacts and their history are read over its API, photos included. Nothing is written until you review and confirm.</string>
+    <string name="meerkat_import_url_label">Meerkat address</string>
+    <string name="meerkat_import_url_help">The address you open Meerkat at, e.g. https://meerkat.example.com</string>
+    <string name="meerkat_import_mode_token">Token</string>
+    <string name="meerkat_import_mode_password">Username and password</string>
+    <string name="meerkat_import_token_label">API token</string>
+    <string name="meerkat_import_token_help">Used for this import only and never stored.</string>
+    <string name="meerkat_import_username_label">Username or email</string>
+    <string name="meerkat_import_password_label">Password</string>
+    <string name="meerkat_import_password_help">Used to sign in once for this import, then signed out again. Never stored.</string>
+    <string name="meerkat_import_connect">Connect</string>
+    <string name="meerkat_import_connecting">Connecting…</string>
+    <string name="meerkat_import_insecure">This address uses plain http, so your credentials and contacts travel over the network unencrypted. Only continue on a network you trust.</string>
+    <string name="meerkat_import_untested">This Meerkat version was not recognised (%1$s). The import may be incomplete or fail.</string>
+    <string name="meerkat_import_try_anyway">Try anyway</string>
+    <plurals name="meerkat_import_found">
+        <item quantity="one">Found %1$d contact</item>
+        <item quantity="other">Found %1$d contacts</item>
+    </plurals>
+    <string name="meerkat_import_start">Start import</string>
+    <string name="meerkat_import_working">Reading your Meerkat data…</string>
+    <plurals name="meerkat_import_loss">
+        <item quantity="one">%1$d item cannot be imported exactly</item>
+        <item quantity="other">%1$d items cannot be imported exactly</item>
+    </plurals>
+    <plurals name="meerkat_import_result">
+        <item quantity="one">Imported: %1$d created, %2$d updated, %3$d skipped</item>
+        <item quantity="other">Imported: %1$d created, %2$d updated, %3$d skipped</item>
+    </plurals>
+    <string name="meerkat_import_unavailable">Importing from a running Meerkat needs a server profile. Switch to a server profile to use it.</string>
+    <string name="meerkat_import_error_failed">The import did not complete. Nothing was changed.</string>
     <string name="dashboard_backup_reminder_title">Back up your data</string>
     <string name="dashboard_backup_reminder_body">Your data lives only on this device. Save an account bundle so you can restore it if this device is lost or reset.</string>
     <string name="dashboard_backup_reminder_action">Back up now</string>
