@@ -772,9 +772,11 @@ design is ADR-0010 / CON-04, issue #479).
   and mapped plan. The password itself is used once at login and not retained. No file is written
   except the contact photos the import saves after commit.
 - **Retention**: as §12b (sliding 60 min, 6 h hard cap).
-- **Deletion / propagation**: on finish, `cancel`, expiry or process restart the credential is wiped
-  (`Client.Close`); a password-login session is also logged out on the Meerkat side (best effort).
-  API tokens are the user's own and are never revoked. Credentials are never logged or echoed in a
+- **Deletion / propagation**: on finish, `cancel` or expiry the credential is wiped (`Client.Close`);
+  a password-login session is also logged out on the Meerkat side (best effort). A process restart
+  runs neither: the in-memory credential is simply lost, no Meerkat-side logout happens, and a
+  password-login session token stays valid on Meerkat until it expires there. API tokens are the
+  user's own and are never revoked. Credentials are never logged or echoed in a
   response (`TestMeerkatAPI_NoCredentialInAnyResponse`). Imported contacts and photos follow §1 once
   committed.
 - **Backups**: never — nothing about the connection is persisted.
