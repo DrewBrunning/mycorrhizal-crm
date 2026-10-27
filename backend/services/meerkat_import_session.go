@@ -524,7 +524,7 @@ func (m *MeerkatImportManager) runImport(ctx context.Context, db *gorm.DB, s *me
 		ErrorCount:     len(result.Errors),
 	})
 
-	tasks := m.photoTasks(s, plan, refToID)
+	tasks := m.photoTasks(db, s, plan, refToID, log)
 	result.PhotosQueued = len(tasks)
 
 	s.mu.Lock()

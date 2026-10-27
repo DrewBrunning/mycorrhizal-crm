@@ -223,10 +223,31 @@ type meerkatPhotoTask struct {
 }
 
 // photoTasks lists the contacts whose pictures should be downloaded after the
-// commit. Only API sessions have a client to download with.
-func (m *MeerkatImportManager) photoTasks(s *meerkatImportSession, plan *ImportSourcePlan, refToID map[string]uint) []meerkatPhotoTask {
+// commit. Only API sessions have a client to download with. Merge targets are
+// in refToID too, so contacts that already have a photo are filtered out: the
+// import never replaces a destination photo.
+func (m *MeerkatImportManager) photoTasks(db *gorm.DB, s *meerkatImportSession, plan *ImportSourcePlan, refToID map[string]uint, log *zerolog.Logger) []meerkatPhotoTask {
 	if s.client == nil || s.photoDir == "" {
 		return nil
+	}
+	ids := make([]uint, 0, len(refToID))
+	for _, id := range refToID {
+		ids = append(ids, id)
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	var photoless []uint
+	if err := db.Model(&models.Contact{}).
+		Where("id IN ? AND user_id = ? AND (photo IS NULL OR photo = '')", ids, s.userID).
+		Pluck("id", &photoless).Error; err != nil {
+		// Fail safe: without knowing which contacts are empty, queue nothing.
+		log.Warn().Err(err).Str("session_id", s.id).Msg("Meerkat photo eligibility lookup failed; skipping pictures")
+		return nil
+	}
+	eligible := make(map[uint]bool, len(photoless))
+	for _, id := range photoless {
+		eligible[id] = true
 	}
 	var tasks []meerkatPhotoTask
 	for i := range plan.Contacts {
@@ -235,7 +256,7 @@ func (m *MeerkatImportManager) photoTasks(s *meerkatImportSession, plan *ImportS
 			continue
 		}
 		id, ok := refToID[mc.Ref.ExternalID]
-		if !ok {
+		if !ok || !eligible[id] {
 			continue
 		}
 		srcID, err := strconv.ParseInt(strings.TrimPrefix(mc.Ref.ExternalID, "contact/"), 10, 64)
@@ -270,7 +291,10 @@ func (m *MeerkatImportManager) processPhotos(db *gorm.DB, s *meerkatImportSessio
 				log.Warn().Err(saveErr).Uint("contact_id", task.contactID).Msg("Failed to save Meerkat profile picture")
 			} else if photoPath != "" {
 				// Scoped column update only, ownership-scoped (backend traps #3, #5).
-				res := db.Model(&models.Contact{}).Where("id = ? AND user_id = ?", task.contactID, s.userID).
+				// The empty-photo guard is a race backstop: a photo that landed
+				// since the task was queued is never replaced.
+				res := db.Model(&models.Contact{}).
+					Where("id = ? AND user_id = ? AND (photo IS NULL OR photo = '')", task.contactID, s.userID).
 					Updates(map[string]any{"photo": photoPath, "photo_thumbnail": thumb})
 				if res.Error != nil || res.RowsAffected == 0 {
 					log.Warn().Err(res.Error).Uint("contact_id", task.contactID).Msg("Failed to attach Meerkat profile picture")

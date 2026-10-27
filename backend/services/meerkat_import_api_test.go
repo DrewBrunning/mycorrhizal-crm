@@ -401,15 +401,111 @@ func TestMeerkatAPI_ConnectFailsWhenUserLookupFails(t *testing.T) {
 func TestMeerkatAPI_PhotoTasksSkipUnmappedAndMalformedRefs(t *testing.T) {
 	client, err := meerkatapi.NewClient("http://meerkat.invalid", false)
 	require.NoError(t, err)
-	s := &meerkatImportSession{client: client, photoDir: "x"}
+	db := setupSourceImportTestDB(t)
+	user := createSourceImportUser(t, db)
+	malformed, ok := models.Contact{UserID: user.ID, Firstname: "M"}, models.Contact{UserID: user.ID, Firstname: "OK"}
+	require.NoError(t, db.Create(&malformed).Error)
+	require.NoError(t, db.Create(&ok).Error)
+	s := &meerkatImportSession{client: client, photoDir: "x", userID: user.ID}
 	plan := &ImportSourcePlan{Contacts: []MappedContact{
 		{Ref: SourceRef{System: "meerkat", ExternalID: "contact/1"}},                  // no photo
 		{Ref: SourceRef{System: "meerkat", ExternalID: "contact/2"}, PhotoURL: "p"},   // not imported
 		{Ref: SourceRef{System: "meerkat", ExternalID: "contact/abc"}, PhotoURL: "p"}, // malformed
 		{Ref: SourceRef{System: "meerkat", ExternalID: "contact/4"}, PhotoURL: "p"},   // ok
 	}}
-	tasks := NewMeerkatImportManager().photoTasks(s, plan, map[string]uint{"contact/abc": 9, "contact/4": 40})
+	tasks := NewMeerkatImportManager().photoTasks(db, s, plan, map[string]uint{"contact/abc": malformed.ID, "contact/4": ok.ID}, meerkatTestLogger())
 	require.Len(t, tasks, 1)
 	assert.EqualValues(t, 4, tasks[0].sourceID)
-	assert.EqualValues(t, 40, tasks[0].contactID)
+	assert.Equal(t, ok.ID, tasks[0].contactID)
+}
+
+// A Meerkat contact with a picture that the user merges into an existing CRM
+// contact must not replace the destination's own photo (the engine's merge path
+// never replaces one either).
+func TestMeerkatAPI_MergeNeverReplacesDestinationPhoto(t *testing.T) {
+	db := setupSourceImportTestDB(t)
+	user := createSourceImportUser(t, db)
+	srv := fakeWithContacts(t, 1)
+	cfg := apiCfg(t)
+	mgr := NewMeerkatImportManager()
+
+	local := models.Contact{UserID: user.ID, Firstname: "PersonA", Lastname: "Test", Photo: "keep-me.jpg", PhotoThumbnail: "keep-me-thumb"}
+	require.NoError(t, db.Create(&local).Error)
+
+	resp, appErr := mgr.Connect(context.Background(), user.ID, tokenReq(srv), cfg)
+	require.Nil(t, appErr)
+	require.Nil(t, mgr.StartFetch(db, user.ID, models.MeerkatFetchRequest{SessionID: resp.SessionID}, meerkatTestLogger()))
+	waitMeerkatPhase(t, mgr, user.ID, resp.SessionID, models.SourceImportPhaseReady)
+	preview, appErr := mgr.Preview(user.ID, resp.SessionID)
+	require.Nil(t, appErr)
+	require.Len(t, preview.Rows, 1)
+	require.NotNil(t, preview.Rows[0].DuplicateMatch)
+	require.Equal(t, local.ID, preview.Rows[0].DuplicateMatch.ExistingContactID)
+
+	actions := []models.RowImportAction{{RowIndex: preview.Rows[0].RowIndex, Action: "update"}}
+	st := confirmMeerkatAndWait(t, mgr, db, user.ID, resp.SessionID, actions, models.SourceImportPhaseDone)
+	require.NotNil(t, st.Result)
+	assert.Equal(t, 1, st.Result.Updated)
+	assert.Zero(t, st.Result.PhotosQueued, "a destination that already has a photo gets no download task")
+	assert.Zero(t, st.Result.PhotosSaved)
+
+	var after models.Contact
+	require.NoError(t, db.First(&after, local.ID).Error)
+	assert.Equal(t, "keep-me.jpg", after.Photo)
+	assert.Equal(t, "keep-me-thumb", after.PhotoThumbnail)
+	entries, err := os.ReadDir(cfg.ProfilePhotoDir)
+	require.NoError(t, err)
+	assert.Empty(t, entries, "nothing was written to the photo directory")
+}
+
+// The write itself is guarded too: if the destination gains a photo between
+// the task being queued and the download finishing, the new file is dropped.
+func TestMeerkatAPI_ProcessPhotosDoesNotOverwriteLatePhoto(t *testing.T) {
+	db := setupSourceImportTestDB(t)
+	user := createSourceImportUser(t, db)
+	srv := fakeWithContacts(t, 1)
+	cfg := apiCfg(t)
+	local := models.Contact{UserID: user.ID, Firstname: "PersonA", Lastname: "Test", Photo: "late.jpg"}
+	require.NoError(t, db.Create(&local).Error)
+
+	client, err := meerkatapi.NewClient(srv.URL, false)
+	require.NoError(t, err)
+	client.SetToken(meerkatapifake.Token)
+	s := &meerkatImportSession{client: client, photoDir: cfg.ProfilePhotoDir, userID: user.ID, result: &models.SourceImportResult{}}
+	NewMeerkatImportManager().processPhotos(db, s, []meerkatPhotoTask{{contactID: local.ID, sourceID: 1}}, meerkatTestLogger())
+
+	var after models.Contact
+	require.NoError(t, db.First(&after, local.ID).Error)
+	assert.Equal(t, "late.jpg", after.Photo)
+	assert.Equal(t, 1, s.result.PhotosFailed)
+	entries, err := os.ReadDir(cfg.ProfilePhotoDir)
+	require.NoError(t, err)
+	assert.Empty(t, entries, "the orphaned download is removed")
+}
+
+func TestMeerkatAPI_PhotoTasksFailSafeWhenLookupFails(t *testing.T) {
+	client, err := meerkatapi.NewClient("http://meerkat.invalid", false)
+	require.NoError(t, err)
+	db := setupSourceImportTestDB(t)
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	require.NoError(t, sqlDB.Close())
+	s := &meerkatImportSession{client: client, photoDir: "x", userID: 1}
+	plan := &ImportSourcePlan{Contacts: []MappedContact{{Ref: SourceRef{System: "meerkat", ExternalID: "contact/4"}, PhotoURL: "p"}}}
+	assert.Empty(t, NewMeerkatImportManager().photoTasks(db, s, plan, map[string]uint{"contact/4": 40}, meerkatTestLogger()),
+		"an unanswerable ownership/photo query queues nothing rather than risking an overwrite")
+}
+
+func TestMeerkatAPI_PhotoTasksSkipOtherUsersContacts(t *testing.T) {
+	client, err := meerkatapi.NewClient("http://meerkat.invalid", false)
+	require.NoError(t, err)
+	db := setupSourceImportTestDB(t)
+	user := createSourceImportUser(t, db)
+	otherUser := models.User{Username: "someone-else", Password: "password123!A", Email: "else@example.com"}
+	require.NoError(t, db.Create(&otherUser).Error)
+	other := models.Contact{UserID: otherUser.ID, Firstname: "Other"}
+	require.NoError(t, db.Create(&other).Error)
+	s := &meerkatImportSession{client: client, photoDir: "x", userID: user.ID}
+	plan := &ImportSourcePlan{Contacts: []MappedContact{{Ref: SourceRef{System: "meerkat", ExternalID: "contact/4"}, PhotoURL: "p"}}}
+	assert.Empty(t, NewMeerkatImportManager().photoTasks(db, s, plan, map[string]uint{"contact/4": other.ID}, meerkatTestLogger()))
 }
