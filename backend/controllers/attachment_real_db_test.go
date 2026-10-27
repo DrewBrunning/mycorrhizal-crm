@@ -19,6 +19,7 @@ import (
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
+	"mycorrhizal/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -344,13 +345,20 @@ func TestDeleteContactRemovesAttachmentFiles(t *testing.T) {
 	_, err := os.Stat(filePath)
 	require.NoError(t, err)
 
-	// Deleting the contact removes the attachment file from disk.
+	// Deleting the contact keeps the attachment file on disk (the contact is
+	// restorable from the trash, ADR 0037); only a purge removes it.
 	del := httptest.NewRecorder()
 	req, _ := http.NewRequest("DELETE", "/contacts/"+itoa2(contact.ID), nil)
 	router.ServeHTTP(del, req)
 	require.Equal(t, http.StatusOK, del.Code)
 	_, err = os.Stat(filePath)
-	assert.True(t, os.IsNotExist(err), "deleting a contact must remove its attachment files")
+	assert.NoError(t, err, "deleting a contact keeps its attachment files until the contact is purged")
+
+	files, perr := services.PurgeContact(db, contact.UserID, contact.ID)
+	require.NoError(t, perr)
+	services.RemovePurgedFiles(config.Config{AttachmentsDir: dir}, files)
+	_, err = os.Stat(filePath)
+	assert.True(t, os.IsNotExist(err), "purging the contact removes its attachment files")
 }
 
 func itoa2(id uint) string {

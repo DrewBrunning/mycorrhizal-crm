@@ -250,6 +250,9 @@ func buildCWTable(s seeded) map[string]cwRow {
 
 		// === Collection-level operations ===
 		"POST /api/v1/contacts/bulk":                        exempt(reasonCollectionOp),
+		"DELETE /api/v1/trash/contacts":                     exempt(reasonCollectionOp),
+		"DELETE /api/v1/trash/contacts/:id":                 exempt(reasonAction),
+		"POST /api/v1/trash/contacts/:id/restore":           exempt(reasonAction),
 		"POST /api/v1/contacts/merge":                       exempt(reasonCollectionOp),
 		"POST /api/v1/contacts/merge/preview":               exempt(reasonCollectionOp),
 		"POST /api/v1/contacts/duplicates/dismiss":          exempt(reasonCollectionOp),

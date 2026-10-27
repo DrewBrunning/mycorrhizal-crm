@@ -82,6 +82,7 @@ unleash:
         - ^system_status_controller\.go$
         - ^tag_controller\.go$
         - ^timeline_controller\.go$
+        - ^trash_controller\.go$
         - ^two_factor_controller\.go$
         - ^user_controller\.go$
         - ^user_delete_cascade\.go$

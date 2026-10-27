@@ -65,6 +65,11 @@ type CascadeStep struct {
 	After func(tx *gorm.DB, t ContactCascadeTarget, now time.Time) error
 	// Reason is the recorded justification for the step's mode (ADR 0004/0035).
 	Reason string
+	// SnapshotSkip, on a CascadeHard step, records why its rows are NOT carried
+	// in the contact's deletion snapshot and so are not restored with the
+	// contact (ADR 0037 decision 9). A hard step without it must have a
+	// restorer in contact_trash.go; TestContactDeletionPayload_* enforces both.
+	SnapshotSkip string
 }
 
 func byID(t ContactCascadeTarget) (string, []any) {
@@ -98,7 +103,8 @@ func ContactCascadeRegistry() []CascadeStep {
 			Match: func(t ContactCascadeTarget) (string, []any) {
 				return "reminder_id IN (SELECT id FROM reminders WHERE contact_id = ? AND user_id = ?)", []any{t.ID, t.UserID}
 			},
-			Reason: "N9: delivery state is a hard-deleted accessory of its reminder; the reminder is soft-deleted so the FK cascade never fires. Must run before the reminders step",
+			SnapshotSkip: "delivery state of a reminder; the scheduler recreates it",
+			Reason:       "N9: delivery state is a hard-deleted accessory of its reminder; the reminder is soft-deleted so the FK cascade never fires. Must run before the reminders step",
 		},
 		{
 			Table: "reminders", NewModel: func() any { return &models.Reminder{} },
@@ -166,7 +172,8 @@ func ContactCascadeRegistry() []CascadeStep {
 		{
 			Table: "life_event_suggestion_resolutions", NewModel: func() any { return &models.LifeEventSuggestionResolution{} },
 			Mode: CascadeHard, Match: byEntity,
-			Reason: "ADR 0023: system-generated, join-shaped resolution memory; nothing to remember a decision about once the contact is gone",
+			SnapshotSkip: "derived review memory; suggestions regenerate",
+			Reason:       "ADR 0023: system-generated, join-shaped resolution memory; nothing to remember a decision about once the contact is gone",
 		},
 		{
 			Table: "preferences", NewModel: func() any { return &models.Preference{} },
@@ -181,7 +188,8 @@ func ContactCascadeRegistry() []CascadeStep {
 		{
 			Table: "reach_out_suggestions", NewModel: func() any { return &models.ReachOutSuggestion{} },
 			Mode: CascadeHard, Match: byContactUID,
-			Reason: "issue #177: system-generated pending suggestion; the companion reminder is removed by the reminders step",
+			SnapshotSkip: "system-generated pending suggestion; the reach-out job recomputes it",
+			Reason:       "issue #177: system-generated pending suggestion; the companion reminder is removed by the reminders step",
 		},
 		{
 			Table: "conversation_agenda", NewModel: func() any { return &models.ConversationAgenda{} },
@@ -214,14 +222,15 @@ func ContactCascadeRegistry() []CascadeStep {
 			Reason: "ADR 0026, issue #1228: join row; the event survives because another attendee may still be invited",
 		},
 		{
-			Table: "contact_sync_links", NewModel: func() any { return &models.ContactSyncLink{} },
-			Mode: CascadeHard, Match: byID,
-			Reason: "genuine Contact.ID FK; join-shaped sync bookkeeping, hard delete per ContactSyncLink's doc",
+			Table: "contact_sync_links", Mode: CascadeMutate,
+			Apply:  func(*gorm.DB, ContactCascadeTarget, time.Time) error { return nil },
+			Reason: "issue #2002, ADR 0037 decision 7: deliberately retained. The link is the tombstone that stops a CardDAV pull re-importing a deleted contact as a duplicate, and it is what lets a restored contact resume syncing as the same object; the sync pull skips a link whose contact is gone, and the subscription delete removes it",
 		},
 		{
 			Table: "contact_sync_conflicts", NewModel: func() any { return &models.ContactSyncConflict{} },
 			Mode: CascadeHard, Match: byID,
-			Reason: "issue #395: system-generated; nothing left to review once the contact is gone",
+			SnapshotSkip: "review-queue state of a past sync; the next sync re-detects real conflicts",
+			Reason:       "issue #395: system-generated; nothing left to review once the contact is gone",
 		},
 		{
 			Table: "external_identities", NewModel: func() any { return &models.ExternalIdentity{} },
@@ -261,7 +270,8 @@ func ContactCascadeRegistry() []CascadeStep {
 			Match: func(t ContactCascadeTarget) (string, []any) {
 				return "(uid_low = ? OR uid_high = ?) AND user_id = ?", []any{t.VCardUID, t.VCardUID, t.UserID}
 			},
-			Reason: "T93: join-shaped dismissal naming this contact on either side of the ordered uid pair",
+			SnapshotSkip: "derived dismissal memory; duplicate detection regenerates candidates",
+			Reason:       "T93: join-shaped dismissal naming this contact on either side of the ordered uid pair",
 		},
 		{
 			Table: "import_source_links", NewModel: func() any { return &models.ImportSourceLink{} },
@@ -351,9 +361,18 @@ func DeleteContactInTx(tx *gorm.DB, contact models.Contact, userID uint, now tim
 
 // DeleteContact deletes contact and everything that references it in a single
 // transaction, so the cascade either completes or rolls back whole (N5 trap).
-// Callers handle on-disk cleanup (photo, attachment files) after it returns.
+// It also writes the deletion snapshot that makes the contact restorable from
+// the trash (ADR 0037) in that same transaction. Callers must NOT remove photo
+// or attachment files: they stay on disk until the contact is purged.
 func DeleteContact(db *gorm.DB, contact models.Contact, userID uint, now time.Time) error {
 	return db.Transaction(func(tx *gorm.DB) error {
-		return DeleteContactInTx(tx, contact, userID, now)
+		payload, err := captureContactDeletion(tx, contact, userID)
+		if err != nil {
+			return err
+		}
+		if err := DeleteContactInTx(tx, contact, userID, now); err != nil {
+			return err
+		}
+		return writeContactDeletionSnapshot(tx, contact, userID, now, payload)
 	})
 }

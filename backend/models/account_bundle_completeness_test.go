@@ -57,6 +57,7 @@ var bundleExcluded = map[string]string{
 	"CalendarEventLink":             "external-sync ledger row; re-derived on the destination",
 	"CalendarSubscription":          "per-instance external calendar configuration/credential",
 	"CardDAVSync":                   "per-instance CardDAV sync state/cursor",
+	"ContactDeletionSnapshot":       "ADR 0037: transient trash bookkeeping for a soft-deleted contact (trashed contacts are not bundled); gone at purge",
 	"ContactShare":                  "cross-user share bookkeeping, not the sharer's own data",
 	"ContactSubscription":           "per-instance external contact subscription/credential",
 	"ContactSyncConflict":           "sync-conflict notice derived from a CardDAV connection",

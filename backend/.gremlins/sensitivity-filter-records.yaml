@@ -26,6 +26,7 @@ unleash:
         - ^contact_address_ids\.go$
         - ^contact_audit_snapshot\.go$
         - ^contact_card_merge\.go$
+        - ^contact_deletion_snapshot\.go$
         - ^contact_derived\.go$
         - ^contact_detail\.go$
         - ^contact_merge\.go$
@@ -89,6 +90,7 @@ unleash:
         - ^tag\.go$
         - ^target_closeness\.go$
         - ^timeline\.go$
+        - ^trash_dto\.go$
         - ^user\.go$
         - ^webauthn_credential\.go$
         - ^webdav_config\.go$

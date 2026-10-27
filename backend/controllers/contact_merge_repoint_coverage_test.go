@@ -104,6 +104,8 @@ var mergeCoverage = map[string]mergeClass{
 	"dismissed_duplicate_pairs": {disposition: mergeDroppedByDesign, keyCol: "uid_low",
 		reason: "a dismissal is a decision about the loser as a distinct contact; the merged contact is a new identity for duplicate detection"},
 	// --- retained history -------------------------------------------------
+	"contact_deletion_snapshots": {disposition: mergeRetained, keyCol: "contact_vcard_uid",
+		reason: "ADR 0037: written only by a user-initiated DeleteContact, never by a merge; a merge loser is deliberately not restorable from the trash"},
 	"audit_events": {disposition: mergeRetained, keyCol: "entity_id",
 		reason: "append-only audit trail (ADR: audit is never rewritten); the merge itself is recorded on the keeper"},
 }
