@@ -26,6 +26,8 @@ type fakeMeerkat struct {
 	logouts    atomic.Int32
 	loginHits  atomic.Int32
 	pageHits   atomic.Int32
+	ignorePage bool // serve page 1 whatever ?page= says
+	pageShift  int  // pages after the first start this many rows early (offset drift)
 }
 
 func (f *fakeMeerkat) handler() http.Handler {
@@ -65,10 +67,13 @@ func (f *fakeMeerkat) handler() http.Handler {
 		q := r.URL.Query()
 		limit, _ := strconv.Atoi(q.Get("limit"))
 		page, _ := strconv.Atoi(q.Get("page"))
-		if page < 1 {
+		if page < 1 || f.ignorePage {
 			page = 1
 		}
 		start := (page - 1) * limit
+		if page > 1 {
+			start = max(start-f.pageShift, 0)
+		}
 		end := start + limit
 		if start > len(f.contacts) {
 			start = len(f.contacts)
@@ -313,6 +318,83 @@ func TestFetchSnapshot_Caps(t *testing.T) {
 	assert.ErrorIs(t, err, ErrTooLarge)
 	_, err = c.FetchSnapshot(context.Background(), Me{ID: 1}, Limits{MaxEntities: 3}, nil)
 	assert.ErrorIs(t, err, ErrTooLarge)
+}
+
+func manyContacts(n int) []map[string]any {
+	var contacts []map[string]any
+	for i := 1; i <= n; i++ {
+		contacts = append(contacts, contactObj(i, fmt.Sprintf("C%d", i)))
+	}
+	return contacts
+}
+
+func TestFetchSnapshot_ServerIgnoringPageIsAnErrorNotDuplicates(t *testing.T) {
+	contacts := manyContacts(150)
+	contacts[0]["notes"] = []map[string]any{{"ID": 21, "content": "hello", "contact_id": 1}}
+	f := &fakeMeerkat{contacts: contacts, ignorePage: true}
+	c, _ := newTestClient(t, f)
+	c.SetToken(goodToken)
+	snap, err := c.FetchSnapshot(context.Background(), Me{ID: 1}, Limits{}, nil)
+	assert.ErrorIs(t, err, ErrInvalidData)
+	assert.Nil(t, snap, "a partial snapshot is never returned as success")
+	assert.EqualValues(t, 2, f.pageHits.Load(), "gives up as soon as a page adds nothing new")
+}
+
+func TestFetchSnapshot_RepeatedContactsAcrossPagesAreDropped(t *testing.T) {
+	contacts := manyContacts(150)
+	contacts[95]["notes"] = []map[string]any{{"ID": 22, "content": "dup-prone", "contact_id": 96}}
+	contacts[95]["relationships"] = []map[string]any{{"ID": 12, "name": "Bob", "type": "Friend", "contact_id": 96, "related_contact_id": 1}}
+	contacts[95]["reminders"] = []map[string]any{{"ID": 42, "message": "Call", "contact_id": 96}}
+	contacts[95]["activities"] = []map[string]any{{"ID": 32, "title": "Lunch"}}
+	// Page 2 starts 10 rows early, so contacts 91-100 are served twice.
+	c, _ := newTestClient(t, &fakeMeerkat{contacts: contacts, pageShift: 10})
+	c.SetToken(goodToken)
+	snap, err := c.FetchSnapshot(context.Background(), Me{ID: 1}, Limits{}, nil)
+	require.NoError(t, err)
+	require.Len(t, snap.Contacts, 150)
+	seen := map[int64]bool{}
+	for _, ct := range snap.Contacts {
+		assert.False(t, seen[ct.ID], "contact %d appears once", ct.ID)
+		seen[ct.ID] = true
+	}
+	assert.Len(t, snap.Notes, 1, "a repeated contact's nested rows are not repeated")
+	assert.Len(t, snap.Relationships, 1)
+	assert.Len(t, snap.Reminders, 1)
+	assert.Len(t, snap.Activities, 1)
+	assert.Len(t, snap.ActivityContacts, 1)
+}
+
+func TestFetchSnapshot_ExhaustingMaxPagesIsAnError(t *testing.T) {
+	old := maxPages
+	maxPages = 1
+	t.Cleanup(func() { maxPages = old })
+	c, _ := newTestClient(t, &fakeMeerkat{contacts: manyContacts(150)})
+	c.SetToken(goodToken)
+	snap, err := c.FetchSnapshot(context.Background(), Me{ID: 1}, Limits{}, nil)
+	assert.ErrorIs(t, err, ErrInvalidData)
+	assert.Nil(t, snap)
+}
+
+func TestFetchSnapshot_EmptyPageEndsWalkWhenContactsDeletedMidWalk(t *testing.T) {
+	f := &fakeMeerkat{contacts: manyContacts(100)}
+	// Total says 150 on page 1, but the extra rows vanish before page 2.
+	var hits atomic.Int32
+	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rec := httptest.NewRecorder()
+		f.handler().ServeHTTP(rec, r)
+		body := rec.Body.Bytes()
+		if r.URL.Path == "/api/v1/contacts" && hits.Add(1) == 1 {
+			body = []byte(strings.Replace(string(body), `"total":100`, `"total":150`, 1))
+		}
+		_, _ = w.Write(body)
+	}))
+	t.Cleanup(proxy.Close)
+	pc, err := NewClient(proxy.URL, false)
+	require.NoError(t, err)
+	pc.SetToken(goodToken)
+	snap, err := pc.FetchSnapshot(context.Background(), Me{ID: 1}, Limits{}, nil)
+	require.NoError(t, err)
+	assert.Len(t, snap.Contacts, 100)
 }
 
 func TestFetchSnapshot_ContextCancel(t *testing.T) {

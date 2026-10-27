@@ -52,10 +52,13 @@ const (
 	// its own validation and re-encoding on top).
 	MaxPhotoBytes = 10 << 20
 	pageSize      = 100 // Meerkat caps `limit` at 100
-	// maxPages bounds the paging loop if a server keeps returning full pages
-	// while ignoring the page parameter.
-	maxPages = 1000
 )
+
+// maxPages bounds how many page requests one fetch makes, so a server that
+// keeps returning new contacts cannot loop it forever. It is far above what
+// the account-size caps allow; reaching it is reported as an error. A var so
+// a test can lower it.
+var maxPages = 1000
 
 // Client is a rate-limited, read-only Meerkat API client.
 type Client struct {

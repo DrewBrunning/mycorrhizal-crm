@@ -174,6 +174,7 @@ func (c *Client) FetchSnapshot(ctx context.Context, me Me, lim Limits, progress 
 		PhotosFetchable: true,
 	}
 	seenActivity := map[int64]bool{}
+	seenContact := map[int64]bool{}
 	entities := 0
 
 	for page := 1; page <= maxPages; page++ {
@@ -192,7 +193,13 @@ func (c *Client) FetchSnapshot(ctx context.Context, me Me, lim Limits, progress 
 		if lim.MaxContacts > 0 && resp.Total > lim.MaxContacts {
 			return nil, ErrTooLarge
 		}
+		fresh := 0
 		for _, wc := range resp.Contacts {
+			if seenContact[wc.ID] {
+				continue // offset drift or a server that ignores `page` repeats rows
+			}
+			seenContact[wc.ID] = true
+			fresh++
 			snap.Contacts = append(snap.Contacts, toContact(wc, uid))
 			for _, r := range wc.Relationships {
 				cid := r.ContactID
@@ -239,16 +246,22 @@ func (c *Client) FetchSnapshot(ctx context.Context, me Me, lim Limits, progress 
 		entities = len(snap.Contacts) + len(snap.Relationships) + len(snap.Notes) +
 			len(snap.Activities) + len(snap.Reminders)
 		if lim.MaxEntities > 0 && entities > lim.MaxEntities {
-			return nil, fmt.Errorf("%w", ErrTooLarge)
+			return nil, ErrTooLarge
 		}
 		if progress != nil {
 			progress(len(snap.Contacts), resp.Total)
 		}
+		// An empty page ends the walk: a contact deleted mid-walk can shrink
+		// the set below the Total the first page reported.
 		if len(resp.Contacts) == 0 || len(snap.Contacts) >= resp.Total {
 			return snap, nil
 		}
+		if fresh == 0 {
+			return nil, fmt.Errorf("%w: the server returned a page with no new contacts (%d of %d fetched); it is not paging",
+				ErrInvalidData, len(snap.Contacts), resp.Total)
+		}
 	}
-	return snap, nil
+	return nil, fmt.Errorf("%w: the account was not exhausted after %d pages", ErrInvalidData, maxPages)
 }
 
 func toContact(w wireContact, uid int64) meerkat.Contact {
