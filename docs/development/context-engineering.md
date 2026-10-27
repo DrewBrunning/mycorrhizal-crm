@@ -223,7 +223,9 @@ human read and can be a legitimate choice for a specific task.
 
 A pinned-profile run can be compared with
 `testdata/agent-eval/baseline.json`; a profile/task without an entry has no
-baseline yet. Once a run is promoted, the committed summary records success,
+baseline yet. `claude-sonnet` (Claude Code 2.1.308, `claude-sonnet-5-5`) is the
+committed real profile; `testdata/agent-eval/README.md` lists promoted profiles
+and how to refresh their baselines. Once a run is promoted, the committed summary records success,
 suite command counts, scope violations, generated-artifact hand-edits, hard
 integrity violations and refusal-task unexpected changes, so a baseline catches
 gate-weakening and refusal regressions, not just suite command failures.
@@ -233,7 +235,9 @@ model `deepseek/deepseek-flash`) with one entry per discovered task. The weekly
 `agent-eval-collect.yml` uses it through `AGENT_EVAL_PROFILE` and compares each
 run with `-require-baseline`. After a profile, prompt, spec or suite change,
 refresh the whole baseline with the loop in `testdata/agent-eval/README.md`; a
-non-passing run is refused, never promoted with `-force-baseline`.
+non-passing run is refused, never promoted with `-force-baseline`. The
+`pinned-claude-sonnet` profile (Claude Code `2.1.308`, `claude-sonnet-5-5`) is
+promoted the same way under its own baseline entries.
 
 ## Context-change evidence
 

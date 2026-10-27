@@ -27,6 +27,11 @@ The promoted profile is `pinned-opencode`: opencode CLI `1.19.4`, model
 `--pure --auto` so the collector needs no preinstalled agent. Set
 `AGENT_EVAL_MODEL_KEY` for a local run with the same profile.
 
+`pinned-claude-sonnet` is the Claude counterpart: Claude Code `2.1.308`, model
+`claude-sonnet-5-5`, also installed with `npx`. It maps `AGENT_EVAL_MODEL_KEY` to
+`ANTHROPIC_API_KEY` when set, otherwise the CLI uses its existing login. Baseline
+entries are per profile, so each profile is promoted and refreshed separately.
+
 Explicit `-agent-command`/`-agent-model`/`-agent-version` flags cannot be
 combined with `-profile`; a free-form run is not comparable with a baseline.
 `dry-run` profiles are for smoke tests only and are rejected when a baseline is
@@ -55,13 +60,14 @@ cd backend && go run ./cmd/agenteval -task database-migration -profile pinned-op
   -write-baseline testdata/agent-eval/baseline.json -no-control
 ```
 
-Refresh every task after a profile, prompt, spec or suite change (each passing
+Refresh every task (set `PROFILE` to `pinned-opencode` or `pinned-claude-sonnet`) after a profile, prompt, spec or suite change (each passing
 run merges into the same file; failing tasks are refused and need review):
 
 ```bash
 cd backend
+PROFILE=pinned-opencode
 for task in $(find testdata/agent-eval -mindepth 2 -maxdepth 2 -name spec.yaml -printf '%h\n' | sed 's#testdata/agent-eval/##' | sort); do
-  go run ./cmd/agenteval -task "$task" -profile pinned-opencode \
+  go run ./cmd/agenteval -task "$task" -profile "$PROFILE" \
     -write-baseline testdata/agent-eval/baseline.json -no-control || break
 done
 ```
@@ -88,7 +94,9 @@ main tree with `-require-baseline`, so a missing baseline entry is visible
 instead of green. It is enabled with `AGENT_EVAL_PROFILE=pinned-opencode` and
 `AGENT_EVAL_MODEL_KEY` set to the model credential; the profile command maps the
 latter to the provider variable opencode reads. It is dispatch-only and
-scheduled, never triggered by a pull request, and is registered in the nightly
+scheduled, never triggered by a pull request. It collects one profile per run, so
+`pinned-claude-sonnet` is collected by dispatching with `AGENT_EVAL_PROFILE`
+changed. It is registered in the nightly
 failure alarm and the reconcile list by `cmd/nightlyalertcheck`.
 
 ## Control

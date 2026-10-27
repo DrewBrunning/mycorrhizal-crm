@@ -16,6 +16,11 @@ profiles:
     name: opencode
     model: deepseek/deepseek-flash
     version: "1.19.4"
+  pinned-claude-sonnet:
+    command: 'env ${AGENT_EVAL_MODEL_KEY:+ANTHROPIC_API_KEY=$AGENT_EVAL_MODEL_KEY} npx -y @anthropic-ai/claude-code@2.1.308 -p {prompt} --model claude-sonnet-5-5 --permission-mode acceptEdits --allowedTools Bash'
+    name: claude-code
+    model: claude-sonnet-5-5
+    version: "2.1.308"
   dry-run:
     command: "true"
     name: dry-run
