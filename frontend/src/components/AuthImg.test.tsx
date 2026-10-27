@@ -73,3 +73,67 @@ test('a response that lands after unmount is dropped before decoding', async () 
   expect(readAsDataURL).not.toHaveBeenCalled();
   expect(screen.queryByRole('img')).toBeNull();
 });
+
+test('a decoded image that lands after unmount is dropped before the state update', async () => {
+  let resolveBlob: ((blob: Blob) => void) | undefined;
+  let markBlobRequested: (() => void) | undefined;
+  const blobRequested = new Promise<void>((resolve) => {
+    markBlobRequested = resolve;
+  });
+  vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+    ok: true,
+    status: 200,
+    blob: () =>
+      new Promise<Blob>((resolve) => {
+        resolveBlob = resolve;
+        markBlobRequested?.();
+      }),
+  } as Response);
+
+  let finishDecode: (() => void) | undefined;
+  const readAsDataURL = vi
+    .spyOn(FileReader.prototype, 'readAsDataURL')
+    .mockImplementation(function (this: FileReader) {
+      finishDecode = () => {
+        Object.defineProperty(this, 'result', {
+          configurable: true,
+          value: 'data:image/png;base64,b2s=',
+        });
+        this.onloadend?.(new ProgressEvent('loadend') as ProgressEvent<FileReader>);
+      };
+    });
+
+  const { unmount } = render(<AuthImg src="/api/v1/photos/4" alt="Dana" />);
+
+  await act(async () => {
+    await blobRequested;
+    resolveBlob?.(new Blob(['png-bytes'], { type: 'image/png' }));
+    await new Promise((r) => setTimeout(r, 0));
+  });
+  expect(readAsDataURL).toHaveBeenCalled();
+
+  unmount();
+  await act(async () => {
+    finishDecode?.();
+    await Promise.resolve();
+  });
+  expect(screen.queryByRole('img')).toBeNull();
+});
+
+test('a failure that lands after unmount does not set the error state', async () => {
+  let rejectFetch: (reason?: unknown) => void = () => {};
+  vi.spyOn(globalThis, 'fetch').mockReturnValue(
+    new Promise<Response>((_, reject) => {
+      rejectFetch = reject;
+    }),
+  );
+
+  const { unmount } = render(<AuthImg src="/api/v1/photos/5" alt="Eve" />);
+  unmount();
+
+  await act(async () => {
+    rejectFetch(new TypeError('network down'));
+    await Promise.resolve();
+  });
+  expect(screen.queryByRole('img')).toBeNull();
+});
