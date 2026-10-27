@@ -295,10 +295,14 @@ class MeerkatImportViewModel @Inject constructor(
     }
 
     /**
-     * Back to the connect form. The failed session is not reusable and the
-     * credential was already cleared, so the user connects again.
+     * Back to the connect form. The server would accept a retry of a failed
+     * fetch on the same session, but the form was locked and the credential
+     * already cleared, so the user connects again and gets a new session. Cancel
+     * the abandoned one first: it still holds the Meerkat credential (and a
+     * password login) until it expires.
      */
     private fun failToConnect(message: String?) {
+        val abandoned = _uiState.value.connected?.sessionId
         _uiState.update {
             it.copy(
                 step = MeerkatImportStep.CONNECT,
@@ -310,6 +314,7 @@ class MeerkatImportViewModel @Inject constructor(
                 error = message?.takeIf { m -> m.isNotBlank() }
             )
         }
+        abandoned?.let(::cancelSession)
     }
 
     private fun failToReview(message: String?) {

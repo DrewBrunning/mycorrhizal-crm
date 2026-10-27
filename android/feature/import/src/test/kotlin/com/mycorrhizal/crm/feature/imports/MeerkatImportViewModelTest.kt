@@ -226,6 +226,7 @@ class MeerkatImportViewModelTest {
             coEvery { apiClient.startMeerkatFetch("s1", false) } returns Result.success(Unit)
             coEvery { apiClient.getMeerkatImportStatus("s1") } returns
                 Result.success(status("failed", error = "Meerkat went away"))
+            coEvery { apiClient.cancelMeerkatImport("s1") } returns Result.success(Unit)
             val vm = newVm()
             vm.fillToken()
             vm.connect()
@@ -241,12 +242,35 @@ class MeerkatImportViewModelTest {
         }
 
     @Test
+    fun `a failed fetch cancels the abandoned session once, and leaving later does not cancel again`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { apiClient.connectMeerkat(any()) } returns Result.success(connected())
+            coEvery { apiClient.startMeerkatFetch("s1", false) } returns Result.success(Unit)
+            coEvery { apiClient.getMeerkatImportStatus("s1") } returns
+                Result.success(status("failed", error = "Meerkat went away"))
+            coEvery { apiClient.cancelMeerkatImport("s1") } returns Result.success(Unit)
+            val vm = newVm()
+            vm.fillToken()
+            vm.connect()
+            advanceUntilIdle()
+
+            vm.startImport()
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { apiClient.cancelMeerkatImport("s1") }
+            vm.leaveScreen()
+            advanceUntilIdle()
+            coVerify(exactly = 1) { apiClient.cancelMeerkatImport("s1") }
+        }
+
+    @Test
     fun `a failed fetch with no message falls back to the generic string`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { apiClient.connectMeerkat(any()) } returns Result.success(connected())
             coEvery { apiClient.startMeerkatFetch("s1", false) } returns Result.success(Unit)
             coEvery { apiClient.getMeerkatImportStatus("s1") } returns
                 Result.failure(RuntimeException("net"))
+            coEvery { apiClient.cancelMeerkatImport("s1") } returns Result.success(Unit)
             val vm = newVm()
             vm.fillToken()
             vm.connect()
