@@ -7,6 +7,7 @@ import androidx.compose.material.icons.automirrored.outlined.Label
 import androidx.compose.material.icons.outlined.Celebration
 import androidx.compose.material.icons.outlined.Contacts
 import androidx.compose.material.icons.outlined.Dataset
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material.icons.outlined.Group
@@ -125,6 +126,8 @@ internal val navDestinations: List<TopLevelDestination> = listOf(
         NavGroup.DATA_ADMIN
     ),
     TopLevelDestination("audit", R.string.audit_title, Icons.Outlined.History, NavGroup.DATA_ADMIN),
+    // Issue #2002: restore or permanently delete deleted contacts.
+    TopLevelDestination("trash", R.string.trash_title, Icons.Outlined.Delete, NavGroup.DATA_ADMIN),
     TopLevelDestination(
         "settings",
         R.string.settings_title,

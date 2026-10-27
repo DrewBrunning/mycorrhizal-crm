@@ -496,6 +496,14 @@ private fun OperationBadge(operation: String) {
             R.string.audit_operations_delete
         ) to MaterialTheme.colorScheme.error
 
+        AuditOperations.RESTORE -> stringResource(
+            R.string.audit_operations_restore
+        ) to MaterialTheme.colorScheme.tertiary
+
+        AuditOperations.PURGE -> stringResource(
+            R.string.audit_operations_purge
+        ) to MaterialTheme.colorScheme.error
+
         else -> operation to MaterialTheme.colorScheme.onSurfaceVariant
     }
     // #206: the 11sp label was drawn directly in the accent colour — moss at

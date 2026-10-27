@@ -62,7 +62,7 @@ class NavDestinationsTest {
             listOf("activities", "notes", "occasions", "shares"),
             routes(NavGroup.INTERACTIONS)
         )
-        assertEquals(listOf("data", "import", "audit"), routes(NavGroup.DATA_ADMIN))
+        assertEquals(listOf("data", "import", "audit", "trash"), routes(NavGroup.DATA_ADMIN))
         assertEquals(listOf("settings"), routes(NavGroup.FOOTER))
         assertEquals("settings", navDestinations.last().route)
     }
@@ -106,6 +106,7 @@ class NavDestinationsTest {
         "data" to R.string.settings_data,
         "import" to R.string.import_title,
         "audit" to R.string.audit_title,
+        "trash" to R.string.trash_title,
         "settings" to R.string.settings_title
     )
 

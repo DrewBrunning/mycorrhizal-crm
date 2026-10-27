@@ -13,6 +13,10 @@ object AuditOperations {
     const val CREATE = "create"
     const val UPDATE = "update"
     const val DELETE = "delete"
+
+    // Issue #2002: a contact restored from / permanently purged from the trash.
+    const val RESTORE = "restore"
+    const val PURGE = "purge"
 }
 
 /**

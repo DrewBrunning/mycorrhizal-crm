@@ -245,7 +245,7 @@
     <string name="contact_prep_view">View prep</string>
     <string name="contact_delete">Delete contact</string>
     <string name="contact_delete_title">Delete contact?</string>
-    <string name="contact_delete_confirm">Are you sure you want to delete %1$s? This action cannot be undone and will also delete all notes, activities, and reminders associated with this contact.</string>
+    <string name="contact_delete_confirm">Delete %1$s? It moves to the Trash, where you can restore it until it is permanently deleted. Its notes and reminders move with it.</string>
     <string name="contact_archive_title">Archive contact?</string>
     <string name="contact_archive_confirm">Are you sure you want to archive %1$s? All reminders will be deleted. You can unarchive later, but reminders won\'t be restored.</string>
     <string name="contact_unarchive_title">Unarchive contact?</string>
@@ -753,6 +753,7 @@
     <string name="settings_webhooks_event_contact_created">Contact created</string>
     <string name="settings_webhooks_event_contact_updated">Contact updated</string>
     <string name="settings_webhooks_event_contact_deleted">Contact deleted</string>
+    <string name="settings_webhooks_event_contact_restored">Contact restored</string>
     <string name="settings_webhooks_event_note_created">Note created</string>
     <string name="settings_webhooks_event_note_updated">Note updated</string>
     <string name="settings_webhooks_event_note_deleted">Note deleted</string>
@@ -2007,6 +2008,8 @@
     <string name="audit_operations_create">Created</string>
     <string name="audit_operations_update">Updated</string>
     <string name="audit_operations_delete">Deleted</string>
+    <string name="audit_operations_restore">Restored</string>
+    <string name="audit_operations_purge">Purged</string>
     <string name="audit_entity_types_contact">Contact</string>
     <string name="audit_entity_types_note">Note</string>
     <string name="audit_entity_types_activity">Activity</string>
@@ -2026,6 +2029,35 @@
     <string name="audit_undo_success">Contact restored to its previous state</string>
     <string name="audit_undo_retention_gone">This event is past its retention window and can no longer be undone</string>
     <string name="audit_undo_partial_note">Details that were never captured in this record (pronouns, personal information, address details) are preserved unchanged.</string>
+    <!-- Issue #2002: contact trash (restore / delete forever). -->
+    <string name="trash_title">Trash</string>
+    <string name="trash_empty_action">Empty trash</string>
+    <string name="trash_empty_state">Trash is empty</string>
+    <string name="trash_retention_forever">Deleted contacts are kept until you empty the trash.</string>
+    <plurals name="trash_retention">
+        <item quantity="one">Deleted contacts are kept for %1$d day, then deleted forever.</item>
+        <item quantity="other">Deleted contacts are kept for %1$d days, then deleted forever.</item>
+    </plurals>
+    <string name="trash_deleted_on">Deleted %1$s</string>
+    <string name="trash_purge_on">Deletes forever %1$s</string>
+    <string name="trash_restore">Restore</string>
+    <string name="trash_delete_forever">Delete forever</string>
+    <string name="trash_restored">Restored %1$s.</string>
+    <plurals name="trash_restored_with_skipped">
+        <item quantity="one">Restored %1$s, but %2$d item could not be restored because what it linked to no longer exists.</item>
+        <item quantity="other">Restored %1$s, but %2$d items could not be restored because what they linked to no longer exists.</item>
+    </plurals>
+    <string name="trash_restore_conflict">Can\'t restore %1$s: another contact already uses this contact\'s ID. Merge or delete that contact first.</string>
+    <string name="trash_purge_confirm">Permanently delete %1$s? This cannot be undone.</string>
+    <string name="trash_purged">Permanently deleted %1$s.</string>
+    <plurals name="trash_empty_confirm">
+        <item quantity="one">Permanently delete %1$d contact in the Trash? This cannot be undone.</item>
+        <item quantity="other">Permanently delete all %1$d contacts in the Trash? This cannot be undone.</item>
+    </plurals>
+    <plurals name="trash_emptied">
+        <item quantity="one">Permanently deleted %1$d contact.</item>
+        <item quantity="other">Permanently deleted %1$d contacts.</item>
+    </plurals>
 
     <!-- Android a11y (issues #199/#203): shared accessibility-only announcements -->
     <string name="a11y_state_loading">Loading</string>

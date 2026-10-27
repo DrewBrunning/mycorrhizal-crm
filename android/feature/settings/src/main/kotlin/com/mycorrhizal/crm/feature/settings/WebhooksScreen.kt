@@ -67,6 +67,8 @@ val WEBHOOK_EVENTS: List<String> = listOf(
     "contact.created",
     "contact.updated",
     "contact.deleted",
+    // Issue #2002: fired when a contact is restored from the trash.
+    "contact.restored",
     "note.created",
     "note.updated",
     "note.deleted",
@@ -83,6 +85,7 @@ private fun eventLabel(event: String): String = when (event) {
     "contact.created" -> stringResource(R.string.settings_webhooks_event_contact_created)
     "contact.updated" -> stringResource(R.string.settings_webhooks_event_contact_updated)
     "contact.deleted" -> stringResource(R.string.settings_webhooks_event_contact_deleted)
+    "contact.restored" -> stringResource(R.string.settings_webhooks_event_contact_restored)
     "note.created" -> stringResource(R.string.settings_webhooks_event_note_created)
     "note.updated" -> stringResource(R.string.settings_webhooks_event_note_updated)
     "note.deleted" -> stringResource(R.string.settings_webhooks_event_note_deleted)

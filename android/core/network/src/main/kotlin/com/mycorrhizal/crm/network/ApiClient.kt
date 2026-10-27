@@ -233,6 +233,9 @@ import com.mycorrhizal.crm.model.network.TimelineEvent
 import com.mycorrhizal.crm.model.network.TimelineTypes
 import com.mycorrhizal.crm.model.network.TimelineWireItem
 import com.mycorrhizal.crm.model.network.TimelineWirePage
+import com.mycorrhizal.crm.model.network.TrashListResponse
+import com.mycorrhizal.crm.model.network.TrashPurgeResponse
+import com.mycorrhizal.crm.model.network.TrashRestoreResponse
 import com.mycorrhizal.crm.model.network.TwoFactorCodeInput
 import com.mycorrhizal.crm.model.network.TwoFactorConfirmResponse
 import com.mycorrhizal.crm.model.network.TwoFactorSetupResponse
@@ -2963,6 +2966,37 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
             moshi.adapter(AuditUndoResponse::class.java).fromJson(body)
         }
 
+    // --- Contact trash (issue #2002, ADR 0037) ---
+
+    /** GET /trash/contacts — the caller's restorable deleted contacts, newest deletion first. */
+    suspend fun getTrashedContacts(page: Int = 1, limit: Int = 25): Result<TrashListResponse> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$TRASH_CONTACTS_PATH".toHttpUrl().newBuilder()
+        urlBuilder.addQueryParameter("page", page.toString())
+        urlBuilder.addQueryParameter("limit", limit.toString())
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(TrashListResponse::class.java).fromJson(body)
+        }
+    }
+
+    /**
+     * POST /trash/contacts/{id}/restore — a 409 means a live contact already uses the trashed
+     * contact's UID (nothing changed); a 404 means it is not in the caller's trash.
+     */
+    suspend fun restoreTrashedContact(id: Int): Result<TrashRestoreResponse> =
+        executePostEmpty("$TRASH_CONTACTS_PATH/$id/restore") { _, body ->
+            moshi.adapter(TrashRestoreResponse::class.java).fromJson(body)
+        }
+
+    /** DELETE /trash/contacts/{id} — permanently deletes one trashed contact. */
+    suspend fun purgeTrashedContact(id: Int): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$TRASH_CONTACTS_PATH/$id")
+
+    /** DELETE /trash/contacts — empties the caller's trash; returns how many were purged. */
+    suspend fun emptyTrash(): Result<Int> =
+        executeDelete("$PLACEHOLDER_ORIGIN$TRASH_CONTACTS_PATH") { _, body ->
+            moshi.adapter(TrashPurgeResponse::class.java).fromJson(body)?.purged
+        }
+
     // --- System events (issue #424 — the operational-event timeline) ---
 
     /**
@@ -3461,6 +3495,7 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         private const val ATTACHMENTS_PATH = "$API_V1/attachments"
         private const val CONTACT_SHARES_PATH = "$API_V1/contact-shares"
         private const val AUDIT_PATH = "$API_V1/audit"
+        private const val TRASH_CONTACTS_PATH = "$API_V1/trash/contacts"
         private const val AUDIT_EXPORT_PATH = "$AUDIT_PATH/export"
         private const val ADMIN_SYSTEM_EVENTS_PATH = "$API_V1/admin/system-events"
         private const val ADMIN_SUBSYSTEM_HEALTH_PATH = "$API_V1/admin/subsystem-health"

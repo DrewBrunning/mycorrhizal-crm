@@ -241,7 +241,7 @@
     <string name="contact_prep_view">Briefing ansehen</string>
     <string name="contact_delete">Kontakt löschen</string>
     <string name="contact_delete_title">Kontakt löschen?</string>
-    <string name="contact_delete_confirm">Möchtest du %1$s wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden und löscht auch alle Notizen, Aktivitäten und Erinnerungen dieses Kontakts.</string>
+    <string name="contact_delete_confirm">%1$s löschen? Der Kontakt wandert in den Papierkorb und kann dort wiederhergestellt werden, bis er endgültig gelöscht wird. Seine Notizen und Erinnerungen wandern mit.</string>
     <string name="contact_archive_title">Kontakt archivieren?</string>
     <string name="contact_archive_confirm">Möchtest du %1$s wirklich archivieren? Alle Erinnerungen werden gelöscht. Du kannst später das Archiv wieder aufheben, die Erinnerungen werden aber nicht wiederhergestellt.</string>
     <string name="contact_unarchive_title">Archivierung aufheben?</string>
@@ -708,6 +708,7 @@
     <string name="settings_webhooks_event_contact_created">Kontakt erstellt</string>
     <string name="settings_webhooks_event_contact_updated">Kontakt aktualisiert</string>
     <string name="settings_webhooks_event_contact_deleted">Kontakt gelöscht</string>
+    <string name="settings_webhooks_event_contact_restored">Kontakt wiederhergestellt</string>
     <string name="settings_webhooks_event_note_created">Notiz erstellt</string>
     <string name="settings_webhooks_event_note_updated">Notiz aktualisiert</string>
     <string name="settings_webhooks_event_note_deleted">Notiz gelöscht</string>
@@ -1990,6 +1991,8 @@
     <string name="audit_operations_create">Erstellt</string>
     <string name="audit_operations_update">Aktualisiert</string>
     <string name="audit_operations_delete">Gelöscht</string>
+    <string name="audit_operations_restore">Wiederhergestellt</string>
+    <string name="audit_operations_purge">Endgültig gelöscht</string>
     <string name="audit_entity_types_contact">Kontakt</string>
     <string name="audit_entity_types_note">Notiz</string>
     <string name="audit_entity_types_activity">Aktivität</string>
@@ -2009,6 +2012,35 @@
     <string name="audit_undo_success">Kontakt auf den vorherigen Stand zurückgesetzt</string>
     <string name="audit_undo_retention_gone">Dieses Ereignis liegt außerhalb des Aufbewahrungsfensters und kann nicht mehr rückgängig gemacht werden</string>
     <string name="audit_undo_partial_note">Details, die in diesem Eintrag nie erfasst wurden (Pronomen, persönliche Informationen, Adressdetails), bleiben unverändert.</string>
+    <!-- Issue #2002: contact trash (restore / delete forever). -->
+    <string name="trash_title">Papierkorb</string>
+    <string name="trash_empty_action">Papierkorb leeren</string>
+    <string name="trash_empty_state">Der Papierkorb ist leer</string>
+    <string name="trash_retention_forever">Gelöschte Kontakte bleiben erhalten, bis du den Papierkorb leerst.</string>
+    <plurals name="trash_retention">
+        <item quantity="one">Gelöschte Kontakte werden %1$d Tag aufbewahrt und danach endgültig gelöscht.</item>
+        <item quantity="other">Gelöschte Kontakte werden %1$d Tage aufbewahrt und danach endgültig gelöscht.</item>
+    </plurals>
+    <string name="trash_deleted_on">Gelöscht am %1$s</string>
+    <string name="trash_purge_on">Endgültig gelöscht am %1$s</string>
+    <string name="trash_restore">Wiederherstellen</string>
+    <string name="trash_delete_forever">Endgültig löschen</string>
+    <string name="trash_restored">%1$s wiederhergestellt.</string>
+    <plurals name="trash_restored_with_skipped">
+        <item quantity="one">%1$s wiederhergestellt, aber %2$d Eintrag konnte nicht wiederhergestellt werden, weil das Verknüpfte nicht mehr existiert.</item>
+        <item quantity="other">%1$s wiederhergestellt, aber %2$d Einträge konnten nicht wiederhergestellt werden, weil das Verknüpfte nicht mehr existiert.</item>
+    </plurals>
+    <string name="trash_restore_conflict">%1$s kann nicht wiederhergestellt werden: Ein anderer Kontakt verwendet bereits die ID dieses Kontakts. Führe diesen Kontakt zuerst zusammen oder lösche ihn.</string>
+    <string name="trash_purge_confirm">%1$s endgültig löschen? Dies kann nicht rückgängig gemacht werden.</string>
+    <string name="trash_purged">%1$s endgültig gelöscht.</string>
+    <plurals name="trash_empty_confirm">
+        <item quantity="one">%1$d Kontakt im Papierkorb endgültig löschen? Dies kann nicht rückgängig gemacht werden.</item>
+        <item quantity="other">Alle %1$d Kontakte im Papierkorb endgültig löschen? Dies kann nicht rückgängig gemacht werden.</item>
+    </plurals>
+    <plurals name="trash_emptied">
+        <item quantity="one">%1$d Kontakt endgültig gelöscht.</item>
+        <item quantity="other">%1$d Kontakte endgültig gelöscht.</item>
+    </plurals>
 
     <!-- Android a11y (issues #199/#203): shared accessibility-only announcements -->
     <string name="a11y_state_loading">Wird geladen</string>

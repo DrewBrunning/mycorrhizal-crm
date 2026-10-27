@@ -261,6 +261,7 @@ dependencies {
     implementation(project(":feature:occasions"))
     implementation(project(":feature:shares"))
     implementation(project(":feature:audit"))
+    implementation(project(":feature:trash"))
     implementation(project(":feature:sysevents"))
     implementation(project(":feature:network"))
     implementation(project(":feature:map"))
