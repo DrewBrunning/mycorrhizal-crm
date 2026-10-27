@@ -220,11 +220,17 @@ jobs:
         with:
           # The apt .deb cache (issue #1646) keeps a slow Ubuntu mirror from
           # being re-downloaded every run; the retry script seeds apt's
-          # archives from it before installing and saves what it fetched. Its
-          # own key (not the browser one) so an existing browser cache entry
-          # cannot block saving the package cache.
+          # archives from it before installing and saves what it fetched.
+          # Like the browser cache, it is keyed on the browser set (issue
+          # #2115): one shared entry is frozen at whichever job saved first,
+          # so the Firefox and WebKit jobs re-download their extra
+          # dependencies on every run. restore-keys still let a new set seed
+          # from another set's entry for the same image instead of starting
+          # from nothing.
           path: ~/.cache/playwright-apt
-          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-chromium-${{ hashFiles('frontend/yarn.lock') }}
+          restore-keys: |
+            playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-
 
       - name: Cache Playwright browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -460,11 +466,17 @@ jobs:
         with:
           # The apt .deb cache (issue #1646) keeps a slow Ubuntu mirror from
           # being re-downloaded every run; the retry script seeds apt's
-          # archives from it before installing and saves what it fetched. Its
-          # own key (not the browser one) so an existing browser cache entry
-          # cannot block saving the package cache.
+          # archives from it before installing and saves what it fetched.
+          # Like the browser cache, it is keyed on the browser set (issue
+          # #2115): one shared entry is frozen at whichever job saved first,
+          # so the Firefox and WebKit jobs re-download their extra
+          # dependencies on every run. restore-keys still let a new set seed
+          # from another set's entry for the same image instead of starting
+          # from nothing.
           path: ~/.cache/playwright-apt
-          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-chromium-${{ hashFiles('frontend/yarn.lock') }}
+          restore-keys: |
+            playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-
 
       - name: Cache Playwright browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -601,11 +613,17 @@ jobs:
         with:
           # The apt .deb cache (issue #1646) keeps a slow Ubuntu mirror from
           # being re-downloaded every run; the retry script seeds apt's
-          # archives from it before installing and saves what it fetched. Its
-          # own key (not the browser one) so an existing browser cache entry
-          # cannot block saving the package cache.
+          # archives from it before installing and saves what it fetched.
+          # Like the browser cache, it is keyed on the browser set (issue
+          # #2115): one shared entry is frozen at whichever job saved first,
+          # so the Firefox and WebKit jobs re-download their extra
+          # dependencies on every run. restore-keys still let a new set seed
+          # from another set's entry for the same image instead of starting
+          # from nothing.
           path: ~/.cache/playwright-apt
-          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-chromium-firefox-${{ hashFiles('frontend/yarn.lock') }}
+          restore-keys: |
+            playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-
 
       - name: Cache Playwright browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -749,11 +767,17 @@ jobs:
         with:
           # The apt .deb cache (issue #1646) keeps a slow Ubuntu mirror from
           # being re-downloaded every run; the retry script seeds apt's
-          # archives from it before installing and saves what it fetched. Its
-          # own key (not the browser one) so an existing browser cache entry
-          # cannot block saving the package cache.
+          # archives from it before installing and saves what it fetched.
+          # Like the browser cache, it is keyed on the browser set (issue
+          # #2115): one shared entry is frozen at whichever job saved first,
+          # so the Firefox and WebKit jobs re-download their extra
+          # dependencies on every run. restore-keys still let a new set seed
+          # from another set's entry for the same image instead of starting
+          # from nothing.
           path: ~/.cache/playwright-apt
-          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-webkit-${{ hashFiles('frontend/yarn.lock') }}
+          restore-keys: |
+            playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-
 
       - name: Cache Playwright browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -913,11 +937,17 @@ jobs:
         with:
           # The apt .deb cache (issue #1646) keeps a slow Ubuntu mirror from
           # being re-downloaded every run; the retry script seeds apt's
-          # archives from it before installing and saves what it fetched. Its
-          # own key (not the browser one) so an existing browser cache entry
-          # cannot block saving the package cache.
+          # archives from it before installing and saves what it fetched.
+          # Like the browser cache, it is keyed on the browser set (issue
+          # #2115): one shared entry is frozen at whichever job saved first,
+          # so the Firefox and WebKit jobs re-download their extra
+          # dependencies on every run. restore-keys still let a new set seed
+          # from another set's entry for the same image instead of starting
+          # from nothing.
           path: ~/.cache/playwright-apt
-          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-chromium-firefox-${{ hashFiles('frontend/yarn.lock') }}
+          restore-keys: |
+            playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-
 
       - name: Cache Playwright browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -1068,11 +1098,17 @@ jobs:
         with:
           # The apt .deb cache (issue #1646) keeps a slow Ubuntu mirror from
           # being re-downloaded every run; the retry script seeds apt's
-          # archives from it before installing and saves what it fetched. Its
-          # own key (not the browser one) so an existing browser cache entry
-          # cannot block saving the package cache.
+          # archives from it before installing and saves what it fetched.
+          # Like the browser cache, it is keyed on the browser set (issue
+          # #2115): one shared entry is frozen at whichever job saved first,
+          # so the Firefox and WebKit jobs re-download their extra
+          # dependencies on every run. restore-keys still let a new set seed
+          # from another set's entry for the same image instead of starting
+          # from nothing.
           path: ~/.cache/playwright-apt
-          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-${{ hashFiles('frontend/yarn.lock') }}
+          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-chromium-firefox-${{ hashFiles('frontend/yarn.lock') }}
+          restore-keys: |
+            playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-
 
       - name: Cache Playwright browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

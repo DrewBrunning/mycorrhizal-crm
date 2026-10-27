@@ -135,9 +135,20 @@ func TestInstallStepsBoundedRetriedAndKeyed(t *testing.T) {
 				if path := aptStep.With["path"]; !strings.Contains(path, "~/.cache/playwright-apt") {
 					t.Errorf("%s: apt cache step path %q, want ~/.cache/playwright-apt", id, path)
 				}
-				wantAptKey := "playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-${{ hashFiles('frontend/yarn.lock') }}"
+				// The apt cache must be keyed on the browser set too (issue
+				// #2115): one shared entry is frozen at whichever job saved
+				// first, so the Firefox and WebKit jobs re-download their
+				// extra dependencies on every run and can hit a slow mirror
+				// in the process. restore-keys let a new browser set seed
+				// from another set's entry for the same image instead of
+				// starting from nothing.
+				wantAptKey := "playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-" + strings.Join(browsers, "-") + "-${{ hashFiles('frontend/yarn.lock') }}"
 				if got := aptStep.With["key"]; got != wantAptKey {
 					t.Errorf("%s: apt cache key %q, want %q", id, got, wantAptKey)
+				}
+				wantRestore := "playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-\n"
+				if got := aptStep.With["restore-keys"]; !strings.Contains(got, wantRestore) {
+					t.Errorf("%s: apt cache restore-keys %q, want a %q prefix", id, got, strings.TrimSpace(wantRestore))
 				}
 			}
 		}
