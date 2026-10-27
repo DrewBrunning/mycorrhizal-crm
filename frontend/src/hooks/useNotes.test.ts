@@ -494,3 +494,61 @@ test('a loadMore page settling after a refetch is dropped', async () => {
   expect(result.current.nextCursor).toBe('');
   expect(result.current.total).toBe(1);
 });
+
+test('an older contact-scoped response settling after a newer one is dropped', async () => {
+  signIn();
+  const older = deferred<{ notes: Note[] }>();
+  const newer = deferred<{ notes: Note[] }>();
+  vi.mocked(getContactNotes).mockReturnValueOnce(older.promise).mockReturnValueOnce(newer.promise);
+
+  const { result } = renderHook(() => useNotes(42));
+  act(() => {
+    void result.current.refetch();
+  });
+  await act(async () => {
+    newer.resolve({ notes: [{ ...note, ID: 2 }] });
+  });
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  await act(async () => {
+    older.resolve({
+      notes: [
+        { ...note, ID: 9 },
+        { ...note, ID: 10 },
+      ],
+    });
+  });
+
+  expect(result.current.notes.map((n) => n.ID)).toEqual([2]);
+  expect(result.current.limit).toBe(1);
+});
+
+test('a loadMore failure settling after a refetch does not set an error', async () => {
+  signIn();
+  vi.mocked(getUnassignedNotes).mockResolvedValueOnce(
+    unassignedResponse({ next_cursor: 'c1', total: 5 }),
+  );
+  const { result } = renderHook(() => useNotes());
+  await waitFor(() => expect(result.current.nextCursor).toBe('c1'));
+
+  const page = deferred<NotesResponse>();
+  const fresh = deferred<NotesResponse>();
+  vi.mocked(getUnassignedNotes)
+    .mockReturnValueOnce(page.promise)
+    .mockReturnValueOnce(fresh.promise);
+  act(() => {
+    void result.current.loadMore();
+  });
+  act(() => {
+    void result.current.refetch();
+  });
+  await act(async () => {
+    fresh.resolve(unassignedResponse({ notes: [{ ...note, ID: 3 }], total: 1 }));
+  });
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  await act(async () => {
+    page.reject(new Error('stale page failure'));
+  });
+
+  expect(result.current.error).toBeNull();
+  expect(result.current.notes.map((n) => n.ID)).toEqual([3]);
+});
