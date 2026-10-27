@@ -215,6 +215,7 @@ func buildIdemTable() map[string]idemRow {
 		"POST /api/v1/contacts/import/monica/fetch",
 		"POST /api/v1/contacts/import/monica/confirm",
 		"POST /api/v1/contacts/import/monica/cancel",
+		"POST /api/v1/contacts/import/meerkat/connect",
 		"POST /api/v1/contacts/import/meerkat/upload",
 		"POST /api/v1/contacts/import/meerkat/fetch",
 		"POST /api/v1/contacts/import/meerkat/confirm",

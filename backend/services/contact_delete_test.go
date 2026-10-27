@@ -25,7 +25,7 @@ import (
 // that is not registered must be listed in contactCascadeNotRegistered.
 var contactRefColumns = []string{
 	"contact_id", "contact_vcard_uid", "member_vcard_uid", "entity_id",
-	"source_id", "target_id", "uid_low", "uid_high", "self_contact_vcard_uid",
+	"source_id", "target_id", "uid_low", "uid_high", "self_contact_vcard_uid", "entity_uid",
 }
 
 // contactCascadeNotRegistered lists tables that carry a contact-reference
@@ -201,6 +201,8 @@ func (f cascadeFixture) seed(t *testing.T) {
 	require.NoError(t, db.Create(&models.Feed{UserID: f.userID, Name: "f", Kind: models.FeedKindContact, EntityID: uid, Detail: models.FeedDetailFull, TokenHash: "h1"}).Error)
 	require.NoError(t, db.Create(&models.Feed{UserID: f.userID, Name: "agg", Kind: models.FeedKindAggregate, TokenHash: "h2"}).Error)
 	require.NoError(t, db.Model(&models.User{}).Where("id = ?", f.userID).Update("self_contact_vcard_uid", uid).Error)
+	require.NoError(t, db.Create(&models.ImportSourceLink{UserID: f.userID, System: "meerkat", ExternalID: "contact/1", EntityKind: models.ImportSourceLinkKindContact, EntityUID: uid}).Error)
+	require.NoError(t, db.Create(&models.ImportSourceLink{UserID: f.userID, System: "meerkat", ExternalID: "contact/2", EntityKind: models.ImportSourceLinkKindContact, EntityUID: f.other.VCardUID}).Error)
 }
 
 func count(t *testing.T, db *gorm.DB, unscoped bool, model any, where string, args ...any) int64 {
@@ -233,6 +235,8 @@ func TestDeleteContact_RunsRegistryAndSoftDeletesContact(t *testing.T) {
 	assert.EqualValues(t, 1, count(t, db, true, &models.Gift{}, "entity_id = ?", f.contact.VCardUID), "gift soft")
 	assert.Zero(t, count(t, db, true, &models.RelationshipEdge{}, "user_id = ?", f.userID), "edge hard")
 	assert.Zero(t, count(t, db, true, &models.DismissedDuplicatePair{}, "user_id = ?", f.userID), "pair hard")
+	assert.Zero(t, count(t, db, true, &models.ImportSourceLink{}, "entity_uid = ?", f.contact.VCardUID), "import ledger row hard-deleted (issue #2063)")
+	assert.EqualValues(t, 1, count(t, db, true, &models.ImportSourceLink{}, "entity_uid = ?", f.other.VCardUID), "other contact's ledger row kept")
 	var links int64
 	require.NoError(t, db.Raw("SELECT COUNT(*) FROM activity_contacts").Scan(&links).Error)
 	assert.Zero(t, links, "join row removed")

@@ -41,6 +41,10 @@ type Snapshot struct {
 	SourceUserCount   int
 	MissingTables     []string
 	UnreadableColumns []string
+	// PhotosFetchable is set by the API reader (meerkatapi): the photo bytes
+	// can be downloaded per contact, unlike a DB file, which holds only a
+	// file name.
+	PhotosFetchable bool
 }
 
 // User is the slice of a Meerkat users row the assistant shows in the

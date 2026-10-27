@@ -67,6 +67,9 @@ func registerImportRoutes(router *gin.Engine, cfg *config.Config) {
 	})
 	router.POST("/contacts/import/monica/cancel", CancelMonicaImport)
 
+	router.POST("/contacts/import/meerkat/connect", middleware.ValidateJSONMiddleware(&models.MeerkatConnectRequest{}), func(c *gin.Context) {
+		ConnectMeerkatImport(c, cfg)
+	})
 	router.POST("/contacts/import/meerkat/upload", UploadMeerkatDatabase)
 	router.POST("/contacts/import/meerkat/fetch", middleware.ValidateJSONMiddleware(&models.MeerkatFetchRequest{}), StartMeerkatFetch)
 	router.GET("/contacts/import/meerkat/status", GetMeerkatImportStatus)

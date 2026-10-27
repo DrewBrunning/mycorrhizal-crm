@@ -62,6 +62,7 @@ unleash:
         - ^job_run_purge_service\.go$
         - ^life_event_suggestion_service\.go$
         - ^mailer\.go$
+        - ^meerkat_import_api\.go$
         - ^mycorrhizal_import_session\.go$
         - ^notification_health\.go$
         - ^notification_service\.go$
