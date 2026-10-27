@@ -188,18 +188,10 @@ export default function MeerkatLiveConnect({
             </Alert>
           )}
           <Alert severity="info" sx={{ '& .MuiAlert-message': { width: '100%' } }}>
+            {/* Connect only learns the contact total; relationships and notes
+                are counted once the fetch has read them. */}
             <Typography variant="body2" gutterBottom>
-              {t('settings.meerkatImport.connect.found', {
-                contacts: t('settings.meerkatImport.connect.foundContacts', {
-                  count: connected.totals.contacts ?? 0,
-                }),
-                relationships: t('settings.meerkatImport.connect.foundRelationships', {
-                  count: connected.totals.relationships ?? 0,
-                }),
-                notes: t('settings.meerkatImport.connect.foundNotes', {
-                  count: connected.totals.notes ?? 0,
-                }),
-              })}
+              {t('settings.meerkatImport.live.found', { count: connected.totals.contacts ?? 0 })}
             </Typography>
             {connected.version.supported && (
               <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary' }}>

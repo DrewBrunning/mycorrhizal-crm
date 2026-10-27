@@ -1870,6 +1870,8 @@
         "untested": "Diese Meerkat-Version wurde nicht erkannt ({{reason}}). Der Import kann unvollständig sein oder fehlschlagen.",
         "tryAnyway": "Trotzdem versuchen",
         "version": "Erkannt: Meerkat {{generation}}",
+        "found_one": "{{count}} Kontakt gefunden.",
+        "found_other": "{{count}} Kontakte gefunden.",
         "estimate": "Das Lesen Ihrer Daten dauert etwa {{minutes}} Min."
       }
     },

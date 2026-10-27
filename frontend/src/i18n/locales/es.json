@@ -1920,6 +1920,9 @@
         "untested": "No se reconoció esta versión de Meerkat ({{reason}}). La importación puede quedar incompleta o fallar.",
         "tryAnyway": "Intentar de todos modos",
         "version": "Detectado Meerkat {{generation}}",
+        "found_one": "Se encontró {{count}} contacto.",
+        "found_other": "Se encontraron {{count}} contactos.",
+        "found_many": "Se encontraron {{count}} contactos.",
         "estimate": "Leer sus datos debería tardar unos {{minutes}} min."
       }
     },

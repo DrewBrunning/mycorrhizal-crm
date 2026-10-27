@@ -392,3 +392,11 @@ test('a session the wizard already owns is cancelled once, not twice', async () 
   expect(cancelMock).toHaveBeenCalledTimes(1);
   expect(cancelMock).toHaveBeenCalledWith('/contacts/import/meerkat', 'live1');
 });
+test('the live summary shows only the contact count, not zeroed relationships and notes', async () => {
+  renderOpen();
+  await connectLive();
+
+  expect(screen.getByText('Found 12 contacts.')).toBeInTheDocument();
+  expect(screen.queryByText(/relationships/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/notes/)).not.toBeInTheDocument();
+});
