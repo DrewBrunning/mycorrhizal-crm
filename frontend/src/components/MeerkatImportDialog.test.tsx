@@ -406,6 +406,27 @@ test('closing with no session created cancels nothing', () => {
   expect(cancelMock).not.toHaveBeenCalled();
 });
 
+test('closing while a connect is in flight cancels the session that arrives afterwards', async () => {
+  let resolveConnect: (r: MeerkatConnectResponse) => void = () => {};
+  connectMock.mockReturnValue(
+    new Promise((resolve) => {
+      resolveConnect = resolve;
+    }),
+  );
+  const onClose = vi.fn();
+  render(<MeerkatImportDialog open onClose={onClose} onImportComplete={() => {}} />);
+  fillUrl();
+  fireEvent.change(screen.getByLabelText('API token'), { target: { value: 't' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Connect' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+  expect(onClose).toHaveBeenCalledTimes(1);
+  expect(cancelMock).not.toHaveBeenCalled();
+
+  resolveConnect(connected());
+  await waitFor(() => expect(cancelMock).toHaveBeenCalledWith('/contacts/import/meerkat', 'live1'));
+  expect(cancelMock).toHaveBeenCalledTimes(1);
+});
+
 test('a session the wizard already owns is cancelled once, not twice', async () => {
   const onClose = vi.fn();
   render(<MeerkatImportDialog open onClose={onClose} onImportComplete={() => {}} />);

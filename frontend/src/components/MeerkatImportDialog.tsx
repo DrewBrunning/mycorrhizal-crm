@@ -60,6 +60,9 @@ export default function MeerkatImportDialog({ open, onClose, onImportComplete }:
   const sourceUserRef = useRef<number | undefined>(undefined);
   // Set only for a live connect; the upload path keeps its two-argument call.
   const liveAcceptRef = useRef<boolean | null>(null);
+  // Bumped on every reset (close/complete). A connect started before a reset
+  // resolves into a closed dialog, so its session is cancelled, not kept.
+  const resetGenRef = useRef(0);
 
   const startFetch = useCallback(
     (sessionId: string) =>
@@ -81,6 +84,7 @@ export default function MeerkatImportDialog({ open, onClose, onImportComplete }:
     setSourceUserId(undefined);
     sourceUserRef.current = undefined;
     liveAcceptRef.current = null;
+    resetGenRef.current += 1;
     setMode('live');
     setLive(null);
     setConnecting(false);
@@ -124,6 +128,17 @@ export default function MeerkatImportDialog({ open, onClose, onImportComplete }:
     if (!upload) return;
     sourceUserRef.current = sourceUserId;
     void wizard.beginFetch(upload.session_id);
+  };
+
+  // Captures the reset generation of this render, which is the one whose
+  // Connect click started the request.
+  const connectGen = resetGenRef.current;
+  const handleConnected = (resp: MeerkatConnectResponse) => {
+    if (connectGen !== resetGenRef.current) {
+      void cancelMeerkatImport(resp.session_id).catch(() => undefined);
+      return;
+    }
+    setLive(resp);
   };
 
   const handleLiveStart = () => {
@@ -248,7 +263,7 @@ export default function MeerkatImportDialog({ open, onClose, onImportComplete }:
       {mode === 'live' ? (
         <MeerkatLiveConnect
           connected={live}
-          onConnected={setLive}
+          onConnected={handleConnected}
           onConnectingChange={setConnecting}
           acceptUntested={acceptUntested}
           onAcceptUntestedChange={setAcceptUntested}
