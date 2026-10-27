@@ -274,14 +274,11 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom))
     // Issue #238: version alignment for Gradle 9's consistent resolution — see
     // the androidx-concurrent-futures catalog entry.
-    implementation(libs.androidx.concurrent.futures)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material3.window.size)
-    implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.activity.compose)
-    implementation(libs.androidx.work.runtime)
     implementation(libs.androidx.hilt.work)
     ksp(libs.androidx.hilt.compiler)
     implementation(libs.androidx.lifecycle.runtime.compose)
@@ -296,7 +293,6 @@ dependencies {
     // FragmentActivity host (MainActivity) — fragment-ktx is the only fragment
     // use in this single-Activity Compose app.
     implementation(libs.androidx.biometric)
-    implementation(libs.androidx.fragment.ktx)
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
     implementation(libs.hilt.navigation.compose)
@@ -327,6 +323,7 @@ dependencies {
     // deps are runtime-only, so Room/SQLCipher are declared here for the
     // androidTest compile classpath.
     androidTestImplementation(libs.room.runtime)
+    androidTestImplementation(libs.androidx.work.runtime)
     androidTestImplementation(libs.sqlcipher.android)
     // Explicit override of compose ui-test's transitive espresso 3.5.0: the
     // compose Android test environment syncs through Espresso.onIdle() on
@@ -334,9 +331,7 @@ dependencies {
     // removed on API 36+ — no CI emulator reaches that level today
     // (android-tests.yml pins API 24/26/35), but a real device/emulator at
     // 36+ does, hence the explicit override.
-    androidTestImplementation(libs.androidx.test.espresso.core)
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
-    androidTestImplementation(libs.androidx.compose.ui.test.manifest)
     // Issue #914: ServerTooOldGateE2ETest stubs a below-baseline /health
     // response — no real server is below this app's own migration floor to
     // boot for that case (see the test's doc comment).

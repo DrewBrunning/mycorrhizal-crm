@@ -9,22 +9,23 @@ android {
 }
 
 dependencies {
-    implementation(project(":core:data"))
-    implementation(project(":core:domain"))
+    api(project(":core:data"))
+    implementation(project(":core:network"))
+    api(project(":core:domain"))
     implementation(project(":core:ui"))
-    implementation(project(":feature:tracking"))
+    api(project(":feature:tracking"))
     // Issue #1265: the attach wizard reuses the shared per-row import review step.
     implementation(project(":feature:import"))
-    implementation(project(":core:model"))
+    api(project(":core:model"))
     // Issue #814 Phase 2: encode the TOTP enrollment otpauth:// URI as a QR
     // bitmap (pure-Java, no scanning/camera).
     implementation(libs.zxing.core)
     // Issue #1880: parse the AboutLibraries JSON the app build embeds for the
     // third-party licenses screen. Core only — no Material UI dependency.
-    implementation(libs.aboutlibraries.core)
+    api(libs.aboutlibraries.core)
 
     implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.compose.ui)
+    api(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.lifecycle.runtime.compose)

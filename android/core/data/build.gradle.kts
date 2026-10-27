@@ -35,13 +35,13 @@ ksp {
 dependencies {
     api(project(":core:domain"))
     api(project(":core:network"))
-    implementation(project(":core:model"))
+    api(project(":core:model"))
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
     implementation(libs.androidx.core.ktx)
 
-    implementation(libs.room.runtime)
+    api(libs.room.runtime)
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
 
@@ -59,12 +59,12 @@ dependencies {
     // Issue #722: ProcessLifecycleOwner drives the app-lock grace period from
     // true process background/foreground transitions.
     implementation(libs.androidx.lifecycle.process)
-    implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.moshi)
+    runtimeOnly(libs.kotlinx.coroutines.android)
+    api(libs.moshi)
+    api(libs.kotlinx.datetime)
     implementation(libs.moshi.kotlin)
     ksp(libs.moshi.kotlin.codegen)
 
-    testImplementation(libs.room.testing)
     testImplementation(libs.kotlinx.coroutines.test)
     // Issue #1265: the attach coordinator is tested at the wire level against two servers.
     testImplementation(libs.mockwebserver)

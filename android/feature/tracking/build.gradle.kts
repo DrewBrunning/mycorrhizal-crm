@@ -9,25 +9,22 @@ android {
 }
 
 dependencies {
-    implementation(project(":core:data"))
-    implementation(project(":core:domain"))
+    api(project(":core:data"))
+    api(project(":core:network"))
+    api(project(":core:domain"))
     implementation(project(":core:ui"))
 
     implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.compose.ui)
-    implementation(libs.androidx.compose.material3)
-    implementation(libs.androidx.compose.ui.tooling.preview)
+    api(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.material.icons.extended)
-    implementation(libs.androidx.lifecycle.runtime.compose)
-    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.compose.material3)
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
-    implementation(libs.hilt.navigation.compose)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.work.runtime)
-    implementation(libs.androidx.hilt.work)
+    api(libs.androidx.hilt.work)
     ksp(libs.androidx.hilt.compiler)
-    implementation(libs.kotlinx.coroutines.android)
+    runtimeOnly(libs.kotlinx.coroutines.android)
     // Issue #1133: no Firebase/GMS dependency here. FCM is a distribution
     // variant concern (see the ADR and :app's src/fcm), so this module — and
     // therefore every variant, including the F-Droid FOSS one — compiles with
