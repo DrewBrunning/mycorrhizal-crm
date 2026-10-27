@@ -131,3 +131,15 @@ func TestCancelledContextStopsRetries(t *testing.T) {
 	_, err := c.Me(ctx)
 	assert.ErrorIs(t, err, context.DeadlineExceeded)
 }
+
+func TestRateLimitedAfterRetriesIsUnreachable(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Retry-After", "0")
+		http.Error(w, "slow down", http.StatusTooManyRequests)
+	}))
+	defer srv.Close()
+	c, _ := NewClient(srv.URL, false)
+	_, err := c.Me(context.Background())
+	assert.ErrorIs(t, err, ErrUnreachable)
+	assert.Contains(t, err.Error(), "rate limited")
+}
