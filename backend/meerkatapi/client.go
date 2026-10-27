@@ -132,11 +132,11 @@ func (c *Client) InsecureRemote() bool {
 		return false
 	}
 	host := c.baseURL.Hostname()
+	if ip := net.ParseIP(host); ip != nil { // before the name heuristics: IPv6 literals have no dots
+		return httputil.IsPublicIP(ip)
+	}
 	if host == "localhost" || strings.HasSuffix(host, ".localhost") || !strings.Contains(host, ".") {
 		return false // single-label names are LAN / Docker service names
-	}
-	if ip := net.ParseIP(host); ip != nil {
-		return httputil.IsPublicIP(ip)
 	}
 	return !strings.HasSuffix(host, ".local") && !strings.HasSuffix(host, ".lan") && !strings.HasSuffix(host, ".internal")
 }

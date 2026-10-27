@@ -139,14 +139,17 @@ func TestNewClient_URLValidationAndNormalization(t *testing.T) {
 
 func TestInsecureRemote(t *testing.T) {
 	for url, want := range map[string]bool{
-		"http://meerkat.example.com":  true,
-		"http://8.8.8.8:8080":         true,
-		"https://meerkat.example.com": false,
-		"http://localhost:8080":       false,
-		"http://127.0.0.1:8080":       false,
-		"http://192.168.1.5":          false,
-		"http://meerkat:8080":         false, // docker service name
-		"http://box.lan":              false,
+		"http://meerkat.example.com":         true,
+		"http://8.8.8.8:8080":                true,
+		"https://meerkat.example.com":        false,
+		"http://localhost:8080":              false,
+		"http://127.0.0.1:8080":              false,
+		"http://192.168.1.5":                 false,
+		"http://meerkat:8080":                false, // docker service name
+		"http://box.lan":                     false,
+		"http://[2606:4700:4700::1111]:8080": true, // public IPv6 literal (no dots)
+		"http://[::1]:8080":                  false,
+		"http://[fd00::1]":                   false,
 	} {
 		c, err := NewClient(url, false)
 		require.NoError(t, err)
