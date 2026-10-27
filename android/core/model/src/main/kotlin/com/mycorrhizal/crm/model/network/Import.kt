@@ -229,7 +229,10 @@ data class MeerkatConnectRequest(
 data class MeerkatVersionInfo(
     val generation: String = "",
     val supported: Boolean = false,
-    val reason: String = ""
+    /** English fallback for a [reasonCode] this client does not know. */
+    val reason: String = "",
+    /** Stable, translatable form of [reason]: "older_than_supported" | "newer_than_tested"; empty when supported. */
+    @Json(name = "reason_code") val reasonCode: String = ""
 )
 
 @JsonClass(generateAdapter = true)

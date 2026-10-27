@@ -2323,6 +2323,8 @@
     <string name="meerkat_import_connecting">Conectando…</string>
     <string name="meerkat_import_insecure">Esta dirección usa http sin cifrar, por lo que sus credenciales y contactos viajan sin cifrar por la red. Continúe solo en una red de confianza.</string>
     <string name="meerkat_import_untested">No se reconoció esta versión de Meerkat (%1$s). La importación puede quedar incompleta o fallar.</string>
+    <string name="meerkat_import_untested_older">Este Meerkat parece anterior a la v1.5: a sus contactos les faltan campos que lee el importador. La importación puede quedar incompleta o fallar.</string>
+    <string name="meerkat_import_untested_newer">Este Meerkat parece más reciente que las versiones con las que se probó el importador (v1.5 a v1.7). La importación puede quedar incompleta o fallar.</string>
     <string name="meerkat_import_try_anyway">Intentar de todos modos</string>
     <plurals name="meerkat_import_found">
         <item quantity="one">Se encontró %1$d contacto</item>

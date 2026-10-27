@@ -1,8 +1,11 @@
 package com.mycorrhizal.crm.feature.imports
 
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -54,13 +57,17 @@ class MeerkatImportScreenTest {
         }
     }
 
-    private fun connected(supported: Boolean = true, insecure: Boolean = false) =
-        MeerkatConnectResponse(
-            sessionId = "s1",
-            version = MeerkatVersionInfo("v1.5-v1.7", supported, "newer than tested"),
-            totals = MeerkatEntityCounts(contacts = 12),
-            insecureTransport = insecure
-        )
+    private fun connected(
+        supported: Boolean = true,
+        insecure: Boolean = false,
+        reason: String = "newer than tested",
+        reasonCode: String = ""
+    ) = MeerkatConnectResponse(
+        sessionId = "s1",
+        version = MeerkatVersionInfo("v1.5-v1.7", supported, reason, reasonCode),
+        totals = MeerkatEntityCounts(contacts = 12),
+        insecureTransport = insecure
+    )
 
     @Test
     fun `the connect form renders and Connect is disabled until address and token are filled`() {
@@ -122,6 +129,48 @@ class MeerkatImportScreenTest {
         composeTestRule.onNodeWithTag("meerkat-import-start").assertIsNotEnabled()
         composeTestRule.onNodeWithTag("meerkat-import-try-anyway").performScrollTo().performClick()
         assertEquals(true, accepted)
+    }
+
+    @Test
+    fun `a known reason code shows the translated sentence, not the server's English reason`() {
+        setContent(
+            MeerkatImportUiState(
+                connected = connected(
+                    supported = false,
+                    reason = "SERVER ENGLISH",
+                    reasonCode = "newer_than_tested"
+                )
+            )
+        )
+        val node = composeTestRule.onNodeWithTag("meerkat-import-untested")
+        node.assertTextContains("looks newer than the versions", substring = true)
+        node.assert(!hasText("SERVER ENGLISH", substring = true))
+    }
+
+    @Test
+    fun `the older reason code has its own translated sentence`() {
+        setContent(
+            MeerkatImportUiState(
+                connected = connected(supported = false, reasonCode = "older_than_supported")
+            )
+        )
+        composeTestRule.onNodeWithTag("meerkat-import-untested")
+            .assertTextContains("looks older than v1.5", substring = true)
+    }
+
+    @Test
+    fun `an unknown reason code falls back to the server's reason`() {
+        setContent(
+            MeerkatImportUiState(
+                connected = connected(
+                    supported = false,
+                    reason = "SERVER ENGLISH",
+                    reasonCode = "some_future_code"
+                )
+            )
+        )
+        composeTestRule.onNodeWithTag("meerkat-import-untested")
+            .assertTextContains("SERVER ENGLISH", substring = true)
     }
 
     @Test

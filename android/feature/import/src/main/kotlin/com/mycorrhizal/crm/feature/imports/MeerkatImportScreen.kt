@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.imports
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -357,7 +358,8 @@ private fun ConnectedSummary(
         }
         if (!connected.version.supported) {
             Text(
-                text = stringResource(R.string.meerkat_import_untested, connected.version.reason),
+                text = untestedReasonRes(connected.version.reasonCode)?.let { stringResource(it) }
+                    ?: stringResource(R.string.meerkat_import_untested, connected.version.reason),
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.testTag("meerkat-import-untested")
@@ -384,4 +386,15 @@ private fun ConnectedSummary(
             Text(stringResource(R.string.meerkat_import_start))
         }
     }
+}
+
+/**
+ * The translated sentence for a server `reason_code`, or null for a code this
+ * client does not know — the caller then shows the server's English `reason`.
+ */
+@StringRes
+internal fun untestedReasonRes(reasonCode: String): Int? = when (reasonCode) {
+    "older_than_supported" -> R.string.meerkat_import_untested_older
+    "newer_than_tested" -> R.string.meerkat_import_untested_newer
+    else -> null
 }

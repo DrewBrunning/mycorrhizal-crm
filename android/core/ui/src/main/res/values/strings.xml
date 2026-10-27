@@ -2264,6 +2264,8 @@
     <string name="meerkat_import_connecting">Connecting…</string>
     <string name="meerkat_import_insecure">This address uses plain http, so your credentials and contacts travel over the network unencrypted. Only continue on a network you trust.</string>
     <string name="meerkat_import_untested">This Meerkat version was not recognised (%1$s). The import may be incomplete or fail.</string>
+    <string name="meerkat_import_untested_older">This Meerkat looks older than v1.5: its contacts lack fields the importer reads. The import may be incomplete or fail.</string>
+    <string name="meerkat_import_untested_newer">This Meerkat looks newer than the versions the importer was tested with (v1.5 to v1.7). The import may be incomplete or fail.</string>
     <string name="meerkat_import_try_anyway">Try anyway</string>
     <plurals name="meerkat_import_found">
         <item quantity="one">Found %1$d contact</item>

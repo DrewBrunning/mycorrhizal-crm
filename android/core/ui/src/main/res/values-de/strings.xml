@@ -2247,6 +2247,8 @@
     <string name="meerkat_import_connecting">Verbindung wird hergestellt…</string>
     <string name="meerkat_import_insecure">Diese Adresse verwendet unverschlüsseltes http, daher werden Zugangsdaten und Kontakte unverschlüsselt übertragen. Fahren Sie nur in einem vertrauenswürdigen Netzwerk fort.</string>
     <string name="meerkat_import_untested">Diese Meerkat-Version wurde nicht erkannt (%1$s). Der Import kann unvollständig sein oder fehlschlagen.</string>
+    <string name="meerkat_import_untested_older">Diese Meerkat-Version scheint älter als v1.5 zu sein: Ihren Kontakten fehlen Felder, die der Import liest. Der Import kann unvollständig sein oder fehlschlagen.</string>
+    <string name="meerkat_import_untested_newer">Diese Meerkat-Version scheint neuer zu sein als die Versionen, mit denen der Import getestet wurde (v1.5 bis v1.7). Der Import kann unvollständig sein oder fehlschlagen.</string>
     <string name="meerkat_import_try_anyway">Trotzdem versuchen</string>
     <plurals name="meerkat_import_found">
         <item quantity="one">%1$d Kontakt gefunden</item>
