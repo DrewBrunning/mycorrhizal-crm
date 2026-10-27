@@ -237,7 +237,7 @@ func MapAccountBundle(bundle *models.AccountBundle) *ImportSourcePlan {
 		for _, uid := range c.MemberUIDs {
 			members = append(members, bundleContactRef(uid))
 		}
-		plan.Circles = append(plan.Circles, MappedCircle{Ref: bundleRef("circle", c.ID), ID: c.ID, Name: c.Name, Members: members})
+		plan.Circles = append(plan.Circles, MappedCircle{Ref: bundleRef("circle", c.ID), ID: c.ID, Name: c.Name, Members: members, Description: c.Description, Color: c.Color})
 	}
 
 	for _, t := range bundle.Plan.Tags {

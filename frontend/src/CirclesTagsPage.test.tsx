@@ -7,6 +7,7 @@ import {
   type CircleListResponse,
   createCircle,
   deleteCircle,
+  getCircleTimeline,
   listCircles,
   updateCircle,
 } from './api/circles';
@@ -35,6 +36,7 @@ vi.mock('./api/circles', async (importOriginal) => {
     createCircle: vi.fn(),
     updateCircle: vi.fn(),
     deleteCircle: vi.fn(),
+    getCircleTimeline: vi.fn(),
   };
 });
 
@@ -332,4 +334,107 @@ test('deleting a tag prompts for confirmation naming the tag and calls deleteTag
   expect(await screen.findByText('Tag deleted')).toBeInTheDocument();
 
   confirmSpy.mockRestore();
+});
+
+test('shows a circle description and colour dot in the list', async () => {
+  listCirclesMock.mockResolvedValue(
+    circlesResponse({ circles: [circle({ description: 'Meets monthly', color: 'teal' })] }),
+  );
+
+  renderPage();
+
+  expect(await screen.findByText(/Meets monthly/)).toBeInTheDocument();
+  expect(screen.getByTestId('circle-color-dot')).toBeInTheDocument();
+});
+
+test('circle detail shows member count and an empty timeline state', async () => {
+  listCirclesMock.mockResolvedValue(circlesResponse());
+  vi.mocked(getCircleTimeline).mockResolvedValue({
+    items: [],
+    next_cursor: '',
+    limit: 25,
+    member_count: 1,
+  });
+
+  renderPage();
+  await screen.findByText('Book Club');
+  fireEvent.click(screen.getByRole('button', { name: 'Circle details' }));
+
+  expect(await screen.findByText(/No notes or activities for this circle/)).toBeInTheDocument();
+  expect(getCircleTimeline).toHaveBeenCalledWith('c1', { cursor: undefined });
+});
+
+test('circle detail lists member timeline items and saves description and colour', async () => {
+  listCirclesMock.mockResolvedValue(circlesResponse());
+  vi.mocked(getCircleTimeline).mockResolvedValue({
+    items: [
+      { type: 'note', id: '1', date: '2026-02-01T00:00:00Z', data: { content: 'Met for coffee' } },
+    ] as never,
+    next_cursor: '',
+    limit: 25,
+    member_count: 1,
+  });
+  updateCircleMock.mockResolvedValue(circle());
+
+  renderPage();
+  await screen.findByText('Book Club');
+  fireEvent.click(screen.getByRole('button', { name: 'Circle details' }));
+
+  expect(await screen.findByText('Met for coffee')).toBeInTheDocument();
+
+  fireEvent.change(screen.getByLabelText('Description'), { target: { value: '  Monthly  ' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Blue' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  await waitFor(() =>
+    expect(updateCircleMock).toHaveBeenCalledWith('c1', 'Book Club', {
+      description: 'Monthly',
+      color: 'blue',
+    }),
+  );
+});
+
+test('circle detail surfaces a timeline load error and can load more', async () => {
+  listCirclesMock.mockResolvedValue(circlesResponse());
+  vi.mocked(getCircleTimeline)
+    .mockResolvedValueOnce({
+      items: [
+        { type: 'activity', id: '1', date: '2026-02-01T00:00:00Z', data: { title: 'Hike' } },
+      ] as never,
+      next_cursor: 'NEXT',
+      limit: 25,
+      member_count: 1,
+    })
+    .mockResolvedValueOnce({
+      items: [
+        { type: 'note', id: '2', date: '2026-01-01T00:00:00Z', data: { content: 'Older' } },
+      ] as never,
+      next_cursor: '',
+      limit: 25,
+      member_count: 1,
+    });
+
+  renderPage();
+  await screen.findByText('Book Club');
+  fireEvent.click(screen.getByRole('button', { name: 'Circle details' }));
+  expect(await screen.findByText('Hike')).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+  expect(await screen.findByText('Older')).toBeInTheDocument();
+  expect(screen.getByText('Hike')).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+  await waitFor(() => expect(screen.queryByText('Older')).not.toBeInTheDocument());
+});
+
+test('circle detail shows an error when the timeline fails to load', async () => {
+  listCirclesMock.mockResolvedValue(circlesResponse());
+  vi.mocked(getCircleTimeline).mockRejectedValue(new Error('timeline down'));
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+
+  renderPage();
+  await screen.findByText('Book Club');
+  fireEvent.click(screen.getByRole('button', { name: 'Circle details' }));
+
+  expect(await screen.findByRole('alert')).toBeInTheDocument();
 });

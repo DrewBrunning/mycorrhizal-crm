@@ -7,10 +7,29 @@ import (
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
+
+// applyCircleMetadata copies the optional description/colour from input onto
+// circle. A nil field keeps the current value; "" clears it. The description is
+// trimmed (a whitespace-only value clears it) and the colour must be a
+// models.CircleColors token — never arbitrary CSS.
+func applyCircleMetadata(circle *models.Circle, input *models.CircleInput) *apperrors.AppError {
+	if input.Description != nil {
+		circle.Description = strings.TrimSpace(*input.Description)
+	}
+	if input.Color != nil {
+		if !models.IsValidCircleColor(*input.Color) {
+			return apperrors.ErrInvalidInput("color", "color must be one of the palette tokens").WithReason(apperrors.ReasonCircleColorInvalid, nil)
+		}
+		circle.Color = *input.Color
+	}
+	return nil
+}
 
 // CreateCircle creates a new Circle (circle.go) for the authenticated user.
 func CreateCircle(c *gin.Context) {
@@ -27,6 +46,10 @@ func CreateCircle(c *gin.Context) {
 	}
 
 	circle := models.Circle{UserID: userID, Name: input.Name}
+	if err := applyCircleMetadata(&circle, input); err != nil {
+		apperrors.AbortWithError(c, err)
+		return
+	}
 	if err := db.Create(&circle).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save circle").WithError(err))
 		return
@@ -135,7 +158,7 @@ func ListCircles(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
-// UpdateCircle updates a Circle's Name. Membership lifecycle is not editable
+// UpdateCircle updates a Circle's Name, Description and Color. Membership lifecycle is not editable
 // here — see AddCircleMember/RemoveCircleMember below.
 func UpdateCircle(c *gin.Context) {
 	id := c.Param("id")
@@ -162,6 +185,10 @@ func UpdateCircle(c *gin.Context) {
 	}
 
 	circle.Name = input.Name
+	if err := applyCircleMetadata(&circle, input); err != nil {
+		apperrors.AbortWithError(c, err)
+		return
+	}
 	if err := db.Save(&circle).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save circle").WithError(err))
 		return
@@ -169,6 +196,71 @@ func UpdateCircle(c *gin.Context) {
 	services.TriggerWebhooksAsync(c.Request.Context(), db, currentConfig(c), userID, "circle.updated", circle)
 
 	c.JSON(http.StatusOK, circle)
+}
+
+// GetCircleTimeline returns a page of the merged timeline of a circle's live
+// members (issue #1995 Part 2, "aggregate": no schema change, no circle-owned
+// notes/activities), plus the circle's member_count. It reuses the contact
+// timeline's filters and cursor (?type=, ?bucket=, ?order=, ?cursor=, ?limit=).
+func GetCircleTimeline(c *gin.Context) {
+	id := c.Param("id")
+	db := c.MustGet("db").(*gorm.DB)
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+
+	var circle models.Circle
+	if err := db.Where("id = ? AND user_id = ?", id, userID).First(&circle).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			apperrors.AbortWithError(c, apperrors.ErrNotFound("Circle").WithDetails("id", id))
+		} else {
+			apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve circle").WithError(err))
+		}
+		return
+	}
+
+	limit, order, cur, types, bucket, appErr := parseTimelineParams(c)
+	if appErr != nil {
+		apperrors.AbortWithError(c, appErr)
+		return
+	}
+	now := reminderNow(c)
+	var cutoffPtr *time.Time
+	if cutoff, has := timelineBucketCutoff(bucket, now); has {
+		cutoffPtr = &cutoff
+	}
+
+	var memberCount int64
+	if err := db.Model(&models.CircleMember{}).Where("circle_id = ? AND user_id = ?", circle.ID, userID).Count(&memberCount).Error; err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to count circle members").WithError(err))
+		return
+	}
+
+	items, nextCursor, err := services.ComposeTimeline(db, userID, services.TimelineQuery{
+		CircleID: circle.ID,
+		Limit:    limit,
+		Desc:     order == "desc",
+		Types:    types,
+		Cutoff:   cutoffPtr,
+		Cursor:   cur,
+		Now:      now,
+	})
+	if err != nil {
+		if errors.Is(err, services.ErrTimelineBadCursor) {
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed").WithReason(apperrors.ReasonValidationCursorMalformed, nil))
+			return
+		}
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve circle timeline").WithError(err))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"items":        items,
+		"next_cursor":  nextCursor,
+		"limit":        limit,
+		"member_count": memberCount,
+	})
 }
 
 // DeleteCircle deletes a Circle. Its CircleMembers cascade-delete at the DB

@@ -1,13 +1,15 @@
 import { Box, LinearProgress, Tab, Tabs, Typography } from '@mui/material';
-import { type SyntheticEvent, useMemo } from 'react';
+import { type SyntheticEvent, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
+import CircleDetailDialog from './components/CircleDetailDialog';
 import CircleTagEntityList from './components/CircleTagEntityList';
 import LoadError from './components/LoadError';
 import { useSnackbar } from './context/SnackbarContext';
 import { useCircles } from './hooks/useCircles';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useTags } from './hooks/useTags';
+import { circleColorHex } from './utils/circleColors';
 
 // T65: the backend, API client and hooks (useCircles/useTags) already had
 // full rename/delete support — no page called it. This is the missing
@@ -46,10 +48,19 @@ export default function CirclesTagsPage() {
     handleDelete: handleDeleteTag,
   } = useTags({ showError });
 
+  const [openCircleId, setOpenCircleId] = useState<string | null>(null);
+  const openCircle = circles.find((c) => c.id === openCircleId) ?? null;
+
   const circleItems = useMemo(() => {
     const counts = new Map<string, number>();
     for (const m of circleMembers) counts.set(m.circle_id, (counts.get(m.circle_id) || 0) + 1);
-    return circles.map((c) => ({ id: c.id, name: c.name, memberCount: counts.get(c.id) || 0 }));
+    return circles.map((c) => ({
+      id: c.id,
+      name: c.name,
+      memberCount: counts.get(c.id) || 0,
+      description: c.description,
+      color: circleColorHex(c.color),
+    }));
   }, [circles, circleMembers]);
 
   const tagItems = useMemo(() => {
@@ -106,6 +117,7 @@ export default function CirclesTagsPage() {
               await handleUpdateCircle(id, name);
               showSuccess(t('circlesTags.circleRenamed'));
             }}
+            onOpen={setOpenCircleId}
             onDelete={async (id) => {
               await handleDeleteCircle(id);
               showSuccess(t('circlesTags.circleDeleted'));
@@ -143,6 +155,16 @@ export default function CirclesTagsPage() {
           />
         </>
       )}
+      <CircleDetailDialog
+        key={openCircleId ?? 'closed'}
+        circle={openCircle}
+        memberCount={circleMembers.filter((m) => m.circle_id === openCircleId).length}
+        onClose={() => setOpenCircleId(null)}
+        onSave={async (id, name, metadata) => {
+          await handleUpdateCircle(id, name, metadata);
+          showSuccess(t('circlesTags.circleUpdated'));
+        }}
+      />
     </Box>
   );
 }

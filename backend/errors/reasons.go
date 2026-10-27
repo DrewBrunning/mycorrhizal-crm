@@ -28,6 +28,7 @@ var reasonAreas = []string{
 	"bundle", "csv", "vcard", "integration", "immich", "seafile", "paperless",
 	"geopulse", "webdav", "calendar", "feed", "notification", "contact",
 	"household", "relationship", "occasion", "photo", "attachment", "validation",
+	"circle",
 }
 
 // Reason constants. Each must be a key of reasonRegistry (and vice versa);
@@ -36,6 +37,7 @@ const (
 	// ReasonCommonTestOnly exists for tests only and is removed in #2100.
 	ReasonCommonTestOnly ReasonCode = "common_test_only"
 
+	ReasonCircleColorInvalid             ReasonCode = "circle_color_invalid"
 	ReasonImportCirclesNotFound          ReasonCode = "import_circles_not_found"
 	ReasonImportTagsNotFound             ReasonCode = "import_tags_not_found"
 	ReasonValidationCursorMalformed      ReasonCode = "validation_cursor_malformed"
@@ -62,6 +64,7 @@ const (
 var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonCommonTestOnly: {Template: "Test {n}", Params: []string{"n"}},
 
+	ReasonCircleColorInvalid:             {Template: "The colour must be one of the palette colours"},
 	ReasonImportCirclesNotFound:          {Template: "One or more circles were not found"},
 	ReasonImportTagsNotFound:             {Template: "One or more tags were not found"},
 	ReasonValidationCursorMalformed:      {Template: "The cursor id is malformed"},
