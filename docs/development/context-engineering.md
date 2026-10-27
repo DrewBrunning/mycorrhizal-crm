@@ -228,6 +228,13 @@ suite command counts, scope violations, generated-artifact hand-edits, hard
 integrity violations and refusal-task unexpected changes, so a baseline catches
 gate-weakening and refusal regressions, not just suite command failures.
 
+The promoted measurement is the `pinned-opencode` profile (opencode CLI `1.19.4`,
+model `deepseek/deepseek-flash`) with one entry per discovered task. The weekly
+`agent-eval-collect.yml` uses it through `AGENT_EVAL_PROFILE` and compares each
+run with `-require-baseline`. After a profile, prompt, spec or suite change,
+refresh the whole baseline with the loop in `testdata/agent-eval/README.md`; a
+non-passing run is refused, never promoted with `-force-baseline`.
+
 ## Context-change evidence
 
 A semantic change to a skill description or name, an `AGENTS.md` rule, a

@@ -10,12 +10,15 @@ agent_version: "0"
 expect_paths:
   - backend/openapi.yaml
   - backend/openapi*_test.go
+  - backend/contactmodel/**
   - backend/controllers/**
+  - backend/models/**
   - backend/routes/**
-  - backend/testdata/contract-fixtures/**
   - backend/internal/apibaseline/**
+  - testdata/contract-fixtures/**
   - frontend/src/**
   - android/core/**
+  - android/feature/contacts/**
   - docs/**
 forbid_paths:
   - backend/database/migrations/**

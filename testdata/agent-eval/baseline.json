@@ -1,4 +1,150 @@
 {
   "version": 1,
-  "profiles": {}
+  "profiles": {
+    "pinned-opencode": {
+      "documentation-maintenance": {
+        "status": "passed",
+        "success": true,
+        "commands_passed": 2,
+        "commands_total": 2,
+        "scope_violations": 0,
+        "hand_edited_generated": 0,
+        "integrity_violations": 0,
+        "unexpected_changes": 0,
+        "config_hash": "5f6f4adc37f1ec58"
+      },
+      "add-quality-gate": {
+        "status": "passed",
+        "success": true,
+        "commands_passed": 4,
+        "commands_total": 4,
+        "scope_violations": 0,
+        "hand_edited_generated": 0,
+        "integrity_violations": 0,
+        "unexpected_changes": 0,
+        "config_hash": "978eba89f5be0f90"
+      },
+      "api-contract-change": {
+        "status": "passed",
+        "success": true,
+        "commands_passed": 6,
+        "commands_total": 6,
+        "scope_violations": 0,
+        "hand_edited_generated": 0,
+        "integrity_violations": 0,
+        "unexpected_changes": 0,
+        "config_hash": "653f43fbae87c110"
+      },
+      "api-contract-change-refuse": {
+        "status": "passed",
+        "success": true,
+        "commands_passed": 6,
+        "commands_total": 6,
+        "scope_violations": 0,
+        "hand_edited_generated": 0,
+        "integrity_violations": 0,
+        "unexpected_changes": 0,
+        "config_hash": "71622b27d7943b50"
+      },
+      "contact-data-fidelity": {
+        "status": "passed",
+        "success": true,
+        "commands_passed": 3,
+        "commands_total": 3,
+        "scope_violations": 0,
+        "hand_edited_generated": 0,
+        "integrity_violations": 0,
+        "unexpected_changes": 0,
+        "config_hash": "679f4e014bf61bb2"
+      },
+      "database-migration": {
+        "status": "passed",
+        "success": true,
+        "commands_passed": 3,
+        "commands_total": 3,
+        "scope_violations": 0,
+        "hand_edited_generated": 0,
+        "integrity_violations": 0,
+        "unexpected_changes": 0,
+        "config_hash": "9c1f0e7a6231307a"
+      },
+      "database-migration-refuse": {
+        "status": "passed",
+        "success": true,
+        "commands_passed": 3,
+        "commands_total": 3,
+        "scope_violations": 0,
+        "hand_edited_generated": 0,
+        "integrity_violations": 0,
+        "unexpected_changes": 0,
+        "config_hash": "274cd2163f8d966b"
+      },
+      "dependency-update-review": {
+        "status": "passed",
+        "success": true,
+        "commands_passed": 2,
+        "commands_total": 2,
+        "scope_violations": 0,
+        "hand_edited_generated": 0,
+        "integrity_violations": 0,
+        "unexpected_changes": 0,
+        "config_hash": "ba9177bff826944a"
+      },
+      "localization-change": {
+        "status": "passed",
+        "success": true,
+        "commands_passed": 2,
+        "commands_total": 2,
+        "scope_violations": 0,
+        "hand_edited_generated": 0,
+        "integrity_violations": 0,
+        "unexpected_changes": 0,
+        "config_hash": "d67f77593c281c47"
+      },
+      "performance-investigation": {
+        "status": "passed",
+        "success": true,
+        "commands_passed": 1,
+        "commands_total": 1,
+        "scope_violations": 0,
+        "hand_edited_generated": 0,
+        "integrity_violations": 0,
+        "unexpected_changes": 0,
+        "config_hash": "a21f89b73542f110"
+      },
+      "relationship-semantics-change": {
+        "status": "passed",
+        "success": true,
+        "commands_passed": 2,
+        "commands_total": 2,
+        "scope_violations": 0,
+        "hand_edited_generated": 0,
+        "integrity_violations": 0,
+        "unexpected_changes": 0,
+        "config_hash": "9529484f45d55aef"
+      },
+      "release-readiness": {
+        "status": "passed",
+        "success": true,
+        "commands_passed": 4,
+        "commands_total": 4,
+        "scope_violations": 0,
+        "hand_edited_generated": 0,
+        "integrity_violations": 0,
+        "unexpected_changes": 0,
+        "config_hash": "85d662089a2f2b65"
+      },
+      "security-sensitive-change": {
+        "status": "passed",
+        "success": true,
+        "commands_passed": 3,
+        "commands_total": 3,
+        "scope_violations": 0,
+        "hand_edited_generated": 0,
+        "integrity_violations": 0,
+        "unexpected_changes": 0,
+        "config_hash": "f2555bd8ff575078"
+      }
+    }
+  }
 }
