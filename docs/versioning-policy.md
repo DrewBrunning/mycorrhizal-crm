@@ -189,11 +189,15 @@ Two floors are expressed as versions and therefore depend on this policy:
 
 **The floors are not a support window.** They say which old versions can still
 upgrade or still connect; they do not say how long a released version receives
-fixes. That is a separate promise, in force since `1.0.0` (issue #956): each
-`1.x` release is supported for 12 months from the next minor release, and a
-release outside that window is end-of-life with no backports. The policy and the
-annual EOL review live in [the security stewardship
-cadence](security/security-cadence.md); the current supported set is in
+fixes. That is a separate promise, in force since `1.0.0` (issue #956): within
+a major, the newest minor and the one before it are supported, and the next
+minor release retires the older of the two immediately. Patch releases do
+not change the set. When a new major ships, the previous major's final minor
+gets a 12-month security-only tail. Only security fixes are backported; a
+release outside that window is end-of-life with no backports. The policy and
+the annual EOL review live in [the security stewardship
+cadence](security/security-cadence.md); the canonical statement of the window
+is in
 [`SECURITY.md`](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/SECURITY.md).
 
 ## Stray and unconstrained tags

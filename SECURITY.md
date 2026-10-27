@@ -36,24 +36,35 @@ first — the runbook's capture step comes before any rotation or restore.
 
 ## Supported Versions
 
-Mycorrhizal CRM is on the `1.x` line and maintains a support window for
-released minors (in force since `1.0.0`, issue #956). Only supported tags
-receive security fixes; users should run a supported release to receive them.
+Mycorrhizal CRM is on the `1.x` line and supports a deliberately small,
+predictable set of release lines (in force since `1.0.0`, issue #956). Only
+supported tags receive security fixes; users should run a supported release to
+receive them.
 
 **The support window:**
 
-- Every `1.x` release is supported for **12 months from the next minor
-  release**; the supported set is therefore the newest minor plus the prior
-  minor while it is inside that window.
-- A release that falls outside the window is **end-of-life** — no security
-  fixes, no migration support. The supported set is stated on the release page
-  and in [`docs/supported-versions.md`](docs/supported-versions.md).
+- **Within a major version:** the newest released minor (`X.Y`) and, if one
+  exists, the immediately preceding minor (`X.Y-1`) are supported. When a new
+  minor is released, the older of those two becomes **end-of-life**
+  immediately. Patch releases (`X.Y.Z`) do not change the supported set.
+- **Across a major version:** when `(X+1).0.0` is released, the previous
+  major's final minor line remains supported for security fixes for
+  **12 months**, then becomes end-of-life. No other minor line from the
+  previous major is supported.
+- **Only security fixes are backported** to a previous minor or to a previous
+  major's final minor. Feature work and non-security bug fixes land on the
+  newest minor only. A critical fix (security or data-loss) may be backported
+  outside this window at the maintainer's discretion, and that exception is
+  announced.
+- **End-of-life** means no security fixes and no migration support. This
+  section is the canonical statement of the supported set; the operator-facing
+  summary is in [`docs/supported-versions.md`](docs/supported-versions.md).
 - Security fixes are authored on `main` and **cherry-picked** onto the
   still-supported `release/vX.Y.0` branch(es) before tagging; a fix that cannot
   be cherry-picked cleanly is re-implemented on the older branch and called out
   in the advisory.
-- Which tags cross EOL is reviewed annually as part of the
-  [security stewardship cadence](docs/security/security-cadence.md); this
+- The supported set and the tags crossing EOL are reviewed annually as part of
+  the [security stewardship cadence](docs/security/security-cadence.md); this
   statement is reviewed on the same cadence so it cannot quietly become stale.
 
 ## Scope
