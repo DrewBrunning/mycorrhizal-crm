@@ -285,6 +285,8 @@
     "com/mycorrhizal/crm/feature/imports/ImportHistoryViewModel.kt": 100,
     "com/mycorrhizal/crm/feature/imports/ImportReviewStep.kt": 84.11,
     "com/mycorrhizal/crm/feature/imports/LazyDsl.kt": 100,
+    "com/mycorrhizal/crm/feature/imports/MeerkatImportScreen.kt": 72.42,
+    "com/mycorrhizal/crm/feature/imports/MeerkatImportViewModel.kt": 95.29,
     "com/mycorrhizal/crm/feature/imports/VcfImportScreen.kt": 52.18,
     "com/mycorrhizal/crm/feature/imports/VcfImportViewModel.kt": 95.31,
     "com/mycorrhizal/crm/feature/map/ContactMapView.kt": 0,
