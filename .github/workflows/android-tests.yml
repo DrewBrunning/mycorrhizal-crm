@@ -98,9 +98,10 @@ jobs:
       contents: read
     name: Android (Gradle)
     runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
-    # Typical time ~26-30m; a slightly slow runner has hit a 30m cap
-    # mid-assemble. 40m keeps the bound meaningful with variance headroom.
-    timeout-minutes: 40
+    # Typical time ~26-30m before the buildHealth gate (#1908) added ~10m of
+    # dependency analysis; a 40m cap cancelled the job mid-analysis. 60m keeps
+    # the bound meaningful with variance headroom.
+    timeout-minutes: 60
     needs: changes
     # Issue #974: was the one job here with no schedule exemption -- without
     # it the test-retry plugin's maxRetries=0-on-schedule tier would never
