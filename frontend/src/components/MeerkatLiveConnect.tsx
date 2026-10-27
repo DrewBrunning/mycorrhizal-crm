@@ -35,8 +35,8 @@ type AuthMode = 'token' | 'password';
 // Translated sentence per server reason_code; a code missing here falls back
 // to the server's English reason.
 const UNTESTED_REASON_KEYS: Record<string, string> = {
-  older_than_supported: 'settings.meerkatImport.live.untestedOlder',
-  newer_than_tested: 'settings.meerkatImport.live.untestedNewer',
+  meerkat_version_older_than_supported: 'settings.meerkatImport.live.untestedOlder',
+  meerkat_version_newer_than_tested: 'settings.meerkatImport.live.untestedNewer',
 };
 
 // Step 0 of the live Meerkat import (issue #2013): address + credentials, then

@@ -330,13 +330,13 @@ async function connectUntested(reason: string, reason_code: string) {
 }
 
 test('a known reason code shows the translated sentence, not the server English', async () => {
-  await connectUntested('SERVER ENGLISH', 'newer_than_tested');
+  await connectUntested('SERVER ENGLISH', 'meerkat_version_newer_than_tested');
   expect(screen.getByText(/looks newer than the versions/)).toBeInTheDocument();
   expect(screen.queryByText(/SERVER ENGLISH/)).not.toBeInTheDocument();
 });
 
 test('the older reason code has its own translated sentence', async () => {
-  await connectUntested('SERVER ENGLISH', 'older_than_supported');
+  await connectUntested('SERVER ENGLISH', 'meerkat_version_older_than_supported');
   expect(screen.getByText(/looks older than v1\.5/)).toBeInTheDocument();
   expect(screen.queryByText(/SERVER ENGLISH/)).not.toBeInTheDocument();
 });
