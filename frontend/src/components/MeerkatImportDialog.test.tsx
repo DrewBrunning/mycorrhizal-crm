@@ -7,6 +7,7 @@ import {
   startMeerkatFetch,
   uploadMeerkatDatabase,
 } from '../api/meerkatImport';
+import { cancelSourceImport, getSourceImportStatus } from '../api/sourceImport';
 import MeerkatImportDialog from './MeerkatImportDialog';
 
 afterEach(cleanup);
@@ -21,11 +22,27 @@ vi.mock('../api/meerkatImport', async (importOriginal) => {
   };
 });
 
+// The cancel and status calls are observed at the shared source-import layer,
+// so a cancel from the wizard and one from the dialog are counted together.
+vi.mock('../api/sourceImport', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../api/sourceImport')>();
+  return {
+    ...actual,
+    cancelSourceImport: vi.fn().mockResolvedValue(undefined),
+    getSourceImportStatus: vi.fn(),
+  };
+});
+
+const cancelMock = vi.mocked(cancelSourceImport);
+const statusMock = vi.mocked(getSourceImportStatus);
 const uploadMock = vi.mocked(uploadMeerkatDatabase);
 const connectMock = vi.mocked(connectMeerkat);
 beforeEach(() => {
   uploadMock.mockReset();
   connectMock.mockReset();
+  cancelMock.mockClear();
+  // Never resolves: the fetching step stays put without polling a real API.
+  statusMock.mockReset().mockReturnValue(new Promise(() => {}));
 });
 
 function renderOpen() {
@@ -313,4 +330,65 @@ test('a supported version starts the fetch without accept_untested', async () =>
 
   fireEvent.click(await screen.findByRole('button', { name: 'Start import' }));
   await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('live1', undefined, false));
+});
+
+async function connectLive(over: Partial<MeerkatConnectResponse> = {}) {
+  connectMock.mockResolvedValue(connected(over));
+  fillUrl();
+  fireEvent.change(screen.getByLabelText('API token'), {
+    target: { value: 't' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Connect' }));
+  await screen.findByRole('button', { name: 'Start import' });
+}
+
+test('closing after Connect but before Start cancels the unowned live session', async () => {
+  const onClose = vi.fn();
+  render(<MeerkatImportDialog open onClose={onClose} onImportComplete={() => {}} />);
+  await connectLive();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+  expect(onClose).toHaveBeenCalledTimes(1);
+  expect(cancelMock).toHaveBeenCalledTimes(1);
+  expect(cancelMock).toHaveBeenCalledWith('/contacts/import/meerkat', 'live1');
+});
+
+test('closing after an upload but before Start cancels the unowned upload session', async () => {
+  uploadMock.mockResolvedValue({
+    session_id: 'up1',
+    default_source_user_id: 1,
+    totals: { contacts: 3, relationships: 0, notes: 0, activities: 0, reminders: 0 },
+    source_users: [{ id: 1, username: 'solo', email: '', name: '', contacts: 3 }],
+  });
+  renderFileMode();
+  pickFile();
+  await screen.findByText('3 contacts, 0 relationships, 0 notes.');
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+  expect(cancelMock).toHaveBeenCalledTimes(1);
+  expect(cancelMock).toHaveBeenCalledWith('/contacts/import/meerkat', 'up1');
+});
+
+test('closing with no session created cancels nothing', () => {
+  renderOpen();
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+  expect(cancelMock).not.toHaveBeenCalled();
+});
+
+test('a session the wizard already owns is cancelled once, not twice', async () => {
+  const onClose = vi.fn();
+  render(<MeerkatImportDialog open onClose={onClose} onImportComplete={() => {}} />);
+  await connectLive();
+  fireEvent.click(screen.getByRole('button', { name: 'Start import' }));
+  // Fetching has a live backend session, so Cancel asks to discard first.
+  await waitFor(() => expect(statusMock).toHaveBeenCalled());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Discard' }));
+
+  await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+  expect(cancelMock).toHaveBeenCalledTimes(1);
+  expect(cancelMock).toHaveBeenCalledWith('/contacts/import/meerkat', 'live1');
 });

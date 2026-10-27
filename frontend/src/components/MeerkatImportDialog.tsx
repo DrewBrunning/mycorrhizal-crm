@@ -15,6 +15,7 @@ import {
 import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  cancelMeerkatImport,
   MEERKAT_IMPORT_BASE,
   type MeerkatConnectResponse,
   type MeerkatUploadResponse,
@@ -85,9 +86,15 @@ export default function MeerkatImportDialog({ open, onClose, onImportComplete }:
   }, []);
 
   const handleClose = useCallback(() => {
+    // A connect/upload session the wizard never received (Start not pressed)
+    // is invisible to wizard.cancel(), which would leave it -- and a live
+    // connect's Meerkat credential -- on the server until it idles out.
+    for (const id of [live?.session_id, upload?.session_id]) {
+      if (id && id !== wizard.sessionId) void cancelMeerkatImport(id).catch(() => undefined);
+    }
     resetLocal();
     onClose();
-  }, [onClose, resetLocal]);
+  }, [live, upload, wizard.sessionId, onClose, resetLocal]);
 
   const handleComplete = useCallback(() => {
     resetLocal();
