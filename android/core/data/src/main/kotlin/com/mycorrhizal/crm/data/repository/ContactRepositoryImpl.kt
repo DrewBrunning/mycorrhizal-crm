@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.data.repository
 
+import com.mycorrhizal.crm.data.local.CacheSessionGuard
 import com.mycorrhizal.crm.data.local.CachedContact
 import com.mycorrhizal.crm.data.local.CachedContactDao
 import com.mycorrhizal.crm.data.local.PhoneKey
@@ -29,7 +30,8 @@ import kotlinx.coroutines.sync.withLock
  */
 class ContactRepositoryImpl @Inject constructor(
     private val apiClient: ApiClient,
-    private val dao: CachedContactDao
+    private val dao: CachedContactDao,
+    private val guard: CacheSessionGuard
 ) : ContactRepository {
 
     /**
@@ -45,6 +47,13 @@ class ContactRepositoryImpl @Inject constructor(
      */
     private var feedCursor: String? = null
 
+    /**
+     * Issue #2065: the [CacheSessionGuard] epoch [feedCursor] belongs to. A
+     * logout or profile switch advances the epoch, so the next account never
+     * incremental-syncs from the previous account's watermark.
+     */
+    private var feedCursorEpoch: Long = guard.epoch()
+
     override suspend fun listContacts(
         cursor: String?,
         limit: Int,
@@ -56,6 +65,7 @@ class ContactRepositoryImpl @Inject constructor(
         sort: String?,
         order: String?
     ): Result<ContactsPage> {
+        val epoch = guard.epoch()
         val result = apiClient.listContacts(
             cursor = cursor,
             limit = limit,
@@ -71,11 +81,13 @@ class ContactRepositoryImpl @Inject constructor(
             // Network failure: serve whatever is cached for this search term.
             return Result.failure(error.toApiError())
         }
-        val rows = page.contacts.map { it.toCached() }.toMutableList()
-        // A list row only carries the summary projection; preserve any cached
-        // full detail (card/crm) so a list refresh doesn't wipe offline detail.
-        mergePreservingDetail(rows)
-        dao.upsertAll(rows)
+        guard.writeIfCurrent(epoch) {
+            val rows = page.contacts.map { it.toCached() }.toMutableList()
+            // A list row only carries the summary projection; preserve any cached
+            // full detail (card/crm) so a list refresh doesn't wipe offline detail.
+            mergePreservingDetail(rows)
+            dao.upsertAll(rows)
+        }
         return Result.success(
             ContactsPage(
                 contacts = page.contacts,
@@ -99,12 +111,17 @@ class ContactRepositoryImpl @Inject constructor(
      * tombstones (delete).
      */
     override suspend fun syncContacts(): Result<Unit> = syncMutex.withLock {
+        val epoch = guard.epoch()
+        if (feedCursorEpoch != epoch) {
+            feedCursor = null
+            feedCursorEpoch = epoch
+        }
         val cursor = feedCursor
-        if (cursor == null) bootstrapSync() else incrementalSync(cursor)
+        if (cursor == null) bootstrapSync(epoch) else incrementalSync(cursor, epoch)
     }
 
     /** Drains the `?since=` feed from [cursor] to the head, applying each page. */
-    private suspend fun incrementalSync(cursor: String): Result<Unit> {
+    private suspend fun incrementalSync(cursor: String, epoch: Long): Result<Unit> {
         var from = cursor
         while (true) {
             val page = apiClient.listContacts(since = from, limit = FEED_PAGE_SIZE)
@@ -115,13 +132,14 @@ class ContactRepositoryImpl @Inject constructor(
                         // the feed can no longer converge (the backend says
                         // "full resync required"). Drop it and rebootstrap.
                         feedCursor = null
-                        return bootstrapSync()
+                        return bootstrapSync(epoch)
                     }
                     return Result.failure(error.toApiError())
                 }
-            applyChanges(page)
+            applyChanges(page, epoch)
             val next = page.nextCursor?.takeIf { it.isNotEmpty() } ?: break
             feedCursor = next
+            feedCursorEpoch = epoch
             from = next
         }
         return Result.success(Unit)
@@ -138,40 +156,45 @@ class ContactRepositoryImpl @Inject constructor(
      *    the mirror against it. This is what removes a row the server deleted
      *    before this install ever held a cursor.
      */
-    private suspend fun bootstrapSync(): Result<Unit> {
+    private suspend fun bootstrapSync(epoch: Long): Result<Unit> {
         val page = apiClient.listContacts(limit = FEED_PAGE_SIZE, includeArchived = true)
             .getOrElse { error -> return Result.failure(error.toApiError()) }
-        cachePage(page)
+        cachePage(page, epoch)
         val next = page.nextCursor?.takeIf { it.isNotEmpty() }
         if (next != null) {
             feedCursor = next
+            feedCursorEpoch = epoch
         } else {
-            reconcileAgainstSnapshot(page.contacts.map { it.id }.toSet())
+            reconcileAgainstSnapshot(page.contacts.map { it.id }.toSet(), epoch)
         }
         return Result.success(Unit)
     }
 
     /** Upserts a feed page's live rows and deletes its tombstones. */
-    private suspend fun applyChanges(page: NetworkContactsPage) {
-        cachePage(page)
+    private suspend fun applyChanges(page: NetworkContactsPage, epoch: Long) {
+        cachePage(page, epoch)
         val tombstones = page.contacts.filter { it.deleted }.map { it.id }
-        if (tombstones.isNotEmpty()) dao.deleteByIds(tombstones)
+        if (tombstones.isNotEmpty()) guard.writeIfCurrent(epoch) { dao.deleteByIds(tombstones) }
     }
 
     /** Upserts live rows, preserving any cached full detail (summary-only rows). */
-    private suspend fun cachePage(page: NetworkContactsPage) {
+    private suspend fun cachePage(page: NetworkContactsPage, epoch: Long) {
         val live = page.contacts.filterNot { it.deleted }
         if (live.isEmpty()) return
-        val rows = live.map { it.toCached() }.toMutableList()
-        mergePreservingDetail(rows)
-        dao.upsertAll(rows)
+        guard.writeIfCurrent(epoch) {
+            val rows = live.map { it.toCached() }.toMutableList()
+            mergePreservingDetail(rows)
+            dao.upsertAll(rows)
+        }
     }
 
     /** Drops cached rows (live or tombstoned) absent from a complete live snapshot. */
-    private suspend fun reconcileAgainstSnapshot(presentIds: Set<Int>) {
-        val cachedIds = dao.getAll().map { it.id } + dao.getDeleted().map { it.id }
-        val stale = cachedIds.filterNot { it in presentIds }
-        if (stale.isNotEmpty()) dao.deleteByIds(stale)
+    private suspend fun reconcileAgainstSnapshot(presentIds: Set<Int>, epoch: Long) {
+        guard.writeIfCurrent(epoch) {
+            val cachedIds = dao.getAll().map { it.id } + dao.getDeleted().map { it.id }
+            val stale = cachedIds.filterNot { it in presentIds }
+            if (stale.isNotEmpty()) dao.deleteByIds(stale)
+        }
     }
 
     private companion object {
@@ -196,10 +219,11 @@ class ContactRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getContact(id: Int): Result<ContactRecordResponse> {
+        val epoch = guard.epoch()
         val result = apiClient.getContact(id)
         return result.fold(
             onSuccess = { record ->
-                dao.upsert(record.toCached())
+                guard.writeIfCurrent(epoch) { dao.upsert(record.toCached()) }
                 Result.success(record)
             },
             onFailure = { error ->
@@ -225,10 +249,11 @@ class ContactRepositoryImpl @Inject constructor(
     }
 
     override suspend fun createContact(input: ContactRecordInput): Result<ContactRecordResponse> {
+        val epoch = guard.epoch()
         val result = apiClient.createContact(input)
         return result.fold(
             onSuccess = { record ->
-                dao.upsert(record.toCached())
+                guard.writeIfCurrent(epoch) { dao.upsert(record.toCached()) }
                 Result.success(record)
             },
             onFailure = { error -> Result.failure(error) }
@@ -240,10 +265,11 @@ class ContactRepositoryImpl @Inject constructor(
         input: ContactRecordInput,
         revision: Int?
     ): Result<ContactRecordResponse> {
+        val epoch = guard.epoch()
         val result = apiClient.updateContact(id, input, revision)
         return result.fold(
             onSuccess = { record ->
-                dao.upsert(record.toCached())
+                guard.writeIfCurrent(epoch) { dao.upsert(record.toCached()) }
                 Result.success(record)
             },
             onFailure = { error -> Result.failure(error) }
@@ -251,20 +277,23 @@ class ContactRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deleteContact(id: Int, revision: Int?): Result<Unit> {
+        val epoch = guard.epoch()
         val result = apiClient.deleteContact(id, revision)
-        if (result.isSuccess) dao.deleteById(id)
+        if (result.isSuccess) guard.writeIfCurrent(epoch) { dao.deleteById(id) }
         return result
     }
 
     override suspend fun archiveContact(id: Int): Result<Unit> {
+        val epoch = guard.epoch()
         val result = apiClient.archiveContact(id)
-        if (result.isSuccess) dao.setArchived(id, true)
+        if (result.isSuccess) guard.writeIfCurrent(epoch) { dao.setArchived(id, true) }
         return result
     }
 
     override suspend fun unarchiveContact(id: Int): Result<Unit> {
+        val epoch = guard.epoch()
         val result = apiClient.unarchiveContact(id)
-        if (result.isSuccess) dao.setArchived(id, false)
+        if (result.isSuccess) guard.writeIfCurrent(epoch) { dao.setArchived(id, false) }
         return result
     }
 
@@ -273,14 +302,16 @@ class ContactRepositoryImpl @Inject constructor(
     // consistent offline.
 
     override suspend fun favoriteContact(id: Int): Result<Unit> {
+        val epoch = guard.epoch()
         val result = apiClient.favoriteContact(id)
-        if (result.isSuccess) dao.setFavorite(id, true)
+        if (result.isSuccess) guard.writeIfCurrent(epoch) { dao.setFavorite(id, true) }
         return result
     }
 
     override suspend fun unfavoriteContact(id: Int): Result<Unit> {
+        val epoch = guard.epoch()
         val result = apiClient.unfavoriteContact(id)
-        if (result.isSuccess) dao.setFavorite(id, false)
+        if (result.isSuccess) guard.writeIfCurrent(epoch) { dao.setFavorite(id, false) }
         return result
     }
 

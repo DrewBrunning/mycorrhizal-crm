@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.data.repository
 
+import com.mycorrhizal.crm.data.session.SessionTransitionGate
 import com.mycorrhizal.crm.domain.repository.PendingInteraction
 import com.mycorrhizal.crm.domain.repository.PendingInteractionRepository
 import com.mycorrhizal.crm.model.network.Activity
@@ -8,6 +9,9 @@ import com.mycorrhizal.crm.network.ApiError
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import kotlinx.coroutines.async
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -24,7 +28,8 @@ class PendingInteractionFlusherTest {
 
     private val repository = mockk<PendingInteractionRepository>(relaxed = true)
     private val api = mockk<ApiClient>()
-    private val flusher = PendingInteractionFlusher(repository, api)
+    private val gate = SessionTransitionGate()
+    private val flusher = PendingInteractionFlusher(repository, api, gate)
 
     private fun interaction(
         id: Long = 1,
@@ -141,5 +146,29 @@ class PendingInteractionFlusherTest {
 
         coVerify { repository.setIdempotencyKey(1, any()) }
         coVerify { repository.markSynced(1, any()) }
+    }
+
+    @Test
+    fun `the worker flush waits for an in-progress session transition`() = runTest {
+        coEvery { repository.unsynced() } returns emptyList()
+
+        gate.mutex.lock()
+        val flushing = async { flusher.flush() }
+        advanceUntilIdle()
+        assertTrue("flush must not run during a switch/logout", flushing.isActive)
+        coVerify(exactly = 0) { repository.unsynced() }
+
+        gate.mutex.unlock()
+        advanceUntilIdle()
+        assertEquals(0, flushing.await())
+    }
+
+    @Test
+    fun `drain does not take the gate because the transition already holds it`() = runTest {
+        coEvery { repository.unsynced() } returns emptyList()
+
+        gate.mutex.lock()
+        assertTrue(flusher.drain())
+        gate.mutex.unlock()
     }
 }

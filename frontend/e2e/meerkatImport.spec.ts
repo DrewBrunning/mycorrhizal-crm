@@ -4,7 +4,7 @@ import { expect, test, waitForLoading } from './fixtures';
 // confirm happy path is covered end to end by the Go integration test
 // (backend/services/meerkat_import_session_test.go), which builds the fixture
 // database with the Go-only meerkatfixture package. What this spec pins is the
-// browser surface: the wizard opens from Data settings with a file picker, and
+// browser surface: the wizard opens from Data settings (file picker on the Upload a file tab), and
 // a malformed / non-Meerkat file is rejected cleanly — no crash, no partial
 // import, still on the connect step (issue #550's hostile-input requirement).
 test.describe('Meerkat import assistant', () => {
@@ -23,6 +23,7 @@ test.describe('Meerkat import assistant', () => {
       'Import',
       'Done',
     ]);
+    await dialog.getByRole('tab', { name: 'Upload a file' }).click();
     await expect(dialog.getByRole('button', { name: 'Choose database file' })).toBeVisible();
     await expect(dialog.locator('#meerkat-file-input')).toHaveAttribute('type', 'file');
   });
@@ -34,6 +35,7 @@ test.describe('Meerkat import assistant', () => {
     await page.getByRole('button', { name: 'Import from Meerkat' }).click();
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
+    await dialog.getByRole('tab', { name: 'Upload a file' }).click();
 
     await dialog.locator('#meerkat-file-input').setInputFiles({
       name: 'not-really.db',

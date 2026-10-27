@@ -1895,6 +1895,37 @@
         "userOption_other": "{{name}} — {{count}} contacts",
         "userOption_many": "{{name}} — {{count}} contacts",
         "start": "Démarrer l'import"
+      },
+      "mode": {
+        "label": "Comment importer depuis Meerkat",
+        "live": "Se connecter à Meerkat",
+        "file": "Téléverser un fichier"
+      },
+      "live": {
+        "description": "Connectez-vous à votre serveur Meerkat en fonctionnement : vos contacts et leur historique sont lus via son API, photos comprises. Rien n'est écrit avant que vous ayez vérifié et confirmé.",
+        "urlLabel": "Adresse de Meerkat",
+        "urlHelp": "L'adresse à laquelle vous ouvrez Meerkat, p. ex. https://meerkat.example.com",
+        "authMode": "Méthode de connexion",
+        "modeToken": "Jeton",
+        "modePassword": "Nom d'utilisateur et mot de passe",
+        "tokenLabel": "Jeton d'API",
+        "tokenHelp": "Un jeton d'API issu des paramètres de Meerkat. Il sert uniquement à cet import et n'est jamais conservé.",
+        "usernameLabel": "Nom d'utilisateur ou e-mail",
+        "passwordLabel": "Mot de passe",
+        "passwordHelp": "Utilisé une seule fois pour se connecter pour cet import, puis la session est fermée. Jamais conservé.",
+        "connect": "Se connecter",
+        "connecting": "Connexion…",
+        "useFile": "Téléverser plutôt le fichier de base de données",
+        "insecure": "Cette adresse utilise http en clair : vos identifiants et vos contacts transitent sur le réseau sans chiffrement. Ne continuez que sur un réseau de confiance.",
+        "untested": "Cette version de Meerkat n'a pas été reconnue ({{reason}}). L'import peut être incomplet ou échouer.",
+        "untestedOlder": "Ce Meerkat semble antérieur à la v1.5 : ses contacts n’ont pas certains champs que l’import lit. L’import peut être incomplet ou échouer.",
+        "untestedNewer": "Ce Meerkat semble plus récent que les versions avec lesquelles l’import a été testé (v1.5 à v1.7). L’import peut être incomplet ou échouer.",
+        "tryAnyway": "Essayer quand même",
+        "version": "Meerkat {{generation}} détecté",
+        "found_one": "{{count}} contact trouvé.",
+        "found_other": "{{count}} contacts trouvés.",
+        "found_many": "{{count}} contacts trouvés.",
+        "estimate": "La lecture de vos données devrait prendre environ {{minutes}} min."
       }
     },
     "mycorrhizalImport": {

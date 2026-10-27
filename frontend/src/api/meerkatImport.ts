@@ -52,13 +52,61 @@ export async function uploadMeerkatDatabase(file: File): Promise<MeerkatUploadRe
   return response.json();
 }
 
-export async function startMeerkatFetch(sessionId: string, sourceUserId?: number): Promise<void> {
+// Mirrors MeerkatConnectRequest/Response (backend/models/meerkat_import.go).
+// Exactly one of api_token or username+password is sent. These are third-party
+// credentials: they go to the server once and live only in its in-memory
+// session — never store them client-side.
+export interface MeerkatConnectRequest {
+  base_url: string;
+  api_token?: string;
+  username?: string;
+  password?: string;
+}
+
+export interface MeerkatVersionInfo {
+  generation: string;
+  supported: boolean;
+  // English fallback for a reason_code this client does not translate.
+  reason: string;
+  // Stable form of reason: 'meerkat_version_older_than_supported' |
+  // 'meerkat_version_newer_than_tested'; empty when supported. More may be
+  // added, so an unknown code falls back to reason.
+  reason_code: string;
+}
+
+export interface MeerkatConnectResponse {
+  session_id: string;
+  version: MeerkatVersionInfo;
+  source_user: MeerkatSourceUser;
+  totals: MeerkatEntityCounts;
+  insecure_transport: boolean;
+  estimated_fetch_seconds: number;
+}
+
+export async function connectMeerkat(req: MeerkatConnectRequest): Promise<MeerkatConnectResponse> {
+  const response = await apiFetch(`${API_BASE_URL}${MEERKAT_IMPORT_BASE}/connect`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(req),
+  });
+  if (!response.ok) throw await parseErrorResponse(response);
+  return response.json();
+}
+
+// acceptUntested is the explicit "try anyway" for a Meerkat version the
+// adapter was not built against; the server refuses an untested fetch without it.
+export async function startMeerkatFetch(
+  sessionId: string,
+  sourceUserId?: number,
+  acceptUntested?: boolean,
+): Promise<void> {
   const response = await apiFetch(`${API_BASE_URL}${MEERKAT_IMPORT_BASE}/fetch`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({
       session_id: sessionId,
       source_user_id: sourceUserId ?? null,
+      ...(acceptUntested ? { accept_untested: true } : {}),
     }),
   });
   if (!response.ok) throw await parseErrorResponse(response);

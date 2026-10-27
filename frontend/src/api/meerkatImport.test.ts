@@ -2,6 +2,7 @@ import { afterEach, expect, test, vi } from 'vitest';
 import {
   cancelMeerkatImport,
   confirmMeerkatImport,
+  connectMeerkat,
   getMeerkatImportStatus,
   startMeerkatFetch,
   uploadMeerkatDatabase,
@@ -21,7 +22,13 @@ test('uploadMeerkatDatabase POSTs multipart form-data and returns the picker pay
       session_id: 's1',
       source_users: [{ id: 1, username: 'a', email: '', name: '', contacts: 3 }],
       default_source_user_id: 1,
-      totals: { contacts: 3, relationships: 1, notes: 2, activities: 0, reminders: 0 },
+      totals: {
+        contacts: 3,
+        relationships: 1,
+        notes: 2,
+        activities: 0,
+        reminders: 0,
+      },
     }),
   );
   vi.stubGlobal('fetch', fetchMock);
@@ -44,7 +51,11 @@ test('uploadMeerkatDatabase surfaces a rejection', async () => {
       ok: false,
       status: 400,
       json: async () => ({
-        error: { code: 'INVALID_INPUT', message: 'no', details: { field: 'file' } },
+        error: {
+          code: 'INVALID_INPUT',
+          message: 'no',
+          details: { field: 'file' },
+        },
       }),
     }),
   );
@@ -74,7 +85,12 @@ test('the shared status/confirm/cancel calls are bound to the meerkat base path'
   const fetchMock = vi
     .fn()
     .mockResolvedValueOnce(
-      okResponse({ session_id: 's1', phase: 'ready', phase_done: 0, phase_total: 0 }),
+      okResponse({
+        session_id: 's1',
+        phase: 'ready',
+        phase_done: 0,
+        phase_total: 0,
+      }),
     )
     .mockResolvedValueOnce({ ok: true, status: 202, json: async () => ({}) })
     .mockRejectedValueOnce(new Error('net'));
@@ -88,4 +104,53 @@ test('the shared status/confirm/cancel calls are bound to the meerkat base path'
   expect(fetchMock.mock.calls[0][0]).toContain('/contacts/import/meerkat/status?session_id=s1');
   expect(fetchMock.mock.calls[1][0]).toContain('/contacts/import/meerkat/confirm');
   expect(fetchMock.mock.calls[2][0]).toContain('/contacts/import/meerkat/cancel?session_id=s1');
+});
+
+test('connectMeerkat posts only the credential fields it was given', async () => {
+  const fetchMock = vi.fn().mockResolvedValue(okResponse({ session_id: 's9' }));
+  vi.stubGlobal('fetch', fetchMock);
+
+  const resp = await connectMeerkat({
+    base_url: 'https://m.example',
+    api_token: 'tok',
+  });
+  expect(resp.session_id).toBe('s9');
+  expect(fetchMock.mock.calls[0][0]).toContain('/contacts/import/meerkat/connect');
+  expect(fetchMock.mock.calls[0][1].method).toBe('POST');
+  expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+    base_url: 'https://m.example',
+    api_token: 'tok',
+  });
+});
+
+test('connectMeerkat surfaces a rejection', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      json: async () => ({
+        error: {
+          code: 'INVALID_INPUT',
+          message: 'bad credentials',
+          details: {},
+        },
+      }),
+    }),
+  );
+  await expect(connectMeerkat({ base_url: 'https://m', api_token: 'x' })).rejects.toMatchObject({
+    code: 'INVALID_INPUT',
+  });
+});
+
+test('startMeerkatFetch sends accept_untested only when asked', async () => {
+  const fetchMock = vi.fn().mockResolvedValue(okResponse({}));
+  vi.stubGlobal('fetch', fetchMock);
+
+  await startMeerkatFetch('s1', undefined, true);
+  expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+    session_id: 's1',
+    source_user_id: null,
+    accept_untested: true,
+  });
 });
