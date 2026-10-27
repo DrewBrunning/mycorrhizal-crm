@@ -1089,10 +1089,16 @@
       "branchesTotal": 12
     },
     "src/components/MeerkatImportDialog.tsx": {
-      "lines": 93.75,
-      "linesTotal": 48,
-      "branches": 84,
-      "branchesTotal": 25
+      "lines": 95.58,
+      "linesTotal": 68,
+      "branches": 88.37,
+      "branchesTotal": 43
+    },
+    "src/components/MeerkatLiveConnect.tsx": {
+      "lines": 100,
+      "linesTotal": 31,
+      "branches": 96.66,
+      "branchesTotal": 30
     },
     "src/components/MergeContactsDialog.tsx": {
       "lines": 93.97,
