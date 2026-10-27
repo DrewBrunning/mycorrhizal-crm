@@ -73,7 +73,7 @@ loudly on a malformed row rather than skipping it.
 | `release_app_key` | Rotate the release GitHub App private key | 365 | 2026-09-18 | Add the new key in the App settings, update the Actions secret, revoke the old key. |
 | `android_signing_key` | Confirm the Android signing keystore is still recoverable | 365 | 2026-09-18 | Restore the keystore from its offline backup into a scratch dir and confirm the release APK still builds; see [custody & backup](#android-signing-keystore-custody-and-backup). |
 | `access_list_review` | Review the sensitive-resource access list in `GOVERNANCE.md` | 365 | 2026-09-18 | Confirm who holds repo admin, ruleset bypass, Actions secrets, and the deployment host; update the table in place ([GOVERNANCE.md](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/GOVERNANCE.md)). |
-| `support_window_review` | Review the support window / EOL policy | 365 | 2026-09-18 | Confirm `SECURITY.md` "Supported Versions" and the [supported-versions lifecycle](../supported-versions.md#version-support-lifecycle) still describe what is backported and that the defined `1.x` window is in force. |
+| `support_window_review` | Review the support window / EOL policy | 365 | 2026-10-26 | Confirm `SECURITY.md` "Supported Versions" and the [supported-versions lifecycle](../supported-versions.md#version-support-lifecycle) still describe what is backported, and that every supported minor has a `release/vX.Y.0` branch. |
 <!-- security-cadence:end -->
 
 ## Android signing-keystore custody and backup
@@ -117,35 +117,34 @@ Two duties in #956 have no natural event trigger and so share the register:
   change and no fresh confirmation that the list is still complete. The annual
   review re-reads the live GitHub collaborators/ruleset bypass list and the App
   installations against the committed table and records the date.
-- **Support window / EOL.** `SECURITY.md` defines the `1.x` support window
-  below. The annual review confirms the defined window still matches what is
+- **Support window / EOL.** The canonical statement is `SECURITY.md` →
+  Supported Versions. The annual review confirms it still matches what is
   actually backported.
 
 ## Support window and end-of-life
 
-The project is on `1.x`: the support window below is in force (`SECURITY.md` →
-Supported Versions).
+The canonical support window is `SECURITY.md` → Supported Versions, in force
+since `1.0.0` (issue #956). In short: within a major, the newest minor and the
+one before it are supported; the next minor release retires the older of
+the two immediately, and patch releases do not change the set. When a new major
+ships, the previous major's final minor gets a **12-month security-only tail**.
+Only security fixes are backported.
 
-**The support window is:**
+This page owns the operational half:
 
-- Every `1.x` release receives security fixes for **12 months from the next
-  minor release** (so the supported set is always the newest minor plus the
-  prior minor while it is within that window; a critical fix may be backported
-  further at the maintainer's discretion and is then announced as such).
-- A release reaches **end of life** when it falls outside that window. The
-  supported set is stated explicitly on the release page and in
-  [`supported-versions.md`](../supported-versions.md); an EOL tag gets **no**
-  security fixes and no migration support.
 - **Backport path.** A security fix is authored on `main`, then cherry-picked
   onto the `release/vX.Y.0` branch of each still-supported minor and cut from
   there (the same branches and promotion flow as
   [`release-candidate-process.md`](../release-candidate-process.md)). A fix that
   cannot be cherry-picked cleanly is re-implemented on the older branch and
   called out in the advisory.
-- **The EOL review is the annual `support_window_review` entry above** — it
-  names each tag crossing EOL in the next 12 months. Mechanical EOL flagging in
-  the release workflow remains a separate follow-up; this page and the register
-  are the policy definition.
+- **EOL review.** The annual `support_window_review` entry above confirms
+  `SECURITY.md` and [`supported-versions.md`](../supported-versions.md) still
+  state the window accurately, and that every supported minor has a
+  `release/vX.Y.0` branch. EOL branches may remain for history; they receive no
+  new commits. Mechanical EOL flagging in the release workflow remains a
+  separate follow-up; the window itself has one canonical home in `SECURITY.md`,
+  not a second copy here.
 
 ## Updating the register
 
