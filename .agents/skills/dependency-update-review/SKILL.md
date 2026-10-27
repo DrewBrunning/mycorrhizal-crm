@@ -24,8 +24,9 @@ touching.
    digest, or a SHA-pinned Action. Never vendor source or fetch at build time.
 3. Run the affected build/tests plus `go run ./cmd/depexceptions` so an expired
    or unnecessary advisory exception fails before review.
-4. Regenerate the third-party notices (`make gen-notices`) and commit the diff;
-   a dependency bump that does not regenerate fails the notices drift gate.
+4. For a Go or npm dependency change, regenerate the third-party notices
+   (`make gen-notices`) and commit the diff; the notices drift gate covers those
+   ecosystems. Gradle, Docker, and Action bumps have no notices artifact.
 5. Review the scanners the ecosystems feed: Trivy/grype ignores, the
    `.mobsf`/`zap`/`schemathesis` lists, and the vulnerability advisories. An
    ignore entry needs a reason and, for a time-bounded exception,

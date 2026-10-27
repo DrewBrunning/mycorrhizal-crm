@@ -16,8 +16,10 @@ registration and the break-it proof.
 
 ## Required per-PR contexts
 
-These are the contexts the `main-protection` ruleset requires. The registry,
-ruleset and docs must stay exactly equal; `governancecheck` fails otherwise.
+These are the contexts the `main-protection` ruleset requires. Keep the registry,
+ruleset and docs equal for gates with a stable `check_context`; `governancecheck`
+fails on drift and intentionally excludes mandatory gates with
+`check_context: null`.
 
 - `Detect Changes`
 - `Backend (Go)`
@@ -44,12 +46,14 @@ ruleset and docs must stay exactly equal; `governancecheck` fails otherwise.
    it in all four places: `.github/release-gates.json` (per-pr, mandatory, real
    `check_context`), `.github/rulesets/main-protection.json`, the live ruleset
    via `gh api`, and `docs/development/release-gates.md` +
-   `docs/development/repo-governance.md`.
+   `docs/development/repo-governance.md`. `releasegatecheck` checks the
+   release-gates table; `governancecheck` checks the repo-governance table.
 3. Mirror the check in `.githooks/pre-commit` for local feedback; the hook is
    never a substitute for CI.
-4. If the gate is a scheduled workflow, register it in
-   `nightly-failure-alert.yml`; `nightlyalertcheck` fails otherwise. A new
-   per-PR mandatory workflow also needs `main-failure-alert.yml` registration.
+4. If the gate is a scheduled workflow, register it in both
+   `nightly-failure-alert.yml` and `nightly-failure-reconcile.yml`;
+   `nightlyalertcheck` fails otherwise. A new per-PR mandatory workflow also
+   needs `main-failure-alert.yml` registration.
 5. Hand-verify: break the thing the gate guards, watch it fail, restore it. A
    gate that has never failed is not proven.
 

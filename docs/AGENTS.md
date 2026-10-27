@@ -1,10 +1,11 @@
 # Documentation and security docs
 
 Read the root `AGENTS.md` first. Docs are code here: they are gated by `docscheck`, `citecheck`,
-`typos`, `depexceptions`, `deprecations`, `releasegatecheck`, `governancecheck`, `pragmacheck` and
-`nightlyalertcheck`, all of which CI runs unconditionally because `.github/filters.yaml` maps
-`docs/**` to nothing. A documentation-only change is verified by these gates rather than by the
-test-first workflow; a change with runtime behaviour is not documentation-only.
+`typos`, `depexceptions`, `deprecations`, `contextcheck`, `releasegatecheck`, `governancecheck`,
+`codecovcheck`, `pragmacheck`, `nightlyalertcheck`, `mainalertcheck` and `androidskipcheck`, all of
+which CI runs unconditionally because `.github/filters.yaml` maps `docs/**` to nothing. A
+documentation-only change is verified by these gates rather than by the test-first workflow; a change
+with runtime behaviour is not documentation-only.
 
 ## Structural gates
 
@@ -34,8 +35,9 @@ Generated docs are **never hand-edited**; regenerate and commit the diff. This i
 `docs/data-01-field-compatibility-matrix.md` (`gencompatmatrix`),
 `docs/int-01-integration-classification-matrix.md` (`genintegrationmatrix`), the schema dumps under
 `backend/database/testdata/schemas/` (`genschema`), `docs/development/perf-benchmarks.md` /
-`data-movement-benchmarks.md` (`perfbench`), and the config reference. The drift test named by each
-generator fails until it is regenerated; the diff is the review.
+`data-movement-benchmarks.md` (`perfbench`), and the config reference. Most generated docs have a
+drift test that fails until they are regenerated; the perfbench reports are the exception — they are
+regenerated and committed, but only their `baseline.json` is drift-gated. The diff is the review.
 
 ## Security, ASVS/MASVS, retention
 
@@ -45,7 +47,7 @@ touches** — status and citation — in the same commit; if the change cannot p
 not know what it is changing. N/A rows are written-down decisions (single process, self-hosted) that
 flip to real statuses if the architecture changes.
 
-The project's self-assessed claim is **ASVS L2 with 23 documented exceptions** and **MASVS-L1 with 1** — see the verification report §6; this is not a third-party audit. `docs/security/asvs-l2-verification-report.md`
+The project's self-assessed claim is **ASVS L2 with 23 documented exceptions** and **MASVS-L1 with 1** — see the verification report §7; this is not a third-party audit. `docs/security/asvs-l2-verification-report.md`
 records *how* the checklists were verified and *when*: add a changelog row there for every
 re-verification rather than silently editing statuses. Do the §8 re-verification pass when closing a
 milestone gate, not at release-dispatch time — `release.yml` refuses to tag if §10 has no row since

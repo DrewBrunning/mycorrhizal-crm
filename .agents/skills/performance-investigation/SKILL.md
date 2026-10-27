@@ -16,9 +16,9 @@ before touching `backend/internal/perfbench`.
 1. Reproduce the cost before optimizing. Run the owning benchmark or the
    per-PR query/row gate against the smoke profile. Do not optimize from a
    profile you cannot reproduce.
-2. Confirm which class moved: query count, rows touched, memory-growth class, or
-   wall-clock. Only the first three are deterministic per-PR gates; wall-clock
-   is a trend and a release-validation ceiling.
+2. Confirm which class moved: query count, rows touched, memory, or wall-clock.
+   Query count and rows touched are the deterministic per-PR gates; memory and
+   wall-clock are release-validation ceilings, and wall-clock is also a trend.
 3. Optimize the operation, then rerun the same gate. A change that improves one
    operation but regresses another is not ready.
 4. Regenerate the baseline **only** when the operation's query/data-movement

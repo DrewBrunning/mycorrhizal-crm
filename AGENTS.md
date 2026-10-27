@@ -75,9 +75,10 @@ actual port or CORS fails. Service-worker testing needs `frontend-prod` — see 
   `user_id` (or `Contact.VCardUID` for graph entities). Treat missing or inconsistent ownership
   checks as a security defect; every new route or access path needs regression coverage.
 - **Sensitivity** (`normal|private|secret`) is filtered **in the query** for anything that leaves the
-  instance (sync, shares, neutral-`Card` exports), re-includable only via `?include_sensitive=true`.
-  The CSV export, account bundle, and contact map are deliberate full-fidelity exceptions — policy,
-  not leaks. Details: `backend/AGENTS.md`.
+  instance (sync, shares, neutral-`Card` exports), re-includable only through that surface's explicit
+  include flag (`?include_sensitive=true` for query surfaces, or the same field in a share/MCP
+  request). The CSV export, account bundle, and contact map are deliberate full-fidelity
+  exceptions — policy, not leaks. Details: `backend/AGENTS.md`.
 - **Soft vs hard delete is a model property**, decided once per entity. Cascades are manual and
   registry-enforced — add a new entity there in the same change (`backend/AGENTS.md` traps 6–7).
 - **Generated artifacts are regenerated, never hand-edited.** Each area's file names its artifacts
@@ -120,7 +121,8 @@ path. Three categories replace it with their own verification — not with no ve
 
 - **Documentation-only** (`docs/`, `*.md`, context files): no test is expected; run the unconditional
   gates in `docs/AGENTS.md` (`docscheck`, `citecheck`, `typos`, `depexceptions`, `deprecations`,
-  `releasegatecheck`, `governancecheck`, `pragmacheck`, `nightlyalertcheck`).
+  `contextcheck`, `releasegatecheck`, `governancecheck`, `codecovcheck`, `pragmacheck`,
+  `nightlyalertcheck`, `mainalertcheck`, `androidskipcheck`).
 - **Generated artifacts:** regenerate with the owning area's command, commit the diff, and run the
   named drift test. Never hand-edit.
 - **Purely mechanical changes** (renames, moves, formatting, or tooling/dependency updates with no

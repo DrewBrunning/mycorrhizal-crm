@@ -6,10 +6,11 @@ maintain it.
 ## Adding a quality gate
 
 The merge-blocking surface is **exactly** the `required_status_checks` contexts of the live
-`main-protection` ruleset, mirrored by `.github/rulesets/main-protection.json` and kept equal to the
-per-PR `mandatory` gates in `.github/release-gates.json` by `cd backend && go run ./cmd/governancecheck`
-(every PR, in the docs-citations job). A check that is not a required context does not block a merge,
-however it is wired.
+`main-protection` ruleset, mirrored by `.github/rulesets/main-protection.json`. `governancecheck`
+keeps it equal to the per-PR `mandatory` gates in `.github/release-gates.json` that declare a stable
+`check_context`; a mandatory per-PR gate with `check_context: null` is intentionally excluded (for
+example the per-leg `Migration Tests` check). `governancecheck` runs every PR in the docs-citations
+job. A check that is not a required context does not block a merge, however it is wired.
 
 **Default: add the check as a step inside an existing required job.** That is merge-blocking with no
 governance change. The three jobs that carry the load:
@@ -28,8 +29,9 @@ same PR: (1) add a `tier: "per-pr"`, `mandatory: true` entry with a real `check_
 `required_status_checks`; (3) apply the committed ruleset to the live repo with
 `gh api --method PUT /repos/DrewBrunning/mycorrhizal-crm/rulesets/<id> --input .github/rulesets/main-protection.json`;
 (4) update `docs/development/release-gates.md` and `docs/development/repo-governance.md`.
-`governancecheck` fails if 1–2 or 4 disagree; the weekly `governance-drift.yml` fails if the
-committed and live rulesets disagree, since step 3 is the half no in-repo test can see.
+`releasegatecheck` checks the release-gates doc table; `governancecheck` checks the repo-governance
+table and the registry/ruleset coupling. The weekly `governance-drift.yml` fails if the committed and
+live rulesets disagree, since step 3 is the half no in-repo test can see.
 
 Mirror the check in `.githooks/pre-commit` for fast local feedback (never a substitute for CI), and
 hand-verify it: break the thing it guards, watch the gate fail, restore. **Gates are not silently
@@ -65,8 +67,9 @@ shadows the shared setting, and repairs the `CLAUDE.md` aliases).
   formatting gate (no baseline);
   `./gradlew detekt --auto-correct` fixes formatting. Lint warnings are errors; `android/lint.xml`
   lists the reasoned exceptions.
-- **Always:** `citecheck`, `depexceptions`, `deprecations`, `docscheck`, `contextcheck`,
-  `releasegatecheck`, `governancecheck`, `pragmacheck`, `nightlyalertcheck`.
+- **Always:** `citecheck` (including the ASVS/MASVS census test), `depexceptions`, `deprecations`,
+  `docscheck`, `contextcheck`, `releasegatecheck`, `governancecheck`, `codecovcheck`, `pragmacheck`,
+  `nightlyalertcheck`, `mainalertcheck`, `androidskipcheck`.
 - **`pre-merge-commit`:** reruns the pre-commit checks on a clean merge commit (git skips
   `pre-commit` there), catching merge-skew in generated artifacts.
 - **`commit-msg`:** rejects a missing/mismatched DCO `Signed-off-by:` trailer — use `git commit -s`.
@@ -84,8 +87,9 @@ The scheduled tier is the only zero-retry run (PR/push retries a flake once), so
 the flake signal. `.github/workflows/nightly-failure-alert.yml` opens/comments a `nightly-failure`
 issue per workflow on a failed `schedule` run and closes it on the next green one. Its
 `workflow_run.workflows` list must equal the set of workflows with a `schedule:` trigger —
-`go run ./cmd/nightlyalertcheck` (docs-citations job) fails otherwise, so adding a scheduled
-workflow means registering it there.
+`go run ./cmd/nightlyalertcheck` (docs-citations job) fails otherwise. Adding a scheduled workflow
+therefore means registering it in both `nightly-failure-alert.yml` and
+`nightly-failure-reconcile.yml`'s `workflow_file` matrix.
 
 ## Workflow-specific notes
 
