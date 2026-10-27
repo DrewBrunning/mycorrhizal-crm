@@ -3,6 +3,7 @@ package services
 import (
 	"time"
 
+	"mycorrhizal/internal/fireandforget"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
 
@@ -16,18 +17,19 @@ const feedTouchInterval = time.Hour
 
 // TouchFeed asynchronously records that a feed was served, at most once per
 // feedTouchInterval. It mirrors middleware.TouchAPIToken's fire-and-forget
-// shape: failure is logged, never fatal to the request.
+// shape (tracked by internal/fireandforget so shutdown drains it): failure is logged, never fatal to the request.
 func TouchFeed(db *gorm.DB, feed *models.Feed) {
 	if feed.LastAccessedAt != nil && Now().Sub(*feed.LastAccessedAt) < feedTouchInterval {
 		return
 	}
 	feedID := feed.ID
-	go func(id string) {
+	fireandforget.Run(func() {
+		id := feedID
 		if err := db.Model(&models.Feed{}).Where("id = ?", id).
 			Update("last_accessed_at", Now()).Error; err != nil {
 			logger.Logger.Warn().Err(err).Str("feed_id", id).Msg("Failed to update feed last_accessed_at") // # pragma: no cover — background best-effort write; only a failing store trips this
 		}
-	}(feedID)
+	})
 }
 
 // RevokeAllFeeds revokes every currently-active private feed credential for a
