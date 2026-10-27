@@ -8087,6 +8087,101 @@
       ]
     },
     {
+      "method": "GET",
+      "path": "/trash/contacts",
+      "parameters": [
+        {
+          "name": "limit",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "page",
+          "in": "query",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:TrashListResponse"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/trash/contacts",
+      "parameters": null,
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:TrashPurgeResponse"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/trash/contacts/{id}",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:TrashPurgeResponse"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/trash/contacts/{id}/restore",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:TrashRestoreResponse"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
       "method": "POST",
       "path": "/users/2fa/confirm",
       "parameters": null,
@@ -20318,6 +20413,106 @@
           "name": "organizationId",
           "type": "string",
           "required": false
+        }
+      ]
+    },
+    {
+      "name": "TrashListResponse",
+      "properties": [
+        {
+          "name": "contacts",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        },
+        {
+          "name": "limit",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "page",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "retention_days",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "total",
+          "type": "integer",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "TrashPurgeResponse",
+      "properties": [
+        {
+          "name": "message",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "purged",
+          "type": "integer",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "TrashRestoreResponse",
+      "properties": [
+        {
+          "name": "contact",
+          "type": "ref:ContactSummary",
+          "required": true
+        },
+        {
+          "name": "skipped",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "TrashRestoreSkip",
+      "properties": [
+        {
+          "name": "count",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "table",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "TrashedContact",
+      "properties": [
+        {
+          "name": "contact",
+          "type": "ref:ContactSummary",
+          "required": true
+        },
+        {
+          "name": "deleted_at",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "purge_at",
+          "type": "string",
+          "required": true
         }
       ]
     },

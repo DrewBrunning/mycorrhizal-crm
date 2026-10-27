@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"mycorrhizal/config"
 	"mycorrhizal/contactmodel"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
@@ -1186,7 +1187,8 @@ func TestDeleteContact_CleansUpReferencingRows(t *testing.T) {
 	assertCount("Gift", &models.Gift{}, 0, "user_id = ?", user.ID)
 	assertCount("ExternalIdentity", &models.ExternalIdentity{}, 0, "user_id = ?", user.ID)
 	assertCount("ExternalActivity", &models.ExternalActivity{}, 0, "user_id = ?", user.ID)
-	assertCount("ContactSyncLink", &models.ContactSyncLink{}, 0, "user_id = ?", user.ID)
+	// The sync link is deliberately retained as the tombstone (ADR 0037 decision 7).
+	assertCount("ContactSyncLink", &models.ContactSyncLink{}, 1, "user_id = ?", user.ID)
 	assertCount("ReminderCompletion", &models.ReminderCompletion{}, 0, "user_id = ?", user.ID)
 	assertCount("ReachOutSuggestion", &models.ReachOutSuggestion{}, 0, "user_id = ?", user.ID)
 
@@ -1280,11 +1282,18 @@ func TestDeleteContactCleansUpPhotos(t *testing.T) {
 	json.Unmarshal(w.Body.Bytes(), &respBody)
 	assert.Equal(t, "Contact deleted", respBody["message"])
 
-	// Verify photo files are deleted
+	// The contact is restorable from the trash (ADR 0037), so its photo files
+	// stay on disk until it is purged.
 	_, err = os.Stat(photoPath)
-	assert.True(t, os.IsNotExist(err), "Photo file should be deleted")
+	assert.NoError(t, err, "Photo file is kept until the contact is purged")
 	_, err = os.Stat(thumbnailPath)
-	assert.True(t, os.IsNotExist(err), "Thumbnail file should be deleted")
+	assert.NoError(t, err, "Thumbnail file is kept until the contact is purged")
+
+	files, perr := services.PurgeContact(db, contact.UserID, contact.ID)
+	require.NoError(t, perr)
+	services.RemovePurgedFiles(config.Config{ProfilePhotoDir: tempDir}, files)
+	_, err = os.Stat(photoPath)
+	assert.True(t, os.IsNotExist(err), "Photo file should be deleted on purge")
 }
 
 func TestDeleteContactWithNoPhotos(t *testing.T) {

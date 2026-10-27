@@ -2687,6 +2687,36 @@ export type Title = {
   organizationId?: string;
 };
 
+export type TrashListResponse = {
+  contacts: TrashedContact[];
+  limit: number;
+  page: number;
+  retention_days: number;
+  total: number;
+};
+
+export type TrashPurgeResponse = {
+  message: string;
+  purged: number;
+};
+
+export type TrashRestoreResponse = {
+  contact: ContactSummary;
+  skipped: TrashRestoreSkip[];
+};
+
+export type TrashRestoreSkip = {
+  count: number;
+  reason: string;
+  table: string;
+};
+
+export type TrashedContact = {
+  contact: ContactSummary;
+  deleted_at: string;
+  purge_at: string | null;
+};
+
 export type TwoFactorCodeInput = {
   code: string;
 };
@@ -2816,7 +2846,7 @@ export type WebhookDeliveryResponse = {
 };
 
 export type WebhookInput = {
-  events: ('contact.created' | 'contact.updated' | 'contact.deleted' | 'note.created' | 'note.updated' | 'note.deleted' | 'activity.created' | 'activity.updated' | 'activity.deleted' | 'reminder.triggered' | 'birthday.occurred')[];
+  events: ('contact.created' | 'contact.updated' | 'contact.deleted' | 'contact.restored' | 'note.created' | 'note.updated' | 'note.deleted' | 'activity.created' | 'activity.updated' | 'activity.deleted' | 'reminder.triggered' | 'birthday.occurred')[];
   is_active?: boolean;
   name: string;
   url: string;

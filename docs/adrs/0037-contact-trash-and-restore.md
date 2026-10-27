@@ -168,3 +168,27 @@ step and pick snapshot or skip.
 - `docs/security/data-retention-lifecycle.md` and `docs/security/pii-inventory.md` gain the snapshot table in the
   implementing PR; the user-delete cascade and `purge_completeness_test.go` must cover it.
 - Implementation is split by platform: backend, web, then Android, each its own PR tied to #2002.
+
+## Amendment (2026-10-27, backend implementation)
+
+Three details changed while implementing, each simpler than the original text and with the same guarantees:
+
+- **Batch marker lives in the snapshot, not on the child tables (decision 2).** `payload.soft` maps each
+  soft-cascade table to the ids of the rows *this* deletion soft-deleted, captured before the cascade runs.
+  Restore un-deletes exactly those ids (owner-scoped). No `deletion_batch_id` column is added to eleven
+  tables, so there is no schema-parity or DTO surface to keep in step.
+- **The sync link is retained, not tombstoned with a new column (decision 7).** The cascade no longer deletes
+  `contact_sync_links` (a `CascadeMutate` no-op step). The pull skips a link whose contact is trashed or
+  purged and keeps the link; the scheduled purge no longer removes it. That is the tombstone, and a restore
+  needs no relinking. A merge loser keeps its pre-existing "discard the link" behaviour (explicit delete in
+  the merge path): it is not restorable.
+- **Pre-existing deletions are not listed, and the snapshot column is `trashed_at`.** A soft-deleted contact
+  with no snapshot — deleted before the migration, or a merge loser — cannot be told apart, and restoring a
+  merge loser would resurrect a duplicate, so the trash lists snapshot-backed deletions only (the earlier
+  "partial restore" row is dropped). The scheduled purge still reaps them on schedule. The column is named
+  `trashed_at` because the purge-completeness guard treats any `deleted_at` column as a soft-delete column.
+
+Photo and attachment files are no longer removed when a contact is deleted; they are removed by every purge
+path after commit (decision 5), which required changing `DeleteContact`, the bulk delete action and the
+scheduled purge. Audit gained `restore` and `purge` operations (migration 000079 rebuilds the CHECK, as 000070
+did).
