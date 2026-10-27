@@ -23,7 +23,7 @@ func trashContactID(c *gin.Context) (uint, bool) {
 	if !ok {
 		return 0, false
 	}
-	id, err := strconv.ParseUint(raw, 10, 64)
+	id, err := strconv.ParseUint(raw, 10, strconv.IntSize)
 	if err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrNotFound("Contact"))
 		return 0, false
