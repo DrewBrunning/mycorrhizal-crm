@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
-	"sort"
 )
 
 // Generation labels the API adapter a server was matched to. Meerkat's
@@ -89,18 +88,13 @@ func (c *Client) Detect(ctx context.Context) (VersionInfo, error) {
 			}, nil
 		}
 	}
-	var extra []string
 	for k := range first {
 		if !knownContactKeys[k] {
-			extra = append(extra, k)
+			return VersionInfo{
+				Generation: GenerationV15toV17,
+				Reason:     "This Meerkat looks newer than the versions the importer was tested with (v1.5–v1.7).",
+			}, nil
 		}
-	}
-	if len(extra) > 0 {
-		sort.Strings(extra)
-		return VersionInfo{
-			Generation: GenerationV15toV17,
-			Reason:     "This Meerkat looks newer than the versions the importer was tested with (v1.5–v1.7).",
-		}, nil
 	}
 	return VersionInfo{Generation: GenerationV15toV17, Supported: true}, nil
 }
