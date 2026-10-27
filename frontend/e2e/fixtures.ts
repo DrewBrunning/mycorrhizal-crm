@@ -10,6 +10,7 @@ import {
   type Page,
 } from '@playwright/test';
 import { toContactRecordInput } from '../src/api/contacts';
+import { allCandidatesAreToast, toastRetryCandidates } from './a11yRetry';
 import { API_BASE_URL, E2E_CONTACT_PREFIX, TEST_USER } from './global-setup';
 import {
   deleteAccountAsAdmin,
@@ -163,6 +164,20 @@ async function waitForAnimationsToSettle(page: Page): Promise<void> {
 }
 
 /**
+ * True when the blocking violations match the signature of a toast caught
+ * mid-exit (see assertNoBlockingA11yViolations); the rule lives in a11yRetry.ts
+ * so it is unit-tested.
+ */
+async function onlyTransientToastContrast(
+  page: Page,
+  violations: Awaited<ReturnType<AxeBuilder['analyze']>>['violations'],
+): Promise<boolean> {
+  const candidates = toastRetryCandidates(violations);
+  if (candidates === null) return false;
+  return page.evaluate(allCandidatesAreToast, candidates).catch(() => false);
+}
+
+/**
  * Runs axe-core against `page` (or, scoped via `context` -- a CSS selector,
  * typically `[role="dialog"]` -- against just that subtree) and fails on any
  * `critical`/`serious` violation. Shared by the automatic per-test check
@@ -171,12 +186,28 @@ async function waitForAnimationsToSettle(page: Page): Promise<void> {
  */
 export async function assertNoBlockingA11yViolations(page: Page, context?: string): Promise<void> {
   await waitForAnimationsToSettle(page);
-  const builder = new AxeBuilder({ page }).withTags(WCAG_A11Y_TAGS);
-  if (context) {
-    builder.include(context);
+  const scan = async () => {
+    const builder = new AxeBuilder({ page }).withTags(WCAG_A11Y_TAGS);
+    if (context) {
+      builder.include(context);
+    }
+    const results = await builder.analyze();
+    return results.violations.filter((v) => BLOCKING_A11Y_IMPACTS.includes(v.impact ?? ''));
+  };
+  let blocking = await scan();
+  // Nightly #2086: the success toast's 4s autoHideDuration (SnackbarContext
+  // showSuccess) can fire *during* the scan -- after waitForAnimationsToSettle
+  // saw nothing running, because the exit transition had not started yet -- so
+  // axe samples the Alert at partial opacity (fg #d9e8e0 on #35855c, 3.55:1;
+  // the settled filled-success pair is fine). Rescan once, but only when every
+  // violation is a color-contrast failure on a toast node (still inside a
+  // Snackbar, or gone with axe's recorded html showing MuiAlert/MuiSnackbar;
+  // see a11yRetry.ts), so a toast that genuinely fails contrast still fails on
+  // the second scan and nothing else gets a free retry.
+  if (blocking.length > 0 && (await onlyTransientToastContrast(page, blocking))) {
+    await waitForAnimationsToSettle(page);
+    blocking = await scan();
   }
-  const results = await builder.analyze();
-  const blocking = results.violations.filter((v) => BLOCKING_A11Y_IMPACTS.includes(v.impact ?? ''));
   const detail = blocking.map((v) => ({
     id: v.id,
     impact: v.impact,
