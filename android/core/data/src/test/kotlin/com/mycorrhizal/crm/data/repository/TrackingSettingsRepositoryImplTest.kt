@@ -2,6 +2,8 @@ package com.mycorrhizal.crm.data.repository
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -115,6 +117,17 @@ class TrackingSettingsRepositoryImplTest {
         repository.setLastSmsInboxId(42L)
 
         assertEquals(42L, repository.lastSmsInboxId())
+
+        // Issue #2066: advance is a single-transaction max, so the receiver and
+        // the reconciliation worker can never regress the cursor.
+        repository.advanceLastSmsInboxId(10L)
+        assertEquals(42L, repository.lastSmsInboxId())
+
+        repository.advanceLastSmsInboxId(150L)
+        assertEquals(150L, repository.lastSmsInboxId())
+
+        (1L..200L).map { id -> async { repository.advanceLastSmsInboxId(200L + id) } }.awaitAll()
+        assertEquals(400L, repository.lastSmsInboxId())
     }
 
     // --- Issue #1029: capture-policy escape hatch + dropped-count ----------

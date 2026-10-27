@@ -12,6 +12,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Captures received SMS as PendingInteractions (§6.2). Runs the capture in a
@@ -67,42 +68,57 @@ class SmsReceiver private constructor(
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != android.provider.Telephony.Sms.Intents.SMS_RECEIVED_ACTION) return
         val sms = parseSms(intent) ?: return
+        // Issue #2066: goAsync() keeps the process alive past onReceive's return
+        // so the capture + cursor write finish; the work is bounded by
+        // CAPTURE_TIMEOUT_MILLIS (the platform allows ~10s). Null when the
+        // receiver wasn't dispatched by the system (tests).
+        val pendingResult = goAsync()
         val scope = CoroutineScope(SupervisorJob() + dispatcher)
         scope.launch {
-            val deps = dependencyProvider(context.applicationContext)
-            if (!deps.trackingSettings.smsTrackingEnabled()) return@launch
-            // Issue #1029: one shared policy entry point — an SMS from a number
-            // that maps to no cached contact is dropped (and counted), not
-            // staged as an orphan Activity. Each broadcast is a unique event, so
-            // no dedupe.
-            InteractionCapture.capture(
-                contactRepository = deps.contactRepository,
-                pendingInteractionRepository = deps.pendingInteractionRepository,
-                trackingSettings = deps.trackingSettings,
-                kind = InteractionCapture.KIND_MESSAGE,
-                direction = InteractionCapture.DIR_INCOMING,
-                number = sms.address,
-                timestampMillis = sms.timestampMillis,
-                dedupe = false
-            )
-            // ADR 0019 / issue #1127: record the Inbox _id this broadcast just
-            // handled so the reconciliation worker's cursor never re-reads (and
-            // double-logs) it. Done unconditionally after capture, regardless of
-            // whether the row was staged or filtered — the cursor tracks "the
-            // broadcast has already seen this row," not "this row was staged";
-            // gating on STAGED would make every filtered/unknown-number text get
-            // re-evaluated (and double-counted) by every reconciliation run.
-            val address = sms.address
-            if (address != null) {
-                val inboxId = findInboxId(context.applicationContext, address, sms.timestampMillis)
-                if (inboxId != null) {
-                    val current = deps.trackingSettings.lastSmsInboxId() ?: 0L
-                    if (inboxId > current) {
-                        deps.trackingSettings.setLastSmsInboxId(inboxId)
-                    }
-                }
+            try {
+                withTimeoutOrNull(CAPTURE_TIMEOUT_MILLIS) { capture(context, sms) }
+            } finally {
+                pendingResult?.finish()
             }
         }
+    }
+
+    private suspend fun capture(context: Context, sms: SmsEntry) {
+        val deps = dependencyProvider(context.applicationContext)
+        if (!deps.trackingSettings.smsTrackingEnabled()) return
+        // Issue #1029: one shared policy entry point — an SMS from a number
+        // that maps to no cached contact is dropped (and counted), not
+        // staged as an orphan Activity. Each broadcast is a unique event, so
+        // no dedupe.
+        InteractionCapture.capture(
+            contactRepository = deps.contactRepository,
+            pendingInteractionRepository = deps.pendingInteractionRepository,
+            trackingSettings = deps.trackingSettings,
+            kind = InteractionCapture.KIND_MESSAGE,
+            direction = InteractionCapture.DIR_INCOMING,
+            number = sms.address,
+            timestampMillis = sms.timestampMillis,
+            dedupe = false
+        )
+        // ADR 0019 / issue #1127: record the Inbox _id this broadcast just
+        // handled so the reconciliation worker's cursor never re-reads (and
+        // double-logs) it. Done unconditionally after capture, regardless of
+        // whether the row was staged or filtered — the cursor tracks "the
+        // broadcast has already seen this row," not "this row was staged";
+        // gating on STAGED would make every filtered/unknown-number text get
+        // re-evaluated (and double-counted) by every reconciliation run.
+        val address = sms.address
+        if (address != null) {
+            val inboxId = findInboxId(context.applicationContext, address, sms.timestampMillis)
+            if (inboxId != null) {
+                // Atomic max: overlapping broadcasts can't regress the cursor.
+                deps.trackingSettings.advanceLastSmsInboxId(inboxId)
+            }
+        }
+    }
+
+    private companion object {
+        const val CAPTURE_TIMEOUT_MILLIS = 8_000L
     }
 
     @dagger.hilt.EntryPoint
