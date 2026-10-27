@@ -200,6 +200,41 @@ class DefaultSessionManagerTest {
     }
 
     @Test
+    fun `forgetting the server promotes the remaining profile and loads its token`() = runTest {
+        val tokenStorage = FakeTokenStorage()
+        val manager = manager(tokenStorage = tokenStorage)
+        manager.init()
+        manager.setServerUrl("https://one.example.com")
+        manager.setSession("https://one.example.com", "jwt-one", SessionState(userId = 1))
+        val two = manager.addRemoteProfile("Two", "https://two.example.com").id
+        tokenStorage.tokens[two] = "jwt-two"
+
+        manager.clearSession(keepServerUrl = false)
+
+        assertEquals(two, manager.activeProfileId())
+        assertEquals("jwt-two", manager.bearerToken())
+        val state = manager.observeSession().first()
+        assertTrue(state.isLoggedIn)
+        assertEquals("https://two.example.com", state.serverUrl)
+    }
+
+    @Test
+    fun `forgetting the server leaves a token-less remaining profile logged out`() = runTest {
+        val tokenStorage = FakeTokenStorage()
+        val manager = manager(tokenStorage = tokenStorage)
+        manager.init()
+        manager.setServerUrl("https://one.example.com")
+        manager.setSession("https://one.example.com", "jwt-one", SessionState(userId = 1))
+        val two = manager.addRemoteProfile("Two", "https://two.example.com").id
+
+        manager.clearSession(keepServerUrl = false)
+
+        assertEquals(two, manager.activeProfileId())
+        assertNull(manager.bearerToken())
+        assertFalse(manager.observeSession().first().isLoggedIn)
+    }
+
+    @Test
     fun `clearSession keeps the server url across a process restart`() = runTest {
         val tokenStorage = FakeTokenStorage()
         val prefsStorage = FakeSessionPrefsStorage()
