@@ -394,7 +394,7 @@ private fun ConnectedSummary(
  */
 @StringRes
 internal fun untestedReasonRes(reasonCode: String): Int? = when (reasonCode) {
-    "older_than_supported" -> R.string.meerkat_import_untested_older
-    "newer_than_tested" -> R.string.meerkat_import_untested_newer
+    "meerkat_version_older_than_supported" -> R.string.meerkat_import_untested_older
+    "meerkat_version_newer_than_tested" -> R.string.meerkat_import_untested_newer
     else -> null
 }

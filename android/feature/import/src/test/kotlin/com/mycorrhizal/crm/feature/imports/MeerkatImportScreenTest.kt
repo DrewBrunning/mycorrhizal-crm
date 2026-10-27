@@ -138,7 +138,7 @@ class MeerkatImportScreenTest {
                 connected = connected(
                     supported = false,
                     reason = "SERVER ENGLISH",
-                    reasonCode = "newer_than_tested"
+                    reasonCode = "meerkat_version_newer_than_tested"
                 )
             )
         )
@@ -151,7 +151,10 @@ class MeerkatImportScreenTest {
     fun `the older reason code has its own translated sentence`() {
         setContent(
             MeerkatImportUiState(
-                connected = connected(supported = false, reasonCode = "older_than_supported")
+                connected = connected(
+                    supported = false,
+                    reasonCode = "meerkat_version_older_than_supported"
+                )
             )
         )
         composeTestRule.onNodeWithTag("meerkat-import-untested")

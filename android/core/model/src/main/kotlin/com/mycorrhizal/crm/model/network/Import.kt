@@ -231,7 +231,10 @@ data class MeerkatVersionInfo(
     val supported: Boolean = false,
     /** English fallback for a [reasonCode] this client does not know. */
     val reason: String = "",
-    /** Stable, translatable form of [reason]: "older_than_supported" | "newer_than_tested"; empty when supported. */
+    /**
+     * Stable, translatable form of [reason]: "meerkat_version_older_than_supported" |
+     * "meerkat_version_newer_than_tested"; empty when supported.
+     */
     @Json(name = "reason_code") val reasonCode: String = ""
 )
 
