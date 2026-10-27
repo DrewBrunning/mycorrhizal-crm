@@ -60,7 +60,8 @@ cd backend && go run ./cmd/agenteval -task database-migration -profile pinned-op
   -write-baseline testdata/agent-eval/baseline.json -no-control
 ```
 
-Refresh every task (set `PROFILE` to `pinned-opencode` or `pinned-claude-sonnet`) after a profile, prompt, spec or suite change (each passing
+Refresh every task after a profile, prompt, spec or suite change; set `PROFILE` to
+`pinned-opencode` or `pinned-claude-sonnet` (each passing
 run merges into the same file; failing tasks are refused and need review):
 
 ```bash

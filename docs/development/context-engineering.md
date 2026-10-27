@@ -223,9 +223,7 @@ human read and can be a legitimate choice for a specific task.
 
 A pinned-profile run can be compared with
 `testdata/agent-eval/baseline.json`; a profile/task without an entry has no
-baseline yet. `claude-sonnet` (Claude Code 2.1.308, `claude-sonnet-5-5`) is the
-committed real profile; `testdata/agent-eval/README.md` lists promoted profiles
-and how to refresh their baselines. Once a run is promoted, the committed summary records success,
+baseline yet. Once a run is promoted, the committed summary records success,
 suite command counts, scope violations, generated-artifact hand-edits, hard
 integrity violations and refusal-task unexpected changes, so a baseline catches
 gate-weakening and refusal regressions, not just suite command failures.
