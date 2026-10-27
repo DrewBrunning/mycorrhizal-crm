@@ -119,6 +119,8 @@ class TrackingWorkerSchedulerTest {
     fun `enqueueFcmTokenRegistration registers the one-shot FCM token work`() {
         TrackingWorkerScheduler.enqueueFcmTokenRegistration(context, "tok")
 
-        assertTrue(uniqueWorkState(TrackingWorkerScheduler.UNIQUE_FCM_TOKEN_REGISTRATION).isNotEmpty())
+        assertTrue(
+            uniqueWorkState(TrackingWorkerScheduler.UNIQUE_FCM_TOKEN_REGISTRATION).isNotEmpty()
+        )
     }
 }
