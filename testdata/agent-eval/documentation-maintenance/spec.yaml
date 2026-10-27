@@ -9,6 +9,7 @@ agent_model: none
 agent_version: "0"
 expect_paths:
   - docs/**
+  - README-developer.md
 forbid_paths:
   - backend/**
   - frontend/**

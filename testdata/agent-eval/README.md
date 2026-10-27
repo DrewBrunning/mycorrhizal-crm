@@ -12,14 +12,20 @@ command, model and CLI version, and a real profile's command must contain
 `{prompt}`. Use it for a comparable run:
 
 ```bash
-cd backend && go run ./cmd/agenteval -task database-migration -profile pinned
+cd backend && go run ./cmd/agenteval -task database-migration -profile pinned-opencode
 ```
 
 The same profile pins trigger-selection runs:
 
 ```bash
-cd backend && go run ./cmd/agenteval -mode select -profile pinned
+cd backend && go run ./cmd/agenteval -mode select -profile pinned-opencode
 ```
+
+The promoted profile is `pinned-opencode`: opencode CLI `1.19.4`, model
+`deepseek/deepseek-flash`. Its command installs that exact CLI with `npx`, maps
+`AGENT_EVAL_MODEL_KEY` to the provider variable opencode reads, and runs with
+`--pure --auto` so the collector needs no preinstalled agent. Set
+`AGENT_EVAL_MODEL_KEY` for a local run with the same profile.
 
 Explicit `-agent-command`/`-agent-model`/`-agent-version` flags cannot be
 combined with `-profile`; a free-form run is not comparable with a baseline.
@@ -45,11 +51,23 @@ Pass `-require-baseline` to fail when the profile/task has no entry (the
 collector does). Promote a known-good run and commit the diff:
 
 ```bash
-cd backend && go run ./cmd/agenteval -task database-migration -profile pinned \
+cd backend && go run ./cmd/agenteval -task database-migration -profile pinned-opencode \
   -write-baseline testdata/agent-eval/baseline.json -no-control
 ```
 
-A non-passing run is refused unless `-force-baseline` is explicit. A comparison
+Refresh every task after a profile, prompt, spec or suite change (each passing
+run merges into the same file; failing tasks are refused and need review):
+
+```bash
+cd backend
+for task in $(find testdata/agent-eval -mindepth 2 -maxdepth 2 -name spec.yaml -printf '%h\n' | sed 's#testdata/agent-eval/##' | sort); do
+  go run ./cmd/agenteval -task "$task" -profile pinned-opencode \
+    -write-baseline testdata/agent-eval/baseline.json -no-control || break
+done
+```
+
+A non-passing run is refused unless `-force-baseline` is explicit; a failing run
+is never evidence for a baseline. A comparison
 fails the command when the task stops passing, suite command failures rise,
 scope/hand-edit/integrity/unexpected-change counts rise, or the configuration
 fingerprint changes (the baseline is no longer comparable; re-baseline after
@@ -66,10 +84,11 @@ missing deprecation window), so a silent no-op does not pass.
 ## Collector
 
 `agent-eval-collect.yml` runs every discovered task weekly against the trusted
-main tree with `-require-baseline`, so enabling it without a promoted baseline
-is visible instead of green. It is disabled until the `AGENT_EVAL_PROFILE`
-repository variable names a non-dry-run profile in `agents.yaml`; set
-`AGENT_EVAL_MODEL_KEY` for the agent subprocess. It is registered in the nightly
+main tree with `-require-baseline`, so a missing baseline entry is visible
+instead of green. It is enabled with `AGENT_EVAL_PROFILE=pinned-opencode` and
+`AGENT_EVAL_MODEL_KEY` set to the model credential; the profile command maps the
+latter to the provider variable opencode reads. It is dispatch-only and
+scheduled, never triggered by a pull request, and is registered in the nightly
 failure alarm and the reconcile list by `cmd/nightlyalertcheck`.
 
 ## Control
