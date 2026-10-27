@@ -32,6 +32,13 @@ interface Props {
 
 type AuthMode = 'token' | 'password';
 
+// Translated sentence per server reason_code; a code missing here falls back
+// to the server's English reason.
+const UNTESTED_REASON_KEYS: Record<string, string> = {
+  older_than_supported: 'settings.meerkatImport.live.untestedOlder',
+  newer_than_tested: 'settings.meerkatImport.live.untestedNewer',
+};
+
 // Step 0 of the live Meerkat import (issue #2013): address + credentials, then
 // the detected version and counts. The credential is sent once and wiped from
 // the form as soon as the server holds it — it is never kept client-side.
@@ -177,9 +184,11 @@ export default function MeerkatLiveConnect({
           {!connected.version.supported && (
             <Alert severity="warning">
               <Typography variant="body2">
-                {t('settings.meerkatImport.live.untested', {
-                  reason: connected.version.reason,
-                })}
+                {UNTESTED_REASON_KEYS[connected.version.reason_code]
+                  ? t(UNTESTED_REASON_KEYS[connected.version.reason_code])
+                  : t('settings.meerkatImport.live.untested', {
+                      reason: connected.version.reason,
+                    })}
               </Typography>
               <FormControlLabel
                 control={

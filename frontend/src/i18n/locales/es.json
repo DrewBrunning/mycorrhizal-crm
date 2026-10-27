@@ -1918,6 +1918,8 @@
         "useFile": "Subir el archivo de base de datos en su lugar",
         "insecure": "Esta dirección usa http sin cifrar, por lo que sus credenciales y contactos viajan sin cifrar por la red. Continúe solo en una red de confianza.",
         "untested": "No se reconoció esta versión de Meerkat ({{reason}}). La importación puede quedar incompleta o fallar.",
+        "untestedOlder": "Este Meerkat parece anterior a la v1.5: a sus contactos les faltan campos que lee el importador. La importación puede quedar incompleta o fallar.",
+        "untestedNewer": "Este Meerkat parece más reciente que las versiones con las que se probó el importador (v1.5 a v1.7). La importación puede quedar incompleta o fallar.",
         "tryAnyway": "Intentar de todos modos",
         "version": "Detectado Meerkat {{generation}}",
         "found_one": "Se encontró {{count}} contacto.",

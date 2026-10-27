@@ -1868,6 +1868,8 @@
         "useFile": "Stattdessen die Datenbankdatei hochladen",
         "insecure": "Diese Adresse verwendet unverschlüsseltes http, daher werden Zugangsdaten und Kontakte unverschlüsselt über das Netzwerk übertragen. Fahren Sie nur in einem vertrauenswürdigen Netzwerk fort.",
         "untested": "Diese Meerkat-Version wurde nicht erkannt ({{reason}}). Der Import kann unvollständig sein oder fehlschlagen.",
+        "untestedOlder": "Diese Meerkat-Version scheint älter als v1.5 zu sein: Ihren Kontakten fehlen Felder, die der Import liest. Der Import kann unvollständig sein oder fehlschlagen.",
+        "untestedNewer": "Diese Meerkat-Version scheint neuer zu sein als die Versionen, mit denen der Import getestet wurde (v1.5 bis v1.7). Der Import kann unvollständig sein oder fehlschlagen.",
         "tryAnyway": "Trotzdem versuchen",
         "version": "Erkannt: Meerkat {{generation}}",
         "found_one": "{{count}} Kontakt gefunden.",

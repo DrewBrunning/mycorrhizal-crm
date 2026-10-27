@@ -1918,6 +1918,8 @@
         "useFile": "Téléverser plutôt le fichier de base de données",
         "insecure": "Cette adresse utilise http en clair : vos identifiants et vos contacts transitent sur le réseau sans chiffrement. Ne continuez que sur un réseau de confiance.",
         "untested": "Cette version de Meerkat n'a pas été reconnue ({{reason}}). L'import peut être incomplet ou échouer.",
+        "untestedOlder": "Ce Meerkat semble antérieur à la v1.5 : ses contacts n’ont pas certains champs que l’import lit. L’import peut être incomplet ou échouer.",
+        "untestedNewer": "Ce Meerkat semble plus récent que les versions avec lesquelles l’import a été testé (v1.5 à v1.7). L’import peut être incomplet ou échouer.",
         "tryAnyway": "Essayer quand même",
         "version": "Meerkat {{generation}} détecté",
         "found_one": "{{count}} contact trouvé.",

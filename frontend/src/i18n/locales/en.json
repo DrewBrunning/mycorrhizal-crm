@@ -1908,6 +1908,8 @@
         "useFile": "Upload the database file instead",
         "insecure": "This address uses plain http, so your credentials and contacts travel over the network not encrypted. Only continue on a network you trust.",
         "untested": "This Meerkat version was not recognised ({{reason}}). The import may be incomplete or fail.",
+        "untestedOlder": "This Meerkat looks older than v1.5: its contacts lack fields the importer reads. The import may be incomplete or fail.",
+        "untestedNewer": "This Meerkat looks newer than the versions the importer was tested with (v1.5 to v1.7). The import may be incomplete or fail.",
         "tryAnyway": "Try anyway",
         "version": "Detected Meerkat {{generation}}",
         "found_one": "Found {{count}} contact.",

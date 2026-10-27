@@ -186,7 +186,7 @@ test('choosing a different source user updates the radio selection', async () =>
 
 const connected = (over: Partial<MeerkatConnectResponse> = {}): MeerkatConnectResponse => ({
   session_id: 'live1',
-  version: { generation: 'v1.5-v1.7', supported: true, reason: '' },
+  version: { generation: 'v1.5-v1.7', supported: true, reason: '', reason_code: '' },
   source_user: { id: 1, username: 'me', email: '', name: 'Me', contacts: 12 },
   totals: {
     contacts: 12,
@@ -297,6 +297,7 @@ test('an untested version blocks Start until "try anyway" is ticked, then sends 
         generation: 'unknown',
         supported: false,
         reason: 'newer than tested',
+        reason_code: '',
       },
     }),
   );
@@ -315,6 +316,34 @@ test('an untested version blocks Start until "try anyway" is ticked, then sends 
   fireEvent.click(start);
 
   await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('live1', undefined, true));
+});
+
+async function connectUntested(reason: string, reason_code: string) {
+  connectMock.mockResolvedValue(
+    connected({ version: { generation: 'unknown', supported: false, reason, reason_code } }),
+  );
+  renderOpen();
+  fillUrl();
+  fireEvent.change(screen.getByLabelText('API token'), { target: { value: 't' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Connect' }));
+  await screen.findByRole('button', { name: 'Start import' });
+}
+
+test('a known reason code shows the translated sentence, not the server English', async () => {
+  await connectUntested('SERVER ENGLISH', 'newer_than_tested');
+  expect(screen.getByText(/looks newer than the versions/)).toBeInTheDocument();
+  expect(screen.queryByText(/SERVER ENGLISH/)).not.toBeInTheDocument();
+});
+
+test('the older reason code has its own translated sentence', async () => {
+  await connectUntested('SERVER ENGLISH', 'older_than_supported');
+  expect(screen.getByText(/looks older than v1\.5/)).toBeInTheDocument();
+  expect(screen.queryByText(/SERVER ENGLISH/)).not.toBeInTheDocument();
+});
+
+test('an unknown reason code falls back to the server reason', async () => {
+  await connectUntested('SERVER ENGLISH', 'some_future_code');
+  expect(screen.getByText(/SERVER ENGLISH/)).toBeInTheDocument();
 });
 
 test('a supported version starts the fetch without accept_untested', async () => {

@@ -66,7 +66,11 @@ export interface MeerkatConnectRequest {
 export interface MeerkatVersionInfo {
   generation: string;
   supported: boolean;
+  // English fallback for a reason_code this client does not translate.
   reason: string;
+  // Stable form of reason: 'older_than_supported' | 'newer_than_tested'; empty
+  // when supported. More may be added, so an unknown code falls back to reason.
+  reason_code: string;
 }
 
 export interface MeerkatConnectResponse {
