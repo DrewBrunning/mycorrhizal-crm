@@ -279,28 +279,37 @@ func TestRecordStorageSample_PrunesRowsPastRetention(t *testing.T) {
 	db, cfg := samplerTestDB(t)
 	cfg.StorageSampleRetentionDays = 3
 
-	// Seed one sample inside the window and two outside it (relative to a
-	// fixed reference, so the test is deterministic).
 	now := time.Date(2026, 8, 28, 12, 0, 0, 0, time.UTC)
-	for _, d := range []int{1, 2, 4, 5} {
+	useFakeClock(t, now)
+
+	// Rows straddling the cutoff (now-3d): the exact boundary row is kept
+	// (the prune is strictly "taken_at < cutoff"), one second older is not.
+	cutoff := now.Add(-3 * 24 * time.Hour)
+	seeds := map[string]time.Time{
+		"1d":       now.Add(-24 * time.Hour),
+		"2d":       now.Add(-48 * time.Hour),
+		"boundary": cutoff,
+		"expired":  cutoff.Add(-time.Second),
+		"5d":       now.Add(-5 * 24 * time.Hour),
+	}
+	for label, at := range seeds {
 		require.NoError(t, db.Create(&models.StorageSample{
-			TakenAt:       now.Add(-time.Duration(d) * 24 * time.Hour),
-			DatabaseBytes: int64(d) * 1000,
-			FSUsedBytes:   int64(d) * 1000,
+			TakenAt:       at,
+			DatabaseBytes: int64(len(label)),
 			FSTotalBytes:  1099511627776,
-		}).Error)
+		}).Error, label)
 	}
 
-	// RecordStorageSample uses time.Now() internally for both the new sample
-	// and the prune cutoff, so monkeypatched time isn't an option — instead
-	// drive the prune directly against the seeded rows with the same cutoff
-	// arithmetic the sampler uses.
-	cutoff := now.Add(-3 * 24 * time.Hour)
-	require.NoError(t, db.Exec("DELETE FROM storage_samples WHERE taken_at < ?", cutoff).Error)
+	pruneStorageSamples(context.Background(), db, cfg)
 
-	var remaining int64
-	require.NoError(t, db.Model(&models.StorageSample{}).Count(&remaining).Error)
-	assert.Equal(t, int64(2), remaining, "only the in-window (-1d, -2d) samples must survive")
+	var kept []models.StorageSample
+	require.NoError(t, db.Order("taken_at").Find(&kept).Error)
+	var gotAt []time.Time
+	for _, s := range kept {
+		gotAt = append(gotAt, s.TakenAt.UTC())
+	}
+	assert.Equal(t, []time.Time{cutoff, seeds["2d"], seeds["1d"]}, gotAt,
+		"only rows at or after the cutoff survive the production prune")
 }
 
 // TestRecordStorageSampleScheduled_PrunesViaScheduledRun exercises the full

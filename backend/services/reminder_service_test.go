@@ -810,7 +810,10 @@ func TestCalculateNextReminderTime_UnrecognizedRecurrence(t *testing.T) {
 // true case) when RemindAt is still in the future: baseTime should be the
 // original RemindAt, not "now".
 func TestCalculateNextReminderTime_ReoccurFromCompletionDefaultTrue_FutureRemindAt(t *testing.T) {
-	remindAt := time.Now().UTC().Add(48 * time.Hour)
+	// Pinned just before midnight UTC: a wall-clock read near the day boundary
+	// is exactly where the old time.Now() version could disagree with itself.
+	useFakeClock(t, time.Date(2030, 6, 15, 23, 59, 59, 0, time.UTC))
+	remindAt := Now().UTC().Add(48 * time.Hour)
 	reminder := models.Reminder{
 		RemindAt:              remindAt,
 		Recurrence:            "weekly",
@@ -827,7 +830,8 @@ func TestCalculateNextReminderTime_ReoccurFromCompletionDefaultTrue_FutureRemind
 // should be today (date only), not the stale original RemindAt.
 func TestCalculateNextReminderTime_ReoccurFromCompletionTrue_PastRemindAt(t *testing.T) {
 	reoccurTrue := true
-	remindAt := time.Now().UTC().Add(-48 * time.Hour)
+	useFakeClock(t, time.Date(2030, 6, 15, 23, 59, 59, 0, time.UTC))
+	remindAt := Now().UTC().Add(-48 * time.Hour)
 	reminder := models.Reminder{
 		RemindAt:              remindAt,
 		Recurrence:            "weekly",
@@ -836,9 +840,7 @@ func TestCalculateNextReminderTime_ReoccurFromCompletionTrue_PastRemindAt(t *tes
 
 	result := CalculateNextReminderTime(reminder)
 
-	nowUTC := time.Now().UTC()
-	today := time.Date(nowUTC.Year(), nowUTC.Month(), nowUTC.Day(), 0, 0, 0, 0, time.UTC)
-	expected := today.AddDate(0, 0, 7)
+	expected := time.Date(2030, 6, 22, 0, 0, 0, 0, time.UTC)
 	assert.Equal(t, expected, result)
 }
 
