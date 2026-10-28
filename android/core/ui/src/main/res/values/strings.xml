@@ -2587,4 +2587,5 @@
     <string name="error_reason_validation_cursor_malformed">The cursor id is malformed</string>
     <string name="error_reason_trash_uid_in_use">A live contact already uses this contact\'s UID; merge or delete it first</string>
     <string name="error_reason_trash_snapshot_unsupported">This contact\'s deletion snapshot is not supported by this version; it can still be deleted permanently</string>
+    <string name="error_reason_circle_color_invalid">The colour must be one of the palette colours</string>
 </resources>

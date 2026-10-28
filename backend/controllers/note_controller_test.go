@@ -809,3 +809,27 @@ func TestGetUnassignedNotes_TotalScopedToOwner(t *testing.T) {
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 	assert.Equal(t, int64(1), resp.Total)
 }
+
+// #2005: the web app renders a Markdown subset, but the server must keep the
+// source byte-for-byte (no sanitizing, stripping or HTML conversion) so edit,
+// search, CSV export and CardDAV NOTE all carry the source.
+func TestCreateNotePreservesMarkdownSource(t *testing.T) {
+	db, router := setupRouter(t)
+
+	var user models.User
+	db.First(&user)
+
+	router.POST("/notes", withValidated(func() any { return &models.NoteInput{} }), CreateUnassignedNote)
+
+	source := "# Heading\n\n- **bold** [link](https://example.com)\n- <img src=x onerror=alert(1)>\n\n```\ncode\n```\n[x](javascript:alert(1))"
+	body, _ := json.Marshal(models.NoteInput{Content: source, Date: time.Now()})
+	req, _ := http.NewRequest("POST", "/notes", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var stored models.Note
+	require.NoError(t, db.Where("user_id = ?", user.ID).Last(&stored).Error)
+	assert.Equal(t, source, stored.Content)
+}

@@ -135,6 +135,10 @@ private fun localizedReason(reason: ErrorReason?): String? {
             R.string.error_reason_trash_snapshot_unsupported
         )
 
+        ErrorReasonCode.CIRCLE_COLOR_INVALID -> stringResource(
+            R.string.error_reason_circle_color_invalid
+        )
+
         else -> null
     }
 }

@@ -2661,4 +2661,5 @@
     <string name="error_reason_validation_cursor_malformed">L\'identifiant du curseur est mal formé</string>
     <string name="error_reason_trash_uid_in_use">Un contact actif utilise déjà l\'UID de ce contact ; fusionnez-le ou supprimez-le d\'abord</string>
     <string name="error_reason_trash_snapshot_unsupported">Cette version ne prend pas en charge l\'instantané de suppression de ce contact ; il peut toujours être supprimé définitivement</string>
+    <string name="error_reason_circle_color_invalid">La couleur doit être l\'une des couleurs de la palette</string>
 </resources>

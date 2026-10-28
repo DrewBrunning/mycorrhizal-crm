@@ -43,7 +43,9 @@ Four mechanisms, in order of when they fire:
 
 2. **Cut time** — [`release.yml`](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/.github/workflows/release.yml)
    (REL-06, #499) is the single human action that cuts a release. Its `preflight` job runs
-   `go run ./cmd/citecheck` and `go run ./cmd/releasegatecheck` directly; its `validate` job then
+   `go run ./cmd/citecheck`, `go run ./cmd/releasegatecheck` and `go run ./cmd/reasoncodecheck -release-tag "$VERSION"` directly
+   (the last refuses any release at v1.6.0 or later, release candidates included, while an unmigrated
+   user-facing error site remains; issue #2093); its `validate` job then
    **composes every gate** through the reusable
    [`release-validate.yml`](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/.github/workflows/release-validate.yml)
    — the `release_gate: true` per-PR checks and the release-tier suites are invoked with `needs:`

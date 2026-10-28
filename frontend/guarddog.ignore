@@ -24,7 +24,6 @@ capability-* | * | Capability rules report API use, not malicious intent; threat
 
 # package.json "http://" metadata (repository/homepage/funding URLs), not HTTP
 # dependency specifiers: the rule's regex is broader than its description.
-threat-npm-http-dependency | @axe-core/playwright | Nested axe-core package.json contributor/funding URLs; no HTTP dependency specifier.
 threat-npm-http-dependency | @types/react | DefinitelyTyped contributor URLs in package.json; no HTTP dependency specifier.
 threat-npm-http-dependency | @types/react-dom | DefinitelyTyped contributor URLs in package.json; no HTTP dependency specifier.
 threat-npm-http-dependency | axe-core | Deque contributor/funding URLs in package.json; no HTTP dependency specifier.
@@ -61,7 +60,6 @@ threat-filesystem-read | playwright-core | Test runner loads playwright.env/.env
 threat-filesystem-read | vite | Dev server/build tool transforms import.meta.env and reads project env files.
 threat-filesystem-read | vitest | Test runner rewrites define["process.env"] in the Vite config it owns.
 threat-runtime-environment-read | playwright-core | Reads documented PLAYWRIGHT_* test configuration variables.
-threat-runtime-environment-read | vite | Reads the documented COPILOT_*/editor environment variables.
 threat-runtime-environment-read | yaml | Opt-in LOG_TOKENS debug flag in the YAML parser.
 
 # Browser automation / dev-server discovery of the host, by design.
@@ -70,6 +68,7 @@ threat-process-download-exec | playwright-core | Downloads and executes the brow
 threat-process-spawn-silent | playwright-core | Spawns the browser/daemon with stdio ignored, which is how it detaches.
 threat-runtime-enumeration | playwright-core | Detects WSL/container environments to choose a browser launch path.
 threat-runtime-enumeration | vite | Detects WSL/container networking for the dev server.
+threat-runtime-system-info | vite | os.homedir() as a config-search stop dir, and os.release() for WSL detection and the open-in-editor path rewrite (vite 8.3.5, reviewed in PR 2157); no data leaves the machine.
 threat-runtime-keylogging | maplibre-gl | Only matches the DOM sanitizer test's hostile input fixture.
 
 # Documentation/error-message URLs shortened with bit.ly.

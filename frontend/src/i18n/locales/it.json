@@ -139,7 +139,35 @@
     "circleDeleted": "Cerchia eliminata",
     "tagCreated": "Tag creato",
     "tagRenamed": "Tag rinominato",
-    "tagDeleted": "Tag eliminato"
+    "tagDeleted": "Tag eliminato",
+    "openDetails": "Dettagli del cerchio",
+    "nameLabel": "Nome",
+    "descriptionLabel": "Descrizione",
+    "colorLabel": "Colore",
+    "colorNone": "Nessuno",
+    "timelineTitle": "Cronologia",
+    "timelineEmpty": "Ancora nessuna nota o attività per i membri di questo cerchio.",
+    "timelineLoadMore": "Carica altro",
+    "circleUpdated": "Cerchio aggiornato",
+    "colors": {
+      "red": "Rosso",
+      "orange": "Arancione",
+      "yellow": "Giallo",
+      "green": "Verde",
+      "teal": "Verde acqua",
+      "blue": "Blu",
+      "purple": "Viola",
+      "pink": "Rosa",
+      "grey": "Grigio"
+    },
+    "timelineTypes": {
+      "note": "Nota",
+      "activity": "Attività",
+      "completion": "Promemoria completato",
+      "life_event": "Evento di vita",
+      "external_activity": "Attività esterna",
+      "gift": "Regalo"
+    }
   },
   "dashboard": {
     "title": "Cruscotto",
@@ -809,6 +837,9 @@
     "toDate": "Al",
     "allContactsInfo": "Questa pagina elenca tutte le attività di tutti i contatti.",
     "logFromLocation": "Registra dalla cronologia delle posizioni"
+  },
+  "markdown": {
+    "opensInNewTab": "(si apre in una nuova scheda)"
   },
   "notes": {
     "title": "Notes",
@@ -3525,6 +3556,7 @@
       "import_tags_not_found": "Una o più etichette non sono state trovate",
       "trash_uid_in_use": "Un contatto attivo usa già l'UID di questo contatto; uniscilo o eliminalo prima",
       "trash_snapshot_unsupported": "L'istantanea di eliminazione di questo contatto non è supportata da questa versione; può comunque essere eliminato definitivamente",
+      "circle_color_invalid": "Il colore deve essere uno dei colori della tavolozza",
       "validation_cursor_malformed": "L'id del cursore non è valido",
       "validation_activity_ids_range": "Deve contenere tra 1 e 100 id",
       "relationship_contact_ambiguous": "Specifica un contatto esistente o uno nuovo, non entrambi",

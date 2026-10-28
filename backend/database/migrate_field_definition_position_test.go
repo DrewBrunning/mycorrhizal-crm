@@ -88,7 +88,8 @@ func TestMigrationBackfillsFieldDefinitionPosition(t *testing.T) {
 	assert.Equal(t, int64(1), idxCount, "the display-order index must exist after 000066")
 
 	// The down migration drops the index and the column.
-	require.NoError(t, MigrateDown(dbPath)) // rolls back 000080_contact_trash
+	require.NoError(t, MigrateDown(dbPath)) // rolls back 000081_contact_trash
+	require.NoError(t, MigrateDown(dbPath)) // rolls back 000080_circle_description_color
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000079_relationship_edge_dates
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000078_app_password_scopes
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000077_user_time_format

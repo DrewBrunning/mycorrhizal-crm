@@ -471,6 +471,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.GET("/circles/:id", controllers.GetCircle)
 			protected.PUT("/circles/:id", middleware.ValidateJSONMiddleware(&models.CircleInput{}), controllers.UpdateCircle)
 			protected.DELETE("/circles/:id", controllers.DeleteCircle)
+			protected.GET("/circles/:id/timeline", controllers.GetCircleTimeline)
 			protected.POST("/circles/:id/members", middleware.ValidateJSONMiddleware(&models.CircleMemberInput{}), controllers.AddCircleMember)
 			protected.DELETE("/circles/:id/members/:vcard_uid", controllers.RemoveCircleMember)
 

@@ -276,9 +276,11 @@ type AccountBundleHouseholdMember struct {
 
 // AccountBundleCircle is one circle keyed by its UUID, with member vcard_uids.
 type AccountBundleCircle struct {
-	ID         string   `json:"id"`
-	Name       string   `json:"name"`
-	MemberUIDs []string `json:"member_uids"`
+	ID          string   `json:"id"`
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	Color       string   `json:"color"`
+	MemberUIDs  []string `json:"member_uids"`
 }
 
 // AccountBundleTag is one tag keyed by its UUID, with tagged contact uid.

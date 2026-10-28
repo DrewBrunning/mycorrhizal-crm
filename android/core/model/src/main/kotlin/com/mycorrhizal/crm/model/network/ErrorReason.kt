@@ -37,4 +37,5 @@ object ErrorReasonCode {
     const val VALIDATION_CURSOR_MALFORMED = "validation_cursor_malformed"
     const val TRASH_UID_IN_USE = "trash_uid_in_use"
     const val TRASH_SNAPSHOT_UNSUPPORTED = "trash_snapshot_unsupported"
+    const val CIRCLE_COLOR_INVALID = "circle_color_invalid"
 }

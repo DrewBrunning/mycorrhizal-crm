@@ -1,4 +1,4 @@
--- Rollback of 000080. Pending trash snapshots are dropped (the trashed contacts
+-- Rollback of 000081. Pending trash snapshots are dropped (the trashed contacts
 -- stay soft-deleted and age out normally); audit rows with the now-unrepresentable
 -- restore/purge ops are discarded (destructive by construction, like 000070's down).
 DROP TABLE IF EXISTS contact_deletion_snapshots;

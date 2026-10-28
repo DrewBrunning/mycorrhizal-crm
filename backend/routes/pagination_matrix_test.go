@@ -375,6 +375,7 @@ func pgSpecs() []pgSpec {
 var pgExcluded = map[string]string{
 	"/trash/contacts":         "offset-paginated (page+limit) read-model over the caller's trash, no next_cursor (issue #2002)",
 	"/contacts/{id}/timeline": "composite timeline cursor over several entity kinds; walked exhaustively by controllers/timeline_controller_test.go (walkTimeline)",
+	"/circles/{id}/timeline":  "same composite timeline cursor as /contacts/{id}/timeline, scoped to circle members; walked by controllers/timeline_controller_test.go (walkTimeline)",
 	"/contacts/duplicates":    "offset-paginated (page+limit) read-model, no next_cursor",
 	"/search":                 "top-N search results bounded by limit, no cursor",
 	"/audit":                  "bounded most-recent-N audit read, no cursor",
