@@ -145,7 +145,7 @@ THIRD_PARTY_SOURCES.md, shipped in the container at
 | `@mdi/js` | `7.4.47` | Apache-2.0 | https://github.com/Templarian/MaterialDesign-JS |
 | `@mui/core-downloads-tracker` | `9.5.0` | MIT | https://github.com/mui/material-ui |
 | `@mui/icons-material` | `9.5.0` | MIT | https://github.com/mui/material-ui |
-| `@mui/lab` | `9.0.0-beta.9` | MIT | https://github.com/mui/material-ui |
+| `@mui/lab` | `9.0.0-beta.10` | MIT | https://github.com/mui/material-ui |
 | `@mui/material` | `9.5.0` | MIT | https://github.com/mui/material-ui |
 | `@mui/private-theming` | `9.5.0` | MIT | https://github.com/mui/material-ui |
 | `@mui/styled-engine` | `9.5.0` | MIT | https://github.com/mui/material-ui |
