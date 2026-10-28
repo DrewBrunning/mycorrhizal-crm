@@ -63,6 +63,7 @@ import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.components.humanizeToken
 import com.mycorrhizal.crm.ui.components.lifeEventTypeLabel
+import com.mycorrhizal.crm.ui.components.localizedMessage
 import com.mycorrhizal.crm.ui.components.relationshipRoleLabel
 import com.mycorrhizal.crm.ui.markdown.MarkdownText
 import com.mycorrhizal.crm.ui.theme.MycorrhizalFonts
@@ -129,7 +130,9 @@ fun PrepViewScreen(
 
                     state.error != null || state.briefing == null ->
                         PrepErrorState(
-                            message = state.error ?: stringResource(R.string.prep_not_found),
+                            message = state.error?.localizedMessage() ?: stringResource(
+                                R.string.prep_not_found
+                            ),
                             onRetry = viewModel::load
                         )
 

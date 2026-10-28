@@ -70,7 +70,7 @@ data class PaginationState(
 data class ContactListUiState(
     val contacts: List<ContactSummary> = emptyList(),
     val isLoading: Boolean = false,
-    val error: String? = null,
+    val error: ApiError? = null,
     val searchQuery: String = "",
     val pagination: PaginationState = PaginationState(),
     /**
@@ -282,7 +282,7 @@ class ContactListViewModel @Inject constructor(
                             } else {
                                 it.contacts
                             },
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                     handleAuthError(error)
@@ -341,7 +341,7 @@ class ContactListViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             pagination = it.pagination.copy(isLoadingMore = false),
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                     handleAuthError(error)
@@ -450,7 +450,7 @@ class ContactListViewModel @Inject constructor(
                             contacts = state.contacts.map {
                                 if (it.id == contact.id) it.copy(isFavorite = wasFavorite) else it
                             },
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                     handleAuthError(error)
@@ -527,7 +527,7 @@ class ContactListViewModel @Inject constructor(
                     loadTags()
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isBulkRunning = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isBulkRunning = false, error = error) }
                     handleAuthError(error)
                 }
             )

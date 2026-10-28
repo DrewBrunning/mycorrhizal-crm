@@ -66,6 +66,7 @@ import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.FabListBottomPadding
 import com.mycorrhizal.crm.ui.components.RefreshableContent
+import com.mycorrhizal.crm.ui.components.localizedMessage
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -284,7 +285,7 @@ fun AttachmentsScreenContent(
     // Errors surface as a snackbar (the empty/error branch above only guards
     // a *first-load* failure; a delete/download/upload error must not blank
     // the already-loaded list).
-    val errorMessage = uiState.error
+    val errorMessage = uiState.error?.localizedMessage()
         ?: uiState.uploadErrorRes?.let { stringResource(it) }
     LaunchedEffect(errorMessage) {
         if (errorMessage != null) {

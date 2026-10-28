@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.DuplicateRepository
 import com.mycorrhizal.crm.model.network.DuplicatePair
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -61,7 +62,7 @@ class DuplicatePairsViewModel @Inject constructor(
                         exhausted = appended.size >= response.total
                     },
                     onError = { error ->
-                        _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
+                        _uiState.update { it.copy(isLoading = false, error = error) }
                     }
                 )
                 // A failed page aborts the scan (error already surfaced); only
@@ -98,7 +99,7 @@ class DuplicatePairsViewModel @Inject constructor(
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(dismissingKey = null, error = error.displayMessage) }
+                    _uiState.update { it.copy(dismissingKey = null, error = error) }
                 }
             )
         }
@@ -126,7 +127,7 @@ data class DuplicatePairsUiState(
     val pairs: List<DuplicatePair> = emptyList(),
     val total: Int = 0,
     val isLoading: Boolean = false,
-    val error: String? = null,
+    val error: ApiError? = null,
     /** The in-flight dismiss's [DuplicatePair.reviewKey]; null when none is running. */
     val dismissingKey: String? = null
 )

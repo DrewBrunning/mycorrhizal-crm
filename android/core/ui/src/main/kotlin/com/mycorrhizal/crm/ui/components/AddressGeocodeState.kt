@@ -1,5 +1,7 @@
 package com.mycorrhizal.crm.ui.components
 
+import com.mycorrhizal.crm.network.ApiError
+
 /**
  * ADR 0031 / issue #1287: the per-address "find coordinates" lookup, owned by
  * the screen's view model. The lookup is the stateless draft route
@@ -21,5 +23,5 @@ data class AddressGeocodeState(
     /** Row keys (`addressRowKey`) with a lookup in flight. */
     val inFlight: Set<String> = emptySet(),
     /** Row key (`addressRowKey`) -> message for a failed lookup. */
-    val errors: Map<String, String> = emptyMap()
+    val errors: Map<String, ApiError> = emptyMap()
 )

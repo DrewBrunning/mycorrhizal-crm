@@ -61,6 +61,7 @@ import com.mycorrhizal.crm.ui.components.MultiValueEditor
 import com.mycorrhizal.crm.ui.components.OnlineServiceSpec
 import com.mycorrhizal.crm.ui.components.PhoneSpec
 import com.mycorrhizal.crm.ui.components.WriteConflictDialog
+import com.mycorrhizal.crm.ui.components.localizedMessage
 import com.mycorrhizal.crm.ui.theme.MycorrhizalFonts
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -154,7 +155,7 @@ fun ContactFormScreen(
         )
     }
 
-    val errorMessage = state.errorRes?.let { stringResource(it) } ?: state.error
+    val errorMessage = state.errorRes?.let { stringResource(it) } ?: state.error?.localizedMessage()
     errorMessage?.let { message ->
         LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)

@@ -10,6 +10,7 @@ import com.mycorrhizal.crm.domain.repository.DuplicateRepository
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.DuplicatePair
 import com.mycorrhizal.crm.model.network.DuplicatePairsResponse
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.mockk
@@ -167,7 +168,7 @@ class DuplicatePairsScreenTest {
                         pairs = emptyList(),
                         total = 0,
                         isLoading = false,
-                        error = "scan failed"
+                        error = ApiError.Client(400, "scan failed")
                     ),
                     onBack = {},
                     onMerge = { _, _, _ -> },

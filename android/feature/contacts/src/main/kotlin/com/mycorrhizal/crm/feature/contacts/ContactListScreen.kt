@@ -97,6 +97,7 @@ import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
+import com.mycorrhizal.crm.ui.components.localizedMessage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -515,7 +516,7 @@ fun ContactListScreenContent(
                         uiState.contacts.isEmpty() && uiState.error != null -> item {
                             Box(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
                                 Text(
-                                    text = uiState.error.orEmpty(),
+                                    text = uiState.error.localizedMessage(),
                                     color = MaterialTheme.colorScheme.error,
                                     modifier = Modifier.align(Alignment.Center)
                                 )
@@ -691,7 +692,8 @@ fun ContactListScreenContent(
         )
     }
 
-    uiState.error?.let { message ->
+    uiState.error?.let { error ->
+        val message = error.localizedMessage()
         LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)
             currentOnErrorShown.value()

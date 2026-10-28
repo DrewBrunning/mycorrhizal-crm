@@ -94,6 +94,7 @@ import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
+import com.mycorrhizal.crm.ui.components.localizedMessage
 import com.mycorrhizal.crm.ui.components.targetTierLabel
 import com.mycorrhizal.crm.ui.theme.LocalWarningColors
 import java.time.Instant
@@ -136,8 +137,9 @@ fun DashboardScreen(
     // dashboard — it must NOT blank the widgets the way a failed load does.
     val actionError = state.actionError
     if (actionError != null) {
-        LaunchedEffect(actionError) {
-            snackbarHostState.showSnackbar(actionError)
+        val actionMessage = actionError.localizedMessage()
+        LaunchedEffect(actionMessage) {
+            snackbarHostState.showSnackbar(actionMessage)
             viewModel.onActionErrorShown()
         }
     }
@@ -202,7 +204,7 @@ fun DashboardScreen(
                     state.isLoading && !state.hasContent -> LoadingSkeleton()
 
                     state.error != null -> DashboardErrorState(
-                        state.error!!,
+                        state.error!!.localizedMessage(),
                         onRetry = viewModel::load
                     )
 
