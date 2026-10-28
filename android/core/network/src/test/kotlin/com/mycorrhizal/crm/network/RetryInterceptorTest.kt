@@ -1,6 +1,9 @@
 package com.mycorrhizal.crm.network
 
+import java.io.IOException
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
+import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -8,6 +11,7 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
 
@@ -85,18 +89,26 @@ class RetryInterceptorTest {
     @Test
     fun `network error is retried for GET`() {
         val interceptor = RetryInterceptor(maxRetries = 2, baseDelayMs = 1)
+        val attempts = AtomicInteger()
+        // Sits behind RetryInterceptor, so it sees every attempt that reaches the network.
+        val counter = Interceptor { chain ->
+            attempts.incrementAndGet()
+            chain.proceed(chain.request())
+        }
         val client = OkHttpClient.Builder()
             .addInterceptor(interceptor)
+            .addInterceptor(counter)
             .callTimeout(2, TimeUnit.SECONDS)
             .build()
         server.shutdown() // force a connection error on every attempt
 
         try {
             client.newCall(Request.Builder().url("http://127.0.0.1:1/x").build()).execute()
-        } catch (_: Exception) {
-            // expected — the point is it attempted 3 times before giving up
+            fail("expected an IOException after exhausting retries")
+        } catch (_: IOException) {
+            // expected
         }
-        // We can't observe requestCount after shutdown; just assert we got here.
-        assertEquals(1, 1)
+
+        assertEquals(1 + 2, attempts.get())
     }
 }

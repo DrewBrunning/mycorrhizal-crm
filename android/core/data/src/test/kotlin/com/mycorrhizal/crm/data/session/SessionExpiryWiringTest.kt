@@ -147,16 +147,20 @@ class SessionExpiryWiringTest {
     }
 
     @Test
-    fun `signals arriving before registration are not lost once registered`() = runTest {
-        // A 401 that fires before the wiring registers must still clear the
-        // session once the wiring is in place. Registration happens before any
-        // request in production, but this pins the no-loss guarantee regardless.
+    fun `a signal is handled asynchronously after the wiring registers`() = runTest {
+        // The notifier is synchronous and does not buffer: a 401 fired before
+        // start() is dropped by design (registration happens at construction,
+        // before any request, see SessionExpiryNotifier). This pins the
+        // post-registration path: the clear is launched on the scope, so the
+        // session survives until the scheduler runs.
         val notifier = SessionExpiryNotifier()
         val manager = DefaultSessionManager(FakeTokenStorage(), FakeSessionPrefsStorage())
         manager.setSession("https://crm.example.com", "jwt-1", SessionState(userId = 7))
 
         SessionExpiryWiring(notifier, manager).start(this)
         notifier.onSessionExpired()
+        assertEquals("jwt-1", manager.bearerToken())
+
         advanceUntilIdle()
 
         assertNull(manager.bearerToken())
