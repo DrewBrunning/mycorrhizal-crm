@@ -65,8 +65,8 @@ export class ApiError extends Error {
     if (!this.reasonCode) return undefined;
     const key = `errors.reason.${this.reasonCode}`;
     if (!i18n.exists(key)) return undefined;
-    const template = i18n.getResource('en', 'translation', key);
-    if (typeof template !== 'string') return undefined;
+    // i18n.exists() above guarantees the en leaf is a string.
+    const template = String(i18n.getResource('en', 'translation', key));
     const params = this.reasonParams ?? {};
     for (const m of template.matchAll(/\{\{\s*(\w+)\s*\}\}/g)) {
       if (!(m[1] in params)) return undefined;
