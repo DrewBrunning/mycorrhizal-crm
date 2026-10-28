@@ -1806,6 +1806,30 @@
     <string name="bulk_remove_circle">Quitar de un círculo</string>
     <string name="bulk_add_tag">Añadir etiqueta</string>
     <string name="bulk_remove_tag">Quitar etiqueta</string>
+    <string name="add_to_activities_action">Añadir a una actividad existente</string>
+    <string name="add_to_activities_title">Añadir a una actividad existente</string>
+    <string name="add_to_activities_search">Buscar actividades</string>
+    <string name="add_to_activities_submit">Añadir a la selección</string>
+    <string name="add_to_activities_not_found">No añadido (actividad no encontrada):</string>
+    <string name="add_to_activities_empty">No se encontraron actividades</string>
+    <string name="add_to_activities_untitled">Actividad sin título</string>
+    <string name="bulk_edit_fields">Editar campos</string>
+    <string name="bulk_edit_fields_hint">Solo se cambian los campos que rellenes o marques como Vaciar. Todo lo demás se deja como está.</string>
+    <string name="bulk_edit_fields_clear">Vaciar</string>
+    <string name="bulk_edit_fields_apply">Aplicar</string>
+    <string name="bulk_field_organization">Organización</string>
+    <string name="bulk_field_department">Departamento</string>
+    <string name="bulk_field_job_title">Puesto</string>
+    <string name="bulk_field_role">Rol</string>
+    <string name="bulk_field_gender">Género</string>
+    <string name="bulk_field_how_we_met">Cómo nos conocimos</string>
+    <string name="bulk_field_work_information">Información laboral</string>
+    <string name="bulk_field_contact_information">Información de contacto</string>
+    <plurals name="bulk_edit_fields_title">
+        <item quantity="one">Editar campos de %1$d contacto</item>
+        <item quantity="many">Editar campos de %1$d contactos</item>
+        <item quantity="other">Editar campos de %1$d contactos</item>
+    </plurals>
     <string name="bulk_pick_circle">Elegir un círculo</string>
     <string name="bulk_pick_tag">Elegir una etiqueta</string>
     <string name="bulk_no_circles">Aún no hay círculos</string>
@@ -1958,6 +1982,19 @@
     </plurals>
     <string name="import_csv_mapping_ignore">-- Ignorar --</string>
     <string name="import_csv_mapping_continue">Continuar</string>
+    <string name="import_fixed_title">Añadir cada contacto importado a</string>
+    <string name="import_fixed_description">Opcional. Estos círculos y etiquetas se aplican a todos los contactos importados, además de los asignados desde columnas.</string>
+    <string name="import_fixed_circles">Círculos</string>
+    <string name="import_fixed_tags">Etiquetas</string>
+    <string name="import_fixed_new_circle">Nuevo círculo</string>
+    <string name="import_fixed_new_tag">Nueva etiqueta</string>
+    <string name="import_fixed_name">Nombre</string>
+    <string name="import_fixed_create">Crear</string>
+    <plurals name="import_fixed_summary">
+        <item quantity="one">Cada contacto importado se añadirá a: %1$s. Se añadirá hasta %2$d pertenencia.</item>
+        <item quantity="many">Cada contacto importado se añadirá a: %1$s. Se añadirán hasta %2$d pertenencias.</item>
+        <item quantity="other">Cada contacto importado se añadirá a: %1$s. Se añadirán hasta %2$d pertenencias.</item>
+    </plurals>
 
     <!-- Etiquetas de campo para la asignación de columnas CSV (issue #834) -->
     <string name="import_field_firstname">Nombre</string>

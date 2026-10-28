@@ -8,6 +8,8 @@ import com.mycorrhizal.crm.data.local.CachedActivity
 import com.mycorrhizal.crm.model.network.ActivitiesPage
 import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ActivityInput
+import com.mycorrhizal.crm.model.network.AddContactToActivitiesResponse
+import com.mycorrhizal.crm.model.network.AddToActivityResult
 import com.mycorrhizal.crm.model.network.ContactActivitiesResponse
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
@@ -282,5 +284,51 @@ class ActivityRepositoryImplTest {
 
         io.mockk.coVerify(exactly = 1) { apiClient.updateActivity(7, any(), 5) }
         io.mockk.coVerify(exactly = 1) { apiClient.deleteActivity(7, 5) }
+    }
+
+    private fun cached(id: Int) = CachedActivity(
+        id = id,
+        title = "A$id",
+        description = null,
+        location = null,
+        date = null,
+        type = null,
+        deleted = false
+    )
+
+    // --- Issue #2136 ------------------------------------------------------------
+
+    @Test
+    fun `addContactToActivities drops cached rows only for activities that were added`() = runTest {
+        db.cachedActivityDao().upsertAll(
+            listOf(1, 2, 3).map { cached(it) }
+        )
+        coEvery { apiClient.addContactToActivities(5, listOf(1, 2, 3)) } returns Result.success(
+            AddContactToActivitiesResponse(
+                contactId = 5,
+                results = listOf(
+                    AddToActivityResult(1, "added"),
+                    AddToActivityResult(2, "already_member"),
+                    AddToActivityResult(3, "not_found")
+                )
+            )
+        )
+
+        val result = repository.addContactToActivities(5, listOf(1, 2, 3))
+
+        assertTrue(result.isSuccess)
+        assertEquals(listOf(2, 3), db.cachedActivityDao().getAll().map { it.id }.sorted())
+    }
+
+    @Test
+    fun `addContactToActivities leaves the cache alone when the request fails`() = runTest {
+        db.cachedActivityDao().upsertAll(listOf(cached(1)))
+        coEvery { apiClient.addContactToActivities(5, listOf(1)) } returns
+            Result.failure(ApiError.Network(java.io.IOException("offline")))
+
+        val result = repository.addContactToActivities(5, listOf(1))
+
+        assertTrue(result.isFailure)
+        assertEquals(1, db.cachedActivityDao().getAll().size)
     }
 }

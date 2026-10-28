@@ -158,6 +158,7 @@ fun ContactListScreen(
         onToggleSelection = viewModel::toggleSelection,
         onToggleSelectAll = viewModel::toggleSelectAll,
         onRunBulkAction = viewModel::runBulkAction,
+        onRunBulkFieldEdit = viewModel::runBulkFieldEdit,
         onBulkResultShown = viewModel::onBulkResultShown,
         onCreateContact = onCreateContact,
         onMenuClick = onMenuClick,
@@ -192,6 +193,7 @@ fun ContactListScreenContent(
     onToggleSelection: (Int) -> Unit = {},
     onToggleSelectAll: () -> Unit = {},
     onRunBulkAction: (String, String?, String?) -> Unit = { _, _, _ -> },
+    onRunBulkFieldEdit: (Map<String, String>, Set<String>) -> Unit = { _, _ -> },
     onBulkResultShown: () -> Unit = {},
     onCreateContact: () -> Unit = {},
     // Issue #150: see ContactListScreen — null hides the hamburger (no drawer).
@@ -221,6 +223,7 @@ fun ContactListScreenContent(
     // set pendingAction directly (ported from the retired BulkOperationsScreen).
     var picker by remember { mutableStateOf<Pair<BulkPickerTarget, String>?>(null) }
     var pendingAction by remember { mutableStateOf<String?>(null) }
+    var showEditFields by remember { mutableStateOf(false) }
     var pendingCircleId by remember { mutableStateOf<String?>(null) }
     var pendingTagId by remember { mutableStateOf<String?>(null) }
     val listState = rememberLazyListState()
@@ -408,7 +411,8 @@ fun ContactListScreenContent(
                         picker = BulkPickerTarget.CIRCLE to BulkActions.REMOVE_CIRCLE
                     },
                     onAddTag = { picker = BulkPickerTarget.TAG to BulkActions.ADD_TAG },
-                    onRemoveTag = { picker = BulkPickerTarget.TAG to BulkActions.REMOVE_TAG }
+                    onRemoveTag = { picker = BulkPickerTarget.TAG to BulkActions.REMOVE_TAG },
+                    onEditFields = { showEditFields = true }
                 )
             }
         },
@@ -633,6 +637,17 @@ fun ContactListScreenContent(
         )
     }
 
+    if (showEditFields) {
+        BulkEditFieldsDialog(
+            selectedCount = uiState.selected.size,
+            onApply = { values, clear ->
+                onRunBulkFieldEdit(values, clear)
+                showEditFields = false
+            },
+            onDismiss = { showEditFields = false }
+        )
+    }
+
     pendingAction?.let { action ->
         AlertDialog(
             onDismissRequest = {
@@ -829,7 +844,7 @@ private fun contactSectionLetter(contact: ContactSummary): String {
 
 /**
  * M23: the inline bulk-action bar shown under selection mode (web's BulkActionsBar).
- * The action row is a horizontalScroll'd Row of seven buttons, so the later ones
+ * The action row is a horizontalScroll'd Row of eight buttons, so the later ones
  * (tag actions) sit off the initial viewport — tests must performScrollTo() first.
  */
 @Composable
@@ -841,7 +856,8 @@ private fun BulkActionBar(
     onAddCircle: () -> Unit,
     onRemoveCircle: () -> Unit,
     onAddTag: () -> Unit,
-    onRemoveTag: () -> Unit
+    onRemoveTag: () -> Unit,
+    onEditFields: () -> Unit
 ) {
     Surface(
         tonalElevation = 3.dp,
@@ -902,6 +918,13 @@ private fun BulkActionBar(
                 modifier = Modifier.testTag("bulk-remove-tag")
             ) {
                 Text(stringResource(R.string.bulk_remove_tag))
+            }
+            TextButton(
+                onClick = onEditFields,
+                enabled = !isRunning,
+                modifier = Modifier.testTag("bulk-edit-fields")
+            ) {
+                Text(stringResource(R.string.bulk_edit_fields))
             }
         }
     }

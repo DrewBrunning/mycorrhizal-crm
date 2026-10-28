@@ -1,15 +1,21 @@
 package com.mycorrhizal.crm.feature.imports
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
+import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.ColumnMapping
+import com.mycorrhizal.crm.model.network.ImportFixedAssignment
+import com.mycorrhizal.crm.model.network.ImportFixedAssignmentItem
 import com.mycorrhizal.crm.model.network.ImportPreviewResponse
 import com.mycorrhizal.crm.model.network.ImportResult
 import com.mycorrhizal.crm.model.network.ImportRowPreview
 import com.mycorrhizal.crm.model.network.ImportUploadResponse
+import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -33,6 +39,7 @@ class CsvImportScreenTest {
         uiState: CsvImportUiState,
         onColumnFieldChange: (String, String) -> Unit = { _, _ -> },
         onSubmitMapping: () -> Unit = {},
+        onToggleCircle: (String) -> Unit = {},
         onRowActionChange: (Int, String) -> Unit = { _, _ -> },
         onConfirm: () -> Unit = {},
         onDone: () -> Unit = {}
@@ -43,6 +50,7 @@ class CsvImportScreenTest {
                     uiState = uiState,
                     onColumnFieldChange = onColumnFieldChange,
                     onSubmitMapping = onSubmitMapping,
+                    onToggleCircle = onToggleCircle,
                     onRowActionChange = onRowActionChange,
                     onConfirm = onConfirm,
                     onDone = onDone
@@ -190,5 +198,59 @@ class CsvImportScreenTest {
     fun `shows a loading skeleton while loading`() {
         setContent(CsvImportUiState(isLoading = true))
         composeTestRule.onNodeWithTag("csv-import-loading").assertIsDisplayed()
+    }
+
+    // --- Issue #2135 ---------------------------------------------------------------
+
+    @Test
+    fun `mapping step offers circle and tag chips and reports a circle toggle`() {
+        var toggled: String? = null
+        setContent(
+            CsvImportUiState(
+                step = CsvImportStep.MAPPING,
+                upload = ImportUploadResponse(
+                    sessionId = "session-1",
+                    headers = listOf("Name"),
+                    suggestedMappings = listOf(
+                        ColumnMapping(csvColumn = "Name", contactField = "firstname")
+                    ),
+                    rowCount = 1
+                ),
+                circles = listOf(Circle(id = "c1", name = "Friends")),
+                tags = listOf(Tag(id = "t1", name = "Conference"))
+            ),
+            onToggleCircle = { toggled = it }
+        )
+
+        composeTestRule.onNodeWithTag("csv-mapping-list")
+            .performScrollToNode(hasTestTag("csv-fixed-assignment-picker"))
+        composeTestRule.onNodeWithText("Tags").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Conference").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Friends").performClick()
+
+        assertEquals("c1", toggled)
+    }
+
+    @Test
+    fun `preview step shows the fixed assignment names and membership count`() {
+        setContent(
+            CsvImportUiState(
+                step = CsvImportStep.PREVIEW,
+                preview = ImportPreviewResponse(
+                    sessionId = "session-1",
+                    rows = listOf(ImportRowPreview(rowIndex = 0)),
+                    fixedAssignment = ImportFixedAssignment(
+                        circles = listOf(ImportFixedAssignmentItem("c1", "Friends")),
+                        tags = listOf(ImportFixedAssignmentItem("t1", "Conference")),
+                        contactCount = 3,
+                        membershipCount = 6
+                    )
+                )
+            )
+        )
+
+        composeTestRule.onNodeWithTag("csv-fixed-assignment").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Friends, Conference", substring = true).assertIsDisplayed()
+        composeTestRule.onNodeWithText("6", substring = true).assertIsDisplayed()
     }
 }

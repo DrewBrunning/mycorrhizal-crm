@@ -92,3 +92,41 @@ data class ContactFlat(
     val displayName: String
         get() = listOfNotNull(firstname, lastname).joinToString(" ").ifBlank { "#$id" }
 }
+
+/** Request body for `POST /contacts/{id}/activities` (issue #2136): 1-100 activity ids. */
+@JsonClass(generateAdapter = true)
+data class ContactActivitiesRequest(@Json(name = "activity_ids") val activityIds: List<Int>)
+
+/** Per-activity outcome of [ContactActivitiesRequest]; unrecognised wire values are [UNKNOWN]. */
+enum class AddToActivityStatus {
+    ADDED,
+    ALREADY_MEMBER,
+    NOT_FOUND,
+    UNKNOWN;
+
+    /** `added` / `already_member` both leave the contact on the activity. */
+    val isSuccess: Boolean get() = this == ADDED || this == ALREADY_MEMBER
+
+    companion object {
+        fun fromWire(value: String): AddToActivityStatus = when (value) {
+            "added" -> ADDED
+            "already_member" -> ALREADY_MEMBER
+            "not_found" -> NOT_FOUND
+            else -> UNKNOWN
+        }
+    }
+}
+
+@JsonClass(generateAdapter = true)
+data class AddToActivityResult(
+    @Json(name = "activity_id") val activityId: Int = 0,
+    val status: String = ""
+) {
+    val outcome: AddToActivityStatus get() = AddToActivityStatus.fromWire(status)
+}
+
+@JsonClass(generateAdapter = true)
+data class AddContactToActivitiesResponse(
+    @Json(name = "contact_id") val contactId: Int = 0,
+    val results: List<AddToActivityResult> = emptyList()
+)

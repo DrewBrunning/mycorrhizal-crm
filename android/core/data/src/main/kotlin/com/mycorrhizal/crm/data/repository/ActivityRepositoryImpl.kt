@@ -7,6 +7,8 @@ import com.mycorrhizal.crm.domain.repository.ContactActivitiesPage
 import com.mycorrhizal.crm.model.network.ActivitiesPage
 import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ActivityInput
+import com.mycorrhizal.crm.model.network.AddContactToActivitiesResponse
+import com.mycorrhizal.crm.model.network.AddToActivityStatus
 import com.mycorrhizal.crm.network.ApiClient
 import javax.inject.Inject
 
@@ -49,11 +51,16 @@ class ActivityRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun listAll(cursor: String?, limit: Int?): Result<ActivitiesPage> {
+    override suspend fun listAll(
+        cursor: String?,
+        limit: Int?,
+        search: String?
+    ): Result<ActivitiesPage> {
         val result = apiClient.listActivities(
             cursor = cursor,
             limit = limit,
-            includeContacts = true
+            includeContacts = true,
+            search = search
         )
         result.getOrNull()?.let { page -> dao.upsertAll(page.activities.map { it.toCached() }) }
         return result
@@ -76,6 +83,17 @@ class ActivityRepositoryImpl @Inject constructor(
     override suspend fun delete(id: Int, revision: Int?): Result<Unit> {
         val result = apiClient.deleteActivity(id, revision)
         if (result.isSuccess) dao.deleteById(id)
+        return result
+    }
+
+    override suspend fun addContactToActivities(
+        contactId: Int,
+        activityIds: List<Int>
+    ): Result<AddContactToActivitiesResponse> {
+        val result = apiClient.addContactToActivities(contactId, activityIds)
+        result.getOrNull()?.results
+            ?.filter { it.outcome == AddToActivityStatus.ADDED }
+            ?.forEach { dao.deleteById(it.activityId) }
         return result
     }
 

@@ -277,4 +277,12 @@ class NotesInboxScreenTest {
 
         composeTestRule.onNodeWithText("Buy milk").assertIsDisplayed()
     }
+
+    // Issue #2134
+    @Test
+    fun `an inbox note row renders Markdown instead of showing the raw markers`() {
+        setContent(NotesInboxUiState(notes = listOf(Note(id = 3, content = "_Call_ back"))))
+
+        composeTestRule.onNodeWithText("Call back").assertIsDisplayed()
+    }
 }

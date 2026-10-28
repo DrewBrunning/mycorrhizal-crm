@@ -3,6 +3,7 @@ package com.mycorrhizal.crm.domain.repository
 import com.mycorrhizal.crm.model.network.ActivitiesPage
 import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ActivityInput
+import com.mycorrhizal.crm.model.network.AddContactToActivitiesResponse
 
 /** A page of one contact's activities (M19), with its T17 cursor-pagination state. */
 data class ContactActivitiesPage(val activities: List<Activity>, val nextCursor: String?)
@@ -31,7 +32,21 @@ interface ActivityRepository {
      * All activities across every contact (M9 Activities drawer entry), with participants
      * attached — `GET /activities?include=contacts`, cursor-paginated.
      */
-    suspend fun listAll(cursor: String? = null, limit: Int? = null): Result<ActivitiesPage>
+    suspend fun listAll(
+        cursor: String? = null,
+        limit: Int? = null,
+        search: String? = null
+    ): Result<ActivitiesPage>
+
+    /**
+     * Add [contactId] to existing activities (issue #2136, `POST /contacts/{id}/activities`).
+     * Online-only: there is no offline queue, so offline returns the network-error failure.
+     * Cached rows of activities reported `added` are dropped so participants never go stale.
+     */
+    suspend fun addContactToActivities(
+        contactId: Int,
+        activityIds: List<Int>
+    ): Result<AddContactToActivitiesResponse>
 
     /** A single activity (with its participants). */
     suspend fun get(id: Int): Result<Activity>
