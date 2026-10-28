@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.ContactTimelineRepository
 import com.mycorrhizal.crm.domain.repository.ReminderRepository
 import com.mycorrhizal.crm.model.network.TimelineBuckets
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -26,7 +27,7 @@ data class TimelineExplorerUiState(
     val bucket: String = TimelineBuckets.ALL,
     val isLoading: Boolean = false,
     val isLoadingMore: Boolean = false,
-    val error: String? = null
+    val error: ApiError? = null
 )
 
 /**
@@ -86,7 +87,7 @@ class TimelineExplorerViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
-                                error = error.displayMessage
+                                error = error
                             )
                         }
                     }
@@ -129,7 +130,7 @@ class TimelineExplorerViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 isLoadingMore = false,
-                                error = error.displayMessage
+                                error = error
                             )
                         }
                     }
@@ -154,7 +155,7 @@ class TimelineExplorerViewModel @Inject constructor(
         viewModelScope.launch {
             reminderRepository.deleteCompletion(id).foldApiError(
                 onSuccess = { refresh() },
-                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } }
+                onError = { error -> _uiState.update { it.copy(error = error) } }
             )
         }
     }

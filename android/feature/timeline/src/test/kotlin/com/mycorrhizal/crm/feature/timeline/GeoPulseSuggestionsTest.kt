@@ -76,7 +76,7 @@ class GeoPulseSuggestionsViewModelTest {
             val state = vm.uiState.value
             assertEquals(1, state.suggestions!!.size)
             assertEquals("2026-03-10", state.lookedUpDate)
-            assertNull(state.error)
+            assertNull(state.error?.message)
         }
 
     @Test
@@ -89,7 +89,7 @@ class GeoPulseSuggestionsViewModelTest {
             vm.lookup()
             advanceUntilIdle()
 
-            assertEquals("No GeoPulse connection configured", vm.uiState.value.error)
+            assertEquals("No GeoPulse connection configured", vm.uiState.value.error?.message)
             assertNull(vm.uiState.value.suggestions)
         }
 
@@ -213,7 +213,7 @@ class GeoPulseSuggestionsScreenTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    private fun state(suggestions: List<GeoPulseStaySuggestion>? = null, error: String? = null) =
+    private fun state(suggestions: List<GeoPulseStaySuggestion>? = null, error: ApiError? = null) =
         GeoPulseSuggestionsUiState(
             date = "2026-03-10",
             suggestions = suggestions,
@@ -290,7 +290,10 @@ class GeoPulseSuggestionsScreenTest {
     @Test
     fun `an error offers the settings shortcut`() {
         var opened = false
-        show(state(error = "No GeoPulse connection configured"), onOpenSettings = { opened = true })
+        show(
+            state(error = ApiError.Client(400, "No GeoPulse connection configured")),
+            onOpenSettings = { opened = true }
+        )
         composeTestRule.onNodeWithText("No GeoPulse connection configured").assertIsDisplayed()
         composeTestRule.onNodeWithText("Open GeoPulse settings").performClick()
         assertTrue(opened)

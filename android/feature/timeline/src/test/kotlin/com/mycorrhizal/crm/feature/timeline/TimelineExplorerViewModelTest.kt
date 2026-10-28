@@ -82,7 +82,7 @@ class TimelineExplorerViewModelTest {
         assertFalse(state.isLoading)
         assertEquals(listOf("NoteItem:2", "ActivityItem:1"), state.items.map { it.key })
         assertEquals("cur-1", state.nextCursor)
-        assertNull(state.error)
+        assertNull(state.error?.message)
     }
 
     @Test
@@ -236,7 +236,7 @@ class TimelineExplorerViewModelTest {
         vm.refresh()
         advanceUntilIdle()
 
-        assertEquals("Not found", vm.uiState.value.error)
+        assertEquals(404, (vm.uiState.value.error as? ApiError.Client)?.code)
         assertTrue(vm.uiState.value.items.isEmpty())
         assertFalse(vm.uiState.value.isLoading)
     }
@@ -274,7 +274,7 @@ class TimelineExplorerViewModelTest {
             val state = vm.uiState.value
             assertEquals(1, state.items.size)
             assertEquals("cur-1", state.nextCursor)
-            assertEquals("Not found", state.error)
+            assertEquals(404, (state.error as? ApiError.Client)?.code)
             assertFalse(state.isLoadingMore)
 
             vm.onErrorShown()
@@ -330,7 +330,7 @@ class TimelineExplorerViewModelTest {
         vm.undoCompletion(9)
         advanceUntilIdle()
 
-        assertEquals("Not found", vm.uiState.value.error)
+        assertEquals(404, (vm.uiState.value.error as? ApiError.Client)?.code)
         coVerify(exactly = 0) { timelineRepository.page(any(), any(), any(), any(), any()) }
     }
 

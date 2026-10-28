@@ -92,7 +92,7 @@ class ActivitiesViewModelTest {
         val vm = viewModel()
         advanceUntilIdle()
 
-        assertEquals("Not found", vm.uiState.value.error)
+        assertEquals(404, (vm.uiState.value.error as? ApiError.Client)?.code)
         assertTrue(vm.uiState.value.activities.isEmpty())
     }
 
@@ -300,7 +300,7 @@ class ActivitiesViewModelTest {
         vm.delete(2)
         advanceUntilIdle()
         assertEquals(listOf(2), vm.uiState.value.activities.map { it.id })
-        assertEquals("boom", vm.uiState.value.error)
+        assertEquals("boom", vm.uiState.value.error?.message)
     }
 }
 
@@ -602,7 +602,7 @@ class ActivityFormViewModelTest {
         val vm = createViewModel(activityId = 7)
         advanceUntilIdle()
 
-        assertEquals("Not found", vm.uiState.value.error)
+        assertEquals(404, (vm.uiState.value.error as? ApiError.Client)?.code)
         assertFalse(vm.uiState.value.isLoading)
     }
 
@@ -656,7 +656,7 @@ class ActivityFormViewModelTest {
         vm.save()
         advanceUntilIdle()
 
-        assertEquals("duplicate", vm.uiState.value.error)
+        assertEquals("duplicate", vm.uiState.value.error?.message)
         assertFalse(vm.uiState.value.isSaving)
         assertNull(vm.events.value)
     }

@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm.feature.timelineentities
 
 import androidx.compose.foundation.clickable
+import com.mycorrhizal.crm.ui.components.localizedMessage
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -161,7 +162,7 @@ internal fun EntityListScaffold(
     dialog: @Composable () -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
-    val errorMessage = uiState.errorRes?.let { stringResource(it) } ?: uiState.error
+    val errorMessage = uiState.errorRes?.let { stringResource(it) } ?: uiState.error?.localizedMessage()
     val currentOnErrorShown = rememberUpdatedState(onErrorShown)
     var pendingDeleteId by remember { mutableStateOf<String?>(null) }
 
@@ -2073,7 +2074,7 @@ fun ConversationAgendaScreen(
             confirming = discussingId == discussItem.id,
             onConfirm = { activityId -> viewModel.markDiscussed(discussItem.id, activityId) },
             onDismiss = viewModel::dismissDiscuss,
-            errorMessage = state.errorRes?.let { stringResource(it) } ?: state.error,
+            errorMessage = state.errorRes?.let { stringResource(it) } ?: state.error?.localizedMessage(),
             onErrorShown = viewModel::onErrorShown
         )
         return

@@ -25,7 +25,7 @@ data class RemindersUiState(
     val completingId: Int? = null,
     val deletingId: Int? = null,
     @StringRes val errorRes: Int? = null,
-    val error: String? = null,
+    val error: ApiError? = null,
     /** ADR 0008: a delete was rejected with 412 — the record changed elsewhere since the list loaded. */
     val conflict: Boolean = false,
     /** The signed-in user's `date_format` preference (see `SessionState`); null until loaded. */
@@ -74,7 +74,7 @@ class RemindersViewModel @Inject constructor(
                     _uiState.update { it.copy(isLoading = false, reminders = reminders) }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isLoading = false, error = error) }
                 }
             )
         }
@@ -113,7 +113,7 @@ class RemindersViewModel @Inject constructor(
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(completingId = null, error = error.displayMessage) }
+                    _uiState.update { it.copy(completingId = null, error = error) }
                 }
             )
         }
@@ -156,7 +156,7 @@ class RemindersViewModel @Inject constructor(
                         if (error is ApiError.PreconditionFailed) {
                             it.copy(deletingId = null, conflict = true)
                         } else {
-                            it.copy(deletingId = null, error = error.displayMessage)
+                            it.copy(deletingId = null, error = error)
                         }
                     }
                 }
