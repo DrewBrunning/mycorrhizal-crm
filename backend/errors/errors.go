@@ -8,11 +8,14 @@ import (
 
 // AppError represents a custom application error
 type AppError struct {
-	Code       string                 `json:"code"`
-	Message    string                 `json:"message"`
-	Details    map[string]interface{} `json:"details,omitempty"`
-	HTTPStatus int                    `json:"-"`
-	Err        error                  `json:"-"`
+	Code    string                 `json:"code"`
+	Message string                 `json:"message"`
+	Details map[string]interface{} `json:"details,omitempty"`
+	// ReasonCode/ReasonParams are set by WithReason (ADR 0038).
+	ReasonCode   string         `json:"reason_code,omitempty"`
+	ReasonParams map[string]any `json:"reason_params,omitempty"`
+	HTTPStatus   int            `json:"-"`
+	Err          error          `json:"-"`
 }
 
 // Error implements the error interface

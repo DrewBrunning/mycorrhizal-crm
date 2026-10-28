@@ -45,7 +45,7 @@ THIRD_PARTY_SOURCES.md, shipped in the container at
 | `github.com/glebarez/go-sqlite` | `v1.22.0` | BSD-3-Clause | https://pkg.go.dev/github.com/glebarez/go-sqlite@v1.22.0 |
 | `github.com/glebarez/sqlite` | `v1.11.0` | MIT | https://pkg.go.dev/github.com/glebarez/sqlite@v1.11.0 |
 | `github.com/go-co-op/gocron` | `v1.37.0` | MIT | https://pkg.go.dev/github.com/go-co-op/gocron@v1.37.0 |
-| `github.com/go-jose/go-jose/v4` | `v4.1.4` | Apache-2.0 | https://pkg.go.dev/github.com/go-jose/go-jose/v4@v4.1.4 |
+| `github.com/go-jose/go-jose/v4` | `v4.1.6` | Apache-2.0 | https://pkg.go.dev/github.com/go-jose/go-jose/v4@v4.1.6 |
 | `github.com/go-playground/locales` | `v0.14.1` | MIT | https://pkg.go.dev/github.com/go-playground/locales@v0.14.1 |
 | `github.com/go-playground/universal-translator` | `v0.18.1` | MIT | https://pkg.go.dev/github.com/go-playground/universal-translator@v0.18.1 |
 | `github.com/go-playground/validator/v10` | `v10.30.5` | MIT | https://pkg.go.dev/github.com/go-playground/validator/v10@v10.30.5 |

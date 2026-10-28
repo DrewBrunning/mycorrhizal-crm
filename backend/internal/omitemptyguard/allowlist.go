@@ -53,13 +53,17 @@ var Allowlist = map[string]string{
 
 	// Request-only DTOs: the client sends these; nothing decodes them back
 	// out of a response.
-	"LifeEventInput.RelatedEntityIDs":    "request-only DTO (POST/PUT life-event body); never returned in a response",
-	"RelationshipEdgeInput.Metadata":     "request-only DTO (POST/PUT relationship-edge body); never returned in a response",
-	"ContactMergeRequest.Resolutions":    "request-only DTO (POST /contacts/merge body); never returned in a response",
-	"ExternalIdentityInput.Metadata":     "request-only DTO (POST/PUT external-identity body); never returned in a response",
-	"ImportConfirmRequest.FieldMappings": "request-only DTO -- the client's issue #514 custom-field promotion decisions, submitted at confirm; never returned in a response",
-	"CadencePolicyInput.QualifyingTypes": "request-only DTO (POST/PUT cadence-policy body); never returned in a response",
-	"ExternalActivityInput.Payload":      "request-only DTO (POST/PUT external-activity body); never returned in a response",
+	"LifeEventInput.RelatedEntityIDs":      "request-only DTO (POST/PUT life-event body); never returned in a response",
+	"RelationshipEdgeInput.Metadata":       "request-only DTO (POST/PUT relationship-edge body); never returned in a response",
+	"ContactMergeRequest.Resolutions":      "request-only DTO (POST /contacts/merge body); never returned in a response",
+	"ExternalIdentityInput.Metadata":       "request-only DTO (POST/PUT external-identity body); never returned in a response",
+	"ImportConfirmRequest.FieldMappings":   "request-only DTO -- the client's issue #514 custom-field promotion decisions, submitted at confirm; never returned in a response",
+	"ImportConfirmRequest.AssignCircleIDs": "request-only DTO -- issue #2000 fixed circle/tag ids the client submits; never returned in a response",
+	"ImportConfirmRequest.AssignTagIDs":    "request-only DTO -- issue #2000 fixed circle/tag ids the client submits; never returned in a response",
+	"ImportPreviewRequest.AssignCircleIDs": "request-only DTO -- issue #2000 fixed circle/tag ids the client submits; never returned in a response",
+	"ImportPreviewRequest.AssignTagIDs":    "request-only DTO -- issue #2000 fixed circle/tag ids the client submits; never returned in a response",
+	"CadencePolicyInput.QualifyingTypes":   "request-only DTO (POST/PUT cadence-policy body); never returned in a response",
+	"ExternalActivityInput.Payload":        "request-only DTO (POST/PUT external-activity body); never returned in a response",
 
 	// CadencePolicy.QualifyingTypes / LifeEvent.RelatedEntityIDs are a
 	// single record's own persisted JSON-array column (`serializer:json`),

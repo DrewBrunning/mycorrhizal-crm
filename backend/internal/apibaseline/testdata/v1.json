@@ -2886,6 +2886,32 @@
     },
     {
       "method": "POST",
+      "path": "/contacts/{id}/activities",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "request_body": "ref:ContactActivitiesInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
       "path": "/contacts/{id}/addresses/geocode",
       "parameters": [
         {
@@ -9875,12 +9901,33 @@
             "remove_tag",
             "archive",
             "unarchive",
-            "delete"
+            "delete",
+            "update_fields"
           ]
         },
         {
           "name": "circle_id",
           "type": "string",
+          "required": false
+        },
+        {
+          "name": "clear",
+          "type": "array\u003cstring\u003e",
+          "required": false
+        },
+        {
+          "name": "custom_clear",
+          "type": "array\u003cstring\u003e",
+          "required": false
+        },
+        {
+          "name": "custom_set",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "set",
+          "type": "object",
           "required": false
         },
         {
@@ -10585,6 +10632,16 @@
           "name": "group",
           "type": "integer",
           "required": false
+        }
+      ]
+    },
+    {
+      "name": "ContactActivitiesInput",
+      "properties": [
+        {
+          "name": "activity_ids",
+          "type": "array\u003cinteger\u003e",
+          "required": true
         }
       ]
     },
@@ -15486,6 +15543,16 @@
           "required": true
         },
         {
+          "name": "assign_circle_ids",
+          "type": "array\u003cstring\u003e",
+          "required": false
+        },
+        {
+          "name": "assign_tag_ids",
+          "type": "array\u003cstring\u003e",
+          "required": false
+        },
+        {
           "name": "field_mappings",
           "type": "array\u003cobject\u003e",
           "required": false
@@ -15545,6 +15612,46 @@
       ]
     },
     {
+      "name": "ImportFixedAssignment",
+      "properties": [
+        {
+          "name": "circles",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        },
+        {
+          "name": "contact_count",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "membership_count",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "tags",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "ImportFixedAssignmentItem",
+      "properties": [
+        {
+          "name": "id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
       "name": "ImportMergeDiff",
       "properties": [
         {
@@ -15562,6 +15669,16 @@
     {
       "name": "ImportPreviewRequest",
       "properties": [
+        {
+          "name": "assign_circle_ids",
+          "type": "array\u003cstring\u003e",
+          "required": false
+        },
+        {
+          "name": "assign_tag_ids",
+          "type": "array\u003cstring\u003e",
+          "required": false
+        },
         {
           "name": "mappings",
           "type": "array\u003cobject\u003e",
@@ -15585,6 +15702,11 @@
         {
           "name": "error_count",
           "type": "integer",
+          "required": false
+        },
+        {
+          "name": "fixed_assignment",
+          "type": "ref:ImportFixedAssignment",
           "required": false
         },
         {
@@ -18952,6 +19074,11 @@
           "required": true
         },
         {
+          "name": "end_date",
+          "type": "composed[object]",
+          "required": false
+        },
+        {
           "name": "id",
           "type": "string",
           "required": true
@@ -18989,6 +19116,11 @@
           "required": true
         },
         {
+          "name": "start_date",
+          "type": "ref:PartialDate",
+          "required": false
+        },
+        {
           "name": "status",
           "type": "string",
           "required": true,
@@ -19018,6 +19150,11 @@
       "name": "RelationshipEdgeInput",
       "properties": [
         {
+          "name": "end_date",
+          "type": "composed[object]",
+          "required": false
+        },
+        {
           "name": "metadata",
           "type": "object",
           "required": false
@@ -19040,6 +19177,11 @@
         {
           "name": "source_thin",
           "type": "ref:ThinContactInput",
+          "required": false
+        },
+        {
+          "name": "start_date",
+          "type": "ref:PartialDate",
           "required": false
         },
         {

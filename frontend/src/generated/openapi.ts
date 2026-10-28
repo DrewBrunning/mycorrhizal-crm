@@ -266,8 +266,21 @@ export type BriefingUpcomingDate = {
 };
 
 export type BulkContactOperationInput = {
-  action: 'add_circle' | 'remove_circle' | 'add_tag' | 'remove_tag' | 'archive' | 'unarchive' | 'delete';
+  action: 'add_circle' | 'remove_circle' | 'add_tag' | 'remove_tag' | 'archive' | 'unarchive' | 'delete' | 'update_fields';
   circle_id?: string;
+  clear?: ('organization' | 'department' | 'job_title' | 'role' | 'gender' | 'how_we_met' | 'work_information' | 'contact_information')[];
+  custom_clear?: string[];
+  custom_set?: FieldValueInput[];
+  set?: {
+    contact_information?: string;
+    department?: string;
+    gender?: string;
+    how_we_met?: string;
+    job_title?: string;
+    organization?: string;
+    role?: string;
+    work_information?: string;
+  };
   tag_id?: string;
   vcard_uids: string[];
 };
@@ -434,6 +447,10 @@ export type ColumnMapping = {
   contact_field?: string;
   csv_column: string;
   group?: number;
+};
+
+export type ContactActivitiesInput = {
+  activity_ids: number[];
 };
 
 export type ContactAddress = {
@@ -1054,6 +1071,8 @@ export type Error = {
     code: string;
     details?: Record<string, unknown>;
     message: string;
+    reason_code?: string;
+    reason_params?: Record<string, unknown>;
   };
   request_id?: string;
   timestamp?: string;
@@ -1469,6 +1488,8 @@ export type ImportAddedValue = {
 
 export type ImportConfirmRequest = {
   actions: RowImportAction[];
+  assign_circle_ids?: string[];
+  assign_tag_ids?: string[];
   field_mappings?: ImportFieldMapping[];
   session_id: string;
 };
@@ -1481,12 +1502,26 @@ export type ImportFieldMapping = {
   type?: 'string' | 'text' | 'number' | 'boolean' | 'date' | 'datetime' | 'uri' | 'email' | 'phone' | 'enum';
 };
 
+export type ImportFixedAssignment = {
+  circles: ImportFixedAssignmentItem[];
+  contact_count: number;
+  membership_count: number;
+  tags: ImportFixedAssignmentItem[];
+};
+
+export type ImportFixedAssignmentItem = {
+  id: string;
+  name: string;
+};
+
 export type ImportMergeDiff = {
   added?: ImportAddedValue[];
   updated?: ImportScalarChange[];
 };
 
 export type ImportPreviewRequest = {
+  assign_circle_ids?: string[];
+  assign_tag_ids?: string[];
   mappings: ColumnMapping[];
   session_id: string;
 };
@@ -1494,6 +1529,7 @@ export type ImportPreviewRequest = {
 export type ImportPreviewResponse = {
   duplicate_count?: number;
   error_count?: number;
+  fixed_assignment?: ImportFixedAssignment;
   rows?: ImportRowPreview[];
   session_id?: string;
   total_rows?: number;
@@ -2286,11 +2322,13 @@ export type RelationshipEdge = {
   confidence: number;
   created_at: string;
   directional: boolean;
+  end_date?: PartialDate;
   id: string;
   metadata?: Record<string, unknown>;
   sensitivity: 'normal' | 'private' | 'secret';
   source: 'user-confirmed' | 'household-inferred' | 'imported' | 'ai-suggested' | 'graph-inferred';
   source_id: string;
+  start_date?: PartialDate;
   status: 'confirmed' | 'suggested';
   target_id: string;
   type: string;
@@ -2298,10 +2336,12 @@ export type RelationshipEdge = {
 };
 
 export type RelationshipEdgeInput = {
+  end_date?: PartialDate;
   metadata?: Record<string, unknown>;
   sensitivity?: 'normal' | 'private' | 'secret';
   source_id?: string;
   source_thin?: ThinContactInput;
+  start_date?: PartialDate;
   target_id?: string;
   target_thin?: ThinContactInput;
   type: string;

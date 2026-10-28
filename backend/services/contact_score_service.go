@@ -122,11 +122,11 @@ func gatherScoreInputs(db *gorm.DB, userID uint, now time.Time, contacts []model
 	var directTypes map[string][]string
 	var reachableHops map[string]int
 	if selfContactUID != "" {
-		directTypes, err = directRelationTypesByEntityID(db, userID, selfContactUID, uids)
+		directTypes, err = directRelationTypesByEntityID(db, userID, now, selfContactUID, uids)
 		if err != nil {
 			return scoreInputs{}, fmt.Errorf("loading direct relationship edges: %w", err)
 		}
-		reachableHops, err = structuralHopsByEntityID(db, userID, selfContactUID, cfg)
+		reachableHops, err = structuralHopsByEntityID(db, userID, now, selfContactUID, cfg)
 		if err != nil {
 			return scoreInputs{}, fmt.Errorf("loading graph reachability: %w", err)
 		}
@@ -327,27 +327,38 @@ func selfContactVCardUID(db *gorm.DB, userID uint) (string, error) {
 	return *user.SelfContactVCardUID, nil
 }
 
+// activeEdges drops relationships that have ended as of now (issue #2001).
+// An end-dated edge stays a confirmed fact in the graph, the exports and the
+// relationship list, but a relationship that is over is not a reason to
+// reach out: it must not lift a contact's closeness tier (a former spouse or
+// ex-colleague is no longer "close" by that edge). See docs/relationship-dates.md.
+func activeEdges(edges []models.RelationshipEdge, now time.Time) []models.RelationshipEdge {
+	out := edges[:0:0]
+	for i := range edges {
+		if !edges[i].Ended(now) {
+			out = append(out, edges[i])
+		}
+	}
+	return out
+}
+
 // directRelationTypesByEntityID bulk-loads every confirmed, non-secret
 // relationship-edge type directly connecting selfUID to each of uids, in
 // either direction — the Closeness facet's direct-edge raw input. A contact
 // may have more than one type (e.g. friend_of AND conflicts_with); Compute
 // itself picks the highest tier deterministically, ignoring any type with no
 // tier assignment (see ADR-0023).
-func directRelationTypesByEntityID(db *gorm.DB, userID uint, selfUID string, uids []string) (map[string][]string, error) {
-	type edgeRow struct {
-		SourceID string
-		TargetID string
-		Type     string
-	}
-	var rows []edgeRow
-	if err := db.Table("relationship_edges").
-		Select("source_id, target_id, type").
+func directRelationTypesByEntityID(db *gorm.DB, userID uint, now time.Time, selfUID string, uids []string) (map[string][]string, error) {
+	var rows []models.RelationshipEdge
+	if err := db.Model(&models.RelationshipEdge{}).
+		Select("source_id, target_id, type, end_date").
 		Where("user_id = ? AND status = ? AND sensitivity != ? AND ((source_id = ? AND target_id IN ?) OR (target_id = ? AND source_id IN ?))",
 			userID, models.RelationshipStatusConfirmed, models.RelationshipSensitivitySecret,
 			selfUID, uids, selfUID, uids).
-		Scan(&rows).Error; err != nil {
+		Find(&rows).Error; err != nil {
 		return nil, err
 	}
+	rows = activeEdges(rows, now)
 
 	result := make(map[string][]string, len(rows))
 	for _, r := range rows {
@@ -376,20 +387,16 @@ func directRelationTypesByEntityID(db *gorm.DB, userID uint, selfUID string, uid
 // in-memory walk. Same step semantics as TraverseGraph (traversalStepRelation)
 // and the same maxTraversalDepth cap, so a contact is hop-reachable exactly
 // when a fully structural simple path of <= maxTraversalDepth steps exists.
-func structuralHopsByEntityID(db *gorm.DB, userID uint, selfUID string, cfg scoring.Config) (map[string]int, error) {
-	type edgeRow struct {
-		SourceID string
-		TargetID string
-		Type     string
-	}
-	var rows []edgeRow
-	if err := db.Table("relationship_edges").
-		Select("source_id, target_id, type").
+func structuralHopsByEntityID(db *gorm.DB, userID uint, now time.Time, selfUID string, cfg scoring.Config) (map[string]int, error) {
+	var rows []models.RelationshipEdge
+	if err := db.Model(&models.RelationshipEdge{}).
+		Select("source_id, target_id, type, end_date").
 		Where("user_id = ? AND status = ? AND sensitivity != ?",
 			userID, models.RelationshipStatusConfirmed, models.RelationshipSensitivitySecret).
-		Scan(&rows).Error; err != nil {
+		Find(&rows).Error; err != nil {
 		return nil, err
 	}
+	rows = activeEdges(rows, now)
 
 	adjacency := make(map[string][]string, len(rows))
 	for _, r := range rows {

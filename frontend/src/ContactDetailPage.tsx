@@ -1760,6 +1760,7 @@ export default function ContactDetailPage() {
         onClose={() => setActivityDialogOpen(false)}
         onSave={handleSaveActivity}
         preselectedContactId={record.id}
+        onAddedToExisting={() => void refreshNotesAndActivities()}
       />
 
       <ReminderDialog

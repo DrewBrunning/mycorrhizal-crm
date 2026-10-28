@@ -95,6 +95,32 @@ export async function getContactActivities(
   return response.json();
 }
 
+export type AddToActivityStatus = 'added' | 'already_member' | 'not_found';
+
+export interface AddContactToActivitiesResponse {
+  contact_id: number;
+  results: { activity_id: number; status: AddToActivityStatus }[];
+}
+
+// Add a contact to existing activities. Writes only the membership: no other
+// activity field or member changes, and a repeat is reported already_member.
+export async function addContactToActivities(
+  contactId: string | number,
+  activityIds: number[],
+): Promise<AddContactToActivitiesResponse> {
+  const response = await apiFetch(`${API_BASE_URL}/contacts/${contactId}/activities`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ activity_ids: activityIds }),
+  });
+
+  if (!response.ok) {
+    throw await parseErrorResponse(response);
+  }
+
+  return response.json();
+}
+
 // Get single activity
 export async function getActivity(id: string | number): Promise<Activity> {
   const response = await apiFetch(`${API_BASE_URL}/activities/${id}`, {

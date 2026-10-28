@@ -485,7 +485,14 @@ func TestProviderName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, ProviderName(tt.providerURL))
+			assert.Equal(t, tt.want, ProviderName(tt.providerURL, ""))
 		})
 	}
+}
+
+func TestProviderName_ConfiguredNamePreferred(t *testing.T) {
+	assert.Equal(t, "Pocket ID", ProviderName("https://idp.example.com", "Pocket ID"))
+	assert.Equal(t, "Pocket ID", ProviderName("", "Pocket ID"), "configured name wins even with no usable host")
+	assert.Equal(t, "idp.example.com", ProviderName("https://idp.example.com", ""))
+	assert.Equal(t, "idp.example.com", ProviderName("https://idp.example.com", "   "), "blank name is unset")
 }

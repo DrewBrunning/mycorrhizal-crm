@@ -30,6 +30,7 @@ interface BulkActionsBarProps {
   onRemoveTag: (tagId: string) => Promise<void>;
   onArchive: () => Promise<void>;
   onUnarchive: () => Promise<void>;
+  onEditFields: () => void;
   onMerge: () => void;
   onDelete: () => Promise<void>;
 }
@@ -53,6 +54,7 @@ export default function BulkActionsBar({
   onRemoveTag,
   onArchive,
   onUnarchive,
+  onEditFields,
   onMerge,
   onDelete,
 }: BulkActionsBarProps) {
@@ -179,6 +181,9 @@ export default function BulkActionsBar({
             onClick={() => void onUnarchive()}
           >
             {t('bulk.unarchive')}
+          </Button>
+          <Button size="small" variant="outlined" disabled={busy} onClick={onEditFields}>
+            {t('bulk.editFields')}
           </Button>
           {/* T92: merge is pairwise, not a one-verb-over-N-rows action, so it
               is only meaningful (and only enabled) for exactly two selected
