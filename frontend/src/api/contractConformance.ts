@@ -33,6 +33,7 @@ import type { Activity, ActivityContact } from './activities';
 import type { BriefingRelationship } from './briefings';
 import type { CadenceHealth, CadencePolicy, OverdueCadence } from './cadencePolicies';
 import type { Circle, CircleMember } from './circles';
+import type { BackendErrorResponse } from './client';
 import type {
   ContactDetailImmich,
   ContactDetailLifeEvent,
@@ -192,6 +193,15 @@ export type Conformance = [
   NoDrift<ResponseDrift<ContactTargetClosenessResponse, S.ContactTargetClosenessResponse>>,
   NoDrift<ResponseDrift<ContactScoreTarget, S.ContactScoreTarget>>,
   NoDrift<ResponseDrift<ContactScoreFacet, S.ContactScoreFacet>>,
+  // Error envelope (ADR 0038). `details` and `reason_params` are narrowed on
+  // purpose: the spec says free-form (`unknown`), the client only reads string
+  // details and string|number params, and getDisplayMessage guards on type.
+  NoDrift<
+    ResponseDrift<
+      Omit<BackendErrorResponse['error'], 'details' | 'reason_params'>,
+      Omit<NonNullable<S.Error['error']>, 'details' | 'reason_params'>
+    >
+  >,
   NoDrift<ResponseDrift<ExternalIdentity, S.ExternalIdentity>>,
   NoDrift<ResponseDrift<ExternalActivity, S.ExternalActivity>>,
   NoDrift<ResponseDrift<FieldDefinition, S.FieldDefinition>>,

@@ -3418,5 +3418,32 @@
     "success": "CardDAV/CalDAV password policy updated.",
     "error": "Unable to update the CardDAV/CalDAV password policy.",
     "loadError": "Unable to load the CardDAV/CalDAV password policy."
+  },
+  "errors": {
+    "requestRef": "(ref: {{id}})",
+    "reason": {
+      "common_test_only": "Test {{n}}",
+      "import_circles_not_found": "One or more circles were not found",
+      "import_tags_not_found": "One or more tags were not found",
+      "validation_cursor_malformed": "The cursor id is malformed",
+      "validation_activity_ids_range": "Must contain between 1 and 100 ids",
+      "relationship_contact_ambiguous": "Specify either an existing contact or a new contact, not both",
+      "relationship_contact_missing": "Specify an existing contact or a new contact",
+      "relationship_self_edge": "The source and target must be different contacts",
+      "relationship_partial_date_missing": "A date must include at least a year, month or day",
+      "relationship_month_out_of_range": "The month must be between 1 and 12",
+      "relationship_day_out_of_range": "The day must be between 1 and 31",
+      "relationship_end_before_start": "The end date cannot be before the start date",
+      "relationship_not_suggestion": "This relationship is not a pending suggestion",
+      "contact_bulk_no_operations": "Provide at least one of set, clear, custom_set or custom_clear",
+      "contact_bulk_field_not_editable": "{{field}} is not bulk-editable",
+      "contact_bulk_value_empty": "{{field}} must not be empty; list it in clear to empty it",
+      "contact_bulk_value_too_long": "{{field}} must be at most {{limit}} characters",
+      "contact_bulk_field_in_set_and_clear": "{{field}} cannot be in both set and clear",
+      "contact_bulk_custom_field_not_found": "A custom field definition was not found or is not yours",
+      "contact_bulk_custom_field_duplicate": "A custom field definition appears more than once",
+      "contact_bulk_custom_field_in_both": "A custom field cannot be in both custom_set and custom_clear",
+      "contact_bulk_custom_field_invalid": "{{field}} has an invalid value"
+    }
   }
 }
