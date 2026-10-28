@@ -1,4 +1,6 @@
+import i18next from 'i18next';
 import { afterEach, describe, expect, test, vi } from 'vitest';
+import '../i18n/config';
 import { ApiError, apiFetch, parseErrorResponse } from './client';
 import { onSessionExpired } from './sessionExpiry';
 
@@ -188,5 +190,100 @@ describe('parseErrorResponse / apiFetch fallbacks', () => {
     const abort = Object.assign(new Error('aborted'), { name: 'AbortError' });
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(abort));
     await expect(apiFetch('/api/v1/anything')).rejects.toThrow(/Request timeout after \d+ seconds/);
+  });
+});
+
+// ADR 0038 / issue #2096: a server reason code is translated when this build
+// knows it and every param is present; otherwise the server message stands.
+describe('ApiError.getDisplayMessage reason codes', () => {
+  afterEach(async () => {
+    await i18next.changeLanguage('en');
+  });
+
+  test('renders the translation for a known code with complete params', async () => {
+    await i18next.changeLanguage('de');
+    const err = new ApiError(
+      'must be at most 10 characters',
+      'INVALID_INPUT',
+      400,
+      undefined,
+      undefined,
+      'contact_bulk_value_too_long',
+      { field: 'organization', limit: 10 },
+    );
+    expect(err.getDisplayMessage()).toBe(
+      i18next.t('errors.reason.contact_bulk_value_too_long', { field: 'organization', limit: 10 }),
+    );
+    expect(err.getDisplayMessage()).not.toBe('must be at most 10 characters');
+  });
+
+  test('falls back to the server message for an unknown code', () => {
+    const err = new ApiError(
+      'Server says no',
+      'INVALID_INPUT',
+      400,
+      undefined,
+      undefined,
+      'not_a_real_code',
+      {},
+    );
+    expect(err.getDisplayMessage()).toBe('Server says no');
+  });
+
+  test('falls back to the server message when a param is missing', () => {
+    const err = new ApiError(
+      'Server says no',
+      'INVALID_INPUT',
+      400,
+      undefined,
+      undefined,
+      'contact_bulk_value_too_long',
+      { field: 'organization' },
+    );
+    expect(err.getDisplayMessage()).toBe('Server says no');
+  });
+
+  test('appends the localized request reference on a 5xx', async () => {
+    await i18next.changeLanguage('de');
+    const err = new ApiError('Something broke', 'INTERNAL', 503, undefined, 'abc');
+    expect(err.getDisplayMessage()).toBe(
+      `Something broke ${i18next.t('errors.requestRef', { id: 'abc' })}`,
+    );
+  });
+
+  test('keeps the English request reference on a 5xx in English', () => {
+    const err = new ApiError('Something broke', 'INTERNAL', 503, undefined, 'abc');
+    expect(err.getDisplayMessage()).toBe('Something broke (ref: abc)');
+  });
+
+  test('parseErrorResponse carries reason_code and reason_params from the envelope', async () => {
+    const response = new Response(
+      JSON.stringify({
+        error: {
+          code: 'INVALID_INPUT',
+          message: 'Invalid value',
+          reason_code: 'relationship_date_month_range',
+          reason_params: { field: 'start_date' },
+        },
+        request_id: 'req-1',
+      }),
+      { status: 400 },
+    );
+    const err = await parseErrorResponse(response);
+    expect(err.reasonCode).toBe('relationship_date_month_range');
+    expect(err.reasonParams).toEqual({ field: 'start_date' });
+    expect(err.requestId).toBe('req-1');
+  });
+
+  test('parseErrorResponse leaves the reason fields unset for a plain envelope', async () => {
+    const response = new Response(
+      JSON.stringify({ error: { code: 'NOT_FOUND', message: 'Missing' } }),
+      {
+        status: 404,
+      },
+    );
+    const err = await parseErrorResponse(response);
+    expect(err.reasonCode).toBeUndefined();
+    expect(err.reasonParams).toBeUndefined();
   });
 });

@@ -3418,5 +3418,32 @@
     "success": "Richtlinie für das CardDAV-/CalDAV-Passwort aktualisiert.",
     "error": "Die Richtlinie für das CardDAV-/CalDAV-Passwort konnte nicht aktualisiert werden.",
     "loadError": "Die Richtlinie für das CardDAV-/CalDAV-Passwort konnte nicht geladen werden."
+  },
+  "errors": {
+    "requestRef": "(Referenz: {{id}})",
+    "reason": {
+      "common_test_only": "Test {{n}}",
+      "contact_bulk_custom_field_duplicate": "Eine Felddefinition ist mehrfach aufgeführt",
+      "contact_bulk_custom_field_in_both": "Eine Felddefinition darf nicht zugleich in custom_set und custom_clear stehen",
+      "contact_bulk_custom_field_unknown": "Unbekannte oder nicht eigene Felddefinition",
+      "contact_bulk_custom_value_invalid": "{{reason}}",
+      "contact_bulk_field_in_set_and_clear": "{{field}} steht sowohl in set als auch in clear",
+      "contact_bulk_field_not_editable": "{{field}} kann nicht gemeinsam bearbeitet werden",
+      "contact_bulk_no_fields": "Wähle mindestens ein Feld zum Ändern aus",
+      "contact_bulk_value_empty": "{{field}} darf nicht leer sein; zum Leeren in „clear“ angeben",
+      "contact_bulk_value_too_long": "Die Länge von {{field}} ist höchstens {{limit}}",
+      "import_circles_not_found": "Einer oder mehrere Kreise wurden nicht gefunden",
+      "import_tags_not_found": "Ein oder mehrere Tags wurden nicht gefunden",
+      "relationship_date_day_range": "Der Tag von {{field}} muss zwischen 1 und 31 liegen",
+      "relationship_date_empty": "{{field}} muss mindestens ein Jahr, einen Monat oder einen Tag enthalten",
+      "relationship_date_month_range": "Der Monat von {{field}} muss zwischen 1 und 12 liegen",
+      "relationship_dates_reversed": "Das Enddatum liegt vor dem Startdatum",
+      "relationship_endpoint_both": "Gib für {{field}} entweder einen vorhandenen oder einen neuen Kontakt an, nicht beides",
+      "relationship_endpoint_missing": "Gib für {{field}} einen vorhandenen oder einen neuen Kontakt an",
+      "relationship_not_pending_suggestion": "Die Beziehung ist kein ausstehender Vorschlag",
+      "relationship_self_link": "Quelle und Ziel müssen verschiedene Kontakte sein",
+      "validation_cursor_malformed": "Die Cursor-ID von {{field}} ist ungültig",
+      "validation_id_count_range": "Anzahl für {{field}}: {{min}}–{{max}}"
+    }
   }
 }

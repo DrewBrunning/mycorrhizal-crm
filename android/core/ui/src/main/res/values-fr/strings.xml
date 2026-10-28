@@ -2636,4 +2636,27 @@
         <item quantity="other">Récence et fréquence : %1$d par rapport à l’objectif « %2$s » (%3$s)</item>
     </plurals>
     <string name="score_reason_target_ambient">Contact ambiant, toujours dans les temps</string>
+    <string name="error_request_ref">(réf. %1$s)</string>
+    <string name="error_reason_common_test_only">Test %1$d</string>
+    <string name="error_reason_contact_bulk_custom_field_duplicate">Une définition de champ personnalisé est indiquée plusieurs fois</string>
+    <string name="error_reason_contact_bulk_custom_field_in_both">Une définition de champ personnalisé ne peut pas figurer à la fois dans custom_set et custom_clear</string>
+    <string name="error_reason_contact_bulk_custom_field_unknown">Définition de champ personnalisé inconnue ou qui ne vous appartient pas</string>
+    <string name="error_reason_contact_bulk_custom_value_invalid">%1$s</string>
+    <string name="error_reason_contact_bulk_field_in_set_and_clear">%1$s figure à la fois dans set et clear</string>
+    <string name="error_reason_contact_bulk_field_not_editable">%1$s ne peut pas être modifié en lot</string>
+    <string name="error_reason_contact_bulk_no_fields">Choisissez au moins un champ à modifier</string>
+    <string name="error_reason_contact_bulk_value_empty">%1$s ne peut pas être vide ; indiquez-le dans clear pour le vider</string>
+    <string name="error_reason_contact_bulk_value_too_long">La longueur de %1$s est au maximum %2$d</string>
+    <string name="error_reason_import_circles_not_found">Un ou plusieurs cercles sont introuvables</string>
+    <string name="error_reason_import_tags_not_found">Une ou plusieurs étiquettes sont introuvables</string>
+    <string name="error_reason_relationship_date_day_range">Le jour de %1$s doit être compris entre 1 et 31</string>
+    <string name="error_reason_relationship_date_empty">%1$s doit contenir au moins une année, un mois ou un jour</string>
+    <string name="error_reason_relationship_date_month_range">Le mois de %1$s doit être compris entre 1 et 12</string>
+    <string name="error_reason_relationship_dates_reversed">La date de fin précède la date de début</string>
+    <string name="error_reason_relationship_endpoint_both">Indiquez soit un contact existant, soit un nouveau contact pour %1$s, pas les deux</string>
+    <string name="error_reason_relationship_endpoint_missing">Indiquez un contact existant ou un nouveau contact pour %1$s</string>
+    <string name="error_reason_relationship_not_pending_suggestion">La relation n\'est pas une suggestion en attente</string>
+    <string name="error_reason_relationship_self_link">La source et la cible doivent être des contacts différents</string>
+    <string name="error_reason_validation_cursor_malformed">L\'identifiant de curseur de %1$s est mal formé</string>
+    <string name="error_reason_validation_id_count_range">Plage d’identifiants de %1$s : %2$d–%3$d</string>
 </resources>

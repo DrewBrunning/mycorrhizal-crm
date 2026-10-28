@@ -3516,5 +3516,32 @@
     "success": "Politica della password CardDAV/CalDAV aggiornata.",
     "error": "Impossibile aggiornare la politica della password CardDAV/CalDAV.",
     "loadError": "Impossibile caricare la politica della password CardDAV/CalDAV."
+  },
+  "errors": {
+    "requestRef": "(rif: {{id}})",
+    "reason": {
+      "common_test_only": "Test {{n}}",
+      "contact_bulk_custom_field_duplicate": "Una definizione di campo personalizzato è elencata più di una volta",
+      "contact_bulk_custom_field_in_both": "Una definizione di campo personalizzato non può essere sia in custom_set sia in custom_clear",
+      "contact_bulk_custom_field_unknown": "Definizione di campo personalizzato sconosciuta o non di tua proprietà",
+      "contact_bulk_custom_value_invalid": "{{reason}}",
+      "contact_bulk_field_in_set_and_clear": "{{field}} è presente sia in set sia in clear",
+      "contact_bulk_field_not_editable": "{{field}} non può essere modificato in blocco",
+      "contact_bulk_no_fields": "Scegli almeno un campo da modificare",
+      "contact_bulk_value_empty": "{{field}} non può essere vuoto; indicalo in clear per svuotarlo",
+      "contact_bulk_value_too_long": "La lunghezza di {{field}} è al massimo {{limit}}",
+      "import_circles_not_found": "Uno o più cerchi non sono stati trovati",
+      "import_tags_not_found": "Una o più etichette non sono state trovate",
+      "relationship_date_day_range": "Il giorno di {{field}} deve essere compreso tra 1 e 31",
+      "relationship_date_empty": "{{field}} deve contenere almeno un anno, un mese o un giorno",
+      "relationship_date_month_range": "Il mese di {{field}} deve essere compreso tra 1 e 12",
+      "relationship_dates_reversed": "La data di fine precede la data di inizio",
+      "relationship_endpoint_both": "Indica per {{field}} un contatto esistente o uno nuovo, non entrambi",
+      "relationship_endpoint_missing": "Indica per {{field}} un contatto esistente o uno nuovo",
+      "relationship_not_pending_suggestion": "La relazione non è un suggerimento in attesa",
+      "relationship_self_link": "Origine e destinazione devono essere contatti diversi",
+      "validation_cursor_malformed": "L'id del cursore di {{field}} non è valido",
+      "validation_id_count_range": "Intervallo di id per {{field}}: {{min}}–{{max}}"
+    }
   }
 }

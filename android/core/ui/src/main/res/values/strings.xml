@@ -2562,4 +2562,27 @@
         <item quantity="other">Recency and frequency score %1$d against the %2$s target (%3$s)</item>
     </plurals>
     <string name="score_reason_target_ambient">Ambient contact, always on track</string>
+    <string name="error_request_ref">(ref: %1$s)</string>
+    <string name="error_reason_common_test_only">Test %1$d</string>
+    <string name="error_reason_contact_bulk_custom_field_duplicate">A custom field definition is listed more than once</string>
+    <string name="error_reason_contact_bulk_custom_field_in_both">A custom field definition cannot be in both custom_set and custom_clear</string>
+    <string name="error_reason_contact_bulk_custom_field_unknown">Unknown or not-owned custom field definition</string>
+    <string name="error_reason_contact_bulk_custom_value_invalid">%1$s</string>
+    <string name="error_reason_contact_bulk_field_in_set_and_clear">%1$s is in both set and clear</string>
+    <string name="error_reason_contact_bulk_field_not_editable">%1$s cannot be bulk-edited</string>
+    <string name="error_reason_contact_bulk_no_fields">Choose at least one field to change</string>
+    <string name="error_reason_contact_bulk_value_empty">%1$s cannot be empty; list it in clear to empty it</string>
+    <string name="error_reason_contact_bulk_value_too_long">%1$s length limit is %2$d</string>
+    <string name="error_reason_import_circles_not_found">One or more circles were not found</string>
+    <string name="error_reason_import_tags_not_found">One or more tags were not found</string>
+    <string name="error_reason_relationship_date_day_range">%1$s day must be 1–31</string>
+    <string name="error_reason_relationship_date_empty">%1$s must carry at least a year, month or day</string>
+    <string name="error_reason_relationship_date_month_range">%1$s month must be 1–12</string>
+    <string name="error_reason_relationship_dates_reversed">End date precedes the start date</string>
+    <string name="error_reason_relationship_endpoint_both">Specify either an existing contact or a new contact for %1$s, not both</string>
+    <string name="error_reason_relationship_endpoint_missing">Specify either an existing contact or a new contact for %1$s</string>
+    <string name="error_reason_relationship_not_pending_suggestion">Relationship is not a pending suggestion</string>
+    <string name="error_reason_relationship_self_link">Source and target must be different contacts</string>
+    <string name="error_reason_validation_cursor_malformed">%1$s cursor id is malformed</string>
+    <string name="error_reason_validation_id_count_range">%1$s count range: %2$d–%3$d</string>
 </resources>

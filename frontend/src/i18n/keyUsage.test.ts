@@ -32,6 +32,11 @@ interface DynamicKeySource {
 
 const DYNAMIC_KEY_SOURCES: readonly DynamicKeySource[] = [
   {
+    prefix: 'errors.reason.',
+    file: 'api/client.ts',
+    reason: 'reason_code comes from the server error envelope (ADR 0038)',
+  },
+  {
     prefix: 'apiTokens.createDialog.scopeHelp.',
     file: 'SettingsPage.tsx',
     values: ['full', 'contacts', 'calendar', 'both', 'api', 'mcp'],

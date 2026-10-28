@@ -3418,5 +3418,32 @@
     "success": "CardDAV/CalDAV password policy updated.",
     "error": "Unable to update the CardDAV/CalDAV password policy.",
     "loadError": "Unable to load the CardDAV/CalDAV password policy."
+  },
+  "errors": {
+    "requestRef": "(ref: {{id}})",
+    "reason": {
+      "common_test_only": "Test {{n}}",
+      "contact_bulk_custom_field_duplicate": "A custom field definition is listed more than once",
+      "contact_bulk_custom_field_in_both": "A custom field definition cannot be in both custom_set and custom_clear",
+      "contact_bulk_custom_field_unknown": "Unknown or not-owned custom field definition",
+      "contact_bulk_custom_value_invalid": "{{reason}}",
+      "contact_bulk_field_in_set_and_clear": "{{field}} is in both set and clear",
+      "contact_bulk_field_not_editable": "{{field}} cannot be bulk-edited",
+      "contact_bulk_no_fields": "Choose at least one field to change",
+      "contact_bulk_value_empty": "{{field}} cannot be empty; list it in clear to empty it",
+      "contact_bulk_value_too_long": "{{field}} length limit is {{limit}}",
+      "import_circles_not_found": "One or more circles were not found",
+      "import_tags_not_found": "One or more tags were not found",
+      "relationship_date_day_range": "{{field}} day must be 1–31",
+      "relationship_date_empty": "{{field}} must carry at least a year, month or day",
+      "relationship_date_month_range": "{{field}} month must be 1–12",
+      "relationship_dates_reversed": "End date precedes the start date",
+      "relationship_endpoint_both": "Specify either an existing contact or a new contact for {{field}}, not both",
+      "relationship_endpoint_missing": "Specify either an existing contact or a new contact for {{field}}",
+      "relationship_not_pending_suggestion": "Relationship is not a pending suggestion",
+      "relationship_self_link": "Source and target must be different contacts",
+      "validation_cursor_malformed": "{{field}} cursor id is malformed",
+      "validation_id_count_range": "{{field}} count range: {{min}}–{{max}}"
+    }
   }
 }

@@ -3516,5 +3516,32 @@
     "success": "Politique de mot de passe CardDAV/CalDAV mise à jour.",
     "error": "Impossible de mettre à jour la politique de mot de passe CardDAV/CalDAV.",
     "loadError": "Impossible de charger la politique de mot de passe CardDAV/CalDAV."
+  },
+  "errors": {
+    "requestRef": "(réf. {{id}})",
+    "reason": {
+      "common_test_only": "Test {{n}}",
+      "contact_bulk_custom_field_duplicate": "Une définition de champ personnalisé est indiquée plusieurs fois",
+      "contact_bulk_custom_field_in_both": "Une définition de champ personnalisé ne peut pas figurer à la fois dans custom_set et custom_clear",
+      "contact_bulk_custom_field_unknown": "Définition de champ personnalisé inconnue ou qui ne vous appartient pas",
+      "contact_bulk_custom_value_invalid": "{{reason}}",
+      "contact_bulk_field_in_set_and_clear": "{{field}} figure à la fois dans set et clear",
+      "contact_bulk_field_not_editable": "{{field}} ne peut pas être modifié en lot",
+      "contact_bulk_no_fields": "Choisissez au moins un champ à modifier",
+      "contact_bulk_value_empty": "{{field}} ne peut pas être vide ; indiquez-le dans clear pour le vider",
+      "contact_bulk_value_too_long": "La longueur de {{field}} est au maximum {{limit}}",
+      "import_circles_not_found": "Un ou plusieurs cercles sont introuvables",
+      "import_tags_not_found": "Une ou plusieurs étiquettes sont introuvables",
+      "relationship_date_day_range": "Le jour de {{field}} doit être compris entre 1 et 31",
+      "relationship_date_empty": "{{field}} doit contenir au moins une année, un mois ou un jour",
+      "relationship_date_month_range": "Le mois de {{field}} doit être compris entre 1 et 12",
+      "relationship_dates_reversed": "La date de fin précède la date de début",
+      "relationship_endpoint_both": "Indiquez soit un contact existant, soit un nouveau contact pour {{field}}, pas les deux",
+      "relationship_endpoint_missing": "Indiquez un contact existant ou un nouveau contact pour {{field}}",
+      "relationship_not_pending_suggestion": "La relation n'est pas une suggestion en attente",
+      "relationship_self_link": "La source et la cible doivent être des contacts différents",
+      "validation_cursor_malformed": "L'identifiant de curseur de {{field}} est mal formé",
+      "validation_id_count_range": "Plage d’identifiants de {{field}} : {{min}}–{{max}}"
+    }
   }
 }
