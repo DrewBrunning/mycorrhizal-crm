@@ -340,3 +340,28 @@ func TestScheduledPurge_KeepsSyncLinkRemovesSnapshotAndFiles(t *testing.T) {
 	_, err := os.Stat(filepath.Join(dir, "p.jpg"))
 	assert.True(t, os.IsNotExist(err), "photo file removed after the purge committed")
 }
+
+func TestContactUIDInUseError_Message(t *testing.T) {
+	err := &ContactUIDInUseError{LiveContactID: 42}
+	assert.Equal(t, "a live contact (id 42) already uses this contact's UID", err.Error())
+}
+
+func TestNormalizeRow_BytesBecomeStrings(t *testing.T) {
+	row := normalizeRow(map[string]any{"blob": []byte("abc"), "text": "x", "n": 1})
+	assert.Equal(t, "abc", row["blob"])
+	assert.Equal(t, "x", row["text"])
+	assert.Equal(t, 1, row["n"])
+}
+
+func TestDecodePayload_RejectsMalformedJSON(t *testing.T) {
+	_, err := decodePayload("{not json")
+	assert.Error(t, err)
+}
+
+func TestListTrash_SurfacesQueryFailure(t *testing.T) {
+	db, userID := newPurgeDB(t)
+	require.NoError(t, db.Exec("DROP TABLE contact_deletion_snapshots").Error)
+
+	_, _, err := ListTrash(db, userID, 0, 10)
+	assert.Error(t, err)
+}

@@ -190,5 +190,5 @@ Three details changed while implementing, each simpler than the original text an
 
 Photo and attachment files are no longer removed when a contact is deleted; they are removed by every purge
 path after commit (decision 5), which required changing `DeleteContact`, the bulk delete action and the
-scheduled purge. Audit gained `restore` and `purge` operations (migration 000079 rebuilds the CHECK, as 000070
+scheduled purge. Audit gained `restore` and `purge` operations (migration 000080 rebuilds the CHECK, as 000070
 did).

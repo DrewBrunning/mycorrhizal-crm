@@ -38,9 +38,9 @@ func abortTrashError(c *gin.Context, id uint, err error) {
 		apperrors.AbortWithError(c, apperrors.ErrNotFound("Contact").WithDetails("id", id))
 	case errors.As(err, &inUse):
 		apperrors.AbortWithError(c, apperrors.ErrConflict("A live contact already uses this contact's UID; merge or delete it first").
-			WithDetails("live_contact_id", inUse.LiveContactID))
+			WithDetails("live_contact_id", inUse.LiveContactID).WithReason(apperrors.ReasonTrashUIDInUse, nil))
 	case errors.Is(err, services.ErrSnapshotUnsupported):
-		apperrors.AbortWithError(c, apperrors.ErrConflict("This contact's deletion snapshot is not supported by this version; it can still be deleted permanently"))
+		apperrors.AbortWithError(c, apperrors.ErrConflict("This contact's deletion snapshot is not supported by this version; it can still be deleted permanently").WithReason(apperrors.ReasonTrashSnapshotUnsupported, nil))
 	default:
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Trash operation failed").WithError(err))
 	}
