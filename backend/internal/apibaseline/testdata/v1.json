@@ -15486,6 +15486,16 @@
           "required": true
         },
         {
+          "name": "assign_circle_ids",
+          "type": "array\u003cstring\u003e",
+          "required": false
+        },
+        {
+          "name": "assign_tag_ids",
+          "type": "array\u003cstring\u003e",
+          "required": false
+        },
+        {
           "name": "field_mappings",
           "type": "array\u003cobject\u003e",
           "required": false
@@ -15545,6 +15555,46 @@
       ]
     },
     {
+      "name": "ImportFixedAssignment",
+      "properties": [
+        {
+          "name": "circles",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        },
+        {
+          "name": "contact_count",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "membership_count",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "tags",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "ImportFixedAssignmentItem",
+      "properties": [
+        {
+          "name": "id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
       "name": "ImportMergeDiff",
       "properties": [
         {
@@ -15562,6 +15612,16 @@
     {
       "name": "ImportPreviewRequest",
       "properties": [
+        {
+          "name": "assign_circle_ids",
+          "type": "array\u003cstring\u003e",
+          "required": false
+        },
+        {
+          "name": "assign_tag_ids",
+          "type": "array\u003cstring\u003e",
+          "required": false
+        },
         {
           "name": "mappings",
           "type": "array\u003cobject\u003e",
@@ -15585,6 +15645,11 @@
         {
           "name": "error_count",
           "type": "integer",
+          "required": false
+        },
+        {
+          "name": "fixed_assignment",
+          "type": "ref:ImportFixedAssignment",
           "required": false
         },
         {

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 
+	apperrors "mycorrhizal/errors"
 	"mycorrhizal/models"
 
 	"gorm.io/gorm"
@@ -193,4 +194,109 @@ func TagNamesForContact(db *gorm.DB, userID uint, vcardUID string) ([]string, er
 		Order("tags.name").
 		Pluck("tags.name", &names).Error
 	return names, err
+}
+
+// ImportFixedAssignment is the resolved, ownership-checked form of the
+// assign_circle_ids / assign_tag_ids an import request carries (issue #2000).
+type ImportFixedAssignment struct {
+	Circles []models.Circle
+	Tags    []models.Tag
+}
+
+// Empty reports whether the assignment adds nothing.
+func (f *ImportFixedAssignment) Empty() bool {
+	return f == nil || (len(f.Circles) == 0 && len(f.Tags) == 0)
+}
+
+func dedupeIDs(ids []string) []string {
+	seen := make(map[string]bool, len(ids))
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if id == "" || seen[id] {
+			continue
+		}
+		seen[id] = true
+		out = append(out, id)
+	}
+	return out
+}
+
+// ResolveImportFixedAssignment loads the named circles and tags scoped by
+// user_id. Any id that is not one of the caller's own rows -- unknown or
+// owned by someone else, indistinguishably -- is a 400 and nothing is
+// returned. Duplicate ids collapse. With no ids it returns (nil, nil).
+func ResolveImportFixedAssignment(db *gorm.DB, userID uint, circleIDs, tagIDs []string) (*ImportFixedAssignment, *apperrors.AppError) {
+	circleIDs = dedupeIDs(circleIDs)
+	tagIDs = dedupeIDs(tagIDs)
+	if len(circleIDs) == 0 && len(tagIDs) == 0 {
+		return nil, nil
+	}
+	out := &ImportFixedAssignment{}
+	if len(circleIDs) > 0 {
+		if err := db.Where("user_id = ? AND id IN ?", userID, circleIDs).Order("name").Find(&out.Circles).Error; err != nil {
+			return nil, apperrors.ErrDatabase("Failed to resolve circles").WithError(err)
+		}
+		if len(out.Circles) != len(circleIDs) {
+			return nil, apperrors.ErrInvalidInput("assign_circle_ids", "One or more circles were not found")
+		}
+	}
+	if len(tagIDs) > 0 {
+		if err := db.Where("user_id = ? AND id IN ?", userID, tagIDs).Order("name").Find(&out.Tags).Error; err != nil {
+			return nil, apperrors.ErrDatabase("Failed to resolve tags").WithError(err)
+		}
+		if len(out.Tags) != len(tagIDs) {
+			return nil, apperrors.ErrInvalidInput("assign_tag_ids", "One or more tags were not found")
+		}
+	}
+	return out, nil
+}
+
+// ApplyImportFixedAssignment adds the contact to every fixed circle/tag.
+// It reuses ensureCircleMember/ensureContactTag, so a membership the contact
+// already holds (from its own row or a previous import) is left alone and a
+// re-import never duplicates. Call inside the import transaction after the
+// contact is persisted.
+func ApplyImportFixedAssignment(tx *gorm.DB, userID uint, contact *models.Contact, fixed *ImportFixedAssignment) error {
+	if fixed.Empty() {
+		return nil
+	}
+	if contact.VCardUID == "" {
+		return errors.New("cannot apply fixed assignment: contact has no VCardUID")
+	}
+	for _, c := range fixed.Circles {
+		if err := ensureCircleMember(tx, userID, c.ID, contact.VCardUID); err != nil {
+			return err
+		}
+	}
+	for _, t := range fixed.Tags {
+		if err := ensureContactTag(tx, userID, t.ID, contact.VCardUID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// BuildImportFixedAssignmentPreview renders the fixed assignment and its
+// membership count for the preview response.
+func BuildImportFixedAssignmentPreview(fixed *ImportFixedAssignment, previews []models.ImportRowPreview) *models.ImportFixedAssignment {
+	if fixed.Empty() {
+		return nil
+	}
+	out := &models.ImportFixedAssignment{
+		Circles: make([]models.ImportFixedAssignmentItem, 0, len(fixed.Circles)),
+		Tags:    make([]models.ImportFixedAssignmentItem, 0, len(fixed.Tags)),
+	}
+	for _, c := range fixed.Circles {
+		out.Circles = append(out.Circles, models.ImportFixedAssignmentItem{ID: c.ID, Name: c.Name})
+	}
+	for _, t := range fixed.Tags {
+		out.Tags = append(out.Tags, models.ImportFixedAssignmentItem{ID: t.ID, Name: t.Name})
+	}
+	for _, p := range previews {
+		if len(p.ValidationErrors) == 0 && (p.SuggestedAction == "add" || p.SuggestedAction == "update") {
+			out.ContactCount++
+		}
+	}
+	out.MembershipCount = out.ContactCount * (len(out.Circles) + len(out.Tags))
+	return out
 }

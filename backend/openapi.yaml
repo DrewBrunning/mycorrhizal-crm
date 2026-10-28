@@ -17524,6 +17524,19 @@ components:
         mappings:
           type: array
           items: { $ref: "#/components/schemas/ColumnMapping" }
+        assign_circle_ids:
+          type: array
+          maxItems: 50
+          items: { type: string, format: uuid }
+          description: >
+            Issue #2000 — ids of the caller's own circles every imported contact
+            joins, in addition to per-row circle mappings. Duplicates collapse;
+            an unknown or foreign id is a 400.
+        assign_tag_ids:
+          type: array
+          maxItems: 50
+          items: { type: string, format: uuid }
+          description: Issue #2000 — as assign_circle_ids, for tags.
     DuplicateMatch:
       type: object
       description: Describes a potential duplicate contact found via email/name/phone matching.
@@ -17723,6 +17736,31 @@ components:
         valid_rows: { type: integer }
         duplicate_count: { type: integer }
         error_count: { type: integer }
+        fixed_assignment:
+          $ref: "#/components/schemas/ImportFixedAssignment"
+    ImportFixedAssignmentItem:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string }
+        name: { type: string }
+    ImportFixedAssignment:
+      type: object
+      description: >
+        Issue #2000 — present on the CSV preview only when the request carried
+        assign_circle_ids / assign_tag_ids. membership_count is
+        contact_count x (circles + tags), an upper bound (existing memberships
+        are not duplicated).
+      required: [circles, tags, contact_count, membership_count]
+      properties:
+        circles:
+          type: array
+          items: { $ref: "#/components/schemas/ImportFixedAssignmentItem" }
+        tags:
+          type: array
+          items: { $ref: "#/components/schemas/ImportFixedAssignmentItem" }
+        contact_count: { type: integer }
+        membership_count: { type: integer }
     RowImportAction:
       type: object
       required: [action]
@@ -17746,6 +17784,19 @@ components:
             passthrough except those matching an existing definition's vcard
             projection, which auto-promote. Only VCF/JSContact/records
             (VCF-like) sessions consume these.
+        assign_circle_ids:
+          type: array
+          maxItems: 50
+          items: { type: string, format: uuid }
+          description: >
+            Issue #2000 — ids of the caller's own circles every created or updated contact
+            joins, in addition to per-row circle mappings. Duplicates collapse;
+            an unknown or foreign id is a 400.
+        assign_tag_ids:
+          type: array
+          maxItems: 50
+          items: { type: string, format: uuid }
+          description: Issue #2000 — as assign_circle_ids, for tags.
     ImportFieldMapping:
       type: object
       required: [property_name, action]

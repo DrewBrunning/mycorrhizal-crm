@@ -348,6 +348,14 @@
         "duplicateWarning": "Diese einwertigen Felder sind mehreren Spalten zugeordnet; nur die letzte Spalte wird verwendet: {{fields}}",
         "duplicateField": "Mehrfach zugeordnet"
       },
+      "fixedAssignment": {
+        "title": "Jeden importierten Kontakt hinzufügen zu",
+        "description": "Optional. Diese Kreise und Tags werden jedem importierten Kontakt zugewiesen, zusätzlich zu Kreisen oder Tags aus Spalten.",
+        "circles": "Kreise",
+        "tags": "Tags",
+        "create": "„{{name}}“ erstellen",
+        "summary": "Jeder importierte Kontakt wird hinzugefügt zu: {{groups}}. Bis zu {{total}} Zuordnungen werden angelegt."
+      },
       "steps": {
         "upload": "Hochladen",
         "mapColumns": "Spalten zuordnen",
