@@ -7,10 +7,18 @@ import (
 	"os"
 	"path/filepath"
 
+	"mycorrhizal/internal/versionpolicy"
+
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/checker"
 	"golang.org/x/tools/go/packages"
 )
+
+// ZeroFromRelease is the first release that may not carry any unmigrated
+// user-facing error site (issue #2093, milestone v1.6.0). From this release
+// onward release.yml runs reasoncodecheck with -release-tag, and a non-empty
+// allowlist blocks the tag. Releases before it only need the ratchet to hold.
+const ZeroFromRelease = "v1.6.0"
 
 // DefaultAllowlist is the allowlist path relative to the backend module root,
 // where cmd/reasoncodecheck runs.
@@ -25,8 +33,18 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	fs.SetOutput(stderr)
 	allowPath := fs.String("allowlist", DefaultAllowlist, "counted allowlist file")
 	write := fs.Bool("write-allowlist", false, "rewrite the allowlist from the current counts")
+	releaseTag := fs.String("release-tag", "", "release being cut (vX.Y.Z[-rc.N]); from "+ZeroFromRelease+" onward the allowlist must be empty")
 	if err := fs.Parse(args); err != nil {
 		return 2
+	}
+	zeroRequired := false
+	if *releaseTag != "" {
+		var err error
+		zeroRequired, err = versionpolicy.AtLeastTag(*releaseTag, ZeroFromRelease)
+		if err != nil {
+			_, _ = fmt.Fprintln(stderr, "reasoncodecheck: -release-tag:", err)
+			return 2
+		}
 	}
 	patterns := fs.Args()
 	if len(patterns) == 0 {
@@ -69,6 +87,13 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	problems := Compare(counts, allow)
+	if zeroRequired {
+		if left := totalSites(allow); left > 0 {
+			problems = append(problems, fmt.Sprintf(
+				"release %s requires every user-facing error to carry a reason code (issue #2093, ADR 0038), but %d unmigrated site(s) in %d file(s) remain in %s; migrate them (issues #2099-#2105) and lower the allowlist to empty",
+				*releaseTag, left, len(allow), *allowPath))
+		}
+	}
 	for _, p := range problems {
 		_, _ = fmt.Fprintln(stderr, p)
 	}
@@ -115,4 +140,12 @@ func Count(patterns []string) (map[string]int, error) {
 		}
 	}
 	return counts, nil
+}
+
+func totalSites(allow map[string]int) int {
+	total := 0
+	for _, n := range allow {
+		total += n
+	}
+	return total
 }

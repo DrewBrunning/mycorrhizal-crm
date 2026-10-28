@@ -322,6 +322,18 @@ jobs:
         working-directory: backend
         run: go run ./cmd/releasegatecheck
 
+      # Issue #2093 (milestone v1.6.0): the error reason-code migration (ADR 0038)
+      # must be finished by v1.6.0. From that release on -- release candidates
+      # included -- any unmigrated user-facing error site left in
+      # internal/lint/reasoncode/allowlist.txt refuses the tag, before any
+      # expensive gate runs. Earlier versions only need the ratchet to hold.
+      # The version arrives through env, never interpolated into the script.
+      - name: Gate - every user-facing error carries a reason code (reasoncodecheck)
+        working-directory: backend
+        env:
+          VERSION: ${{ inputs.version }}
+        run: go run ./cmd/reasoncodecheck -release-tag "$VERSION" ./...
+
       # Issue #1486: gates only a human can discharge (today: LocalOnlyModeE2eTest
       # on a real arm64 device) have no CI job that can go red, so forgetting one
       # was silent. Every gate in .github/manual-gates.json that applies to this
