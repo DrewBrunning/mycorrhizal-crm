@@ -1982,6 +1982,19 @@
     </plurals>
     <string name="import_csv_mapping_ignore">-- Ignorer --</string>
     <string name="import_csv_mapping_continue">Continuer</string>
+    <string name="import_fixed_title">Ajouter chaque contact importé à</string>
+    <string name="import_fixed_description">Facultatif. Ces cercles et étiquettes sont appliqués à chaque contact importé, en plus de ceux issus des colonnes.</string>
+    <string name="import_fixed_circles">Cercles</string>
+    <string name="import_fixed_tags">Étiquettes</string>
+    <string name="import_fixed_new_circle">Nouveau cercle</string>
+    <string name="import_fixed_new_tag">Nouvelle étiquette</string>
+    <string name="import_fixed_name">Nom</string>
+    <string name="import_fixed_create">Créer</string>
+    <plurals name="import_fixed_summary">
+        <item quantity="one">Chaque contact importé sera ajouté à : %1$s. Jusqu\'à %2$d appartenance sera ajoutée.</item>
+        <item quantity="many">Chaque contact importé sera ajouté à : %1$s. Jusqu\'à %2$d appartenances seront ajoutées.</item>
+        <item quantity="other">Chaque contact importé sera ajouté à : %1$s. Jusqu\'à %2$d appartenances seront ajoutées.</item>
+    </plurals>
 
     <!-- Étiquettes de champ pour la correspondance des colonnes CSV (issue #834) -->
     <string name="import_field_firstname">Prénom</string>

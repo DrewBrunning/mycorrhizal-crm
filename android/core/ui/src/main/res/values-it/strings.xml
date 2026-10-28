@@ -1982,6 +1982,19 @@
     </plurals>
     <string name="import_csv_mapping_ignore">-- Ignora --</string>
     <string name="import_csv_mapping_continue">Continua</string>
+    <string name="import_fixed_title">Aggiungi ogni contatto importato a</string>
+    <string name="import_fixed_description">Facoltativo. Questi cerchi e tag vengono applicati a ogni contatto importato, oltre a quelli mappati dalle colonne.</string>
+    <string name="import_fixed_circles">Cerchie</string>
+    <string name="import_fixed_tags">Tag</string>
+    <string name="import_fixed_new_circle">Nuovo cerchio</string>
+    <string name="import_fixed_new_tag">Nuovo tag</string>
+    <string name="import_fixed_name">Nome</string>
+    <string name="import_fixed_create">Crea</string>
+    <plurals name="import_fixed_summary">
+        <item quantity="one">Ogni contatto importato verrà aggiunto a: %1$s. Verrà aggiunta fino a %2$d appartenenza.</item>
+        <item quantity="many">Ogni contatto importato verrà aggiunto a: %1$s. Verranno aggiunte fino a %2$d appartenenze.</item>
+        <item quantity="other">Ogni contatto importato verrà aggiunto a: %1$s. Verranno aggiunte fino a %2$d appartenenze.</item>
+    </plurals>
 
     <!-- Etichette dei campi per la mappatura delle colonne CSV (issue #834) -->
     <string name="import_field_firstname">Nome</string>

@@ -78,6 +78,10 @@ fun CsvImportScreen(
         onFileTooLarge = viewModel::onFileTooLarge,
         onColumnFieldChange = viewModel::setColumnField,
         onSubmitMapping = viewModel::submitMapping,
+        onToggleCircle = viewModel::toggleCircle,
+        onToggleTag = viewModel::toggleTag,
+        onCreateCircle = viewModel::createCircle,
+        onCreateTag = viewModel::createTag,
         onRowActionChange = viewModel::setRowAction,
         onResolveAll = viewModel::resolveAll,
         onConfirm = viewModel::confirm,
@@ -97,6 +101,10 @@ fun CsvImportScreenContent(
     onFileTooLarge: () -> Unit = {},
     onColumnFieldChange: (String, String) -> Unit = { _, _ -> },
     onSubmitMapping: () -> Unit = {},
+    onToggleCircle: (String) -> Unit = {},
+    onToggleTag: (String) -> Unit = {},
+    onCreateCircle: (String) -> Unit = {},
+    onCreateTag: (String) -> Unit = {},
     onRowActionChange: (Int, String) -> Unit = { _, _ -> },
     onResolveAll: () -> Unit = {},
     onConfirm: () -> Unit = {},
@@ -168,17 +176,33 @@ fun CsvImportScreenContent(
                         upload = uiState.upload,
                         columnFields = uiState.columnFields,
                         onColumnFieldChange = onColumnFieldChange,
-                        onContinue = onSubmitMapping
+                        onContinue = onSubmitMapping,
+                        picker = {
+                            ImportFixedAssignmentPicker(
+                                circles = uiState.circles,
+                                tags = uiState.tags,
+                                selectedCircleIds = uiState.selectedCircleIds,
+                                selectedTagIds = uiState.selectedTagIds,
+                                onToggleCircle = onToggleCircle,
+                                onToggleTag = onToggleTag,
+                                onCreateCircle = onCreateCircle,
+                                onCreateTag = onCreateTag
+                            )
+                        }
                     )
 
                 uiState.step == CsvImportStep.PREVIEW && uiState.preview != null ->
-                    ImportReviewStep(
-                        rows = uiState.preview.rows,
-                        rowActions = uiState.rowActions,
-                        onRowActionChange = onRowActionChange,
-                        onResolveAll = onResolveAll,
-                        onConfirm = onConfirm
-                    )
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        uiState.preview.fixedAssignment?.let { FixedAssignmentSummary(it) }
+                        ImportReviewStep(
+                            rows = uiState.preview.rows,
+                            rowActions = uiState.rowActions,
+                            onRowActionChange = onRowActionChange,
+                            onResolveAll = onResolveAll,
+                            onConfirm = onConfirm,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
 
                 uiState.step == CsvImportStep.RESULT && uiState.result != null ->
                     CsvResultStep(
@@ -229,7 +253,8 @@ private fun MappingStep(
     upload: ImportUploadResponse,
     columnFields: Map<String, String>,
     onColumnFieldChange: (String, String) -> Unit,
-    onContinue: () -> Unit
+    onContinue: () -> Unit,
+    picker: @Composable () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         Text(
@@ -253,6 +278,7 @@ private fun MappingStep(
                     onFieldChange = { field -> onColumnFieldChange(header, field) }
                 )
             }
+            item { picker() }
         }
         Button(
             onClick = onContinue,

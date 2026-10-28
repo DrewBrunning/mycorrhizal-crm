@@ -1916,6 +1916,18 @@
     </plurals>
     <string name="import_csv_mapping_ignore">-- Ignorieren --</string>
     <string name="import_csv_mapping_continue">Weiter</string>
+    <string name="import_fixed_title">Jeden importierten Kontakt hinzufügen zu</string>
+    <string name="import_fixed_description">Optional. Diese Kreise und Tags werden jedem importierten Kontakt zugewiesen, zusätzlich zu Kreisen oder Tags aus Spalten.</string>
+    <string name="import_fixed_circles">Kreise</string>
+    <string name="import_fixed_tags">Tags</string>
+    <string name="import_fixed_new_circle">Neuer Kreis</string>
+    <string name="import_fixed_new_tag">Neuer Tag</string>
+    <string name="import_fixed_name">Name</string>
+    <string name="import_fixed_create">Erstellen</string>
+    <plurals name="import_fixed_summary">
+        <item quantity="one">Jeder importierte Kontakt wird hinzugefügt zu: %1$s. Bis zu %2$d Zuordnung wird angelegt.</item>
+        <item quantity="other">Jeder importierte Kontakt wird hinzugefügt zu: %1$s. Bis zu %2$d Zuordnungen werden angelegt.</item>
+    </plurals>
 
     <!-- CSV-Spaltenzuordnung: Feldbezeichnungen (issue #834) -->
     <string name="import_field_firstname">Vorname</string>

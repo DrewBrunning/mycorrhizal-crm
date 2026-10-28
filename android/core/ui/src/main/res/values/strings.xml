@@ -1933,6 +1933,18 @@
     </plurals>
     <string name="import_csv_mapping_ignore">-- Ignore --</string>
     <string name="import_csv_mapping_continue">Continue</string>
+    <string name="import_fixed_title">Add every imported contact to</string>
+    <string name="import_fixed_description">Optional. These circles and tags are applied to every contact you import, in addition to any circles or tags mapped from columns.</string>
+    <string name="import_fixed_circles">Circles</string>
+    <string name="import_fixed_tags">Tags</string>
+    <string name="import_fixed_new_circle">New circle</string>
+    <string name="import_fixed_new_tag">New tag</string>
+    <string name="import_fixed_name">Name</string>
+    <string name="import_fixed_create">Create</string>
+    <plurals name="import_fixed_summary">
+        <item quantity="one">Every imported contact will be added to: %1$s. Up to %2$d membership will be added.</item>
+        <item quantity="other">Every imported contact will be added to: %1$s. Up to %2$d memberships will be added.</item>
+    </plurals>
 
     <!-- CSV column-mapping field labels (issue #834) — mirrors frontend/src/api/import.ts's CONTACT_FIELD_LABELS -->
     <string name="import_field_firstname">First name</string>
