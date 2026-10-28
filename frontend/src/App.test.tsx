@@ -242,3 +242,39 @@ test('a client-side navigation moves focus to the new page heading', async () =>
     ),
   );
 });
+
+// #2154: Settings (/settings) is a path prefix of Data (/settings/data); the
+// drawer must mark only the most specific matching destination as current.
+function currentNavPaths(): string[] {
+  const nav = screen.getByRole('navigation', { name: 'Main navigation' });
+  return Array.from(nav.querySelectorAll('a[aria-current="page"]')).map(
+    (a) => a.getAttribute('href') ?? '',
+  );
+}
+
+function visit(path: string) {
+  setLoggedInUser(false);
+  window.history.pushState({}, '', path);
+  window.dispatchEvent(new PopStateEvent('popstate'));
+  renderApp();
+}
+
+test('at /settings/data only the Data nav item is current', () => {
+  visit('/settings/data');
+  expect(currentNavPaths()).toEqual(['/settings/data']);
+});
+
+test('at /settings only the Settings nav item is current', () => {
+  visit('/settings');
+  expect(currentNavPaths()).toEqual(['/settings']);
+});
+
+test('a /settings/<other> route with no nav item of its own keeps Settings current', () => {
+  visit('/settings/security');
+  expect(currentNavPaths()).toEqual(['/settings']);
+});
+
+test('a path that merely shares a string prefix with a nav item is not current for it', () => {
+  visit('/contacts-archive');
+  expect(currentNavPaths()).toEqual([]);
+});
