@@ -5,8 +5,8 @@
     "src/ActivitiesPage.tsx": {
       "lines": 92.39,
       "linesTotal": 92,
-      "branches": 92.1,
-      "branchesTotal": 76
+      "branches": 91.02,
+      "branchesTotal": 78
     },
     "src/App.tsx": {
       "lines": 73.14,
@@ -27,7 +27,7 @@
       "branchesTotal": 50
     },
     "src/CircleTagTriagePage.tsx": {
-      "lines": 79.86,
+      "lines": 78.91,
       "linesTotal": 147,
       "branches": 75,
       "branchesTotal": 72
@@ -51,16 +51,16 @@
       "branchesTotal": 37
     },
     "src/ContactsPage.tsx": {
-      "lines": 89,
+      "lines": 89.52,
       "linesTotal": 191,
       "branches": 84.44,
       "branchesTotal": 135
     },
     "src/DashboardPage.tsx": {
-      "lines": 75.48,
-      "linesTotal": 155,
-      "branches": 62.5,
-      "branchesTotal": 96
+      "lines": 77.1,
+      "linesTotal": 166,
+      "branches": 67.27,
+      "branchesTotal": 110
     },
     "src/DataSettingsPage.tsx": {
       "lines": 100,
@@ -69,9 +69,9 @@
       "branchesTotal": 52
     },
     "src/DateFormatProvider.tsx": {
-      "lines": 93.66,
+      "lines": 94.01,
       "linesTotal": 284,
-      "branches": 85.26,
+      "branches": 85.71,
       "branchesTotal": 224
     },
     "src/HouseholdsPage.tsx": {
@@ -129,10 +129,10 @@
       "branchesTotal": 38
     },
     "src/SettingsPage.tsx": {
-      "lines": 82.66,
-      "linesTotal": 225,
-      "branches": 66.05,
-      "branchesTotal": 111
+      "lines": 82.32,
+      "linesTotal": 249,
+      "branches": 68.05,
+      "branchesTotal": 144
     },
     "src/ShareTargetPage.tsx": {
       "lines": 92.59,
@@ -172,9 +172,9 @@
     },
     "src/api/apiTokens.ts": {
       "lines": 100,
-      "linesTotal": 17,
+      "linesTotal": 22,
       "branches": 100,
-      "branchesTotal": 4
+      "branchesTotal": 7
     },
     "src/api/attachments.ts": {
       "lines": 100,
@@ -226,9 +226,9 @@
     },
     "src/api/client.ts": {
       "lines": 100,
-      "linesTotal": 39,
+      "linesTotal": 42,
       "branches": 100,
-      "branchesTotal": 38
+      "branchesTotal": 42
     },
     "src/api/contactDetail.ts": {
       "lines": 100,
@@ -316,7 +316,7 @@
     },
     "src/api/errorAggregation.ts": {
       "lines": 100,
-      "linesTotal": 5,
+      "linesTotal": 4,
       "branches": 100,
       "branchesTotal": 3
     },
@@ -418,9 +418,9 @@
     },
     "src/api/meerkatImport.ts": {
       "lines": 100,
-      "linesTotal": 16,
+      "linesTotal": 19,
       "branches": 100,
-      "branchesTotal": 6
+      "branchesTotal": 10
     },
     "src/api/monicaImport.ts": {
       "lines": 100,
@@ -478,7 +478,7 @@
     },
     "src/api/preferences.ts": {
       "lines": 100,
-      "linesTotal": 33,
+      "linesTotal": 32,
       "branches": 100,
       "branchesTotal": 19
     },
@@ -568,7 +568,7 @@
     },
     "src/api/users.ts": {
       "lines": 100,
-      "linesTotal": 31,
+      "linesTotal": 34,
       "branches": 100,
       "branchesTotal": 18
     },
@@ -597,8 +597,8 @@
       "branchesTotal": 28
     },
     "src/components/AddActivityDialog.tsx": {
-      "lines": 96.8,
-      "linesTotal": 94,
+      "lines": 96.77,
+      "linesTotal": 93,
       "branches": 91.48,
       "branchesTotal": 47
     },
@@ -609,8 +609,8 @@
       "branchesTotal": 104
     },
     "src/components/AddNoteDialog.tsx": {
-      "lines": 84.72,
-      "linesTotal": 72,
+      "lines": 85.91,
+      "linesTotal": 71,
       "branches": 76.31,
       "branchesTotal": 38
     },
@@ -785,8 +785,8 @@
     "src/components/ContactTimeline.tsx": {
       "lines": 93.1,
       "linesTotal": 29,
-      "branches": 92.85,
-      "branchesTotal": 84
+      "branches": 93.02,
+      "branchesTotal": 86
     },
     "src/components/ConversationAgendaDialog.tsx": {
       "lines": 97.05,
@@ -824,6 +824,12 @@
       "branches": 83.33,
       "branchesTotal": 24
     },
+    "src/components/DAVPasswordSettings.tsx": {
+      "lines": 93.75,
+      "linesTotal": 32,
+      "branches": 78.57,
+      "branchesTotal": 14
+    },
     "src/components/DataDecayDialog.tsx": {
       "lines": 94.28,
       "linesTotal": 35,
@@ -845,8 +851,8 @@
     "src/components/DateField.tsx": {
       "lines": 95.08,
       "linesTotal": 61,
-      "branches": 81.57,
-      "branchesTotal": 38
+      "branches": 83.72,
+      "branchesTotal": 43
     },
     "src/components/DeleteAccountSettings.tsx": {
       "lines": 100,
@@ -969,9 +975,9 @@
       "branchesTotal": 44
     },
     "src/components/GeoPulseSuggestionsDialog.tsx": {
-      "lines": 96.61,
-      "linesTotal": 59,
-      "branches": 94.91,
+      "lines": 96.55,
+      "linesTotal": 58,
+      "branches": 93.22,
       "branchesTotal": 59
     },
     "src/components/GiftDialog.tsx": {
@@ -1071,10 +1077,10 @@
       "branchesTotal": 2
     },
     "src/components/LoadingSkeletons.tsx": {
-      "lines": 60,
-      "linesTotal": 50,
-      "branches": 13.63,
-      "branchesTotal": 22
+      "lines": 100,
+      "linesTotal": 17,
+      "branches": 100,
+      "branchesTotal": 3
     },
     "src/components/MapPointList.tsx": {
       "lines": 100,
@@ -1088,17 +1094,23 @@
       "branches": 83.33,
       "branchesTotal": 12
     },
+    "src/components/MarkdownText.tsx": {
+      "lines": 92,
+      "linesTotal": 25,
+      "branches": 76.92,
+      "branchesTotal": 26
+    },
     "src/components/MeerkatImportDialog.tsx": {
-      "lines": 95.58,
-      "linesTotal": 68,
-      "branches": 88.37,
-      "branchesTotal": 43
+      "lines": 96.05,
+      "linesTotal": 76,
+      "branches": 88.88,
+      "branchesTotal": 45
     },
     "src/components/MeerkatLiveConnect.tsx": {
       "lines": 100,
-      "linesTotal": 31,
-      "branches": 96.66,
-      "branchesTotal": 30
+      "linesTotal": 32,
+      "branches": 96.87,
+      "branchesTotal": 32
     },
     "src/components/MergeContactsDialog.tsx": {
       "lines": 93.97,
@@ -1202,6 +1214,12 @@
       "branches": 90,
       "branchesTotal": 20
     },
+    "src/components/OfflineBanner.tsx": {
+      "lines": 100,
+      "linesTotal": 4,
+      "branches": 100,
+      "branchesTotal": 2
+    },
     "src/components/OnlineServiceEditor.tsx": {
       "lines": 71.42,
       "linesTotal": 28,
@@ -1240,7 +1258,7 @@
     },
     "src/components/PasskeySettings.tsx": {
       "lines": 100,
-      "linesTotal": 123,
+      "linesTotal": 125,
       "branches": 89.65,
       "branchesTotal": 87
     },
@@ -1299,7 +1317,7 @@
       "branchesTotal": 20
     },
     "src/components/RelationshipEdgeDialog.tsx": {
-      "lines": 94.3,
+      "lines": 93.49,
       "linesTotal": 123,
       "branches": 85.39,
       "branchesTotal": 89
@@ -1333,6 +1351,12 @@
       "linesTotal": 36,
       "branches": 77.77,
       "branchesTotal": 36
+    },
+    "src/components/RouteAnnouncer.tsx": {
+      "lines": 100,
+      "linesTotal": 27,
+      "branches": 85.71,
+      "branchesTotal": 14
     },
     "src/components/RouteLoadingFallback.tsx": {
       "lines": 100,
@@ -1437,8 +1461,8 @@
       "branchesTotal": 27
     },
     "src/components/TwoFactorSettings.tsx": {
-      "lines": 93,
-      "linesTotal": 143,
+      "lines": 93.1,
+      "linesTotal": 145,
       "branches": 76.81,
       "branchesTotal": 69
     },
@@ -1504,7 +1528,7 @@
     },
     "src/contactFields.ts": {
       "lines": 100,
-      "linesTotal": 13,
+      "linesTotal": 11,
       "branches": 100,
       "branchesTotal": 2
     },
@@ -1792,9 +1816,9 @@
     },
     "src/hooks/useNotes.ts": {
       "lines": 100,
-      "linesTotal": 42,
+      "linesTotal": 50,
       "branches": 100,
-      "branchesTotal": 33
+      "branchesTotal": 47
     },
     "src/hooks/useNotificationChannelHealth.ts": {
       "lines": 100,
@@ -1819,6 +1843,12 @@
       "linesTotal": 29,
       "branches": 100,
       "branchesTotal": 6
+    },
+    "src/hooks/useOnlineStatus.ts": {
+      "lines": 100,
+      "linesTotal": 11,
+      "branches": 50,
+      "branchesTotal": 2
     },
     "src/hooks/usePaperless.ts": {
       "lines": 100,
@@ -2050,9 +2080,9 @@
     },
     "src/testSupport/dateField.ts": {
       "lines": 100,
-      "linesTotal": 12,
-      "branches": 50,
-      "branchesTotal": 4
+      "linesTotal": 13,
+      "branches": 83.33,
+      "branchesTotal": 6
     },
     "src/testSupport/timeZone.ts": {
       "lines": 100,
@@ -2155,6 +2185,12 @@
       "linesTotal": 14,
       "branches": 100,
       "branchesTotal": 8
+    },
+    "src/utils/markdown.ts": {
+      "lines": 95.97,
+      "linesTotal": 149,
+      "branches": 93.16,
+      "branchesTotal": 117
     },
     "src/utils/networkGraphData.ts": {
       "lines": 100,

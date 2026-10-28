@@ -33,6 +33,7 @@ import EditTimelineItemDialog from './components/EditTimelineItemDialog';
 import GeoPulseSuggestionsDialog from './components/GeoPulseSuggestionsDialog';
 import LoadError from './components/LoadError';
 import { ListSkeleton } from './components/LoadingSkeletons';
+import MarkdownText from './components/MarkdownText';
 import PageHeader from './components/PageHeader';
 import { timelineMobileDateSx, timelinePhoneSx } from './components/timelineLayout';
 import { useAnnouncer } from './context/AnnouncerContext';
@@ -382,16 +383,10 @@ const ActivitiesPage: React.FC = () => {
                             {activity.title}
                           </Typography>
                         )}
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            whiteSpace: 'pre-wrap',
-                            overflowWrap: 'anywhere',
-                            mt: activity.title ? 0.5 : 0,
-                          }}
-                        >
-                          {activity.description}
-                        </Typography>
+                        <MarkdownText
+                          text={activity.description ?? ''}
+                          sx={{ mt: activity.title ? 0.5 : 0 }}
+                        />
                         {activity.location && (
                           <Typography
                             variant="caption"

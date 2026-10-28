@@ -793,6 +793,9 @@
     "allContactsInfo": "Cette page répertorie toutes les activités de tous les contacts.",
     "logFromLocation": "Enregistrer depuis l'historique de position"
   },
+  "markdown": {
+    "opensInNewTab": "(s’ouvre dans un nouvel onglet)"
+  },
   "notes": {
     "title": "Notes",
     "addNote": "Ajouter une note",

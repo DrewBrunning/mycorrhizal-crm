@@ -775,6 +775,9 @@
     "allContactsInfo": "Diese Seite zeigt alle Aktivitäten aus allen Kontakten.",
     "logFromLocation": "Aus Standortverlauf erfassen"
   },
+  "markdown": {
+    "opensInNewTab": "(öffnet in einem neuen Tab)"
+  },
   "notes": {
     "title": "Notes",
     "addNote": "Notiz hinzufügen",
