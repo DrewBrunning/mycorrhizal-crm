@@ -1806,6 +1806,13 @@
     <string name="bulk_remove_circle">Retirer d\'un cercle</string>
     <string name="bulk_add_tag">Ajouter une étiquette</string>
     <string name="bulk_remove_tag">Retirer une étiquette</string>
+    <string name="add_to_activities_action">Ajouter à une activité existante</string>
+    <string name="add_to_activities_title">Ajouter à une activité existante</string>
+    <string name="add_to_activities_search">Rechercher des activités</string>
+    <string name="add_to_activities_submit">Ajouter à la sélection</string>
+    <string name="add_to_activities_not_found">Non ajouté (activité introuvable) :</string>
+    <string name="add_to_activities_empty">Aucune activité trouvée</string>
+    <string name="add_to_activities_untitled">Activité sans titre</string>
     <string name="bulk_edit_fields">Modifier les champs</string>
     <string name="bulk_edit_fields_hint">Seuls les champs que vous remplissez ou marquez Vider sont modifiés. Tout le reste est laissé tel quel.</string>
     <string name="bulk_edit_fields_clear">Vider</string>

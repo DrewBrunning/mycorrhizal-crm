@@ -1806,6 +1806,13 @@
     <string name="bulk_remove_circle">Rimuovi da un cerchio</string>
     <string name="bulk_add_tag">Aggiungi etichetta</string>
     <string name="bulk_remove_tag">Rimuovi etichetta</string>
+    <string name="add_to_activities_action">Aggiungi a un\'attività esistente</string>
+    <string name="add_to_activities_title">Aggiungi a un\'attività esistente</string>
+    <string name="add_to_activities_search">Cerca attività</string>
+    <string name="add_to_activities_submit">Aggiungi alla selezione</string>
+    <string name="add_to_activities_not_found">Non aggiunto (attività non trovata):</string>
+    <string name="add_to_activities_empty">Nessuna attività trovata</string>
+    <string name="add_to_activities_untitled">Attività senza titolo</string>
     <string name="bulk_edit_fields">Modifica campi</string>
     <string name="bulk_edit_fields_hint">Vengono modificati solo i campi che compili o contrassegni come Svuota. Tutto il resto resta invariato.</string>
     <string name="bulk_edit_fields_clear">Svuota</string>

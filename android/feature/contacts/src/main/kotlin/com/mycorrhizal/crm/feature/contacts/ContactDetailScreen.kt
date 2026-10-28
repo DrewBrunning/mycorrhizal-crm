@@ -101,6 +101,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -250,6 +251,7 @@ fun ContactDetailScreen(
     // caller's self-contact pointer.
     val isMe = state.contact?.uid != null && state.contact?.uid == state.selfContactVCardUid
     val currentOnDeleted = rememberUpdatedState(onDeleted)
+    var showAddToActivities by rememberSaveable { mutableStateOf(false) }
 
     // Reload when returning from the edit form so the detail shows saved changes.
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -259,6 +261,19 @@ fun ContactDetailScreen(
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    if (showAddToActivities) {
+        state.contact?.id?.let { contactId ->
+            AddToActivitiesDialog(
+                contactId = contactId,
+                onDismiss = { showAddToActivities = false },
+                onAdded = {
+                    showAddToActivities = false
+                    viewModel.load()
+                }
+            )
+        }
     }
 
     // M24: one-shot events — a finished delete (navigate back) and an exported file (share
@@ -808,6 +823,7 @@ fun ContactDetailScreen(
                     onRemoveTag = viewModel::removeTag,
                     onOpenInContacts = onOpenInContacts,
                     onViewActivities = onViewActivities,
+                    onAddToActivity = { showAddToActivities = true },
                     onViewNotes = onViewNotes,
                     onViewReminders = onViewReminders,
                     onViewAttachments = onViewAttachments,
@@ -1231,6 +1247,8 @@ fun ContactDetailContent(
     onRemoveTag: (Tag) -> Unit = {},
     onOpenInContacts: (String) -> Unit = {},
     onViewActivities: (Int) -> Unit = {},
+    // Issue #2136: opens the "Add to existing activity" picker.
+    onAddToActivity: () -> Unit = {},
     onViewNotes: (Int) -> Unit = {},
     onViewReminders: (Int) -> Unit = {},
     // N7: the contact-attachments sub-screen (issue #710, web parity).
@@ -1782,6 +1800,15 @@ fun ContactDetailContent(
                 icon = Icons.Outlined.History,
                 count = activityCount,
                 onClick = { onViewActivities(contact.id) }
+            )
+        }
+        item {
+            DrillDownRow(
+                label = stringResource(R.string.add_to_activities_action),
+                icon = Icons.Outlined.History,
+                count = null,
+                onClick = onAddToActivity,
+                tag = "add-to-activity"
             )
         }
         item {

@@ -1749,6 +1749,13 @@
     <string name="bulk_remove_circle">Aus Kreis entfernen</string>
     <string name="bulk_add_tag">Tag hinzufügen</string>
     <string name="bulk_remove_tag">Tag entfernen</string>
+    <string name="add_to_activities_action">Zu bestehender Aktivität hinzufügen</string>
+    <string name="add_to_activities_title">Zu bestehender Aktivität hinzufügen</string>
+    <string name="add_to_activities_search">Aktivitäten suchen</string>
+    <string name="add_to_activities_submit">Zu Auswahl hinzufügen</string>
+    <string name="add_to_activities_not_found">Nicht hinzugefügt (Aktivität nicht gefunden):</string>
+    <string name="add_to_activities_empty">Keine Aktivitäten gefunden</string>
+    <string name="add_to_activities_untitled">Aktivität ohne Titel</string>
     <string name="bulk_edit_fields">Felder bearbeiten</string>
     <string name="bulk_edit_fields_hint">Nur Felder, die Sie ausfüllen oder mit „Leeren“ markieren, werden geändert. Alles andere bleibt unverändert.</string>
     <string name="bulk_edit_fields_clear">Leeren</string>

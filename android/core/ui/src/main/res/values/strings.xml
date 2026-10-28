@@ -1764,6 +1764,13 @@
     <string name="bulk_remove_circle">Remove from circle</string>
     <string name="bulk_add_tag">Add tag</string>
     <string name="bulk_remove_tag">Remove tag</string>
+    <string name="add_to_activities_action">Add to existing activity</string>
+    <string name="add_to_activities_title">Add to existing activity</string>
+    <string name="add_to_activities_search">Search activities</string>
+    <string name="add_to_activities_submit">Add to selected</string>
+    <string name="add_to_activities_not_found">Not added (activity not found):</string>
+    <string name="add_to_activities_empty">No activities found</string>
+    <string name="add_to_activities_untitled">Untitled activity</string>
     <string name="bulk_edit_fields">Edit fields</string>
     <string name="bulk_edit_fields_hint">Only fields you fill in or mark Clear are changed. Everything else is left as it is.</string>
     <string name="bulk_edit_fields_clear">Clear</string>

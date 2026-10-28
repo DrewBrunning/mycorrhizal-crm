@@ -1806,6 +1806,13 @@
     <string name="bulk_remove_circle">Quitar de un círculo</string>
     <string name="bulk_add_tag">Añadir etiqueta</string>
     <string name="bulk_remove_tag">Quitar etiqueta</string>
+    <string name="add_to_activities_action">Añadir a una actividad existente</string>
+    <string name="add_to_activities_title">Añadir a una actividad existente</string>
+    <string name="add_to_activities_search">Buscar actividades</string>
+    <string name="add_to_activities_submit">Añadir a la selección</string>
+    <string name="add_to_activities_not_found">No añadido (actividad no encontrada):</string>
+    <string name="add_to_activities_empty">No se encontraron actividades</string>
+    <string name="add_to_activities_untitled">Actividad sin título</string>
     <string name="bulk_edit_fields">Editar campos</string>
     <string name="bulk_edit_fields_hint">Solo se cambian los campos que rellenes o marques como Vaciar. Todo lo demás se deja como está.</string>
     <string name="bulk_edit_fields_clear">Vaciar</string>
