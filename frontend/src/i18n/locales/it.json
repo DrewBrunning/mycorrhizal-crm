@@ -357,6 +357,14 @@
         "duplicateWarning": "Questi campi a valore singolo sono mappati su più di una colonna; verrà usata solo l'ultima colonna: {{fields}}",
         "duplicateField": "Mappato più di una volta"
       },
+      "fixedAssignment": {
+        "title": "Aggiungi ogni contatto importato a",
+        "description": "Facoltativo. Questi cerchi e tag vengono applicati a ogni contatto importato, oltre a quelli mappati dalle colonne.",
+        "circles": "Cerchie",
+        "tags": "Tag",
+        "create": "Crea \"{{name}}\"",
+        "summary": "Ogni contatto importato verrà aggiunto a: {{groups}}. Verranno aggiunte fino a {{total}} appartenenze."
+      },
       "steps": {
         "upload": "Carica",
         "mapColumns": "Mappa Colonne",

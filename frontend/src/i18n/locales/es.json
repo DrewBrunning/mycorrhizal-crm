@@ -357,6 +357,14 @@
         "duplicateWarning": "Estos campos de valor único están asignados a más de una columna; solo se usará la última columna: {{fields}}",
         "duplicateField": "Asignado más de una vez"
       },
+      "fixedAssignment": {
+        "title": "Añadir cada contacto importado a",
+        "description": "Opcional. Estos círculos y etiquetas se aplican a todos los contactos importados, además de los asignados desde columnas.",
+        "circles": "Círculos",
+        "tags": "Etiquetas",
+        "create": "Crear \"{{name}}\"",
+        "summary": "Cada contacto importado se añadirá a: {{groups}}. Se añadirán hasta {{total}} pertenencias."
+      },
       "steps": {
         "upload": "Subir",
         "mapColumns": "Mapear Columnas",

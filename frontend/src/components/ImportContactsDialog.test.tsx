@@ -29,6 +29,21 @@ vi.mock('../api/import', async (importOriginal) => {
   };
 });
 
+// Issue #2000: the picker owns its own circle/tag fetching; stub it with a
+// button that selects one circle and one tag so the dialog wiring is tested
+// without network.
+vi.mock('./ImportFixedAssignmentPicker', () => ({
+  default: ({
+    onChange,
+  }: {
+    onChange: (next: { circleIds: string[]; tagIds: string[] }) => void;
+  }) => (
+    <button type="button" onClick={() => onChange({ circleIds: ['c-1'], tagIds: ['t-1'] })}>
+      pick fixed groups
+    </button>
+  ),
+}));
+
 vi.mock('../api/fieldDefinitions', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api/fieldDefinitions')>();
   return {
@@ -780,4 +795,55 @@ test('a picker failure shows an error', async () => {
   renderDialog();
   fireEvent.click(screen.getByText("Pick from this device's contacts"));
   expect(await screen.findByText("Couldn't read the selected contacts.")).toBeInTheDocument();
+});
+
+test('fixed circles/tags are sent on preview and confirm and summarised (issue #2000)', async () => {
+  vi.mocked(uploadCSVForImport).mockResolvedValue({
+    session_id: 'sess-fx',
+    headers: ['Name'],
+    suggested_mappings: [{ csv_column: 'Name', contact_field: 'firstname', group: 0 }],
+    row_count: 1,
+    sample_data: [['Ada']],
+  });
+  vi.mocked(getImportPreview).mockResolvedValue({
+    session_id: 'sess-fx',
+    rows: [row({ parsed_contact: { firstname: 'Ada', lastname: '', email: '' } })],
+    total_rows: 1,
+    valid_rows: 1,
+    duplicate_count: 0,
+    error_count: 0,
+    fixed_assignment: {
+      circles: [{ id: 'c-1', name: 'Conference' }],
+      tags: [{ id: 't-1', name: 'imported' }],
+      contact_count: 1,
+      membership_count: 2,
+    },
+  });
+  vi.mocked(confirmImport).mockResolvedValue({
+    total_processed: 1,
+    created: 1,
+    updated: 0,
+    skipped: 0,
+    errors: [],
+  });
+  renderDialog();
+  selectFile(new File(['Name\nAda'], 'contacts.csv', { type: 'text/csv' }));
+
+  await waitFor(() => expect(screen.getByText('pick fixed groups')).toBeInTheDocument());
+  fireEvent.click(screen.getByText('pick fixed groups'));
+  fireEvent.click(screen.getByRole('button', { name: /continue/i }));
+
+  await waitFor(() => expect(screen.getByText(/Conference, imported/)).toBeInTheDocument());
+  expect(getImportPreview).toHaveBeenCalledWith(
+    'sess-fx',
+    [{ csv_column: 'Name', contact_field: 'firstname', group: 0 }],
+    { assign_circle_ids: ['c-1'], assign_tag_ids: ['t-1'] },
+  );
+
+  fireEvent.click(screen.getByRole('button', { name: /apply decision/i }));
+  await waitFor(() => expect(confirmImport).toHaveBeenCalled());
+  expect(confirmImport).toHaveBeenCalledWith('sess-fx', [{ row_index: 0, action: 'add' }], {
+    assign_circle_ids: ['c-1'],
+    assign_tag_ids: ['t-1'],
+  });
 });

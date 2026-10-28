@@ -1469,6 +1469,8 @@ export type ImportAddedValue = {
 
 export type ImportConfirmRequest = {
   actions: RowImportAction[];
+  assign_circle_ids?: string[];
+  assign_tag_ids?: string[];
   field_mappings?: ImportFieldMapping[];
   session_id: string;
 };
@@ -1481,12 +1483,26 @@ export type ImportFieldMapping = {
   type?: 'string' | 'text' | 'number' | 'boolean' | 'date' | 'datetime' | 'uri' | 'email' | 'phone' | 'enum';
 };
 
+export type ImportFixedAssignment = {
+  circles: ImportFixedAssignmentItem[];
+  contact_count: number;
+  membership_count: number;
+  tags: ImportFixedAssignmentItem[];
+};
+
+export type ImportFixedAssignmentItem = {
+  id: string;
+  name: string;
+};
+
 export type ImportMergeDiff = {
   added?: ImportAddedValue[];
   updated?: ImportScalarChange[];
 };
 
 export type ImportPreviewRequest = {
+  assign_circle_ids?: string[];
+  assign_tag_ids?: string[];
   mappings: ColumnMapping[];
   session_id: string;
 };
@@ -1494,6 +1510,7 @@ export type ImportPreviewRequest = {
 export type ImportPreviewResponse = {
   duplicate_count?: number;
   error_count?: number;
+  fixed_assignment?: ImportFixedAssignment;
   rows?: ImportRowPreview[];
   session_id?: string;
   total_rows?: number;

@@ -61,6 +61,7 @@ import { isContactPickerSupported, pickContactsAsVCardFile } from '../utils/cont
 import { EMPTY_VALUE } from '../utils/emptyValue';
 import { getErrorMessage } from '../utils/errorHandler';
 import AppDialog from './AppDialog';
+import ImportFixedAssignmentPicker from './ImportFixedAssignmentPicker';
 
 interface ImportContactsDialogProps {
   open: boolean;
@@ -109,6 +110,10 @@ export default function ImportContactsDialog({
   );
   const [fieldMappings, setFieldMappings] = useState<ImportFieldMapping[]>([]);
 
+  // Issue #2000: circles/tags every CSV-imported contact joins.
+  const [fixedCircleIds, setFixedCircleIds] = useState<string[]>([]);
+  const [fixedTagIds, setFixedTagIds] = useState<string[]>([]);
+
   // Preview state
   const [previewResponse, setPreviewResponse] = useState<ImportPreviewResponse | null>(null);
   const [rowActions, setRowActions] = useState<Map<number, string>>(new Map());
@@ -131,6 +136,8 @@ export default function ImportContactsDialog({
     setMappings([]);
     setCustomFieldCandidates([]);
     setFieldMappings([]);
+    setFixedCircleIds([]);
+    setFixedTagIds([]);
     setPreviewResponse(null);
     setRowActions(new Map());
     setPreviewPage(0);
@@ -255,6 +262,13 @@ export default function ImportContactsDialog({
     setMappings(newMappings);
   };
 
+  // Issue #2000: the optional fixed circle/tag ids, omitted when empty so the
+  // request body is unchanged for imports that do not use the feature.
+  const fixedIds = () => ({
+    ...(fixedCircleIds.length > 0 && { assign_circle_ids: fixedCircleIds }),
+    ...(fixedTagIds.length > 0 && { assign_tag_ids: fixedTagIds }),
+  });
+
   // Handle preview generation
   const handleGeneratePreview = async () => {
     if (!uploadResponse) return;
@@ -270,7 +284,10 @@ export default function ImportContactsDialog({
     setError(null);
 
     try {
-      const response = await getImportPreview(uploadResponse.session_id, mappings);
+      const hasFixed = fixedCircleIds.length > 0 || fixedTagIds.length > 0;
+      const response = hasFixed
+        ? await getImportPreview(uploadResponse.session_id, mappings, fixedIds())
+        : await getImportPreview(uploadResponse.session_id, mappings);
       setPreviewResponse(response);
       setPreviewPage(0);
 
@@ -337,7 +354,9 @@ export default function ImportContactsDialog({
       const result =
         importType === 'vcf'
           ? await confirmVCFImport(previewResponse.session_id, actions, fieldMappings)
-          : await confirmImport(previewResponse.session_id, actions);
+          : fixedCircleIds.length > 0 || fixedTagIds.length > 0
+            ? await confirmImport(previewResponse.session_id, actions, fixedIds())
+            : await confirmImport(previewResponse.session_id, actions);
 
       setImportResult(result);
       setStep('result');
@@ -507,6 +526,14 @@ export default function ImportContactsDialog({
             )}
           </Alert>
         )}
+        <ImportFixedAssignmentPicker
+          circleIds={fixedCircleIds}
+          tagIds={fixedTagIds}
+          onChange={({ circleIds, tagIds }) => {
+            setFixedCircleIds(circleIds);
+            setFixedTagIds(tagIds);
+          }}
+        />
         <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
           <Table stickyHeader size="small">
             <TableHead>
@@ -764,6 +791,23 @@ export default function ImportContactsDialog({
 
     return (
       <Box>
+        {previewResponse.fixed_assignment && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            {t(
+              'contacts.import.fixedAssignment.summary',
+              'Every imported contact will be added to: {{groups}}. Up to {{count}} memberships will be added.',
+              {
+                groups: [
+                  ...previewResponse.fixed_assignment.circles,
+                  ...previewResponse.fixed_assignment.tags,
+                ]
+                  .map((g) => g.name)
+                  .join(', '),
+                total: previewResponse.fixed_assignment.membership_count,
+              },
+            )}
+          </Alert>
+        )}
         {/* Summary */}
         <Box sx={{ mb: 2, display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
           <Chip

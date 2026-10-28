@@ -348,6 +348,14 @@
         "duplicateWarning": "These single-value fields are mapped to more than one column; only the last column will be used: {{fields}}",
         "duplicateField": "Mapped more than once"
       },
+      "fixedAssignment": {
+        "title": "Add every imported contact to",
+        "description": "Optional. These circles and tags are applied to every contact you import, in addition to any circles or tags mapped from columns.",
+        "circles": "Circles",
+        "tags": "Tags",
+        "create": "Create \"{{name}}\"",
+        "summary": "Every imported contact will be added to: {{groups}}. Up to {{total}} memberships will be added."
+      },
       "steps": {
         "upload": "Upload",
         "mapColumns": "Map Columns",
