@@ -39,7 +39,9 @@ shipped broken at least once. Test against the real migrated schema, never `Auto
    (`internal/lint/gormerr`) enforces it in CI and the pre-commit hook.
    Likewise `go run ./cmd/reasoncodecheck ./...` (`internal/lint/reasoncode`, ADR 0038): a
    user-facing `apperrors.Err*` must be chained `.WithReason(...)`; unmigrated sites are a per-file
-   counted ratchet in `internal/lint/reasoncode/allowlist.txt` (lower it with `-write-allowlist`).
+   counted ratchet in `internal/lint/reasoncode/allowlist.txt` (lower it with `-write-allowlist`). It must
+   reach empty by v1.6.0: `release.yml` runs `reasoncodecheck -release-tag` and refuses a v1.6.0+ tag
+   (RCs included) while any entry remains (ADR 0038, issue #2093).
 
 5. <a id="trap-5"></a>**Ownership is enforced at the data-access boundary.** Every user-scoped
    handler must scope by `user_id` (or `Contact.VCardUID` for graph entities). Treat a missing or

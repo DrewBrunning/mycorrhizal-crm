@@ -269,3 +269,18 @@ func TestSupportedVersionsBrowserCIClaimMatchesRealDownloads(t *testing.T) {
 		t.Errorf("%s vs %s: %s -- fix the doc or the workflow", docPath, wfPath, e)
 	}
 }
+
+// TestReleaseWorkflowGatesReasonCodeMigration pins the issue #2093 milestone
+// gate to the workflow that cuts the tag: release.yml's preflight must run
+// reasoncodecheck with the release version, so a v1.6.0+ release cannot be
+// tagged while any unmigrated error site remains. Removing the step (or
+// dropping the flag) must fail here, not silently re-open the ratchet.
+func TestReleaseWorkflowGatesReasonCodeMigration(t *testing.T) {
+	text := readWorkflow(t, "release.yml")
+	pre := jobBlock(t, text, "release.yml", "preflight")
+	re := regexp.MustCompile(`go run \./cmd/reasoncodecheck[^\n]*-release-tag[ =]"?\$\{?VERSION\}?"?`)
+	if !re.MatchString(pre) {
+		t.Fatal("release.yml preflight no longer runs `reasoncodecheck -release-tag \"$VERSION\"` " +
+			"(issue #2093: no release at v1.6.0 or later may carry an unmigrated error site)")
+	}
+}
