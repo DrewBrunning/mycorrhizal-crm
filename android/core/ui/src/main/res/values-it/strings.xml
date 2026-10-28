@@ -2634,4 +2634,27 @@
         <item quantity="other">Recenza e frequenza danno %1$d rispetto all’obiettivo «%2$s» (%3$s)</item>
     </plurals>
     <string name="score_reason_target_ambient">Contatto ambientale, sempre in regola</string>
+    <string name="error_request_ref">(rif: %1$s)</string>
+    <string name="error_reason_common_test_only">Prova %1$d</string>
+    <string name="error_reason_contact_bulk_custom_field_duplicate">Una definizione di campo personalizzato compare più di una volta</string>
+    <string name="error_reason_contact_bulk_custom_field_in_both">Un campo personalizzato non può essere sia in custom_set sia in custom_clear</string>
+    <string name="error_reason_contact_bulk_custom_field_invalid">Il valore di %1$s non è valido</string>
+    <string name="error_reason_contact_bulk_custom_field_not_found">La definizione del campo personalizzato non è stata trovata o non è tua</string>
+    <string name="error_reason_contact_bulk_field_in_set_and_clear">%1$s non può essere sia in set sia in clear</string>
+    <string name="error_reason_contact_bulk_field_not_editable">%1$s non è modificabile in blocco</string>
+    <string name="error_reason_contact_bulk_no_operations">Indica almeno uno tra set, clear, custom_set o custom_clear</string>
+    <string name="error_reason_contact_bulk_value_empty">%1$s non può essere vuoto; indicalo in clear per svuotarlo</string>
+    <string name="error_reason_contact_bulk_value_too_long">La lunghezza di %1$s è al massimo %2$d</string>
+    <string name="error_reason_import_circles_not_found">Uno o più cerchi non sono stati trovati</string>
+    <string name="error_reason_import_tags_not_found">Una o più etichette non sono state trovate</string>
+    <string name="error_reason_relationship_contact_ambiguous">Specifica un contatto esistente o uno nuovo, non entrambi</string>
+    <string name="error_reason_relationship_contact_missing">Specifica un contatto esistente o uno nuovo</string>
+    <string name="error_reason_relationship_day_out_of_range">Il giorno deve essere compreso tra 1 e 31</string>
+    <string name="error_reason_relationship_end_before_start">La data di fine non può precedere la data di inizio</string>
+    <string name="error_reason_relationship_month_out_of_range">Il mese deve essere compreso tra 1 e 12</string>
+    <string name="error_reason_relationship_not_suggestion">Questa relazione non è un suggerimento in sospeso</string>
+    <string name="error_reason_relationship_partial_date_missing">Una data deve contenere almeno un anno, un mese o un giorno</string>
+    <string name="error_reason_relationship_self_edge">Origine e destinazione devono essere contatti diversi</string>
+    <string name="error_reason_validation_activity_ids_range">Deve contenere tra 1 e 100 id</string>
+    <string name="error_reason_validation_cursor_malformed">L\'id del cursore non è valido</string>
 </resources>

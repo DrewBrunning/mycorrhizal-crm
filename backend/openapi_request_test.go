@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http/httptest"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -509,6 +510,29 @@ func exampleFromSchema(ref *openapi3.SchemaRef, seen map[string]bool) any {
 			case ref.Value.Type.Is("boolean"):
 				return false
 			default:
+				// An object cut off at a cycle must still satisfy its own
+				// `required`: newer kin-openapi validates below a recursive
+				// $ref. Fill only the required properties, once — a required
+				// property that is itself this cycle gets {} (such a schema
+				// has no finite instance anyway).
+				if guard := ref.Ref + "#cycle"; !seen[guard] {
+					seen[guard] = true
+					defer delete(seen, guard)
+					obj := map[string]any{}
+					for _, name := range ref.Value.Required {
+						prop := ref.Value.Properties[name]
+						switch {
+						case prop == nil:
+						case prop.Value != nil && prop.Value.Type.Is("array"):
+							// Empty keeps the placeholder finite when the
+							// array's items are this same cycle.
+							obj[name] = []any{}
+						default:
+							obj[name] = exampleFromSchema(prop, seen)
+						}
+					}
+					return obj
+				}
 				return map[string]any{}
 			}
 		}
@@ -710,4 +734,59 @@ func TestOpenAPIRequestBodyExamplesValidate(t *testing.T) {
 			}
 		}
 	}
+}
+
+// TestExampleFromSchemaCyclePlaceholderSatisfiesRequired pins that the value
+// generated where a $ref cycle is cut off is still a valid instance of the
+// cyclic schema. A bare `{}` fails `required`, which newer kin-openapi
+// (>= 0.150, "validate recursive schemas below the root again") enforces
+// below a recursive $ref (ContactFlat.activities[].contacts[] is such a cycle).
+func TestExampleFromSchemaCyclePlaceholderSatisfiesRequired(t *testing.T) {
+	loader := openapi3.NewLoader()
+	doc, err := loader.LoadFromData([]byte(`
+openapi: 3.0.3
+info: {title: t, version: "1"}
+paths: {}
+components:
+  schemas:
+    Node:
+      type: object
+      required: [ID, name, children]
+      properties:
+        ID: {type: integer}
+        name: {type: string}
+        children:
+          type: array
+          items: {$ref: "#/components/schemas/Node"}
+        parent: {$ref: "#/components/schemas/Node"}
+`))
+	require.NoError(t, err)
+	require.NoError(t, doc.Validate(context.Background()))
+
+	example := exampleFromSchema(doc.Components.Schemas["Node"], map[string]bool{})
+	require.NoError(t, doc.Components.Schemas["Node"].Value.VisitJSON(example),
+		"example %v must validate against its own schema, including the nested cycle placeholders", example)
+
+	// Walk the generated value; every object must carry all of Node's required
+	// keys. This is checked directly rather than through VisitJSON so the test
+	// fails on any kin-openapi version, not only those that validate below a
+	// recursive $ref.
+	var check func(v any, path string)
+	check = func(v any, path string) {
+		switch x := v.(type) {
+		case map[string]any:
+			for _, k := range []string{"ID", "name", "children"} {
+				require.Contains(t, x, k, "%s: missing required property %q", path, k)
+			}
+			if p, ok := x["parent"]; ok {
+				check(p, path+".parent")
+			}
+			for i, c := range x["children"].([]any) {
+				check(c, path+".children["+strconv.Itoa(i)+"]")
+			}
+		default:
+			t.Fatalf("%s: expected object, got %T", path, v)
+		}
+	}
+	check(example, "$")
 }
