@@ -251,12 +251,14 @@ class CallDetectionServiceTest {
             service.application
         ).grantPermissions(android.Manifest.permission.SYSTEM_ALERT_WINDOW)
 
-        service.onStartCommand(null, 0, 0)
+        // Robolectric replays the current call state to a newly registered
+        // callback, so ring before registering or the initial IDLE shows the overlay.
         val telephonyManager = service.getSystemService(TelephonyManager::class.java)
         Shadows.shadowOf(telephonyManager).setCallState(
             TelephonyManager.CALL_STATE_RINGING,
             "+15551234567"
         )
+        service.onStartCommand(null, 0, 0)
         scheduler.advanceUntilIdle()
         assertNull("a ringing call must not show the overlay", service.quickCaptureOverlay)
 
