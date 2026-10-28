@@ -4,6 +4,8 @@ import android.content.ClipData
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -433,6 +435,7 @@ private fun statusLabelRes(token: ApiToken): Int = when {
     else -> R.string.settings_api_tokens_active
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun CreateApiTokenDialog(
     isSaving: Boolean,
@@ -459,7 +462,10 @@ internal fun CreateApiTokenDialog(
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     API_TOKEN_EXPIRY_OPTIONS.forEach { days ->
                         FilterChip(
                             selected = expiresInDays == days,
@@ -471,7 +477,8 @@ internal fun CreateApiTokenDialog(
                                         days,
                                         days
                                     ),
-                                    style = MaterialTheme.typography.labelMedium
+                                    style = MaterialTheme.typography.labelMedium,
+                                    maxLines = 1
                                 )
                             }
                         )
@@ -482,25 +489,22 @@ internal fun CreateApiTokenDialog(
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    listOf(
-                        listOf("full", "contacts", "calendar"),
-                        listOf("both", "api", "mcp")
-                    ).forEach { row ->
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            row.forEach { option ->
-                                FilterChip(
-                                    selected = preset == option,
-                                    onClick = { preset = option },
-                                    label = {
-                                        Text(
-                                            stringResource(presetLabelRes(option)),
-                                            style = MaterialTheme.typography.labelMedium
-                                        )
-                                    }
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf("full", "contacts", "calendar", "both", "api", "mcp").forEach { option ->
+                        FilterChip(
+                            selected = preset == option,
+                            onClick = { preset = option },
+                            label = {
+                                Text(
+                                    stringResource(presetLabelRes(option)),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    maxLines = 1
                                 )
                             }
-                        }
+                        )
                     }
                 }
                 Text(

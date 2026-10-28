@@ -303,6 +303,7 @@ its empty states are tracked in issue #1779).
   (`android/core/ui/src/test/kotlin/com/mycorrhizal/crm/ui/SentenceCaseStringsTest.kt`), which fails on a short
   string with a Title Case word that is not a listed proper noun. A proper noun the test does not know (a new
   integration name) is added to its `properNouns` set with the change that introduces it.
+  Approved exception: the English `settings_api_tokens_create_title` is "Create API Token" (issue #2166), listed in the test's `exceptions` map; other locales stay sentence case.
 - **Empty states** use the one shared `EmptyState` composable in `core/ui` (`StateComponents.kt`): an optional
   icon, a **title** of the form `No <things> yet` with no trailing period, at most one sentence of **body**
   saying what the list is for, and, wherever the screen can create the thing, the **primary create action** as a
