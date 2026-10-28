@@ -7,6 +7,7 @@ import com.mycorrhizal.crm.model.network.ContactFieldKey
 import com.mycorrhizal.crm.model.network.DEFAULT_ENABLED_CONTACT_FIELDS
 import com.mycorrhizal.crm.model.network.resolveEnabledFields
 import com.mycorrhizal.crm.network.ApiError
+import com.mycorrhizal.crm.network.toApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,8 +21,8 @@ data class ContactFieldSettingsUiState(
     val enabled: Set<ContactFieldKey> = DEFAULT_ENABLED_CONTACT_FIELDS,
     /** The one row whose switch is disabled while its own PATCH is in flight. */
     val savingKey: ContactFieldKey? = null,
-    val loadError: String? = null,
-    val saveError: String? = null
+    val loadError: ApiError? = null,
+    val saveError: ApiError? = null
 )
 
 /**
@@ -56,7 +57,7 @@ class ContactFieldSettingsViewModel @Inject constructor(
                     }
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(isLoading = false, loadError = e.displayMessage()) }
+                    _uiState.update { it.copy(isLoading = false, loadError = e.toApiError()) }
                 }
         }
     }
@@ -81,7 +82,7 @@ class ContactFieldSettingsViewModel @Inject constructor(
                         it.copy(
                             enabled = previous,
                             savingKey = null,
-                            saveError = e.displayMessage()
+                            saveError = e.toApiError()
                         )
                     }
                 }
@@ -91,7 +92,4 @@ class ContactFieldSettingsViewModel @Inject constructor(
     fun onSaveErrorShown() {
         _uiState.update { it.copy(saveError = null) }
     }
-
-    private fun Throwable.displayMessage(): String =
-        (this as? ApiError)?.displayMessage ?: message ?: "error"
 }

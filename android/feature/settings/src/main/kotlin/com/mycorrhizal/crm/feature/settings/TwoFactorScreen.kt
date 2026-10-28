@@ -53,8 +53,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.TwoFactorSetupResponse
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
+import com.mycorrhizal.crm.ui.components.localizedMessageOrServerText
 import kotlinx.coroutines.launch
 
 /**
@@ -214,7 +216,7 @@ fun TwoFactorContent(
                 stringResource(
                     it
                 )
-            } ?: state.error
+            } ?: state.error?.localizedMessageOrServerText()
         }
         errorText?.let { text ->
             Text(
@@ -278,7 +280,7 @@ fun TwoFactorContent(
 internal fun SetupProofDialog(
     busy: Boolean,
     canProveWithPasskey: Boolean,
-    error: String?,
+    error: ApiError?,
     errorRes: Int?,
     onConfirmCode: (String) -> Unit,
     onUsePasskey: () -> Unit,
@@ -308,7 +310,11 @@ internal fun SetupProofDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
                     modifier = Modifier.fillMaxWidth()
                 )
-                val message = errorRes?.let { stringResource(it) } ?: error
+                val message = errorRes?.let {
+                    stringResource(
+                        it
+                    )
+                } ?: error?.localizedMessageOrServerText()
                 message?.let {
                     Text(
                         it,
@@ -349,7 +355,7 @@ internal fun SetupProofDialog(
 internal fun EnrollmentSetupDialog(
     setup: TwoFactorSetupResponse,
     busy: Boolean,
-    error: String?,
+    error: ApiError?,
     errorRes: Int?,
     onConfirm: (String) -> Unit,
     onDismiss: () -> Unit
@@ -405,7 +411,11 @@ internal fun EnrollmentSetupDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth()
                 )
-                val message = errorRes?.let { stringResource(it) } ?: error
+                val message = errorRes?.let {
+                    stringResource(
+                        it
+                    )
+                } ?: error?.localizedMessageOrServerText()
                 message?.let {
                     Text(
                         it,
@@ -440,7 +450,7 @@ internal fun EnrollmentSetupDialog(
 internal fun CodePromptDialog(
     prompt: TwoFactorPrompt,
     busy: Boolean,
-    error: String?,
+    error: ApiError?,
     errorRes: Int?,
     onConfirm: (String) -> Unit,
     onDismiss: () -> Unit,
@@ -488,7 +498,11 @@ internal fun CodePromptDialog(
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
-                val message = errorRes?.let { stringResource(it) } ?: error
+                val message = errorRes?.let {
+                    stringResource(
+                        it
+                    )
+                } ?: error?.localizedMessageOrServerText()
                 message?.let {
                     Text(
                         it,

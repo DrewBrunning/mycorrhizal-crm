@@ -24,6 +24,8 @@ import com.mycorrhizal.crm.feature.tracking.PermissionChecker
 import com.mycorrhizal.crm.feature.tracking.TrackingCatchUpScheduler
 import com.mycorrhizal.crm.feature.tracking.TrackingPermissions
 import com.mycorrhizal.crm.model.network.ServerHealth
+import com.mycorrhizal.crm.network.ApiError
+import com.mycorrhizal.crm.network.toApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -80,7 +82,7 @@ data class SettingsUiState(
     /** Static password validation error as a string resource id, resolved in the UI (mirrors LoginViewModel). */
     @StringRes val passwordErrorRes: Int? = null,
     /** Dynamic password-change error text (server message). */
-    val passwordError: String? = null,
+    val passwordError: ApiError? = null,
     // Issue #722: the opt-in local app lock.
     val requireLocalAuth: Boolean = false,
     val autoLockDelay: AutoLockDelay = AutoLockDelay.DEFAULT,
@@ -673,14 +675,11 @@ class SettingsViewModel @Inject constructor(
                 }
                 .onFailure { error ->
                     _uiState.update {
-                        it.copy(isChangingPassword = false, passwordError = error.displayMessage())
+                        it.copy(isChangingPassword = false, passwordError = error.toApiError())
                     }
                 }
         }
     }
-
-    private fun Throwable.displayMessage(): String =
-        (this as? com.mycorrhizal.crm.network.ApiError)?.displayMessage ?: message ?: "error"
 
     private fun startCallDetectionService() {
         // minSdk is 26, so startForegroundService is always the correct path

@@ -51,7 +51,7 @@ class ImmichSettingsViewModelTest {
         val vm = ImmichSettingsViewModel(repository)
         advanceUntilIdle()
 
-        assertEquals("Server error (500)", vm.uiState.value.loadError)
+        assertTrue(vm.uiState.value.loadError is ApiError.Server)
     }
 
     @Test
@@ -79,7 +79,7 @@ class ImmichSettingsViewModelTest {
         assertEquals("http://immich:2283", state.baseUrl)
         assertTrue(state.hasApiKey)
         assertEquals("", state.apiKey)
-        assertNull(state.saveError)
+        assertNull(state.saveError?.message)
     }
 
     @Test
@@ -119,7 +119,7 @@ class ImmichSettingsViewModelTest {
         vm.save()
         advanceUntilIdle()
 
-        assertEquals("Invalid URL", vm.uiState.value.saveError)
+        assertEquals("Invalid URL", vm.uiState.value.saveError?.message)
     }
 
     @Test
@@ -186,7 +186,7 @@ class ImmichSettingsViewModelTest {
 
         val outcome = vm.uiState.value.testResult
         assertTrue(outcome?.ok == false)
-        assertEquals("Invalid URL", outcome?.message)
+        assertEquals("Invalid URL", outcome?.error?.message)
         coVerify(exactly = 0) { repository.testConnection() }
     }
 
@@ -224,7 +224,7 @@ class ImmichSettingsViewModelTest {
         vm.remove()
         advanceUntilIdle()
 
-        assertEquals("Server error (500)", vm.uiState.value.saveError)
+        assertTrue(vm.uiState.value.saveError is ApiError.Server)
         assertTrue(vm.uiState.value.hasApiKey)
     }
 

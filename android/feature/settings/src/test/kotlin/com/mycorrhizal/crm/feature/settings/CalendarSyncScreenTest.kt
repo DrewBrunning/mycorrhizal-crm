@@ -11,6 +11,7 @@ import com.mycorrhizal.crm.domain.repository.ContactSubscriptionRepository
 import com.mycorrhizal.crm.model.network.CalendarSubscription
 import com.mycorrhizal.crm.model.network.CalendarSyncResult
 import com.mycorrhizal.crm.model.network.ContactSubscription
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.mockk
@@ -285,7 +286,7 @@ class CalendarSyncScreenTest {
                 CalendarSyncContent(
                     state = CalendarSyncUiState(
                         calendars = listOf(CalendarSubscription(id = 1, name = "Personal")),
-                        error = "Server error (500)"
+                        error = ApiError.Server(500, "hidden")
                     ),
                     onBack = {},
                     onSync = {},

@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.ImmichRepository
 import com.mycorrhizal.crm.model.network.ImmichConfigInput
 import com.mycorrhizal.crm.network.ApiError
+import com.mycorrhizal.crm.network.toApiError
+import com.mycorrhizal.crm.network.toApiErrorOrUnknown
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,8 +20,8 @@ data class ImmichSettingsUiState(
     val isSaving: Boolean = false,
     val isTesting: Boolean = false,
     val isRemoving: Boolean = false,
-    val loadError: String? = null,
-    val saveError: String? = null,
+    val loadError: ApiError? = null,
+    val saveError: ApiError? = null,
     val testResult: ImmichTestOutcome? = null,
     val baseUrl: String = "",
     val hasApiKey: Boolean = false,
@@ -28,12 +30,15 @@ data class ImmichSettingsUiState(
     /** Only meaningful (and only shown) once [hasApiKey] is true — mirrors web's `ImmichSettings.tsx`. */
     val syncEnabled: Boolean = true,
     val lastSyncStatus: String? = null,
+    /** Server-reported sync failure text from the last run. */
     val lastSyncError: String? = null
 ) {
     /** Issue #1775: the token is required on first connect (there is no stored key to keep). */
     val tokenRequired: Boolean get() = !hasApiKey
 }
-data class ImmichTestOutcome(val ok: Boolean, val message: String?)
+
+/** [message] is server-reported text; [error] is a failed request, localized in the UI. */
+data class ImmichTestOutcome(val ok: Boolean, val message: String?, val error: ApiError? = null)
 
 /**
  * Issue #236: the Immich connection-config settings screen — base URL + API key +
@@ -71,7 +76,7 @@ class ImmichSettingsViewModel @Inject constructor(private val repository: Immich
                     }
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(isLoading = false, loadError = e.displayMessage()) }
+                    _uiState.update { it.copy(isLoading = false, loadError = e.toApiError()) }
                 }
         }
     }
@@ -124,7 +129,7 @@ class ImmichSettingsViewModel @Inject constructor(private val repository: Immich
                     }
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(isSaving = false, saveError = e.displayMessage()) }
+                    _uiState.update { it.copy(isSaving = false, saveError = e.toApiError()) }
                 }
         }
     }
@@ -152,7 +157,8 @@ class ImmichSettingsViewModel @Inject constructor(private val repository: Immich
                         isTesting = false,
                         testResult = ImmichTestOutcome(
                             ok = false,
-                            message = saved.exceptionOrNull().displayMessage()
+                            message = null,
+                            error = saved.exceptionOrNull().toApiErrorOrUnknown()
                         )
                     )
                 }
@@ -180,7 +186,11 @@ class ImmichSettingsViewModel @Inject constructor(private val repository: Immich
                     _uiState.update {
                         it.copy(
                             isTesting = false,
-                            testResult = ImmichTestOutcome(ok = false, message = e.displayMessage())
+                            testResult = ImmichTestOutcome(
+                                ok = false,
+                                message = null,
+                                error = e.toApiError()
+                            )
                         )
                     }
                 }
@@ -199,7 +209,7 @@ class ImmichSettingsViewModel @Inject constructor(private val repository: Immich
                     }
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(isRemoving = false, saveError = e.displayMessage()) }
+                    _uiState.update { it.copy(isRemoving = false, saveError = e.toApiError()) }
                 }
         }
     }
@@ -207,10 +217,4 @@ class ImmichSettingsViewModel @Inject constructor(private val repository: Immich
     fun onSaveErrorShown() {
         _uiState.update { it.copy(saveError = null, loadError = null) }
     }
-
-    private fun Throwable.displayMessage(): String =
-        (this as? ApiError)?.displayMessage ?: message ?: "error"
 }
-
-private fun Throwable?.displayMessage(): String =
-    this?.let { (it as? ApiError)?.displayMessage ?: it.message } ?: "error"

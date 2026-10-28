@@ -9,6 +9,7 @@ import com.mycorrhizal.crm.model.network.CalendarSubscriptionInput
 import com.mycorrhizal.crm.model.network.CalendarSyncResult
 import com.mycorrhizal.crm.model.network.ContactSubscription
 import com.mycorrhizal.crm.network.ApiError
+import com.mycorrhizal.crm.network.toApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,7 +29,7 @@ data class CalendarSyncUiState(
     /** The most recent sync's tallies, shown once and then cleared. */
     val lastSyncResult: CalendarSyncResult? = null,
     /** A transient action error (load/save/delete/sync), shown and then cleared. */
-    val error: String? = null
+    val error: ApiError? = null
 ) {
     val isEmpty: Boolean get() = calendars.isEmpty() && contactSubscriptions.isEmpty()
 }
@@ -73,7 +74,7 @@ class CalendarSyncViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            error = e.displayMessage()
+                            error = e.toApiError()
                         )
                     }
                 }
@@ -85,7 +86,7 @@ class CalendarSyncViewModel @Inject constructor(
                     _uiState.update {
                         if (it.error == null) {
                             it.copy(
-                                error = e.displayMessage()
+                                error = e.toApiError()
                             )
                         } else {
                             it
@@ -115,7 +116,7 @@ class CalendarSyncViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 isSaving = false,
-                                error = e.displayMessage()
+                                error = e.toApiError()
                             )
                         }
                     }
@@ -141,7 +142,7 @@ class CalendarSyncViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 isSaving = false,
-                                error = e.displayMessage()
+                                error = e.toApiError()
                             )
                         }
                     }
@@ -160,7 +161,7 @@ class CalendarSyncViewModel @Inject constructor(
                         )
                     }
                 }
-                .onFailure { e -> _uiState.update { it.copy(error = e.displayMessage()) } }
+                .onFailure { e -> _uiState.update { it.copy(error = e.toApiError()) } }
         }
     }
 
@@ -175,7 +176,7 @@ class CalendarSyncViewModel @Inject constructor(
             }
             calendarRepository.sync(calendar.id)
                 .onSuccess { result -> _uiState.update { it.copy(lastSyncResult = result) } }
-                .onFailure { e -> _uiState.update { it.copy(error = e.displayMessage()) } }
+                .onFailure { e -> _uiState.update { it.copy(error = e.toApiError()) } }
             _uiState.update { it.copy(syncingIds = it.syncingIds - calendar.id) }
             // Health fields (consecutive_failures, last_run_stats, ...) live on the
             // subscription, not the sync response -- refresh to pick them up.
@@ -196,7 +197,4 @@ class CalendarSyncViewModel @Inject constructor(
     fun onSyncResultShown() {
         _uiState.update { it.copy(lastSyncResult = null) }
     }
-
-    private fun Throwable.displayMessage(): String =
-        (this as? ApiError)?.displayMessage ?: message ?: "error"
 }

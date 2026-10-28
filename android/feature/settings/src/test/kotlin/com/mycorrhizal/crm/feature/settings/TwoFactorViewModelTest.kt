@@ -82,7 +82,7 @@ class TwoFactorViewModelTest {
         val state = vm.uiState.value
         assertFalse(state.loading)
         assertEquals(null, state.enabled)
-        assertEquals("Server error (500)", state.error)
+        assertTrue(state.error is ApiError.Server)
     }
 
     @Test
@@ -125,7 +125,7 @@ class TwoFactorViewModelTest {
         val state = vm.uiState.value
         assertEquals(
             "Two-factor authentication is unavailable for accounts that sign in with SSO",
-            state.error
+            state.error?.message
         )
         assertNull(state.setup)
     }

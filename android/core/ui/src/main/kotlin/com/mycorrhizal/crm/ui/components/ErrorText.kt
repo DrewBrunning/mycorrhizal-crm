@@ -25,6 +25,19 @@ fun ApiError.localizedMessage(): String {
 }
 
 /**
+ * Like [localizedMessage], but a 403 shows the server's own text. Use it only
+ * where that refusal is the informative part (the OIDC "two-factor is not
+ * available" refusal) and has no reason code yet.
+ */
+@Composable
+fun ApiError.localizedMessageOrServerText(): String =
+    if (this is ApiError.Client && code == 403 && reason == null && body.isNotBlank()) {
+        body
+    } else {
+        localizedMessage()
+    }
+
+/**
  * The translated text for the errors the client words itself (no network,
  * session expiry, the generic HTTP fallbacks). Server-worded bodies that carry
  * no reason code (507, external-service, a plain 4xx message) stay as sent.

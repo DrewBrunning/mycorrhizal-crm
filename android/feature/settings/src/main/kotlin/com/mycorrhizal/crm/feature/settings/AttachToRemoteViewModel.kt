@@ -65,7 +65,9 @@ data class AttachUiState(
     val passkeyIssue: PasskeyIssue? = null,
     val twoFactorMethods: List<String>? = null,
     @StringRes val errorRes: Int? = null,
-    val error: String? = null
+    val error: ApiError? = null,
+    /** A client-worded failure that is not an [ApiError] (e.g. the attach coordinator's). */
+    val errorText: String? = null
 )
 
 /**
@@ -119,11 +121,23 @@ class AttachToRemoteViewModel @Inject constructor(
     ) {
         if (_uiState.value.step != AttachStep.SignIn) return
         if (existingProfileId == null && !Validators.isValidServerUrl(url.trim().trimEnd('/'))) {
-            _uiState.update { it.copy(errorRes = R.string.servers_add_invalid_url, error = null) }
+            _uiState.update {
+                it.copy(
+                    errorRes = R.string.servers_add_invalid_url,
+                    error = null,
+                    errorText = null
+                )
+            }
             return
         }
         if (identifier.isBlank() || password.isEmpty()) {
-            _uiState.update { it.copy(errorRes = R.string.attach_error_credentials, error = null) }
+            _uiState.update {
+                it.copy(
+                    errorRes = R.string.attach_error_credentials,
+                    error = null,
+                    errorText = null
+                )
+            }
             return
         }
         viewModelScope.launch {
@@ -132,6 +146,7 @@ class AttachToRemoteViewModel @Inject constructor(
                     step = AttachStep.Working,
                     errorRes = null,
                     error = null,
+                    errorText = null,
                     progress = null
                 )
             }
@@ -151,7 +166,14 @@ class AttachToRemoteViewModel @Inject constructor(
     fun submitTwoFactor(code: String) {
         if (_uiState.value.step != AttachStep.TwoFactor || code.isBlank()) return
         viewModelScope.launch {
-            _uiState.update { it.copy(step = AttachStep.Working, errorRes = null, error = null) }
+            _uiState.update {
+                it.copy(
+                    step = AttachStep.Working,
+                    errorRes = null,
+                    error = null,
+                    errorText = null
+                )
+            }
             coordinator.completeTwoFactor(code.trim()).fold(
                 onSuccess = { outcome -> onSignedIn(outcome) },
                 onFailure = { failure ->
@@ -176,7 +198,14 @@ class AttachToRemoteViewModel @Inject constructor(
         val state = _uiState.value
         if (state.step != AttachStep.TwoFactor || !state.twoFactorPrompt.offersPasskey) return
         viewModelScope.launch {
-            _uiState.update { it.copy(step = AttachStep.Working, errorRes = null, error = null) }
+            _uiState.update {
+                it.copy(
+                    step = AttachStep.Working,
+                    errorRes = null,
+                    error = null,
+                    errorText = null
+                )
+            }
             val options = coordinator.beginPasskey().getOrElse { failure ->
                 fail(AttachStep.TwoFactor, failure)
                 return@launch
@@ -232,6 +261,7 @@ class AttachToRemoteViewModel @Inject constructor(
                     step = AttachStep.TwoFactor,
                     errorRes = R.string.login_error_passkey_failed,
                     error = null,
+                    errorText = null,
                     progress = null
                 )
             }
@@ -274,7 +304,14 @@ class AttachToRemoteViewModel @Inject constructor(
             )
         }
         viewModelScope.launch {
-            _uiState.update { it.copy(step = AttachStep.Working, errorRes = null, error = null) }
+            _uiState.update {
+                it.copy(
+                    step = AttachStep.Working,
+                    errorRes = null,
+                    error = null,
+                    errorText = null
+                )
+            }
             if (_uiState.value.importApplied) {
                 // The remote import already ran (the switch was declined or
                 // failed): finishing must not re-post the confirm.
@@ -311,7 +348,7 @@ class AttachToRemoteViewModel @Inject constructor(
     }
 
     fun onErrorShown() {
-        _uiState.update { it.copy(errorRes = null, error = null) }
+        _uiState.update { it.copy(errorRes = null, error = null, errorText = null) }
     }
 
     override fun onCleared() {
@@ -346,6 +383,7 @@ class AttachToRemoteViewModel @Inject constructor(
                 step = AttachStep.Working,
                 errorRes = null,
                 error = null,
+                errorText = null,
                 progress = null
             )
         }
@@ -405,17 +443,18 @@ class AttachToRemoteViewModel @Inject constructor(
                 it.copy(
                     step = step,
                     error = null,
+                    errorText = null,
                     errorRes = R.string.attach_error_bad_credentials,
                     progress = null
                 )
             }
             return
         }
-        val message = if (apiError is ApiError.Unknown) failure.message else apiError.displayMessage
         _uiState.update {
             it.copy(
                 step = step,
-                error = message ?: "Something went wrong",
+                error = apiError.takeUnless { it is ApiError.Unknown && failure.message != null },
+                errorText = (apiError as? ApiError.Unknown)?.let { failure.message },
                 errorRes = null,
                 progress = null
             )

@@ -54,6 +54,7 @@ import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
+import com.mycorrhizal.crm.ui.components.localizedMessage
 import kotlin.math.roundToInt
 
 /**
@@ -136,7 +137,7 @@ fun FieldDefinitionsScreen(
 
                     state.definitions.isEmpty() && state.error != null -> {
                         Text(
-                            text = state.error.orEmpty(),
+                            text = state.error?.localizedMessage().orEmpty(),
                             color = MaterialTheme.colorScheme.error,
                             modifier = Modifier.align(Alignment.Center)
                         )
@@ -169,7 +170,8 @@ fun FieldDefinitionsScreen(
         }
     }
 
-    state.error?.let { message ->
+    state.error?.let { error ->
+        val message = error.localizedMessage()
         LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)
             viewModel.onErrorShown()

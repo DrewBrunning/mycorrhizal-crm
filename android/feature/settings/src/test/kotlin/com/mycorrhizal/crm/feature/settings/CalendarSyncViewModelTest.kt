@@ -74,7 +74,7 @@ class CalendarSyncViewModelTest {
         val vm = viewModel()
         advanceUntilIdle()
 
-        assertEquals("Server error (500)", vm.uiState.value.error)
+        assertTrue(vm.uiState.value.error is ApiError.Server)
     }
 
     @Test
@@ -89,7 +89,7 @@ class CalendarSyncViewModelTest {
             val vm = CalendarSyncViewModel(calendarRepository, contactSubscriptionRepository)
             advanceUntilIdle()
 
-            assertEquals("Server error (500)", vm.uiState.value.error)
+            assertTrue(vm.uiState.value.error is ApiError.Server)
         }
 
     @Test
@@ -205,7 +205,7 @@ class CalendarSyncViewModelTest {
         advanceUntilIdle()
 
         val state = vm.uiState.value
-        assertEquals("unreachable", state.error)
+        assertEquals("unreachable", state.error?.message)
         assertNull(state.lastSyncResult)
         assertTrue(state.syncingIds.isEmpty())
         coVerify(exactly = 2) { calendarRepository.list() }

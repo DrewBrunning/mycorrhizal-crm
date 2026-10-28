@@ -11,6 +11,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -179,7 +180,10 @@ class ImmichSettingsScreenTest {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 ImmichSettingsContent(
-                    state = ImmichSettingsUiState(isLoading = false, saveError = "Could not save")
+                    state = ImmichSettingsUiState(
+                        isLoading = false,
+                        saveError = ApiError.Client(400, "Could not save")
+                    )
                 )
             }
         }

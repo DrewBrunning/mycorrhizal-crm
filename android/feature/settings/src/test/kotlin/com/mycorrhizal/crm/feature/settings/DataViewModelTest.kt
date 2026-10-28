@@ -88,7 +88,7 @@ class DataViewModelTest {
         vm.suggestRelationships()
         advanceUntilIdle()
 
-        assertEquals("boom", vm.uiState.value.error)
+        assertEquals("boom", vm.uiState.value.error?.message)
         assertNull(vm.uiState.value.suggestedRelationshipCount)
     }
 
@@ -131,7 +131,7 @@ class DataViewModelTest {
         vm.scanAddressSuggestions()
         advanceUntilIdle()
 
-        assertEquals("boom", vm.uiState.value.error)
+        assertEquals("boom", vm.uiState.value.error?.message)
         assertTrue(vm.uiState.value.addressSuggestions.isEmpty())
     }
 
@@ -196,7 +196,7 @@ class DataViewModelTest {
             vm.applySuggestion(suggestion)
             advanceUntilIdle()
 
-            assertEquals("stale", vm.uiState.value.error)
+            assertEquals("stale", vm.uiState.value.error?.message)
             assertEquals(1, vm.uiState.value.addressSuggestions.size)
             assertNull(vm.uiState.value.infoRes)
         }
@@ -283,7 +283,7 @@ class DataViewModelTest {
         vm.export(DataExportKind.VCF4)
         advanceUntilIdle()
 
-        assertEquals("export failed", vm.uiState.value.error)
+        assertEquals("export failed", vm.uiState.value.error?.message)
         assertNull(vm.uiState.value.exported)
         assertTrue(!vm.uiState.value.isExporting)
     }
@@ -366,7 +366,7 @@ class DataViewModelTest {
 
         assertEquals(false, wrote)
         coVerify(exactly = 0) { bundleBackupRepository.recordExport(any()) }
-        assertEquals("boom", vm.uiState.value.error)
+        assertEquals("boom", vm.uiState.value.error?.message)
     }
 
     @Test

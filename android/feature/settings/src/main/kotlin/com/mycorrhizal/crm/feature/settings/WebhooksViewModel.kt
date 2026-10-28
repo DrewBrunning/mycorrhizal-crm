@@ -8,6 +8,7 @@ import com.mycorrhizal.crm.model.network.WebhookCreateResponse
 import com.mycorrhizal.crm.model.network.WebhookDelivery
 import com.mycorrhizal.crm.model.network.WebhookInput
 import com.mycorrhizal.crm.network.ApiError
+import com.mycorrhizal.crm.network.toApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,7 +30,9 @@ data class WebhooksUiState(
     /** The just-created webhook whose secret is on screen (one-shot dialog). */
     val createdWebhook: WebhookCreateResponse? = null,
     /** A transient action error (test/delete/save/load), shown and then cleared. */
-    val error: String? = null,
+    val error: ApiError? = null,
+    /** Server-reported delivery failure text (not a request error). */
+    val deliveryError: String? = null,
     /** A transient action success message (test). */
     val message: String? = null
 )
@@ -48,13 +51,20 @@ class WebhooksViewModel @Inject constructor(private val repository: WebhookRepos
     fun load() {
         if (_uiState.value.isLoading) return
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, message = null) }
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    error = null,
+                    deliveryError = null,
+                    message = null
+                )
+            }
             repository.list()
                 .onSuccess { list ->
                     _uiState.update { it.copy(isLoading = false, webhooks = list) }
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(isLoading = false, error = e.displayMessage()) }
+                    _uiState.update { it.copy(isLoading = false, error = e.toApiError()) }
                 }
         }
     }
@@ -62,7 +72,14 @@ class WebhooksViewModel @Inject constructor(private val repository: WebhookRepos
     fun save(input: WebhookInput, editingId: Int?) {
         if (_uiState.value.isSaving) return
         viewModelScope.launch {
-            _uiState.update { it.copy(isSaving = true, error = null, message = null) }
+            _uiState.update {
+                it.copy(
+                    isSaving = true,
+                    error = null,
+                    deliveryError = null,
+                    message = null
+                )
+            }
             if (editingId == null) {
                 repository.create(input)
                     .onSuccess { created ->
@@ -75,7 +92,7 @@ class WebhooksViewModel @Inject constructor(private val repository: WebhookRepos
                         }
                     }
                     .onFailure { e ->
-                        _uiState.update { it.copy(isSaving = false, error = e.displayMessage()) }
+                        _uiState.update { it.copy(isSaving = false, error = e.toApiError()) }
                     }
             } else {
                 repository.update(editingId, input)
@@ -96,7 +113,7 @@ class WebhooksViewModel @Inject constructor(private val repository: WebhookRepos
                         }
                     }
                     .onFailure { e ->
-                        _uiState.update { it.copy(isSaving = false, error = e.displayMessage()) }
+                        _uiState.update { it.copy(isSaving = false, error = e.toApiError()) }
                     }
             }
         }
@@ -104,7 +121,7 @@ class WebhooksViewModel @Inject constructor(private val repository: WebhookRepos
 
     fun delete(webhook: Webhook) {
         viewModelScope.launch {
-            _uiState.update { it.copy(error = null, message = null) }
+            _uiState.update { it.copy(error = null, deliveryError = null, message = null) }
             repository.delete(webhook.id)
                 .onSuccess {
                     _uiState.update {
@@ -116,7 +133,7 @@ class WebhooksViewModel @Inject constructor(private val repository: WebhookRepos
                     }
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(error = e.displayMessage()) }
+                    _uiState.update { it.copy(error = e.toApiError()) }
                 }
         }
     }
@@ -124,7 +141,12 @@ class WebhooksViewModel @Inject constructor(private val repository: WebhookRepos
     fun test(webhook: Webhook) {
         viewModelScope.launch {
             _uiState.update {
-                it.copy(testingIds = it.testingIds + webhook.id, error = null, message = null)
+                it.copy(
+                    testingIds = it.testingIds + webhook.id,
+                    error = null,
+                    deliveryError = null,
+                    message = null
+                )
             }
             repository.test(webhook.id)
                 .onSuccess { delivery ->
@@ -139,7 +161,8 @@ class WebhooksViewModel @Inject constructor(private val repository: WebhookRepos
                                 ),
                             expandedIds = it.expandedIds + webhook.id,
                             message = if (success) delivery.statusCode?.toString() else null,
-                            error = if (success) {
+                            error = null,
+                            deliveryError = if (success) {
                                 null
                             } else {
                                 delivery.error
@@ -152,7 +175,7 @@ class WebhooksViewModel @Inject constructor(private val repository: WebhookRepos
                     _uiState.update {
                         it.copy(
                             testingIds = it.testingIds - webhook.id,
-                            error = e.displayMessage()
+                            error = e.toApiError()
                         )
                     }
                 }
@@ -184,7 +207,7 @@ class WebhooksViewModel @Inject constructor(private val repository: WebhookRepos
                     .onFailure { e ->
                         // Delivery history is a secondary surface — a failed load
                         // shows the row's own inline error, not the whole screen's.
-                        _uiState.update { it.copy(error = e.displayMessage()) }
+                        _uiState.update { it.copy(error = e.toApiError()) }
                     }
             }
         }
@@ -195,11 +218,8 @@ class WebhooksViewModel @Inject constructor(private val repository: WebhookRepos
     }
 
     fun onErrorShown() {
-        _uiState.update { it.copy(error = null, message = null) }
+        _uiState.update { it.copy(error = null, deliveryError = null, message = null) }
     }
-
-    private fun Throwable.displayMessage(): String =
-        (this as? ApiError)?.displayMessage ?: message ?: "error"
 }
 
 private fun WebhookCreateResponse.toWebhook(): Webhook = Webhook(

@@ -60,7 +60,7 @@ class ApiTokensViewModelTest {
         val vm = ApiTokensViewModel(repository)
         advanceUntilIdle()
 
-        assertEquals("Server error (500)", vm.uiState.value.error)
+        assertTrue(vm.uiState.value.error is ApiError.Server)
     }
 
     @Test
@@ -133,7 +133,7 @@ class ApiTokensViewModelTest {
             advanceUntilIdle()
 
             val state = vm.uiState.value
-            assertEquals("Server error (400)", state.error)
+            assertTrue(state.error is ApiError.Server)
             assertNull(state.revealedToken)
         }
 
@@ -167,7 +167,7 @@ class ApiTokensViewModelTest {
         vm.revoke(vm.uiState.value.tokens[0])
         advanceUntilIdle()
 
-        assertEquals("Server error (404)", vm.uiState.value.error)
+        assertTrue(vm.uiState.value.error is ApiError.Server)
     }
 
     @Test
@@ -207,7 +207,7 @@ class ApiTokensViewModelTest {
         vm.revokeAll()
         advanceUntilIdle()
 
-        assertEquals("Server error (500)", vm.uiState.value.error)
+        assertTrue(vm.uiState.value.error is ApiError.Server)
         assertNull(vm.uiState.value.revokedAllCount)
     }
 
@@ -261,7 +261,7 @@ class ApiTokensViewModelTest {
             advanceUntilIdle()
 
             val state = vm.uiState.value
-            assertEquals("Server error (409)", state.error)
+            assertTrue(state.error is ApiError.Server)
             assertNull(state.revealedToken)
         }
 

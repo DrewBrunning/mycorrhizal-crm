@@ -10,6 +10,7 @@ import com.mycorrhizal.crm.model.network.FieldConstraints
 import com.mycorrhizal.crm.model.network.FieldDefinition
 import com.mycorrhizal.crm.model.network.FieldDefinitionInput
 import com.mycorrhizal.crm.model.network.fieldGroupSuggestions
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -53,7 +54,7 @@ data class FieldDefinitionFormState(
     val isSaving: Boolean = false,
     val isDeleting: Boolean = false,
     @StringRes val errorRes: Int? = null,
-    val error: String? = null,
+    val error: ApiError? = null,
     /** Issue #1751: the editable state the form opened with, for [isDirty]. */
     val baseline: FieldDefinitionFormState? = null
 ) {
@@ -229,7 +230,7 @@ class FieldDefinitionFormViewModel @Inject constructor(
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isLoading = false, error = error) }
                 }
             )
         }
@@ -282,7 +283,7 @@ class FieldDefinitionFormViewModel @Inject constructor(
                     _events.value = FieldDefinitionFormEvent.Saved
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isSaving = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isSaving = false, error = error) }
                 }
             )
         }
@@ -304,7 +305,7 @@ class FieldDefinitionFormViewModel @Inject constructor(
                     _events.value = FieldDefinitionFormEvent.Deleted
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isDeleting = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isDeleting = false, error = error) }
                 }
             )
         }

@@ -11,6 +11,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import com.mycorrhizal.crm.model.network.TwoFactorSetupResponse
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -107,7 +108,10 @@ class TwoFactorScreenTest {
             state = TwoFactorUiState(
                 loading = false,
                 enabled = false,
-                error = "Two-factor authentication is unavailable for accounts that sign in with SSO"
+                error = ApiError.Client(
+                    403,
+                    "Two-factor authentication is unavailable for accounts that sign in with SSO"
+                )
             )
         )
         composeTestRule.onNodeWithText(
@@ -377,7 +381,7 @@ class TwoFactorScreenTest {
                 hasPasskey = true,
                 proofPrompt = true,
                 busy = true,
-                error = "Account temporarily locked"
+                error = ApiError.Client(400, "Account temporarily locked")
             )
         )
         composeTestRule.onNodeWithText("Account temporarily locked").assertIsDisplayed()

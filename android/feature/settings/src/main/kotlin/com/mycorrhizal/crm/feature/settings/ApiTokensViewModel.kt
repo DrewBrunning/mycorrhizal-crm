@@ -9,6 +9,7 @@ import com.mycorrhizal.crm.model.network.ApiTokenInput
 import com.mycorrhizal.crm.model.network.DEFAULT_API_TOKEN_EXPIRY_DAYS
 import com.mycorrhizal.crm.model.network.DEFAULT_API_TOKEN_SCOPE
 import com.mycorrhizal.crm.network.ApiError
+import com.mycorrhizal.crm.network.toApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,7 +32,7 @@ data class ApiTokensUiState(
     /** True when [revealedToken] came from rotate rather than create -- swaps the dialog's copy. */
     val revealedIsRotation: Boolean = false,
     /** A transient action error (load/create/revoke/revoke-all/rotate), shown and then cleared. */
-    val error: String? = null,
+    val error: ApiError? = null,
     /** How many tokens the last revoke-all call actually revoked, shown and then cleared. */
     val revokedAllCount: Int? = null
 ) {
@@ -83,7 +84,7 @@ class ApiTokensViewModel @Inject constructor(private val repository: ApiTokenRep
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            error = e.displayMessage()
+                            error = e.toApiError()
                         )
                     }
                 }
@@ -119,7 +120,7 @@ class ApiTokensViewModel @Inject constructor(private val repository: ApiTokenRep
                     _uiState.update {
                         it.copy(
                             isSaving = false,
-                            error = e.displayMessage()
+                            error = e.toApiError()
                         )
                     }
                 }
@@ -138,7 +139,7 @@ class ApiTokensViewModel @Inject constructor(private val repository: ApiTokenRep
                     _uiState.update {
                         it.copy(
                             revokingId = null,
-                            error = e.displayMessage()
+                            error = e.toApiError()
                         )
                     }
                 }
@@ -163,7 +164,7 @@ class ApiTokensViewModel @Inject constructor(private val repository: ApiTokenRep
                     _uiState.update {
                         it.copy(
                             isRevokingAll = false,
-                            error = e.displayMessage()
+                            error = e.toApiError()
                         )
                     }
                 }
@@ -188,7 +189,7 @@ class ApiTokensViewModel @Inject constructor(private val repository: ApiTokenRep
                     _uiState.update {
                         it.copy(
                             rotatingId = null,
-                            error = e.displayMessage()
+                            error = e.toApiError()
                         )
                     }
                 }
@@ -206,7 +207,4 @@ class ApiTokensViewModel @Inject constructor(private val repository: ApiTokenRep
     fun onRevokedAllCountShown() {
         _uiState.update { it.copy(revokedAllCount = null) }
     }
-
-    private fun Throwable.displayMessage(): String =
-        (this as? ApiError)?.displayMessage ?: message ?: "error"
 }

@@ -14,6 +14,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import com.mycorrhizal.crm.model.network.ContactFieldKey
 import com.mycorrhizal.crm.model.network.DEFAULT_ENABLED_CONTACT_FIELDS
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -121,7 +122,7 @@ class ContactFieldSettingsScreenTest {
                 ContactFieldSettingsContent(
                     state = ContactFieldSettingsUiState(
                         isLoading = false,
-                        saveError = "Could not save"
+                        saveError = ApiError.Client(400, "Could not save")
                     )
                 )
             }

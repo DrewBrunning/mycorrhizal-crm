@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.NotificationSettingsRepository
 import com.mycorrhizal.crm.model.network.NotificationConfigInput
 import com.mycorrhizal.crm.network.ApiError
+import com.mycorrhizal.crm.network.toApiError
+import com.mycorrhizal.crm.network.toApiErrorOrUnknown
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,8 +18,8 @@ import kotlinx.coroutines.launch
 data class NotificationChannelsUiState(
     val isLoading: Boolean = true,
     val isSaving: Boolean = false,
-    val loadError: String? = null,
-    val saveError: String? = null,
+    val loadError: ApiError? = null,
+    val saveError: ApiError? = null,
     /** Last test outcome keyed by channel ("ntfy"/"gotify"); null = not tested since last change. */
     val testResult: Map<String, NotificationTestOutcome> = emptyMap(),
     val testingChannel: String? = null,
@@ -33,7 +35,12 @@ data class NotificationChannelsUiState(
     val gotifyToken: String = ""
 )
 
-data class NotificationTestOutcome(val ok: Boolean, val error: String? = null)
+/** [detail] is server-reported text; [error] is a failed request, localized in the UI. */
+data class NotificationTestOutcome(
+    val ok: Boolean,
+    val error: ApiError? = null,
+    val detail: String? = null
+)
 
 @HiltViewModel
 class NotificationChannelsViewModel @Inject constructor(
@@ -65,7 +72,7 @@ class NotificationChannelsViewModel @Inject constructor(
                     }
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(isLoading = false, loadError = e.displayMessage()) }
+                    _uiState.update { it.copy(isLoading = false, loadError = e.toApiError()) }
                 }
         }
     }
@@ -140,7 +147,7 @@ class NotificationChannelsViewModel @Inject constructor(
                     }
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(isSaving = false, saveError = e.displayMessage()) }
+                    _uiState.update { it.copy(isSaving = false, saveError = e.toApiError()) }
                 }
         }
     }
@@ -173,7 +180,7 @@ class NotificationChannelsViewModel @Inject constructor(
                         testResult = it.testResult + (
                             channel to NotificationTestOutcome(
                                 ok = false,
-                                error = saved.exceptionOrNull().displayMessage()
+                                error = saved.exceptionOrNull().toApiErrorOrUnknown()
                             )
                             )
                     )
@@ -188,7 +195,7 @@ class NotificationChannelsViewModel @Inject constructor(
                             testResult = it.testResult + (
                                 channel to NotificationTestOutcome(
                                     ok = result.ok,
-                                    error = result.error
+                                    detail = result.error
                                 )
                                 )
                         )
@@ -201,7 +208,7 @@ class NotificationChannelsViewModel @Inject constructor(
                             testResult = it.testResult + (
                                 channel to NotificationTestOutcome(
                                     ok = false,
-                                    error = e.displayMessage()
+                                    error = e.toApiError()
                                 )
                                 )
                         )
@@ -213,10 +220,4 @@ class NotificationChannelsViewModel @Inject constructor(
     fun onSaveErrorShown() {
         _uiState.update { it.copy(saveError = null, loadError = null) }
     }
-
-    private fun Throwable.displayMessage(): String =
-        (this as? ApiError)?.displayMessage ?: message ?: "error"
 }
-
-private fun Throwable?.displayMessage(): String =
-    this?.let { (it as? ApiError)?.displayMessage ?: it.message } ?: "error"

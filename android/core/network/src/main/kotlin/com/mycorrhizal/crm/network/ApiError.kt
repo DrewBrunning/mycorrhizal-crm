@@ -115,6 +115,10 @@ fun Throwable.toApiError(): ApiError = when (this) {
     else -> ApiError.Unknown(this)
 }
 
+/** [toApiError] for a [Result.exceptionOrNull] that may be absent. */
+fun Throwable?.toApiErrorOrUnknown(): ApiError =
+    (this ?: IllegalStateException("Unknown error")).toApiError()
+
 /** Folds a [Result] onto success/error callbacks, converting failures to [ApiError]. */
 fun <T> Result<T>.foldApiError(onSuccess: (T) -> Unit, onError: (ApiError) -> Unit) {
     fold(

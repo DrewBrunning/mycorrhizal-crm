@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.FieldDefinitionRepository
 import com.mycorrhizal.crm.model.network.FieldDefinition
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -17,7 +18,7 @@ import kotlinx.coroutines.launch
 data class FieldDefinitionsUiState(
     val definitions: List<FieldDefinition> = emptyList(),
     val isLoading: Boolean = false,
-    val error: String? = null,
+    val error: ApiError? = null,
     val isReordering: Boolean = false
 )
 
@@ -38,7 +39,7 @@ class FieldDefinitionsViewModel @Inject constructor(
                     _uiState.update { it.copy(isLoading = false, definitions = definitions) }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isLoading = false, error = error) }
                 }
             )
         }
@@ -74,7 +75,7 @@ class FieldDefinitionsViewModel @Inject constructor(
                     _uiState.update { it.copy(isReordering = false, definitions = definitions) }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isReordering = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isReordering = false, error = error) }
                 }
             )
         }

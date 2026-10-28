@@ -129,7 +129,7 @@ class CustomExportViewModelTest {
         vm.export()
         advanceUntilIdle()
 
-        assertEquals("boom", vm.uiState.value.error)
+        assertEquals("boom", vm.uiState.value.error?.message)
         assertNull(vm.uiState.value.exported)
         assertFalse(vm.uiState.value.isExporting)
     }
@@ -197,7 +197,7 @@ class CustomExportViewModelTest {
         vm.checkLossReport()
         advanceUntilIdle()
 
-        assertEquals("preflight failed", vm.uiState.value.error)
+        assertEquals("preflight failed", vm.uiState.value.error?.message)
         assertNull(vm.uiState.value.lossReport)
     }
 }
