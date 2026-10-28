@@ -459,7 +459,12 @@ class RelationshipsViewModelTest {
         vm.update("e1", RelationshipEdgeTypes.SPOUSE_OF, RelationshipEdgeSensitivities.NORMAL)
         advanceUntilIdle()
 
-        coVerify { edgeRepository.update("e1", match { it.endDate == end && it.startDate == start }) }
+        coVerify {
+            edgeRepository.update(
+                "e1",
+                match { it.endDate == end && it.startDate == start }
+            )
+        }
     }
 
     @Test
