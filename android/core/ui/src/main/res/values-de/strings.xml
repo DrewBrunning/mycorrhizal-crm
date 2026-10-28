@@ -2568,4 +2568,6 @@
     <string name="error_reason_relationship_self_edge">Quelle und Ziel müssen verschiedene Kontakte sein</string>
     <string name="error_reason_validation_activity_ids_range">Muss zwischen 1 und 100 IDs enthalten</string>
     <string name="error_reason_validation_cursor_malformed">Die Cursor-ID ist ungültig</string>
+    <string name="error_reason_trash_uid_in_use">Ein aktiver Kontakt verwendet bereits die UID dieses Kontakts; führe ihn zuerst zusammen oder lösche ihn</string>
+    <string name="error_reason_trash_snapshot_unsupported">Der Löschschnappschuss dieses Kontakts wird von dieser Version nicht unterstützt; er kann weiterhin endgültig gelöscht werden</string>
 </resources>

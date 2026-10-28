@@ -2657,4 +2657,6 @@
     <string name="error_reason_relationship_self_edge">El origen y el destino deben ser contactos distintos</string>
     <string name="error_reason_validation_activity_ids_range">Debe contener entre 1 y 100 ids</string>
     <string name="error_reason_validation_cursor_malformed">El id del cursor no es válido</string>
+    <string name="error_reason_trash_uid_in_use">Un contacto activo ya usa el UID de este contacto; combínalo o elimínalo primero</string>
+    <string name="error_reason_trash_snapshot_unsupported">Esta versión no admite la instantánea de eliminación de este contacto; aún puede eliminarse de forma permanente</string>
 </resources>
