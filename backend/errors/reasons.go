@@ -35,10 +35,54 @@ var reasonAreas = []string{
 const (
 	// ReasonCommonTestOnly exists for tests only and is removed in #2100.
 	ReasonCommonTestOnly ReasonCode = "common_test_only"
+
+	ReasonImportCirclesNotFound          ReasonCode = "import_circles_not_found"
+	ReasonImportTagsNotFound             ReasonCode = "import_tags_not_found"
+	ReasonValidationCursorMalformed      ReasonCode = "validation_cursor_malformed"
+	ReasonValidationActivityIDsRange     ReasonCode = "validation_activity_ids_range"
+	ReasonRelationshipContactAmbiguous   ReasonCode = "relationship_contact_ambiguous"
+	ReasonRelationshipContactMissing     ReasonCode = "relationship_contact_missing"
+	ReasonRelationshipSelfEdge           ReasonCode = "relationship_self_edge"
+	ReasonRelationshipPartialDateMissing ReasonCode = "relationship_partial_date_missing"
+	ReasonRelationshipMonthOutOfRange    ReasonCode = "relationship_month_out_of_range"
+	ReasonRelationshipDayOutOfRange      ReasonCode = "relationship_day_out_of_range"
+	ReasonRelationshipEndBeforeStart     ReasonCode = "relationship_end_before_start"
+	ReasonRelationshipNotSuggestion      ReasonCode = "relationship_not_suggestion"
+	ReasonContactBulkNoOperations        ReasonCode = "contact_bulk_no_operations"
+	ReasonContactBulkFieldNotEditable    ReasonCode = "contact_bulk_field_not_editable"
+	ReasonContactBulkValueEmpty          ReasonCode = "contact_bulk_value_empty"
+	ReasonContactBulkValueTooLong        ReasonCode = "contact_bulk_value_too_long"
+	ReasonContactBulkFieldInSetAndClear  ReasonCode = "contact_bulk_field_in_set_and_clear"
+	ReasonContactBulkCustomFieldNotFound ReasonCode = "contact_bulk_custom_field_not_found"
+	ReasonContactBulkCustomFieldDupe     ReasonCode = "contact_bulk_custom_field_duplicate"
+	ReasonContactBulkCustomFieldInBoth   ReasonCode = "contact_bulk_custom_field_in_both"
+	ReasonContactBulkCustomFieldInvalid  ReasonCode = "contact_bulk_custom_field_invalid"
 )
 
 var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonCommonTestOnly: {Template: "Test {n}", Params: []string{"n"}},
+
+	ReasonImportCirclesNotFound:          {Template: "One or more circles were not found"},
+	ReasonImportTagsNotFound:             {Template: "One or more tags were not found"},
+	ReasonValidationCursorMalformed:      {Template: "The cursor id is malformed"},
+	ReasonValidationActivityIDsRange:     {Template: "Must contain between 1 and 100 ids"},
+	ReasonRelationshipContactAmbiguous:   {Template: "Specify either an existing contact or a new contact, not both"},
+	ReasonRelationshipContactMissing:     {Template: "Specify an existing contact or a new contact"},
+	ReasonRelationshipSelfEdge:           {Template: "The source and target must be different contacts"},
+	ReasonRelationshipPartialDateMissing: {Template: "A date must include at least a year, month or day"},
+	ReasonRelationshipMonthOutOfRange:    {Template: "The month must be between 1 and 12"},
+	ReasonRelationshipDayOutOfRange:      {Template: "The day must be between 1 and 31"},
+	ReasonRelationshipEndBeforeStart:     {Template: "The end date cannot be before the start date"},
+	ReasonRelationshipNotSuggestion:      {Template: "This relationship is not a pending suggestion"},
+	ReasonContactBulkNoOperations:        {Template: "Provide at least one of set, clear, custom_set or custom_clear"},
+	ReasonContactBulkFieldNotEditable:    {Template: "{field} is not bulk-editable", Params: []string{"field"}},
+	ReasonContactBulkValueEmpty:          {Template: "{field} must not be empty; list it in clear to empty it", Params: []string{"field"}},
+	ReasonContactBulkValueTooLong:        {Template: "{field} must be at most {limit} characters", Params: []string{"field", "limit"}},
+	ReasonContactBulkFieldInSetAndClear:  {Template: "{field} cannot be in both set and clear", Params: []string{"field"}},
+	ReasonContactBulkCustomFieldNotFound: {Template: "A custom field definition was not found or is not yours"},
+	ReasonContactBulkCustomFieldDupe:     {Template: "A custom field definition appears more than once"},
+	ReasonContactBulkCustomFieldInBoth:   {Template: "A custom field cannot be in both custom_set and custom_clear"},
+	ReasonContactBulkCustomFieldInvalid:  {Template: "{field} has an invalid value", Params: []string{"field"}},
 }
 
 var reasonPlaceholder = regexp.MustCompile(`\{([^{}]*)\}`)

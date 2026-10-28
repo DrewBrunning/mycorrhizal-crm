@@ -33,9 +33,16 @@ Android does not include a native CardDAV client. You will need a third-party ap
 4. Enter:
    - **Base URL**: Your Mycorrhizal CRM URL followed by `/carddav/` (e.g., `https://mycorrhizal.example.com/carddav/`)
    - **User name**: Your Mycorrhizal CRM username or email
-   - **Password**: Your Mycorrhizal CRM password
+   - **Password**: An app password created in **Settings → API tokens** (see below)
 5. DAVx5 will detect the address book. Select it and sync.
 6. Your Mycorrhizal CRM contacts will appear in your phone's Contacts app.
+
+**Two-factor accounts need an app password.** If TOTP or a passkey is enrolled on your account, the account password is refused on CardDAV and CalDAV (the server answers `403` with `X-Mycorrhizal-Auth-Error: account-password-not-allowed-for-dav`). Create an app password instead:
+
+1. In Mycorrhizal CRM, go to **Settings → API tokens** and create a token.
+2. Choose the **contacts** preset (CardDAV only), or **full** if the same token is also used for other things.
+3. Optionally choose no expiry for a DAV-only token. The default is 90 days.
+4. Copy the token when it is shown (it is displayed only once) and paste it into DAVx5's **Password** field. If the account already exists in DAVx5, edit it there and replace the password.
 
 ## Sync Behavior
 

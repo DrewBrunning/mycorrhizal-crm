@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
+import i18n from '../i18n/config';
 import { ApiError, apiFetch, parseErrorResponse } from './client';
 import { onSessionExpired } from './sessionExpiry';
 
@@ -188,5 +189,123 @@ describe('parseErrorResponse / apiFetch fallbacks', () => {
     const abort = Object.assign(new Error('aborted'), { name: 'AbortError' });
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(abort));
     await expect(apiFetch('/api/v1/anything')).rejects.toThrow(/Request timeout after \d+ seconds/);
+  });
+});
+
+// Issue #2096 / ADR 0038: the server sends reason_code + reason_params so the
+// client can translate; an unknown code or a missing param falls back to the
+// server's English message.
+describe('ApiError reason_code localization', () => {
+  afterEach(async () => {
+    await i18n.changeLanguage('en');
+  });
+
+  test('known code with complete params is translated', async () => {
+    const err = new ApiError(
+      'Test 3',
+      'INVALID_INPUT',
+      400,
+      undefined,
+      undefined,
+      'common_test_only',
+      {
+        n: 3,
+      },
+    );
+    await i18n.changeLanguage('en');
+    expect(err.getDisplayMessage()).toBe('Test 3');
+    await i18n.changeLanguage('de');
+    expect(err.getDisplayMessage()).toBe('Prüfung 3');
+  });
+
+  test('unknown code shows the server message', () => {
+    const err = new ApiError(
+      'Server English',
+      'INVALID_INPUT',
+      400,
+      undefined,
+      undefined,
+      'nope_nope',
+      {
+        n: 3,
+      },
+    );
+    expect(err.getDisplayMessage()).toBe('Server English');
+  });
+
+  test('known code with a missing param shows the server message, not a raw template', async () => {
+    await i18n.changeLanguage('de');
+    const missing = new ApiError(
+      'Server English',
+      'INVALID_INPUT',
+      400,
+      undefined,
+      undefined,
+      'common_test_only',
+      {},
+    );
+    expect(missing.getDisplayMessage()).toBe('Server English');
+    const none = new ApiError(
+      'Server English',
+      'INVALID_INPUT',
+      400,
+      undefined,
+      undefined,
+      'common_test_only',
+    );
+    expect(none.getDisplayMessage()).toBe('Server English');
+  });
+
+  test('5xx appends the translated request ref', async () => {
+    const err = new ApiError('Boom', 'INTERNAL_ERROR', 503, undefined, 'abc');
+    expect(err.getDisplayMessage()).toBe('Boom (ref: abc)');
+    await i18n.changeLanguage('de');
+    expect(err.getDisplayMessage()).toBe('Boom (Ref.: abc)');
+  });
+
+  test('a reason on a 5xx still gets the ref suffix', () => {
+    const err = new ApiError(
+      'Test 3',
+      'INTERNAL_ERROR',
+      500,
+      undefined,
+      'abc',
+      'common_test_only',
+      {
+        n: 3,
+      },
+    );
+    expect(err.getDisplayMessage()).toBe('Test 3 (ref: abc)');
+  });
+
+  test('4xx never shows the ref', () => {
+    const err = new ApiError('Bad', 'INVALID_INPUT', 400, undefined, 'abc');
+    expect(err.getDisplayMessage()).toBe('Bad');
+  });
+
+  test('parseErrorResponse populates reasonCode/reasonParams', async () => {
+    const response = new Response(
+      JSON.stringify({
+        error: {
+          code: 'INVALID_INPUT',
+          message: 'Test 3',
+          reason_code: 'common_test_only',
+          reason_params: { n: 3 },
+        },
+      }),
+      { status: 400 },
+    );
+    const err = await parseErrorResponse(response);
+    expect(err.reasonCode).toBe('common_test_only');
+    expect(err.reasonParams).toEqual({ n: 3 });
+  });
+
+  test('parseErrorResponse leaves them undefined when absent', async () => {
+    const response = new Response(JSON.stringify({ error: { code: 'X', message: 'm' } }), {
+      status: 400,
+    });
+    const err = await parseErrorResponse(response);
+    expect(err.reasonCode).toBeUndefined();
+    expect(err.reasonParams).toBeUndefined();
   });
 });
