@@ -135,17 +135,17 @@ THIRD_PARTY_SOURCES.md, shipped in the container at
 | `@jridgewell/trace-mapping` | `0.3.31` | MIT | https://github.com/jridgewell/sourcemaps |
 | `@mapbox/jsonlint-lines-primitives` | `2.0.3` | MIT | https://github.com/mapbox/jsonlint |
 | `@mapbox/point-geometry` | `1.1.0` | ISC | https://github.com/mapbox/point-geometry |
-| `@mapbox/tiny-sdf` | `2.2.0` | BSD-2-Clause | https://github.com/mapbox/tiny-sdf |
+| `@mapbox/tiny-sdf` | `2.3.0` | BSD-2-Clause | https://github.com/mapbox/tiny-sdf |
 | `@mapbox/unitbezier` | `1.0.0` | BSD-2-Clause | https://github.com/mapbox/unitbezier |
 | `@mapbox/vector-tile` | `3.0.0` | BSD-3-Clause | https://github.com/mapbox/vector-tile-js |
-| `@maplibre/geojson-vt` | `6.2.0` | ISC | https://github.com/maplibre/geojson-vt |
+| `@maplibre/geojson-vt` | `6.3.0` | ISC | https://github.com/maplibre/geojson-vt |
 | `@maplibre/maplibre-gl-style-spec` | `26.4.4` | ISC | https://github.com/maplibre/maplibre-style-spec |
 | `@maplibre/mlt` | `1.3.0` | (MIT OR Apache-2.0) | https://github.com/maplibre/maplibre-tile-spec |
 | `@maplibre/vt-pbf` | `4.3.2` | MIT | https://github.com/maplibre/vt-pbf |
 | `@mdi/js` | `7.4.47` | Apache-2.0 | https://github.com/Templarian/MaterialDesign-JS |
 | `@mui/core-downloads-tracker` | `9.5.0` | MIT | https://github.com/mui/material-ui |
 | `@mui/icons-material` | `9.5.0` | MIT | https://github.com/mui/material-ui |
-| `@mui/lab` | `9.0.0-beta.9` | MIT | https://github.com/mui/material-ui |
+| `@mui/lab` | `9.0.0-beta.10` | MIT | https://github.com/mui/material-ui |
 | `@mui/material` | `9.5.0` | MIT | https://github.com/mui/material-ui |
 | `@mui/private-theming` | `9.5.0` | MIT | https://github.com/mui/material-ui |
 | `@mui/styled-engine` | `9.5.0` | MIT | https://github.com/mui/material-ui |
@@ -160,6 +160,7 @@ THIRD_PARTY_SOURCES.md, shipped in the container at
 | `@types/parse-json` | `4.0.2` | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped |
 | `@types/prop-types` | `15.7.15` | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped |
 | `@types/react` | `19.3.0` | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped |
+| `@types/react-dom` | `19.3.0` | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped |
 | `@types/react-transition-group` | `4.4.12` | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped |
 | `accessor-fn` | `1.5.3` | MIT | https://github.com/vasturiano/accessor-fn |
 | `babel-plugin-macros` | `3.1.0` | MIT | https://github.com/kentcdodds/babel-plugin-macros |
@@ -206,7 +207,7 @@ THIRD_PARTY_SOURCES.md, shipped in the container at
 | `hasown` | `2.0.4` | MIT | https://github.com/inspect-js/hasOwn |
 | `hoist-non-react-statics` | `3.3.2` | BSD-3-Clause | https://github.com/mridgway/hoist-non-react-statics |
 | `html-parse-stringify` | `4.0.1` | MIT | https://github.com/i18next/html-parse-stringify |
-| `i18next` | `26.4.5` | MIT | https://github.com/i18next/i18next |
+| `i18next` | `26.5.4` | MIT | https://github.com/i18next/i18next |
 | `i18next-browser-languagedetector` | `8.2.1` | MIT | https://github.com/i18next/i18next-browser-languageDetector |
 | `idb` | `7.1.1` | ISC | https://github.com/jakearchibald/idb |
 | `import-fresh` | `3.3.1` | MIT | https://github.com/sindresorhus/import-fresh |
@@ -224,7 +225,7 @@ THIRD_PARTY_SOURCES.md, shipped in the container at
 | `lines-and-columns` | `1.2.4` | MIT | https://github.com/eventualbuddha/lines-and-columns |
 | `lodash-es` | `4.18.1` | MIT | https://github.com/lodash/lodash |
 | `loose-envify` | `1.4.0` | MIT | https://github.com/zertosh/loose-envify |
-| `maplibre-gl` | `6.14.0` | BSD-3-Clause | https://github.com/maplibre/maplibre-gl-js |
+| `maplibre-gl` | `6.15.0` | BSD-3-Clause | https://github.com/maplibre/maplibre-gl-js |
 | `minimist` | `1.2.8` | MIT | https://github.com/minimistjs/minimist |
 | `ms` | `2.1.3` | MIT | https://github.com/vercel/ms |
 | `murmurhash-js` | `1.0.0` | MIT | https://github.com/mikolalysenko/murmurhash-js |
@@ -246,11 +247,11 @@ THIRD_PARTY_SOURCES.md, shipped in the container at
 | `react-dom` | `19.3.1` | MIT | https://github.com/react/react |
 | `react-easy-crop` | `6.2.4` | MIT | https://github.com/ValentinH/react-easy-crop |
 | `react-force-graph-2d` | `1.29.2` | MIT | https://github.com/vasturiano/react-force-graph |
-| `react-i18next` | `17.0.16` | MIT | https://github.com/i18next/react-i18next |
+| `react-i18next` | `17.1.0` | MIT | https://github.com/i18next/react-i18next |
 | `react-is` | `16.13.1` | MIT | https://github.com/facebook/react |
 | `react-is` | `19.3.1` | MIT | https://github.com/react/react |
 | `react-kapsule` | `2.6.0` | MIT | https://github.com/vasturiano/react-kapsule |
-| `react-router` | `8.4.0` | MIT | https://github.com/remix-run/react-router |
+| `react-router` | `8.5.0` | MIT | https://github.com/remix-run/react-router |
 | `react-transition-group` | `4.4.5` | BSD-3-Clause | https://github.com/reactjs/react-transition-group |
 | `require-from-string` | `2.0.2` | MIT | https://github.com/floatdrop/require-from-string |
 | `resolve` | `1.22.12` | MIT | https://github.com/browserify/resolve |
@@ -1191,7 +1192,7 @@ THE SOFTWARE.
 
 ### 20. MIT
 
-Applies to: `@types/d3-force`, `@types/geojson`, `@types/parse-json`, `@types/prop-types`, `@types/react`, `@types/react-transition-group`
+Applies to: `@types/d3-force`, `@types/geojson`, `@types/parse-json`, `@types/prop-types`, `@types/react`, `@types/react-dom`, `@types/react-transition-group`
 
 ```text
 MIT License

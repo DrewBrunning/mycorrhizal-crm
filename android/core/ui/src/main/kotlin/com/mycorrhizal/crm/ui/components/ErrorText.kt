@@ -127,6 +127,10 @@ private fun localizedReason(reason: ErrorReason?): String? {
         ErrorReasonCode.VALIDATION_CURSOR_MALFORMED ->
             stringResource(R.string.error_reason_validation_cursor_malformed)
 
+        ErrorReasonCode.CIRCLE_COLOR_INVALID -> stringResource(
+            R.string.error_reason_circle_color_invalid
+        )
+
         else -> null
     }
 }

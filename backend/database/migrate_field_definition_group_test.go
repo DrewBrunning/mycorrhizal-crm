@@ -43,6 +43,8 @@ func TestMigrationFieldDefinitionGroup(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NoError(t, sqlDB.Close())
+	require.NoError(t, MigrateDown(dbPath)) // rolls back 000080_circle_description_color
+	require.NoError(t, MigrateDown(dbPath)) // rolls back 000079_relationship_edge_dates
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000078_app_password_scopes
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000077_user_time_format
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000076_target_closeness

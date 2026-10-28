@@ -2657,4 +2657,5 @@
     <string name="error_reason_relationship_self_edge">El origen y el destino deben ser contactos distintos</string>
     <string name="error_reason_validation_activity_ids_range">Debe contener entre 1 y 100 ids</string>
     <string name="error_reason_validation_cursor_malformed">El id del cursor no es válido</string>
+    <string name="error_reason_circle_color_invalid">El color debe ser uno de los colores de la paleta</string>
 </resources>

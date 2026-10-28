@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   type Circle,
   type CircleMember,
+  type CircleMetadata,
   createCircle,
   deleteCircle,
   listCircles,
@@ -65,9 +66,10 @@ export function useCircles(notifier?: ErrorNotifier) {
   }, [members, circleById]);
 
   const handleCreate = useCallback(
-    async (name: string) => {
+    async (name: string, metadata?: CircleMetadata) => {
       try {
-        const resp = await createCircle(name);
+        // Name-only calls keep the one-argument shape older callers/tests expect.
+        const resp = metadata ? await createCircle(name, metadata) : await createCircle(name);
         return resp.circle;
       } catch (err) {
         handleError(err, { operation: 'creating circle' }, notifier);
@@ -78,9 +80,10 @@ export function useCircles(notifier?: ErrorNotifier) {
   );
 
   const handleUpdate = useCallback(
-    async (id: string, name: string) => {
+    async (id: string, name: string, metadata?: CircleMetadata) => {
       try {
-        await updateCircle(id, name);
+        if (metadata) await updateCircle(id, name, metadata);
+        else await updateCircle(id, name);
         // T65: refresh so a rename is reflected in `circles` without the
         // caller having to remember to do it — matches handleDelete below
         // and useHouseholds' handleUpdate.

@@ -22,5 +22,6 @@ expect_paths:
   - docs/**
 forbid_paths:
   - backend/correspondence/**
-  - backend/database/migrations/**
+  - backend/database/**
+  - backend/services/**
   - .github/**

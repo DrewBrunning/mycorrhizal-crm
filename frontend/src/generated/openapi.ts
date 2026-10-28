@@ -421,13 +421,17 @@ export type ChangePasswordInput = {
 };
 
 export type Circle = {
+  color?: '' | 'red' | 'orange' | 'yellow' | 'green' | 'teal' | 'blue' | 'purple' | 'pink' | 'grey';
   created_at: string;
+  description?: string;
   id: string;
   name: string;
   updated_at: string;
 };
 
 export type CircleInput = {
+  color?: '' | 'red' | 'orange' | 'yellow' | 'green' | 'teal' | 'blue' | 'purple' | 'pink' | 'grey';
+  description?: string;
   name: string;
 };
 
@@ -441,6 +445,13 @@ export type CircleMember = {
 
 export type CircleMemberInput = {
   member_vcard_uid: string;
+};
+
+export type CircleTimelineResponse = {
+  items: TimelineItem[];
+  limit: number;
+  member_count: number;
+  next_cursor: string;
 };
 
 export type ColumnMapping = {

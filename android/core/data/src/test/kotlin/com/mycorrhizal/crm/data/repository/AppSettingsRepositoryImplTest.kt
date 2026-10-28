@@ -5,8 +5,10 @@ import androidx.test.core.app.ApplicationProvider
 import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -21,6 +23,16 @@ class AppSettingsRepositoryImplTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
 
     private fun repo(): AppSettingsRepositoryImpl = AppSettingsRepositoryImpl(context)
+
+    @Before
+    fun resetStaticLocale() {
+        AppLocale.languageTag = null
+    }
+
+    @After
+    fun clearStaticLocale() {
+        AppLocale.languageTag = null
+    }
 
     @Test
     fun `theme defaults to system and persists a change`() = runTest {
@@ -61,15 +73,18 @@ class AppSettingsRepositoryImplTest {
 
     @Test
     fun `hydrate populates the sync caches from persisted values`() = runTest {
-        val r = repo()
-        r.setThemePreference(AppSettingsRepository.THEME_LIGHT)
-        r.setLanguageOverride("it")
-        // Simulate a fresh process by resetting the static cache.
+        val writer = repo()
+        writer.setThemePreference(AppSettingsRepository.THEME_LIGHT)
+        writer.setLanguageOverride("it")
+        // Simulate a fresh process: a new instance starts with default caches and
+        // the static locale cache is cleared.
         AppLocale.languageTag = null
+        val freshProcess = repo()
+        assertEquals(AppSettingsRepository.THEME_SYSTEM, freshProcess.currentThemePreference())
 
-        repo().hydrate()
+        freshProcess.hydrate()
 
-        assertEquals(AppSettingsRepository.THEME_LIGHT, r.currentThemePreference())
+        assertEquals(AppSettingsRepository.THEME_LIGHT, freshProcess.currentThemePreference())
         assertEquals("it", AppLocale.languageTag)
     }
 
