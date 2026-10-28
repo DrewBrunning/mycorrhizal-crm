@@ -2,15 +2,21 @@ import {
   Autocomplete,
   Box,
   Button,
+  Checkbox,
   Chip,
   CircularProgress,
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
+  Typography,
 } from '@mui/material';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { type Activity, addContactToActivities, getActivities } from '../api/activities';
 import { type Contact, getContacts } from '../api/contacts';
 import { useDiscardGuard } from '../hooks/useDiscardGuard';
 import { readSessionDraft, useSessionDraft } from '../hooks/useSessionDraft';
@@ -43,7 +49,12 @@ interface AddActivityDialogProps {
   }) => Promise<void>;
   preselectedContactId?: number;
   prefill?: ActivityPrefill;
+  // Called after "Add to existing" changed at least one activity, so the
+  // caller can refresh whatever lists the contact's activities.
+  onAddedToExisting?: () => void;
 }
+
+type DialogMode = 'new' | 'existing';
 
 interface ActivityDraft {
   title: string;
@@ -58,6 +69,7 @@ export default function AddActivityDialog({
   onSave,
   preselectedContactId,
   prefill,
+  onAddedToExisting,
 }: AddActivityDialogProps) {
   const { t } = useTranslation();
   const [title, setTitle] = useState('');
@@ -70,6 +82,17 @@ export default function AddActivityDialog({
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Issue #2007: from a contact's page the dialog can instead add that contact
+  // to existing activities. The new-activity state above is left untouched while
+  // in this mode, so the draft and the discard guard keep covering it.
+  const [mode, setMode] = useState<DialogMode>('new');
+  const canAddToExisting = preselectedContactId !== undefined && !prefill;
+  const [existingSearch, setExistingSearch] = useState('');
+  const [existingActivities, setExistingActivities] = useState<Activity[]>([]);
+  const [existingLoading, setExistingLoading] = useState(false);
+  const [selectedActivityIds, setSelectedActivityIds] = useState<number[]>([]);
+  const [existingError, setExistingError] = useState('');
 
   // Issue #557: scoped per preselected contact so a draft started from one
   // contact's page never bleeds into another's. The selected-contacts list
@@ -101,9 +124,11 @@ export default function AddActivityDialog({
 
   // With a prefill the location is already filled in, so it alone is not "work
   // the user would lose" — only what they typed themselves is.
-  const isDirty = hasPrefill
-    ? Boolean(title.trim() || description.trim())
-    : Boolean(title.trim() || description.trim() || location.trim());
+  const isDirty =
+    (hasPrefill
+      ? Boolean(title.trim() || description.trim())
+      : Boolean(title.trim() || description.trim() || location.trim())) ||
+    selectedActivityIds.length > 0;
   const { clearDraft } = useSessionDraft(
     draftKey,
     { title, description, location, date },
@@ -122,6 +147,11 @@ export default function AddActivityDialog({
     setSearchInput('');
     setContacts([]);
     setError('');
+    setMode('new');
+    setExistingSearch('');
+    setExistingActivities([]);
+    setSelectedActivityIds([]);
+    setExistingError('');
     onClose();
   }, [clearDraft, onClose]);
   // Issue #557 + #805: one discard guard covers every way of leaving a dirty
@@ -176,6 +206,62 @@ export default function AddActivityDialog({
     return () => clearTimeout(timeoutId);
   }, [searchInput, open, loadContacts]);
 
+  // Existing activities, searchable by title (the API also matches description
+  // and location); the server orders them by most recently updated first.
+  useEffect(() => {
+    if (!open || mode !== 'existing') return;
+    let cancelled = false;
+    const timeoutId = setTimeout(() => {
+      setExistingLoading(true);
+      getActivities({ limit: 50, search: existingSearch })
+        .then((response) => {
+          if (!cancelled) setExistingActivities(response.activities || []);
+        })
+        .catch((err) => {
+          console.error('Failed to fetch activities:', err);
+          if (!cancelled) setExistingError(t('activityDialog.existingLoadFailed'));
+        })
+        .finally(() => {
+          if (!cancelled) setExistingLoading(false);
+        });
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
+  }, [open, mode, existingSearch, t]);
+
+  const toggleActivity = (id: number) =>
+    setSelectedActivityIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+
+  const handleAddToExisting = async () => {
+    if (preselectedContactId === undefined) return;
+    setSaving(true);
+    setExistingError('');
+    try {
+      const response = await addContactToActivities(preselectedContactId, selectedActivityIds);
+      const failed = response.results.filter((r) => r.status === 'not_found');
+      if (response.results.some((r) => r.status === 'added')) onAddedToExisting?.();
+      if (failed.length === 0) {
+        handleClose();
+        return;
+      }
+      // Keep the dialog open on just the failures so they can be retried or dismissed.
+      const names = failed.map(
+        (f) =>
+          existingActivities.find((a) => a.ID === f.activity_id)?.title ?? String(f.activity_id),
+      );
+      setSelectedActivityIds(failed.map((f) => f.activity_id));
+      setExistingError(t('activityDialog.existingPartialFailure', { names: names.join(', ') }));
+    } catch {
+      setExistingError(t('activityDialog.existingSaveFailed'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!title.trim() || !date) {
       setError(t('activityDialog.required'));
@@ -213,92 +299,159 @@ export default function AddActivityDialog({
     <AppDialog open={open} onClose={handleRequestClose} maxWidth="sm" fullWidth>
       <DialogTitle>{t('activityDialog.title')}</DialogTitle>
       <DialogContent>
-        <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <TextField
-            label={t('activityDialog.activityTitle')}
-            placeholder={t('activityDialog.titlePlaceholder')}
-            value={title}
-            onChange={(e) => {
-              setTitle(e.target.value);
-              setError('');
-            }}
-            error={!!error}
-            helperText={error}
+        {canAddToExisting && (
+          <ToggleButtonGroup
+            exclusive
             fullWidth
-            required
-            autoFocus
-          />
-
-          <TextField
-            label={t('activityDialog.description')}
-            placeholder={t('activityDialog.descriptionPlaceholder')}
-            multiline
-            rows={3}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            fullWidth
-          />
-
-          <TextField
-            label={t('activityDialog.location')}
-            placeholder={t('activityDialog.locationPlaceholder')}
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            fullWidth
-          />
-
-          <DateField label={t('activityDialog.date')} value={date} onChange={setDate} required />
-
-          <Autocomplete
-            multiple
-            options={contacts}
-            getOptionLabel={getContactLabel}
-            value={selectedContacts}
-            onChange={(_, newValue) => setSelectedContacts(newValue)}
-            onInputChange={(_, value) => setSearchInput(value)}
-            inputValue={searchInput}
-            loading={loading}
-            filterOptions={(x) => x}
-            isOptionEqualToValue={(option, value) => option.ID === value.ID}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label={t('activityDialog.contacts')}
-                placeholder={t('activityDialog.selectContacts')}
-                slotProps={{
-                  ...params.slotProps,
-
-                  input: {
-                    ...params.slotProps.input,
-                    endAdornment: (
-                      <>
-                        {loading ? <CircularProgress color="inherit" size={20} /> : null}
-                        {params.slotProps.input.endAdornment}
-                      </>
-                    ),
-                  },
-                }}
-              />
+            size="small"
+            value={mode}
+            onChange={(_, next: DialogMode | null) => next && setMode(next)}
+            aria-label={t('activityDialog.modeLabel')}
+            sx={{ mb: 1 }}
+          >
+            <ToggleButton value="new">{t('activityDialog.modeNew')}</ToggleButton>
+            <ToggleButton value="existing">{t('activityDialog.modeExisting')}</ToggleButton>
+          </ToggleButtonGroup>
+        )}
+        {mode === 'existing' ? (
+          <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <TextField
+              label={t('activityDialog.searchExisting')}
+              value={existingSearch}
+              onChange={(e) => setExistingSearch(e.target.value)}
+              fullWidth
+            />
+            {existingError && (
+              <Typography color="error" role="alert" variant="body2">
+                {existingError}
+              </Typography>
             )}
-            renderValue={(value, getItemProps) =>
-              value.map((contact, index) => (
-                <Chip
-                  label={getContactLabel(contact)}
-                  {...getItemProps({ index })}
-                  key={contact.ID}
+            {existingLoading && <CircularProgress size={20} />}
+            {!existingLoading && existingActivities.length === 0 && (
+              <Typography color="text.secondary" variant="body2">
+                {t('activityDialog.noExisting')}
+              </Typography>
+            )}
+            <Box
+              sx={{
+                maxHeight: 320,
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+              }}
+            >
+              {existingActivities.map((a) => (
+                <FormControlLabel
+                  key={a.ID}
+                  control={
+                    <Checkbox
+                      checked={selectedActivityIds.includes(a.ID)}
+                      onChange={() => toggleActivity(a.ID)}
+                    />
+                  }
+                  label={`${a.title} · ${a.date.slice(0, 10)}`}
                 />
-              ))
-            }
-          />
-        </Box>
+              ))}
+            </Box>
+          </Box>
+        ) : (
+          <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TextField
+              label={t('activityDialog.activityTitle')}
+              placeholder={t('activityDialog.titlePlaceholder')}
+              value={title}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                setError('');
+              }}
+              error={!!error}
+              helperText={error}
+              fullWidth
+              required
+              autoFocus
+            />
+
+            <TextField
+              label={t('activityDialog.description')}
+              placeholder={t('activityDialog.descriptionPlaceholder')}
+              multiline
+              rows={3}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              fullWidth
+            />
+
+            <TextField
+              label={t('activityDialog.location')}
+              placeholder={t('activityDialog.locationPlaceholder')}
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              fullWidth
+            />
+
+            <DateField label={t('activityDialog.date')} value={date} onChange={setDate} required />
+
+            <Autocomplete
+              multiple
+              options={contacts}
+              getOptionLabel={getContactLabel}
+              value={selectedContacts}
+              onChange={(_, newValue) => setSelectedContacts(newValue)}
+              onInputChange={(_, value) => setSearchInput(value)}
+              inputValue={searchInput}
+              loading={loading}
+              filterOptions={(x) => x}
+              isOptionEqualToValue={(option, value) => option.ID === value.ID}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label={t('activityDialog.contacts')}
+                  placeholder={t('activityDialog.selectContacts')}
+                  slotProps={{
+                    ...params.slotProps,
+
+                    input: {
+                      ...params.slotProps.input,
+                      endAdornment: (
+                        <>
+                          {loading ? <CircularProgress color="inherit" size={20} /> : null}
+                          {params.slotProps.input.endAdornment}
+                        </>
+                      ),
+                    },
+                  }}
+                />
+              )}
+              renderValue={(value, getItemProps) =>
+                value.map((contact, index) => (
+                  <Chip
+                    label={getContactLabel(contact)}
+                    {...getItemProps({ index })}
+                    key={contact.ID}
+                  />
+                ))
+              }
+            />
+          </Box>
+        )}
       </DialogContent>
       <DialogActions>
         <Button onClick={handleRequestClose} disabled={saving}>
           {t('activityDialog.cancel')}
         </Button>
-        <Button onClick={() => void handleSave()} variant="contained" disabled={saving}>
-          {t('activityDialog.save')}
-        </Button>
+        {mode === 'existing' ? (
+          <Button
+            onClick={() => void handleAddToExisting()}
+            variant="contained"
+            disabled={saving || selectedActivityIds.length === 0}
+          >
+            {t('activityDialog.addToSelected')}
+          </Button>
+        ) : (
+          <Button onClick={() => void handleSave()} variant="contained" disabled={saving}>
+            {t('activityDialog.save')}
+          </Button>
+        )}
       </DialogActions>
       {navigationGuardElement}
       <ConfirmDiscardDialog {...confirmDialogProps} />

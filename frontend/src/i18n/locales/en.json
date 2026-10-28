@@ -770,7 +770,16 @@
     "selectContacts": "Select contacts...",
     "cancel": "Cancel",
     "save": "Save",
-    "required": "Title and date are required"
+    "required": "Title and date are required",
+    "modeLabel": "Activity mode",
+    "modeNew": "New activity",
+    "modeExisting": "Add to existing",
+    "searchExisting": "Search activities",
+    "noExisting": "No activities found",
+    "addToSelected": "Add to selected",
+    "existingLoadFailed": "Failed to load activities",
+    "existingSaveFailed": "Failed to add to the selected activities",
+    "existingPartialFailure": "Could not be updated: {{names}}"
   },
   "activities": {
     "title": "Activities",

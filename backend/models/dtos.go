@@ -870,3 +870,14 @@ type DataDecayPolicyInput struct {
 	IntervalDays int    `json:"interval_days" validate:"required,gt=0,lte=3650"`
 	Active       *bool  `json:"active,omitempty"`
 }
+
+// MaxContactActivitiesBatch caps how many activities one
+// POST /contacts/:id/activities call may name.
+const MaxContactActivitiesBatch = 100
+
+// ContactActivitiesInput is the body of POST /contacts/:id/activities: the
+// existing activities to add the path contact to. It carries only ids, so a
+// client cannot overwrite an activity's title/date/other contacts with it.
+type ContactActivitiesInput struct {
+	ActivityIDs []uint `json:"activity_ids" validate:"required,min=1,max=100"`
+}

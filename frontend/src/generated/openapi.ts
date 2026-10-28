@@ -449,6 +449,10 @@ export type ColumnMapping = {
   group?: number;
 };
 
+export type ContactActivitiesInput = {
+  activity_ids: number[];
+};
+
 export type ContactAddress = {
   apartment?: string;
   city?: string;
