@@ -46,6 +46,100 @@ private fun reasonText(reason: ErrorReason?): String? {
             stringResource(R.string.error_reason_common_test_only, n)
         }
 
+        ErrorReasonCode.IMPORT_CIRCLES_NOT_FOUND -> stringResource(
+            R.string.error_reason_import_circles_not_found
+        )
+
+        ErrorReasonCode.IMPORT_TAGS_NOT_FOUND -> stringResource(
+            R.string.error_reason_import_tags_not_found
+        )
+
+        ErrorReasonCode.VALIDATION_CURSOR_MALFORMED -> stringResource(
+            R.string.error_reason_validation_cursor_malformed
+        )
+
+        ErrorReasonCode.VALIDATION_ACTIVITY_IDS_RANGE -> stringResource(
+            R.string.error_reason_validation_activity_ids_range
+        )
+
+        ErrorReasonCode.RELATIONSHIP_CONTACT_AMBIGUOUS -> stringResource(
+            R.string.error_reason_relationship_contact_ambiguous
+        )
+
+        ErrorReasonCode.RELATIONSHIP_CONTACT_MISSING -> stringResource(
+            R.string.error_reason_relationship_contact_missing
+        )
+
+        ErrorReasonCode.RELATIONSHIP_SELF_EDGE -> stringResource(
+            R.string.error_reason_relationship_self_edge
+        )
+
+        ErrorReasonCode.RELATIONSHIP_PARTIAL_DATE_MISSING -> stringResource(
+            R.string.error_reason_relationship_partial_date_missing
+        )
+
+        ErrorReasonCode.RELATIONSHIP_MONTH_OUT_OF_RANGE -> stringResource(
+            R.string.error_reason_relationship_month_out_of_range
+        )
+
+        ErrorReasonCode.RELATIONSHIP_DAY_OUT_OF_RANGE -> stringResource(
+            R.string.error_reason_relationship_day_out_of_range
+        )
+
+        ErrorReasonCode.RELATIONSHIP_END_BEFORE_START -> stringResource(
+            R.string.error_reason_relationship_end_before_start
+        )
+
+        ErrorReasonCode.RELATIONSHIP_NOT_SUGGESTION -> stringResource(
+            R.string.error_reason_relationship_not_suggestion
+        )
+
+        ErrorReasonCode.CONTACT_BULK_NO_OPERATIONS -> stringResource(
+            R.string.error_reason_contact_bulk_no_operations
+        )
+
+        ErrorReasonCode.CONTACT_BULK_FIELD_NOT_EDITABLE -> reason.params["field"]?.let { field ->
+            stringResource(R.string.error_reason_contact_bulk_field_not_editable, field)
+        }
+
+        ErrorReasonCode.CONTACT_BULK_VALUE_EMPTY -> reason.params["field"]?.let { field ->
+            stringResource(R.string.error_reason_contact_bulk_value_empty, field)
+        }
+
+        ErrorReasonCode.CONTACT_BULK_VALUE_TOO_LONG -> {
+            val field = reason.params["field"]
+            val limit = reason.params["limit"]
+            if (field == null || limit == null) {
+                null
+            } else {
+                stringResource(
+                    R.string.error_reason_contact_bulk_value_too_long,
+                    field,
+                    limit
+                )
+            }
+        }
+
+        ErrorReasonCode.CONTACT_BULK_FIELD_IN_SET_AND_CLEAR -> reason.params["field"]?.let { field ->
+            stringResource(R.string.error_reason_contact_bulk_field_in_set_and_clear, field)
+        }
+
+        ErrorReasonCode.CONTACT_BULK_CUSTOM_FIELD_NOT_FOUND -> stringResource(
+            R.string.error_reason_contact_bulk_custom_field_not_found
+        )
+
+        ErrorReasonCode.CONTACT_BULK_CUSTOM_FIELD_DUPLICATE -> stringResource(
+            R.string.error_reason_contact_bulk_custom_field_duplicate
+        )
+
+        ErrorReasonCode.CONTACT_BULK_CUSTOM_FIELD_IN_BOTH -> stringResource(
+            R.string.error_reason_contact_bulk_custom_field_in_both
+        )
+
+        ErrorReasonCode.CONTACT_BULK_CUSTOM_FIELD_INVALID -> reason.params["field"]?.let { field ->
+            stringResource(R.string.error_reason_contact_bulk_custom_field_invalid, field)
+        }
+
         else -> null
     }
 }

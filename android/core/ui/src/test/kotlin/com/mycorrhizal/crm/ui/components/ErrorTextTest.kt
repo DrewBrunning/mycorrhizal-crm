@@ -103,4 +103,52 @@ class ErrorTextTest {
     fun `other errors use the display message`() {
         assertEquals("Unexpected server response", render(ApiError.Parse("x")))
     }
+
+    @Test
+    fun `no-param code renders its localized string`() {
+        val r = ErrorReason(ErrorReasonCode.RELATIONSHIP_SELF_EDGE, emptyMap())
+        assertEquals(
+            "The source and target must be different contacts",
+            render(ApiError.Client(400, "Server English", r))
+        )
+    }
+
+    @Test
+    fun `single-param code renders its localized string`() {
+        val r = ErrorReason(
+            ErrorReasonCode.CONTACT_BULK_FIELD_NOT_EDITABLE,
+            mapOf("field" to "email")
+        )
+        assertEquals(
+            "email is not bulk-editable",
+            render(ApiError.Client(400, "Server English", r))
+        )
+    }
+
+    @Test
+    fun `single-param code with a missing param falls back`() {
+        val r = ErrorReason(ErrorReasonCode.CONTACT_BULK_FIELD_NOT_EDITABLE, emptyMap())
+        assertEquals("Server English", render(ApiError.Client(400, "Server English", r)))
+    }
+
+    @Test
+    fun `two-param code renders its localized string`() {
+        val r = ErrorReason(
+            ErrorReasonCode.CONTACT_BULK_VALUE_TOO_LONG,
+            mapOf("field" to "notes", "limit" to 200L)
+        )
+        assertEquals(
+            "notes must be at most 200 characters",
+            render(ApiError.Client(400, "Server English", r))
+        )
+    }
+
+    @Test
+    fun `two-param code with a missing param falls back`() {
+        val r = ErrorReason(
+            ErrorReasonCode.CONTACT_BULK_VALUE_TOO_LONG,
+            mapOf("field" to "notes")
+        )
+        assertEquals("Server English", render(ApiError.Client(400, "Server English", r)))
+    }
 }
