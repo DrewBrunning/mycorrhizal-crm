@@ -2634,4 +2634,6 @@
         <item quantity="other">Recencia y frecuencia suman %1$d frente al objetivo «%2$s» (%3$s)</item>
     </plurals>
     <string name="score_reason_target_ambient">Contacto ambiental, siempre al día</string>
+    <string name="error_request_ref">(ref.: %1$s)</string>
+    <string name="error_reason_common_test_only">Prueba %1$d</string>
 </resources>

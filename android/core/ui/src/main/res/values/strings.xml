@@ -2562,4 +2562,6 @@
         <item quantity="other">Recency and frequency score %1$d against the %2$s target (%3$s)</item>
     </plurals>
     <string name="score_reason_target_ambient">Ambient contact, always on track</string>
+    <string name="error_request_ref">(ref: %1$s)</string>
+    <string name="error_reason_common_test_only">Test %1$d</string>
 </resources>

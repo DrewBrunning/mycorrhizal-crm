@@ -24,6 +24,7 @@ import com.mycorrhizal.crm.model.network.AuditEventsResponse
 import com.mycorrhizal.crm.model.network.AuditUndoResponse
 import com.mycorrhizal.crm.model.network.AuthConfig
 import com.mycorrhizal.crm.model.network.BackendError
+import com.mycorrhizal.crm.model.network.BackendErrorBody
 import com.mycorrhizal.crm.model.network.BirthdaysResponse
 import com.mycorrhizal.crm.model.network.BulkContactOperationInput
 import com.mycorrhizal.crm.model.network.BulkOperationResult
@@ -101,6 +102,7 @@ import com.mycorrhizal.crm.model.network.DuplicatePairsResponse
 import com.mycorrhizal.crm.model.network.EnabledContactFieldsInput
 import com.mycorrhizal.crm.model.network.EnabledContactFieldsResponse
 import com.mycorrhizal.crm.model.network.ErrorAggregationResponse
+import com.mycorrhizal.crm.model.network.ErrorReason
 import com.mycorrhizal.crm.model.network.ExportLossPreflightResponse
 import com.mycorrhizal.crm.model.network.ExternalActivitiesPage
 import com.mycorrhizal.crm.model.network.ExternalActivity
@@ -3311,12 +3313,32 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         val message = parsed?.takeIf { it.isNotBlank() } ?: body.ifBlank { "HTTP $code" }
         // ADR 0008/0010: a stale If-Match is a typed conflict, never a generic 4xx, so a caller
         // can offer "load latest" instead of a bare error toast.
-        if (code == HTTP_PRECONDITION_FAILED) return ApiError.PreconditionFailed(message)
-        return if (code in 400..499) {
-            ApiError.Client(code, message)
-        } else {
-            ApiError.Server(code, message, errorCode = parseErrorCode(body))
+        val envelope = parseEnvelope(body)
+        val reason = envelope?.error?.toErrorReason()
+        val requestId = envelope?.requestId
+        if (code == HTTP_PRECONDITION_FAILED) {
+            return ApiError.PreconditionFailed(message, reason, requestId)
         }
+        return if (code in 400..499) {
+            ApiError.Client(code, message, reason, requestId)
+        } else {
+            ApiError.Server(code, message, envelope?.error?.code, reason, requestId)
+        }
+    }
+
+    private fun parseEnvelope(body: String): BackendError? = runCatching {
+        moshi.adapter(BackendError::class.java).fromJson(body)
+    }.getOrNull()
+
+    /** Null unless the body carried a non-blank `reason_code` (params default to empty). */
+    private fun BackendErrorBody.toErrorReason(): ErrorReason? {
+        val code = reasonCode?.takeIf { it.isNotBlank() } ?: return null
+        val params = reasonParams.orEmpty().mapValues { (_, v) ->
+            // Moshi reads every JSON number as Double; a whole one is an integer param.
+            val whole = v is Double && v == Math.rint(v) && Math.abs(v) < MAX_EXACT_DOUBLE_INT
+            if (whole) v.toLong() else v
+        }
+        return ErrorReason(code, params)
     }
 
     /**
@@ -3329,10 +3351,6 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
      * body's `error` is a String, which the envelope model can't decode, and
      * that must not mask the `message` fallback.
      */
-    private fun parseErrorCode(body: String): String? = runCatching {
-        moshi.adapter(BackendError::class.java).fromJson(body)?.error?.code
-    }.getOrNull()
-
     private fun parseErrorDisplayMessage(body: String): String? {
         val envelopeMessage = runCatching {
             moshi.adapter(BackendError::class.java).fromJson(body)?.error?.displayMessage
@@ -3365,6 +3383,9 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         /** ADR 0008 (issue #1665): the optimistic-concurrency precondition header. */
         const val IF_MATCH_HEADER = "If-Match"
         private const val HTTP_PRECONDITION_FAILED = 412
+
+        /** 2^53: the largest magnitude at which every integer is exactly a Double. */
+        private const val MAX_EXACT_DOUBLE_INT = 9_007_199_254_740_992.0
         private const val MAX_BOUNDARY_KEY_CHARS = 48
 
         /**

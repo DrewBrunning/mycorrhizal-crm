@@ -2636,4 +2636,6 @@
         <item quantity="other">Récence et fréquence : %1$d par rapport à l’objectif « %2$s » (%3$s)</item>
     </plurals>
     <string name="score_reason_target_ambient">Contact ambiant, toujours dans les temps</string>
+    <string name="error_request_ref">(réf. : %1$s)</string>
+    <string name="error_reason_common_test_only">Essai %1$d</string>
 </resources>

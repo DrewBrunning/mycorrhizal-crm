@@ -6228,4 +6228,65 @@ class ApiClientTest {
             assertTrue(error is ApiError.Client)
             assertEquals("geocoding is not enabled on this server", error.displayMessage)
         }
+
+    // ADR 0038 (issue #2097): the envelope's reason_code/reason_params/request_id reach ApiError.
+    @Test
+    fun `error envelope reason and request id are carried on a client error`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(400).setBody(
+                """{"error":{"code":"INVALID_INPUT","message":"Test 3",""" +
+                    """"reason_code":"common_test_only","reason_params":{"n":3,"s":"x","f":1.5}},""" +
+                    """"request_id":"req-1"}"""
+            )
+        )
+
+        val error = client.login("a", "b").exceptionOrNull() as ApiError.Client
+
+        assertEquals("Test 3", error.body)
+        assertEquals("common_test_only", error.reason?.code)
+        // A whole JSON number is an integer param; a fractional one stays a Double.
+        assertEquals(mapOf("n" to 3L, "s" to "x", "f" to 1.5), error.reason?.params)
+        assertEquals("req-1", error.requestId)
+    }
+
+    @Test
+    fun `5xx and 412 carry the reason and request id`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(503).setBody(
+                """{"error":{"code":"DATABASE_BUSY","message":"busy","reason_code":"common_test_only"},""" +
+                    """"request_id":"req-2"}"""
+            )
+        )
+        val server5xx = client.login("a", "b").exceptionOrNull() as ApiError.Server
+        assertEquals("DATABASE_BUSY", server5xx.errorCode)
+        assertEquals("common_test_only", server5xx.reason?.code)
+        assertEquals(emptyMap<String, Any?>(), server5xx.reason?.params)
+        assertEquals("req-2", server5xx.requestId)
+
+        server.enqueue(
+            MockResponse().setResponseCode(412).setBody(
+                """{"error":{"code":"PRECONDITION_FAILED","message":"stale","reason_code":"common_test_only"},""" +
+                    """"request_id":"req-3"}"""
+            )
+        )
+        val stale = client.login("a", "b").exceptionOrNull() as ApiError.PreconditionFailed
+        assertEquals("common_test_only", stale.reason?.code)
+        assertEquals("req-3", stale.requestId)
+    }
+
+    @Test
+    fun `a body without reason fields leaves them null`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(400)
+                .setBody("""{"error":{"code":"INVALID_INPUT","message":"bad"}}""")
+        )
+        val error = client.login("a", "b").exceptionOrNull() as ApiError.Client
+        assertNull(error.reason)
+        assertNull(error.requestId)
+
+        server.enqueue(MockResponse().setResponseCode(400).setBody("""{"message":"flat"}"""))
+        val flat = client.login("a", "b").exceptionOrNull() as ApiError.Client
+        assertEquals("flat", flat.body)
+        assertNull(flat.reason)
+    }
 }

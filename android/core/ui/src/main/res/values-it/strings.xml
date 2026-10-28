@@ -2634,4 +2634,6 @@
         <item quantity="other">Recenza e frequenza danno %1$d rispetto all’obiettivo «%2$s» (%3$s)</item>
     </plurals>
     <string name="score_reason_target_ambient">Contatto ambientale, sempre in regola</string>
+    <string name="error_request_ref">(rif.: %1$s)</string>
+    <string name="error_reason_common_test_only">Prova %1$d</string>
 </resources>

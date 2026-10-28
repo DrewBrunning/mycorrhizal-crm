@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.network
 
+import com.mycorrhizal.crm.model.network.ErrorReason
 import java.io.IOException
 import java.net.ConnectException
 import java.net.SocketTimeoutException
@@ -58,15 +59,31 @@ sealed class ApiError(message: String, cause: Throwable? = null) : Exception(mes
 
     class Network(cause: IOException) : ApiError("Network error", cause)
     class Timeout(cause: SocketTimeoutException) : ApiError("Timeout", cause)
-    class Server(val code: Int, val body: String, val errorCode: String? = null) : ApiError(body)
-    class Client(val code: Int, val body: String) : ApiError(body)
+    class Server(
+        val code: Int,
+        val body: String,
+        val errorCode: String? = null,
+        val reason: ErrorReason? = null,
+        val requestId: String? = null
+    ) : ApiError(body)
+
+    class Client(
+        val code: Int,
+        val body: String,
+        val reason: ErrorReason? = null,
+        val requestId: String? = null
+    ) : ApiError(body)
 
     /**
      * 412 `PRECONDITION_FAILED` (ADR 0008): the `If-Match` revision was stale — the record was
      * changed elsewhere since this client read it. Nothing was written; per ADR 0009 the client
      * never auto-merges, it offers to reload the server's version.
      */
-    class PreconditionFailed(val body: String) : ApiError(body)
+    class PreconditionFailed(
+        val body: String,
+        val reason: ErrorReason? = null,
+        val requestId: String? = null
+    ) : ApiError(body)
 
     class Parse(body: String) : ApiError(body)
 
