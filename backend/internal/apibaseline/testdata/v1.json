@@ -18952,6 +18952,11 @@
           "required": true
         },
         {
+          "name": "end_date",
+          "type": "composed[object]",
+          "required": false
+        },
+        {
           "name": "id",
           "type": "string",
           "required": true
@@ -18989,6 +18994,11 @@
           "required": true
         },
         {
+          "name": "start_date",
+          "type": "ref:PartialDate",
+          "required": false
+        },
+        {
           "name": "status",
           "type": "string",
           "required": true,
@@ -19018,6 +19028,11 @@
       "name": "RelationshipEdgeInput",
       "properties": [
         {
+          "name": "end_date",
+          "type": "composed[object]",
+          "required": false
+        },
+        {
           "name": "metadata",
           "type": "object",
           "required": false
@@ -19040,6 +19055,11 @@
         {
           "name": "source_thin",
           "type": "ref:ThinContactInput",
+          "required": false
+        },
+        {
+          "name": "start_date",
+          "type": "ref:PartialDate",
           "required": false
         },
         {

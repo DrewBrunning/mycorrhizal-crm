@@ -8,6 +8,7 @@ import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.Name
+import com.mycorrhizal.crm.model.network.PartialDate
 import com.mycorrhizal.crm.model.network.RelationshipEdge
 import com.mycorrhizal.crm.model.network.RelationshipEdgeSensitivities
 import com.mycorrhizal.crm.model.network.RelationshipEdgeStatuses
@@ -424,6 +425,49 @@ class RelationshipsViewModelTest {
         assertEquals(RelationshipEdgeTypes.CHILD_OF, vm.uiState.value.edges[0].type)
         assertEquals(RelationshipEdgeSensitivities.PRIVATE, vm.uiState.value.edges[0].sensitivity)
         coVerify { edgeRepository.update("e1", any()) }
+    }
+
+    // Issue #2001: the server's update is full-replace, so an edit that does not
+    // resend the period would silently reopen an ended relationship.
+    @Test
+    fun `update resends the edge's start and end dates`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stubContact()
+        val start = PartialDate(year = 2010, month = 5, day = 17)
+        val end = PartialDate(year = 2018)
+        val edge = RelationshipEdge(
+            id = "e1",
+            sourceId = viewedUid,
+            targetId = otherUid,
+            type = RelationshipEdgeTypes.SPOUSE_OF,
+            startDate = start,
+            endDate = end
+        )
+        coEvery {
+            edgeRepository.listForContact(viewedUid, null, null)
+        } returns Result.success(listOf(edge))
+        coEvery {
+            edgeRepository.update(
+                "e1",
+                match { it.startDate == start && it.endDate == end }
+            )
+        } returns Result.success(edge)
+
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.update("e1", RelationshipEdgeTypes.SPOUSE_OF, RelationshipEdgeSensitivities.NORMAL)
+        advanceUntilIdle()
+
+        coVerify { edgeRepository.update("e1", match { it.endDate == end && it.startDate == start }) }
+    }
+
+    @Test
+    fun `toIsoPartial renders year, month and day precision and needs a year`() {
+        assertEquals("2018", PartialDate(year = 2018).toIsoPartial())
+        assertEquals("2018-06", PartialDate(year = 2018, month = 6).toIsoPartial())
+        assertEquals("2018-06-05", PartialDate(year = 2018, month = 6, day = 5).toIsoPartial())
+        assertNull(PartialDate(month = 6, day = 5).toIsoPartial())
     }
 
     // --- search (linked-entry mode) ---

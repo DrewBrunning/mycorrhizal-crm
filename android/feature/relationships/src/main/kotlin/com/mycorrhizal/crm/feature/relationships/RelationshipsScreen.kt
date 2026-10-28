@@ -378,6 +378,14 @@ private fun RelationshipEdgeRow(
                     MaterialTheme.colorScheme.onSurfaceVariant
                 }
             )
+            edge.endDate?.toIsoPartial()?.let { until ->
+                Text(
+                    text = stringResource(R.string.relationships_until, until),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.testTag("relationship-until")
+                )
+            }
             if (edge.status == RelationshipEdgeStatuses.SUGGESTED) {
                 Text(
                     text = stringResource(R.string.relationships_suggested),

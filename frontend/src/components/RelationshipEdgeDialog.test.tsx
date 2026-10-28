@@ -187,3 +187,40 @@ test('gender, birthday, sensitivity, and linked-contact selection mark the form 
   expect(screen.getByText('Discard unsaved changes?')).toBeInTheDocument();
   expect(onClose).not.toHaveBeenCalled();
 });
+
+test('edit mode prefills the relationship dates and submits edited start/end dates', async () => {
+  const onSave = vi.fn().mockResolvedValue(undefined);
+  renderDialog({
+    edge: {
+      ...edgeViewedAsTarget(),
+      start_date: { year: 2010, month: 5, day: 17 },
+      end_date: { year: 2018 },
+    },
+    otherPartyContact: bobContact(),
+    onSave,
+  });
+
+  const endMonth = screen.getByTestId('end-month') as HTMLInputElement;
+  expect(endMonth.value).toBe('');
+  expect((screen.getByTestId('start-year') as HTMLInputElement).value).toBe('2010');
+  fireEvent.change(endMonth, { target: { value: '6' } });
+
+  screen.getByRole('button', { name: 'Save' }).click();
+  await vi.waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+  const input = onSave.mock.calls[0][0];
+  expect(input.start_date).toEqual({ year: 2010, month: 5, day: 17 });
+  expect(input.end_date).toEqual({ year: 2018, month: 6, day: undefined });
+});
+
+test('clearing the date fields sends no dates (reopens the relationship)', async () => {
+  const onSave = vi.fn().mockResolvedValue(undefined);
+  renderDialog({
+    edge: { ...edgeViewedAsTarget(), end_date: { year: 2018 } },
+    otherPartyContact: bobContact(),
+    onSave,
+  });
+  fireEvent.change(screen.getByTestId('end-year'), { target: { value: '' } });
+  screen.getByRole('button', { name: 'Save' }).click();
+  await vi.waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+  expect(onSave.mock.calls[0][0].end_date).toBeUndefined();
+});

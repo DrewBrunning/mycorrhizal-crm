@@ -2286,11 +2286,13 @@ export type RelationshipEdge = {
   confidence: number;
   created_at: string;
   directional: boolean;
+  end_date?: PartialDate;
   id: string;
   metadata?: Record<string, unknown>;
   sensitivity: 'normal' | 'private' | 'secret';
   source: 'user-confirmed' | 'household-inferred' | 'imported' | 'ai-suggested' | 'graph-inferred';
   source_id: string;
+  start_date?: PartialDate;
   status: 'confirmed' | 'suggested';
   target_id: string;
   type: string;
@@ -2298,10 +2300,12 @@ export type RelationshipEdge = {
 };
 
 export type RelationshipEdgeInput = {
+  end_date?: PartialDate;
   metadata?: Record<string, unknown>;
   sensitivity?: 'normal' | 'private' | 'secret';
   source_id?: string;
   source_thin?: ThinContactInput;
+  start_date?: PartialDate;
   target_id?: string;
   target_thin?: ThinContactInput;
   type: string;

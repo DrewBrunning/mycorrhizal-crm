@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.RelationshipEdgeRepository
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.model.network.PartialDate
 import com.mycorrhizal.crm.model.network.RelationshipEdge
 import com.mycorrhizal.crm.model.network.RelationshipEdgeInput
 import com.mycorrhizal.crm.model.network.RelationshipEdgeSensitivities
@@ -210,7 +211,11 @@ class RelationshipsViewModel @Inject constructor(
                 targetId = edge.targetId,
                 type = backendType,
                 sensitivity = sensitivity,
-                metadata = edge.metadata
+                metadata = edge.metadata,
+                // Update is full-replace server-side: resend the period or an
+                // edit here would silently reopen an ended relationship.
+                startDate = edge.startDate,
+                endDate = edge.endDate
             )
             relationshipEdgeRepository.update(id, input).foldApiError(
                 onSuccess = { updated ->
@@ -349,4 +354,16 @@ fun toBackendType(dropdownToken: String, viewedIsSource: Boolean): String {
     if (!viewedIsSource) return dropdownToken
     val meta = RelationshipEdgeTypes.ALL[dropdownToken] ?: return RelationshipEdgeTypes.RELATED_TO
     return meta.inverse
+}
+
+/**
+ * "YYYY", "YYYY-MM" or "YYYY-MM-DD" for the components a relationship date
+ * carries (issue #2001), or null when it has no year to anchor on.
+ */
+fun PartialDate.toIsoPartial(): String? {
+    val y = year ?: return null
+    val m = month ?: return y.toString().padStart(4, '0')
+    val base = y.toString().padStart(4, '0') + "-" + m.toString().padStart(2, '0')
+    val d = day ?: return base
+    return base + "-" + d.toString().padStart(2, '0')
 }

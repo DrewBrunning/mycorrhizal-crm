@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"mycorrhizal/internal/logtest"
 	"testing"
+	"time"
 
 	"mycorrhizal/internal/scoring"
 	"mycorrhizal/models"
@@ -72,7 +73,7 @@ func TestStructuralHops_ChainDepthsAndCap(t *testing.T) {
 		createScoreTestEdge(t, db, user.ID, people[i].VCardUID, people[i+1].VCardUID, "friend_of", models.RelationshipSensitivityNormal)
 	}
 
-	hops, err := structuralHopsByEntityID(db, user.ID, people[0].VCardUID, cfg)
+	hops, err := structuralHopsByEntityID(db, user.ID, time.Now(), people[0].VCardUID, cfg)
 	require.NoError(t, err)
 
 	for i := 1; i <= maxTraversalDepth; i++ {
@@ -98,7 +99,7 @@ func TestStructuralHops_AffinityOnlyPathsAreExcluded(t *testing.T) {
 	createScoreTestEdge(t, db, user.ID, self.VCardUID, friend.VCardUID, "friend_of", models.RelationshipSensitivityNormal)
 	createScoreTestEdge(t, db, user.ID, friend.VCardUID, viaFriend.VCardUID, "friend_of", models.RelationshipSensitivityNormal)
 
-	hops, err := structuralHopsByEntityID(db, user.ID, self.VCardUID, cfg)
+	hops, err := structuralHopsByEntityID(db, user.ID, time.Now(), self.VCardUID, cfg)
 	require.NoError(t, err)
 
 	assert.NotContains(t, hops, nemesis.VCardUID, "a direct affinity edge is not structural")
@@ -124,7 +125,7 @@ func TestStructuralHops_LongerStructuralPathBeatsShorterAffinityEdge(t *testing.
 	createScoreTestEdge(t, db, user.ID, self.VCardUID, mutual.VCardUID, "friend_of", models.RelationshipSensitivityNormal)
 	createScoreTestEdge(t, db, user.ID, mutual.VCardUID, target.VCardUID, "friend_of", models.RelationshipSensitivityNormal)
 
-	hops, err := structuralHopsByEntityID(db, user.ID, self.VCardUID, cfg)
+	hops, err := structuralHopsByEntityID(db, user.ID, time.Now(), self.VCardUID, cfg)
 	require.NoError(t, err)
 	assert.Equal(t, 2, hops[target.VCardUID])
 }
@@ -150,7 +151,7 @@ func TestStructuralHops_SecretSuggestedAndForeignEdgesDoNotConnect(t *testing.T)
 	// Another user's edge between the same UIDs must not connect them.
 	createScoreTestEdge(t, db, other.ID, self.VCardUID, viaForeign.VCardUID, "friend_of", models.RelationshipSensitivityNormal)
 
-	hops, err := structuralHopsByEntityID(db, user.ID, self.VCardUID, cfg)
+	hops, err := structuralHopsByEntityID(db, user.ID, time.Now(), self.VCardUID, cfg)
 	require.NoError(t, err)
 	assert.Empty(t, hops)
 }
@@ -169,7 +170,7 @@ func TestStructuralHops_DirectionalRelationsMatchTraversal(t *testing.T) {
 	createScoreTestEdge(t, db, user.ID, self.VCardUID, child.VCardUID, "parent_of", models.RelationshipSensitivityNormal)
 	createScoreTestEdge(t, db, user.ID, parent.VCardUID, self.VCardUID, "parent_of", models.RelationshipSensitivityNormal)
 
-	got, err := structuralHopsByEntityID(db, user.ID, self.VCardUID, cfg)
+	got, err := structuralHopsByEntityID(db, user.ID, time.Now(), self.VCardUID, cfg)
 	require.NoError(t, err)
 	want, err := structuralHopsViaTraversal(db, user.ID, self.VCardUID, cfg)
 	require.NoError(t, err)
@@ -223,7 +224,7 @@ func TestStructuralHops_DifferentialAgainstTraversal(t *testing.T) {
 	}
 
 	for _, start := range []int{0, 7, 15} {
-		got, err := structuralHopsByEntityID(db, user.ID, people[start].VCardUID, cfg)
+		got, err := structuralHopsByEntityID(db, user.ID, time.Now(), people[start].VCardUID, cfg)
 		require.NoError(t, err)
 		want, err := structuralHopsViaTraversal(db, user.ID, people[start].VCardUID, cfg)
 		require.NoError(t, err)
@@ -239,7 +240,7 @@ func TestStructuralHops_StopsOnCancelledContext(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	_, err := structuralHopsByEntityID(db.WithContext(ctx), user.ID, self.VCardUID, scoringCfg(t))
+	_, err := structuralHopsByEntityID(db.WithContext(ctx), user.ID, time.Now(), self.VCardUID, scoringCfg(t))
 	assert.ErrorIs(t, err, context.Canceled)
 }
 
@@ -279,11 +280,11 @@ func TestStructuralHops_EdgeDirectionWithAsymmetricTiers(t *testing.T) {
 	child := createScoreTestContact(t, db, user.ID, "Child")
 	createScoreTestEdge(t, db, user.ID, parent.VCardUID, child.VCardUID, "parent_of", models.RelationshipSensitivityNormal)
 
-	fromChild, err := structuralHopsByEntityID(db, user.ID, child.VCardUID, cfg)
+	fromChild, err := structuralHopsByEntityID(db, user.ID, time.Now(), child.VCardUID, cfg)
 	require.NoError(t, err)
 	assert.Equal(t, map[string]int{parent.VCardUID: 1}, fromChild, "from the child, the parent is its parent_of: tiered")
 
-	fromParent, err := structuralHopsByEntityID(db, user.ID, parent.VCardUID, cfg)
+	fromParent, err := structuralHopsByEntityID(db, user.ID, time.Now(), parent.VCardUID, cfg)
 	require.NoError(t, err)
 	assert.Empty(t, fromParent, "from the parent, the child is its child_of: untiered in this config")
 

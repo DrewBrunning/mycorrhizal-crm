@@ -545,3 +545,40 @@ func TestComputeContactScores_PendingReachOutQueryFails(t *testing.T) {
 	_, err := ComputeContactScore(db, user.ID, &contact, time.Now())
 	assert.ErrorContains(t, err, "loading pending reach-out suggestions")
 }
+
+// Issue #2001: an ended relationship stays a graph fact but no longer lifts
+// closeness for active reach-out; a still-open or future-ended one does.
+func TestComputeContactScore_EndedEdgeDoesNotCountForCloseness(t *testing.T) {
+	db := setupContactScoreTestDB(t)
+	user := createScoreTestUser(t, db, "score-endededge")
+	self := createScoreTestContact(t, db, user.ID, "Self")
+	ex := createScoreTestContact(t, db, user.ID, "Ex")
+	ongoing := createScoreTestContact(t, db, user.ID, "Ongoing")
+	setSelfContact(t, db, user.ID, self.VCardUID)
+	now := time.Date(2026, 10, 27, 12, 0, 0, 0, time.UTC)
+
+	createScoreTestEdge(t, db, user.ID, self.VCardUID, ex.VCardUID, "spouse_of", models.RelationshipSensitivityNormal)
+	createScoreTestEdge(t, db, user.ID, self.VCardUID, ongoing.VCardUID, "spouse_of", models.RelationshipSensitivityNormal)
+	require.NoError(t, db.Model(&models.RelationshipEdge{}).Where("target_id = ?", ex.VCardUID).
+		Update("end_date", `{"year":2018}`).Error)
+	require.NoError(t, db.Model(&models.RelationshipEdge{}).Where("target_id = ?", ongoing.VCardUID).
+		Update("end_date", `{"year":2030}`).Error)
+
+	cfg, err := scoring.LoadConfig()
+	require.NoError(t, err)
+
+	exRes, err := ComputeContactScore(db, user.ID, &ex, now)
+	require.NoError(t, err)
+	ongoingRes, err := ComputeContactScore(db, user.ID, &ongoing, now)
+	require.NoError(t, err)
+
+	assert.Equal(t, cfg.RelationCloseness["spouse_of"].Weight, ongoingRes.Closeness.Value,
+		"a relationship whose end date is in the future is still active")
+	assert.Less(t, exRes.Closeness.Value, ongoingRes.Closeness.Value,
+		"an ended relationship must not contribute its closeness tier")
+
+	// The edge itself is untouched: still a confirmed row in the graph.
+	var n int64
+	require.NoError(t, db.Model(&models.RelationshipEdge{}).Where("target_id = ? AND status = ?", ex.VCardUID, models.RelationshipStatusConfirmed).Count(&n).Error)
+	assert.Equal(t, int64(1), n)
+}
