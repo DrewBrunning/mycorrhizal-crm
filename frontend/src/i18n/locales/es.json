@@ -838,6 +838,9 @@
     "allContactsInfo": "Esta página lista todas las actividades de todos los contactos.",
     "logFromLocation": "Registrar desde el historial de ubicaciones"
   },
+  "markdown": {
+    "opensInNewTab": "(se abre en una pestaña nueva)"
+  },
   "notes": {
     "title": "Notas",
     "addNote": "Agregar Nota",

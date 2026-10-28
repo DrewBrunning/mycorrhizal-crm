@@ -838,6 +838,9 @@
     "allContactsInfo": "Questa pagina elenca tutte le attività di tutti i contatti.",
     "logFromLocation": "Registra dalla cronologia delle posizioni"
   },
+  "markdown": {
+    "opensInNewTab": "(si apre in una nuova scheda)"
+  },
   "notes": {
     "title": "Notes",
     "addNote": "Aggiungi Nota",

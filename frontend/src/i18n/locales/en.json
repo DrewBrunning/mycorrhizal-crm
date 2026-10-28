@@ -820,6 +820,9 @@
     "allContactsInfo": "This page lists every activity from every contact.",
     "logFromLocation": "Log from location history"
   },
+  "markdown": {
+    "opensInNewTab": "(opens in a new tab)"
+  },
   "notes": {
     "title": "Notes",
     "addNote": "Add Note",
