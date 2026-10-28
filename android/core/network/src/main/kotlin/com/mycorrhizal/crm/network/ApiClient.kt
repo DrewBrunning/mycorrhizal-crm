@@ -101,6 +101,7 @@ import com.mycorrhizal.crm.model.network.DuplicatePairsResponse
 import com.mycorrhizal.crm.model.network.EnabledContactFieldsInput
 import com.mycorrhizal.crm.model.network.EnabledContactFieldsResponse
 import com.mycorrhizal.crm.model.network.ErrorAggregationResponse
+import com.mycorrhizal.crm.model.network.ErrorReason
 import com.mycorrhizal.crm.model.network.ExportLossPreflightResponse
 import com.mycorrhizal.crm.model.network.ExternalActivitiesPage
 import com.mycorrhizal.crm.model.network.ExternalActivity
@@ -3309,13 +3310,24 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
     private fun parseError(code: Int, body: String): ApiError {
         val parsed = parseErrorDisplayMessage(body)
         val message = parsed?.takeIf { it.isNotBlank() } ?: body.ifBlank { "HTTP $code" }
+        val envelope = parseErrorEnvelope(body)
+        val error = envelope?.error
+        val reasonCode = error?.reasonCode?.takeIf { it.isNotBlank() }
+        val reason = if (error != null && reasonCode != null) {
+            ErrorReason(reasonCode, error.reasonParams.orEmpty())
+        } else {
+            null
+        }
+        val requestId = envelope?.requestId
         // ADR 0008/0010: a stale If-Match is a typed conflict, never a generic 4xx, so a caller
         // can offer "load latest" instead of a bare error toast.
-        if (code == HTTP_PRECONDITION_FAILED) return ApiError.PreconditionFailed(message)
+        if (code == HTTP_PRECONDITION_FAILED) {
+            return ApiError.PreconditionFailed(message, reason, requestId)
+        }
         return if (code in 400..499) {
-            ApiError.Client(code, message)
+            ApiError.Client(code, message, reason, requestId)
         } else {
-            ApiError.Server(code, message, errorCode = parseErrorCode(body))
+            ApiError.Server(code, message, error?.code, reason, requestId)
         }
     }
 
@@ -3329,8 +3341,8 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
      * body's `error` is a String, which the envelope model can't decode, and
      * that must not mask the `message` fallback.
      */
-    private fun parseErrorCode(body: String): String? = runCatching {
-        moshi.adapter(BackendError::class.java).fromJson(body)?.error?.code
+    private fun parseErrorEnvelope(body: String): BackendError? = runCatching {
+        moshi.adapter(BackendError::class.java).fromJson(body)
     }.getOrNull()
 
     private fun parseErrorDisplayMessage(body: String): String? {
