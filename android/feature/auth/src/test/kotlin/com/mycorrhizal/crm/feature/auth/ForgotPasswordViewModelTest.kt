@@ -79,7 +79,7 @@ class ForgotPasswordViewModelTest {
             advanceUntilIdle()
 
             assertEquals(PasswordResetStep.REQUEST, vm.uiState.value.step)
-            assertEquals("invalid email", vm.uiState.value.error)
+            assertEquals("invalid email", vm.uiState.value.error?.message)
         }
 
     @Test

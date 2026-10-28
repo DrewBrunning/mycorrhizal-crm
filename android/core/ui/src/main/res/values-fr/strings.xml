@@ -2710,6 +2710,8 @@
     </plurals>
     <string name="score_reason_target_ambient">Contact ambiant, toujours dans les temps</string>
     <string name="error_request_ref">(réf. %1$s)</string>
+    <string name="login_error_invalid_credentials">Identifiants invalides</string>
+    <string name="register_error_disabled">L’inscription est désactivée sur ce serveur</string>
     <string name="error_client_network">Pas de connexion</string>
     <string name="error_client_timeout">Délai de la requête dépassé</string>
     <string name="error_client_server">Erreur du serveur (%1$d)</string>

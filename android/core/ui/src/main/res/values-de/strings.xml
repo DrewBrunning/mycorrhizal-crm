@@ -2613,6 +2613,8 @@
     </plurals>
     <string name="score_reason_target_ambient">Umgebungskontakt, immer im Plan</string>
     <string name="error_request_ref">(Referenz: %1$s)</string>
+    <string name="login_error_invalid_credentials">Ungültige Zugangsdaten</string>
+    <string name="register_error_disabled">Die Registrierung ist auf diesem Server deaktiviert</string>
     <string name="error_client_network">Keine Verbindung</string>
     <string name="error_client_timeout">Zeitüberschreitung bei der Anfrage</string>
     <string name="error_client_server">Serverfehler (%1$d)</string>

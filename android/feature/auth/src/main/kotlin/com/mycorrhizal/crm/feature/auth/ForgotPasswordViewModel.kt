@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.model.util.Validators
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.toApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -30,7 +31,7 @@ data class ForgotPasswordUiState(
     val email: String = "",
     val token: String = "",
     val isLoading: Boolean = false,
-    val error: String? = null,
+    val error: ApiError? = null,
     @StringRes val errorRes: Int? = null,
     /** The anti-enumeration request message (identical for known and unknown emails). */
     val requestMessage: String? = null
@@ -115,7 +116,7 @@ class ForgotPasswordViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            error = e.toApiError().displayMessage
+                            error = e.toApiError()
                         )
                     }
                 }
@@ -164,7 +165,7 @@ class ForgotPasswordViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            error = e.toApiError().displayMessage
+                            error = e.toApiError()
                         )
                     }
                 }

@@ -73,7 +73,7 @@ class RegisterViewModelTest {
             advanceUntilIdle()
 
             assertFalse(vm.uiState.value.isLoading)
-            assertEquals("Password is too short", vm.uiState.value.error)
+            assertEquals("Password is too short", vm.uiState.value.feedback)
             coVerify(exactly = 0) { authRepository.register(any(), any(), any()) }
         }
 
@@ -149,7 +149,7 @@ class RegisterViewModelTest {
             advanceUntilIdle()
 
             assertFalse(vm.uiState.value.isLoading)
-            assertEquals("User already exists", vm.uiState.value.error)
+            assertEquals("User already exists", vm.uiState.value.error?.message)
             coVerify(exactly = 0) { authRepository.login(any(), any()) }
         }
 

@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.localizedMessage
 
 /**
  * M26: new-account creation. Reached from the login screen; on success the
@@ -194,7 +195,11 @@ fun RegisterScreenContent(
                 }
             }
 
-            val errorMessage = uiState.errorRes?.let { stringResource(it) } ?: uiState.error
+            val errorMessage = uiState.errorRes?.let {
+                stringResource(
+                    it
+                )
+            } ?: uiState.error?.localizedMessage() ?: uiState.feedback
             errorMessage?.let { message ->
                 LaunchedEffect(message) {
                     snackbarHostState.showSnackbar(message)

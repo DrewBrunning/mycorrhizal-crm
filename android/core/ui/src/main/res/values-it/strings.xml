@@ -2708,6 +2708,8 @@
     </plurals>
     <string name="score_reason_target_ambient">Contatto ambientale, sempre in regola</string>
     <string name="error_request_ref">(rif: %1$s)</string>
+    <string name="login_error_invalid_credentials">Credenziali non valide</string>
+    <string name="register_error_disabled">La registrazione è disattivata su questo server</string>
     <string name="error_client_network">Nessuna connessione</string>
     <string name="error_client_timeout">Richiesta scaduta</string>
     <string name="error_client_server">Errore del server (%1$d)</string>

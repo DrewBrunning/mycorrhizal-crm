@@ -2630,6 +2630,8 @@
     </plurals>
     <string name="score_reason_target_ambient">Ambient contact, always on track</string>
     <string name="error_request_ref">(ref: %1$s)</string>
+    <string name="login_error_invalid_credentials">Invalid credentials</string>
+    <string name="register_error_disabled">Registration is disabled on this server</string>
     <string name="error_client_network">No connection</string>
     <string name="error_client_timeout">Request timed out</string>
     <string name="error_client_server">Server error (%1$d)</string>

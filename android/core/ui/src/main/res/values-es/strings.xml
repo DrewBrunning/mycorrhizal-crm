@@ -2708,6 +2708,8 @@
     </plurals>
     <string name="score_reason_target_ambient">Contacto ambiental, siempre al día</string>
     <string name="error_request_ref">(ref: %1$s)</string>
+    <string name="login_error_invalid_credentials">Credenciales no válidas</string>
+    <string name="register_error_disabled">El registro está desactivado en este servidor</string>
     <string name="error_client_network">Sin conexión</string>
     <string name="error_client_timeout">La solicitud agotó el tiempo de espera</string>
     <string name="error_client_server">Error del servidor (%1$d)</string>
