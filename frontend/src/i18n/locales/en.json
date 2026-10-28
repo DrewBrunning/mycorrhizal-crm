@@ -3380,5 +3380,11 @@
     "success": "CardDAV/CalDAV password policy updated.",
     "error": "Unable to update the CardDAV/CalDAV password policy.",
     "loadError": "Unable to load the CardDAV/CalDAV password policy."
+  },
+  "errors": {
+    "requestRef": "(ref: {{id}})",
+    "reason": {
+      "common_test_only": "Test {{n}}"
+    }
   }
 }

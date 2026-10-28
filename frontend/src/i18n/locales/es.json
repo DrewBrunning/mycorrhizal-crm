@@ -3477,5 +3477,11 @@
     "success": "Política de contraseña de CardDAV/CalDAV actualizada.",
     "error": "No se pudo actualizar la política de contraseña de CardDAV/CalDAV.",
     "loadError": "No se pudo cargar la política de contraseña de CardDAV/CalDAV."
+  },
+  "errors": {
+    "requestRef": "(ref.: {{id}})",
+    "reason": {
+      "common_test_only": "Prueba {{n}}"
+    }
   }
 }

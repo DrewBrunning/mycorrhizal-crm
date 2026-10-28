@@ -3380,5 +3380,11 @@
     "success": "Richtlinie für das CardDAV-/CalDAV-Passwort aktualisiert.",
     "error": "Die Richtlinie für das CardDAV-/CalDAV-Passwort konnte nicht aktualisiert werden.",
     "loadError": "Die Richtlinie für das CardDAV-/CalDAV-Passwort konnte nicht geladen werden."
+  },
+  "errors": {
+    "requestRef": "(Ref.: {{id}})",
+    "reason": {
+      "common_test_only": "Prüfung {{n}}"
+    }
   }
 }

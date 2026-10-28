@@ -3477,5 +3477,11 @@
     "success": "Politique de mot de passe CardDAV/CalDAV mise à jour.",
     "error": "Impossible de mettre à jour la politique de mot de passe CardDAV/CalDAV.",
     "loadError": "Impossible de charger la politique de mot de passe CardDAV/CalDAV."
+  },
+  "errors": {
+    "requestRef": "(réf. : {{id}})",
+    "reason": {
+      "common_test_only": "Essai {{n}}"
+    }
   }
 }
