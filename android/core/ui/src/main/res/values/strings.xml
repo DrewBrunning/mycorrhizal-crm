@@ -786,7 +786,7 @@
     <string name="settings_api_tokens_expires">Expires %1$s</string>
     <string name="settings_api_tokens_rotate_named">Rotate %1$s</string>
     <string name="settings_api_tokens_revoke_named">Revoke %1$s</string>
-    <string name="settings_api_tokens_create_title">Create API token</string>
+    <string name="settings_api_tokens_create_title">Create API Token</string>
     <string name="settings_api_tokens_name_label">Token name</string>
     <string name="settings_api_tokens_expiry_label">Expires in</string>
     <plurals name="settings_api_tokens_expiry_days">
