@@ -10,6 +10,7 @@ android {
 dependencies {
     api(project(":core:model"))
     api(project(":core:domain"))
+    api(project(":core:network"))
 
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
