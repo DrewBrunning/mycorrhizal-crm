@@ -2886,6 +2886,32 @@
     },
     {
       "method": "POST",
+      "path": "/contacts/{id}/activities",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "request_body": "ref:ContactActivitiesInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
       "path": "/contacts/{id}/addresses/geocode",
       "parameters": [
         {
@@ -10585,6 +10611,16 @@
           "name": "group",
           "type": "integer",
           "required": false
+        }
+      ]
+    },
+    {
+      "name": "ContactActivitiesInput",
+      "properties": [
+        {
+          "name": "activity_ids",
+          "type": "array\u003cinteger\u003e",
+          "required": true
         }
       ]
     },

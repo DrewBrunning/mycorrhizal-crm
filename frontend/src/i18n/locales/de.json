@@ -762,7 +762,16 @@
     "selectContacts": "Kontakte auswählen...",
     "cancel": "Abbrechen",
     "save": "Speichern",
-    "required": "Titel und Datum sind erforderlich"
+    "required": "Titel und Datum sind erforderlich",
+    "modeLabel": "Aktivitätsmodus",
+    "modeNew": "Neue Aktivität",
+    "modeExisting": "Zu bestehender hinzufügen",
+    "searchExisting": "Aktivitäten suchen",
+    "noExisting": "Keine Aktivitäten gefunden",
+    "addToSelected": "Zu Auswahl hinzufügen",
+    "existingLoadFailed": "Aktivitäten konnten nicht geladen werden",
+    "existingSaveFailed": "Hinzufügen zu den ausgewählten Aktivitäten fehlgeschlagen",
+    "existingPartialFailure": "Konnte nicht aktualisiert werden: {{names}}"
   },
   "activities": {
     "title": "Aktivitäten",

@@ -780,7 +780,16 @@
     "selectContacts": "Seleccionar contactos...",
     "cancel": "Cancelar",
     "save": "Guardar",
-    "required": "El título y la fecha son obligatorios"
+    "required": "El título y la fecha son obligatorios",
+    "modeLabel": "Modo de actividad",
+    "modeNew": "Nueva actividad",
+    "modeExisting": "Añadir a existente",
+    "searchExisting": "Buscar actividades",
+    "noExisting": "No se encontraron actividades",
+    "addToSelected": "Añadir a la selección",
+    "existingLoadFailed": "No se pudieron cargar las actividades",
+    "existingSaveFailed": "No se pudo añadir a las actividades seleccionadas",
+    "existingPartialFailure": "No se pudo actualizar: {{names}}"
   },
   "activities": {
     "title": "Actividades",

@@ -780,7 +780,16 @@
     "selectContacts": "Seleziona contatti...",
     "cancel": "Annulla",
     "save": "Salva",
-    "required": "Titolo e data sono obbligatori"
+    "required": "Titolo e data sono obbligatori",
+    "modeLabel": "Modalità attività",
+    "modeNew": "Nuova attività",
+    "modeExisting": "Aggiungi a esistente",
+    "searchExisting": "Cerca attività",
+    "noExisting": "Nessuna attività trovata",
+    "addToSelected": "Aggiungi alla selezione",
+    "existingLoadFailed": "Impossibile caricare le attività",
+    "existingSaveFailed": "Impossibile aggiungere alle attività selezionate",
+    "existingPartialFailure": "Impossibile aggiornare: {{names}}"
   },
   "activities": {
     "title": "Attività",

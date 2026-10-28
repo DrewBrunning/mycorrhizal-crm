@@ -5551,6 +5551,53 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+    post:
+      summary: Add a contact to existing activities
+      description: >
+        Adds this contact to each listed existing activity by writing only the
+        activity_contacts join; no other activity field or member changes.
+        Idempotent per activity: a contact already on the activity reports
+        already_member and nothing is written. An activity that is missing or
+        owned by another user reports not_found with no write.
+      operationId: addContactToActivities
+      tags:
+        - Contacts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactActivitiesInput"
+      responses:
+        "200":
+          description: Per-activity outcome, in request order (duplicate ids collapsed).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [contact_id, results]
+                properties:
+                  contact_id: { type: integer }
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      required: [activity_id, status]
+                      properties:
+                        activity_id: { type: integer }
+                        status: { type: string, enum: [added, already_member, not_found] }
+        "400":
+          description: activity_ids missing, empty or longer than 100.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /activities:
     get:
       summary: List the user's activities
@@ -15265,6 +15312,15 @@ components:
         updated_at: { type: string, format: date-time }
         circle_id: { type: string, format: uuid }
         member_vcard_uid: { type: string, format: uuid }
+    ContactActivitiesInput:
+      type: object
+      required: [activity_ids]
+      properties:
+        activity_ids:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items: { type: integer }
     CircleMemberInput:
       type: object
       required: [member_vcard_uid]
