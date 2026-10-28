@@ -131,6 +131,71 @@ private fun localizedReason(reason: ErrorReason?): String? {
         ErrorReasonCode.IMPORT_TAGS_NOT_FOUND ->
             stringResource(R.string.error_reason_import_tags_not_found)
 
+        ErrorReasonCode.MEERKAT_UPLOAD_MISSING ->
+            stringResource(R.string.error_reason_meerkat_upload_missing)
+
+        ErrorReasonCode.MEERKAT_SESSION_NOT_FOUND ->
+            stringResource(R.string.error_reason_meerkat_session_not_found)
+
+        ErrorReasonCode.MEERKAT_SESSION_NOT_OWNED ->
+            stringResource(R.string.error_reason_meerkat_session_not_owned)
+
+        ErrorReasonCode.MEERKAT_SESSION_EXPIRED ->
+            stringResource(R.string.error_reason_meerkat_session_expired)
+
+        ErrorReasonCode.MEERKAT_DB_SIZE ->
+            stringResource(R.string.error_reason_meerkat_db_size)
+
+        ErrorReasonCode.MEERKAT_UPLOAD_NOT_SQLITE ->
+            stringResource(R.string.error_reason_meerkat_upload_not_sqlite)
+
+        ErrorReasonCode.MEERKAT_UPLOAD_UNREADABLE ->
+            stringResource(R.string.error_reason_meerkat_upload_unreadable)
+
+        ErrorReasonCode.MEERKAT_FILE_NOT_MEERKAT ->
+            stringResource(R.string.error_reason_meerkat_file_not_meerkat)
+
+        ErrorReasonCode.MEERKAT_DB_UNREADABLE ->
+            stringResource(R.string.error_reason_meerkat_db_unreadable)
+
+        ErrorReasonCode.MEERKAT_DB_TOO_MANY_CONTACTS ->
+            stringResource(R.string.error_reason_meerkat_db_too_many_contacts)
+
+        ErrorReasonCode.MEERKAT_DB_TOO_MANY_RECORDS ->
+            stringResource(R.string.error_reason_meerkat_db_too_many_records)
+
+        ErrorReasonCode.MEERKAT_IMPORT_IN_PROGRESS ->
+            stringResource(R.string.error_reason_meerkat_import_in_progress)
+
+        ErrorReasonCode.MEERKAT_NOT_PREPARED ->
+            stringResource(R.string.error_reason_meerkat_not_prepared)
+
+        ErrorReasonCode.MEERKAT_API_ERROR ->
+            reason.str(
+                "reason"
+            )?.let { stringResource(R.string.error_reason_meerkat_api_error, it) }
+
+        ErrorReasonCode.MEERKAT_UPSTREAM_ERROR ->
+            reason.str(
+                "reason"
+            )?.let { stringResource(R.string.error_reason_meerkat_upstream_error, it) }
+
+        ErrorReasonCode.MEERKAT_SIGN_IN_INPUT_MISSING ->
+            stringResource(R.string.error_reason_meerkat_sign_in_input_missing)
+
+        ErrorReasonCode.MEERKAT_REMOTE_TOO_MANY_CONTACTS -> {
+            val total = reason.int("total")
+            val max = reason.int("max")
+            if (total != null && max != null) {
+                stringResource(R.string.error_reason_meerkat_remote_too_many_contacts, total, max)
+            } else {
+                null
+            }
+        }
+
+        ErrorReasonCode.MEERKAT_VERSION_UNTESTED ->
+            stringResource(R.string.error_reason_meerkat_version_untested)
+
         else -> null
     }
 }

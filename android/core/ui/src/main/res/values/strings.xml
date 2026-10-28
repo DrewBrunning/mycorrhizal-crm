@@ -2585,4 +2585,22 @@
     <string name="error_reason_relationship_self_link">Source and target must be different contacts</string>
     <string name="error_reason_validation_cursor_malformed">%1$s cursor id is malformed</string>
     <string name="error_reason_validation_id_count_range">%1$s count range: %2$d–%3$d</string>
+    <string name="error_reason_meerkat_upload_missing">No file uploaded</string>
+    <string name="error_reason_meerkat_session_not_found">Import session expired or not found</string>
+    <string name="error_reason_meerkat_session_not_owned">Session does not belong to current user</string>
+    <string name="error_reason_meerkat_session_expired">Import session expired</string>
+    <string name="error_reason_meerkat_db_size">The database file is empty or larger than the 100 MB limit</string>
+    <string name="error_reason_meerkat_upload_not_sqlite">Upload a Meerkat SQLite database (.db, .sqlite or .sqlite3)</string>
+    <string name="error_reason_meerkat_upload_unreadable">The upload could not be read</string>
+    <string name="error_reason_meerkat_file_not_meerkat">That file is not a Meerkat database</string>
+    <string name="error_reason_meerkat_db_unreadable">The database could not be read as a Meerkat database</string>
+    <string name="error_reason_meerkat_db_too_many_contacts">This database has more contacts than the import supports</string>
+    <string name="error_reason_meerkat_db_too_many_records">This database has more records than the import supports</string>
+    <string name="error_reason_meerkat_import_in_progress">This import is already being prepared</string>
+    <string name="error_reason_meerkat_not_prepared">The Meerkat database is not prepared yet</string>
+    <string name="error_reason_meerkat_api_error">%1$s</string>
+    <string name="error_reason_meerkat_upstream_error">%1$s</string>
+    <string name="error_reason_meerkat_sign_in_input_missing">Enter a Meerkat API token, or a username and password</string>
+    <string name="error_reason_meerkat_remote_too_many_contacts">Contacts on this Meerkat account: %1$d. The import supports at most %2$d</string>
+    <string name="error_reason_meerkat_version_untested">This Meerkat version is not tested with the importer. Confirm to try anyway; nothing is written until you review the preview.</string>
 </resources>

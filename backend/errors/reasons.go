@@ -124,7 +124,7 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonMeerkatAPIError:              {Template: "{reason}", Params: []string{"reason"}},
 	ReasonMeerkatUpstreamError:         {Template: "{reason}", Params: []string{"reason"}},
 	ReasonMeerkatSignInInputMissing:    {Template: "Enter a Meerkat API token, or a username and password"},
-	ReasonMeerkatRemoteTooManyContacts: {Template: "This Meerkat account has {total} contacts; the import supports at most {max}", Params: []string{"total", "max"}},
+	ReasonMeerkatRemoteTooManyContacts: {Template: "Contacts on this Meerkat account: {total}. The import supports at most {max}", Params: []string{"total", "max"}},
 	ReasonMeerkatVersionUntested:       {Template: "This Meerkat version is not tested with the importer. Confirm to try anyway; nothing is written until you review the preview."},
 
 	ReasonValidationCursorMalformed: {Template: "{field} cursor id is malformed", Params: []string{"field"}},

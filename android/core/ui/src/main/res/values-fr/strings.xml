@@ -2659,4 +2659,22 @@
     <string name="error_reason_relationship_self_link">La source et la cible doivent être des contacts différents</string>
     <string name="error_reason_validation_cursor_malformed">L\'identifiant de curseur de %1$s est mal formé</string>
     <string name="error_reason_validation_id_count_range">Plage d’identifiants de %1$s : %2$d–%3$d</string>
+    <string name="error_reason_meerkat_upload_missing">Aucun fichier téléversé</string>
+    <string name="error_reason_meerkat_session_not_found">La session d’importation a expiré ou est introuvable</string>
+    <string name="error_reason_meerkat_session_not_owned">La session n’appartient pas à l’utilisateur actuel</string>
+    <string name="error_reason_meerkat_session_expired">La session d’importation a expiré</string>
+    <string name="error_reason_meerkat_db_size">Le fichier de base de données est vide ou dépasse la limite de 100 Mo</string>
+    <string name="error_reason_meerkat_upload_not_sqlite">Importez une base de données SQLite Meerkat (.db, .sqlite ou .sqlite3)</string>
+    <string name="error_reason_meerkat_upload_unreadable">Le fichier envoyé n’a pas pu être lu</string>
+    <string name="error_reason_meerkat_file_not_meerkat">Ce fichier n’est pas une base de données Meerkat</string>
+    <string name="error_reason_meerkat_db_unreadable">La base de données n’a pas pu être lue comme base de données Meerkat</string>
+    <string name="error_reason_meerkat_db_too_many_contacts">Cette base de données contient plus de contacts que l’import ne prend en charge</string>
+    <string name="error_reason_meerkat_db_too_many_records">Cette base de données contient plus d’enregistrements que l’import ne prend en charge</string>
+    <string name="error_reason_meerkat_import_in_progress">Cet import est déjà en cours de préparation</string>
+    <string name="error_reason_meerkat_not_prepared">La base de données Meerkat n’est pas encore prête</string>
+    <string name="error_reason_meerkat_api_error">%1$s</string>
+    <string name="error_reason_meerkat_upstream_error">%1$s</string>
+    <string name="error_reason_meerkat_sign_in_input_missing">Saisissez un jeton d’API Meerkat ou un nom d’utilisateur et un mot de passe</string>
+    <string name="error_reason_meerkat_remote_too_many_contacts">Contacts sur ce compte Meerkat : %1$d. L’import prend en charge au maximum %2$d</string>
+    <string name="error_reason_meerkat_version_untested">Cette version de Meerkat n’est pas testée avec l’importeur. Confirmez pour essayer quand même ; rien n’est écrit tant que vous n’avez pas vérifié l’aperçu.</string>
 </resources>

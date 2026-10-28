@@ -2657,4 +2657,22 @@
     <string name="error_reason_relationship_self_link">Origine e destinazione devono essere contatti diversi</string>
     <string name="error_reason_validation_cursor_malformed">L\'id del cursore di %1$s non è valido</string>
     <string name="error_reason_validation_id_count_range">Intervallo di id per %1$s: %2$d–%3$d</string>
+    <string name="error_reason_meerkat_upload_missing">Nessun file caricato</string>
+    <string name="error_reason_meerkat_session_not_found">La sessione di importazione è scaduta o non esiste</string>
+    <string name="error_reason_meerkat_session_not_owned">La sessione non appartiene all’utente attuale</string>
+    <string name="error_reason_meerkat_session_expired">La sessione di importazione è scaduta</string>
+    <string name="error_reason_meerkat_db_size">Il file del database è vuoto o supera il limite di 100 MB</string>
+    <string name="error_reason_meerkat_upload_not_sqlite">Carica un database SQLite di Meerkat (.db, .sqlite o .sqlite3)</string>
+    <string name="error_reason_meerkat_upload_unreadable">Impossibile leggere il file caricato</string>
+    <string name="error_reason_meerkat_file_not_meerkat">Questo file non è un database di Meerkat</string>
+    <string name="error_reason_meerkat_db_unreadable">Impossibile leggere il database come database di Meerkat</string>
+    <string name="error_reason_meerkat_db_too_many_contacts">Questo database contiene più contatti di quanti ne supporti l’importazione</string>
+    <string name="error_reason_meerkat_db_too_many_records">Questo database contiene più record di quanti ne supporti l’importazione</string>
+    <string name="error_reason_meerkat_import_in_progress">Questa importazione è già in preparazione</string>
+    <string name="error_reason_meerkat_not_prepared">Il database di Meerkat non è ancora pronto</string>
+    <string name="error_reason_meerkat_api_error">%1$s</string>
+    <string name="error_reason_meerkat_upstream_error">%1$s</string>
+    <string name="error_reason_meerkat_sign_in_input_missing">Inserisci un token API di Meerkat oppure un nome utente e una password</string>
+    <string name="error_reason_meerkat_remote_too_many_contacts">Contatti su questo account Meerkat: %1$d. L’importazione supporta al massimo %2$d</string>
+    <string name="error_reason_meerkat_version_untested">Questa versione di Meerkat non è testata con l’importatore. Conferma per provare comunque; non viene scritto nulla finché non verifichi l’anteprima.</string>
 </resources>
