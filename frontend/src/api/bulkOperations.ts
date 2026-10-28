@@ -4,6 +4,21 @@
 // controllers/bulk_operation_controller.go.
 import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 
+// The explicit allowlist of core fields "update_fields" may write (issue
+// #1996). Mirrors models.BulkEditableFields; multi-valued fields (addresses,
+// emails, phones) are deliberately absent.
+export const BULK_EDITABLE_FIELDS = [
+  'organization',
+  'department',
+  'job_title',
+  'role',
+  'gender',
+  'how_we_met',
+  'work_information',
+  'contact_information',
+] as const;
+export type BulkEditableField = (typeof BULK_EDITABLE_FIELDS)[number];
+
 export const BULK_ACTIONS = [
   'add_circle',
   'remove_circle',
@@ -12,6 +27,7 @@ export const BULK_ACTIONS = [
   'archive',
   'unarchive',
   'delete',
+  'update_fields',
 ] as const;
 export type BulkAction = (typeof BULK_ACTIONS)[number];
 
@@ -21,6 +37,12 @@ export interface BulkOperationRequest {
   vcard_uids: string[];
   circle_id?: string;
   tag_id?: string;
+  // update_fields only: a present `set` key is written (non-empty), a `clear`
+  // key is emptied, anything in neither is untouched.
+  set?: Partial<Record<BulkEditableField, string>>;
+  clear?: BulkEditableField[];
+  custom_set?: { field_definition_id: string; value: unknown }[];
+  custom_clear?: string[];
 }
 
 export interface BulkFailureEntry {

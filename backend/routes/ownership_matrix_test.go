@@ -603,6 +603,16 @@ func buildBodyOwnershipTable(fx ownFixtures) map[string]ownRow {
 				},
 				h.fx.ownerTagID, h.fx.victimTagID, ownNonexistentUID, http.StatusNotFound, false)
 		}),
+		"BulkContactOperationInput.CustomClear": dto(func(t *testing.T, h *ownHarness) {
+			// custom_clear[] holds FieldDefinition ids; a foreign or
+			// nonexistent one is a request-level 400 (nothing is written), the
+			// same response either way.
+			h.assertMasked(http.MethodPost, "/api/v1/contacts/bulk",
+				func(id string) string {
+					return fmt.Sprintf(`{"action":"update_fields","custom_clear":[%s],"vcard_uids":%s}`, jstr(id), jsonArray([]string{h.fx.ownerC1UID}))
+				},
+				h.fx.ownerFieldDefID, h.fx.victimFieldDefID, ownNonexistentUID, http.StatusBadRequest, false)
+		}),
 		"AcceptHouseholdSuggestionInput.MemberVCardUIDs":  dto(ownHouseholdSuggestionProbe("/api/v1/households/suggestions/accept")),
 		"DismissHouseholdSuggestionInput.MemberVCardUIDs": dto(ownHouseholdSuggestionProbe("/api/v1/households/suggestions/dismiss")),
 

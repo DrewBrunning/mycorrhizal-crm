@@ -27,6 +27,7 @@ function renderBar(props: Partial<React.ComponentProps<typeof BulkActionsBar>> =
     onRemoveTag: vi.fn(),
     onArchive: vi.fn(),
     onUnarchive: vi.fn(),
+    onEditFields: vi.fn(),
     onMerge: vi.fn(),
     onDelete: vi.fn(),
     ...props,
@@ -148,4 +149,11 @@ test('merge is enabled for exactly two selections and reports them', () => {
 test('merge stays disabled while a bulk action is busy', () => {
   renderBar({ selectedCount: 2, busy: true });
   expect(screen.getByRole('button', { name: 'Merge' })).toBeDisabled();
+});
+
+test('Edit fields button opens the bulk field editor', () => {
+  const onEditFields = vi.fn();
+  renderBar({ selectedCount: 2, onEditFields });
+  fireEvent.click(screen.getByRole('button', { name: 'Edit fields' }));
+  expect(onEditFields).toHaveBeenCalledTimes(1);
 });

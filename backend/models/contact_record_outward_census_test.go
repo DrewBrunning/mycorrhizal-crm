@@ -198,6 +198,13 @@ var outwardProjectionSites = []outwardSiteRow{
 
 	// ── not outward copies: read-modify-write / migrations / restore ──────
 	{
+		file: "controllers/bulk_update_fields.go", fn: "bulkFieldUpdate.apply",
+		class: outwardSiteInternal,
+		reason: "Bulk field edit (issue #1996): reads the owner's own record, " +
+			"changes allowlisted fields and saves it back through " +
+			"ApplyRecordToContact in the same transaction. No outward copy.",
+	},
+	{
 		file: "services/wedding_sync.go", fn: "SyncWeddingFromLifeEvent",
 		class: outwardSiteInternal,
 		reason: "Read-modify-write of a contact's own card to mirror a " +
