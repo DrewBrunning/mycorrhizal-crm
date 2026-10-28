@@ -2710,6 +2710,19 @@
     </plurals>
     <string name="score_reason_target_ambient">Contact ambiant, toujours dans les temps</string>
     <string name="error_request_ref">(réf. %1$s)</string>
+    <string name="error_client_network">Pas de connexion</string>
+    <string name="error_client_timeout">Délai de la requête dépassé</string>
+    <string name="error_client_server">Erreur du serveur (%1$d)</string>
+    <string name="error_client_session_expired">Session expirée : reconnecte-toi</string>
+    <string name="error_client_forbidden">Tu n’as pas l’autorisation</string>
+    <string name="error_client_not_found">Introuvable</string>
+    <string name="error_client_conflict">Conflit</string>
+    <string name="error_client_request_failed">Échec de la requête</string>
+    <string name="error_client_precondition_failed">Modifié ailleurs : charge la dernière version</string>
+    <string name="error_client_parse">Réponse inattendue du serveur</string>
+    <string name="error_client_archived_profile">Ce profil est une archive en lecture seule : passe à ton serveur pour modifier</string>
+    <string name="error_client_unknown">Une erreur s’est produite</string>
+    <string name="error_client_no_pending_two_factor">Aucune connexion à deux facteurs en attente. Reconnecte-toi.</string>
     <string name="error_reason_common_test_only">Essai %1$d</string>
     <string name="error_reason_contact_bulk_custom_field_duplicate">Une définition de champ personnalisé apparaît plusieurs fois</string>
     <string name="error_reason_contact_bulk_custom_field_in_both">Un champ personnalisé ne peut pas figurer à la fois dans custom_set et custom_clear</string>

@@ -55,6 +55,8 @@ sealed class ApiError(message: String, cause: Throwable? = null) : Exception(mes
             is ArchivedProfile -> "This profile is a read-only archive — switch to your server to make changes"
 
             is Unknown -> "Something went wrong"
+
+            is NoPendingTwoFactor -> "No pending two-factor login found. Please sign in again."
         }
 
     class Network(cause: IOException) : ApiError("Network error", cause)
@@ -95,6 +97,9 @@ sealed class ApiError(message: String, cause: Throwable? = null) : Exception(mes
             cause
         )
     class Unknown(cause: Throwable) : ApiError("Unknown error", cause)
+
+    /** A two-factor step was attempted with no pending login; the client built this, not the server. */
+    class NoPendingTwoFactor : ApiError("No pending two-factor login")
 }
 
 /**

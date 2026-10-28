@@ -202,6 +202,37 @@ class ErrorTextTest {
     }
 
     @Test
+    fun `client-worded errors render their translated strings`() {
+        val rendered = renderAll(
+            listOf(
+                ApiError.Client(401, "x"),
+                ApiError.Client(403, "x"),
+                ApiError.Client(404, "x"),
+                ApiError.Client(409, ""),
+                ApiError.Client(418, ""),
+                ApiError.Server(503, "hidden"),
+                ApiError.PreconditionFailed("x"),
+                ApiError.Parse("x"),
+                ApiError.NoPendingTwoFactor()
+            )
+        )
+        assertEquals(
+            listOf(
+                "Session expired — please log in again",
+                "You don't have permission",
+                "Not found",
+                "Conflict",
+                "Request failed",
+                "Server error (503)",
+                "Changed elsewhere — load the latest version",
+                "Unexpected server response",
+                "No pending two-factor login found. Please sign in again."
+            ),
+            rendered
+        )
+    }
+
+    @Test
     fun `an error that is not an API response uses the display message`() {
         assertEquals("Unexpected server response", render(ApiError.Parse("x")))
     }

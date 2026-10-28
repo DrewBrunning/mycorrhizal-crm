@@ -72,7 +72,7 @@ class AuthRepositoryImpl @Inject constructor(
             // No in-flight challenge (login never ran, or a previous attempt
             // consumed/expired it) — the server would reject anyway.
             return Result.failure(
-                ApiError.Client(401, "No pending two-factor login found. Please sign in again.")
+                ApiError.NoPendingTwoFactor()
             )
         }
 
@@ -83,7 +83,7 @@ class AuthRepositoryImpl @Inject constructor(
         val pending = pending2faCookie
         if (pending.isNullOrBlank()) {
             return Result.failure(
-                ApiError.Client(401, "No pending two-factor login found. Please sign in again.")
+                ApiError.NoPendingTwoFactor()
             )
         }
         val options = apiClient.webauthnLoginBegin(pending).getOrElse { error ->
@@ -99,7 +99,7 @@ class AuthRepositoryImpl @Inject constructor(
         val pending = pending2faCookie
         if (pending.isNullOrBlank()) {
             return Result.failure(
-                ApiError.Client(401, "No pending two-factor login found. Please sign in again.")
+                ApiError.NoPendingTwoFactor()
             )
         }
         // Unlike a wrong TOTP code, a 401 here can mean "assertion rejected" with
