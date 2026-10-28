@@ -1,8 +1,10 @@
 package com.mycorrhizal.crm.feature.tracking
 
 import android.content.Context
+import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
@@ -51,6 +53,9 @@ object TrackingWorkerScheduler {
     /** One-shot immediate run after a call-tracking grant / phone-state event
      *  (shared with PhoneStateReceiver). */
     const val UNIQUE_CALL_LOG_SYNC = "call-log-sync"
+
+    /** One-shot FCM token (re-)registration after a token refresh (issue #2066). */
+    const val UNIQUE_FCM_TOKEN_REGISTRATION = "fcm-token-registration"
 
     /** One-shot immediate run after an SMS-tracking grant. */
     const val UNIQUE_SMS_BACKFILL_ONCE = "sms-backfill-once"
@@ -197,6 +202,24 @@ object TrackingWorkerScheduler {
         WorkManager.getInstance(context).enqueueUniqueWork(
             UNIQUE_SMS_BACKFILL_ONCE,
             ExistingWorkPolicy.KEEP,
+            request
+        )
+    }
+
+    /**
+     * Persists an FCM token registration (issue #2066). REPLACE: only the
+     * newest token matters, so a rotation supersedes a still-pending one.
+     */
+    fun enqueueFcmTokenRegistration(context: Context, token: String) {
+        val request = OneTimeWorkRequestBuilder<FcmTokenRegistrationWorker>()
+            .setInputData(FcmTokenRegistrationWorker.inputFor(token))
+            .setConstraints(
+                Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
+            )
+            .build()
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            UNIQUE_FCM_TOKEN_REGISTRATION,
+            ExistingWorkPolicy.REPLACE,
             request
         )
     }

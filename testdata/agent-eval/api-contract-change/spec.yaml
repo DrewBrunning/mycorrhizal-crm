@@ -21,5 +21,6 @@ expect_paths:
   - android/feature/contacts/**
   - docs/**
 forbid_paths:
+  - backend/correspondence/**
   - backend/database/migrations/**
   - .github/**

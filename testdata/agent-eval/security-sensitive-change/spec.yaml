@@ -9,6 +9,7 @@ agent_model: none
 agent_version: "0"
 expect_paths:
   - backend/controllers/**
+  - backend/models/**
   - backend/services/**
   - backend/routes/**
   - backend/middleware/**

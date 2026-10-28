@@ -83,7 +83,7 @@ class SmsInboxReconciliationWorker @AssistedInject constructor(
             }
 
             sinceId = maxId
-            trackingSettings.setLastSmsInboxId(sinceId)
+            trackingSettings.advanceLastSmsInboxId(sinceId)
 
             if (entries.size < PAGE_SIZE) break // caught up
         }

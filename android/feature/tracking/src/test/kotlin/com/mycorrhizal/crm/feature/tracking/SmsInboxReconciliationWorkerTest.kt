@@ -114,7 +114,7 @@ class SmsInboxReconciliationWorkerTest {
 
         assertTrue(result is androidx.work.ListenableWorker.Result.Success)
         coVerify(exactly = 0) { pendingInteractions.recordIfNew(any()) }
-        coVerify(exactly = 0) { settings.setLastSmsInboxId(any()) }
+        coVerify(exactly = 0) { settings.advanceLastSmsInboxId(any()) }
     }
 
     @Test
@@ -128,7 +128,7 @@ class SmsInboxReconciliationWorkerTest {
 
         worker(pendingInteractions, contacts, settings).doWork()
 
-        coVerify(exactly = 0) { settings.setLastSmsInboxId(any()) }
+        coVerify(exactly = 0) { settings.advanceLastSmsInboxId(any()) }
     }
 
     @Test
@@ -168,7 +168,7 @@ class SmsInboxReconciliationWorkerTest {
             }
             coVerify(exactly = 1) { settings.incrementFilteredUnknownCount() }
             // The cursor still advances past everything seen, filtered or not.
-            coVerify { settings.setLastSmsInboxId(8L) }
+            coVerify { settings.advanceLastSmsInboxId(8L) }
         }
 
     @Test
@@ -225,7 +225,7 @@ class SmsInboxReconciliationWorkerTest {
         worker(pendingInteractions, contacts, settings).doWork()
 
         coVerify(exactly = 1) { pendingInteractions.recordIfNew(any()) }
-        coVerify { settings.setLastSmsInboxId(1L) }
+        coVerify { settings.advanceLastSmsInboxId(1L) }
     }
 
     /**
@@ -315,6 +315,6 @@ class SmsInboxReconciliationWorkerTest {
             coVerify(exactly = 75) { pendingInteractions.recordIfNew(any()) }
             coVerify { pendingInteractions.recordIfNew(match { it.timestampMillis == 1_000L }) }
             coVerify { pendingInteractions.recordIfNew(match { it.timestampMillis == 75_000L }) }
-            coVerify { settings.setLastSmsInboxId(75L) }
+            coVerify { settings.advanceLastSmsInboxId(75L) }
         }
 }

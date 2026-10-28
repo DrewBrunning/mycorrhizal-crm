@@ -127,6 +127,19 @@ func loadLinkAndActivity(t *testing.T, db *gorm.DB, sub *models.CalendarSubscrip
 	return link, activity
 }
 
+// editActivityLocally renames the activity after backdating the link's
+// updated_at by a minute, so the "edited since last sync" ordering
+// (activity.UpdatedAt after link.UpdatedAt) is explicit instead of depending
+// on the wall-clock resolution between two saves.
+func editActivityLocally(t *testing.T, db *gorm.DB, sub *models.CalendarSubscription, activity *models.Activity, title string) {
+	t.Helper()
+	link, _ := loadLinkAndActivity(t, db, sub)
+	require.NoError(t, db.Model(&models.CalendarEventLink{}).Where("id = ?", link.ID).
+		UpdateColumn("updated_at", time.Now().Add(-time.Minute)).Error)
+	activity.Title = title
+	require.NoError(t, db.Save(activity).Error)
+}
+
 func TestTwoWay_LocalOnlyChangePushesWithIfMatch(t *testing.T) {
 	db := setupCalendarSyncTestDB(t)
 	cfg := twoWayConfig()
@@ -147,9 +160,7 @@ func TestTwoWay_LocalOnlyChangePushesWithIfMatch(t *testing.T) {
 	assert.Equal(t, "/calendars/test/event1.ics", link.RemotePath, "the remote path must be captured on import")
 
 	// Local edit: user renames the activity. Remote stays unchanged.
-	time.Sleep(1100 * time.Millisecond)
-	activity.Title = "Local rename"
-	require.NoError(t, db.Save(&activity).Error)
+	editActivityLocally(t, db, sub, &activity, "Local rename")
 
 	stats, err = service.SyncSubscription(context.Background(), db, cfg, sub)
 	require.NoError(t, err)
@@ -190,10 +201,8 @@ func TestTwoWay_PushRetryReusesRemoteUIDNoDuplicate(t *testing.T) {
 	require.NoError(t, err)
 
 	// Local edit, then make the first push attempt fail transiently.
-	time.Sleep(1100 * time.Millisecond)
 	_, activity := loadLinkAndActivity(t, db, sub)
-	activity.Title = "Local rename"
-	require.NoError(t, db.Save(&activity).Error)
+	editActivityLocally(t, db, sub, &activity, "Local rename")
 
 	var putAttempts int
 	mock.mu.Lock()
@@ -266,9 +275,7 @@ func TestTwoWay_WeakAndBareETagsImportAndPush(t *testing.T) {
 			assert.Equal(t, 0, mock.putCount(), "an unchanged imported event must not be pushed")
 
 			// A local edit pushes one PUT with the normalized If-Match.
-			time.Sleep(1100 * time.Millisecond)
-			activity.Title = "Local rename"
-			require.NoError(t, db.Save(&activity).Error)
+			editActivityLocally(t, db, sub, &activity, "Local rename")
 
 			_, err = service.SyncSubscription(context.Background(), db, cfg, sub)
 			require.NoError(t, err)
@@ -325,9 +332,7 @@ func TestTwoWay_WeakAndBareETagsWireFormMismatchUsesLocalWins(t *testing.T) {
 			require.NoError(t, err)
 
 			_, activity := loadLinkAndActivity(t, db, sub)
-			time.Sleep(1100 * time.Millisecond)
-			activity.Title = "Local edit wins"
-			require.NoError(t, db.Save(&activity).Error)
+			editActivityLocally(t, db, sub, &activity, "Local edit wins")
 
 			_, err = service.SyncSubscription(context.Background(), db, cfg, sub)
 			require.NoError(t, err)
@@ -370,9 +375,7 @@ func TestTwoWay_EmptyETagImportsAndPushesWithoutIfMatch(t *testing.T) {
 	link, activity := loadLinkAndActivity(t, db, sub)
 	assert.Empty(t, link.RemoteETag, "an empty wire ETag degrades to an empty stored validator")
 
-	time.Sleep(1100 * time.Millisecond)
-	activity.Title = "Local rename"
-	require.NoError(t, db.Save(&activity).Error)
+	editActivityLocally(t, db, sub, &activity, "Local rename")
 
 	_, err = service.SyncSubscription(context.Background(), db, cfg, sub)
 	require.NoError(t, err)
@@ -457,9 +460,7 @@ func TestTwoWay_BothChanged_LocalWins(t *testing.T) {
 
 	// Local edit AND remote edit before the next sync.
 	_, activity := loadLinkAndActivity(t, db, sub)
-	time.Sleep(1100 * time.Millisecond)
-	activity.Title = "Local edit wins"
-	require.NoError(t, db.Save(&activity).Error)
+	editActivityLocally(t, db, sub, &activity, "Local edit wins")
 
 	mock.mu.Lock()
 	mock.event = vcalendarWith(importedVEvent("Remote edit"))
@@ -546,9 +547,7 @@ func TestTwoWay_DisabledConfigNeverPushes(t *testing.T) {
 	require.NoError(t, err)
 
 	_, activity := loadLinkAndActivity(t, db, sub)
-	time.Sleep(1100 * time.Millisecond)
-	activity.Title = "Edited"
-	require.NoError(t, db.Save(&activity).Error)
+	editActivityLocally(t, db, sub, &activity, "Edited")
 
 	_, err = service.SyncSubscription(context.Background(), db, cfg, sub)
 	require.NoError(t, err)
