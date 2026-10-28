@@ -37,6 +37,9 @@ shipped broken at least once. Test against the real migrated schema, never `Auto
 4. <a id="trap-4"></a>**Check `.Error` on every `db.Updates`/`db.Save`.** GORM returns `*gorm.DB`,
    not `error`, so errcheck cannot see a discarded result. `cd backend && go run ./cmd/gormerrcheck ./...`
    (`internal/lint/gormerr`) enforces it in CI and the pre-commit hook.
+   Likewise `go run ./cmd/reasoncodecheck ./...` (`internal/lint/reasoncode`, ADR 0038): a
+   user-facing `apperrors.Err*` must be chained `.WithReason(...)`; unmigrated sites are a per-file
+   counted ratchet in `internal/lint/reasoncode/allowlist.txt` (lower it with `-write-allowlist`).
 
 5. <a id="trap-5"></a>**Ownership is enforced at the data-access boundary.** Every user-scoped
    handler must scope by `user_id` (or `Contact.VCardUID` for graph entities). Treat a missing or
