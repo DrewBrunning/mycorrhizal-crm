@@ -380,7 +380,7 @@ jobs:
     name: Run E2E Tests (production defaults)
     runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 20
-    needs: changes
+    needs: [changes, e2e]
     # Same path gating + nightly schedule-exemption as the main e2e job.
     if: github.event_name == 'schedule' || needs.changes.outputs.frontend == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'
 
@@ -568,7 +568,7 @@ jobs:
     name: Run E2E Service-Worker Upgrade Tests
     runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 40
-    needs: changes
+    needs: [changes, e2e]
     if: github.event_name == 'schedule' || needs.changes.outputs.frontend == 'true' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'
 
     steps:
@@ -682,7 +682,7 @@ jobs:
     name: Run E2E WebKit Smoke Test
     runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 20
-    needs: changes
+    needs: [changes, e2e]
     if: github.event_name == 'schedule' || needs.changes.outputs.frontend == 'true' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'
 
     steps:
@@ -852,7 +852,7 @@ jobs:
     name: Run E2E Firefox Smoke Test
     runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 20
-    needs: changes
+    needs: [changes, e2e]
     if: github.event_name == 'schedule' || needs.changes.outputs.frontend == 'true' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'
 
     steps:

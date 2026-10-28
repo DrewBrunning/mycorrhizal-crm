@@ -35,8 +35,9 @@ name: Integration Real-Server Contract Tests
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
+  # Not per-PR (CI queue pressure): a PR's required checks do not include this
+  # workflow, so it runs after merge (push:main), nightly, on workflow_call from
+  # the release battery, and on demand (`gh workflow run integration-real-servers.yml --ref <branch>`).
   schedule:
     - cron: '20 4 * * *' # 04:20 UTC nightly, after the consolidated suite (03:45) and before the 05:30 reconciler
   workflow_dispatch:

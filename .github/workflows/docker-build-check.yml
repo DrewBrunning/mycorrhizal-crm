@@ -11,6 +11,12 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+    # A docs-only PR skips this workflow (no `Detect Changes` job queued for nothing);
+    # docs/golden-fixtures/** is the one docs path that is test input (filters.yaml).
+    paths:
+      - '**'
+      - '!docs/**'
+      - 'docs/golden-fixtures/**'
 
 # Branch-scoped cancellation: a force-push to an open PR cancels this
 # workflow's own still-running superseded run instead of paying for the old

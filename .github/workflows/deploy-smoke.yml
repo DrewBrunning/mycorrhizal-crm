@@ -27,6 +27,12 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+    # A docs-only PR skips this workflow (no `Detect Changes` job queued for nothing);
+    # docs/golden-fixtures/** is the one docs path that is test input (filters.yaml).
+    paths:
+      - '**'
+      - '!docs/**'
+      - 'docs/golden-fixtures/**'
   schedule:
     - cron: '40 3 * * *' # 03:40 UTC nightly
   # Issue #1484: composed into the release battery (release-validate.yml) as a

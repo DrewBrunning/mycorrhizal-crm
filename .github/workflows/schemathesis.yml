@@ -6,7 +6,8 @@ name: Schemathesis API fuzzing
 # 500s on malformed/edge input and auth-protected operations that return data
 # without auth. It is the automated evidence for the API1/BOLA and API3/BOPLA
 # rows in docs/security/asvs-l2.md, and complements the weekly ZAP DAST sweep
-# (zap-dast.yml, issue #368) as a per-PR, path-gated check.
+# (zap-dast.yml, issue #368). It runs on push:main, nightly, dispatch and release
+# composition, not per PR (CI queue pressure; not a required PR context).
 #
 # Two Schemathesis passes run against one booted app:
 #   - anonymous (no auth): not_a_server_error + ignored_auth — the ignored_auth
@@ -35,8 +36,9 @@ name: Schemathesis API fuzzing
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
+  # Not per-PR (CI queue pressure): a PR's required checks do not include this
+  # workflow, so it runs after merge (push:main), nightly, on workflow_call from
+  # the release battery, and on demand (`gh workflow run schemathesis.yml --ref <branch>`).
   schedule:
     - cron: '30 4 * * *' # 04:30 UTC nightly (deep run; trails the consolidated nightly suite)
   # RC-02 (#446): release.yml dispatches this against a release/* ref when

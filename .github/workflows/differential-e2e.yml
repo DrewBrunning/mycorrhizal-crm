@@ -16,8 +16,9 @@ name: Differential E2E (calcard)
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
+  # Not per-PR (CI queue pressure): a PR's required checks do not include this
+  # workflow, so it runs after merge (push:main), nightly, on workflow_call from
+  # the release battery, and on demand (`gh workflow run differential-e2e.yml --ref <branch>`).
   schedule:
     - cron: '45 3 * * *' # 03:45 UTC nightly (consolidated nightly suite)
   workflow_dispatch:
