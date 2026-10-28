@@ -13824,6 +13824,13 @@ components:
             details:
               type: object
               additionalProperties: true
+            reason_code:
+              type: string
+              description: Stable error reason code for client localization (ADR 0038). Absent when the error has no registered reason; clients fall back to `message`.
+            reason_params:
+              type: object
+              additionalProperties: true
+              description: Flat string/number params for the reason's template.
         request_id: { type: string }
         timestamp: { type: string, format: date-time }
     SyncInfo:
