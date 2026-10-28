@@ -197,6 +197,7 @@ describe('parseErrorResponse / apiFetch fallbacks', () => {
 // knows it and every param is present; otherwise the server message stands.
 describe('ApiError.getDisplayMessage reason codes', () => {
   afterEach(async () => {
+    vi.restoreAllMocks();
     await i18next.changeLanguage('en');
   });
 
@@ -251,7 +252,8 @@ describe('ApiError.getDisplayMessage reason codes', () => {
     );
   });
 
-  test('keeps the English request reference on a 5xx in English', () => {
+  test('keeps the English request reference when i18n is not ready', () => {
+    vi.spyOn(i18next, 'exists').mockReturnValue(false);
     const err = new ApiError('Something broke', 'INTERNAL', 503, undefined, 'abc');
     expect(err.getDisplayMessage()).toBe('Something broke (ref: abc)');
   });

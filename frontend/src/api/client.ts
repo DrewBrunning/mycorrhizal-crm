@@ -42,8 +42,8 @@ function localizedReason(code?: string, params?: ReasonParams): string | undefin
   if (!code) return undefined;
   const key = `errors.reason.${code}`;
   if (!i18next.exists(key)) return undefined;
-  const template = i18next.getResource('en', 'translation', key);
-  if (typeof template !== 'string') return undefined;
+  // `exists` above guarantees an English leaf string; String() keeps the type honest.
+  const template = String(i18next.getResource('en', 'translation', key));
   for (const match of template.matchAll(TEMPLATE_PLACEHOLDER)) {
     if (params?.[match[1]] === undefined) return undefined;
   }
