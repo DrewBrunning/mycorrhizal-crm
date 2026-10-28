@@ -51,7 +51,7 @@ describe('MarkdownText', () => {
     const { container } = render(<MarkdownText text={src} />);
     expect(container.querySelector('img,script,iframe')).toBeNull();
     for (const a of Array.from(container.querySelectorAll('a'))) {
-      expect(a.getAttribute('href')).toMatch(/^https:\/\/e\.com/);
+      expect(new URL(a.getAttribute('href') ?? '').hostname).toBe('e.com');
     }
     expect(container.innerHTML).not.toMatch(/\son\w+=/i);
   });
@@ -69,7 +69,7 @@ describe('MarkdownText', () => {
 
   it('gives an empty-label link its URL as the name', () => {
     render(<MarkdownText text="[](https://example.com)" />);
-    expect(screen.getByRole('link', { name: /https:\/\/example\.com/ })).toBeTruthy();
+    expect(screen.getByRole('link', { name: /^https:\/\/example\.com/ })).toBeTruthy();
   });
 
   it('tolerates malformed and deeply nested Markdown', () => {
