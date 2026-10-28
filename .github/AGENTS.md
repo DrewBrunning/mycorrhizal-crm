@@ -55,7 +55,7 @@ shadows the shared setting, and repairs the `CLAUDE.md` aliases).
   fail-closed on a missing binary. The single implementation is
   `.github/scripts/shellcheck-scripts.sh` (`--staged` locally).
 - **Staged `backend/`:** `gofmt -l`, `go build ./...`, `go vet ./...`, `golangci-lint` (pinned to the
-  version `unit-tests.yml` uses), `gormerrcheck`, `rawtimecheck`, the contract-fixtures/DATA-01/
+  version `unit-tests.yml` uses), `gormerrcheck`, `rawtimecheck`, `reasoncodecheck`, the contract-fixtures/DATA-01/
   INT-01/API-baseline/generated-TS drift tests, and the mutation-scope config drift test.
 - **Staged Go or module files:** `go mod tidy -diff` for `go.mod` and `tools.mod`, and `go mod verify`
   on both graphs (issue #1905) via `.github/scripts/check-go-modules.sh`.
