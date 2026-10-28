@@ -9,3 +9,7 @@ contract is not.
 
 Keep the change at the API DTO/client boundary: do not modify the neutral card,
 the correspondence layer, or the generated field-compatibility matrix.
+
+This is an API contract change only: do not add a database migration, change the
+persisted contact model, or modify import/export or account-bundle services. A
+request/response-only field is sufficient.
