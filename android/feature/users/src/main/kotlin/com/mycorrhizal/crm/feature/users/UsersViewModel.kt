@@ -23,7 +23,7 @@ data class UsersUiState(
     val isSaving: Boolean = false,
     val deletingId: Int? = null,
     val resettingTwoFactorId: Int? = null,
-    val error: String? = null
+    val error: ApiError? = null
 )
 
 /**
@@ -55,7 +55,7 @@ class UsersViewModel @Inject constructor(
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error.uiMessage()) }
+                    _uiState.update { it.copy(isLoading = false, error = error) }
                 }
             )
         }
@@ -75,7 +75,7 @@ class UsersViewModel @Inject constructor(
                     onDone()
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isSaving = false, error = error.uiMessage()) }
+                    _uiState.update { it.copy(isSaving = false, error = error) }
                 }
             )
         }
@@ -96,7 +96,7 @@ class UsersViewModel @Inject constructor(
                     onDone()
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isSaving = false, error = error.uiMessage()) }
+                    _uiState.update { it.copy(isSaving = false, error = error) }
                 }
             )
         }
@@ -117,7 +117,7 @@ class UsersViewModel @Inject constructor(
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(deletingId = null, error = error.uiMessage()) }
+                    _uiState.update { it.copy(deletingId = null, error = error) }
                 }
             )
         }
@@ -146,7 +146,7 @@ class UsersViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             resettingTwoFactorId = null,
-                            error = error.uiMessage()
+                            error = error
                         )
                     }
                 }
@@ -157,18 +157,5 @@ class UsersViewModel @Inject constructor(
     /** Clear the current error so the snackbar/notice doesn't re-fire on the next state emit. */
     fun onErrorShown() {
         _uiState.update { it.copy(error = null) }
-    }
-
-    /**
-     * The server guards (cannot delete self / last admin, cannot remove your
-     * own admin status, duplicate username/email) answer 4xx with a real
-     * message — surface it verbatim instead of ApiError's generic
-     * per-status fallback (which would turn every 403 into "You don't have
-     * permission" and hide exactly what the admin needs to read). Non-4xx
-     * errors keep the standard [ApiError.displayMessage] wording.
-     */
-    private fun ApiError.uiMessage(): String = when (this) {
-        is ApiError.Client -> message?.takeIf { it.isNotBlank() } ?: "Request failed"
-        else -> displayMessage
     }
 }

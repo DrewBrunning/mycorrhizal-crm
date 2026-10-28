@@ -4,6 +4,7 @@ import com.mycorrhizal.crm.domain.repository.ActivityRepository
 import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ActivityInput
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.network.ApiError
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -105,7 +106,7 @@ class QuickCaptureFormStateTest {
         advanceUntilIdle()
 
         assertFalse(state.saved)
-        assertEquals("Title is required", state.error)
+        assertEquals("Title is required", state.titleError)
         coVerify(exactly = 0) { repo.create(any()) }
     }
 
@@ -124,7 +125,7 @@ class QuickCaptureFormStateTest {
         advanceUntilIdle()
 
         assertFalse(state.saved)
-        assertEquals("offline", state.error)
+        assertTrue(state.error is ApiError.Unknown)
         assertFalse(state.isSaving)
     }
 

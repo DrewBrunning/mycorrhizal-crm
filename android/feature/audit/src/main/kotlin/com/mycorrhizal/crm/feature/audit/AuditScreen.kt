@@ -64,6 +64,7 @@ import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
+import com.mycorrhizal.crm.ui.components.localizedMessage
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -90,7 +91,7 @@ fun AuditScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     // Local copy so the delegated `state.error` can be smart-cast/sent to
     // suspend APIs (a delegated property's getter defeats Kotlin's smart cast).
-    val loadError = state.error
+    val loadError = state.error?.localizedMessage()
 
     // Mirrors web's debounced entity-id field: the input echoes keystrokes
     // immediately while the applied (server-side) filter follows 350ms later.
@@ -106,16 +107,20 @@ fun AuditScreen(
     // One-shot undo outcomes surface as a snackbar (410 → its own message).
     val undoSuccessText = stringResource(R.string.audit_undo_success)
     val undoRetentionText = stringResource(R.string.audit_undo_retention_gone)
+    var undoFailure by remember { mutableStateOf<AuditUiEvent.UndoFailed?>(null) }
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
                 is AuditUiEvent.UndoSucceeded -> snackbarHostState.showSnackbar(undoSuccessText)
-
-                is AuditUiEvent.UndoFailed -> {
-                    val message = if (event.isRetentionGone) undoRetentionText else event.message
-                    snackbarHostState.showSnackbar(message)
-                }
+                is AuditUiEvent.UndoFailed -> undoFailure = event
             }
+        }
+    }
+    undoFailure?.let { failure ->
+        val message = if (failure.isRetentionGone) undoRetentionText else failure.error.localizedMessage()
+        LaunchedEffect(failure) {
+            snackbarHostState.showSnackbar(message)
+            undoFailure = null
         }
     }
 

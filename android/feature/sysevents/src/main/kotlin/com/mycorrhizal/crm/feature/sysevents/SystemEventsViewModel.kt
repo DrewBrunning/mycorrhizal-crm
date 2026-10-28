@@ -7,6 +7,7 @@ import com.mycorrhizal.crm.model.network.ErrorBucket
 import com.mycorrhizal.crm.model.network.JobRunHealth
 import com.mycorrhizal.crm.model.network.SubsystemHealth
 import com.mycorrhizal.crm.model.network.SystemEvent
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -50,7 +51,7 @@ data class SystemEventsUiState(
     val jobRunHealth: List<JobRunHealth> = emptyList(),
     val isLoading: Boolean = false,
     /** Transient list-load failure (toasted). Cleared at the start of every fetch. */
-    val error: String? = null,
+    val error: ApiError? = null,
     /** Applied component filter; null = all. */
     val component: String? = null,
     /** Applied severity filter; null = all. */
@@ -158,7 +159,7 @@ class SystemEventsViewModel @Inject constructor(private val repository: SystemEv
                     _uiState.update { it.copy(isLoading = false, events = response.systemEvents) }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isLoading = false, error = error) }
                 }
             )
         }

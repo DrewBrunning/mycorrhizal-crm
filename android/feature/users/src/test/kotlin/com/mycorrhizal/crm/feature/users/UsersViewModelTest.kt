@@ -61,7 +61,7 @@ class UsersViewModelTest {
         advanceUntilIdle()
 
         assertFalse(vm.uiState.value.isLoading)
-        assertEquals("Forbidden", vm.uiState.value.error)
+        assertEquals("Forbidden", vm.uiState.value.error?.message)
     }
 
     @Test
@@ -118,7 +118,7 @@ class UsersViewModelTest {
         advanceUntilIdle()
 
         assertFalse(done)
-        assertEquals("User already exists", vm.uiState.value.error)
+        assertEquals("User already exists", vm.uiState.value.error?.message)
         assertFalse(vm.uiState.value.isSaving)
     }
 
@@ -159,7 +159,7 @@ class UsersViewModelTest {
         advanceUntilIdle()
 
         assertFalse(done)
-        assertEquals("Cannot remove the last admin", vm.uiState.value.error)
+        assertEquals("Cannot remove the last admin", vm.uiState.value.error?.message)
     }
 
     @Test
@@ -197,7 +197,7 @@ class UsersViewModelTest {
         vm.delete(1)
         advanceUntilIdle()
 
-        assertEquals("Cannot delete your own account", vm.uiState.value.error)
+        assertEquals("Cannot delete your own account", vm.uiState.value.error?.message)
         assertEquals(2, vm.uiState.value.users.size)
         assertNull(vm.uiState.value.deletingId)
     }
@@ -214,7 +214,7 @@ class UsersViewModelTest {
         val vm = UsersViewModel(repository)
         advanceUntilIdle()
 
-        assertEquals("boom", vm.uiState.value.error)
+        assertEquals("boom", vm.uiState.value.error?.message)
         vm.onErrorShown()
         assertNull(vm.uiState.value.error)
     }
@@ -291,7 +291,7 @@ class UsersViewModelTest {
             advanceUntilIdle()
 
             assertFalse(done)
-            assertEquals("User not found", vm.uiState.value.error)
+            assertEquals("User not found", vm.uiState.value.error?.message)
             assertNull(vm.uiState.value.resettingTwoFactorId)
             assertEquals(listOf(alice, bob), vm.uiState.value.users)
 
@@ -323,6 +323,6 @@ class UsersViewModelTest {
             vm.resetTwoFactor(1)
             advanceUntilIdle()
 
-            assertEquals("Admin access required", vm.uiState.value.error)
+            assertEquals("Admin access required", vm.uiState.value.error?.message)
         }
 }

@@ -19,7 +19,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.mycorrhizal.crm.model.network.ImportPreviewResponse
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.localizedMessage
 
 /**
  * M15: the accept flow for an incoming share (mirrors web's
@@ -33,7 +35,7 @@ import com.mycorrhizal.crm.ui.R
 fun AcceptContactShareDialog(
     previewLoading: Boolean,
     preview: ImportPreviewResponse?,
-    previewError: String?,
+    previewError: ApiError?,
     confirmAction: String,
     confirming: Boolean,
     onActionChange: (String) -> Unit,
@@ -62,7 +64,7 @@ fun AcceptContactShareDialog(
                             tint = MaterialTheme.colorScheme.error
                         )
                         Text(
-                            text = previewError,
+                            text = previewError.localizedMessage(),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.error
                         )

@@ -38,6 +38,7 @@ import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.localizedMessage
 
 /** Test tag on the map canvas slot (the stub in tests carries the same tag). */
 const val MAP_CANVAS_TAG = "contact-map-canvas"
@@ -143,7 +144,7 @@ fun MapScreenContent(
                     verticalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        text = uiState.error,
+                        text = uiState.error.localizedMessage(),
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodyLarge
                     )

@@ -9,6 +9,7 @@ import com.mycorrhizal.crm.domain.repository.CadencePolicyRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.model.network.CadencePolicy
 import com.mycorrhizal.crm.model.network.CadencePolicyInput
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -30,7 +31,7 @@ data class CadenceUiState(
     val isLoading: Boolean = false,
     val isMutating: Boolean = false,
     @StringRes val errorRes: Int? = null,
-    val error: String? = null
+    val error: ApiError? = null
 )
 
 @HiltViewModel
@@ -93,7 +94,7 @@ class CadenceViewModel @Inject constructor(
                     _uiState.update { it.copy(isLoading = false, policy = policies.firstOrNull()) }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isLoading = false, error = error) }
                 }
             )
         }
@@ -124,7 +125,7 @@ class CadenceViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isMutating = false,
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }
@@ -154,7 +155,7 @@ class CadenceViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isMutating = false,
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }
@@ -173,7 +174,7 @@ class CadenceViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isMutating = false,
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }

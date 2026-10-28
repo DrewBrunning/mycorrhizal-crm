@@ -35,7 +35,7 @@ data class AuditUiState(
     val events: List<AuditEvent> = emptyList(),
     val isLoading: Boolean = false,
     /** Transient list-load failure (toasted). Cleared at the start of every fetch. */
-    val error: String? = null,
+    val error: ApiError? = null,
     /** The applied entity-type filter; null = all types. */
     val entityType: String? = null,
     /** The debounced, applied entity-id filter (empty = no filter). */
@@ -73,7 +73,7 @@ sealed interface AuditUiEvent {
      * failures carry the server's own message (400 delete/unsupported entity,
      * 404 gone).
      */
-    data class UndoFailed(val isRetentionGone: Boolean, val message: String) : AuditUiEvent
+    data class UndoFailed(val isRetentionGone: Boolean, val error: ApiError) : AuditUiEvent
 }
 
 @HiltViewModel
@@ -128,7 +128,7 @@ class AuditViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update {
-                        it.copy(isLoading = false, error = error.displayMessage)
+                        it.copy(isLoading = false, error = error)
                     }
                 }
             )
@@ -200,12 +200,7 @@ class AuditViewModel @Inject constructor(
                 onFailure = { raw ->
                     val error = raw.toApiError()
                     val retentionGone = error is ApiError.Client && error.code == 410
-                    val message = if (retentionGone) {
-                        error.body.ifBlank { "HTTP 410" }
-                    } else {
-                        error.displayMessage
-                    }
-                    AuditUiEvent.UndoFailed(retentionGone, message)
+                    AuditUiEvent.UndoFailed(retentionGone, error)
                 }
             )
             _events.send(outcome)

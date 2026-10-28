@@ -72,6 +72,7 @@ import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
+import com.mycorrhizal.crm.ui.components.localizedMessage
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -88,7 +89,7 @@ import java.time.format.FormatStyle
 fun SystemEventsScreen(onBack: () -> Unit, viewModel: SystemEventsViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    val loadError = state.error
+    val loadError = state.error?.localizedMessage()
 
     var correlationInput by rememberSaveable { mutableStateOf(state.correlationId) }
     // Keep the field in sync when "view related" sets the filter programmatically.

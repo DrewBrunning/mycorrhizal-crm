@@ -52,7 +52,7 @@ class TagsViewModelTest {
         val vm = TagsViewModel(tagRepository)
         advanceUntilIdle()
 
-        assertEquals("boom", vm.uiState.value.error)
+        assertEquals("boom", vm.uiState.value.error?.message)
     }
 
     @Test
