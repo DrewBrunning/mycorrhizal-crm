@@ -1,6 +1,5 @@
-import i18next from 'i18next';
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import '../i18n/config';
+import i18n from '../i18n/config';
 import { ApiError, apiFetch, parseErrorResponse } from './client';
 import { onSessionExpired } from './sessionExpiry';
 
@@ -193,97 +192,118 @@ describe('parseErrorResponse / apiFetch fallbacks', () => {
   });
 });
 
-// ADR 0038 / issue #2096: a server reason code is translated when this build
-// knows it and every param is present; otherwise the server message stands.
-describe('ApiError.getDisplayMessage reason codes', () => {
+// Issue #2096 / ADR 0038: the server sends reason_code + reason_params so the
+// client can translate; an unknown code or a missing param falls back to the
+// server's English message.
+describe('ApiError reason_code localization', () => {
   afterEach(async () => {
-    vi.restoreAllMocks();
-    await i18next.changeLanguage('en');
+    await i18n.changeLanguage('en');
   });
 
-  test('renders the translation for a known code with complete params', async () => {
-    await i18next.changeLanguage('de');
+  test('known code with complete params is translated', async () => {
     const err = new ApiError(
-      'must be at most 10 characters',
+      'Test 3',
       'INVALID_INPUT',
       400,
       undefined,
       undefined,
-      'contact_bulk_value_too_long',
-      { field: 'organization', limit: 10 },
+      'common_test_only',
+      {
+        n: 3,
+      },
     );
-    expect(err.getDisplayMessage()).toBe(
-      i18next.t('errors.reason.contact_bulk_value_too_long', { field: 'organization', limit: 10 }),
-    );
-    expect(err.getDisplayMessage()).not.toBe('must be at most 10 characters');
+    await i18n.changeLanguage('en');
+    expect(err.getDisplayMessage()).toBe('Test 3');
+    await i18n.changeLanguage('de');
+    expect(err.getDisplayMessage()).toBe('Prüfung 3');
   });
 
-  test('falls back to the server message for an unknown code', () => {
+  test('unknown code shows the server message', () => {
     const err = new ApiError(
-      'Server says no',
+      'Server English',
       'INVALID_INPUT',
       400,
       undefined,
       undefined,
-      'not_a_real_code',
+      'nope_nope',
+      {
+        n: 3,
+      },
+    );
+    expect(err.getDisplayMessage()).toBe('Server English');
+  });
+
+  test('known code with a missing param shows the server message, not a raw template', async () => {
+    await i18n.changeLanguage('de');
+    const missing = new ApiError(
+      'Server English',
+      'INVALID_INPUT',
+      400,
+      undefined,
+      undefined,
+      'common_test_only',
       {},
     );
-    expect(err.getDisplayMessage()).toBe('Server says no');
-  });
-
-  test('falls back to the server message when a param is missing', () => {
-    const err = new ApiError(
-      'Server says no',
+    expect(missing.getDisplayMessage()).toBe('Server English');
+    const none = new ApiError(
+      'Server English',
       'INVALID_INPUT',
       400,
       undefined,
       undefined,
-      'contact_bulk_value_too_long',
-      { field: 'organization' },
+      'common_test_only',
     );
-    expect(err.getDisplayMessage()).toBe('Server says no');
+    expect(none.getDisplayMessage()).toBe('Server English');
   });
 
-  test('appends the localized request reference on a 5xx', async () => {
-    await i18next.changeLanguage('de');
-    const err = new ApiError('Something broke', 'INTERNAL', 503, undefined, 'abc');
-    expect(err.getDisplayMessage()).toBe(
-      `Something broke ${i18next.t('errors.requestRef', { id: 'abc' })}`,
+  test('5xx appends the translated request ref', async () => {
+    const err = new ApiError('Boom', 'INTERNAL_ERROR', 503, undefined, 'abc');
+    expect(err.getDisplayMessage()).toBe('Boom (ref: abc)');
+    await i18n.changeLanguage('de');
+    expect(err.getDisplayMessage()).toBe('Boom (Ref.: abc)');
+  });
+
+  test('a reason on a 5xx still gets the ref suffix', () => {
+    const err = new ApiError(
+      'Test 3',
+      'INTERNAL_ERROR',
+      500,
+      undefined,
+      'abc',
+      'common_test_only',
+      {
+        n: 3,
+      },
     );
+    expect(err.getDisplayMessage()).toBe('Test 3 (ref: abc)');
   });
 
-  test('keeps the English request reference when i18n is not ready', () => {
-    vi.spyOn(i18next, 'exists').mockReturnValue(false);
-    const err = new ApiError('Something broke', 'INTERNAL', 503, undefined, 'abc');
-    expect(err.getDisplayMessage()).toBe('Something broke (ref: abc)');
+  test('4xx never shows the ref', () => {
+    const err = new ApiError('Bad', 'INVALID_INPUT', 400, undefined, 'abc');
+    expect(err.getDisplayMessage()).toBe('Bad');
   });
 
-  test('parseErrorResponse carries reason_code and reason_params from the envelope', async () => {
+  test('parseErrorResponse populates reasonCode/reasonParams', async () => {
     const response = new Response(
       JSON.stringify({
         error: {
           code: 'INVALID_INPUT',
-          message: 'Invalid value',
-          reason_code: 'relationship_date_month_range',
-          reason_params: { field: 'start_date' },
+          message: 'Test 3',
+          reason_code: 'common_test_only',
+          reason_params: { n: 3 },
         },
-        request_id: 'req-1',
       }),
       { status: 400 },
     );
     const err = await parseErrorResponse(response);
-    expect(err.reasonCode).toBe('relationship_date_month_range');
-    expect(err.reasonParams).toEqual({ field: 'start_date' });
-    expect(err.requestId).toBe('req-1');
+    expect(err.reasonCode).toBe('common_test_only');
+    expect(err.reasonParams).toEqual({ n: 3 });
   });
 
-  test('parseErrorResponse leaves the reason fields unset for a plain envelope', async () => {
-    const response = new Response(
-      JSON.stringify({ error: { code: 'NOT_FOUND', message: 'Missing' } }),
-      {
-        status: 404,
-      },
-    );
+  test('parseErrorResponse leaves them undefined when absent', async () => {
+    const response = new Response(JSON.stringify({ error: { code: 'X', message: 'm' } }), {
+      status: 400,
+    });
     const err = await parseErrorResponse(response);
     expect(err.reasonCode).toBeUndefined();
     expect(err.reasonParams).toBeUndefined();

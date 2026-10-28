@@ -98,8 +98,8 @@ class ErrorTextGermanTest {
             MycorrhizalTheme {
                 text = ApiError.Client(
                     400,
-                    "Source and target must be different contacts",
-                    ErrorReason(ErrorReasonCode.RELATIONSHIP_SELF_LINK, emptyMap())
+                    "The source and target must be different contacts",
+                    ErrorReason(ErrorReasonCode.RELATIONSHIP_SELF_EDGE, emptyMap())
                 ).localizedMessage()
                 Text(text)
             }

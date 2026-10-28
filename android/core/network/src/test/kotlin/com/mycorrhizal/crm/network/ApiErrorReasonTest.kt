@@ -49,12 +49,12 @@ class ApiErrorReasonTest {
     fun `a 400 envelope carries the reason and request id to ApiError Client`() {
         val error = deleteFailure(
             MockResponse().setResponseCode(400).setBody(
-                """{"error":{"code":"INVALID_INPUT","message":"Invalid value","reason_code":"relationship_date_month_range","reason_params":{"field":"start_date"}},"request_id":"req-1"}"""
+                """{"error":{"code":"INVALID_INPUT","message":"Invalid value","reason_code":"contact_bulk_field_not_editable","reason_params":{"field":"start_date"}},"request_id":"req-1"}"""
             )
         ) as ApiError.Client
 
         assertEquals(
-            ErrorReason("relationship_date_month_range", mapOf("field" to "start_date")),
+            ErrorReason("contact_bulk_field_not_editable", mapOf("field" to "start_date")),
             error.reason
         )
         assertEquals("req-1", error.requestId)

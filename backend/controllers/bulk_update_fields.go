@@ -31,7 +31,7 @@ type bulkFieldUpdate struct {
 // (models.BulkEditableFields) and the user's own FieldDefinitions.
 func buildBulkFieldUpdate(db *gorm.DB, userID uint, photoDir string, in models.BulkContactOperationInput) (*bulkFieldUpdate, *apperrors.AppError) {
 	if len(in.Set) == 0 && len(in.Clear) == 0 && len(in.CustomSet) == 0 && len(in.CustomClear) == 0 {
-		return nil, apperrors.ErrValidation("update_fields requires at least one of set, clear, custom_set or custom_clear").WithReason(apperrors.ReasonContactBulkNoFields, nil)
+		return nil, apperrors.ErrValidation("update_fields requires at least one of set, clear, custom_set or custom_clear").WithReason(apperrors.ReasonContactBulkNoOperations, nil)
 	}
 	u := &bulkFieldUpdate{set: map[string]string{}, clear: map[string]bool{}, photoDir: photoDir}
 
@@ -73,20 +73,20 @@ func buildBulkFieldUpdate(db *gorm.DB, userID uint, photoDir string, in models.B
 	for _, fv := range in.CustomSet {
 		def, ok := defByID[fv.FieldDefinitionID]
 		if !ok {
-			return nil, apperrors.ErrInvalidInput("custom_set", "unknown or not-owned field definition").WithReason(apperrors.ReasonContactBulkCustomFieldUnknown, nil)
+			return nil, apperrors.ErrInvalidInput("custom_set", "unknown or not-owned field definition").WithReason(apperrors.ReasonContactBulkCustomFieldNotFound, nil)
 		}
 		if setIDs[fv.FieldDefinitionID] {
 			return nil, apperrors.ErrInvalidInput("custom_set", "duplicate field definition").WithReason(apperrors.ReasonContactBulkCustomFieldDupe, nil)
 		}
 		setIDs[fv.FieldDefinitionID] = true
 		if err := services.ValidateFieldValue(def, fv.Value); err != nil {
-			return nil, apperrors.ErrInvalidInput("custom_set", err.Error()).WithReason(apperrors.ReasonContactBulkCustomValueInvalid, map[string]any{"reason": err.Error()})
+			return nil, apperrors.ErrInvalidInput("custom_set", err.Error()).WithReason(apperrors.ReasonContactBulkCustomFieldInvalid, map[string]any{"field": def.Key})
 		}
 		u.customSet = append(u.customSet, fv)
 	}
 	for _, id := range in.CustomClear {
 		if _, ok := defByID[id]; !ok {
-			return nil, apperrors.ErrInvalidInput("custom_clear", "unknown or not-owned field definition").WithReason(apperrors.ReasonContactBulkCustomFieldUnknown, nil)
+			return nil, apperrors.ErrInvalidInput("custom_clear", "unknown or not-owned field definition").WithReason(apperrors.ReasonContactBulkCustomFieldNotFound, nil)
 		}
 		if setIDs[id] {
 			return nil, apperrors.ErrInvalidInput("custom_clear", "field definition is in both custom_set and custom_clear").WithReason(apperrors.ReasonContactBulkCustomFieldInBoth, nil)
