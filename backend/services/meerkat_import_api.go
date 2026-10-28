@@ -65,12 +65,12 @@ func userSafeMeerkatAPIError(err error) string {
 func meerkatAPIAppError(err error) *apperrors.AppError {
 	switch {
 	case errors.Is(err, meerkatapi.ErrUnauthorized), errors.Is(err, meerkatapi.ErrLocked):
-		return apperrors.ErrInvalidInput("credentials", userSafeMeerkatAPIError(err))
+		return apperrors.ErrInvalidInput("credentials", userSafeMeerkatAPIError(err)).WithReason(apperrors.ReasonMeerkatAPIError, map[string]any{"reason": userSafeMeerkatAPIError(err)})
 	case errors.Is(err, meerkatapi.ErrInvalidURL), errors.Is(err, meerkatapi.ErrPrivateAddress),
 		errors.Is(err, meerkatapi.ErrNotMeerkat), errors.Is(err, meerkatapi.ErrTooLarge):
-		return apperrors.ErrInvalidInput("base_url", userSafeMeerkatAPIError(err))
+		return apperrors.ErrInvalidInput("base_url", userSafeMeerkatAPIError(err)).WithReason(apperrors.ReasonMeerkatAPIError, map[string]any{"reason": userSafeMeerkatAPIError(err)})
 	default:
-		return apperrors.ErrExternal("meerkat", userSafeMeerkatAPIError(err)).WithError(err)
+		return apperrors.ErrExternal("meerkat", userSafeMeerkatAPIError(err)).WithError(err).WithReason(apperrors.ReasonMeerkatUpstreamError, map[string]any{"reason": userSafeMeerkatAPIError(err)})
 	}
 }
 
@@ -97,7 +97,7 @@ func (m *MeerkatImportManager) Connect(ctx context.Context, userID uint, req mod
 	token := strings.TrimSpace(req.APIToken)
 	hasLogin := req.Username != "" && req.Password != ""
 	if token == "" && !hasLogin {
-		return nil, apperrors.ErrInvalidInput("credentials", "Enter a Meerkat API token, or a username and password")
+		return nil, apperrors.ErrInvalidInput("credentials", "Enter a Meerkat API token, or a username and password").WithReason(apperrors.ReasonMeerkatSignInInputMissing, nil)
 	}
 	client, err := meerkatapi.NewClient(req.BaseURL, cfg.MeerkatBlockPrivateURLs)
 	if err != nil {
@@ -137,7 +137,7 @@ func (m *MeerkatImportManager) Connect(ctx context.Context, userID uint, req mod
 	}
 	if total > MaxMeerkatContacts {
 		return nil, apperrors.ErrInvalidInput("base_url",
-			fmt.Sprintf("This Meerkat account has %d contacts; the import supports at most %d", total, MaxMeerkatContacts))
+			fmt.Sprintf("This Meerkat account has %d contacts; the import supports at most %d", total, MaxMeerkatContacts)).WithReason(apperrors.ReasonMeerkatRemoteTooManyContacts, map[string]any{"total": total, "max": MaxMeerkatContacts})
 	}
 
 	sessionID := generateSessionID()
@@ -180,12 +180,12 @@ func (m *MeerkatImportManager) startAPIFetch(db *gorm.DB, s *meerkatImportSessio
 	s.mu.Lock()
 	if s.phase != models.SourceImportPhaseConnecting && s.phase != models.SourceImportPhaseFailed {
 		s.mu.Unlock()
-		return apperrors.ErrConflict("This import is already being prepared")
+		return apperrors.ErrConflict("This import is already being prepared").WithReason(apperrors.ReasonMeerkatImportInProgress, nil)
 	}
 	if !s.version.Supported && !req.AcceptUntested {
 		s.mu.Unlock()
 		return apperrors.ErrInvalidInput("accept_untested",
-			"This Meerkat version is not tested with the importer. Confirm to try anyway; nothing is written until you review the preview.")
+			"This Meerkat version is not tested with the importer. Confirm to try anyway; nothing is written until you review the preview.").WithReason(apperrors.ReasonMeerkatVersionUntested, nil)
 	}
 	s.phase = models.SourceImportPhaseFetchingContacts
 	s.phaseDone, s.errMsg = 0, ""

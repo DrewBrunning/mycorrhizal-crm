@@ -51,7 +51,7 @@ func UploadMeerkatDatabase(c *gin.Context) {
 
 	file, err := c.FormFile("file")
 	if err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", "No file uploaded"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", "No file uploaded").WithReason(apperrors.ReasonMeerkatUploadMissing, nil))
 		return
 	}
 
