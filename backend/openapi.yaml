@@ -5995,6 +5995,61 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /circles/{id}/timeline:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get a circle's merged member timeline (issue #1995)
+      operationId: getCircleTimeline
+      tags:
+        - Circles
+      description: >
+        The merged timeline of the circle's live (non-archived) members — the
+        "aggregate" circle-timeline decision: no circle-owned notes or
+        activities. Same filters, ordering and cursor as the contact timeline.
+        An activity shared by several members appears once. Read-only, scoped
+        to the owning user.
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, default: 25 }
+        - name: order
+          in: query
+          schema: { type: string, enum: [asc, desc], default: desc }
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: type
+          in: query
+          schema: { type: string, example: "note,activity" }
+        - name: bucket
+          in: query
+          schema:
+            type: string
+            enum: [last_7_days, last_30_days, last_90_days, this_year, all]
+            default: all
+      responses:
+        "200":
+          description: A page of merged timeline items.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CircleTimelineResponse"
+        "400":
+          description: Unknown type/bucket token or malformed cursor.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Circle not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /circles/{id}/members:
     parameters:
       - name: id
@@ -15316,11 +15371,40 @@ components:
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
         name: { type: string }
+        description:
+          type: string
+          maxLength: 500
+          description: Free-text description (trimmed); "" when unset. Internal only — never on the neutral Card, CardDAV/CalDAV or exports to other systems.
+        color:
+          type: string
+          enum: ["", red, orange, yellow, green, teal, blue, purple, pink, grey]
+          description: Palette token ("" = no colour); clients map it to a theme-appropriate shade.
     CircleInput:
       type: object
       required: [name]
       properties:
         name: { type: string, minLength: 1, maxLength: 200 }
+        description:
+          type: string
+          maxLength: 500
+          description: Trimmed on save. On PUT an absent key keeps the stored value; "" clears it.
+        color:
+          type: string
+          enum: ["", red, orange, yellow, green, teal, blue, purple, pink, grey]
+          description: Palette token. On PUT an absent key keeps the stored value; "" clears it. Any other value is a 400.
+    CircleTimelineResponse:
+      type: object
+      description: >
+        One page of a circle's member timeline (GET /circles/{id}/timeline) —
+        the TimelineResponse shape plus the circle's member count.
+      required: [items, next_cursor, limit, member_count]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/TimelineItem" }
+        next_cursor: { type: string }
+        limit: { type: integer }
+        member_count: { type: integer, description: "Members in the circle (archived members count here but contribute no timeline events)." }
     CircleMember:
       type: object
       description: A circle membership join row.

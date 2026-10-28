@@ -113,6 +113,16 @@ class ErrorTextTest {
     }
 
     @Test
+    fun `an invalid circle colour is localized`() {
+        val error = ApiError.Client(
+            400,
+            "colour not in palette",
+            ErrorReason(ErrorReasonCode.CIRCLE_COLOR_INVALID, emptyMap())
+        )
+        assertEquals("The colour must be one of the palette colours", render(error))
+    }
+
+    @Test
     fun `a 4xx never shows the request reference`() {
         val error = ApiError.Client(400, "Server says no", requestId = "abc")
         assertEquals("Server says no", render(error))

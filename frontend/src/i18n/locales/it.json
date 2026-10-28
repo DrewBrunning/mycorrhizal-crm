@@ -139,7 +139,35 @@
     "circleDeleted": "Cerchia eliminata",
     "tagCreated": "Tag creato",
     "tagRenamed": "Tag rinominato",
-    "tagDeleted": "Tag eliminato"
+    "tagDeleted": "Tag eliminato",
+    "openDetails": "Dettagli del cerchio",
+    "nameLabel": "Nome",
+    "descriptionLabel": "Descrizione",
+    "colorLabel": "Colore",
+    "colorNone": "Nessuno",
+    "timelineTitle": "Cronologia",
+    "timelineEmpty": "Ancora nessuna nota o attività per i membri di questo cerchio.",
+    "timelineLoadMore": "Carica altro",
+    "circleUpdated": "Cerchio aggiornato",
+    "colors": {
+      "red": "Rosso",
+      "orange": "Arancione",
+      "yellow": "Giallo",
+      "green": "Verde",
+      "teal": "Verde acqua",
+      "blue": "Blu",
+      "purple": "Viola",
+      "pink": "Rosa",
+      "grey": "Grigio"
+    },
+    "timelineTypes": {
+      "note": "Nota",
+      "activity": "Attività",
+      "completion": "Promemoria completato",
+      "life_event": "Evento di vita",
+      "external_activity": "Attività esterna",
+      "gift": "Regalo"
+    }
   },
   "dashboard": {
     "title": "Cruscotto",
@@ -3523,6 +3551,7 @@
       "common_test_only": "Prova {{n}}",
       "import_circles_not_found": "Uno o più cerchi non sono stati trovati",
       "import_tags_not_found": "Una o più etichette non sono state trovate",
+      "circle_color_invalid": "Il colore deve essere uno dei colori della tavolozza",
       "validation_cursor_malformed": "L'id del cursore non è valido",
       "validation_activity_ids_range": "Deve contenere tra 1 e 100 id",
       "relationship_contact_ambiguous": "Specifica un contatto esistente o uno nuovo, non entrambi",

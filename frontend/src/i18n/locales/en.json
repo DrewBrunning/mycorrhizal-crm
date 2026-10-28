@@ -135,7 +135,35 @@
     "circleDeleted": "Circle deleted",
     "tagCreated": "Tag created",
     "tagRenamed": "Tag renamed",
-    "tagDeleted": "Tag deleted"
+    "tagDeleted": "Tag deleted",
+    "openDetails": "Circle details",
+    "nameLabel": "Name",
+    "descriptionLabel": "Description",
+    "colorLabel": "Colour",
+    "colorNone": "None",
+    "timelineTitle": "Timeline",
+    "timelineEmpty": "No notes or activities for this circle's members yet.",
+    "timelineLoadMore": "Load more",
+    "circleUpdated": "Circle updated",
+    "colors": {
+      "red": "Red",
+      "orange": "Orange",
+      "yellow": "Yellow",
+      "green": "Green",
+      "teal": "Teal",
+      "blue": "Blue",
+      "purple": "Purple",
+      "pink": "Pink",
+      "grey": "Grey"
+    },
+    "timelineTypes": {
+      "note": "Note",
+      "activity": "Activity",
+      "completion": "Completed reminder",
+      "life_event": "Life event",
+      "external_activity": "External activity",
+      "gift": "Gift"
+    }
   },
   "dashboard": {
     "title": "Dashboard",
@@ -3425,6 +3453,7 @@
       "common_test_only": "Test {{n}}",
       "import_circles_not_found": "One or more circles were not found",
       "import_tags_not_found": "One or more tags were not found",
+      "circle_color_invalid": "The colour must be one of the palette colours",
       "validation_cursor_malformed": "The cursor id is malformed",
       "validation_activity_ids_range": "Must contain between 1 and 100 ids",
       "relationship_contact_ambiguous": "Specify either an existing contact or a new contact, not both",

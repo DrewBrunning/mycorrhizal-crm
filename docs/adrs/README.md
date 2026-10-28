@@ -44,3 +44,4 @@ ticket backlog moved to GitHub Issues.
 | [0036](0036-app-password-scopes.md) | App-password scopes and the CardDAV/CalDAV account-password policy | accepted |
 | [0037](0037-contact-trash-and-restore.md) | Contact trash — restore from a deletion snapshot | accepted |
 | [0038](0038-error-reason-codes.md) | Error reason codes — `reason_code` / `reason_params` | accepted |
+| [0039](0039-circle-metadata-and-aggregate-timeline.md) | Circle description/colour and the aggregate circle timeline | accepted |

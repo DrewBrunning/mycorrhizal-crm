@@ -35,4 +35,5 @@ object ErrorReasonCode {
     const val RELATIONSHIP_SELF_EDGE = "relationship_self_edge"
     const val VALIDATION_ACTIVITY_IDS_RANGE = "validation_activity_ids_range"
     const val VALIDATION_CURSOR_MALFORMED = "validation_cursor_malformed"
+    const val CIRCLE_COLOR_INVALID = "circle_color_invalid"
 }
