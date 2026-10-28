@@ -1,6 +1,7 @@
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import SaveIcon from '@mui/icons-material/Save';
 import {
   Box,
@@ -29,6 +30,9 @@ export interface CircleTagEntityListItem {
   id: string;
   name: string;
   memberCount: number;
+  // Circles only (issue #1995): optional description line and palette colour.
+  description?: string;
+  color?: string;
 }
 
 interface CircleTagEntityListProps {
@@ -45,6 +49,8 @@ interface CircleTagEntityListProps {
   onCreate: (name: string) => Promise<void>;
   onRename: (id: string, name: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  // When set, each row gets a "details" button that calls this with the item id.
+  onOpen?: (id: string) => void;
 }
 
 export default function CircleTagEntityList({
@@ -59,6 +65,7 @@ export default function CircleTagEntityList({
   onCreate,
   onRename,
   onDelete,
+  onOpen,
 }: CircleTagEntityListProps) {
   // Generic action labels for the icon-only row buttons (save/cancel/edit/
   // delete) come from `common.*` directly rather than the caller-supplied
@@ -140,7 +147,7 @@ export default function CircleTagEntityList({
                 <ListItem
                   key={item.id}
                   divider
-                  sx={{ gap: 1, pr: 12 }}
+                  sx={{ gap: 1, pr: onOpen ? 17 : 12 }}
                   secondaryAction={
                     isEditing ? (
                       <Stack direction="row" spacing={0.5}>
@@ -168,6 +175,15 @@ export default function CircleTagEntityList({
                       </Stack>
                     ) : (
                       <Stack direction="row" spacing={0.5}>
+                        {onOpen && (
+                          <IconButton
+                            size="small"
+                            onClick={() => onOpen(item.id)}
+                            aria-label={t('circlesTags.openDetails')}
+                          >
+                            <InfoOutlinedIcon fontSize="small" />
+                          </IconButton>
+                        )}
                         <IconButton
                           size="small"
                           onClick={() => startEdit(item)}
@@ -207,10 +223,29 @@ export default function CircleTagEntityList({
                       sx={{ maxWidth: 320 }}
                     />
                   ) : (
-                    <ListItemText
-                      primary={item.name}
-                      secondary={memberCountLabel(item.memberCount)}
-                    />
+                    <>
+                      {item.color && (
+                        <Box
+                          data-testid="circle-color-dot"
+                          sx={{
+                            width: 12,
+                            height: 12,
+                            borderRadius: '50%',
+                            flexShrink: 0,
+                            bgcolor: item.color,
+                          }}
+                        />
+                      )}
+                      <ListItemText
+                        primary={item.name}
+                        secondary={
+                          item.description
+                            ? `${memberCountLabel(item.memberCount)} · ${item.description}`
+                            : memberCountLabel(item.memberCount)
+                        }
+                        slotProps={{ secondary: { sx: { overflowWrap: 'anywhere' } } }}
+                      />
+                    </>
                   )}
                 </ListItem>
               );

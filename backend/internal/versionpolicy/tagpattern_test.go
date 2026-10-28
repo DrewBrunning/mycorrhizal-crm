@@ -140,3 +140,47 @@ func TestTagPatternIsAnchored(t *testing.T) {
 	assert.True(t, strings.HasPrefix(TagPattern, "^") && strings.HasSuffix(TagPattern, "$"),
 		"TagPattern must stay fully anchored")
 }
+
+func TestAtLeast(t *testing.T) {
+	cases := []struct {
+		tag     string
+		want    bool
+		wantErr bool
+	}{
+		{"v1.6.0", true, false},
+		{"v1.6.1", true, false},
+		{"v1.7.0", true, false},
+		{"v2.0.0", true, false},
+		{"v10.0.0", true, false}, // numeric, not lexicographic
+		{"v1.5.9", false, false},
+		{"v1.5.1", false, false},
+		{"v0.9.0", false, false},
+		{"v1.6.0-rc.1", true, false}, // a candidate is ordered by its core version
+		{"v1.5.9-rc.2", false, false},
+		{"1.6.0", false, true},
+		{"v1.6", false, true},
+		{"", false, true},
+	}
+	for _, c := range cases {
+		got, err := AtLeast(c.tag, 1, 6, 0)
+		if c.wantErr {
+			assert.Errorf(t, err, "%q should be rejected", c.tag)
+			continue
+		}
+		require.NoErrorf(t, err, "%q", c.tag)
+		assert.Equalf(t, c.want, got, "AtLeast(%q, 1.6.0)", c.tag)
+	}
+}
+
+func TestAtLeastTag(t *testing.T) {
+	got, err := AtLeastTag("v1.6.0", "v1.6.0")
+	require.NoError(t, err)
+	assert.True(t, got)
+	got, err = AtLeastTag("v1.5.9", "v1.6.0")
+	require.NoError(t, err)
+	assert.False(t, got)
+	_, err = AtLeastTag("v1.6.0", "nope")
+	assert.Error(t, err, "a malformed floor must not silently pass")
+	_, err = AtLeastTag("nope", "v1.6.0")
+	assert.Error(t, err)
+}

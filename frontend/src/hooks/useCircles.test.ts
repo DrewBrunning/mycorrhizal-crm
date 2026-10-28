@@ -344,3 +344,20 @@ test('create, rename and delete failures log their operation and use the latest 
   }
   expect(listCircles).toHaveBeenCalledTimes(1);
 });
+
+test('handleCreate and handleUpdate pass metadata through to the API', async () => {
+  vi.mocked(listCircles).mockResolvedValue(emptyListResponse());
+  vi.mocked(createCircle).mockResolvedValue({ message: 'created', circle: circle('c-new', 'New') });
+  vi.mocked(updateCircle).mockResolvedValue(circle('c-1', 'X'));
+
+  const { result } = renderHook(() => useCircles());
+  await waitFor(() => expect(result.current.loading).toBe(false));
+
+  await act(async () => {
+    await result.current.handleCreate('New', { color: 'blue' });
+    await result.current.handleUpdate('c-1', 'X', { description: 'd', color: '' });
+  });
+
+  expect(createCircle).toHaveBeenCalledWith('New', { color: 'blue' });
+  expect(updateCircle).toHaveBeenCalledWith('c-1', 'X', { description: 'd', color: '' });
+});

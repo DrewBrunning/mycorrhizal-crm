@@ -22,7 +22,22 @@ type Circle struct {
 
 	UserID uint   `gorm:"not null;index" json:"-"`
 	Name   string `gorm:"not null" json:"name"`
+
+	// Description and Color are internal-only presentation metadata (issue
+	// #1995): never on the neutral Card, CardDAV/CalDAV, or any export that
+	// leaves the instance's own surfaces. Color is a models.CircleColors token
+	// ("" = none), not arbitrary CSS, so web and Android themes stay consistent.
+	Description string `gorm:"not null;default:''" json:"description"`
+	Color       string `gorm:"not null;default:''" json:"color"`
 }
+
+// CircleDescriptionMaxLen is the maximum rune length of Circle.Description.
+const CircleDescriptionMaxLen = 500
+
+// CircleColors is the fixed palette of Circle.Color tokens. Clients map each
+// token to a theme-appropriate shade. Keep in step with CircleInput's oneof
+// tag, openapi.yaml, and the web/Android palettes.
+var CircleColors = []string{"red", "orange", "yellow", "green", "teal", "blue", "purple", "pink", "grey"}
 
 // BeforeCreate generates a UUID for new Circles, mirroring Household's own
 // BeforeCreate.
@@ -50,4 +65,17 @@ type CircleMember struct {
 	// v_card_uid, mismatching the raw-SQL migration's member_vcard_uid-style
 	// column (a caught, documented bug, not a hypothetical here).
 	MemberVCardUID string `gorm:"column:member_vcard_uid;not null;index;uniqueIndex:idx_circle_member,priority:2" json:"member_vcard_uid" validate:"required,uuid4"`
+}
+
+// IsValidCircleColor reports whether c is "" (no colour) or a CircleColors token.
+func IsValidCircleColor(c string) bool {
+	if c == "" {
+		return true
+	}
+	for _, v := range CircleColors {
+		if v == c {
+			return true
+		}
+	}
+	return false
 }

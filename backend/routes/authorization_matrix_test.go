@@ -432,6 +432,7 @@ func buildTable(s seeded) map[string]authzRow {
 		"GET /api/v1/circles/:id":                       {class: classItem, probe: "/api/v1/circles/" + s.circle},
 		"PUT /api/v1/circles/:id":                       {class: classItem, probe: "/api/v1/circles/" + s.circle},
 		"DELETE /api/v1/circles/:id":                    {class: classItem, probe: "/api/v1/circles/" + s.circle},
+		"GET /api/v1/circles/:id/timeline":              {class: classItem, probe: "/api/v1/circles/" + s.circle + "/timeline"},
 		"POST /api/v1/circles/:id/members":              {class: classItem, probe: "/api/v1/circles/" + s.circle + "/members"},
 		"POST /api/v1/contacts/:id/activities":          {class: classItem, probe: "/api/v1/contacts/" + contact + "/activities"},
 		"DELETE /api/v1/circles/:id/members/:vcard_uid": {class: classItem, probe: "/api/v1/circles/" + s.circle + "/members/" + fabricatedUUID},

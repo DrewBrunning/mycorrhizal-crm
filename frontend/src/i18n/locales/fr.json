@@ -139,7 +139,35 @@
     "circleDeleted": "Cercle supprimé",
     "tagCreated": "Étiquette créée",
     "tagRenamed": "Étiquette renommée",
-    "tagDeleted": "Étiquette supprimée"
+    "tagDeleted": "Étiquette supprimée",
+    "openDetails": "Détails du cercle",
+    "nameLabel": "Nom",
+    "descriptionLabel": "Description",
+    "colorLabel": "Couleur",
+    "colorNone": "Aucune",
+    "timelineTitle": "Chronologie",
+    "timelineEmpty": "Aucune note ni activité pour les membres de ce cercle pour l'instant.",
+    "timelineLoadMore": "Charger plus",
+    "circleUpdated": "Cercle mis à jour",
+    "colors": {
+      "red": "Rouge",
+      "orange": "Orange",
+      "yellow": "Jaune",
+      "green": "Vert",
+      "teal": "Sarcelle",
+      "blue": "Bleu",
+      "purple": "Violet",
+      "pink": "Rose",
+      "grey": "Gris"
+    },
+    "timelineTypes": {
+      "note": "Note",
+      "activity": "Activité",
+      "completion": "Rappel terminé",
+      "life_event": "Événement de vie",
+      "external_activity": "Activité externe",
+      "gift": "Cadeau"
+    }
   },
   "dashboard": {
     "title": "Tableau de bord",
@@ -809,6 +837,9 @@
     "toDate": "Au",
     "allContactsInfo": "Cette page répertorie toutes les activités de tous les contacts.",
     "logFromLocation": "Enregistrer depuis l'historique de position"
+  },
+  "markdown": {
+    "opensInNewTab": "(s’ouvre dans un nouvel onglet)"
   },
   "notes": {
     "title": "Notes",
@@ -3518,20 +3549,31 @@
     "loadError": "Impossible de charger la politique de mot de passe CardDAV/CalDAV."
   },
   "errors": {
-    "requestRef": "(réf. {{id}})",
+    "requestRef": "(réf. : {{id}})",
     "reason": {
-      "common_test_only": "Test {{n}}",
-      "contact_bulk_custom_field_duplicate": "Une définition de champ personnalisé est indiquée plusieurs fois",
-      "contact_bulk_custom_field_in_both": "Une définition de champ personnalisé ne peut pas figurer à la fois dans custom_set et custom_clear",
-      "contact_bulk_custom_field_unknown": "Définition de champ personnalisé inconnue ou qui ne vous appartient pas",
-      "contact_bulk_custom_value_invalid": "{{reason}}",
-      "contact_bulk_field_in_set_and_clear": "{{field}} figure à la fois dans set et clear",
-      "contact_bulk_field_not_editable": "{{field}} ne peut pas être modifié en lot",
-      "contact_bulk_no_fields": "Choisissez au moins un champ à modifier",
-      "contact_bulk_value_empty": "{{field}} ne peut pas être vide ; indiquez-le dans clear pour le vider",
-      "contact_bulk_value_too_long": "La longueur de {{field}} est au maximum {{limit}}",
+      "common_test_only": "Essai {{n}}",
       "import_circles_not_found": "Un ou plusieurs cercles sont introuvables",
       "import_tags_not_found": "Une ou plusieurs étiquettes sont introuvables",
+      "circle_color_invalid": "La couleur doit être l'une des couleurs de la palette",
+      "validation_cursor_malformed": "L'identifiant du curseur est mal formé",
+      "validation_activity_ids_range": "Doit contenir entre 1 et 100 identifiants",
+      "relationship_contact_ambiguous": "Indiquez soit un contact existant, soit un nouveau contact, pas les deux",
+      "relationship_contact_missing": "Indiquez un contact existant ou un nouveau contact",
+      "relationship_self_edge": "La source et la cible doivent être des contacts différents",
+      "relationship_partial_date_missing": "Une date doit comporter au moins une année, un mois ou un jour",
+      "relationship_month_out_of_range": "Le mois doit être compris entre 1 et 12",
+      "relationship_day_out_of_range": "Le jour doit être compris entre 1 et 31",
+      "relationship_end_before_start": "La date de fin ne peut pas précéder la date de début",
+      "relationship_not_suggestion": "Cette relation n'est pas une suggestion en attente",
+      "contact_bulk_no_operations": "Indiquez au moins un des champs set, clear, custom_set ou custom_clear",
+      "contact_bulk_field_not_editable": "{{field}} ne peut pas être modifié en masse",
+      "contact_bulk_value_empty": "{{field}} ne peut pas être vide ; listez-le dans clear pour le vider",
+      "contact_bulk_value_too_long": "{{field}} doit comporter au plus {{limit}} caractères",
+      "contact_bulk_field_in_set_and_clear": "{{field}} ne peut pas figurer à la fois dans set et clear",
+      "contact_bulk_custom_field_not_found": "La définition du champ personnalisé est introuvable ou ne vous appartient pas",
+      "contact_bulk_custom_field_duplicate": "Une définition de champ personnalisé apparaît plusieurs fois",
+      "contact_bulk_custom_field_in_both": "Un champ personnalisé ne peut pas figurer à la fois dans custom_set et custom_clear",
+      "contact_bulk_custom_field_invalid": "La valeur de {{field}} n'est pas valide",
       "meerkat_api_error": "{{reason}}",
       "meerkat_db_size": "Le fichier de base de données est vide ou dépasse la limite de 100 Mo",
       "meerkat_db_too_many_contacts": "Cette base de données contient plus de contacts que l’import ne prend en charge",
@@ -3549,17 +3591,7 @@
       "meerkat_upload_not_sqlite": "Importez une base de données SQLite Meerkat (.db, .sqlite ou .sqlite3)",
       "meerkat_upload_unreadable": "Le fichier envoyé n’a pas pu être lu",
       "meerkat_upstream_error": "{{reason}}",
-      "meerkat_version_untested": "Cette version de Meerkat n’est pas testée avec l’importeur. Confirmez pour essayer quand même ; rien n’est écrit tant que vous n’avez pas vérifié l’aperçu.",
-      "relationship_date_day_range": "Le jour de {{field}} doit être compris entre 1 et 31",
-      "relationship_date_empty": "{{field}} doit contenir au moins une année, un mois ou un jour",
-      "relationship_date_month_range": "Le mois de {{field}} doit être compris entre 1 et 12",
-      "relationship_dates_reversed": "La date de fin précède la date de début",
-      "relationship_endpoint_both": "Indiquez soit un contact existant, soit un nouveau contact pour {{field}}, pas les deux",
-      "relationship_endpoint_missing": "Indiquez un contact existant ou un nouveau contact pour {{field}}",
-      "relationship_not_pending_suggestion": "La relation n'est pas une suggestion en attente",
-      "relationship_self_link": "La source et la cible doivent être des contacts différents",
-      "validation_cursor_malformed": "L'identifiant de curseur de {{field}} est mal formé",
-      "validation_id_count_range": "Plage d’identifiants de {{field}} : {{min}}–{{max}}"
+      "meerkat_version_untested": "Cette version de Meerkat n’est pas testée avec l’importeur. Confirmez pour essayer quand même ; rien n’est écrit tant que vous n’avez pas vérifié l’aperçu."
     }
   }
 }

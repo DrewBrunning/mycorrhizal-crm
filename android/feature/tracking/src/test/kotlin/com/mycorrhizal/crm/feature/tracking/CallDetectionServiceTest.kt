@@ -92,11 +92,19 @@ class CallDetectionServiceTest {
     }
 
     @Test
-    fun `onDestroy does not throw with no active overlay`() {
-        val (service, _) = buildService()
+    fun `onDestroy dismisses and drops an active overlay`() {
+        val (service, scheduler) = buildService(contact = ContactSummary(id = 9))
+        Shadows.shadowOf(
+            service.application
+        ).grantPermissions(android.Manifest.permission.SYSTEM_ALERT_WINDOW)
         service.onStartCommand(null, 0, 0)
+        service.handleCallStateChanged(TelephonyManager.CALL_STATE_IDLE, "+15551234567")
+        scheduler.advanceUntilIdle()
+        assertNotNull(service.quickCaptureOverlay)
 
         service.onDestroy()
+
+        assertNull(service.quickCaptureOverlay)
     }
 
     @Test
@@ -236,16 +244,31 @@ class CallDetectionServiceTest {
     }
 
     @Test
-    fun `the API 31+ telephony callback receives platform call states`() {
-        val (service, _) = buildService()
-        service.recentCallNumber = { null }
+    fun `the API 31+ telephony callback drives the overlay on call end`() {
+        val (service, scheduler) = buildService(contact = ContactSummary(id = 9))
+        service.recentCallNumber = { "+15551234567" }
+        Shadows.shadowOf(
+            service.application
+        ).grantPermissions(android.Manifest.permission.SYSTEM_ALERT_WINDOW)
 
-        service.onStartCommand(null, 0, 0)
+        // Robolectric replays the current call state to a newly registered
+        // callback, so ring before registering or the initial IDLE shows the overlay.
         val telephonyManager = service.getSystemService(TelephonyManager::class.java)
         Shadows.shadowOf(telephonyManager).setCallState(
             TelephonyManager.CALL_STATE_RINGING,
             "+15551234567"
         )
+        service.onStartCommand(null, 0, 0)
+        scheduler.advanceUntilIdle()
+        assertNull("a ringing call must not show the overlay", service.quickCaptureOverlay)
+
+        Shadows.shadowOf(telephonyManager).setCallState(
+            TelephonyManager.CALL_STATE_IDLE,
+            "+15551234567"
+        )
+        scheduler.advanceUntilIdle()
+        assertNotNull(service.quickCaptureOverlay)
+
         service.onDestroy()
     }
 

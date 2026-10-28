@@ -1640,6 +1640,56 @@
     },
     {
       "method": "GET",
+      "path": "/circles/{id}/timeline",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        },
+        {
+          "name": "bucket",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "cursor",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "order",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "type",
+          "in": "query",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:CircleTimelineResponse"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/config/map",
       "parameters": null,
       "responses": [
@@ -10544,9 +10594,31 @@
       "name": "Circle",
       "properties": [
         {
+          "name": "color",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "",
+            "red",
+            "orange",
+            "yellow",
+            "green",
+            "teal",
+            "blue",
+            "purple",
+            "pink",
+            "grey"
+          ]
+        },
+        {
           "name": "created_at",
           "type": "string",
           "required": true
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "required": false
         },
         {
           "name": "id",
@@ -10568,6 +10640,28 @@
     {
       "name": "CircleInput",
       "properties": [
+        {
+          "name": "color",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "",
+            "red",
+            "orange",
+            "yellow",
+            "green",
+            "teal",
+            "blue",
+            "purple",
+            "pink",
+            "grey"
+          ]
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "required": false
+        },
         {
           "name": "name",
           "type": "string",
@@ -10610,6 +10704,31 @@
       "properties": [
         {
           "name": "member_vcard_uid",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "CircleTimelineResponse",
+      "properties": [
+        {
+          "name": "items",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        },
+        {
+          "name": "limit",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "member_count",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "next_cursor",
           "type": "string",
           "required": true
         }

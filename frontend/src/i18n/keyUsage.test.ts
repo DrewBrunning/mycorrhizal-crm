@@ -37,6 +37,18 @@ const DYNAMIC_KEY_SOURCES: readonly DynamicKeySource[] = [
     reason: 'reason_code comes from the server error envelope (ADR 0038)',
   },
   {
+    prefix: 'circlesTags.colors.',
+    file: 'components/CircleDetailDialog.tsx',
+    values: ['red', 'orange', 'yellow', 'green', 'teal', 'blue', 'purple', 'pink', 'grey'],
+    reason: 'the circle colour palette is a closed set',
+  },
+  {
+    prefix: 'circlesTags.timelineTypes.',
+    file: 'components/CircleDetailDialog.tsx',
+    values: ['note', 'activity', 'completion', 'life_event', 'external_activity', 'gift'],
+    reason: 'the timeline item type is a closed set',
+  },
+  {
     prefix: 'apiTokens.createDialog.scopeHelp.',
     file: 'SettingsPage.tsx',
     values: ['full', 'contacts', 'calendar', 'both', 'api', 'mcp'],

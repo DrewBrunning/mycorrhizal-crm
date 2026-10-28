@@ -11,7 +11,9 @@
 package versionpolicy
 
 import (
+	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -40,4 +42,46 @@ func ValidReleaseTag(tag string) bool {
 // release candidate.
 func IsReleaseCandidate(tag string) bool {
 	return ValidReleaseTag(tag) && strings.Contains(tag, "-rc.")
+}
+
+var coreRe = regexp.MustCompile(`^v([0-9]+)\.([0-9]+)\.([0-9]+)(?:-rc\.[0-9]+)?$`)
+
+// AtLeast reports whether tag's MAJOR.MINOR.PATCH is at or after
+// major.minor.patch. A release candidate is ordered by its core version, so
+// v1.6.0-rc.1 counts as v1.6.0: a rule that applies to a release applies to its
+// candidates too. It returns an error for a tag that is not a valid release tag,
+// so a caller never treats a typo as "before the milestone".
+func AtLeast(tag string, major, minor, patch int) (bool, error) {
+	m := coreRe.FindStringSubmatch(tag)
+	if m == nil {
+		return false, fmt.Errorf("%q is not a valid release tag (want vMAJOR.MINOR.PATCH with an optional -rc.N)", tag)
+	}
+	var got [3]int
+	for i := range got {
+		n, err := strconv.Atoi(m[i+1])
+		if err != nil {
+			return false, fmt.Errorf("%q: %w", tag, err)
+		}
+		got[i] = n
+	}
+	want := [3]int{major, minor, patch}
+	for i := range got {
+		if got[i] != want[i] {
+			return got[i] > want[i], nil
+		}
+	}
+	return true, nil
+}
+
+// AtLeastTag is AtLeast with the floor given as a release tag, so a caller can
+// keep the milestone in one constant instead of three integers.
+func AtLeastTag(tag, floor string) (bool, error) {
+	m := coreRe.FindStringSubmatch(floor)
+	if m == nil {
+		return false, fmt.Errorf("floor %q is not a valid release tag", floor)
+	}
+	major, _ := strconv.Atoi(m[1])
+	minor, _ := strconv.Atoi(m[2])
+	patch, _ := strconv.Atoi(m[3])
+	return AtLeast(tag, major, minor, patch)
 }

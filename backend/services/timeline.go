@@ -82,13 +82,19 @@ func DecodeTimelineCursor(raw string) (*TimelineCursor, error) {
 // user's location for recency cutoffs and the yearless life-event date case.
 type TimelineQuery struct {
 	ContactID *uint
-	Limit     int
-	Desc      bool
-	Types     []string
-	Cutoff    *time.Time
-	Cursor    *TimelineCursor
-	NotAfter  *time.Time
-	Now       time.Time
+	// CircleID, in aggregate mode (ContactID nil), restricts the merge to the
+	// live members of that circle (issue #1995: the circle timeline is the
+	// aggregate of its members', not a separate owner). The caller must have
+	// verified the circle belongs to userID; membership rows are additionally
+	// scoped by user_id here.
+	CircleID string
+	Limit    int
+	Desc     bool
+	Types    []string
+	Cutoff   *time.Time
+	Cursor   *TimelineCursor
+	NotAfter *time.Time
+	Now      time.Time
 	// FilterSensitivity restricts each per-table query to sensitivity='normal'
 	// for the tables listed in feedSensitivityFiltered. The REST timeline
 	// leaves it false (the owner sees their own data); the Atom feed sets it
@@ -134,6 +140,7 @@ func ComposeTimeline(db *gorm.DB, userID uint, q TimelineQuery) ([]models.Timeli
 	tc := &timelineComposer{
 		db:                db,
 		userID:            userID,
+		circleID:          q.CircleID,
 		limit:             q.Limit,
 		desc:              q.Desc,
 		cur:               q.Cursor,
@@ -221,6 +228,7 @@ func ComposeTimeline(db *gorm.DB, userID uint, q TimelineQuery) ([]models.Timeli
 type timelineComposer struct {
 	db        *gorm.DB
 	userID    uint
+	circleID  string
 	contact   *models.Contact // nil in aggregate mode
 	limit     int
 	desc      bool
@@ -239,6 +247,32 @@ type timelineComposer struct {
 // aggregate reports whether this composer is scanning every live contact
 // rather than a single one.
 func (tc *timelineComposer) aggregate() bool { return tc.contact == nil }
+
+// circleMemberUIDSubquery restricts a vcard_uid column to one circle's members.
+const circleMemberUIDSubquery = " AND vcard_uid IN (SELECT member_vcard_uid FROM circle_members WHERE circle_id = ? AND user_id = ?)"
+
+// liveIDFilter returns the aggregate-mode contact_id predicate and its args:
+// the user's live contacts, narrowed to the circle's members when set.
+func (tc *timelineComposer) liveIDFilter(col string) (string, []any) {
+	sql := col + " IN (" + liveContactIDSubquery
+	args := []any{tc.userID, false}
+	if tc.circleID != "" {
+		sql += circleMemberUIDSubquery
+		args = append(args, tc.circleID, tc.userID)
+	}
+	return sql + ")", args
+}
+
+// liveUIDFilter is liveIDFilter for the entity_id (VCardUID) addressed tables.
+func (tc *timelineComposer) liveUIDFilter(col string) (string, []any) {
+	sql := col + " IN (" + liveContactUIDSubquery
+	args := []any{tc.userID, false}
+	if tc.circleID != "" {
+		sql += circleMemberUIDSubquery
+		args = append(args, tc.circleID, tc.userID)
+	}
+	return sql + ")", args
+}
 
 // applyDateBounds narrows a per-type query to the recency bucket and the
 // not-after ceiling, when set. The cutoff is bound as a time.Time so GORM
@@ -302,7 +336,8 @@ type timelineEntry struct {
 func (tc *timelineComposer) fetchNotes() ([]timelineEntry, error) {
 	base := tc.db.Where("user_id = ?", tc.userID)
 	if tc.aggregate() {
-		base = base.Where("contact_id IN ("+liveContactIDSubquery+")", tc.userID, false)
+		cond, args := tc.liveIDFilter("contact_id")
+		base = base.Where(cond, args...)
 	} else {
 		base = base.Where("contact_id = ? AND user_id = ?", tc.contact.ID, tc.userID)
 	}
@@ -327,9 +362,15 @@ func (tc *timelineComposer) fetchActivities() ([]timelineEntry, error) {
 		// Semi-join so an activity linked to several live contacts is
 		// returned once; the Preload below then attaches every live
 		// participant. ADR 0030 decision 3.
+		actSQL := "activities.id IN (SELECT ac.activity_id FROM activity_contacts ac JOIN contacts c ON c.id = ac.contact_id WHERE c.user_id = ? AND c.archived = ? AND c.deleted_at IS NULL"
+		actArgs := []any{tc.userID, false}
+		if tc.circleID != "" {
+			actSQL += " AND c.vcard_uid IN (SELECT member_vcard_uid FROM circle_members WHERE circle_id = ? AND user_id = ?)"
+			actArgs = append(actArgs, tc.circleID, tc.userID)
+		}
 		base = tc.db.Model(&models.Activity{}).
 			Where("activities.user_id = ?", tc.userID).
-			Where("activities.id IN (SELECT ac.activity_id FROM activity_contacts ac JOIN contacts c ON c.id = ac.contact_id WHERE c.user_id = ? AND c.archived = ? AND c.deleted_at IS NULL)", tc.userID, false)
+			Where(actSQL+")", actArgs...)
 	} else {
 		base = tc.db.Model(&models.Activity{}).
 			Joins("JOIN activity_contacts ON activities.id = activity_contacts.activity_id").
@@ -361,7 +402,8 @@ func (tc *timelineComposer) fetchActivities() ([]timelineEntry, error) {
 func (tc *timelineComposer) fetchCompletions() ([]timelineEntry, error) {
 	base := tc.db.Where("user_id = ?", tc.userID)
 	if tc.aggregate() {
-		base = base.Where("contact_id IN ("+liveContactIDSubquery+")", tc.userID, false)
+		cond, args := tc.liveIDFilter("contact_id")
+		base = base.Where(cond, args...)
 	} else {
 		base = base.Where("contact_id = ? AND user_id = ?", tc.contact.ID, tc.userID)
 	}
@@ -383,7 +425,8 @@ func (tc *timelineComposer) fetchCompletions() ([]timelineEntry, error) {
 func (tc *timelineComposer) fetchExternalActivities() ([]timelineEntry, error) {
 	base := tc.db.Where("user_id = ?", tc.userID)
 	if tc.aggregate() {
-		base = base.Where("entity_id IN ("+liveContactUIDSubquery+")", tc.userID, false)
+		cond, args := tc.liveUIDFilter("entity_id")
+		base = base.Where(cond, args...)
 	} else {
 		base = base.Where("entity_id = ?", tc.contact.VCardUID)
 	}
@@ -408,7 +451,8 @@ func (tc *timelineComposer) fetchExternalActivities() ([]timelineEntry, error) {
 func (tc *timelineComposer) fetchGifts() ([]timelineEntry, error) {
 	base := tc.db.Where("user_id = ?", tc.userID)
 	if tc.aggregate() {
-		base = base.Where("entity_id IN ("+liveContactUIDSubquery+")", tc.userID, false)
+		cond, args := tc.liveUIDFilter("entity_id")
+		base = base.Where(cond, args...)
 	} else {
 		base = base.Where("entity_id = ?", tc.contact.VCardUID)
 	}
@@ -459,7 +503,8 @@ func timelineLifeEventDate(e *models.LifeEvent, now time.Time) time.Time {
 func (tc *timelineComposer) fetchLifeEvents() ([]timelineEntry, error) {
 	base := tc.db.Where("user_id = ?", tc.userID)
 	if tc.aggregate() {
-		base = base.Where("entity_id IN ("+liveContactUIDSubquery+")", tc.userID, false)
+		cond, args := tc.liveUIDFilter("entity_id")
+		base = base.Where(cond, args...)
 	} else {
 		base = base.Where("entity_id = ?", tc.contact.VCardUID)
 	}

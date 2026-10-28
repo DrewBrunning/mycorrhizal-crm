@@ -1,10 +1,36 @@
 import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
+import type { TimelineItem } from './timeline';
+
+// Fixed palette tokens (issue #1995); mirror of backend models.CircleColors.
+// '' means "no colour". Hardcoded mirror -- keep in sync by hand (frontend trap #4).
+export const CIRCLE_COLORS = [
+  'red',
+  'orange',
+  'yellow',
+  'green',
+  'teal',
+  'blue',
+  'purple',
+  'pink',
+  'grey',
+] as const;
+export type CircleColor = '' | (typeof CIRCLE_COLORS)[number];
+export const CIRCLE_DESCRIPTION_MAX = 500;
 
 export interface Circle {
   id: string;
   created_at: string;
   updated_at: string;
   name: string;
+  description?: string;
+  color?: CircleColor;
+}
+
+// Optional metadata on create/update. An omitted key keeps the stored value
+// on update; '' clears it.
+export interface CircleMetadata {
+  description?: string;
+  color?: CircleColor;
 }
 
 export interface CircleMember {
@@ -47,22 +73,29 @@ export async function listCircles(params?: {
 }
 
 // POST /circles
-export async function createCircle(name: string): Promise<CircleCreateResponse> {
+export async function createCircle(
+  name: string,
+  metadata?: CircleMetadata,
+): Promise<CircleCreateResponse> {
   const response = await apiFetch(`${API_BASE_URL}/circles`, {
     method: 'POST',
     headers: getAuthHeaders(),
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ name, ...metadata }),
   });
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json();
 }
 
 // PUT /circles/:id
-export async function updateCircle(id: string, name: string): Promise<Circle> {
+export async function updateCircle(
+  id: string,
+  name: string,
+  metadata?: CircleMetadata,
+): Promise<Circle> {
   const response = await apiFetch(`${API_BASE_URL}/circles/${id}`, {
     method: 'PUT',
     headers: getAuthHeaders(),
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ name, ...metadata }),
   });
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json();
@@ -98,4 +131,29 @@ export async function removeCircleMember(circleId: string, memberVCardUid: strin
     headers: getAuthHeaders(),
   });
   if (!response.ok) throw await parseErrorResponse(response);
+}
+
+export interface CircleTimelineResponse {
+  // Serialized `[]`, never null/absent, when empty.
+  items: TimelineItem[];
+  next_cursor: string;
+  limit: number;
+  // Members in the circle (archived members count but contribute no events).
+  member_count: number;
+}
+
+// GET /circles/:id/timeline -- the merged timeline of the circle's live members.
+export async function getCircleTimeline(
+  circleId: string,
+  params?: { cursor?: string; limit?: number },
+): Promise<CircleTimelineResponse> {
+  const { cursor, limit = 25 } = params || {};
+  const queryParams = new URLSearchParams({ limit: limit.toString() });
+  if (cursor) queryParams.append('cursor', cursor);
+  const response = await apiFetch(
+    `${API_BASE_URL}/circles/${circleId}/timeline?${queryParams.toString()}`,
+    { headers: getAuthHeaders() },
+  );
+  if (!response.ok) throw await parseErrorResponse(response);
+  return response.json();
 }

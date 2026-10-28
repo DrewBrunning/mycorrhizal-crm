@@ -22,7 +22,7 @@
         "hand_edited_generated": 0,
         "integrity_violations": 0,
         "unexpected_changes": 0,
-        "config_hash": "2a3a9dd5ffc8319c"
+        "config_hash": "d0503db33ba049b8"
       },
       "api-contract-change-refuse": {
         "status": "passed",

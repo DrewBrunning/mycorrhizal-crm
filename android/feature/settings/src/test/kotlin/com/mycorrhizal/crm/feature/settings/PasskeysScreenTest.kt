@@ -9,6 +9,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -17,7 +18,6 @@ import com.mycorrhizal.crm.model.network.WebAuthnCredential
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -270,7 +270,7 @@ class PasskeysScreenTest {
     @Test
     fun `loading shows a spinner and no list`() {
         setContent(PasskeysUiState(loading = true))
+        composeTestRule.onNodeWithTag(LOADING_TAG).assertIsDisplayed()
         composeTestRule.onNodeWithText("No passkeys yet").assertDoesNotExist()
-        assertTrue(true)
     }
 }

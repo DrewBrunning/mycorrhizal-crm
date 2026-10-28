@@ -1,7 +1,7 @@
 // API client with authentication and error handling
 // Uses httpOnly cookies for authentication (credentials: 'include')
-import i18next from 'i18next';
 import { API_BASE_URL } from '../auth';
+import i18n from '../i18n/config';
 import { notifySessionExpired } from './sessionExpiry';
 
 export { API_BASE_URL };
@@ -16,45 +16,17 @@ export { API_BASE_URL };
 const DEFAULT_TIMEOUT = parseInt(import.meta.env?.VITE_REQUEST_TIMEOUT || '30000', 10);
 
 // Backend error response structure
-interface BackendErrorResponse {
+export interface BackendErrorResponse {
   error: {
     code: string;
     message: string;
     details?: Record<string, string>;
+    // ADR 0038: optional, flat string/number params for the reason's template.
     reason_code?: string;
-    reason_params?: ReasonParams;
+    reason_params?: Record<string, string | number>;
   };
   request_id?: string;
   timestamp?: string;
-}
-
-// Flat params for a reason's template (ADR 0038). Names match the registry.
-type ReasonParams = Record<string, string | number>;
-
-// The `{{name}}` placeholders a translated reason string declares.
-const TEMPLATE_PLACEHOLDER = /\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}/g;
-
-// localizedReason renders the translated string for a server reason code, or
-// undefined when the client must fall back to the server's English message:
-// the code is unknown to this build, or a placeholder has no param (so a
-// template is never shown with a raw `{{n}}` in it).
-function localizedReason(code?: string, params?: ReasonParams): string | undefined {
-  if (!code) return undefined;
-  const key = `errors.reason.${code}`;
-  if (!i18next.exists(key)) return undefined;
-  const template = i18next.getResource('en', 'translation', key);
-  if (typeof template !== 'string') return undefined;
-  for (const match of template.matchAll(TEMPLATE_PLACEHOLDER)) {
-    if (params?.[match[1]] === undefined) return undefined;
-  }
-  return i18next.t(key, params);
-}
-
-// The request-id suffix shown on 5xx errors, localized when i18n is ready.
-function requestRefSuffix(id: string): string {
-  return i18next.exists('errors.requestRef')
-    ? i18next.t('errors.requestRef', { id })
-    : `(ref: ${id})`;
 }
 
 // Custom API error class with detailed information
@@ -64,7 +36,7 @@ export class ApiError extends Error {
   details?: Record<string, string>;
   requestId?: string;
   reasonCode?: string;
-  reasonParams?: ReasonParams;
+  reasonParams?: Record<string, string | number>;
 
   constructor(
     message: string,
@@ -73,7 +45,7 @@ export class ApiError extends Error {
     details?: Record<string, string>,
     requestId?: string,
     reasonCode?: string,
-    reasonParams?: ReasonParams,
+    reasonParams?: Record<string, string | number>,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -83,6 +55,23 @@ export class ApiError extends Error {
     this.requestId = requestId;
     this.reasonCode = reasonCode;
     this.reasonParams = reasonParams;
+  }
+
+  // The translated message for reasonCode, or undefined when the client cannot
+  // render it (unknown code, or a param the template needs is missing) so the
+  // caller falls back to the server's English (ADR 0038). Never returns a
+  // template with an unfilled {{placeholder}}.
+  private localizedReason(): string | undefined {
+    if (!this.reasonCode) return undefined;
+    const key = `errors.reason.${this.reasonCode}`;
+    if (!i18n.exists(key)) return undefined;
+    // i18n.exists() above guarantees the en leaf is a string.
+    const template = String(i18n.getResource('en', 'translation', key));
+    const params = this.reasonParams ?? {};
+    for (const m of template.matchAll(/\{\{\s*(\w+)\s*\}\}/g)) {
+      if (!(m[1] in params)) return undefined;
+    }
+    return i18n.t(key, params);
   }
 
   // Get a user-friendly error message including field details.
@@ -110,32 +99,28 @@ export class ApiError extends Error {
   // is the only thing that lets a user's "it broke" be located in the logs —
   // but it was previously only ever console.error'd, which no user reads. A
   // 4xx is the user's own input and needs no correlation id.
-  //
-  // A server reason code (ADR 0038) is checked first: when this build has a
-  // translation for it and every param is present, that translation wins.
-  // Otherwise the server's English message is shown by the rules below.
   getDisplayMessage(): string {
-    let message = localizedReason(this.reasonCode, this.reasonParams);
-    if (message === undefined) {
-      message = this.message;
-      if (this.code === 'INVALID_INPUT') {
-        const reason = this.details?.reason;
-        if (typeof reason === 'string' && reason !== '') {
-          message = reason;
-        }
-      } else if (
-        this.code === 'VALIDATION_ERROR' &&
-        this.details &&
-        Object.keys(this.details).length > 0
-      ) {
-        message = Object.values(this.details)
-          .map((msg) => `${msg}`)
-          .join('. ');
+    let message = this.message;
+    const localized = this.localizedReason();
+    if (localized !== undefined) {
+      message = localized;
+    } else if (this.code === 'INVALID_INPUT') {
+      const reason = this.details?.reason;
+      if (typeof reason === 'string' && reason !== '') {
+        message = reason;
       }
+    } else if (
+      this.code === 'VALIDATION_ERROR' &&
+      this.details &&
+      Object.keys(this.details).length > 0
+    ) {
+      message = Object.values(this.details)
+        .map((msg) => `${msg}`)
+        .join('. ');
     }
 
     if (this.status >= 500 && this.requestId) {
-      return `${message} ${requestRefSuffix(this.requestId)}`;
+      return `${message} ${i18n.t('errors.requestRef', { id: this.requestId })}`;
     }
     return message;
   }

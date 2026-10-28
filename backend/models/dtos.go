@@ -29,8 +29,15 @@ type ActivityInput struct {
 // CircleInput is the DTO for creating/updating a Circle (circle.go). Only
 // Name is editable here -- membership lifecycle lives in its own
 // AddCircleMember/RemoveCircleMember endpoints, not folded into update.
+//
+// Description and Color are pointers: on PUT an absent/null key keeps the
+// stored value (an older client that only renames must not wipe them), ""
+// clears. Color must be a models.CircleColors token; the handler checks
+// membership (a validator oneof tag would reject the clearing "").
 type CircleInput struct {
-	Name string `json:"name" validate:"required,min=1,max=200"`
+	Name        string  `json:"name" validate:"required,min=1,max=200"`
+	Description *string `json:"description,omitempty" validate:"omitempty,max=500"`
+	Color       *string `json:"color,omitempty" validate:"omitempty,max=16"`
 }
 
 // CircleMemberInput is the DTO for POST /circles/:id/members.
