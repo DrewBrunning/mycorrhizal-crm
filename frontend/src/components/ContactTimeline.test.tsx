@@ -165,7 +165,7 @@ test('notes and completed reminders render their body text; a blank note renders
 
   expect(screen.getByText('Mentioned their new job')).toBeInTheDocument();
   expect(screen.getByText('Called back')).toBeInTheDocument();
-  expect(document.querySelectorAll('p.MuiTypography-body2')).toHaveLength(2);
+  expect(document.querySelectorAll('.MuiTypography-body2')).toHaveLength(2);
 });
 
 test('an activity shows its location and linked contacts; edit and delete actions fire', () => {

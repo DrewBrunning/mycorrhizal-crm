@@ -135,7 +135,35 @@
     "circleDeleted": "Kreis gelöscht",
     "tagCreated": "Tag erstellt",
     "tagRenamed": "Tag umbenannt",
-    "tagDeleted": "Tag gelöscht"
+    "tagDeleted": "Tag gelöscht",
+    "openDetails": "Kreisdetails",
+    "nameLabel": "Name",
+    "descriptionLabel": "Beschreibung",
+    "colorLabel": "Farbe",
+    "colorNone": "Keine",
+    "timelineTitle": "Zeitleiste",
+    "timelineEmpty": "Noch keine Notizen oder Aktivitäten für die Mitglieder dieses Kreises.",
+    "timelineLoadMore": "Mehr laden",
+    "circleUpdated": "Kreis aktualisiert",
+    "colors": {
+      "red": "Rot",
+      "orange": "Orange",
+      "yellow": "Gelb",
+      "green": "Grün",
+      "teal": "Petrol",
+      "blue": "Blau",
+      "purple": "Violett",
+      "pink": "Pink",
+      "grey": "Grau"
+    },
+    "timelineTypes": {
+      "note": "Notiz",
+      "activity": "Aktivität",
+      "completion": "Erledigte Erinnerung",
+      "life_event": "Lebensereignis",
+      "external_activity": "Externe Aktivität",
+      "gift": "Geschenk"
+    }
   },
   "dashboard": {
     "title": "Dashboard",
@@ -791,6 +819,9 @@
     "toDate": "Bis",
     "allContactsInfo": "Diese Seite zeigt alle Aktivitäten aus allen Kontakten.",
     "logFromLocation": "Aus Standortverlauf erfassen"
+  },
+  "markdown": {
+    "opensInNewTab": "(öffnet in einem neuen Tab)"
   },
   "notes": {
     "title": "Notes",
@@ -3425,6 +3456,7 @@
       "common_test_only": "Prüfung {{n}}",
       "import_circles_not_found": "Einer oder mehrere Kreise wurden nicht gefunden",
       "import_tags_not_found": "Einer oder mehrere Tags wurden nicht gefunden",
+      "circle_color_invalid": "Die Farbe muss eine der Palettenfarben sein",
       "validation_cursor_malformed": "Die Cursor-ID ist ungültig",
       "validation_activity_ids_range": "Muss zwischen 1 und 100 IDs enthalten",
       "relationship_contact_ambiguous": "Gib entweder einen bestehenden oder einen neuen Kontakt an, nicht beides",

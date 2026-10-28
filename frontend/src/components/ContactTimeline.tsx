@@ -26,6 +26,7 @@ import type { Note } from '../api/notes';
 import type { ReminderCompletion } from '../api/reminders';
 import { useDateFormat } from '../DateFormatProvider';
 import { calendarDateOnly } from '../utils/localDate';
+import MarkdownText from './MarkdownText';
 import { timelineMobileDateSx, timelinePhoneSx } from './timelineLayout';
 
 interface ContactTimelineProps {
@@ -299,11 +300,14 @@ export default function ContactTimeline({
                       ? (item.data as Activity).title
                       : t('timeline.reminderCompleted')}
                 </Typography>
-                {bodyText && (
-                  <Typography variant="body2" sx={{ mt: 1, overflowWrap: 'anywhere' }}>
-                    {bodyText}
-                  </Typography>
-                )}
+                {bodyText &&
+                  (item.type === 'completion' ? (
+                    <Typography variant="body2" sx={{ mt: 1, overflowWrap: 'anywhere' }}>
+                      {bodyText}
+                    </Typography>
+                  ) : (
+                    <MarkdownText text={bodyText} sx={{ mt: 1 }} />
+                  ))}
                 {item.type === 'activity' && (item.data as Activity).location && (
                   <Typography
                     variant="caption"

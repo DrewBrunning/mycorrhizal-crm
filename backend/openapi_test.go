@@ -86,7 +86,7 @@ func TestOpenAPISpecValidates(t *testing.T) {
 		"ContactMergeAssociationCounts",
 		"Note", "NoteInput", "Activity", "ActivityInput",
 		"Reminder", "ReminderCompleteResponse", "ReminderCompletion",
-		"Circle", "CircleInput", "CircleMember", "CircleMemberInput",
+		"Circle", "CircleInput", "CircleMember", "CircleMemberInput", "CircleTimelineResponse",
 		"Household", "HouseholdInput", "HouseholdMember",
 		"HouseholdMemberInput",
 		"LinkFieldType", "LinkFieldTypeInput", "LinkFieldTypeReorderInput",

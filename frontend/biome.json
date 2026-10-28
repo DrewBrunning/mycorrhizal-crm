@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.14/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.6.2/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -23,6 +23,28 @@
       }
     }
   },
+  "overrides": [
+    {
+      "includes": ["e2e/**"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "usePlaywrightValidDescribeCallback": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/**/*.test.{ts,tsx}"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noComponentHookFactories": "off"
+          }
+        }
+      }
+    }
+  ],
   "javascript": {
     "formatter": {
       "quoteStyle": "single",

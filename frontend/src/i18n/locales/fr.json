@@ -139,7 +139,35 @@
     "circleDeleted": "Cercle supprimé",
     "tagCreated": "Étiquette créée",
     "tagRenamed": "Étiquette renommée",
-    "tagDeleted": "Étiquette supprimée"
+    "tagDeleted": "Étiquette supprimée",
+    "openDetails": "Détails du cercle",
+    "nameLabel": "Nom",
+    "descriptionLabel": "Description",
+    "colorLabel": "Couleur",
+    "colorNone": "Aucune",
+    "timelineTitle": "Chronologie",
+    "timelineEmpty": "Aucune note ni activité pour les membres de ce cercle pour l'instant.",
+    "timelineLoadMore": "Charger plus",
+    "circleUpdated": "Cercle mis à jour",
+    "colors": {
+      "red": "Rouge",
+      "orange": "Orange",
+      "yellow": "Jaune",
+      "green": "Vert",
+      "teal": "Sarcelle",
+      "blue": "Bleu",
+      "purple": "Violet",
+      "pink": "Rose",
+      "grey": "Gris"
+    },
+    "timelineTypes": {
+      "note": "Note",
+      "activity": "Activité",
+      "completion": "Rappel terminé",
+      "life_event": "Événement de vie",
+      "external_activity": "Activité externe",
+      "gift": "Cadeau"
+    }
   },
   "dashboard": {
     "title": "Tableau de bord",
@@ -809,6 +837,9 @@
     "toDate": "Au",
     "allContactsInfo": "Cette page répertorie toutes les activités de tous les contacts.",
     "logFromLocation": "Enregistrer depuis l'historique de position"
+  },
+  "markdown": {
+    "opensInNewTab": "(s’ouvre dans un nouvel onglet)"
   },
   "notes": {
     "title": "Notes",
@@ -3523,6 +3554,7 @@
       "common_test_only": "Essai {{n}}",
       "import_circles_not_found": "Un ou plusieurs cercles sont introuvables",
       "import_tags_not_found": "Une ou plusieurs étiquettes sont introuvables",
+      "circle_color_invalid": "La couleur doit être l'une des couleurs de la palette",
       "validation_cursor_malformed": "L'identifiant du curseur est mal formé",
       "validation_activity_ids_range": "Doit contenir entre 1 et 100 identifiants",
       "relationship_contact_ambiguous": "Indiquez soit un contact existant, soit un nouveau contact, pas les deux",

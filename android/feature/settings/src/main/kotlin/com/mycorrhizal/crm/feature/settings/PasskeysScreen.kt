@@ -36,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
@@ -131,7 +132,7 @@ fun PasskeysContent(
     ) {
         if (state.loading) {
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(modifier = Modifier.testTag(LOADING_TAG))
             }
         } else {
             Text(
@@ -451,6 +452,9 @@ internal fun RemovePasskeyDialog(
 }
 
 private const val MAX_NAME_LENGTH = 100
+
+/** Test tag on the list-loading spinner, asserted by [PasskeysScreenTest]. */
+internal const val LOADING_TAG = "passkeys_loading"
 
 /** Medium localized date; falls back to the raw server string if it is not an ISO timestamp. */
 internal fun formatPasskeyDate(iso: String): String = runCatching {

@@ -2659,4 +2659,5 @@
     <string name="error_reason_relationship_self_edge">La source et la cible doivent être des contacts différents</string>
     <string name="error_reason_validation_activity_ids_range">Doit contenir entre 1 et 100 identifiants</string>
     <string name="error_reason_validation_cursor_malformed">L\'identifiant du curseur est mal formé</string>
+    <string name="error_reason_circle_color_invalid">La couleur doit être l\'une des couleurs de la palette</string>
 </resources>

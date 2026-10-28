@@ -5,6 +5,7 @@ import {
   type CircleMember,
   createCircle,
   deleteCircle,
+  getCircleTimeline,
   listCircles,
   removeCircleMember,
   updateCircle,
@@ -200,5 +201,56 @@ describe('removeCircleMember', () => {
       code: 'VALIDATION_ERROR',
       status: 400,
     });
+  });
+});
+
+describe('circle metadata and timeline', () => {
+  test('createCircle and updateCircle send description and colour when given', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({ message: 'ok', circle }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await createCircle('Family', { description: 'Close', color: 'red' });
+    await updateCircle('circle-1', 'Family', { color: '' });
+
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      name: 'Family',
+      description: 'Close',
+      color: 'red',
+    });
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ name: 'Family', color: '' });
+  });
+
+  test('name-only create/update omit the metadata keys', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({ message: 'ok', circle }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await createCircle('Family');
+    await updateCircle('circle-1', 'Family');
+
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ name: 'Family' });
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ name: 'Family' });
+  });
+
+  test('getCircleTimeline GETs the timeline URL with limit and cursor', async () => {
+    const page = { items: [], next_cursor: '', limit: 25, member_count: 2 };
+    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => page });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await getCircleTimeline('circle-1', { cursor: 'CUR' });
+
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toContain('/circles/circle-1/timeline');
+    expect(url).toContain('limit=25');
+    expect(url).toContain('cursor=CUR');
+    expect(result).toEqual(page);
+  });
+
+  test('getCircleTimeline throws on an error response', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
+    await expect(getCircleTimeline('circle-1')).rejects.toThrow();
   });
 });

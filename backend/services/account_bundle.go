@@ -489,9 +489,11 @@ func loadBundleCircles(db *gorm.DB, userID uint) ([]models.AccountBundleCircle, 
 	out := make([]models.AccountBundleCircle, 0, len(circles))
 	for _, c := range circles {
 		out = append(out, models.AccountBundleCircle{
-			ID:         c.ID,
-			Name:       c.Name,
-			MemberUIDs: nonNilStrings(membersByCircle[c.ID]),
+			ID:          c.ID,
+			Name:        c.Name,
+			Description: c.Description,
+			Color:       c.Color,
+			MemberUIDs:  nonNilStrings(membersByCircle[c.ID]),
 		})
 	}
 	return out, nil

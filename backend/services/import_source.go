@@ -247,6 +247,10 @@ type MappedCircle struct {
 	ID      string
 	Name    string
 	Members []SourceRef
+	// Description and Color are carried only by the account bundle (issue
+	// #1995); other sources leave them empty.
+	Description string
+	Color       string
 }
 
 // MappedTag is one attribute with tagged plan contacts.
@@ -1176,7 +1180,10 @@ func importCircles(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported ma
 		if skipImported(record, c.Ref) {
 			continue
 		}
-		circle := models.Circle{UserID: userID, Name: c.Name}
+		circle := models.Circle{UserID: userID, Name: c.Name, Description: c.Description}
+		if models.IsValidCircleColor(c.Color) {
+			circle.Color = c.Color
+		}
 		if err := tx.Create(&circle).Error; err != nil {
 			report.appendIssue(writeFailureIssue(record, "circle", err))
 			continue

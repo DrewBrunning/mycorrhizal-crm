@@ -51,6 +51,25 @@ An unknown `reason_code`, or a missing param, means the client shows `message`
 (or `details.reason` per the web rules). Clients must never fail on a code they
 do not know; codes are added over time.
 
+## Milestone gate: the ratchet must reach zero
+
+`internal/lint/reasoncode/allowlist.txt` is a counted ratchet: it stops the
+number of unmigrated user-facing error sites from growing, but nothing in it
+forces the number to reach zero. The migration is therefore bounded by a release
+gate, not by the ratchet alone.
+
+`reasoncodecheck -release-tag vX.Y.Z[-rc.N]` is additive to the normal check. For
+a core version at or after `ZeroFromRelease` (`v1.6.0`, milestone v1.6.0,
+issue #2093) it also fails while the allowlist lists any site. `release.yml`'s
+`preflight` job runs it with the release version, so the tag is refused before any
+expensive gate runs. A release candidate is ordered by its core version, so
+`v1.6.0-rc.1` is gated too: the candidate that the final tag is cut from must
+already be fully migrated. Releases before `v1.6.0` only need the ratchet to hold.
+`TestReleaseWorkflowGatesReasonCodeMigration` fails if the workflow step is removed.
+
+Raising `ZeroFromRelease` postpones the milestone and is a recorded decision, like
+raising an allowlist count.
+
 ## Registry
 
 `reasonRegistry` starts with one test-only code, `common_test_only`, removed in

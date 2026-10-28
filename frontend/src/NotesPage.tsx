@@ -29,6 +29,7 @@ import DateField from './components/DateField';
 import EditTimelineItemDialog from './components/EditTimelineItemDialog';
 import LoadError from './components/LoadError';
 import { ListSkeleton } from './components/LoadingSkeletons';
+import MarkdownText from './components/MarkdownText';
 import PageHeader from './components/PageHeader';
 import { useAnnouncer } from './context/AnnouncerContext';
 import { useDateFormat } from './DateFormatProvider';
@@ -337,9 +338,7 @@ const NotesPage: React.FC = () => {
                         alignItems: 'flex-start',
                       }}
                     >
-                      <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', flex: 1 }}>
-                        {note.content}
-                      </Typography>
+                      <MarkdownText text={note.content} sx={{ flex: 1 }} />
                       <Box
                         className="edit-actions"
                         sx={{ opacity: 0, transition: 'opacity 0.2s', display: 'flex', gap: 1 }}
