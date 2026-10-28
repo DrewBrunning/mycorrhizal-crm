@@ -224,3 +224,52 @@ test('clearing the date fields sends no dates (reopens the relationship)', async
   await vi.waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
   expect(onSave.mock.calls[0][0].end_date).toBeUndefined();
 });
+
+test('create mode sends start and end dates typed into every date field', async () => {
+  const onSave = vi.fn().mockResolvedValue(undefined);
+  renderDialog({ onSave });
+
+  fireEvent.change(screen.getByLabelText('Name *'), { target: { value: 'Robin' } });
+  fireEvent.mouseDown(screen.getAllByRole('combobox')[0]);
+  fireEvent.click(await screen.findByRole('option', { name: 'Parent' }));
+  for (const [id, value] of [
+    ['start-year', '2010'],
+    ['start-month', '5'],
+    ['start-day', '17'],
+    ['end-year', '2018'],
+    ['end-month', '6'],
+    ['end-day', '30'],
+  ]) {
+    fireEvent.change(screen.getByTestId(id), { target: { value } });
+  }
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  await vi.waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+  const input = onSave.mock.calls[0][0];
+  expect(input.start_date).toEqual({ year: 2010, month: 5, day: 17 });
+  expect(input.end_date).toEqual({ year: 2018, month: 6, day: 30 });
+});
+
+test('linked create mode sends the dates too', async () => {
+  vi.mocked(getContacts).mockResolvedValue({
+    contacts: [bobContact()],
+    total: 1,
+  } as unknown as ContactsResponse);
+  const onSave = vi.fn().mockResolvedValue(undefined);
+  renderDialog({ onSave });
+
+  fireEvent.click(screen.getByLabelText('Link to existing contact'));
+  fireEvent.mouseDown(await screen.findByLabelText('Select contact *'));
+  fireEvent.click(await screen.findByRole('option', { name: 'Bob Brown' }));
+  fireEvent.mouseDown(screen.getAllByRole('combobox')[1]);
+  fireEvent.click(await screen.findByRole('option', { name: 'Parent' }));
+  fireEvent.change(screen.getByTestId('end-year'), { target: { value: '2020' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  await vi.waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+  expect(onSave.mock.calls[0][0].end_date).toEqual({
+    year: 2020,
+    month: undefined,
+    day: undefined,
+  });
+});
