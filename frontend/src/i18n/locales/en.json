@@ -3425,6 +3425,8 @@
       "common_test_only": "Test {{n}}",
       "import_circles_not_found": "One or more circles were not found",
       "import_tags_not_found": "One or more tags were not found",
+      "trash_uid_in_use": "A live contact already uses this contact's UID; merge or delete it first",
+      "trash_snapshot_unsupported": "This contact's deletion snapshot is not supported by this version; it can still be deleted permanently",
       "validation_cursor_malformed": "The cursor id is malformed",
       "validation_activity_ids_range": "Must contain between 1 and 100 ids",
       "relationship_contact_ambiguous": "Specify either an existing contact or a new contact, not both",
