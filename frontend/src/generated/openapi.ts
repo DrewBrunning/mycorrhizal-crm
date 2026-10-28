@@ -1054,6 +1054,8 @@ export type Error = {
     code: string;
     details?: Record<string, unknown>;
     message: string;
+    reason_code?: string;
+    reason_params?: Record<string, unknown>;
   };
   request_id?: string;
   timestamp?: string;

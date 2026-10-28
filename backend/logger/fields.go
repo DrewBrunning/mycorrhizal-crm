@@ -30,6 +30,7 @@ const (
 	FieldRequestID     = "request_id"     // the originating HTTP request's ID
 	FieldUserID        = "user_id"        // the acting user, when attributable
 	FieldReason        = "reason"         // why an operation was skipped
+	FieldReasonCode    = "reason_code"    // stable error reason code (ADR 0038)
 )
 
 // Result values for FieldResult. A "skipped" run is neither success nor

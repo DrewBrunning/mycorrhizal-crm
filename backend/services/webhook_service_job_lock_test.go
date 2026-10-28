@@ -39,6 +39,19 @@ func seedTestWebhookID(t *testing.T, db *gorm.DB) uint {
 	return wh.ID
 }
 
+// seedDueOrphanedRetry persists a due retry whose webhook is inactive, so a run
+// that processes it visibly clears next_retry_at without any network delivery,
+// while a run that skips (lock held) leaves it set.
+func seedDueOrphanedRetry(t *testing.T, db *gorm.DB) uint {
+	t.Helper()
+	whID := seedTestWebhookID(t, db)
+	require.NoError(t, db.Model(&models.Webhook{}).Where("id = ?", whID).Update("is_active", false).Error)
+	due := time.Now().Add(-time.Hour)
+	d := models.WebhookDelivery{WebhookID: whID, EventType: "contact.created", Payload: "{}", Attempts: 1, NextRetryAt: &due}
+	require.NoError(t, db.Create(&d).Error)
+	return d.ID
+}
+
 // TestProcessWebhookRetriesSkipsWhenLocked is the regression test
 // ProcessWebhookRetries
 // previously had no job lock at all, unlike reminders/calendar sync, so
@@ -46,6 +59,7 @@ func seedTestWebhookID(t *testing.T, db *gorm.DB) uint {
 func TestProcessWebhookRetriesSkipsWhenLocked(t *testing.T) {
 	db := setupWebhookRetryTestDB(t)
 	cfg := config.Config{}
+	deliveryID := seedDueOrphanedRetry(t, db)
 
 	require.NoError(t, db.Create(&models.JobExecution{
 		JobName:   models.JobNameWebhookRetries,
@@ -59,14 +73,20 @@ func TestProcessWebhookRetriesSkipsWhenLocked(t *testing.T) {
 	var job models.JobExecution
 	require.NoError(t, db.Where("job_name = ?", models.JobNameWebhookRetries).First(&job).Error)
 	assert.Nil(t, job.LockedAt, "job must not have been re-locked while rate-limited")
+
+	var d models.WebhookDelivery
+	require.NoError(t, db.First(&d, deliveryID).Error)
+	assert.NotNil(t, d.NextRetryAt, "a rate-limited run must leave the due retry untouched")
 }
 
 // TestProcessWebhookRetriesAcquiresAndReleasesLock covers the opposite path:
 // no lock row exists yet, so the job runs and the lock is released afterward
 // (LastRunAt bumped, LockedAt cleared) rather than left held.
 func TestProcessWebhookRetriesAcquiresAndReleasesLock(t *testing.T) {
+	logtest.AllowWarnings(t, "the seeded retry targets an inactive webhook, which the job warns about")
 	db := setupWebhookRetryTestDB(t)
 	cfg := config.Config{}
+	deliveryID := seedDueOrphanedRetry(t, db)
 
 	require.NotPanics(t, func() {
 		ProcessWebhookRetries(db, cfg)
@@ -76,6 +96,10 @@ func TestProcessWebhookRetriesAcquiresAndReleasesLock(t *testing.T) {
 	require.NoError(t, db.Where("job_name = ?", models.JobNameWebhookRetries).First(&job).Error)
 	assert.WithinDuration(t, time.Now(), job.LastRunAt, 5*time.Second)
 	assert.Nil(t, job.LockedAt, "lock should be released after the job completes")
+
+	var d models.WebhookDelivery
+	require.NoError(t, db.First(&d, deliveryID).Error)
+	assert.Nil(t, d.NextRetryAt, "the unlocked run must have processed the due retry")
 }
 
 // TestProcessWebhookRetriesOrphanedDeliveryClearsNextRetryAt covers a

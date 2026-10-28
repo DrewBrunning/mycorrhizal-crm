@@ -22,6 +22,9 @@ type ErrorDetail struct {
 	Code    string                 `json:"code"`
 	Message string                 `json:"message"`
 	Details map[string]interface{} `json:"details,omitempty"`
+	// ReasonCode/ReasonParams let clients localize the message (ADR 0038).
+	ReasonCode   string         `json:"reason_code,omitempty"`
+	ReasonParams map[string]any `json:"reason_params,omitempty"`
 }
 
 // ErrorHandlerMiddleware handles panics and formats error responses
@@ -80,6 +83,9 @@ func RespondWithError(c *gin.Context, err *AppError) {
 			Code:    err.Code,
 			Message: err.Message,
 			Details: err.Details,
+
+			ReasonCode:   err.ReasonCode,
+			ReasonParams: err.ReasonParams,
 		},
 		RequestID: requestIDStr,
 		Timestamp: time.Now().UTC().Format(time.RFC3339),
@@ -108,6 +114,10 @@ func LogError(c *gin.Context, err *AppError) {
 		Str("code", err.Code).
 		Int("status", err.HTTPStatus).
 		Str("error", err.Message)
+
+	if err.ReasonCode != "" {
+		event = event.Str(logger.FieldReasonCode, err.ReasonCode)
+	}
 
 	// Include underlying error if present
 	if err.Err != nil {

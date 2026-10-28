@@ -1255,7 +1255,8 @@ func TestGormLoggerDoesNotInterpolatePII(t *testing.T) {
 // descriptors and a 20-minute CI job timeout. RunMigrations must close its
 // migrator when done.
 func TestInitDBDoesNotLeakMigratorGoroutines(t *testing.T) {
-	t.Parallel()
+	// Deliberately not t.Parallel: the count is process-wide, so parallel
+	// siblings starting or finishing goroutines would skew it.
 	before := runtime.NumGoroutine()
 
 	const calls = 20
@@ -1267,14 +1268,19 @@ func TestInitDBDoesNotLeakMigratorGoroutines(t *testing.T) {
 		require.NoError(t, sqlDB.Close())
 	}
 
-	// Give any genuinely-exiting goroutines a moment to unwind before
-	// counting, so this isn't racy against normal scheduling jitter.
-	time.Sleep(100 * time.Millisecond)
-	runtime.GC()
-	after := runtime.NumGoroutine()
-
-	assert.LessOrEqual(t, after, before+5,
-		"InitDB leaked goroutines: before=%d after=%d over %d calls", before, after, calls)
+	// Genuinely-exiting goroutines unwind asynchronously: poll (bounded)
+	// until the count settles instead of sleeping a fixed interval. A real
+	// leak (>= one goroutine per call) never settles and fails at the deadline.
+	var after int
+	settled := assert.Eventually(t, func() bool {
+		runtime.GC()
+		after = runtime.NumGoroutine()
+		return after <= before+5
+	}, 5*time.Second, 20*time.Millisecond,
+		"InitDB leaked goroutines: before=%d over %d calls", before, calls)
+	if !settled {
+		t.Logf("goroutines after: %d", after)
+	}
 }
 
 // TestNotificationChannelsMigration pins the N9 migration's shape AND its
