@@ -6,6 +6,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertTextContains
@@ -74,6 +76,7 @@ class ContactListScreenTest {
         onToggleSelection: (Int) -> Unit = {},
         onToggleSelectAll: () -> Unit = {},
         onRunBulkAction: (String, String?, String?) -> Unit = { _, _, _ -> },
+        onRunBulkFieldEdit: (Map<String, String>, Set<String>) -> Unit = { _, _ -> },
         onMenuClick: (() -> Unit)? = {},
         darkTheme: Boolean = false
     ) {
@@ -92,6 +95,7 @@ class ContactListScreenTest {
                     onToggleSelection = onToggleSelection,
                     onToggleSelectAll = onToggleSelectAll,
                     onRunBulkAction = onRunBulkAction,
+                    onRunBulkFieldEdit = onRunBulkFieldEdit,
                     onMenuClick = onMenuClick
                 )
             }
@@ -764,6 +768,47 @@ class ContactListScreenTest {
         assertEquals("archive", ran?.first)
         assertEquals(null, ran?.second)
         assertEquals(null, ran?.third)
+    }
+
+    // --- Issue #2140: bulk field edit dialog ---------------------------------
+
+    private fun openEditFieldsDialog(
+        onRunBulkFieldEdit: (Map<String, String>, Set<String>) -> Unit = { _, _ -> }
+    ) {
+        setContent(
+            ContactListUiState(
+                isLoading = false,
+                contacts = listOf(
+                    ContactSummary(id = 1, uid = "u1", fn = "Alice", firstname = "Alice")
+                ),
+                selected = setOf(1)
+            ),
+            onRunBulkFieldEdit = onRunBulkFieldEdit
+        )
+        composeTestRule.onNodeWithTag("enter-select-mode").performClick()
+        composeTestRule.onNodeWithTag("bulk-edit-fields").performScrollTo().performClick()
+    }
+
+    @Test
+    fun `edit fields dialog keeps Apply disabled until a field is filled or cleared`() {
+        openEditFieldsDialog()
+
+        composeTestRule.onNodeWithTag("bulk-fields-apply").assertIsNotEnabled()
+        composeTestRule.onNodeWithTag("bulk-field-organization").performTextInput("Acme")
+        composeTestRule.onNodeWithTag("bulk-fields-apply").assertIsEnabled()
+    }
+
+    @Test
+    fun `checking Clear disables the text field and enables Apply`() {
+        var sent: Pair<Map<String, String>, Set<String>>? = null
+        openEditFieldsDialog { values, clear -> sent = values to clear }
+
+        composeTestRule.onNodeWithTag("bulk-field-clear-job_title").performClick()
+
+        composeTestRule.onNodeWithTag("bulk-field-job_title").assertIsNotEnabled()
+        composeTestRule.onNodeWithTag("bulk-fields-apply").assertIsEnabled().performClick()
+        assertEquals(emptyMap<String, String>(), sent?.first)
+        assertEquals(setOf("job_title"), sent?.second)
     }
 
     // --- Issue #150: nullable onMenuClick hides the hamburger -----------------

@@ -1806,6 +1806,23 @@
     <string name="bulk_remove_circle">Retirer d\'un cercle</string>
     <string name="bulk_add_tag">Ajouter une étiquette</string>
     <string name="bulk_remove_tag">Retirer une étiquette</string>
+    <string name="bulk_edit_fields">Modifier les champs</string>
+    <string name="bulk_edit_fields_hint">Seuls les champs que vous remplissez ou marquez Vider sont modifiés. Tout le reste est laissé tel quel.</string>
+    <string name="bulk_edit_fields_clear">Vider</string>
+    <string name="bulk_edit_fields_apply">Appliquer</string>
+    <string name="bulk_field_organization">Organisation</string>
+    <string name="bulk_field_department">Service</string>
+    <string name="bulk_field_job_title">Intitulé du poste</string>
+    <string name="bulk_field_role">Rôle</string>
+    <string name="bulk_field_gender">Genre</string>
+    <string name="bulk_field_how_we_met">Comment nous nous sommes rencontrés</string>
+    <string name="bulk_field_work_information">Informations professionnelles</string>
+    <string name="bulk_field_contact_information">Informations de contact</string>
+    <plurals name="bulk_edit_fields_title">
+        <item quantity="one">Modifier les champs de %1$d contact</item>
+        <item quantity="many">Modifier les champs de %1$d contacts</item>
+        <item quantity="other">Modifier les champs de %1$d contacts</item>
+    </plurals>
     <string name="bulk_pick_circle">Choisir un cercle</string>
     <string name="bulk_pick_tag">Choisir une étiquette</string>
     <string name="bulk_no_circles">Aucun cercle pour le moment</string>

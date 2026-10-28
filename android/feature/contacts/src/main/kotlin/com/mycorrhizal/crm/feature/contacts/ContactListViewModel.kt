@@ -9,6 +9,7 @@ import com.mycorrhizal.crm.domain.repository.BulkOperationRepository
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.TagRepository
+import com.mycorrhizal.crm.model.network.BulkActions
 import com.mycorrhizal.crm.model.network.BulkContactOperationInput
 import com.mycorrhizal.crm.model.network.BulkOperationResult
 import com.mycorrhizal.crm.model.network.Circle
@@ -482,18 +483,41 @@ class ContactListViewModel @Inject constructor(
 
     /** Runs a bulk action over the current selection; clears it on success and reloads. */
     fun runBulkAction(action: String, circleId: String? = null, tagId: String? = null) {
+        runBulk { uids ->
+            BulkContactOperationInput(
+                action = action,
+                vcardUids = uids,
+                circleId = circleId,
+                tagId = tagId
+            )
+        }
+    }
+
+    /**
+     * Issue #2140: `update_fields` over the selection. Only non-blank [values] (trimmed) and
+     * [clear] keys are sent; a key in both is a clear (the server rejects overlap with a 400).
+     */
+    fun runBulkFieldEdit(values: Map<String, String>, clear: Set<String>) {
+        val set = values
+            .mapValues { it.value.trim() }
+            .filter { (key, value) -> value.isNotEmpty() && key !in clear }
+        if (set.isEmpty() && clear.isEmpty()) return
+        runBulk { uids ->
+            BulkContactOperationInput(
+                action = BulkActions.UPDATE_FIELDS,
+                vcardUids = uids,
+                set = set.ifEmpty { null },
+                clear = clear.toList().ifEmpty { null }
+            )
+        }
+    }
+
+    private fun runBulk(buildInput: (List<String>) -> BulkContactOperationInput) {
         val uids = selectedUids()
         if (uids.isEmpty() || _uiState.value.isBulkRunning) return
         viewModelScope.launch {
             _uiState.update { it.copy(isBulkRunning = true, error = null, bulkResult = null) }
-            bulkOperationRepository.run(
-                BulkContactOperationInput(
-                    action = action,
-                    vcardUids = uids,
-                    circleId = circleId,
-                    tagId = tagId
-                )
-            ).foldApiError(
+            bulkOperationRepository.run(buildInput(uids)).foldApiError(
                 onSuccess = { result ->
                     _uiState.update {
                         it.copy(isBulkRunning = false, bulkResult = result, selected = emptySet())

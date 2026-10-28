@@ -1806,6 +1806,23 @@
     <string name="bulk_remove_circle">Quitar de un círculo</string>
     <string name="bulk_add_tag">Añadir etiqueta</string>
     <string name="bulk_remove_tag">Quitar etiqueta</string>
+    <string name="bulk_edit_fields">Editar campos</string>
+    <string name="bulk_edit_fields_hint">Solo se cambian los campos que rellenes o marques como Vaciar. Todo lo demás se deja como está.</string>
+    <string name="bulk_edit_fields_clear">Vaciar</string>
+    <string name="bulk_edit_fields_apply">Aplicar</string>
+    <string name="bulk_field_organization">Organización</string>
+    <string name="bulk_field_department">Departamento</string>
+    <string name="bulk_field_job_title">Puesto</string>
+    <string name="bulk_field_role">Rol</string>
+    <string name="bulk_field_gender">Género</string>
+    <string name="bulk_field_how_we_met">Cómo nos conocimos</string>
+    <string name="bulk_field_work_information">Información laboral</string>
+    <string name="bulk_field_contact_information">Información de contacto</string>
+    <plurals name="bulk_edit_fields_title">
+        <item quantity="one">Editar campos de %1$d contacto</item>
+        <item quantity="many">Editar campos de %1$d contactos</item>
+        <item quantity="other">Editar campos de %1$d contactos</item>
+    </plurals>
     <string name="bulk_pick_circle">Elegir un círculo</string>
     <string name="bulk_pick_tag">Elegir una etiqueta</string>
     <string name="bulk_no_circles">Aún no hay círculos</string>

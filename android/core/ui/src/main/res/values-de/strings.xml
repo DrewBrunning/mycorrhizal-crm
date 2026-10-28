@@ -1749,6 +1749,22 @@
     <string name="bulk_remove_circle">Aus Kreis entfernen</string>
     <string name="bulk_add_tag">Tag hinzufügen</string>
     <string name="bulk_remove_tag">Tag entfernen</string>
+    <string name="bulk_edit_fields">Felder bearbeiten</string>
+    <string name="bulk_edit_fields_hint">Nur Felder, die Sie ausfüllen oder mit „Leeren“ markieren, werden geändert. Alles andere bleibt unverändert.</string>
+    <string name="bulk_edit_fields_clear">Leeren</string>
+    <string name="bulk_edit_fields_apply">Anwenden</string>
+    <string name="bulk_field_organization">Organisation</string>
+    <string name="bulk_field_department">Abteilung</string>
+    <string name="bulk_field_job_title">Berufsbezeichnung</string>
+    <string name="bulk_field_role">Rolle</string>
+    <string name="bulk_field_gender">Geschlecht</string>
+    <string name="bulk_field_how_we_met">Wie wir uns kennengelernt haben</string>
+    <string name="bulk_field_work_information">Arbeitsinformationen</string>
+    <string name="bulk_field_contact_information">Kontaktinformationen</string>
+    <plurals name="bulk_edit_fields_title">
+        <item quantity="one">Felder für %1$d Kontakt bearbeiten</item>
+        <item quantity="other">Felder für %1$d Kontakte bearbeiten</item>
+    </plurals>
     <string name="bulk_pick_circle">Kreis auswählen</string>
     <string name="bulk_pick_tag">Tag auswählen</string>
     <string name="bulk_no_circles">Noch keine Kreise</string>

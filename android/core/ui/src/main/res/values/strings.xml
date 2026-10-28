@@ -1764,6 +1764,22 @@
     <string name="bulk_remove_circle">Remove from circle</string>
     <string name="bulk_add_tag">Add tag</string>
     <string name="bulk_remove_tag">Remove tag</string>
+    <string name="bulk_edit_fields">Edit fields</string>
+    <string name="bulk_edit_fields_hint">Only fields you fill in or mark Clear are changed. Everything else is left as it is.</string>
+    <string name="bulk_edit_fields_clear">Clear</string>
+    <string name="bulk_edit_fields_apply">Apply</string>
+    <string name="bulk_field_organization">Organization</string>
+    <string name="bulk_field_department">Department</string>
+    <string name="bulk_field_job_title">Job title</string>
+    <string name="bulk_field_role">Role</string>
+    <string name="bulk_field_gender">Gender</string>
+    <string name="bulk_field_how_we_met">How we met</string>
+    <string name="bulk_field_work_information">Work information</string>
+    <string name="bulk_field_contact_information">Contact information</string>
+    <plurals name="bulk_edit_fields_title">
+        <item quantity="one">Edit fields for %1$d contact</item>
+        <item quantity="other">Edit fields for %1$d contacts</item>
+    </plurals>
     <string name="bulk_pick_circle">Choose a circle</string>
     <string name="bulk_pick_tag">Choose a tag</string>
     <string name="bulk_no_circles">No circles yet</string>
