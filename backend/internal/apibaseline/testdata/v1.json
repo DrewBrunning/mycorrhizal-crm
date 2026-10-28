@@ -9875,12 +9875,33 @@
             "remove_tag",
             "archive",
             "unarchive",
-            "delete"
+            "delete",
+            "update_fields"
           ]
         },
         {
           "name": "circle_id",
           "type": "string",
+          "required": false
+        },
+        {
+          "name": "clear",
+          "type": "array\u003cstring\u003e",
+          "required": false
+        },
+        {
+          "name": "custom_clear",
+          "type": "array\u003cstring\u003e",
+          "required": false
+        },
+        {
+          "name": "custom_set",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "set",
+          "type": "object",
           "required": false
         },
         {

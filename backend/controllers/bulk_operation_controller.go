@@ -93,6 +93,18 @@ func BulkContactOperation(c *gin.Context) {
 		tag = &tagRow
 	}
 
+	// update_fields: validate the allowlist and the user's custom-field
+	// definitions once, before any contact is touched (issue #1996).
+	var fieldUpdate *bulkFieldUpdate
+	if input.Action == "update_fields" {
+		var buildErr *apperrors.AppError
+		fieldUpdate, buildErr = buildBulkFieldUpdate(db, userID, currentConfig(c).ProfilePhotoDir, *input)
+		if buildErr != nil {
+			apperrors.AbortWithError(c, buildErr)
+			return
+		}
+	}
+
 	// Load the user's own contacts for the requested uids. Any uid that does
 	// not resolve here is a per-contact failure (ownership scoping).
 	owned := make(map[string]models.Contact, len(uids))
@@ -138,7 +150,7 @@ func BulkContactOperation(c *gin.Context) {
 			result.Failures = append(result.Failures, models.BulkFailureEntry{VCardUID: uid, Reason: "contact not found or not owned"})
 			continue
 		}
-		if err := runBulkContactAction(db, userID, contact, input.Action, circle, tag, clock.FromContext(c).Now()); err != nil {
+		if err := runBulkContactAction(db, userID, contact, input.Action, circle, tag, fieldUpdate, clock.FromContext(c).Now()); err != nil {
 			result.Failed++
 			result.Failures = append(result.Failures, models.BulkFailureEntry{VCardUID: uid, Reason: err.Error()})
 			continue
@@ -169,7 +181,7 @@ func BulkContactOperation(c *gin.Context) {
 // runBulkContactAction applies one bulk action to a single owned contact.
 // Every action is idempotent: it returns nil when the desired end state
 // already holds.
-func runBulkContactAction(db *gorm.DB, userID uint, contact models.Contact, action string, circle *models.Circle, tag *models.Tag, now time.Time) error {
+func runBulkContactAction(db *gorm.DB, userID uint, contact models.Contact, action string, circle *models.Circle, tag *models.Tag, fieldUpdate *bulkFieldUpdate, now time.Time) error {
 	switch action {
 	case "add_circle":
 		var existing models.CircleMember
@@ -213,6 +225,8 @@ func runBulkContactAction(db *gorm.DB, userID uint, contact models.Contact, acti
 		})
 	case "unarchive":
 		return db.Model(&contact).Update("archived", false).Error
+	case "update_fields":
+		return fieldUpdate.apply(db, userID, contact)
 	case "delete":
 		// Per-contact transaction: the full DeleteContact cascade either
 		// completes for this contact or rolls back cleanly, so a mid-batch

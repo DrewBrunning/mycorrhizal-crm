@@ -266,8 +266,21 @@ export type BriefingUpcomingDate = {
 };
 
 export type BulkContactOperationInput = {
-  action: 'add_circle' | 'remove_circle' | 'add_tag' | 'remove_tag' | 'archive' | 'unarchive' | 'delete';
+  action: 'add_circle' | 'remove_circle' | 'add_tag' | 'remove_tag' | 'archive' | 'unarchive' | 'delete' | 'update_fields';
   circle_id?: string;
+  clear?: ('organization' | 'department' | 'job_title' | 'role' | 'gender' | 'how_we_met' | 'work_information' | 'contact_information')[];
+  custom_clear?: string[];
+  custom_set?: FieldValueInput[];
+  set?: {
+    contact_information?: string;
+    department?: string;
+    gender?: string;
+    how_we_met?: string;
+    job_title?: string;
+    organization?: string;
+    role?: string;
+    work_information?: string;
+  };
   tag_id?: string;
   vcard_uids: string[];
 };
