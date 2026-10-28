@@ -390,7 +390,7 @@
       "lines": 100,
       "linesTotal": 31,
       "branches": 100,
-      "branchesTotal": 13
+      "branchesTotal": 15
     },
     "src/api/jobRuns.ts": {
       "lines": 100,
@@ -1017,10 +1017,16 @@
       "branchesTotal": 50
     },
     "src/components/ImportContactsDialog.tsx": {
-      "lines": 86.44,
-      "linesTotal": 295,
-      "branches": 76.5,
-      "branchesTotal": 200
+      "lines": 86.84,
+      "linesTotal": 304,
+      "branches": 78.03,
+      "branchesTotal": 214
+    },
+    "src/components/ImportFixedAssignmentPicker.tsx": {
+      "lines": 84.21,
+      "linesTotal": 38,
+      "branches": 100,
+      "branchesTotal": 6
     },
     "src/components/ImportedResourcesSection.tsx": {
       "lines": 100,

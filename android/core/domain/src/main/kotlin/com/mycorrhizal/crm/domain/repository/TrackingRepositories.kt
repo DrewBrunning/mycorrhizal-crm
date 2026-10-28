@@ -119,6 +119,14 @@ interface TrackingSettingsRepository {
     suspend fun setLastSmsInboxId(id: Long)
 
     /**
+     * Atomically raises the cursor to [id] if it is higher than the stored
+     * value; never lowers it (issue #2066). Concurrent callers (overlapping
+     * SMS broadcasts, the reconciliation worker) must use this, not a
+     * [lastSmsInboxId]/[setLastSmsInboxId] read-then-write.
+     */
+    suspend fun advanceLastSmsInboxId(id: Long)
+
+    /**
      * Issue #1029: the capture-policy escape hatch. When false (the default),
      * the automatic capture paths (incoming SMS, sent-SMS backfill, call log)
      * stage an interaction only when its number resolves to a cached contact;

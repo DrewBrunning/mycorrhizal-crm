@@ -92,7 +92,7 @@ func OIDCConfigHandler(cfg *config.Config) gin.HandlerFunc {
 			"registration_disabled": cfg.RegistrationDisabled,
 		}
 		if cfg.OIDC.Enabled {
-			resp["provider_name"] = services.ProviderName(cfg.OIDC.ProviderURL)
+			resp["provider_name"] = services.ProviderName(cfg.OIDC.ProviderURL, cfg.OIDC.ProviderName)
 		}
 		c.JSON(http.StatusOK, resp)
 	}

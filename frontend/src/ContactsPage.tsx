@@ -43,8 +43,10 @@ import { useNavigate, useSearchParams } from 'react-router';
 import { getCurrentUser } from './api/admin';
 import { type BulkAction, runBulkOperation } from './api/bulkOperations';
 import { type Contact, favoriteContact, unfavoriteContact } from './api/contacts';
+import { type FieldDefinition, getFieldDefinitions } from './api/fieldDefinitions';
 import AddContactDialog from './components/AddContactDialog';
 import BulkActionsBar from './components/BulkActionsBar';
+import BulkEditFieldsDialog, { type BulkFieldsPayload } from './components/BulkEditFieldsDialog';
 import ImportContactsDialog from './components/ImportContactsDialog';
 import { ContactListSkeleton } from './components/LoadingSkeletons';
 import MergeContactsDialog from './components/MergeContactsDialog';
@@ -163,6 +165,8 @@ export default function ContactsPage() {
   // "load more" appends to the list but the selection Set is untouched.
   const [selectedUids, setSelectedUids] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [editFieldsOpen, setEditFieldsOpen] = useState(false);
+  const [fieldDefinitions, setFieldDefinitions] = useState<FieldDefinition[]>([]);
 
   // #211: announce the selection count, including on clear (0 selected) --
   // the bulk action bar otherwise appears/disappears silently.
@@ -337,7 +341,12 @@ export default function ContactsPage() {
 
   // --- N5 bulk actions -----------------------------------------------------
 
-  const handleBulk = async (action: BulkAction, circleId?: string, tagId?: string) => {
+  const handleBulk = async (
+    action: BulkAction,
+    circleId?: string,
+    tagId?: string,
+    fields?: BulkFieldsPayload,
+  ) => {
     if (selectedUids.size === 0) return;
     setBulkBusy(true);
     try {
@@ -346,6 +355,7 @@ export default function ContactsPage() {
         vcard_uids: Array.from(selectedUids),
         circle_id: circleId,
         tag_id: tagId,
+        ...fields,
       });
       if (result.failed > 0) {
         // Partial success: surface the counts so nothing failed silently.
@@ -381,6 +391,19 @@ export default function ContactsPage() {
   const handleRemoveTag = (tagId: string) => handleBulk('remove_tag', undefined, tagId);
   const handleArchive = () => handleBulk('archive');
   const handleUnarchive = () => handleBulk('unarchive');
+
+  // Issue #1996: bulk "Edit fields". Custom-field definitions load lazily
+  // when the dialog opens, so the list page never pays for them otherwise.
+  const openEditFields = () => {
+    setEditFieldsOpen(true);
+    getFieldDefinitions()
+      .then((res) => setFieldDefinitions(res.field_definitions))
+      .catch(() => setFieldDefinitions([]));
+  };
+  const submitEditFields = async (payload: BulkFieldsPayload) => {
+    await handleBulk('update_fields', undefined, undefined, payload);
+    setEditFieldsOpen(false);
+  };
 
   // --- T92 bulk merge ------------------------------------------------------
 
@@ -555,7 +578,9 @@ export default function ContactsPage() {
               sx={{ whiteSpace: 'nowrap' }}
             >
               {activeFilterCount > 0
-                ? t('contacts.filters.buttonActive', { count: activeFilterCount })
+                ? t('contacts.filters.buttonActive', {
+                    count: activeFilterCount,
+                  })
                 : t('contacts.filters.button')}
             </Button>
             <Box sx={{ flexGrow: 1 }} />
@@ -684,9 +709,20 @@ export default function ContactsPage() {
           onRemoveTag={handleRemoveTag}
           onArchive={handleArchive}
           onUnarchive={handleUnarchive}
+          onEditFields={openEditFields}
           onMerge={handleBulkMerge}
           onDelete={handleBulkDelete}
         />
+        {editFieldsOpen && (
+          <BulkEditFieldsDialog
+            open
+            selectedCount={selectedUids.size}
+            busy={bulkBusy}
+            fieldDefinitions={fieldDefinitions}
+            onClose={() => setEditFieldsOpen(false)}
+            onSubmit={(payload) => void submitEditFields(payload)}
+          />
+        )}
       </Box>
       {error && contacts.length === 0 && !loading ? (
         // A failed first-page fetch used to render as a silently empty list.
@@ -768,7 +804,12 @@ export default function ContactsPage() {
                 </IconButton>
                 <Avatar
                   src={contact.photo_thumbnail || undefined}
-                  sx={{ width: 48, height: 48, mr: 1.5, bgcolor: 'primary.main' }}
+                  sx={{
+                    width: 48,
+                    height: 48,
+                    mr: 1.5,
+                    bgcolor: 'primary.main',
+                  }}
                 >
                   {contact.firstname.charAt(0)}
                 </Avatar>
@@ -798,7 +839,10 @@ export default function ContactsPage() {
                     <Typography
                       variant="body2"
                       noWrap
-                      sx={{ display: { xs: 'none', md: 'block' }, color: 'text.secondary' }}
+                      sx={{
+                        display: { xs: 'none', md: 'block' },
+                        color: 'text.secondary',
+                      }}
                     >
                       {[contact.email, contact.phone].filter(Boolean).join(' · ')}
                     </Typography>
@@ -892,7 +936,14 @@ export default function ContactsPage() {
           >
             <DialogTitle id="contacts-filters-title">{t('contacts.filters.title')}</DialogTitle>
             <DialogContent>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pt: 1 }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 1.5,
+                  pt: 1,
+                }}
+              >
                 {filterControls}
               </Box>
             </DialogContent>

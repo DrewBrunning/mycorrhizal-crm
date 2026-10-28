@@ -506,6 +506,7 @@ func ExportData(c *gin.Context) {
 	relationshipHeaders := []string{
 		"ID", "Source Contact ID", "Source Contact Name", "Type", "Target Contact ID",
 		"Target Contact Name", "Status", "Sensitivity", "Source", "Created At", "Updated At",
+		"Start Date", "End Date",
 	}
 	if err := writer.Write(relationshipHeaders); err != nil {
 		abortExportError(c, log, "export:csv", "serialization", "Failed to write relationship headers", err)
@@ -538,6 +539,8 @@ func ExportData(c *gin.Context) {
 			edge.Source,
 			edge.CreatedAt.Format(time.RFC3339),
 			edge.UpdatedAt.Format(time.RFC3339),
+			formatExportPartialDate(edge.StartDate),
+			formatExportPartialDate(edge.EndDate),
 		}
 		if err := writer.Write(csvSafeRecord(record)); err != nil {
 			abortExportError(c, log, "export:csv", "serialization", "Failed to write relationship record", err)

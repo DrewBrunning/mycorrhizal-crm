@@ -453,6 +453,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 
 			// Activity routes
 			protected.GET("/contacts/:id/activities", controllers.GetActivitiesForContact)
+			protected.POST("/contacts/:id/activities", middleware.ValidateJSONMiddleware(&models.ContactActivitiesInput{}), controllers.AddContactToActivities)
 			protected.POST("/activities", middleware.ValidateJSONMiddleware(&models.ActivityInput{}), controllers.CreateActivity)
 			protected.GET("/activities", controllers.GetActivities)
 			protected.GET("/activities/:id", controllers.GetActivity)

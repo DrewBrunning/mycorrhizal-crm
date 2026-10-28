@@ -22,6 +22,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link as RouterLink } from 'react-router';
 import { type Contact, getContacts } from '../api/contacts';
+import type { PartialDate } from '../api/lifeEvents';
 import {
   getEffectiveType,
   RELATIONSHIP_EDGE_TYPE_TOKENS,
@@ -49,6 +50,30 @@ interface RelationshipEdgeDialogProps {
 
 type EntryMode = 'manual' | 'linked';
 
+interface DateParts {
+  year: string;
+  month: string;
+  day: string;
+}
+
+const EMPTY_DATE: DateParts = { year: '', month: '', day: '' };
+
+function toDateParts(d?: PartialDate): DateParts {
+  return {
+    year: d?.year != null ? String(d.year) : '',
+    month: d?.month != null ? String(d.month) : '',
+    day: d?.day != null ? String(d.day) : '',
+  };
+}
+
+function fromDateParts(p: DateParts): PartialDate | undefined {
+  const year = p.year ? parseInt(p.year, 10) : undefined;
+  const month = p.month ? parseInt(p.month, 10) : undefined;
+  const day = p.day ? parseInt(p.day, 10) : undefined;
+  if (year == null && month == null && day == null) return undefined;
+  return { year, month, day };
+}
+
 export default function RelationshipEdgeDialog({
   open,
   onClose,
@@ -66,6 +91,8 @@ export default function RelationshipEdgeDialog({
   const [gender, setGender] = useState('');
   const [birthday, setBirthday] = useState('');
   const [sensitivity, setSensitivity] = useState<RelationshipEdgeSensitivity>('normal');
+  const [startDate, setStartDate] = useState<DateParts>(EMPTY_DATE);
+  const [endDate, setEndDate] = useState<DateParts>(EMPTY_DATE);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [contactsLoading, setContactsLoading] = useState(false);
@@ -106,6 +133,8 @@ export default function RelationshipEdgeDialog({
     if (edge) {
       setType(getEffectiveType(edge, viewedContactUid));
       setSensitivity(edge.sensitivity);
+      setStartDate(toDateParts(edge.start_date));
+      setEndDate(toDateParts(edge.end_date));
       setEntryMode('manual');
       setSelectedContact(null);
       setName('');
@@ -133,6 +162,8 @@ export default function RelationshipEdgeDialog({
     setGender('');
     setBirthday('');
     setSensitivity('normal');
+    setStartDate(EMPTY_DATE);
+    setEndDate(EMPTY_DATE);
     setSelectedContact(null);
     setSearchInput('');
     setContacts([]);
@@ -189,6 +220,11 @@ export default function RelationshipEdgeDialog({
       birthdayISO = parsed || undefined;
     }
 
+    const dates = {
+      start_date: fromDateParts(startDate),
+      end_date: fromDateParts(endDate),
+    };
+
     setSaving(true);
     try {
       let input: RelationshipEdgeInput;
@@ -205,6 +241,7 @@ export default function RelationshipEdgeDialog({
           type: toBackendType(type as RelationshipEdgeType, viewedIsSource),
           sensitivity,
           metadata: edge.metadata,
+          ...dates,
         };
       } else if (entryMode === 'linked' && selectedContact?.uid) {
         input = {
@@ -212,13 +249,19 @@ export default function RelationshipEdgeDialog({
           source_id: selectedContact.uid,
           type: type as RelationshipEdgeType,
           sensitivity,
+          ...dates,
         };
       } else {
         input = {
           target_id: viewedContactUid,
-          source_thin: { name: name.trim(), gender: gender || undefined, birthday: birthdayISO },
+          source_thin: {
+            name: name.trim(),
+            gender: gender || undefined,
+            birthday: birthdayISO,
+          },
           type: type as RelationshipEdgeType,
           sensitivity,
+          ...dates,
         };
       }
       await onSave(input);
@@ -397,6 +440,111 @@ export default function RelationshipEdgeDialog({
               helperText={t('contacts.birthdayFormat')}
             />
           )}
+
+          <Box>
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+              {t('relationships.startDate')}
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1, mt: 0.5 }}>
+              <TextField
+                label={t('relationships.dateYear')}
+                type="number"
+                value={startDate.year}
+                onChange={(e) => {
+                  markDirty();
+                  setStartDate((prev) => ({ ...prev, year: e.target.value }));
+                  setError('');
+                }}
+                fullWidth
+                slotProps={{
+                  inputLabel: { shrink: true },
+                  htmlInput: { min: 1, max: 9999, 'data-testid': 'start-year' },
+                }}
+              />
+              <TextField
+                label={t('relationships.dateMonth')}
+                type="number"
+                value={startDate.month}
+                onChange={(e) => {
+                  markDirty();
+                  setStartDate((prev) => ({ ...prev, month: e.target.value }));
+                  setError('');
+                }}
+                fullWidth
+                slotProps={{
+                  inputLabel: { shrink: true },
+                  htmlInput: { min: 1, max: 12, 'data-testid': 'start-month' },
+                }}
+              />
+              <TextField
+                label={t('relationships.dateDay')}
+                type="number"
+                value={startDate.day}
+                onChange={(e) => {
+                  markDirty();
+                  setStartDate((prev) => ({ ...prev, day: e.target.value }));
+                  setError('');
+                }}
+                fullWidth
+                slotProps={{
+                  inputLabel: { shrink: true },
+                  htmlInput: { min: 1, max: 31, 'data-testid': 'start-day' },
+                }}
+              />
+            </Box>
+          </Box>
+          <Box>
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+              {t('relationships.endDate')}
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1, mt: 0.5 }}>
+              <TextField
+                label={t('relationships.dateYear')}
+                type="number"
+                value={endDate.year}
+                onChange={(e) => {
+                  markDirty();
+                  setEndDate((prev) => ({ ...prev, year: e.target.value }));
+                  setError('');
+                }}
+                fullWidth
+                slotProps={{
+                  inputLabel: { shrink: true },
+                  htmlInput: { min: 1, max: 9999, 'data-testid': 'end-year' },
+                }}
+              />
+              <TextField
+                label={t('relationships.dateMonth')}
+                type="number"
+                value={endDate.month}
+                onChange={(e) => {
+                  markDirty();
+                  setEndDate((prev) => ({ ...prev, month: e.target.value }));
+                  setError('');
+                }}
+                fullWidth
+                slotProps={{
+                  inputLabel: { shrink: true },
+                  htmlInput: { min: 1, max: 12, 'data-testid': 'end-month' },
+                }}
+              />
+              <TextField
+                label={t('relationships.dateDay')}
+                type="number"
+                value={endDate.day}
+                onChange={(e) => {
+                  markDirty();
+                  setEndDate((prev) => ({ ...prev, day: e.target.value }));
+                  setError('');
+                }}
+                fullWidth
+                slotProps={{
+                  inputLabel: { shrink: true },
+                  htmlInput: { min: 1, max: 31, 'data-testid': 'end-day' },
+                }}
+              />
+            </Box>
+          </Box>
 
           <FormControl fullWidth>
             <InputLabel>{t('relationships.sensitivity')}</InputLabel>

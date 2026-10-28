@@ -2488,13 +2488,25 @@ paths:
         - Contacts
       description: >
         Applies a single action (add/remove circle, add/remove tag, archive,
-        unarchive, delete) to many contacts at once, with partial-success
+        unarchive, delete, update_fields) to many contacts at once, with partial-success
         semantics: the response reports how many succeeded and which failed.
         Targets are Contact.VCardUID values, scoped to the authenticated user —
         a VCardUID that is not the user's own contact is reported as a failure,
         never silently skipped. Membership actions are idempotent: adding to
         something already present (or removing from something already absent)
         counts as success rather than the 409 the per-contact endpoints return.
+
+
+        `update_fields` (issue #1996) writes an explicit allowlist of core
+        fields (`set` map + `clear` list; a field in neither is untouched) and
+        custom-field values (`custom_set` / `custom_clear`, by definition ID)
+        across the selection. Unknown fields, `city` (multi-valued addresses
+        are deliberately not bulk-editable), a key in both `set` and `clear`,
+        and custom-field definitions that are unknown, foreign or mistyped are
+        rejected with a 400 before any contact is written. Each contact is
+        updated in its own transaction (core + custom fields commit or roll
+        back together), so a per-contact failure never leaves that contact
+        half-written.
       requestBody:
         required: true
         content:
@@ -5541,6 +5553,53 @@ paths:
                   limit: { type: integer }
         "400":
           description: Malformed cursor.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      summary: Add a contact to existing activities
+      description: >
+        Adds this contact to each listed existing activity by writing only the
+        activity_contacts join; no other activity field or member changes.
+        Idempotent per activity: a contact already on the activity reports
+        already_member and nothing is written. An activity that is missing or
+        owned by another user reports not_found with no write.
+      operationId: addContactToActivities
+      tags:
+        - Contacts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactActivitiesInput"
+      responses:
+        "200":
+          description: Per-activity outcome, in request order (duplicate ids collapsed).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [contact_id, results]
+                properties:
+                  contact_id: { type: integer }
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      required: [activity_id, status]
+                      properties:
+                        activity_id: { type: integer }
+                        status: { type: string, enum: [added, already_member, not_found] }
+        "400":
+          description: activity_ids missing, empty or longer than 100.
           content:
             application/json:
               schema:
@@ -15272,6 +15331,15 @@ components:
         updated_at: { type: string, format: date-time }
         circle_id: { type: string, format: uuid }
         member_vcard_uid: { type: string, format: uuid }
+    ContactActivitiesInput:
+      type: object
+      required: [activity_ids]
+      properties:
+        activity_ids:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items: { type: integer }
     CircleMemberInput:
       type: object
       required: [member_vcard_uid]
@@ -15323,7 +15391,7 @@ components:
       properties:
         action:
           type: string
-          enum: [add_circle, remove_circle, add_tag, remove_tag, archive, unarchive, delete]
+          enum: [add_circle, remove_circle, add_tag, remove_tag, archive, unarchive, delete, update_fields]
         vcard_uids:
           type: array
           minItems: 1
@@ -15331,6 +15399,41 @@ components:
           items: { type: string, format: uuid }
         circle_id: { type: string, format: uuid }
         tag_id: { type: string, format: uuid }
+        set:
+          type: object
+          description: >
+            update_fields only. Core fields to write; a present key is written
+            (the value must be non-empty). Allowlisted keys: organization,
+            department, job_title, role, gender (max 100), how_we_met,
+            work_information, contact_information (max 1000); the others max 200.
+          properties:
+            organization: { type: string, minLength: 1, maxLength: 200 }
+            department: { type: string, minLength: 1, maxLength: 200 }
+            job_title: { type: string, minLength: 1, maxLength: 200 }
+            role: { type: string, minLength: 1, maxLength: 200 }
+            gender: { type: string, minLength: 1, maxLength: 100 }
+            how_we_met: { type: string, minLength: 1, maxLength: 1000 }
+            work_information: { type: string, minLength: 1, maxLength: 1000 }
+            contact_information: { type: string, minLength: 1, maxLength: 1000 }
+          additionalProperties: false
+        clear:
+          type: array
+          description: update_fields only. Allowlisted core fields to empty (same keys as `set`; a key may not appear in both).
+          maxItems: 20
+          items:
+            type: string
+            enum: [organization, department, job_title, role, gender, how_we_met, work_information, contact_information]
+        custom_set:
+          type: array
+          description: update_fields only. Custom-field values to write, by FieldDefinition ID (must be the caller's own).
+          maxItems: 50
+          items:
+            $ref: "#/components/schemas/FieldValueInput"
+        custom_clear:
+          type: array
+          description: update_fields only. FieldDefinition IDs (the caller's own) whose value is removed.
+          maxItems: 50
+          items: { type: string, format: uuid }
     BulkOperationResult:
       type: object
       description: Partial-success outcome of a bulk operation.
@@ -15945,6 +16048,16 @@ components:
         metadata:
           type: object
           additionalProperties: true
+        start_date:
+          $ref: "#/components/schemas/PartialDate"
+        end_date:
+          description: >
+            When set, the relationship has ended. Must not precede start_date
+            (compared at the coarsest shared precision). An ended edge stays a
+            confirmed fact in the graph and exports but no longer counts toward
+            closeness for active reach-out (docs/relationship-dates.md).
+          allOf:
+            - $ref: "#/components/schemas/PartialDate"
         source: { type: string, enum: [user-confirmed, household-inferred, imported, ai-suggested, graph-inferred] }
         confidence: { type: number }
         status: { type: string, enum: [confirmed, suggested] }
@@ -15968,6 +16081,16 @@ components:
         metadata:
           type: object
           additionalProperties: true
+        start_date:
+          $ref: "#/components/schemas/PartialDate"
+        end_date:
+          description: >
+            When set, the relationship has ended. Must not precede start_date
+            (compared at the coarsest shared precision). An ended edge stays a
+            confirmed fact in the graph and exports but no longer counts toward
+            closeness for active reach-out (docs/relationship-dates.md).
+          allOf:
+            - $ref: "#/components/schemas/PartialDate"
     ThinContactInput:
       type: object
       required: [name]
@@ -17524,6 +17647,19 @@ components:
         mappings:
           type: array
           items: { $ref: "#/components/schemas/ColumnMapping" }
+        assign_circle_ids:
+          type: array
+          maxItems: 50
+          items: { type: string, format: uuid }
+          description: >
+            Issue #2000 — ids of the caller's own circles every imported contact
+            joins, in addition to per-row circle mappings. Duplicates collapse;
+            an unknown or foreign id is a 400.
+        assign_tag_ids:
+          type: array
+          maxItems: 50
+          items: { type: string, format: uuid }
+          description: Issue #2000 — as assign_circle_ids, for tags.
     DuplicateMatch:
       type: object
       description: Describes a potential duplicate contact found via email/name/phone matching.
@@ -17723,6 +17859,31 @@ components:
         valid_rows: { type: integer }
         duplicate_count: { type: integer }
         error_count: { type: integer }
+        fixed_assignment:
+          $ref: "#/components/schemas/ImportFixedAssignment"
+    ImportFixedAssignmentItem:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string }
+        name: { type: string }
+    ImportFixedAssignment:
+      type: object
+      description: >
+        Issue #2000 — present on the CSV preview only when the request carried
+        assign_circle_ids / assign_tag_ids. membership_count is
+        contact_count x (circles + tags), an upper bound (existing memberships
+        are not duplicated).
+      required: [circles, tags, contact_count, membership_count]
+      properties:
+        circles:
+          type: array
+          items: { $ref: "#/components/schemas/ImportFixedAssignmentItem" }
+        tags:
+          type: array
+          items: { $ref: "#/components/schemas/ImportFixedAssignmentItem" }
+        contact_count: { type: integer }
+        membership_count: { type: integer }
     RowImportAction:
       type: object
       required: [action]
@@ -17746,6 +17907,19 @@ components:
             passthrough except those matching an existing definition's vcard
             projection, which auto-promote. Only VCF/JSContact/records
             (VCF-like) sessions consume these.
+        assign_circle_ids:
+          type: array
+          maxItems: 50
+          items: { type: string, format: uuid }
+          description: >
+            Issue #2000 — ids of the caller's own circles every created or updated contact
+            joins, in addition to per-row circle mappings. Duplicates collapse;
+            an unknown or foreign id is a 400.
+        assign_tag_ids:
+          type: array
+          maxItems: 50
+          items: { type: string, format: uuid }
+          description: Issue #2000 — as assign_circle_ids, for tags.
     ImportFieldMapping:
       type: object
       required: [property_name, action]

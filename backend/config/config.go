@@ -27,6 +27,7 @@ import (
 type OIDCConfig struct {
 	Enabled               bool     `cfgreg:"derived=true;desc=true when OIDC_PROVIDER_URL, OIDC_CLIENT_ID and OIDC_CLIENT_SECRET are all set"`
 	ProviderURL           string   `cfgreg:"env=OIDC_PROVIDER_URL;type=string;range=absolute http(s) URL;default=;required=false;restart=true;desc=OIDC provider issuer URL"`
+	ProviderName          string   `cfgreg:"env=OIDC_PROVIDER_NAME;type=string;range=max 80 characters;default=;required=false;restart=true;desc=Display name for the SSO button (e.g. Pocket ID); display-only, falls back to the provider host"`
 	ClientID              string   `cfgreg:"env=OIDC_CLIENT_ID;type=string;default=;required=false;restart=true;desc=OIDC client ID"`
 	ClientSecret          string   `cfgreg:"env=OIDC_CLIENT_SECRET;type=string;default=;required=false;restart=true;desc=OIDC client secret"`
 	RedirectURL           string   `cfgreg:"derived=true;desc=derived from FRONTEND_URL, not configurable"` // derived from FrontendURL, not configurable
@@ -40,6 +41,19 @@ type OIDCConfig struct {
 	// common self-hosted setup and must keep working. Same opt-in shape as the
 	// other *_BLOCK_PRIVATE_URLS knobs (INT-02, issue #465).
 	BlockPrivateURLs bool `cfgreg:"env=OIDC_BLOCK_PRIVATE_URLS;type=bool;default=false;required=false;restart=true;desc=Route OIDC discovery/token/JWKS/UserInfo calls through the SSRF-guarded dialer"`
+}
+
+// maxOIDCProviderNameRunes bounds OIDC_PROVIDER_NAME (display-only).
+const maxOIDCProviderNameRunes = 80
+
+// normalizeOIDCProviderName trims the display name and truncates it to
+// maxOIDCProviderNameRunes; blank means unset.
+func normalizeOIDCProviderName(raw string) string {
+	name := strings.TrimSpace(raw)
+	if r := []rune(name); len(r) > maxOIDCProviderNameRunes {
+		name = strings.TrimSpace(string(r[:maxOIDCProviderNameRunes]))
+	}
+	return name
 }
 
 // Config is the fully-loaded application configuration, populated once by
@@ -729,6 +743,7 @@ func LoadConfig() *Config {
 	// OIDC lives on its own env vars; its Enabled/RedirectURL/PostLogoutRedirectURL
 	// fields are derived (see derive). UseResend/UseSMTP are derived there too.
 	cfg.OIDC.ProviderURL = getEnv("OIDC_PROVIDER_URL", "")
+	cfg.OIDC.ProviderName = normalizeOIDCProviderName(getEnv("OIDC_PROVIDER_NAME", ""))
 	cfg.OIDC.ClientID = getEnv("OIDC_CLIENT_ID", "")
 	cfg.OIDC.ClientSecret = getEnv("OIDC_CLIENT_SECRET", "")
 	cfg.OIDC.AllowAutoProvision = getBoolEnv("OIDC_AUTO_PROVISION", false)

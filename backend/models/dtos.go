@@ -416,6 +416,12 @@ type RelationshipEdgeInput struct {
 	Type        string                 `json:"type" validate:"required,relation_type"`
 	Sensitivity string                 `json:"sensitivity,omitempty" validate:"omitempty,oneof=normal private secret"`
 	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+
+	// StartDate/EndDate are the optional relationship period (issue #2001).
+	// Full-replace like the rest of the DTO: omitting them on update clears
+	// them. End must not precede start (validated in the controller).
+	StartDate *contactmodel.PartialDate `json:"start_date,omitempty"`
+	EndDate   *contactmodel.PartialDate `json:"end_date,omitempty"`
 }
 
 // ContactResponse represents the DTO returned from GET /contacts with photo thumbnail
@@ -863,4 +869,15 @@ type DataDecayPolicyInput struct {
 	EntityID     string `json:"entity_id" validate:"required,uuid4"`
 	IntervalDays int    `json:"interval_days" validate:"required,gt=0,lte=3650"`
 	Active       *bool  `json:"active,omitempty"`
+}
+
+// MaxContactActivitiesBatch caps how many activities one
+// POST /contacts/:id/activities call may name.
+const MaxContactActivitiesBatch = 100
+
+// ContactActivitiesInput is the body of POST /contacts/:id/activities: the
+// existing activities to add the path contact to. It carries only ids, so a
+// client cannot overwrite an activity's title/date/other contacts with it.
+type ContactActivitiesInput struct {
+	ActivityIDs []uint `json:"activity_ids" validate:"required,min=1,max=100"`
 }

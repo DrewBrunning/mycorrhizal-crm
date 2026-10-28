@@ -62,6 +62,24 @@ func TestSendEmail_LogsMaskRecipientAddress(t *testing.T) {
 // handles exactly one connection and then exits.
 func startFakeSMTPServer(t *testing.T) (host string, port int) {
 	t.Helper()
+	host, port, _ = startRecordingSMTPServer(t)
+	return host, port
+}
+
+// smtpCapture is what the recording fake SMTP server saw on its one session.
+type smtpCapture struct {
+	MailFrom string
+	RcptTo   []string
+	Authed   bool
+	Data     string
+}
+
+// startRecordingSMTPServer is startFakeSMTPServer plus a channel that yields
+// the captured session once the DATA section has been accepted, so success
+// tests can assert the envelope and message rather than only "no error".
+func startRecordingSMTPServer(t *testing.T) (host string, port int, got <-chan smtpCapture) {
+	t.Helper()
+	out := make(chan smtpCapture, 1)
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
@@ -79,6 +97,7 @@ func startFakeSMTPServer(t *testing.T) (host string, port int) {
 			_, _ = conn.Write([]byte(line + "\r\n"))
 		}
 
+		var cap smtpCapture
 		respond("220 localhost ESMTP fake")
 		for {
 			line, err := reader.ReadString('\n')
@@ -91,10 +110,13 @@ func startFakeSMTPServer(t *testing.T) (host string, port int) {
 				respond("250-localhost")
 				respond("250 AUTH PLAIN")
 			case strings.HasPrefix(cmd, "AUTH"):
+				cap.Authed = true
 				respond("235 2.7.0 Authentication successful")
 			case strings.HasPrefix(cmd, "MAIL FROM"):
+				cap.MailFrom = strings.TrimSpace(line)
 				respond("250 OK")
 			case strings.HasPrefix(cmd, "RCPT TO"):
+				cap.RcptTo = append(cap.RcptTo, strings.TrimSpace(line))
 				respond("250 OK")
 			case strings.HasPrefix(cmd, "DATA"):
 				respond("354 Start mail input")
@@ -106,7 +128,9 @@ func startFakeSMTPServer(t *testing.T) (host string, port int) {
 					if strings.TrimRight(dataLine, "\r\n") == "." {
 						break
 					}
+					cap.Data += dataLine
 				}
+				out <- cap
 				respond("250 OK")
 			case strings.HasPrefix(cmd, "QUIT"):
 				respond("221 Bye")
@@ -118,7 +142,7 @@ func startFakeSMTPServer(t *testing.T) (host string, port int) {
 	}()
 
 	addr := ln.Addr().(*net.TCPAddr)
-	return "127.0.0.1", addr.Port
+	return "127.0.0.1", addr.Port, out
 }
 
 // TestSendEmail_NoRecipient verifies SendEmail short-circuits with a nil
@@ -156,7 +180,7 @@ func TestSendEmail_SMTPFailure(t *testing.T) {
 // TestSendEmail_SMTPSuccess verifies SendEmail returns nil when the only
 // configured channel (SMTP) succeeds end-to-end against a fake local server.
 func TestSendEmail_SMTPSuccess(t *testing.T) {
-	host, port := startFakeSMTPServer(t)
+	host, port, got := startRecordingSMTPServer(t)
 	cfg := config.Config{
 		UseSMTP:       true,
 		SMTPHost:      host,
@@ -164,20 +188,34 @@ func TestSendEmail_SMTPSuccess(t *testing.T) {
 		SMTPFromEmail: "noreply@example.com",
 	}
 	err := SendEmail(cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
-	assert.NoError(t, err)
+	require.NoError(t, err)
+	cap := <-got
+	assert.Contains(t, cap.MailFrom, "noreply@example.com")
+	require.Len(t, cap.RcptTo, 1)
+	assert.Contains(t, cap.RcptTo[0], "user@example.com")
+	assert.Contains(t, cap.Data, "Subject: hi")
+	assert.Contains(t, cap.Data, "<p>hi</p>")
+	assert.Equal(t, false, cap.Authed)
 }
 
 // TestSendViaSMTP_Success verifies sendViaSMTP completes a full plaintext
 // (non-TLS) send against a fake local SMTP server, without authentication.
 func TestSendViaSMTP_Success(t *testing.T) {
-	host, port := startFakeSMTPServer(t)
+	host, port, got := startRecordingSMTPServer(t)
 	cfg := config.Config{
 		SMTPHost:      host,
 		SMTPPort:      port,
 		SMTPFromEmail: "noreply@example.com",
 	}
 	err := sendViaSMTP(cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
-	assert.NoError(t, err)
+	require.NoError(t, err)
+	cap := <-got
+	assert.Contains(t, cap.MailFrom, "noreply@example.com")
+	require.Len(t, cap.RcptTo, 1)
+	assert.Contains(t, cap.RcptTo[0], "user@example.com")
+	assert.Contains(t, cap.Data, "Subject: hi")
+	assert.Contains(t, cap.Data, "<p>hi</p>")
+	assert.Equal(t, false, cap.Authed)
 }
 
 // TestSendViaSMTP_SuccessWithAuth verifies sendViaSMTP exercises the
@@ -185,7 +223,7 @@ func TestSendViaSMTP_Success(t *testing.T) {
 // server. PlainAuth permits unencrypted connections when the server name is
 // "127.0.0.1"/"localhost", so this succeeds without needing real TLS.
 func TestSendViaSMTP_SuccessWithAuth(t *testing.T) {
-	host, port := startFakeSMTPServer(t)
+	host, port, got := startRecordingSMTPServer(t)
 	cfg := config.Config{
 		SMTPHost:      host,
 		SMTPPort:      port,
@@ -194,7 +232,14 @@ func TestSendViaSMTP_SuccessWithAuth(t *testing.T) {
 		SMTPPassword:  "smtppass",
 	}
 	err := sendViaSMTP(cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
-	assert.NoError(t, err)
+	require.NoError(t, err)
+	cap := <-got
+	assert.Contains(t, cap.MailFrom, "noreply@example.com")
+	require.Len(t, cap.RcptTo, 1)
+	assert.Contains(t, cap.RcptTo[0], "user@example.com")
+	assert.Contains(t, cap.Data, "Subject: hi")
+	assert.Contains(t, cap.Data, "<p>hi</p>")
+	assert.Equal(t, true, cap.Authed)
 }
 
 // TestSendViaSMTP_ConnectionRefused verifies sendViaSMTP propagates the

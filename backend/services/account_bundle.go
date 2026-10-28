@@ -196,6 +196,8 @@ func loadBundleRelationships(db *gorm.DB, userID uint) ([]models.AccountBundleRe
 			Type:        e.Type,
 			Directional: e.Directional,
 			Metadata:    e.Metadata,
+			StartDate:   e.StartDate,
+			EndDate:     e.EndDate,
 			Source:      e.Source,
 			Confidence:  e.Confidence,
 			Status:      e.Status,

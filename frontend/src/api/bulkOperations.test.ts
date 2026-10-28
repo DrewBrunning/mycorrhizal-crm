@@ -6,7 +6,7 @@ import { ApiError } from './client';
 setupMswServer();
 
 describe('runBulkOperation', () => {
-  test('lists the seven bulk actions the backend accepts', () => {
+  test('lists the eight bulk actions the backend accepts', () => {
     expect([...BULK_ACTIONS]).toEqual([
       'add_circle',
       'remove_circle',
@@ -15,6 +15,7 @@ describe('runBulkOperation', () => {
       'archive',
       'unarchive',
       'delete',
+      'update_fields',
     ]);
   });
 

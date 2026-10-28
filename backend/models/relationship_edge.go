@@ -3,6 +3,8 @@ package models
 import (
 	"time"
 
+	"mycorrhizal/contactmodel"
+
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -98,6 +100,19 @@ type RelationshipEdge struct {
 	// as FieldConstraints (models/field_definition.go).
 	Metadata map[string]interface{} `gorm:"type:text;serializer:json" json:"metadata,omitempty"`
 
+	// StartDate / EndDate are the relationship's optional period ("married
+	// 2010-2018"), PartialDate like LifeEvent.Date/EndDate (ADR 0025, ADR
+	// 0015): a calendar date with no time and no zone. Both nullable; an
+	// absent EndDate means the relationship is open-ended. End must not
+	// precede start (contactmodel.TemporalRange.Reversed). Migration 000079
+	// promoted legacy metadata since/until into these columns; the typed
+	// columns are authoritative and metadata is left as it was. An end-dated
+	// edge stays a confirmed fact in the graph and in every export, but no
+	// longer counts toward closeness for active reach-out
+	// (docs/relationship-dates.md).
+	StartDate *contactmodel.PartialDate `gorm:"column:start_date;type:text;serializer:json" json:"start_date,omitempty"`
+	EndDate   *contactmodel.PartialDate `gorm:"column:end_date;type:text;serializer:json" json:"end_date,omitempty"`
+
 	// Source is provenance: how this edge came to exist. Confidence is 0-1;
 	// user-confirmed edges are always 1.0, inferred/suggested ones lower.
 	Source     string  `gorm:"not null" json:"source" validate:"required,oneof=user-confirmed household-inferred imported ai-suggested graph-inferred"`
@@ -138,4 +153,29 @@ func (r *RelationshipEdge) BeforeCreate(tx *gorm.DB) error {
 		r.ID = uuid.New().String()
 	}
 	return nil
+}
+
+// Ended reports whether the relationship has ended as of now: EndDate is set
+// and not later than today, compared at the end date's own precision (a
+// year-only end of this year counts as ended only once that year is over).
+// A future or absent end date is "still active". Partial dates with no year
+// cannot be placed on a timeline, so they are treated as not ended.
+func (r *RelationshipEdge) Ended(now time.Time) bool {
+	e := r.EndDate
+	if e == nil || e.Year == nil {
+		return false
+	}
+	y, m, d := now.UTC().Date()
+	switch {
+	case *e.Year != y:
+		return *e.Year < y
+	case e.Month == nil:
+		return false
+	case *e.Month != int(m):
+		return *e.Month < int(m)
+	case e.Day == nil:
+		return false
+	default:
+		return *e.Day <= d
+	}
 }

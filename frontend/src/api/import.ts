@@ -106,6 +106,24 @@ export interface ImportPreviewResponse {
   valid_rows: number;
   duplicate_count: number;
   error_count: number;
+  // Issue #2000: present only when the preview request carried
+  // assign_circle_ids / assign_tag_ids.
+  fixed_assignment?: ImportFixedAssignment;
+}
+
+// Issue #2000: circles/tags every imported contact joins, and the resulting
+// (upper-bound) membership count.
+export interface ImportFixedAssignment {
+  circles: { id: string; name: string }[];
+  tags: { id: string; name: string }[];
+  contact_count: number;
+  membership_count: number;
+}
+
+// Issue #2000: optional fixed circle/tag ids sent on preview and confirm.
+export interface FixedAssignmentIds {
+  assign_circle_ids?: string[];
+  assign_tag_ids?: string[];
 }
 
 // Action for a specific row
@@ -262,6 +280,7 @@ export async function uploadCSVForImport(file: File): Promise<ImportUploadRespon
 export async function getImportPreview(
   sessionId: string,
   mappings: ColumnMapping[],
+  fixed: FixedAssignmentIds = {},
 ): Promise<ImportPreviewResponse> {
   const response = await apiFetch(`${API_BASE_URL}/contacts/import/preview`, {
     method: 'POST',
@@ -269,6 +288,7 @@ export async function getImportPreview(
     body: JSON.stringify({
       session_id: sessionId,
       mappings,
+      ...fixed,
     }),
   });
 
@@ -283,6 +303,7 @@ export async function getImportPreview(
 export async function confirmImport(
   sessionId: string,
   actions: RowImportAction[],
+  fixed: FixedAssignmentIds = {},
 ): Promise<ImportResult> {
   const response = await apiFetch(`${API_BASE_URL}/contacts/import/confirm`, {
     method: 'POST',
@@ -290,6 +311,7 @@ export async function confirmImport(
     body: JSON.stringify({
       session_id: sessionId,
       actions,
+      ...fixed,
     }),
   });
 
