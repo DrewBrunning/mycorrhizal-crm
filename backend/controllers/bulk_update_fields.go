@@ -31,29 +31,29 @@ type bulkFieldUpdate struct {
 // (models.BulkEditableFields) and the user's own FieldDefinitions.
 func buildBulkFieldUpdate(db *gorm.DB, userID uint, photoDir string, in models.BulkContactOperationInput) (*bulkFieldUpdate, *apperrors.AppError) {
 	if len(in.Set) == 0 && len(in.Clear) == 0 && len(in.CustomSet) == 0 && len(in.CustomClear) == 0 {
-		return nil, apperrors.ErrValidation("update_fields requires at least one of set, clear, custom_set or custom_clear")
+		return nil, apperrors.ErrValidation("update_fields requires at least one of set, clear, custom_set or custom_clear").WithReason(apperrors.ReasonContactBulkNoFields, nil)
 	}
 	u := &bulkFieldUpdate{set: map[string]string{}, clear: map[string]bool{}, photoDir: photoDir}
 
 	for key, value := range in.Set {
 		limit, ok := models.BulkEditableFields[key]
 		if !ok {
-			return nil, apperrors.ErrInvalidInput("set."+key, "field is not bulk-editable")
+			return nil, apperrors.ErrInvalidInput("set."+key, "field is not bulk-editable").WithReason(apperrors.ReasonContactBulkFieldNotEditable, map[string]any{"field": key})
 		}
 		if strings.TrimSpace(value) == "" {
-			return nil, apperrors.ErrInvalidInput("set."+key, "value must not be empty; list the field in clear to empty it")
+			return nil, apperrors.ErrInvalidInput("set."+key, "value must not be empty; list the field in clear to empty it").WithReason(apperrors.ReasonContactBulkValueEmpty, map[string]any{"field": key})
 		}
 		if utf8.RuneCountInString(value) > limit {
-			return nil, apperrors.ErrInvalidInput("set."+key, fmt.Sprintf("must be at most %d characters", limit))
+			return nil, apperrors.ErrInvalidInput("set."+key, fmt.Sprintf("must be at most %d characters", limit)).WithReason(apperrors.ReasonContactBulkValueTooLong, map[string]any{"field": key, "limit": limit})
 		}
 		u.set[key] = value
 	}
 	for _, key := range in.Clear {
 		if _, ok := models.BulkEditableFields[key]; !ok {
-			return nil, apperrors.ErrInvalidInput("clear", fmt.Sprintf("%q is not bulk-editable", key))
+			return nil, apperrors.ErrInvalidInput("clear", fmt.Sprintf("%q is not bulk-editable", key)).WithReason(apperrors.ReasonContactBulkFieldNotEditable, map[string]any{"field": key})
 		}
 		if _, dup := u.set[key]; dup {
-			return nil, apperrors.ErrInvalidInput("clear", fmt.Sprintf("%q is in both set and clear", key))
+			return nil, apperrors.ErrInvalidInput("clear", fmt.Sprintf("%q is in both set and clear", key)).WithReason(apperrors.ReasonContactBulkFieldInSetAndClear, map[string]any{"field": key})
 		}
 		u.clear[key] = true
 	}
@@ -73,23 +73,23 @@ func buildBulkFieldUpdate(db *gorm.DB, userID uint, photoDir string, in models.B
 	for _, fv := range in.CustomSet {
 		def, ok := defByID[fv.FieldDefinitionID]
 		if !ok {
-			return nil, apperrors.ErrInvalidInput("custom_set", "unknown or not-owned field definition")
+			return nil, apperrors.ErrInvalidInput("custom_set", "unknown or not-owned field definition").WithReason(apperrors.ReasonContactBulkCustomFieldUnknown, nil)
 		}
 		if setIDs[fv.FieldDefinitionID] {
-			return nil, apperrors.ErrInvalidInput("custom_set", "duplicate field definition")
+			return nil, apperrors.ErrInvalidInput("custom_set", "duplicate field definition").WithReason(apperrors.ReasonContactBulkCustomFieldDupe, nil)
 		}
 		setIDs[fv.FieldDefinitionID] = true
 		if err := services.ValidateFieldValue(def, fv.Value); err != nil {
-			return nil, apperrors.ErrInvalidInput("custom_set", err.Error())
+			return nil, apperrors.ErrInvalidInput("custom_set", err.Error()).WithReason(apperrors.ReasonContactBulkCustomValueInvalid, map[string]any{"reason": err.Error()})
 		}
 		u.customSet = append(u.customSet, fv)
 	}
 	for _, id := range in.CustomClear {
 		if _, ok := defByID[id]; !ok {
-			return nil, apperrors.ErrInvalidInput("custom_clear", "unknown or not-owned field definition")
+			return nil, apperrors.ErrInvalidInput("custom_clear", "unknown or not-owned field definition").WithReason(apperrors.ReasonContactBulkCustomFieldUnknown, nil)
 		}
 		if setIDs[id] {
-			return nil, apperrors.ErrInvalidInput("custom_clear", "field definition is in both custom_set and custom_clear")
+			return nil, apperrors.ErrInvalidInput("custom_clear", "field definition is in both custom_set and custom_clear").WithReason(apperrors.ReasonContactBulkCustomFieldInBoth, nil)
 		}
 		u.customClear = append(u.customClear, id)
 	}

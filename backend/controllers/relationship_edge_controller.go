@@ -51,7 +51,7 @@ func thinContactIsPet(edgeType string, isSource bool) bool {
 func resolveRelationshipEndpoint(tx *gorm.DB, userID uint, fieldName, id string, thin *models.ThinContactInput, edgeType string, isSource bool, quota services.UserQuota) (string, *apperrors.AppError) {
 	switch {
 	case id != "" && thin != nil:
-		return "", apperrors.ErrInvalidInput(fieldName, "specify either an existing contact id or a new contact, not both")
+		return "", apperrors.ErrInvalidInput(fieldName, "specify either an existing contact id or a new contact, not both").WithReason(apperrors.ReasonRelationshipEndpointBoth, map[string]any{"field": fieldName})
 	case id != "":
 		var contact models.Contact
 		if err := tx.Where("vcard_uid = ? AND user_id = ?", id, userID).First(&contact).Error; err != nil {
@@ -83,7 +83,7 @@ func resolveRelationshipEndpoint(tx *gorm.DB, userID uint, fieldName, id string,
 		}
 		return contact.VCardUID, nil
 	default:
-		return "", apperrors.ErrInvalidInput(fieldName, "must specify either an existing contact id or a new contact")
+		return "", apperrors.ErrInvalidInput(fieldName, "must specify either an existing contact id or a new contact").WithReason(apperrors.ReasonRelationshipEndpointMissing, map[string]any{"field": fieldName})
 	}
 }
 
@@ -113,7 +113,7 @@ func applyRelationshipEdgeInput(db *gorm.DB, userID uint, edge *models.Relations
 			return aerr
 		}
 		if sourceID == targetID {
-			return apperrors.ErrInvalidInput("target_id", "source and target must be different contacts")
+			return apperrors.ErrInvalidInput("target_id", "source and target must be different contacts").WithReason(apperrors.ReasonRelationshipSelfLink, nil)
 		}
 
 		edge.SourceID = sourceID
@@ -162,17 +162,17 @@ func validateRelationshipEdgeDates(start, end *contactmodel.PartialDate) *apperr
 			continue
 		}
 		if f.d.Year == nil && f.d.Month == nil && f.d.Day == nil {
-			return apperrors.ErrInvalidInput(f.name, "must carry at least a year, month or day")
+			return apperrors.ErrInvalidInput(f.name, "must carry at least a year, month or day").WithReason(apperrors.ReasonRelationshipDateEmpty, map[string]any{"field": f.name})
 		}
 		if f.d.Month != nil && (*f.d.Month < 1 || *f.d.Month > 12) {
-			return apperrors.ErrInvalidInput(f.name, "month must be 1-12")
+			return apperrors.ErrInvalidInput(f.name, "month must be 1-12").WithReason(apperrors.ReasonRelationshipDateMonthRange, map[string]any{"field": f.name})
 		}
 		if f.d.Day != nil && (*f.d.Day < 1 || *f.d.Day > 31) {
-			return apperrors.ErrInvalidInput(f.name, "day must be 1-31")
+			return apperrors.ErrInvalidInput(f.name, "day must be 1-31").WithReason(apperrors.ReasonRelationshipDateDayRange, map[string]any{"field": f.name})
 		}
 	}
 	if (contactmodel.TemporalRange{Start: start, End: end}).Reversed() {
-		return apperrors.ErrInvalidInput("end_date", "end date precedes the start date")
+		return apperrors.ErrInvalidInput("end_date", "end date precedes the start date").WithReason(apperrors.ReasonRelationshipDatesReversed, nil)
 	}
 	return nil
 }
@@ -465,7 +465,7 @@ func AcceptRelationshipEdge(c *gin.Context) {
 	}
 
 	if edge.Status != models.RelationshipStatusSuggested {
-		apperrors.AbortWithError(c, apperrors.ErrConflict("Relationship edge is not a pending suggestion"))
+		apperrors.AbortWithError(c, apperrors.ErrConflict("Relationship edge is not a pending suggestion").WithReason(apperrors.ReasonRelationshipNotPendingSuggestion, nil))
 		return
 	}
 

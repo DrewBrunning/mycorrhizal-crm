@@ -167,7 +167,7 @@ func GetActivities(c *gin.Context) {
 		if params.Cursor != nil {
 			id, ok := parseCursorID(params.Cursor)
 			if !ok {
-				apperrors.AbortWithError(c, apperrors.ErrInvalidInput("since", "cursor id is malformed"))
+				apperrors.AbortWithError(c, apperrors.ErrInvalidInput("since", "cursor id is malformed").WithReason(apperrors.ReasonValidationCursorMalformed, map[string]any{"field": "since"}))
 				return
 			}
 			pred, t, idv := cursorPredicate("activities", params.Cursor, id, false)
@@ -242,7 +242,7 @@ func GetActivities(c *gin.Context) {
 	if params.Cursor != nil {
 		id, ok := parseCursorID(params.Cursor)
 		if !ok {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed"))
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed").WithReason(apperrors.ReasonValidationCursorMalformed, map[string]any{"field": "cursor"}))
 			return
 		}
 		pred, t, idv := cursorPredicate("activities", params.Cursor, id, desc)
@@ -489,7 +489,7 @@ func GetActivitiesForContact(c *gin.Context) {
 	if params.Cursor != nil {
 		id, ok := parseCursorID(params.Cursor)
 		if !ok {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed"))
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed").WithReason(apperrors.ReasonValidationCursorMalformed, map[string]any{"field": "cursor"}))
 			return
 		}
 		pred, t, idv := cursorPredicate("activities", params.Cursor, id, desc)
@@ -563,7 +563,7 @@ func AddContactToActivities(c *gin.Context) {
 		return
 	}
 	if n := len(input.ActivityIDs); n == 0 || n > models.MaxContactActivitiesBatch {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("activity_ids", "must contain between 1 and 100 ids"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("activity_ids", "must contain between 1 and 100 ids").WithReason(apperrors.ReasonValidationIDCountRange, map[string]any{"field": "activity_ids", "min": 1, "max": 100}))
 		return
 	}
 

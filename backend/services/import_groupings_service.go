@@ -237,7 +237,7 @@ func ResolveImportFixedAssignment(db *gorm.DB, userID uint, circleIDs, tagIDs []
 			return nil, apperrors.ErrDatabase("Failed to resolve circles").WithError(err)
 		}
 		if len(out.Circles) != len(circleIDs) {
-			return nil, apperrors.ErrInvalidInput("assign_circle_ids", "One or more circles were not found")
+			return nil, apperrors.ErrInvalidInput("assign_circle_ids", "One or more circles were not found").WithReason(apperrors.ReasonImportCirclesNotFound, nil)
 		}
 	}
 	if len(tagIDs) > 0 {
@@ -245,7 +245,7 @@ func ResolveImportFixedAssignment(db *gorm.DB, userID uint, circleIDs, tagIDs []
 			return nil, apperrors.ErrDatabase("Failed to resolve tags").WithError(err)
 		}
 		if len(out.Tags) != len(tagIDs) {
-			return nil, apperrors.ErrInvalidInput("assign_tag_ids", "One or more tags were not found")
+			return nil, apperrors.ErrInvalidInput("assign_tag_ids", "One or more tags were not found").WithReason(apperrors.ReasonImportTagsNotFound, nil)
 		}
 	}
 	return out, nil
