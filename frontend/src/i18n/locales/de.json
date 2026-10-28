@@ -3421,5 +3421,32 @@
     "success": "Richtlinie für das CardDAV-/CalDAV-Passwort aktualisiert.",
     "error": "Die Richtlinie für das CardDAV-/CalDAV-Passwort konnte nicht aktualisiert werden.",
     "loadError": "Die Richtlinie für das CardDAV-/CalDAV-Passwort konnte nicht geladen werden."
+  },
+  "errors": {
+    "requestRef": "(Ref.: {{id}})",
+    "reason": {
+      "common_test_only": "Prüfung {{n}}",
+      "import_circles_not_found": "Einer oder mehrere Kreise wurden nicht gefunden",
+      "import_tags_not_found": "Einer oder mehrere Tags wurden nicht gefunden",
+      "validation_cursor_malformed": "Die Cursor-ID ist ungültig",
+      "validation_activity_ids_range": "Muss zwischen 1 und 100 IDs enthalten",
+      "relationship_contact_ambiguous": "Gib entweder einen bestehenden oder einen neuen Kontakt an, nicht beides",
+      "relationship_contact_missing": "Gib einen bestehenden oder einen neuen Kontakt an",
+      "relationship_self_edge": "Quelle und Ziel müssen verschiedene Kontakte sein",
+      "relationship_partial_date_missing": "Ein Datum muss mindestens ein Jahr, einen Monat oder einen Tag enthalten",
+      "relationship_month_out_of_range": "Der Monat muss zwischen 1 und 12 liegen",
+      "relationship_day_out_of_range": "Der Tag muss zwischen 1 und 31 liegen",
+      "relationship_end_before_start": "Das Enddatum darf nicht vor dem Startdatum liegen",
+      "relationship_not_suggestion": "Diese Beziehung ist kein ausstehender Vorschlag",
+      "contact_bulk_no_operations": "Gib mindestens eines von set, clear, custom_set oder custom_clear an",
+      "contact_bulk_field_not_editable": "{{field}} kann nicht gemeinsam bearbeitet werden",
+      "contact_bulk_value_empty": "{{field}} darf nicht leer sein; zum Leeren in clear angeben",
+      "contact_bulk_value_too_long": "{{field}} darf höchstens {{limit}} Zeichen lang sein",
+      "contact_bulk_field_in_set_and_clear": "{{field}} darf nicht gleichzeitig in set und clear stehen",
+      "contact_bulk_custom_field_not_found": "Eine benutzerdefinierte Felddefinition wurde nicht gefunden oder gehört nicht dir",
+      "contact_bulk_custom_field_duplicate": "Eine benutzerdefinierte Felddefinition kommt mehrfach vor",
+      "contact_bulk_custom_field_in_both": "Ein benutzerdefiniertes Feld darf nicht gleichzeitig in custom_set und custom_clear stehen",
+      "contact_bulk_custom_field_invalid": "Der Wert von {{field}} ist ungültig"
+    }
   }
 }

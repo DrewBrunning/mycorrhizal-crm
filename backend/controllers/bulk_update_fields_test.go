@@ -324,3 +324,26 @@ func TestBulkUpdateFieldsPerContactDatabaseFailuresAreReported(t *testing.T) {
 		})
 	}
 }
+
+// ADR 0038: a user-facing bulk validation error carries a reason code and its
+// params so clients can localize it; message keeps the rendered English.
+func TestBulkUpdateFieldsRejectionCarriesReasonCode(t *testing.T) {
+	db, router := bulkTestRouter(t)
+	user := createBulkTestUser(t, db)
+	bob := createBulkContact(t, db, user.ID, "Bob")
+
+	code, _, raw := doBulkRaw(t, router, `{"action":"update_fields","vcard_uids":["`+bob.VCardUID+`"],"set":{"notes":"x"}}`)
+	require.Equal(t, http.StatusBadRequest, code, raw)
+
+	var env struct {
+		Error struct {
+			Message      string         `json:"message"`
+			ReasonCode   string         `json:"reason_code"`
+			ReasonParams map[string]any `json:"reason_params"`
+		} `json:"error"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(raw), &env), raw)
+	assert.Equal(t, "contact_bulk_field_not_editable", env.Error.ReasonCode)
+	assert.Equal(t, map[string]any{"field": "notes"}, env.Error.ReasonParams)
+	assert.Equal(t, "notes is not bulk-editable", env.Error.Message)
+}
