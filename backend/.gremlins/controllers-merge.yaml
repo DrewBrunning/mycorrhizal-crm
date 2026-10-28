@@ -13,6 +13,7 @@ unleash:
         - ^audit_controller\.go$
         - ^briefing_controller\.go$
         - ^bulk_operation_controller\.go$
+        - ^bulk_update_fields\.go$
         - ^cadence_controller\.go$
         - ^calendar_controller\.go$
         - ^circle_controller\.go$

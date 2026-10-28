@@ -176,6 +176,8 @@ func seedFullAccount(t *testing.T, db *gorm.DB, user models.User, marker string)
 		Confidence: 1, Status: models.RelationshipStatusConfirmed,
 		Sensitivity: models.RelationshipSensitivityPrivate,
 		Metadata:    map[string]interface{}{"since": "2001-01-01", "kind": "chosen"},
+		StartDate:   &contactmodel.PartialDate{Year: bundleIntPtr(2001), Month: bundleIntPtr(1), Day: bundleIntPtr(1)},
+		EndDate:     &contactmodel.PartialDate{Year: bundleIntPtr(2018), Month: bundleIntPtr(6)},
 	}).Error)
 	require.NoError(t, db.Create(&models.RelationshipEdge{
 		UserID: user.ID, SourceID: ada.VCardUID, TargetID: bob.VCardUID,
@@ -412,6 +414,17 @@ func TestAccountBundle_RoundTrip(t *testing.T) {
 	// ID-agnostically: equivalent rows with equivalent, resolving references.
 	require.Equal(t, canonicalPlanJSON(t, exported), canonicalPlanJSON(t, reexported),
 		"the re-exported bundle must equal the original plan")
+
+	// Issue #2001: the edge period survives the round-trip (the canonical
+	// plan comparison above would also catch a drop; this names the fields).
+	var dated models.RelationshipEdge
+	require.NoError(t, targetDB.Where("user_id = ? AND type = ?", target.ID, "friend_of").First(&dated).Error)
+	require.NotNil(t, dated.StartDate)
+	require.NotNil(t, dated.EndDate)
+	assert.Equal(t, 2001, *dated.StartDate.Year)
+	assert.Equal(t, 2018, *dated.EndDate.Year)
+	assert.Equal(t, 6, *dated.EndDate.Month)
+	assert.Nil(t, dated.EndDate.Day, "a partial end date must not gain a day")
 
 	// Issue #1375: the self contact travels and lands as the destination's "Me".
 	ada0 := seed.Contacts[0]

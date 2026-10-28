@@ -127,15 +127,16 @@ var requestBodyBindings = map[string]requestBodyBinding{
 	"PUT /activities/{id}":         bindingFor(models.ActivityInput{}),
 
 	// --- Circles / link-field-types / households / tags ---
-	"POST /circles":                 bindingFor(models.CircleInput{}),
-	"PUT /circles/{id}":             bindingFor(models.CircleInput{}),
-	"POST /circles/{id}/members":    bindingFor(models.CircleMemberInput{}),
-	"POST /link-field-types":        bindingFor(models.LinkFieldTypeInput{}),
-	"PUT /link-field-types/reorder": bindingFor(models.LinkFieldTypeReorderInput{}),
-	"PUT /link-field-types/{id}":    bindingFor(models.LinkFieldTypeInput{}),
-	"POST /households":              bindingFor(models.HouseholdInput{}),
-	"PUT /households/{id}":          bindingFor(models.HouseholdInput{}),
-	"POST /households/{id}/members": bindingFor(models.HouseholdMemberInput{}),
+	"POST /circles":                  bindingFor(models.CircleInput{}),
+	"PUT /circles/{id}":              bindingFor(models.CircleInput{}),
+	"POST /circles/{id}/members":     bindingFor(models.CircleMemberInput{}),
+	"POST /contacts/{id}/activities": bindingFor(models.ContactActivitiesInput{}),
+	"POST /link-field-types":         bindingFor(models.LinkFieldTypeInput{}),
+	"PUT /link-field-types/reorder":  bindingFor(models.LinkFieldTypeReorderInput{}),
+	"PUT /link-field-types/{id}":     bindingFor(models.LinkFieldTypeInput{}),
+	"POST /households":               bindingFor(models.HouseholdInput{}),
+	"PUT /households/{id}":           bindingFor(models.HouseholdInput{}),
+	"POST /households/{id}/members":  bindingFor(models.HouseholdMemberInput{}),
 	"PATCH /households/{id}/members/{vcard_uid}": {
 		boundFieldsOverride: []string{"role"}, // household_controller.go UpdateHouseholdMember's local memberUpdate type
 	},

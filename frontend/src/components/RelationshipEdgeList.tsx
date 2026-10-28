@@ -6,6 +6,7 @@ import { Box, Chip, Divider, IconButton, Link, Paper, Stack, Typography } from '
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import type { Contact } from '../api/contacts';
+import { partialDateDisplay } from '../api/lifeEvents';
 import { getDisplayLabel, getOtherPartyId, type RelationshipEdge } from '../api/relationshipEdges';
 
 interface RelationshipEdgeListProps {
@@ -94,7 +95,11 @@ export default function RelationshipEdgeList({
             }}
           >
             <Box
-              sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}
+              sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+              }}
             >
               <Box sx={{ flex: 1 }}>
                 {contact ? (
@@ -120,6 +125,8 @@ export default function RelationshipEdgeList({
                     }}
                   >
                     {t(getDisplayLabel(edge, viewedContactUid))}
+                    {edge.end_date &&
+                      ` · ${t('relationships.until', { date: partialDateDisplay(edge.end_date) })}`}
                   </Typography>
                   {edge.sensitivity !== 'normal' && (
                     <Chip

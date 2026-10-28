@@ -196,6 +196,7 @@ var embeddedRouteRows = []embeddedRouteRow{
 		"POST /api/v1/cadence-policies",
 		"POST /api/v1/circles",
 		"POST /api/v1/circles/:id/members",
+		"POST /api/v1/contacts/:id/activities",
 		"POST /api/v1/contacts",
 		"POST /api/v1/contacts/:id/archive",
 		"POST /api/v1/contacts/:id/attachments",

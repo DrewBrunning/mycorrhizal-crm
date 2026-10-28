@@ -66,6 +66,8 @@ func MapAccountBundle(bundle *models.AccountBundle) *ImportSourcePlan {
 			Provenance:  r.Source,
 			Confidence:  r.Confidence,
 			Metadata:    r.Metadata,
+			StartDate:   r.StartDate,
+			EndDate:     r.EndDate,
 		})
 	}
 

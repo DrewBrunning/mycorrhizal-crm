@@ -167,6 +167,8 @@ func TestExportData(t *testing.T) {
 		Confidence:  1.0,
 		Status:      models.RelationshipStatusConfirmed,
 		Sensitivity: models.RelationshipSensitivityNormal,
+		StartDate:   &contactmodel.PartialDate{Year: intPtr(2010), Month: intPtr(5), Day: intPtr(17)},
+		EndDate:     &contactmodel.PartialDate{Year: intPtr(2018)},
 	}
 	require.NoError(t, db.Create(&edge).Error)
 
@@ -244,6 +246,8 @@ func TestExportData(t *testing.T) {
 	assert.Contains(t, body, "=== RELATIONSHIPS ===")
 	assert.Contains(t, body, "friend_of")
 	assert.Contains(t, body, "confirmed")
+	assert.Contains(t, body, "Start Date,End Date", "issue #2001: relationship period columns")
+	assert.Contains(t, body, ",2010-05-17,2018\n", "issue #2001: start/end date values")
 
 	// Verify activities section
 	assert.Contains(t, body, "=== ACTIVITIES ===")

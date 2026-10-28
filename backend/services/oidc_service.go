@@ -456,8 +456,13 @@ func deriveUsername(claims *OIDCClaims) string {
 	return "oidc_user"
 }
 
-// ProviderName extracts a human-readable name from a provider URL (e.g. "accounts.google.com" → "accounts.google.com").
-func ProviderName(providerURL string) string {
+// ProviderName returns the SSO button label: the operator-configured
+// OIDC_PROVIDER_NAME when set, else the provider URL's host (e.g.
+// "accounts.google.com"), else "SSO". Display-only.
+func ProviderName(providerURL, configuredName string) string {
+	if n := strings.TrimSpace(configuredName); n != "" {
+		return n
+	}
 	u, err := url.Parse(providerURL)
 	if err != nil || u.Host == "" {
 		return "SSO"

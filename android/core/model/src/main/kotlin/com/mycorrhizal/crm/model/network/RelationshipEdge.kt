@@ -73,6 +73,9 @@ data class RelationshipEdge(
     val confidence: Double = 1.0,
     val status: String = RelationshipEdgeStatuses.CONFIRMED,
     val sensitivity: String = RelationshipEdgeSensitivities.NORMAL,
+    /** Optional relationship period (issue #2001). An end date means the relationship has ended. */
+    @Json(name = "start_date") val startDate: PartialDate? = null,
+    @Json(name = "end_date") val endDate: PartialDate? = null,
     @Json(name = "created_at") val createdAt: String? = null,
     @Json(name = "updated_at") val updatedAt: String? = null
 )
@@ -93,7 +96,9 @@ data class RelationshipEdgeInput(
     @Json(name = "target_thin") val targetThin: ThinContactInput? = null,
     val type: String,
     val sensitivity: String? = null,
-    val metadata: Map<String, Any?>? = null
+    val metadata: Map<String, Any?>? = null,
+    @Json(name = "start_date") val startDate: PartialDate? = null,
+    @Json(name = "end_date") val endDate: PartialDate? = null
 )
 
 /** GET /relationship-edges response — cursor-paginated. */

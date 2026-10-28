@@ -126,10 +126,14 @@ type AccountBundleRelationship struct {
 	Type        string                 `json:"type"`
 	Directional bool                   `json:"directional"`
 	Metadata    map[string]interface{} `json:"metadata,omitempty"`
-	Source      string                 `json:"source"`
-	Confidence  float64                `json:"confidence"`
-	Status      string                 `json:"status"`
-	Sensitivity string                 `json:"sensitivity"`
+	// StartDate/EndDate carry the edge's period (issue #2001); absent on a
+	// bundle exported before then.
+	StartDate   *contactmodel.PartialDate `json:"start_date,omitempty"`
+	EndDate     *contactmodel.PartialDate `json:"end_date,omitempty"`
+	Source      string                    `json:"source"`
+	Confidence  float64                   `json:"confidence"`
+	Status      string                    `json:"status"`
+	Sensitivity string                    `json:"sensitivity"`
 }
 
 // AccountBundleNote is one note; contact_uid is the owning contact's vcard_uid

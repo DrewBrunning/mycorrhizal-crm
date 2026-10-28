@@ -167,7 +167,7 @@ func GetActivities(c *gin.Context) {
 		if params.Cursor != nil {
 			id, ok := parseCursorID(params.Cursor)
 			if !ok {
-				apperrors.AbortWithError(c, apperrors.ErrInvalidInput("since", "cursor id is malformed"))
+				apperrors.AbortWithError(c, apperrors.ErrInvalidInput("since", "cursor id is malformed").WithReason(apperrors.ReasonValidationCursorMalformed, nil))
 				return
 			}
 			pred, t, idv := cursorPredicate("activities", params.Cursor, id, false)
@@ -242,7 +242,7 @@ func GetActivities(c *gin.Context) {
 	if params.Cursor != nil {
 		id, ok := parseCursorID(params.Cursor)
 		if !ok {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed"))
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed").WithReason(apperrors.ReasonValidationCursorMalformed, nil))
 			return
 		}
 		pred, t, idv := cursorPredicate("activities", params.Cursor, id, desc)
@@ -489,7 +489,7 @@ func GetActivitiesForContact(c *gin.Context) {
 	if params.Cursor != nil {
 		id, ok := parseCursorID(params.Cursor)
 		if !ok {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed"))
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed").WithReason(apperrors.ReasonValidationCursorMalformed, nil))
 			return
 		}
 		pred, t, idv := cursorPredicate("activities", params.Cursor, id, desc)
@@ -521,4 +521,112 @@ func GetActivitiesForContact(c *gin.Context) {
 		"next_cursor": nextCursor,
 		"limit":       params.Limit,
 	})
+}
+
+// Per-activity outcomes of AddContactToActivities.
+const (
+	addToActivityAdded         = "added"
+	addToActivityAlreadyMember = "already_member"
+	addToActivityNotFound      = "not_found"
+)
+
+// AddContactToActivities adds the path contact to each named existing
+// activity (POST /contacts/:id/activities). It touches only the
+// activity_contacts join: no other activity field or member changes. A repeat
+// is a per-activity no-op ("already_member"); an activity that is missing,
+// soft-deleted or owned by someone else is reported "not_found" with no write.
+// A contact the caller does not own is a 404 for the whole call.
+func AddContactToActivities(c *gin.Context) {
+	contactID, ok := requirePathUintID(c, "id")
+	if !ok {
+		return
+	}
+	db := c.MustGet("db").(*gorm.DB)
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+
+	var contact models.Contact
+	if err := db.Where("user_id = ?", userID).First(&contact, contactID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			apperrors.AbortWithError(c, apperrors.ErrNotFound("Contact").WithDetails("id", contactID))
+		} else {
+			apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve contact").WithError(err))
+		}
+		return
+	}
+
+	input, err := middleware.GetValidated[models.ContactActivitiesInput](c)
+	if err != nil {
+		apperrors.AbortWithError(c, err)
+		return
+	}
+	if n := len(input.ActivityIDs); n == 0 || n > models.MaxContactActivitiesBatch {
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("activity_ids", "must contain between 1 and 100 ids").WithReason(apperrors.ReasonValidationActivityIDsRange, nil))
+		return
+	}
+
+	type result struct {
+		ActivityID uint   `json:"activity_id"`
+		Status     string `json:"status"`
+	}
+	results := make([]result, 0, len(input.ActivityIDs))
+	var changed []models.Activity
+
+	txErr := db.Transaction(func(tx *gorm.DB) error {
+		seen := make(map[uint]bool, len(input.ActivityIDs))
+		for _, aid := range input.ActivityIDs {
+			if seen[aid] {
+				continue
+			}
+			seen[aid] = true
+
+			var activity models.Activity
+			if err := tx.Where("user_id = ?", userID).First(&activity, aid).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					results = append(results, result{aid, addToActivityNotFound})
+					continue
+				}
+				return apperrors.ErrDatabase("Failed to retrieve activity").WithError(err)
+			}
+
+			var existing int64
+			if err := tx.Table("activity_contacts").
+				Where("activity_id = ? AND contact_id = ?", activity.ID, contact.ID).
+				Count(&existing).Error; err != nil {
+				return apperrors.ErrDatabase("Failed to check activity membership").WithError(err)
+			}
+			if existing > 0 {
+				results = append(results, result{aid, addToActivityAlreadyMember})
+				continue
+			}
+
+			if err := tx.Exec("INSERT INTO activity_contacts (activity_id, contact_id) VALUES (?, ?)", activity.ID, contact.ID).Error; err != nil {
+				return apperrors.ErrDatabase("Failed to add contact to activity").WithError(err)
+			}
+			// Save with no field changes still runs AfterSave, which bumps the
+			// revision/ETag and updated_at so sync clients see the new member.
+			if err := tx.Save(&activity).Error; err != nil {
+				return apperrors.ErrDatabase("Failed to update activity").WithError(err)
+			}
+			changed = append(changed, activity)
+			results = append(results, result{aid, addToActivityAdded})
+		}
+		return nil
+	})
+	if txErr != nil {
+		var appErr *apperrors.AppError
+		if errors.As(txErr, &appErr) {
+			apperrors.AbortWithError(c, appErr)
+		} else {
+			apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to add contact to activities").WithError(txErr))
+		}
+		return
+	}
+
+	for _, a := range changed {
+		services.TriggerWebhooksAsync(c.Request.Context(), db, currentConfig(c), userID, "activity.updated", a)
+	}
+	c.JSON(http.StatusOK, gin.H{"contact_id": contact.ID, "results": results})
 }

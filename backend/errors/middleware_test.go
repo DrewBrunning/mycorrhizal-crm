@@ -350,3 +350,46 @@ func TestLogError_LevelFollowsStatusClass(t *testing.T) {
 		})
 	}
 }
+
+// --- reason_code / reason_params (issue #2095) ---
+
+func TestRespondWithError_ReasonFieldsPresentOnlyWhenSet(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodGet, "/x", nil)
+	RespondWithError(c, ErrInvalidInput("n", "x").WithReason(ReasonCommonTestOnly, map[string]any{"n": 3}))
+	detail := decodeErrorDetail(t, decodeErrorEnvelope(t, rec))
+	assert.Equal(t, "common_test_only", detail["reason_code"])
+	assert.Equal(t, map[string]interface{}{"n": float64(3)}, detail["reason_params"])
+	assert.Equal(t, "Test 3", detail["message"])
+
+	rec = httptest.NewRecorder()
+	c, _ = gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodGet, "/x", nil)
+	RespondWithError(c, ErrInvalidInput("n", "x"))
+	var raw map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &raw))
+	var errObj map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(raw["error"], &errObj))
+	assert.NotContains(t, errObj, "reason_code")
+	assert.NotContains(t, errObj, "reason_params")
+}
+
+func TestLogError_IncludesReasonCode(t *testing.T) {
+	old := logger.Logger
+	buf := &bytes.Buffer{}
+	logger.Logger = zerolog.New(buf)
+	defer func() { logger.Logger = old }()
+	gin.SetMode(gin.TestMode)
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest(http.MethodGet, "/x", nil)
+
+	LogError(c, ErrInvalidInput("n", "x").WithReason(ReasonCommonTestOnly, map[string]any{"n": 3}))
+	assert.Contains(t, buf.String(), `"reason_code":"common_test_only"`)
+
+	buf.Reset()
+	LogError(c, ErrInvalidInput("n", "x"))
+	assert.NotContains(t, buf.String(), "reason_code")
+}

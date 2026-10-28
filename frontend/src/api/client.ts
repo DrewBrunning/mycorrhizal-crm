@@ -1,6 +1,7 @@
 // API client with authentication and error handling
 // Uses httpOnly cookies for authentication (credentials: 'include')
 import { API_BASE_URL } from '../auth';
+import i18n from '../i18n/config';
 import { notifySessionExpired } from './sessionExpiry';
 
 export { API_BASE_URL };
@@ -15,11 +16,14 @@ export { API_BASE_URL };
 const DEFAULT_TIMEOUT = parseInt(import.meta.env?.VITE_REQUEST_TIMEOUT || '30000', 10);
 
 // Backend error response structure
-interface BackendErrorResponse {
+export interface BackendErrorResponse {
   error: {
     code: string;
     message: string;
     details?: Record<string, string>;
+    // ADR 0038: optional, flat string/number params for the reason's template.
+    reason_code?: string;
+    reason_params?: Record<string, string | number>;
   };
   request_id?: string;
   timestamp?: string;
@@ -31,6 +35,8 @@ export class ApiError extends Error {
   status: number;
   details?: Record<string, string>;
   requestId?: string;
+  reasonCode?: string;
+  reasonParams?: Record<string, string | number>;
 
   constructor(
     message: string,
@@ -38,6 +44,8 @@ export class ApiError extends Error {
     status: number = 500,
     details?: Record<string, string>,
     requestId?: string,
+    reasonCode?: string,
+    reasonParams?: Record<string, string | number>,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -45,6 +53,25 @@ export class ApiError extends Error {
     this.status = status;
     this.details = details;
     this.requestId = requestId;
+    this.reasonCode = reasonCode;
+    this.reasonParams = reasonParams;
+  }
+
+  // The translated message for reasonCode, or undefined when the client cannot
+  // render it (unknown code, or a param the template needs is missing) so the
+  // caller falls back to the server's English (ADR 0038). Never returns a
+  // template with an unfilled {{placeholder}}.
+  private localizedReason(): string | undefined {
+    if (!this.reasonCode) return undefined;
+    const key = `errors.reason.${this.reasonCode}`;
+    if (!i18n.exists(key)) return undefined;
+    // i18n.exists() above guarantees the en leaf is a string.
+    const template = String(i18n.getResource('en', 'translation', key));
+    const params = this.reasonParams ?? {};
+    for (const m of template.matchAll(/\{\{\s*(\w+)\s*\}\}/g)) {
+      if (!(m[1] in params)) return undefined;
+    }
+    return i18n.t(key, params);
   }
 
   // Get a user-friendly error message including field details.
@@ -74,7 +101,10 @@ export class ApiError extends Error {
   // 4xx is the user's own input and needs no correlation id.
   getDisplayMessage(): string {
     let message = this.message;
-    if (this.code === 'INVALID_INPUT') {
+    const localized = this.localizedReason();
+    if (localized !== undefined) {
+      message = localized;
+    } else if (this.code === 'INVALID_INPUT') {
       const reason = this.details?.reason;
       if (typeof reason === 'string' && reason !== '') {
         message = reason;
@@ -90,7 +120,7 @@ export class ApiError extends Error {
     }
 
     if (this.status >= 500 && this.requestId) {
-      return `${message} (ref: ${this.requestId})`;
+      return `${message} ${i18n.t('errors.requestRef', { id: this.requestId })}`;
     }
     return message;
   }
@@ -128,6 +158,8 @@ export async function parseErrorResponse(response: Response): Promise<ApiError> 
         response.status,
         data.error.details,
         data.request_id,
+        data.error.reason_code,
+        data.error.reason_params,
       );
     }
   } catch {

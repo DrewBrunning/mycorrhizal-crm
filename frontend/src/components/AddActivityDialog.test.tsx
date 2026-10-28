@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import '../i18n/config';
+import { addContactToActivities, getActivities } from '../api/activities';
 import { type Contact, getContacts } from '../api/contacts';
 import { DateFormatProvider } from '../DateFormatProvider';
 import { pickDate } from '../testSupport/dateField';
@@ -23,11 +24,26 @@ vi.mock('../api/contacts', async (importOriginal) => {
   return { ...actual, getContacts: vi.fn() };
 });
 
+vi.mock('../api/activities', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../api/activities')>();
+  return { ...actual, getActivities: vi.fn(), addContactToActivities: vi.fn() };
+});
+
 function contact(overrides: Partial<Contact> = {}): Contact {
   return { ID: 1, firstname: 'Alice', lastname: 'Johnson', ...overrides };
 }
 
 beforeEach(() => {
+  vi.mocked(getActivities).mockReset();
+  vi.mocked(addContactToActivities).mockReset();
+  vi.mocked(getActivities).mockResolvedValue({
+    activities: [
+      { ID: 11, title: 'Group dinner', date: '2026-08-01T00:00:00Z' },
+      { ID: 12, title: 'Hike', date: '2026-07-01T00:00:00Z' },
+    ],
+    next_cursor: '',
+    limit: 50,
+  } as never);
   vi.mocked(getContacts).mockReset();
   vi.mocked(getContacts).mockResolvedValue({ contacts: [contact()], next_cursor: '' } as never);
 });
@@ -434,4 +450,194 @@ describe('AddActivityDialog in-app route navigation guard (issue #805)', () => {
     expect(router.state.location.pathname).toBe('/notes');
     expect(screen.queryByText('Discard unsaved changes?')).toBeNull();
   });
+});
+
+describe('add to existing activities (issue #2007)', () => {
+  async function openExistingMode(
+    props: Partial<React.ComponentProps<typeof AddActivityDialog>> = {},
+  ) {
+    renderDialog({ preselectedContactId: 1, ...props });
+    await waitFor(() => expect(getContacts).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole('button', { name: 'Add to existing' }));
+  }
+
+  test('no mode switch without a preselected contact', async () => {
+    renderDialog();
+    await waitFor(() => expect(getContacts).toHaveBeenCalled());
+    expect(screen.queryByRole('button', { name: 'Add to existing' })).not.toBeInTheDocument();
+  });
+
+  test('switching mode lists activities and hides the new-activity fields', async () => {
+    await openExistingMode();
+    expect(await screen.findByText(/Group dinner/)).toBeInTheDocument();
+    expect(screen.getByText(/Hike/)).toBeInTheDocument();
+    expect(screen.queryByLabelText('Title *')).not.toBeInTheDocument();
+  });
+
+  test('selecting several activities adds the contact to all of them in one call', async () => {
+    vi.mocked(addContactToActivities).mockResolvedValue({
+      contact_id: 1,
+      results: [
+        { activity_id: 11, status: 'added' },
+        { activity_id: 12, status: 'already_member' },
+      ],
+    });
+    const onClose = vi.fn();
+    const onAddedToExisting = vi.fn();
+    await openExistingMode({ onClose, onAddedToExisting });
+
+    const save = screen.getByRole('button', { name: /^add to selected$/i });
+    expect(save).toBeDisabled();
+    fireEvent.click(await screen.findByRole('checkbox', { name: /Group dinner/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /Hike/ }));
+    fireEvent.click(save);
+
+    await waitFor(() => expect(addContactToActivities).toHaveBeenCalledWith(1, [11, 12]));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(onAddedToExisting).toHaveBeenCalled();
+  });
+
+  test('a per-activity failure keeps the dialog open and names the activity', async () => {
+    vi.mocked(addContactToActivities).mockResolvedValue({
+      contact_id: 1,
+      results: [
+        { activity_id: 11, status: 'added' },
+        { activity_id: 12, status: 'not_found' },
+      ],
+    });
+    const onClose = vi.fn();
+    await openExistingMode({ onClose });
+    fireEvent.click(await screen.findByRole('checkbox', { name: /Group dinner/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /Hike/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^add to selected$/i }));
+
+    expect(await screen.findByText(/could not be updated: Hike/i)).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  test('typed new-activity fields survive a mode round trip and still guard Cancel', async () => {
+    renderDialog({ preselectedContactId: 1 });
+    await waitFor(() => expect(getContacts).toHaveBeenCalled());
+    fireEvent.change(screen.getByLabelText('Title *'), {
+      target: { value: 'Half typed' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add to existing' }));
+    await screen.findByText(/Group dinner/);
+    // Dirty new-activity fields still trigger the discard guard from this mode.
+    fireEvent.click(screen.getByRole('button', { name: /^cancel$/i }));
+    expect(await screen.findByText('Discard unsaved changes?')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /keep editing/i }));
+
+    await waitFor(() =>
+      expect(screen.queryByText('Discard unsaved changes?')).not.toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'New activity' }));
+    expect(screen.getByLabelText('Title *')).toHaveValue('Half typed');
+  });
+
+  test('selecting an activity makes Cancel ask before discarding', async () => {
+    await openExistingMode();
+    fireEvent.click(await screen.findByRole('checkbox', { name: /Group dinner/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^cancel$/i }));
+    expect(await screen.findByText('Discard unsaved changes?')).toBeInTheDocument();
+  });
+
+  test('a failed activity search shows an error', async () => {
+    vi.mocked(getActivities).mockRejectedValue(new Error('boom'));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    await openExistingMode();
+    expect(await screen.findByText('Failed to load activities')).toBeInTheDocument();
+  });
+
+  test('a failed add shows an error and keeps the dialog open', async () => {
+    vi.mocked(addContactToActivities).mockRejectedValue(new Error('boom'));
+    const onClose = vi.fn();
+    await openExistingMode({ onClose });
+    fireEvent.click(await screen.findByRole('checkbox', { name: /Group dinner/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^add to selected$/i }));
+    expect(await screen.findByText('Failed to add to the selected activities')).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  test('searching re-queries activities and unticking removes the selection', async () => {
+    await openExistingMode();
+    fireEvent.click(await screen.findByRole('checkbox', { name: /Group dinner/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /Group dinner/ }));
+    expect(screen.getByRole('button', { name: /^add to selected$/i })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('Search activities'), { target: { value: 'hike' } });
+    await waitFor(() =>
+      expect(getActivities).toHaveBeenCalledWith(expect.objectContaining({ search: 'hike' })),
+    );
+  });
+
+  test('an all-already-member result closes without refreshing the caller', async () => {
+    vi.mocked(addContactToActivities).mockResolvedValue({
+      contact_id: 1,
+      results: [{ activity_id: 11, status: 'already_member' }],
+    });
+    const onClose = vi.fn();
+    const onAddedToExisting = vi.fn();
+    await openExistingMode({ onClose, onAddedToExisting });
+    fireEvent.click(await screen.findByRole('checkbox', { name: /Group dinner/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^add to selected$/i }));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(onAddedToExisting).not.toHaveBeenCalled();
+  });
+
+  test('shows the empty state when there are no activities', async () => {
+    vi.mocked(getActivities).mockResolvedValue({ next_cursor: '', limit: 50 } as never);
+    await openExistingMode();
+    await waitFor(() => expect(getActivities).toHaveBeenCalled());
+    expect(await screen.findByText('No activities found')).toBeInTheDocument();
+  });
+
+  test('no mode switch for a prefilled dialog', async () => {
+    renderDialog({ preselectedContactId: 1, prefill: { location: 'Cafe' } });
+    await waitFor(() => expect(getContacts).toHaveBeenCalled());
+    expect(screen.queryByRole('button', { name: 'Add to existing' })).not.toBeInTheDocument();
+  });
+
+  test('a not_found id missing from the loaded list is reported by id', async () => {
+    vi.mocked(addContactToActivities).mockResolvedValue({
+      contact_id: 1,
+      results: [{ activity_id: 999, status: 'not_found' }],
+    });
+    await openExistingMode();
+    fireEvent.click(await screen.findByRole('checkbox', { name: /Group dinner/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^add to selected$/i }));
+    expect(await screen.findByText(/could not be updated: 999/i)).toBeInTheDocument();
+  });
+
+  test('clicking the active mode again keeps it selected', async () => {
+    await openExistingMode();
+    fireEvent.click(screen.getByRole('button', { name: 'Add to existing' }));
+    expect(await screen.findByText(/Group dinner/)).toBeInTheDocument();
+  });
+});
+
+test('a failed contact load is logged and does not break the dialog', async () => {
+  const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  vi.mocked(getContacts).mockRejectedValue(new Error('boom'));
+  renderDialog();
+  await waitFor(() =>
+    expect(spy).toHaveBeenCalledWith('Failed to fetch contacts:', expect.any(Error)),
+  );
+  expect(screen.getByLabelText('Title *')).toBeInTheDocument();
+});
+
+test('a failed preselected-contact load is logged and does not break the dialog', async () => {
+  const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  vi.mocked(getContacts).mockRejectedValue(new Error('boom'));
+  renderDialog({ preselectedContactId: 1 });
+  await waitFor(() =>
+    expect(spy).toHaveBeenCalledWith('Failed to load preselected contact:', expect.any(Error)),
+  );
+  expect(screen.getByLabelText('Title *')).toBeInTheDocument();
+});
+
+test('a closed dialog loads nothing', () => {
+  renderDialog({ open: false, preselectedContactId: 1 });
+  expect(getContacts).not.toHaveBeenCalled();
+  expect(getActivities).not.toHaveBeenCalled();
 });

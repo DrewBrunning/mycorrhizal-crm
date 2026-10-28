@@ -156,3 +156,48 @@ test('shows the empty state when there are no edges at all', () => {
 
   expect(screen.getByText('No relationships yet')).toBeInTheDocument();
 });
+
+test('a confirmed edge with an end date shows "until" and stays listed', () => {
+  const edge: RelationshipEdge = {
+    ...suggestedEdge(),
+    status: 'confirmed',
+    source: 'user-confirmed',
+    type: 'spouse_of',
+    end_date: { year: 2018, month: 6, day: 30 },
+  };
+  render(
+    <MemoryRouter>
+      <RelationshipEdgeList
+        confirmedEdges={[edge]}
+        suggestedEdges={[]}
+        contactsByUid={new Map([['bob-uid', bobContact()]])}
+        viewedContactUid={viewedContactUid}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onAccept={vi.fn()}
+        onReject={vi.fn()}
+      />
+    </MemoryRouter>,
+  );
+  expect(screen.getByText('Bob Brown')).toBeInTheDocument();
+  expect(screen.getByText(/until 2018-06-30/)).toBeInTheDocument();
+});
+
+test('a confirmed edge without an end date shows no "until"', () => {
+  const edge: RelationshipEdge = { ...suggestedEdge(), status: 'confirmed' };
+  render(
+    <MemoryRouter>
+      <RelationshipEdgeList
+        confirmedEdges={[edge]}
+        suggestedEdges={[]}
+        contactsByUid={new Map([['bob-uid', bobContact()]])}
+        viewedContactUid={viewedContactUid}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onAccept={vi.fn()}
+        onReject={vi.fn()}
+      />
+    </MemoryRouter>,
+  );
+  expect(screen.queryByText(/until/)).not.toBeInTheDocument();
+});
