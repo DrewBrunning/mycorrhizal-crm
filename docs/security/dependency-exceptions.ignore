@@ -54,6 +54,7 @@
 # Example (not a real exception — delete before adding a real one):
 #   GHSA-xxxx-xxxx-xxxx | npm | example-pkg | 2026-09-04 | 2026-09-04 | 2026-11-03 | 0 | drew | no upstream fix yet; tracked at github.com/example/example-pkg/issues/1
 #
-# Currently empty: no known advisory against a shipped dependency is
-# unfixable right now. Add a line above this one, following the format, when
-# one comes up.
+# Add a line below this block, following the format, when an advisory cannot
+# be fixed right now.
+
+GHSA-gcqx-w48m-w2h4 | npm | deepmerge | 2026-10-27 | 2026-10-27 | 2027-01-25 | 0 | DrewBrunning | no upstream patched release (4.3.1 is latest and the advisory has no first_patched_version); dev-only transitive build dependency via @rollup/plugin-node-resolve that merges constant defaults, not untrusted input
