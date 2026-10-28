@@ -32,8 +32,9 @@ name: Chaos Tests (failure injection)
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
+  # Not per-PR (CI queue pressure): a PR's required checks do not include this
+  # workflow, so it runs after merge (push:main), nightly, on workflow_call from
+  # the release battery, and on demand (`gh workflow run chaos-tests.yml --ref <branch>`).
   schedule:
     - cron: '55 3 * * *' # 03:55 UTC nightly (consolidated nightly suite)
   workflow_dispatch:

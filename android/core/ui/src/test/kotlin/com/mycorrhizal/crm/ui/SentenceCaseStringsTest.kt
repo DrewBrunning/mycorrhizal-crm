@@ -27,7 +27,9 @@ class SentenceCaseStringsTest {
     /** key -> why it legitimately carries a capitalised non-initial word. */
     private val exceptions = mapOf(
         // The name of the Android system app, not a heading word.
-        "contact_open_in_contacts" to "names the Contacts app"
+        "contact_open_in_contacts" to "names the Contacts app",
+        // Maintainer-requested Title Case dialog title (issue #2166); English only.
+        "settings_api_tokens_create_title" to "approved Title Case exception (#2166)"
     )
 
     private val word = Regex("""^[A-ZÀ-Ý][a-zà-ÿ]+[,:?!]?$""")

@@ -17,8 +17,9 @@ name: ARM64 Tests
 #
 # Cadence (the issue asked us to decide): the `rest` leg (everything outside
 # controllers/services/database/schemafixture/property -- includes main_test.go,
-# atrest, the exporters) runs per pull request when backend code changes;
-# `controllers` runs on push:main, nightly, dispatch and release composition.
+# atrest, the exporters) and `controllers` both run on push:main, nightly,
+# dispatch and release composition (no longer per pull request: CI queue
+# pressure, and this gate is not a required PR context).
 # It is a release-tier gate (not in the main-protection ruleset), composed by
 # release-validate.yml.
 #
@@ -29,11 +30,9 @@ name: ARM64 Tests
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
-    paths:
-      - 'backend/**'
-      - '.github/workflows/arm64-tests.yml'
+  # Not per-PR (CI queue pressure): a PR's required checks do not include this
+  # workflow, so it runs after merge (push:main), nightly, on workflow_call from
+  # the release battery, and on demand (`gh workflow run arm64-tests.yml --ref <branch>`).
   schedule:
     - cron: '25 4 * * *' # 04:25 UTC nightly
   workflow_dispatch:

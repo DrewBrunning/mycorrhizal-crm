@@ -316,6 +316,21 @@ function AppContent({
     [mainNavItems],
   );
 
+  // #2154: select exactly one destination -- the longest nav path matching on
+  // a path-segment boundary -- so /settings/data does not also light up
+  // Settings (/settings), and /contacts-archive does not match /contacts.
+  const currentNavPath = useMemo(() => {
+    let best: string | null = null;
+    for (const { path } of mainNavItems) {
+      const matches =
+        path === '/'
+          ? location.pathname === '/'
+          : location.pathname === path || location.pathname.startsWith(`${path}/`);
+      if (matches && (best === null || path.length > best.length)) best = path;
+    }
+    return best;
+  }, [mainNavItems, location.pathname]);
+
   const drawerContent = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Toolbar />
@@ -330,10 +345,7 @@ function AppContent({
       >
         <List>
           {mainNavItems.map((item) => {
-            const isSelected =
-              item.path === '/'
-                ? location.pathname === '/'
-                : location.pathname.startsWith(item.path);
+            const isSelected = item.path === currentNavPath;
             return (
               <ListItem key={item.text} disablePadding>
                 <ListItemButton

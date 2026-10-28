@@ -237,6 +237,34 @@ class ApiTokensScreenTest {
     }
 
     @Test
+    fun `create dialog title is Title Case`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                CreateApiTokenDialog(isSaving = false, onConfirm = { _, _, _ -> }, onDismiss = {})
+            }
+        }
+
+        composeTestRule.onNodeWithText("Create API Token").assertIsDisplayed()
+    }
+
+    @Test
+    fun `create dialog chip labels never wrap inside their chip`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                CreateApiTokenDialog(isSaving = false, onConfirm = { _, _, _ -> }, onDismiss = {})
+            }
+        }
+
+        for (label in listOf("180 days", "Calendar (CalDAV)")) {
+            val node = composeTestRule.onNodeWithText(label).fetchSemanticsNode()
+            val results = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+            node.config[androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult]
+                .action?.invoke(results)
+            assertEquals("$label should render on one line", 1, results.single().lineCount)
+        }
+    }
+
+    @Test
     fun `create dialog defaults to 90 days and full access`() {
         var days: Int? = null
         var scopes: List<String>? = null
