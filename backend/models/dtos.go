@@ -680,7 +680,7 @@ type WebhookInput struct {
 	// SUPPORTED_EVENTS (frontend trap 4). Operator events: reach_out_suggested
 	// (#177), db.integrity_check_failed / db.restore_drill_failed (#273/#275),
 	// alert.raised / alert.cleared (#428, condition in the payload).
-	Events   []string `json:"events" validate:"required,min=1,max=16,dive,oneof=contact.created contact.updated contact.deleted note.created note.updated note.deleted activity.created activity.updated activity.deleted reminder.triggered birthday.occurred reach_out_suggested db.integrity_check_failed db.restore_drill_failed alert.raised alert.cleared"`
+	Events   []string `json:"events" validate:"required,min=1,max=16,dive,oneof=contact.created contact.updated contact.deleted contact.restored note.created note.updated note.deleted activity.created activity.updated activity.deleted reminder.triggered birthday.occurred reach_out_suggested db.integrity_check_failed db.restore_drill_failed alert.raised alert.cleared"`
 	IsActive bool     `json:"is_active"`
 }
 

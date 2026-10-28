@@ -132,6 +132,18 @@ permanent memory of a user's decision about one inferred candidate, keyed by its
 hard-deleted per T26; ADR 0025), `FieldValue`, `activity_contacts`, `NotificationDelivery`,
 `ContactSyncConflict`.
 
+**Contact trash (issue #2002, ADR 0037).** Most of these rows are hard-deleted by the contact-delete
+cascade, so a restore could not otherwise bring them back. `DeleteContact` therefore also writes one
+`contact_deletion_snapshots` row **in the same transaction**: an encrypted JSON copy of the restorable
+hard-deleted rows plus the ids of the children the cascade soft-deleted (so restore never resurrects
+content the user deleted earlier). The snapshot lives exactly as long as the contact is in the trash and
+is removed on restore, on purge and with the account. Derived/system rows (reach-out suggestions,
+duplicate dismissals, notification deliveries, sync conflicts, life-event suggestion resolutions) and
+revoked contact feeds are deliberately not restored. `ContactSyncLink` is no longer deleted by the
+cascade: it is retained as the CardDAV tombstone, so a pull cannot re-import a deleted or purged
+contact, and a restored contact resumes syncing as the same object. `DELETED_RETENTION_DAYS=0` keeps
+trashed contacts forever.
+
 - **Where / who**: same DB, same `user_id` scoping.
 - **Retention**: none — backend/AGENTS.md trap #7 hard-deletes these immediately (a natural-key unique index
   would otherwise block re-creating the same edge after a soft-delete ghost).
@@ -282,15 +294,18 @@ Session/JWT cookies, TOTP recovery codes, WebAuthn passkey credentials, password
 
 - **Where / who**: `PROFILE_PHOTO_DIR` / `ATTACHMENTS_DIR` on the host filesystem, one file per
   attachment/photo, filenames server-generated (never user-controlled — path-traversal-safe).
-- **Retention**: the metadata row (`Attachment`) follows §1's soft-delete/purge window, **but the file
-  itself is deleted immediately**, not window-delayed (N7, comment at
-  `backend/controllers/attachment_controller.go:253-256`): "an attachment's content IS the file; a tombstone that
-  outlives a vanished file is acceptable for the change feed, an orphaned file is a leak."
-- **Deletion / propagation**: `DeleteAttachment` (`backend/controllers/attachment_controller.go:244-263`)
-  and `DeleteContact`'s `deleteContactPhotos`/`deleteContactAttachmentFiles`
-  (`contact_controller.go:888-939`) remove the file from disk right after the DB transaction commits (file
-  deletion can't be rolled back, so it happens after, not inside, the transaction). A failed file removal
-  is logged as a leak but never fails the request.
+- **Retention**: the metadata row (`Attachment`) follows §1's soft-delete/purge window. An attachment
+  deleted on its own (`DeleteAttachment`) has its file removed immediately (N7: "an attachment's
+  content IS the file; a tombstone that outlives a vanished file is acceptable for the change feed, an
+  orphaned file is a leak"). Files of a **deleted contact** are different (issue #2002, ADR 0037): the
+  contact is restorable from the trash, so its photo and attachment files stay on disk for the
+  retention window and are removed when the contact is purged.
+- **Deletion / propagation**: `DeleteAttachment` removes the file right after its DB transaction commits.
+  A contact purge — `DELETE /api/v1/trash/contacts[/:id]` or the scheduled `PurgeSoftDeletedRows` —
+  collects the contact's photo, legacy thumbnail and attachment file names before deleting the rows and
+  removes the files only after the purge committed (file deletion can't be rolled back, so it happens
+  after, not inside, the transaction). A failed file removal is logged as a leak but never fails the
+  request.
 - **Import-written photos (#1341)**: the source-import engine (account bundle, Meerkat, Monica rows
   carrying an embedded photo) writes the photo file inside the import transaction, which a rollback
   cannot unwrite, so it tracks each file it writes and removes them all when the transaction does not

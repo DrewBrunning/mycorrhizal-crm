@@ -502,14 +502,11 @@ func reconcileContactSyncWithBaselines(db *gorm.DB, sub *models.ContactSubscript
 				var contact models.Contact
 				cErr := tx.Where("id = ? AND user_id = ?", link.ContactID, sub.UserID).First(&contact).Error
 				if errors.Is(cErr, gorm.ErrRecordNotFound) {
-					// The user deleted the previously-synced contact;
-					// respect that and drop the stale link instead of
-					// recreating it (mirrors calendar_sync_service.go's
-					// importEvents: "the user deleted the imported
-					// activity; respect that").
-					if err := tx.Delete(&link).Error; err != nil {
-						return err
-					}
+					// The user deleted (trashed or purged) the previously-synced
+					// contact; respect that. The link is KEPT as the tombstone
+					// (ADR 0037 decision 7): dropping it would let the next pull
+					// of this href re-import the contact as a duplicate, and a
+					// restore relies on it to resume syncing as the same object.
 					stats.Skipped++
 					continue
 				}

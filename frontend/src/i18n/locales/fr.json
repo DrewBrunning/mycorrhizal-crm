@@ -3554,6 +3554,8 @@
       "common_test_only": "Essai {{n}}",
       "import_circles_not_found": "Un ou plusieurs cercles sont introuvables",
       "import_tags_not_found": "Une ou plusieurs étiquettes sont introuvables",
+      "trash_uid_in_use": "Un contact actif utilise déjà l'UID de ce contact ; fusionnez-le ou supprimez-le d'abord",
+      "trash_snapshot_unsupported": "Cette version ne prend pas en charge l'instantané de suppression de ce contact ; il peut toujours être supprimé définitivement",
       "circle_color_invalid": "La couleur doit être l'une des couleurs de la palette",
       "validation_cursor_malformed": "L'identifiant du curseur est mal formé",
       "validation_activity_ids_range": "Doit contenir entre 1 et 100 identifiants",

@@ -30,6 +30,7 @@ func TestEncryptedColumns_MatchesSerializerTags(t *testing.T) {
 	collectEncrypted(t, models.AuditEvent{}, got)
 	collectEncrypted(t, models.ContactSyncConflict{}, got)
 	collectEncrypted(t, models.ContactSyncLink{}, got)
+	collectEncrypted(t, models.ContactDeletionSnapshot{}, got)
 
 	want := map[string]bool{}
 	for _, spec := range atrest.EncryptedColumns {
