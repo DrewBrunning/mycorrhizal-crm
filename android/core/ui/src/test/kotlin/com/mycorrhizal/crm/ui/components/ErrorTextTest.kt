@@ -76,6 +76,54 @@ class ErrorTextTest {
     }
 
     @Test
+    fun `a single-param code renders its template`() {
+        val error = ApiError.Client(
+            400,
+            "Server says no",
+            ErrorReason(
+                ErrorReasonCode.CONTACT_BULK_FIELD_NOT_EDITABLE,
+                mapOf("field" to "email")
+            )
+        )
+        assertEquals("email is not bulk-editable", render(error))
+    }
+
+    @Test
+    fun `a single-param code with a missing param falls back`() {
+        val error = ApiError.Client(
+            400,
+            "Server says no",
+            ErrorReason(ErrorReasonCode.CONTACT_BULK_FIELD_NOT_EDITABLE, emptyMap())
+        )
+        assertEquals("Server says no", render(error))
+    }
+
+    @Test
+    fun `an error without a reason uses the display message`() {
+        assertEquals("Server says no", render(ApiError.Client(400, "Server says no")))
+    }
+
+    @Test
+    fun `a precondition failure with a reason is localized`() {
+        val error = ApiError.PreconditionFailed(
+            "Server says no",
+            ErrorReason(ErrorReasonCode.RELATIONSHIP_SELF_EDGE, emptyMap())
+        )
+        assertEquals("The source and target must be different contacts", render(error))
+    }
+
+    @Test
+    fun `a 4xx never shows the request reference`() {
+        val error = ApiError.Client(400, "Server says no", requestId = "abc")
+        assertEquals("Server says no", render(error))
+    }
+
+    @Test
+    fun `an error that is not an API response uses the display message`() {
+        assertEquals("Unexpected server response", render(ApiError.Parse("x")))
+    }
+
+    @Test
     fun `a 5xx appends the request reference`() {
         val error = ApiError.Server(503, "Server error", requestId = "abc")
         assertEquals("Server error (503) (ref: abc)", render(error))
