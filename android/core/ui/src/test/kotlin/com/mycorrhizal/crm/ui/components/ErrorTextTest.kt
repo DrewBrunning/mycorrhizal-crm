@@ -39,6 +39,19 @@ class ErrorTextTest {
         return text
     }
 
+    // setContent may run once per test, so several errors render in one pass.
+    private fun renderAll(errors: List<ApiError>): List<String> {
+        var texts = emptyList<String>()
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                texts = errors.map { it.localizedMessage() }
+                Text(texts.joinToString())
+            }
+        }
+        composeTestRule.waitForIdle()
+        return texts
+    }
+
     @Test
     fun `a known code renders its template with the params`() {
         val error = ApiError.Client(
@@ -131,6 +144,91 @@ class ErrorTextTest {
     @Test
     fun `an error that is not an API response uses the display message`() {
         assertEquals("Unexpected server response", render(ApiError.Parse("x")))
+    }
+
+    @Test
+    fun `every param-free Meerkat code renders its translation, not the server text`() {
+        val codes = listOf(
+            ErrorReasonCode.MEERKAT_UPLOAD_MISSING to "No file uploaded",
+            ErrorReasonCode.MEERKAT_SESSION_NOT_FOUND to "Import session expired or not found",
+            ErrorReasonCode.MEERKAT_SESSION_NOT_OWNED to "Session does not belong to current user",
+            ErrorReasonCode.MEERKAT_SESSION_EXPIRED to "Import session expired",
+            ErrorReasonCode.MEERKAT_DB_SIZE to
+                "The database file is empty or larger than the 100 MB limit",
+            ErrorReasonCode.MEERKAT_UPLOAD_NOT_SQLITE to
+                "Upload a Meerkat SQLite database (.db, .sqlite or .sqlite3)",
+            ErrorReasonCode.MEERKAT_UPLOAD_UNREADABLE to "The upload could not be read",
+            ErrorReasonCode.MEERKAT_FILE_NOT_MEERKAT to "That file is not a Meerkat database",
+            ErrorReasonCode.MEERKAT_DB_UNREADABLE to
+                "The database could not be read as a Meerkat database",
+            ErrorReasonCode.MEERKAT_DB_TOO_MANY_CONTACTS to
+                "This database has more contacts than the import supports",
+            ErrorReasonCode.MEERKAT_DB_TOO_MANY_RECORDS to
+                "This database has more records than the import supports",
+            ErrorReasonCode.MEERKAT_IMPORT_IN_PROGRESS to "This import is already being prepared",
+            ErrorReasonCode.MEERKAT_NOT_PREPARED to "The Meerkat database is not prepared yet",
+            ErrorReasonCode.MEERKAT_SIGN_IN_INPUT_MISSING to
+                "Enter a Meerkat API token, or a username and password",
+            ErrorReasonCode.MEERKAT_VERSION_UNTESTED to
+                "This Meerkat version is not tested with the importer. " +
+                "Confirm to try anyway; nothing is written until you review the preview."
+        )
+        val rendered = renderAll(
+            codes.map { (code, _) ->
+                ApiError.Client(400, "Server says no", ErrorReason(code, emptyMap()))
+            }
+        )
+        assertEquals(codes.map { it.second }, rendered)
+    }
+
+    @Test
+    fun `the Meerkat upstream codes render the reason param and fall back without it`() {
+        val codes = listOf(
+            ErrorReasonCode.MEERKAT_API_ERROR,
+            ErrorReasonCode.MEERKAT_UPSTREAM_ERROR
+        )
+        val rendered = renderAll(
+            codes.flatMap { code ->
+                listOf(
+                    ApiError.Client(
+                        502,
+                        "Server says no",
+                        ErrorReason(code, mapOf("reason" to "token rejected"))
+                    ),
+                    ApiError.Client(502, "Server says no", ErrorReason(code, emptyMap()))
+                )
+            }
+        )
+        assertEquals(
+            listOf("token rejected", "Server says no", "token rejected", "Server says no"),
+            rendered
+        )
+    }
+
+    @Test
+    fun `the Meerkat contact limit renders both counts and falls back when one is missing`() {
+        val code = ErrorReasonCode.MEERKAT_REMOTE_TOO_MANY_CONTACTS
+        val rendered = renderAll(
+            listOf(
+                ApiError.Client(
+                    400,
+                    "Server says no",
+                    ErrorReason(code, mapOf("total" to 6000.0, "max" to 5000.0))
+                ),
+                ApiError.Client(
+                    400,
+                    "Server says no",
+                    ErrorReason(code, mapOf("total" to 6000.0))
+                )
+            )
+        )
+        assertEquals(
+            listOf(
+                "Contacts on this Meerkat account: 6000. The import supports at most 5000",
+                "Server says no"
+            ),
+            rendered
+        )
     }
 
     @Test
