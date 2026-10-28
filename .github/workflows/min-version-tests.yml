@@ -133,7 +133,7 @@ jobs:
   # <yarn.js>` rather than whatever `yarn` the runner ships, so the pinned
   # 1.22.0 floor is what actually runs regardless of PATH order.
   node-yarn-minimum:
-    name: Node.js + Yarn minimum version (22.22.2 / 1.22.0)
+    name: Node.js + Yarn minimum version (24.15.0 / 1.22.0)
     permissions:
       contents: read
     runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
@@ -149,7 +149,7 @@ jobs:
       - name: Install Node.js at the declared floor
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '22.22.2'
+          node-version: '24.15.0'
 
       # Hash computed by hand against this exact release asset -- Yarn's
       # tarball has no published checksum file. Bumping the version means
@@ -164,8 +164,9 @@ jobs:
           echo "YARN_MIN_BIN=/tmp/yarn-1.22.0/bin/yarn.js" >> "$GITHUB_ENV"
 
       # frontend/.yarnrc's engine-strict enforces engines.node for frontend
-      # AND every dependency (jsdom@30, react-router@8) -- succeeding at
-      # exactly 22.22.2 proves the declared floor is real.
+      # AND every dependency (jsdom@30, react-router@8,
+      # license-checker-rseidelsohn@5) -- succeeding at
+      # exactly 24.15.0 proves the declared floor is real.
       - name: Install dependencies at the floor
         working-directory: frontend
         run: node "$YARN_MIN_BIN" install --frozen-lockfile
@@ -183,7 +184,7 @@ jobs:
         run: node "$YARN_MIN_BIN" build
 
   node-below-minimum:
-    name: Node.js below minimum fails clearly (22.22.1)
+    name: Node.js below minimum fails clearly (24.14.1)
     permissions:
       contents: read
     runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
@@ -197,7 +198,7 @@ jobs:
       - name: Install a Node one patch below the floor
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '22.22.1'
+          node-version: '24.14.1'
 
       # Same pinned asset + hash as node-yarn-minimum's identical step above.
       - name: Install Yarn Classic at the declared floor
@@ -217,7 +218,7 @@ jobs:
           set -e
           echo "$output"
           if [ "$status" -eq 0 ]; then
-            echo "::error::yarn install succeeded on Node 22.22.1 -- the declared >=22.22.2 floor is no longer real, or this job stopped testing it"
+            echo "::error::yarn install succeeded on Node 24.14.1 -- the declared >=24.15.0 floor is no longer real, or this job stopped testing it"
             exit 1
           fi
           if ! echo "$output" | grep -qF 'engine "node" is incompatible'; then
