@@ -69,7 +69,9 @@ describe('MarkdownText', () => {
 
   it('gives an empty-label link its URL as the name', () => {
     render(<MarkdownText text="[](https://example.com)" />);
-    expect(screen.getByRole('link', { name: /^https:\/\/example\.com/ })).toBeTruthy();
+    expect(
+      screen.getByRole('link', { name: (n) => n.startsWith('https://example.com') }),
+    ).toBeTruthy();
   });
 
   it('tolerates malformed and deeply nested Markdown', () => {
