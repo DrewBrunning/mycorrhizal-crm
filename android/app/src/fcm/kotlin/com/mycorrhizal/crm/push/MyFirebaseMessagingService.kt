@@ -1,17 +1,13 @@
 package com.mycorrhizal.crm.push
 
+import android.content.Context
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
-import com.mycorrhizal.crm.feature.tracking.DeviceRegistrationManager
 import com.mycorrhizal.crm.feature.tracking.PushMessageParser
 import com.mycorrhizal.crm.feature.tracking.PushNotificationDispatcher
+import com.mycorrhizal.crm.feature.tracking.TrackingWorkerScheduler
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
 
 /**
  * M5 §5a (issue #152): the FCM entry point. The server pushes reminder
@@ -35,10 +31,9 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     @Inject
     lateinit var dispatcher: PushNotificationDispatcher
 
-    @Inject
-    lateinit var deviceRegistration: DeviceRegistrationManager
-
-    private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    /** Seam for tests; production hands the token to a persisted WorkManager job. */
+    internal var enqueueTokenRegistration: (Context, String) -> Unit =
+        TrackingWorkerScheduler::enqueueFcmTokenRegistration
 
     override fun onMessageReceived(message: RemoteMessage) {
         val push = PushMessageParser.parse(
@@ -56,13 +51,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
      * app that lost its Firebase config is a no-op rather than an error.
      */
     override fun onNewToken(token: String) {
-        ioScope.launch {
-            deviceRegistration.register(tokenOverride = token)
-        }
-    }
-
-    override fun onDestroy() {
-        ioScope.cancel()
-        super.onDestroy()
+        // Issue #2066: not an unstructured scope tied to this service's lifetime.
+        enqueueTokenRegistration(applicationContext, token)
     }
 }

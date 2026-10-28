@@ -78,6 +78,15 @@ class TrackingSettingsRepositoryImpl @Inject constructor(
         context.trackingDataStore.edit { it[lastSmsInboxIdKey] = id }
     }
 
+    override suspend fun advanceLastSmsInboxId(id: Long) {
+        // One DataStore transaction: read-compare-write can't interleave with
+        // another advance, so the cursor is monotonic (issue #2066).
+        context.trackingDataStore.edit {
+            val current = it[lastSmsInboxIdKey] ?: 0L
+            if (id > current) it[lastSmsInboxIdKey] = id
+        }
+    }
+
     override suspend fun includeUnknownNumbers(): Boolean =
         context.trackingDataStore.data.first()[includeUnknown] ?: false
 

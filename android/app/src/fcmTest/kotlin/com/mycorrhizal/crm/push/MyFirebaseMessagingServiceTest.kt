@@ -7,9 +7,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.google.firebase.messaging.RemoteMessage
 import com.mycorrhizal.crm.feature.tracking.AlertNotificationIds
 import com.mycorrhizal.crm.feature.tracking.PushNotificationDispatcher
-import io.mockk.coEvery
-import io.mockk.coVerify
-import io.mockk.mockk
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -54,7 +52,6 @@ class MyFirebaseMessagingServiceTest {
     private fun buildService(): MyFirebaseMessagingService {
         val service = Robolectric.buildService(MyFirebaseMessagingService::class.java).get()
         service.dispatcher = PushNotificationDispatcher()
-        service.deviceRegistration = mockk(relaxed = true)
         return service
     }
 
@@ -97,18 +94,13 @@ class MyFirebaseMessagingServiceTest {
     }
 
     @Test
-    fun `onNewToken re-registers the device with the new token`() {
+    fun `onNewToken hands the token to a persisted job instead of an unstructured scope`() {
         val service = buildService()
-        coEvery {
-            service.deviceRegistration.register(
-                tokenOverride = "new-token"
-            )
-        } returns Result.success(Unit)
+        val enqueued = mutableListOf<String>()
+        service.enqueueTokenRegistration = { _, token -> enqueued += token }
 
         service.onNewToken("new-token")
 
-        coVerify(
-            timeout = 1000
-        ) { service.deviceRegistration.register(tokenOverride = "new-token") }
+        assertEquals(listOf("new-token"), enqueued)
     }
 }

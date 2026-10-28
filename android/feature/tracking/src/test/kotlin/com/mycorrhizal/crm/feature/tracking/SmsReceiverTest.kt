@@ -16,6 +16,7 @@ import io.mockk.mockk
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -339,36 +340,72 @@ class SmsReceiverTest {
         receiver.onReceive(context, smsIntent())
         testScheduler.advanceUntilIdle()
 
-        coVerify(exactly = 1) { settings.setLastSmsInboxId(15L) }
+        coVerify(exactly = 1) { settings.advanceLastSmsInboxId(15L) }
     }
 
     @Test
-    fun `a found inbox id at or below the current cursor does not regress it`() = runTest {
+    fun `overlapping broadcasts record each SMS once and cannot regress the cursor`() = runTest {
         val pending = mockk<PendingInteractionRepository>(relaxed = true)
         val contacts = mockk<ContactRepository>(relaxed = true)
         val settings = mockk<TrackingSettingsRepository>(relaxed = true)
+        val cursor = java.util.concurrent.atomic.AtomicLong(0L)
+        val writes = java.util.Collections.synchronizedList(mutableListOf<Long>())
         coEvery { settings.smsTrackingEnabled() } returns true
-        coEvery { contacts.findByPhone("+15551234567") } returns ContactSummary(id = 9)
-        coEvery { settings.lastSmsInboxId() } returns 20L
+        coEvery { contacts.findByPhone(any()) } returns ContactSummary(id = 9)
+        // The newer message (id 20) finishes its capture first; the older one
+        // (id 10) lands after it and must not pull the cursor back.
+        coEvery { settings.advanceLastSmsInboxId(any()) } answers {
+            val id = firstArg<Long>()
+            writes += id
+            cursor.accumulateAndGet(id, ::maxOf)
+        }
         val receiver = buildReceiver(
             this,
             pending,
             contacts,
             settings,
-            parseSms = {
-                SmsEntry(
-                    address = "+15551234567",
-                    body = "hello",
-                    timestampMillis = 1234L
-                )
+            parseSms = { intent ->
+                val ts = intent.getLongExtra("ts", 0L)
+                SmsEntry(address = "+15551234567", body = "hi", timestampMillis = ts)
             },
-            findInboxId = { _, _, _ -> 20L }
+            findInboxId = { _, _, ts -> if (ts == 2L) 20L else 10L }
+        )
+
+        receiver.onReceive(context, smsIntent().putExtra("ts", 2L))
+        receiver.onReceive(context, smsIntent().putExtra("ts", 1L))
+        testScheduler.advanceUntilIdle()
+
+        coVerify(exactly = 2) { pending.record(any()) }
+        assertEquals(20L, cursor.get())
+        assertEquals(setOf(10L, 20L), writes.toSet())
+    }
+
+    @Test
+    fun `a capture that hangs is abandoned at the goAsync time bound`() = runTest {
+        val pending = mockk<PendingInteractionRepository>(relaxed = true)
+        val contacts = mockk<ContactRepository>(relaxed = true)
+        val settings = mockk<TrackingSettingsRepository>(relaxed = true)
+        coEvery { settings.smsTrackingEnabled() } returns true
+        coEvery { contacts.findByPhone(any()) } coAnswers {
+            kotlinx.coroutines.delay(60_000L)
+            ContactSummary(id = 9)
+        }
+        val receiver = buildReceiver(
+            this,
+            pending,
+            contacts,
+            settings,
+            parseSms = { SmsEntry(address = "+15551234567", body = "hi", timestampMillis = 1L) },
+            findInboxId = { _, _, _ -> 5L }
         )
 
         receiver.onReceive(context, smsIntent())
-        testScheduler.advanceUntilIdle()
+        testScheduler.advanceTimeBy(9_000L)
+        testScheduler.runCurrent()
 
-        coVerify(exactly = 0) { settings.setLastSmsInboxId(any()) }
+        coVerify(exactly = 0) { pending.record(any()) }
+        coVerify(exactly = 0) { settings.advanceLastSmsInboxId(any()) }
+        assertEquals(9_000L, testScheduler.currentTime)
     }
 
     @Test
@@ -396,7 +433,7 @@ class SmsReceiverTest {
         receiver.onReceive(context, smsIntent())
         testScheduler.advanceUntilIdle()
 
-        coVerify(exactly = 0) { settings.setLastSmsInboxId(any()) }
+        coVerify(exactly = 0) { settings.advanceLastSmsInboxId(any()) }
     }
 
     @Test
@@ -422,7 +459,7 @@ class SmsReceiverTest {
         testScheduler.advanceUntilIdle()
 
         assertTrue(!lookupInvoked)
-        coVerify(exactly = 0) { settings.setLastSmsInboxId(any()) }
+        coVerify(exactly = 0) { settings.advanceLastSmsInboxId(any()) }
     }
 
     @Test
@@ -456,6 +493,6 @@ class SmsReceiverTest {
         testScheduler.advanceUntilIdle()
 
         coVerify(exactly = 1) { settings.incrementFilteredUnknownCount() }
-        coVerify(exactly = 1) { settings.setLastSmsInboxId(7L) }
+        coVerify(exactly = 1) { settings.advanceLastSmsInboxId(7L) }
     }
 }

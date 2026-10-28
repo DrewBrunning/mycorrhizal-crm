@@ -80,7 +80,13 @@ object InteractionCapture {
         dedupe: Boolean
     ): Outcome {
         val contact = number?.let {
-            runCatching { contactRepository.findByPhone(it) }.getOrNull()
+            runCatching { contactRepository.findByPhone(it) }
+                .onFailure { e ->
+                    // Cancellation (e.g. the receiver's goAsync time bound) must
+                    // abort the capture, not be misread as "unmatched" (#2066).
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                }
+                .getOrNull()
         }
         if (contact == null && !trackingSettings.includeUnknownNumbers()) {
             trackingSettings.incrementFilteredUnknownCount()
