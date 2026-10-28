@@ -15992,6 +15992,16 @@ components:
         metadata:
           type: object
           additionalProperties: true
+        start_date:
+          $ref: "#/components/schemas/PartialDate"
+        end_date:
+          description: >
+            When set, the relationship has ended. Must not precede start_date
+            (compared at the coarsest shared precision). An ended edge stays a
+            confirmed fact in the graph and exports but no longer counts toward
+            closeness for active reach-out (docs/relationship-dates.md).
+          allOf:
+            - $ref: "#/components/schemas/PartialDate"
         source: { type: string, enum: [user-confirmed, household-inferred, imported, ai-suggested, graph-inferred] }
         confidence: { type: number }
         status: { type: string, enum: [confirmed, suggested] }
@@ -16015,6 +16025,16 @@ components:
         metadata:
           type: object
           additionalProperties: true
+        start_date:
+          $ref: "#/components/schemas/PartialDate"
+        end_date:
+          description: >
+            When set, the relationship has ended. Must not precede start_date
+            (compared at the coarsest shared precision). An ended edge stays a
+            confirmed fact in the graph and exports but no longer counts toward
+            closeness for active reach-out (docs/relationship-dates.md).
+          allOf:
+            - $ref: "#/components/schemas/PartialDate"
     ThinContactInput:
       type: object
       required: [name]

@@ -140,6 +140,10 @@ type MappedRelationship struct {
 	// the source supplies it (the account bundle, issue #1307). Other sources
 	// leave it nil.
 	Metadata map[string]interface{}
+	// StartDate/EndDate are the edge's period (issue #2001) when the source
+	// supplies it (the account bundle).
+	StartDate *contactmodel.PartialDate
+	EndDate   *contactmodel.PartialDate
 }
 
 // MappedNote is one note on a plan contact. UUID, when set, preserves the
@@ -1086,6 +1090,8 @@ func importRelationships(tx *gorm.DB, userID uint, plan *ImportSourcePlan, impor
 			Status:      status,
 			Sensitivity: sensitivity,
 			Metadata:    rel.Metadata,
+			StartDate:   rel.StartDate,
+			EndDate:     rel.EndDate,
 		}
 		if err := tx.Create(&edge).Error; err != nil {
 			// A duplicate natural key (same source/target/type already stored,

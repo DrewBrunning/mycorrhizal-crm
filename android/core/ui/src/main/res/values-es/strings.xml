@@ -1405,6 +1405,7 @@
     <string name="relationships_sensitivity">Sensibilidad</string>
     <string name="relationships_sensitivity_normal">Normal</string>
     <string name="relationships_sensitivity_private">Privado</string>
+    <string name="relationships_until">hasta %1$s</string>
     <string name="relationships_sensitivity_secret">Secreto</string>
     <string name="relationships_edit_title">Editar relación</string>
     <string name="relationships_edit_named">Editar %1$s</string>

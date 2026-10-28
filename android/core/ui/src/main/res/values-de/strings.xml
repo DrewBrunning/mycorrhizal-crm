@@ -1372,6 +1372,7 @@
     <string name="relationships_sensitivity">Vertraulichkeit</string>
     <string name="relationships_sensitivity_normal">Normal</string>
     <string name="relationships_sensitivity_private">Privat</string>
+    <string name="relationships_until">bis %1$s</string>
     <string name="relationships_sensitivity_secret">Geheim</string>
     <string name="relationships_edit_title">Beziehung bearbeiten</string>
     <string name="relationships_edit_named">%1$s bearbeiten</string>
