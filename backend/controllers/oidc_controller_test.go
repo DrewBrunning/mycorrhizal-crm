@@ -74,6 +74,20 @@ func TestOIDCConfigHandler_Enabled(t *testing.T) {
 	assert.Equal(t, "accounts.google.com", body["provider_name"])
 }
 
+func TestOIDCConfigHandler_ConfiguredProviderName(t *testing.T) {
+	cfg := &config.Config{OIDC: config.OIDCConfig{Enabled: true, ProviderURL: "https://accounts.google.com", ProviderName: "Pocket ID"}}
+	_, router := setupRouter(t)
+	router.GET("/config", OIDCConfigHandler(cfg))
+
+	req, _ := http.NewRequest("GET", "/config", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	assert.Equal(t, "Pocket ID", body["provider_name"])
+}
+
 // --- OIDCLoginHandler ---
 
 func TestOIDCLoginHandler(t *testing.T) {
