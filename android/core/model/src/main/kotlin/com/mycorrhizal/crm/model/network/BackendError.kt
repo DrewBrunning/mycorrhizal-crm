@@ -15,7 +15,9 @@ data class BackendError(
 data class BackendErrorBody(
     val code: String? = null,
     val message: String? = null,
-    val details: Map<String, Any?>? = null
+    val details: Map<String, Any?>? = null,
+    @Json(name = "reason_code") val reasonCode: String? = null,
+    @Json(name = "reason_params") val reasonParams: Map<String, Any?>? = null
 ) {
     val displayMessage: String
         get() = message?.takeIf { it.isNotBlank() } ?: code ?: "Unknown error"
