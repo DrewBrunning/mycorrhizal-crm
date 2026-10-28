@@ -12,6 +12,7 @@ import com.mycorrhizal.crm.model.network.SourceImportPreviewResponse
 import com.mycorrhizal.crm.model.network.SourceImportResult
 import com.mycorrhizal.crm.model.network.SourceImportStatus
 import com.mycorrhizal.crm.network.ApiClient
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.toApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -48,7 +49,9 @@ data class MeerkatImportUiState(
     val result: SourceImportResult? = null,
     val isImporting: Boolean = false,
     @StringRes val errorRes: Int? = null,
-    val error: String? = null
+    val error: ApiError? = null,
+    /** Server-reported job failure text (not an error envelope). */
+    val errorText: String? = null
 ) {
     val hasCredential: Boolean
         get() = when (authMode) {
@@ -132,7 +135,14 @@ class MeerkatImportViewModel @Inject constructor(
                 password = state.password
             )
         }
-        _uiState.update { it.copy(isConnecting = true, errorRes = null, error = null) }
+        _uiState.update {
+            it.copy(
+                isConnecting = true,
+                errorRes = null,
+                error = null,
+                errorText = null
+            )
+        }
         viewModelScope.launch {
             apiClient.connectMeerkat(request).fold(
                 onSuccess = { connected ->
@@ -148,7 +158,7 @@ class MeerkatImportViewModel @Inject constructor(
                 },
                 onFailure = { error ->
                     _uiState.update {
-                        it.copy(isConnecting = false, error = error.toApiError().displayMessage)
+                        it.copy(isConnecting = false, error = error.toApiError())
                     }
                 }
             )
@@ -165,16 +175,17 @@ class MeerkatImportViewModel @Inject constructor(
                 step = MeerkatImportStep.WORKING,
                 isImporting = true,
                 errorRes = null,
-                error = null
+                error = null,
+                errorText = null
             )
         }
         viewModelScope.launch {
             val sessionId = connected.sessionId
             apiClient.startMeerkatFetch(sessionId, state.acceptUntested).exceptionOrNull()
-                ?.let { return@launch failToConnect(it.toApiError().displayMessage) }
+                ?.let { return@launch failToConnect(it.toApiError()) }
             val status = pollUntil(sessionId, terminal = setOf(PHASE_READY)).terminal
             if (status == null || status.phase != PHASE_READY) {
-                return@launch failToConnect(status?.error)
+                return@launch failToConnect(text = status?.error)
             }
             apiClient.getMeerkatImportPreview(sessionId).fold(
                 onSuccess = { preview ->
@@ -191,7 +202,7 @@ class MeerkatImportViewModel @Inject constructor(
                         )
                     }
                 },
-                onFailure = { error -> failToConnect(error.toApiError().displayMessage) }
+                onFailure = { error -> failToConnect(error.toApiError()) }
             )
         }
     }
@@ -220,7 +231,12 @@ class MeerkatImportViewModel @Inject constructor(
         val preview = state.preview ?: return
         if (state.step != MeerkatImportStep.REVIEW || state.isImporting) return
         _uiState.update {
-            it.copy(step = MeerkatImportStep.WORKING, isImporting = true, error = null)
+            it.copy(
+                step = MeerkatImportStep.WORKING,
+                isImporting = true,
+                error = null,
+                errorText = null
+            )
         }
         viewModelScope.launch {
             val actions = _uiState.value.rowActions.map { (index, action) ->
@@ -228,7 +244,7 @@ class MeerkatImportViewModel @Inject constructor(
             }
             apiClient.confirmMeerkatImport(ImportConfirmRequest(preview.sessionId, actions))
                 .exceptionOrNull()
-                ?.let { return@launch failToReview(it.toApiError().displayMessage) }
+                ?.let { return@launch failToReview(it.toApiError()) }
             importConfirmed = true
             val polled = pollUntil(preview.sessionId, terminal = setOf(PHASE_DONE))
             val status = polled.terminal
@@ -244,7 +260,7 @@ class MeerkatImportViewModel @Inject constructor(
                 // A reported failure means the import is no longer running; with no
                 // status (poll failed or timed out) it may still be, so stay confirmed.
                 if (status != null) importConfirmed = false
-                failToReview(status?.error)
+                failToReview(text = status?.error)
             }
         }
     }
@@ -284,7 +300,7 @@ class MeerkatImportViewModel @Inject constructor(
     }
 
     fun onErrorShown() {
-        _uiState.update { it.copy(errorRes = null, error = null) }
+        _uiState.update { it.copy(errorRes = null, error = null, errorText = null) }
     }
 
     /** [terminal] is null when a poll request failed or [maxPolls] ran out; [last] is the last status seen. */
@@ -318,7 +334,7 @@ class MeerkatImportViewModel @Inject constructor(
      * the abandoned one first: it still holds the Meerkat credential (and a
      * password login) until it expires.
      */
-    private fun failToConnect(message: String?) {
+    private fun failToConnect(error: ApiError? = null, text: String? = null) {
         val abandoned = _uiState.value.connected?.sessionId
         _uiState.update {
             it.copy(
@@ -327,20 +343,34 @@ class MeerkatImportViewModel @Inject constructor(
                 connected = null,
                 acceptUntested = false,
                 preview = null,
-                errorRes = if (message.isNullOrBlank()) R.string.meerkat_import_error_failed else null,
-                error = message?.takeIf { m -> m.isNotBlank() }
+                errorRes = if (error == null &&
+                    text.isNullOrBlank()
+                ) {
+                    R.string.meerkat_import_error_failed
+                } else {
+                    null
+                },
+                error = error,
+                errorText = text?.takeIf { m -> m.isNotBlank() }
             )
         }
         abandoned?.let(::cancelSession)
     }
 
-    private fun failToReview(message: String?) {
+    private fun failToReview(error: ApiError? = null, text: String? = null) {
         _uiState.update {
             it.copy(
                 step = MeerkatImportStep.REVIEW,
                 isImporting = false,
-                errorRes = if (message.isNullOrBlank()) R.string.meerkat_import_error_failed else null,
-                error = message?.takeIf { m -> m.isNotBlank() }
+                errorRes = if (error == null &&
+                    text.isNullOrBlank()
+                ) {
+                    R.string.meerkat_import_error_failed
+                } else {
+                    null
+                },
+                error = error,
+                errorText = text?.takeIf { m -> m.isNotBlank() }
             )
         }
     }

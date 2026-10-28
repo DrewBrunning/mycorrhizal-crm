@@ -83,7 +83,7 @@ class ImportHistoryViewModelTest {
         val vm = ImportHistoryViewModel(apiClient)
         advanceUntilIdle()
 
-        assertEquals("server error", vm.uiState.value.error)
+        assertEquals("server error", vm.uiState.value.error?.message)
         assertTrue(vm.uiState.value.runs.isEmpty())
     }
 
@@ -96,7 +96,7 @@ class ImportHistoryViewModelTest {
         )
         val vm = ImportHistoryViewModel(apiClient)
         advanceUntilIdle()
-        assertEquals("server error", vm.uiState.value.error)
+        assertEquals("server error", vm.uiState.value.error?.message)
 
         coEvery { apiClient.getImportHistory() } returns Result.success(
             listOf(ImportRun(id = 1, format = "csv"))

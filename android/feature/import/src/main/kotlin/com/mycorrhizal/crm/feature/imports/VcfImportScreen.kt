@@ -42,6 +42,7 @@ import com.mycorrhizal.crm.model.network.ImportRowPreview
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.localizedMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -180,7 +181,11 @@ fun VcfImportScreenContent(
         }
     }
 
-    val errorMessage = uiState.errorRes?.let { stringResource(it) } ?: uiState.error
+    val errorMessage = uiState.errorRes?.let {
+        stringResource(
+            it
+        )
+    } ?: uiState.error?.localizedMessage()
     if (errorMessage != null) {
         LaunchedEffect(errorMessage) {
             snackbarHostState.showSnackbar(errorMessage)

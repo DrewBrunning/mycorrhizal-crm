@@ -37,6 +37,7 @@ import com.mycorrhizal.crm.model.network.ImportRun
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.localizedMessage
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -107,7 +108,8 @@ fun ImportHistoryScreen(
         }
     }
 
-    state.error?.let { message ->
+    state.error?.let { error ->
+        val message = error.localizedMessage()
         LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)
             viewModel.onErrorShown()

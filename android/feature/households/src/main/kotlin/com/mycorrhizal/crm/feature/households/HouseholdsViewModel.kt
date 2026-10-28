@@ -16,6 +16,7 @@ import com.mycorrhizal.crm.model.network.DismissHouseholdSuggestionInput
 import com.mycorrhizal.crm.model.network.Household
 import com.mycorrhizal.crm.model.network.HouseholdMember
 import com.mycorrhizal.crm.model.network.HouseholdTypes
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -39,7 +40,7 @@ data class HouseholdsUiState(
     /** Member VCardUID -> resolved summary, for suggestion member names. */
     val contactsByUid: Map<String, ContactSummary> = emptyMap(),
     val isLoading: Boolean = false,
-    val error: String? = null,
+    val error: ApiError? = null,
     val isSaving: Boolean = false,
     val deletingId: String? = null,
     @AnyRes val infoRes: Int? = null,
@@ -68,7 +69,7 @@ class HouseholdsViewModel @Inject constructor(
                     _uiState.update { it.copy(isLoading = false, households = households) }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isLoading = false, error = error) }
                 }
             )
         }
@@ -91,7 +92,7 @@ class HouseholdsViewModel @Inject constructor(
                     onDone()
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isSaving = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isSaving = false, error = error) }
                 }
             )
         }
@@ -112,7 +113,7 @@ class HouseholdsViewModel @Inject constructor(
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(error = error.displayMessage) }
+                    _uiState.update { it.copy(error = error) }
                 }
             )
         }
@@ -132,7 +133,7 @@ class HouseholdsViewModel @Inject constructor(
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(deletingId = null, error = error.displayMessage) }
+                    _uiState.update { it.copy(deletingId = null, error = error) }
                 }
             )
         }
@@ -164,7 +165,7 @@ class HouseholdsViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             suggestionsLoading = false,
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }
@@ -199,7 +200,7 @@ class HouseholdsViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             pendingSuggestionKey = null,
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }
@@ -232,7 +233,7 @@ class HouseholdsViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             pendingSuggestionKey = null,
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }
@@ -282,7 +283,7 @@ data class HouseholdDetailUiState(
     val memberSearchQuery: String = "",
     val memberSearchResults: List<ContactSummary> = emptyList(),
     val memberSearchLoading: Boolean = false,
-    val error: String? = null,
+    val error: ApiError? = null,
     @StringRes val errorRes: Int? = null,
     @StringRes val infoRes: Int? = null,
     val infoCount: Int? = null
@@ -334,7 +335,7 @@ class HouseholdDetailViewModel @Inject constructor(
                     resolveMemberNames(detail.members)
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isLoading = false, error = error) }
                 }
             )
         }
@@ -365,7 +366,7 @@ class HouseholdDetailViewModel @Inject constructor(
                     resolveMemberNames(listOf(member))
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(error = error.displayMessage) }
+                    _uiState.update { it.copy(error = error) }
                 }
             )
         }
@@ -400,7 +401,7 @@ class HouseholdDetailViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             updatingRoleUid = null,
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }
@@ -422,7 +423,7 @@ class HouseholdDetailViewModel @Inject constructor(
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(removingUid = null, error = error.displayMessage) }
+                    _uiState.update { it.copy(removingUid = null, error = error) }
                 }
             )
         }
@@ -453,7 +454,7 @@ class HouseholdDetailViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isSuggestingRelationships = false,
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }

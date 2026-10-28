@@ -148,7 +148,7 @@ class MeerkatImportViewModelTest {
 
             val state = vm.uiState.value
             assertNull(state.connected)
-            assertEquals("Those credentials were rejected", state.error)
+            assertEquals("Those credentials were rejected", state.error?.message)
             assertTrue(state.canConnect)
         }
 
@@ -238,7 +238,7 @@ class MeerkatImportViewModelTest {
             val state = vm.uiState.value
             assertEquals(MeerkatImportStep.CONNECT, state.step)
             assertNull(state.connected)
-            assertEquals("Meerkat went away", state.error)
+            assertEquals("Meerkat went away", state.errorText)
         }
 
     @Test
@@ -408,7 +408,7 @@ class MeerkatImportViewModelTest {
             advanceUntilIdle()
 
             assertEquals(MeerkatImportStep.REVIEW, vm.uiState.value.step)
-            assertEquals("Already running", vm.uiState.value.error)
+            assertEquals("Already running", vm.uiState.value.error?.message)
         }
 
     @Test

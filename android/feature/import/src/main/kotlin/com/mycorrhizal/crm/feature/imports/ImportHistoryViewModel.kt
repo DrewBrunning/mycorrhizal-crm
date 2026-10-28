@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.model.network.ImportRun
 import com.mycorrhizal.crm.network.ApiClient
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -16,7 +17,7 @@ import kotlinx.coroutines.launch
 data class ImportHistoryUiState(
     val runs: List<ImportRun> = emptyList(),
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: ApiError? = null
 )
 
 /**
@@ -44,7 +45,7 @@ class ImportHistoryViewModel @Inject constructor(private val apiClient: ApiClien
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }

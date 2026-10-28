@@ -47,6 +47,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.OccasionEventAttendeeView
 import com.mycorrhizal.crm.model.registry.OccasionRsvp
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.localizedMessage
 
 /**
  * One event's invitee/RSVP ledger (docs/adrs/0026-occasions-events.md, issue
@@ -63,7 +64,8 @@ fun OccasionAttendeesScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var pendingRemove by remember { mutableStateOf<OccasionEventAttendeeView?>(null) }
 
-    state.error?.let { message ->
+    state.error?.let { error ->
+        val message = error.localizedMessage()
         LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)
             viewModel.onErrorShown()

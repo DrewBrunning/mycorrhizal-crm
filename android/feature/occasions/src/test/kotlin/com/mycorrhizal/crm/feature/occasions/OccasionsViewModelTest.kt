@@ -3,6 +3,7 @@ package com.mycorrhizal.crm.feature.occasions
 import com.mycorrhizal.crm.domain.repository.OccasionEventRepository
 import com.mycorrhizal.crm.model.network.OccasionEvent
 import com.mycorrhizal.crm.model.network.OccasionEventInput
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -12,6 +13,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -44,7 +46,7 @@ class OccasionsViewModelTest {
         val viewModel = OccasionsViewModel(repository)
         advanceUntilIdle()
 
-        assertEquals("Something went wrong", viewModel.uiState.value.error)
+        assertTrue(viewModel.uiState.value.error is ApiError.Unknown)
         assertEquals(0, viewModel.uiState.value.events.size)
     }
 
@@ -107,7 +109,7 @@ class OccasionsViewModelTest {
         viewModel.delete("e1")
         advanceUntilIdle()
 
-        assertEquals("Something went wrong", viewModel.uiState.value.error)
+        assertTrue(viewModel.uiState.value.error is ApiError.Unknown)
     }
 
     @Test
