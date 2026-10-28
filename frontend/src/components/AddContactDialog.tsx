@@ -55,6 +55,24 @@ const emptyForm = {
   language: '',
 };
 
+// Section headings for the Add Contact form, matching the overline style used
+// by the General Info tab on the contact detail page.
+const SectionHeading = ({ label }: { label: string }) => (
+  <Box>
+    <Typography
+      variant="overline"
+      sx={{
+        color: 'text.secondary',
+        letterSpacing: 0.08,
+        fontSize: '0.72rem',
+      }}
+    >
+      {label}
+    </Typography>
+    <Divider sx={{ mt: 0.5 }} />
+  </Box>
+);
+
 export default function AddContactDialog({
   open,
   onClose,
@@ -73,24 +91,6 @@ export default function AddContactDialog({
   const isOn = (key: ContactFieldKey) => enabled.has(key);
 
   const defaultLanguage = () => (i18n.language || 'en').split('-')[0];
-
-  // Section headings for the Add Contact form, matching the overline style used
-  // by the General Info tab on the contact detail page.
-  const SectionHeading = ({ label }: { label: string }) => (
-    <Box>
-      <Typography
-        variant="overline"
-        sx={{
-          color: 'text.secondary',
-          letterSpacing: 0.08,
-          fontSize: '0.72rem',
-        }}
-      >
-        {label}
-      </Typography>
-      <Divider sx={{ mt: 0.5 }} />
-    </Box>
-  );
 
   const [formData, setFormData] = useState(() => ({ ...emptyForm, language: defaultLanguage() }));
   const [emails, setEmails] = useState<ContactValue[]>([]);
