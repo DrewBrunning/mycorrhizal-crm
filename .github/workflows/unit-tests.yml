@@ -1230,8 +1230,9 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           # COMPAT-01 (#472) / COMPAT-02 (#473): read the floor from
-          # package.json's "engines.node" (>=22.22.2, jsdom@30's real
-          # constraint, not this project's own) so the declared floor is
+          # package.json's "engines.node" (>=24.15.0, the intersection of
+          # jsdom@30's and license-checker-rseidelsohn@5's engines, not this
+          # project's own choice) so the declared floor is
           # the one CI actually runs.
           node-version-file: frontend/package.json
           cache: 'yarn'

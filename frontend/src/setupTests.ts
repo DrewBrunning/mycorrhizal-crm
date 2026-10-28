@@ -8,7 +8,7 @@ import '@testing-library/jest-dom/vitest';
 if (typeof window !== 'undefined') {
   window.scrollTo = () => {};
 
-  // jsdom's AbortSignal/AbortController are separate classes from Node 22's
+  // jsdom's AbortSignal/AbortController are separate classes from Node's
   // native globals. apiFetch creates a Node-native AbortController, but
   // jsdom's polyfilled fetch validates `signal instanceof AbortSignal` against
   // its own AbortSignal class — the instanceof check fails and every

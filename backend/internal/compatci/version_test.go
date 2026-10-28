@@ -3,7 +3,7 @@
 // TestMatrixRowsHaveCoverage (coverage_test.go) proves a matrix row's named
 // CI job still EXISTS. It never proves that job still tests the SAME version
 // the doc states as the floor -- min-version-tests.yml hardcodes each floor
-// as its own literal (`go-version: '1.26.0'`, `node-version: '22.22.2'`, the
+// as its own literal (`go-version: '1.26.0'`, `node-version: '24.15.0'`, the
 // `yarn-1.22.0` download, `api-level: 26` in android-tests.yml), entirely
 // independently of docs/development/supported-runtime-matrix.md's prose. A
 // PR that bumps one without the other passes both the doc's own claim ("this
