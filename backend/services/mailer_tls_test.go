@@ -294,7 +294,11 @@ func TestSendEmail_PartialChannelFailure(t *testing.T) {
 
 // TestSendEmail_ResendOnlySuccess covers SendEmail's Resend success branch.
 func TestSendEmail_ResendOnlySuccess(t *testing.T) {
+	var gotAuth, gotPath string
+	var gotBody map[string]any
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth, gotPath = r.Header.Get("Authorization"), r.URL.Path
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
 		_ = json.NewEncoder(w).Encode(map[string]string{"id": "email_ok"})
 	}))
 	t.Cleanup(srv.Close)
@@ -304,4 +308,10 @@ func TestSendEmail_ResendOnlySuccess(t *testing.T) {
 
 	cfg := config.Config{UseResend: true, ResendAPIKey: "test", ResendFromEmail: "noreply@example.com"}
 	require.NoError(t, SendEmail(cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"}))
+	assert.Equal(t, "Bearer test", gotAuth)
+	assert.Equal(t, "/emails", gotPath)
+	assert.Equal(t, "noreply@example.com", gotBody["from"])
+	assert.Equal(t, []any{"user@example.com"}, gotBody["to"])
+	assert.Equal(t, "hi", gotBody["subject"])
+	assert.Equal(t, "<p>hi</p>", gotBody["html"])
 }
