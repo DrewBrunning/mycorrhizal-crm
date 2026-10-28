@@ -1,6 +1,8 @@
 // RelationshipEdge API calls -- ,
 // replaces api/relationships.ts's legacy models.Relationship-backed calls.
+
 import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
+import type { PartialDate } from './lifeEvents';
 
 // Mirrors backend/models/relationship_type_registry.go's relationTypeRegistry
 // exactly (token -> Inverse/Symmetric). No dynamic "list valid types" endpoint
@@ -73,6 +75,10 @@ export interface RelationshipEdge {
   type: string;
   directional: boolean;
   metadata?: Record<string, unknown>;
+  // Issue #2001: optional relationship period. An end_date means the
+  // relationship has ended (still a graph fact; not counted for reach-out).
+  start_date?: PartialDate;
+  end_date?: PartialDate;
   source: RelationshipEdgeSource;
   confidence: number;
   status: RelationshipEdgeStatus;
@@ -95,6 +101,8 @@ export interface RelationshipEdgeInput {
   type: RelationshipEdgeType;
   sensitivity?: RelationshipEdgeSensitivity;
   metadata?: Record<string, unknown>;
+  start_date?: PartialDate;
+  end_date?: PartialDate;
 }
 
 export interface RelationshipEdgesResponse {
@@ -123,7 +131,10 @@ export async function getRelationshipEdges(
   params: GetRelationshipEdgesParams,
 ): Promise<RelationshipEdgesResponse> {
   const { contactId, status, type, cursor, limit = 100 } = params;
-  const queryParams = new URLSearchParams({ contact_id: contactId, limit: limit.toString() });
+  const queryParams = new URLSearchParams({
+    contact_id: contactId,
+    limit: limit.toString(),
+  });
   if (status) queryParams.append('status', status);
   if (type) queryParams.append('type', type);
   if (cursor) queryParams.append('cursor', cursor);

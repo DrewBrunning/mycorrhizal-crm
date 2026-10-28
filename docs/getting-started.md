@@ -64,6 +64,7 @@ candidate and post-publish digests.
 | `IMAGE_TAG` | Published image tag to run (default `latest`). Pin a release such as `1.5.0`, or `1.5.0@sha256:<digest>` for an exact image, for reproducible upgrades |
 | `JWT_EXPIRY_HOURS` | Token expiry, i.e. after how many hours you will need to sign into the application again. Default is 96 hours (4 days) |
 | `OIDC_PROVIDER_URL` | Issuer URL of your OIDC provider (i.e. endpoint URI for your provider). Required to enable SSO |
+| `OIDC_PROVIDER_NAME` | Optional display name for the SSO button (e.g. `Pocket ID`, `Keycloak`). Trimmed and limited to 80 characters; blank falls back to the provider host. Display-only — never affects discovery, login, or validation. Default is empty |
 | `OIDC_CLIENT_ID` | OAuth2 client ID registered with your OIDC provider |
 | `OIDC_CLIENT_SECRET` | OAuth2 client secret registered with your OIDC provider |
 | `OIDC_AUTO_PROVISION` | When `true`, a new account is automatically created on first SSO login. Default is `false` |

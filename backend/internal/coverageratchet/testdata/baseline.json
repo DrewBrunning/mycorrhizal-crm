@@ -200,6 +200,7 @@
     "errors/busy.go": 100,
     "errors/errors.go": 93.58,
     "errors/middleware.go": 100,
+    "errors/reasons.go": 100,
     "httputil/fetch.go": 92.98,
     "httputil/ipguard.go": 93.55,
     "httputil/safedial.go": 83.33,

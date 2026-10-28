@@ -44,6 +44,33 @@ type ImportUploadResponse struct {
 type ImportPreviewRequest struct {
 	SessionID string          `json:"session_id" validate:"required"`
 	Mappings  []ColumnMapping `json:"mappings" validate:"required,dive"`
+
+	// AssignCircleIDs / AssignTagIDs (issue #2000) name existing Circles/Tags
+	// owned by the caller that every imported contact will join, in addition
+	// to any per-row circles/tags column mapping. Optional; an unknown or
+	// foreign id is a 400. The preview echoes them back (with the resulting
+	// membership count) as ImportPreviewResponse.FixedAssignment.
+	AssignCircleIDs []string `json:"assign_circle_ids,omitempty" validate:"omitempty,max=50,dive,uuid"`
+	AssignTagIDs    []string `json:"assign_tag_ids,omitempty" validate:"omitempty,max=50,dive,uuid"`
+}
+
+// ImportFixedAssignmentItem is one resolved fixed circle or tag.
+type ImportFixedAssignmentItem struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// ImportFixedAssignment is the preview of the issue #2000 fixed assignment:
+// which circles/tags every imported contact will join and how many
+// memberships that adds. ContactCount counts rows that default to being
+// imported (suggested add/update, no validation errors); MembershipCount is
+// ContactCount x (circles + tags). Counts are an upper bound: a contact that
+// already holds a membership does not gain a duplicate.
+type ImportFixedAssignment struct {
+	Circles         []ImportFixedAssignmentItem `json:"circles"`
+	Tags            []ImportFixedAssignmentItem `json:"tags"`
+	ContactCount    int                         `json:"contact_count"`
+	MembershipCount int                         `json:"membership_count"`
 }
 
 // DuplicateMatch describes a potential duplicate contact
@@ -171,6 +198,10 @@ type ImportPreviewResponse struct {
 	ValidRows      int                `json:"valid_rows"`
 	DuplicateCount int                `json:"duplicate_count"`
 	ErrorCount     int                `json:"error_count"`
+
+	// FixedAssignment is present only when the preview request carried
+	// assign_circle_ids / assign_tag_ids (issue #2000).
+	FixedAssignment *ImportFixedAssignment `json:"fixed_assignment,omitempty"`
 }
 
 // RowImportAction specifies what to do with each row
@@ -194,6 +225,13 @@ type ImportConfirmRequest struct {
 	// VCF/JSContact/records (VCF-like) sessions consume these — CSV sessions
 	// have no discovered properties and send nothing.
 	FieldMappings []ImportFieldMapping `json:"field_mappings,omitempty"`
+
+	// AssignCircleIDs / AssignTagIDs (issue #2000): circles/tags every
+	// created or updated contact joins, on top of per-row mappings. Same
+	// contract as ImportPreviewRequest; accepted by every confirm route that
+	// takes this body (CSV, VCF, JSContact, records, shares).
+	AssignCircleIDs []string `json:"assign_circle_ids,omitempty" validate:"omitempty,max=50,dive,uuid"`
+	AssignTagIDs    []string `json:"assign_tag_ids,omitempty" validate:"omitempty,max=50,dive,uuid"`
 }
 
 // ImportFieldMapping is one decision from the issue #514 wizard step: what to

@@ -79,6 +79,9 @@ type fakeImmichServer struct {
 	// pinning that the client requests newest-first explicitly rather than
 	// relying on the server default (T83).
 	SearchOrders []string
+	// PingRequests records "METHOD path" for every /server/ping request, so a
+	// test can pin that Ping actually reached the endpoint.
+	PingRequests []string
 }
 
 // newFakeImmichServer builds a started fake Immich instance.
@@ -118,6 +121,7 @@ func (f *fakeImmichServer) handle(w http.ResponseWriter, r *http.Request) {
 	// genuinely independent of the auth stage. Every other endpoint here
 	// requires the key.
 	if path == "/server/ping" {
+		f.PingRequests = append(f.PingRequests, r.Method+" "+path)
 		f.handlePing(w)
 		return
 	}

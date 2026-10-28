@@ -561,6 +561,15 @@ jobs:
         working-directory: backend
         run: go run ./cmd/rawtimecheck ./...
 
+      # Issue #2098 / ADR 0038: a user-facing apperrors constructor must be
+      # chained with .WithReason(...) so clients can localize it. A counted
+      # per-file allowlist (backend/internal/lint/reasoncode/allowlist.txt)
+      # ratchets the unmigrated sites down: counts may not rise, and must be
+      # lowered as sites are migrated.
+      - name: Lint (reasoncodecheck — user-facing errors carry a reason code)
+        working-directory: backend
+        run: go run ./cmd/reasoncodecheck ./...
+
       # Issue #1909: the OpenAPI spec is the source for the contract fixtures,
       # generated TS types, the breaking-change baseline and the Schemathesis
       # gate. The Go validator (openapi_test.go) proves well-formedness; this

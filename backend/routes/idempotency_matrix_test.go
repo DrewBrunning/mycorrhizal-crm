@@ -194,6 +194,7 @@ func buildIdemTable() map[string]idemRow {
 	}
 	for _, k := range []string{
 		"POST /api/v1/circles/:id/members",
+		"POST /api/v1/contacts/:id/activities",
 		"POST /api/v1/households/:id/members",
 		"POST /api/v1/tags/:id/contacts",
 		"POST /api/v1/occasion-events/:id/attendees",

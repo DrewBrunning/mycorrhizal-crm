@@ -51,6 +51,7 @@ var Areas = []Area{
 			{Label: "backend: golangci-lint", Dir: "backend", Argv: []string{"go", "tool", "-modfile=tools.mod", "golangci-lint", "run", "./..."}},
 			{Label: "backend: gormerrcheck", Dir: "backend", Argv: []string{"go", "run", "./cmd/gormerrcheck", "./..."}},
 			{Label: "backend: rawtimecheck", Dir: "backend", Argv: []string{"go", "run", "./cmd/rawtimecheck", "./..."}},
+			{Label: "backend: reasoncodecheck", Dir: "backend", Argv: []string{"go", "run", "./cmd/reasoncodecheck", "./..."}},
 			{Label: "backend: contract fixtures and generated TS drift", Dir: "backend", Argv: []string{"go", "test", "-run", "^TestContractFixturesMatchSpec$|^TestGeneratedTSTypesMatchSpec$", "."}},
 			{Label: "backend: DATA-01/INT-01 matrix drift", Dir: "backend", Argv: []string{"go", "test", "-run", "^TestMatrixReproducesCommittedDoc$", "./correspondence/...", "./integrations/..."}},
 			{Label: "backend: API baseline drift", Dir: "backend", Argv: []string{"go", "test", "-run", "^TestContractBaselineHolds$|^TestContractBaselineIsCurrent$", "./internal/apibaseline/..."}},

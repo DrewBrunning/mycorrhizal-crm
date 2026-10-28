@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
   type Activity,
+  addContactToActivities,
   createActivity,
   deleteActivity,
   getActivities,
@@ -219,6 +220,29 @@ describe('deleteActivity', () => {
     await expect(deleteActivity(1)).rejects.toMatchObject({
       code: 'VALIDATION_ERROR',
       status: 400,
+    });
+  });
+});
+
+describe('addContactToActivities', () => {
+  test('POSTs only the activity ids and returns the per-activity results', async () => {
+    const body = { contact_id: 5, results: [{ activity_id: 1, status: 'added' }] };
+    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => body });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await addContactToActivities(5, [1, 2]);
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain('/contacts/5/activities');
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(init.body)).toEqual({ activity_ids: [1, 2] });
+    expect(result).toEqual(body);
+  });
+
+  test('throws an ApiError when the response is not ok', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
+    await expect(addContactToActivities(5, [1])).rejects.toMatchObject({
+      message: expect.any(String),
     });
   });
 });

@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"errors"
+	"mycorrhizal/contactmodel"
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
@@ -94,6 +95,9 @@ func resolveRelationshipEndpoint(tx *gorm.DB, userID uint, fieldName, id string,
 // be set by the caller before calling this (create: fresh values; update:
 // the pre-loaded row's existing values, left untouched).
 func applyRelationshipEdgeInput(db *gorm.DB, userID uint, edge *models.RelationshipEdge, input *models.RelationshipEdgeInput, quota services.UserQuota) error {
+	if aerr := validateRelationshipEdgeDates(input.StartDate, input.EndDate); aerr != nil {
+		return aerr
+	}
 	sensitivity := input.Sensitivity
 	if sensitivity == "" {
 		sensitivity = models.RelationshipSensitivityNormal
@@ -117,6 +121,8 @@ func applyRelationshipEdgeInput(db *gorm.DB, userID uint, edge *models.Relations
 		edge.Type = input.Type
 		edge.Directional = !models.IsSymmetricRelationType(input.Type)
 		edge.Metadata = input.Metadata
+		edge.StartDate = input.StartDate
+		edge.EndDate = input.EndDate
 		edge.Sensitivity = sensitivity
 
 		// Natural-key duplicate gate (issue #928). An edge is identified by
@@ -141,6 +147,34 @@ func applyRelationshipEdgeInput(db *gorm.DB, userID uint, edge *models.Relations
 		}
 		return nil
 	})
+}
+
+// validateRelationshipEdgeDates checks a relationship's optional period
+// (issue #2001): each date must be a non-empty, in-range PartialDate and the
+// end must not precede the start, compared at the coarsest precision the two
+// share (ADR 0025 / ADR 0015 Rule 3 — non-comparable pairs are not an error).
+func validateRelationshipEdgeDates(start, end *contactmodel.PartialDate) *apperrors.AppError {
+	for _, f := range []struct {
+		name string
+		d    *contactmodel.PartialDate
+	}{{"start_date", start}, {"end_date", end}} {
+		if f.d == nil {
+			continue
+		}
+		if f.d.Year == nil && f.d.Month == nil && f.d.Day == nil {
+			return apperrors.ErrInvalidInput(f.name, "must carry at least a year, month or day")
+		}
+		if f.d.Month != nil && (*f.d.Month < 1 || *f.d.Month > 12) {
+			return apperrors.ErrInvalidInput(f.name, "month must be 1-12")
+		}
+		if f.d.Day != nil && (*f.d.Day < 1 || *f.d.Day > 31) {
+			return apperrors.ErrInvalidInput(f.name, "day must be 1-31")
+		}
+	}
+	if (contactmodel.TemporalRange{Start: start, End: end}).Reversed() {
+		return apperrors.ErrInvalidInput("end_date", "end date precedes the start date")
+	}
+	return nil
 }
 
 // relationshipEdgeDuplicate returns a 409 AppError when an edge with the same

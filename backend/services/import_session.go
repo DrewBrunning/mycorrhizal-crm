@@ -370,6 +370,11 @@ func (m *ImportSessionManager) PreviewCSV(db *gorm.DB, userID uint, req models.I
 		return nil, err
 	}
 
+	fixed, fixedErr := ResolveImportFixedAssignment(db, userID, req.AssignCircleIDs, req.AssignTagIDs)
+	if fixedErr != nil {
+		return nil, fixedErr
+	}
+
 	contacts, previews, stats := GenerateCSVPreview(db, userID, sessionData.rows, sessionData.session.Headers, req.Mappings)
 
 	// Cache preview data and built contacts in the session for the confirm step.
@@ -392,6 +397,8 @@ func (m *ImportSessionManager) PreviewCSV(db *gorm.DB, userID uint, req models.I
 		ValidRows:      stats.ValidCount,
 		DuplicateCount: stats.DuplicateCount,
 		ErrorCount:     stats.ErrorCount,
+
+		FixedAssignment: BuildImportFixedAssignmentPreview(fixed, previews),
 	}, nil
 }
 
@@ -437,6 +444,13 @@ func (m *ImportSessionManager) Confirm(db *gorm.DB, userID uint, req models.Impo
 
 	if !previewCached {
 		return nil, apperrors.ErrInvalidInput("session", "Please generate a preview first")
+	}
+
+	// Issue #2000: validate the fixed circle/tag ids before anything is
+	// written; a bad id leaves the session unconsumed.
+	fixed, fixedErr := ResolveImportFixedAssignment(db, userID, req.AssignCircleIDs, req.AssignTagIDs)
+	if fixedErr != nil {
+		return nil, fixedErr
 	}
 
 	// Issue #498: refuse now with a 507 if the disk plainly cannot hold this
@@ -490,6 +504,9 @@ func (m *ImportSessionManager) Confirm(db *gorm.DB, userID uint, req models.Impo
 					if err := MaterializeImportedGroupings(tx, userID, &contact); err != nil {
 						result.Errors = append(result.Errors, importRowFailure(log, preview.RowIndex+1, "apply circles/tags", err))
 					}
+					if err := ApplyImportFixedAssignment(tx, userID, &contact, fixed); err != nil {
+						result.Errors = append(result.Errors, importRowFailure(log, preview.RowIndex+1, "apply fixed circles/tags", err))
+					}
 					result.Created++
 					if isVCFImport {
 						vcfContacts[preview.RowIndex].Contact.ID = contact.ID
@@ -532,6 +549,9 @@ func (m *ImportSessionManager) Confirm(db *gorm.DB, userID uint, req models.Impo
 				} else {
 					if err := MaterializeImportedGroupings(tx, userID, &existing); err != nil {
 						result.Errors = append(result.Errors, importRowFailure(log, preview.RowIndex+1, "apply circles/tags", err))
+					}
+					if err := ApplyImportFixedAssignment(tx, userID, &existing, fixed); err != nil {
+						result.Errors = append(result.Errors, importRowFailure(log, preview.RowIndex+1, "apply fixed circles/tags", err))
 					}
 					result.Updated++
 					if isVCFImport {
@@ -615,6 +635,13 @@ func (m *ImportSessionManager) ConfirmVCF(db *gorm.DB, userID uint, req models.I
 		return nil, apperrors.ErrInvalidInput("session", "Please generate a preview first")
 	}
 
+	// Issue #2000: validate the fixed circle/tag ids before anything is
+	// written; a bad id leaves the session unconsumed.
+	fixed, fixedErr := ResolveImportFixedAssignment(db, userID, req.AssignCircleIDs, req.AssignTagIDs)
+	if fixedErr != nil {
+		return nil, fixedErr
+	}
+
 	// Issue #498: disk preflight before the transaction (see Confirm).
 	if spaceErr := preflightImportDiskSpace(db, len(previews)); spaceErr != nil {
 		return nil, spaceErr
@@ -677,6 +704,9 @@ func (m *ImportSessionManager) ConfirmVCF(db *gorm.DB, userID uint, req models.I
 					if err := MaterializeImportedGroupings(tx, userID, &contact); err != nil {
 						result.Errors = append(result.Errors, importRowFailure(log, preview.RowIndex+1, "apply circles/tags", err))
 					}
+					if err := ApplyImportFixedAssignment(tx, userID, &contact, fixed); err != nil {
+						result.Errors = append(result.Errors, importRowFailure(log, preview.RowIndex+1, "apply fixed circles/tags", err))
+					}
 					result.Created++
 					// Queue photo processing (either embedded data or URL)
 					if len(vcfData.PhotoData) > 0 || vcfData.PhotoURL != "" {
@@ -722,6 +752,9 @@ func (m *ImportSessionManager) ConfirmVCF(db *gorm.DB, userID uint, req models.I
 				} else {
 					if err := MaterializeImportedGroupings(tx, userID, &existing); err != nil {
 						result.Errors = append(result.Errors, importRowFailure(log, preview.RowIndex+1, "apply circles/tags", err))
+					}
+					if err := ApplyImportFixedAssignment(tx, userID, &existing, fixed); err != nil {
+						result.Errors = append(result.Errors, importRowFailure(log, preview.RowIndex+1, "apply fixed circles/tags", err))
 					}
 					result.Updated++
 					// Queue photo processing only if contact doesn't already have a photo

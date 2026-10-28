@@ -43,3 +43,4 @@ ticket backlog moved to GitHub Issues.
 | [0035](0035-service-boundary-and-delete-cascade-registry.md) | Controller-to-service boundary and a declarative delete-cascade registry | accepted |
 | [0036](0036-app-password-scopes.md) | App-password scopes and the CardDAV/CalDAV account-password policy | accepted |
 | [0037](0037-contact-trash-and-restore.md) | Contact trash — restore from a deletion snapshot | accepted |
+| [0038](0038-error-reason-codes.md) | Error reason codes — `reason_code` / `reason_params` | accepted |

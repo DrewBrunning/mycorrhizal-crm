@@ -353,6 +353,58 @@ test('bulk unarchive sends the unarchive action for the selected contacts', asyn
   );
 });
 
+test('bulk Edit fields sends only the filled and cleared fields plus custom values', async () => {
+  mockTwoPages();
+  vi.mocked(getFieldDefinitions).mockResolvedValue({
+    field_definitions: [{ id: 'd1', label: 'Pronouns', key: 'pronouns', type: 'string' }],
+  } as never);
+  vi.mocked(runBulkOperation).mockResolvedValue({
+    action: 'update_fields',
+    total: 1,
+    succeeded: 1,
+    failed: 0,
+    failures: [],
+  } as BulkOperationResult);
+  renderPage();
+  await screen.findByLabelText('Select Alice');
+
+  fireEvent.click(screen.getByLabelText('Select Alice'));
+  fireEvent.click(screen.getByText('Edit fields'));
+  fireEvent.change(await screen.findByLabelText('Organization'), { target: { value: 'Acme' } });
+  fireEvent.click(screen.getByLabelText('Clear: Job title'));
+  fireEvent.change(await screen.findByLabelText('Pronouns'), { target: { value: 'they/them' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+
+  await waitFor(() =>
+    expect(runBulkOperation).toHaveBeenCalledWith({
+      action: 'update_fields',
+      vcard_uids: ['uid-1'],
+      circle_id: undefined,
+      tag_id: undefined,
+      set: { organization: 'Acme' },
+      clear: ['job_title'],
+      custom_set: [{ field_definition_id: 'd1', value: 'they/them' }],
+    }),
+  );
+  // The dialog closes once the operation finishes.
+  await waitFor(() => expect(screen.queryByLabelText('Organization')).toBeNull());
+});
+
+test('bulk Edit fields still opens when custom fields fail to load, and Cancel closes it', async () => {
+  mockTwoPages();
+  vi.mocked(getFieldDefinitions).mockRejectedValue(new Error('down'));
+  renderPage();
+  await screen.findByLabelText('Select Alice');
+
+  fireEvent.click(screen.getByLabelText('Select Alice'));
+  fireEvent.click(screen.getByText('Edit fields'));
+  expect(await screen.findByLabelText('Organization')).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+  await waitFor(() => expect(screen.queryByLabelText('Organization')).toBeNull());
+  expect(runBulkOperation).not.toHaveBeenCalled();
+});
+
 // Regression test: the row Checkbox sits inside a Card whose own onClick
 // navigates to the contact's detail page. stopPropagation() on the
 // Checkbox's onChange does nothing for the native click event that bubbles

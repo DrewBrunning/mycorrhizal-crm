@@ -52,5 +52,19 @@ func TestTouchFeed_WritesAndThrottlesRecentAccess(t *testing.T) {
 	// A fresh, recent row takes the throttle branch and returns synchronously.
 	var recent models.Feed
 	require.NoError(t, db.First(&recent, "id = ?", feed.ID).Error)
+	before := *recent.LastAccessedAt
+	useFakeClock(t, before.Add(feedTouchInterval/2))
 	TouchFeed(db, &recent)
+	fireandforget.Wait()
+	var after models.Feed
+	require.NoError(t, db.First(&after, "id = ?", feed.ID).Error)
+	assert.True(t, after.LastAccessedAt.Equal(before), "a recent access must not be rewritten")
+
+	// Once the interval has elapsed the write goes through again.
+	later := before.Add(feedTouchInterval + time.Second)
+	useFakeClock(t, later)
+	TouchFeed(db, &recent)
+	fireandforget.Wait()
+	require.NoError(t, db.First(&after, "id = ?", feed.ID).Error)
+	assert.True(t, after.LastAccessedAt.Equal(later), "an elapsed throttle window must write again")
 }

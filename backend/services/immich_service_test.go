@@ -405,6 +405,7 @@ func TestImmichClient_Ping(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.NoError(t, client.Ping())
+	assert.Equal(t, []string{"GET /server/ping"}, fake.PingRequests, "Ping must hit the ping endpoint exactly once")
 }
 
 func TestImmichClient_PingUnreachable(t *testing.T) {

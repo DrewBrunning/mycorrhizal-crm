@@ -241,6 +241,7 @@ func buildCWTable(s seeded) map[string]cwRow {
 
 		// === Membership / join sub-resources ===
 		"POST /api/v1/circles/:id/members":                 exempt(reasonMembership),
+		"POST /api/v1/contacts/:id/activities":             exempt(reasonMembership),
 		"DELETE /api/v1/circles/:id/members/:vcard_uid":    exempt(reasonMembership),
 		"POST /api/v1/households/:id/members":              exempt(reasonMembership),
 		"DELETE /api/v1/households/:id/members/:vcard_uid": exempt(reasonMembership),
