@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/base64"
+	"strings"
 	"testing"
 	"time"
 
@@ -1491,6 +1492,31 @@ func TestLoadConfig_OIDCPartialEnvFailsValidation(t *testing.T) {
 	require.False(t, cfg.OIDC.Enabled, "OIDC must not be treated as enabled with the provider URL missing")
 	errs := cfg.Validate()
 	assert.True(t, hasFieldError(errs, "OIDC"), "a partial OIDC env must fail Validate(), got: %v", errs)
+}
+
+func TestLoadConfig_OIDCProviderName(t *testing.T) {
+	long := strings.Repeat("é", 100)
+	tests := []struct {
+		name, env, want string
+	}{
+		{"unset", "", ""},
+		{"blank is unset", "   \t ", ""},
+		{"trimmed", "  Pocket ID  ", "Pocket ID"},
+		{"bounded to 80 runes", long, strings.Repeat("é", 80)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("JWT_SECRET_KEY", "test-jwt-secret-0123456789abcdef0123456789abcdef")
+			t.Setenv("PROFILE_PHOTO_DIR", "/tmp/photos")
+			t.Setenv("SQLITE_DB_PATH", "/tmp/test.db")
+			t.Setenv("FRONTEND_URL", "http://localhost:5173")
+			t.Setenv("OIDC_PROVIDER_NAME", tt.env)
+			cfg := LoadConfig()
+			assert.Equal(t, tt.want, cfg.OIDC.ProviderName)
+			assert.False(t, cfg.OIDC.Enabled, "display name must not enable OIDC")
+			assert.Empty(t, cfg.Validate(), "display name must not affect validation")
+		})
+	}
 }
 
 // --- Public-exposure SSRF-guard boot warning (issue #951) ---
