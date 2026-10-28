@@ -319,7 +319,8 @@ func TestLogError_EmitsExpectedFields(t *testing.T) {
 	// Err() field overwrites the earlier Str("error") in the JSON output, so
 	// assert both strings independently rather than a single key value).
 	assert.Contains(t, out, "inner disk failure")
-	assert.Contains(t, out, "Database save operation failed")
+	assert.Contains(t, out, "Something went wrong while saving or loading your data")
+	assert.Contains(t, out, `"operation":"save"`)
 	assert.Contains(t, out, `"table":"contacts"`)
 }
 
