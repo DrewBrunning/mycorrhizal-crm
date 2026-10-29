@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm.network
 
 import com.mycorrhizal.crm.model.network.ActivityInput
+import com.mycorrhizal.crm.model.network.AddToActivityStatus
 import com.mycorrhizal.crm.model.network.CRMEnvelope
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordInput
@@ -1465,6 +1466,72 @@ class ApiClientTest {
 
         val request = server.takeRequest()
         assertEquals("/api/v1/contacts/5/activities", request.path)
+    }
+
+    // --- Issue #2136: add a contact to existing activities --------------------
+
+    @Test
+    fun `addContactToActivities posts activity_ids and parses each status in order`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse()
+                    .setResponseCode(200)
+                    .setBody(
+                        """
+                    {"contact_id":5,"results":[
+                      {"activity_id":1,"status":"added"},
+                      {"activity_id":2,"status":"already_member"},
+                      {"activity_id":3,"status":"not_found"},
+                      {"activity_id":4,"status":"future_status"}
+                    ]}
+                        """.trimIndent()
+                    )
+            )
+
+            val result = client.addContactToActivities(5, listOf(1, 2, 3, 4))
+
+            assertTrue(result.isSuccess)
+            val response = result.getOrThrow()
+            assertEquals(5, response.contactId)
+            assertEquals(
+                listOf(
+                    AddToActivityStatus.ADDED,
+                    AddToActivityStatus.ALREADY_MEMBER,
+                    AddToActivityStatus.NOT_FOUND,
+                    AddToActivityStatus.UNKNOWN
+                ),
+                response.results.map { it.outcome }
+            )
+            assertEquals(listOf(1, 2, 3, 4), response.results.map { it.activityId })
+
+            val request = server.takeRequest()
+            assertEquals("POST", request.method)
+            assertEquals("/api/v1/contacts/5/activities", request.path)
+            assertEquals("""{"activity_ids":[1,2,3,4]}""", request.body.readUtf8())
+        }
+
+    @Test
+    fun `addContactToActivities maps 404 and 400 to Client errors`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(404).setBody("""{"error":"not found"}"""))
+        server.enqueue(MockResponse().setResponseCode(400).setBody("""{"error":"bad ids"}"""))
+
+        val notFound = client.addContactToActivities(5, listOf(1)).exceptionOrNull()
+        val badRequest = client.addContactToActivities(5, emptyList()).exceptionOrNull()
+
+        assertEquals(404, (notFound as ApiError.Client).code)
+        assertEquals(400, (badRequest as ApiError.Client).code)
+    }
+
+    @Test
+    fun `listActivities forwards the search term`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"activities":[]}"""))
+
+        client.listActivities(limit = 20, includeContacts = true, search = "coffee")
+
+        assertEquals(
+            "/api/v1/activities?limit=20&include=contacts&search=coffee",
+            server.takeRequest().path
+        )
     }
 
     @Test

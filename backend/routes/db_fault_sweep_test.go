@@ -259,6 +259,21 @@ func faultScenarios() []faultScenario {
 			c, _ := seedRichContact(t, e)
 			return faultReq{method: http.MethodDelete, path: fmt.Sprintf("/api/v1/contacts/%d", c.ID)}
 		}},
+		{"POST /trash/contacts/:id/restore", func(t *testing.T, e *faultEnv) faultReq {
+			c, _ := seedRichContact(t, e)
+			require.NoError(t, services.DeleteContact(e.db, c, e.owner.ID, time.Now()))
+			return faultReq{method: http.MethodPost, path: fmt.Sprintf("/api/v1/trash/contacts/%d/restore", c.ID)}
+		}},
+		{"DELETE /trash/contacts/:id", func(t *testing.T, e *faultEnv) faultReq {
+			c, _ := seedRichContact(t, e)
+			require.NoError(t, services.DeleteContact(e.db, c, e.owner.ID, time.Now()))
+			return faultReq{method: http.MethodDelete, path: fmt.Sprintf("/api/v1/trash/contacts/%d", c.ID)}
+		}},
+		{"DELETE /trash/contacts", func(t *testing.T, e *faultEnv) faultReq {
+			c, _ := seedRichContact(t, e)
+			require.NoError(t, services.DeleteContact(e.db, c, e.owner.ID, time.Now()))
+			return faultReq{method: http.MethodDelete, path: "/api/v1/trash/contacts"}
+		}},
 		{"POST /contacts", func(t *testing.T, e *faultEnv) faultReq {
 			return faultReq{method: http.MethodPost, path: "/api/v1/contacts", body: faultNewContactBody("Created")}
 		}},
@@ -393,8 +408,15 @@ const (
 	faultReasonAudit     = "AfterSave audit snapshot read (auditAfterSave): the audit trail is best-effort by design; its failure must not fail the user's write"
 	faultReasonImportRow = "import is per-row by design: a row whose write fails is reported in errors[] (as a generic message — the SQL text goes to the log only, which this sweep's leak check pins) and skipped while the other rows still import"
 	faultReasonImportAux = "import auxiliary read/bookkeeping (disk-space probe, custom-field lookup, import_runs history row): logged and skipped, the import itself is unaffected"
+	faultReasonRestore   = "contact restore is per-row by design (ADR 0037): a snapshotted child row whose re-insert fails (referent gone, natural key re-created meanwhile, or a DB error inside its savepoint) is reported in skipped[] and the restore still commits; that report names the table, which is the documented skipped field"
 	faultReasonRemind    = "reminder completion bookkeeping is best-effort by documented policy (\"Don't fail the entire operation\"): the timeline record / delivery clean-up / reach-out dismissal are logged and skipped, the reminder itself still completes"
 )
+
+// faultSkippedTableOK marks the successful restore responses whose documented
+// `skipped[].table` field names the snapshotted table (ADR 0037). That is a
+// 200 response body, not an error, so the leak check is waived for these keys
+// only; every other allowlisted key still has to pass it.
+var faultSkippedTableOK = map[string]bool{}
 
 func buildFaultAllowlist() map[string]string {
 	m := map[string]string{}
@@ -419,6 +441,14 @@ func buildFaultAllowlist() map[string]string {
 	add(faultReasonAudit, "POST /contacts/merge", "query contacts#3")
 	for _, sc := range []string{"POST /contacts/:id/archive", "POST /contacts/:id/unarchive", "POST /contacts/:id/favorite", "POST /contacts/:id/unfavorite", "PUT /contacts/:id/target-closeness", "DELETE /contacts/:id/target-closeness"} {
 		add(faultReasonAudit, sc, "query contacts#2")
+	}
+	add(faultReasonAudit, "POST /trash/contacts/:id/restore", "query contacts#3")
+	restoreSkipKeys := []string{"create circle_members#1", "create contact_tags#1", "create external_activities#1", "create external_identities#1",
+		"create household_members#1", "create relationship_edges#1"}
+	add(faultReasonRestore, "POST /trash/contacts/:id/restore", restoreSkipKeys...)
+	add(faultReasonRestore, "POST /trash/contacts/:id/restore", "raw #1", "raw #2", "raw #3", "raw #4", "raw #5", "raw #6")
+	for _, k := range restoreSkipKeys {
+		faultSkippedTableOK["POST /trash/contacts/:id/restore|"+k] = true
 	}
 	add("the password change and every revocation already committed atomically; minting the caller's replacement session is best-effort and the handler documents that the client re-authenticates", "POST /users/change-password", "create sessions#1")
 	add(faultReasonRemind, "POST /reminders/:id/complete",
@@ -498,7 +528,7 @@ func runFaultSweep(t *testing.T, scenarios []faultScenario) {
 					if w.Code < 200 || w.Code >= 300 {
 						failures = append(failures, fmt.Sprintf("%s: allowlisted %q but it now fails with HTTP %d — remove the entry", label, key, w.Code))
 					}
-					if l := faultLeak(w.Body.String(), tables); l != "" {
+					if l := faultLeak(w.Body.String(), tables); l != "" && !faultSkippedTableOK[key] {
 						failures = append(failures, fmt.Sprintf("%s: %s in body", label, l))
 					}
 					continue

@@ -32,7 +32,8 @@ var contactRefColumns = []string{
 // column (or an FK to contacts) yet are deliberately NOT part of the contact
 // delete cascade. Every entry needs a reason.
 var contactCascadeNotRegistered = map[string]string{
-	"audit_events": "append-only audit trail keyed polymorphically by entity_id; a contact delete must leave its own history intact",
+	"audit_events":               "append-only audit trail keyed polymorphically by entity_id; a contact delete must leave its own history intact",
+	"contact_deletion_snapshots": "ADR 0037: written BY the contact delete (DeleteContact), not cleaned by it; consumed by restore, purge and the scheduled purge",
 }
 
 // registryIndirectTables are registered tables that reference a contact only
@@ -288,6 +289,9 @@ func TestDeleteContactAssociations_LeavesContactRowAndOtherUsersAlone(t *testing
 func TestDeleteContact_EveryStepFailurePropagatesAndRollsBack(t *testing.T) {
 	require.NotEmpty(t, ContactCascadeRegistry(), "registry must declare at least one cascade step")
 	for _, step := range ContactCascadeRegistry() {
+		if step.Table == "contact_sync_links" {
+			continue // a deliberate no-op retention step (ADR 0037 decision 7): nothing to fail
+		}
 		t.Run(step.Table, func(t *testing.T) {
 			f := newCascadeFixture(t)
 			f.seed(t)

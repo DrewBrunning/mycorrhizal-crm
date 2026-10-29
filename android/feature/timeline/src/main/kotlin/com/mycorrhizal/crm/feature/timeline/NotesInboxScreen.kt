@@ -47,6 +47,7 @@ import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
+import com.mycorrhizal.crm.ui.markdown.MarkdownText
 
 /**
  * M9 item 1: the "Unassigned notes" drawer entry — a contact-agnostic view of the N4 unfiled-notes
@@ -211,9 +212,8 @@ private fun InboxNoteRow(note: Note, onClick: () -> Unit, modifier: Modifier = M
     val dateFormat = LocalDateFormat.current
     androidx.compose.material3.ListItem(
         headlineContent = {
-            Text(
-                text = note.content.orEmpty(),
-                style = MaterialTheme.typography.bodyLarge,
+            MarkdownText(
+                source = note.content.orEmpty(),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )

@@ -271,4 +271,17 @@ class NotesScreenTest {
 
         composeTestRule.onNodeWithText("Loves climbing").assertIsDisplayed()
     }
+
+    // Issue #2134: note text is stored Markdown; the row shows it rendered, not as raw source.
+    @Test
+    fun `a note row renders Markdown instead of showing the raw markers`() {
+        setContent(
+            NotesUiState(
+                contactId = 5,
+                notes = listOf(Note(id = 3, content = "**Loves** climbing"))
+            )
+        )
+
+        composeTestRule.onNodeWithText("Loves climbing").assertIsDisplayed()
+    }
 }

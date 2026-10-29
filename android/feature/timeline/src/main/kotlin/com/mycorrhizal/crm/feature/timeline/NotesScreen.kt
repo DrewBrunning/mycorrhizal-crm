@@ -53,6 +53,7 @@ import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.components.WriteConflictDialog
+import com.mycorrhizal.crm.ui.markdown.MarkdownText
 
 /**
  * M19: per-contact notes list. Gained a search field + from/to-date filters
@@ -335,9 +336,8 @@ fun NoteListItem(
     val dateFormat = LocalDateFormat.current
     androidx.compose.material3.ListItem(
         headlineContent = {
-            Text(
-                text = note.content.orEmpty(),
-                style = MaterialTheme.typography.bodyLarge,
+            MarkdownText(
+                source = note.content.orEmpty(),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )

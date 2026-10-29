@@ -69,6 +69,7 @@ func TestMigrationsAddSystemEvents(t *testing.T) {
 	// Down drops the table. 000038 is no longer the migration tip — later
 	// migrations sit on top — so roll each of them back first, then 000038's
 	// own down migration.
+	require.NoError(t, MigrateDown(dbPath)) // rolls back 000081_contact_trash
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000080_circle_description_color
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000079_relationship_edge_dates
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000078_app_password_scopes

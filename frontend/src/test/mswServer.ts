@@ -44,7 +44,7 @@ export function setupMswServer(): void {
  * `File` and `Blob` matter as much as `FormData`: undici's multipart parser
  * validates every parsed entry with `webidl.is.File` against the *global*
  * `File`. Node 22's undici happened to accept a jsdom-shadowed global here;
- * Node 24 (which `engines.node`'s `>=22.22.2` resolves to in CI) asserts, so a
+ * Node 24 (the `engines.node` floor, `>=24.15.0`) asserts, so a
  * multipart `Request.formData()` throws unless the native brands are global.
  */
 export function setupNativeMultipart(): (content: string, name: string, type?: string) => File {

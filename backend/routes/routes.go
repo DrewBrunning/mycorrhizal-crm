@@ -283,6 +283,11 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 				protected.POST("/contacts/:id/addresses/:addressId/geocode", controllers.GeocodeContactAddress(geocoder))
 			}
 			protected.DELETE("/contacts/:id", controllers.DeleteContact)
+			// Contact trash (issue #2002, ADR 0037).
+			protected.GET("/trash/contacts", controllers.ListTrashedContacts)
+			protected.DELETE("/trash/contacts", controllers.EmptyTrash)
+			protected.POST("/trash/contacts/:id/restore", controllers.RestoreTrashedContact)
+			protected.DELETE("/trash/contacts/:id", controllers.PurgeTrashedContact)
 			protected.POST("/contacts/:id/archive", controllers.ArchiveContact)
 			protected.POST("/contacts/:id/unarchive", controllers.UnarchiveContact)
 			// Issue #173: favorite toggle, same shape as archive/unarchive —

@@ -10,6 +10,8 @@ import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ContactsPage
 import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.domain.repository.TagRepository
+import com.mycorrhizal.crm.model.network.BulkActions
+import com.mycorrhizal.crm.model.network.BulkContactOperationInput
 import com.mycorrhizal.crm.model.network.BulkOperationResult
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.SearchNoteHit
@@ -21,6 +23,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
@@ -1633,6 +1636,97 @@ class ContactListViewModelTest {
 
         assertEquals(setOf(1), vm.uiState.value.selected)
         assertEquals("boom", vm.uiState.value.error)
+    }
+
+    // --- Issue #2140: bulk field edit ----------------------------------------
+
+    @Test
+    fun `bulk field edit sends only filled and cleared fields and omits the rest`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val (viewModel, contactRepository) = newViewModel()
+        val bulkRepository = mockk<BulkOperationRepository>()
+        coEvery {
+            contactRepository.listContacts(
+                cursor = null,
+                limit = 50,
+                search = null,
+                sort = "name",
+                order = "asc"
+            )
+        } returns Result.success(page(ContactSummary(id = 1, uid = "u1", fn = "Alice")))
+        val sent = slot<BulkContactOperationInput>()
+        coEvery { bulkRepository.run(capture(sent)) } returns Result.success(
+            BulkOperationResult(action = "update_fields", total = 1, succeeded = 1, failed = 0)
+        )
+        val vm = rebuildWithBulk(contactRepository, bulkRepository)
+
+        advanceUntilIdle()
+        vm.toggleSelection(1)
+        vm.runBulkFieldEdit(
+            values = mapOf("organization" to "  Acme  ", "department" to "   ", "role" to "x"),
+            clear = setOf("job_title", "role")
+        )
+        advanceUntilIdle()
+
+        assertEquals(BulkActions.UPDATE_FIELDS, sent.captured.action)
+        assertEquals(mapOf("organization" to "Acme"), sent.captured.set)
+        assertEquals(listOf("job_title", "role"), sent.captured.clear)
+        assertEquals(null, sent.captured.customSet)
+        assertEquals(null, sent.captured.customClear)
+        assertEquals(1, vm.uiState.value.bulkResult?.succeeded)
+    }
+
+    @Test
+    fun `bulk field edit with nothing filled or cleared sends nothing`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val (viewModel, contactRepository) = newViewModel()
+        val bulkRepository = mockk<BulkOperationRepository>()
+        coEvery {
+            contactRepository.listContacts(
+                cursor = null,
+                limit = 50,
+                search = null,
+                sort = "name",
+                order = "asc"
+            )
+        } returns Result.success(page(ContactSummary(id = 1, uid = "u1", fn = "Alice")))
+        val vm = rebuildWithBulk(contactRepository, bulkRepository)
+
+        advanceUntilIdle()
+        vm.toggleSelection(1)
+        vm.runBulkFieldEdit(values = mapOf("organization" to " "), clear = emptySet())
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { bulkRepository.run(any()) }
+    }
+
+    private fun rebuildWithBulk(
+        contactRepository: ContactRepository,
+        bulkRepository: BulkOperationRepository
+    ): ContactListViewModel {
+        val apiClient = mockk<ApiClient>()
+        coEvery { apiClient.search(any(), any(), any()) } returns Result.success(SearchResult())
+        val circleRepository = mockk<CircleRepository>()
+        coEvery { circleRepository.list() } returns Result.success(emptyList())
+        val tagRepository = mockk<TagRepository>()
+        coEvery { tagRepository.list() } returns Result.success(emptyList())
+        val authRepository = mockk<AuthRepository>()
+        every { authRepository.observeSession() } returns flowOf(SessionState())
+        val appSettingsRepository = mockk<AppSettingsRepository>()
+        every { appSettingsRepository.contactSortPreference() } returns flowOf(
+            AppSettingsRepository.CONTACT_SORT_NAME
+        )
+        return ContactListViewModel(
+            contactRepository,
+            apiClient,
+            circleRepository,
+            bulkRepository,
+            tagRepository,
+            authRepository,
+            appSettingsRepository
+        )
     }
 
     // ADR 0029 §4 / issue #1269: mycorrhizal://search?q=… arrives as a `search` nav arg.

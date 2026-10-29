@@ -102,6 +102,8 @@ tags:
     description: Per-contact CardDAV/CalDAV subscription settings.
   - name: Contacts
     description: The contact directory, its composites, and per-contact operations.
+  - name: Trash
+    description: Restore or permanently delete contacts the caller deleted (ADR 0037).
   - name: Conversation Agenda
     description: Talking points and discussed state per contact.
   - name: Custom Fields
@@ -6593,6 +6595,126 @@ paths:
                 $ref: "#/components/schemas/Error"
 
   # --- Tags ---
+  /trash/contacts:
+    get:
+      summary: List the caller's trashed (restorable) contacts
+      operationId: listTrashedContacts
+      tags:
+        - Trash
+      description: |
+        Contacts the caller deleted that can still be restored (issue #2002, ADR 0037):
+        those with a deletion snapshot, newest deletion first. `purge_at` is when the
+        scheduled purge hard-deletes the contact; null when `DELETED_RETENTION_DAYS` is 0
+        (keep forever). Contacts deleted before the trash existed, and merge losers, have
+        no snapshot and are not listed.
+      parameters:
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, default: 25 } }
+      responses:
+        "200":
+          description: A page of trashed contacts.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrashListResponse"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Empty the trash (permanently delete every trashed contact)
+      operationId: emptyTrash
+      tags:
+        - Trash
+      description: Permanently deletes all of the caller's trashed contacts in one transaction; their photo and attachment files are removed after it commits. Never touches another user's trash.
+      responses:
+        "200":
+          description: Purged.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrashPurgeResponse"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /trash/contacts/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    delete:
+      summary: Permanently delete one trashed contact
+      operationId: purgeTrashedContact
+      tags:
+        - Trash
+      description: Hard-deletes the contact, its deleted children and its snapshot now; photo and attachment files are removed after the transaction commits. Not restorable afterwards.
+      responses:
+        "200":
+          description: Purged.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrashPurgeResponse"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not in the caller's trash (live, already purged, or another user's — indistinguishable by design).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /trash/contacts/{id}/restore:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    post:
+      summary: Restore a trashed contact
+      operationId: restoreTrashedContact
+      tags:
+        - Trash
+      description: |
+        Revives the contact, the children deleted with it, and the join rows (circles, tags,
+        relationships, field values, activity links, …) captured in its deletion snapshot
+        (ADR 0037). Content deleted before the contact stays deleted. Derived state and revoked
+        feeds are not restored; `skipped` reports rows that could not be (their other side is
+        gone or the key was re-created). Fires the `contact.restored` webhook.
+      responses:
+        "200":
+          description: Restored.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrashRestoreResponse"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not in the caller's trash.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: A live contact already uses this contact's UID (details.live_contact_id), or the snapshot version is unsupported. Nothing changed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /tags:
     get:
       summary: List tags
@@ -14354,6 +14476,45 @@ components:
         is_admin: { type: boolean, default: false }
 
     # --- Contacts ---
+    TrashedContact:
+      type: object
+      required: [contact, deleted_at, purge_at]
+      properties:
+        contact: { $ref: "#/components/schemas/ContactSummary" }
+        deleted_at: { type: string, format: date-time }
+        purge_at: { type: string, format: date-time, nullable: true, description: "When the scheduled purge hard-deletes the contact; null when retention is 0 (keep forever)." }
+    TrashListResponse:
+      type: object
+      required: [contacts, total, page, limit, retention_days]
+      properties:
+        contacts:
+          type: array
+          items: { $ref: "#/components/schemas/TrashedContact" }
+        total: { type: integer, format: int64 }
+        page: { type: integer }
+        limit: { type: integer }
+        retention_days: { type: integer, description: "DELETED_RETENTION_DAYS; 0 means keep forever." }
+    TrashRestoreSkip:
+      type: object
+      required: [table, reason, count]
+      properties:
+        table: { type: string }
+        reason: { type: string }
+        count: { type: integer }
+    TrashRestoreResponse:
+      type: object
+      required: [contact, skipped]
+      properties:
+        contact: { $ref: "#/components/schemas/ContactSummary" }
+        skipped:
+          type: array
+          items: { $ref: "#/components/schemas/TrashRestoreSkip" }
+    TrashPurgeResponse:
+      type: object
+      required: [message, purged]
+      properties:
+        message: { type: string }
+        purged: { type: integer }
     ContactSummary:
       type: object
       description: >
@@ -17470,7 +17631,7 @@ components:
           minItems: 1
           items:
             type: string
-            enum: [contact.created, contact.updated, contact.deleted, note.created, note.updated, note.deleted, activity.created, activity.updated, activity.deleted, reminder.triggered, birthday.occurred]
+            enum: [contact.created, contact.updated, contact.deleted, contact.restored, note.created, note.updated, note.deleted, activity.created, activity.updated, activity.deleted, reminder.triggered, birthday.occurred]
         is_active: { type: boolean }
     WebhookResponse:
       type: object

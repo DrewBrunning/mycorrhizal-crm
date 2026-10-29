@@ -104,6 +104,7 @@ object BulkActions {
     const val ARCHIVE = "archive"
     const val UNARCHIVE = "unarchive"
     const val DELETE = "delete"
+    const val UPDATE_FIELDS = "update_fields"
 }
 
 @JsonClass(generateAdapter = true)
@@ -111,7 +112,27 @@ data class BulkContactOperationInput(
     val action: String,
     @Json(name = "vcard_uids") val vcardUids: List<String>,
     @Json(name = "circle_id") val circleId: String? = null,
-    @Json(name = "tag_id") val tagId: String? = null
+    @Json(name = "tag_id") val tagId: String? = null,
+    // update_fields only (issue #2140); null = key omitted on the wire.
+    val set: Map<String, String>? = null,
+    val clear: List<String>? = null,
+    @Json(name = "custom_set") val customSet: List<FieldValueInput>? = null,
+    @Json(name = "custom_clear") val customClear: List<String>? = null
+)
+
+/**
+ * Mirror of the backend `update_fields` core-field allowlist (frontend trap #4);
+ * order is the dialog's row order.
+ */
+val BULK_EDITABLE_FIELDS: List<String> = listOf(
+    "organization",
+    "department",
+    "job_title",
+    "role",
+    "gender",
+    "how_we_met",
+    "work_information",
+    "contact_information"
 )
 
 @JsonClass(generateAdapter = true)

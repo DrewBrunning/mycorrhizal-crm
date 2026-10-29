@@ -35,6 +35,8 @@ object ErrorReasonCode {
     const val RELATIONSHIP_SELF_EDGE = "relationship_self_edge"
     const val VALIDATION_ACTIVITY_IDS_RANGE = "validation_activity_ids_range"
     const val VALIDATION_CURSOR_MALFORMED = "validation_cursor_malformed"
+    const val TRASH_UID_IN_USE = "trash_uid_in_use"
+    const val TRASH_SNAPSHOT_UNSUPPORTED = "trash_snapshot_unsupported"
     const val CIRCLE_COLOR_INVALID = "circle_color_invalid"
     const val COMMON_DATABASE_ERROR = "common_database_error"
     const val COMMON_DATABASE_BUSY = "common_database_busy"

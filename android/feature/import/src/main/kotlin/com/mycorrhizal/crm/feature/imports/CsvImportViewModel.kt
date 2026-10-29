@@ -3,6 +3,8 @@ package com.mycorrhizal.crm.feature.imports
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mycorrhizal.crm.model.network.Circle
+import com.mycorrhizal.crm.model.network.CircleInput
 import com.mycorrhizal.crm.model.network.ColumnMapping
 import com.mycorrhizal.crm.model.network.ImportConfirmRequest
 import com.mycorrhizal.crm.model.network.ImportPreviewRequest
@@ -10,6 +12,8 @@ import com.mycorrhizal.crm.model.network.ImportPreviewResponse
 import com.mycorrhizal.crm.model.network.ImportResult
 import com.mycorrhizal.crm.model.network.ImportUploadResponse
 import com.mycorrhizal.crm.model.network.RowImportAction
+import com.mycorrhizal.crm.model.network.Tag
+import com.mycorrhizal.crm.model.network.TagInput
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
@@ -33,6 +37,11 @@ data class CsvImportUiState(
     /** row_index -> "skip" | "add" | "update", same contract as VcfImportUiState.rowActions. */
     val rowActions: Map<Int, String> = emptyMap(),
     val result: ImportResult? = null,
+    /** Issue #2135: circles/tags offered for fixed assignment, and the user's selection. */
+    val circles: List<Circle> = emptyList(),
+    val tags: List<Tag> = emptyList(),
+    val selectedCircleIds: Set<String> = emptySet(),
+    val selectedTagIds: Set<String> = emptySet(),
     val isLoading: Boolean = false,
     @StringRes val errorRes: Int? = null,
     val error: String? = null
@@ -103,6 +112,7 @@ class CsvImportViewModel @Inject constructor(private val apiClient: ApiClient) :
                             columnFields = fields
                         )
                     }
+                    loadAssignables()
                 },
                 onError = { error ->
                     _uiState.update {
@@ -114,6 +124,72 @@ class CsvImportViewModel @Inject constructor(private val apiClient: ApiClient) :
                 }
             )
         }
+    }
+
+    private fun loadAssignables() {
+        viewModelScope.launch {
+            apiClient.listCircles().foldApiError(
+                onSuccess = { page -> _uiState.update { it.copy(circles = page.circles) } },
+                onError = { /* the picker is optional; the import works without it */ }
+            )
+            apiClient.listTags().foldApiError(
+                onSuccess = { page -> _uiState.update { it.copy(tags = page.tags) } },
+                onError = { /* the picker is optional; the import works without it */ }
+            )
+        }
+    }
+
+    fun toggleCircle(id: String) {
+        _uiState.update { it.copy(selectedCircleIds = it.selectedCircleIds.toggled(id)) }
+    }
+
+    fun toggleTag(id: String) {
+        _uiState.update { it.copy(selectedTagIds = it.selectedTagIds.toggled(id)) }
+    }
+
+    /** Creates a circle inline (web's "Create \"name\"" option) and selects it. */
+    fun createCircle(name: String) {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return
+        viewModelScope.launch {
+            apiClient.createCircle(CircleInput(trimmed)).foldApiError(
+                onSuccess = { circle ->
+                    _uiState.update {
+                        it.copy(
+                            circles = it.circles + circle,
+                            selectedCircleIds = it.selectedCircleIds + circle.id
+                        )
+                    }
+                },
+                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } }
+            )
+        }
+    }
+
+    fun createTag(name: String) {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return
+        viewModelScope.launch {
+            apiClient.createTag(TagInput(trimmed)).foldApiError(
+                onSuccess = { tag ->
+                    _uiState.update {
+                        it.copy(
+                            tags = it.tags + tag,
+                            selectedTagIds = it.selectedTagIds + tag.id
+                        )
+                    }
+                },
+                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } }
+            )
+        }
+    }
+
+    private fun Set<String>.toggled(id: String): Set<String> = if (id in
+        this
+    ) {
+        this - id
+    } else {
+        this + id
     }
 
     fun setColumnField(csvColumn: String, contactField: String) {
@@ -139,7 +215,12 @@ class CsvImportViewModel @Inject constructor(private val apiClient: ApiClient) :
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             apiClient.previewCsvImport(
-                ImportPreviewRequest(sessionId = upload.sessionId, mappings = mappings)
+                ImportPreviewRequest(
+                    sessionId = upload.sessionId,
+                    mappings = mappings,
+                    assignCircleIds = _uiState.value.selectedCircleIds.toList().ifEmpty { null },
+                    assignTagIds = _uiState.value.selectedTagIds.toList().ifEmpty { null }
+                )
             ).foldApiError(
                 onSuccess = { preview ->
                     val actions = preview.rows.associate { row ->
@@ -198,7 +279,12 @@ class CsvImportViewModel @Inject constructor(private val apiClient: ApiClient) :
                 )
             }
             apiClient.confirmImport(
-                ImportConfirmRequest(sessionId = preview.sessionId, actions = actions)
+                ImportConfirmRequest(
+                    sessionId = preview.sessionId,
+                    actions = actions,
+                    assignCircleIds = _uiState.value.selectedCircleIds.toList().ifEmpty { null },
+                    assignTagIds = _uiState.value.selectedTagIds.toList().ifEmpty { null }
+                )
             ).foldApiError(
                 onSuccess = { result ->
                     _uiState.update {
