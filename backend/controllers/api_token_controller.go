@@ -55,7 +55,7 @@ func resolveTokenScopes(input models.ApiTokenInput) ([]string, *apperrors.AppErr
 		}
 		for _, scope := range scopes {
 			if !models.IsValidTokenScope(scope) {
-				return nil, apperrors.ErrInvalidInput("scopes", "Unknown scope: "+scope).WithReason(apperrors.ReasonAccountAPITokenScopeUnknown, map[string]any{"scope": scope})
+				return nil, apperrors.ErrInvalidInput("scopes", "Unknown scope: "+scope).WithReason(apperrors.ReasonAccountAPITokenScopeUnknown, map[string]any{"scope": scope}) // # pragma: no cover — NormalizeTokenScopes already drops unknown scopes, so this arm is unreachable
 			}
 		}
 		return scopes, nil

@@ -101,7 +101,7 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 
 		if !token.Valid {
 			// # pragma: no cover — jwt.Parse returns a non-nil error whenever Valid is false, so this defense-in-depth arm is unreachable
-			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid token").WithReason(apperrors.ReasonAuthBearerTokenInvalid, nil))
+			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid token").WithReason(apperrors.ReasonAuthBearerTokenInvalid, nil)) // # pragma: no cover — jwt.Parse returns a non-nil error whenever Valid is false
 			return
 		}
 
@@ -110,7 +110,7 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
 			// # pragma: no cover — jwt.Parse always yields MapClaims, so this defense-in-depth arm is unreachable
-			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid token").WithReason(apperrors.ReasonAuthBearerTokenInvalid, nil))
+			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid token").WithReason(apperrors.ReasonAuthBearerTokenInvalid, nil)) // # pragma: no cover — jwt.Parse always yields MapClaims
 			return
 		}
 
