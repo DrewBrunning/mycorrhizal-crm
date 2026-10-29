@@ -24,6 +24,11 @@ import {
   Card,
   CardContent,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   Divider,
   IconButton,
   ListItemIcon,
@@ -167,6 +172,9 @@ export default function ContactHeader({
   // The trigger (icon button < lg, "More actions" button >= lg) names the
   // menu it controls, so assistive tech announces the popup relationship.
   const actionsMenuId = useId();
+  // Issue #2192: "This is me" / "This isn't me" confirmation dialog.
+  const [meDialogOpen, setMeDialogOpen] = useState(false);
+  const meDialogTitleId = useId();
   // Collapse the text buttons (stay in touch / merge / export / archive) into
   // a single overflow menu below the `md` breakpoint. The buttons overflow the
   // viewport well above phone widths as the window shrinks (v0.4.1 testing),
@@ -176,8 +184,8 @@ export default function ContactHeader({
   const compactActions = useMediaQuery(theme.breakpoints.down('lg'));
   // Issue #1782: one item list for the overflow menu in both layouts. The
   // compact layout (< lg) carries every action; the wide layout keeps Stay in
-  // touch / Prep view / Share inline and lists only the rest. Delete is last,
-  // behind a divider.
+  // touch / Prep view / Share inline and lists only the rest. Delete is last of
+  // the contact actions, behind a divider; "This is me" follows it (#2192).
   const renderOverflowItems = (includePrimary: boolean) =>
     archived
       ? [
@@ -197,22 +205,6 @@ export default function ContactHeader({
           ),
         ]
       : [
-          onToggleMe && (
-            <MenuItem
-              key="toggle-me"
-              onClick={() => {
-                setActionsMenuAnchor(null);
-                onToggleMe();
-              }}
-            >
-              <ListItemIcon>
-                <PersonIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>
-                {isMe ? t('contactDetail.unmarkAsMe') : t('contactDetail.markAsMe')}
-              </ListItemText>
-            </MenuItem>
-          ),
           includePrimary && onStayInTouch && (
             <MenuItem
               key="stay-in-touch"
@@ -356,6 +348,26 @@ export default function ContactHeader({
               {t('contactDetail.deleteContact')}
             </ListItemText>
           </MenuItem>,
+          // Issue #2192: a user picks this once, so it sits at the very bottom
+          // behind its own separator, and asks for confirmation (see the
+          // dialog below) because it changes how the app treats the contact.
+          onToggleMe && <Divider key="me-divider" />,
+          onToggleMe && (
+            <MenuItem
+              key="toggle-me"
+              onClick={() => {
+                setActionsMenuAnchor(null);
+                setMeDialogOpen(true);
+              }}
+            >
+              <ListItemIcon>
+                <PersonIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>
+                {isMe ? t('contactDetail.unmarkAsMe') : t('contactDetail.markAsMe')}
+              </ListItemText>
+            </MenuItem>
+          ),
         ];
 
   const isOn = (key: ContactFieldKey) => enabled.has(key);
@@ -430,6 +442,36 @@ export default function ContactHeader({
 
   return (
     <Card sx={{ mb: 1.5 }}>
+      <Dialog
+        open={meDialogOpen}
+        onClose={() => setMeDialogOpen(false)}
+        aria-labelledby={meDialogTitleId}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle id={meDialogTitleId}>
+          {isMe ? t('contactDetail.meDialog.unmarkTitle') : t('contactDetail.meDialog.markTitle')}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {isMe ? t('contactDetail.meDialog.unmarkBody') : t('contactDetail.meDialog.markBody')}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setMeDialogOpen(false)}>{t('common.cancel')}</Button>
+          <Button
+            variant="contained"
+            onClick={() => {
+              setMeDialogOpen(false);
+              onToggleMe?.();
+            }}
+          >
+            {isMe
+              ? t('contactDetail.meDialog.unmarkConfirm')
+              : t('contactDetail.meDialog.markConfirm')}
+          </Button>
+        </DialogActions>
+      </Dialog>
       <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
         <Box
           sx={{
@@ -995,7 +1037,8 @@ export default function ContactHeader({
                         <>
                           {/* Issue #1782: three primary actions stay inline;
                               everything else lives in the "More" menu below
-                              (Delete last, behind a divider). */}
+                              (Delete last of the actions, behind a divider;
+                              "This is me" follows it, #2192). */}
                           {onStayInTouch && (
                             <Button
                               variant="outlined"

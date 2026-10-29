@@ -12,6 +12,9 @@ export interface Note {
   content: string;
   date: string;
   contact_id?: number | null; // *uint without omitempty: null for an unfiled note
+  // Filled only with ?include=contacts (id and name); otherwise the server
+  // sends an empty object (the struct is never omitted).
+  contact?: { ID?: number; firstname?: string; lastname?: string };
   CreatedAt: string;
   UpdatedAt: string;
   // Issue #591: monotonic per-row write counter, read-only (ADR 0006).
@@ -37,6 +40,11 @@ export interface GetNotesParams {
   search?: string;
   fromDate?: string;
   toDate?: string;
+  // Issue #2180: 'all' lists every note (filed or not); the server default,
+  // 'unfiled', lists only notes with no contact.
+  scope?: 'all' | 'unfiled';
+  // Fill each note's nested contact (name) for display.
+  includeContacts?: boolean;
 }
 
 // Get notes for a contact
@@ -52,7 +60,7 @@ export async function getContactNotes(contactId: string | number): Promise<Notes
   return response.json();
 }
 
-// Get all unassigned notes
+// List the user's notes: unfiled only by default, every note with scope: 'all'
 export async function getUnassignedNotes(params: GetNotesParams = {}): Promise<NotesResponse> {
   const { cursor, limit = 25 } = params;
   const search = params.search?.trim();
@@ -73,6 +81,9 @@ export async function getUnassignedNotes(params: GetNotesParams = {}): Promise<N
   if (params.toDate) {
     queryParams.append('toDate', params.toDate);
   }
+
+  if (params.scope === 'all') queryParams.append('scope', 'all');
+  if (params.includeContacts) queryParams.append('include', 'contacts');
 
   const response = await apiFetch(`${API_BASE_URL}/notes?${queryParams.toString()}`, {
     headers: getAuthHeaders(),

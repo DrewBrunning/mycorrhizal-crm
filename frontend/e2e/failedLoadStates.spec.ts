@@ -36,7 +36,7 @@ test.describe('Failed load states', { tag: '@failure-modes' }, () => {
 
   // Empty-state copy (en) that would be a lie on a failed load.
   const EMPTY_COPY =
-    /No unfiled notes|No activities found|No events yet|No passkeys yet|No webhooks|No custom fields|No calendar|No households|No circles yet|No tags yet|No incoming|No outgoing|No audit|No events|No users|No legacy circles/i;
+    /No unfiled notes|No notes yet|No activities found|No events yet|No passkeys yet|No webhooks|No custom fields|No calendar|No households|No circles yet|No tags yet|No incoming|No outgoing|No audit|No events|No users|No legacy circles/i;
 
   const routes: Array<{ path: string; name: string; shared?: boolean }> = [
     { path: '/notes', name: 'Notes', shared: true },

@@ -321,7 +321,26 @@ test('shows no "You" badge on other contacts (T90)', () => {
   expect(screen.queryByText('You')).not.toBeInTheDocument();
 });
 
-test('the compact overflow menu offers "This is me" and reports the toggle (T90)', () => {
+test('the compact overflow menu lists "This is me" last (#2192)', () => {
+  mockMatchMedia(true);
+  renderHeader({ isMe: false, onToggleMe: vi.fn(), onArchiveContact: vi.fn() });
+
+  fireEvent.click(screen.getByLabelText('Actions'));
+  const items = screen.getAllByRole('menuitem');
+  expect(items[items.length - 1]).toHaveTextContent('This is me');
+  expect(items[items.length - 2]).toHaveTextContent('Delete Contact');
+});
+
+test('the wide More menu lists "This isn\'t me" last (#2192)', () => {
+  mockMatchMedia(false);
+  renderHeader({ isMe: true, onToggleMe: vi.fn() });
+
+  fireEvent.click(screen.getByRole('button', { name: 'More' }));
+  const items = screen.getAllByRole('menuitem');
+  expect(items[items.length - 1]).toHaveTextContent("This isn't me");
+});
+
+test('"This is me" asks for confirmation and only the confirm button reports the toggle (#2192)', async () => {
   mockMatchMedia(true);
   const onToggleMe = vi.fn();
   renderHeader({ isMe: false, onToggleMe });
@@ -329,6 +348,49 @@ test('the compact overflow menu offers "This is me" and reports the toggle (T90)
   fireEvent.click(screen.getByLabelText('Actions'));
   fireEvent.click(screen.getByText('This is me'));
 
+  const dialog = await screen.findByRole('dialog', { name: 'Mark this contact as you?' });
+  expect(onToggleMe).not.toHaveBeenCalled();
+  expect(dialog).toHaveTextContent('also marked as an ambient contact');
+  expect(dialog).toHaveTextContent('never overdue');
+
+  fireEvent.click(screen.getByRole('button', { name: 'Yes, this is me' }));
+  expect(onToggleMe).toHaveBeenCalledTimes(1);
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+});
+
+test('cancelling the "This is me" confirmation does nothing (#2192)', async () => {
+  mockMatchMedia(true);
+  const onToggleMe = vi.fn();
+  renderHeader({ isMe: false, onToggleMe });
+
+  fireEvent.click(screen.getByLabelText('Actions'));
+  fireEvent.click(screen.getByText('This is me'));
+  await screen.findByRole('dialog');
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  expect(onToggleMe).not.toHaveBeenCalled();
+});
+
+test('"This isn\'t me" asks for confirmation; Escape dismisses without acting, confirm acts (#2192)', async () => {
+  mockMatchMedia(true);
+  const onToggleMe = vi.fn();
+  renderHeader({ isMe: true, onToggleMe });
+
+  fireEvent.click(screen.getByLabelText('Actions'));
+  fireEvent.click(screen.getByText("This isn't me"));
+  const dialog = await screen.findByRole('dialog', { name: "This contact isn't you?" });
+  expect(dialog).toHaveTextContent('ambient is turned off again');
+  expect(onToggleMe).not.toHaveBeenCalled();
+
+  fireEvent.keyDown(dialog, { key: 'Escape' });
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  expect(onToggleMe).not.toHaveBeenCalled();
+
+  fireEvent.click(screen.getByLabelText('Actions'));
+  fireEvent.click(screen.getByText("This isn't me"));
+  await screen.findByRole('dialog');
+  fireEvent.click(screen.getByRole('button', { name: "Yes, this isn't me" }));
   expect(onToggleMe).toHaveBeenCalledTimes(1);
 });
 

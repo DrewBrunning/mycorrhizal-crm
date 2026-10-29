@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import './i18n/config';
 import { AnnouncerProvider } from './context/AnnouncerContext';
@@ -65,13 +66,15 @@ const twoUnfiledNotesResponse = () => ({
 
 function renderPage() {
   return render(
-    <SnackbarProvider>
-      <AnnouncerProvider>
-        <DateFormatProvider>
-          <NotesPage />
-        </DateFormatProvider>
-      </AnnouncerProvider>
-    </SnackbarProvider>,
+    <MemoryRouter>
+      <SnackbarProvider>
+        <AnnouncerProvider>
+          <DateFormatProvider>
+            <NotesPage />
+          </DateFormatProvider>
+        </AnnouncerProvider>
+      </SnackbarProvider>
+    </MemoryRouter>,
   );
 }
 
@@ -84,7 +87,7 @@ test('renders empty inbox when no notes exist', async () => {
   });
 
   expect(screen.getByText('0')).toBeDefined();
-  expect(screen.getByText('No unfiled notes')).toBeDefined();
+  expect(screen.getByText('No notes yet')).toBeDefined();
 });
 
 test('renders notes list and shows unfiled count', async () => {
@@ -125,7 +128,7 @@ test('inbox is empty when all notes are filed', async () => {
   });
 
   expect(screen.getByText('0')).toBeDefined();
-  expect(screen.getByText('No unfiled notes')).toBeDefined();
+  expect(screen.getByText('No notes yet')).toBeDefined();
 });
 
 // T17: with a non-empty next_cursor the Load more button appears and appends
@@ -270,6 +273,9 @@ test('assigning a contact files the note and removes it from the inbox', async (
   renderPage();
 
   await waitFor(() => expect(screen.getByText('File me onto someone')).toBeDefined());
+  // The inbox view is the Unfiled filter (the page lists every note by default, #2180).
+  fireEvent.click(screen.getByRole('button', { name: 'Unfiled' }));
+  await waitFor(() => expect(screen.getByText('File me onto someone')).toBeDefined());
   expect(screen.getByText('1')).toBeDefined();
 
   // Open the note for editing (the row's icon button).
@@ -297,19 +303,19 @@ test('assigning a contact files the note and removes it from the inbox', async (
 });
 
 // The empty-inbox copy differs from the empty-*filter* copy: once a search
-// or date filter is active, "No unfiled notes" would be misleading -- there
+// or date filter is active, "No notes yet" would be misleading -- there
 // may be plenty of notes, just none matching. This branch was rendered but
 // never asserted.
 test('shows the filtered-empty message once a search excludes every note', async () => {
   mockFetchByUrl({ '/notes?': emptyNotesResponse });
   renderPage();
 
-  await waitFor(() => expect(screen.getByText('No unfiled notes')).toBeDefined());
+  await waitFor(() => expect(screen.getByText('No notes yet')).toBeDefined());
 
   fireEvent.change(screen.getByLabelText('Search...'), { target: { value: 'zzz-no-such-note' } });
 
   await waitFor(() => expect(screen.getByText('No notes match your filters')).toBeDefined());
-  expect(screen.queryByText('No unfiled notes')).toBeNull();
+  expect(screen.queryByText('No notes yet')).toBeNull();
 });
 
 // Error state: a rejected POST must keep the compose dialog open and show an
@@ -339,7 +345,7 @@ test('a failed note creation shows an inline error and keeps the dialog open', a
   );
 
   renderPage();
-  await waitFor(() => expect(screen.getByText('No unfiled notes')).toBeDefined());
+  await waitFor(() => expect(screen.getByText('No notes yet')).toBeDefined());
 
   fireEvent.click(screen.getByText('Add Note'));
   await waitFor(() => expect(screen.getByRole('dialog')).toBeDefined());
@@ -396,11 +402,11 @@ test('the info button opens the explanation popover', async () => {
   mockFetchByUrl({ '/notes?': emptyNotesResponse });
   renderPage();
 
-  await waitFor(() => expect(screen.getByText('No unfiled notes')).toBeDefined());
+  await waitFor(() => expect(screen.getByText('No notes yet')).toBeDefined());
 
   fireEvent.click(screen.getByRole('button', { name: 'More information' }));
 
-  expect(await screen.findByText(/Filed notes leave the inbox/i)).toBeDefined();
+  expect(await screen.findByText(/All your notes are listed here/i)).toBeDefined();
 });
 
 // The From/To date filters wire a picked day into notesParams; the field shows
@@ -409,7 +415,7 @@ test('the from/to date filters accept input', async () => {
   mockFetchByUrl({ '/notes?': emptyNotesResponse });
   renderPage();
 
-  await waitFor(() => expect(screen.getByText('No unfiled notes')).toBeDefined());
+  await waitFor(() => expect(screen.getByText('No notes yet')).toBeDefined());
 
   await pickDate('From', '2026-01-01');
   await pickDate('To', '2026-02-01');
@@ -534,4 +540,157 @@ test('a non-412 failure on note delete shows no conflict dialog and keeps the ed
   await waitFor(() => expect(calls.some((c) => c.method === 'DELETE')).toBe(true));
   expect(screen.queryByText('Changed elsewhere')).toBeNull();
   expect(screen.getByRole('button', { name: 'Save' })).toBeDefined();
+});
+
+// Issue #2180: the Notes page lists ALL notes by default, like Activities,
+// with the contact shown per note and an all / unfiled filter. The server
+// returns unfiled-only unless ?scope=all is sent.
+const filedNote = {
+  ID: 10,
+  content: 'Linked to Ada',
+  date: '2026-01-03T00:00:00Z',
+  contact_id: 5,
+  contact: { ID: 5, firstname: 'Ada', lastname: 'Lovelace' },
+  CreatedAt: '2026-01-03T00:00:00Z',
+  UpdatedAt: '2026-01-03T00:00:00Z',
+};
+const unfiledNote = {
+  ID: 11,
+  content: 'Nobody yet',
+  date: '2026-01-04T00:00:00Z',
+  contact_id: null,
+  contact: { ID: 0 },
+  CreatedAt: '2026-01-04T00:00:00Z',
+  UpdatedAt: '2026-01-04T00:00:00Z',
+};
+
+function mockScopedNotes(urls: string[]) {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      urls.push(url);
+      if (!url.includes('/notes')) throw new Error(`unexpected fetch: ${url}`);
+      const all = url.includes('scope=all');
+      return {
+        ok: true,
+        json: async () => ({
+          notes: all ? [filedNote, unfiledNote] : [unfiledNote],
+          next_cursor: '',
+          limit: 25,
+          total: all ? 2 : 1,
+        }),
+      };
+    }),
+  );
+}
+
+test('lists filed and unfiled notes by default and shows the contact as a link', async () => {
+  const urls: string[] = [];
+  mockScopedNotes(urls);
+  renderPage();
+
+  await waitFor(() => expect(screen.getByText('Linked to Ada')).toBeDefined());
+  expect(screen.getByText('Nobody yet')).toBeDefined();
+  expect(urls[0]).toContain('scope=all');
+  expect(urls[0]).toContain('include=contacts');
+
+  const link = screen.getByRole('link', { name: 'Ada Lovelace' });
+  expect(link.getAttribute('href')).toBe('/contacts/5');
+  // Only the filed note has a contact chip.
+  expect(screen.getAllByRole('link')).toHaveLength(1);
+  // The header count is the server total for the active filter.
+  expect(screen.getByText('2')).toBeDefined();
+});
+
+test('the Unfiled filter hides contact-linked notes and the count follows it', async () => {
+  const urls: string[] = [];
+  mockScopedNotes(urls);
+  renderPage();
+  await waitFor(() => expect(screen.getByText('Linked to Ada')).toBeDefined());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Unfiled' }));
+
+  await waitFor(() => expect(screen.queryByText('Linked to Ada')).toBeNull());
+  expect(screen.getByText('Nobody yet')).toBeDefined();
+  expect(screen.getByText('1')).toBeDefined();
+  expect(urls[urls.length - 1]).not.toContain('scope=all');
+
+  fireEvent.click(screen.getByRole('button', { name: 'All notes' }));
+  await waitFor(() => expect(screen.getByText('Linked to Ada')).toBeDefined());
+  expect(screen.getByText('2')).toBeDefined();
+});
+
+test('the empty state names the active filter', async () => {
+  mockFetchByUrl({
+    '/notes?': () => ({ notes: [], next_cursor: '', limit: 25, total: 0 }),
+  });
+  renderPage();
+
+  await waitFor(() => expect(screen.getByText('No notes yet')).toBeDefined());
+  fireEvent.click(screen.getByRole('button', { name: 'Unfiled' }));
+  await waitFor(() => expect(screen.getByText('No unfiled notes')).toBeDefined());
+});
+
+test('re-clicking the active filter keeps it selected', async () => {
+  const urls: string[] = [];
+  mockScopedNotes(urls);
+  renderPage();
+  await waitFor(() => expect(screen.getByText('Linked to Ada')).toBeDefined());
+
+  const all = screen.getByRole('button', { name: 'All notes' });
+  expect(all.getAttribute('aria-pressed')).toBe('true');
+  fireEvent.click(all);
+  expect(all.getAttribute('aria-pressed')).toBe('true');
+  expect(urls).toHaveLength(1);
+});
+
+test('a contact with no last name shows the first name only', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        notes: [{ ...filedNote, contact: { ID: 5, firstname: 'Cher' } }],
+        next_cursor: '',
+        limit: 25,
+        total: 1,
+      }),
+    })),
+  );
+  renderPage();
+
+  const link = await screen.findByRole('link', { name: 'Cher' });
+  expect(link.getAttribute('href')).toBe('/contacts/5');
+});
+
+test('editing a contact-linked note keeps its contact and saves the same contact id', async () => {
+  const putBodies: string[] = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, options?: { method?: string; body?: string }) => {
+      if (options?.method === 'PUT') {
+        putBodies.push(options.body ?? '');
+        return { ok: true, json: async () => ({ message: 'ok' }) };
+      }
+      if (url.includes('/contacts?')) {
+        return { ok: true, json: async () => ({ contacts: [] }) };
+      }
+      if (url.includes('/notes')) {
+        return {
+          ok: true,
+          json: async () => ({ notes: [filedNote], next_cursor: '', limit: 25, total: 1 }),
+        };
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    }),
+  );
+  renderPage();
+  await waitFor(() => expect(screen.getByText('Linked to Ada')).toBeDefined());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Edit Note' }));
+  await waitFor(() => expect(screen.getByRole('dialog')).toBeDefined());
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  await waitFor(() => expect(putBodies.length).toBe(1));
+  expect(JSON.parse(putBodies[0]).contact_id).toBe(5);
 });

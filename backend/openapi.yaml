@@ -1668,8 +1668,13 @@ paths:
         Points users.self_contact_vcard_uid at one of the caller's own contacts
         (T90), or clears it with a null/empty vcard_uid. A non-empty vcard_uid
         must resolve to a non-deleted contact owned by the caller — 404
-        otherwise. Setting it is a pointer move only: the previously linked
-        contact is neither deleted nor modified.
+        otherwise. Neither the previous nor the new contact is deleted.
+        Issues #2193/#2192: marking a contact also sets its stored ambient flag
+        (never overdue, score counts as up to date), and the server remembers
+        that marking turned it on. Clearing the link, or moving it to another
+        contact, turns ambient off on the previous "Me" contact only when marking
+        had turned it on; an ambient flag that was already on, or that the user
+        changed by hand while marked (contact PUT), is left alone.
       requestBody:
         required: true
         content:
@@ -5291,7 +5296,7 @@ paths:
                 $ref: "#/components/schemas/Error"
   /notes:
     get:
-      summary: List the user's unassigned notes (no contact)
+      summary: List the user's notes (unfiled by default; scope=all for every note)
       operationId: listUnassignedNotes
       tags:
         - Notes
@@ -5327,6 +5332,22 @@ paths:
           in: query
           description: Inclusive YYYY-MM-DD upper bound on note date.
           schema: { type: string, format: date }
+        - name: scope
+          in: query
+          description: >
+            unfiled (default) lists only notes with no contact; all lists every
+            note of the caller, filed or not (issue #2180). Any other value is
+            treated as unfiled. Always bounded by the caller's user_id, and
+            ignored by the ?since= change feed, which mirrors unassigned notes
+            only. total follows the active scope.
+          schema: { type: string, enum: [unfiled, all], default: unfiled }
+        - name: include
+          in: query
+          description: >
+            contacts fills each note's nested contact with id, firstname,
+            lastname and photo thumbnail (the caller's own contacts only).
+            Without it the nested contact is the empty object.
+          schema: { type: string, enum: [contacts] }
       responses:
         "401":
           description: Not authenticated (missing or invalid session cookie or full-scope bearer token).

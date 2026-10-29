@@ -210,8 +210,18 @@ func GetUnassignedNotes(c *gin.Context) {
 	fromDateStr := c.Query("fromDate")
 	toDateStr := c.Query("toDate")
 
+	// Issue #2180: ?scope=all lists every note of the caller, filed or not.
+	// The default (and any unrecognised value) stays unfiled-only so existing
+	// clients keep their response; ?since= above always mirrors unassigned
+	// notes only. Ownership is the notes.user_id predicate in both cases.
+	allScope := c.Query("scope") == "all"
+	includeContacts := c.Query("include") == "contacts"
+
 	baseQuery := db.Model(&models.Note{}).
-		Where("notes.user_id = ? AND contact_id IS NULL", userID)
+		Where("notes.user_id = ?", userID)
+	if !allScope {
+		baseQuery = baseQuery.Where("notes.contact_id IS NULL")
+	}
 
 	// Apply date filters
 	if fromDateStr != "" {
@@ -266,7 +276,15 @@ func GetUnassignedNotes(c *gin.Context) {
 		baseQuery = baseQuery.Where(pred, t, idv)
 	}
 
-	if err := cursorOrderBy(baseQuery, "notes", desc).Limit(params.Limit + 1).Find(&notes).Error; err != nil {
+	listQuery := cursorOrderBy(baseQuery, "notes", desc).Limit(params.Limit + 1)
+	if includeContacts {
+		// Display fields only, and only the caller's own contacts: a note row
+		// pointing at a foreign contact id must not leak that contact's name.
+		listQuery = listQuery.Preload("Contact", func(db *gorm.DB) *gorm.DB {
+			return db.Select("ID", "Firstname", "Lastname", "PhotoThumbnail").Where("user_id = ?", userID)
+		})
+	}
+	if err := listQuery.Find(&notes).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve unassigned notes").WithError(err))
 		return
 	}
