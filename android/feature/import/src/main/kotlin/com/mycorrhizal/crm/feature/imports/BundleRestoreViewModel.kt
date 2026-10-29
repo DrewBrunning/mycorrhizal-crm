@@ -10,6 +10,7 @@ import com.mycorrhizal.crm.model.network.SourceImportPreviewResponse
 import com.mycorrhizal.crm.model.network.SourceImportResult
 import com.mycorrhizal.crm.model.network.SourceImportStatus
 import com.mycorrhizal.crm.network.ApiClient
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.toApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -35,7 +36,9 @@ data class BundleRestoreUiState(
     /** True while a server phase is running (mapping the bundle, or importing it). */
     val isImporting: Boolean = false,
     @StringRes val errorRes: Int? = null,
-    val error: String? = null
+    val error: ApiError? = null,
+    /** Server-reported job failure text (not an error envelope). */
+    val errorText: String? = null
 )
 
 /**
@@ -61,7 +64,8 @@ class BundleRestoreViewModel @Inject constructor(private val apiClient: ApiClien
         _uiState.update {
             it.copy(
                 errorRes = R.string.bundle_restore_error_too_large,
-                error = null
+                error = null,
+                errorText = null
             )
         }
     }
@@ -72,7 +76,8 @@ class BundleRestoreViewModel @Inject constructor(private val apiClient: ApiClien
             _uiState.update {
                 it.copy(
                     errorRes = R.string.bundle_restore_error_invalid_file,
-                    error = null
+                    error = null,
+                    errorText = null
                 )
             }
             return
@@ -89,7 +94,8 @@ class BundleRestoreViewModel @Inject constructor(private val apiClient: ApiClien
                 isImporting = true,
                 fileName = fileName,
                 errorRes = null,
-                error = null
+                error = null,
+                errorText = null
             )
         }
         viewModelScope.launch {
@@ -98,17 +104,17 @@ class BundleRestoreViewModel @Inject constructor(private val apiClient: ApiClien
                     _uiState.update { it.copy(totals = upload.totals) }
                     prepare(upload.sessionId)
                 },
-                onFailure = { error -> failToPick(error.toApiError().displayMessage) }
+                onFailure = { error -> failToPick(error.toApiError()) }
             )
         }
     }
 
     private suspend fun prepare(sessionId: String) {
         val started = apiClient.startMycorrhizalFetch(sessionId)
-        started.exceptionOrNull()?.let { return failToPick(it.toApiError().displayMessage) }
+        started.exceptionOrNull()?.let { return failToPick(it.toApiError()) }
         val status = pollUntil(sessionId, terminal = PREPARED_PHASES)
         if (status == null || status.phase != PHASE_READY) {
-            return failToPick(status?.error)
+            return failToPick(text = status?.error)
         }
         apiClient.getMycorrhizalImportPreview(sessionId).fold(
             onSuccess = { preview ->
@@ -125,7 +131,7 @@ class BundleRestoreViewModel @Inject constructor(private val apiClient: ApiClien
                     )
                 }
             },
-            onFailure = { error -> failToPick(error.toApiError().displayMessage) }
+            onFailure = { error -> failToPick(error.toApiError()) }
         )
     }
 
@@ -156,7 +162,8 @@ class BundleRestoreViewModel @Inject constructor(private val apiClient: ApiClien
             it.copy(
                 step = BundleRestoreStep.WORKING,
                 isImporting = true,
-                error = null
+                error = null,
+                errorText = null
             )
         }
         viewModelScope.launch {
@@ -171,7 +178,7 @@ class BundleRestoreViewModel @Inject constructor(private val apiClient: ApiClien
             )
             started.exceptionOrNull()?.let {
                 return@launch failToReview(
-                    it.toApiError().displayMessage
+                    it.toApiError()
                 )
             }
             val status = pollUntil(preview.sessionId, terminal = FINISHED_PHASES)
@@ -184,7 +191,7 @@ class BundleRestoreViewModel @Inject constructor(private val apiClient: ApiClien
                     )
                 }
             } else {
-                failToReview(status?.error)
+                failToReview(text = status?.error)
             }
         }
     }
@@ -197,7 +204,7 @@ class BundleRestoreViewModel @Inject constructor(private val apiClient: ApiClien
     }
 
     fun onErrorShown() {
-        _uiState.update { it.copy(errorRes = null, error = null) }
+        _uiState.update { it.copy(errorRes = null, error = null, errorText = null) }
     }
 
     /**
@@ -218,26 +225,40 @@ class BundleRestoreViewModel @Inject constructor(private val apiClient: ApiClien
         return null
     }
 
-    private fun failToPick(message: String?) {
+    private fun failToPick(error: ApiError? = null, text: String? = null) {
         _uiState.update {
             it.copy(
                 step = BundleRestoreStep.PICK,
                 isImporting = false,
                 preview = null,
                 totals = null,
-                errorRes = if (message.isNullOrBlank()) R.string.bundle_restore_error_failed else null,
-                error = message?.takeIf { m -> m.isNotBlank() }
+                errorRes = if (error == null &&
+                    text.isNullOrBlank()
+                ) {
+                    R.string.bundle_restore_error_failed
+                } else {
+                    null
+                },
+                error = error,
+                errorText = text?.takeIf { m -> m.isNotBlank() }
             )
         }
     }
 
-    private fun failToReview(message: String?) {
+    private fun failToReview(error: ApiError? = null, text: String? = null) {
         _uiState.update {
             it.copy(
                 step = BundleRestoreStep.REVIEW,
                 isImporting = false,
-                errorRes = if (message.isNullOrBlank()) R.string.bundle_restore_error_failed else null,
-                error = message?.takeIf { m -> m.isNotBlank() }
+                errorRes = if (error == null &&
+                    text.isNullOrBlank()
+                ) {
+                    R.string.bundle_restore_error_failed
+                } else {
+                    null
+                },
+                error = error,
+                errorText = text?.takeIf { m -> m.isNotBlank() }
             )
         }
     }

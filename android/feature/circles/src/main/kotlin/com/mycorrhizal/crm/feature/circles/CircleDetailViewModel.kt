@@ -9,6 +9,7 @@ import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.CircleMember
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -27,7 +28,7 @@ data class CircleDetailUiState(
     val contactsByUid: Map<String, ContactSummary> = emptyMap(),
     val isLoading: Boolean = false,
     val removingUid: String? = null,
-    val error: String? = null,
+    val error: ApiError? = null,
     @StringRes val errorRes: Int? = null
 )
 
@@ -71,7 +72,7 @@ class CircleDetailViewModel @Inject constructor(
                     resolveMemberNames(detail.members)
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isLoading = false, error = error) }
                 }
             )
         }
@@ -103,7 +104,7 @@ class CircleDetailViewModel @Inject constructor(
                     resolveMemberNames(listOf(member))
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(error = error.displayMessage) }
+                    _uiState.update { it.copy(error = error) }
                 }
             )
         }
@@ -123,7 +124,7 @@ class CircleDetailViewModel @Inject constructor(
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(removingUid = null, error = error.displayMessage) }
+                    _uiState.update { it.copy(removingUid = null, error = error) }
                 }
             )
         }

@@ -176,6 +176,7 @@ import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.ScreenTitle
 import com.mycorrhizal.crm.ui.components.WriteConflictDialog
 import com.mycorrhizal.crm.ui.components.healthBandColor
+import com.mycorrhizal.crm.ui.components.localizedMessage
 import com.mycorrhizal.crm.ui.components.scoreReasonText
 import com.mycorrhizal.crm.ui.components.targetStatusBand
 import com.mycorrhizal.crm.ui.components.targetStatusLabel
@@ -396,8 +397,9 @@ fun ContactDetailScreen(
     // the EmptyState branch already shows when there is no contact to render. For a loaded
     // contact the error had no surface at all — show it as a snackbar there (mirroring
     // ContactFormScreen/ContactListScreen), and leave the EmptyState to handle load failures.
-    LaunchedEffect(state.error) {
-        val message = state.error
+    val errorMessage = state.error?.localizedMessage()
+    LaunchedEffect(errorMessage) {
+        val message = errorMessage
         if (message != null && state.contact != null) {
             snackbarHostState.showSnackbar(message)
             viewModel.onErrorShown()
@@ -798,7 +800,13 @@ fun ContactDetailScreen(
                 state.isLoading && state.contact == null -> LoadingSkeleton()
 
                 state.contact == null && (state.errorRes != null || state.error != null) ->
-                    EmptyState(state.errorRes?.let { stringResource(it) } ?: state.error.orEmpty())
+                    EmptyState(
+                        state.errorRes?.let {
+                            stringResource(
+                                it
+                            )
+                        } ?: state.error?.localizedMessage().orEmpty()
+                    )
 
                 state.contact == null -> EmptyState(stringResource(R.string.contact_not_found))
 

@@ -19,7 +19,9 @@ import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import com.mycorrhizal.crm.data.passkey.PasskeyIssue
 import com.mycorrhizal.crm.data.passkey.SecondFactorPrompt
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
+import java.net.UnknownHostException
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -58,6 +60,14 @@ class LoginScreenTest {
                 )
             }
         }
+    }
+
+    // Issue #2106: the screen resolves the typed error at composition time.
+    @Test
+    @Config(qualifiers = "de")
+    fun `a network failure is shown in German`() {
+        setContent(uiState = LoginUiState(error = ApiError.Network(UnknownHostException())))
+        composeTestRule.onNodeWithText("Keine Verbindung").assertIsDisplayed()
     }
 
     @Test

@@ -116,4 +116,11 @@ class LoginWithApiTokenUseCaseTest {
         assertTrue(result is LoginWithApiTokenUseCase.Result.Failure)
         assertEquals("Login failed", (result as LoginWithApiTokenUseCase.Result.Failure).message)
     }
+
+    @Test
+    fun `a failure keeps the cause so the UI can type it`() {
+        val cause = IllegalStateException("boom")
+        assertEquals(cause, LoginUseCase.Result.Failure("m", cause).cause)
+        assertEquals(cause, LoginWithApiTokenUseCase.Result.Failure("t", cause).cause)
+    }
 }

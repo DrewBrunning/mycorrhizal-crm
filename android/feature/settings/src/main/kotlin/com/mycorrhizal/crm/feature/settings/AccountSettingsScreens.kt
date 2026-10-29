@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.localizedMessage
 
 /**
  * Settings > Account (issue #1759): who you are signed in as, the server, and the security
@@ -183,7 +184,7 @@ fun ChangePasswordContent(
         }
         state.passwordError?.let { error ->
             SettingsHelperText(
-                text = error,
+                text = error.localizedMessage(),
                 color = androidx.compose.material3.MaterialTheme.colorScheme.error,
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
             )

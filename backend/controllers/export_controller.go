@@ -811,7 +811,7 @@ func ExportContactsAsVCF(c *gin.Context, photoDir string) {
 		Msg("VCF export completed successfully")
 }
 
-// ExportContactsAsJSContact exports all user contacts as a single JSON
+// ExportContactsAsJSContact exports all user contacts (or one, via ?vcard_uid=) as a single JSON
 // document: a JSON array of RFC 9553 JSContact Card objects (one per
 // contact) — the "Card set" option  task list, chosen over a
 // single merged document since each contact is an independent Card with its
@@ -832,11 +832,6 @@ func ExportContactsAsJSContact(c *gin.Context) {
 		return
 	}
 
-	// Issue #498: refuse a pathologically large export before buffering.
-	if !guardExportContactCount(c, db, userID, exportOpJSContact) {
-		return
-	}
-
 	// Same T9 field-picker query params as ExportContactsAsVCF; never
 	// applied to ExportData (the user's own full CSV backup).
 	sel, ok := parseExportFieldSelection(c, exportOpJSContact)
@@ -844,8 +839,18 @@ func ExportContactsAsJSContact(c *gin.Context) {
 		return
 	}
 
+	// Optionally scope to a single VCardUID (issue #2196), mirroring
+	// ExportContactsAsVCF: owner-scoped by user_id, so an unknown or
+	// other-user uid yields an empty array.
+	query := db.Where("user_id = ?", userID)
+	if vcardUID := strings.TrimSpace(c.Query("vcard_uid")); vcardUID != "" {
+		query = query.Where("vcard_uid = ?", vcardUID)
+	} else if !guardExportContactCount(c, db, userID, exportOpJSContact) {
+		// Issue #498: only the unscoped "export everything" path is unbounded.
+		return
+	}
 	var contacts []models.Contact
-	if err := db.Where("user_id = ?", userID).
+	if err := query.
 		Order("firstname ASC, lastname ASC").
 		Find(&contacts).Error; err != nil {
 		abortExportError(c, log, "export:jscontact", "database", "Failed to fetch contacts for JSContact export", err)

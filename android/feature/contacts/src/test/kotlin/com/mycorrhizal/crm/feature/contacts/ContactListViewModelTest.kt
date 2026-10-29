@@ -336,7 +336,7 @@ class ContactListViewModelTest {
 
         val state = viewModel.uiState.value
         assertFalse(state.isLoading)
-        assertEquals("Server error (500)", state.error)
+        assertTrue(state.error is ApiError.Server)
     }
 
     @Test
@@ -1254,7 +1254,7 @@ class ContactListViewModelTest {
         advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.contacts.first().isFavorite)
-        assertEquals("Server error (500)", viewModel.uiState.value.error)
+        assertTrue(viewModel.uiState.value.error is ApiError.Server)
     }
 
     // --- T90 / issue #831: "Mark as Me" self-contact pointer (web parity) ---
@@ -1635,7 +1635,7 @@ class ContactListViewModelTest {
         advanceUntilIdle()
 
         assertEquals(setOf(1), vm.uiState.value.selected)
-        assertEquals("boom", vm.uiState.value.error)
+        assertEquals("boom", vm.uiState.value.error?.message)
     }
 
     // --- Issue #2140: bulk field edit ----------------------------------------

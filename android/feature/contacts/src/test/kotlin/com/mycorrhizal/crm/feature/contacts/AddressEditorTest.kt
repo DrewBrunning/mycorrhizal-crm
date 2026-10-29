@@ -16,6 +16,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import com.mycorrhizal.crm.model.network.Address
 import com.mycorrhizal.crm.model.network.AddressComponent
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.components.AddressEditor
 import com.mycorrhizal.crm.ui.components.AddressGeocodeState
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
@@ -397,7 +398,9 @@ class AddressEditorTest {
             listOf(Address(id = "a1")),
             geocode = AddressGeocodeState(
                 canGeocode = true,
-                errors = mapOf("a1" to "geocoding is not enabled on this server")
+                errors = mapOf(
+                    "a1" to ApiError.Client(400, "geocoding is not enabled on this server")
+                )
             )
         )
 

@@ -110,6 +110,10 @@ fun Throwable.toApiError(): ApiError = when (this) {
     else -> ApiError.Unknown(this)
 }
 
+/** [toApiError] for a [Result.exceptionOrNull] that may be absent. */
+fun Throwable?.toApiErrorOrUnknown(): ApiError =
+    (this ?: IllegalStateException("Unknown error")).toApiError()
+
 /** Folds a [Result] onto success/error callbacks, converting failures to [ApiError]. */
 fun <T> Result<T>.foldApiError(onSuccess: (T) -> Unit, onError: (ApiError) -> Unit) {
     fold(
@@ -117,6 +121,13 @@ fun <T> Result<T>.foldApiError(onSuccess: (T) -> Unit, onError: (ApiError) -> Un
         onFailure = { e -> onError(e.toApiError()) }
     )
 }
+
+/**
+ * Body of the client-built 401 for a two-factor step with no pending login. It stays an
+ * [ApiError.Client] 401 so callers treating a 401 as "challenge expired" keep working;
+ * the UI recognises the body to word it specifically.
+ */
+const val NO_PENDING_TWO_FACTOR_BODY = "No pending two-factor login found. Please sign in again."
 
 private const val INSUFFICIENT_STORAGE = 507
 

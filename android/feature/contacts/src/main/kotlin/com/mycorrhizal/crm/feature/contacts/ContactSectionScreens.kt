@@ -72,6 +72,7 @@ import com.mycorrhizal.crm.ui.components.LabelledDropdown
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.ScreenTitle
 import com.mycorrhizal.crm.ui.components.WriteConflictDialog
+import com.mycorrhizal.crm.ui.components.localizedMessage
 import com.mycorrhizal.crm.ui.components.typeOptionLabel
 
 private val SkillsKinds = listOf("expertise", "hobby", "interest")
@@ -130,7 +131,7 @@ private fun SectionListScaffold(
                 state.isLoading && state.record == null -> LoadingSkeleton()
 
                 state.record == null -> EmptyState(
-                    state.error ?: stringResource(R.string.contact_not_found)
+                    state.error?.localizedMessage() ?: stringResource(R.string.contact_not_found)
                 )
 
                 else -> content()
@@ -138,7 +139,7 @@ private fun SectionListScaffold(
         }
     }
 
-    val message = state.errorRes?.let { stringResource(it) } ?: state.error
+    val message = state.errorRes?.let { stringResource(it) } ?: state.error?.localizedMessage()
     if (state.record != null) {
         message?.let {
             LaunchedEffect(it) {

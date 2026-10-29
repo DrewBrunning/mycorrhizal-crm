@@ -186,7 +186,7 @@ class VcfImportViewModelTest {
         vm.onFilePicked("contacts.vcf", byteArrayOf(1))
         advanceUntilIdle()
 
-        assertEquals("bad vcf", vm.uiState.value.error)
+        assertEquals("bad vcf", vm.uiState.value.error?.message)
         assertEquals(VcfImportStep.PICK, vm.uiState.value.step)
     }
 
@@ -250,7 +250,7 @@ class VcfImportViewModelTest {
         vm.confirm()
         advanceUntilIdle()
 
-        assertEquals("server error", vm.uiState.value.error)
+        assertEquals("server error", vm.uiState.value.error?.message)
         assertEquals(VcfImportStep.PREVIEW, vm.uiState.value.step)
     }
 }

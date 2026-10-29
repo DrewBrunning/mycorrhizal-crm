@@ -39,7 +39,7 @@ data class ContactSectionsUiState(
     /** ADR 0008: the record changed elsewhere since it loaded (PUT rejected with 412). */
     val conflict: Boolean = false,
     @StringRes val errorRes: Int? = null,
-    val error: String? = null,
+    val error: ApiError? = null,
     /** The signed-in user's date-format preference for the anniversary list. */
     val dateFormat: String? = null,
     /** Issue #832: which extended fields the settings screen has enabled. */
@@ -84,7 +84,7 @@ class ContactSectionsViewModel @Inject constructor(
                     _uiState.update { it.copy(record = record, isLoading = false) }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isLoading = false, error = error) }
                 }
             )
         }
@@ -168,7 +168,7 @@ class ContactSectionsViewModel @Inject constructor(
                         if (error is ApiError.PreconditionFailed) {
                             it.copy(isSaving = false, conflict = true)
                         } else {
-                            it.copy(isSaving = false, error = error.displayMessage)
+                            it.copy(isSaving = false, error = error)
                         }
                     }
                 }

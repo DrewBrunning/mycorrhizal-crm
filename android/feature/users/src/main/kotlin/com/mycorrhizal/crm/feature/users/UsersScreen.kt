@@ -55,12 +55,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.AdminUser
 import com.mycorrhizal.crm.model.network.AdminUserCreateInput
 import com.mycorrhizal.crm.model.network.AdminUserUpdateInput
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.RefreshableContent
+import com.mycorrhizal.crm.ui.components.localizedMessageOrServerText
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -168,7 +170,8 @@ fun UsersScreen(onBack: () -> Unit, viewModel: UsersViewModel = hiltViewModel())
     // Errors that surface while no dialog is open (e.g. a failed load, or a
     // failed delete whose dialog already closed) land in the snackbar. Errors
     // inside an open dialog are rendered inline in the dialog itself.
-    state.error?.let { message ->
+    state.error?.let { error ->
+        val message = error.localizedMessageOrServerText()
         if (!editorOpen && deletingUser == null && resettingTwoFactorUser == null) {
             LaunchedEffect(message) {
                 snackbarHostState.showSnackbar(message)
@@ -225,9 +228,9 @@ fun UsersScreen(onBack: () -> Unit, viewModel: UsersViewModel = hiltViewModel())
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(stringResource(R.string.users_delete_body, user.username.orEmpty()))
-                    state.error?.let { message ->
+                    state.error?.let { error ->
                         Text(
-                            text = message,
+                            text = error.localizedMessageOrServerText(),
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
@@ -289,9 +292,9 @@ fun UsersScreen(onBack: () -> Unit, viewModel: UsersViewModel = hiltViewModel())
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    state.error?.let { message ->
+                    state.error?.let { error ->
                         Text(
-                            text = message,
+                            text = error.localizedMessageOrServerText(),
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
@@ -417,7 +420,7 @@ private fun UserRow(
 internal fun UserEditorDialog(
     initial: AdminUser?,
     isSaving: Boolean,
-    error: String?,
+    error: ApiError?,
     onConfirm: (username: String, email: String, password: String, isAdmin: Boolean) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -433,9 +436,9 @@ internal fun UserEditorDialog(
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                error?.let { message ->
+                error?.let { failure ->
                     Text(
-                        text = message,
+                        text = failure.localizedMessageOrServerText(),
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }

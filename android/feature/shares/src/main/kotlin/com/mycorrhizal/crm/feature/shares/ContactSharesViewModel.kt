@@ -7,6 +7,7 @@ import com.mycorrhizal.crm.model.network.ContactShare
 import com.mycorrhizal.crm.model.network.ImportPreviewResponse
 import com.mycorrhizal.crm.model.network.ImportRowPreview
 import com.mycorrhizal.crm.model.network.RowImportAction
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.network.toApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,13 +26,13 @@ data class ContactSharesUiState(
     /** Other party's user ID (stringified) -> username, merged from both lists. */
     val usernames: Map<String, String> = emptyMap(),
     val isLoading: Boolean = false,
-    val error: String? = null,
+    val error: ApiError? = null,
     val selectedTab: SharesTab = SharesTab.INCOMING,
     // --- Accept preview flow (M15: accept is preview-then-confirm, never a one-tap button) ---
     /** The share whose preview is currently open; null when no accept flow is active. */
     val acceptingShare: ContactShare? = null,
     val previewLoading: Boolean = false,
-    val previewError: String? = null,
+    val previewError: ApiError? = null,
     val preview: ImportPreviewResponse? = null,
     /** Per-row action for row 0 (a share is always exactly one contact). */
     val confirmAction: String = "add",
@@ -67,11 +68,13 @@ class ContactSharesViewModel @Inject constructor(
             val errorMessage = when {
                 incoming == null && outgoing == null ->
                     (incomingResult.exceptionOrNull() ?: outgoingResult.exceptionOrNull())
-                        ?.toApiError()?.displayMessage ?: "Failed to load shares"
+                        ?.toApiError() ?: ApiError.Unknown(
+                        IllegalStateException("Failed to load shares")
+                    )
 
-                incoming == null -> incomingResult.exceptionOrNull()?.toApiError()?.displayMessage
+                incoming == null -> incomingResult.exceptionOrNull()?.toApiError()
 
-                outgoing == null -> outgoingResult.exceptionOrNull()?.toApiError()?.displayMessage
+                outgoing == null -> outgoingResult.exceptionOrNull()?.toApiError()
 
                 else -> null
             }
@@ -128,7 +131,7 @@ class ContactSharesViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             previewLoading = false,
-                            previewError = error.displayMessage
+                            previewError = error
                         )
                     }
                 }
@@ -170,7 +173,7 @@ class ContactSharesViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             confirming = false,
-                            previewError = error.displayMessage
+                            previewError = error
                         )
                     }
                 }
@@ -221,7 +224,7 @@ class ContactSharesViewModel @Inject constructor(
                         it.copy(
                             declining = false,
                             declinePendingId = null,
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }

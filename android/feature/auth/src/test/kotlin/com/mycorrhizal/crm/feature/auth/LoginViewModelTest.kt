@@ -315,14 +315,15 @@ class LoginViewModelTest {
     ) {
         val h = harness()
         coEvery { h.authRepository.login(any(), any()) } returns Result.failure(
-            Exception("Invalid credentials")
+            ApiError.Client(401, "Invalid credentials")
         )
 
         submit(h, password = "wrong")
         advanceUntilIdle()
 
-        // LoginUseCase maps the failure to its message.
-        assertEquals("Invalid credentials", h.viewModel.uiState.value.error)
+        // A rejected credential has its own localized copy, not the server text.
+        assertEquals(R.string.login_error_invalid_credentials, h.viewModel.uiState.value.errorRes)
+        assertNull(h.viewModel.uiState.value.error)
         assertFalse(h.viewModel.uiState.value.isLoading)
     }
 
@@ -648,7 +649,7 @@ class LoginViewModelTest {
         advanceUntilIdle()
 
         assertTrue(h.viewModel.uiState.value.twoFactorStep)
-        assertEquals("Too many failed login attempts", h.viewModel.uiState.value.error)
+        assertEquals("Too many failed login attempts", h.viewModel.uiState.value.error?.message)
     }
 
     @Test
@@ -754,7 +755,7 @@ class LoginViewModelTest {
         advanceUntilIdle()
 
         assertFalse(h.viewModel.uiState.value.twoFactorStep)
-        assertEquals("Invalid username or password", h.viewModel.uiState.value.error)
+        assertEquals(R.string.login_error_invalid_credentials, h.viewModel.uiState.value.errorRes)
     }
 
     // N8 (#814): the whole flow must finish before LoggedIn is emitted (the
@@ -843,7 +844,10 @@ class LoginViewModelTest {
 
         val state = h.viewModel.uiState.value
         assertTrue(state.twoFactorStep)
-        assertEquals("Too many failed login attempts. Please try again later.", state.error)
+        assertEquals(
+            "Too many failed login attempts. Please try again later.",
+            state.error?.message
+        )
         assertFalse(state.isLoading)
     }
 
@@ -945,13 +949,13 @@ class LoginViewModelTest {
     ) {
         val h = harness()
         coEvery { h.authRepository.login("alice", any()) } returnsMany listOf(
-            Result.failure(Exception("Invalid credentials")),
+            Result.failure(ApiError.Client(401, "Invalid credentials")),
             Result.success(LoginOutcome.SessionEstablished)
         )
 
         submit(h, password = "first-try")
         advanceUntilIdle()
-        assertEquals("Invalid credentials", h.viewModel.uiState.value.error)
+        assertEquals(R.string.login_error_invalid_credentials, h.viewModel.uiState.value.errorRes)
         assertFalse(h.viewModel.uiState.value.isLoading)
 
         // Re-authentication: the machine must not wedge on the failure — a

@@ -14,6 +14,7 @@ import com.mycorrhizal.crm.model.network.RelationshipEdgeSensitivities
 import com.mycorrhizal.crm.model.network.RelationshipEdgeStatuses
 import com.mycorrhizal.crm.model.network.RelationshipEdgeTypes
 import com.mycorrhizal.crm.model.network.ThinContactInput
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -38,7 +39,7 @@ data class RelationshipsUiState(
     val contactSearchQuery: String = "",
     val contactSearchResults: List<ContactSummary> = emptyList(),
     val contactSearchLoading: Boolean = false,
-    val error: String? = null,
+    val error: ApiError? = null,
     @StringRes val errorRes: Int? = null
 ) {
     val confirmedEdges: List<RelationshipEdge>
@@ -103,7 +104,7 @@ class RelationshipsViewModel @Inject constructor(
                     resolveOtherParties(edges, uid)
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isLoading = false, error = error) }
                 }
             )
         }
@@ -185,7 +186,7 @@ class RelationshipsViewModel @Inject constructor(
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(error = error.displayMessage) }
+                    _uiState.update { it.copy(error = error) }
                 }
             )
         }
@@ -227,7 +228,7 @@ class RelationshipsViewModel @Inject constructor(
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(updatingId = null, error = error.displayMessage) }
+                    _uiState.update { it.copy(updatingId = null, error = error) }
                 }
             )
         }
@@ -294,7 +295,7 @@ class RelationshipsViewModel @Inject constructor(
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(acceptingId = null, error = error.displayMessage) }
+                    _uiState.update { it.copy(acceptingId = null, error = error) }
                 }
             )
         }
@@ -312,7 +313,7 @@ class RelationshipsViewModel @Inject constructor(
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(deletingId = null, error = error.displayMessage) }
+                    _uiState.update { it.copy(deletingId = null, error = error) }
                 }
             )
         }

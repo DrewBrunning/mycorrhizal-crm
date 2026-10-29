@@ -137,7 +137,7 @@ class CadenceViewModelTest {
         val vm = viewModel()
         advanceUntilIdle()
 
-        assertEquals("boom", vm.uiState.value.error)
+        assertEquals("boom", vm.uiState.value.error?.message)
     }
 
     @Test
@@ -291,7 +291,7 @@ class CadenceViewModelTest {
         vm.update("p1", 15, emptyList())
         advanceUntilIdle()
 
-        assertEquals("conflict", vm.uiState.value.error)
+        assertEquals("conflict", vm.uiState.value.error?.message)
         assertFalse(vm.uiState.value.isMutating)
         assertEquals("p1", vm.uiState.value.policy?.id)
     }

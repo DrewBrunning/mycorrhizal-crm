@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.GeoPulseRepository
 import com.mycorrhizal.crm.model.network.GeoPulseConfigInput
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.toApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -20,15 +21,20 @@ import kotlinx.coroutines.launch
  * Outcome of "Test connection". [stage] is the server's `reachability|auth|ok` diagnosis; an
  * `ok:false` result is a successful diagnosis, not an application error.
  */
-data class GeoPulseTestOutcome(val ok: Boolean, val stage: String?, val message: String?)
+data class GeoPulseTestOutcome(
+    val ok: Boolean,
+    val stage: String?,
+    val message: String?,
+    val error: ApiError? = null
+)
 
 data class GeoPulseSettingsUiState(
     val isLoading: Boolean = true,
     val isSaving: Boolean = false,
     val isTesting: Boolean = false,
     val isRemoving: Boolean = false,
-    val loadError: String? = null,
-    val saveError: String? = null,
+    val loadError: ApiError? = null,
+    val saveError: ApiError? = null,
     @StringRes val saveErrorRes: Int? = null,
     val testResult: GeoPulseTestOutcome? = null,
     val baseUrl: String = "",
@@ -114,7 +120,7 @@ class GeoPulseSettingsViewModel @Inject constructor(private val repository: GeoP
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            loadError = e.message()
+                            loadError = e.toApiError()
                         )
                     }
                 }
@@ -179,7 +185,7 @@ class GeoPulseSettingsViewModel @Inject constructor(private val repository: GeoP
                     _uiState.update {
                         it.copy(
                             isSaving = false,
-                            saveError = e.message()
+                            saveError = e.toApiError()
                         )
                     }
                 }
@@ -211,7 +217,7 @@ class GeoPulseSettingsViewModel @Inject constructor(private val repository: GeoP
                     _uiState.update {
                         it.copy(
                             isTesting = false,
-                            testResult = GeoPulseTestOutcome(false, null, e.message())
+                            testResult = GeoPulseTestOutcome(false, null, null, e.toApiError())
                         )
                     }
                 }
@@ -229,12 +235,10 @@ class GeoPulseSettingsViewModel @Inject constructor(private val repository: GeoP
                     _uiState.update {
                         it.copy(
                             isRemoving = false,
-                            saveError = e.message()
+                            saveError = e.toApiError()
                         )
                     }
                 }
         }
     }
-
-    private fun Throwable.message(): String = toApiError().displayMessage
 }

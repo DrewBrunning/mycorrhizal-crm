@@ -78,7 +78,7 @@ class TwoFactorViewModel @Inject constructor(
                     }
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(loading = false, error = e.displayText()) }
+                    _uiState.update { it.copy(loading = false, error = e.toApiError()) }
                 }
         }
     }
@@ -134,7 +134,7 @@ class TwoFactorViewModel @Inject constructor(
         _uiState.update { it.copy(busy = true, error = null, errorRes = null) }
         viewModelScope.launch {
             val options = passkeyRepository.beginProof().getOrElse { e ->
-                _uiState.update { it.copy(busy = false, error = e.displayText()) }
+                _uiState.update { it.copy(busy = false, error = e.toApiError()) }
                 return@launch
             }
             when (val ceremony = passkeyClient.getPasskey(context, options)) {
@@ -221,7 +221,7 @@ class TwoFactorViewModel @Inject constructor(
                                 busy = false
                             ).withCodeError(e)
                         } else {
-                            it.copy(busy = false, error = e.displayText())
+                            it.copy(busy = false, error = e.toApiError())
                         }
                     }
                 }
@@ -308,7 +308,7 @@ class TwoFactorViewModel @Inject constructor(
         return if (apiError is ApiError.Client && apiError.code == 400) {
             copy(errorRes = R.string.settings_two_factor_invalid_code)
         } else {
-            copy(error = error.displayText())
+            copy(error = error.toApiError())
         }
     }
 }
@@ -332,21 +332,10 @@ data class TwoFactorUiState(
     /** The setup-proof dialog is open. */
     val proofPrompt: Boolean = false,
     /** A transient action error (server text), shown and then cleared. */
-    val error: String? = null,
+    val error: ApiError? = null,
     /** A localized action error (rejected code), shown and then cleared. */
     @StringRes val errorRes: Int? = null
 ) {
     /** "Verify with a passkey" for the setup proof: the gate is open and a passkey exists to answer. */
     val canProveWithPasskey: Boolean get() = hasPasskey && passkeysAvailable
-}
-
-private fun Throwable.displayText(): String {
-    val apiError = this as? ApiError ?: return message ?: "error"
-    // 403 maps to a generic permission message in ApiError.displayMessage, but
-    // the OIDC-account "2FA unavailable" reason is the informative part.
-    return if (apiError is ApiError.Client && apiError.code == 403) {
-        apiError.message ?: apiError.displayMessage
-    } else {
-        apiError.displayMessage
-    }
 }

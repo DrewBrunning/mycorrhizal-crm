@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.PaperlessRepository
 import com.mycorrhizal.crm.model.network.PaperlessConfigInput
 import com.mycorrhizal.crm.network.ApiError
+import com.mycorrhizal.crm.network.toApiError
+import com.mycorrhizal.crm.network.toApiErrorOrUnknown
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,8 +20,8 @@ data class PaperlessSettingsUiState(
     val isSaving: Boolean = false,
     val isTesting: Boolean = false,
     val isRemoving: Boolean = false,
-    val loadError: String? = null,
-    val saveError: String? = null,
+    val loadError: ApiError? = null,
+    val saveError: ApiError? = null,
     val testResult: PaperlessTestOutcome? = null,
     val baseUrl: String = "",
     val hasApiToken: Boolean = false,
@@ -29,7 +31,9 @@ data class PaperlessSettingsUiState(
     /** Issue #1775: the token is required on first connect (there is no stored token to keep). */
     val tokenRequired: Boolean get() = !hasApiToken
 }
-data class PaperlessTestOutcome(val ok: Boolean, val message: String?)
+
+/** [message] is server-reported text; [error] is a failed request, localized in the UI. */
+data class PaperlessTestOutcome(val ok: Boolean, val message: String?, val error: ApiError? = null)
 
 /**
  * Issue #833: the Paperless-ngx connection-config settings screen — base URL + API
@@ -61,7 +65,7 @@ class PaperlessSettingsViewModel @Inject constructor(private val repository: Pap
                     }
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(isLoading = false, loadError = e.displayMessage()) }
+                    _uiState.update { it.copy(isLoading = false, loadError = e.toApiError()) }
                 }
         }
     }
@@ -101,7 +105,7 @@ class PaperlessSettingsViewModel @Inject constructor(private val repository: Pap
                     }
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(isSaving = false, saveError = e.displayMessage()) }
+                    _uiState.update { it.copy(isSaving = false, saveError = e.toApiError()) }
                 }
         }
     }
@@ -125,7 +129,8 @@ class PaperlessSettingsViewModel @Inject constructor(private val repository: Pap
                         isTesting = false,
                         testResult = PaperlessTestOutcome(
                             ok = false,
-                            message = saved.exceptionOrNull().displayMessage()
+                            message = null,
+                            error = saved.exceptionOrNull().toApiErrorOrUnknown()
                         )
                     )
                 }
@@ -157,7 +162,8 @@ class PaperlessSettingsViewModel @Inject constructor(private val repository: Pap
                             isTesting = false,
                             testResult = PaperlessTestOutcome(
                                 ok = false,
-                                message = e.displayMessage()
+                                message = null,
+                                error = e.toApiError()
                             )
                         )
                     }
@@ -177,14 +183,8 @@ class PaperlessSettingsViewModel @Inject constructor(private val repository: Pap
                     }
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(isRemoving = false, saveError = e.displayMessage()) }
+                    _uiState.update { it.copy(isRemoving = false, saveError = e.toApiError()) }
                 }
         }
     }
-
-    private fun Throwable.displayMessage(): String =
-        (this as? ApiError)?.displayMessage ?: message ?: "error"
 }
-
-private fun Throwable?.displayMessage(): String =
-    this?.let { (it as? ApiError)?.displayMessage ?: it.message } ?: "error"

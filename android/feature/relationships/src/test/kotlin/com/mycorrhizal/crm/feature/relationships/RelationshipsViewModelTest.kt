@@ -133,7 +133,7 @@ class RelationshipsViewModelTest {
         val vm = viewModel()
         advanceUntilIdle()
 
-        assertEquals("boom", vm.uiState.value.error)
+        assertEquals("boom", vm.uiState.value.error?.message)
     }
 
     // --- Name resolution (test case 1 & 2 from the M21 implementation contract) ---
@@ -714,7 +714,7 @@ class RelationshipsViewModelTest {
         vm.create(RelationshipEdgeTypes.FRIEND_OF, otherUid, "")
         advanceUntilIdle()
 
-        assertEquals("boom", vm.uiState.value.error)
+        assertEquals("boom", vm.uiState.value.error?.message)
         assertEquals(0, vm.uiState.value.edges.size)
     }
 
@@ -775,7 +775,7 @@ class RelationshipsViewModelTest {
         vm.update("e1", RelationshipEdgeTypes.FRIEND_OF, RelationshipEdgeSensitivities.NORMAL)
         advanceUntilIdle()
 
-        assertEquals("boom", vm.uiState.value.error)
+        assertEquals("boom", vm.uiState.value.error?.message)
         assertNull(vm.uiState.value.updatingId)
         assertEquals(RelationshipEdgeTypes.FRIEND_OF, vm.uiState.value.edges[0].type)
     }
@@ -809,7 +809,7 @@ class RelationshipsViewModelTest {
         vm.accept("e1")
         advanceUntilIdle()
 
-        assertEquals("boom", vm.uiState.value.error)
+        assertEquals("boom", vm.uiState.value.error?.message)
         assertNull(vm.uiState.value.acceptingId)
         assertEquals(RelationshipEdgeStatuses.SUGGESTED, vm.uiState.value.edges[0].status)
     }
@@ -837,7 +837,7 @@ class RelationshipsViewModelTest {
         vm.delete("e1")
         advanceUntilIdle()
 
-        assertEquals("boom", vm.uiState.value.error)
+        assertEquals("boom", vm.uiState.value.error?.message)
         assertNull(vm.uiState.value.deletingId)
         assertEquals(1, vm.uiState.value.edges.size)
     }
@@ -943,7 +943,7 @@ class RelationshipsViewModelTest {
 
         val vm = viewModel()
         advanceUntilIdle()
-        assertEquals("boom", vm.uiState.value.error)
+        assertEquals("boom", vm.uiState.value.error?.message)
 
         vm.onErrorShown()
         assertNull(vm.uiState.value.error)

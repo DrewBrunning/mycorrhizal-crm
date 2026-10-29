@@ -54,6 +54,7 @@ import com.mycorrhizal.crm.domain.profile.ServerProfile
 import com.mycorrhizal.crm.feature.imports.ImportReviewStep
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
+import com.mycorrhizal.crm.ui.components.localizedMessage
 
 /**
  * ADR 0028 Decision 3 / issue #1265: "Move this data to a server". Reached from
@@ -101,7 +102,11 @@ fun AttachToRemoteScreen(onBack: () -> Unit, viewModel: AttachToRemoteViewModel 
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            val errorText = state.errorRes?.let { stringResource(it) } ?: state.error
+            val errorText = state.errorRes?.let {
+                stringResource(
+                    it
+                )
+            } ?: state.error?.localizedMessage() ?: state.errorText
             if (errorText != null) {
                 Text(
                     text = errorText,

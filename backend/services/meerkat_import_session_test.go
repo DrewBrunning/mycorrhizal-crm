@@ -265,6 +265,8 @@ func TestMeerkatImportSession_OwnershipEnforced(t *testing.T) {
 	require.Nil(t, appErr)
 	_, appErr = mgr.Status(owner.ID+999, upload.SessionID)
 	require.NotNil(t, appErr)
+	assert.Equal(t, http.StatusNotFound, appErr.HTTPStatus)
+	assert.Equal(t, wantImportSessionUnknownMessage, appErr.Message)
 }
 
 func TestMeerkatImportSession_CleanupExpiredRemovesTempDir(t *testing.T) {

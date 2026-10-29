@@ -31,6 +31,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.localizedMessage
 
 /**
  * M5 §6.5 (issue #151): the in-overlay quick-capture form. Rendered inside the
@@ -68,8 +69,9 @@ fun QuickCaptureSheet(
     // overlay auto-dismisses after 30s (tracked separately, #201), so making
     // the user hunt for the problem is expensive.
     val titleFocusRequester = remember { FocusRequester() }
-    LaunchedEffect(state.error) {
-        if (state.error != null) titleFocusRequester.requestFocus()
+    val errorMessage = state.titleError ?: state.error?.localizedMessage()
+    LaunchedEffect(state.error, state.titleError) {
+        if (state.hasError) titleFocusRequester.requestFocus()
     }
 
     Card(
@@ -133,12 +135,12 @@ fun QuickCaptureSheet(
                 label = { Text(stringResource(R.string.quick_capture_title_label)) },
                 singleLine = true,
                 enabled = !state.isSaving,
-                isError = state.error != null,
-                supportingText = state.error?.let { message -> { Text(message) } },
+                isError = state.hasError,
+                supportingText = errorMessage?.let { message -> { Text(message) } },
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(titleFocusRequester)
-                    .semantics { state.error?.let { error(it) } }
+                    .semantics { errorMessage?.let { error(it) } }
             )
             OutlinedTextField(
                 value = state.type,

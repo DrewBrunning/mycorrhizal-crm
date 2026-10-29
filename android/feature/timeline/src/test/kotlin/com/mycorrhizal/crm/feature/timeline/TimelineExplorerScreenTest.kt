@@ -17,6 +17,7 @@ import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.model.network.ReminderCompletion
 import com.mycorrhizal.crm.model.network.TimelineBuckets
 import com.mycorrhizal.crm.model.network.TimelineTypes
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -178,7 +179,10 @@ class TimelineExplorerScreenTest {
     fun `a failed first load shows the error with a retry that refetches`() {
         var retries = 0
         show(
-            TimelineExplorerUiState(contactId = 5, error = "Unexpected server response"),
+            TimelineExplorerUiState(
+                contactId = 5,
+                error = ApiError.Client(400, "Unexpected server response")
+            ),
             onRetry = { retries++ }
         )
 

@@ -90,7 +90,7 @@ class PasskeysViewModelTest {
         val vm = PasskeysViewModel(repo, client, auth) { true }
         advanceUntilIdle()
         assertFalse(vm.uiState.value.loading)
-        assertEquals("Server error (500)", vm.uiState.value.error)
+        assertTrue(vm.uiState.value.error is ApiError.Server)
     }
 
     // --- enrollment ---
@@ -258,7 +258,7 @@ class PasskeysViewModelTest {
             vm.addPasskey(context, "x", "123456")
             advanceUntilIdle()
 
-            assertEquals("RP not configured", vm.uiState.value.error)
+            assertEquals("RP not configured", vm.uiState.value.error?.message)
             assertTrue(vm.uiState.value.canAdd)
         }
 
@@ -277,7 +277,7 @@ class PasskeysViewModelTest {
         vm.addPasskey(context, "x", "123456")
         advanceUntilIdle()
 
-        assertEquals("attestation invalid", vm.uiState.value.error)
+        assertEquals("attestation invalid", vm.uiState.value.error?.message)
         assertFalse(vm.uiState.value.busy)
     }
 
@@ -367,7 +367,7 @@ class PasskeysViewModelTest {
         vm.requestRemove(phone)
         vm.removeWithCode("1")
         advanceUntilIdle()
-        assertEquals("Passkey not found", vm.uiState.value.error)
+        assertEquals("Passkey not found", vm.uiState.value.error?.message)
 
         coEvery {
             repo.beginProof(
@@ -376,7 +376,7 @@ class PasskeysViewModelTest {
         } returns Result.failure(ApiError.Client(409, "No other passkey is registered"))
         vm.removeWithAnotherPasskey(context)
         advanceUntilIdle()
-        assertEquals("No other passkey is registered", vm.uiState.value.error)
+        assertEquals("No other passkey is registered", vm.uiState.value.error?.message)
         assertTrue(client.requested.isEmpty())
     }
 
@@ -649,7 +649,7 @@ class PasskeysViewModelTest {
         vm.addPasskey(context, "x", "000000")
         advanceUntilIdle()
 
-        assertEquals("Account temporarily locked", vm.uiState.value.error)
+        assertEquals("Account temporarily locked", vm.uiState.value.error?.message)
         assertTrue(vm.uiState.value.adding)
     }
 
@@ -664,7 +664,7 @@ class PasskeysViewModelTest {
         vm.addPasskey(context, "x")
         advanceUntilIdle()
 
-        assertEquals("Name must be 100 characters or fewer", vm.uiState.value.error)
+        assertEquals("Name must be 100 characters or fewer", vm.uiState.value.error?.message)
         assertNull(vm.uiState.value.errorRes)
     }
 
@@ -756,7 +756,7 @@ class PasskeysViewModelTest {
             vm.addPasskeyWithExistingPasskey(context, "x")
             advanceUntilIdle()
 
-            assertEquals("No passkey is registered", vm.uiState.value.error)
+            assertEquals("No passkey is registered", vm.uiState.value.error?.message)
             assertFalse(vm.uiState.value.busy)
             assertTrue(client.requested.isEmpty())
             coVerify(exactly = 0) { repo.beginRegistration(any(), any()) }

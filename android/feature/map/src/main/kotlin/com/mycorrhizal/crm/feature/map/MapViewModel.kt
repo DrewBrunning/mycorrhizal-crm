@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.MapRepository
 import com.mycorrhizal.crm.model.network.LatLng
 import com.mycorrhizal.crm.model.network.parseGeoUri
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -33,7 +34,7 @@ data class MapUiState(
     val points: List<MapPoint> = emptyList(),
     /** True when the server hit its point ceiling and [points] is partial. */
     val truncated: Boolean = false,
-    val error: String? = null,
+    val error: ApiError? = null,
     /** The marker the user tapped, shown in the bottom card. */
     val selectedKey: String? = null,
     /** Accessible alternative to the canvas: the same points as a list. */
@@ -66,7 +67,7 @@ class MapViewModel @Inject constructor(private val mapRepository: MapRepository)
                 Result.failure<Unit>(failure).foldApiError(
                     onSuccess = {},
                     onError = { e ->
-                        _uiState.update { it.copy(isLoading = false, error = e.displayMessage) }
+                        _uiState.update { it.copy(isLoading = false, error = e) }
                     }
                 )
                 return@launch

@@ -85,7 +85,7 @@ class PasskeysViewModel @Inject constructor(
                         it.copy(
                             loading = false,
                             available = available,
-                            error = e.serverText()
+                            error = e.toApiError()
                         )
                     }
                 }
@@ -133,7 +133,7 @@ class PasskeysViewModel @Inject constructor(
     /** Ceremony for the add-proof: null when it did not produce a proof (state already updated). */
     private suspend fun proveWithExistingPasskey(context: Context): SecondFactorProof? {
         val options = passkeyRepository.beginProof().getOrElse { e ->
-            _uiState.update { it.copy(busy = false, error = e.serverText()) }
+            _uiState.update { it.copy(busy = false, error = e.toApiError()) }
             return null
         }
         return when (val ceremony = passkeyClient.getPasskey(context, options)) {
@@ -245,7 +245,7 @@ class PasskeysViewModel @Inject constructor(
 
     private suspend fun finishAdd(attestationJson: String) {
         val registered = passkeyRepository.finishRegistration(attestationJson).getOrElse { e ->
-            _uiState.update { it.copy(busy = false, error = e.serverText()) }
+            _uiState.update { it.copy(busy = false, error = e.toApiError()) }
             return
         }
         val refreshed = passkeyRepository.listPasskeys().getOrNull()
@@ -275,10 +275,10 @@ class PasskeysViewModel @Inject constructor(
             // Persistent, like the TOTP screen's server-worded 403 — but it also
             // withdraws the Add action rather than offering a button that can only fail.
             _uiState.update {
-                it.copy(busy = false, adding = false, blockedText = apiError.serverText())
+                it.copy(busy = false, adding = false, blockedText = apiError.body)
             }
         } else {
-            _uiState.update { it.copy(busy = false, error = error.serverText()) }
+            _uiState.update { it.copy(busy = false, error = error.toApiError()) }
         }
     }
 
@@ -411,7 +411,7 @@ class PasskeysViewModel @Inject constructor(
         return if (apiError is ApiError.Client && apiError.code == HTTP_BAD_REQUEST) {
             copy(errorRes = R.string.settings_passkeys_invalid_proof)
         } else {
-            copy(error = error.serverText())
+            copy(error = error.toApiError())
         }
     }
 
@@ -442,7 +442,7 @@ data class PasskeysUiState(
     val blockedText: String? = null,
     /** A one-shot success line, shown then cleared. */
     @StringRes val messageRes: Int? = null,
-    val error: String? = null,
+    val error: ApiError? = null,
     @StringRes val errorRes: Int? = null
 ) {
     /** Enrollment is offered only through an open gate and for an account that is not blocked. */
@@ -456,14 +456,4 @@ data class PasskeysUiState(
 
     /** "Verify with another passkey" needs the gate and at least one passkey besides the removed one. */
     val canProveWithPasskey: Boolean get() = available && removing != null && passkeys.size > 1
-}
-
-/** A server-worded message where the server supplies one (404/409/403/…), else the generic text. */
-private fun Throwable.serverText(): String {
-    val apiError = toApiError()
-    return if (apiError is ApiError.Client) {
-        apiError.message?.takeIf { it.isNotBlank() } ?: apiError.displayMessage
-    } else {
-        apiError.displayMessage
-    }
 }

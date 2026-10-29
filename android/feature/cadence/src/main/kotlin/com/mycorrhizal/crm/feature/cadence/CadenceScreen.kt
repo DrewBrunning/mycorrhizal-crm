@@ -69,6 +69,7 @@ import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.FabListBottomPadding
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.localizedMessage
 import com.mycorrhizal.crm.ui.theme.LocalWarningColors
 
 /**
@@ -91,7 +92,7 @@ fun CadenceScreen(
     // id / no VCardUID) and becomes the persistent body content; `error` is a
     // transient server failure (a failed load or write) and is toasted.
     val fatalError = state.errorRes?.let { stringResource(it) }
-    val transientError = state.error
+    val transientError = state.error?.localizedMessage()
 
     Scaffold(
         modifier = modifier,

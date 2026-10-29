@@ -34,6 +34,7 @@ import com.mycorrhizal.crm.ui.components.DateField
 import com.mycorrhizal.crm.ui.components.FormScaffold
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.WriteConflictDialog
+import com.mycorrhizal.crm.ui.components.localizedMessage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -99,7 +100,7 @@ fun NoteFormScreen(
         )
     }
 
-    val errorMessage = state.errorRes?.let { stringResource(it) } ?: state.error
+    val errorMessage = state.errorRes?.let { stringResource(it) } ?: state.error?.localizedMessage()
     errorMessage?.let { message ->
         LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)

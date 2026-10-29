@@ -92,7 +92,7 @@ class MergeAndBulkViewModelTest {
         vm.preview()
         advanceUntilIdle()
 
-        assertEquals("bad pair", vm.uiState.value.error)
+        assertEquals("bad pair", vm.uiState.value.error?.message)
     }
 
     // --- M23: search-based target picker (test case 4) ---
@@ -289,7 +289,7 @@ class MergeAndBulkViewModelTest {
         vm.onSearchQueryChange("zzz")
         advanceUntilIdle()
 
-        assertEquals("server error", vm.uiState.value.error)
+        assertEquals("server error", vm.uiState.value.error?.message)
         assertTrue(vm.uiState.value.searchResults.isEmpty())
     }
 }

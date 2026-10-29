@@ -123,7 +123,7 @@ class MapViewModelTest {
 
         val state = vm.uiState.value
         assertFalse(state.isLoading)
-        assertEquals("No connection", state.error)
+        assertTrue(state.error is ApiError.Network)
         assertTrue(state.points.isEmpty())
         assertNull(state.styleUrl)
     }
@@ -140,7 +140,7 @@ class MapViewModelTest {
         val vm = MapViewModel(repository)
         advanceUntilIdle()
 
-        assertEquals("Request timed out", vm.uiState.value.error)
+        assertTrue(vm.uiState.value.error is ApiError.Timeout)
     }
 
     @Test
@@ -151,7 +151,7 @@ class MapViewModelTest {
         coEvery { repository.getContactMap() } returns Result.success(ContactMapResponse())
         val vm = MapViewModel(repository)
         advanceUntilIdle()
-        assertEquals("No connection", vm.uiState.value.error)
+        assertTrue(vm.uiState.value.error is ApiError.Network)
 
         stub(points = listOf(point(1, "a", "geo:1,2")))
         vm.load()

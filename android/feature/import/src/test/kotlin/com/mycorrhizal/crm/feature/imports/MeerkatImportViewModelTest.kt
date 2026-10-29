@@ -148,8 +148,25 @@ class MeerkatImportViewModelTest {
 
             val state = vm.uiState.value
             assertNull(state.connected)
-            assertEquals("Those credentials were rejected", state.error)
+            assertEquals("Those credentials were rejected", state.error?.message)
             assertTrue(state.canConnect)
+        }
+
+    @Test
+    fun `dismissing the error clears both the typed error and the job text`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { apiClient.connectMeerkat(any()) } returns
+                Result.failure(ApiError.Client(400, "Those credentials were rejected"))
+            val vm = newVm()
+            vm.fillToken()
+            vm.connect()
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.error != null)
+
+            vm.onErrorShown()
+
+            assertNull(vm.uiState.value.error)
+            assertNull(vm.uiState.value.errorText)
         }
 
     @Test
@@ -238,7 +255,7 @@ class MeerkatImportViewModelTest {
             val state = vm.uiState.value
             assertEquals(MeerkatImportStep.CONNECT, state.step)
             assertNull(state.connected)
-            assertEquals("Meerkat went away", state.error)
+            assertEquals("Meerkat went away", state.errorText)
         }
 
     @Test
@@ -408,7 +425,7 @@ class MeerkatImportViewModelTest {
             advanceUntilIdle()
 
             assertEquals(MeerkatImportStep.REVIEW, vm.uiState.value.step)
-            assertEquals("Already running", vm.uiState.value.error)
+            assertEquals("Already running", vm.uiState.value.error?.message)
         }
 
     @Test

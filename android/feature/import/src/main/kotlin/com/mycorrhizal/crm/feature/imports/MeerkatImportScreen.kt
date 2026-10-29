@@ -44,6 +44,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.localizedMessage
 
 /**
  * Issue #2013: "Import from Meerkat" — connect to a running Meerkat over its
@@ -211,7 +212,11 @@ fun MeerkatImportScreenContent(
         }
     }
 
-    val errorMessage = uiState.errorRes?.let { stringResource(it) } ?: uiState.error
+    val errorMessage = uiState.errorRes?.let {
+        stringResource(
+            it
+        )
+    } ?: uiState.error?.localizedMessage() ?: uiState.errorText
     if (errorMessage != null) {
         LaunchedEffect(errorMessage) {
             snackbarHostState.showSnackbar(errorMessage)

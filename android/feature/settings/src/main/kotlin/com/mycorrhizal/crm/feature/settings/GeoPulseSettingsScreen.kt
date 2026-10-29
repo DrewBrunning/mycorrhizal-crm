@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.localizedMessage
 
 /**
  * Issue #160 (ADR 0033): the GeoPulse connection settings screen — base URL, write-only API token,
@@ -154,8 +155,8 @@ fun GeoPulseSettingsContent(
         )
 
         val errors = listOfNotNull(
-            state.loadError,
-            state.saveError,
+            state.loadError?.localizedMessage(),
+            state.saveError?.localizedMessage(),
             state.saveErrorRes?.let { stringResource(it) }
         )
         errors.forEach {
@@ -244,7 +245,8 @@ fun GeoPulseSettingsContent(
                 stringResource(
                     R.string.geopulse_settings_test_failed,
                     result.stage ?: "-",
-                    result.message ?: stringResource(R.string.geopulse_settings_test_unknown)
+                    result.error?.localizedMessage() ?: result.message
+                        ?: stringResource(R.string.geopulse_settings_test_unknown)
                 )
             }
             Text(

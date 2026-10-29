@@ -28,7 +28,7 @@ data class TrashUiState(
     val retentionDays: Int = 0,
     val isLoading: Boolean = false,
     /** List-load failure; cleared at the start of every load. */
-    val error: String? = null,
+    val error: ApiError? = null,
     /** A restore / purge / empty is in flight; further actions are ignored. */
     val isWorking: Boolean = false
 )
@@ -44,7 +44,7 @@ sealed interface TrashUiEvent {
 
     data class Emptied(val count: Int) : TrashUiEvent
 
-    data class Failed(val message: String) : TrashUiEvent
+    data class Failed(val error: ApiError) : TrashUiEvent
 }
 
 /** The failure of a [Result] that is known to have failed, as an [ApiError]. */
@@ -88,7 +88,7 @@ class TrashViewModel @Inject constructor(
                 page += 1
             }
             if (failure != null) {
-                _uiState.update { it.copy(isLoading = false, error = failure.displayMessage) }
+                _uiState.update { it.copy(isLoading = false, error = failure) }
             } else {
                 _uiState.update {
                     it.copy(isLoading = false, items = all, retentionDays = retention)
@@ -115,7 +115,7 @@ class TrashViewModel @Inject constructor(
                 if (conflict) {
                     TrashUiEvent.RestoreConflict(name)
                 } else {
-                    TrashUiEvent.Failed(error.displayMessage)
+                    TrashUiEvent.Failed(error)
                 }
             )
         }
@@ -127,7 +127,7 @@ class TrashViewModel @Inject constructor(
             removeItem(item)
             _events.send(TrashUiEvent.Purged(item.contact.displayName))
         } else {
-            _events.send(TrashUiEvent.Failed(result.apiError().displayMessage))
+            _events.send(TrashUiEvent.Failed(result.apiError()))
         }
     }
 
@@ -138,7 +138,7 @@ class TrashViewModel @Inject constructor(
             _uiState.update { it.copy(items = emptyList()) }
             _events.send(TrashUiEvent.Emptied(count))
         } else {
-            _events.send(TrashUiEvent.Failed(result.apiError().displayMessage))
+            _events.send(TrashUiEvent.Failed(result.apiError()))
         }
     }
 

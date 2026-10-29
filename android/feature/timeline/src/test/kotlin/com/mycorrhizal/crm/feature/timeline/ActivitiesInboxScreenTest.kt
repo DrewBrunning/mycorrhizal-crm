@@ -12,6 +12,7 @@ import com.mycorrhizal.crm.domain.repository.ActivityRepository
 import com.mycorrhizal.crm.model.network.ActivitiesPage
 import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ContactFlat
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
@@ -84,7 +85,11 @@ class ActivitiesInboxScreenTest {
     @Test
     fun `an empty list with an error renders the error message`() {
         setContent(
-            ActivitiesInboxUiState(isLoading = false, activities = emptyList(), error = "boom")
+            ActivitiesInboxUiState(
+                isLoading = false,
+                activities = emptyList(),
+                error = ApiError.Client(400, "boom")
+            )
         )
         composeTestRule.onNodeWithText("boom").assertIsDisplayed()
     }

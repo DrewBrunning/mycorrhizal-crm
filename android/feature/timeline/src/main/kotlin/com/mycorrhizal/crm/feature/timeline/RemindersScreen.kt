@@ -58,6 +58,7 @@ import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.components.WriteConflictDialog
+import com.mycorrhizal.crm.ui.components.localizedMessage
 import com.mycorrhizal.crm.ui.theme.LocalWarningColors
 
 /**
@@ -157,7 +158,11 @@ fun RemindersScreenContent(
                     // show "No reminders yet" instead of the real cause.
                     state.reminders.isEmpty() && (state.errorRes != null || state.error != null) ->
                         EmptyState(
-                            state.errorRes?.let { stringResource(it) } ?: state.error.orEmpty()
+                            state.errorRes?.let {
+                                stringResource(
+                                    it
+                                )
+                            } ?: state.error?.localizedMessage().orEmpty()
                         )
 
                     state.reminders.isEmpty() && state.error == null ->
@@ -231,7 +236,7 @@ fun RemindersScreenContent(
         )
     }
 
-    val listError = state.error
+    val listError = state.error?.localizedMessage()
     if (listError != null && state.reminders.isNotEmpty()) {
         LaunchedEffect(listError) {
             snackbarHostState.showSnackbar(listError)

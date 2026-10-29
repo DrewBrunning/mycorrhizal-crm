@@ -5,6 +5,7 @@ import androidx.compose.ui.res.stringResource
 import com.mycorrhizal.crm.model.network.ErrorReason
 import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.network.ApiError
+import com.mycorrhizal.crm.network.NO_PENDING_TWO_FACTOR_BODY
 import com.mycorrhizal.crm.ui.R
 
 /**
@@ -15,13 +16,65 @@ import com.mycorrhizal.crm.ui.R
  */
 @Composable
 fun ApiError.localizedMessage(): String {
-    val base = localizedReason(reasonOrNull()) ?: displayMessage
+    val base = localizedReason(reasonOrNull()) ?: clientMessage()
     val requestId = (this as? ApiError.Server)?.requestId
     return if (requestId != null) {
         "$base ${stringResource(R.string.error_request_ref, requestId)}"
     } else {
         base
     }
+}
+
+/**
+ * Like [localizedMessage], but a 403 shows the server's own text. Use it only
+ * where that refusal is the informative part (the OIDC "two-factor is not
+ * available" refusal) and has no reason code yet.
+ */
+@Composable
+fun ApiError.localizedMessageOrServerText(): String =
+    if (this is ApiError.Client && code == 403 && reason == null && body.isNotBlank()) {
+        body
+    } else {
+        localizedMessage()
+    }
+
+/**
+ * The translated text for the errors the client words itself (no network,
+ * session expiry, the generic HTTP fallbacks). Server-worded bodies that carry
+ * no reason code (507, external-service, a plain 4xx message) stay as sent.
+ */
+@Composable
+private fun ApiError.clientMessage(): String = when (this) {
+    is ApiError.Network -> stringResource(R.string.error_client_network)
+
+    is ApiError.Timeout -> stringResource(R.string.error_client_timeout)
+
+    is ApiError.Server ->
+        if (displayMessage == body) body else stringResource(R.string.error_client_server, code)
+
+    is ApiError.Client -> when (code) {
+        401 -> if (body == NO_PENDING_TWO_FACTOR_BODY) {
+            stringResource(R.string.error_client_no_pending_two_factor)
+        } else {
+            stringResource(R.string.error_client_session_expired)
+        }
+
+        403 -> stringResource(R.string.error_client_forbidden)
+
+        404 -> stringResource(R.string.error_client_not_found)
+
+        409 -> body.ifBlank { stringResource(R.string.error_client_conflict) }
+
+        else -> body.ifBlank { stringResource(R.string.error_client_request_failed) }
+    }
+
+    is ApiError.PreconditionFailed -> stringResource(R.string.error_client_precondition_failed)
+
+    is ApiError.Parse -> stringResource(R.string.error_client_parse)
+
+    is ApiError.ArchivedProfile -> stringResource(R.string.error_client_archived_profile)
+
+    is ApiError.Unknown -> stringResource(R.string.error_client_unknown)
 }
 
 private fun ApiError.reasonOrNull(): ErrorReason? = when (this) {
@@ -138,6 +191,71 @@ private fun localizedReason(reason: ErrorReason?): String? {
         ErrorReasonCode.CIRCLE_COLOR_INVALID -> stringResource(
             R.string.error_reason_circle_color_invalid
         )
+
+        ErrorReasonCode.MEERKAT_UPLOAD_MISSING ->
+            stringResource(R.string.error_reason_meerkat_upload_missing)
+
+        ErrorReasonCode.MEERKAT_SESSION_NOT_FOUND ->
+            stringResource(R.string.error_reason_meerkat_session_not_found)
+
+        ErrorReasonCode.MEERKAT_SESSION_NOT_OWNED ->
+            stringResource(R.string.error_reason_meerkat_session_not_owned)
+
+        ErrorReasonCode.MEERKAT_SESSION_EXPIRED ->
+            stringResource(R.string.error_reason_meerkat_session_expired)
+
+        ErrorReasonCode.MEERKAT_DB_SIZE ->
+            stringResource(R.string.error_reason_meerkat_db_size)
+
+        ErrorReasonCode.MEERKAT_UPLOAD_NOT_SQLITE ->
+            stringResource(R.string.error_reason_meerkat_upload_not_sqlite)
+
+        ErrorReasonCode.MEERKAT_UPLOAD_UNREADABLE ->
+            stringResource(R.string.error_reason_meerkat_upload_unreadable)
+
+        ErrorReasonCode.MEERKAT_FILE_NOT_MEERKAT ->
+            stringResource(R.string.error_reason_meerkat_file_not_meerkat)
+
+        ErrorReasonCode.MEERKAT_DB_UNREADABLE ->
+            stringResource(R.string.error_reason_meerkat_db_unreadable)
+
+        ErrorReasonCode.MEERKAT_DB_TOO_MANY_CONTACTS ->
+            stringResource(R.string.error_reason_meerkat_db_too_many_contacts)
+
+        ErrorReasonCode.MEERKAT_DB_TOO_MANY_RECORDS ->
+            stringResource(R.string.error_reason_meerkat_db_too_many_records)
+
+        ErrorReasonCode.MEERKAT_IMPORT_IN_PROGRESS ->
+            stringResource(R.string.error_reason_meerkat_import_in_progress)
+
+        ErrorReasonCode.MEERKAT_NOT_PREPARED ->
+            stringResource(R.string.error_reason_meerkat_not_prepared)
+
+        ErrorReasonCode.MEERKAT_API_ERROR ->
+            reason.str(
+                "reason"
+            )?.let { stringResource(R.string.error_reason_meerkat_api_error, it) }
+
+        ErrorReasonCode.MEERKAT_UPSTREAM_ERROR ->
+            reason.str(
+                "reason"
+            )?.let { stringResource(R.string.error_reason_meerkat_upstream_error, it) }
+
+        ErrorReasonCode.MEERKAT_SIGN_IN_INPUT_MISSING ->
+            stringResource(R.string.error_reason_meerkat_sign_in_input_missing)
+
+        ErrorReasonCode.MEERKAT_REMOTE_TOO_MANY_CONTACTS -> {
+            val total = reason.int("total")
+            val max = reason.int("max")
+            if (total != null && max != null) {
+                stringResource(R.string.error_reason_meerkat_remote_too_many_contacts, total, max)
+            } else {
+                null
+            }
+        }
+
+        ErrorReasonCode.MEERKAT_VERSION_UNTESTED ->
+            stringResource(R.string.error_reason_meerkat_version_untested)
 
         ErrorReasonCode.COMMON_DATABASE_ERROR -> stringResource(
             R.string.error_reason_common_database_error

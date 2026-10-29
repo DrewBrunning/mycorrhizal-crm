@@ -55,6 +55,7 @@ import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.components.WriteConflictDialog
 import com.mycorrhizal.crm.ui.components.activityTypeLabel
+import com.mycorrhizal.crm.ui.components.localizedMessage
 
 /**
  * M19: per-contact activities list. Gained a search field + from/to-date
@@ -181,7 +182,11 @@ fun ActivitiesScreenContent(
                         state.activities.isEmpty() &&
                             (state.errorRes != null || state.error != null) ->
                             EmptyState(
-                                state.errorRes?.let { stringResource(it) } ?: state.error.orEmpty()
+                                state.errorRes?.let {
+                                    stringResource(
+                                        it
+                                    )
+                                } ?: state.error?.localizedMessage().orEmpty()
                             )
 
                         state.activities.isEmpty() && state.error == null ->
@@ -286,7 +291,7 @@ fun ActivitiesScreenContent(
         )
     }
 
-    val listError = state.error
+    val listError = state.error?.localizedMessage()
     if (listError != null && state.activities.isNotEmpty()) {
         LaunchedEffect(listError) {
             snackbarHostState.showSnackbar(listError)

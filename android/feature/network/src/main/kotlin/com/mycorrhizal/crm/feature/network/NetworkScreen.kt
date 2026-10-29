@@ -60,6 +60,7 @@ import com.mycorrhizal.crm.ui.components.HealthScoreDot
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.components.healthBandLabel
+import com.mycorrhizal.crm.ui.components.localizedMessage
 import com.mycorrhizal.crm.ui.components.relationshipRoleLabel
 
 /**
@@ -224,7 +225,7 @@ fun NetworkScreenContent(
 
                             uiState.groupedChains.isEmpty() && uiState.error != null -> {
                                 Text(
-                                    text = uiState.error.orEmpty(),
+                                    text = uiState.error.localizedMessage(),
                                     color = MaterialTheme.colorScheme.error,
                                     modifier = Modifier.align(Alignment.Center)
                                 )
@@ -245,7 +246,8 @@ fun NetworkScreenContent(
     // (an empty result already shows the error inline below the controls) —
     // presenting both for an empty failure would double-announce it.
     if (uiState.groupedChains.isNotEmpty()) {
-        uiState.error?.let { message ->
+        uiState.error?.let { error ->
+            val message = error.localizedMessage()
             LaunchedEffect(message) {
                 snackbarHostState.showSnackbar(message)
                 currentOnErrorShown.value()

@@ -74,7 +74,7 @@ data class EntityListUiState(
     val entityId: String = "",
     val items: List<EntityItem> = emptyList(),
     val isLoading: Boolean = false,
-    val error: String? = null,
+    val error: ApiError? = null,
     @StringRes val errorRes: Int? = null,
     val deletingId: String? = null,
     /** ADR 0008 (issue #1665): a life-event write was rejected with 412 (changed elsewhere). */
@@ -234,7 +234,7 @@ class LifeEventsViewModel @Inject constructor(
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isLoading = false, error = error) }
                 }
             )
         }
@@ -322,7 +322,7 @@ class LifeEventsViewModel @Inject constructor(
         viewModelScope.launch {
             lifeEventRepository.create(form.toInput(uid)).foldApiError(
                 onSuccess = { load() },
-                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } }
+                onError = { e -> _uiState.update { it.copy(error = e) } }
             )
         }
     }
@@ -345,7 +345,7 @@ class LifeEventsViewModel @Inject constructor(
                         if (e is ApiError.PreconditionFailed) {
                             it.copy(conflict = EntityConflict.EDIT)
                         } else {
-                            it.copy(error = e.displayMessage)
+                            it.copy(error = e)
                         }
                     }
                 }
@@ -375,7 +375,7 @@ class LifeEventsViewModel @Inject constructor(
                         if (e is ApiError.PreconditionFailed) {
                             it.copy(deletingId = null, conflict = EntityConflict.DELETE)
                         } else {
-                            it.copy(deletingId = null, error = e.displayMessage)
+                            it.copy(deletingId = null, error = e)
                         }
                     }
                 }
@@ -472,7 +472,7 @@ class GiftsViewModel @Inject constructor(
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isLoading = false, error = error) }
                 }
             )
             loadPickers(uid)
@@ -494,7 +494,7 @@ class GiftsViewModel @Inject constructor(
         viewModelScope.launch {
             giftRepository.create(form.toInput(uid)).foldApiError(
                 onSuccess = { load() },
-                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } }
+                onError = { e -> _uiState.update { it.copy(error = e) } }
             )
         }
     }
@@ -507,7 +507,7 @@ class GiftsViewModel @Inject constructor(
         viewModelScope.launch {
             giftRepository.update(original.id, form.toInput(original.entityId)).foldApiError(
                 onSuccess = { load() },
-                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } }
+                onError = { e -> _uiState.update { it.copy(error = e) } }
             )
         }
     }
@@ -540,7 +540,7 @@ class GiftsViewModel @Inject constructor(
                 )
             ).foldApiError(
                 onSuccess = { load() },
-                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } }
+                onError = { e -> _uiState.update { it.copy(error = e) } }
             )
         }
     }
@@ -555,7 +555,7 @@ class GiftsViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             deletingId = null,
-                            error = e.displayMessage
+                            error = e
                         )
                     }
                 }
@@ -603,7 +603,7 @@ class GiftsViewModel @Inject constructor(
                 )
             ).foldApiError(
                 onSuccess = { viewModelScope.launch { loadGiftsTabPreferences(uid) } },
-                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } }
+                onError = { e -> _uiState.update { it.copy(error = e) } }
             )
         }
     }
@@ -632,7 +632,7 @@ class GiftsViewModel @Inject constructor(
                         )
                     }
                 },
-                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } }
+                onError = { e -> _uiState.update { it.copy(error = e) } }
             )
         }
     }
@@ -642,7 +642,7 @@ class GiftsViewModel @Inject constructor(
         viewModelScope.launch {
             preferenceRepository.delete(id).foldApiError(
                 onSuccess = { viewModelScope.launch { loadGiftsTabPreferences(uid) } },
-                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } }
+                onError = { e -> _uiState.update { it.copy(error = e) } }
             )
         }
     }
@@ -653,7 +653,7 @@ class GiftsViewModel @Inject constructor(
         viewModelScope.launch {
             preferenceRepository.create(form.toInput(uid)).foldApiError(
                 onSuccess = { viewModelScope.launch { loadGiftsTabPreferences(uid) } },
-                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } }
+                onError = { e -> _uiState.update { it.copy(error = e) } }
             )
         }
     }
@@ -679,7 +679,7 @@ class GiftsViewModel @Inject constructor(
                         )
                     }
                 },
-                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } }
+                onError = { e -> _uiState.update { it.copy(error = e) } }
             )
         }
     }
@@ -689,7 +689,7 @@ class GiftsViewModel @Inject constructor(
         viewModelScope.launch {
             preferenceRepository.delete(id).foldApiError(
                 onSuccess = { viewModelScope.launch { loadGiftsTabPreferences(uid) } },
-                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } }
+                onError = { e -> _uiState.update { it.copy(error = e) } }
             )
         }
     }
@@ -789,7 +789,7 @@ class PreferencesViewModel @Inject constructor(
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isLoading = false, error = error) }
                 }
             )
         }
@@ -803,7 +803,7 @@ class PreferencesViewModel @Inject constructor(
         viewModelScope.launch {
             preferenceRepository.create(form.toInput(uid)).foldApiError(
                 onSuccess = { load() },
-                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } }
+                onError = { e -> _uiState.update { it.copy(error = e) } }
             )
         }
     }
@@ -824,7 +824,7 @@ class PreferencesViewModel @Inject constructor(
                 )
             ).foldApiError(
                 onSuccess = { load() },
-                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } }
+                onError = { e -> _uiState.update { it.copy(error = e) } }
             )
         }
     }
@@ -839,7 +839,7 @@ class PreferencesViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             deletingId = null,
-                            error = e.displayMessage
+                            error = e
                         )
                     }
                 }
@@ -975,7 +975,7 @@ class ConversationAgendaViewModel @Inject constructor(
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isLoading = false, error = error) }
                 }
             )
             activityRepository.listForContact(
@@ -998,7 +998,7 @@ class ConversationAgendaViewModel @Inject constructor(
                 )
             ).foldApiError(
                 onSuccess = { load() },
-                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } }
+                onError = { e -> _uiState.update { it.copy(error = e) } }
             )
         }
     }
@@ -1018,7 +1018,7 @@ class ConversationAgendaViewModel @Inject constructor(
                 )
             ).foldApiError(
                 onSuccess = { load() },
-                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } }
+                onError = { e -> _uiState.update { it.copy(error = e) } }
             )
         }
     }
@@ -1044,7 +1044,7 @@ class ConversationAgendaViewModel @Inject constructor(
                 },
                 onError = { e ->
                     _discussingId.value = null
-                    _uiState.update { it.copy(error = e.displayMessage) }
+                    _uiState.update { it.copy(error = e) }
                 }
             )
         }
@@ -1075,7 +1075,7 @@ class ConversationAgendaViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             deletingId = null,
-                            error = e.displayMessage
+                            error = e
                         )
                     }
                 }

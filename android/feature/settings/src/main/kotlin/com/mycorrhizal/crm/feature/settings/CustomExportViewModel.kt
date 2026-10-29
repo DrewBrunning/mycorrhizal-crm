@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.ExportRepository
 import com.mycorrhizal.crm.model.network.ExportLossPreflightResponse
 import com.mycorrhizal.crm.model.network.ShareFieldSections
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -37,7 +38,7 @@ data class CustomExportUiState(
     val isCheckingLoss: Boolean = false,
     val lossReport: ExportLossPreflightResponse? = null,
     val exported: DataExport? = null,
-    val error: String? = null
+    val error: ApiError? = null
 ) {
     val canExport: Boolean
         get() = selected.isNotEmpty() && !isExporting
@@ -96,7 +97,7 @@ class CustomExportViewModel @Inject constructor(private val exportRepository: Ex
                     _uiState.update {
                         it.copy(
                             isCheckingLoss = false,
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }
@@ -148,7 +149,7 @@ class CustomExportViewModel @Inject constructor(private val exportRepository: Ex
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isExporting = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isExporting = false, error = error) }
                 }
             )
         }

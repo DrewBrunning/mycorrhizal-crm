@@ -19,13 +19,16 @@ class LoginUseCase @Inject constructor(private val authRepository: AuthRepositor
 
         /** [methods]: enrolled second-factor tokens (issue #1293); null from an older server. */
         data class TwoFactorRequired(val methods: List<String>? = null) : Result
-        data class Failure(val message: String) : Result
+        class Failure(val message: String, val cause: Throwable?) : Result
     }
 
     suspend operator fun invoke(identifier: String, password: String): Result {
         val outcome = authRepository.login(identifier.trim(), password)
         return if (outcome.isFailure) {
-            Result.Failure(outcome.exceptionOrNull()?.message ?: "Login failed")
+            Result.Failure(
+                outcome.exceptionOrNull()?.message ?: "Login failed",
+                outcome.exceptionOrNull()
+            )
         } else {
             when (val login = outcome.getOrThrow()) {
                 LoginOutcome.SessionEstablished -> Result.Success
@@ -39,7 +42,7 @@ class LoginUseCase @Inject constructor(private val authRepository: AuthRepositor
 class LoginWithApiTokenUseCase @Inject constructor(private val authRepository: AuthRepository) {
     sealed interface Result {
         data object Success : Result
-        data class Failure(val message: String) : Result
+        class Failure(val message: String, val cause: Throwable?) : Result
     }
 
     suspend operator fun invoke(token: String): Result {
@@ -47,7 +50,10 @@ class LoginWithApiTokenUseCase @Inject constructor(private val authRepository: A
         return if (outcome.isSuccess) {
             Result.Success
         } else {
-            Result.Failure(outcome.exceptionOrNull()?.message ?: "Login failed")
+            Result.Failure(
+                outcome.exceptionOrNull()?.message ?: "Login failed",
+                outcome.exceptionOrNull()
+            )
         }
     }
 }

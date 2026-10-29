@@ -11,6 +11,7 @@ import com.mycorrhizal.crm.model.network.Gift
 import com.mycorrhizal.crm.model.network.GiftStatuses
 import com.mycorrhizal.crm.model.network.Preference
 import com.mycorrhizal.crm.network.ApiClient
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.toApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -24,7 +25,7 @@ import kotlinx.coroutines.launch
 data class PrepViewUiState(
     val briefing: ContactBriefing? = null,
     val isLoading: Boolean = false,
-    val error: String? = null,
+    val error: ApiError? = null,
     /** The signed-in user's `date_format` preference; falls back to "eu" when absent. */
     val dateFormat: String? = null,
     /**
@@ -99,7 +100,7 @@ class PrepViewModel @Inject constructor(
                         briefing = null,
                         preferences = emptyList(),
                         giftIdeas = emptyList(),
-                        error = error?.displayMessage
+                        error = error
                     )
                 }
                 return@launch

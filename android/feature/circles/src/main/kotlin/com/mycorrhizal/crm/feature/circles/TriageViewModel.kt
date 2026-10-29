@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.TagRepository
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.toApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -30,7 +31,7 @@ data class TriageUiState(
     val items: List<TriageItem> = emptyList(),
     val isLoading: Boolean = false,
     val applying: Boolean = false,
-    val error: String? = null,
+    val error: ApiError? = null,
     @StringRes val errorRes: Int? = null,
     /** True once the apply pass completed. */
     val done: Boolean = false,
@@ -84,7 +85,7 @@ class TriageViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        error = error.toApiError().displayMessage
+                        error = error.toApiError()
                     )
                 }
                 return@launch

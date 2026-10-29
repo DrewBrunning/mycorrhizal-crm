@@ -177,7 +177,7 @@ class RemindersViewModelTest {
         advanceUntilIdle()
 
         assertEquals(1, vm.uiState.value.reminders.size)
-        assertEquals("Not found", vm.uiState.value.error)
+        assertEquals(404, (vm.uiState.value.error as? ApiError.Client)?.code)
         assertNull(vm.uiState.value.deletingId)
     }
 
@@ -195,7 +195,7 @@ class RemindersViewModelTest {
         vm.complete(1)
         advanceUntilIdle()
 
-        assertEquals("Not found", vm.uiState.value.error)
+        assertEquals(404, (vm.uiState.value.error as? ApiError.Client)?.code)
         assertNull(vm.uiState.value.completingId)
         assertEquals(1, vm.uiState.value.reminders.size)
     }
@@ -410,7 +410,7 @@ class ReminderFormViewModelTest {
                 "a failed save must not leave isSaving stuck true",
                 vm.uiState.value.isSaving
             )
-            assertEquals("remind_at is required", vm.uiState.value.error)
+            assertEquals("remind_at is required", vm.uiState.value.error?.message)
             assertNull(vm.events.value)
         }
 
@@ -439,7 +439,10 @@ class ReminderFormViewModelTest {
                 "a failed save must not leave isSaving stuck true",
                 vm.uiState.value.isSaving
             )
-            assertEquals("Reminder was modified by another session", vm.uiState.value.error)
+            assertEquals(
+                "Reminder was modified by another session",
+                vm.uiState.value.error?.message
+            )
             assertNull(vm.events.value)
         }
 
@@ -476,7 +479,7 @@ class ReminderFormViewModelTest {
         val vm = createViewModel(reminderId = 1)
         advanceUntilIdle()
 
-        assertEquals("Not found", vm.uiState.value.error)
+        assertEquals(404, (vm.uiState.value.error as? ApiError.Client)?.code)
         assertFalse(vm.uiState.value.isLoading)
     }
 }

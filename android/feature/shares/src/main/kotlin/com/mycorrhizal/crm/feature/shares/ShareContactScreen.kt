@@ -53,6 +53,7 @@ import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.localizedMessage
 
 /**
  * M15: the "Share this contact" flow (mirrors web's ShareContactDialog) — pick
@@ -106,7 +107,7 @@ fun ShareContactScreen(onBack: () -> Unit, viewModel: ShareContactViewModel = hi
                     EmptyState(title = stringResource(R.string.shares_no_recipients))
 
                 state.recipients.isEmpty() && state.error != null ->
-                    EmptyState(title = state.error.orEmpty())
+                    EmptyState(title = state.error?.localizedMessage().orEmpty())
 
                 else -> {
                     Column(
@@ -253,7 +254,7 @@ fun ShareContactScreen(onBack: () -> Unit, viewModel: ShareContactViewModel = hi
         )
     }
 
-    val errorMessage = state.error ?: state.errorRes?.let { stringResource(it) }
+    val errorMessage = state.error?.localizedMessage() ?: state.errorRes?.let { stringResource(it) }
     errorMessage?.let { message ->
         LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)

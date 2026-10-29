@@ -137,7 +137,7 @@ class AddToActivitiesViewModelTest {
             viewModel.submit(5)
             advanceUntilIdle()
 
-            assertEquals("Not found", viewModel.uiState.value.error)
+            assertEquals(404, (viewModel.uiState.value.error as? ApiError.Client)?.code)
             assertFalse(viewModel.uiState.value.done)
             assertEquals(setOf(1), viewModel.uiState.value.selected)
             assertNull(viewModel.uiState.value.failedTitles.firstOrNull())

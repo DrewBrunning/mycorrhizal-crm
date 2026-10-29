@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.AttachmentRepository
 import com.mycorrhizal.crm.model.network.ContactAttachment
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -55,7 +56,7 @@ class AttachmentsViewModel @Inject constructor(
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isLoading = false, error = error) }
                 }
             )
         }
@@ -77,7 +78,7 @@ class AttachmentsViewModel @Inject constructor(
                     load()
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isUploading = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isUploading = false, error = error) }
                 }
             )
         }
@@ -100,7 +101,7 @@ class AttachmentsViewModel @Inject constructor(
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(deletingId = null, error = error.displayMessage) }
+                    _uiState.update { it.copy(deletingId = null, error = error) }
                 }
             )
         }
@@ -125,7 +126,7 @@ class AttachmentsViewModel @Inject constructor(
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(downloadingId = null, error = error.displayMessage) }
+                    _uiState.update { it.copy(downloadingId = null, error = error) }
                 }
             )
         }
@@ -167,5 +168,5 @@ data class AttachmentUiState(
     val downloaded: Pair<ContactAttachment, ByteArray>? = null,
     /** A pre-read size rejection (e.g. over the server cap) — see [AttachmentsViewModel.rejectUpload]. */
     @StringRes val uploadErrorRes: Int? = null,
-    val error: String? = null
+    val error: ApiError? = null
 )

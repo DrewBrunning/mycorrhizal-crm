@@ -236,8 +236,10 @@ func TestListGiftsFiltersByEntityID(t *testing.T) {
 	bob := models.Contact{UserID: user.ID, Firstname: "Bob"}
 	db.Create(&alice)
 	db.Create(&bob)
-	db.Create(&models.Gift{UserID: user.ID, EntityID: alice.VCardUID, Description: "Idea for Alice"})
-	db.Create(&models.Gift{UserID: user.ID, EntityID: bob.VCardUID, Description: "Idea for Bob"})
+	aliceGift := models.Gift{UserID: user.ID, EntityID: alice.VCardUID, Description: "Idea for Alice"}
+	bobGift := models.Gift{UserID: user.ID, EntityID: bob.VCardUID, Description: "Idea for Bob"}
+	require.NoError(t, db.Create(&aliceGift).Error)
+	require.NoError(t, db.Create(&bobGift).Error)
 
 	req, _ := http.NewRequest("GET", "/gifts?entity_id="+alice.VCardUID, nil)
 	w := httptest.NewRecorder()
@@ -245,9 +247,9 @@ func TestListGiftsFiltersByEntityID(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var responseBody map[string]any
-	json.Unmarshal(w.Body.Bytes(), &responseBody)
-	assert.Len(t, responseBody["gifts"], 1)
+	assert.Equal(t, []string{aliceGift.ID}, idsFromList(t, router, "/gifts?entity_id="+alice.VCardUID, "gifts"),
+		"only alice's gift may be returned, not just one row")
+	assert.NotContains(t, idsFromList(t, router, "/gifts?entity_id="+alice.VCardUID, "gifts"), bobGift.ID)
 }
 
 func TestListGiftsScopedToUser(t *testing.T) {

@@ -45,11 +45,13 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.TrashedContact
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
+import com.mycorrhizal.crm.ui.components.localizedMessage
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -70,10 +72,11 @@ fun TrashScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    val loadError = state.error
+    val loadError = state.error?.localizedMessage()
 
     var pendingPurge by remember { mutableStateOf<TrashedContact?>(null) }
     var confirmEmpty by remember { mutableStateOf(false) }
+    var actionFailure by remember { mutableStateOf<ApiError?>(null) }
 
     val resources = LocalResources.current
     LaunchedEffect(Unit) {
@@ -99,9 +102,16 @@ fun TrashScreen(
                 is TrashUiEvent.Emptied ->
                     resources.getQuantityString(R.plurals.trash_emptied, event.count, event.count)
 
-                is TrashUiEvent.Failed -> event.message
+                is TrashUiEvent.Failed -> null.also { actionFailure = event.error }
             }
+            if (message != null) snackbarHostState.showSnackbar(message)
+        }
+    }
+    actionFailure?.let { error ->
+        val message = error.localizedMessage()
+        LaunchedEffect(error) {
             snackbarHostState.showSnackbar(message)
+            actionFailure = null
         }
     }
 

@@ -24,3 +24,11 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     testImplementation(libs.androidx.compose.ui.test.junit4)
 }
+
+// NoRawErrorMessageTest reads the feature modules' sources; declare them so a
+// change there re-runs the test instead of reusing a cached pass.
+tasks.withType<Test>().configureEach {
+    inputs.files(fileTree("../../feature") { include("*/src/main/**/*.kt") })
+        .withPropertyName("featureSources")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+}

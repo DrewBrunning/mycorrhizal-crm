@@ -9,7 +9,7 @@ android {
 }
 
 dependencies {
-    implementation(project(":core:network"))
+    api(project(":core:network"))
     api(project(":core:domain"))
     implementation(project(":core:ui"))
 

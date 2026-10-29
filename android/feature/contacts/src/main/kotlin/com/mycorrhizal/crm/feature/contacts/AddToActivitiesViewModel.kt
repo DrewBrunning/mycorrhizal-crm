@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.ActivityRepository
 import com.mycorrhizal.crm.model.network.Activity
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -23,7 +24,7 @@ data class AddToActivitiesUiState(
     val isSubmitting: Boolean = false,
     /** Titles of activities the server reported `not_found` (or an unknown status). */
     val failedTitles: List<String> = emptyList(),
-    val error: String? = null,
+    val error: ApiError? = null,
     /** Every selected activity now has the contact: the host closes the sheet and refreshes. */
     val done: Boolean = false
 ) {
@@ -69,7 +70,7 @@ class AddToActivitiesViewModel @Inject constructor(
                     _uiState.update { it.copy(isLoading = false, activities = page.activities) }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isLoading = false, error = error) }
                 }
             )
         }
@@ -116,7 +117,7 @@ class AddToActivitiesViewModel @Inject constructor(
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isSubmitting = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isSubmitting = false, error = error) }
                 }
             )
         }

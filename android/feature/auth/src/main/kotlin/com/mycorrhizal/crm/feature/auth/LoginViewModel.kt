@@ -36,8 +36,8 @@ data class LoginUiState(
     val isLoading: Boolean = false,
     /** Static validation error as a string resource id, resolved in the UI. */
     @StringRes val errorRes: Int? = null,
-    /** Dynamic server error text (e.g. "Invalid credentials"). */
-    val error: String? = null,
+    /** The failed request, localized in the UI by `localizedMessage()`. */
+    val error: ApiError? = null,
     // N8 (#814): the password step succeeded but the account has 2FA — the UI
     // swaps to a code-entry step until the TOTP/recovery code clears.
     val twoFactorStep: Boolean = false,
@@ -50,6 +50,20 @@ data class LoginUiState(
     // (code-only) state, so the copy can say why. Null = no runtime failure.
     val passkeyIssue: PasskeyIssue? = null
 )
+
+/**
+ * A rejected credential (401) has no reason code yet, so it gets its own copy
+ * instead of `localizedMessage()`'s "session expired"; any other failure is shown
+ * as the typed [ApiError].
+ */
+private fun LoginUiState.failedWith(cause: Throwable?): LoginUiState {
+    val apiError = cause?.toApiError() ?: ApiError.Unknown(IllegalStateException("Login failed"))
+    return if (apiError is ApiError.Client && apiError.code == 401 && apiError.reason == null) {
+        copy(isLoading = false, errorRes = R.string.login_error_invalid_credentials, error = null)
+    } else {
+        copy(isLoading = false, error = apiError)
+    }
+}
 
 enum class LoginMode { PASSWORD, API_TOKEN }
 
@@ -190,7 +204,7 @@ class LoginViewModel @Inject constructor(
                 }
 
                 is LoginUseCase.Result.Failure -> {
-                    _uiState.update { it.copy(isLoading = false, error = result.message) }
+                    _uiState.update { it.failedWith(result.cause) }
                 }
 
                 is LoginWithApiTokenUseCase.Result.Success -> {
@@ -199,7 +213,7 @@ class LoginViewModel @Inject constructor(
                 }
 
                 is LoginWithApiTokenUseCase.Result.Failure -> {
-                    _uiState.update { it.copy(isLoading = false, error = result.message) }
+                    _uiState.update { it.failedWith(result.cause) }
                 }
             }
         }
@@ -326,7 +340,7 @@ class LoginViewModel @Inject constructor(
 
             apiError is ApiError.Client && apiError.code == 429 ->
                 // Lockout: surface the server's message and stop (web parity).
-                _uiState.update { it.copy(isLoading = false, error = apiError.displayMessage) }
+                _uiState.update { it.copy(isLoading = false, error = apiError) }
 
             else -> _uiState.update {
                 it.copy(
@@ -356,7 +370,7 @@ class LoginViewModel @Inject constructor(
 
             apiError is ApiError.Client && apiError.code == 429 ->
                 // Lockout: surface the server's message and stop (web parity).
-                base.copy(error = apiError.displayMessage)
+                base.copy(error = apiError)
 
             else ->
                 // 400 wrong code and any transient/network failure keep the

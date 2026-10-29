@@ -54,6 +54,7 @@ import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.components.WriteConflictDialog
 import com.mycorrhizal.crm.ui.components.activityTypeLabel
+import com.mycorrhizal.crm.ui.components.localizedMessage
 
 /**
  * M9 item 1: the "Activities" drawer entry — every activity across every contact (matching web's
@@ -169,7 +170,7 @@ fun ActivitiesInboxScreenContent(
                         EmptyState(title = stringResource(R.string.activities_empty))
 
                     state.activities.isEmpty() && state.error != null ->
-                        EmptyState(state.error.orEmpty())
+                        EmptyState(state.error.localizedMessage())
 
                     else -> {
                         LazyColumn(
@@ -243,7 +244,7 @@ fun ActivitiesInboxScreenContent(
         )
     }
 
-    val listError = state.error
+    val listError = state.error?.localizedMessage()
     if (listError != null && state.activities.isNotEmpty()) {
         LaunchedEffect(listError) {
             snackbarHostState.showSnackbar(listError)

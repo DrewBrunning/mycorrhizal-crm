@@ -93,7 +93,7 @@ class AuditViewModelTest {
         val vm = viewModel()
         advanceUntilIdle()
 
-        assertEquals("boom", vm.uiState.value.error)
+        assertEquals("boom", vm.uiState.value.error?.message)
     }
 
     @Test
@@ -315,7 +315,7 @@ class AuditViewModelTest {
         vm.load()
         advanceUntilIdle()
 
-        assertEquals("boom", vm.uiState.value.error)
+        assertEquals("boom", vm.uiState.value.error?.message)
         assertEquals(1, vm.uiState.value.events.size)
         assertEquals(5, vm.uiState.value.contactsByUid["uid-1"]?.id)
         // No resolve attempt on the failure path.
@@ -470,6 +470,6 @@ class AuditViewModelTest {
 
         val emitted = vm.events.first() as AuditUiEvent.UndoFailed
         assertFalse(emitted.isRetentionGone)
-        assertEquals("unsupported", emitted.message)
+        assertEquals("unsupported", emitted.error.message)
     }
 }

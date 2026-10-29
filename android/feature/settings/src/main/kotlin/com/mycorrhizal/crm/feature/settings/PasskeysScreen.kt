@@ -48,8 +48,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.WebAuthnCredential
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
+import com.mycorrhizal.crm.ui.components.localizedMessageOrServerText
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -197,7 +199,7 @@ fun PasskeysContent(
                 stringResource(
                     it
                 )
-            } ?: state.error
+            } ?: state.error?.localizedMessageOrServerText()
         }
         errorText?.let { text ->
             Text(
@@ -287,7 +289,7 @@ internal fun AddPasskeyDialog(
     busy: Boolean,
     needsProof: Boolean,
     canProveWithPasskey: Boolean,
-    error: String?,
+    error: ApiError?,
     errorRes: Int?,
     onConfirm: (name: String, proofCode: String) -> Unit,
     onUseExistingPasskey: (name: String) -> Unit,
@@ -352,7 +354,11 @@ internal fun AddPasskeyDialog(
                         )
                     }
                 }
-                val message = errorRes?.let { stringResource(it) } ?: error
+                val message = errorRes?.let {
+                    stringResource(
+                        it
+                    )
+                } ?: error?.localizedMessageOrServerText()
                 message?.let {
                     Text(
                         it,
@@ -384,7 +390,7 @@ internal fun RemovePasskeyDialog(
     target: WebAuthnCredential,
     busy: Boolean,
     canProveWithPasskey: Boolean,
-    error: String?,
+    error: ApiError?,
     errorRes: Int?,
     onConfirmCode: (String) -> Unit,
     onUseAnotherPasskey: () -> Unit,
@@ -413,7 +419,11 @@ internal fun RemovePasskeyDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
                     modifier = Modifier.fillMaxWidth()
                 )
-                val message = errorRes?.let { stringResource(it) } ?: error
+                val message = errorRes?.let {
+                    stringResource(
+                        it
+                    )
+                } ?: error?.localizedMessageOrServerText()
                 message?.let {
                     Text(
                         it,

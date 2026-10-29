@@ -833,7 +833,7 @@ class ContactFormViewModelTest {
         vm.save()
         advanceUntilIdle()
 
-        assertEquals("A contact with this email already exists", vm.uiState.value.error)
+        assertEquals("A contact with this email already exists", vm.uiState.value.error?.message)
         assertFalse(vm.uiState.value.isSaving)
         assertNull(vm.events.value)
     }
@@ -2475,7 +2475,10 @@ class ContactFormViewModelTest {
             advanceUntilIdle()
 
             val state = vm.uiState.value
-            assertEquals("geocoding is not enabled on this server", state.geocodeErrors["a1"])
+            assertEquals(
+                "geocoding is not enabled on this server",
+                state.geocodeErrors["a1"]?.message
+            )
             assertEquals("geo:1,2", state.addresses.single().coordinates)
             assertTrue(state.geocodeInFlight.isEmpty())
         }
@@ -2491,7 +2494,7 @@ class ContactFormViewModelTest {
         } returns Result.failure(ApiError.Client(422, "nope"))
         vm.onFindCoordinates("a1")
         advanceUntilIdle()
-        assertEquals("nope", vm.uiState.value.geocodeErrors["a1"])
+        assertEquals("nope", vm.uiState.value.geocodeErrors["a1"]?.message)
 
         coEvery { mapRepository.geocodeAddressDraft(5, any()) } returns draftResult("geo:1,2")
         vm.onFindCoordinates("a1")

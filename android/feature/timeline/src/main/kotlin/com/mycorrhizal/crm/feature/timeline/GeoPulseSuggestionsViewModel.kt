@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.GeoPulseRepository
 import com.mycorrhizal.crm.model.network.GeoPulseStaySuggestion
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.Instant
@@ -24,7 +25,7 @@ data class GeoPulseSuggestionsUiState(
     /** The date shown in the picker (YYYY-MM-DD) — may differ from [lookedUpDate] until "Look up". */
     val date: String,
     val isLoading: Boolean = false,
-    val error: String? = null,
+    val error: ApiError? = null,
     /** The suggestions of the last successful lookup; null until one has run. */
     val suggestions: List<GeoPulseStaySuggestion>? = null,
     /** The date the current [suggestions] were fetched for. */
@@ -74,7 +75,7 @@ class GeoPulseSuggestionsViewModel @Inject constructor(private val repository: G
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            error = e.displayMessage,
+                            error = e,
                             suggestions = null
                         )
                     }

@@ -50,7 +50,7 @@ class GeoPulseSettingsViewModelTest {
         val vm = GeoPulseSettingsViewModel(repository)
         advanceUntilIdle()
 
-        assertEquals("Server error (500)", vm.uiState.value.loadError)
+        assertTrue(vm.uiState.value.loadError is ApiError.Server)
     }
 
     @Test
@@ -90,7 +90,7 @@ class GeoPulseSettingsViewModelTest {
             val state = vm.uiState.value
             assertTrue(state.hasApiKey)
             assertEquals("", state.apiKey)
-            assertNull(state.saveError)
+            assertNull(state.saveError?.message)
             assertFalse(state.tokenRequired)
         }
 
@@ -206,7 +206,7 @@ class GeoPulseSettingsViewModelTest {
 
         assertEquals(
             "re-enter the API token when changing the GeoPulse server",
-            vm.uiState.value.saveError
+            vm.uiState.value.saveError?.message
         )
         assertFalse(vm.uiState.value.isSaving)
     }
@@ -251,7 +251,7 @@ class GeoPulseSettingsViewModelTest {
         advanceUntilIdle()
 
         assertFalse(vm.uiState.value.testResult!!.ok)
-        assertEquals("No GeoPulse connection", vm.uiState.value.testResult!!.message)
+        assertEquals("No GeoPulse connection", vm.uiState.value.testResult!!.error?.message)
     }
 
     @Test

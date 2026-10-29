@@ -26,7 +26,7 @@ data class ActivitiesInboxUiState(
     val isLoadingMore: Boolean = false,
     /** Id of the activity currently being deleted, so the row can show a spinner. */
     val deletingId: Int? = null,
-    val error: String? = null,
+    val error: ApiError? = null,
     /** ADR 0008: a delete was rejected with 412 — the record changed elsewhere since the list loaded. */
     val conflict: Boolean = false
 )
@@ -57,7 +57,7 @@ class ActivitiesInboxViewModel @Inject constructor(
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isLoading = false, error = error) }
                 }
             )
         }
@@ -79,7 +79,7 @@ class ActivitiesInboxViewModel @Inject constructor(
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoadingMore = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isLoadingMore = false, error = error) }
                 }
             )
         }
@@ -122,7 +122,7 @@ class ActivitiesInboxViewModel @Inject constructor(
                         if (error is ApiError.PreconditionFailed) {
                             it.copy(deletingId = null, conflict = true)
                         } else {
-                            it.copy(deletingId = null, error = error.displayMessage)
+                            it.copy(deletingId = null, error = error)
                         }
                     }
                 }

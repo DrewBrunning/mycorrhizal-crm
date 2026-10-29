@@ -15,6 +15,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import com.mycorrhizal.crm.model.network.WebAuthnCredential
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
@@ -242,7 +243,14 @@ class PasskeysScreenTest {
 
     @Test
     fun `a server message for 404 and 409 is shown in the dialog`() {
-        setContent(ready { copy(removing = phone, error = "No other passkey is registered") })
+        setContent(
+            ready {
+                copy(
+                    removing = phone,
+                    error = ApiError.Client(400, "No other passkey is registered")
+                )
+            }
+        )
         composeTestRule.onNodeWithText("No other passkey is registered").assertIsDisplayed()
     }
 
@@ -261,7 +269,12 @@ class PasskeysScreenTest {
     @Test
     fun `success and error lines are shown outside dialogs`() {
         setContent(
-            ready { copy(messageRes = R.string.settings_passkeys_add_success, error = "Boom") }
+            ready {
+                copy(
+                    messageRes = R.string.settings_passkeys_add_success,
+                    error = ApiError.Client(400, "Boom")
+                )
+            }
         )
         composeTestRule.onNodeWithText("Passkey added.").assertIsDisplayed()
         composeTestRule.onNodeWithText("Boom").assertIsDisplayed()

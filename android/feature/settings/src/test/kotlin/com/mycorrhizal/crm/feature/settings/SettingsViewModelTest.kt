@@ -813,7 +813,7 @@ class SettingsViewModelTest {
 
             assertEquals(
                 "Invalid value for field 'current_password'",
-                vm.uiState.value.passwordError
+                vm.uiState.value.passwordError?.message
             )
             assertNull(vm.events.value)
         }

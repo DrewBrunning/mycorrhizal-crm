@@ -11,6 +11,7 @@ import androidx.lifecycle.SavedStateHandle
 import com.mycorrhizal.crm.domain.repository.ContactNotesPage
 import com.mycorrhizal.crm.domain.repository.NoteRepository
 import com.mycorrhizal.crm.model.network.Note
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
@@ -56,6 +57,30 @@ class NotesScreenTest {
                 )
             }
         }
+    }
+
+    @Test
+    fun `an error over a populated list is shown as a localized snackbar`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                NotesScreenContent(
+                    uiState = NotesUiState(
+                        isLoading = false,
+                        notes = listOf(Note(id = 1, content = "Buy milk")),
+                        error = ApiError.Client(404, "gone")
+                    ),
+                    onEditNote = {},
+                    onSearchChange = {},
+                    onFromDateChange = {},
+                    onToDateChange = {},
+                    onLoadMore = {},
+                    onDelete = {}
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Not found").assertIsDisplayed()
     }
 
     @Test

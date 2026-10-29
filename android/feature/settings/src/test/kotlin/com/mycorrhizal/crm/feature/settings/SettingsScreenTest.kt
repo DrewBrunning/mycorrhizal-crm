@@ -34,6 +34,7 @@ import com.mycorrhizal.crm.domain.repository.LocalAuthSettingsRepository
 import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.domain.repository.TrackingSettingsRepository
 import com.mycorrhizal.crm.model.network.ServerHealth
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
@@ -302,7 +303,9 @@ class SettingsScreenTest {
     fun `a password change error is announced as an assertive live region`() {
         show {
             ChangePasswordContent(
-                state = SettingsUiState(passwordError = "Current password is wrong")
+                state = SettingsUiState(
+                    passwordError = ApiError.Client(400, "Current password is wrong")
+                )
             )
         }
 

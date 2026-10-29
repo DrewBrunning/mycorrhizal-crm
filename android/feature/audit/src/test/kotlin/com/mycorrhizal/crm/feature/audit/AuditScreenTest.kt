@@ -233,6 +233,26 @@ class AuditScreenTest {
     }
 
     @Test
+    fun `a failed undo shows the localized error as a snackbar`() {
+        val auditRepository = mockk<AuditRepository>()
+        val contactRepository = mockk<ContactRepository>()
+        coEvery {
+            auditRepository.list(entityType = any(), entityId = any(), limit = any())
+        } returns
+            Result.success(AuditEventsResponse(auditEvents = listOf(contactUpdate(id = 1))))
+        coEvery { contactRepository.resolveByUid(any()) } returns Result.success(emptyMap())
+        coEvery { auditRepository.undo(1L) } returns Result.failure(ApiError.Client(404, "gone"))
+
+        setScreen(auditRepository, contactRepository)
+        composeTestRule.onNodeWithTag("audit-undo-1").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onAllNodesWithText("Undo")[1].performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Not found").assertIsDisplayed()
+    }
+
+    @Test
     fun `confirming undo runs the undo then refreshes the list`() {
         val auditRepository = mockk<AuditRepository>()
         val contactRepository = mockk<ContactRepository>()

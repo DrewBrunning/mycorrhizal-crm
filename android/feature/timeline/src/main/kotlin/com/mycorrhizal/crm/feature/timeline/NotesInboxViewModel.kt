@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.NoteRepository
 import com.mycorrhizal.crm.model.network.Note
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -27,7 +28,7 @@ data class NotesInboxUiState(
     val nextCursor: String? = null,
     val isLoading: Boolean = false,
     val isLoadingMore: Boolean = false,
-    val error: String? = null
+    val error: ApiError? = null
 )
 
 @HiltViewModel
@@ -61,7 +62,7 @@ class NotesInboxViewModel @Inject constructor(private val noteRepository: NoteRe
                 },
                 onError = { error ->
                     hasLoaded = true
-                    _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isLoading = false, error = error) }
                 }
             )
         }
@@ -94,7 +95,7 @@ class NotesInboxViewModel @Inject constructor(private val noteRepository: NoteRe
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoadingMore = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isLoadingMore = false, error = error) }
                 }
             )
         }

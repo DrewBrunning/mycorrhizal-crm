@@ -12,6 +12,7 @@ import com.mycorrhizal.crm.domain.repository.ActivityRepository
 import com.mycorrhizal.crm.domain.repository.ContactActivitiesPage
 import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ContactFlat
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
@@ -177,7 +178,7 @@ class ActivitiesScreenTest {
             ActivitiesUiState(
                 contactId = 5,
                 activities = listOf(Activity(id = 7, title = "Lunch")),
-                error = "Offline"
+                error = ApiError.Client(400, "Offline")
             )
         )
 

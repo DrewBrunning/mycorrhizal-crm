@@ -71,7 +71,7 @@ class NotificationChannelsViewModelTest {
         val vm = NotificationChannelsViewModel(repository)
         advanceUntilIdle()
 
-        assertEquals("Server error (500)", vm.uiState.value.loadError)
+        assertTrue(vm.uiState.value.loadError is ApiError.Server)
     }
 
     @Test
@@ -94,7 +94,7 @@ class NotificationChannelsViewModelTest {
             val state = vm.uiState.value
             assertEquals("https://ntfy.sh", state.ntfyUrl)
             assertTrue(state.notifyNtfy)
-            assertNull(state.saveError)
+            assertNull(state.saveError?.message)
         }
 
     @Test
@@ -143,7 +143,7 @@ class NotificationChannelsViewModelTest {
         vm.save()
         advanceUntilIdle()
 
-        assertEquals("Invalid URL", vm.uiState.value.saveError)
+        assertEquals("Invalid URL", vm.uiState.value.saveError?.message)
     }
 
     @Test
@@ -189,7 +189,7 @@ class NotificationChannelsViewModelTest {
 
         val outcome = vm.uiState.value.testResult["gotify"]
         assertTrue(outcome?.ok == false)
-        assertEquals("gotify is not configured", outcome?.error)
+        assertEquals("gotify is not configured", outcome?.detail)
     }
 
     @Test
@@ -209,7 +209,7 @@ class NotificationChannelsViewModelTest {
 
         val outcome = vm.uiState.value.testResult["ntfy"]
         assertTrue(outcome?.ok == false)
-        assertEquals("Server error (500)", outcome?.error)
+        assertTrue(outcome?.error is ApiError.Server)
     }
 
     @Test
@@ -231,7 +231,7 @@ class NotificationChannelsViewModelTest {
 
             val outcome = vm.uiState.value.testResult["ntfy"]
             assertTrue(outcome?.ok == false)
-            assertEquals("Invalid URL", outcome?.error)
+            assertEquals("Invalid URL", outcome?.error?.message)
             coVerify(exactly = 0) { repository.test(any()) }
         }
 

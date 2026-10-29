@@ -249,7 +249,7 @@ class FieldDefinitionFormViewModelTest {
         vm.save()
         advanceUntilIdle()
 
-        assertEquals("already exists", vm.uiState.value.error)
+        assertEquals("already exists", vm.uiState.value.error?.message)
         assertFalse(vm.uiState.value.isSaving)
         assertNull(vm.events.value)
     }
@@ -332,7 +332,7 @@ class FieldDefinitionFormViewModelTest {
             val vm = editViewModel()
             advanceUntilIdle()
 
-            assertEquals("boom", vm.uiState.value.error)
+            assertEquals("boom", vm.uiState.value.error?.message)
             assertFalse(vm.uiState.value.isLoading)
             assertTrue(vm.uiState.value.isEdit) // the id from SavedStateHandle is unaffected by the load failure
         }
@@ -569,7 +569,7 @@ class FieldDefinitionFormViewModelTest {
             vm.save()
             advanceUntilIdle()
 
-            assertEquals("group: must be at most 100 characters", vm.uiState.value.error)
+            assertEquals("group: must be at most 100 characters", vm.uiState.value.error?.message)
             assertNull(vm.events.value)
         }
 
@@ -667,7 +667,7 @@ class FieldDefinitionFormViewModelTest {
         vm.delete()
         advanceUntilIdle()
 
-        assertEquals("delete failed", vm.uiState.value.error)
+        assertEquals("delete failed", vm.uiState.value.error?.message)
         assertNull(vm.events.value)
         assertFalse(vm.uiState.value.isDeleting)
     }

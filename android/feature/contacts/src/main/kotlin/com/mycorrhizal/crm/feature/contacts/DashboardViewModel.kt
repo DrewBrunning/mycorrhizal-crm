@@ -15,6 +15,7 @@ import com.mycorrhizal.crm.model.network.OverdueCadence
 import com.mycorrhizal.crm.model.network.OverdueDataDecayPolicy
 import com.mycorrhizal.crm.model.network.ReachOutSuggestion
 import com.mycorrhizal.crm.network.ApiClient
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.OffsetDateTime
@@ -60,14 +61,14 @@ data class DashboardUiState(
     val totals: DashboardTotals = DashboardTotals(),
     val isLoading: Boolean = false,
     /** The dashboard-wide load failure; the screen replaces the widgets with an error + retry. */
-    val error: String? = null,
+    val error: ApiError? = null,
     /**
      * Transient failure from a complete/skip action. Shown as a snackbar and
      * cleared via [DashboardViewModel.onActionErrorShown] — deliberately
      * separate from [error], because a failed action must not blank the
      * already-rendered dashboard the way a failed load does.
      */
-    val actionError: String? = null,
+    val actionError: ApiError? = null,
     /** The reminder currently being completed/skipped; guards against double-taps. */
     val completingId: Int? = null,
     /** The reach-out suggestion currently being dismissed; guards against double-taps. */
@@ -168,7 +169,7 @@ class DashboardViewModel @Inject constructor(
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isLoading = false, error = error) }
                 }
             )
         }
@@ -202,13 +203,13 @@ class DashboardViewModel @Inject constructor(
                 onError = { error ->
                     _uiState.update { state ->
                         if (removed == null) {
-                            state.copy(completingId = null, actionError = error.displayMessage)
+                            state.copy(completingId = null, actionError = error)
                         } else {
                             val restored = state.upcomingReminders.toMutableList()
                             restored.add(index.coerceIn(0, restored.size), removed)
                             state.copy(
                                 completingId = null,
-                                actionError = error.displayMessage,
+                                actionError = error,
                                 upcomingReminders = restored,
                                 totals = state.totals.copy(
                                     upcomingReminders = state.totals.upcomingReminders.adjusted(1)
@@ -251,14 +252,14 @@ class DashboardViewModel @Inject constructor(
                         if (removed == null) {
                             state.copy(
                                 dismissingSuggestionId = null,
-                                actionError = error.displayMessage
+                                actionError = error
                             )
                         } else {
                             val restored = state.reachOutSuggestions.toMutableList()
                             restored.add(index.coerceIn(0, restored.size), removed)
                             state.copy(
                                 dismissingSuggestionId = null,
-                                actionError = error.displayMessage,
+                                actionError = error,
                                 reachOutSuggestions = restored,
                                 totals = state.totals.copy(
                                     reachOutSuggestions = state.totals.reachOutSuggestions.adjusted(
@@ -306,14 +307,14 @@ class DashboardViewModel @Inject constructor(
                         if (removed == null) {
                             state.copy(
                                 verifyingDataDecayId = null,
-                                actionError = error.displayMessage
+                                actionError = error
                             )
                         } else {
                             val restored = state.dataDecayOverdue.toMutableList()
                             restored.add(index.coerceIn(0, restored.size), removed)
                             state.copy(
                                 verifyingDataDecayId = null,
-                                actionError = error.displayMessage,
+                                actionError = error,
                                 dataDecayOverdue = restored,
                                 totals = state.totals.copy(
                                     dataDecayOverdue = state.totals.dataDecayOverdue.adjusted(1)

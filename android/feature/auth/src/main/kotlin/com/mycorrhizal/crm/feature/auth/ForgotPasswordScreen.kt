@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.localizedMessage
 
 /**
  * M26: the two-step forgot-password flow (request -> confirm), mirroring web's
@@ -189,7 +190,11 @@ fun ForgotPasswordScreenContent(
                 }
             }
 
-            val errorMessage = uiState.errorRes?.let { stringResource(it) } ?: uiState.error
+            val errorMessage = uiState.errorRes?.let {
+                stringResource(
+                    it
+                )
+            } ?: uiState.error?.localizedMessage()
             errorMessage?.let { message ->
                 LaunchedEffect(message) {
                     snackbarHostState.showSnackbar(message)

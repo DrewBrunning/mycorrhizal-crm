@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.localizedMessage
 
 /**
  * Issue #833: the Nextcloud/ownCloud (WebDAV) connection-config settings screen —
@@ -158,7 +159,7 @@ fun NextcloudSettingsContent(
 
             state.loadError?.let {
                 Text(
-                    it,
+                    it.localizedMessage(),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
@@ -166,7 +167,7 @@ fun NextcloudSettingsContent(
             }
             state.saveError?.let {
                 Text(
-                    it,
+                    it.localizedMessage(),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
@@ -254,7 +255,7 @@ fun NextcloudSettingsContent(
                     } else {
                         stringResource(
                             R.string.nextcloud_settings_test_failed,
-                            result.message ?: "unknown"
+                            result.error?.localizedMessage() ?: result.message ?: "unknown"
                         )
                     },
                     color = if (result.ok) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,

@@ -202,7 +202,7 @@ class AttachToRemoteViewModelTest {
             advanceUntilIdle()
 
             assertEquals(AttachStep.SignIn, vm.uiState.value.step)
-            assertEquals("No connection", vm.uiState.value.error)
+            assertTrue(vm.uiState.value.error is ApiError.Network)
         }
 
     @Test
@@ -217,7 +217,7 @@ class AttachToRemoteViewModelTest {
         vm.signIn("r1", "", "", "alice", "pw")
         advanceUntilIdle()
 
-        assertEquals("Server returned no session", vm.uiState.value.error)
+        assertEquals("Server returned no session", vm.uiState.value.errorText)
     }
 
     @Test
@@ -412,7 +412,7 @@ class AttachToRemoteViewModelTest {
             } returns Result.failure(ApiError.Client(429, "Too many attempts"))
             vm.usePasskey(context)
             advanceUntilIdle()
-            assertEquals("Too many attempts", vm.uiState.value.error)
+            assertEquals("Too many attempts", vm.uiState.value.error?.message)
         }
 
     @Test
@@ -427,7 +427,7 @@ class AttachToRemoteViewModelTest {
             advanceUntilIdle()
 
             assertEquals(AttachStep.TwoFactor, vm.uiState.value.step)
-            assertEquals("No passkey registered", vm.uiState.value.error)
+            assertEquals("No passkey registered", vm.uiState.value.error?.message)
         }
 
     @Test
@@ -492,7 +492,7 @@ class AttachToRemoteViewModelTest {
             advanceUntilIdle()
 
             assertEquals(AttachStep.PrepareFailed, vm.uiState.value.step)
-            assertEquals(msg, vm.uiState.value.error)
+            assertEquals(msg, vm.uiState.value.error?.message)
         }
 
     @Test
@@ -609,7 +609,7 @@ class AttachToRemoteViewModelTest {
             advanceUntilIdle()
 
             assertEquals(AttachStep.Review, vm.uiState.value.step)
-            assertEquals("boom", vm.uiState.value.error)
+            assertEquals("boom", vm.uiState.value.errorText)
             coVerify(exactly = 0) { coordinator.finish(any()) }
         }
 
@@ -685,7 +685,7 @@ class AttachToRemoteViewModelTest {
             advanceUntilIdle()
 
             assertEquals(AttachStep.Review, vm.uiState.value.step)
-            assertEquals("switch failed", vm.uiState.value.error)
+            assertEquals("switch failed", vm.uiState.value.errorText)
         }
 
     @Test

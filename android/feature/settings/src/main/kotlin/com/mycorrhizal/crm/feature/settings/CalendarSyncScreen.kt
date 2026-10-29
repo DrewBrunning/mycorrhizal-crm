@@ -59,6 +59,7 @@ import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.RefreshableContent
+import com.mycorrhizal.crm.ui.components.localizedMessage
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
@@ -181,7 +182,7 @@ internal fun CalendarSyncContent(
                     if (state.error != null) {
                         item {
                             Text(
-                                text = state.error.orEmpty(),
+                                text = state.error.localizedMessage().orEmpty(),
                                 color = MaterialTheme.colorScheme.error,
                                 style = MaterialTheme.typography.bodySmall,
                                 modifier = Modifier

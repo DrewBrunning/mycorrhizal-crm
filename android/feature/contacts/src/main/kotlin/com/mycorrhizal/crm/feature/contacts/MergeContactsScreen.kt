@@ -42,6 +42,7 @@ import com.mycorrhizal.crm.model.network.ContactMergeAssociationCounts
 import com.mycorrhizal.crm.model.network.ContactMergeFieldConflict
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.localizedMessage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -217,7 +218,8 @@ fun MergeContactsScreenContent(
         }
     }
 
-    state.error?.let { message ->
+    state.error?.let { error ->
+        val message = error.localizedMessage()
         LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)
             currentOnErrorShown.value()

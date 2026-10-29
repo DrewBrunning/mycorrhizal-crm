@@ -45,6 +45,7 @@ import com.mycorrhizal.crm.model.network.parseCoordinateInput
 import com.mycorrhizal.crm.model.network.parseGeoUri
 import com.mycorrhizal.crm.model.network.upsertEntryPeriod
 import com.mycorrhizal.crm.model.network.yearTemporalRange
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.R
 import java.util.UUID
 
@@ -282,7 +283,7 @@ private fun AddressRow(
     onRevealAdditional: () -> Unit,
     findReason: String?,
     finding: Boolean,
-    findError: String?,
+    findError: ApiError?,
     onFindCoordinates: () -> Unit
 ) {
     Column(
@@ -473,7 +474,7 @@ private fun CoordinatesField(
     onCoordinatesChange: (String?) -> Unit,
     findReason: String?,
     finding: Boolean,
-    findError: String?,
+    findError: ApiError?,
     onFind: () -> Unit
 ) {
     fun display(stored: String?): String =
@@ -543,7 +544,7 @@ private fun CoordinatesField(
         }
         findError?.let {
             Text(
-                it,
+                it.localizedMessage(),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error
             )
