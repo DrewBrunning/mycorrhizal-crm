@@ -14,7 +14,7 @@ import org.junit.Test
  * The check is a heuristic over short, non-sentence strings: a word after the
  * first that is a Capitalised Word is Title Case unless it is a proper noun
  * ([properNouns]) or the string is one of the reviewed [exceptions]. A word
- * that follows a sentence terminator (`?`, `!`, `:`) starts a new sentence and
+ * that follows a sentence terminator (`.`, `?`, `!`, `:`) starts a new sentence and
  * is allowed to be capitalised.
  */
 class SentenceCaseStringsTest {
@@ -32,7 +32,7 @@ class SentenceCaseStringsTest {
         "settings_api_tokens_create_title" to "approved Title Case exception (#2166)"
     )
 
-    private val word = Regex("""^[A-ZÀ-Ý][a-zà-ÿ]+[,:?!]?$""")
+    private val word = Regex("""^[A-ZÀ-Ý][a-zà-ÿ]+[,:?!.]?$""")
 
     private fun valuesFor(dir: String): Map<String, String> {
         val text = File("src/main/res/$dir/strings.xml").readText()
@@ -51,11 +51,11 @@ class SentenceCaseStringsTest {
         if (words.size < 2 || words.size > 7 || value.endsWith(".")) return false
         var sentenceStart = true
         for (w in words) {
-            val bare = w.trimEnd(',', ':', '?', '!')
+            val bare = w.trimEnd(',', ':', '?', '!', '.')
             val capitalised = word.matches(w)
             if (!sentenceStart && capitalised && bare !in properNouns) return true
             if (w.isNotEmpty() && w.first().isLetter()) sentenceStart = false
-            if (w.last() in "?!:") sentenceStart = true
+            if (w.last() in "?!:.") sentenceStart = true
         }
         return false
     }

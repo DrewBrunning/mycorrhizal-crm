@@ -111,3 +111,18 @@ func TestErrorHandlerMiddleware_PlainBusyErrorIs503(t *testing.T) {
 	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
 	assert.Equal(t, "1", rec.Header().Get("Retry-After"))
 }
+
+// A reason detail already on the 500 must not override the busy error's own
+// rendered reason; other details still carry over.
+func TestBusyOverride_DropsInheritedReasonDetail(t *testing.T) {
+	busy := realBusyError(t)
+	in := ErrDatabase("Failed to update contact").WithError(busy).
+		WithReason(ReasonCommonDatabaseError, nil)
+	require.Contains(t, in.Details, "reason")
+
+	out := busyOverride(in)
+	require.NotNil(t, out)
+	assert.Equal(t, string(ReasonCommonDatabaseBusy), out.ReasonCode)
+	assert.NotContains(t, out.Details, "reason")
+	assert.Equal(t, "Failed to update contact", out.Details["operation"])
+}
