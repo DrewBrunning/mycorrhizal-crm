@@ -10,7 +10,7 @@ import {
   getGeoPulseSuggestions,
 } from '../api/geopulse';
 import { DateFormatProvider, setDateFormatPreference } from '../DateFormatProvider';
-import { pickDate } from '../testSupport/dateField';
+import { openDatePicker, pickDate } from '../testSupport/dateField';
 import { setTimeFormat } from '../timeFormat';
 import GeoPulseSuggestionsDialog from './GeoPulseSuggestionsDialog';
 
@@ -109,7 +109,7 @@ test('opens with the explanation, today (local) as the date, and nothing looked 
 
 test('Look up is disabled without a date', () => {
   renderDialog();
-  fireEvent.click(screen.getByLabelText('Date'));
+  openDatePicker('Date');
   fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
   expect(screen.getByRole('button', { name: 'Look up' })).toBeDisabled();
 });

@@ -3,6 +3,7 @@ import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import type { Reminder } from '../api/reminders';
 import { DateFormatProvider, formatDateWithFormat, getDateFormat } from '../DateFormatProvider';
+import { openDatePicker } from '../testSupport/dateField';
 import { localISODate, todayLocalISODate } from '../utils/localDate';
 import ReminderDialog from './ReminderDialog';
 
@@ -92,7 +93,7 @@ test('requires a date before saving', async () => {
   const { onSave } = renderDialog();
 
   fireEvent.change(screen.getByLabelText('Message *'), { target: { value: 'Water the plants' } });
-  fireEvent.click(screen.getByLabelText('Date *'));
+  openDatePicker('Date *');
   fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 

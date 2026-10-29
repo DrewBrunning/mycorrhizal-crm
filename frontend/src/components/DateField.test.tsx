@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import { DateFormatProvider, setDateFormatPreference } from '../DateFormatProvider';
@@ -26,7 +27,7 @@ function input() {
 }
 
 function openPicker() {
-  fireEvent.click(input());
+  fireEvent.click(screen.getByRole('button', { name: 'Open calendar' }));
   return screen.getByRole('dialog', { name: 'Start date' });
 }
 
@@ -103,7 +104,7 @@ describe('DateField picker', () => {
 
   test('opens from the keyboard', () => {
     renderField();
-    fireEvent.keyDown(input(), { key: 'Enter' });
+    fireEvent.keyDown(input(), { key: 'ArrowDown' });
     expect(screen.getByRole('dialog', { name: 'Start date' })).toBeInTheDocument();
   });
 
@@ -133,4 +134,131 @@ test('a required field exposes its label and required state to assistive tech', 
   renderField({ required: true });
   const field = screen.getByRole('textbox', { name: 'Start date *' });
   expect(field).toHaveAttribute('aria-required', 'true');
+});
+
+function type(text: string) {
+  fireEvent.focus(input());
+  fireEvent.change(input(), { target: { value: text } });
+}
+
+describe('DateField keyboard entry (issue #2198)', () => {
+  test('typing a full date in the Date format preference reports YYYY-MM-DD', () => {
+    const { onChange } = renderField();
+    type('15.01.2026');
+    expect(onChange).toHaveBeenLastCalledWith('2026-01-15');
+  });
+
+  test('a far-past date can be typed without calendar navigation', () => {
+    const { onChange } = renderField();
+    type('03.07.1950');
+    expect(onChange).toHaveBeenLastCalledWith('1950-07-03');
+  });
+
+  test.each([
+    ['us', '01/15/2026'],
+    ['us-mmmm', '01/15/2026'],
+    ['iso', '2026-01-15'],
+    ['ca', '15/01/2026'],
+    ['eu-hyphen', '15-01-2026'],
+    ['eu-mmm', '15.01.2026'],
+  ] as const)('parses the %s format', (format, text) => {
+    setDateFormatPreference(format);
+    const { onChange } = renderField();
+    type(text);
+    expect(onChange).toHaveBeenLastCalledWith('2026-01-15');
+  });
+
+  test('shows the numeric form while editing a month-name format', () => {
+    setDateFormatPreference('us-mmmm');
+    renderField({ value: '2026-01-15' });
+    expect(input()).toHaveValue('January 15, 2026');
+    fireEvent.focus(input());
+    expect(input()).toHaveValue('01/15/2026');
+  });
+
+  test('normalizes the typed text on blur', () => {
+    renderField({ value: '2026-01-15' });
+    type('1.2.2026');
+    fireEvent.blur(input());
+    expect(input()).toHaveValue('15.01.2026');
+  });
+
+  test('an impossible date shows an error and leaves the value unchanged', () => {
+    const { onChange } = renderField({ value: '2026-01-15' });
+    type('31.02.2026');
+    fireEvent.blur(input());
+    expect(onChange).not.toHaveBeenCalled();
+    expect(input()).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByText('Enter a valid date as DD.MM.YYYY.')).toBeInTheDocument();
+  });
+
+  test('text that is not a date is rejected, and so is a year-less date', () => {
+    const { onChange } = renderField({ value: '2026-01-15' });
+    type('hello');
+    fireEvent.blur(input());
+    expect(screen.getByText('Enter a valid date as DD.MM.YYYY.')).toBeInTheDocument();
+    type('15.01.');
+    fireEvent.blur(input());
+    expect(screen.getByText('Enter a valid date as DD.MM.YYYY.')).toBeInTheDocument();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  test('a date outside min/max is rejected', () => {
+    const { onChange } = renderField({ min: '2026-01-10', max: '2026-01-20' });
+    type('25.01.2026');
+    fireEvent.blur(input());
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByText('That date is outside the allowed range.')).toBeInTheDocument();
+  });
+
+  test('the error clears once the text is corrected', () => {
+    const { onChange } = renderField();
+    type('99.99.2026');
+    fireEvent.blur(input());
+    expect(input()).toHaveAttribute('aria-invalid', 'true');
+    type('15.01.2026');
+    expect(onChange).toHaveBeenLastCalledWith('2026-01-15');
+    expect(input()).not.toHaveAttribute('aria-invalid', 'true');
+  });
+
+  test('Enter commits typed text without opening the picker', () => {
+    const { onChange } = renderField();
+    type('15.01.2026');
+    fireEvent.keyDown(input(), { key: 'Enter' });
+    expect(onChange).toHaveBeenLastCalledWith('2026-01-15');
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  test('emptying the text clears the value', () => {
+    const { onChange } = renderField({ value: '2026-01-15' });
+    type('');
+    expect(onChange).toHaveBeenLastCalledWith('');
+  });
+
+  test('a picked day replaces any half-typed text', async () => {
+    function Controlled() {
+      const [value, setValue] = useState('');
+      return <DateField label="Start date" value={value} onChange={setValue} />;
+    }
+    render(
+      <DateFormatProvider>
+        <Controlled />
+      </DateFormatProvider>,
+    );
+    type('15.0');
+    await pickDate('Start date', '2026-01-01');
+    expect(input()).toHaveValue('01.01.2026');
+  });
+});
+
+describe('DateField fixed-height calendar (issue #2199)', () => {
+  test.each([
+    ['a 5-week month', '2026-01-15'],
+    ['a 4-week month', '2027-02-10'],
+    ['a 6-week month', '2026-08-10'],
+  ])('renders 6 week rows for %s', (_name, value) => {
+    renderField({ value });
+    const dialog = openPicker();
+    expect(dialog.querySelectorAll('[data-cell]')).toHaveLength(42);
+  });
 });
