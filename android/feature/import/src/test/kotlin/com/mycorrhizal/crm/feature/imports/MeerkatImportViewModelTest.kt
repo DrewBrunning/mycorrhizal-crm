@@ -153,6 +153,23 @@ class MeerkatImportViewModelTest {
         }
 
     @Test
+    fun `dismissing the error clears both the typed error and the job text`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { apiClient.connectMeerkat(any()) } returns
+                Result.failure(ApiError.Client(400, "Those credentials were rejected"))
+            val vm = newVm()
+            vm.fillToken()
+            vm.connect()
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.error != null)
+
+            vm.onErrorShown()
+
+            assertNull(vm.uiState.value.error)
+            assertNull(vm.uiState.value.errorText)
+        }
+
+    @Test
     fun `the form is locked once connected`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { apiClient.connectMeerkat(any()) } returns Result.success(connected())
         val vm = newVm()

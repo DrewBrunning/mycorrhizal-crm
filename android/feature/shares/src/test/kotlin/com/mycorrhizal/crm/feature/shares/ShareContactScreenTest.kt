@@ -2,10 +2,12 @@ package com.mycorrhizal.crm.feature.shares
 
 import android.content.Context
 import androidx.annotation.StringRes
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -13,6 +15,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.test.core.app.ApplicationProvider
 import com.mycorrhizal.crm.domain.repository.ContactShareRepository
 import com.mycorrhizal.crm.model.network.UserDirectoryEntry
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
@@ -66,6 +69,16 @@ class ShareContactScreenTest {
         composeTestRule.onNodeWithText(
             str(R.string.shares_share_button)
         ).performScrollTo().assertIsDisplayed()
+    }
+
+    // Issue #2106: a failed directory load is worded by localizedMessage().
+    @Test
+    fun `a failed directory load shows the localized error`() {
+        val repo = mockk<ContactShareRepository>()
+        coEvery { repo.userDirectory() } returns Result.failure(ApiError.Client(404, "gone"))
+        screen(repo)
+
+        composeTestRule.onAllNodesWithText("Not found").assertCountEquals(2)
     }
 
     @Test

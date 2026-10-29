@@ -19,7 +19,7 @@ class LoginUseCase @Inject constructor(private val authRepository: AuthRepositor
 
         /** [methods]: enrolled second-factor tokens (issue #1293); null from an older server. */
         data class TwoFactorRequired(val methods: List<String>? = null) : Result
-        data class Failure(val message: String, val cause: Throwable? = null) : Result
+        class Failure(val message: String, val cause: Throwable?) : Result
     }
 
     suspend operator fun invoke(identifier: String, password: String): Result {
@@ -42,7 +42,7 @@ class LoginUseCase @Inject constructor(private val authRepository: AuthRepositor
 class LoginWithApiTokenUseCase @Inject constructor(private val authRepository: AuthRepository) {
     sealed interface Result {
         data object Success : Result
-        data class Failure(val message: String, val cause: Throwable? = null) : Result
+        class Failure(val message: String, val cause: Throwable?) : Result
     }
 
     suspend operator fun invoke(token: String): Result {
