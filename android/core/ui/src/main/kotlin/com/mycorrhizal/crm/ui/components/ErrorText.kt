@@ -605,6 +605,105 @@ private fun localizedReason(reason: ErrorReason?): String? {
             R.string.error_reason_contact_some_not_found
         )
 
+        ErrorReasonCode.AUTH_ACCOUNT_LOCKED ->
+            // Seconds as a string (the template says "{n} s"): a %d followed by a unit word
+            // trips the PluralsCandidate lint, and an SI symbol needs no plural.
+            reason.int("retry_after")?.let {
+                stringResource(R.string.error_reason_auth_account_locked, it.toString())
+            }
+
+        ErrorReasonCode.AUTH_PASSWORD_BREACHED -> stringResource(
+            R.string.error_reason_auth_password_breached
+        )
+
+        ErrorReasonCode.AUTH_PASSWORD_TOO_LONG -> stringResource(
+            R.string.error_reason_auth_password_too_long
+        )
+
+        ErrorReasonCode.AUTH_PASSWORD_CHANGE_DISABLED_DEMO -> stringResource(
+            R.string.error_reason_auth_password_change_disabled_demo
+        )
+
+        ErrorReasonCode.AUTH_RESET_TOKEN_INVALID -> stringResource(
+            R.string.error_reason_auth_reset_token_invalid
+        )
+
+        ErrorReasonCode.AUTH_TWO_FACTOR_ALREADY_ENABLED -> stringResource(
+            R.string.error_reason_auth_two_factor_already_enabled
+        )
+
+        ErrorReasonCode.AUTH_TWO_FACTOR_UNAVAILABLE_OIDC -> stringResource(
+            R.string.error_reason_auth_two_factor_unavailable_oidc
+        )
+
+        ErrorReasonCode.AUTH_TWO_FACTOR_SETUP_REQUIRED -> stringResource(
+            R.string.error_reason_auth_two_factor_setup_required
+        )
+
+        ErrorReasonCode.AUTH_TWO_FACTOR_CODE_INVALID -> stringResource(
+            R.string.error_reason_auth_two_factor_code_invalid
+        )
+
+        ErrorReasonCode.AUTH_TWO_FACTOR_NOT_ENABLED -> stringResource(
+            R.string.error_reason_auth_two_factor_not_enabled
+        )
+
+        ErrorReasonCode.AUTH_TWO_FACTOR_LOGIN_NOT_PENDING -> stringResource(
+            R.string.error_reason_auth_two_factor_login_not_pending
+        )
+
+        ErrorReasonCode.AUTH_TWO_FACTOR_SESSION_INVALID -> stringResource(
+            R.string.error_reason_auth_two_factor_session_invalid
+        )
+
+        ErrorReasonCode.AUTH_TWO_FACTOR_NO_LONGER_ENABLED -> stringResource(
+            R.string.error_reason_auth_two_factor_no_longer_enabled
+        )
+
+        ErrorReasonCode.AUTH_PASSKEY_NAME_TOO_LONG -> stringResource(
+            R.string.error_reason_auth_passkey_name_too_long
+        )
+
+        ErrorReasonCode.AUTH_PASSKEY_NAME_LENGTH_INVALID -> stringResource(
+            R.string.error_reason_auth_passkey_name_length_invalid
+        )
+
+        ErrorReasonCode.AUTH_PASSKEY_REGISTRATION_NOT_STARTED -> stringResource(
+            R.string.error_reason_auth_passkey_registration_not_started
+        )
+
+        ErrorReasonCode.AUTH_PASSKEY_REGISTRATION_FAILED -> stringResource(
+            R.string.error_reason_auth_passkey_registration_failed
+        )
+
+        ErrorReasonCode.AUTH_PASSKEY_NONE_REGISTERED -> stringResource(
+            R.string.error_reason_auth_passkey_none_registered
+        )
+
+        ErrorReasonCode.AUTH_PASSKEY_NONE_REGISTERED_SIGN_IN_AGAIN -> stringResource(
+            R.string.error_reason_auth_passkey_none_registered_sign_in_again
+        )
+
+        ErrorReasonCode.AUTH_PASSKEY_LOGIN_NOT_STARTED -> stringResource(
+            R.string.error_reason_auth_passkey_login_not_started
+        )
+
+        ErrorReasonCode.AUTH_PASSKEY_VERIFICATION_FAILED -> stringResource(
+            R.string.error_reason_auth_passkey_verification_failed
+        )
+
+        ErrorReasonCode.AUTH_PASSKEY_NO_OTHER_REGISTERED -> stringResource(
+            R.string.error_reason_auth_passkey_no_other_registered
+        )
+
+        ErrorReasonCode.VALIDATION_INVALID_JSON -> stringResource(
+            R.string.error_reason_validation_invalid_json
+        )
+
+        ErrorReasonCode.VALIDATION_INVALID_REQUEST_BODY -> stringResource(
+            R.string.error_reason_validation_invalid_request_body
+        )
+
         else -> null
     }
 }

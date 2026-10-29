@@ -3,6 +3,7 @@
 // Token is stored in httpOnly cookie (not accessible from JS for security)
 // User info is cached in localStorage for UI purposes
 
+import { localizeReason } from './i18n/reason';
 import { initializeTimeFormatFromBackend } from './timeFormat';
 import { getAssertion } from './webauthnCeremony';
 
@@ -96,7 +97,7 @@ export async function login2FA(code: string): Promise<LoginResponse> {
       let message = 'Too many failed attempts. Please try again later.';
       try {
         const data = await response.json();
-        if (data?.message) message = data.message;
+        message = serverErrorMessage(data) ?? message;
       } catch {
         // fall back to the generic lockout message
       }
@@ -149,12 +150,36 @@ export async function loginWithPasskey(): Promise<LoginResponse> {
   };
 }
 
+type ReasonParams = Record<string, string | number>;
+
+// The message to show for an error body from the sign-in endpoints. The
+// account-lockout 429 is a flat body whose reason_code/reason_params sit at the
+// top level (issue #2101, ADR 0038); every other failure is the error envelope
+// with them under `error`. Either resolves through the same lookup, falling
+// back to the server's English `message` when the client cannot render the code.
+function serverErrorMessage(data: unknown): string | undefined {
+  if (typeof data !== 'object' || data === null) return undefined;
+  const flat = data as {
+    message?: unknown;
+    reason_code?: unknown;
+    reason_params?: ReasonParams;
+    error?: { message?: unknown; reason_code?: unknown; reason_params?: ReasonParams } | string;
+  };
+  const envelope = typeof flat.error === 'object' ? flat.error : undefined;
+  const code = flat.reason_code ?? envelope?.reason_code;
+  const params = flat.reason_params ?? envelope?.reason_params;
+  const localized = typeof code === 'string' ? localizeReason(code, params) : undefined;
+  if (localized) return localized;
+  // 429 lockout carries a top-level message; other failures nest it.
+  const message = flat.message ?? envelope?.message;
+  return typeof message === 'string' && message ? message : undefined;
+}
+
 async function passkeyErrorMessage(response: Response, fallback: string): Promise<string> {
   try {
     const data = await response.json();
-    // 429 lockout carries a top-level message; other failures nest it.
-    const message = data?.message ?? data?.error?.message;
-    if (typeof message === 'string' && message) return message;
+    const message = serverErrorMessage(data);
+    if (message) return message;
   } catch {
     // fall through
   }

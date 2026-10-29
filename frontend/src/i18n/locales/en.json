@@ -3610,7 +3610,31 @@
       "account_user_not_found": "User not found",
       "account_user_already_exists": "User already exists",
       "integration_webhook_not_found": "Webhook not found",
-      "contact_some_not_found": "One or more contacts not found"
+      "contact_some_not_found": "One or more contacts not found",
+      "auth_account_locked": "Too many failed attempts. Try again in {{retry_after}} s",
+      "auth_password_breached": "This password has appeared in a known data breach; please choose a different one.",
+      "auth_password_too_long": "password must not exceed 72 characters",
+      "auth_password_change_disabled_demo": "Password changes are disabled in demo mode",
+      "auth_reset_token_invalid": "Password reset token is invalid or expired",
+      "auth_two_factor_already_enabled": "Two-factor authentication is already enabled",
+      "auth_two_factor_unavailable_oidc": "Two-factor authentication is not available for accounts that sign in through an identity provider",
+      "auth_two_factor_setup_required": "Run 2FA setup first to generate a secret",
+      "auth_two_factor_code_invalid": "Invalid code. Please try again.",
+      "auth_two_factor_not_enabled": "Two-factor authentication is not enabled",
+      "auth_two_factor_login_not_pending": "No pending two-factor login found. Please sign in again.",
+      "auth_two_factor_session_invalid": "Invalid or expired two-factor session. Please sign in again.",
+      "auth_two_factor_no_longer_enabled": "Two-factor authentication is no longer enabled. Please sign in again.",
+      "auth_passkey_name_too_long": "Name must be 100 characters or fewer",
+      "auth_passkey_name_length_invalid": "Name must be between 1 and 100 characters",
+      "auth_passkey_registration_not_started": "No passkey registration in progress. Start again.",
+      "auth_passkey_registration_failed": "Passkey registration could not be verified",
+      "auth_passkey_none_registered": "No passkey is registered for this account",
+      "auth_passkey_none_registered_sign_in_again": "No passkey is registered for this account. Please sign in again.",
+      "auth_passkey_login_not_started": "No passkey login in progress. Start again.",
+      "auth_passkey_verification_failed": "Passkey could not be verified",
+      "auth_passkey_no_other_registered": "No other passkey is registered to verify with",
+      "validation_invalid_json": "Invalid JSON",
+      "validation_invalid_request_body": "Invalid request body"
     }
   }
 }

@@ -3712,7 +3712,31 @@
       "account_user_not_found": "Utilisateur introuvable",
       "account_user_already_exists": "Utilisateur existe déjà",
       "integration_webhook_not_found": "Webhook introuvable",
-      "contact_some_not_found": "Un ou plusieurs contacts sont introuvables"
+      "contact_some_not_found": "Un ou plusieurs contacts sont introuvables",
+      "auth_account_locked": "Trop de tentatives échouées. Réessayez dans {{retry_after}} s",
+      "auth_password_breached": "Ce mot de passe est apparu dans une fuite de données connue ; veuillez en choisir un autre.",
+      "auth_password_too_long": "Le mot de passe ne doit pas dépasser 72 caractères",
+      "auth_password_change_disabled_demo": "Les changements de mot de passe sont désactivés en mode démo",
+      "auth_reset_token_invalid": "Le jeton de réinitialisation du mot de passe est invalide ou a expiré",
+      "auth_two_factor_already_enabled": "L'authentification à deux facteurs est déjà activée",
+      "auth_two_factor_unavailable_oidc": "L'authentification à deux facteurs n'est pas disponible pour les comptes qui se connectent via un fournisseur d'identité",
+      "auth_two_factor_setup_required": "Lancez d'abord la configuration de la 2FA pour générer un secret",
+      "auth_two_factor_code_invalid": "Code invalide. Veuillez réessayer.",
+      "auth_two_factor_not_enabled": "L'authentification à deux facteurs n'est pas activée",
+      "auth_two_factor_login_not_pending": "Aucune connexion à deux facteurs en attente. Veuillez vous reconnecter.",
+      "auth_two_factor_session_invalid": "Session à deux facteurs invalide ou expirée. Veuillez vous reconnecter.",
+      "auth_two_factor_no_longer_enabled": "L'authentification à deux facteurs n'est plus activée. Veuillez vous reconnecter.",
+      "auth_passkey_name_too_long": "Le nom doit comporter 100 caractères au maximum",
+      "auth_passkey_name_length_invalid": "Le nom doit comporter entre 1 et 100 caractères",
+      "auth_passkey_registration_not_started": "Aucun enregistrement de clé d'accès en cours. Recommencez.",
+      "auth_passkey_registration_failed": "L'enregistrement de la clé d'accès n'a pas pu être vérifié",
+      "auth_passkey_none_registered": "Aucune clé d'accès n'est enregistrée pour ce compte",
+      "auth_passkey_none_registered_sign_in_again": "Aucune clé d'accès n'est enregistrée pour ce compte. Veuillez vous reconnecter.",
+      "auth_passkey_login_not_started": "Aucune connexion par clé d'accès en cours. Recommencez.",
+      "auth_passkey_verification_failed": "La clé d'accès n'a pas pu être vérifiée",
+      "auth_passkey_no_other_registered": "Aucune autre clé d'accès n'est enregistrée pour la vérification",
+      "validation_invalid_json": "JSON invalide",
+      "validation_invalid_request_body": "Corps de la requête invalide"
     }
   }
 }

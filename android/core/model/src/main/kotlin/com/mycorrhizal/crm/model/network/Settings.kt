@@ -39,9 +39,19 @@ data class ChangePasswordRequest(
 @JsonClass(generateAdapter = true)
 data class SelfContactRequest(@Json(name = "vcard_uid") val vcardUid: String?)
 
-/** Generic `{ message: "…" }` envelope used by the PATCH/POST user endpoints. */
+/**
+ * Generic `{ message: "…" }` envelope used by the PATCH/POST user endpoints. It is
+ * also the shape of the flat account-lockout 429 (`{ error, message, retry_after,
+ * retry_after_at }`), which since issue #2101 additionally carries a top-level
+ * `reason_code` / `reason_params` (ADR 0038) that ApiClient resolves like the
+ * error envelope's.
+ */
 @JsonClass(generateAdapter = true)
-data class MessageResponse(val message: String? = null)
+data class MessageResponse(
+    val message: String? = null,
+    @Json(name = "reason_code") val reasonCode: String? = null,
+    @Json(name = "reason_params") val reasonParams: Map<String, Any?>? = null
+)
 
 /**
  * PATCH /users/enabled-contact-fields request body (issue #832, web parity with

@@ -109,7 +109,7 @@ func WebAuthnRegisterBegin(c *gin.Context) {
 		return
 	}
 	if isOIDCUser(waUser.User) {
-		apperrors.AbortWithError(c, apperrors.ErrForbidden(oidcUserErr))
+		apperrors.AbortWithError(c, apperrors.ErrForbidden(oidcUserErr).WithReason(apperrors.ReasonAuthTwoFactorUnavailableOIDC, nil))
 		return
 	}
 
@@ -119,13 +119,13 @@ func WebAuthnRegisterBegin(c *gin.Context) {
 	}
 	if c.Request.ContentLength != 0 {
 		if err := c.ShouldBindJSON(&input); err != nil && !errors.Is(err, io.EOF) {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("body", "Invalid JSON"))
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("body", "Invalid JSON").WithReason(apperrors.ReasonValidationInvalidJSON, nil))
 			return
 		}
 	}
 	name := strings.TrimSpace(input.Name)
 	if utf8.RuneCountInString(name) > 100 {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("name", "Name must be 100 characters or fewer"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("name", "Name must be 100 characters or fewer").WithReason(apperrors.ReasonAuthPasskeyNameTooLong, nil))
 		return
 	}
 	if name == "" {
@@ -169,18 +169,18 @@ func WebAuthnRegisterFinish(c *gin.Context) {
 	}
 	user := waUser.User
 	if isOIDCUser(user) {
-		apperrors.AbortWithError(c, apperrors.ErrForbidden(oidcUserErr))
+		apperrors.AbortWithError(c, apperrors.ErrForbidden(oidcUserErr).WithReason(apperrors.ReasonAuthTwoFactorUnavailableOIDC, nil))
 		return
 	}
 
 	session, name, found := services.DefaultCeremonies.Take(services.CeremonyRegister, user.ID)
 	if !found {
-		apperrors.AbortWithError(c, apperrors.ErrConflict("No passkey registration in progress. Start again."))
+		apperrors.AbortWithError(c, apperrors.ErrConflict("No passkey registration in progress. Start again.").WithReason(apperrors.ReasonAuthPasskeyRegistrationNotStarted, nil))
 		return
 	}
 	credential, err := wa.FinishRegistration(waUser, session, c.Request)
 	if err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("credential", "Passkey registration could not be verified"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("credential", "Passkey registration could not be verified").WithReason(apperrors.ReasonAuthPasskeyRegistrationFailed, nil))
 		return
 	}
 
@@ -276,7 +276,7 @@ func WebAuthnLoginBegin(c *gin.Context, cfg *config.Config) {
 		return
 	}
 	if len(waUser.Credentials) == 0 {
-		apperrors.AbortWithError(c, apperrors.ErrConflict("No passkey is registered for this account"))
+		apperrors.AbortWithError(c, apperrors.ErrConflict("No passkey is registered for this account").WithReason(apperrors.ReasonAuthPasskeyNoneRegistered, nil))
 		return
 	}
 	assertion, session, err := wa.BeginLogin(waUser)
@@ -314,12 +314,12 @@ func WebAuthnLoginFinish(c *gin.Context, cfg *config.Config) {
 		return
 	}
 	if len(waUser.Credentials) == 0 {
-		apperrors.AbortWithError(c, apperrors.ErrUnauthorized("No passkey is registered for this account. Please sign in again."))
+		apperrors.AbortWithError(c, apperrors.ErrUnauthorized("No passkey is registered for this account. Please sign in again.").WithReason(apperrors.ReasonAuthPasskeyNoneRegisteredSignInAgain, nil))
 		return
 	}
 	session, _, found := services.DefaultCeremonies.Take(services.CeremonyLogin, user.ID)
 	if !found {
-		apperrors.AbortWithError(c, apperrors.ErrConflict("No passkey login in progress. Start again."))
+		apperrors.AbortWithError(c, apperrors.ErrConflict("No passkey login in progress. Start again.").WithReason(apperrors.ReasonAuthPasskeyLoginNotStarted, nil))
 		return
 	}
 
@@ -336,7 +336,7 @@ func WebAuthnLoginFinish(c *gin.Context, cfg *config.Config) {
 			abortLoginLocked(c, lockoutSecs)
 			return
 		}
-		apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Passkey could not be verified"))
+		apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Passkey could not be verified").WithReason(apperrors.ReasonAuthPasskeyVerificationFailed, nil))
 		return
 	}
 	if err := services.RecordWebAuthnUse(db, user.ID, credential); err != nil {
@@ -353,18 +353,18 @@ func pendingChallengeUser(c *gin.Context, db *gorm.DB, cfg *config.Config) (mode
 	if err != nil || pending == "" {
 		// A precondition failure (no /login step yet), not an authentication
 		// failure: public routes must not answer 401 to an anonymous caller.
-		apperrors.AbortWithError(c, apperrors.ErrValidation("No pending two-factor login found. Please sign in again."))
+		apperrors.AbortWithError(c, apperrors.ErrValidation("No pending two-factor login found. Please sign in again.").WithReason(apperrors.ReasonAuthTwoFactorLoginNotPending, nil))
 		return models.User{}, "", false
 	}
 	userID, username, ok := services.Parse2FAChallengeToken(pending, cfg)
 	if !ok {
-		apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid or expired two-factor session. Please sign in again."))
+		apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid or expired two-factor session. Please sign in again.").WithReason(apperrors.ReasonAuthTwoFactorSessionInvalid, nil))
 		return models.User{}, "", false
 	}
 	var user models.User
 	if err := db.First(&user, userID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid or expired two-factor session. Please sign in again."))
+			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid or expired two-factor session. Please sign in again.").WithReason(apperrors.ReasonAuthTwoFactorSessionInvalid, nil))
 			return models.User{}, "", false
 		}
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("query user").WithError(err))
@@ -378,12 +378,17 @@ func abortLoginLocked(c *gin.Context, secs int) {
 }
 
 // abortLocked is the shared 429 lockout body; only the human message varies.
+// It is a flat body, not the error envelope (moving it is breaking, #2108), so
+// the reason fields (issue #2101, ADR 0038) are additive top-level keys that
+// clients resolve exactly like the envelope's.
 func abortLocked(c *gin.Context, secs int, message string) {
 	c.JSON(http.StatusTooManyRequests, gin.H{
 		"error":          "Account temporarily locked",
 		"message":        message,
 		"retry_after":    secs,
 		"retry_after_at": clock.FromContext(c).Now().Add(time.Duration(secs) * time.Second).Format(time.RFC3339),
+		"reason_code":    string(apperrors.ReasonAuthAccountLocked),
+		"reason_params":  gin.H{"retry_after": secs},
 	})
 	c.Abort()
 }
@@ -415,14 +420,14 @@ func RenameWebAuthnCredential(c *gin.Context) {
 		Name string `json:"name"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("name", "Invalid JSON"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("name", "Invalid JSON").WithReason(apperrors.ReasonValidationInvalidJSON, nil))
 		return
 	}
 	name := strings.TrimSpace(input.Name)
 	// Characters, not bytes: a 40-character label in a non-Latin script is
 	// well over 100 bytes.
 	if name == "" || utf8.RuneCountInString(name) > 100 {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("name", "Name must be between 1 and 100 characters"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("name", "Name must be between 1 and 100 characters").WithReason(apperrors.ReasonAuthPasskeyNameLengthInvalid, nil))
 		return
 	}
 
@@ -457,7 +462,7 @@ func WebAuthnProofBegin(c *gin.Context) {
 		return
 	}
 	if len(waUser.Credentials) == 0 {
-		apperrors.AbortWithError(c, apperrors.ErrConflict("No passkey is registered for this account"))
+		apperrors.AbortWithError(c, apperrors.ErrConflict("No passkey is registered for this account").WithReason(apperrors.ReasonAuthPasskeyNoneRegistered, nil))
 		return
 	}
 	// Optional body: {"exclude_id": "<passkey id>"} names the passkey being
@@ -467,7 +472,7 @@ func WebAuthnProofBegin(c *gin.Context) {
 		ExcludeID string `json:"exclude_id"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil && !errors.Is(err, io.EOF) {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("exclude_id", "Invalid request body"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("exclude_id", "Invalid request body").WithReason(apperrors.ReasonValidationInvalidRequestBody, nil))
 		return
 	}
 	var opts []webauthn.LoginOption
@@ -491,7 +496,7 @@ func WebAuthnProofBegin(c *gin.Context) {
 			}
 		}
 		if len(allowed) == 0 {
-			apperrors.AbortWithError(c, apperrors.ErrConflict("No other passkey is registered to verify with"))
+			apperrors.AbortWithError(c, apperrors.ErrConflict("No other passkey is registered to verify with").WithReason(apperrors.ReasonAuthPasskeyNoOtherRegistered, nil))
 			return
 		}
 		opts = append(opts, webauthn.WithAllowedCredentials(allowed))

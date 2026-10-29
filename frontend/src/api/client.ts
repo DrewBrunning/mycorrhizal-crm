@@ -2,6 +2,7 @@
 // Uses httpOnly cookies for authentication (credentials: 'include')
 import { API_BASE_URL } from '../auth';
 import i18n from '../i18n/config';
+import { localizeReason } from '../i18n/reason';
 import { notifySessionExpired } from './sessionExpiry';
 
 export { API_BASE_URL };
@@ -62,16 +63,7 @@ export class ApiError extends Error {
   // caller falls back to the server's English (ADR 0038). Never returns a
   // template with an unfilled {{placeholder}}.
   private localizedReason(): string | undefined {
-    if (!this.reasonCode) return undefined;
-    const key = `errors.reason.${this.reasonCode}`;
-    if (!i18n.exists(key)) return undefined;
-    // i18n.exists() above guarantees the en leaf is a string.
-    const template = String(i18n.getResource('en', 'translation', key));
-    const params = this.reasonParams ?? {};
-    for (const m of template.matchAll(/\{\{\s*(\w+)\s*\}\}/g)) {
-      if (!(m[1] in params)) return undefined;
-    }
-    return i18n.t(key, params);
+    return localizeReason(this.reasonCode, this.reasonParams);
   }
 
   // Get a user-friendly error message including field details.

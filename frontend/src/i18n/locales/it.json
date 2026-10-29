@@ -3712,7 +3712,31 @@
       "account_user_not_found": "Non trovato: utente",
       "account_user_already_exists": "Esiste già: utente",
       "integration_webhook_not_found": "Non trovato: webhook",
-      "contact_some_not_found": "Impossibile trovare uno o più contatti"
+      "contact_some_not_found": "Impossibile trovare uno o più contatti",
+      "auth_account_locked": "Troppi tentativi falliti. Riprova tra {{retry_after}} s",
+      "auth_password_breached": "Questa password è comparsa in una violazione di dati nota; scegline un'altra.",
+      "auth_password_too_long": "La password non può superare i 72 caratteri",
+      "auth_password_change_disabled_demo": "Le modifiche della password sono disattivate in modalità demo",
+      "auth_reset_token_invalid": "Il token di reimpostazione della password non è valido o è scaduto",
+      "auth_two_factor_already_enabled": "L'autenticazione a due fattori è già attiva",
+      "auth_two_factor_unavailable_oidc": "L'autenticazione a due fattori non è disponibile per gli account che accedono tramite un provider di identità",
+      "auth_two_factor_setup_required": "Esegui prima la configurazione della 2FA per generare un segreto",
+      "auth_two_factor_code_invalid": "Codice non valido. Riprova.",
+      "auth_two_factor_not_enabled": "L'autenticazione a due fattori non è attiva",
+      "auth_two_factor_login_not_pending": "Nessun accesso a due fattori in sospeso. Accedi di nuovo.",
+      "auth_two_factor_session_invalid": "Sessione a due fattori non valida o scaduta. Accedi di nuovo.",
+      "auth_two_factor_no_longer_enabled": "L'autenticazione a due fattori non è più attiva. Accedi di nuovo.",
+      "auth_passkey_name_too_long": "Il nome deve contenere al massimo 100 caratteri",
+      "auth_passkey_name_length_invalid": "Il nome deve contenere da 1 a 100 caratteri",
+      "auth_passkey_registration_not_started": "Nessuna registrazione della passkey in corso. Ricomincia.",
+      "auth_passkey_registration_failed": "Impossibile verificare la registrazione della passkey",
+      "auth_passkey_none_registered": "Nessuna passkey è registrata per questo account",
+      "auth_passkey_none_registered_sign_in_again": "Nessuna passkey è registrata per questo account. Accedi di nuovo.",
+      "auth_passkey_login_not_started": "Nessun accesso con passkey in corso. Ricomincia.",
+      "auth_passkey_verification_failed": "Impossibile verificare la passkey",
+      "auth_passkey_no_other_registered": "Non è registrata nessun'altra passkey con cui verificare",
+      "validation_invalid_json": "JSON non valido",
+      "validation_invalid_request_body": "Corpo della richiesta non valido"
     }
   }
 }

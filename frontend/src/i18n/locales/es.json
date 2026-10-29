@@ -3712,7 +3712,31 @@
       "account_user_not_found": "No se encontró: usuario",
       "account_user_already_exists": "Ya existe: usuario",
       "integration_webhook_not_found": "No se encontró: webhook",
-      "contact_some_not_found": "No se encontraron uno o más contactos"
+      "contact_some_not_found": "No se encontraron uno o más contactos",
+      "auth_account_locked": "Demasiados intentos fallidos. Inténtalo de nuevo en {{retry_after}} s",
+      "auth_password_breached": "Esta contraseña ha aparecido en una filtración de datos conocida; elige otra distinta.",
+      "auth_password_too_long": "La contraseña no puede superar los 72 caracteres",
+      "auth_password_change_disabled_demo": "Los cambios de contraseña están desactivados en el modo de demostración",
+      "auth_reset_token_invalid": "El token de restablecimiento de contraseña no es válido o ha caducado",
+      "auth_two_factor_already_enabled": "La autenticación en dos pasos ya está activada",
+      "auth_two_factor_unavailable_oidc": "La autenticación en dos pasos no está disponible para las cuentas que inician sesión mediante un proveedor de identidad",
+      "auth_two_factor_setup_required": "Configura primero la 2FA para generar un secreto",
+      "auth_two_factor_code_invalid": "Código no válido. Inténtalo de nuevo.",
+      "auth_two_factor_not_enabled": "La autenticación en dos pasos no está activada",
+      "auth_two_factor_login_not_pending": "No se encontró ningún inicio de sesión en dos pasos pendiente. Vuelve a iniciar sesión.",
+      "auth_two_factor_session_invalid": "Sesión de dos pasos no válida o caducada. Vuelve a iniciar sesión.",
+      "auth_two_factor_no_longer_enabled": "La autenticación en dos pasos ya no está activada. Vuelve a iniciar sesión.",
+      "auth_passkey_name_too_long": "El nombre debe tener 100 caracteres o menos",
+      "auth_passkey_name_length_invalid": "El nombre debe tener entre 1 y 100 caracteres",
+      "auth_passkey_registration_not_started": "No hay ningún registro de clave de acceso en curso. Empieza de nuevo.",
+      "auth_passkey_registration_failed": "No se pudo verificar el registro de la clave de acceso",
+      "auth_passkey_none_registered": "No hay ninguna clave de acceso registrada para esta cuenta",
+      "auth_passkey_none_registered_sign_in_again": "No hay ninguna clave de acceso registrada para esta cuenta. Vuelve a iniciar sesión.",
+      "auth_passkey_login_not_started": "No hay ningún inicio de sesión con clave de acceso en curso. Empieza de nuevo.",
+      "auth_passkey_verification_failed": "No se pudo verificar la clave de acceso",
+      "auth_passkey_no_other_registered": "No hay otra clave de acceso registrada con la que verificar",
+      "validation_invalid_json": "JSON no válido",
+      "validation_invalid_request_body": "Cuerpo de la solicitud no válido"
     }
   }
 }

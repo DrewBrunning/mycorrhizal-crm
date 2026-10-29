@@ -59,6 +59,26 @@ class ErrorTextTest {
     }
 
     @Test
+    fun `the account lockout code renders retry_after as seconds`() {
+        val error = ApiError.Client(
+            429,
+            SERVER,
+            ErrorReason(ErrorReasonCode.AUTH_ACCOUNT_LOCKED, mapOf("retry_after" to 90.0))
+        )
+        assertEquals("Too many failed attempts. Try again in 90 s", render(error))
+    }
+
+    @Test
+    fun `the account lockout code without retry_after falls back to the server message`() {
+        val error = ApiError.Client(
+            429,
+            SERVER,
+            ErrorReason(ErrorReasonCode.AUTH_ACCOUNT_LOCKED, emptyMap())
+        )
+        assertEquals(SERVER, render(error))
+    }
+
+    @Test
     fun `a known code renders its template with the params`() {
         val error = ApiError.Client(
             400,
@@ -178,6 +198,7 @@ class ErrorTextTest {
             "n" to 1.0,
             "limit" to 1.0,
             "required_version" to "1.0.0",
+            "retry_after" to 90.0,
             "reason" to "r",
             "total" to 1.0,
             "max" to 1.0
