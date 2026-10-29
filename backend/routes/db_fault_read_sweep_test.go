@@ -32,6 +32,7 @@ import (
 
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/internal/fireandforget"
+	"mycorrhizal/services"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -161,6 +162,14 @@ var faultServerCodes = map[string]bool{
 }
 
 func TestDBFaultReadSweep(t *testing.T) {
+	// The deep-health snapshot memoizes a slow section process-wide for 30s.
+	// The sweep outlasts that window, so a mid-run expiry changes the
+	// statement list between the recorded and injected runs ("statement order
+	// drifted", issue #2228). Disable the cache so every request is identical.
+	prevTTL := services.SetDeepHealthCacheTTL(0)
+	services.ResetDeepHealthCache()
+	t.Cleanup(func() { services.SetDeepHealthCacheTTL(prevTTL); services.ResetDeepHealthCache() })
+
 	probe := newFaultEnv(t)
 	routes := faultReadRoutes(seedResources(t, probe.db, probe.owner.ID))
 
