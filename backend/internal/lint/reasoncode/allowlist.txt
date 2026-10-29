@@ -29,7 +29,6 @@ controllers/import_controller.go:12
 controllers/job_run_controller.go:2
 controllers/life_event_controller.go:1
 controllers/link_field_type_controller.go:1
-controllers/meerkat_import_controller.go:1
 controllers/mycorrhizal_import_controller.go:1
 controllers/note_controller.go:3
 controllers/notification_controller.go:7
@@ -59,8 +58,6 @@ services/address_suggestion_service.go:7
 services/capacity_preflight.go:1
 services/household_service.go:8
 services/import_session.go:8
-services/meerkat_import_api.go:7
-services/meerkat_import_session.go:14
 services/monica_import_session.go:11
 services/mycorrhizal_import_session.go:12
 services/sync_conflict_service.go:2

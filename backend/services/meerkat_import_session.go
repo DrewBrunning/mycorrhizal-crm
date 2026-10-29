@@ -170,10 +170,10 @@ func (m *MeerkatImportManager) get(sessionID string, userID uint) (*meerkatImpor
 	s, exists := m.sessions[sessionID]
 	m.mu.RUnlock()
 	if !exists {
-		return nil, apperrors.ErrNotFoundMessage("Import session expired or not found")
+		return nil, apperrors.ErrNotFoundMessage("Import session expired or not found").WithReason(apperrors.ReasonMeerkatSessionNotFound, nil)
 	}
 	if s.userID != userID {
-		return nil, apperrors.ErrUnauthorized("Session does not belong to current user")
+		return nil, apperrors.ErrUnauthorized("Session does not belong to current user").WithReason(apperrors.ReasonMeerkatSessionNotOwned, nil)
 	}
 	s.mu.Lock()
 	now := Now()
@@ -187,7 +187,7 @@ func (m *MeerkatImportManager) get(sessionID string, userID uint) (*meerkatImpor
 	s.mu.Unlock()
 	if expired {
 		m.Delete(sessionID)
-		return nil, apperrors.ErrNotFoundMessage("Import session expired")
+		return nil, apperrors.ErrNotFoundMessage("Import session expired").WithReason(apperrors.ReasonMeerkatSessionExpired, nil)
 	}
 	return s, nil
 }
@@ -236,15 +236,15 @@ func (m *MeerkatImportManager) Cancel(userID uint, sessionID string) *apperrors.
 // totals.
 func (m *MeerkatImportManager) Upload(userID uint, header *multipart.FileHeader) (*models.MeerkatUploadResponse, *apperrors.AppError) {
 	if header.Size <= 0 || header.Size > MaxMeerkatDBSize {
-		return nil, apperrors.ErrInvalidInput("file", "The database file is empty or larger than the 100 MB limit")
+		return nil, apperrors.ErrInvalidInput("file", "The database file is empty or larger than the 100 MB limit").WithReason(apperrors.ReasonMeerkatDBSize, nil)
 	}
 	if !meerkatDBExtensions[strings.ToLower(filepath.Ext(header.Filename))] {
-		return nil, apperrors.ErrInvalidInput("file", "Upload a Meerkat SQLite database (.db, .sqlite or .sqlite3)")
+		return nil, apperrors.ErrInvalidInput("file", "Upload a Meerkat SQLite database (.db, .sqlite or .sqlite3)").WithReason(apperrors.ReasonMeerkatUploadNotSQLite, nil)
 	}
 
 	src, err := header.Open()
 	if err != nil {
-		return nil, apperrors.ErrInvalidInput("file", "The upload could not be read")
+		return nil, apperrors.ErrInvalidInput("file", "The upload could not be read").WithReason(apperrors.ReasonMeerkatUploadUnreadable, nil)
 	}
 	defer src.Close()
 
@@ -262,7 +262,7 @@ func (m *MeerkatImportManager) Upload(userID uint, header *multipart.FileHeader)
 	if _, err := io.CopyN(dst, src, MaxMeerkatDBSize+1); err != nil && !errors.Is(err, io.EOF) {
 		_ = dst.Close()
 		_ = os.RemoveAll(tempDir)
-		return nil, apperrors.ErrInvalidInput("file", "The upload could not be read")
+		return nil, apperrors.ErrInvalidInput("file", "The upload could not be read").WithReason(apperrors.ReasonMeerkatUploadUnreadable, nil)
 	}
 	_ = dst.Close()
 
@@ -270,19 +270,19 @@ func (m *MeerkatImportManager) Upload(userID uint, header *multipart.FileHeader)
 	if err != nil {
 		_ = os.RemoveAll(tempDir)
 		if errors.Is(err, meerkat.ErrNotSQLite) {
-			return nil, apperrors.ErrInvalidInput("file", "That file is not a Meerkat database")
+			return nil, apperrors.ErrInvalidInput("file", "That file is not a Meerkat database").WithReason(apperrors.ReasonMeerkatFileNotMeerkat, nil)
 		}
-		return nil, apperrors.ErrInvalidInput("file", "The database could not be read as a Meerkat database")
+		return nil, apperrors.ErrInvalidInput("file", "The database could not be read as a Meerkat database").WithReason(apperrors.ReasonMeerkatDBUnreadable, nil) // # pragma: no cover — meerkat.Open only fails past the magic check on I/O errors (its own error paths are marked unreachable)
 	}
 	if len(snap.Contacts) > MaxMeerkatContacts {
 		_ = os.RemoveAll(tempDir)
 		return nil, apperrors.ErrInvalidInput("file",
-			"This database has more contacts than the import supports")
+			"This database has more contacts than the import supports").WithReason(apperrors.ReasonMeerkatDBTooManyContacts, nil)
 	}
 	if meerkatEntityTotal(snap) > MaxMeerkatEntities {
 		_ = os.RemoveAll(tempDir)
 		return nil, apperrors.ErrInvalidInput("file",
-			"This database has more records than the import supports")
+			"This database has more records than the import supports").WithReason(apperrors.ReasonMeerkatDBTooManyRecords, nil)
 	}
 
 	sessionID := generateSessionID()
@@ -368,7 +368,7 @@ func (m *MeerkatImportManager) StartFetch(db *gorm.DB, userID uint, req models.M
 	s.mu.Lock()
 	if s.phase != models.SourceImportPhaseConnecting && s.phase != models.SourceImportPhaseFailed {
 		s.mu.Unlock()
-		return apperrors.ErrConflict("This import is already being prepared")
+		return apperrors.ErrConflict("This import is already being prepared").WithReason(apperrors.ReasonMeerkatImportInProgress, nil)
 	}
 	if s.client != nil {
 		s.mu.Unlock()
@@ -448,7 +448,7 @@ func (m *MeerkatImportManager) Preview(userID uint, sessionID string) (*models.S
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.phase != models.SourceImportPhaseReady || s.plan == nil {
-		return nil, apperrors.ErrInvalidInput("session", "The Meerkat database is not prepared yet")
+		return nil, apperrors.ErrInvalidInput("session", "The Meerkat database is not prepared yet").WithReason(apperrors.ReasonMeerkatNotPrepared, nil)
 	}
 	validRows, dupCount, errCount, totals := previewTotals(s.previews, len(s.plan.Relationships))
 	return &models.SourceImportPreviewResponse{
@@ -473,7 +473,7 @@ func (m *MeerkatImportManager) Confirm(db *gorm.DB, userID uint, req models.Sour
 	s.mu.Lock()
 	if s.phase != models.SourceImportPhaseReady || s.plan == nil {
 		s.mu.Unlock()
-		return apperrors.ErrInvalidInput("session", "The Meerkat database is not prepared yet")
+		return apperrors.ErrInvalidInput("session", "The Meerkat database is not prepared yet").WithReason(apperrors.ReasonMeerkatNotPrepared, nil)
 	}
 	plan := s.plan
 	previews := s.previews
