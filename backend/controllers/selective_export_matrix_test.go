@@ -429,6 +429,41 @@ func TestSelectiveExport_SensitivityMatrix(t *testing.T) {
 	}
 }
 
+// TestSelectiveExport_ScopedExportContainsOnlyTarget closes the gap that let
+// issue #2196 ship: the matrix cells only asserted on the in-scope projection,
+// never that OTHER contacts are absent, so a handler ignoring vcard_uid still
+// passed. A scoped export must contain exactly the target; an unknown uid and
+// another user's uid must export nothing.
+func TestSelectiveExport_ScopedExportContainsOnlyTarget(t *testing.T) {
+	db, router, ds := matrixFixture(t)
+	ada := ds.Contacts["ada"]
+
+	otherUser := models.User{Username: "scoped-other", Password: "password456", Email: "scoped-other@example.com"}
+	require.NoError(t, db.Create(&otherUser).Error)
+	theirs := models.Contact{UserID: otherUser.ID, Firstname: "ForeignScoped", Lastname: "Person"}
+	require.NoError(t, db.Create(&theirs).Error)
+	require.NotEmpty(t, theirs.VCardUID)
+	require.Greater(t, len(ds.Contacts), 1, "fixture must have other contacts for the negative assertion")
+
+	for _, f := range selectiveExportFormats {
+		t.Run(f.name+"/target_only", func(t *testing.T) {
+			data := matrixExport(t, router, f, ada.VCardUID, "", false)
+			proj := f.extract(t, data)
+			require.Len(t, proj, 1, "scoped export must contain exactly one contact")
+			assert.Contains(t, proj, ada.VCardUID)
+		})
+		t.Run(f.name+"/unknown_uid", func(t *testing.T) {
+			data := matrixExport(t, router, f, "no-such-uid", "", false)
+			assert.Empty(t, f.extract(t, data), "unknown uid must export no contacts")
+		})
+		t.Run(f.name+"/other_user_uid", func(t *testing.T) {
+			data := matrixExport(t, router, f, theirs.VCardUID, "", false)
+			assert.Empty(t, f.extract(t, data), "another user's uid must export no contacts")
+			assert.NotContains(t, string(data), "ForeignScoped")
+		})
+	}
+}
+
 // TestSelectiveExport_OptInCoversOnlySelectedSections pins the last matrix
 // clause — "with the opt-in on, sensitive items appear — and only the ones the
 // selection covers". The opt-in is not a blanket "everything now" switch: it
