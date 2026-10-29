@@ -43,6 +43,7 @@ func TestMigrationFieldDefinitionGroup(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NoError(t, sqlDB.Close())
+	require.NoError(t, MigrateDown(dbPath)) // rolls back 000082_self_contact_ambient_set
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000081_contact_trash
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000080_circle_description_color
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000079_relationship_edge_dates
