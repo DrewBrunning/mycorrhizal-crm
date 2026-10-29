@@ -29,7 +29,9 @@ class SentenceCaseStringsTest {
         // The name of the Android system app, not a heading word.
         "contact_open_in_contacts" to "names the Contacts app",
         // Maintainer-requested Title Case dialog title (issue #2166); English only.
-        "settings_api_tokens_create_title" to "approved Title Case exception (#2166)"
+        "settings_api_tokens_create_title" to "approved Title Case exception (#2166)",
+        // Names the HTTP Authorization header and the Bearer scheme (issue #2102).
+        "error_reason_auth_authorization_header_not_bearer" to "names the HTTP header and scheme"
     )
 
     private val word = Regex("""^[A-ZÀ-Ý][a-zà-ÿ]+[,:?!.]?$""")

@@ -199,6 +199,9 @@ class ErrorTextTest {
             "limit" to 1.0,
             "required_version" to "1.0.0",
             "retry_after" to 90.0,
+            "supported" to "en, de",
+            "scope" to "api",
+            "section" to "names",
             "reason" to "r",
             "total" to 1.0,
             "max" to 1.0
