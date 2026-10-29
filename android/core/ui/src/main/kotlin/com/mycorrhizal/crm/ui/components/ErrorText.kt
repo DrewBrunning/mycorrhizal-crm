@@ -203,6 +203,7 @@ private fun localizedReason(reason: ErrorReason?): String? {
 
         ErrorReasonCode.MEERKAT_VERSION_UNTESTED ->
             stringResource(R.string.error_reason_meerkat_version_untested)
+
         ErrorReasonCode.COMMON_DATABASE_ERROR -> stringResource(
             R.string.error_reason_common_database_error
         )
