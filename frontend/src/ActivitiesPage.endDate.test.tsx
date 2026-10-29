@@ -138,7 +138,7 @@ test("the server's 400 on end_date shows on the end field and keeps the editor o
         code: 'INVALID_INPUT',
         message: "Invalid value for field 'end_date'",
         details: { field: 'end_date', reason: 'end date precedes the start date' },
-        reason_code: 'relationship_end_before_start',
+        reason_code: 'activity_end_before_start',
       },
     },
   });

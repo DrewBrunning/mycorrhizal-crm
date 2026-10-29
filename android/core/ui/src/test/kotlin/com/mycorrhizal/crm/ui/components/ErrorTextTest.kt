@@ -189,6 +189,16 @@ class ErrorTextTest {
     }
 
     @Test
+    fun `an activity end before start is localized`() {
+        val error = ApiError.Client(
+            400,
+            "end date precedes the start date",
+            ErrorReason(ErrorReasonCode.ACTIVITY_END_BEFORE_START, emptyMap())
+        )
+        assertEquals("The end date cannot be before the start date", render(error))
+    }
+
+    @Test
     fun `every mirrored code with full params renders its own template`() {
         val codes = ErrorReasonCode::class.java.declaredFields
             .filter { Modifier.isStatic(it.modifiers) && it.type == String::class.java }

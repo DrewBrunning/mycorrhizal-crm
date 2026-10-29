@@ -93,7 +93,7 @@ describe('endDateFieldError', () => {
       400,
       { field: 'end_date', reason: 'end date precedes the start date' },
       undefined,
-      'relationship_end_before_start',
+      'activity_end_before_start',
     );
     expect(endDateFieldError(onEnd)).toBe('The end date cannot be before the start date');
 

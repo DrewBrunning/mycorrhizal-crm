@@ -2702,6 +2702,7 @@
     <string name="error_reason_validation_missing_field">Required field \'%1$s\' is missing</string>
     <string name="error_reason_common_unexpected_error">An unexpected error occurred</string>
     <string name="error_reason_activity_not_found">Activity not found</string>
+    <string name="error_reason_activity_end_before_start">The end date cannot be before the start date</string>
     <string name="error_reason_contact_address_not_found">Address not found</string>
     <string name="error_reason_account_api_token_not_found">API token not found</string>
     <string name="error_reason_attachment_not_found">Attachment not found</string>

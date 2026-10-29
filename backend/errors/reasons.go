@@ -96,6 +96,7 @@ const (
 	ReasonValidationMissingField                    ReasonCode = "validation_missing_field"
 	ReasonCommonUnexpectedError                     ReasonCode = "common_unexpected_error"
 	ReasonActivityNotFound                          ReasonCode = "activity_not_found"
+	ReasonActivityEndBeforeStart                    ReasonCode = "activity_end_before_start"
 	ReasonContactAddressNotFound                    ReasonCode = "contact_address_not_found"
 	ReasonAccountApiTokenNotFound                   ReasonCode = "account_api_token_not_found"
 	ReasonAttachmentNotFound                        ReasonCode = "attachment_not_found"
@@ -303,6 +304,7 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonValidationMissingField:                    {Template: "Required field '{field}' is missing", Params: []string{"field"}},
 	ReasonCommonUnexpectedError:                     {Template: "An unexpected error occurred"},
 	ReasonActivityNotFound:                          {Template: "Activity not found"},
+	ReasonActivityEndBeforeStart:                    {Template: "The end date cannot be before the start date"},
 	ReasonContactAddressNotFound:                    {Template: "Address not found"},
 	ReasonAccountApiTokenNotFound:                   {Template: "API token not found"},
 	ReasonAttachmentNotFound:                        {Template: "Attachment not found"},

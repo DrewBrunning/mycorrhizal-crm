@@ -3558,6 +3558,7 @@
       "validation_missing_field": "Das Pflichtfeld „{{field}}“ fehlt",
       "common_unexpected_error": "Ein unerwarteter Fehler ist aufgetreten",
       "activity_not_found": "Aktivität nicht gefunden",
+      "activity_end_before_start": "Das Enddatum darf nicht vor dem Startdatum liegen",
       "contact_address_not_found": "Adresse nicht gefunden",
       "account_api_token_not_found": "API-Token nicht gefunden",
       "attachment_not_found": "Anhang nicht gefunden",

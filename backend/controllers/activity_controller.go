@@ -17,7 +17,7 @@ import (
 
 // activityEndBeforeStartError is the 400 field error on end_date (issue #2006).
 func activityEndBeforeStartError() *apperrors.AppError {
-	return apperrors.ErrInvalidInput("end_date", "end date precedes the start date").WithReason(apperrors.ReasonRelationshipEndBeforeStart, nil)
+	return apperrors.ErrInvalidInput("end_date", "end date precedes the start date").WithReason(apperrors.ReasonActivityEndBeforeStart, nil)
 }
 
 func CreateActivity(c *gin.Context) {

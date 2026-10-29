@@ -643,7 +643,7 @@ test("the server's end_date refusal is kept for the end field instead of a gener
       400,
       { field: 'end_date' },
       undefined,
-      'relationship_end_before_start',
+      'activity_end_before_start',
     ),
   );
   const { result } = renderHook(() =>

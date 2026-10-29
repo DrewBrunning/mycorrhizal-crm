@@ -2782,6 +2782,7 @@
     <string name="error_reason_validation_missing_field">Le champ obligatoire « %1$s » est manquant</string>
     <string name="error_reason_common_unexpected_error">Une erreur inattendue s\'est produite</string>
     <string name="error_reason_activity_not_found">Activité introuvable</string>
+    <string name="error_reason_activity_end_before_start">La date de fin ne peut pas précéder la date de début</string>
     <string name="error_reason_contact_address_not_found">Adresse introuvable</string>
     <string name="error_reason_account_api_token_not_found">Jeton d\'API introuvable</string>
     <string name="error_reason_attachment_not_found">Pièce jointe introuvable</string>

@@ -118,7 +118,7 @@ test("the server's 400 on end_date shows on the end field, not as a generic fail
         reason: 'end date precedes the start date',
       },
       undefined,
-      'relationship_end_before_start',
+      'activity_end_before_start',
     ),
   );
   renderDialog({ onSave });

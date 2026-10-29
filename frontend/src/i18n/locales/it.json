@@ -3660,6 +3660,7 @@
       "validation_missing_field": "Il campo obbligatorio «{{field}}» è mancante",
       "common_unexpected_error": "Si è verificato un errore imprevisto",
       "activity_not_found": "Non trovato: attività",
+      "activity_end_before_start": "La data di fine non può precedere la data di inizio",
       "contact_address_not_found": "Non trovato: indirizzo",
       "account_api_token_not_found": "Non trovato: token API",
       "attachment_not_found": "Non trovato: allegato",

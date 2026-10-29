@@ -59,6 +59,17 @@ func errField(t *testing.T, w *httptest.ResponseRecorder) string {
 	return f
 }
 
+func errReason(t *testing.T, w *httptest.ResponseRecorder) string {
+	t.Helper()
+	var body struct {
+		Error struct {
+			ReasonCode string `json:"reason_code"`
+		} `json:"error"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body), w.Body.String())
+	return body.Error.ReasonCode
+}
+
 func TestCreateActivityEndDate(t *testing.T) {
 	db, _, do := activityEndDateRouter(t)
 
@@ -100,6 +111,7 @@ func TestCreateActivityEndDateBeforeStartIs400OnEndDate(t *testing.T) {
 	w := do("POST", "/activities", map[string]any{"title": "Bad", "date": "2026-05-12T00:00:00Z", "end_date": "2026-05-11T00:00:00Z"})
 	require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
 	assert.Equal(t, "end_date", errField(t, w))
+	assert.Equal(t, "activity_end_before_start", errReason(t, w))
 	var n int64
 	require.NoError(t, db.Model(&models.Activity{}).Where("title = ?", "Bad").Count(&n).Error)
 	assert.Zero(t, n)

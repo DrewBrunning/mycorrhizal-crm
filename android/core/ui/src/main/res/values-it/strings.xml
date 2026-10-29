@@ -2780,6 +2780,7 @@
     <string name="error_reason_validation_missing_field">Il campo obbligatorio «%1$s» è mancante</string>
     <string name="error_reason_common_unexpected_error">Si è verificato un errore imprevisto</string>
     <string name="error_reason_activity_not_found">Non trovato: attività</string>
+    <string name="error_reason_activity_end_before_start">La data di fine non può precedere la data di inizio</string>
     <string name="error_reason_contact_address_not_found">Non trovato: indirizzo</string>
     <string name="error_reason_account_api_token_not_found">Non trovato: token API</string>
     <string name="error_reason_attachment_not_found">Non trovato: allegato</string>
