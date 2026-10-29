@@ -232,6 +232,48 @@ const (
 	ReasonBundleTooManyRecords         ReasonCode = "bundle_too_many_records"
 	ReasonBundleImportInProgress       ReasonCode = "bundle_import_in_progress"
 	ReasonBundleNotPrepared            ReasonCode = "bundle_not_prepared"
+	// Account, admin, API-token and contact-share errors (issue #2102).
+	ReasonAuthRequired                          ReasonCode = "auth_required"
+	ReasonAuthRegistrationDisabled              ReasonCode = "auth_registration_disabled"
+	ReasonAuthUserIDInvalid                     ReasonCode = "auth_user_id_invalid"
+	ReasonAuthUserNotFound                      ReasonCode = "auth_user_not_found"
+	ReasonAuthAuthorizationTokenRequired        ReasonCode = "auth_authorization_token_required"    // #nosec G101 -- reason code, not a credential
+	ReasonAuthAuthorizationHeaderNotBearer      ReasonCode = "auth_authorization_header_not_bearer" // #nosec G101 -- reason code, not a credential
+	ReasonAuthBearerTokenInvalid                ReasonCode = "auth_bearer_token_invalid"            // #nosec G101 -- reason code, not a credential
+	ReasonAuthBearerTokenExpired                ReasonCode = "auth_bearer_token_expired"            // #nosec G101 -- reason code, not a credential
+	ReasonAuthBearerTokenMalformed              ReasonCode = "auth_bearer_token_malformed"          // #nosec G101 -- reason code, not a credential
+	ReasonAuthBearerTokenSignatureInvalid       ReasonCode = "auth_bearer_token_signature_invalid"  // #nosec G101 -- reason code, not a credential
+	ReasonAuthSessionExpired                    ReasonCode = "auth_session_expired"
+	ReasonAuthTokenScopedCardDAV                ReasonCode = "auth_token_scoped_carddav" // #nosec G101 -- reason code, not a credential
+	ReasonAuthTokenScopedCalDAV                 ReasonCode = "auth_token_scoped_caldav"  // #nosec G101 -- reason code, not a credential
+	ReasonAdminAPITokenForbidden                ReasonCode = "admin_api_token_forbidden" // #nosec G101 -- reason code, not a credential
+	ReasonAdminAccessRequired                   ReasonCode = "admin_access_required"
+	ReasonAdminUserIDInvalid                    ReasonCode = "admin_user_id_invalid"
+	ReasonAdminRoleChangeOtherAdminForbidden    ReasonCode = "admin_role_change_other_admin_forbidden"
+	ReasonAdminLastAdminRemovalForbidden        ReasonCode = "admin_last_admin_removal_forbidden"
+	ReasonAdminDeleteSelfForbidden              ReasonCode = "admin_delete_self_forbidden"
+	ReasonAdminDeleteOtherAdminForbidden        ReasonCode = "admin_delete_other_admin_forbidden"
+	ReasonAccountLanguageInvalid                ReasonCode = "account_language_invalid"
+	ReasonAccountLanguageUnsupported            ReasonCode = "account_language_unsupported"
+	ReasonAccountDateFormatInvalid              ReasonCode = "account_date_format_invalid"
+	ReasonAccountDateFormatUnsupported          ReasonCode = "account_date_format_unsupported"
+	ReasonAccountTimeFormatInvalid              ReasonCode = "account_time_format_invalid"
+	ReasonAccountTimeFormatUnsupported          ReasonCode = "account_time_format_unsupported"
+	ReasonAccountDAVPasswordRequiresNoTwoFactor ReasonCode = "account_dav_password_requires_no_two_factor" // #nosec G101 -- reason code, not a credential
+	ReasonAccountCurrentPasswordIncorrect       ReasonCode = "account_current_password_incorrect"          // #nosec G101 -- reason code, not a credential
+	ReasonAccountNewPasswordSameAsCurrent       ReasonCode = "account_new_password_same_as_current"        // #nosec G101 -- reason code, not a credential
+	ReasonAccountDeletionDisabledDemo           ReasonCode = "account_deletion_disabled_demo"
+	ReasonAccountSoleAdminPromotionRequired     ReasonCode = "account_sole_admin_promotion_required"
+	ReasonAccountAPITokenScopesRequired         ReasonCode = "account_api_token_scopes_required"           // #nosec G101 -- reason code, not a credential
+	ReasonAccountAPITokenScopeUnknown           ReasonCode = "account_api_token_scope_unknown"             // #nosec G101 -- reason code, not a credential
+	ReasonAccountAPITokenExpiryConflict         ReasonCode = "account_api_token_expiry_conflict"           // #nosec G101 -- reason code, not a credential
+	ReasonAccountAPITokenNeverExpiresNotAllowed ReasonCode = "account_api_token_never_expires_not_allowed" // #nosec G101 -- reason code, not a credential
+	ReasonAccountAPITokenAlreadyRevoked         ReasonCode = "account_api_token_already_revoked"           // #nosec G101 -- reason code, not a credential
+	ReasonValidationIDNotPositiveInteger        ReasonCode = "validation_id_not_positive_integer"
+	ReasonContactShareWithSelf                  ReasonCode = "contact_share_with_self"
+	ReasonContactShareSectionUnknown            ReasonCode = "contact_share_section_unknown"
+	ReasonContactShareAlreadyResponded          ReasonCode = "contact_share_already_responded"
+	ReasonContactShareSessionMismatch           ReasonCode = "contact_share_session_mismatch"
 )
 
 var reasonRegistry = map[ReasonCode]reasonSpec{
@@ -431,6 +473,48 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonBundleTooManyRecords:         {Template: "This bundle has more records than the import supports"},
 	ReasonBundleImportInProgress:       {Template: "This import is already being prepared"},
 	ReasonBundleNotPrepared:            {Template: "The account bundle is not prepared yet"},
+	// Account, admin, API-token and contact-share errors (issue #2102).
+	ReasonAuthRequired:                          {Template: "Authentication required"},
+	ReasonAuthRegistrationDisabled:              {Template: "Registration is disabled."},
+	ReasonAuthUserIDInvalid:                     {Template: "Invalid user ID"},
+	ReasonAuthUserNotFound:                      {Template: "User not found"},
+	ReasonAuthAuthorizationTokenRequired:        {Template: "Authorization token required"},
+	ReasonAuthAuthorizationHeaderNotBearer:      {Template: "Authorization header must start with Bearer"},
+	ReasonAuthBearerTokenInvalid:                {Template: "Invalid token"},
+	ReasonAuthBearerTokenExpired:                {Template: "Token expired"},
+	ReasonAuthBearerTokenMalformed:              {Template: "Malformed token"},
+	ReasonAuthBearerTokenSignatureInvalid:       {Template: "Invalid token signature"},
+	ReasonAuthSessionExpired:                    {Template: "Session expired, please sign in again"},
+	ReasonAuthTokenScopedCardDAV:                {Template: "This token is scoped to CardDAV and cannot be used for the API"},
+	ReasonAuthTokenScopedCalDAV:                 {Template: "This token is scoped to CalDAV and cannot be used for the API"},
+	ReasonAdminAPITokenForbidden:                {Template: "API tokens cannot access admin endpoints"},
+	ReasonAdminAccessRequired:                   {Template: "Admin access required"},
+	ReasonAdminUserIDInvalid:                    {Template: "Invalid user ID"},
+	ReasonAdminRoleChangeOtherAdminForbidden:    {Template: "Cannot change another admin's role; an admin can only remove their own admin status"},
+	ReasonAdminLastAdminRemovalForbidden:        {Template: "Cannot remove the last admin"},
+	ReasonAdminDeleteSelfForbidden:              {Template: "Cannot delete your own account"},
+	ReasonAdminDeleteOtherAdminForbidden:        {Template: "Cannot delete another admin; the account must remove its own admin status first"},
+	ReasonAccountLanguageInvalid:                {Template: "Invalid language value"},
+	ReasonAccountLanguageUnsupported:            {Template: "Unsupported language. Supported: {supported}", Params: []string{"supported"}},
+	ReasonAccountDateFormatInvalid:              {Template: "Invalid date format value"},
+	ReasonAccountDateFormatUnsupported:          {Template: "Unsupported date format. Supported: eu, us, iso, ca, eu-hyphen, us-mmm, us-mmmm, eu-mmm, eu-mmmm"},
+	ReasonAccountTimeFormatInvalid:              {Template: "Invalid time format value"},
+	ReasonAccountTimeFormatUnsupported:          {Template: "Unsupported time format. Supported: auto, 12h, 24h"},
+	ReasonAccountDAVPasswordRequiresNoTwoFactor: {Template: "Account-password authentication cannot be enabled while two-factor authentication is enrolled; use an app password instead"},
+	ReasonAccountCurrentPasswordIncorrect:       {Template: "Current password is incorrect"},
+	ReasonAccountNewPasswordSameAsCurrent:       {Template: "New password must differ from current password"},
+	ReasonAccountDeletionDisabledDemo:           {Template: "Account deletion is disabled in demo mode"},
+	ReasonAccountSoleAdminPromotionRequired:     {Template: "You are the only admin; choose another user to promote to admin before deleting your account"},
+	ReasonAccountAPITokenScopesRequired:         {Template: "scopes must contain at least one scope"},
+	ReasonAccountAPITokenScopeUnknown:           {Template: "Unknown scope: {scope}", Params: []string{"scope"}},
+	ReasonAccountAPITokenExpiryConflict:         {Template: "expires_in_days cannot be combined with never_expires"},
+	ReasonAccountAPITokenNeverExpiresNotAllowed: {Template: "never_expires is only allowed for CardDAV/CalDAV app passwords"},
+	ReasonAccountAPITokenAlreadyRevoked:         {Template: "API token is already revoked; nothing to rotate"},
+	ReasonValidationIDNotPositiveInteger:        {Template: "must be a positive integer"},
+	ReasonContactShareWithSelf:                  {Template: "Cannot share a contact with yourself"},
+	ReasonContactShareSectionUnknown:            {Template: "unknown export field section \"{section}\"", Params: []string{"section"}},
+	ReasonContactShareAlreadyResponded:          {Template: "Share already responded to"},
+	ReasonContactShareSessionMismatch:           {Template: "Session does not belong to this share"},
 }
 
 // notFoundReasons maps the string-literal resources passed to ErrNotFound to their

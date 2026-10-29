@@ -105,7 +105,7 @@ interface Case {
 }
 
 const cases: Case[] = [
-  { name: '/notes', ui: <NotesPage />, empty: ['notes.noNotes', 'notes.noResults'], ref: true },
+  { name: '/notes', ui: <NotesPage />, empty: ['notes.noNotesAll', 'notes.noResults'], ref: true },
   {
     name: '/activities',
     ui: <ActivitiesPage />,
@@ -238,12 +238,12 @@ test('Notes: Retry recovers once the API is back, and the empty state is then le
   renderWithProviders(<NotesPage />);
 
   await screen.findByRole('alert');
-  expect(screen.queryByText(i18n.t('notes.noNotes'))).not.toBeInTheDocument();
+  expect(screen.queryByText(i18n.t('notes.noNotesAll'))).not.toBeInTheDocument();
 
   healthy = true;
   fireEvent.click(screen.getByRole('button', { name: i18n.t('common.retry') }));
 
   // A successful empty load is the one time the empty copy is true.
-  expect(await screen.findByText(i18n.t('notes.noNotes'))).toBeInTheDocument();
+  expect(await screen.findByText(i18n.t('notes.noNotesAll'))).toBeInTheDocument();
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 });

@@ -27,8 +27,9 @@ func RegisterUser(cfg *config.Config) gin.HandlerFunc {
 	return func(context *gin.Context) {
 		if cfg.RegistrationDisabled {
 			context.JSON(http.StatusForbidden, gin.H{"error": gin.H{
-				"code":    "registration_disabled",
-				"message": "Registration is disabled.",
+				"code":        "registration_disabled",
+				"message":     "Registration is disabled.",
+				"reason_code": string(apperrors.ReasonAuthRegistrationDisabled),
 			}})
 			return
 		}
@@ -656,7 +657,7 @@ func UpdateLanguage(context *gin.Context) {
 
 	var input UpdateLanguageInput
 	if err := context.ShouldBindJSON(&input); err != nil {
-		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("language", "Invalid language value"))
+		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("language", "Invalid language value").WithReason(apperrors.ReasonAccountLanguageInvalid, nil))
 		return
 	}
 
@@ -664,19 +665,19 @@ func UpdateLanguage(context *gin.Context) {
 	// -- the raw, unnormalized value must never be persisted.
 	normalizedLang, validLang := i18n.NormalizeSupportedLanguage(input.Language)
 	if !validLang {
-		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("language", "Unsupported language. Supported: "+strings.Join(i18n.SupportedLanguages, ", ")))
+		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("language", "Unsupported language. Supported: "+strings.Join(i18n.SupportedLanguages, ", ")).WithReason(apperrors.ReasonAccountLanguageUnsupported, map[string]any{"supported": strings.Join(i18n.SupportedLanguages, ", ")}))
 		return
 	}
 
 	usernameValue, exists := context.Get("username")
 	if !exists {
-		apperrors.AbortWithError(context, apperrors.ErrUnauthorized("Authentication required"))
+		apperrors.AbortWithError(context, apperrors.ErrUnauthorized("Authentication required").WithReason(apperrors.ReasonAuthRequired, nil))
 		return
 	}
 
 	username, ok := usernameValue.(string)
 	if !ok || username == "" {
-		apperrors.AbortWithError(context, apperrors.ErrUnauthorized("Authentication required"))
+		apperrors.AbortWithError(context, apperrors.ErrUnauthorized("Authentication required").WithReason(apperrors.ReasonAuthRequired, nil))
 		return
 	}
 
@@ -685,7 +686,7 @@ func UpdateLanguage(context *gin.Context) {
 	var user models.User
 	if err := db.Where("username = ?", username).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			apperrors.AbortWithError(context, apperrors.ErrUnauthorized("Authentication required"))
+			apperrors.AbortWithError(context, apperrors.ErrUnauthorized("Authentication required").WithReason(apperrors.ReasonAuthRequired, nil))
 			return
 		}
 
@@ -710,7 +711,7 @@ func UpdateDateFormat(context *gin.Context) {
 
 	var input UpdateDateFormatInput
 	if err := context.ShouldBindJSON(&input); err != nil {
-		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("date_format", "Invalid date format value"))
+		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("date_format", "Invalid date format value").WithReason(apperrors.ReasonAccountDateFormatInvalid, nil))
 		return
 	}
 
@@ -724,19 +725,19 @@ func UpdateDateFormat(context *gin.Context) {
 		}
 	}
 	if !isSupported {
-		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("date_format", "Unsupported date format. Supported: eu, us, iso, ca, eu-hyphen, us-mmm, us-mmmm, eu-mmm, eu-mmmm"))
+		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("date_format", "Unsupported date format. Supported: eu, us, iso, ca, eu-hyphen, us-mmm, us-mmmm, eu-mmm, eu-mmmm").WithReason(apperrors.ReasonAccountDateFormatUnsupported, nil))
 		return
 	}
 
 	usernameValue, exists := context.Get("username")
 	if !exists {
-		apperrors.AbortWithError(context, apperrors.ErrUnauthorized("Authentication required"))
+		apperrors.AbortWithError(context, apperrors.ErrUnauthorized("Authentication required").WithReason(apperrors.ReasonAuthRequired, nil))
 		return
 	}
 
 	username, ok := usernameValue.(string)
 	if !ok || username == "" {
-		apperrors.AbortWithError(context, apperrors.ErrUnauthorized("Authentication required"))
+		apperrors.AbortWithError(context, apperrors.ErrUnauthorized("Authentication required").WithReason(apperrors.ReasonAuthRequired, nil))
 		return
 	}
 
@@ -745,7 +746,7 @@ func UpdateDateFormat(context *gin.Context) {
 	var user models.User
 	if err := db.Where("username = ?", username).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			apperrors.AbortWithError(context, apperrors.ErrUnauthorized("Authentication required"))
+			apperrors.AbortWithError(context, apperrors.ErrUnauthorized("Authentication required").WithReason(apperrors.ReasonAuthRequired, nil))
 			return
 		}
 
@@ -780,11 +781,11 @@ func UpdateTimeFormat(context *gin.Context) {
 
 	var input UpdateTimeFormatInput
 	if err := context.ShouldBindJSON(&input); err != nil {
-		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("time_format", "Invalid time format value"))
+		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("time_format", "Invalid time format value").WithReason(apperrors.ReasonAccountTimeFormatInvalid, nil))
 		return
 	}
 	if !models.IsValidTimeFormat(input.TimeFormat) {
-		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("time_format", "Unsupported time format. Supported: auto, 12h, 24h"))
+		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("time_format", "Unsupported time format. Supported: auto, 12h, 24h").WithReason(apperrors.ReasonAccountTimeFormatUnsupported, nil))
 		return
 	}
 
@@ -843,7 +844,8 @@ func UpdateDAVPasswordPolicy(c *gin.Context) {
 		}
 		if len(methods) > 0 {
 			apperrors.AbortWithError(c, apperrors.ErrConflict(
-				"Account-password authentication cannot be enabled while two-factor authentication is enrolled; use an app password instead"))
+				"Account-password authentication cannot be enabled while two-factor authentication is enrolled; use an app password instead").
+				WithReason(apperrors.ReasonAccountDAVPasswordRequiresNoTwoFactor, nil))
 			return
 		}
 	}
@@ -926,7 +928,7 @@ func GetEnabledContactFields(c *gin.Context) {
 func ChangePassword(context *gin.Context, cfg *config.Config) {
 	// Check if demo mode is enabled - password changes are disabled in demo
 	if cfg.DemoMode {
-		apperrors.AbortWithError(context, apperrors.ErrForbidden("Password changes are disabled in demo mode"))
+		apperrors.AbortWithError(context, apperrors.ErrForbidden("Password changes are disabled in demo mode").WithReason(apperrors.ReasonAuthPasswordChangeDisabledDemo, nil))
 		return
 	}
 
@@ -947,13 +949,13 @@ func ChangePassword(context *gin.Context, cfg *config.Config) {
 
 	usernameValue, exists := context.Get("username")
 	if !exists {
-		apperrors.AbortWithError(context, apperrors.ErrUnauthorized("Authentication required"))
+		apperrors.AbortWithError(context, apperrors.ErrUnauthorized("Authentication required").WithReason(apperrors.ReasonAuthRequired, nil))
 		return
 	}
 
 	username, ok := usernameValue.(string)
 	if !ok || username == "" {
-		apperrors.AbortWithError(context, apperrors.ErrUnauthorized("Authentication required"))
+		apperrors.AbortWithError(context, apperrors.ErrUnauthorized("Authentication required").WithReason(apperrors.ReasonAuthRequired, nil))
 		return
 	}
 
@@ -962,7 +964,7 @@ func ChangePassword(context *gin.Context, cfg *config.Config) {
 	var user models.User
 	if err := db.Where("username = ?", username).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			apperrors.AbortWithError(context, apperrors.ErrUnauthorized("Authentication required"))
+			apperrors.AbortWithError(context, apperrors.ErrUnauthorized("Authentication required").WithReason(apperrors.ReasonAuthRequired, nil))
 			return
 		}
 
@@ -972,19 +974,20 @@ func ChangePassword(context *gin.Context, cfg *config.Config) {
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.CurrentPassword)); err != nil {
-		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("current_password", "Current password is incorrect"))
+		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("current_password", "Current password is incorrect").WithReason(apperrors.ReasonAccountCurrentPasswordIncorrect, nil))
 		return
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.NewPassword)); err == nil {
-		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("new_password", "New password must differ from current password"))
+		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("new_password", "New password must differ from current password").WithReason(apperrors.ReasonAccountNewPasswordSameAsCurrent, nil))
 		return
 	}
 
 	if cfg.HIBPCheckEnabled {
 		if breached, _ := services.CheckPasswordBreached(context.Request.Context(), input.NewPassword); breached {
 			apperrors.AbortWithError(context, apperrors.ErrInvalidInput("new_password",
-				"This password has appeared in a known data breach; please choose a different one."))
+				"This password has appeared in a known data breach; please choose a different one.").
+				WithReason(apperrors.ReasonAuthPasswordBreached, nil))
 			return
 		}
 	}
@@ -992,7 +995,7 @@ func ChangePassword(context *gin.Context, cfg *config.Config) {
 	hashedPassword, err := services.HashPassword(input.NewPassword)
 	if err != nil {
 		if errors.Is(err, services.ErrPasswordTooLong) {
-			apperrors.AbortWithError(context, apperrors.ErrValidation(err.Error()))
+			apperrors.AbortWithError(context, apperrors.ErrValidation(err.Error()).WithReason(apperrors.ReasonAuthPasswordTooLong, nil))
 		} else {
 			log.Error().Err(err).Msg("Failed to hash password during change")
 			apperrors.AbortWithError(context, apperrors.ErrInternal("Could not hash password").WithError(err))
@@ -1140,7 +1143,8 @@ func promotionRequiredError(candidates []models.User) *apperrors.AppError {
 		entries[i] = UserDirectoryEntry{ID: u.ID, Username: u.Username}
 	}
 	return apperrors.ErrConflict("You are the only admin; choose another user to promote to admin before deleting your account").
-		WithDetails("candidates", entries)
+		WithDetails("candidates", entries).
+		WithReason(apperrors.ReasonAccountSoleAdminPromotionRequired, nil)
 }
 
 // DeleteOwnAccount lets the authenticated caller delete their own account and
@@ -1164,7 +1168,7 @@ func promotionRequiredError(candidates []models.User) *apperrors.AppError {
 // caller's own account and data are deleted, in the same transaction.
 func DeleteOwnAccount(c *gin.Context, cfg *config.Config) {
 	if cfg.DemoMode {
-		apperrors.AbortWithError(c, apperrors.ErrForbidden("Account deletion is disabled in demo mode"))
+		apperrors.AbortWithError(c, apperrors.ErrForbidden("Account deletion is disabled in demo mode").WithReason(apperrors.ReasonAccountDeletionDisabledDemo, nil))
 		return
 	}
 
@@ -1189,7 +1193,7 @@ func DeleteOwnAccount(c *gin.Context, cfg *config.Config) {
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.CurrentPassword)); err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("current_password", "Current password is incorrect"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("current_password", "Current password is incorrect").WithReason(apperrors.ReasonAccountCurrentPasswordIncorrect, nil))
 		return
 	}
 

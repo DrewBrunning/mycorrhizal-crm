@@ -810,6 +810,172 @@ func TestGetUnassignedNotes_TotalScopedToOwner(t *testing.T) {
 	assert.Equal(t, int64(1), resp.Total)
 }
 
+// Issue #2180: the Notes page lists ALL of the user's notes, like Activities.
+// GET /notes keeps its unfiled-only default (existing clients and the sync
+// mirror depend on it); ?scope=all widens it and ?include=contacts attaches the
+// contact name for display.
+type notesListResp struct {
+	Notes []struct {
+		ID        uint   `json:"ID"`
+		Content   string `json:"content"`
+		ContactID *uint  `json:"contact_id"`
+		Contact   struct {
+			ID        uint   `json:"ID"`
+			Firstname string `json:"firstname"`
+			Lastname  string `json:"lastname"`
+		} `json:"contact"`
+	} `json:"notes"`
+	Total      int64  `json:"total"`
+	NextCursor string `json:"next_cursor"`
+}
+
+func getNotesList(t *testing.T, router http.Handler, query string) notesListResp {
+	t.Helper()
+	req, _ := http.NewRequest("GET", "/notes"+query, nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var resp notesListResp
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	return resp
+}
+
+func TestGetNotes_ScopeAllListsFiledAndUnfiledWithContact(t *testing.T) {
+	db, router := setupRouter(t)
+	router.GET("/notes", GetUnassignedNotes)
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+
+	contact := models.Contact{UserID: user.ID, Firstname: "Ada", Lastname: "Lovelace"}
+	require.NoError(t, db.Create(&contact).Error)
+	require.NoError(t, db.Create(&models.Note{UserID: user.ID, Content: "unfiled one"}).Error)
+	require.NoError(t, db.Create(&models.Note{UserID: user.ID, Content: "filed one", ContactID: &contact.ID}).Error)
+
+	resp := getNotesList(t, router, "?scope=all&include=contacts")
+	require.Len(t, resp.Notes, 2)
+	assert.Equal(t, int64(2), resp.Total, "total follows the scope")
+	byContent := map[string]int{}
+	for i, n := range resp.Notes {
+		byContent[n.Content] = i
+	}
+	filed := resp.Notes[byContent["filed one"]]
+	require.NotNil(t, filed.ContactID)
+	assert.Equal(t, contact.ID, filed.Contact.ID)
+	assert.Equal(t, "Ada", filed.Contact.Firstname)
+	assert.Equal(t, "Lovelace", filed.Contact.Lastname)
+	unfiled := resp.Notes[byContent["unfiled one"]]
+	assert.Nil(t, unfiled.ContactID)
+	assert.Zero(t, unfiled.Contact.ID)
+}
+
+func TestGetNotes_ScopeAllWithoutIncludeOmitsContactDetail(t *testing.T) {
+	db, router := setupRouter(t)
+	router.GET("/notes", GetUnassignedNotes)
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+	contact := models.Contact{UserID: user.ID, Firstname: "Ada"}
+	require.NoError(t, db.Create(&contact).Error)
+	require.NoError(t, db.Create(&models.Note{UserID: user.ID, Content: "filed", ContactID: &contact.ID}).Error)
+
+	resp := getNotesList(t, router, "?scope=all")
+	require.Len(t, resp.Notes, 1)
+	assert.Zero(t, resp.Notes[0].Contact.ID)
+	assert.Empty(t, resp.Notes[0].Contact.Firstname)
+}
+
+func TestGetNotes_DefaultAndUnknownScopeStayUnfiledOnly(t *testing.T) {
+	db, router := setupRouter(t)
+	router.GET("/notes", GetUnassignedNotes)
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+	contact := models.Contact{UserID: user.ID, Firstname: "Ada"}
+	require.NoError(t, db.Create(&contact).Error)
+	require.NoError(t, db.Create(&models.Note{UserID: user.ID, Content: "unfiled"}).Error)
+	require.NoError(t, db.Create(&models.Note{UserID: user.ID, Content: "filed", ContactID: &contact.ID}).Error)
+
+	for _, q := range []string{"", "?scope=unfiled", "?scope=bogus", "?include=contacts"} {
+		resp := getNotesList(t, router, q)
+		require.Len(t, resp.Notes, 1, "query %q", q)
+		assert.Equal(t, "unfiled", resp.Notes[0].Content)
+		assert.Equal(t, int64(1), resp.Total)
+	}
+}
+
+func TestGetNotes_ScopeAllNeverIncludesOtherUsersNotesOrContacts(t *testing.T) {
+	db, router := setupRouter(t)
+	router.GET("/notes", GetUnassignedNotes)
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+	other := models.User{Username: "other-notes-2180", Email: "other-notes-2180@example.com", Password: "x"}
+	require.NoError(t, db.Create(&other).Error)
+
+	mine := models.Contact{UserID: user.ID, Firstname: "Mine"}
+	theirs := models.Contact{UserID: other.ID, Firstname: "TheirSecretName"}
+	require.NoError(t, db.Create(&mine).Error)
+	require.NoError(t, db.Create(&theirs).Error)
+	require.NoError(t, db.Create(&models.Note{UserID: user.ID, Content: "mine filed", ContactID: &mine.ID}).Error)
+	require.NoError(t, db.Create(&models.Note{UserID: other.ID, Content: "theirs filed", ContactID: &theirs.ID}).Error)
+	require.NoError(t, db.Create(&models.Note{UserID: other.ID, Content: "theirs unfiled"}).Error)
+	// Corrupt row: my note pointing at the other user's contact must not leak the name.
+	require.NoError(t, db.Create(&models.Note{UserID: user.ID, Content: "mine dangling", ContactID: &theirs.ID}).Error)
+
+	req, _ := http.NewRequest("GET", "/notes?scope=all&include=contacts", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+	assert.NotContains(t, w.Body.String(), "theirs")
+	assert.NotContains(t, w.Body.String(), "TheirSecretName")
+	var resp notesListResp
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Equal(t, int64(2), resp.Total)
+	assert.Len(t, resp.Notes, 2)
+}
+
+func TestGetNotes_ScopeAllHonorsSearchDatesPaginationAndSkipsDeleted(t *testing.T) {
+	db, router := setupRouter(t)
+	router.GET("/notes", GetUnassignedNotes)
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+	contact := models.Contact{UserID: user.ID, Firstname: "Ada"}
+	require.NoError(t, db.Create(&contact).Error)
+
+	day := func(d int) time.Time { return time.Date(2026, 3, d, 0, 0, 0, 0, time.UTC) }
+	for i := 1; i <= 4; i++ {
+		c := &contact.ID
+		if i%2 == 0 {
+			c = nil
+		}
+		require.NoError(t, db.Create(&models.Note{UserID: user.ID, Content: fmt.Sprintf("alpha %d", i), Date: day(i), ContactID: c}).Error)
+	}
+	require.NoError(t, db.Create(&models.Note{UserID: user.ID, Content: "beta", Date: day(2), ContactID: &contact.ID}).Error)
+	gone := models.Note{UserID: user.ID, Content: "alpha deleted", Date: day(2), ContactID: &contact.ID}
+	require.NoError(t, db.Create(&gone).Error)
+	require.NoError(t, db.Delete(&gone).Error)
+
+	assert.Equal(t, int64(5), getNotesList(t, router, "?scope=all").Total, "soft-deleted notes are not listed")
+	assert.Equal(t, int64(4), getNotesList(t, router, "?scope=all&search=alpha").Total)
+	assert.Equal(t, int64(2), getNotesList(t, router, "?scope=all&search=alpha&fromDate=2026-03-02&toDate=2026-03-03").Total)
+	page := getNotesList(t, router, "?scope=all&limit=2")
+	assert.Len(t, page.Notes, 2)
+	assert.NotEmpty(t, page.NextCursor)
+	assert.Equal(t, int64(5), page.Total, "total counts the whole set, not the page")
+}
+
+func TestGetNotes_SinceFeedIgnoresScopeAll(t *testing.T) {
+	db, router := setupRouterWithRetention(t, 30)
+	router.GET("/notes", GetUnassignedNotes)
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+	contact := models.Contact{UserID: user.ID, Firstname: "Ada"}
+	require.NoError(t, db.Create(&contact).Error)
+	require.NoError(t, db.Create(&models.Note{UserID: user.ID, Content: "unfiled"}).Error)
+	require.NoError(t, db.Create(&models.Note{UserID: user.ID, Content: "filed", ContactID: &contact.ID}).Error)
+
+	resp := getNotesList(t, router, "?since="+EncodeCursor(time.Now().Add(-time.Hour), 0)+"&scope=all")
+	require.Len(t, resp.Notes, 1, "the sync mirror stays unassigned-only")
+	assert.Equal(t, "unfiled", resp.Notes[0].Content)
+}
+
 // #2005: the web app renders a Markdown subset, but the server must keep the
 // source byte-for-byte (no sanitizing, stripping or HTML conversion) so edit,
 // search, CSV export and CardDAV NOTE all carry the source.

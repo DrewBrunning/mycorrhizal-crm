@@ -1,8 +1,6 @@
 # Unmigrated user-facing apperrors sites per file (issue #2098). A ratchet:
 # counts may only fall. Regenerate with: go run ./cmd/reasoncodecheck -write-allowlist ./...
 controllers/account_bundle_controller.go:1
-controllers/admin_user_controller.go:10
-controllers/api_token_controller.go:8
 controllers/attachment_controller.go:7
 controllers/audit_controller.go:3
 controllers/bulk_operation_controller.go:2
@@ -10,7 +8,7 @@ controllers/calendar_controller.go:13
 controllers/contact_address_controller.go:12
 controllers/contact_controller.go:11
 controllers/contact_merge_controller.go:2
-controllers/contact_share_controller.go:5
+controllers/contact_share_controller.go:1
 controllers/contact_subscription_controller.go:13
 controllers/derived_columns_controller.go:1
 controllers/device_grant_controller.go:1
@@ -42,13 +40,11 @@ controllers/search_controller.go:4
 controllers/second_factor_proof.go:2
 controllers/system_event_controller.go:2
 controllers/timeline_controller.go:4
-controllers/user_controller.go:31
+controllers/user_controller.go:7
 controllers/webauthn_controller.go:1
 controllers/webdav_controller.go:11
 controllers/webhook_controller.go:2
-middleware/admin.go:5
 middleware/api_scope.go:2
-middleware/auth.go:18
 middleware/body_limit.go:1
 middleware/idempotency.go:2
 middleware/validation.go:4

@@ -41,6 +41,7 @@ import { useDateFormat } from './DateFormatProvider';
 import { useActivities } from './hooks/useActivities';
 import { useDebouncedValue } from './hooks/useDebounce';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
+import { useGeoPulse } from './hooks/useGeoPulse';
 import { useRecordConflict } from './hooks/useRecordConflict';
 import { calendarDateOnly } from './utils/localDate';
 
@@ -82,6 +83,14 @@ const ActivitiesPage: React.FC = () => {
   }, [loading, error, activities.length, announce, t]);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [locationDialogOpen, setLocationDialogOpen] = useState(false);
+  // GeoPulse is optional: the location-history entry point shows only once a
+  // connection with a token exists. `config` stays null while loading and when
+  // the fetch fails, so both hide the button (same safe default as Immich).
+  const { config: geoPulseConfig, refreshConfig: refreshGeoPulseConfig } = useGeoPulse();
+  const geoPulseConfigured = geoPulseConfig?.has_api_key === true;
+  useEffect(() => {
+    void refreshGeoPulseConfig();
+  }, [refreshGeoPulseConfig]);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [editValues, setEditValues] = useState<{
     activityTitle?: string;
@@ -239,17 +248,19 @@ const ActivitiesPage: React.FC = () => {
         }
         actions={
           <>
-            <Button
-              variant="outlined"
-              startIcon={
-                <SvgIcon>
-                  <path d={mdiMapMarkerOutline} />
-                </SvgIcon>
-              }
-              onClick={() => setLocationDialogOpen(true)}
-            >
-              {t('activities.logFromLocation')}
-            </Button>
+            {geoPulseConfigured && (
+              <Button
+                variant="outlined"
+                startIcon={
+                  <SvgIcon>
+                    <path d={mdiMapMarkerOutline} />
+                  </SvgIcon>
+                }
+                onClick={() => setLocationDialogOpen(true)}
+              >
+                {t('activities.logFromLocation')}
+              </Button>
+            )}
             <Button
               variant="contained"
               color="primary"

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import './i18n/config';
@@ -239,6 +239,7 @@ type Endpoint =
   | 'externalIdentities'
   | 'externalActivities'
   | 'immichSummary'
+  | 'immichConfig'
   | 'circles'
   | 'tags'
   | 'preferences'
@@ -413,13 +414,13 @@ function mockFetch({
           case '/immich/contacts/alice-uid/summary':
             return get('immichSummary', () => ({ summary: null }));
           case '/immich/config':
-            return json({
+            return get('immichConfig', () => ({
               base_url: '',
               has_api_key: immichConfigured,
               sync_enabled: false,
               last_sync_status: '',
               last_sync_error: '',
-            });
+            }));
           case '/paperless/config':
           case '/seafile/config':
             return json({ base_url: '', has_api_token: false });
@@ -1980,6 +1981,41 @@ test('with Immich configured, the profile picture dialog offers the Immich picke
   );
   expect(within(dialog).getByText(/immich/i)).toBeInTheDocument();
   await dismiss(dialog);
+});
+
+// The probe is fire-and-forget on mount: wait for the request, then flush the
+// microtasks that apply its result, so "still hidden" means "answered no".
+async function settleImmichConfigProbe(calls: Array<{ url: string }>) {
+  await waitFor(() => expect(calls.some((c) => c.url.endsWith('/immich/config'))).toBe(true));
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+}
+
+test('with Immich configured, the External links panel offers "Link a person"', async () => {
+  mockFetch({ immichConfigured: true });
+  await renderLoaded();
+  expect(
+    await within(section('external-links')).findByRole('button', { name: 'Link a person' }),
+  ).toBeInTheDocument();
+});
+
+test('with Immich not configured, the External links panel hides "Link a person"', async () => {
+  const calls = mockFetch({ immichConfigured: false });
+  await renderLoaded();
+  await settleImmichConfigProbe(calls);
+  expect(
+    within(section('external-links')).queryByRole('button', { name: 'Link a person' }),
+  ).toBeNull();
+});
+
+test('when the Immich config probe fails, the External links panel hides "Link a person"', async () => {
+  const calls = mockFetch({ immichConfigured: true, failGet: ['immichConfig'] });
+  await renderLoaded();
+  await settleImmichConfigProbe(calls);
+  expect(
+    within(section('external-links')).queryByRole('button', { name: 'Link a person' }),
+  ).toBeNull();
 });
 
 test('editing a clothing size keeps its type and PUTs the new size', async () => {

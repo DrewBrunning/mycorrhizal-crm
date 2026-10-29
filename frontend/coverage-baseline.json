@@ -1023,10 +1023,10 @@
       "branchesTotal": 50
     },
     "src/components/ImportContactsDialog.tsx": {
-      "lines": 86.84,
-      "linesTotal": 304,
-      "branches": 78.03,
-      "branchesTotal": 214
+      "lines": 87.96,
+      "linesTotal": 324,
+      "branches": 79.58,
+      "branchesTotal": 240
     },
     "src/components/ImportFixedAssignmentPicker.tsx": {
       "lines": 84.21,

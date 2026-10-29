@@ -38,6 +38,10 @@ interface ExternalLinkPanelProps {
   // Immich-specific surface (the first integration on the substrate).
   immichSummary?: ImmichPersonSummary | null;
   immichSummaryLoading?: boolean;
+  // Whether the user has connected Immich. Safe default is false: the "link a
+  // person" entry point stays hidden while the probe is in flight or failed.
+  // An already-linked person still renders, so existing data is never hidden.
+  immichConfigured?: boolean;
   onFetchImmichPeople: () => Promise<ImmichPerson[]>;
   onLinkImmich: (person: ImmichPerson) => Promise<void>;
   onUnlinkImmich: () => Promise<void>;
@@ -68,6 +72,7 @@ export default function ExternalLinkPanel({
   loading = false,
   immichSummary,
   immichSummaryLoading = false,
+  immichConfigured = false,
   onFetchImmichPeople,
   onLinkImmich,
   onUnlinkImmich,
@@ -116,7 +121,7 @@ export default function ExternalLinkPanel({
 
   return (
     <Stack spacing={1.5}>
-      {!immichIdentity && (
+      {!immichIdentity && immichConfigured && (
         <Paper variant="outlined" sx={{ p: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

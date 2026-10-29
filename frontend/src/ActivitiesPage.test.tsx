@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import './i18n/config';
@@ -39,8 +39,18 @@ interface Call {
 // PUT/DELETE /activities/:id for edit/delete) and a recorded call log to
 // assert on query params (cursor, search, fromDate/toDate) and request bodies.
 function mockFetchRoutes(
-  routes: Array<{ pattern: string; handler: RouteHandler | RouteHandler[] }>,
+  callerRoutes: Array<{ pattern: string; handler: RouteHandler | RouteHandler[] }>,
 ) {
+  // GeoPulse is an optional integration: the page gates "Log from location
+  // history" on GET /geopulse/config. Tests get a configured connection unless
+  // they route their own answer (listed first, so it wins).
+  const routes = [
+    ...callerRoutes,
+    {
+      pattern: '/geopulse/config',
+      handler: { body: { base_url: 'https://gp.example', has_api_key: true } },
+    },
+  ];
   const calls: Call[] = [];
   const callCounts = new Map<string, number>();
   vi.stubGlobal(
@@ -329,6 +339,50 @@ test('Log from location history opens the GeoPulse dialog and a confirmed stay r
   // Closing the location dialog hides it.
   fireEvent.click(screen.getByRole('button', { name: 'Close' }));
   await waitFor(() => expect(screen.queryByText('Log activity from location history')).toBeNull());
+});
+
+async function settleGeoPulseConfigProbe(calls: Call[]) {
+  await waitFor(() => expect(calls.some((c) => c.url.includes('/geopulse/config'))).toBe(true));
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+}
+
+test('with GeoPulse configured, "Log from location history" is shown', async () => {
+  mockFetchRoutes([
+    { pattern: '/activities?', handler: { body: { activities: [], next_cursor: '', limit: 25 } } },
+    { pattern: '/contacts?', handler: { body: emptyContactsPage() } },
+  ]);
+
+  renderPage();
+  expect(await screen.findByRole('button', { name: 'Log from location history' })).toBeDefined();
+});
+
+test('with GeoPulse not configured, "Log from location history" is hidden but Add Activity stays', async () => {
+  const calls = mockFetchRoutes([
+    { pattern: '/geopulse/config', handler: { body: { base_url: '', has_api_key: false } } },
+    { pattern: '/activities?', handler: { body: { activities: [], next_cursor: '', limit: 25 } } },
+    { pattern: '/contacts?', handler: { body: emptyContactsPage() } },
+  ]);
+
+  renderPage();
+  await waitFor(() => expect(screen.getByText('No activities found')).toBeDefined());
+  await settleGeoPulseConfigProbe(calls);
+  expect(screen.queryByRole('button', { name: 'Log from location history' })).toBeNull();
+  expect(screen.getByRole('button', { name: 'Add Activity' })).toBeDefined();
+});
+
+test('when the GeoPulse config fetch fails, "Log from location history" stays hidden', async () => {
+  const calls = mockFetchRoutes([
+    { pattern: '/geopulse/config', handler: { status: 500, body: { error: 'boom' } } },
+    { pattern: '/activities?', handler: { body: { activities: [], next_cursor: '', limit: 25 } } },
+    { pattern: '/contacts?', handler: { body: emptyContactsPage() } },
+  ]);
+
+  renderPage();
+  await waitFor(() => expect(screen.getByText('No activities found')).toBeDefined());
+  await settleGeoPulseConfigProbe(calls);
+  expect(screen.queryByRole('button', { name: 'Log from location history' })).toBeNull();
 });
 
 test('the ordinary Add Activity button does not open the location dialog', async () => {
