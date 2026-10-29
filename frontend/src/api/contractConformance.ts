@@ -100,6 +100,7 @@ import type { Reminder, ReminderCompletion } from './reminders';
 import type { ContactTag, Tag } from './tags';
 import type { ContactTargetClosenessResponse } from './targetCloseness';
 import type { TIMELINE_TYPES } from './timeline';
+import type { TrashedContact, TrashList, TrashRestoreResult, TrashRestoreSkip } from './trash';
 import type { Passkey, PasskeyEnrollment } from './webauthn';
 
 // ---------------------------------------------------------------- helpers
@@ -168,6 +169,10 @@ export type Conformance = [
   NoDrift<ResponseDrift<DeliberateException<LifeEvent, 'type'>, S.LifeEvent>>,
   NoDrift<ResponseDrift<LifeEventSuggestion, S.LifeEventSuggestion>>,
   NoDrift<ResponseDrift<Circle, S.Circle>>,
+  NoDrift<ResponseDrift<TrashedContact, S.TrashedContact>>,
+  NoDrift<ResponseDrift<TrashList, S.TrashListResponse>>,
+  NoDrift<ResponseDrift<TrashRestoreResult, S.TrashRestoreResponse>>,
+  NoDrift<ResponseDrift<TrashRestoreSkip, S.TrashRestoreSkip>>,
   NoDrift<ResponseDrift<CircleMember, S.CircleMember>>,
   NoDrift<ResponseDrift<Tag, S.Tag>>,
   NoDrift<ResponseDrift<ContactTag, S.ContactTag>>,

@@ -64,6 +64,9 @@ const OPERATION_COLORS: Record<AuditEvent['operation'], 'success' | 'info' | 'er
   recovery_regenerate: 'info',
   revoke: 'error',
   role_change: 'info',
+  // Issue #2002: contact trash.
+  restore: 'success',
+  purge: 'error',
 };
 
 // T60: the read-only audit

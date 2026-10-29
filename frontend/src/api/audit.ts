@@ -59,7 +59,10 @@ export type AuditOperation =
   | 'totp_disable'
   | 'recovery_regenerate'
   | 'revoke'
-  | 'role_change';
+  | 'role_change'
+  // Issue #2002: a contact restored from / purged from the trash.
+  | 'restore'
+  | 'purge';
 
 export interface AuditEvent {
   id: number;

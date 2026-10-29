@@ -56,6 +56,7 @@
     "users": "Users",
     "data": "Data",
     "shares": "Shares",
+    "trash": "Trash",
     "audit": "Audit log",
     "systemEvents": "System events",
     "systemStatus": "System status",
@@ -695,7 +696,7 @@
     "human": "Human",
     "animal": "Animal",
     "deleteContact": "Delete Contact",
-    "confirmDeleteContact": "Are you sure you want to delete {{name}}? This action cannot be undone and will also delete all notes, activities, and reminders associated with this contact.",
+    "confirmDeleteContact": "Delete {{name}}? It moves to the Trash, where you can restore it until it is permanently deleted. Its notes and reminders move with it.",
     "deleteContactError": "Failed to delete contact. Please try again.",
     "exportContactError": "Failed to export contact. Please try again.",
     "updateError": "Failed to update contact. Please check your input and try again.",
@@ -1038,8 +1039,8 @@
     "mergeSelectTwoHint": "Select exactly two contacts to merge.",
     "mergeSelectionStale": "The selected contacts are no longer visible in this list. The selection was cleared — select two contacts again to merge.",
     "delete": "Delete",
-    "deleteConfirm_one": "Delete {{count}} contact? This permanently removes it and all of its data. This cannot be undone.",
-    "deleteConfirm_other": "Delete {{count}} contacts? This permanently removes them and all of their data. This cannot be undone.",
+    "deleteConfirm_one": "Move {{count}} contact to the Trash? You can restore it until it is permanently deleted.",
+    "deleteConfirm_other": "Move {{count}} contacts to the Trash? You can restore them until they are permanently deleted.",
     "selectContact": "Select {{name}}",
     "resultFailure": "{{succeeded}} of {{total}} succeeded. {{failed}} failed.",
     "resultError": "The bulk operation failed. Please try again."
@@ -1630,6 +1631,7 @@
         "contact.created": "Contact Created",
         "contact.updated": "Contact Updated",
         "contact.deleted": "Contact Deleted",
+        "contact.restored": "Contact Restored",
         "note.created": "Note Created",
         "note.updated": "Note Updated",
         "note.deleted": "Note Deleted",
@@ -3008,6 +3010,28 @@
     },
     "declineConfirm": "Decline this share?"
   },
+  "trash": {
+    "title": "Trash",
+    "empty": "Empty trash",
+    "emptyState": "Trash is empty.",
+    "retention_one": "Deleted contacts are kept for {{count}} day, then deleted forever.",
+    "retention_other": "Deleted contacts are kept for {{count}} days, then deleted forever.",
+    "retentionForever": "Deleted contacts are kept until you empty the trash.",
+    "deletedOn": "Deleted {{date}}",
+    "purgeOn": "Deletes forever {{date}}",
+    "restore": "Restore",
+    "deleteForever": "Delete forever",
+    "restored": "Restored {{name}}.",
+    "restoredWithSkipped_one": "Restored {{name}}, but {{count}} item could not be restored because what it linked to no longer exists.",
+    "restoredWithSkipped_other": "Restored {{name}}, but {{count}} items could not be restored because what they linked to no longer exists.",
+    "restoreConflict": "Can't restore {{name}}: another contact already uses this contact's ID. Merge or delete that contact first.",
+    "purgeConfirm": "Permanently delete {{name}}? This cannot be undone.",
+    "purged": "Permanently deleted {{name}}.",
+    "emptyConfirm_one": "Permanently delete {{count}} contact in the Trash? This cannot be undone.",
+    "emptyConfirm_other": "Permanently delete all {{count}} contacts in the Trash? This cannot be undone.",
+    "emptied_one": "Permanently deleted {{count}} contact.",
+    "emptied_other": "Permanently deleted {{count}} contacts."
+  },
   "notifications": {
     "settings": {
       "title": "Notifications",
@@ -3097,7 +3121,9 @@
       "totp_disable": "2FA disabled",
       "recovery_regenerate": "Recovery codes regenerated",
       "revoke": "Revoked",
-      "role_change": "Role changed"
+      "role_change": "Role changed",
+      "restore": "Restored",
+      "purge": "Permanently deleted"
     },
     "entityTypes": {
       "contact": "Contact",
