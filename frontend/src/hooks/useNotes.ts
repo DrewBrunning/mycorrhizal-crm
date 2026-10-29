@@ -25,7 +25,15 @@ interface UseNotesResult {
 export function useNotes(contactId?: string | number, params: GetNotesParams = {}): UseNotesResult {
   // Destructure params to use primitive values as dependencies
   // This prevents re-fetches when callers pass new object references with identical values
-  const { cursor: _ignored, limit: paramLimit, search, fromDate, toDate } = params;
+  const {
+    cursor: _ignored,
+    limit: paramLimit,
+    search,
+    fromDate,
+    toDate,
+    scope,
+    includeContacts,
+  } = params;
 
   const [notes, setNotes] = useState<Note[]>([]);
   const [nextCursor, setNextCursor] = useState('');
@@ -57,7 +65,14 @@ export function useNotes(contactId?: string | number, params: GetNotesParams = {
         setTotal(null);
         setLimit(normalized.length || paramLimit || 25);
       } else {
-        const data = await getUnassignedNotes({ limit: paramLimit, search, fromDate, toDate });
+        const data = await getUnassignedNotes({
+          limit: paramLimit,
+          search,
+          fromDate,
+          toDate,
+          scope,
+          includeContacts,
+        });
         if (requestRef.current !== requestId) return;
         setNotes(data.notes || []);
         setNextCursor(data.next_cursor || '');
@@ -71,7 +86,7 @@ export function useNotes(contactId?: string | number, params: GetNotesParams = {
     } finally {
       if (requestRef.current === requestId) setLoading(false);
     }
-  }, [contactId, paramLimit, search, fromDate, toDate]);
+  }, [contactId, paramLimit, search, fromDate, toDate, scope, includeContacts]);
 
   const loadMore = useCallback(async () => {
     if (!nextCursor) return;
@@ -85,6 +100,8 @@ export function useNotes(contactId?: string | number, params: GetNotesParams = {
         search,
         fromDate,
         toDate,
+        scope,
+        includeContacts,
       });
       if (requestRef.current !== requestId) return;
       setNotes((prev) => [...prev, ...(data.notes || [])]);
@@ -98,7 +115,7 @@ export function useNotes(contactId?: string | number, params: GetNotesParams = {
     } finally {
       if (requestRef.current === requestId) setLoading(false);
     }
-  }, [nextCursor, paramLimit, search, fromDate, toDate]);
+  }, [nextCursor, paramLimit, search, fromDate, toDate, scope, includeContacts]);
 
   useEffect(() => {
     void fetchFirst();
