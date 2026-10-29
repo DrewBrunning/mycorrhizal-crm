@@ -162,7 +162,7 @@ class CsvImportViewModel @Inject constructor(private val apiClient: ApiClient) :
                         )
                     }
                 },
-                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } }
+                onError = { error -> _uiState.update { it.copy(error = error) } }
             )
         }
     }
@@ -180,7 +180,7 @@ class CsvImportViewModel @Inject constructor(private val apiClient: ApiClient) :
                         )
                     }
                 },
-                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } }
+                onError = { error -> _uiState.update { it.copy(error = error) } }
             )
         }
     }

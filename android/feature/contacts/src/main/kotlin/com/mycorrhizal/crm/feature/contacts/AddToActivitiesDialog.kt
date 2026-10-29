@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.localizedMessage
 
 /** Issue #2136: stateful host; closes and calls [onAdded] once every selection is a member. */
 @Composable
@@ -93,7 +94,7 @@ internal fun AddToActivitiesDialogContent(
                 }
                 state.error?.let {
                     Text(
-                        text = it,
+                        text = it.localizedMessage(),
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(top = 8.dp)

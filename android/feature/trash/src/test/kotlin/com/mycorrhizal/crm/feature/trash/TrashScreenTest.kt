@@ -10,6 +10,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.TrashedContact
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.every
@@ -129,7 +130,7 @@ class TrashScreenTest {
 
     @Test
     fun `a failed first load shows the error text`() {
-        screenWith(TrashUiState(error = "boom"))
+        screenWith(TrashUiState(error = ApiError.Client(400, "boom")))
         composeTestRule.onNodeWithText("boom").assertIsDisplayed()
     }
 
@@ -217,7 +218,13 @@ class TrashScreenTest {
 
     @Test
     fun `a refresh failure with items still listed surfaces as a snackbar`() {
-        screenWith(TrashUiState(items = listOf(ada), retentionDays = 30, error = "refresh failed"))
+        screenWith(
+            TrashUiState(
+                items = listOf(ada),
+                retentionDays = 30,
+                error = ApiError.Client(400, "refresh failed")
+            )
+        )
         composeTestRule.onNodeWithText("refresh failed").assertIsDisplayed()
     }
 
@@ -231,7 +238,7 @@ class TrashScreenTest {
                 "Can't restore Ada: another contact already uses this contact's ID. Merge or delete that contact first.",
             TrashUiEvent.Purged("Ada") to "Permanently deleted Ada.",
             TrashUiEvent.Emptied(2) to "Permanently deleted 2 contacts.",
-            TrashUiEvent.Failed("nope") to "nope"
+            TrashUiEvent.Failed(ApiError.Client(400, "nope")) to "nope"
         )
         val events = Channel<TrashUiEvent>(Channel.BUFFERED)
         screenWith(TrashUiState(), events)
