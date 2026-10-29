@@ -849,10 +849,10 @@
       "branchesTotal": 14
     },
     "src/components/DateField.tsx": {
-      "lines": 95.08,
-      "linesTotal": 61,
-      "branches": 83.72,
-      "branchesTotal": 43
+      "lines": 95.23,
+      "linesTotal": 105,
+      "branches": 89.74,
+      "branchesTotal": 78
     },
     "src/components/DeleteAccountSettings.tsx": {
       "lines": 100,
