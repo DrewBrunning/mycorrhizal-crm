@@ -248,7 +248,7 @@
     <string name="contact_prep_view">Ver resumen</string>
     <string name="contact_delete">Eliminar contacto</string>
     <string name="contact_delete_title">¿Eliminar contacto?</string>
-    <string name="contact_delete_confirm">¿Seguro que quieres eliminar a %1$s? Esta acción no se puede deshacer y también eliminará todas las notas, actividades y recordatorios asociados a este contacto.</string>
+    <string name="contact_delete_confirm">¿Eliminar a %1$s? Se mueve a la Papelera, donde puedes restaurarlo hasta que se elimine permanentemente. Sus notas y recordatorios se mueven con él.</string>
     <string name="contact_archive_title">¿Archivar contacto?</string>
     <string name="contact_archive_confirm">¿Seguro que quieres archivar a %1$s? Se eliminarán todos los recordatorios. Puedes desarchivar más tarde, pero los recordatorios no se restaurarán.</string>
     <string name="contact_unarchive_title">¿Desarchivar contacto?</string>
@@ -721,6 +721,7 @@
     <string name="settings_webhooks_event_contact_created">Contacto creado</string>
     <string name="settings_webhooks_event_contact_updated">Contacto actualizado</string>
     <string name="settings_webhooks_event_contact_deleted">Contacto eliminado</string>
+    <string name="settings_webhooks_event_contact_restored">Contacto restaurado</string>
     <string name="settings_webhooks_event_note_created">Nota creada</string>
     <string name="settings_webhooks_event_note_updated">Nota actualizada</string>
     <string name="settings_webhooks_event_note_deleted">Nota eliminada</string>
@@ -2057,6 +2058,8 @@
     <string name="audit_operations_create">Creado</string>
     <string name="audit_operations_update">Actualizado</string>
     <string name="audit_operations_delete">Eliminado</string>
+    <string name="audit_operations_restore">Restaurado</string>
+    <string name="audit_operations_purge">Eliminado definitivamente</string>
     <string name="audit_entity_types_contact">Contacto</string>
     <string name="audit_entity_types_note">Nota</string>
     <string name="audit_entity_types_activity">Actividad</string>
@@ -2076,6 +2079,39 @@
     <string name="audit_undo_success">Contacto restaurado a su estado anterior</string>
     <string name="audit_undo_retention_gone">Este evento está fuera de su ventana de retención y ya no se puede deshacer</string>
     <string name="audit_undo_partial_note">Los detalles que nunca se registraron en esta entrada (pronombres, información personal, detalles de dirección) se conservan sin cambios.</string>
+    <!-- Issue #2002: contact trash (restore / delete forever). -->
+    <string name="trash_title">Papelera</string>
+    <string name="trash_empty_action">Vaciar papelera</string>
+    <string name="trash_empty_state">La papelera está vacía</string>
+    <string name="trash_retention_forever">Los contactos eliminados se conservan hasta que vacíes la papelera.</string>
+    <plurals name="trash_retention">
+        <item quantity="one">Los contactos eliminados se conservan %1$d día y después se eliminan para siempre.</item>
+        <item quantity="many">Los contactos eliminados se conservan %1$d días y después se eliminan para siempre.</item>
+        <item quantity="other">Los contactos eliminados se conservan %1$d días y después se eliminan para siempre.</item>
+    </plurals>
+    <string name="trash_deleted_on">Eliminado el %1$s</string>
+    <string name="trash_purge_on">Se elimina para siempre el %1$s</string>
+    <string name="trash_restore">Restaurar</string>
+    <string name="trash_delete_forever">Eliminar para siempre</string>
+    <string name="trash_restored">%1$s restaurado.</string>
+    <plurals name="trash_restored_with_skipped">
+        <item quantity="one">%1$s restaurado, pero %2$d elemento no se pudo restaurar porque aquello a lo que estaba vinculado ya no existe.</item>
+        <item quantity="many">%1$s restaurado, pero %2$d elementos no se pudieron restaurar porque aquello a lo que estaban vinculados ya no existe.</item>
+        <item quantity="other">%1$s restaurado, pero %2$d elementos no se pudieron restaurar porque aquello a lo que estaban vinculados ya no existe.</item>
+    </plurals>
+    <string name="trash_restore_conflict">No se puede restaurar a %1$s: otro contacto ya usa el ID de este contacto. Fusiona o elimina ese contacto primero.</string>
+    <string name="trash_purge_confirm">¿Eliminar a %1$s permanentemente? Esta acción no se puede deshacer.</string>
+    <string name="trash_purged">%1$s eliminado permanentemente.</string>
+    <plurals name="trash_empty_confirm">
+        <item quantity="one">¿Eliminar permanentemente %1$d contacto de la papelera? Esta acción no se puede deshacer.</item>
+        <item quantity="many">¿Eliminar permanentemente los %1$d contactos de la papelera? Esta acción no se puede deshacer.</item>
+        <item quantity="other">¿Eliminar permanentemente los %1$d contactos de la papelera? Esta acción no se puede deshacer.</item>
+    </plurals>
+    <plurals name="trash_emptied">
+        <item quantity="one">%1$d contacto eliminado permanentemente.</item>
+        <item quantity="many">%1$d contactos eliminados permanentemente.</item>
+        <item quantity="other">%1$d contactos eliminados permanentemente.</item>
+    </plurals>
 
     <!-- Android a11y (issues #199/#203): shared accessibility-only announcements -->
     <string name="a11y_state_loading">Cargando</string>

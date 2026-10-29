@@ -248,7 +248,7 @@
     <string name="contact_prep_view">Visualizza briefing</string>
     <string name="contact_delete">Elimina contatto</string>
     <string name="contact_delete_title">Eliminare il contatto?</string>
-    <string name="contact_delete_confirm">Vuoi davvero eliminare %1$s? Questa azione non può essere annullata ed eliminerà anche tutte le note, le attività e i promemoria associati a questo contatto.</string>
+    <string name="contact_delete_confirm">Eliminare %1$s? Viene spostato nel Cestino, dove puoi ripristinarlo finché non viene eliminato definitivamente. Le sue note e i suoi promemoria lo seguono.</string>
     <string name="contact_archive_title">Archiviare il contatto?</string>
     <string name="contact_archive_confirm">Vuoi davvero archiviare %1$s? Tutti i promemoria verranno eliminati. Potrai ripristinare in seguito, ma i promemoria non verranno ripristinati.</string>
     <string name="contact_unarchive_title">Ripristinare il contatto?</string>
@@ -721,6 +721,7 @@
     <string name="settings_webhooks_event_contact_created">Contatto creato</string>
     <string name="settings_webhooks_event_contact_updated">Contatto aggiornato</string>
     <string name="settings_webhooks_event_contact_deleted">Contatto eliminato</string>
+    <string name="settings_webhooks_event_contact_restored">Contatto ripristinato</string>
     <string name="settings_webhooks_event_note_created">Nota creata</string>
     <string name="settings_webhooks_event_note_updated">Nota aggiornata</string>
     <string name="settings_webhooks_event_note_deleted">Nota eliminata</string>
@@ -2057,6 +2058,8 @@
     <string name="audit_operations_create">Creato</string>
     <string name="audit_operations_update">Aggiornato</string>
     <string name="audit_operations_delete">Eliminato</string>
+    <string name="audit_operations_restore">Ripristinato</string>
+    <string name="audit_operations_purge">Eliminato definitivamente</string>
     <string name="audit_entity_types_contact">Contatto</string>
     <string name="audit_entity_types_note">Nota</string>
     <string name="audit_entity_types_activity">Attività</string>
@@ -2076,6 +2079,39 @@
     <string name="audit_undo_success">Contatto ripristinato allo stato precedente</string>
     <string name="audit_undo_retention_gone">Questo evento è oltre la sua finestra di conservazione e non può più essere annullato</string>
     <string name="audit_undo_partial_note">I dettagli mai registrati in questa voce (pronomi, informazioni personali, dettagli dell\'indirizzo) vengono conservati invariati.</string>
+    <!-- Issue #2002: contact trash (restore / delete forever). -->
+    <string name="trash_title">Cestino</string>
+    <string name="trash_empty_action">Svuota cestino</string>
+    <string name="trash_empty_state">Il cestino è vuoto</string>
+    <string name="trash_retention_forever">I contatti eliminati vengono conservati finché non svuoti il cestino.</string>
+    <plurals name="trash_retention">
+        <item quantity="one">I contatti eliminati vengono conservati per %1$d giorno, poi eliminati definitivamente.</item>
+        <item quantity="many">I contatti eliminati vengono conservati per %1$d giorni, poi eliminati definitivamente.</item>
+        <item quantity="other">I contatti eliminati vengono conservati per %1$d giorni, poi eliminati definitivamente.</item>
+    </plurals>
+    <string name="trash_deleted_on">Eliminato il %1$s</string>
+    <string name="trash_purge_on">Eliminazione definitiva il %1$s</string>
+    <string name="trash_restore">Ripristina</string>
+    <string name="trash_delete_forever">Elimina definitivamente</string>
+    <string name="trash_restored">%1$s ripristinato.</string>
+    <plurals name="trash_restored_with_skipped">
+        <item quantity="one">%1$s ripristinato, ma %2$d elemento non è stato ripristinato perché ciò a cui era collegato non esiste più.</item>
+        <item quantity="many">%1$s ripristinato, ma %2$d elementi non sono stati ripristinati perché ciò a cui erano collegati non esiste più.</item>
+        <item quantity="other">%1$s ripristinato, ma %2$d elementi non sono stati ripristinati perché ciò a cui erano collegati non esiste più.</item>
+    </plurals>
+    <string name="trash_restore_conflict">Impossibile ripristinare %1$s: un altro contatto usa già l’ID di questo contatto. Unisci o elimina prima quel contatto.</string>
+    <string name="trash_purge_confirm">Eliminare definitivamente %1$s? Questa azione non può essere annullata.</string>
+    <string name="trash_purged">%1$s eliminato definitivamente.</string>
+    <plurals name="trash_empty_confirm">
+        <item quantity="one">Eliminare definitivamente %1$d contatto dal cestino? Questa azione non può essere annullata.</item>
+        <item quantity="many">Eliminare definitivamente tutti i %1$d contatti dal cestino? Questa azione non può essere annullata.</item>
+        <item quantity="other">Eliminare definitivamente tutti i %1$d contatti dal cestino? Questa azione non può essere annullata.</item>
+    </plurals>
+    <plurals name="trash_emptied">
+        <item quantity="one">%1$d contatto eliminato definitivamente.</item>
+        <item quantity="many">%1$d contatti eliminati definitivamente.</item>
+        <item quantity="other">%1$d contatti eliminati definitivamente.</item>
+    </plurals>
 
     <!-- Android a11y (issues #199/#203): shared accessibility-only announcements -->
     <string name="a11y_state_loading">Caricamento</string>

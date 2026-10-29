@@ -182,6 +182,7 @@ import com.mycorrhizal.crm.feature.timelineentities.GiftsScreen
 import com.mycorrhizal.crm.feature.timelineentities.LifeEventsScreen
 import com.mycorrhizal.crm.feature.timelineentities.PreferencesScreen
 import com.mycorrhizal.crm.feature.tracking.DeviceRegistrationViewModel
+import com.mycorrhizal.crm.feature.trash.TrashScreen
 import com.mycorrhizal.crm.feature.users.UsersScreen
 import com.mycorrhizal.crm.model.AppVersion
 import com.mycorrhizal.crm.model.util.DateFormat
@@ -1963,6 +1964,10 @@ private fun AppNavGraph(
                 onMenuClick = menu,
                 onOpenContact = { id -> navController.navigate("contacts/$id") }
             )
+        }
+        // Issue #2002: the contact Trash (web's /trash), reachable from the drawer.
+        composable("trash") {
+            TrashScreen(onMenuClick = menu)
         }
         composable("custom-links") {
             CustomLinkActionsScreen(

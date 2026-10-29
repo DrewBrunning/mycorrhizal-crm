@@ -4515,6 +4515,85 @@ class ApiClientTest {
         assertEquals(410, (error as ApiError.Client).code)
     }
 
+    // --- Issue #2002: contact trash ---
+
+    @Test
+    fun `get trashed contacts requests the page and parses rows`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"contacts":[{"contact":{"id":7,"uid":"u7","firstname":"Ada","lastname":"L"},""" +
+                    """"deleted_at":"2026-10-01T00:00:00Z","purge_at":null}],""" +
+                    """"total":1,"page":2,"limit":10,"retention_days":0}"""
+            )
+        )
+
+        val result = client.getTrashedContacts(page = 2, limit = 10)
+
+        val response = result.getOrThrow()
+        assertEquals(7, response.contacts.single().contact.id)
+        assertEquals(null, response.contacts.single().purgeAt)
+        assertEquals(0, response.retentionDays)
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/api/v1/trash/contacts?page=2&limit=10", request.path)
+    }
+
+    @Test
+    fun `restore trashed contact posts to the restore route and parses skipped rows`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody(
+                    """{"contact":{"id":7},"skipped":[{"table":"relationship_edges",""" +
+                        """"reason":"x","count":2}]}"""
+                )
+            )
+
+            val result = client.restoreTrashedContact(7)
+
+            assertEquals(2, result.getOrThrow().skipped.single().count)
+            val request = server.takeRequest()
+            assertEquals("POST", request.method)
+            assertEquals("/api/v1/trash/contacts/7/restore", request.path)
+        }
+
+    @Test
+    fun `restore trashed contact maps a 409 to a client error`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(409)
+                .setBody("""{"error":{"code":"CONFLICT","message":"uid in use"}}""")
+        )
+
+        val error = client.restoreTrashedContact(7).exceptionOrNull() as ApiError.Client
+
+        assertEquals(409, error.code)
+    }
+
+    @Test
+    fun `purge trashed contact deletes the item route`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"message":"ok","purged":1}""")
+        )
+
+        assertTrue(client.purgeTrashedContact(7).isSuccess)
+
+        val request = server.takeRequest()
+        assertEquals("DELETE", request.method)
+        assertEquals("/api/v1/trash/contacts/7", request.path)
+    }
+
+    @Test
+    fun `empty trash deletes the collection and returns the purged count`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"message":"ok","purged":4}""")
+        )
+
+        assertEquals(4, client.emptyTrash().getOrThrow())
+
+        val request = server.takeRequest()
+        assertEquals("DELETE", request.method)
+        assertEquals("/api/v1/trash/contacts", request.path)
+    }
+
     // --- M22: household relationship & shared-address suggestions ---
 
     @Test

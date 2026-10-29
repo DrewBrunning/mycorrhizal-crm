@@ -248,7 +248,7 @@
     <string name="contact_prep_view">Voir le briefing</string>
     <string name="contact_delete">Supprimer le contact</string>
     <string name="contact_delete_title">Supprimer le contact ?</string>
-    <string name="contact_delete_confirm">Voulez-vous vraiment supprimer %1$s ? Cette action est irréversible et supprimera également toutes les notes, activités et rappels associés à ce contact.</string>
+    <string name="contact_delete_confirm">Supprimer %1$s ? Le contact est déplacé dans la Corbeille, où vous pouvez le restaurer jusqu’à sa suppression définitive. Ses notes et rappels le suivent.</string>
     <string name="contact_archive_title">Archiver le contact ?</string>
     <string name="contact_archive_confirm">Voulez-vous vraiment archiver %1$s ? Tous les rappels seront supprimés. Vous pourrez désarchiver plus tard, mais les rappels ne seront pas restaurés.</string>
     <string name="contact_unarchive_title">Désarchiver le contact ?</string>
@@ -721,6 +721,7 @@
     <string name="settings_webhooks_event_contact_created">Contact créé</string>
     <string name="settings_webhooks_event_contact_updated">Contact mis à jour</string>
     <string name="settings_webhooks_event_contact_deleted">Contact supprimé</string>
+    <string name="settings_webhooks_event_contact_restored">Contact restauré</string>
     <string name="settings_webhooks_event_note_created">Note créée</string>
     <string name="settings_webhooks_event_note_updated">Note mise à jour</string>
     <string name="settings_webhooks_event_note_deleted">Note supprimée</string>
@@ -2057,6 +2058,8 @@
     <string name="audit_operations_create">Créé</string>
     <string name="audit_operations_update">Modifié</string>
     <string name="audit_operations_delete">Supprimé</string>
+    <string name="audit_operations_restore">Restauré</string>
+    <string name="audit_operations_purge">Supprimé définitivement</string>
     <string name="audit_entity_types_contact">Contact</string>
     <string name="audit_entity_types_note">Note</string>
     <string name="audit_entity_types_activity">Activité</string>
@@ -2076,6 +2079,39 @@
     <string name="audit_undo_success">Contact restauré dans son état antérieur</string>
     <string name="audit_undo_retention_gone">Cet événement est hors de sa fenêtre de conservation et ne peut plus être annulé</string>
     <string name="audit_undo_partial_note">Les détails qui n\'ont jamais été enregistrés dans cette entrée (pronoms, informations personnelles, détails d\'adresse) sont conservés tels quels.</string>
+    <!-- Issue #2002: contact trash (restore / delete forever). -->
+    <string name="trash_title">Corbeille</string>
+    <string name="trash_empty_action">Vider la corbeille</string>
+    <string name="trash_empty_state">La corbeille est vide</string>
+    <string name="trash_retention_forever">Les contacts supprimés sont conservés jusqu’à ce que vous vidiez la corbeille.</string>
+    <plurals name="trash_retention">
+        <item quantity="one">Les contacts supprimés sont conservés %1$d jour, puis supprimés définitivement.</item>
+        <item quantity="many">Les contacts supprimés sont conservés %1$d jours, puis supprimés définitivement.</item>
+        <item quantity="other">Les contacts supprimés sont conservés %1$d jours, puis supprimés définitivement.</item>
+    </plurals>
+    <string name="trash_deleted_on">Supprimé le %1$s</string>
+    <string name="trash_purge_on">Suppression définitive le %1$s</string>
+    <string name="trash_restore">Restaurer</string>
+    <string name="trash_delete_forever">Supprimer définitivement</string>
+    <string name="trash_restored">%1$s restauré.</string>
+    <plurals name="trash_restored_with_skipped">
+        <item quantity="one">%1$s restauré, mais %2$d élément n’a pas pu être restauré car ce à quoi il était lié n’existe plus.</item>
+        <item quantity="many">%1$s restauré, mais %2$d éléments n’ont pas pu être restaurés car ce à quoi ils étaient liés n’existe plus.</item>
+        <item quantity="other">%1$s restauré, mais %2$d éléments n’ont pas pu être restaurés car ce à quoi ils étaient liés n’existe plus.</item>
+    </plurals>
+    <string name="trash_restore_conflict">Impossible de restaurer %1$s : un autre contact utilise déjà l’ID de ce contact. Fusionnez ou supprimez d’abord ce contact.</string>
+    <string name="trash_purge_confirm">Supprimer définitivement %1$s ? Cette action est irréversible.</string>
+    <string name="trash_purged">%1$s supprimé définitivement.</string>
+    <plurals name="trash_empty_confirm">
+        <item quantity="one">Supprimer définitivement %1$d contact de la corbeille ? Cette action est irréversible.</item>
+        <item quantity="many">Supprimer définitivement les %1$d contacts de la corbeille ? Cette action est irréversible.</item>
+        <item quantity="other">Supprimer définitivement les %1$d contacts de la corbeille ? Cette action est irréversible.</item>
+    </plurals>
+    <plurals name="trash_emptied">
+        <item quantity="one">%1$d contact supprimé définitivement.</item>
+        <item quantity="many">%1$d contacts supprimés définitivement.</item>
+        <item quantity="other">%1$d contacts supprimés définitivement.</item>
+    </plurals>
 
     <!-- Android a11y (issues #199/#203): shared accessibility-only announcements -->
     <string name="a11y_state_loading">Chargement</string>

@@ -75,6 +75,7 @@ import com.mycorrhizal.crm.data.repository.ServerCompatibilityRepositoryImpl
 import com.mycorrhizal.crm.data.repository.SystemEventRepositoryImpl
 import com.mycorrhizal.crm.data.repository.TagRepositoryImpl
 import com.mycorrhizal.crm.data.repository.TrackingSettingsRepositoryImpl
+import com.mycorrhizal.crm.data.repository.TrashRepositoryImpl
 import com.mycorrhizal.crm.data.repository.UserManagementRepositoryImpl
 import com.mycorrhizal.crm.data.repository.WebhookRepositoryImpl
 import com.mycorrhizal.crm.data.session.AppLockController
@@ -134,6 +135,7 @@ import com.mycorrhizal.crm.domain.repository.ServerCompatibilityRepository
 import com.mycorrhizal.crm.domain.repository.SystemEventRepository
 import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.domain.repository.TrackingSettingsRepository
+import com.mycorrhizal.crm.domain.repository.TrashRepository
 import com.mycorrhizal.crm.domain.repository.UserManagementRepository
 import com.mycorrhizal.crm.domain.repository.WebhookRepository
 import com.mycorrhizal.crm.network.ApiClient
@@ -478,6 +480,10 @@ abstract class DataBindsModule {
     @Binds
     @Singleton
     abstract fun bindPasskeyRepository(impl: PasskeyRepositoryImpl): PasskeyRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindTrashRepository(impl: TrashRepositoryImpl): TrashRepository
 
     @Binds
     @Singleton
