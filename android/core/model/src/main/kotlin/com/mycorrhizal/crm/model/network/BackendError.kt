@@ -17,8 +17,17 @@ data class BackendErrorBody(
     val message: String? = null,
     val details: Map<String, Any?>? = null,
     @Json(name = "reason_code") val reasonCode: String? = null,
-    @Json(name = "reason_params") val reasonParams: Map<String, Any?>? = null
+    @Json(name = "reason_params") val reasonParams: Map<String, Any?>? = null,
+    // Issue #2105: one reason per field on a VALIDATION_ERROR.
+    @Json(name = "field_reasons") val fieldReasons: Map<String, BackendFieldReason>? = null
 ) {
     val displayMessage: String
         get() = message?.takeIf { it.isNotBlank() } ?: code ?: "Unknown error"
 }
+
+/** One field's stable reason on a VALIDATION_ERROR (issue #2105). */
+@JsonClass(generateAdapter = true)
+data class BackendFieldReason(
+    @Json(name = "reason_code") val reasonCode: String? = null,
+    @Json(name = "reason_params") val reasonParams: Map<String, Any?>? = null
+)

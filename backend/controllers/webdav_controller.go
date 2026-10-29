@@ -208,11 +208,7 @@ func LinkWebDAVContact(c *gin.Context) {
 		return
 	}
 	if verrs := middleware.ValidateStruct(&input); len(verrs) > 0 {
-		appErr := apperrors.ErrValidation("Request validation failed")
-		for _, ve := range verrs {
-			appErr.WithDetails(ve.Field, ve.Message)
-		}
-		apperrors.AbortWithError(c, appErr)
+		apperrors.AbortWithError(c, apperrors.ErrValidationFields(verrs))
 		return
 	}
 	if strings.TrimSpace(input.Path) == "" {

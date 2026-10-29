@@ -37,11 +37,29 @@ const (
 	// ReasonCommonTestOnly exists for tests only and is removed in #2100.
 	ReasonCommonTestOnly ReasonCode = "common_test_only"
 
-	ReasonCircleColorInvalid             ReasonCode = "circle_color_invalid"
-	ReasonImportCirclesNotFound          ReasonCode = "import_circles_not_found"
-	ReasonImportTagsNotFound             ReasonCode = "import_tags_not_found"
-	ReasonValidationCursorMalformed      ReasonCode = "validation_cursor_malformed"
-	ReasonValidationActivityIDsRange     ReasonCode = "validation_activity_ids_range"
+	ReasonCircleColorInvalid         ReasonCode = "circle_color_invalid"
+	ReasonImportCirclesNotFound      ReasonCode = "import_circles_not_found"
+	ReasonImportTagsNotFound         ReasonCode = "import_tags_not_found"
+	ReasonValidationCursorMalformed  ReasonCode = "validation_cursor_malformed"
+	ReasonValidationActivityIDsRange ReasonCode = "validation_activity_ids_range"
+
+	// Struct-tag validation (issue #2105): one code per middleware validator
+	// tag, plus validation_invalid for the default branch.
+	ReasonValidationRequired             ReasonCode = "validation_required"
+	ReasonValidationEmail                ReasonCode = "validation_email"
+	ReasonValidationMin                  ReasonCode = "validation_min"
+	ReasonValidationMax                  ReasonCode = "validation_max"
+	ReasonValidationPhone                ReasonCode = "validation_phone"
+	ReasonValidationBirthday             ReasonCode = "validation_birthday"
+	ReasonValidationStrongPassword       ReasonCode = "validation_strong_password"
+	ReasonValidationUniqueCircles        ReasonCode = "validation_unique_circles"
+	ReasonValidationNoAtSign             ReasonCode = "validation_no_at_sign"
+	ReasonValidationURL                  ReasonCode = "validation_url"
+	ReasonValidationSafeURL              ReasonCode = "validation_safeurl"
+	ReasonValidationHTTPURL              ReasonCode = "validation_httpurl"
+	ReasonValidationRelationType         ReasonCode = "validation_relation_type"
+	ReasonValidationGeoURI               ReasonCode = "validation_geouri"
+	ReasonValidationInvalid              ReasonCode = "validation_invalid"
 	ReasonRelationshipContactAmbiguous   ReasonCode = "relationship_contact_ambiguous"
 	ReasonRelationshipContactMissing     ReasonCode = "relationship_contact_missing"
 	ReasonRelationshipSelfEdge           ReasonCode = "relationship_self_edge"
@@ -245,11 +263,30 @@ const (
 var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonCommonTestOnly: {Template: "Test {n}", Params: []string{"n"}},
 
-	ReasonCircleColorInvalid:             {Template: "The colour must be one of the palette colours"},
-	ReasonImportCirclesNotFound:          {Template: "One or more circles were not found"},
-	ReasonImportTagsNotFound:             {Template: "One or more tags were not found"},
-	ReasonValidationCursorMalformed:      {Template: "The cursor id is malformed"},
-	ReasonValidationActivityIDsRange:     {Template: "Must contain between 1 and 100 ids"},
+	ReasonCircleColorInvalid:         {Template: "The colour must be one of the palette colours"},
+	ReasonImportCirclesNotFound:      {Template: "One or more circles were not found"},
+	ReasonImportTagsNotFound:         {Template: "One or more tags were not found"},
+	ReasonValidationCursorMalformed:  {Template: "The cursor id is malformed"},
+	ReasonValidationActivityIDsRange: {Template: "Must contain between 1 and 100 ids"},
+
+	// Struct-tag validation (issue #2105). The template is the English that
+	// middleware.formatValidationError produced, with the field name (and
+	// min/max bound) as params.
+	ReasonValidationRequired:             {Template: "{field} is required", Params: []string{"field"}},
+	ReasonValidationEmail:                {Template: "{field} must be a valid email address", Params: []string{"field"}},
+	ReasonValidationMin:                  {Template: "{field} must be at least {min} characters", Params: []string{"field", "min"}},
+	ReasonValidationMax:                  {Template: "{field} must be at most {max} characters", Params: []string{"field", "max"}},
+	ReasonValidationPhone:                {Template: "{field} must be a valid phone number", Params: []string{"field"}},
+	ReasonValidationBirthday:             {Template: "{field} must be in YYYY-MM-DD format (use --MM-DD if year unknown)", Params: []string{"field"}},
+	ReasonValidationStrongPassword:       {Template: "{field} is too weak. Use a longer password (15+ characters) or a passphrase (20+ characters). Avoid common passwords.", Params: []string{"field"}},
+	ReasonValidationUniqueCircles:        {Template: "{field} cannot contain duplicate circles", Params: []string{"field"}},
+	ReasonValidationNoAtSign:             {Template: "{field} cannot contain the @ character", Params: []string{"field"}},
+	ReasonValidationURL:                  {Template: "{field} must be a valid URL", Params: []string{"field"}},
+	ReasonValidationSafeURL:              {Template: "{field} uses an unsafe URL scheme", Params: []string{"field"}},
+	ReasonValidationHTTPURL:              {Template: "{field} must be an http:// or https:// URL", Params: []string{"field"}},
+	ReasonValidationRelationType:         {Template: "{field} must be a known relationship type", Params: []string{"field"}},
+	ReasonValidationGeoURI:               {Template: "{field} must be a geo: URI with latitude -90..90 and longitude -180..180", Params: []string{"field"}},
+	ReasonValidationInvalid:              {Template: "{field} is invalid", Params: []string{"field"}},
 	ReasonRelationshipContactAmbiguous:   {Template: "Specify either an existing contact or a new contact, not both"},
 	ReasonRelationshipContactMissing:     {Template: "Specify an existing contact or a new contact"},
 	ReasonRelationshipSelfEdge:           {Template: "The source and target must be different contacts"},

@@ -14083,6 +14083,20 @@ components:
               type: object
               additionalProperties: true
               description: Flat string/number params for the reason's template.
+            field_reasons:
+              type: object
+              description: >
+                Per-field reason codes on a VALIDATION_ERROR (issue #2105).
+                `details` remains the English field -> message map; this is its
+                translatable companion.
+              additionalProperties:
+                type: object
+                required: [reason_code]
+                properties:
+                  reason_code: { type: string }
+                  reason_params:
+                    type: object
+                    additionalProperties: true
         request_id: { type: string }
         timestamp: { type: string, format: date-time }
     SyncInfo:

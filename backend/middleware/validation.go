@@ -44,11 +44,10 @@ func mustRegisterValidation(tag string, fn validator.Func) {
 	}
 }
 
-// ValidationError represents a validation error response
-type ValidationError struct {
-	Field   string `json:"field"`
-	Message string `json:"message"`
-}
+// ValidationError represents a validation error response. It is an alias of
+// errors.ValidationError so ErrValidationFields can carry the reason code
+// without either package importing the other (issue #2105).
+type ValidationError = apperrors.ValidationError
 
 // ValidateStruct validates a struct and returns formatted errors
 func ValidateStruct(obj interface{}) []ValidationError {
@@ -63,9 +62,12 @@ func ValidateStruct(obj interface{}) []ValidationError {
 			panic(fmt.Sprintf("middleware.ValidateStruct: %v", err)) // # pragma: no cover — every caller passes a struct pointer
 		}
 		for _, fe := range verrs {
+			code, params := validationReason(fe.Tag(), fe.Param(), fe.Field())
 			result = append(result, ValidationError{
-				Field:   fe.Field(),
-				Message: formatValidationError(fe),
+				Field:        fe.Field(),
+				Message:      formatValidationError(fe),
+				ReasonCode:   code,
+				ReasonParams: params,
 			})
 		}
 	}
@@ -108,6 +110,46 @@ func formatValidationError(err validator.FieldError) string {
 		return field + " must be a geo: URI with latitude -90..90 and longitude -180..180"
 	default:
 		return field + " is invalid"
+	}
+}
+
+// validationReason maps a validator tag to its registered reason code and
+// params (issue #2105). The tag set is closed: the 14 tags handled by
+// formatValidationError, plus the default branch. Custom validators whose tag
+// has no case (fielddefprojection, life_event_category) fall to
+// validation_invalid, matching today's English message.
+func validationReason(tag, param, field string) (apperrors.ReasonCode, map[string]any) {
+	switch tag {
+	case "required":
+		return apperrors.ReasonValidationRequired, map[string]any{"field": field}
+	case "email":
+		return apperrors.ReasonValidationEmail, map[string]any{"field": field}
+	case "min":
+		return apperrors.ReasonValidationMin, map[string]any{"field": field, "min": param}
+	case "max":
+		return apperrors.ReasonValidationMax, map[string]any{"field": field, "max": param}
+	case "phone":
+		return apperrors.ReasonValidationPhone, map[string]any{"field": field}
+	case "birthday":
+		return apperrors.ReasonValidationBirthday, map[string]any{"field": field}
+	case "strong_password":
+		return apperrors.ReasonValidationStrongPassword, map[string]any{"field": field}
+	case "unique_circles":
+		return apperrors.ReasonValidationUniqueCircles, map[string]any{"field": field}
+	case "no_at_sign":
+		return apperrors.ReasonValidationNoAtSign, map[string]any{"field": field}
+	case "url":
+		return apperrors.ReasonValidationURL, map[string]any{"field": field}
+	case "safeurl":
+		return apperrors.ReasonValidationSafeURL, map[string]any{"field": field}
+	case "httpurl":
+		return apperrors.ReasonValidationHTTPURL, map[string]any{"field": field}
+	case "relation_type":
+		return apperrors.ReasonValidationRelationType, map[string]any{"field": field}
+	case "geouri":
+		return apperrors.ReasonValidationGeoURI, map[string]any{"field": field}
+	default:
+		return apperrors.ReasonValidationInvalid, map[string]any{"field": field}
 	}
 }
 
