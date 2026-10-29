@@ -56,7 +56,7 @@ class ActivitiesInboxViewModelTest {
         val vm = ActivitiesInboxViewModel(activityRepository)
         advanceUntilIdle()
 
-        assertEquals("server error", vm.uiState.value.error)
+        assertEquals("server error", vm.uiState.value.error?.message)
         assertTrue(vm.uiState.value.activities.isEmpty())
     }
 
@@ -157,6 +157,6 @@ class ActivitiesInboxViewModelTest {
 
         assertEquals(listOf(1), vm.uiState.value.activities.map { it.id })
         assertNull(vm.uiState.value.deletingId)
-        assertEquals("delete failed", vm.uiState.value.error)
+        assertEquals("delete failed", vm.uiState.value.error?.message)
     }
 }

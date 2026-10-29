@@ -46,7 +46,7 @@ class PaperlessSettingsViewModelTest {
         val vm = PaperlessSettingsViewModel(repository)
         advanceUntilIdle()
 
-        assertEquals("Server error (500)", vm.uiState.value.loadError)
+        assertTrue(vm.uiState.value.loadError is ApiError.Server)
     }
 
     @Test
@@ -70,7 +70,7 @@ class PaperlessSettingsViewModelTest {
         assertEquals("http://paperless:8000", state.baseUrl)
         assertTrue(state.hasApiToken)
         assertEquals("", state.apiToken)
-        assertNull(state.saveError)
+        assertNull(state.saveError?.message)
     }
 
     @Test
@@ -112,7 +112,7 @@ class PaperlessSettingsViewModelTest {
         vm.save()
         advanceUntilIdle()
 
-        assertEquals("Invalid URL", vm.uiState.value.saveError)
+        assertEquals("Invalid URL", vm.uiState.value.saveError?.message)
     }
 
     @Test
@@ -179,7 +179,7 @@ class PaperlessSettingsViewModelTest {
 
         val outcome = vm.uiState.value.testResult
         assertTrue(outcome?.ok == false)
-        assertEquals("Invalid URL", outcome?.message)
+        assertEquals("Invalid URL", outcome?.error?.message)
         coVerify(exactly = 0) { repository.testConnection() }
     }
 
@@ -217,7 +217,7 @@ class PaperlessSettingsViewModelTest {
         vm.remove()
         advanceUntilIdle()
 
-        assertEquals("Server error (500)", vm.uiState.value.saveError)
+        assertTrue(vm.uiState.value.saveError is ApiError.Server)
         assertTrue(vm.uiState.value.hasApiToken)
     }
 

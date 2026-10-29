@@ -5,6 +5,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import com.mycorrhizal.crm.model.network.ErrorReason
 import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.network.ApiError
+import com.mycorrhizal.crm.network.NO_PENDING_TWO_FACTOR_BODY
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import java.lang.reflect.Modifier
 import org.junit.Assert.assertEquals
@@ -199,6 +200,37 @@ class ErrorTextTest {
     fun `a 4xx never shows the request reference`() {
         val error = ApiError.Client(400, "Server says no", requestId = "abc")
         assertEquals("Server says no", render(error))
+    }
+
+    @Test
+    fun `client-worded errors render their translated strings`() {
+        val rendered = renderAll(
+            listOf(
+                ApiError.Client(401, "x"),
+                ApiError.Client(403, "x"),
+                ApiError.Client(404, "x"),
+                ApiError.Client(409, ""),
+                ApiError.Client(418, ""),
+                ApiError.Server(503, "hidden"),
+                ApiError.PreconditionFailed("x"),
+                ApiError.Parse("x"),
+                ApiError.Client(401, NO_PENDING_TWO_FACTOR_BODY)
+            )
+        )
+        assertEquals(
+            listOf(
+                "Session expired — please log in again",
+                "You don't have permission",
+                "Not found",
+                "Conflict",
+                "Request failed",
+                "Server error (503)",
+                "Changed elsewhere — load the latest version",
+                "Unexpected server response",
+                "No pending two-factor login found. Please sign in again."
+            ),
+            rendered
+        )
     }
 
     @Test

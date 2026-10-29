@@ -10,6 +10,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -161,7 +162,7 @@ class PaperlessSettingsScreenTest {
                 PaperlessSettingsContent(
                     state = PaperlessSettingsUiState(
                         isLoading = false,
-                        saveError = "Could not save"
+                        saveError = ApiError.Client(400, "Could not save")
                     )
                 )
             }

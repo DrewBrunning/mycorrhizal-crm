@@ -12,6 +12,7 @@ import com.mycorrhizal.crm.domain.repository.MapRepository
 import com.mycorrhizal.crm.model.network.ContactMapResponse
 import com.mycorrhizal.crm.model.network.LatLng
 import com.mycorrhizal.crm.model.network.MapConfig
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
@@ -131,7 +132,10 @@ class MapScreenTest {
     @Test
     fun `shows the error with a working retry`() {
         var retried = 0
-        content(MapUiState(isLoading = false, error = "No connection"), onRetry = { retried++ })
+        content(
+            MapUiState(isLoading = false, error = ApiError.Client(400, "No connection")),
+            onRetry = { retried++ }
+        )
 
         composeTestRule.onNodeWithText("No connection").assertIsDisplayed()
         composeTestRule.onNodeWithText("Retry").performClick()

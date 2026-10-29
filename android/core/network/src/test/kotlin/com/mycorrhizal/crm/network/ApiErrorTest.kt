@@ -109,4 +109,34 @@ class ApiErrorTest {
         assertEquals("Changed elsewhere — load the latest version", error.displayMessage)
         assertTrue(error.toApiError() === error)
     }
+
+    @Test
+    fun `client display messages word each status`() {
+        assertEquals(
+            "Session expired — please log in again",
+            ApiError.Client(401, "x").displayMessage
+        )
+        assertEquals("You don't have permission", ApiError.Client(403, "x").displayMessage)
+        assertEquals("Not found", ApiError.Client(404, "x").displayMessage)
+        assertEquals("taken", ApiError.Client(409, "taken").displayMessage)
+        assertEquals("bad", ApiError.Client(422, "bad").displayMessage)
+    }
+
+    @Test
+    fun `the remaining subtypes have their own display message`() {
+        assertEquals(
+            "Request timed out",
+            ApiError.Timeout(java.net.SocketTimeoutException()).displayMessage
+        )
+        assertEquals("Unexpected server response", ApiError.Parse("x").displayMessage)
+        assertEquals(
+            "Something went wrong",
+            ApiError.Unknown(IllegalStateException()).displayMessage
+        )
+        assertEquals(
+            "fixed",
+            ApiError.Server(502, "fixed", "EXTERNAL_SERVICE_ERROR").displayMessage
+        )
+        assertEquals("room", ApiError.Server(507, "room").displayMessage)
+    }
 }

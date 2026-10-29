@@ -196,7 +196,7 @@ class DashboardViewModelTest {
 
             val state = viewModel.uiState.value
             assertFalse(state.isLoading)
-            assertEquals("Server error (500)", state.error)
+            assertTrue(state.error is ApiError.Server)
         }
 
     @Test
@@ -261,7 +261,7 @@ class DashboardViewModelTest {
             assertEquals(listOf(1, 2, 3), state.upcomingReminders.map { it.id })
             // A failed action is a transient actionError, never the dashboard-wide
             // load error — the widgets must keep rendering.
-            assertEquals("Server error (500)", state.actionError)
+            assertTrue(state.actionError is ApiError.Server)
             assertNull(state.error)
             assertNull(state.completingId)
         }
@@ -277,7 +277,7 @@ class DashboardViewModelTest {
 
             viewModel.completeReminder(7)
             advanceUntilIdle()
-            assertEquals("Server error (500)", viewModel.uiState.value.actionError)
+            assertTrue(viewModel.uiState.value.actionError is ApiError.Server)
 
             viewModel.onActionErrorShown()
             assertNull(viewModel.uiState.value.actionError)
@@ -376,7 +376,7 @@ class DashboardViewModelTest {
             val state = viewModel.uiState.value
             // Restored to its original middle position, not merely re-appended.
             assertEquals(listOf("s1", "s2", "s3"), state.reachOutSuggestions.map { it.id })
-            assertEquals("Server error (500)", state.actionError)
+            assertTrue(state.actionError is ApiError.Server)
             assertNull(state.error)
             assertNull(state.dismissingSuggestionId)
         }
@@ -450,7 +450,7 @@ class DashboardViewModelTest {
             val state = viewModel.uiState.value
             // Restored to its original middle position, not merely re-appended.
             assertEquals(listOf("d1", "d2", "d3"), state.dataDecayOverdue.map { it.policy?.id })
-            assertEquals("Server error (500)", state.actionError)
+            assertTrue(state.actionError is ApiError.Server)
             assertNull(state.error)
             assertNull(state.verifyingDataDecayId)
         }
@@ -648,7 +648,7 @@ class DashboardViewModelTest {
                 activityRepository
             )
             advanceUntilIdle()
-            assertEquals("Server error (500)", viewModel.uiState.value.error)
+            assertTrue(viewModel.uiState.value.error is ApiError.Server)
 
             viewModel.load()
             viewModel.load()

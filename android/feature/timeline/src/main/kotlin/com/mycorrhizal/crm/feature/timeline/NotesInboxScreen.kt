@@ -47,6 +47,7 @@ import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
+import com.mycorrhizal.crm.ui.components.localizedMessage
 import com.mycorrhizal.crm.ui.markdown.MarkdownText
 
 /**
@@ -166,7 +167,7 @@ fun NotesInboxScreenContent(
                         )
 
                     state.notes.isEmpty() && state.error != null ->
-                        EmptyState(state.error.orEmpty())
+                        EmptyState(state.error.localizedMessage())
 
                     else -> {
                         LazyColumn(
@@ -198,7 +199,7 @@ fun NotesInboxScreenContent(
         }
     }
 
-    val listError = state.error
+    val listError = state.error?.localizedMessage()
     if (listError != null && state.notes.isNotEmpty()) {
         LaunchedEffect(listError) {
             snackbarHostState.showSnackbar(listError)

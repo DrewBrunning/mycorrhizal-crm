@@ -14,6 +14,7 @@ import androidx.compose.ui.test.performClick
 import com.mycorrhizal.crm.domain.repository.NoteRepository
 import com.mycorrhizal.crm.domain.repository.UnfiledNotesPage
 import com.mycorrhizal.crm.model.network.Note
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
@@ -106,8 +107,28 @@ class NotesInboxScreenTest {
 
     @Test
     fun `an empty list with an error renders the error message`() {
-        setContent(NotesInboxUiState(isLoading = false, notes = emptyList(), error = "boom"))
+        setContent(
+            NotesInboxUiState(
+                isLoading = false,
+                notes = emptyList(),
+                error = ApiError.Client(400, "boom")
+            )
+        )
         composeTestRule.onNodeWithText("boom").assertIsDisplayed()
+    }
+
+    // Issue #2106: the typed error is worded in the UI language at composition time.
+    @Test
+    @Config(qualifiers = "de")
+    fun `an empty list with a client-worded error renders it in German`() {
+        setContent(
+            NotesInboxUiState(
+                isLoading = false,
+                notes = emptyList(),
+                error = ApiError.Client(404, "Note not found")
+            )
+        )
+        composeTestRule.onNodeWithText("Nicht gefunden").assertIsDisplayed()
     }
 
     @Test
@@ -186,7 +207,7 @@ class NotesInboxScreenTest {
             NotesInboxUiState(
                 isLoading = false,
                 notes = listOf(Note(id = 3, content = "Buy milk")),
-                error = "boom"
+                error = ApiError.Client(400, "boom")
             ),
             onErrorShown = { errorShown++ }
         )

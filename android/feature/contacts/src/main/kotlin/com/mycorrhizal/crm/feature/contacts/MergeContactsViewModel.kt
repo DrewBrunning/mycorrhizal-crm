@@ -8,6 +8,7 @@ import com.mycorrhizal.crm.model.network.ContactMergeFieldConflict
 import com.mycorrhizal.crm.model.network.ContactMergePreviewResponse
 import com.mycorrhizal.crm.model.network.ContactMergeRequest
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -38,7 +39,7 @@ data class MergeUiState(
     /** field -> chosen value; covers scalar + field-value conflicts. */
     val resolutions: Map<String, String> = emptyMap(),
     val merged: Boolean = false,
-    val error: String? = null
+    val error: ApiError? = null
 )
 
 @HiltViewModel
@@ -105,7 +106,7 @@ class MergeContactsViewModel @Inject constructor(
                         it.copy(
                             isSearching = false,
                             searchResults = emptyList(),
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }
@@ -143,7 +144,7 @@ class MergeContactsViewModel @Inject constructor(
                     _uiState.update { it.copy(isLoading = false, preview = preview) }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isLoading = false, error = error) }
                 }
             )
         }
@@ -180,7 +181,7 @@ class MergeContactsViewModel @Inject constructor(
                     _uiState.update { it.copy(isCommitting = false, merged = true) }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isCommitting = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isCommitting = false, error = error) }
                 }
             )
         }

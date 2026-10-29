@@ -55,6 +55,7 @@ import com.mycorrhizal.crm.data.passkey.SecondFactorPrompt
 import com.mycorrhizal.crm.data.passkey.offersPasskey
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AutofillOutlinedTextField
+import com.mycorrhizal.crm.ui.components.localizedMessage
 
 @Composable
 fun LoginScreen(
@@ -350,7 +351,11 @@ fun LoginScreenContent(
                 }
             }
 
-            val errorMessage = uiState.errorRes?.let { stringResource(it) } ?: uiState.error
+            val errorMessage = uiState.errorRes?.let {
+                stringResource(
+                    it
+                )
+            } ?: uiState.error?.localizedMessage()
             errorMessage?.let { message ->
                 LaunchedEffect(message) {
                     snackbarHostState.showSnackbar(message)

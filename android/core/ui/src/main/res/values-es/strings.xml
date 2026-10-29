@@ -2708,6 +2708,21 @@
     </plurals>
     <string name="score_reason_target_ambient">Contacto ambiental, siempre al día</string>
     <string name="error_request_ref">(ref: %1$s)</string>
+    <string name="login_error_invalid_credentials">Credenciales no válidas</string>
+    <string name="register_error_disabled">El registro está desactivado en este servidor</string>
+    <string name="error_client_network">Sin conexión</string>
+    <string name="error_client_timeout">La solicitud agotó el tiempo de espera</string>
+    <string name="error_client_server">Error del servidor (%1$d)</string>
+    <string name="error_client_session_expired">Sesión caducada: inicia sesión de nuevo</string>
+    <string name="error_client_forbidden">No tienes permiso</string>
+    <string name="error_client_not_found">No encontrado</string>
+    <string name="error_client_conflict">Conflicto</string>
+    <string name="error_client_request_failed">Error en la solicitud</string>
+    <string name="error_client_precondition_failed">Cambiado en otro lugar: carga la última versión</string>
+    <string name="error_client_parse">Respuesta inesperada del servidor</string>
+    <string name="error_client_archived_profile">Este perfil es un archivo de solo lectura: cambia a tu servidor para hacer modificaciones</string>
+    <string name="error_client_unknown">Algo salió mal</string>
+    <string name="error_client_no_pending_two_factor">No se encontró ningún inicio de sesión en dos pasos pendiente. Inicia sesión de nuevo.</string>
     <string name="error_reason_common_test_only">Prueba %1$d</string>
     <string name="error_reason_contact_bulk_custom_field_duplicate">Una definición de campo personalizado aparece más de una vez</string>
     <string name="error_reason_contact_bulk_custom_field_in_both">Un campo personalizado no puede estar en custom_set y en custom_clear a la vez</string>

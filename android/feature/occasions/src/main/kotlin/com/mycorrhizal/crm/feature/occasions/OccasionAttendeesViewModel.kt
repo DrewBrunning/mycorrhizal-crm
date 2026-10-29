@@ -12,6 +12,7 @@ import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.InviteeSuggestion
 import com.mycorrhizal.crm.model.network.OccasionEventAttendeeInput
 import com.mycorrhizal.crm.model.network.OccasionEventAttendeeView
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -40,7 +41,7 @@ data class OccasionAttendeesUiState(
     val contactResults: List<ContactSummary> = emptyList(),
     val contactSearchLoading: Boolean = false,
     @StringRes val errorRes: Int? = null,
-    val error: String? = null
+    val error: ApiError? = null
 )
 
 /**
@@ -95,7 +96,7 @@ class OccasionAttendeesViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }
@@ -143,7 +144,7 @@ class OccasionAttendeesViewModel @Inject constructor(
                         it.copy(
                             suggestionsLoading = false,
                             suggestions = emptyList(),
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }
@@ -215,7 +216,7 @@ class OccasionAttendeesViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isMutating = false,
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }
@@ -237,7 +238,7 @@ class OccasionAttendeesViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isMutating = false,
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }
@@ -259,7 +260,7 @@ class OccasionAttendeesViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isMutating = false,
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }

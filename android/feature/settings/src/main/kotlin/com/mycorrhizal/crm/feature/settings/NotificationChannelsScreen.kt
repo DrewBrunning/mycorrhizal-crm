@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.localizedMessage
 
 /**
  * M25: ntfy/Gotify notification-channel configuration — distinct from
@@ -131,7 +132,7 @@ fun NotificationChannelsContent(
 
             state.loadError?.let {
                 Text(
-                    it,
+                    it.localizedMessage(),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
@@ -139,7 +140,7 @@ fun NotificationChannelsContent(
             }
             state.saveError?.let {
                 Text(
-                    it,
+                    it.localizedMessage(),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
@@ -226,14 +227,22 @@ fun NotificationChannelsContent(
             // Test result
             state.testResult["ntfy"]?.let { result ->
                 Text(
-                    text = resultMessage("ntfy", result.ok, result.error),
+                    text = resultMessage(
+                        "ntfy",
+                        result.ok,
+                        result.error?.localizedMessage() ?: result.detail
+                    ),
                     color = if (result.ok) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall
                 )
             }
             state.testResult["gotify"]?.let { result ->
                 Text(
-                    text = resultMessage("gotify", result.ok, result.error),
+                    text = resultMessage(
+                        "gotify",
+                        result.ok,
+                        result.error?.localizedMessage() ?: result.detail
+                    ),
                     color = if (result.ok) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall
                 )

@@ -114,7 +114,7 @@ data class ContactFormState(
     val geocodeInFlight: Set<String> = emptySet(),
     /** The active profile is on-device: the embedded backend has no geocode routes. */
     val localProfile: Boolean = false,
-    val geocodeErrors: Map<String, String> = emptyMap(),
+    val geocodeErrors: Map<String, ApiError> = emptyMap(),
     val organizationName: String = "",
     val department: String = "",
     val titles: List<Title> = emptyList(),
@@ -161,7 +161,7 @@ data class ContactFormState(
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
     @StringRes val errorRes: Int? = null,
-    val error: String? = null,
+    val error: ApiError? = null,
     /** ADR 0008: the save was rejected with 412 — the contact changed elsewhere since it loaded. */
     val conflict: Boolean = false,
     /** Issue #1751: the editable state the form opened with, for [isDirty]. */
@@ -614,7 +614,7 @@ class ContactFormViewModel @Inject constructor(
                     loadMemberships(record)
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isLoading = false, error = error) }
                 }
             )
         }
@@ -721,7 +721,7 @@ class ContactFormViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             geocodeInFlight = it.geocodeInFlight - rowKey,
-                            geocodeErrors = it.geocodeErrors + (rowKey to error.displayMessage)
+                            geocodeErrors = it.geocodeErrors + (rowKey to error)
                         )
                     }
                 }
@@ -878,7 +878,7 @@ class ContactFormViewModel @Inject constructor(
                         if (error is ApiError.PreconditionFailed) {
                             it.copy(isSaving = false, conflict = true)
                         } else {
-                            it.copy(isSaving = false, error = error.displayMessage)
+                            it.copy(isSaving = false, error = error)
                         }
                     }
                 }

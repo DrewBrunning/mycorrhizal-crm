@@ -2613,6 +2613,21 @@
     </plurals>
     <string name="score_reason_target_ambient">Umgebungskontakt, immer im Plan</string>
     <string name="error_request_ref">(Referenz: %1$s)</string>
+    <string name="login_error_invalid_credentials">Ungültige Zugangsdaten</string>
+    <string name="register_error_disabled">Die Registrierung ist auf diesem Server deaktiviert</string>
+    <string name="error_client_network">Keine Verbindung</string>
+    <string name="error_client_timeout">Zeitüberschreitung bei der Anfrage</string>
+    <string name="error_client_server">Serverfehler (%1$d)</string>
+    <string name="error_client_session_expired">Sitzung abgelaufen – bitte erneut anmelden</string>
+    <string name="error_client_forbidden">Dir fehlt die Berechtigung dafür</string>
+    <string name="error_client_not_found">Nicht gefunden</string>
+    <string name="error_client_conflict">Konflikt</string>
+    <string name="error_client_request_failed">Anfrage fehlgeschlagen</string>
+    <string name="error_client_precondition_failed">Anderswo geändert – lade die neueste Version</string>
+    <string name="error_client_parse">Unerwartete Serverantwort</string>
+    <string name="error_client_archived_profile">Dieses Profil ist ein schreibgeschütztes Archiv – wechsle zu deinem Server, um Änderungen vorzunehmen</string>
+    <string name="error_client_unknown">Etwas ist schiefgelaufen</string>
+    <string name="error_client_no_pending_two_factor">Keine ausstehende Zwei-Faktor-Anmeldung gefunden. Bitte melde dich erneut an.</string>
     <string name="error_reason_common_test_only">Prüfung %1$d</string>
     <string name="error_reason_contact_bulk_custom_field_duplicate">Eine benutzerdefinierte Felddefinition kommt mehrfach vor</string>
     <string name="error_reason_contact_bulk_custom_field_in_both">Ein benutzerdefiniertes Feld darf nicht gleichzeitig in custom_set und custom_clear stehen</string>

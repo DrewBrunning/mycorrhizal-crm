@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.NextcloudRepository
 import com.mycorrhizal.crm.model.network.NextcloudConfigInput
 import com.mycorrhizal.crm.network.ApiError
+import com.mycorrhizal.crm.network.toApiError
+import com.mycorrhizal.crm.network.toApiErrorOrUnknown
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,8 +20,8 @@ data class NextcloudSettingsUiState(
     val isSaving: Boolean = false,
     val isTesting: Boolean = false,
     val isRemoving: Boolean = false,
-    val loadError: String? = null,
-    val saveError: String? = null,
+    val loadError: ApiError? = null,
+    val saveError: ApiError? = null,
     val testResult: NextcloudTestOutcome? = null,
     val baseUrl: String = "",
     /** Unlike the API-token integrations, the username is basic-auth and not write-only. */
@@ -31,7 +33,9 @@ data class NextcloudSettingsUiState(
     /** Issue #1775: the app password is required on first connect (there is no stored one to keep). */
     val tokenRequired: Boolean get() = !hasAppPassword
 }
-data class NextcloudTestOutcome(val ok: Boolean, val message: String?)
+
+/** [message] is server-reported text; [error] is a failed request, localized in the UI. */
+data class NextcloudTestOutcome(val ok: Boolean, val message: String?, val error: ApiError? = null)
 
 /**
  * Issue #833: the Nextcloud/ownCloud (WebDAV) connection-config settings screen —
@@ -67,7 +71,7 @@ class NextcloudSettingsViewModel @Inject constructor(private val repository: Nex
                     }
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(isLoading = false, loadError = e.displayMessage()) }
+                    _uiState.update { it.copy(isLoading = false, loadError = e.toApiError()) }
                 }
         }
     }
@@ -118,7 +122,7 @@ class NextcloudSettingsViewModel @Inject constructor(private val repository: Nex
                     }
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(isSaving = false, saveError = e.displayMessage()) }
+                    _uiState.update { it.copy(isSaving = false, saveError = e.toApiError()) }
                 }
         }
     }
@@ -146,7 +150,8 @@ class NextcloudSettingsViewModel @Inject constructor(private val repository: Nex
                         isTesting = false,
                         testResult = NextcloudTestOutcome(
                             ok = false,
-                            message = saved.exceptionOrNull().displayMessage()
+                            message = null,
+                            error = saved.exceptionOrNull().toApiErrorOrUnknown()
                         )
                     )
                 }
@@ -179,7 +184,8 @@ class NextcloudSettingsViewModel @Inject constructor(private val repository: Nex
                             isTesting = false,
                             testResult = NextcloudTestOutcome(
                                 ok = false,
-                                message = e.displayMessage()
+                                message = null,
+                                error = e.toApiError()
                             )
                         )
                     }
@@ -199,14 +205,8 @@ class NextcloudSettingsViewModel @Inject constructor(private val repository: Nex
                     }
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(isRemoving = false, saveError = e.displayMessage()) }
+                    _uiState.update { it.copy(isRemoving = false, saveError = e.toApiError()) }
                 }
         }
     }
-
-    private fun Throwable.displayMessage(): String =
-        (this as? ApiError)?.displayMessage ?: message ?: "error"
 }
-
-private fun Throwable?.displayMessage(): String =
-    this?.let { (it as? ApiError)?.displayMessage ?: it.message } ?: "error"

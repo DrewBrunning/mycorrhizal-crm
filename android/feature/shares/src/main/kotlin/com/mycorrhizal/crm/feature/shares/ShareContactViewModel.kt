@@ -8,6 +8,7 @@ import com.mycorrhizal.crm.domain.repository.ContactShareRepository
 import com.mycorrhizal.crm.model.network.ContactShareInput
 import com.mycorrhizal.crm.model.network.ShareFieldSections
 import com.mycorrhizal.crm.model.network.UserDirectoryEntry
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -20,7 +21,7 @@ import kotlinx.coroutines.launch
 
 data class ShareContactUiState(
     val isLoading: Boolean = false,
-    val error: String? = null,
+    val error: ApiError? = null,
     @StringRes val errorRes: Int? = null,
     /** The other users on the instance, for the recipient picker. */
     val recipients: List<UserDirectoryEntry> = emptyList(),
@@ -65,7 +66,7 @@ class ShareContactViewModel @Inject constructor(
                     _uiState.update { it.copy(isLoading = false, recipients = recipients) }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isLoading = false, error = error) }
                 }
             )
         }
@@ -119,7 +120,7 @@ class ShareContactViewModel @Inject constructor(
                     _uiState.update { it.copy(isSharing = false, shared = true) }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isSharing = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isSharing = false, error = error) }
                 }
             )
         }

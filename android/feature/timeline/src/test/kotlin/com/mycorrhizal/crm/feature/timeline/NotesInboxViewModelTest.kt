@@ -102,7 +102,7 @@ class NotesInboxViewModelTest {
         val vm = NotesInboxViewModel(noteRepository)
         advanceUntilIdle()
 
-        assertEquals("server error", vm.uiState.value.error)
+        assertEquals("server error", vm.uiState.value.error?.message)
         assertTrue(vm.uiState.value.notes.isEmpty())
     }
 

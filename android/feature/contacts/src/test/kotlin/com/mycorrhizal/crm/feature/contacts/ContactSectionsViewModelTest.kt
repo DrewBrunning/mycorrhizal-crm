@@ -80,7 +80,7 @@ class ContactSectionsViewModelTest {
         advanceUntilIdle()
 
         assertNull(vm.uiState.value.record)
-        assertTrue(vm.uiState.value.error?.isNotBlank() == true)
+        assertTrue(vm.uiState.value.error != null)
         assertFalse(vm.uiState.value.isLoading)
     }
 
@@ -159,7 +159,7 @@ class ContactSectionsViewModelTest {
         advanceUntilIdle()
 
         assertEquals(record, vm.uiState.value.record)
-        assertTrue(vm.uiState.value.error?.isNotBlank() == true)
+        assertTrue(vm.uiState.value.error != null)
         assertFalse(vm.uiState.value.isSaving)
     }
 

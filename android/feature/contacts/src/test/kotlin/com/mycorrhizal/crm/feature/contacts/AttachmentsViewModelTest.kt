@@ -58,7 +58,7 @@ class AttachmentsViewModelTest {
         vm.setContact(5)
         advanceUntilIdle()
 
-        assertEquals("boom", vm.uiState.value.error)
+        assertEquals("boom", vm.uiState.value.error?.message)
     }
 
     @Test
@@ -105,7 +105,7 @@ class AttachmentsViewModelTest {
         vm.upload("big.txt", "text/plain", ByteArray(1))
         advanceUntilIdle()
 
-        assertEquals("too large", vm.uiState.value.error)
+        assertEquals("too large", vm.uiState.value.error?.message)
     }
 
     @Test
@@ -172,7 +172,7 @@ class AttachmentsViewModelTest {
         vm.download(scan)
         advanceUntilIdle()
 
-        assertEquals("Not found", vm.uiState.value.error)
+        assertEquals(404, (vm.uiState.value.error as? ApiError.Client)?.code)
         assertNull(vm.uiState.value.downloaded)
     }
 

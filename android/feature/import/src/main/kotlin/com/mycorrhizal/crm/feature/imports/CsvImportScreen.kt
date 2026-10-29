@@ -52,6 +52,7 @@ import com.mycorrhizal.crm.model.network.ImportUploadResponse
 import com.mycorrhizal.crm.model.registry.ImportableContactFields
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.localizedMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -217,7 +218,11 @@ fun CsvImportScreenContent(
         }
     }
 
-    val errorMessage = uiState.errorRes?.let { stringResource(it) } ?: uiState.error
+    val errorMessage = uiState.errorRes?.let {
+        stringResource(
+            it
+        )
+    } ?: uiState.error?.localizedMessage()
     if (errorMessage != null) {
         LaunchedEffect(errorMessage) {
             snackbarHostState.showSnackbar(errorMessage)

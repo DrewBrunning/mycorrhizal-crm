@@ -9,6 +9,7 @@ import com.mycorrhizal.crm.domain.repository.ExportRepository
 import com.mycorrhizal.crm.domain.repository.RelationshipEdgeRepository
 import com.mycorrhizal.crm.model.network.ApplyContactAddressSuggestionInput
 import com.mycorrhizal.crm.model.network.ContactAddressSuggestion
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.network.toApiError
 import com.mycorrhizal.crm.ui.R
@@ -55,7 +56,7 @@ data class DataUiState(
      * backup-recovery flow this entry point is for).
      */
     val canRestoreBundle: Boolean = false,
-    val error: String? = null
+    val error: ApiError? = null
 )
 
 /** One completed dataset export: the bytes plus the format's filename/mime for the share sheet. */
@@ -134,7 +135,7 @@ class DataViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isSuggestingRelationships = false,
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }
@@ -164,7 +165,7 @@ class DataViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             suggestionsLoading = false,
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }
@@ -200,7 +201,7 @@ class DataViewModel @Inject constructor(
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(applyingKey = null, error = error.displayMessage) }
+                    _uiState.update { it.copy(applyingKey = null, error = error) }
                 }
             )
         }
@@ -250,7 +251,7 @@ class DataViewModel @Inject constructor(
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isExporting = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isExporting = false, error = error) }
                 }
             )
         }
@@ -293,7 +294,7 @@ class DataViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isExporting = false,
-                            error = error.toApiError().displayMessage
+                            error = error.toApiError()
                         )
                     }
                 }

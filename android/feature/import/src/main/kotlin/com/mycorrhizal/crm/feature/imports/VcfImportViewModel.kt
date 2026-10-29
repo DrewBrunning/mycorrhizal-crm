@@ -8,6 +8,7 @@ import com.mycorrhizal.crm.model.network.ImportPreviewResponse
 import com.mycorrhizal.crm.model.network.ImportResult
 import com.mycorrhizal.crm.model.network.RowImportAction
 import com.mycorrhizal.crm.network.ApiClient
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -31,7 +32,7 @@ data class VcfImportUiState(
     val result: ImportResult? = null,
     val isLoading: Boolean = false,
     @StringRes val errorRes: Int? = null,
-    val error: String? = null
+    val error: ApiError? = null
 )
 
 /**
@@ -106,7 +107,7 @@ class VcfImportViewModel @Inject constructor(private val apiClient: ApiClient) :
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }
@@ -162,7 +163,7 @@ class VcfImportViewModel @Inject constructor(private val apiClient: ApiClient) :
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }

@@ -50,6 +50,7 @@ import com.mycorrhizal.crm.model.network.TimelineTypes
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.localizedMessage
 
 /**
  * Issue #1401 (web T78 `TimelineExplorerDialog` parity): the full-screen, paged version of a
@@ -153,7 +154,7 @@ fun TimelineExplorerContent(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        EmptyState(state.error)
+                        EmptyState(state.error.localizedMessage())
                         Button(onClick = onRetry) { Text(stringResource(R.string.action_retry)) }
                     }
 
@@ -221,7 +222,7 @@ fun TimelineExplorerContent(
 
     // Over a populated list an error (a failed Load more / undo) is a snackbar; with no rows it is
     // the persistent body (above), so don't toast-and-clear it.
-    val listError = state.error
+    val listError = state.error?.localizedMessage()
     if (listError != null && state.items.isNotEmpty()) {
         LaunchedEffect(listError) {
             snackbarHostState.showSnackbar(listError)

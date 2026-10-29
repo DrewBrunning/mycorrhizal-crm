@@ -50,6 +50,7 @@ import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.components.RowAction
 import com.mycorrhizal.crm.ui.components.RowOverflowMenu
+import com.mycorrhizal.crm.ui.components.localizedMessage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -118,7 +119,7 @@ fun CirclesScreen(
 
                     state.circles.isEmpty() && state.error != null -> {
                         Text(
-                            text = state.error.orEmpty(),
+                            text = state.error?.localizedMessage().orEmpty(),
                             color = MaterialTheme.colorScheme.error,
                             modifier = Modifier.align(Alignment.Center)
                         )
@@ -157,7 +158,8 @@ fun CirclesScreen(
         )
     }
 
-    state.error?.let { message ->
+    state.error?.let { error ->
+        val message = error.localizedMessage()
         androidx.compose.runtime.LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)
             viewModel.onErrorShown()

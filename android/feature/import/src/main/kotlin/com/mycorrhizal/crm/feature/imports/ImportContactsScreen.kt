@@ -64,6 +64,7 @@ import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.localizedMessage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -273,7 +274,7 @@ fun ImportContactsScreen(
 
                 state.contacts.isEmpty() && state.error != null -> {
                     Text(
-                        text = state.error.orEmpty(),
+                        text = state.error?.localizedMessage().orEmpty(),
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier
                             .padding(24.dp)
@@ -314,7 +315,8 @@ fun ImportContactsScreen(
         }
     }
 
-    state.error?.let { message ->
+    state.error?.let { error ->
+        val message = error.localizedMessage()
         LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)
             viewModel.onErrorShown()

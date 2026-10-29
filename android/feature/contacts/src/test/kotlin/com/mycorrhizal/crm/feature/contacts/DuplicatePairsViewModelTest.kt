@@ -66,7 +66,7 @@ class DuplicatePairsViewModelTest {
             val vm = DuplicatePairsViewModel(duplicateRepository)
             advanceUntilIdle()
 
-            assertEquals("scan failed", vm.uiState.value.error)
+            assertEquals("scan failed", vm.uiState.value.error?.message)
             assertTrue(vm.uiState.value.pairs.isEmpty())
             coVerify(exactly = 1) { duplicateRepository.listPairs(any(), any()) }
         }
@@ -111,7 +111,7 @@ class DuplicatePairsViewModelTest {
             advanceUntilIdle()
 
             assertEquals(1, vm.uiState.value.pairs.size)
-            assertEquals("Not found", vm.uiState.value.error)
+            assertEquals(404, (vm.uiState.value.error as? ApiError.Client)?.code)
         }
 
     @Test
@@ -121,7 +121,7 @@ class DuplicatePairsViewModelTest {
         )
         val vm = DuplicatePairsViewModel(duplicateRepository)
         advanceUntilIdle()
-        assertEquals("boom", vm.uiState.value.error)
+        assertEquals("boom", vm.uiState.value.error?.message)
 
         vm.onErrorShown()
         assertNull(vm.uiState.value.error)

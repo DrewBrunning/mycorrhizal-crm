@@ -9,6 +9,7 @@ import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.ContactTag
 import com.mycorrhizal.crm.model.network.Tag
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,7 +23,7 @@ import kotlinx.coroutines.launch
 data class TagsUiState(
     val tags: List<Tag> = emptyList(),
     val isLoading: Boolean = false,
-    val error: String? = null,
+    val error: ApiError? = null,
     val isSaving: Boolean = false,
     val deletingId: String? = null
 )
@@ -46,7 +47,7 @@ class TagsViewModel @Inject constructor(private val tagRepository: TagRepository
                     _uiState.update { it.copy(isLoading = false, tags = tags) }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isLoading = false, error = error) }
                 }
             )
         }
@@ -68,7 +69,7 @@ class TagsViewModel @Inject constructor(private val tagRepository: TagRepository
                     onDone()
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isSaving = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isSaving = false, error = error) }
                 }
             )
         }
@@ -89,7 +90,7 @@ class TagsViewModel @Inject constructor(private val tagRepository: TagRepository
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(error = error.displayMessage) }
+                    _uiState.update { it.copy(error = error) }
                 }
             )
         }
@@ -106,7 +107,7 @@ class TagsViewModel @Inject constructor(private val tagRepository: TagRepository
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(deletingId = null, error = error.displayMessage) }
+                    _uiState.update { it.copy(deletingId = null, error = error) }
                 }
             )
         }
@@ -125,7 +126,7 @@ data class TagDetailUiState(
     val contactsByUid: Map<String, ContactSummary> = emptyMap(),
     val isLoading: Boolean = false,
     val removingUid: String? = null,
-    val error: String? = null,
+    val error: ApiError? = null,
     @StringRes val errorRes: Int? = null
 )
 
@@ -169,7 +170,7 @@ class TagDetailViewModel @Inject constructor(
                     resolveContactNames(detail.contacts)
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isLoading = false, error = error) }
                 }
             )
         }
@@ -200,7 +201,7 @@ class TagDetailViewModel @Inject constructor(
                     resolveContactNames(listOf(tagging))
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(error = error.displayMessage) }
+                    _uiState.update { it.copy(error = error) }
                 }
             )
         }
@@ -220,7 +221,7 @@ class TagDetailViewModel @Inject constructor(
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(removingUid = null, error = error.displayMessage) }
+                    _uiState.update { it.copy(removingUid = null, error = error) }
                 }
             )
         }

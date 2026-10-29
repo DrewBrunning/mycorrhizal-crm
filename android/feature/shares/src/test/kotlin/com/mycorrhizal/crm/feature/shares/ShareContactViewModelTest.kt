@@ -165,7 +165,7 @@ class ShareContactViewModelTest {
         advanceUntilIdle()
 
         assertFalse(vm.uiState.value.shared)
-        assertEquals("Cannot share", vm.uiState.value.error)
+        assertEquals("Cannot share", vm.uiState.value.error?.message)
     }
 
     @Test
@@ -196,6 +196,6 @@ class ShareContactViewModelTest {
         advanceUntilIdle()
 
         assertFalse(vm.uiState.value.isLoading)
-        assertEquals("boom", vm.uiState.value.error)
+        assertEquals("boom", vm.uiState.value.error?.message)
     }
 }

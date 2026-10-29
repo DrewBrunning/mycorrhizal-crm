@@ -55,6 +55,7 @@ import com.mycorrhizal.crm.model.network.DuplicateReasons
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.RefreshableContent
+import com.mycorrhizal.crm.ui.components.localizedMessage
 
 /**
  * T93 duplicate review (web's "Review duplicates" surface): lists the scan's
@@ -156,7 +157,7 @@ fun DuplicatePairsScreenContent(
                                 modifier = Modifier.fillMaxWidth().padding(24.dp)
                             ) {
                                 Text(
-                                    text = uiState.error.orEmpty(),
+                                    text = uiState.error.localizedMessage(),
                                     color = MaterialTheme.colorScheme.error,
                                     style = MaterialTheme.typography.bodyMedium
                                 )
@@ -212,7 +213,8 @@ fun DuplicatePairsScreenContent(
         }
     }
 
-    uiState.error?.let { message ->
+    uiState.error?.let { error ->
+        val message = error.localizedMessage()
         LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)
             currentOnErrorShown.value()

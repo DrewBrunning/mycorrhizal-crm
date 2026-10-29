@@ -97,7 +97,7 @@ class NotesViewModelTest {
         val vm = viewModel()
         advanceUntilIdle()
 
-        assertEquals("Not found", vm.uiState.value.error)
+        assertEquals(404, (vm.uiState.value.error as? ApiError.Client)?.code)
         assertTrue(vm.uiState.value.notes.isEmpty())
     }
 
@@ -361,7 +361,7 @@ class NotesViewModelTest {
         advanceUntilIdle()
 
         assertEquals(1, vm.uiState.value.notes.size)
-        assertEquals("boom", vm.uiState.value.error)
+        assertEquals("boom", vm.uiState.value.error?.message)
         assertNull(vm.uiState.value.deletingId)
     }
 }
@@ -564,7 +564,7 @@ class NoteFormViewModelTest {
         vm.save()
         advanceUntilIdle()
 
-        assertEquals("duplicate", vm.uiState.value.error)
+        assertEquals("duplicate", vm.uiState.value.error?.message)
         assertFalse(vm.uiState.value.isSaving)
         assertNull(vm.events.value)
     }

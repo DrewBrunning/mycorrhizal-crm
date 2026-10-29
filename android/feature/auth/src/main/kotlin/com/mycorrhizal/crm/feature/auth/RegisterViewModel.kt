@@ -32,7 +32,9 @@ import kotlinx.coroutines.launch
 data class RegisterUiState(
     val serverUrl: String = "",
     val isLoading: Boolean = false,
-    val error: String? = null,
+    val error: ApiError? = null,
+    /** The server's English password-strength advice (not an error envelope). */
+    val feedback: String? = null,
     @StringRes val errorRes: Int? = null,
     // M26: the server's password-strength verdict, surfaced before submit.
     val passwordStrength: PasswordStrength? = null,
@@ -137,7 +139,7 @@ class RegisterViewModel @Inject constructor(
     }
 
     fun onErrorShown() {
-        _uiState.update { it.copy(error = null, errorRes = null) }
+        _uiState.update { it.copy(error = null, feedback = null, errorRes = null) }
     }
 
     /**
@@ -167,7 +169,7 @@ class RegisterViewModel @Inject constructor(
             else -> null
         }
         if (validationError != null) {
-            _uiState.update { it.copy(errorRes = validationError, error = null) }
+            _uiState.update { it.copy(errorRes = validationError, error = null, feedback = null) }
             return
         }
         // The pre-submit strength gate (test case 1): a known-weak password
@@ -192,23 +194,32 @@ class RegisterViewModel @Inject constructor(
                     )
                 }
             } else {
-                _uiState.update { it.copy(error = feedback, errorRes = null) }
+                _uiState.update { it.copy(feedback = feedback, error = null, errorRes = null) }
             }
             return
         }
 
         val trimmedUsername = username.trim()
         val trimmedEmail = email.trim()
-        _uiState.update { it.copy(isLoading = true, error = null, errorRes = null) }
+        _uiState.update {
+            it.copy(
+                isLoading = true,
+                error = null,
+                feedback = null,
+                errorRes = null
+            )
+        }
         viewModelScope.launch {
             sessionManager.setServerUrl(trimmedUrl)
             val registered = authRepository.register(trimmedUsername, trimmedEmail, password)
             if (registered.isFailure) {
+                val apiError = registered.exceptionOrNull()?.toApiError()
                 _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        error = registered.exceptionOrNull()?.toApiError()?.registerMessage()
-                    )
+                    if (apiError is ApiError.Client && apiError.code == 403) {
+                        it.copy(isLoading = false, errorRes = R.string.register_error_disabled)
+                    } else {
+                        it.copy(isLoading = false, error = apiError)
+                    }
                 }
                 return@launch
             }
@@ -230,11 +241,6 @@ class RegisterViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = false) }
             _events.send(RegisterEvent.Registered)
         }
-    }
-
-    private fun ApiError.registerMessage(): String = when (this) {
-        is ApiError.Client -> body
-        else -> displayMessage
     }
 
     private companion object {

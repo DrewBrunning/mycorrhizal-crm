@@ -63,7 +63,7 @@ data class ContactDetailUiState(
     val deviceLookupKey: String? = null,
     val isLoading: Boolean = false,
     @StringRes val errorRes: Int? = null,
-    val error: String? = null,
+    val error: ApiError? = null,
     /** ADR 0008: a delete was rejected with 412 — the contact changed elsewhere since it loaded. */
     val conflict: Boolean = false,
     /** The signed-in user's `date_format` preference (see `SessionState`); null until loaded. */
@@ -302,7 +302,7 @@ class ContactDetailViewModel @Inject constructor(
                     loadCounts(contact)
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isLoading = false, error = error) }
                 }
             )
         }
@@ -358,7 +358,7 @@ class ContactDetailViewModel @Inject constructor(
             reminderRepository.deleteCompletion(id).foldApiError(
                 onSuccess = { loadCompletions() },
                 onError = { error ->
-                    _uiState.update { it.copy(error = error.displayMessage) }
+                    _uiState.update { it.copy(error = error) }
                 }
             )
         }
@@ -433,7 +433,7 @@ class ContactDetailViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             savingFieldDefinitionId = null,
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }
@@ -660,7 +660,7 @@ class ContactDetailViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isExternalLinkMutating = false,
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }
@@ -691,7 +691,7 @@ class ContactDetailViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isExternalLinkMutating = false,
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }
@@ -717,7 +717,7 @@ class ContactDetailViewModel @Inject constructor(
                     loadExternalLinks(contact)
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(immichSyncing = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(immichSyncing = false, error = error) }
                 }
             )
         }
@@ -738,7 +738,7 @@ class ContactDetailViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             immichPeopleLoading = false,
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }
@@ -760,7 +760,7 @@ class ContactDetailViewModel @Inject constructor(
                     loadExternalLinks(contact)
                     loadImmichAssets()
                 },
-                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } }
+                onError = { error -> _uiState.update { it.copy(error = error) } }
             )
         }
     }
@@ -778,7 +778,7 @@ class ContactDetailViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             immichAssetsLoading = false,
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }
@@ -803,7 +803,7 @@ class ContactDetailViewModel @Inject constructor(
             }
             result.foldApiError(
                 onSuccess = { bytes -> onBytes(bytes) },
-                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } }
+                onError = { error -> _uiState.update { it.copy(error = error) } }
             )
         }
     }
@@ -835,7 +835,7 @@ class ContactDetailViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             paperlessDocumentsLoading = false,
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }
@@ -851,7 +851,7 @@ class ContactDetailViewModel @Inject constructor(
             _uiState.update { it.copy(error = null) }
             paperlessRepository.linkDocument(uid, document.id.toString()).foldApiError(
                 onSuccess = { loadExternalLinks(contact) },
-                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } }
+                onError = { error -> _uiState.update { it.copy(error = error) } }
             )
         }
     }
@@ -881,7 +881,7 @@ class ContactDetailViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             seafileBrowseLoading = false,
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }
@@ -913,7 +913,7 @@ class ContactDetailViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             seafileBrowseLoading = false,
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }
@@ -952,7 +952,7 @@ class ContactDetailViewModel @Inject constructor(
                 )
             ).foldApiError(
                 onSuccess = { loadExternalLinks(contact) },
-                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } }
+                onError = { error -> _uiState.update { it.copy(error = error) } }
             )
         }
     }
@@ -980,7 +980,7 @@ class ContactDetailViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             nextcloudBrowseLoading = false,
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }
@@ -996,7 +996,7 @@ class ContactDetailViewModel @Inject constructor(
             _uiState.update { it.copy(error = null) }
             nextcloudRepository.linkItem(uid, item).foldApiError(
                 onSuccess = { loadExternalLinks(contact) },
-                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } }
+                onError = { error -> _uiState.update { it.copy(error = error) } }
             )
         }
     }
@@ -1024,7 +1024,7 @@ class ContactDetailViewModel @Inject constructor(
                         if (error is ApiError.PreconditionFailed) {
                             it.copy(isMutating = false, conflict = true)
                         } else {
-                            it.copy(isMutating = false, error = error.displayMessage)
+                            it.copy(isMutating = false, error = error)
                         }
                     }
                 }
@@ -1078,7 +1078,7 @@ class ContactDetailViewModel @Inject constructor(
                     load()
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isMutating = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isMutating = false, error = error) }
                 }
             )
         }
@@ -1099,7 +1099,7 @@ class ContactDetailViewModel @Inject constructor(
                     _events.value = ContactDetailEvent.ExportReady(version, bytes)
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isMutating = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isMutating = false, error = error) }
                 }
             )
         }
@@ -1123,7 +1123,7 @@ class ContactDetailViewModel @Inject constructor(
                     load()
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isMutating = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isMutating = false, error = error) }
                 }
             )
         }
@@ -1177,7 +1177,7 @@ class ContactDetailViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             contact = it.contact?.copy(isFavorite = wasFavorite),
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }
@@ -1217,7 +1217,7 @@ class ContactDetailViewModel @Inject constructor(
                     loadScore()
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(error = error.displayMessage) }
+                    _uiState.update { it.copy(error = error) }
                 }
             )
             // The write bumps the revision exactly like a favorite toggle; re-read
@@ -1241,7 +1241,7 @@ class ContactDetailViewModel @Inject constructor(
                     loadScore()
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(error = error.displayMessage) }
+                    _uiState.update { it.copy(error = error) }
                 }
             )
         }
@@ -1271,7 +1271,7 @@ class ContactDetailViewModel @Inject constructor(
             authRepository.updateSelfContact(newUid).foldApiError(
                 onSuccess = { _uiState.update { it.copy(isMutating = false) } },
                 onError = { error ->
-                    _uiState.update { it.copy(isMutating = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isMutating = false, error = error) }
                 }
             )
         }
@@ -1285,7 +1285,7 @@ class ContactDetailViewModel @Inject constructor(
         viewModelScope.launch {
             circleRepository.addMember(circle.id, uid).foldApiError(
                 onSuccess = { reloadMemberships() },
-                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } }
+                onError = { error -> _uiState.update { it.copy(error = error) } }
             )
         }
     }
@@ -1295,7 +1295,7 @@ class ContactDetailViewModel @Inject constructor(
         viewModelScope.launch {
             circleRepository.removeMember(circle.id, uid).foldApiError(
                 onSuccess = { reloadMemberships() },
-                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } }
+                onError = { error -> _uiState.update { it.copy(error = error) } }
             )
         }
     }
@@ -1306,7 +1306,7 @@ class ContactDetailViewModel @Inject constructor(
         viewModelScope.launch {
             tagRepository.addContact(tag.id, uid).foldApiError(
                 onSuccess = { reloadMemberships() },
-                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } }
+                onError = { error -> _uiState.update { it.copy(error = error) } }
             )
         }
     }
@@ -1316,7 +1316,7 @@ class ContactDetailViewModel @Inject constructor(
         viewModelScope.launch {
             tagRepository.removeContact(tag.id, uid).foldApiError(
                 onSuccess = { reloadMemberships() },
-                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } }
+                onError = { error -> _uiState.update { it.copy(error = error) } }
             )
         }
     }
@@ -1332,7 +1332,7 @@ class ContactDetailViewModel @Inject constructor(
             reminderRepository.complete(id).foldApiError(
                 onSuccess = { load() },
                 onError = { error ->
-                    _uiState.update { it.copy(error = error.displayMessage) }
+                    _uiState.update { it.copy(error = error) }
                 }
             )
         }

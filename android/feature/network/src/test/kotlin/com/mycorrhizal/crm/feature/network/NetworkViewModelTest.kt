@@ -509,7 +509,7 @@ class NetworkViewModelTest {
         advanceUntilIdle()
 
         assertFalse(vm.uiState.value.isLoading)
-        assertEquals("depth must be at most 5", vm.uiState.value.error)
+        assertEquals("depth must be at most 5", vm.uiState.value.error?.message)
     }
 
     @Test
@@ -620,7 +620,7 @@ class NetworkViewModelTest {
             // Stale depth-2 rows must not linger under the depth-3 chip.
             assertTrue(vm.uiState.value.allChains.isEmpty())
             assertTrue(vm.uiState.value.groupedChains.isEmpty())
-            assertEquals("boom", vm.uiState.value.error)
+            assertEquals("boom", vm.uiState.value.error?.message)
         }
 
     // --- Issue #383 (ADR-0023): relationship health score pass-through ---

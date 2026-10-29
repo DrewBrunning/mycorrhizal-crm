@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.OccasionEventRepository
 import com.mycorrhizal.crm.model.network.OccasionEvent
 import com.mycorrhizal.crm.model.network.OccasionEventInput
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -20,7 +21,7 @@ data class OccasionsUiState(
     val isLoading: Boolean = false,
     val isMutating: Boolean = false,
     @StringRes val errorRes: Int? = null,
-    val error: String? = null
+    val error: ApiError? = null
 )
 
 /**
@@ -55,7 +56,7 @@ class OccasionsViewModel @Inject constructor(private val repository: OccasionEve
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }
@@ -82,7 +83,7 @@ class OccasionsViewModel @Inject constructor(private val repository: OccasionEve
                 onSuccess = { _uiState.update { it.copy(isMutating = false) } },
                 onError = { error ->
                     failed = true
-                    _uiState.update { it.copy(isMutating = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isMutating = false, error = error) }
                 }
             )
             if (!failed) reload()
@@ -110,7 +111,7 @@ class OccasionsViewModel @Inject constructor(private val repository: OccasionEve
                 onSuccess = { _uiState.update { it.copy(isMutating = false) } },
                 onError = { error ->
                     failed = true
-                    _uiState.update { it.copy(isMutating = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isMutating = false, error = error) }
                 }
             )
             if (!failed) reload()
@@ -127,7 +128,7 @@ class OccasionsViewModel @Inject constructor(private val repository: OccasionEve
                 onSuccess = { _uiState.update { it.copy(isMutating = false) } },
                 onError = { error ->
                     failed = true
-                    _uiState.update { it.copy(isMutating = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isMutating = false, error = error) }
                 }
             )
             if (!failed) reload()
@@ -137,7 +138,7 @@ class OccasionsViewModel @Inject constructor(private val repository: OccasionEve
     private suspend fun reload() {
         repository.list().foldApiError(
             onSuccess = { events -> _uiState.update { it.copy(events = events) } },
-            onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } }
+            onError = { error -> _uiState.update { it.copy(error = error) } }
         )
     }
 

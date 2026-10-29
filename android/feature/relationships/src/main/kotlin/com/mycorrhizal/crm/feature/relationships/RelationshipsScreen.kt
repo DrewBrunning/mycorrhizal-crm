@@ -73,6 +73,7 @@ import com.mycorrhizal.crm.ui.components.FormScaffold
 import com.mycorrhizal.crm.ui.components.LabelledDropdown
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
+import com.mycorrhizal.crm.ui.components.localizedMessage
 import com.mycorrhizal.crm.ui.components.relationshipRoleLabel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -93,7 +94,7 @@ fun RelationshipsScreen(
     val listState = rememberLazyListState()
     var pendingDelete by remember { mutableStateOf<RelationshipEdge?>(null) }
     var pendingReject by remember { mutableStateOf<RelationshipEdge?>(null) }
-    val errorMessage = state.errorRes?.let { stringResource(it) } ?: state.error
+    val errorMessage = state.errorRes?.let { stringResource(it) } ?: state.error?.localizedMessage()
 
     @Composable
     fun displayName(edge: RelationshipEdge): String {

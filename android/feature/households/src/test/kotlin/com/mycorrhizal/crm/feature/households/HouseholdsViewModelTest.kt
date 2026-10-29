@@ -74,7 +74,7 @@ class HouseholdsViewModelTest {
         val vm = HouseholdsViewModel(householdRepository, contactRepository)
         advanceUntilIdle()
 
-        assertEquals("boom", vm.uiState.value.error)
+        assertEquals("boom", vm.uiState.value.error?.message)
     }
 
     @Test
@@ -205,7 +205,7 @@ class HouseholdsViewModelTest {
         vm.scanAddressSuggestions()
         advanceUntilIdle()
 
-        assertEquals("boom", vm.uiState.value.error)
+        assertEquals("boom", vm.uiState.value.error?.message)
     }
 
     @Test
@@ -262,7 +262,7 @@ class HouseholdsViewModelTest {
         advanceUntilIdle()
 
         val state = vm.uiState.value
-        assertEquals("already in a household", state.error)
+        assertEquals("already in a household", state.error?.message)
         assertNull(state.pendingSuggestionKey)
         assertEquals(1, state.addressSuggestions.size)
     }
@@ -333,7 +333,7 @@ class HouseholdsViewModelTest {
         vm.create("Home", HouseholdTypes.FAMILY_UNIT) { done = true }
         advanceUntilIdle()
 
-        assertEquals("duplicate", vm.uiState.value.error)
+        assertEquals("duplicate", vm.uiState.value.error?.message)
         assertFalse(vm.uiState.value.isSaving)
         assertFalse("onDone must not fire when the create fails", done)
         assertTrue(vm.uiState.value.households.isEmpty())
@@ -376,7 +376,7 @@ class HouseholdsViewModelTest {
         vm.rename("h1", "New", HouseholdTypes.FAMILY_UNIT)
         advanceUntilIdle()
 
-        assertEquals("boom", vm.uiState.value.error)
+        assertEquals("boom", vm.uiState.value.error?.message)
         assertEquals("Home", vm.uiState.value.households[0].name)
     }
 
@@ -399,7 +399,7 @@ class HouseholdsViewModelTest {
         vm.delete("h1")
         advanceUntilIdle()
 
-        assertEquals("boom", vm.uiState.value.error)
+        assertEquals("boom", vm.uiState.value.error?.message)
         assertNull(vm.uiState.value.deletingId)
         assertEquals(1, vm.uiState.value.households.size)
     }
@@ -426,7 +426,7 @@ class HouseholdsViewModelTest {
         vm.dismissSuggestion(suggestion)
         advanceUntilIdle()
 
-        assertEquals("boom", vm.uiState.value.error)
+        assertEquals("boom", vm.uiState.value.error?.message)
         assertNull(vm.uiState.value.pendingSuggestionKey)
         assertEquals(1, vm.uiState.value.addressSuggestions.size)
     }
@@ -642,7 +642,7 @@ class HouseholdDetailViewModelTest {
         vm.updateMemberRole("uid-1", "child")
         advanceUntilIdle()
 
-        assertEquals("boom", vm.uiState.value.error)
+        assertEquals("boom", vm.uiState.value.error?.message)
         assertNull(vm.uiState.value.updatingRoleUid)
         assertEquals("adult", vm.uiState.value.members[0].role)
     }
@@ -863,7 +863,7 @@ class HouseholdDetailViewModelTest {
         advanceUntilIdle()
 
         assertFalse(vm.uiState.value.isLoading)
-        assertEquals("boom", vm.uiState.value.error)
+        assertEquals("boom", vm.uiState.value.error?.message)
     }
 
     // --- add/remove failure paths ---
@@ -904,7 +904,7 @@ class HouseholdDetailViewModelTest {
         vm.addMember("uid-2")
         advanceUntilIdle()
 
-        assertEquals("already a member", vm.uiState.value.error)
+        assertEquals("already a member", vm.uiState.value.error?.message)
         assertTrue(vm.uiState.value.members.isEmpty())
     }
 
@@ -933,7 +933,7 @@ class HouseholdDetailViewModelTest {
         vm.removeMember("uid-1")
         advanceUntilIdle()
 
-        assertEquals("boom", vm.uiState.value.error)
+        assertEquals("boom", vm.uiState.value.error?.message)
         assertNull(vm.uiState.value.removingUid)
         assertEquals(1, vm.uiState.value.members.size)
     }
@@ -963,7 +963,7 @@ class HouseholdDetailViewModelTest {
         vm.suggestRelationships()
         advanceUntilIdle()
 
-        assertEquals("boom", vm.uiState.value.error)
+        assertEquals("boom", vm.uiState.value.error?.message)
         assertFalse(vm.uiState.value.isSuggestingRelationships)
         assertNull(vm.uiState.value.infoRes)
     }

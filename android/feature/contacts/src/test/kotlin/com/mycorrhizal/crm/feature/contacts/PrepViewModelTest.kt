@@ -224,7 +224,7 @@ class PrepViewModelTest {
         val state = viewModel.uiState.value
         assertFalse(state.isLoading)
         assertNull(state.briefing)
-        assertEquals("No connection", state.error)
+        assertTrue(state.error is ApiError.Network)
     }
 
     @Test
@@ -238,7 +238,7 @@ class PrepViewModelTest {
 
         val viewModel = newViewModel(apiClient)
         advanceUntilIdle()
-        assertEquals("Server error (500)", viewModel.uiState.value.error)
+        assertTrue(viewModel.uiState.value.error is ApiError.Server)
 
         viewModel.load()
         advanceUntilIdle()
@@ -327,7 +327,7 @@ class PrepViewModelTest {
 
         val viewModel = newViewModel(apiClient)
         advanceUntilIdle()
-        assertEquals("Server error (500)", viewModel.uiState.value.error)
+        assertTrue(viewModel.uiState.value.error is ApiError.Server)
 
         viewModel.load()
         viewModel.load()

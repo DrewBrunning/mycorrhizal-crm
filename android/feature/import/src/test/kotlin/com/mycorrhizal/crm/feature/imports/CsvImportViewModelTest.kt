@@ -129,7 +129,7 @@ class CsvImportViewModelTest {
         vm.onFilePicked("contacts.csv", byteArrayOf(1))
         advanceUntilIdle()
 
-        assertEquals("bad csv", vm.uiState.value.error)
+        assertEquals("bad csv", vm.uiState.value.error?.message)
         assertEquals(CsvImportStep.PICK, vm.uiState.value.step)
     }
 
@@ -267,7 +267,7 @@ class CsvImportViewModelTest {
             vm.submitMapping()
             advanceUntilIdle()
 
-            assertEquals("bad mapping", vm.uiState.value.error)
+            assertEquals("bad mapping", vm.uiState.value.error?.message)
             assertEquals(CsvImportStep.MAPPING, vm.uiState.value.step)
         }
 
@@ -387,7 +387,7 @@ class CsvImportViewModelTest {
         vm.confirm()
         advanceUntilIdle()
 
-        assertEquals("server error", vm.uiState.value.error)
+        assertEquals("server error", vm.uiState.value.error?.message)
         assertEquals(CsvImportStep.PREVIEW, vm.uiState.value.step)
     }
 
@@ -502,7 +502,7 @@ class CsvImportViewModelTest {
             vm.submitMapping()
             advanceUntilIdle()
 
-            assertEquals("unknown circle", vm.uiState.value.error)
+            assertEquals("unknown circle", vm.uiState.value.error?.message)
             assertEquals(CsvImportStep.MAPPING, vm.uiState.value.step)
             assertEquals(setOf("c1"), vm.uiState.value.selectedCircleIds)
         }
@@ -559,11 +559,11 @@ class CsvImportViewModelTest {
 
             vm.createCircle("Friends")
             advanceUntilIdle()
-            assertEquals("exists", vm.uiState.value.error)
+            assertEquals("exists", vm.uiState.value.error?.message)
             vm.createTag("Conf")
             advanceUntilIdle()
 
-            assertEquals("tag exists", vm.uiState.value.error)
+            assertEquals("tag exists", vm.uiState.value.error?.message)
             assertTrue(vm.uiState.value.selectedCircleIds.isEmpty())
             assertTrue(vm.uiState.value.selectedTagIds.isEmpty())
         }

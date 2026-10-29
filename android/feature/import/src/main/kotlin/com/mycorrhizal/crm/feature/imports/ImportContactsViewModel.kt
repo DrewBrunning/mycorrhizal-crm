@@ -9,6 +9,7 @@ import com.mycorrhizal.crm.model.network.ImportConfirmRequest
 import com.mycorrhizal.crm.model.network.ImportPreviewResponse
 import com.mycorrhizal.crm.model.network.RowImportAction
 import com.mycorrhizal.crm.network.ApiClient
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -41,7 +42,7 @@ data class ImportUiState(
      *  step (T96); rows with validation errors are forced to "skip". */
     val rowActions: Map<Int, String> = emptyMap(),
     val importedCount: Int = 0,
-    val error: String? = null,
+    val error: ApiError? = null,
     /** Issue #1750: the device-contacts read was refused with a
      *  [SecurityException] (READ_CONTACTS not held, or revoked while the screen
      *  was open). The screen shows its permission rationale instead of crashing. */
@@ -167,7 +168,7 @@ class ImportContactsViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isImporting = false,
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }
@@ -221,7 +222,7 @@ class ImportContactsViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isImporting = false,
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }

@@ -5,6 +5,7 @@ import androidx.compose.ui.res.stringResource
 import com.mycorrhizal.crm.model.network.ErrorReason
 import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.network.ApiError
+import com.mycorrhizal.crm.network.NO_PENDING_TWO_FACTOR_BODY
 import com.mycorrhizal.crm.ui.R
 
 /**
@@ -15,13 +16,65 @@ import com.mycorrhizal.crm.ui.R
  */
 @Composable
 fun ApiError.localizedMessage(): String {
-    val base = localizedReason(reasonOrNull()) ?: displayMessage
+    val base = localizedReason(reasonOrNull()) ?: clientMessage()
     val requestId = (this as? ApiError.Server)?.requestId
     return if (requestId != null) {
         "$base ${stringResource(R.string.error_request_ref, requestId)}"
     } else {
         base
     }
+}
+
+/**
+ * Like [localizedMessage], but a 403 shows the server's own text. Use it only
+ * where that refusal is the informative part (the OIDC "two-factor is not
+ * available" refusal) and has no reason code yet.
+ */
+@Composable
+fun ApiError.localizedMessageOrServerText(): String =
+    if (this is ApiError.Client && code == 403 && reason == null && body.isNotBlank()) {
+        body
+    } else {
+        localizedMessage()
+    }
+
+/**
+ * The translated text for the errors the client words itself (no network,
+ * session expiry, the generic HTTP fallbacks). Server-worded bodies that carry
+ * no reason code (507, external-service, a plain 4xx message) stay as sent.
+ */
+@Composable
+private fun ApiError.clientMessage(): String = when (this) {
+    is ApiError.Network -> stringResource(R.string.error_client_network)
+
+    is ApiError.Timeout -> stringResource(R.string.error_client_timeout)
+
+    is ApiError.Server ->
+        if (displayMessage == body) body else stringResource(R.string.error_client_server, code)
+
+    is ApiError.Client -> when (code) {
+        401 -> if (body == NO_PENDING_TWO_FACTOR_BODY) {
+            stringResource(R.string.error_client_no_pending_two_factor)
+        } else {
+            stringResource(R.string.error_client_session_expired)
+        }
+
+        403 -> stringResource(R.string.error_client_forbidden)
+
+        404 -> stringResource(R.string.error_client_not_found)
+
+        409 -> body.ifBlank { stringResource(R.string.error_client_conflict) }
+
+        else -> body.ifBlank { stringResource(R.string.error_client_request_failed) }
+    }
+
+    is ApiError.PreconditionFailed -> stringResource(R.string.error_client_precondition_failed)
+
+    is ApiError.Parse -> stringResource(R.string.error_client_parse)
+
+    is ApiError.ArchivedProfile -> stringResource(R.string.error_client_archived_profile)
+
+    is ApiError.Unknown -> stringResource(R.string.error_client_unknown)
 }
 
 private fun ApiError.reasonOrNull(): ErrorReason? = when (this) {

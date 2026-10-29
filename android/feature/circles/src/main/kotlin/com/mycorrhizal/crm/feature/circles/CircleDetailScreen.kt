@@ -46,6 +46,7 @@ import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
+import com.mycorrhizal.crm.ui.components.localizedMessage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,7 +59,7 @@ fun CircleDetailScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var showAddDialog by remember { mutableStateOf(false) }
-    val errorMessage = state.errorRes?.let { stringResource(it) } ?: state.error
+    val errorMessage = state.errorRes?.let { stringResource(it) } ?: state.error?.localizedMessage()
     val context = LocalContext.current
 
     // Issue #218: numbers for the "text everyone" group SMS. Members with no

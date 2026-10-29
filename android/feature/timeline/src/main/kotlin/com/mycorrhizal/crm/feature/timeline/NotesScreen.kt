@@ -53,6 +53,7 @@ import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.components.WriteConflictDialog
+import com.mycorrhizal.crm.ui.components.localizedMessage
 import com.mycorrhizal.crm.ui.markdown.MarkdownText
 
 /**
@@ -173,7 +174,11 @@ fun NotesScreenContent(
                         // show "No notes yet" instead of the real cause.
                         state.notes.isEmpty() && (state.errorRes != null || state.error != null) ->
                             EmptyState(
-                                state.errorRes?.let { stringResource(it) } ?: state.error.orEmpty()
+                                state.errorRes?.let {
+                                    stringResource(
+                                        it
+                                    )
+                                } ?: state.error?.localizedMessage().orEmpty()
                             )
 
                         state.notes.isEmpty() && state.error == null ->
@@ -271,7 +276,7 @@ fun NotesScreenContent(
         )
     }
 
-    val listError = state.error
+    val listError = state.error?.localizedMessage()
     if (listError != null && state.notes.isNotEmpty()) {
         LaunchedEffect(listError) {
             snackbarHostState.showSnackbar(listError)

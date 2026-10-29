@@ -15,6 +15,7 @@ import com.mycorrhizal.crm.model.network.RowImportAction
 import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.model.network.TagInput
 import com.mycorrhizal.crm.network.ApiClient
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -44,7 +45,7 @@ data class CsvImportUiState(
     val selectedTagIds: Set<String> = emptySet(),
     val isLoading: Boolean = false,
     @StringRes val errorRes: Int? = null,
-    val error: String? = null
+    val error: ApiError? = null
 )
 
 /**
@@ -118,7 +119,7 @@ class CsvImportViewModel @Inject constructor(private val apiClient: ApiClient) :
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }
@@ -161,7 +162,7 @@ class CsvImportViewModel @Inject constructor(private val apiClient: ApiClient) :
                         )
                     }
                 },
-                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } }
+                onError = { error -> _uiState.update { it.copy(error = error) } }
             )
         }
     }
@@ -179,7 +180,7 @@ class CsvImportViewModel @Inject constructor(private val apiClient: ApiClient) :
                         )
                     }
                 },
-                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } }
+                onError = { error -> _uiState.update { it.copy(error = error) } }
             )
         }
     }
@@ -240,7 +241,7 @@ class CsvImportViewModel @Inject constructor(private val apiClient: ApiClient) :
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }
@@ -299,7 +300,7 @@ class CsvImportViewModel @Inject constructor(private val apiClient: ApiClient) :
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }

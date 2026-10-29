@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.model.network.Circle
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -16,7 +17,7 @@ import kotlinx.coroutines.launch
 data class CirclesUiState(
     val circles: List<Circle> = emptyList(),
     val isLoading: Boolean = false,
-    val error: String? = null,
+    val error: ApiError? = null,
     val isSaving: Boolean = false,
     val deletingId: String? = null
 )
@@ -41,7 +42,7 @@ class CirclesViewModel @Inject constructor(private val circleRepository: CircleR
                     _uiState.update { it.copy(isLoading = false, circles = circles) }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isLoading = false, error = error) }
                 }
             )
         }
@@ -63,7 +64,7 @@ class CirclesViewModel @Inject constructor(private val circleRepository: CircleR
                     onDone()
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isSaving = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isSaving = false, error = error) }
                 }
             )
         }
@@ -84,7 +85,7 @@ class CirclesViewModel @Inject constructor(private val circleRepository: CircleR
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(error = error.displayMessage) }
+                    _uiState.update { it.copy(error = error) }
                 }
             )
         }
@@ -104,7 +105,7 @@ class CirclesViewModel @Inject constructor(private val circleRepository: CircleR
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(deletingId = null, error = error.displayMessage) }
+                    _uiState.update { it.copy(deletingId = null, error = error) }
                 }
             )
         }

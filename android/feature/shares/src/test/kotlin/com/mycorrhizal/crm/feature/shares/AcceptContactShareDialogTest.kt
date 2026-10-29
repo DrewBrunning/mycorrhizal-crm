@@ -10,6 +10,7 @@ import androidx.compose.ui.test.performClick
 import com.mycorrhizal.crm.model.network.DuplicateMatch
 import com.mycorrhizal.crm.model.network.ImportPreviewResponse
 import com.mycorrhizal.crm.model.network.ImportRowPreview
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -32,7 +33,7 @@ class AcceptContactShareDialogTest {
     private fun setContent(
         previewLoading: Boolean = false,
         preview: ImportPreviewResponse? = null,
-        previewError: String? = null,
+        previewError: ApiError? = null,
         confirmAction: String = "add",
         confirming: Boolean = false,
         onActionChange: (String) -> Unit = {},
@@ -126,7 +127,7 @@ class AcceptContactShareDialogTest {
                 AcceptContactShareDialog(
                     previewLoading = false,
                     preview = null,
-                    previewError = "Payload could not be parsed",
+                    previewError = ApiError.Client(400, "Payload could not be parsed"),
                     confirmAction = "add",
                     confirming = false,
                     onActionChange = {},

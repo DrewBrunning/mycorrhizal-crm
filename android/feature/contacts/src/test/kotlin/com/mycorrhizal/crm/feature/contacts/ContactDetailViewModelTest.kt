@@ -411,8 +411,8 @@ class ContactDetailViewModelTest {
         val state = vm.uiState.value
         assertFalse(state.isLoading)
         assertNull(state.contact)
-        // ApiError maps 404 to a generic "Not found" display string (ticket §2.4).
-        assertEquals("Not found", state.error)
+        // The 404 is kept as a typed ApiError; localizedMessage() words it (ticket §2.4).
+        assertEquals(404, (state.error as? ApiError.Client)?.code)
     }
 
     @Test
@@ -461,7 +461,7 @@ class ContactDetailViewModelTest {
         vm.completeReminder(7)
         advanceUntilIdle()
 
-        assertEquals("Not found", vm.uiState.value.error)
+        assertEquals(404, (vm.uiState.value.error as? ApiError.Client)?.code)
     }
 
     @Test
@@ -781,7 +781,7 @@ class ContactDetailViewModelTest {
         advanceUntilIdle()
 
         assertEquals(null, vm.events.value)
-        assertEquals("Server error (500)", vm.uiState.value.error)
+        assertTrue(vm.uiState.value.error is ApiError.Server)
         assertFalse(vm.uiState.value.isMutating)
     }
 
@@ -839,7 +839,7 @@ class ContactDetailViewModelTest {
         vm.setArchived(archived = true)
         advanceUntilIdle()
 
-        assertEquals("Not found", vm.uiState.value.error)
+        assertEquals(404, (vm.uiState.value.error as? ApiError.Client)?.code)
         io.mockk.coVerify(exactly = 1) { contactRepository.getContact(5) }
     }
 
@@ -979,7 +979,7 @@ class ContactDetailViewModelTest {
         advanceUntilIdle()
 
         assertFalse(vm.uiState.value.contact?.isFavorite!!)
-        assertEquals("Server error (500)", vm.uiState.value.error)
+        assertTrue(vm.uiState.value.error is ApiError.Server)
     }
 
     // --- Issue #1798 (ADR 0023 amendment): target closeness + cadence offer ---
@@ -1072,7 +1072,7 @@ class ContactDetailViewModelTest {
 
             assertEquals("close", vm.uiState.value.contact?.crm?.targetCloseness)
             assertNull(vm.uiState.value.cadencePolicyOffer)
-            assertEquals("Server error (500)", vm.uiState.value.error)
+            assertTrue(vm.uiState.value.error is ApiError.Server)
             // Neither the revision re-read nor the score refetch happened.
             coVerify(exactly = 1) { contactRepository.getContact(5) }
             coVerify(exactly = 1) { contactScoreRepository.getScore(5) }
@@ -1146,7 +1146,7 @@ class ContactDetailViewModelTest {
         advanceUntilIdle()
 
         assertEquals(closenessOffer(), vm.uiState.value.cadencePolicyOffer)
-        assertEquals("Server error (500)", vm.uiState.value.error)
+        assertTrue(vm.uiState.value.error is ApiError.Server)
     }
 
     @Test
@@ -1326,7 +1326,7 @@ class ContactDetailViewModelTest {
         vm.toggleMe()
         advanceUntilIdle()
 
-        assertEquals("Server error (500)", vm.uiState.value.error)
+        assertTrue(vm.uiState.value.error is ApiError.Server)
         assertFalse(vm.uiState.value.isMutating)
     }
 
@@ -1391,7 +1391,7 @@ class ContactDetailViewModelTest {
         advanceUntilIdle()
 
         assertEquals(null, vm.events.value)
-        assertEquals("bad request", vm.uiState.value.error)
+        assertEquals("bad request", vm.uiState.value.error?.message)
     }
 
     @Test
@@ -1457,7 +1457,7 @@ class ContactDetailViewModelTest {
         vm.uploadPhoto(bytes, "image/jpeg")
         advanceUntilIdle()
 
-        assertEquals("File too large. Maximum size is 10MB", vm.uiState.value.error)
+        assertEquals("File too large. Maximum size is 10MB", vm.uiState.value.error?.message)
         assertFalse(vm.uiState.value.isMutating)
         io.mockk.coVerify(exactly = 1) { contactRepository.getContact(5) }
     }
@@ -1701,7 +1701,7 @@ class ContactDetailViewModelTest {
         vm.deleteExternalIdentity("i1")
         advanceUntilIdle()
 
-        assertEquals("Not found", vm.uiState.value.error)
+        assertEquals(404, (vm.uiState.value.error as? ApiError.Client)?.code)
         assertFalse(vm.uiState.value.isExternalLinkMutating)
     }
 
@@ -2206,7 +2206,7 @@ class ContactDetailViewModelTest {
         vm.undoCompletion(7)
         advanceUntilIdle()
 
-        assertEquals("Not found", vm.uiState.value.error)
+        assertEquals(404, (vm.uiState.value.error as? ApiError.Client)?.code)
     }
 
     // --- Issue #236: Paperless/Seafile/Nextcloud create/link pickers ---
@@ -2302,7 +2302,7 @@ class ContactDetailViewModelTest {
         vm.linkPaperlessDocument(PaperlessDocument(id = 1, title = "Lease"))
         advanceUntilIdle()
 
-        assertEquals("Already linked", vm.uiState.value.error)
+        assertEquals("Already linked", vm.uiState.value.error?.message)
     }
 
     @Test
@@ -2349,7 +2349,7 @@ class ContactDetailViewModelTest {
         vm.loadSeafileLibraries()
         advanceUntilIdle()
 
-        assertEquals("Server error (500)", vm.uiState.value.error)
+        assertTrue(vm.uiState.value.error is ApiError.Server)
         assertFalse(vm.uiState.value.seafileBrowseLoading)
     }
 
@@ -2372,7 +2372,7 @@ class ContactDetailViewModelTest {
         vm.enterSeafileDir("r1")
         advanceUntilIdle()
 
-        assertEquals("Not found", vm.uiState.value.error)
+        assertEquals(404, (vm.uiState.value.error as? ApiError.Client)?.code)
         assertFalse(vm.uiState.value.seafileBrowseLoading)
         // The failed directory is still recorded (matches the loading-flag reset
         // behaviour of the other browse failures) rather than silently reverting.
@@ -2475,7 +2475,7 @@ class ContactDetailViewModelTest {
         vm.linkSeafileItem(SeafileItem(id = "f1", name = "doc.pdf", type = "file", size = 1024))
         advanceUntilIdle()
 
-        assertEquals("Already linked", vm.uiState.value.error)
+        assertEquals("Already linked", vm.uiState.value.error?.message)
     }
 
     @Test
@@ -2525,7 +2525,7 @@ class ContactDetailViewModelTest {
         vm.loadNextcloudDir("/Photos")
         advanceUntilIdle()
 
-        assertEquals("Server error (500)", vm.uiState.value.error)
+        assertTrue(vm.uiState.value.error is ApiError.Server)
         assertFalse(vm.uiState.value.nextcloudBrowseLoading)
     }
 
@@ -2582,7 +2582,7 @@ class ContactDetailViewModelTest {
         vm.linkNextcloudItem(item)
         advanceUntilIdle()
 
-        assertEquals("Already linked", vm.uiState.value.error)
+        assertEquals("Already linked", vm.uiState.value.error?.message)
     }
 
     // --- Issue #830: saveFieldValue (per-contact custom-field value editing) ---
@@ -2706,7 +2706,7 @@ class ContactDetailViewModelTest {
             vm.saveFieldValue("d1", "Espresso")
             advanceUntilIdle()
 
-            assertEquals("boom", vm.uiState.value.error)
+            assertEquals("boom", vm.uiState.value.error?.message)
             assertNull(vm.uiState.value.savingFieldDefinitionId)
             assertEquals("Latte", vm.uiState.value.fieldValuesByDefinitionId["d1"])
         }

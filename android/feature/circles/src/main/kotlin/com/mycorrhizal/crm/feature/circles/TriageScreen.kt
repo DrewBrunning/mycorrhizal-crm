@@ -39,6 +39,7 @@ import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
+import com.mycorrhizal.crm.ui.components.localizedMessage
 
 /**
  * M26: the circle/tag-triage screen (web's CircleTagTriagePage). One-time
@@ -99,7 +100,7 @@ fun TriageScreen(
 
                     state.items.isEmpty() && state.error != null -> {
                         Text(
-                            text = state.error.orEmpty(),
+                            text = state.error?.localizedMessage().orEmpty(),
                             color = MaterialTheme.colorScheme.error,
                             modifier = Modifier.align(Alignment.Center)
                         )
@@ -121,7 +122,8 @@ fun TriageScreen(
     // would clear the error and flip the empty state into "nothing to clean
     // up" (review-pass fix).
     if (state.items.isNotEmpty()) {
-        state.error?.let { message ->
+        state.error?.let { error ->
+            val message = error.localizedMessage()
             LaunchedEffect(message) {
                 snackbarHostState.showSnackbar(message)
                 viewModel.onErrorShown()

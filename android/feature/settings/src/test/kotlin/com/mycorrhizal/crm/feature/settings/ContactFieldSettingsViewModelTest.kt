@@ -55,7 +55,7 @@ class ContactFieldSettingsViewModelTest {
         val vm = ContactFieldSettingsViewModel(repository)
         advanceUntilIdle()
 
-        assertEquals("Server error (500)", vm.uiState.value.loadError)
+        assertTrue(vm.uiState.value.loadError is ApiError.Server)
     }
 
     @Test
@@ -114,7 +114,7 @@ class ContactFieldSettingsViewModelTest {
             advanceUntilIdle()
 
             assertFalse(ContactFieldKey.KEYWORDS in vm.uiState.value.enabled)
-            assertEquals("Server error (500)", vm.uiState.value.saveError)
+            assertTrue(vm.uiState.value.saveError is ApiError.Server)
             assertNull(vm.uiState.value.savingKey)
         }
 

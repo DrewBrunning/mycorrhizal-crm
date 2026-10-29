@@ -39,6 +39,7 @@ import com.mycorrhizal.crm.model.network.SearchActivityHit
 import com.mycorrhizal.crm.model.network.SearchNoteHit
 import com.mycorrhizal.crm.model.network.SearchResult
 import com.mycorrhizal.crm.network.ApiClient
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
@@ -835,11 +836,32 @@ class ContactListScreenTest {
     @Test
     fun `a failed load renders the error branch`() {
         setContent(
-            ContactListUiState(isLoading = false, contacts = emptyList(), error = "Load failed")
+            ContactListUiState(
+                isLoading = false,
+                contacts = emptyList(),
+                error = ApiError.Client(400, "Load failed")
+            )
         )
 
         assertTrue(
             composeTestRule.onAllNodesWithText("Load failed").fetchSemanticsNodes().isNotEmpty()
+        )
+    }
+
+    // Issue #2106: the typed error is worded in the UI language at composition time.
+    @Test
+    @Config(qualifiers = "de")
+    fun `a failed load is worded in German`() {
+        setContent(
+            ContactListUiState(
+                isLoading = false,
+                contacts = emptyList(),
+                error = ApiError.Client(404, "Contact list not found")
+            )
+        )
+
+        assertTrue(
+            composeTestRule.onAllNodesWithText("Nicht gefunden").fetchSemanticsNodes().isNotEmpty()
         )
     }
 

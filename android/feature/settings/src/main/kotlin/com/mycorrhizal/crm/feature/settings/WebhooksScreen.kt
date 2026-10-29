@@ -56,6 +56,7 @@ import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.RefreshableContent
+import com.mycorrhizal.crm.ui.components.localizedMessage
 
 /**
  * Webhook events, hand-mirrored from the backend's `oneof` validator
@@ -183,10 +184,10 @@ fun WebhooksScreen(onBack: () -> Unit, viewModel: WebhooksViewModel = hiltViewMo
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         )
                     }
-                    if (state.error != null) {
+                    if (state.error != null || state.deliveryError != null) {
                         item {
                             Text(
-                                text = state.error.orEmpty(),
+                                text = (state.error?.localizedMessage() ?: state.deliveryError).orEmpty(),
                                 color = MaterialTheme.colorScheme.error,
                                 style = MaterialTheme.typography.bodySmall,
                                 modifier = Modifier

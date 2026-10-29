@@ -244,7 +244,7 @@ class UsersScreenTest {
             repository.resetTwoFactor(
                 1
             )
-        } returns Result.failure(ApiError.Client(404, "User not found"))
+        } returns Result.failure(ApiError.Client(409, "User not found"))
         setScreen(UsersViewModel(repository))
 
         composeTestRule.onNodeWithContentDescription(
@@ -289,7 +289,7 @@ class UsersScreenTest {
             repository.resetTwoFactor(
                 2
             )
-        } returns Result.failure(ApiError.Client(404, "User not found"))
+        } returns Result.failure(ApiError.Client(409, "User not found"))
         setScreen(UsersViewModel(repository))
 
         composeTestRule.onNodeWithContentDescription(

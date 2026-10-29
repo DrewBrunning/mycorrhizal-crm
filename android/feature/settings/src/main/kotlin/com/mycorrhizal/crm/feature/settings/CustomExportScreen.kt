@@ -52,6 +52,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.ShareFieldSections
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
+import com.mycorrhizal.crm.ui.components.localizedMessage
 
 /**
  * Issue #835 (T9 selective-export Android parity, web's ExportFieldPickerDialog):
@@ -289,7 +290,8 @@ fun CustomExportScreen(onBack: () -> Unit, viewModel: CustomExportViewModel = hi
         }
     }
 
-    state.error?.let { message ->
+    state.error?.let { error ->
+        val message = error.localizedMessage()
         LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)
             viewModel.onErrorShown()

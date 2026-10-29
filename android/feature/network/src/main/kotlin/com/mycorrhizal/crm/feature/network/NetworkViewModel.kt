@@ -9,6 +9,7 @@ import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.GraphRepository
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.GraphChain
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -43,7 +44,7 @@ data class NetworkUiState(
     /** Every chain the endpoint returned (before the circle filter). */
     val allChains: List<GraphChain> = emptyList(),
     val isLoading: Boolean = false,
-    val error: String? = null,
+    val error: ApiError? = null,
     @StringRes val errorRes: Int? = null,
     // --- "Start from" contact picker ---
     val pickerOpen: Boolean = false,
@@ -203,7 +204,7 @@ class NetworkViewModel @Inject constructor(
                         it.copy(
                             isLoading = false,
                             allChains = emptyList(),
-                            error = error.displayMessage
+                            error = error
                         )
                     }
                 }

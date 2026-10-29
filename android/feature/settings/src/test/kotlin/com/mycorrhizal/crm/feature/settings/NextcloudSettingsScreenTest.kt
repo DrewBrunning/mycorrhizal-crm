@@ -10,6 +10,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -160,6 +161,24 @@ class NextcloudSettingsScreenTest {
         composeTestRule.onNodeWithText("Save").performScrollTo().assertIsNotEnabled()
     }
 
+    // Issue #2106: a client-worded failure is resolved at composition time.
+    @Test
+    @Config(qualifiers = "de")
+    fun `a timeout is shown in German`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                NextcloudSettingsContent(
+                    state = NextcloudSettingsUiState(
+                        isLoading = false,
+                        saveError = ApiError.Timeout(java.net.SocketTimeoutException())
+                    )
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Zeitüberschreitung bei der Anfrage").assertIsDisplayed()
+    }
+
     @Test
     fun `save error is announced as an assertive live region`() {
         composeTestRule.setContent {
@@ -167,7 +186,7 @@ class NextcloudSettingsScreenTest {
                 NextcloudSettingsContent(
                     state = NextcloudSettingsUiState(
                         isLoading = false,
-                        saveError = "Could not save"
+                        saveError = ApiError.Client(400, "Could not save")
                     )
                 )
             }

@@ -49,6 +49,7 @@ import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.FormScaffold
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.localizedMessage
 
 /**
  * Issue #830: the field-definition create/edit form — a full screen (not an `AlertDialog`, unlike
@@ -131,7 +132,7 @@ fun FieldDefinitionFormScreen(
         )
     }
 
-    val errorMessage = state.errorRes?.let { stringResource(it) } ?: state.error
+    val errorMessage = state.errorRes?.let { stringResource(it) } ?: state.error?.localizedMessage()
     errorMessage?.let { message ->
         LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)

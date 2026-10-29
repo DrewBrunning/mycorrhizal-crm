@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.localizedMessage
 
 /**
  * Issue #236: the Immich connection-config settings screen — base URL, API key,
@@ -157,7 +158,7 @@ fun ImmichSettingsContent(
 
             state.loadError?.let {
                 Text(
-                    it,
+                    it.localizedMessage(),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
@@ -165,7 +166,7 @@ fun ImmichSettingsContent(
             }
             state.saveError?.let {
                 Text(
-                    it,
+                    it.localizedMessage(),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
@@ -274,7 +275,7 @@ fun ImmichSettingsContent(
                     } else {
                         stringResource(
                             R.string.immich_settings_test_failed,
-                            result.message ?: "unknown"
+                            result.error?.localizedMessage() ?: result.message ?: "unknown"
                         )
                     },
                     color = if (result.ok) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,

@@ -40,6 +40,7 @@ import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.contactFieldDescription
 import com.mycorrhizal.crm.ui.components.contactFieldGroupLabel
 import com.mycorrhizal.crm.ui.components.contactFieldLabel
+import com.mycorrhizal.crm.ui.components.localizedMessage
 
 /**
  * Issue #832 (web parity): per-field show/edit toggles for the contact
@@ -116,7 +117,7 @@ fun ContactFieldSettingsContent(
 
         state.loadError?.let {
             Text(
-                it,
+                it.localizedMessage(),
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
@@ -124,7 +125,7 @@ fun ContactFieldSettingsContent(
         }
         state.saveError?.let {
             Text(
-                it,
+                it.localizedMessage(),
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }

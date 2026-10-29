@@ -67,6 +67,7 @@ import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.DiscardChangesDialog
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.FabListContentPadding
+import com.mycorrhizal.crm.ui.components.localizedMessage
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
@@ -90,7 +91,8 @@ fun OccasionsScreen(
     var showDialog by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<OccasionEvent?>(null) }
 
-    state.error?.let { message ->
+    state.error?.let { error ->
+        val message = error.localizedMessage()
         LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)
             viewModel.onErrorShown()

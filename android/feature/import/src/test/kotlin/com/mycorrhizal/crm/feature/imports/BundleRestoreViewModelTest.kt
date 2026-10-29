@@ -131,7 +131,9 @@ class BundleRestoreViewModelTest {
 
             assertEquals(BundleRestoreStep.PICK, vm.uiState.value.step)
             assertEquals(false, vm.uiState.value.isImporting)
-            assertTrue(vm.uiState.value.error.orEmpty().contains("Unsupported bundle version"))
+            assertTrue(
+                vm.uiState.value.error?.message.orEmpty().contains("Unsupported bundle version")
+            )
         }
 
     @Test
@@ -147,7 +149,7 @@ class BundleRestoreViewModelTest {
             advanceUntilIdle()
 
             assertEquals(BundleRestoreStep.PICK, vm.uiState.value.step)
-            assertEquals("corrupt bundle", vm.uiState.value.error)
+            assertEquals("corrupt bundle", vm.uiState.value.errorText)
             coVerify(exactly = 0) { apiClient.getMycorrhizalImportPreview(any()) }
         }
 
@@ -308,7 +310,7 @@ class BundleRestoreViewModelTest {
             advanceUntilIdle()
 
             assertEquals(BundleRestoreStep.REVIEW, vm.uiState.value.step)
-            assertEquals("disk full", vm.uiState.value.error)
+            assertEquals("disk full", vm.uiState.value.errorText)
             assertNull(vm.uiState.value.result)
         }
 

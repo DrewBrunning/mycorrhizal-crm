@@ -51,7 +51,7 @@ class WebhooksViewModelTest {
         val vm = WebhooksViewModel(repository)
         advanceUntilIdle()
 
-        assertEquals("Server error (500)", vm.uiState.value.error)
+        assertTrue(vm.uiState.value.error is ApiError.Server)
     }
 
     @Test
@@ -146,7 +146,7 @@ class WebhooksViewModelTest {
 
             val state = vm.uiState.value
             assertEquals("200", state.message)
-            assertNull(state.error)
+            assertNull(state.error?.message)
             assertEquals(200, state.deliveries[1]?.first()?.statusCode)
             assertTrue(state.expandedIds.contains(1))
         }
@@ -172,7 +172,7 @@ class WebhooksViewModelTest {
 
             val state = vm.uiState.value
             assertNull(state.message)
-            assertEquals("connection refused", state.error)
+            assertEquals("connection refused", state.deliveryError)
             assertEquals(500, state.deliveries[1]?.first()?.statusCode)
         }
 
@@ -218,7 +218,7 @@ class WebhooksViewModelTest {
             vm.toggleDeliveries(1)
             advanceUntilIdle()
 
-            assertEquals("Server error (500)", vm.uiState.value.error)
+            assertTrue(vm.uiState.value.error is ApiError.Server)
             assertTrue(vm.uiState.value.webhooks.isNotEmpty())
         }
 }

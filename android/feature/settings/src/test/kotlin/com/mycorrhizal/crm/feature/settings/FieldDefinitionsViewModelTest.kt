@@ -52,7 +52,7 @@ class FieldDefinitionsViewModelTest {
         vm.load()
         advanceUntilIdle()
 
-        assertEquals("boom", vm.uiState.value.error)
+        assertEquals("boom", vm.uiState.value.error?.message)
     }
 
     @Test
@@ -119,7 +119,7 @@ class FieldDefinitionsViewModelTest {
         vm.move("d1", 1)
         advanceUntilIdle()
 
-        assertEquals("boom", vm.uiState.value.error)
+        assertEquals("boom", vm.uiState.value.error?.message)
         assertEquals(listOf("d1", "d2"), vm.uiState.value.definitions.map { it.id })
     }
 

@@ -58,7 +58,7 @@ class CirclesViewModelTest {
         advanceUntilIdle()
 
         assertFalse(vm.uiState.value.isLoading)
-        assertEquals("boom", vm.uiState.value.error)
+        assertEquals("boom", vm.uiState.value.error?.message)
     }
 
     @Test

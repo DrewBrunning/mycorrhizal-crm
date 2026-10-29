@@ -35,7 +35,7 @@ data class ReminderFormState(
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
     @StringRes val errorRes: Int? = null,
-    val error: String? = null,
+    val error: ApiError? = null,
     /** ADR 0008: the `revision` the record had when this edit began; sent as `If-Match` on save. */
     val revision: Int? = null,
     /** ADR 0008: the save was rejected with 412 — the record changed elsewhere since it loaded. */
@@ -168,7 +168,7 @@ class ReminderFormViewModel @Inject constructor(
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
+                    _uiState.update { it.copy(isLoading = false, error = error) }
                 }
             )
         }
@@ -245,7 +245,7 @@ class ReminderFormViewModel @Inject constructor(
                         if (error is ApiError.PreconditionFailed) {
                             it.copy(isSaving = false, conflict = true)
                         } else {
-                            it.copy(isSaving = false, error = error.displayMessage)
+                            it.copy(isSaving = false, error = error)
                         }
                     }
                 }

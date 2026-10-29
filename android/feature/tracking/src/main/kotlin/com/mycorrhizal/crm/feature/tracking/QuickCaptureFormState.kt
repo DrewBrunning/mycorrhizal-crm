@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import com.mycorrhizal.crm.domain.repository.ActivityRepository
 import com.mycorrhizal.crm.model.network.ActivityInput
 import com.mycorrhizal.crm.network.ApiError
+import com.mycorrhizal.crm.network.toApiError
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -42,25 +43,34 @@ class QuickCaptureFormState(
         private set
     var saved by mutableStateOf(false)
         private set
-    var error by mutableStateOf<String?>(null)
+    var error by mutableStateOf<ApiError?>(null)
         private set
+
+    /** The localized "title is required" message; a validation error, not a request failure. */
+    var titleError by mutableStateOf<String?>(null)
+        private set
+
+    val hasError: Boolean get() = error != null || titleError != null
     private var interactionNotified = false
 
     fun onTitleChange(value: String) {
         title = value
         error = null
+        titleError = null
         notifyFirstInteraction()
     }
 
     fun onTypeChange(value: String) {
         type = value
         error = null
+        titleError = null
         notifyFirstInteraction()
     }
 
     fun onDescriptionChange(value: String) {
         description = value
         error = null
+        titleError = null
         notifyFirstInteraction()
     }
 
@@ -74,11 +84,14 @@ class QuickCaptureFormState(
         if (isSaving || saved) return
         val trimmedTitle = title.trim()
         if (trimmedTitle.isBlank()) {
-            error = blankTitleMessage
+            error = null
+            titleError = null
+            titleError = blankTitleMessage
             return
         }
         isSaving = true
         error = null
+        titleError = null
         scope.launch {
             activityRepository.create(
                 ActivityInput(
@@ -91,7 +104,7 @@ class QuickCaptureFormState(
             ).fold(
                 onSuccess = { saved = true },
                 onFailure = { e ->
-                    error = (e as? ApiError)?.displayMessage ?: e.message ?: "error"
+                    error = e.toApiError()
                     isSaving = false
                 }
             )

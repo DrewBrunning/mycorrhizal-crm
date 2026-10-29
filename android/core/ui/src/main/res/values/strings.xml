@@ -2630,6 +2630,21 @@
     </plurals>
     <string name="score_reason_target_ambient">Ambient contact, always on track</string>
     <string name="error_request_ref">(ref: %1$s)</string>
+    <string name="login_error_invalid_credentials">Invalid credentials</string>
+    <string name="register_error_disabled">Registration is disabled on this server</string>
+    <string name="error_client_network">No connection</string>
+    <string name="error_client_timeout">Request timed out</string>
+    <string name="error_client_server">Server error (%1$d)</string>
+    <string name="error_client_session_expired">Session expired — please log in again</string>
+    <string name="error_client_forbidden">You don\'t have permission</string>
+    <string name="error_client_not_found">Not found</string>
+    <string name="error_client_conflict">Conflict</string>
+    <string name="error_client_request_failed">Request failed</string>
+    <string name="error_client_precondition_failed">Changed elsewhere — load the latest version</string>
+    <string name="error_client_parse">Unexpected server response</string>
+    <string name="error_client_archived_profile">This profile is a read-only archive — switch to your server to make changes</string>
+    <string name="error_client_unknown">Something went wrong</string>
+    <string name="error_client_no_pending_two_factor">No pending two-factor login found. Please sign in again.</string>
     <string name="error_reason_common_test_only">Test %1$d</string>
     <string name="error_reason_contact_bulk_custom_field_duplicate">A custom field definition appears more than once</string>
     <string name="error_reason_contact_bulk_custom_field_in_both">A custom field cannot be in both custom_set and custom_clear</string>
