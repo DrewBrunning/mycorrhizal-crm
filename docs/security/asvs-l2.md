@@ -27,7 +27,7 @@ grep for it below, and get a status + citation. No row is left `satisfied` witho
 
 ## Documented positions
 
-Twelve deliberate, written-down decisions this project has made. They are positions, not code
+Thirteen deliberate, written-down decisions this project has made. They are positions, not code
 changes; revisit each pre-1.0 or when the cited trigger happens.
 
 ### P1 — Password hashing: bcrypt, not Argon2id (NIST 800-63B §5.1.1.2)
@@ -394,6 +394,50 @@ in one of these three packages (review against this position).
 
 ---
 
+### P13 — User directory: every account's id and username is visible to every authenticated user (issue #2204)
+
+`GET /api/v1/users/directory` (`backend/controllers/admin_user_controller.go#ListUserDirectory`,
+registered in `backend/routes/routes.go#RegisterRoutes`) is an **accepted, deliberate exposure**, recorded
+here so it is not mistaken for a leak.
+
+- **What is exposed.** The `id` and `username` of every user on the instance except the caller
+  (`UserDirectoryEntry`, ordered by username). Nothing else: not email, admin flag, timestamps or
+  contacts. The admin-only `ListUsers` is the full record; this is the thin shape.
+- **To whom.** Any authenticated caller: the route sits in the `protected` group
+  (`APIRateLimitMiddleware`, `AuthMiddleware`, scope and idempotency middleware), with no admin check.
+  A browser session and an API token with `api:read` both reach it (`RequireAPIScopeForMethod`);
+  CardDAV/CalDAV credentials do not, because DAV is a separate route tree. The query has no
+  active/disabled filter (the model has none); soft-deleted users are excluded only by GORM's default
+  `DeletedAt` scope. The route is absent from the storage-only embedded server (`!cfg.IsEmbedded()`).
+- **Why.** Sharing a contact (P1 contact sharing, issue #574) must name a recipient, and a non-admin
+  had no other way to discover who else is on the instance. Clients: web `ShareContactDialog`
+  (`frontend/src/api/contactShares.ts#getUserDirectory`) and Android
+  (`ApiClient.getUserDirectory`, `ShareContactViewModel`). Pinned by the route census
+  (`routes/authorization_matrix_test.go`, class `classProtected`) and
+  `controllers/contact_share_controller_test.go`.
+- **Multi-user implication.** Any account can enumerate every other username. With the default open
+  registration (`DISABLE_REGISTRATION=false`) that means anyone who can reach the instance can
+  register and then list all usernames, which helps credential stuffing and targeted guessing. The
+  usernames are not secret between co-tenants; `docs/privacy.md` and `docs/security/pii-inventory.md`
+  state this to users and operators.
+- **Mitigations in code (what bounds the use of a username list).** Login lockout is keyed on
+  `(identifier, source-IP)`: 5 failures lock that pair, with exponential backoff capped at 30 minutes,
+  plus a per-identifier backstop of 30 failures across all IPs (`backend/middleware/rate_limiter.go#MaxLoginAttempts`,
+  `backend/middleware/rate_limiter.go#GlobalAccountLoginAttempts`, `backend/middleware/login_lockout.go#LoginKey`).
+  Login routes carry `AuthRateLimitMiddleware` (per-IP limiter, V2.2.1), and an unknown identifier costs
+  the same bcrypt work as a known one (`backend/services/user_service.go#SpendDummyPasswordHash`), so
+  login does not add a second enumeration oracle. The pair-keyed lockout exists specifically because a
+  known username could otherwise be used to lock a victim out (issue #867). Operators who do not want
+  unknown people on the instance can set `DISABLE_REGISTRATION=true`
+  (`docs/supported-versions.md`, "Registration").
+- **Decision.** Accepted as-is. A restriction option (for example an operator setting that limits the
+  directory to users the caller already shares with) is **not planned in this change**; whether one is
+  wanted is a separate product decision.
+- **Revisit when:** a hosted multi-tenant mode exists, the directory gains any field beyond id and
+  username, or an operator-restriction setting is adopted.
+
+---
+
 ## V1 — Architecture, Design and Threat Modeling
 
 L3-only, out of scope: 1.11.3.
@@ -523,7 +567,7 @@ L3-only, out of scope: 3.6.1, 3.6.2.
 |---|---|---|---|
 | 4.1.1 | Enforce access control on trusted layer | satisfied | Server-side only; canonical `backend/controllers/circle_controller.go#GetCircle` (`Where("id = ? AND user_id = ?")`) |
 | 4.1.2 | Policy data not user-manipulable | satisfied | `IsAdmin` excluded from registration DTO and JWT (`models/dtos.go#UserRegistrationInput`, `services/user_service.go#GenerateToken`); relationship status/provenance server-derived (`relationship_edge_controller.go#relationshipEdgeDuplicate`) |
-| 4.1.3 | Least privilege | satisfied | `user_id`/`VCardUID` scoping on every handler; audit of unscoped queries (2026-08-23) found only deliberate cross-user surfaces: contact sharing (`contact_share_controller.go#CreateContactShare`), thin user directory (`admin_user_controller.go#UpdateSelfContact`), auth lookups, internal jobs. Admin-on-admin management is **self-service only** (issue #871): `UpdateUser` refuses `is_admin:false` on any account other than the caller's own, and `DeleteUser` refuses any account with `IsAdmin` set — so one admin cannot unilaterally demote or delete a peer and take sole control. The last-admin guards still apply to the remaining self-service demotion path (a lone admin can neither self-demote nor be deleted), keeping a zero-admin instance unreachable. Pinned by `controllers/admin_user_controller_test.go` (`TestUpdateUser_CannotDemotePeerAdmin`, `TestUpdateUser_CanRemoveOwnAdminStatus_WhenNotLastAdmin`, `TestUpdateUser_CannotSelfDemote_WhenLastAdmin`), `controllers/admin_user_delete_test.go` (`TestDeleteUser_CannotDeletePeerAdmin`, `TestDeleteUser_DeletesFormerAdmin_AfterDemotion`), and audit coverage by `controllers/auth_audit_events_test.go` (`TestAuthAuditEvents_PeerAdminGuards`) |
+| 4.1.3 | Least privilege | satisfied | `user_id`/`VCardUID` scoping on every handler; audit of unscoped queries (2026-08-23) found only deliberate cross-user surfaces: contact sharing (`contact_share_controller.go#CreateContactShare`), thin user directory (`admin_user_controller.go#ListUserDirectory`, accepted exposure — P13), auth lookups, internal jobs. Admin-on-admin management is **self-service only** (issue #871): `UpdateUser` refuses `is_admin:false` on any account other than the caller's own, and `DeleteUser` refuses any account with `IsAdmin` set — so one admin cannot unilaterally demote or delete a peer and take sole control. The last-admin guards still apply to the remaining self-service demotion path (a lone admin can neither self-demote nor be deleted), keeping a zero-admin instance unreachable. Pinned by `controllers/admin_user_controller_test.go` (`TestUpdateUser_CannotDemotePeerAdmin`, `TestUpdateUser_CanRemoveOwnAdminStatus_WhenNotLastAdmin`, `TestUpdateUser_CannotSelfDemote_WhenLastAdmin`), `controllers/admin_user_delete_test.go` (`TestDeleteUser_CannotDeletePeerAdmin`, `TestDeleteUser_DeletesFormerAdmin_AfterDemotion`), and audit coverage by `controllers/auth_audit_events_test.go` (`TestAuthAuditEvents_PeerAdminGuards`) |
 | 4.1.5 | Fail securely | satisfied | Ownership misses are AND-scoped 404s (never 403 revealing existence) (`contact_share_controller.go#getPendingShareForRecipient`); unknown errors → generic 500 (`errors/errors.go#GetAppError`) |
 | 4.2.1 | IDOR protection (create/read/update/delete) | satisfied | Every controller query AND-scoped; pinned by per-entity cross-user tests (e.g. `circle_controller_test.go#TestAddCircleMemberRejectsContactFromAnotherUser`, `household_controller_test.go#TestAddHouseholdMemberRejectsContactFromAnotherUser`, `household_controller_test.go#TestAddHouseholdMemberRejectsAnotherUsersHousehold`, `relationship_edge_controller_test.go#TestCreateRelationshipEdge_SymmetricType`, `relationship_edge_controller_test.go#TestCreateRelationshipEdge_RejectsSourceFromAnotherUser`, `two_factor_controller_test.go#TestTwoFactor_OwnershipScoping`, `sync_conflict_controller_test.go#TestRestoreContactSyncConflict_ScopedToOwner` — the contact-sync-conflict list/restore/dismiss endpoints, issue #395); exhaustive every-route × six-persona matrix (`backend/routes/authorization_matrix_test.go`, issue #371). Part of issue #2060 strengthens its non-GET BOLA probes with bodies that are valid for the intruder (their own contact), asserting 404/403 and an unchanged owner row, plus owner positive controls (`authorization_matrix_mutations_test.go#TestAuthorizationMatrix_BOLAValidBodyMutations`), and adds owned-plus-foreign positive controls to the scoped list/FTS tests (`gift_controller_test.go#TestListGiftsScopedToUser`, `conversation_agenda_controller_test.go#TestListConversationAgendaScopedToUser`, `contact_fts_search_test.go#TestGetContactsSearch_CrossUserContactNeverReturned`). `ContactShare` is this codebase's one *deliberate* cross-user surface, so it gets its own matrix (issue #555, `controllers/contact_share_matrix_test.go`): the sender/recipient asymmetry (a sender gets the same 404 a non-party gets when trying to accept/decline/confirm their own outgoing share, `TestAcceptDeclineConfirmContactShare_SenderCannotActOnOwnOutgoingShare`), the frozen-snapshot guarantee (`TestCreateContactShare_PayloadFrozenAtCreation`, `TestContactShare_PayloadUnchangedAcrossLifecycleTransitions`), and the recipient-capability rule once a share is accepted (`TestConfirmContactShare_AcceptedContactBecomesOrdinaryAndCanBeReShared`: the landed contact is the recipient's own, governed by their own sensitivity classifications, with no residual restriction from the original share). |
 | 4.2.2 | Anti-CSRF | satisfied | No CSRF tokens — documented mitigation: `SameSite=Strict` session cookies (see 3.4.3) + strict CORS origin allowlist (`backend/embedded/server.go#buildRouter`) with wildcard refused in release (`config/config.go#Config.Validate`); API clients use `Authorization` headers, not cookies. Audited (issue #392): zero state-changing `GET` routes exist (`routes/routes.go` — every mutating handler is `POST`/`PUT`/`PATCH`/`DELETE`), so there is no cross-site-reachable-by-navigation surface left even under the retained `Lax` OIDC state cookies. Pinned by `controllers/csrf_posture_test.go` (cookie flags + a cross-site-shaped request with no session cookie rejected). |
