@@ -1,6 +1,7 @@
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { type Activity, deleteActivity, updateActivity } from '../api/activities';
+import '../i18n/config';
 import { ApiError } from '../api/client';
 import { getAllContacts } from '../api/contacts';
 import { deleteNote, type Note, updateNote } from '../api/notes';
@@ -90,6 +91,7 @@ test('starts editing an activity and fetches contacts for the autocomplete', asy
     activityDescription: 'debrief',
     activityLocation: 'cafe',
     activityDate: '2026-08-12',
+    activityEndDate: '',
     activityContacts: [contact],
   });
 });
@@ -178,6 +180,7 @@ test('handleUpdateActivity saves, refreshes and resets', async () => {
       description: 'debrief',
       location: 'cafe',
       date: new Date('2026-08-12').toISOString(),
+      end_date: null,
       contact_ids: [5],
     },
     6,
@@ -298,6 +301,7 @@ test('an activity with only a title opens with empty optional fields and no cont
     activityDescription: '',
     activityLocation: '',
     activityDate: '',
+    activityEndDate: '',
     activityContacts: [],
   });
 });
@@ -382,6 +386,7 @@ test('an activity save sends every field and the contact ids', async () => {
       description: 'tacos',
       location: 'truck',
       date: new Date('2026-08-20').toISOString(),
+      end_date: null,
       contact_ids: [5, 6],
     },
     undefined,
@@ -407,6 +412,7 @@ test('an activity saved with only a title defaults description, location, date a
       description: '',
       location: '',
       date: '2026-09-01T12:00:00.000Z',
+      end_date: null,
       contact_ids: [],
     },
     undefined,
@@ -594,8 +600,61 @@ test('saving blank fields falls back to empty strings, no contacts and a current
       description: '',
       location: '',
       date: expect.any(String),
+      end_date: null,
       contact_ids: [],
     },
     6,
   );
+});
+
+// Issue #2006: the editor carries an activity's end date and sends it back.
+test('starting to edit a ranged activity loads its end day, and saving sends the end instant', async () => {
+  vi.mocked(getAllContacts).mockResolvedValue([contact]);
+  vi.mocked(updateActivity).mockResolvedValue(activity);
+  const { result } = renderHook(() => useTimelineEditing(42, vi.fn().mockResolvedValue(undefined)));
+  await act(async () => {
+    await result.current.handleStartEditTimelineItem('activity', {
+      ...activity,
+      date: '2026-05-12T00:00:00Z',
+      end_date: '2026-05-15T00:00:00Z',
+    });
+  });
+  expect(result.current.editTimelineValues.activityEndDate).toBe('2026-05-15');
+
+  await act(async () => {
+    await result.current.handleUpdateActivity(2);
+  });
+  expect(updateActivity).toHaveBeenCalledWith(
+    2,
+    expect.objectContaining({
+      date: '2026-05-12T00:00:00.000Z',
+      end_date: '2026-05-15T00:00:00.000Z',
+    }),
+    6,
+  );
+});
+
+test("the server's end_date refusal is kept for the end field instead of a generic notice", async () => {
+  const showError = vi.fn();
+  vi.mocked(updateActivity).mockRejectedValue(
+    new ApiError(
+      'Invalid value for field end_date',
+      'INVALID_INPUT',
+      400,
+      { field: 'end_date' },
+      undefined,
+      'relationship_end_before_start',
+    ),
+  );
+  const { result } = renderHook(() =>
+    useTimelineEditing(42, vi.fn().mockResolvedValue(undefined), { showError }),
+  );
+  act(() => {
+    result.current.setEditTimelineValues({ activityTitle: 'Trip', activityDate: '2026-05-12' });
+  });
+  await act(async () => {
+    await result.current.handleUpdateActivity(2);
+  });
+  expect(result.current.endDateError).toBe('The end date cannot be before the start date');
+  expect(showError).not.toHaveBeenCalled();
 });

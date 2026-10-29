@@ -19,6 +19,7 @@ import { createActivity } from '../api/activities';
 import type { GeoPulseStaySuggestion } from '../api/geopulse';
 import { useGeoPulse } from '../hooks/useGeoPulse';
 import { formatTime } from '../timeFormat';
+import { activityWireDates } from '../utils/activityRange';
 import AddActivityDialog from './AddActivityDialog';
 import AppDialog from './AppDialog';
 import DateField from './DateField';
@@ -118,10 +119,11 @@ export default function GeoPulseSuggestionsDialog({
       description: string;
       location: string;
       date: string;
+      end_date?: string;
       contact_ids: number[];
       external_ref?: string;
     }) => {
-      await createActivity({ ...activity, date: new Date(activity.date).toISOString() });
+      await createActivity({ ...activity, ...activityWireDates(activity) });
       if (activity.external_ref) {
         const ref = activity.external_ref;
         setLoggedRefs((prev) => new Set(prev).add(ref));

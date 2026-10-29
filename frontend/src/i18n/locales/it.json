@@ -826,6 +826,8 @@
     "location": "Luogo",
     "locationPlaceholder": "Dove?",
     "date": "Data",
+    "endDate": "Data di fine (facoltativa)",
+    "endBeforeStart": "La data di fine non può essere precedente alla data di inizio",
     "contacts": "Contatti",
     "selectContacts": "Seleziona contatti...",
     "cancel": "Annulla",

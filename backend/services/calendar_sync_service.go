@@ -57,11 +57,14 @@ type CalendarSyncStats struct {
 }
 
 type calendarEvent struct {
-	UID            string
-	Title          string
-	Description    string
-	Location       string
-	Date           time.Time
+	UID         string
+	Title       string
+	Description string
+	Location    string
+	Date        time.Time
+	// EndDate is the inclusive last calendar day (00:00:00Z) of a multi-day
+	// event, nil for a single-day one (issue #2006). See eventEndDate.
+	EndDate        *time.Time
 	AttendeeEmails []string
 	// ETag and Path are the remote calendar object's sync identity, captured
 	// from the CalDAV query response (T13). Empty for events pulled via the
@@ -72,13 +75,54 @@ type calendarEvent struct {
 }
 
 func (e calendarEvent) contentHash() string {
-	parts := []string{e.Title, e.Description, e.Location, e.Date.UTC().Format(time.RFC3339)}
+	parts := rangeAwareHashParts(e.Title, e.Description, e.Location, e.Date, e.EndDate)
 	// Attendees are part of the hash so newly invited people get linked as
 	// contacts on the next sync; sorted, since feeds don't order them stably.
 	emails := append([]string(nil), e.AttendeeEmails...)
 	sort.Strings(emails)
 	sum := sha256.Sum256([]byte(strings.Join(append(parts, emails...), "\x1f")))
 	return hex.EncodeToString(sum[:])
+}
+
+// rangeAwareHashParts is the shared content-hash input for a remote event and
+// a local activity. A single-day item hashes exactly as it did before end
+// dates existed (so no existing link looks changed); a ranged one hashes its
+// start and end as calendar days, because the all-day DATE form a range is
+// pushed in carries no time of day and the hash must survive that round trip.
+func rangeAwareHashParts(title, description, location string, date time.Time, end *time.Time) []string {
+	if end == nil {
+		return []string{title, description, location, date.UTC().Format(time.RFC3339)}
+	}
+	return []string{title, description, location, date.UTC().Format("2006-01-02"), end.UTC().Format("2006-01-02")}
+}
+
+// eventEndDate returns the inclusive last calendar day of a multi-day VEVENT,
+// or nil when the event does not reach past its start day (issue #2006).
+//
+// iCalendar DTEND is exclusive (RFC 5545 3.6.1): an all-day event on 12-15 May
+// carries DTEND;VALUE=DATE:20260516. The last covered instant is therefore
+// DTEND minus one nanosecond, and its UTC calendar day is the inclusive end.
+// The same rule serves timed events (one ending exactly at midnight does not
+// touch the next day) and zero-length ones (DTEND == DTSTART lands before the
+// start day and yields nil). Days are UTC days, matching how the start is
+// stored (Activity.Date, ADR 0015), so a span across a DST change needs no
+// special handling: UTC has none.
+func eventEndDate(e *ical.Event, start time.Time) *time.Time {
+	end, err := e.DateTimeEnd(time.UTC)
+	if err != nil || end.IsZero() {
+		return nil
+	}
+	last := end.Add(-time.Nanosecond).UTC()
+	lastDay := time.Date(last.Year(), last.Month(), last.Day(), 0, 0, 0, 0, time.UTC)
+	if !lastDay.After(utcDay(start)) {
+		return nil
+	}
+	return &lastDay
+}
+
+func utcDay(t time.Time) time.Time {
+	u := t.UTC()
+	return time.Date(u.Year(), u.Month(), u.Day(), 0, 0, 0, 0, time.UTC)
 }
 
 // CalendarSyncService imports events from CalDAV or plain iCalendar URLs as activities.
@@ -547,6 +591,7 @@ func extractEvents(cal *ical.Calendar, windowStart, windowEnd time.Time) []calen
 			Description:    clampRunes(propText(icalEvent.Props, ical.PropDescription), 2000),
 			Location:       clampRunes(propText(icalEvent.Props, ical.PropLocation), 300),
 			Date:           date.UTC(),
+			EndDate:        eventEndDate(&icalEvent, date),
 			AttendeeEmails: extractAttendeeEmails(icalEvent.Props),
 		}
 
@@ -582,6 +627,12 @@ func extractEvents(cal *ical.Calendar, windowStart, windowEnd time.Time) []calen
 			}
 			instance := event
 			instance.Date = occurrence.UTC()
+			if event.EndDate != nil {
+				// Every occurrence keeps the master's span in whole days.
+				span := event.EndDate.Sub(utcDay(event.Date))
+				shifted := utcDay(occurrence).Add(span)
+				instance.EndDate = &shifted
+			}
 			instance.UID = occurrenceUID(uid, occurrence)
 			add(instance)
 		}
@@ -717,6 +768,7 @@ func importEvents(db *gorm.DB, sub *models.CalendarSubscription, events []calend
 					Description: event.Description,
 					Location:    event.Location,
 					Date:        event.Date,
+					EndDate:     event.EndDate,
 				}
 				if err := tx.Create(&activity).Error; err != nil {
 					return err
@@ -773,6 +825,7 @@ func importEvents(db *gorm.DB, sub *models.CalendarSubscription, events []calend
 			activity.Description = event.Description
 			activity.Location = event.Location
 			activity.Date = event.Date
+			activity.EndDate = event.EndDate
 			if err := tx.Save(&activity).Error; err != nil {
 				return err
 			}
@@ -835,7 +888,7 @@ func importEvents(db *gorm.DB, sub *models.CalendarSubscription, events []calend
 // next fetch recognizes the pushed state as in sync. Attendees are excluded:
 // they are not representable in the push and would otherwise never converge.
 func activityContentHash(a *models.Activity) string {
-	parts := []string{a.Title, a.Description, a.Location, a.Date.UTC().Format(time.RFC3339)}
+	parts := rangeAwareHashParts(a.Title, a.Description, a.Location, a.Date, a.EndDate)
 	sum := sha256.Sum256([]byte(strings.Join(parts, "\x1f")))
 	return hex.EncodeToString(sum[:])
 }
@@ -851,7 +904,7 @@ func activityToICalendar(remoteUID string, a *models.Activity) *ical.Calendar {
 
 	event := ical.NewEvent()
 	event.Props.SetText(ical.PropUID, remoteUID)
-	event.Props.SetDateTime(ical.PropDateTimeStart, a.Date.UTC())
+	SetActivityEventTimes(event, a)
 	event.Props.SetDateTime(ical.PropDateTimeStamp, Now().UTC())
 	event.Props.SetText(ical.PropSummary, a.Title)
 	if a.Description != "" {
@@ -862,6 +915,26 @@ func activityToICalendar(remoteUID string, a *models.Activity) *ical.Calendar {
 	}
 	cal.Children = append(cal.Children, event.Component)
 	return cal
+}
+
+// SetActivityEventTimes writes DTSTART (and DTEND for a range) on a VEVENT.
+// A single-day activity keeps the DATE-TIME start it always had. A ranged one
+// is an all-day event: DTSTART;VALUE=DATE is the start's UTC day and DTEND is
+// the EXCLUSIVE day after the inclusive end (RFC 5545), so clients draw the
+// right number of days (issue #2006). Shared by the CalDAV feed and the
+// two-way push.
+func SetActivityEventTimes(event *ical.Event, a *models.Activity) {
+	if a.EndDate == nil {
+		event.Props.SetDateTime(ical.PropDateTimeStart, a.Date.UTC())
+		return
+	}
+	start := utcDay(a.Date)
+	last := utcDay(*a.EndDate)
+	if last.Before(start) {
+		last = start
+	}
+	event.Props.SetDate(ical.PropDateTimeStart, start)
+	event.Props.SetDate(ical.PropDateTimeEnd, last.AddDate(0, 0, 1))
 }
 
 // resolveRemoteObjectURL joins the subscription's scheme+host with the

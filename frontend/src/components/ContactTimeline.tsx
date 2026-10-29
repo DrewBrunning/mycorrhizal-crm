@@ -25,6 +25,7 @@ import { type LifeEvent, partialDateDisplay } from '../api/lifeEvents';
 import type { Note } from '../api/notes';
 import type { ReminderCompletion } from '../api/reminders';
 import { useDateFormat } from '../DateFormatProvider';
+import { formatActivityDateRange } from '../utils/activityRange';
 import { calendarDateOnly } from '../utils/localDate';
 import MarkdownText from './MarkdownText';
 import { timelineMobileDateSx, timelinePhoneSx } from './timelineLayout';
@@ -70,7 +71,7 @@ export default function ContactTimeline({
 }: ContactTimelineProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { formatDate } = useDateFormat();
+  const { formatDate, dateFormat } = useDateFormat();
 
   if (timelineItems.length === 0) {
     return (
@@ -235,9 +236,12 @@ export default function ContactTimeline({
               : (item.data as ReminderCompletion).message;
         // One label for both the sm+ date column and the phone caption, so a
         // change to how the date is rendered cannot reach only one of them.
-        const dateLabel = isValidDate
-          ? formatDate(calendarDateOnly(item.date))
-          : item.date || 'N/A';
+        // Issue #2006: a multi-day activity shows its range.
+        const dateLabel = !isValidDate
+          ? item.date || 'N/A'
+          : item.type === 'activity'
+            ? formatActivityDateRange(item.date, (item.data as Activity).end_date, dateFormat)
+            : formatDate(calendarDateOnly(item.date));
 
         return (
           <TimelineItem

@@ -808,6 +808,8 @@
     "location": "Location",
     "locationPlaceholder": "Where?",
     "date": "Date",
+    "endDate": "End date (optional)",
+    "endBeforeStart": "The end date cannot be before the start date",
     "contacts": "Contacts",
     "selectContacts": "Select contacts...",
     "cancel": "Cancel",

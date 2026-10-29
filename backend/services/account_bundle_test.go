@@ -227,6 +227,10 @@ func seedFullAccount(t *testing.T, db *gorm.DB, user models.User, marker string)
 		UserID: user.ID, Title: "activity-" + marker, Description: "desc", Location: "here",
 		Date: time.Now().UTC().Truncate(time.Second), Type: "meeting",
 	}
+	// Issue #2006: the seeded activity is a multi-day one so the round-trip
+	// comparisons cover end_date.
+	activityEnd := utcDay(activity.Date).AddDate(0, 0, 3)
+	activity.EndDate = &activityEnd
 	require.NoError(t, db.Create(&activity).Error)
 	require.NoError(t, db.Model(&activity).Association("Contacts").Replace(&[]models.Contact{bob, ada, cy}))
 

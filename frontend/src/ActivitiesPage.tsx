@@ -43,15 +43,23 @@ import { useDebouncedValue } from './hooks/useDebounce';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useGeoPulse } from './hooks/useGeoPulse';
 import { useRecordConflict } from './hooks/useRecordConflict';
-import { calendarDateOnly } from './utils/localDate';
+import {
+  activityDay,
+  activityEndForUpdate,
+  activityWireDates,
+  endDateFieldError,
+  formatActivityDateRange,
+} from './utils/activityRange';
 
 const ActivitiesPage: React.FC = () => {
   const { t } = useTranslation();
   useDocumentTitle(t('nav.activities'));
   const { announce } = useAnnouncer();
-  const { formatDate } = useDateFormat();
+  const { dateFormat } = useDateFormat();
   // #1783: one formatter for both the sm+ date column and the phone caption.
-  const activityDateLabel = (activity: Activity) => formatDate(calendarDateOnly(activity.date));
+  // Issue #2006: a multi-day activity shows its range.
+  const activityDateLabel = (activity: Activity) =>
+    formatActivityDateRange(activity.date, activity.end_date, dateFormat);
 
   const [searchInput, setSearchInput] = useState('');
   const debouncedSearch = useDebouncedValue(searchInput, 400);
@@ -97,8 +105,10 @@ const ActivitiesPage: React.FC = () => {
     activityDescription?: string;
     activityLocation?: string;
     activityDate?: string;
+    activityEndDate?: string;
     activityContacts?: Contact[];
   }>({});
+  const [endDateError, setEndDateError] = useState('');
   const [allContacts, setAllContacts] = useState<Contact[]>([]);
   const [infoAnchorEl, setInfoAnchorEl] = useState<HTMLElement | null>(null);
   const infoOpen = Boolean(infoAnchorEl);
@@ -130,7 +140,7 @@ const ActivitiesPage: React.FC = () => {
     try {
       await createActivity({
         ...activity,
-        date: new Date(activity.date).toISOString(),
+        ...activityWireDates(activity),
       });
       setAddDialogOpen(false);
       void refetch();
@@ -153,12 +163,14 @@ const ActivitiesPage: React.FC = () => {
       }
     }
 
+    setEndDateError('');
     setEditValues({
       activityTitle: activity.title || '',
       activityDescription: activity.description || '',
       activityLocation: activity.location || '',
       // Stored value (saved at 00:00Z), so UTC date is right here; unlike the "today" defaults, see utils/localDate.ts (#1727).
       activityDate: activity.date ? new Date(activity.date).toISOString().split('T')[0] : '',
+      activityEndDate: activityDay(activity.end_date),
       activityContacts: activity.contacts || [],
     });
   };
@@ -183,6 +195,7 @@ const ActivitiesPage: React.FC = () => {
           date: editValues.activityDate
             ? new Date(editValues.activityDate).toISOString()
             : new Date().toISOString(),
+          end_date: activityEndForUpdate(editValues.activityEndDate),
           contact_ids: editValues.activityContacts?.map((c) => c.ID) || [],
         },
         editingActivity.revision,
@@ -192,6 +205,11 @@ const ActivitiesPage: React.FC = () => {
       void refetch();
     } catch (err) {
       if (handleConflict(err)) return;
+      const fieldError = endDateFieldError(err);
+      if (fieldError) {
+        setEndDateError(fieldError);
+        return;
+      }
       console.error('Failed to update activity:', err);
     }
   };
@@ -493,8 +511,12 @@ const ActivitiesPage: React.FC = () => {
           onDelete={() => void handleDeleteActivity()}
           type="activity"
           values={editValues}
-          onChange={setEditValues}
+          onChange={(next) => {
+            setEditValues(next);
+            setEndDateError('');
+          }}
           allContacts={allContacts}
+          activityEndDateError={endDateError}
         />
       )}
     </Box>

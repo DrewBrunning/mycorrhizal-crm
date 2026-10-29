@@ -20,6 +20,7 @@ import { type Activity, addContactToActivities, getActivities } from '../api/act
 import { type Contact, getContacts } from '../api/contacts';
 import { useDiscardGuard } from '../hooks/useDiscardGuard';
 import { readSessionDraft, useSessionDraft } from '../hooks/useSessionDraft';
+import { endDateFieldError } from '../utils/activityRange';
 import { todayLocalISODate } from '../utils/localDate';
 import AppDialog from './AppDialog';
 import ConfirmDiscardDialog from './ConfirmDiscardDialog';
@@ -44,6 +45,8 @@ interface AddActivityDialogProps {
     description: string;
     location: string;
     date: string;
+    // Issue #2006: the picked last day (YYYY-MM-DD), only when one is set.
+    end_date?: string;
     contact_ids: number[];
     external_ref?: string;
   }) => Promise<void>;
@@ -61,6 +64,7 @@ interface ActivityDraft {
   description: string;
   location: string;
   date: string;
+  endDate?: string;
 }
 
 export default function AddActivityDialog({
@@ -76,6 +80,10 @@ export default function AddActivityDialog({
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
   const [date, setDate] = useState(todayLocalISODate());
+  // Issue #2006: optional last day of a multi-day activity ('' = single day).
+  const [endDate, setEndDate] = useState('');
+  // A save refused by the server on the end_date field (shown on that field).
+  const [endDateError, setEndDateError] = useState('');
   const [selectedContacts, setSelectedContacts] = useState<Contact[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [searchInput, setSearchInput] = useState('');
@@ -120,6 +128,7 @@ export default function AddActivityDialog({
     setDescription(draft.description);
     setLocation(draft.location);
     setDate(draft.date);
+    setEndDate(draft.endDate ?? '');
   }, [open, draftKey, hasPrefill, prefillLocation, prefillDate]);
 
   // With a prefill the location is already filled in, so it alone is not "work
@@ -131,7 +140,7 @@ export default function AddActivityDialog({
     selectedActivityIds.length > 0;
   const { clearDraft } = useSessionDraft(
     draftKey,
-    { title, description, location, date },
+    { title, description, location, date, endDate },
     open && isDirty && !hasPrefill,
   );
   // Clears the draft too -- reached after a successful save and after a
@@ -143,6 +152,8 @@ export default function AddActivityDialog({
     setDescription('');
     setLocation('');
     setDate(todayLocalISODate());
+    setEndDate('');
+    setEndDateError('');
     setSelectedContacts([]);
     setSearchInput('');
     setContacts([]);
@@ -262,11 +273,16 @@ export default function AddActivityDialog({
     }
   };
 
+  // Moving the start past an already-picked end leaves the range reversed; the
+  // end field says so instead of silently clearing it (issue #2006).
+  const endBeforeStart = endDate !== '' && date !== '' && endDate < date;
+
   const handleSave = async () => {
     if (!title.trim() || !date) {
       setError(t('activityDialog.required'));
       return;
     }
+    if (endBeforeStart) return;
 
     setSaving(true);
     try {
@@ -275,12 +291,15 @@ export default function AddActivityDialog({
         description,
         location,
         date,
+        ...(endDate ? { end_date: endDate } : {}),
         contact_ids: selectedContacts.map((c) => c.ID),
         ...(prefill?.externalRef ? { external_ref: prefill.externalRef } : {}),
       });
       handleClose();
-    } catch {
-      setError('Failed to save activity');
+    } catch (err) {
+      const fieldError = endDateFieldError(err);
+      if (fieldError) setEndDateError(fieldError);
+      else setError('Failed to save activity');
     } finally {
       setSaving(false);
     }
@@ -389,7 +408,25 @@ export default function AddActivityDialog({
               fullWidth
             />
 
-            <DateField label={t('activityDialog.date')} value={date} onChange={setDate} required />
+            <DateField
+              label={t('activityDialog.date')}
+              value={date}
+              onChange={(value) => {
+                setDate(value);
+                setEndDateError('');
+              }}
+              required
+            />
+            <DateField
+              label={t('activityDialog.endDate')}
+              value={endDate}
+              onChange={(value) => {
+                setEndDate(value);
+                setEndDateError('');
+              }}
+              min={date || undefined}
+              errorText={endDateError || (endBeforeStart ? t('activityDialog.endBeforeStart') : '')}
+            />
 
             <Autocomplete
               multiple
@@ -448,7 +485,11 @@ export default function AddActivityDialog({
             {t('activityDialog.addToSelected')}
           </Button>
         ) : (
-          <Button onClick={() => void handleSave()} variant="contained" disabled={saving}>
+          <Button
+            onClick={() => void handleSave()}
+            variant="contained"
+            disabled={saving || endBeforeStart}
+          >
             {t('activityDialog.save')}
           </Button>
         )}
