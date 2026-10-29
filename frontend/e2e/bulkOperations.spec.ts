@@ -83,7 +83,7 @@ test.describe('Bulk operations', () => {
       });
       await page.getByRole('button', { name: /^delete$/i }).click();
       await expect(selectedText(page, /\d+ selected/)).not.toBeVisible();
-      expect(dialogMessage).toContain('Delete 11 contacts?');
+      expect(dialogMessage).toContain('Move 11 contacts to the Trash?');
 
       await expect(selectedText(page, /\d+ selected/)).not.toBeVisible();
 

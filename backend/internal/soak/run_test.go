@@ -115,11 +115,18 @@ func smokeConfig(t *testing.T) Config {
 	}
 	return Config{
 		Duration: 14 * time.Second, SampleEvery: time.Second, Users: 4, Rate: 25, Seed: 5,
-		MinOps: 100, MaxShedFraction: smokeShedFraction, Dir: t.TempDir(), Budgets: budgets,
+		MinOps: smokeMinOps, MaxShedFraction: smokeShedFraction, Dir: t.TempDir(), Budgets: budgets,
 	}
 }
 
 const smokeShedFraction = 0.05
+
+// smokeMinOps is a load-generator sanity floor, not a throughput budget. The
+// smoke offers ~350 operations; on a starved shared runner the nightly
+// order-dependence pass completed only 94 (243 dropped as the server fell
+// behind) with every budget and check green (issue #2172). A floor of
+// 50 still sits far above what a broken generator (~0 ops) produces.
+const smokeMinOps = 50
 
 // healthySmokeGrowthSlack widens the growth budgets for the per-PR healthy
 // smoke. Over a 9 s tail on a runner shared with the rest of the package shard
