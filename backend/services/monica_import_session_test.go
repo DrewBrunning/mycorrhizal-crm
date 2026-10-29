@@ -486,7 +486,8 @@ func TestMonicaImportSession_SessionOwnershipEnforced(t *testing.T) {
 
 	_, appErr = mgr.Status(owner.ID+999, resp.SessionID)
 	require.NotNil(t, appErr)
-	assert.Equal(t, http.StatusUnauthorized, appErr.HTTPStatus)
+	assert.Equal(t, http.StatusNotFound, appErr.HTTPStatus)
+	assert.Equal(t, wantImportSessionUnknownMessage, appErr.Message)
 }
 
 func TestMonicaImportSession_CancelDropsSession(t *testing.T) {

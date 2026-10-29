@@ -3810,7 +3810,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-          description: Unknown/expired session, or session owned by another user.
+          description: Unknown/expired session, or session owned by another user (indistinguishable by design).
   /contacts/import/confirm:
     post:
       summary: Execute a CSV import with the caller's per-row actions (step 3 of 3)
@@ -4009,7 +4009,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-          description: Unknown or expired session.
+          description: Unknown/expired session, or session owned by another user (indistinguishable by design).
   /contacts/import/monica/preview:
     get:
       summary: Get the review rows and loss report for a fetched snapshot
@@ -4039,7 +4039,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-          description: Unknown or expired session.
+          description: Unknown/expired session, or session owned by another user (indistinguishable by design).
   /contacts/import/monica/confirm:
     post:
       summary: Start the Monica import with the review step's per-contact actions
@@ -4100,7 +4100,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-          description: Unknown or expired session.
+          description: Unknown/expired session, or session owned by another user (indistinguishable by design).
 
   # --- Meerkat import assistant (issue #550) ---
   # Direct-DB (ADR-0007): the user uploads their Meerkat CRM SQLite file, the
@@ -4253,7 +4253,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-          description: Unknown or expired session.
+          description: Unknown/expired session, or session owned by another user (indistinguishable by design).
   /contacts/import/meerkat/preview:
     get:
       summary: Get the review rows and loss report for a prepared database
@@ -4283,7 +4283,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-          description: Unknown or expired session.
+          description: Unknown/expired session, or session owned by another user (indistinguishable by design).
   /contacts/import/meerkat/confirm:
     post:
       summary: Start the Meerkat import with the review step's per-contact actions
@@ -4342,7 +4342,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-          description: Unknown or expired session.
+          description: Unknown/expired session, or session owned by another user (indistinguishable by design).
 
   # --- Mycorrhizal account-bundle import source (issue #1260, ADR 0028) ---
   # Upload a bundle produced by GET /export/account, review (with the loss

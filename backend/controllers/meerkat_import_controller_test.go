@@ -18,6 +18,7 @@ import (
 	"mycorrhizal/services"
 
 	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
@@ -255,7 +256,13 @@ func TestConnectMeerkatImport_SessionIsOwnerScoped(t *testing.T) {
 	otherRouter.GET("/contacts/import/meerkat/status", GetMeerkatImportStatus)
 	rec := httptest.NewRecorder()
 	otherRouter.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/contacts/import/meerkat/status?session_id="+resp.SessionID, nil))
-	require.Equal(t, http.StatusUnauthorized, rec.Code, "the session exists but belongs to another user: %s", rec.Body.String())
+	require.Equal(t, http.StatusNotFound, rec.Code, "the session exists but belongs to another user: %s", rec.Body.String())
+
+	// Byte-identical to the response for an id that never existed.
+	unknown := httptest.NewRecorder()
+	otherRouter.ServeHTTP(unknown, httptest.NewRequest(http.MethodGet, "/contacts/import/meerkat/status?session_id=no-such-session", nil))
+	require.Equal(t, http.StatusNotFound, unknown.Code)
+	assert.JSONEq(t, unknown.Body.String(), rec.Body.String(), "a foreign session must not be distinguishable from an unknown one")
 }
 
 func TestConnectMeerkatImport_BadCredentialsAre400AndLeakNothing(t *testing.T) {

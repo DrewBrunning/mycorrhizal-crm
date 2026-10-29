@@ -18,12 +18,9 @@ import (
 // Issue #2203: Monica import session_id endpoints with another user's
 // session. Mirrors TestConnectMeerkatImport_SessionIsOwnerScoped.
 //
-// Current behaviour (pinned here, same as Meerkat): a session that exists but
-// belongs to someone else is rejected with 401 UNAUTHORIZED
-// ("Session does not belong to current user"), while an unknown id is 404.
-// That 401-vs-404 difference is an existence oracle; session ids are random,
-// so it is low risk, and changing it is a handler decision outside this
-// test-only change. What these tests guarantee is that the foreign caller
+// A session that exists but belongs to someone else is answered exactly like
+// an unknown id (404 NOT_FOUND, same message), so the response is not an
+// existence oracle. What these tests also guarantee is that the foreign caller
 // gets no status/preview data, cannot confirm or cancel, and the owner's
 // session is untouched.
 func TestMonicaImport_SessionIsOwnerScoped(t *testing.T) {
@@ -56,7 +53,9 @@ func TestMonicaImport_SessionIsOwnerScoped(t *testing.T) {
 
 	assertForeignRejected := func(t *testing.T, rec *httptest.ResponseRecorder) {
 		t.Helper()
-		mzErrorCode(t, rec, http.StatusUnauthorized, "UNAUTHORIZED")
+		env := mzErrorCode(t, rec, http.StatusNotFound, "NOT_FOUND")
+		assert.Equal(t, "Import session expired or not found", env.Error.Message, "must match the unknown-id response")
+		assert.NotContains(t, rec.Body.String(), "belong")
 		assert.NotEqual(t, http.StatusForbidden, rec.Code)
 		assert.NotContains(t, rec.Body.String(), `"phase"`, "no session status may leak")
 		assert.NotContains(t, rec.Body.String(), srv.URL, "no session detail may leak")
