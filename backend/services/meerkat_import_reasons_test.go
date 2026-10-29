@@ -2,7 +2,10 @@ package services
 
 import (
 	"context"
+	"database/sql"
 	"mime/multipart"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -94,4 +97,44 @@ func TestMeerkatAPI_ConflictAndConnectReasons(t *testing.T) {
 	mgr.mu.RUnlock()
 	appErr = mgr.startAPIFetch(db, s, models.MeerkatFetchRequest{SessionID: resp.SessionID}, meerkatTestLogger())
 	requireMeerkatReason(t, appErr, apperrors.ReasonMeerkatImportInProgress)
+}
+
+// writeMeerkatSQLite builds a minimal SQLite file holding the given tables,
+// each pre-filled with the given number of rows keyed by id.
+func writeMeerkatSQLite(t *testing.T, tables map[string]int) []byte {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "synthetic.sqlite")
+	db, err := sql.Open("sqlite", path)
+	require.NoError(t, err)
+	defer db.Close()
+	db.SetMaxOpenConns(1)
+	_, err = db.Exec("CREATE TABLE placeholder (id INTEGER)")
+	require.NoError(t, err)
+	for name, rows := range tables {
+		_, err = db.Exec("CREATE TABLE " + name + " (id INTEGER PRIMARY KEY)")
+		require.NoError(t, err)
+		if rows > 0 {
+			_, err = db.Exec("WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i+1 FROM n WHERE i < ?) INSERT INTO "+name+" (id) SELECT i FROM n", rows)
+			require.NoError(t, err)
+		}
+	}
+	require.NoError(t, db.Close())
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	return data
+}
+
+func TestMeerkatImportSession_UploadContentReasons(t *testing.T) {
+	mgr := NewMeerkatImportManager()
+
+	t.Run("too many contacts", func(t *testing.T) {
+		data := writeMeerkatSQLite(t, map[string]int{"contacts": MaxMeerkatContacts + 1})
+		_, appErr := mgr.Upload(1, fileHeaderFrom(t, "many.db", data))
+		requireMeerkatReason(t, appErr, apperrors.ReasonMeerkatDBTooManyContacts)
+	})
+	t.Run("too many records", func(t *testing.T) {
+		data := writeMeerkatSQLite(t, map[string]int{"notes": MaxMeerkatEntities + 1})
+		_, appErr := mgr.Upload(1, fileHeaderFrom(t, "records.db", data))
+		requireMeerkatReason(t, appErr, apperrors.ReasonMeerkatDBTooManyRecords)
+	})
 }

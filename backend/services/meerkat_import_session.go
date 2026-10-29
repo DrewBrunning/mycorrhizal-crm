@@ -272,7 +272,7 @@ func (m *MeerkatImportManager) Upload(userID uint, header *multipart.FileHeader)
 		if errors.Is(err, meerkat.ErrNotSQLite) {
 			return nil, apperrors.ErrInvalidInput("file", "That file is not a Meerkat database").WithReason(apperrors.ReasonMeerkatFileNotMeerkat, nil)
 		}
-		return nil, apperrors.ErrInvalidInput("file", "The database could not be read as a Meerkat database").WithReason(apperrors.ReasonMeerkatDBUnreadable, nil)
+		return nil, apperrors.ErrInvalidInput("file", "The database could not be read as a Meerkat database").WithReason(apperrors.ReasonMeerkatDBUnreadable, nil) // # pragma: no cover — meerkat.Open only fails past the magic check on I/O errors (its own error paths are marked unreachable)
 	}
 	if len(snap.Contacts) > MaxMeerkatContacts {
 		_ = os.RemoveAll(tempDir)
