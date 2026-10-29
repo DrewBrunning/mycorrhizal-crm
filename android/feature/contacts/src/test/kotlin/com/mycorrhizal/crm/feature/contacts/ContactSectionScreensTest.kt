@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -238,6 +239,37 @@ class ContactSectionScreensTest {
                 match { it.value == "Go" && it.level == "expert" && it.sensitivity == "secret" }
             )
         }
+    }
+
+    @Test
+    fun `the label field explains itself and an existing label round-trips on save`() {
+        val vm = setSkills(
+            ContactSectionsUiState(
+                enabledFields = ContactFieldKey.entries.toSet(),
+                record = record(
+                    card = Card(
+                        personalInfo = listOf(
+                            PersonalInfo(
+                                id = "pi-1",
+                                kind = "expertise",
+                                value = "Go",
+                                label = "work"
+                            )
+                        )
+                    )
+                )
+            )
+        )
+
+        composeTestRule.onNodeWithTag("personal-info-edit-pi-1").performClick()
+
+        composeTestRule.onNodeWithText(
+            "Optional tag shown beside the value, e.g. “work” or “learned in 2020”."
+        ).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithTag("personal-info-label").assertTextContains("work")
+
+        composeTestRule.onNodeWithText("Save").performClick()
+        verify { vm.savePersonalInfo("pi-1", match { it.label == "work" }) }
     }
 
     @Test
