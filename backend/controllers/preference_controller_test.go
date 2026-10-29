@@ -321,9 +321,12 @@ func TestListPreferencesFiltersByEntity(t *testing.T) {
 	contactB := models.Contact{UserID: user.ID, Firstname: "Bob"}
 	require.NoError(t, db.Create(&contactB).Error)
 
-	db.Create(&models.Preference{UserID: user.ID, EntityID: contactA.VCardUID, Category: models.PreferenceCategoryFood, Value: "Vegetarian", Sensitivity: models.RelationshipSensitivityNormal})
-	db.Create(&models.Preference{UserID: user.ID, EntityID: contactA.VCardUID, Category: models.PreferenceCategoryHobby, Value: "Hiking", Sensitivity: models.RelationshipSensitivityNormal})
-	db.Create(&models.Preference{UserID: user.ID, EntityID: contactB.VCardUID, Category: models.PreferenceCategoryHobby, Value: "Golf", Sensitivity: models.RelationshipSensitivityNormal})
+	prefA1 := models.Preference{UserID: user.ID, EntityID: contactA.VCardUID, Category: models.PreferenceCategoryFood, Value: "Vegetarian", Sensitivity: models.RelationshipSensitivityNormal}
+	prefA2 := models.Preference{UserID: user.ID, EntityID: contactA.VCardUID, Category: models.PreferenceCategoryHobby, Value: "Hiking", Sensitivity: models.RelationshipSensitivityNormal}
+	prefB := models.Preference{UserID: user.ID, EntityID: contactB.VCardUID, Category: models.PreferenceCategoryHobby, Value: "Golf", Sensitivity: models.RelationshipSensitivityNormal}
+	for _, p := range []*models.Preference{&prefA1, &prefA2, &prefB} {
+		require.NoError(t, db.Create(p).Error)
+	}
 
 	req, _ := http.NewRequest("GET", "/preferences?entity_id="+contactA.VCardUID, nil)
 	w := httptest.NewRecorder()
@@ -336,6 +339,9 @@ func TestListPreferencesFiltersByEntity(t *testing.T) {
 	}
 	json.Unmarshal(w.Body.Bytes(), &responseBody)
 	assert.EqualValues(t, 2, responseBody.Total)
+	got := idsFromList(t, router, "/preferences?entity_id="+contactA.VCardUID, "preferences")
+	assert.ElementsMatch(t, []string{prefA1.ID, prefA2.ID}, got, "exactly contact A's preferences")
+	assert.NotContains(t, got, prefB.ID)
 }
 
 func TestUpdatePreference(t *testing.T) {
