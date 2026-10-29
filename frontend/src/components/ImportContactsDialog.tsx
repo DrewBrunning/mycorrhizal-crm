@@ -31,6 +31,8 @@ import {
   TablePagination,
   TableRow,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from '@mui/material';
 import { useCallback, useState } from 'react';
@@ -118,6 +120,8 @@ export default function ImportContactsDialog({
   const [previewResponse, setPreviewResponse] = useState<ImportPreviewResponse | null>(null);
   const [rowActions, setRowActions] = useState<Map<number, string>>(new Map());
   const [previewPage, setPreviewPage] = useState(0);
+  // #2184: the summary badges double as filters; null shows every row.
+  const [previewFilter, setPreviewFilter] = useState<PreviewFilter | null>(null);
 
   // Result state
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
@@ -141,6 +145,7 @@ export default function ImportContactsDialog({
     setPreviewResponse(null);
     setRowActions(new Map());
     setPreviewPage(0);
+    setPreviewFilter(null);
     setImportResult(null);
     setLoading(false);
     setError(null);
@@ -187,6 +192,7 @@ export default function ImportContactsDialog({
         const response = await uploadVCFForImport(file);
         setPreviewResponse(response);
         setPreviewPage(0);
+        setPreviewFilter(null);
 
         const candidates = collectCustomFieldCandidates(response.rows);
         setCustomFieldCandidates(candidates);
@@ -290,6 +296,7 @@ export default function ImportContactsDialog({
         : await getImportPreview(uploadResponse.session_id, mappings);
       setPreviewResponse(response);
       setPreviewPage(0);
+      setPreviewFilter(null);
 
       // Initialize row actions based on suggested actions
       const initialActions = new Map<number, string>();
@@ -786,8 +793,19 @@ export default function ImportContactsDialog({
     // T56: client-side page of the preview rows. Rows whose index lands on
     // the current page are the only ones mounted, so a full address-book
     // import never mounts hundreds of cards at once.
+    const filteredRows = previewResponse.rows.filter((r) =>
+      rowMatchesFilter(r, rowActions.get(r.row_index) ?? r.suggested_action, previewFilter),
+    );
     const pageStart = previewPage * PREVIEW_PAGE_SIZE;
-    const pageRows = previewResponse.rows.slice(pageStart, pageStart + PREVIEW_PAGE_SIZE);
+    const pageRows = filteredRows.slice(pageStart, pageStart + PREVIEW_PAGE_SIZE);
+    const toggleFilter = (next: PreviewFilter) => {
+      setPreviewFilter((current) => (current === next ? null : next));
+      setPreviewPage(0);
+    };
+    const clearFilter = () => {
+      setPreviewFilter(null);
+      setPreviewPage(0);
+    };
 
     return (
       <Box>
@@ -816,7 +834,9 @@ export default function ImportContactsDialog({
               count: toCreate,
             })}
             color="success"
-            variant="outlined"
+            variant={previewFilter === 'add' ? 'filled' : 'outlined'}
+            aria-pressed={previewFilter === 'add'}
+            onClick={() => toggleFilter('add')}
           />
           <Chip
             icon={<WarningIcon />}
@@ -824,11 +844,15 @@ export default function ImportContactsDialog({
               count: toUpdate,
             })}
             color="warning"
-            variant="outlined"
+            variant={previewFilter === 'update' ? 'filled' : 'outlined'}
+            aria-pressed={previewFilter === 'update'}
+            onClick={() => toggleFilter('update')}
           />
           <Chip
             label={t('contacts.import.preview.toSkip', '{{count}} to skip', { count: toSkip })}
-            variant="outlined"
+            variant={previewFilter === 'skip' ? 'filled' : 'outlined'}
+            aria-pressed={previewFilter === 'skip'}
+            onClick={() => toggleFilter('skip')}
           />
           {errorCount > 0 && (
             <Chip
@@ -837,8 +861,15 @@ export default function ImportContactsDialog({
                 count: errorCount,
               })}
               color="error"
-              variant="outlined"
+              variant={previewFilter === 'errors' ? 'filled' : 'outlined'}
+              aria-pressed={previewFilter === 'errors'}
+              onClick={() => toggleFilter('errors')}
             />
+          )}
+          {previewFilter !== null && (
+            <Button size="small" onClick={clearFilter}>
+              {t('contacts.import.preview.showAll', 'Show all')}
+            </Button>
           )}
           <Box sx={{ flexGrow: 1 }} />
           <Button size="small" onClick={handleAcceptAll}>
@@ -894,6 +925,11 @@ export default function ImportContactsDialog({
             overflowY: 'auto',
           }}
         >
+          {filteredRows.length === 0 && (
+            <Typography variant="body2" sx={{ color: 'text.secondary', py: 2 }}>
+              {t('contacts.import.preview.noRowsMatch', 'No rows match this filter.')}
+            </Typography>
+          )}
           {pageRows.map((row) => (
             <ImportRowCard
               key={row.row_index}
@@ -903,10 +939,10 @@ export default function ImportContactsDialog({
             />
           ))}
         </Box>
-        {previewResponse.rows.length > PREVIEW_PAGE_SIZE && (
+        {filteredRows.length > PREVIEW_PAGE_SIZE && (
           <TablePagination
             component="div"
-            count={previewResponse.rows.length}
+            count={filteredRows.length}
             page={previewPage}
             rowsPerPage={PREVIEW_PAGE_SIZE}
             rowsPerPageOptions={[PREVIEW_PAGE_SIZE]}
@@ -1021,6 +1057,7 @@ export default function ImportContactsDialog({
                 setPreviewResponse(null);
                 setRowActions(new Map());
                 setPreviewPage(0);
+                setPreviewFilter(null);
               }}
             >
               {t('common.back', 'Back')}
@@ -1140,6 +1177,22 @@ export default function ImportContactsDialog({
 }
 
 // --- T96 review-step helpers (T96) -------------------------------
+
+// PreviewFilter is the set of review-step filters the summary badges toggle
+// (#2184). 'add' | 'update' | 'skip' match a row's CURRENT action, so the badge
+// count and the filtered list always agree; 'errors' matches invalid rows.
+type PreviewFilter = 'add' | 'update' | 'skip' | 'errors';
+
+function rowMatchesFilter(
+  row: ImportRowPreview,
+  action: string,
+  filter: PreviewFilter | null,
+): boolean {
+  if (filter === null) return true;
+  if (filter === 'errors') return row.validation_errors.length > 0;
+  if (filter === 'skip') return action !== 'add' && action !== 'update';
+  return action === filter;
+}
 
 // isConflictRow reports whether a row needs a conscious decision: it matches an
 // existing record (duplicate_match) or duplicates an earlier row of the same
@@ -1283,6 +1336,9 @@ function ImportRowCard({
     t('contacts.import.preview.unnamed', 'Unnamed');
   const sub = row.parsed_contact.email || row.parsed_contact.phone || '';
   const canMerge = !hasErrors && !!row.duplicate_match;
+  // #2185: Keep both / Discard new only make sense against a duplicate; a
+  // plain new row is just Keep or Skip. Same underlying add/skip values.
+  const isDuplicate = !!row.duplicate_match || row.batch_duplicate_of !== null;
 
   const reasonLabel = (reason: string) => {
     switch (reason) {
@@ -1299,6 +1355,8 @@ function ImportRowCard({
 
   return (
     <Box
+      role="group"
+      aria-label={name}
       sx={{
         p: 1.5,
         border: '1px solid',
@@ -1394,36 +1452,34 @@ function ImportRowCard({
           {!hasErrors && row.merge_diff && <ImportMergeDiffSummary diff={row.merge_diff} />}
         </Box>
       </Box>
-      <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
-        <Button
-          size="small"
-          variant={action === 'update' ? 'contained' : 'outlined'}
-          onClick={() => onActionChange('update')}
-          disabled={!canMerge}
-          aria-pressed={action === 'update'}
-        >
-          {t('contacts.import.preview.actionMerge', 'Merge')}
-        </Button>
-        <Button
-          size="small"
-          variant={action === 'add' ? 'contained' : 'outlined'}
-          onClick={() => onActionChange('add')}
-          disabled={hasErrors}
-          aria-pressed={action === 'add'}
-        >
-          {t('contacts.import.preview.actionKeepBoth', 'Keep Both')}
-        </Button>
-        <Button
-          size="small"
-          variant={action === 'skip' ? 'contained' : 'outlined'}
-          color={action === 'skip' ? 'inherit' : undefined}
-          onClick={() => onActionChange('skip')}
-          disabled={hasErrors}
-          aria-pressed={action === 'skip'}
-        >
-          {t('contacts.import.preview.actionDiscard', 'Discard New')}
-        </Button>
-      </Box>
+      <ToggleButtonGroup
+        exclusive
+        size="small"
+        value={action}
+        aria-label={t('contacts.import.preview.rowActions', 'Import action for {{name}}', {
+          name,
+        })}
+        onChange={(_, next: 'skip' | 'add' | 'update' | null) => {
+          if (next !== null) onActionChange(next);
+        }}
+        sx={{ mt: 1 }}
+      >
+        <ToggleButton value="add" disabled={hasErrors}>
+          {isDuplicate
+            ? t('contacts.import.preview.actionKeepBoth', 'Keep both')
+            : t('contacts.import.preview.actionKeep', 'Keep')}
+        </ToggleButton>
+        {canMerge && (
+          <ToggleButton value="update">
+            {t('contacts.import.preview.actionMerge', 'Merge')}
+          </ToggleButton>
+        )}
+        <ToggleButton value="skip" disabled={hasErrors}>
+          {isDuplicate
+            ? t('contacts.import.preview.actionDiscard', 'Discard new')
+            : t('contacts.import.preview.actionSkip', 'Skip')}
+        </ToggleButton>
+      </ToggleButtonGroup>
     </Box>
   );
 }

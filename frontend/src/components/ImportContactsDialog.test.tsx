@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import { getFieldDefinitions } from '../api/fieldDefinitions';
@@ -460,13 +460,9 @@ test('within-batch duplicates are flagged, default to Discard, and cannot merge'
   expect(screen.getByText('1 to create')).toBeInTheDocument();
   expect(screen.getByText('1 to skip')).toBeInTheDocument();
 
-  const mergeButtons = screen.getAllByRole('button', { name: /^merge$/i });
-  // Row 1 (batch dup) has no mergeable target; row 0 (new) also has none —
-  // both Merge buttons must be disabled.
-  expect(mergeButtons.length).toBeGreaterThan(0);
-  mergeButtons.forEach((b) => {
-    expect(b).toBeDisabled();
-  });
+  // Neither the batch twin nor the new row has a mergeable target, so Merge
+  // is not offered at all (#2185).
+  expect(screen.queryByRole('button', { name: /^merge$/i })).not.toBeInTheDocument();
 });
 
 test('an upload failure surfaces the error without advancing the step', async () => {
@@ -846,4 +842,145 @@ test('fixed circles/tags are sent on preview and confirm and summarised (issue #
     assign_circle_ids: ['c-1'],
     assign_tag_ids: ['t-1'],
   });
+});
+
+// --- #2184 / #2185: summary badges as filters, per-row actions by kind ---
+
+// One new contact, one DB duplicate (defaults to update), one within-batch
+// duplicate (defaults to skip) and one invalid card.
+async function loadMixedPreview() {
+  await loadPreview([
+    row({ parsed_contact: { firstname: 'Newbie', lastname: 'One', email: 'new@example.com' } }),
+    row({
+      row_index: 1,
+      parsed_contact: { firstname: 'Bob', lastname: 'Smith', email: 'bob@example.com' },
+      duplicate_match: dupMatch({ existing_firstname: 'Bob', existing_lastname: 'Smith' }),
+      suggested_action: 'update',
+    }),
+    row({
+      row_index: 2,
+      parsed_contact: { firstname: 'Twin', lastname: 'Two', email: 'new@example.com' },
+      suggested_action: 'skip',
+      batch_duplicate_of: 0,
+    }),
+    row({
+      row_index: 3,
+      parsed_contact: { firstname: 'Broken', lastname: '', email: 'nope' },
+      validation_errors: ['invalid email'],
+      suggested_action: 'skip',
+    }),
+  ]);
+}
+
+function visibleNames() {
+  return ['Newbie One', 'Bob Smith', 'Twin Two', 'Broken'].filter(
+    (n) => screen.queryByText(n) !== null,
+  );
+}
+
+// Each row card is a labelled group so tests (and screen readers) can scope to it.
+function card(name: string) {
+  return screen.getByRole('group', { name });
+}
+
+test('clicking a summary badge filters the rows and clicking it again clears the filter', async () => {
+  await loadMixedPreview();
+  expect(visibleNames()).toHaveLength(4);
+
+  const create = screen.getByRole('button', { name: '1 to create' });
+  expect(create).toHaveAttribute('aria-pressed', 'false');
+  fireEvent.click(create);
+  expect(create).toHaveAttribute('aria-pressed', 'true');
+  expect(visibleNames()).toEqual(['Newbie One']);
+  fireEvent.click(create);
+  expect(create).toHaveAttribute('aria-pressed', 'false');
+  expect(visibleNames()).toHaveLength(4);
+
+  fireEvent.click(screen.getByRole('button', { name: '1 to update' }));
+  expect(visibleNames()).toEqual(['Bob Smith']);
+
+  // Switching badge replaces the filter rather than stacking.
+  fireEvent.click(screen.getByRole('button', { name: '2 to skip' }));
+  expect(visibleNames()).toEqual(['Twin Two', 'Broken']);
+
+  fireEvent.click(screen.getByRole('button', { name: '1 with an error' }));
+  expect(visibleNames()).toEqual(['Broken']);
+
+  // The explicit "Show all" control clears too.
+  fireEvent.click(screen.getByRole('button', { name: /show all/i }));
+  expect(visibleNames()).toHaveLength(4);
+  expect(screen.getByRole('button', { name: '1 with an error' })).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  );
+});
+
+test('a filtered list updates its badge counts as row actions change', async () => {
+  await loadMixedPreview();
+  fireEvent.click(screen.getByRole('button', { name: '1 to update' }));
+  // Skipping the only update row empties the filtered list and moves counts.
+  fireEvent.click(screen.getByRole('button', { name: /discard new/i }));
+  expect(screen.getByRole('button', { name: '0 to update' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '3 to skip' })).toBeInTheDocument();
+  expect(screen.getByText(/no rows match/i)).toBeInTheDocument();
+});
+
+test('non-duplicate rows offer exactly Keep and Skip; duplicates offer Keep both, Merge, Discard new', async () => {
+  await loadMixedPreview();
+  const labels = (name: string) =>
+    within(card(name))
+      .getAllByRole('button')
+      .map((b) => b.textContent);
+  expect(labels('Newbie One')).toEqual(['Keep', 'Skip']);
+  expect(labels('Bob Smith')).toEqual(['Keep both', 'Merge', 'Discard new']);
+});
+
+test('a within-batch duplicate offers Keep both and Discard new but no Merge', async () => {
+  await loadMixedPreview();
+  const labels = within(card('Twin Two'))
+    .getAllByRole('button')
+    .map((b) => b.textContent);
+  expect(labels).toEqual(['Keep both', 'Discard new']);
+});
+
+test('the selected action is aria-pressed and Skip updates the to-skip count', async () => {
+  await loadMixedPreview();
+  const newbie = within(card('Newbie One'));
+  expect(newbie.getByRole('button', { name: 'Keep' })).toHaveAttribute('aria-pressed', 'true');
+  expect(newbie.getByRole('button', { name: 'Skip' })).toHaveAttribute('aria-pressed', 'false');
+  expect(screen.getByRole('button', { name: '2 to skip' })).toBeInTheDocument();
+
+  fireEvent.click(newbie.getByRole('button', { name: 'Skip' }));
+  expect(newbie.getByRole('button', { name: 'Skip' })).toHaveAttribute('aria-pressed', 'true');
+  expect(newbie.getByRole('button', { name: 'Keep' })).toHaveAttribute('aria-pressed', 'false');
+  expect(screen.getByRole('button', { name: '3 to skip' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '0 to create' })).toBeInTheDocument();
+
+  // Duplicate row: Merge is selected by default.
+  expect(within(card('Bob Smith')).getByRole('button', { name: 'Merge' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+});
+
+test('the submitted payload keeps the existing add/update/skip shape', async () => {
+  vi.mocked(confirmVCFImport).mockResolvedValue({
+    total_processed: 4,
+    created: 0,
+    updated: 1,
+    skipped: 3,
+    errors: [],
+  });
+  await loadMixedPreview();
+  fireEvent.click(within(card('Newbie One')).getByRole('button', { name: 'Skip' }));
+  fireEvent.click(within(card('Twin Two')).getByRole('button', { name: 'Keep both' }));
+  fireEvent.click(screen.getByRole('button', { name: /apply decision/i }));
+
+  await waitFor(() => expect(confirmVCFImport).toHaveBeenCalled());
+  expect(vi.mocked(confirmVCFImport).mock.calls[0][1]).toEqual([
+    { row_index: 0, action: 'skip' },
+    { row_index: 1, action: 'update' },
+    { row_index: 2, action: 'add' },
+    { row_index: 3, action: 'skip' },
+  ]);
 });
