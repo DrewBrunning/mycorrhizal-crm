@@ -671,7 +671,9 @@ private fun localizedReason(reason: ErrorReason?): String? {
         )
 
         ErrorReasonCode.ACCOUNT_LANGUAGE_UNSUPPORTED ->
-            reason.str("supported")?.let { stringResource(R.string.error_reason_account_language_unsupported, it) }
+            reason.str("supported")?.let {
+                stringResource(R.string.error_reason_account_language_unsupported, it)
+            }
 
         ErrorReasonCode.ACCOUNT_DATE_FORMAT_INVALID -> stringResource(
             R.string.error_reason_account_date_format_invalid
@@ -714,7 +716,9 @@ private fun localizedReason(reason: ErrorReason?): String? {
         )
 
         ErrorReasonCode.ACCOUNT_API_TOKEN_SCOPE_UNKNOWN ->
-            reason.str("scope")?.let { stringResource(R.string.error_reason_account_api_token_scope_unknown, it) }
+            reason.str("scope")?.let {
+                stringResource(R.string.error_reason_account_api_token_scope_unknown, it)
+            }
 
         ErrorReasonCode.ACCOUNT_API_TOKEN_EXPIRY_CONFLICT -> stringResource(
             R.string.error_reason_account_api_token_expiry_conflict
@@ -737,7 +741,9 @@ private fun localizedReason(reason: ErrorReason?): String? {
         )
 
         ErrorReasonCode.CONTACT_SHARE_SECTION_UNKNOWN ->
-            reason.str("section")?.let { stringResource(R.string.error_reason_contact_share_section_unknown, it) }
+            reason.str("section")?.let {
+                stringResource(R.string.error_reason_contact_share_section_unknown, it)
+            }
 
         ErrorReasonCode.CONTACT_SHARE_ALREADY_RESPONDED -> stringResource(
             R.string.error_reason_contact_share_already_responded
