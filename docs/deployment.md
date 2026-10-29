@@ -715,8 +715,16 @@ storage *trend*, backed by a small time-series the app samples itself:
   there are fewer than 14 days of samples.
 - **The threshold.** `usage_percent` is folded against two tiers —
   `STORAGE_WARN_PERCENT` (default **75**) and `STORAGE_CRITICAL_PERCENT` (default **90**) — into
-  `ok | warning | critical`, with the same -5% hysteresis `diskSpaceCondition` uses (once a tier is
-  entered, usage must drop 5 points below its threshold to clear). A warning/critical tier elevates
+  `ok | warning | critical`. A tier is entered only when usage is at or above its percentage
+  **and** free space is below its absolute floor: `STORAGE_WARN_MIN_FREE_GB` (default **10**) for
+  warning, `STORAGE_CRITICAL_MIN_FREE_GB` (default **2**) for critical (issue #2182). A large disk
+  at 80% used with 200 GB free is therefore `ok`; 95% used with 5 GB free is `warning`, not
+  `critical`. The defaults sit well above the free space an operation needs (a backup copy of a
+  100k-contact database is ~450 MB; see `docs/development/capacity-under-constraint.md`). Set a
+  floor to `0` to ignore free space for that tier and use the percentage alone (the pre-v1.6
+  behaviour). The critical floor may not exceed a non-zero warn floor. The same -5% hysteresis
+  `diskSpaceCondition` uses applies (once a tier is entered, usage must drop 5 points below its
+  threshold, or free space recover 10% above its floor, to clear). A warning/critical tier elevates
   the endpoint's `overall` status to at least `degraded` — never `unhealthy`, which stays reserved
   for a database read failure.
 

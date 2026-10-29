@@ -160,7 +160,8 @@ type SystemStatusStorage struct {
 
 	// UsagePercent is the filesystem holding the DB, used as a percentage of
 	// total; null when the filesystem cannot be stat'ed. Threshold folds it
-	// against STORAGE_WARN_PERCENT / STORAGE_CRITICAL_PERCENT (with -5%
+	// against STORAGE_WARN_PERCENT / STORAGE_CRITICAL_PERCENT, each
+	// gated by its STORAGE_*_MIN_FREE_GB floor (issue #2182; with -5%
 	// hysteresis) into ok | warning | critical.
 	UsagePercent *int   `json:"usage_percent"`
 	Threshold    string `json:"threshold"`
@@ -281,7 +282,7 @@ func systemStatusStorage(db *gorm.DB, cfg config.Config) SystemStatusStorage {
 	if ok && total > 0 {
 		usedPct := int((total - free) / total * 100)
 		out.UsagePercent = &usedPct
-		out.Threshold = services.StorageThreshold(context.Background(), db, usedPct, cfg.StorageWarnPercent, cfg.StorageCriticalPercent)
+		out.Threshold = services.StorageThreshold(context.Background(), db, usedPct, uint64(free), services.StorageLimitsFromConfig(cfg))
 	} else {
 		out.Threshold = services.StorageThresholdOK
 	}
