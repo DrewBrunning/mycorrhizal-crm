@@ -987,6 +987,72 @@ func TestExportContactsAsJSContact_UserScoping(t *testing.T) {
 	assert.NotContains(t, body, "OtherUserContact")
 }
 
+// Issue #2196: the web client sends ?vcard_uid= for a single-contact export;
+// the handler must scope to that contact (mirrors ExportContactsAsVCF).
+func TestExportContactsAsJSContact_VCardUIDScopesToSingleContact(t *testing.T) {
+	db, router := setupRouter(t)
+	registerJSContactRoute(router, "")
+
+	var user models.User
+	db.First(&user)
+	target := models.Contact{UserID: user.ID, Firstname: "TargetPerson", Lastname: "One"}
+	require.NoError(t, db.Create(&target).Error)
+	require.NoError(t, db.Create(&models.Contact{UserID: user.ID, Firstname: "BystanderPerson", Lastname: "Two"}).Error)
+	require.NotEmpty(t, target.VCardUID)
+
+	req, _ := http.NewRequest("GET", "/export/jscontact?vcard_uid="+target.VCardUID, nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	var cards []map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &cards))
+	assert.Len(t, cards, 1)
+	assert.Contains(t, w.Body.String(), "TargetPerson")
+	assert.NotContains(t, w.Body.String(), "BystanderPerson")
+}
+
+// An unknown uid yields an empty array, matching the VCF handler's behavior
+// (empty result, not 404).
+func TestExportContactsAsJSContact_VCardUIDUnknown_Empty(t *testing.T) {
+	db, router := setupRouter(t)
+	registerJSContactRoute(router, "")
+
+	var user models.User
+	db.First(&user)
+	require.NoError(t, db.Create(&models.Contact{UserID: user.ID, Firstname: "SomeoneElse", Lastname: "One"}).Error)
+
+	req, _ := http.NewRequest("GET", "/export/jscontact?vcard_uid=does-not-exist", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "[]", strings.TrimSpace(w.Body.String()))
+}
+
+// Ownership regression: another user's vcard_uid must not export their card.
+func TestExportContactsAsJSContact_VCardUIDOtherUser_NotExported(t *testing.T) {
+	db, router := setupRouter(t)
+	registerJSContactRoute(router, "")
+
+	var user models.User
+	db.First(&user)
+	otherUser := models.User{Username: "other", Password: "password456", Email: "other@example.com"}
+	require.NoError(t, db.Create(&otherUser).Error)
+	theirs := models.Contact{UserID: otherUser.ID, Firstname: "OtherUserContact", Lastname: "Two"}
+	require.NoError(t, db.Create(&theirs).Error)
+	require.NoError(t, db.Create(&models.Contact{UserID: user.ID, Firstname: "MineContact", Lastname: "One"}).Error)
+
+	req, _ := http.NewRequest("GET", "/export/jscontact?vcard_uid="+theirs.VCardUID, nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "[]", strings.TrimSpace(w.Body.String()))
+	assert.NotContains(t, w.Body.String(), "OtherUserContact")
+	assert.NotContains(t, w.Body.String(), "MineContact")
+}
+
 func TestExportContactsAsJSContact_Empty(t *testing.T) {
 	_, router := setupRouter(t)
 	registerJSContactRoute(router, "")

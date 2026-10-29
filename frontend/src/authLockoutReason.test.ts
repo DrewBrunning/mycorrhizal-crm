@@ -50,6 +50,99 @@ describe('lockout 429 reason codes', () => {
     await expect(login2FA('000000')).rejects.toThrow(fallback);
   });
 
+  test('login2FA falls back when the 429 body is not an object', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({ ok: false, status: 429, json: async () => null })
+        .mockResolvedValueOnce({ ok: false, status: 429, json: async () => 'not json' }),
+    );
+    await expect(login2FA('000000')).rejects.toThrow(
+      'Too many failed attempts. Please try again later.',
+    );
+    await expect(login2FA('000000')).rejects.toThrow(
+      'Too many failed attempts. Please try again later.',
+    );
+  });
+
+  test('login2FA falls back when the message is not a non-empty string', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 429,
+          json: async () => lockedBody({ message: 42, reason_code: 'auth_not_a_real_code' }),
+        })
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 429,
+          json: async () => lockedBody({ message: '', reason_code: 'auth_not_a_real_code' }),
+        }),
+    );
+    await expect(login2FA('000000')).rejects.toThrow(
+      'Too many failed attempts. Please try again later.',
+    );
+    await expect(login2FA('000000')).rejects.toThrow(
+      'Too many failed attempts. Please try again later.',
+    );
+  });
+
+  test('passkey sign-in uses the envelope message when no reason resolves', async () => {
+    stubWebAuthn();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce({
+        ok: false,
+        status: 409,
+        json: async () => ({ error: { code: 'CONFLICT', message: 'Server says no' } }),
+      }),
+    );
+    await expect(loginWithPasskey()).rejects.toThrow('Server says no');
+  });
+
+  test('passkey sign-in resolves an envelope reason with params', async () => {
+    stubWebAuthn();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce({
+        ok: false,
+        status: 429,
+        json: async () => ({
+          error: {
+            message: 'English fallback',
+            reason_code: 'auth_account_locked',
+            reason_params: { retry_after: 30 },
+          },
+        }),
+      }),
+    );
+    await expect(loginWithPasskey()).rejects.toThrow('Too many failed attempts. Try again in 30 s');
+  });
+
+  test('passkey sign-in ignores a non-string reason and a non-object error', async () => {
+    stubWebAuthn();
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 409,
+          json: async () => ({ error: { reason_code: 42, message: 'Server says no' } }),
+        })
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 409,
+          json: async () => ({ error: 'plain text' }),
+        }),
+    );
+    await expect(loginWithPasskey()).rejects.toThrow('Server says no');
+    await expect(loginWithPasskey()).rejects.toThrow('Unable to start passkey sign-in.');
+  });
+
   test('passkey sign-in resolves the lockout reason and an envelope reason', async () => {
     stubWebAuthn();
     vi.stubGlobal(

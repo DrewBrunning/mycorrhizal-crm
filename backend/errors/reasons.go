@@ -62,6 +62,25 @@ const (
 	ReasonContactBulkCustomFieldInBoth   ReasonCode = "contact_bulk_custom_field_in_both"
 	ReasonContactBulkCustomFieldInvalid  ReasonCode = "contact_bulk_custom_field_invalid"
 
+	// Meerkat live import (issue #2100, services/meerkat_import_*.go).
+	ReasonMeerkatUploadMissing         ReasonCode = "meerkat_upload_missing"
+	ReasonMeerkatSessionNotFound       ReasonCode = "meerkat_session_not_found"
+	ReasonMeerkatSessionNotOwned       ReasonCode = "meerkat_session_not_owned"
+	ReasonMeerkatSessionExpired        ReasonCode = "meerkat_session_expired"
+	ReasonMeerkatDBSize                ReasonCode = "meerkat_db_size"
+	ReasonMeerkatUploadNotSQLite       ReasonCode = "meerkat_upload_not_sqlite"
+	ReasonMeerkatUploadUnreadable      ReasonCode = "meerkat_upload_unreadable"
+	ReasonMeerkatFileNotMeerkat        ReasonCode = "meerkat_file_not_meerkat"
+	ReasonMeerkatDBUnreadable          ReasonCode = "meerkat_db_unreadable"
+	ReasonMeerkatDBTooManyContacts     ReasonCode = "meerkat_db_too_many_contacts"
+	ReasonMeerkatDBTooManyRecords      ReasonCode = "meerkat_db_too_many_records"
+	ReasonMeerkatImportInProgress      ReasonCode = "meerkat_import_in_progress"
+	ReasonMeerkatNotPrepared           ReasonCode = "meerkat_not_prepared"
+	ReasonMeerkatAPIError              ReasonCode = "meerkat_api_error"
+	ReasonMeerkatUpstreamError         ReasonCode = "meerkat_upstream_error"
+	ReasonMeerkatSignInInputMissing    ReasonCode = "meerkat_sign_in_input_missing"
+	ReasonMeerkatRemoteTooManyContacts ReasonCode = "meerkat_remote_too_many_contacts"
+	ReasonMeerkatVersionUntested       ReasonCode = "meerkat_version_untested"
 	// Constructor defaults (issue #2099).
 	ReasonCommonDatabaseError                       ReasonCode = "common_database_error"
 	ReasonCommonDatabaseBusy                        ReasonCode = "common_database_busy"
@@ -208,6 +227,24 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonContactBulkCustomFieldInBoth:   {Template: "A custom field cannot be in both custom_set and custom_clear"},
 	ReasonContactBulkCustomFieldInvalid:  {Template: "{field} has an invalid value", Params: []string{"field"}},
 
+	ReasonMeerkatUploadMissing:         {Template: "No file uploaded"},
+	ReasonMeerkatSessionNotFound:       {Template: "Import session expired or not found"},
+	ReasonMeerkatSessionNotOwned:       {Template: "Session does not belong to current user"},
+	ReasonMeerkatSessionExpired:        {Template: "Import session expired"},
+	ReasonMeerkatDBSize:                {Template: "The database file is empty or larger than the 100 MB limit"},
+	ReasonMeerkatUploadNotSQLite:       {Template: "Upload a Meerkat SQLite database (.db, .sqlite or .sqlite3)"},
+	ReasonMeerkatUploadUnreadable:      {Template: "The upload could not be read"},
+	ReasonMeerkatFileNotMeerkat:        {Template: "That file is not a Meerkat database"},
+	ReasonMeerkatDBUnreadable:          {Template: "The database could not be read as a Meerkat database"},
+	ReasonMeerkatDBTooManyContacts:     {Template: "This database has more contacts than the import supports"},
+	ReasonMeerkatDBTooManyRecords:      {Template: "This database has more records than the import supports"},
+	ReasonMeerkatImportInProgress:      {Template: "This import is already being prepared"},
+	ReasonMeerkatNotPrepared:           {Template: "The Meerkat database is not prepared yet"},
+	ReasonMeerkatAPIError:              {Template: "{reason}", Params: []string{"reason"}},
+	ReasonMeerkatUpstreamError:         {Template: "{reason}", Params: []string{"reason"}},
+	ReasonMeerkatSignInInputMissing:    {Template: "Enter a Meerkat API token, or a username and password"},
+	ReasonMeerkatRemoteTooManyContacts: {Template: "Contacts on this Meerkat account: {total}. The import supports at most {max}", Params: []string{"total", "max"}},
+	ReasonMeerkatVersionUntested:       {Template: "This Meerkat version is not tested with the importer. Confirm to try anyway; nothing is written until you review the preview."},
 	// Constructor defaults (issue #2099).
 	ReasonCommonDatabaseError:                       {Template: "Something went wrong while saving or loading your data"},
 	ReasonCommonDatabaseBusy:                        {Template: "The server is busy. Try again in a moment"},

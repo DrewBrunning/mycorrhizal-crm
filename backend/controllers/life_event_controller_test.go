@@ -195,8 +195,10 @@ func TestListLifeEventsFiltersByEntityID(t *testing.T) {
 	bob := models.Contact{UserID: user.ID, Firstname: "Bob"}
 	db.Create(&alice)
 	db.Create(&bob)
-	db.Create(&models.LifeEvent{UserID: user.ID, EntityID: alice.VCardUID, Type: models.LifeEventTypeGraduated})
-	db.Create(&models.LifeEvent{UserID: user.ID, EntityID: bob.VCardUID, Type: models.LifeEventTypeMoved})
+	aliceEvent := models.LifeEvent{UserID: user.ID, EntityID: alice.VCardUID, Type: models.LifeEventTypeGraduated}
+	bobEvent := models.LifeEvent{UserID: user.ID, EntityID: bob.VCardUID, Type: models.LifeEventTypeMoved}
+	require.NoError(t, db.Create(&aliceEvent).Error)
+	require.NoError(t, db.Create(&bobEvent).Error)
 
 	req, _ := http.NewRequest("GET", "/life-events?entity_id="+alice.VCardUID, nil)
 	w := httptest.NewRecorder()
@@ -204,9 +206,9 @@ func TestListLifeEventsFiltersByEntityID(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var responseBody map[string]any
-	json.Unmarshal(w.Body.Bytes(), &responseBody)
-	assert.Len(t, responseBody["life_events"], 1)
+	got := idsFromList(t, router, "/life-events?entity_id="+alice.VCardUID, "life_events")
+	assert.Equal(t, []string{aliceEvent.ID}, got, "only alice's event may be returned")
+	assert.NotContains(t, got, bobEvent.ID)
 }
 
 func TestUpdateLifeEvent(t *testing.T) {
