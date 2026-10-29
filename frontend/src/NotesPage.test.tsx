@@ -5,7 +5,7 @@ import { AnnouncerProvider } from './context/AnnouncerContext';
 import { SnackbarProvider } from './context/SnackbarContext';
 import { DateFormatProvider } from './DateFormatProvider';
 import NotesPage from './NotesPage';
-import { pickDate } from './testSupport/dateField';
+import { openDatePicker, pickDate } from './testSupport/dateField';
 
 beforeEach(() => {
   localStorage.setItem(
@@ -516,7 +516,7 @@ test('a non-412 failure on note save shows no conflict dialog and keeps the edit
   await openStaleNote();
 
   // A cleared date takes the "now" fallback on save.
-  fireEvent.click(screen.getByLabelText('Date'));
+  openDatePicker('Date');
   fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 

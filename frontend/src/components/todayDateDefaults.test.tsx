@@ -1,9 +1,10 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import { getContacts } from '../api/contacts';
 import { SnackbarProvider } from '../context/SnackbarContext';
 import { DateFormatProvider, formatDateWithFormat, getDateFormat } from '../DateFormatProvider';
+import { openDatePicker } from '../testSupport/dateField';
 import { useTimeZone } from '../testSupport/timeZone';
 import AddActivityDialog from './AddActivityDialog';
 import AddNoteDialog from './AddNoteDialog';
@@ -78,7 +79,7 @@ test('ReminderDialog defaults the date, and its min, to the local date', () => {
   );
 
   // The min is enforced by the calendar: the day before "today" is disabled.
-  fireEvent.click(screen.getByLabelText('Date *'));
+  openDatePicker('Date *');
   expect(screen.getByRole('button', { name: '10.03.2026' })).toBeDisabled();
   expect(screen.getByRole('button', { name: '11.03.2026' })).not.toBeDisabled();
 });
