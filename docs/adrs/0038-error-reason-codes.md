@@ -45,6 +45,21 @@ cannot localize server errors. Score facets already ship a
   A request path never panics over this.
 - **Logging.** `LogError` adds `reason_code` (`logger.FieldReasonCode`) when set.
 
+## Constructor defaults (issue #2099)
+
+The generic constructors attach a code themselves, so their call sites need no
+`.WithReason(...)`: `ErrDatabase`, `ErrDatabaseBusy`, `ErrInvalidCredentials`,
+`ErrTokenExpired`/`ErrTokenInvalid`, `ErrClientNotSupported`,
+`ErrRateLimitExceeded`, the three idempotency errors, `ErrMissingField`, the
+empty-message `ErrPayloadTooLarge`, and `ErrNotFound`/`ErrAlreadyExists` for a
+string-literal resource listed in `notFoundReasons`/`alreadyExistsReasons`
+(`backend/errors/reasons.go`). A resource passed as a variable, or an
+`ErrInternal` from an ordinary call site, gets no code. Only panic recovery and
+`GetAppError`'s fallback carry `common_unexpected_error`. These defaults do not
+set `details.reason` (the message already is the sentence), and
+`ErrDatabase` no longer puts the operation name in `message`; it stays in
+`details.operation` and the log line.
+
 ## Client fallback contract
 
 An unknown `reason_code`, or a missing param, means the client shows `message`

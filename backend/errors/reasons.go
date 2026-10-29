@@ -28,7 +28,7 @@ var reasonAreas = []string{
 	"bundle", "csv", "vcard", "integration", "immich", "seafile", "paperless",
 	"geopulse", "webdav", "calendar", "feed", "notification", "contact",
 	"household", "relationship", "occasion", "photo", "attachment", "validation",
-	"circle", "trash",
+	"circle", "activity", "nextcloud", "trash",
 }
 
 // Reason constants. Each must be a key of reasonRegistry (and vice versa);
@@ -81,6 +81,96 @@ const (
 	ReasonMeerkatSignInInputMissing    ReasonCode = "meerkat_sign_in_input_missing"
 	ReasonMeerkatRemoteTooManyContacts ReasonCode = "meerkat_remote_too_many_contacts"
 	ReasonMeerkatVersionUntested       ReasonCode = "meerkat_version_untested"
+	// Constructor defaults (issue #2099).
+	ReasonCommonDatabaseError                       ReasonCode = "common_database_error"
+	ReasonCommonDatabaseBusy                        ReasonCode = "common_database_busy"
+	ReasonAuthInvalidCredentials                    ReasonCode = "auth_invalid_credentials" // #nosec G101 -- reason code, not a credential
+	ReasonAuthTokenExpired                          ReasonCode = "auth_token_expired"       // #nosec G101 -- reason code, not a credential
+	ReasonAuthTokenInvalid                          ReasonCode = "auth_token_invalid"       // #nosec G101 -- reason code, not a credential
+	ReasonCommonClientNotSupported                  ReasonCode = "common_client_not_supported"
+	ReasonCommonRateLimited                         ReasonCode = "common_rate_limited"
+	ReasonCommonPayloadTooLarge                     ReasonCode = "common_payload_too_large"
+	ReasonCommonIdempotencyKeyReused                ReasonCode = "common_idempotency_key_reused"
+	ReasonCommonRequestInProgress                   ReasonCode = "common_request_in_progress"
+	ReasonCommonRequestResultUnavailable            ReasonCode = "common_request_result_unavailable"
+	ReasonValidationMissingField                    ReasonCode = "validation_missing_field"
+	ReasonCommonUnexpectedError                     ReasonCode = "common_unexpected_error"
+	ReasonActivityNotFound                          ReasonCode = "activity_not_found"
+	ReasonContactAddressNotFound                    ReasonCode = "contact_address_not_found"
+	ReasonAccountApiTokenNotFound                   ReasonCode = "account_api_token_not_found"
+	ReasonAttachmentNotFound                        ReasonCode = "attachment_not_found"
+	ReasonAttachmentFileNotFound                    ReasonCode = "attachment_file_not_found"
+	ReasonAdminAuditEventNotFound                   ReasonCode = "admin_audit_event_not_found"
+	ReasonContactCadencePolicyNotFound              ReasonCode = "contact_cadence_policy_not_found"
+	ReasonContactCadencePolicyAlreadyExists         ReasonCode = "contact_cadence_policy_already_exists"
+	ReasonCalendarSubscriptionNotFound              ReasonCode = "calendar_subscription_not_found"
+	ReasonCircleNotFound                            ReasonCode = "circle_not_found"
+	ReasonCircleMembershipNotFound                  ReasonCode = "circle_membership_not_found"
+	ReasonCircleMembershipAlreadyExists             ReasonCode = "circle_membership_already_exists"
+	ReasonContactNotFound                           ReasonCode = "contact_not_found"
+	ReasonContactShareNotFound                      ReasonCode = "contact_share_not_found"
+	ReasonContactSubscriptionNotFound               ReasonCode = "contact_subscription_not_found"
+	ReasonContactConversationAgendaItemNotFound     ReasonCode = "contact_conversation_agenda_item_not_found"
+	ReasonContactDataDecayPolicyNotFound            ReasonCode = "contact_data_decay_policy_not_found"
+	ReasonContactDataDecayPolicyAlreadyExists       ReasonCode = "contact_data_decay_policy_already_exists"
+	ReasonAuthDeviceGrantNotFound                   ReasonCode = "auth_device_grant_not_found" // #nosec G101 -- reason code, not a credential
+	ReasonNotificationDeviceRegistrationNotFound    ReasonCode = "notification_device_registration_not_found"
+	ReasonOccasionEventAttendeeNotFound             ReasonCode = "occasion_event_attendee_not_found"
+	ReasonOccasionEventAttendeeAlreadyExists        ReasonCode = "occasion_event_attendee_already_exists"
+	ReasonContactExternalActivityNotFound           ReasonCode = "contact_external_activity_not_found"
+	ReasonContactExternalActivityAlreadyExists      ReasonCode = "contact_external_activity_already_exists"
+	ReasonIntegrationExternalIdentityNotFound       ReasonCode = "integration_external_identity_not_found"
+	ReasonIntegrationExternalIdentityAlreadyExists  ReasonCode = "integration_external_identity_already_exists"
+	ReasonFeedNotFound                              ReasonCode = "feed_not_found"
+	ReasonContactFieldDefinitionNotFound            ReasonCode = "contact_field_definition_not_found"
+	ReasonContactFieldDefinitionAlreadyExists       ReasonCode = "contact_field_definition_already_exists"
+	ReasonGeopulseResourceNotFound                  ReasonCode = "geopulse_resource_not_found"
+	ReasonContactGiftNotFound                       ReasonCode = "contact_gift_not_found"
+	ReasonHouseholdNotFound                         ReasonCode = "household_not_found"
+	ReasonHouseholdMembershipNotFound               ReasonCode = "household_membership_not_found"
+	ReasonHouseholdMembershipAlreadyExists          ReasonCode = "household_membership_already_exists"
+	ReasonHouseholdSuggestionDismissalAlreadyExists ReasonCode = "household_suggestion_dismissal_already_exists"
+	ReasonPhotoImageNotFound                        ReasonCode = "photo_image_not_found"
+	ReasonImmichLinkNotFound                        ReasonCode = "immich_link_not_found"
+	ReasonImmichLinkAlreadyExists                   ReasonCode = "immich_link_already_exists"
+	ReasonImmichPersonNotFound                      ReasonCode = "immich_person_not_found"
+	ReasonContactLifeEventNotFound                  ReasonCode = "contact_life_event_not_found"
+	ReasonContactLinkFieldTypeNotFound              ReasonCode = "contact_link_field_type_not_found"
+	ReasonContactLinkFieldTypeAlreadyExists         ReasonCode = "contact_link_field_type_already_exists"
+	ReasonCommonMemberNotFound                      ReasonCode = "common_member_not_found"
+	ReasonNextcloudFileOrFolderNotFound             ReasonCode = "nextcloud_file_or_folder_not_found"
+	ReasonNextcloudLinkNotFound                     ReasonCode = "nextcloud_link_not_found"
+	ReasonNextcloudLinkAlreadyExists                ReasonCode = "nextcloud_link_already_exists"
+	ReasonContactNoteNotFound                       ReasonCode = "contact_note_not_found"
+	ReasonOccasionEventNotFound                     ReasonCode = "occasion_event_not_found"
+	ReasonOccasionObligationNotFound                ReasonCode = "occasion_obligation_not_found"
+	ReasonPaperlessDocumentNotFound                 ReasonCode = "paperless_document_not_found"
+	ReasonPaperlessLinkNotFound                     ReasonCode = "paperless_link_not_found"
+	ReasonPaperlessLinkAlreadyExists                ReasonCode = "paperless_link_already_exists"
+	ReasonAuthPasskeyNotFound                       ReasonCode = "auth_passkey_not_found"      // #nosec G101 -- reason code, not a credential
+	ReasonAuthPasskeyAlreadyExists                  ReasonCode = "auth_passkey_already_exists" // #nosec G101 -- reason code, not a credential
+	ReasonPhotoNotFound                             ReasonCode = "photo_not_found"
+	ReasonAccountPreferenceNotFound                 ReasonCode = "account_preference_not_found"
+	ReasonNotificationPushSubscriptionNotFound      ReasonCode = "notification_push_subscription_not_found"
+	ReasonContactReachOutSuggestionNotFound         ReasonCode = "contact_reach_out_suggestion_not_found"
+	ReasonAccountRecipientUserNotFound              ReasonCode = "account_recipient_user_not_found"
+	ReasonRelationshipEdgeNotFound                  ReasonCode = "relationship_edge_not_found"
+	ReasonRelationshipEdgeAlreadyExists             ReasonCode = "relationship_edge_already_exists"
+	ReasonContactReminderNotFound                   ReasonCode = "contact_reminder_not_found"
+	ReasonContactReminderCompletionNotFound         ReasonCode = "contact_reminder_completion_not_found"
+	ReasonSeafileLibraryOrFileNotFound              ReasonCode = "seafile_library_or_file_not_found"
+	ReasonSeafileLinkNotFound                       ReasonCode = "seafile_link_not_found"
+	ReasonSeafileLinkAlreadyExists                  ReasonCode = "seafile_link_already_exists"
+	ReasonAuthSessionNotFound                       ReasonCode = "auth_session_not_found" // #nosec G101 -- reason code, not a credential
+	ReasonCommonSyncConflictNotFound                ReasonCode = "common_sync_conflict_not_found"
+	ReasonContactTagNotFound                        ReasonCode = "contact_tag_not_found"
+	ReasonContactTaggingNotFound                    ReasonCode = "contact_tagging_not_found"
+	ReasonContactTaggingAlreadyExists               ReasonCode = "contact_tagging_already_exists"
+	ReasonPhotoThumbnailNotFound                    ReasonCode = "photo_thumbnail_not_found"
+	ReasonAccountUserNotFound                       ReasonCode = "account_user_not_found"
+	ReasonAccountUserAlreadyExists                  ReasonCode = "account_user_already_exists"
+	ReasonIntegrationWebhookNotFound                ReasonCode = "integration_webhook_not_found"
+	ReasonContactSomeNotFound                       ReasonCode = "contact_some_not_found"
 )
 
 var reasonRegistry = map[ReasonCode]reasonSpec{
@@ -129,6 +219,182 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonMeerkatSignInInputMissing:    {Template: "Enter a Meerkat API token, or a username and password"},
 	ReasonMeerkatRemoteTooManyContacts: {Template: "Contacts on this Meerkat account: {total}. The import supports at most {max}", Params: []string{"total", "max"}},
 	ReasonMeerkatVersionUntested:       {Template: "This Meerkat version is not tested with the importer. Confirm to try anyway; nothing is written until you review the preview."},
+	// Constructor defaults (issue #2099).
+	ReasonCommonDatabaseError:                       {Template: "Something went wrong while saving or loading your data"},
+	ReasonCommonDatabaseBusy:                        {Template: "The server is busy. Try again in a moment"},
+	ReasonAuthInvalidCredentials:                    {Template: "Invalid email or password"},
+	ReasonAuthTokenExpired:                          {Template: "Your session has expired. Sign in again"},
+	ReasonAuthTokenInvalid:                          {Template: "Your session is no longer valid. Sign in again"},
+	ReasonCommonClientNotSupported:                  {Template: "This app version is no longer supported. Update to {required_version} or later", Params: []string{"required_version"}},
+	ReasonCommonRateLimited:                         {Template: "Too many requests. Try again later"},
+	ReasonCommonPayloadTooLarge:                     {Template: "The upload is too large"},
+	ReasonCommonIdempotencyKeyReused:                {Template: "Idempotency-Key was already used for a different request; use a fresh key"},
+	ReasonCommonRequestInProgress:                   {Template: "a request with this Idempotency-Key is still being processed; retry shortly"},
+	ReasonCommonRequestResultUnavailable:            {Template: "a previous request with this Idempotency-Key completed but its response is not available for replay; do not resubmit it with this key"},
+	ReasonValidationMissingField:                    {Template: "Required field '{field}' is missing", Params: []string{"field"}},
+	ReasonCommonUnexpectedError:                     {Template: "An unexpected error occurred"},
+	ReasonActivityNotFound:                          {Template: "Activity not found"},
+	ReasonContactAddressNotFound:                    {Template: "Address not found"},
+	ReasonAccountApiTokenNotFound:                   {Template: "API token not found"},
+	ReasonAttachmentNotFound:                        {Template: "Attachment not found"},
+	ReasonAttachmentFileNotFound:                    {Template: "Attachment file not found"},
+	ReasonAdminAuditEventNotFound:                   {Template: "Audit event not found"},
+	ReasonContactCadencePolicyNotFound:              {Template: "Cadence policy not found"},
+	ReasonContactCadencePolicyAlreadyExists:         {Template: "Cadence policy already exists"},
+	ReasonCalendarSubscriptionNotFound:              {Template: "Calendar subscription not found"},
+	ReasonCircleNotFound:                            {Template: "Circle not found"},
+	ReasonCircleMembershipNotFound:                  {Template: "Circle membership not found"},
+	ReasonCircleMembershipAlreadyExists:             {Template: "Circle membership already exists"},
+	ReasonContactNotFound:                           {Template: "Contact not found"},
+	ReasonContactShareNotFound:                      {Template: "Contact share not found"},
+	ReasonContactSubscriptionNotFound:               {Template: "Contact subscription not found"},
+	ReasonContactConversationAgendaItemNotFound:     {Template: "Conversation agenda item not found"},
+	ReasonContactDataDecayPolicyNotFound:            {Template: "Data decay policy not found"},
+	ReasonContactDataDecayPolicyAlreadyExists:       {Template: "Data decay policy already exists"},
+	ReasonAuthDeviceGrantNotFound:                   {Template: "Device grant not found"},
+	ReasonNotificationDeviceRegistrationNotFound:    {Template: "Device registration not found"},
+	ReasonOccasionEventAttendeeNotFound:             {Template: "Event attendee not found"},
+	ReasonOccasionEventAttendeeAlreadyExists:        {Template: "Event attendee already exists"},
+	ReasonContactExternalActivityNotFound:           {Template: "External activity not found"},
+	ReasonContactExternalActivityAlreadyExists:      {Template: "External activity already exists"},
+	ReasonIntegrationExternalIdentityNotFound:       {Template: "External identity not found"},
+	ReasonIntegrationExternalIdentityAlreadyExists:  {Template: "External identity already exists"},
+	ReasonFeedNotFound:                              {Template: "Feed not found"},
+	ReasonContactFieldDefinitionNotFound:            {Template: "Field definition not found"},
+	ReasonContactFieldDefinitionAlreadyExists:       {Template: "Field definition already exists"},
+	ReasonGeopulseResourceNotFound:                  {Template: "GeoPulse resource not found"},
+	ReasonContactGiftNotFound:                       {Template: "Gift not found"},
+	ReasonHouseholdNotFound:                         {Template: "Household not found"},
+	ReasonHouseholdMembershipNotFound:               {Template: "Household membership not found"},
+	ReasonHouseholdMembershipAlreadyExists:          {Template: "Household membership already exists"},
+	ReasonHouseholdSuggestionDismissalAlreadyExists: {Template: "Household suggestion dismissal already exists"},
+	ReasonPhotoImageNotFound:                        {Template: "Image not found"},
+	ReasonImmichLinkNotFound:                        {Template: "Immich link not found"},
+	ReasonImmichLinkAlreadyExists:                   {Template: "Immich link already exists"},
+	ReasonImmichPersonNotFound:                      {Template: "Immich person not found"},
+	ReasonContactLifeEventNotFound:                  {Template: "Life event not found"},
+	ReasonContactLinkFieldTypeNotFound:              {Template: "Link field type not found"},
+	ReasonContactLinkFieldTypeAlreadyExists:         {Template: "Link field type already exists"},
+	ReasonCommonMemberNotFound:                      {Template: "Member not found"},
+	ReasonNextcloudFileOrFolderNotFound:             {Template: "Nextcloud file or folder not found"},
+	ReasonNextcloudLinkNotFound:                     {Template: "Nextcloud link not found"},
+	ReasonNextcloudLinkAlreadyExists:                {Template: "Nextcloud link already exists"},
+	ReasonContactNoteNotFound:                       {Template: "Note not found"},
+	ReasonOccasionEventNotFound:                     {Template: "Occasion event not found"},
+	ReasonOccasionObligationNotFound:                {Template: "Occasion obligation not found"},
+	ReasonPaperlessDocumentNotFound:                 {Template: "Paperless document not found"},
+	ReasonPaperlessLinkNotFound:                     {Template: "Paperless link not found"},
+	ReasonPaperlessLinkAlreadyExists:                {Template: "Paperless link already exists"},
+	ReasonAuthPasskeyNotFound:                       {Template: "Passkey not found"},
+	ReasonAuthPasskeyAlreadyExists:                  {Template: "Passkey already exists"},
+	ReasonPhotoNotFound:                             {Template: "Photo not found"},
+	ReasonAccountPreferenceNotFound:                 {Template: "Preference not found"},
+	ReasonNotificationPushSubscriptionNotFound:      {Template: "Push subscription not found"},
+	ReasonContactReachOutSuggestionNotFound:         {Template: "Reach-out suggestion not found"},
+	ReasonAccountRecipientUserNotFound:              {Template: "Recipient user not found"},
+	ReasonRelationshipEdgeNotFound:                  {Template: "Relationship edge not found"},
+	ReasonRelationshipEdgeAlreadyExists:             {Template: "Relationship edge already exists"},
+	ReasonContactReminderNotFound:                   {Template: "Reminder not found"},
+	ReasonContactReminderCompletionNotFound:         {Template: "Reminder completion not found"},
+	ReasonSeafileLibraryOrFileNotFound:              {Template: "Seafile library or file not found"},
+	ReasonSeafileLinkNotFound:                       {Template: "Seafile link not found"},
+	ReasonSeafileLinkAlreadyExists:                  {Template: "Seafile link already exists"},
+	ReasonAuthSessionNotFound:                       {Template: "session not found"},
+	ReasonCommonSyncConflictNotFound:                {Template: "Sync conflict not found"},
+	ReasonContactTagNotFound:                        {Template: "Tag not found"},
+	ReasonContactTaggingNotFound:                    {Template: "Tagging not found"},
+	ReasonContactTaggingAlreadyExists:               {Template: "Tagging already exists"},
+	ReasonPhotoThumbnailNotFound:                    {Template: "Thumbnail not found"},
+	ReasonAccountUserNotFound:                       {Template: "User not found"},
+	ReasonAccountUserAlreadyExists:                  {Template: "User already exists"},
+	ReasonIntegrationWebhookNotFound:                {Template: "Webhook not found"},
+	ReasonContactSomeNotFound:                       {Template: "One or more contacts not found"},
+}
+
+// notFoundReasons maps the string-literal resources passed to ErrNotFound to their
+// reason code. A resource not listed (including one passed as a variable) gets
+// no code: that is the fallback, not a bug (issue #2099).
+var notFoundReasons = map[string]ReasonCode{
+	"API token":                ReasonAccountApiTokenNotFound,
+	"Activity":                 ReasonActivityNotFound,
+	"Address":                  ReasonContactAddressNotFound,
+	"Attachment":               ReasonAttachmentNotFound,
+	"Attachment file":          ReasonAttachmentFileNotFound,
+	"Audit event":              ReasonAdminAuditEventNotFound,
+	"Cadence policy":           ReasonContactCadencePolicyNotFound,
+	"Calendar subscription":    ReasonCalendarSubscriptionNotFound,
+	"Circle":                   ReasonCircleNotFound,
+	"Circle membership":        ReasonCircleMembershipNotFound,
+	"Contact":                  ReasonContactNotFound,
+	"Contact share":            ReasonContactShareNotFound,
+	"Contact subscription":     ReasonContactSubscriptionNotFound,
+	"Conversation agenda item": ReasonContactConversationAgendaItemNotFound,
+	"Data decay policy":        ReasonContactDataDecayPolicyNotFound,
+	"Device grant":             ReasonAuthDeviceGrantNotFound,
+	"Device registration":      ReasonNotificationDeviceRegistrationNotFound,
+	"Event attendee":           ReasonOccasionEventAttendeeNotFound,
+	"External activity":        ReasonContactExternalActivityNotFound,
+	"External identity":        ReasonIntegrationExternalIdentityNotFound,
+	"Feed":                     ReasonFeedNotFound,
+	"Field definition":         ReasonContactFieldDefinitionNotFound,
+	"GeoPulse resource":        ReasonGeopulseResourceNotFound,
+	"Gift":                     ReasonContactGiftNotFound,
+	"Household":                ReasonHouseholdNotFound,
+	"Household membership":     ReasonHouseholdMembershipNotFound,
+	"Image":                    ReasonPhotoImageNotFound,
+	"Immich link":              ReasonImmichLinkNotFound,
+	"Immich person":            ReasonImmichPersonNotFound,
+	"Life event":               ReasonContactLifeEventNotFound,
+	"Link field type":          ReasonContactLinkFieldTypeNotFound,
+	"Member":                   ReasonCommonMemberNotFound,
+	"Nextcloud file or folder": ReasonNextcloudFileOrFolderNotFound,
+	"Nextcloud link":           ReasonNextcloudLinkNotFound,
+	"Note":                     ReasonContactNoteNotFound,
+	"Occasion event":           ReasonOccasionEventNotFound,
+	"Occasion obligation":      ReasonOccasionObligationNotFound,
+	"One or more contacts":     ReasonContactSomeNotFound,
+	"Paperless document":       ReasonPaperlessDocumentNotFound,
+	"Paperless link":           ReasonPaperlessLinkNotFound,
+	"Passkey":                  ReasonAuthPasskeyNotFound,
+	"Photo":                    ReasonPhotoNotFound,
+	"Preference":               ReasonAccountPreferenceNotFound,
+	"Push subscription":        ReasonNotificationPushSubscriptionNotFound,
+	"Reach-out suggestion":     ReasonContactReachOutSuggestionNotFound,
+	"Recipient user":           ReasonAccountRecipientUserNotFound,
+	"Relationship edge":        ReasonRelationshipEdgeNotFound,
+	"Reminder":                 ReasonContactReminderNotFound,
+	"Reminder completion":      ReasonContactReminderCompletionNotFound,
+	"Seafile library or file":  ReasonSeafileLibraryOrFileNotFound,
+	"Seafile link":             ReasonSeafileLinkNotFound,
+	"Sync conflict":            ReasonCommonSyncConflictNotFound,
+	"Tag":                      ReasonContactTagNotFound,
+	"Tagging":                  ReasonContactTaggingNotFound,
+	"Thumbnail":                ReasonPhotoThumbnailNotFound,
+	"User":                     ReasonAccountUserNotFound,
+	"Webhook":                  ReasonIntegrationWebhookNotFound,
+	"session":                  ReasonAuthSessionNotFound,
+}
+
+// alreadyExistsReasons is notFoundReasons for ErrAlreadyExists.
+var alreadyExistsReasons = map[string]ReasonCode{
+	"Cadence policy":                 ReasonContactCadencePolicyAlreadyExists,
+	"Circle membership":              ReasonCircleMembershipAlreadyExists,
+	"Data decay policy":              ReasonContactDataDecayPolicyAlreadyExists,
+	"Event attendee":                 ReasonOccasionEventAttendeeAlreadyExists,
+	"External activity":              ReasonContactExternalActivityAlreadyExists,
+	"External identity":              ReasonIntegrationExternalIdentityAlreadyExists,
+	"Field definition":               ReasonContactFieldDefinitionAlreadyExists,
+	"Household membership":           ReasonHouseholdMembershipAlreadyExists,
+	"Household suggestion dismissal": ReasonHouseholdSuggestionDismissalAlreadyExists,
+	"Immich link":                    ReasonImmichLinkAlreadyExists,
+	"Link field type":                ReasonContactLinkFieldTypeAlreadyExists,
+	"Nextcloud link":                 ReasonNextcloudLinkAlreadyExists,
+	"Paperless link":                 ReasonPaperlessLinkAlreadyExists,
+	"Passkey":                        ReasonAuthPasskeyAlreadyExists,
+	"Relationship edge":              ReasonRelationshipEdgeAlreadyExists,
+	"Seafile link":                   ReasonSeafileLinkAlreadyExists,
+	"Tagging":                        ReasonContactTaggingAlreadyExists,
+	"User":                           ReasonAccountUserAlreadyExists,
 }
 
 var reasonPlaceholder = regexp.MustCompile(`\{([^{}]*)\}`)
@@ -139,6 +405,17 @@ var reasonPlaceholder = regexp.MustCompile(`\{([^{}]*)\}`)
 // untouched (clients fall back to English) and an info line is logged; a
 // request path never panics over this.
 func (e *AppError) WithReason(code ReasonCode, params map[string]any) *AppError {
+	return e.applyReason(code, params, true)
+}
+
+// withDefaultReason is WithReason for a constructor's built-in default code.
+// It leaves Details alone: the sentence is the message itself, so a
+// details["reason"] copy would be noise (and a 5xx must carry no details).
+func (e *AppError) withDefaultReason(code ReasonCode, params map[string]any) *AppError {
+	return e.applyReason(code, params, false)
+}
+
+func (e *AppError) applyReason(code ReasonCode, params map[string]any, setDetail bool) *AppError {
 	spec, ok := reasonRegistry[code]
 	if !ok || !paramsMatch(spec.Params, params) {
 		logger.Logger.Info().
@@ -153,7 +430,9 @@ func (e *AppError) WithReason(code ReasonCode, params map[string]any) *AppError 
 	e.ReasonCode = string(code)
 	e.ReasonParams = params
 	e.Message = rendered
-	e.WithDetails("reason", rendered)
+	if setDetail {
+		e.WithDetails("reason", rendered)
+	}
 	return e
 }
 

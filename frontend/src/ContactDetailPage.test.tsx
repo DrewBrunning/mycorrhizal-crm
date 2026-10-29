@@ -1047,7 +1047,7 @@ test('deleting a contact asks for confirmation, then navigates away on success',
   fireEvent.click(headerMenuItem('Delete Contact'));
 
   expect(confirmSpy).toHaveBeenCalledWith(
-    'Are you sure you want to delete Alice Wonder? This action cannot be undone and will also delete all notes, activities, and reminders associated with this contact.',
+    'Delete Alice Wonder? It moves to the Trash, where you can restore it until it is permanently deleted. Its notes and reminders move with it.',
   );
   await waitFor(() => expect(screen.getByText('CONTACTS LIST PAGE')).toBeInTheDocument());
   confirmSpy.mockRestore();

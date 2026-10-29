@@ -78,7 +78,7 @@ func TestErrorHandler_ForcedDBFailure_SurfacesTypedCodeNotDriverError(t *testing
 		var env envelope
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &env))
 		assert.Equal(t, ErrCodeDatabase, env.Error.Code)
-		assert.Equal(t, "Database Failed to retrieve operation failed", env.Error.Message)
+		assert.Equal(t, "Something went wrong while saving or loading your data", env.Error.Message)
 	})
 
 	t.Run("raw driver error wraps as INTERNAL_ERROR", func(t *testing.T) {

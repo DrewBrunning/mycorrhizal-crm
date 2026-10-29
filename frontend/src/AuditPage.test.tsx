@@ -101,6 +101,22 @@ test('renders events with the Undo button only on contact update rows', async ()
   expect(screen.getByText('Note')).toBeDefined();
 });
 
+// Issue #2002: a contact restored from / purged from the trash is audited.
+test('labels restore and purge events (no raw i18n key, no Undo button)', async () => {
+  auditGetMock.mockResolvedValue({
+    audit_events: [
+      ev({ id: 2, entity_type: 'contact', operation: 'purge' }),
+      ev({ id: 1, entity_type: 'contact', operation: 'restore' }),
+    ],
+    total: 2,
+  });
+  renderPage();
+
+  expect(await screen.findByText('Restored')).toBeDefined();
+  expect(screen.getByText('Permanently deleted')).toBeDefined();
+  expect(screen.queryAllByRole('button', { name: 'Undo' })).toHaveLength(0);
+});
+
 // Issue #1830: audit timestamps follow the user's 12/24-hour preference.
 test('audit timestamps render 24-hour or 12-hour per the time-format preference', async () => {
   auditGetMock.mockResolvedValue({

@@ -27,7 +27,8 @@ const DatabaseBusyRetryAfterSeconds = 1
 
 // ErrDatabaseBusy returns the 503 a lock-timeout write maps to.
 func ErrDatabaseBusy() *AppError {
-	return NewError(ErrCodeDatabaseBusy, "The database is busy; retry the request shortly", http.StatusServiceUnavailable)
+	return NewError(ErrCodeDatabaseBusy, "The database is busy; retry the request shortly", http.StatusServiceUnavailable).
+		withDefaultReason(ReasonCommonDatabaseBusy, nil)
 }
 
 // IsDatabaseBusy reports whether err (or anything it wraps) is SQLite's
@@ -55,6 +56,9 @@ func busyOverride(err *AppError) *AppError {
 	}
 	busy := ErrDatabaseBusy().WithError(err.Err)
 	for k, v := range err.Details {
+		if k == "reason" {
+			continue // the busy error's own rendered reason wins
+		}
 		busy.WithDetails(k, v)
 	}
 	return busy

@@ -41,11 +41,16 @@ func TestGetGraph_DatabaseFailureUsesErrorEnvelope(t *testing.T) {
 				Error struct {
 					Code    string `json:"code"`
 					Message string `json:"message"`
+					Details struct {
+						Operation string `json:"operation"`
+					} `json:"details"`
 				} `json:"error"`
 			}
 			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &env), w.Body.String())
 			assert.Equal(t, "DATABASE_ERROR", env.Error.Code)
-			assert.Contains(t, env.Error.Message, tc.noun)
+			// The message is a translatable default (issue #2099); the failing read
+			// is named in details.operation.
+			assert.Contains(t, env.Error.Details.Operation, tc.noun)
 			assert.NotContains(t, w.Body.String(), "no such table")
 		})
 	}
