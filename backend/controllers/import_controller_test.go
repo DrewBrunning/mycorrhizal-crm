@@ -625,7 +625,7 @@ func TestPreviewImport_UnknownSessionID_NotFound(t *testing.T) {
 	assert.Equal(t, "NOT_FOUND", env.Error.Code)
 }
 
-func TestPreviewImport_WrongUser_Unauthorized(t *testing.T) {
+func TestPreviewImport_WrongUser_NotFound(t *testing.T) {
 	db, router := setupRouter(t)
 	registerImportRoutes(router, &config.Config{})
 	var user models.User
@@ -656,9 +656,18 @@ func TestPreviewImport_WrongUser_Unauthorized(t *testing.T) {
 	previewW := httptest.NewRecorder()
 	otherRouter.ServeHTTP(previewW, previewReq)
 
-	assert.Equal(t, http.StatusUnauthorized, previewW.Code)
+	assert.Equal(t, http.StatusNotFound, previewW.Code)
 	env := decodeError(t, previewW)
-	assert.Equal(t, "UNAUTHORIZED", env.Error.Code)
+	assert.Equal(t, "NOT_FOUND", env.Error.Code)
+
+	// Byte-identical to the response for an id that never existed.
+	unknownW := httptest.NewRecorder()
+	otherRouter.ServeHTTP(unknownW, newJSONRequest(t, "/contacts/import/preview", models.ImportPreviewRequest{
+		SessionID: "no-such-session",
+		Mappings:  []models.ColumnMapping{{CSVColumn: "First Name", ContactField: "firstname"}},
+	}))
+	assert.Equal(t, http.StatusNotFound, unknownW.Code)
+	assert.JSONEq(t, unknownW.Body.String(), previewW.Body.String(), "a foreign session must not be distinguishable from an unknown one")
 }
 
 // =====================================================================================

@@ -173,7 +173,7 @@ func (m *MeerkatImportManager) get(sessionID string, userID uint) (*meerkatImpor
 		return nil, apperrors.ErrNotFoundMessage("Import session expired or not found").WithReason(apperrors.ReasonMeerkatSessionNotFound, nil)
 	}
 	if s.userID != userID {
-		return nil, apperrors.ErrUnauthorized("Session does not belong to current user").WithReason(apperrors.ReasonMeerkatSessionNotOwned, nil)
+		return nil, apperrors.ErrNotFoundMessage("Import session expired or not found").WithReason(apperrors.ReasonMeerkatSessionNotFound, nil)
 	}
 	s.mu.Lock()
 	now := Now()

@@ -165,7 +165,7 @@ func (m *MonicaImportManager) get(sessionID string, userID uint) (*monicaImportS
 		return nil, apperrors.ErrNotFoundMessage("Import session expired or not found")
 	}
 	if s.userID != userID {
-		return nil, apperrors.ErrUnauthorized("Session does not belong to current user")
+		return nil, apperrors.ErrNotFoundMessage("Import session expired or not found")
 	}
 	s.mu.Lock()
 	now := Now()

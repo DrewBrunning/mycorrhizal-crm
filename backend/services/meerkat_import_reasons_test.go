@@ -56,8 +56,9 @@ func TestMeerkatImportSession_LookupReasons(t *testing.T) {
 	upload, appErr := mgr.Upload(owner.ID, fileHeaderFrom(t, "meerkat.db", meerkatFixtureBytes(t)))
 	require.Nil(t, appErr)
 
+	// A foreign session is indistinguishable from an unknown one (#2203).
 	_, appErr = mgr.Status(owner.ID+999, upload.SessionID)
-	requireMeerkatReason(t, appErr, apperrors.ReasonMeerkatSessionNotOwned)
+	requireMeerkatReason(t, appErr, apperrors.ReasonMeerkatSessionNotFound)
 
 	// Not yet fetched: preview and confirm are refused as not prepared.
 	_, appErr = mgr.Preview(owner.ID, upload.SessionID)
