@@ -722,6 +722,14 @@
     "jumpNav": "Jump to section",
     "markAsMe": "This is me",
     "unmarkAsMe": "This isn't me",
+    "meDialog": {
+      "markTitle": "Mark this contact as you?",
+      "markBody": "This contact will become you. Staying in touch with yourself makes no sense, so it is also marked as an ambient contact: it is never overdue and its relationship score always counts as up to date. You can turn ambient off again on the contact at any time.",
+      "markConfirm": "Yes, this is me",
+      "unmarkTitle": "This contact isn't you?",
+      "unmarkBody": "This contact will no longer be you. If marking it as you turned ambient on, ambient is turned off again. An ambient setting you chose yourself is kept.",
+      "unmarkConfirm": "Yes, this isn't me"
+    },
     "skills": {
       "add": "Add skill or interest",
       "createTitle": "Add skill or interest",

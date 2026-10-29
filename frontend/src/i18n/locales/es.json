@@ -740,6 +740,14 @@
     "jumpNav": "Ir a la sección",
     "markAsMe": "Este soy yo",
     "unmarkAsMe": "Este no soy yo",
+    "meDialog": {
+      "markTitle": "¿Marcar este contacto como tú?",
+      "markBody": "Este contacto pasará a ser tú. Mantener el contacto contigo mismo no tiene sentido, así que también se marca como ambiental: nunca está atrasado y su puntuación de relación siempre cuenta como al día. Puedes desactivar lo ambiental en el contacto en cualquier momento.",
+      "markConfirm": "Sí, este soy yo",
+      "unmarkTitle": "¿Este contacto no eres tú?",
+      "unmarkBody": "Este contacto dejará de ser tú. Si al marcarlo como tú se activó lo ambiental, se vuelve a desactivar. Un ajuste ambiental que elegiste tú mismo se conserva.",
+      "unmarkConfirm": "Sí, este no soy yo"
+    },
     "skills": {
       "add": "Añadir habilidad o interés",
       "createTitle": "Añadir habilidad o interés",

@@ -740,6 +740,14 @@
     "jumpNav": "Aller à la section",
     "markAsMe": "C'est moi",
     "unmarkAsMe": "Ce n'est pas moi",
+    "meDialog": {
+      "markTitle": "Marquer ce contact comme étant vous ?",
+      "markBody": "Ce contact deviendra vous. Garder le contact avec soi-même n'a pas de sens : il est donc aussi marqué comme ambiant, jamais en retard, et son score de relation compte toujours comme à jour. Vous pouvez désactiver l'option ambiant sur le contact à tout moment.",
+      "markConfirm": "Oui, c'est moi",
+      "unmarkTitle": "Ce contact n'est pas vous ?",
+      "unmarkBody": "Ce contact ne sera plus vous. Si le fait de le marquer comme vous a activé l'option ambiant, elle est désactivée de nouveau. Un réglage ambiant que vous avez choisi vous-même est conservé.",
+      "unmarkConfirm": "Oui, ce n'est pas moi"
+    },
     "skills": {
       "add": "Ajouter une compétence ou un centre d'intérêt",
       "createTitle": "Ajouter une compétence ou un centre d'intérêt",

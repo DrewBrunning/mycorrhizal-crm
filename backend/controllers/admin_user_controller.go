@@ -140,8 +140,12 @@ func GetCurrentUser(c *gin.Context) {
 // A non-empty vcard_uid must resolve to a non-deleted Contact owned by the
 // caller — otherwise 404, so a user can never point at someone else's contact
 // (ownership scoping, /CLAUDE.md backend trap #5). An explicit null/empty
-// clears the link. Setting it is a pointer move: the previously linked contact
-// is neither deleted nor modified.
+// clears the link. Moving the pointer never deletes either contact.
+//
+// Issues #2193/#2192: marking a contact "Me" also marks it ambient (never
+// overdue, score up to date); leaving "Me" turns ambient off again only if
+// marking was what turned it on (users.self_contact_ambient_set). Both halves
+// run in one transaction with the pointer move (services.ApplySelfContact).
 func UpdateSelfContact(c *gin.Context) {
 	db := c.MustGet("db").(*gorm.DB)
 	userID, ok := currentUserID(c)
@@ -157,8 +161,9 @@ func UpdateSelfContact(c *gin.Context) {
 
 	// Clear the link. Scope to the caller's own row by ID, never by username.
 	if input.VCardUID == "" {
-		if err := db.Model(&models.User{}).Where("id = ?", userID).
-			Update("self_contact_vcard_uid", nil).Error; err != nil {
+		if err := db.Transaction(func(tx *gorm.DB) error {
+			return services.ApplySelfContact(tx, userID, "")
+		}); err != nil {
 			apperrors.AbortWithError(c, apperrors.ErrDatabase("clear self contact").WithError(err))
 			return
 		}
@@ -177,8 +182,9 @@ func UpdateSelfContact(c *gin.Context) {
 		return
 	}
 
-	if err := db.Model(&models.User{}).Where("id = ?", userID).
-		Update("self_contact_vcard_uid", input.VCardUID).Error; err != nil {
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		return services.ApplySelfContact(tx, userID, input.VCardUID)
+	}); err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("set self contact").WithError(err))
 		return
 	}

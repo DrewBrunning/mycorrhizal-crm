@@ -1668,8 +1668,13 @@ paths:
         Points users.self_contact_vcard_uid at one of the caller's own contacts
         (T90), or clears it with a null/empty vcard_uid. A non-empty vcard_uid
         must resolve to a non-deleted contact owned by the caller — 404
-        otherwise. Setting it is a pointer move only: the previously linked
-        contact is neither deleted nor modified.
+        otherwise. Neither the previous nor the new contact is deleted.
+        Issues #2193/#2192: marking a contact also sets its stored ambient flag
+        (never overdue, score counts as up to date), and the server remembers
+        that marking turned it on. Clearing the link, or moving it to another
+        contact, turns ambient off on the previous "Me" contact only when marking
+        had turned it on; an ambient flag that was already on, or that the user
+        changed by hand while marked (contact PUT), is left alone.
       requestBody:
         required: true
         content:
