@@ -183,8 +183,8 @@ export default function ContactHeader({
   const compactActions = useMediaQuery(theme.breakpoints.down('lg'));
   // Issue #1782: one item list for the overflow menu in both layouts. The
   // compact layout (< lg) carries every action; the wide layout keeps Stay in
-  // touch / Prep view / Share inline and lists only the rest. Delete is last,
-  // behind a divider.
+  // touch / Prep view / Share inline and lists only the rest. Delete is last of
+  // the contact actions, behind a divider; "This is me" follows it (#2192).
   const renderOverflowItems = (includePrimary: boolean) =>
     archived
       ? [
@@ -1036,7 +1036,8 @@ export default function ContactHeader({
                         <>
                           {/* Issue #1782: three primary actions stay inline;
                               everything else lives in the "More" menu below
-                              (Delete last, behind a divider). */}
+                              (Delete last of the actions, behind a divider;
+                              "This is me" follows it, #2192). */}
                           {onStayInTouch && (
                             <Button
                               variant="outlined"
