@@ -88,6 +88,37 @@ class AuditScreenTest {
     }
 
     @Test
+    fun `restore and purge events render their own operation badges`() {
+        fun event(id: Long, operation: String) = AuditEvent(
+            id = id,
+            createdAt = "2026-08-14T10:00:00Z",
+            entityType = AuditEntityTypes.CONTACT,
+            entityId = "uid-$id",
+            operation = operation
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                AuditEventList(
+                    events = listOf(
+                        event(1, AuditOperations.RESTORE),
+                        event(2, AuditOperations.PURGE)
+                    ),
+                    contactsByUid = emptyMap(),
+                    canUndo = false,
+                    onUndoClick = {},
+                    onOpenContact = {},
+                    canLoadMore = false,
+                    isLoadingMore = false,
+                    onLoadMore = {}
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Restored").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Purged").assertIsDisplayed()
+    }
+
+    @Test
     fun `an unresolved contact uid renders as plain text with no link`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
