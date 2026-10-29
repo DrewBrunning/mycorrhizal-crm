@@ -213,18 +213,26 @@ fun HouseholdsScreen(
                                                 key = { suggestionKey(it) }
                                             ) { suggestion ->
                                                 val key = suggestionKey(suggestion)
+                                                val isPending =
+                                                    state.pendingSuggestionKey == "accept:$key" ||
+                                                        state.pendingSuggestionKey == "dismiss:$key"
                                                 AddressSuggestionCard(
                                                     suggestion = suggestion,
                                                     contactsByUid = state.contactsByUid,
-                                                    pending = state.pendingSuggestionKey == "accept:$key" ||
-                                                        state.pendingSuggestionKey == "dismiss:$key",
-                                                    onAccept = { viewModel.acceptSuggestion(suggestion) },
-                                                    onDismiss = { viewModel.dismissSuggestion(suggestion) }
+                                                    pending = isPending,
+                                                    onAccept = {
+                                                        viewModel.acceptSuggestion(suggestion)
+                                                    },
+                                                    onDismiss = {
+                                                        viewModel.dismissSuggestion(suggestion)
+                                                    }
                                                 )
                                             }
                                         }
                                         item(key = "suggestion-divider") {
-                                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                                            HorizontalDivider(
+                                                modifier = Modifier.padding(vertical = 8.dp)
+                                            )
                                         }
                                     }
                                     items(state.households, key = { it.id }) { household ->
