@@ -176,7 +176,10 @@ class ErrorTextTest {
             "field" to "f",
             "n" to 1.0,
             "limit" to 1.0,
-            "required_version" to "1.0.0"
+            "required_version" to "1.0.0",
+            "reason" to "r",
+            "total" to 1.0,
+            "max" to 1.0
         )
         val rendered = mutableMapOf<String, String>()
         composeTestRule.setContent {
