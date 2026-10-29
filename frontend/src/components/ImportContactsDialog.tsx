@@ -1462,7 +1462,17 @@ function ImportRowCard({
         onChange={(_, next: 'skip' | 'add' | 'update' | null) => {
           if (next !== null) onActionChange(next);
         }}
-        sx={{ mt: 1 }}
+        sx={{
+          mt: 1,
+          // The default MUI selected tint is a faint grey that reads as
+          // disabled (#2185); use a solid primary fill so the choice is obvious.
+          '& .MuiToggleButton-root.Mui-selected': {
+            bgcolor: 'primary.main',
+            color: 'primary.contrastText',
+            fontWeight: 600,
+          },
+          '& .MuiToggleButton-root.Mui-selected:hover': { bgcolor: 'primary.dark' },
+        }}
       >
         <ToggleButton value="add" disabled={hasErrors}>
           {isDuplicate
