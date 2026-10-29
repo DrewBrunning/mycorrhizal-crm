@@ -345,6 +345,68 @@ class ErrorTextTest {
     }
 
     @Test
+    fun `an import assistant code renders its translated template`() {
+        val rendered = renderAll(
+            listOf(
+                ApiError.Client(
+                    400,
+                    "Server says no",
+                    ErrorReason(ErrorReasonCode.MONICA_TOKEN_REJECTED, emptyMap())
+                ),
+                ApiError.Client(
+                    404,
+                    "Server says no",
+                    ErrorReason(ErrorReasonCode.BUNDLE_SESSION_NOT_FOUND, emptyMap())
+                )
+            )
+        )
+        assertEquals(
+            listOf("Monica rejected the API token", "Import session expired or not found"),
+            rendered
+        )
+    }
+
+    @Test
+    fun `the import size limits render their params and fall back without them`() {
+        val rendered = renderAll(
+            listOf(
+                ApiError.Client(
+                    400,
+                    "Server says no",
+                    ErrorReason(ErrorReasonCode.CSV_FILE_TOO_LARGE, mapOf("max_mb" to 20.0))
+                ),
+                ApiError.Client(
+                    400,
+                    "Server says no",
+                    ErrorReason(ErrorReasonCode.CSV_FILE_TOO_LARGE, emptyMap())
+                ),
+                ApiError.Client(
+                    400,
+                    "Server says no",
+                    ErrorReason(
+                        ErrorReasonCode.MONICA_TOO_MANY_CONTACTS,
+                        mapOf("total" to 6000.0, "max" to 5000.0)
+                    )
+                ),
+                ApiError.Client(
+                    400,
+                    "Server says no",
+                    ErrorReason(ErrorReasonCode.MONICA_TOO_MANY_RECORDS, mapOf("total" to 6000.0))
+                )
+            )
+        )
+        assertEquals(
+            listOf(
+                "File too large. Maximum size is 20 MB",
+                "Server says no",
+                "This Monica account has 6000 contacts; the import supports at most 5000",
+                "Server says no"
+            ),
+            rendered
+        )
+    }
+
+    @Test
     fun `a 5xx appends the request reference`() {
         val error = ApiError.Server(503, "Server error", requestId = "abc")
         assertEquals("Server error (503) (ref: abc)", render(error))
