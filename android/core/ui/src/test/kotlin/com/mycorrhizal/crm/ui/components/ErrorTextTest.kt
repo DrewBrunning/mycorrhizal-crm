@@ -5,6 +5,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import com.mycorrhizal.crm.model.network.ErrorReason
 import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.network.ApiError
+import com.mycorrhizal.crm.network.NO_PENDING_TWO_FACTOR_BODY
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import java.lang.reflect.Modifier
 import org.junit.Assert.assertEquals
@@ -213,7 +214,7 @@ class ErrorTextTest {
                 ApiError.Server(503, "hidden"),
                 ApiError.PreconditionFailed("x"),
                 ApiError.Parse("x"),
-                ApiError.NoPendingTwoFactor()
+                ApiError.Client(401, NO_PENDING_TWO_FACTOR_BODY)
             )
         )
         assertEquals(

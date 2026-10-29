@@ -5,6 +5,7 @@ import androidx.compose.ui.res.stringResource
 import com.mycorrhizal.crm.model.network.ErrorReason
 import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.network.ApiError
+import com.mycorrhizal.crm.network.NO_PENDING_TWO_FACTOR_BODY
 import com.mycorrhizal.crm.ui.R
 
 /**
@@ -52,10 +53,18 @@ private fun ApiError.clientMessage(): String = when (this) {
         if (displayMessage == body) body else stringResource(R.string.error_client_server, code)
 
     is ApiError.Client -> when (code) {
-        401 -> stringResource(R.string.error_client_session_expired)
+        401 -> if (body == NO_PENDING_TWO_FACTOR_BODY) {
+            stringResource(R.string.error_client_no_pending_two_factor)
+        } else {
+            stringResource(R.string.error_client_session_expired)
+        }
+
         403 -> stringResource(R.string.error_client_forbidden)
+
         404 -> stringResource(R.string.error_client_not_found)
+
         409 -> body.ifBlank { stringResource(R.string.error_client_conflict) }
+
         else -> body.ifBlank { stringResource(R.string.error_client_request_failed) }
     }
 
@@ -66,8 +75,6 @@ private fun ApiError.clientMessage(): String = when (this) {
     is ApiError.ArchivedProfile -> stringResource(R.string.error_client_archived_profile)
 
     is ApiError.Unknown -> stringResource(R.string.error_client_unknown)
-
-    is ApiError.NoPendingTwoFactor -> stringResource(R.string.error_client_no_pending_two_factor)
 }
 
 private fun ApiError.reasonOrNull(): ErrorReason? = when (this) {

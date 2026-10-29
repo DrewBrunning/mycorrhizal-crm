@@ -16,6 +16,7 @@ import com.mycorrhizal.crm.model.network.UserProfile
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.LoginResult
+import com.mycorrhizal.crm.network.NO_PENDING_TWO_FACTOR_BODY
 import com.mycorrhizal.crm.network.toApiError
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
@@ -72,7 +73,7 @@ class AuthRepositoryImpl @Inject constructor(
             // No in-flight challenge (login never ran, or a previous attempt
             // consumed/expired it) — the server would reject anyway.
             return Result.failure(
-                ApiError.NoPendingTwoFactor()
+                ApiError.Client(401, NO_PENDING_TWO_FACTOR_BODY)
             )
         }
 
@@ -83,7 +84,7 @@ class AuthRepositoryImpl @Inject constructor(
         val pending = pending2faCookie
         if (pending.isNullOrBlank()) {
             return Result.failure(
-                ApiError.NoPendingTwoFactor()
+                ApiError.Client(401, NO_PENDING_TWO_FACTOR_BODY)
             )
         }
         val options = apiClient.webauthnLoginBegin(pending).getOrElse { error ->
@@ -99,7 +100,7 @@ class AuthRepositoryImpl @Inject constructor(
         val pending = pending2faCookie
         if (pending.isNullOrBlank()) {
             return Result.failure(
-                ApiError.NoPendingTwoFactor()
+                ApiError.Client(401, NO_PENDING_TWO_FACTOR_BODY)
             )
         }
         // Unlike a wrong TOTP code, a 401 here can mean "assertion rejected" with

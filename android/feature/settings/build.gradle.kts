@@ -10,7 +10,7 @@ android {
 
 dependencies {
     api(project(":core:data"))
-    implementation(project(":core:network"))
+    api(project(":core:network"))
     api(project(":core:domain"))
     implementation(project(":core:ui"))
     api(project(":feature:tracking"))

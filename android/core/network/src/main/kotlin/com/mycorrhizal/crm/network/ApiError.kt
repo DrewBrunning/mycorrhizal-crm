@@ -55,8 +55,6 @@ sealed class ApiError(message: String, cause: Throwable? = null) : Exception(mes
             is ArchivedProfile -> "This profile is a read-only archive — switch to your server to make changes"
 
             is Unknown -> "Something went wrong"
-
-            is NoPendingTwoFactor -> "No pending two-factor login found. Please sign in again."
         }
 
     class Network(cause: IOException) : ApiError("Network error", cause)
@@ -97,9 +95,6 @@ sealed class ApiError(message: String, cause: Throwable? = null) : Exception(mes
             cause
         )
     class Unknown(cause: Throwable) : ApiError("Unknown error", cause)
-
-    /** A two-factor step was attempted with no pending login; the client built this, not the server. */
-    class NoPendingTwoFactor : ApiError("No pending two-factor login")
 }
 
 /**
@@ -126,6 +121,13 @@ fun <T> Result<T>.foldApiError(onSuccess: (T) -> Unit, onError: (ApiError) -> Un
         onFailure = { e -> onError(e.toApiError()) }
     )
 }
+
+/**
+ * Body of the client-built 401 for a two-factor step with no pending login. It stays an
+ * [ApiError.Client] 401 so callers treating a 401 as "challenge expired" keep working;
+ * the UI recognises the body to word it specifically.
+ */
+const val NO_PENDING_TWO_FACTOR_BODY = "No pending two-factor login found. Please sign in again."
 
 private const val INSUFFICIENT_STORAGE = 507
 

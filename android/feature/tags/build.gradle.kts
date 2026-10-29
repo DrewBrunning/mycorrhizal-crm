@@ -9,7 +9,7 @@ android {
 }
 
 dependencies {
-    implementation(project(":core:network"))
+    api(project(":core:network"))
     api(project(":core:domain"))
     implementation(project(":core:ui"))
     // Issue #1768: ContactAvatar + the shared member display-name helper.
