@@ -91,6 +91,19 @@ func TestApplySelfContact_WritesAreAllOrNothingInATransaction(t *testing.T) {
 	assert.False(t, got.Ambient, "the ambient write rolled back with the failed pointer write")
 }
 
+func TestApplySelfContact_AmbientSaveFailureAborts(t *testing.T) {
+	db, user := selfApplyFixture(t)
+	a := selfApplyContact(t, db, user.ID, "A", false)
+	require.NoError(t, db.Exec(`CREATE TRIGGER block_ambient_write BEFORE UPDATE OF ambient ON contacts
+		BEGIN SELECT RAISE(ABORT, 'blocked'); END`).Error)
+
+	require.Error(t, ApplySelfContact(db, user.ID, a.VCardUID))
+
+	var got models.User
+	require.NoError(t, db.First(&got, user.ID).Error)
+	assert.Nil(t, got.SelfContactVCardUID, "the pointer did not move")
+}
+
 func TestClearSelfAmbientProvenanceIfMe_OnlyTouchesTheMeContact(t *testing.T) {
 	db, user := selfApplyFixture(t)
 	a := selfApplyContact(t, db, user.ID, "A", false)
