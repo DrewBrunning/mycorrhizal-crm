@@ -429,6 +429,18 @@ func TestSelectiveExport_SensitivityMatrix(t *testing.T) {
 	}
 }
 
+// assertNoContactsExported asserts an export body carries zero contacts: no
+// vCard blocks, or an empty JSContact array. (The extractors reject empty
+// output by design, so the raw body is checked here.)
+func assertNoContactsExported(t *testing.T, f matrixFormat, data []byte) {
+	t.Helper()
+	if f.name == "jscontact" {
+		assert.JSONEq(t, "[]", string(data))
+		return
+	}
+	assert.NotContains(t, string(data), "BEGIN:VCARD")
+}
+
 // TestSelectiveExport_ScopedExportContainsOnlyTarget closes the gap that let
 // issue #2196 ship: the matrix cells only asserted on the in-scope projection,
 // never that OTHER contacts are absent, so a handler ignoring vcard_uid still
@@ -454,11 +466,11 @@ func TestSelectiveExport_ScopedExportContainsOnlyTarget(t *testing.T) {
 		})
 		t.Run(f.name+"/unknown_uid", func(t *testing.T) {
 			data := matrixExport(t, router, f, "no-such-uid", "", false)
-			assert.Empty(t, f.extract(t, data), "unknown uid must export no contacts")
+			assertNoContactsExported(t, f, data)
 		})
 		t.Run(f.name+"/other_user_uid", func(t *testing.T) {
 			data := matrixExport(t, router, f, theirs.VCardUID, "", false)
-			assert.Empty(t, f.extract(t, data), "another user's uid must export no contacts")
+			assertNoContactsExported(t, f, data)
 			assert.NotContains(t, string(data), "ForeignScoped")
 		})
 	}
