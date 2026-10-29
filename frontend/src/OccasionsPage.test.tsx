@@ -79,6 +79,21 @@ function renderPage() {
   );
 }
 
+test('explains what occasions are and how they differ from activities and reminders', async () => {
+  renderPage();
+
+  expect(
+    await screen.findByText(
+      'Occasions are the standing things you do for people, like a yearly card or gift, and one-off events with an invitee list. Active obligations create reminders automatically; reminders are the nudge, not a second occasion. To log something that already happened, use Activities.',
+    ),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByText(
+      'Download a CSV of contacts with an active card occasion: one row per active obligation, with the contact name, their normal-sensitivity address, and the occasion. Private and secret addresses are left out.',
+    ),
+  ).toBeInTheDocument();
+});
+
 test('fetches and shows the empty gift shopping list on mount', async () => {
   renderPage();
   await waitFor(() => expect(getGiftShoppingListMock).toHaveBeenCalledWith({ days: 30 }));

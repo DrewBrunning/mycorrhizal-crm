@@ -27,6 +27,15 @@ test('create mode shows the kind, label, anchor, lead time, active, sensitivity,
   expect(screen.getByLabelText('Notes')).toBeInTheDocument();
 });
 
+test('explains that an active occasion creates its own reminder', () => {
+  renderDialog();
+  expect(
+    screen.getByText(
+      'A standing rule, like a yearly card or gift. An active occasion creates its own reminder at the lead time.',
+    ),
+  ).toBeInTheDocument();
+});
+
 test('requires a label before saving', async () => {
   const onSave = vi.fn().mockResolvedValue(undefined);
   renderDialog({ onSave });

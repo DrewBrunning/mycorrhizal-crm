@@ -66,7 +66,7 @@
   },
   "household": {
     "title": "Hogares",
-    "description": "Agrupa a las personas (y mascotas) de tu vida por residencia compartida. Los hogares están separados de los círculos y del grafo de relaciones — confirmar o rechazar una relación sugerida siempre es tu decisión.",
+    "description": "Los hogares agrupan a las personas y mascotas que comparten una vivienda. Habilitan sugerencias de direcciones compartidas y una lista combinada de tarjetas y regalos, y sus miembros cuentan como contactos ambientales para la cadencia. A diferencia de un círculo, un hogar se trata de vivir juntos, no de un grupo social.",
     "newHousehold": "Agregar hogar",
     "createHousehold": "Crear hogar",
     "editHousehold": "Editar hogar",
@@ -94,7 +94,7 @@
       "pet": "Mascota",
       "roommate": "Compañero/a de piso"
     },
-    "empty": "Aún no hay hogares. Crea uno para empezar a sugerir relaciones entre las personas que viven juntas.",
+    "empty": "Aún no hay hogares. Crea uno para las personas que comparten una vivienda y obtén sugerencias de direcciones compartidas y una lista combinada de tarjetas y regalos.",
     "deleteMessage": "¿Seguro que quieres eliminar este hogar? Sus miembros no se eliminarán.",
     "cancel": "Cancelar",
     "save": "Guardar",
@@ -131,8 +131,8 @@
     "memberCount_one": "{{count}} contacto",
     "memberCount_other": "{{count}} contactos",
     "memberCount_many": "{{count}} contactos",
-    "noCircles": "Aún no hay círculos. Agrega uno abajo o desde la página de un contacto.",
-    "noTags": "Aún no hay etiquetas. Agrega una abajo o desde la página de un contacto.",
+    "noCircles": "Aún no hay círculos. Los círculos agrupan a personas con las que te mantienes en contacto en conjunto: agrega uno abajo o desde la página de un contacto.",
+    "noTags": "Aún no hay etiquetas. Las etiquetas son marcas libres para temas transversales: agrega una abajo o desde la página de un contacto.",
     "deleteCircleConfirm": "¿Eliminar el círculo \"{{name}}\"? Se quitará de todos los contactos que lo tengan.",
     "deleteTagConfirm": "¿Eliminar la etiqueta \"{{name}}\"? Se quitará de todos los contactos que la tengan.",
     "circleCreated": "Círculo creado",
@@ -168,7 +168,9 @@
       "life_event": "Evento vital",
       "external_activity": "Actividad externa",
       "gift": "Regalo"
-    }
+    },
+    "circlesDescription": "Los círculos son grupos con los que te mantienes en contacto en conjunto, como familia, amistades o colegas. Un contacto puede pertenecer a varios.",
+    "tagsDescription": "Las etiquetas son marcas libres para temas que cruzan grupos, como «vegano» o «club de lectura». Un contacto puede tener cualquier número."
   },
   "dashboard": {
     "title": "Panel",
@@ -559,7 +561,8 @@
         "medium": "Medio",
         "low": "Bajo"
       },
-      "label": "Etiqueta"
+      "label": "Etiqueta",
+      "labelHint": "Etiqueta opcional junto al valor, p. ej. «trabajo» o «aprendido en 2020»."
     },
     "keywords": {
       "placeholder": "Escribe una palabra clave y pulsa Intro"
@@ -842,7 +845,8 @@
     "fromDate": "Desde",
     "toDate": "Hasta",
     "allContactsInfo": "Esta página lista todas las actividades de todos los contactos.",
-    "logFromLocation": "Registrar desde el historial de ubicaciones"
+    "logFromLocation": "Registrar desde el historial de ubicaciones",
+    "description": "Las actividades son cosas que ya ocurrieron: una llamada, un café, un mensaje. Regístralas aquí para mantener completo el historial de cada contacto."
   },
   "markdown": {
     "opensInNewTab": "(se abre en una pestaña nueva)"
@@ -2976,11 +2980,12 @@
         "anchorBothOrNeither": "Define el mes y el día, o deja ambos sin definir.",
         "invalidLeadTime": "Introduce un número válido de días de antelación.",
         "saveFailed": "No se pudo guardar la ocasión."
-      }
+      },
+      "dialogHint": "Una regla recurrente, como una tarjeta o un regalo anual. Una ocasión activa crea su propio recordatorio en el plazo indicado."
     },
     "cardList": {
       "title": "Lista de tarjetas",
-      "description": "Descarga un CSV con los nombres y direcciones de todas las personas de tu lista de tarjetas navideñas.",
+      "description": "Descarga un CSV de contactos con una ocasión de tarjeta activa: una fila por obligación activa, con el nombre del contacto, su dirección con sensibilidad normal y la ocasión. Las direcciones privadas y secretas se omiten.",
       "download": "Descargar CSV",
       "downloadFailed": "No se pudo descargar la lista de tarjetas."
     },
@@ -3031,12 +3036,14 @@
         "startRequired": "Elige una fecha y hora de inicio.",
         "endBeforeStart": "La hora de fin no puede ser anterior a la de inicio.",
         "saveFailed": "No se pudo guardar el evento."
-      }
-    }
+      },
+      "dialogHint": "Un evento puntual que estás planeando. Agrega invitados después de guardar y anota lo que te dijo cada persona."
+    },
+    "description": "Las ocasiones son las cosas recurrentes que haces por las personas, como una tarjeta o un regalo anual, y eventos puntuales con una lista de invitados. Las obligaciones activas crean recordatorios automáticamente; los recordatorios son el aviso, no una segunda ocasión. Para registrar algo que ya ocurrió, usa Actividades."
   },
   "prep": {
     "title": "Vista previa",
-    "subtitle": "Todo lo que recordar antes de verlos",
+    "subtitle": "Un breve informe antes de ver o llamar a alguien: historial reciente, agenda abierta y próximas fechas.",
     "unknownContact": "Desconocido",
     "notFound": "Contacto no encontrado",
     "view": "Ver",
@@ -3069,7 +3076,8 @@
       "inDays_one": "en {{count}} día",
       "inDays_other": "en {{count}} días",
       "inDays_many": "en {{count}} días"
-    }
+    },
+    "entryTooltip": "Historial reciente, agenda abierta y próximas fechas: todo lo que recordar antes de verlos."
   },
   "contactShares": {
     "title": "Comparticiones de contactos",

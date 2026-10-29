@@ -777,6 +777,17 @@ test('clicking the tags Add button calls onAddTag with a fresh tag', () => {
   expect(input).toHaveValue('');
 });
 
+test('wide layout: the Prep view button explains what the briefing contains', async () => {
+  mockMatchMedia(false);
+  renderHeader({ onPrepView: vi.fn() });
+
+  fireEvent.mouseOver(screen.getByRole('button', { name: 'Prep view' }));
+
+  expect(await screen.findByRole('tooltip')).toHaveTextContent(
+    'Recent history, open agenda, and upcoming dates — everything to remember before you see them.',
+  );
+});
+
 // --- export menu branches (wide layout) ------------------------------------
 
 test('wide layout: choosing vCard 4.0 in the export menu reports the format', async () => {

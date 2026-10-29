@@ -86,6 +86,9 @@ export default function CirclesTagsPage() {
         <Tab label={t('circlesTags.tabCircles')} value="circles" />
         <Tab label={t('circlesTags.tabTags')} value="tags" />
       </Tabs>
+      <Typography variant="body2" sx={{ marginBottom: '16px', color: 'text.secondary' }}>
+        {tab === 'circles' ? t('circlesTags.circlesDescription') : t('circlesTags.tagsDescription')}
+      </Typography>
 
       {tab === 'circles' ? (
         <>
