@@ -12,5 +12,8 @@ expected_any:
   - data loss
   - lose data
   - destructive
+  - irreversible
+  - lossy
+  - cannot be rolled back
 forbid_paths:
   - .github/**
