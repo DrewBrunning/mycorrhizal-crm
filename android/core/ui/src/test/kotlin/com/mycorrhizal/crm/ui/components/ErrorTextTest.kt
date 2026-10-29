@@ -6,6 +6,7 @@ import com.mycorrhizal.crm.model.network.ErrorReason
 import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
+import java.lang.reflect.Modifier
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -23,6 +24,10 @@ import org.robolectric.annotation.GraphicsMode
 @Config(sdk = [35])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class ErrorTextTest {
+
+    private companion object {
+        const val SERVER = "Server fallback"
+    }
 
     @get:Rule
     val composeTestRule = createComposeRule()
@@ -147,6 +152,31 @@ class ErrorTextTest {
             ErrorReason(ErrorReasonCode.CIRCLE_COLOR_INVALID, emptyMap())
         )
         assertEquals("The colour must be one of the palette colours", render(error))
+    }
+
+    @Test
+    fun `every mirrored code with full params renders its own template`() {
+        val codes = ErrorReasonCode::class.java.declaredFields
+            .filter { Modifier.isStatic(it.modifiers) && it.type == String::class.java }
+            .map { it.apply { isAccessible = true }.get(null) as String }
+        val params = mapOf(
+            "field" to "f",
+            "n" to 1.0,
+            "limit" to 1.0,
+            "required_version" to "1.0.0"
+        )
+        val rendered = mutableMapOf<String, String>()
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                codes.forEach { code ->
+                    rendered[code] = ApiError.Client(400, SERVER, ErrorReason(code, params))
+                        .localizedMessage()
+                }
+            }
+        }
+        composeTestRule.waitForIdle()
+        val fellBack = rendered.filterValues { it == SERVER }.keys
+        assertEquals("codes that fell back to the server message", emptySet<String>(), fellBack)
     }
 
     @Test

@@ -290,6 +290,7 @@ func TestRateLimitMiddleware_429_UsesErrorEnvelope(t *testing.T) {
 	require.Equal(t, http.StatusOK, do().Code, "the first request must pass")
 	w := do()
 	assertMWErrorCode(t, w, http.StatusTooManyRequests, "RATE_LIMIT_EXCEEDED")
-	assert.Equal(t, "Rate limit exceeded. Please try again later.", mwErrorEnvelope(t, w)["message"])
+	assert.Equal(t, "Too many requests. Try again later", mwErrorEnvelope(t, w)["message"])
+	assert.Equal(t, "common_rate_limited", mwErrorEnvelope(t, w)["reason_code"])
 	assert.Equal(t, 1, handlerRan, "the rate-limited request must not reach the handler")
 }

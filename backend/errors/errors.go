@@ -147,17 +147,20 @@ func ErrUnauthorized(message string) *AppError {
 
 // ErrInvalidCredentials returns an invalid credentials error
 func ErrInvalidCredentials() *AppError {
-	return NewError(ErrCodeInvalidCredentials, "Invalid email or password", http.StatusUnauthorized)
+	return NewError(ErrCodeInvalidCredentials, "Invalid email or password", http.StatusUnauthorized).
+		withDefaultReason(ReasonAuthInvalidCredentials, nil)
 }
 
 // ErrTokenExpired returns a token expired error
 func ErrTokenExpired() *AppError {
-	return NewError(ErrCodeTokenExpired, "Authentication token has expired", http.StatusUnauthorized)
+	return NewError(ErrCodeTokenExpired, "Authentication token has expired", http.StatusUnauthorized).
+		withDefaultReason(ReasonAuthTokenExpired, nil)
 }
 
 // ErrTokenInvalid returns a token invalid error
 func ErrTokenInvalid() *AppError {
-	return NewError(ErrCodeTokenInvalid, "Authentication token is invalid", http.StatusUnauthorized)
+	return NewError(ErrCodeTokenInvalid, "Authentication token is invalid", http.StatusUnauthorized).
+		withDefaultReason(ReasonAuthTokenInvalid, nil)
 }
 
 // ErrForbidden returns a forbidden error
@@ -177,7 +180,11 @@ func ErrClientNotSupported(requiredVersion string) *AppError {
 	if requiredVersion != "" {
 		message = fmt.Sprintf("This version of the app is no longer supported; update to version %s or newer", requiredVersion)
 	}
-	return NewError(ErrCodeClientNotSupported, message, http.StatusForbidden)
+	err := NewError(ErrCodeClientNotSupported, message, http.StatusForbidden)
+	if requiredVersion != "" {
+		_ = err.withDefaultReason(ReasonCommonClientNotSupported, map[string]any{"required_version": requiredVersion})
+	}
+	return err
 }
 
 // --- Resource Errors ---
@@ -188,7 +195,11 @@ func ErrNotFound(resource string) *AppError {
 	if resource != "" {
 		message = fmt.Sprintf("%s not found", resource)
 	}
-	return NewError(ErrCodeNotFound, message, http.StatusNotFound)
+	err := NewError(ErrCodeNotFound, message, http.StatusNotFound)
+	if code, ok := notFoundReasons[resource]; ok {
+		_ = err.withDefaultReason(code, nil)
+	}
+	return err
 }
 
 // ErrNotFoundMessage returns a 404 whose message is already fully worded.
@@ -207,7 +218,11 @@ func ErrAlreadyExists(resource string) *AppError {
 	if resource != "" {
 		message = fmt.Sprintf("%s already exists", resource)
 	}
-	return NewError(ErrCodeAlreadyExists, message, http.StatusConflict)
+	err := NewError(ErrCodeAlreadyExists, message, http.StatusConflict)
+	if code, ok := alreadyExistsReasons[resource]; ok {
+		_ = err.withDefaultReason(code, nil)
+	}
+	return err
 }
 
 // ErrConflict returns a conflict error
@@ -248,7 +263,7 @@ func ErrPreconditionFailed(message string) *AppError {
 func ErrIdempotencyKeyReused() *AppError {
 	return NewError(ErrCodeIdempotencyKeyReused,
 		"Idempotency-Key was already used for a different request; use a fresh key",
-		http.StatusUnprocessableEntity)
+		http.StatusUnprocessableEntity).withDefaultReason(ReasonCommonIdempotencyKeyReused, nil)
 }
 
 // ErrIdempotencyInProgress returns a 409 when a request with the same
@@ -258,7 +273,7 @@ func ErrIdempotencyKeyReused() *AppError {
 func ErrIdempotencyInProgress() *AppError {
 	return NewError(ErrCodeIdempotencyInProgress,
 		"a request with this Idempotency-Key is still being processed; retry shortly",
-		http.StatusConflict)
+		http.StatusConflict).withDefaultReason(ReasonCommonRequestInProgress, nil)
 }
 
 // ErrIdempotencyResultUnavailable returns a 409 when the first request for an
@@ -270,7 +285,7 @@ func ErrIdempotencyInProgress() *AppError {
 func ErrIdempotencyResultUnavailable() *AppError {
 	return NewError(ErrCodeIdempotencyResultUnavailable,
 		"a previous request with this Idempotency-Key completed but its response is not available for replay; do not resubmit it with this key",
-		http.StatusConflict)
+		http.StatusConflict).withDefaultReason(ReasonCommonRequestResultUnavailable, nil)
 }
 
 // --- Validation Errors ---
@@ -308,6 +323,7 @@ func ErrMissingField(field string) *AppError {
 	err := NewError(ErrCodeMissingField, message, http.StatusBadRequest)
 	if field != "" {
 		err.WithDetails("field", field)
+		_ = err.withDefaultReason(ReasonValidationMissingField, map[string]any{"field": field})
 	}
 	return err
 }
@@ -316,7 +332,8 @@ func ErrMissingField(field string) *AppError {
 
 // ErrRateLimitExceeded returns a rate limit exceeded error
 func ErrRateLimitExceeded() *AppError {
-	return NewError(ErrCodeRateLimitExceeded, "Rate limit exceeded. Please try again later.", http.StatusTooManyRequests)
+	return NewError(ErrCodeRateLimitExceeded, "Rate limit exceeded. Please try again later.", http.StatusTooManyRequests).
+		withDefaultReason(ReasonCommonRateLimited, nil)
 }
 
 // --- Capacity Errors ---
@@ -338,7 +355,8 @@ func ErrInsufficientStorage(message string) *AppError {
 // bare string body the body-limit middleware used to emit.
 func ErrPayloadTooLarge(message string) *AppError {
 	if message == "" {
-		message = "Request body is too large"
+		return NewError(ErrCodePayloadTooLarge, "Request body is too large", http.StatusRequestEntityTooLarge).
+			withDefaultReason(ReasonCommonPayloadTooLarge, nil)
 	}
 	return NewError(ErrCodePayloadTooLarge, message, http.StatusRequestEntityTooLarge)
 }
@@ -363,7 +381,9 @@ func ErrDatabase(operation string) *AppError {
 	if operation != "" {
 		err.WithDetails("operation", operation)
 	}
-	return err
+	// The reason replaces Message with a translatable sentence; the operation
+	// name stays in details["operation"] and the log line.
+	return err.withDefaultReason(ReasonCommonDatabaseError, nil)
 }
 
 // ErrExternal returns an external service error
@@ -418,5 +438,5 @@ func GetAppError(err error) *AppError {
 		return appErr
 	}
 
-	return ErrInternal("An unexpected error occurred").WithError(err)
+	return ErrInternal("An unexpected error occurred").withDefaultReason(ReasonCommonUnexpectedError, nil).WithError(err)
 }

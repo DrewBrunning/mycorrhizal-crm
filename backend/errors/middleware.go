@@ -44,7 +44,7 @@ func ErrorHandlerMiddleware() gin.HandlerFunc {
 					Str("stack_trace", stackTrace).
 					Msg("Panic recovered")
 
-				RespondWithError(c, ErrInternal("An unexpected error occurred"))
+				RespondWithError(c, ErrInternal("An unexpected error occurred").withDefaultReason(ReasonCommonUnexpectedError, nil))
 			}
 		}()
 

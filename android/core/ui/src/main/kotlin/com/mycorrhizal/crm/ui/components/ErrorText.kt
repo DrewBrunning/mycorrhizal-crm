@@ -139,6 +139,354 @@ private fun localizedReason(reason: ErrorReason?): String? {
             R.string.error_reason_circle_color_invalid
         )
 
+        ErrorReasonCode.COMMON_DATABASE_ERROR -> stringResource(
+            R.string.error_reason_common_database_error
+        )
+
+        ErrorReasonCode.COMMON_DATABASE_BUSY -> stringResource(
+            R.string.error_reason_common_database_busy
+        )
+
+        ErrorReasonCode.AUTH_INVALID_CREDENTIALS -> stringResource(
+            R.string.error_reason_auth_invalid_credentials
+        )
+
+        ErrorReasonCode.AUTH_TOKEN_EXPIRED -> stringResource(
+            R.string.error_reason_auth_token_expired
+        )
+
+        ErrorReasonCode.AUTH_TOKEN_INVALID -> stringResource(
+            R.string.error_reason_auth_token_invalid
+        )
+
+        ErrorReasonCode.COMMON_CLIENT_NOT_SUPPORTED ->
+            reason.str(
+                "required_version"
+            )?.let { stringResource(R.string.error_reason_common_client_not_supported, it) }
+
+        ErrorReasonCode.COMMON_RATE_LIMITED -> stringResource(
+            R.string.error_reason_common_rate_limited
+        )
+
+        ErrorReasonCode.COMMON_PAYLOAD_TOO_LARGE -> stringResource(
+            R.string.error_reason_common_payload_too_large
+        )
+
+        ErrorReasonCode.COMMON_IDEMPOTENCY_KEY_REUSED -> stringResource(
+            R.string.error_reason_common_idempotency_key_reused
+        )
+
+        ErrorReasonCode.COMMON_REQUEST_IN_PROGRESS -> stringResource(
+            R.string.error_reason_common_request_in_progress
+        )
+
+        ErrorReasonCode.COMMON_REQUEST_RESULT_UNAVAILABLE -> stringResource(
+            R.string.error_reason_common_request_result_unavailable
+        )
+
+        ErrorReasonCode.VALIDATION_MISSING_FIELD ->
+            field?.let { stringResource(R.string.error_reason_validation_missing_field, it) }
+
+        ErrorReasonCode.COMMON_UNEXPECTED_ERROR -> stringResource(
+            R.string.error_reason_common_unexpected_error
+        )
+
+        ErrorReasonCode.ACTIVITY_NOT_FOUND -> stringResource(
+            R.string.error_reason_activity_not_found
+        )
+
+        ErrorReasonCode.CONTACT_ADDRESS_NOT_FOUND -> stringResource(
+            R.string.error_reason_contact_address_not_found
+        )
+
+        ErrorReasonCode.ACCOUNT_API_TOKEN_NOT_FOUND -> stringResource(
+            R.string.error_reason_account_api_token_not_found
+        )
+
+        ErrorReasonCode.ATTACHMENT_NOT_FOUND -> stringResource(
+            R.string.error_reason_attachment_not_found
+        )
+
+        ErrorReasonCode.ATTACHMENT_FILE_NOT_FOUND -> stringResource(
+            R.string.error_reason_attachment_file_not_found
+        )
+
+        ErrorReasonCode.ADMIN_AUDIT_EVENT_NOT_FOUND -> stringResource(
+            R.string.error_reason_admin_audit_event_not_found
+        )
+
+        ErrorReasonCode.CONTACT_CADENCE_POLICY_NOT_FOUND -> stringResource(
+            R.string.error_reason_contact_cadence_policy_not_found
+        )
+
+        ErrorReasonCode.CONTACT_CADENCE_POLICY_ALREADY_EXISTS -> stringResource(
+            R.string.error_reason_contact_cadence_policy_already_exists
+        )
+
+        ErrorReasonCode.CALENDAR_SUBSCRIPTION_NOT_FOUND -> stringResource(
+            R.string.error_reason_calendar_subscription_not_found
+        )
+
+        ErrorReasonCode.CIRCLE_NOT_FOUND -> stringResource(R.string.error_reason_circle_not_found)
+
+        ErrorReasonCode.CIRCLE_MEMBERSHIP_NOT_FOUND -> stringResource(
+            R.string.error_reason_circle_membership_not_found
+        )
+
+        ErrorReasonCode.CIRCLE_MEMBERSHIP_ALREADY_EXISTS -> stringResource(
+            R.string.error_reason_circle_membership_already_exists
+        )
+
+        ErrorReasonCode.CONTACT_NOT_FOUND -> stringResource(R.string.error_reason_contact_not_found)
+
+        ErrorReasonCode.CONTACT_SHARE_NOT_FOUND -> stringResource(
+            R.string.error_reason_contact_share_not_found
+        )
+
+        ErrorReasonCode.CONTACT_SUBSCRIPTION_NOT_FOUND -> stringResource(
+            R.string.error_reason_contact_subscription_not_found
+        )
+
+        ErrorReasonCode.CONTACT_CONVERSATION_AGENDA_ITEM_NOT_FOUND -> stringResource(
+            R.string.error_reason_contact_conversation_agenda_item_not_found
+        )
+
+        ErrorReasonCode.CONTACT_DATA_DECAY_POLICY_NOT_FOUND -> stringResource(
+            R.string.error_reason_contact_data_decay_policy_not_found
+        )
+
+        ErrorReasonCode.CONTACT_DATA_DECAY_POLICY_ALREADY_EXISTS -> stringResource(
+            R.string.error_reason_contact_data_decay_policy_already_exists
+        )
+
+        ErrorReasonCode.AUTH_DEVICE_GRANT_NOT_FOUND -> stringResource(
+            R.string.error_reason_auth_device_grant_not_found
+        )
+
+        ErrorReasonCode.NOTIFICATION_DEVICE_REGISTRATION_NOT_FOUND -> stringResource(
+            R.string.error_reason_notification_device_registration_not_found
+        )
+
+        ErrorReasonCode.OCCASION_EVENT_ATTENDEE_NOT_FOUND -> stringResource(
+            R.string.error_reason_occasion_event_attendee_not_found
+        )
+
+        ErrorReasonCode.OCCASION_EVENT_ATTENDEE_ALREADY_EXISTS -> stringResource(
+            R.string.error_reason_occasion_event_attendee_already_exists
+        )
+
+        ErrorReasonCode.CONTACT_EXTERNAL_ACTIVITY_NOT_FOUND -> stringResource(
+            R.string.error_reason_contact_external_activity_not_found
+        )
+
+        ErrorReasonCode.CONTACT_EXTERNAL_ACTIVITY_ALREADY_EXISTS -> stringResource(
+            R.string.error_reason_contact_external_activity_already_exists
+        )
+
+        ErrorReasonCode.INTEGRATION_EXTERNAL_IDENTITY_NOT_FOUND -> stringResource(
+            R.string.error_reason_integration_external_identity_not_found
+        )
+
+        ErrorReasonCode.INTEGRATION_EXTERNAL_IDENTITY_ALREADY_EXISTS -> stringResource(
+            R.string.error_reason_integration_external_identity_already_exists
+        )
+
+        ErrorReasonCode.FEED_NOT_FOUND -> stringResource(R.string.error_reason_feed_not_found)
+
+        ErrorReasonCode.CONTACT_FIELD_DEFINITION_NOT_FOUND -> stringResource(
+            R.string.error_reason_contact_field_definition_not_found
+        )
+
+        ErrorReasonCode.CONTACT_FIELD_DEFINITION_ALREADY_EXISTS -> stringResource(
+            R.string.error_reason_contact_field_definition_already_exists
+        )
+
+        ErrorReasonCode.GEOPULSE_RESOURCE_NOT_FOUND -> stringResource(
+            R.string.error_reason_geopulse_resource_not_found
+        )
+
+        ErrorReasonCode.CONTACT_GIFT_NOT_FOUND -> stringResource(
+            R.string.error_reason_contact_gift_not_found
+        )
+
+        ErrorReasonCode.HOUSEHOLD_NOT_FOUND -> stringResource(
+            R.string.error_reason_household_not_found
+        )
+
+        ErrorReasonCode.HOUSEHOLD_MEMBERSHIP_NOT_FOUND -> stringResource(
+            R.string.error_reason_household_membership_not_found
+        )
+
+        ErrorReasonCode.HOUSEHOLD_MEMBERSHIP_ALREADY_EXISTS -> stringResource(
+            R.string.error_reason_household_membership_already_exists
+        )
+
+        ErrorReasonCode.HOUSEHOLD_SUGGESTION_DISMISSAL_ALREADY_EXISTS -> stringResource(
+            R.string.error_reason_household_suggestion_dismissal_already_exists
+        )
+
+        ErrorReasonCode.PHOTO_IMAGE_NOT_FOUND -> stringResource(
+            R.string.error_reason_photo_image_not_found
+        )
+
+        ErrorReasonCode.IMMICH_LINK_NOT_FOUND -> stringResource(
+            R.string.error_reason_immich_link_not_found
+        )
+
+        ErrorReasonCode.IMMICH_LINK_ALREADY_EXISTS -> stringResource(
+            R.string.error_reason_immich_link_already_exists
+        )
+
+        ErrorReasonCode.IMMICH_PERSON_NOT_FOUND -> stringResource(
+            R.string.error_reason_immich_person_not_found
+        )
+
+        ErrorReasonCode.CONTACT_LIFE_EVENT_NOT_FOUND -> stringResource(
+            R.string.error_reason_contact_life_event_not_found
+        )
+
+        ErrorReasonCode.CONTACT_LINK_FIELD_TYPE_NOT_FOUND -> stringResource(
+            R.string.error_reason_contact_link_field_type_not_found
+        )
+
+        ErrorReasonCode.CONTACT_LINK_FIELD_TYPE_ALREADY_EXISTS -> stringResource(
+            R.string.error_reason_contact_link_field_type_already_exists
+        )
+
+        ErrorReasonCode.COMMON_MEMBER_NOT_FOUND -> stringResource(
+            R.string.error_reason_common_member_not_found
+        )
+
+        ErrorReasonCode.NEXTCLOUD_FILE_OR_FOLDER_NOT_FOUND -> stringResource(
+            R.string.error_reason_nextcloud_file_or_folder_not_found
+        )
+
+        ErrorReasonCode.NEXTCLOUD_LINK_NOT_FOUND -> stringResource(
+            R.string.error_reason_nextcloud_link_not_found
+        )
+
+        ErrorReasonCode.NEXTCLOUD_LINK_ALREADY_EXISTS -> stringResource(
+            R.string.error_reason_nextcloud_link_already_exists
+        )
+
+        ErrorReasonCode.CONTACT_NOTE_NOT_FOUND -> stringResource(
+            R.string.error_reason_contact_note_not_found
+        )
+
+        ErrorReasonCode.OCCASION_EVENT_NOT_FOUND -> stringResource(
+            R.string.error_reason_occasion_event_not_found
+        )
+
+        ErrorReasonCode.OCCASION_OBLIGATION_NOT_FOUND -> stringResource(
+            R.string.error_reason_occasion_obligation_not_found
+        )
+
+        ErrorReasonCode.PAPERLESS_DOCUMENT_NOT_FOUND -> stringResource(
+            R.string.error_reason_paperless_document_not_found
+        )
+
+        ErrorReasonCode.PAPERLESS_LINK_NOT_FOUND -> stringResource(
+            R.string.error_reason_paperless_link_not_found
+        )
+
+        ErrorReasonCode.PAPERLESS_LINK_ALREADY_EXISTS -> stringResource(
+            R.string.error_reason_paperless_link_already_exists
+        )
+
+        ErrorReasonCode.AUTH_PASSKEY_NOT_FOUND -> stringResource(
+            R.string.error_reason_auth_passkey_not_found
+        )
+
+        ErrorReasonCode.AUTH_PASSKEY_ALREADY_EXISTS -> stringResource(
+            R.string.error_reason_auth_passkey_already_exists
+        )
+
+        ErrorReasonCode.PHOTO_NOT_FOUND -> stringResource(R.string.error_reason_photo_not_found)
+
+        ErrorReasonCode.ACCOUNT_PREFERENCE_NOT_FOUND -> stringResource(
+            R.string.error_reason_account_preference_not_found
+        )
+
+        ErrorReasonCode.NOTIFICATION_PUSH_SUBSCRIPTION_NOT_FOUND -> stringResource(
+            R.string.error_reason_notification_push_subscription_not_found
+        )
+
+        ErrorReasonCode.CONTACT_REACH_OUT_SUGGESTION_NOT_FOUND -> stringResource(
+            R.string.error_reason_contact_reach_out_suggestion_not_found
+        )
+
+        ErrorReasonCode.ACCOUNT_RECIPIENT_USER_NOT_FOUND -> stringResource(
+            R.string.error_reason_account_recipient_user_not_found
+        )
+
+        ErrorReasonCode.RELATIONSHIP_EDGE_NOT_FOUND -> stringResource(
+            R.string.error_reason_relationship_edge_not_found
+        )
+
+        ErrorReasonCode.RELATIONSHIP_EDGE_ALREADY_EXISTS -> stringResource(
+            R.string.error_reason_relationship_edge_already_exists
+        )
+
+        ErrorReasonCode.CONTACT_REMINDER_NOT_FOUND -> stringResource(
+            R.string.error_reason_contact_reminder_not_found
+        )
+
+        ErrorReasonCode.CONTACT_REMINDER_COMPLETION_NOT_FOUND -> stringResource(
+            R.string.error_reason_contact_reminder_completion_not_found
+        )
+
+        ErrorReasonCode.SEAFILE_LIBRARY_OR_FILE_NOT_FOUND -> stringResource(
+            R.string.error_reason_seafile_library_or_file_not_found
+        )
+
+        ErrorReasonCode.SEAFILE_LINK_NOT_FOUND -> stringResource(
+            R.string.error_reason_seafile_link_not_found
+        )
+
+        ErrorReasonCode.SEAFILE_LINK_ALREADY_EXISTS -> stringResource(
+            R.string.error_reason_seafile_link_already_exists
+        )
+
+        ErrorReasonCode.AUTH_SESSION_NOT_FOUND -> stringResource(
+            R.string.error_reason_auth_session_not_found
+        )
+
+        ErrorReasonCode.COMMON_SYNC_CONFLICT_NOT_FOUND -> stringResource(
+            R.string.error_reason_common_sync_conflict_not_found
+        )
+
+        ErrorReasonCode.CONTACT_TAG_NOT_FOUND -> stringResource(
+            R.string.error_reason_contact_tag_not_found
+        )
+
+        ErrorReasonCode.CONTACT_TAGGING_NOT_FOUND -> stringResource(
+            R.string.error_reason_contact_tagging_not_found
+        )
+
+        ErrorReasonCode.CONTACT_TAGGING_ALREADY_EXISTS -> stringResource(
+            R.string.error_reason_contact_tagging_already_exists
+        )
+
+        ErrorReasonCode.PHOTO_THUMBNAIL_NOT_FOUND -> stringResource(
+            R.string.error_reason_photo_thumbnail_not_found
+        )
+
+        ErrorReasonCode.ACCOUNT_USER_NOT_FOUND -> stringResource(
+            R.string.error_reason_account_user_not_found
+        )
+
+        ErrorReasonCode.ACCOUNT_USER_ALREADY_EXISTS -> stringResource(
+            R.string.error_reason_account_user_already_exists
+        )
+
+        ErrorReasonCode.INTEGRATION_WEBHOOK_NOT_FOUND -> stringResource(
+            R.string.error_reason_integration_webhook_not_found
+        )
+
+        ErrorReasonCode.CONTACT_SOME_NOT_FOUND -> stringResource(
+            R.string.error_reason_contact_some_not_found
+        )
+
         else -> null
     }
 }
