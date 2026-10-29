@@ -41,6 +41,7 @@ function renderPanel(overrides: Partial<React.ComponentProps<typeof ExternalLink
     onLinkImmich: vi.fn().mockResolvedValue(undefined),
     onUnlinkImmich: vi.fn().mockResolvedValue(undefined),
     onSyncImmich: vi.fn().mockResolvedValue(undefined),
+    immichConfigured: true,
     ...overrides,
   };
   return render(
@@ -53,6 +54,19 @@ function renderPanel(overrides: Partial<React.ComponentProps<typeof ExternalLink
 test('unlinked contact shows the link affordance', () => {
   renderPanel();
   expect(screen.getByRole('button', { name: 'Link a person' })).toBeInTheDocument();
+});
+
+test('unlinked contact with Immich not configured hides the link affordance', () => {
+  renderPanel({ immichConfigured: false });
+  expect(screen.queryByRole('button', { name: 'Link a person' })).toBeNull();
+  expect(
+    screen.queryByText(/Link this contact to a person recognized by your Immich server/),
+  ).toBeNull();
+});
+
+test('an existing Immich link stays visible even when Immich is not configured', () => {
+  renderPanel({ immichConfigured: false, identities: [identity], immichSummary: summary });
+  expect(screen.getByText('Alice Example')).toBeInTheDocument();
 });
 
 test('linking opens the person picker and calls onLinkImmich on pick', async () => {
