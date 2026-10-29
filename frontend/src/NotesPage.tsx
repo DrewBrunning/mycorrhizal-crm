@@ -19,10 +19,13 @@ import {
   Popover,
   SvgIcon,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from '@mui/material';
 import { type MouseEvent, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link as RouterLink } from 'react-router';
 import { createUnassignedNote, deleteNote, type Note, updateNote } from './api/notes';
 import AddNoteDialog from './components/AddNoteDialog';
 import DateField from './components/DateField';
@@ -49,6 +52,8 @@ const NotesPage: React.FC = () => {
   const debouncedSearch = useDebouncedValue(searchInput, 400);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  // #2180: every note by default, like Activities; 'unfiled' is the inbox view.
+  const [scope, setScope] = useState<'all' | 'unfiled'>('all');
   const NOTES_PER_PAGE = 25;
 
   // T17: cursor pagination — the inbox pages by (updated_at, id) and a "load
@@ -60,14 +65,16 @@ const NotesPage: React.FC = () => {
       search: debouncedSearch.trim() || undefined,
       fromDate: fromDate || undefined,
       toDate: toDate || undefined,
+      scope,
+      includeContacts: true,
     }),
-    [debouncedSearch, fromDate, toDate],
+    [debouncedSearch, fromDate, toDate, scope],
   );
 
   const {
     notes,
     nextCursor,
-    total: unfiledTotal,
+    total: noteTotal,
     loading,
     error,
     refetch,
@@ -129,6 +136,9 @@ const NotesPage: React.FC = () => {
       // Stored value (saved at 00:00Z), so UTC date is right here; unlike the "today" defaults, see utils/localDate.ts (#1727).
       noteDate: note.date ? new Date(note.date).toISOString().split('T')[0] : '',
       noteContactId: note.contact_id ?? undefined,
+      noteContactName: note.contact?.firstname
+        ? `${note.contact.firstname} ${note.contact.lastname ?? ''}`.trim()
+        : undefined,
     });
   };
 
@@ -203,16 +213,16 @@ const NotesPage: React.FC = () => {
             <Typography variant="h5" component="h1">
               {t('notes.title')}
             </Typography>
-            {/* Queue depth from the server's `total`, not notes.length -- the
-                latter is the loaded page, so this under-counted anyone with
-                more than one page of unfiled notes and then grew as they
-                clicked "Load more". */}
+            {/* Count of the active filter from the server's `total`, not
+                notes.length -- the latter is the loaded page, so this
+                under-counted anyone with more than one page and then grew as
+                they clicked "Load more". */}
             {!error && (
               <Chip
-                label={unfiledTotal}
+                label={noteTotal}
                 size="small"
-                color={unfiledTotal > 0 ? 'primary' : 'default'}
-                variant={unfiledTotal > 0 ? 'filled' : 'outlined'}
+                color={noteTotal > 0 ? 'primary' : 'default'}
+                variant={noteTotal > 0 ? 'filled' : 'outlined'}
               />
             )}
             <IconButton
@@ -268,6 +278,19 @@ const NotesPage: React.FC = () => {
             variant="outlined"
             sx={{ flex: 1, minWidth: 200 }}
           />
+          <ToggleButtonGroup
+            exclusive
+            size="small"
+            color="primary"
+            value={scope}
+            aria-label={t('notes.filterLabel')}
+            onChange={(_e, next: 'all' | 'unfiled' | null) => {
+              if (next) setScope(next);
+            }}
+          >
+            <ToggleButton value="all">{t('notes.filterAll')}</ToggleButton>
+            <ToggleButton value="unfiled">{t('notes.filterUnfiled')}</ToggleButton>
+          </ToggleButtonGroup>
           <DateField
             label={t('notes.fromDate')}
             value={fromDate}
@@ -295,7 +318,11 @@ const NotesPage: React.FC = () => {
               color: 'text.secondary',
             }}
           >
-            {hasFilters ? t('notes.noResults') : t('notes.noNotes')}
+            {hasFilters
+              ? t('notes.noResults')
+              : scope === 'all'
+                ? t('notes.noNotesAll')
+                : t('notes.noNotes')}
           </Typography>
         </Paper>
       ) : (
@@ -352,6 +379,18 @@ const NotesPage: React.FC = () => {
                         </IconButton>
                       </Box>
                     </Box>
+                    {note.contact_id != null && note.contact?.firstname && (
+                      <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        <Chip
+                          label={`${note.contact.firstname} ${note.contact.lastname ?? ''}`.trim()}
+                          size="small"
+                          variant="outlined"
+                          component={RouterLink}
+                          to={`/contacts/${note.contact_id}`}
+                          clickable
+                        />
+                      </Box>
+                    )}
                   </Box>
                 </Paper>
               </TimelineContent>

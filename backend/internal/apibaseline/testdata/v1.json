@@ -6158,12 +6158,22 @@
           "required": false
         },
         {
+          "name": "include",
+          "in": "query",
+          "required": false
+        },
+        {
           "name": "limit",
           "in": "query",
           "required": false
         },
         {
           "name": "order",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "scope",
           "in": "query",
           "required": false
         },

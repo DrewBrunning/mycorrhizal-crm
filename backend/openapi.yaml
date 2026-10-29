@@ -5291,7 +5291,7 @@ paths:
                 $ref: "#/components/schemas/Error"
   /notes:
     get:
-      summary: List the user's unassigned notes (no contact)
+      summary: List the user's notes (unfiled by default; scope=all for every note)
       operationId: listUnassignedNotes
       tags:
         - Notes
@@ -5327,6 +5327,22 @@ paths:
           in: query
           description: Inclusive YYYY-MM-DD upper bound on note date.
           schema: { type: string, format: date }
+        - name: scope
+          in: query
+          description: >
+            unfiled (default) lists only notes with no contact; all lists every
+            note of the caller, filed or not (issue #2180). Any other value is
+            treated as unfiled. Always bounded by the caller's user_id, and
+            ignored by the ?since= change feed, which mirrors unassigned notes
+            only. total follows the active scope.
+          schema: { type: string, enum: [unfiled, all], default: unfiled }
+        - name: include
+          in: query
+          description: >
+            contacts fills each note's nested contact with id, firstname,
+            lastname and photo thumbnail (the caller's own contacts only).
+            Without it the nested contact is the empty object.
+          schema: { type: string, enum: [contacts] }
       responses:
         "401":
           description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
