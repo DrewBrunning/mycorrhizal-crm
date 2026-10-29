@@ -12,7 +12,7 @@ import {
   type Theme,
   Typography,
 } from '@mui/material';
-import { useMemo, useRef, useState } from 'react';
+import { useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDateFormat } from '../DateFormatProvider';
 import { localISODate } from '../utils/localDate';
@@ -39,6 +39,19 @@ function parseISODate(value: string): Date | null {
   const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
   return Number.isNaN(date.getTime()) ? null : date;
 }
+
+const FULL_ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** True for a real calendar day (rejects 31 February), in a 4-digit year. */
+function isRealCalendarDay(iso: string): boolean {
+  if (!FULL_ISO_DATE.test(iso)) return false;
+  const [year, month, day] = iso.split('-').map(Number);
+  const date = new Date(0);
+  date.setUTCFullYear(year, month - 1, day);
+  return date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
+
+type TypedDate = { iso: string } | { error: 'invalid' | 'range' };
 
 // Intl.Locale#weekInfo is not in every engine's TypeScript lib yet.
 interface WeekInfo {
@@ -72,7 +85,9 @@ function monthCells(year: number, month: number, firstDay: number): (string | nu
   for (let day = 1; day <= total; day++) {
     cells.push(localISODate(new Date(year, month, day)));
   }
-  while (cells.length % 7 !== 0) cells.push(null);
+  // Always six week rows: a month that needs fewer would shrink the popup and
+  // move the previous/next buttons out from under the cursor (issue #2199).
+  while (cells.length < 42) cells.push(null);
   return cells;
 }
 
@@ -81,6 +96,10 @@ function monthCells(year: number, month: number, firstDay: number): (string | nu
  * preference and opens a month calendar (issue #1789). A browser-native
  * `<input type="date">` renders `mm/dd/yyyy` regardless of the app preference
  * and, on WebKit, looks like an applied filter even when empty.
+ *
+ * The text box is editable: a date typed in the preferred format (issue #2198)
+ * updates the value, and invalid text shows an error and leaves the value
+ * unchanged. The calendar is an add-on opened from the icon button.
  *
  * The value contract is a date-only `YYYY-MM-DD`, the same as the native input
  * it replaces.
@@ -97,7 +116,13 @@ export default function DateField({
   sx,
 }: DateFieldProps) {
   const { t, i18n } = useTranslation();
-  const { formatDate, getDatePlaceholder } = useDateFormat();
+  const { formatDate, formatBirthdayForInput, parseBirthdayInput, getDatePlaceholder } =
+    useDateFormat();
+  const errorId = useId();
+  // The text being typed, or null when the field mirrors `value`.
+  const [draft, setDraft] = useState<string | null>(null);
+  const [focused, setFocused] = useState(false);
+  const [error, setError] = useState<'invalid' | 'range' | null>(null);
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const anchorRef = useRef<HTMLDivElement | null>(null);
   const selected = parseISODate(value);
@@ -136,6 +161,8 @@ export default function DateField({
   const close = () => setAnchorEl(null);
 
   const choose = (iso: string) => {
+    setDraft(null);
+    setError(null);
     onChange(iso);
     close();
   };
@@ -146,30 +173,95 @@ export default function DateField({
 
   const disabled = (iso: string) => (min != null && iso < min) || (max != null && iso > max);
 
+  // Typed text must be a complete, real calendar day in the user's Date
+  // format. A year-less entry ("15.01.") is not a valid value for this field.
+  const parseTyped = (text: string): TypedDate => {
+    const parsed = parseBirthdayInput(text);
+    if (parsed === null || !isRealCalendarDay(parsed)) return { error: 'invalid' };
+    return disabled(parsed) ? { error: 'range' } : { iso: parsed };
+  };
+
+  const handleTyping = (text: string) => {
+    setDraft(text);
+    setError(null);
+    // Report a complete valid date (or an emptied field) as it is typed; the
+    // text itself is only normalized on blur so the caret is never moved.
+    if (text.trim() === '') {
+      onChange('');
+      return;
+    }
+    const typed = parseTyped(text);
+    if ('iso' in typed && typed.iso !== value) onChange(typed.iso);
+  };
+
+  // Settle what was typed: a valid date is shown in the preferred format, an
+  // invalid one keeps its text, shows an error and never touches the value.
+  const settle = () => {
+    if (draft === null) return;
+    if (draft.trim() === '') {
+      setDraft(null);
+      return;
+    }
+    const typed = parseTyped(draft);
+    if ('error' in typed) {
+      setError(typed.error);
+      return;
+    }
+    if (typed.iso !== value) onChange(typed.iso);
+    setDraft(null);
+  };
+
+  const shown =
+    draft ?? (selected ? (focused ? formatBirthdayForInput(value) : formatDate(value)) : '');
+  const helperText =
+    error === 'range'
+      ? t('common.dateOutOfRange')
+      : error === 'invalid'
+        ? t('common.dateInvalid', { format: getDatePlaceholder() })
+        : undefined;
+
   return (
     <Box ref={anchorRef} sx={sx ?? { width: '100%' }}>
       <TextField
         id={id}
         label={label}
-        value={selected ? formatDate(value) : ''}
+        value={shown}
         placeholder={getDatePlaceholder()}
         size={size}
         fullWidth
         required={required}
-        onClick={openPicker}
+        error={error !== null}
+        helperText={helperText}
+        onChange={(event) => handleTyping(event.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => {
+          setFocused(false);
+          settle();
+        }}
         onKeyDown={(event) => {
-          if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowDown') {
+          if (event.key === 'Enter' && draft !== null) {
+            // Commit typed text instead of submitting a surrounding form with
+            // a half-validated value.
+            event.preventDefault();
+            settle();
+          } else if (event.key === 'ArrowDown') {
             event.preventDefault();
             openPicker();
           }
         }}
         slotProps={{
           input: {
-            readOnly: true,
-            sx: { cursor: 'pointer' },
             endAdornment: (
               <InputAdornment position="end">
-                <CalendarMonthIcon fontSize="small" />
+                <IconButton
+                  size="small"
+                  edge="end"
+                  aria-label={t('common.openCalendar')}
+                  aria-haspopup="dialog"
+                  onClick={openPicker}
+                >
+                  <CalendarMonthIcon fontSize="small" />
+                </IconButton>
               </InputAdornment>
             ),
           },
@@ -177,7 +269,9 @@ export default function DateField({
             'aria-haspopup': 'dialog',
             'aria-label': required ? `${label} *` : label,
             'aria-required': required ? 'true' : undefined,
+            'aria-describedby': error !== null ? errorId : undefined,
           },
+          formHelperText: { id: errorId },
         }}
       />
 
@@ -233,6 +327,8 @@ export default function DateField({
                 <Box
                   // biome-ignore lint/suspicious/noArrayIndexKey: fixed 7-column grid
                   key={`blank-${index}`}
+                  data-cell=""
+                  sx={{ height: 34 }}
                 />
               ) : (
                 <Box
@@ -240,6 +336,7 @@ export default function DateField({
                   type="button"
                   key={iso}
                   data-date={iso}
+                  data-cell=""
                   aria-label={formatDate(iso)}
                   aria-pressed={value === iso}
                   disabled={disabled(iso)}

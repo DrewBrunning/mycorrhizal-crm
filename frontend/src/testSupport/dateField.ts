@@ -1,13 +1,21 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { expect } from 'vitest';
 
+/** Open a DateField's calendar by its label (the icon button next to the text box). */
+export function openDatePicker(label: string): void {
+  const field = screen.getByRole('textbox', { name: label });
+  const button = field.closest('.MuiFormControl-root')?.querySelector('button');
+  if (!button) throw new Error(`No calendar button for the ${label} field`);
+  fireEvent.click(button);
+}
+
 /**
  * Open a DateField by its label and choose `iso` from the month calendar.
  * `fromIso` is the field's current value (the picker opens on that month);
  * omit it for an empty field, whose picker opens on "today's" month.
  */
 export async function pickDate(label: string, iso: string, fromIso?: string): Promise<void> {
-  fireEvent.click(screen.getByRole('textbox', { name: label }));
+  openDatePicker(label);
   const dialogName = label.replace(/ \*$/, '');
   const dialog = screen.getByRole('dialog', { name: dialogName });
   const target = new Date(`${iso}T00:00:00`);

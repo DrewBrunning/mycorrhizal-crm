@@ -34,7 +34,8 @@ const DYNAMIC_KEY_SOURCES: readonly DynamicKeySource[] = [
   {
     prefix: 'errors.reason.',
     file: 'i18n/reason.ts',
-    reason: 'reason_code comes from the server error envelope (or the flat lockout 429 body)',
+    reason:
+      'reason_code comes from the server error envelope (or the flat lockout 429 body) (ADR 0038)',
   },
   {
     prefix: 'circlesTags.colors.',
