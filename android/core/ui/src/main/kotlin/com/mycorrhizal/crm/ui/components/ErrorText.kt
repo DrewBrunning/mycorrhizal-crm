@@ -723,9 +723,9 @@ private fun localizedReason(reason: ErrorReason?): String? {
             stringResource(R.string.error_reason_import_file_missing)
 
         ErrorReasonCode.IMPORT_JSCONTACT_FILE_TOO_LARGE -> {
-            val max_mb = reason.int("max_mb")
-            if (max_mb != null) {
-                stringResource(R.string.error_reason_import_jscontact_file_too_large, max_mb)
+            val maxMb = reason.int("max_mb")
+            if (maxMb != null) {
+                stringResource(R.string.error_reason_import_jscontact_file_too_large, maxMb)
             } else {
                 null
             }
@@ -735,9 +735,9 @@ private fun localizedReason(reason: ErrorReason?): String? {
             stringResource(R.string.error_reason_import_file_not_jscontact)
 
         ErrorReasonCode.CSV_FILE_TOO_LARGE -> {
-            val max_mb = reason.int("max_mb")
-            if (max_mb != null) {
-                stringResource(R.string.error_reason_csv_file_too_large, max_mb)
+            val maxMb = reason.int("max_mb")
+            if (maxMb != null) {
+                stringResource(R.string.error_reason_csv_file_too_large, maxMb)
             } else {
                 null
             }
@@ -747,9 +747,9 @@ private fun localizedReason(reason: ErrorReason?): String? {
             stringResource(R.string.error_reason_csv_file_not_csv)
 
         ErrorReasonCode.VCARD_FILE_TOO_LARGE -> {
-            val max_mb = reason.int("max_mb")
-            if (max_mb != null) {
-                stringResource(R.string.error_reason_vcard_file_too_large, max_mb)
+            val maxMb = reason.int("max_mb")
+            if (maxMb != null) {
+                stringResource(R.string.error_reason_vcard_file_too_large, maxMb)
             } else {
                 null
             }
@@ -783,7 +783,11 @@ private fun localizedReason(reason: ErrorReason?): String? {
             val total = reason.int("total")
             val max = reason.int("max")
             if (total != null && max != null) {
-                stringResource(R.string.error_reason_monica_too_many_contacts, total, max)
+                stringResource(
+                    R.string.error_reason_monica_too_many_contacts,
+                    total.toString(),
+                    max
+                )
             } else {
                 null
             }
@@ -793,7 +797,11 @@ private fun localizedReason(reason: ErrorReason?): String? {
             val total = reason.int("total")
             val max = reason.int("max")
             if (total != null && max != null) {
-                stringResource(R.string.error_reason_monica_too_many_records, total, max)
+                stringResource(
+                    R.string.error_reason_monica_too_many_records,
+                    total.toString(),
+                    max
+                )
             } else {
                 null
             }

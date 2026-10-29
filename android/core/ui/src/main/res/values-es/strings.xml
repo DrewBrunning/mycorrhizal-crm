@@ -2898,8 +2898,8 @@
     <string name="error_reason_monica_url_private">La URL de Monica apunta a una dirección privada, que este servidor bloquea</string>
     <string name="error_reason_monica_not_monica_api">El servidor no respondió como una API de Monica: revisa la URL</string>
     <string name="error_reason_monica_unreachable">Error del servicio Monica: no se pudo acceder a la instancia de Monica</string>
-    <string name="error_reason_monica_too_many_contacts">Esta cuenta de Monica tiene %1$d contactos; la importación admite como máximo %2$d</string>
-    <string name="error_reason_monica_too_many_records">Esta cuenta de Monica tiene %1$d registros; la importación admite como máximo %2$d</string>
+    <string name="error_reason_monica_too_many_contacts">Esta cuenta de Monica tiene %1$s contactos; la importación admite como máximo %2$d</string>
+    <string name="error_reason_monica_too_many_records">Esta cuenta de Monica tiene %1$s registros; la importación admite como máximo %2$d</string>
     <string name="error_reason_monica_fetch_in_progress">Ya hay una descarga en curso para esta sesión</string>
     <string name="error_reason_monica_not_fetched">Los datos de Monica aún no se han descargado</string>
     <string name="error_reason_bundle_session_not_found">La sesión de importación ha caducado o no se encontró</string>

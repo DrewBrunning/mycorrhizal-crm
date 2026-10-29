@@ -201,7 +201,8 @@ class ErrorTextTest {
             "retry_after" to 90.0,
             "reason" to "r",
             "total" to 1.0,
-            "max" to 1.0
+            "max" to 1.0,
+            "max_mb" to 1.0
         )
         val rendered = mutableMapOf<String, String>()
         composeTestRule.setContent {
