@@ -745,6 +745,14 @@
     "jumpNav": "Vai alla sezione",
     "markAsMe": "Questo sono io",
     "unmarkAsMe": "Questo non sono io",
+    "meDialog": {
+      "markTitle": "Contrassegnare questo contatto come te?",
+      "markBody": "Questo contatto diventerà te. Restare in contatto con se stessi non ha senso, quindi viene anche contrassegnato come ambientale: non è mai in ritardo e il suo punteggio di relazione conta sempre come aggiornato. Puoi disattivare l'opzione ambientale sul contatto in qualsiasi momento.",
+      "markConfirm": "Sì, questo sono io",
+      "unmarkTitle": "Questo contatto non sei tu?",
+      "unmarkBody": "Questo contatto non sarà più te. Se contrassegnarlo come te ha attivato l'opzione ambientale, viene disattivata di nuovo. Un'impostazione ambientale scelta da te viene mantenuta.",
+      "unmarkConfirm": "Sì, questo non sono io"
+    },
     "skills": {
       "add": "Aggiungi competenza o interesse",
       "createTitle": "Aggiungi competenza o interesse",
