@@ -288,8 +288,14 @@ const NotesPage: React.FC = () => {
               if (next) setScope(next);
             }}
           >
-            <ToggleButton value="all">{t('notes.filterAll')}</ToggleButton>
-            <ToggleButton value="unfiled">{t('notes.filterUnfiled')}</ToggleButton>
+            {/* MUI's default unselected ToggleButton color fails WCAG AA contrast
+                on this theme's surface (see OccasionsPage.tsx). */}
+            <ToggleButton value="all" sx={{ color: 'text.secondary' }}>
+              {t('notes.filterAll')}
+            </ToggleButton>
+            <ToggleButton value="unfiled" sx={{ color: 'text.secondary' }}>
+              {t('notes.filterUnfiled')}
+            </ToggleButton>
           </ToggleButtonGroup>
           <DateField
             label={t('notes.fromDate')}
