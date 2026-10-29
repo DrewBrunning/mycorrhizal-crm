@@ -150,14 +150,14 @@ func TestGet_HappyPath(t *testing.T) {
 	assert.Equal(t, uint(7), sd.session.UserID)
 }
 
-func TestGet_WrongUser_Unauthorized(t *testing.T) {
+func TestGet_WrongUser_NotFound(t *testing.T) {
 	m := NewImportSessionManager()
 	id := m.CreateCSVSession(7, []string{"First"}, [][]string{{"Alice"}})
 
 	sd, appErr := m.get(id, 8)
 	assert.Nil(t, sd)
 	require.NotNil(t, appErr)
-	assert.Equal(t, apperrors.ErrCodeUnauthorized, appErr.Code)
+	assert.Equal(t, apperrors.ErrCodeNotFound, appErr.Code)
 }
 
 func TestGet_UnknownID_NotFound(t *testing.T) {
@@ -305,7 +305,7 @@ func TestPreviewCSV_WrongUser_ErrorPropagatesFromGet(t *testing.T) {
 	resp, appErr := m.PreviewCSV(db, 999, models.ImportPreviewRequest{SessionID: id, Mappings: csvMappings()})
 	assert.Nil(t, resp)
 	require.NotNil(t, appErr)
-	assert.Equal(t, apperrors.ErrCodeUnauthorized, appErr.Code)
+	assert.Equal(t, apperrors.ErrCodeNotFound, appErr.Code)
 }
 
 // --- Confirm (CSV) -----------------------------------------------------------------
