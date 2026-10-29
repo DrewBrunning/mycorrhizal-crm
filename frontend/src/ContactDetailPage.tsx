@@ -1719,6 +1719,7 @@ export default function ContactDetailPage() {
             contactUid={record.uid}
             identities={externalIdentities}
             loading={externalLinksLoading}
+            immichConfigured={immich.configured}
             immichSummary={immich.summary}
             immichSummaryLoading={immich.summaryLoading}
             onFetchImmichPeople={() => getImmichPeople()}
