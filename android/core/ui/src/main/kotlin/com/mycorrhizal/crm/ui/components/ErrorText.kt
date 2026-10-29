@@ -586,6 +586,167 @@ private fun localizedReason(reason: ErrorReason?): String? {
             R.string.error_reason_validation_invalid_request_body
         )
 
+        ErrorReasonCode.AUTH_REQUIRED -> stringResource(
+            R.string.error_reason_auth_required
+        )
+
+        ErrorReasonCode.AUTH_REGISTRATION_DISABLED -> stringResource(
+            R.string.error_reason_auth_registration_disabled
+        )
+
+        ErrorReasonCode.AUTH_USER_ID_INVALID -> stringResource(
+            R.string.error_reason_auth_user_id_invalid
+        )
+
+        ErrorReasonCode.AUTH_USER_NOT_FOUND -> stringResource(
+            R.string.error_reason_auth_user_not_found
+        )
+
+        ErrorReasonCode.AUTH_AUTHORIZATION_TOKEN_REQUIRED -> stringResource(
+            R.string.error_reason_auth_authorization_token_required
+        )
+
+        ErrorReasonCode.AUTH_AUTHORIZATION_HEADER_NOT_BEARER -> stringResource(
+            R.string.error_reason_auth_authorization_header_not_bearer
+        )
+
+        ErrorReasonCode.AUTH_BEARER_TOKEN_INVALID -> stringResource(
+            R.string.error_reason_auth_bearer_token_invalid
+        )
+
+        ErrorReasonCode.AUTH_BEARER_TOKEN_EXPIRED -> stringResource(
+            R.string.error_reason_auth_bearer_token_expired
+        )
+
+        ErrorReasonCode.AUTH_BEARER_TOKEN_MALFORMED -> stringResource(
+            R.string.error_reason_auth_bearer_token_malformed
+        )
+
+        ErrorReasonCode.AUTH_BEARER_TOKEN_SIGNATURE_INVALID -> stringResource(
+            R.string.error_reason_auth_bearer_token_signature_invalid
+        )
+
+        ErrorReasonCode.AUTH_SESSION_EXPIRED -> stringResource(
+            R.string.error_reason_auth_session_expired
+        )
+
+        ErrorReasonCode.AUTH_TOKEN_SCOPED_CARDDAV -> stringResource(
+            R.string.error_reason_auth_token_scoped_carddav
+        )
+
+        ErrorReasonCode.AUTH_TOKEN_SCOPED_CALDAV -> stringResource(
+            R.string.error_reason_auth_token_scoped_caldav
+        )
+
+        ErrorReasonCode.ADMIN_API_TOKEN_FORBIDDEN -> stringResource(
+            R.string.error_reason_admin_api_token_forbidden
+        )
+
+        ErrorReasonCode.ADMIN_ACCESS_REQUIRED -> stringResource(
+            R.string.error_reason_admin_access_required
+        )
+
+        ErrorReasonCode.ADMIN_USER_ID_INVALID -> stringResource(
+            R.string.error_reason_admin_user_id_invalid
+        )
+
+        ErrorReasonCode.ADMIN_ROLE_CHANGE_OTHER_ADMIN_FORBIDDEN -> stringResource(
+            R.string.error_reason_admin_role_change_other_admin_forbidden
+        )
+
+        ErrorReasonCode.ADMIN_LAST_ADMIN_REMOVAL_FORBIDDEN -> stringResource(
+            R.string.error_reason_admin_last_admin_removal_forbidden
+        )
+
+        ErrorReasonCode.ADMIN_DELETE_SELF_FORBIDDEN -> stringResource(
+            R.string.error_reason_admin_delete_self_forbidden
+        )
+
+        ErrorReasonCode.ADMIN_DELETE_OTHER_ADMIN_FORBIDDEN -> stringResource(
+            R.string.error_reason_admin_delete_other_admin_forbidden
+        )
+
+        ErrorReasonCode.ACCOUNT_LANGUAGE_INVALID -> stringResource(
+            R.string.error_reason_account_language_invalid
+        )
+
+        ErrorReasonCode.ACCOUNT_LANGUAGE_UNSUPPORTED ->
+            reason.str("supported")?.let { stringResource(R.string.error_reason_account_language_unsupported, it) }
+
+        ErrorReasonCode.ACCOUNT_DATE_FORMAT_INVALID -> stringResource(
+            R.string.error_reason_account_date_format_invalid
+        )
+
+        ErrorReasonCode.ACCOUNT_DATE_FORMAT_UNSUPPORTED -> stringResource(
+            R.string.error_reason_account_date_format_unsupported
+        )
+
+        ErrorReasonCode.ACCOUNT_TIME_FORMAT_INVALID -> stringResource(
+            R.string.error_reason_account_time_format_invalid
+        )
+
+        ErrorReasonCode.ACCOUNT_TIME_FORMAT_UNSUPPORTED -> stringResource(
+            R.string.error_reason_account_time_format_unsupported
+        )
+
+        ErrorReasonCode.ACCOUNT_DAV_PASSWORD_REQUIRES_NO_TWO_FACTOR -> stringResource(
+            R.string.error_reason_account_dav_password_requires_no_two_factor
+        )
+
+        ErrorReasonCode.ACCOUNT_CURRENT_PASSWORD_INCORRECT -> stringResource(
+            R.string.error_reason_account_current_password_incorrect
+        )
+
+        ErrorReasonCode.ACCOUNT_NEW_PASSWORD_SAME_AS_CURRENT -> stringResource(
+            R.string.error_reason_account_new_password_same_as_current
+        )
+
+        ErrorReasonCode.ACCOUNT_DELETION_DISABLED_DEMO -> stringResource(
+            R.string.error_reason_account_deletion_disabled_demo
+        )
+
+        ErrorReasonCode.ACCOUNT_SOLE_ADMIN_PROMOTION_REQUIRED -> stringResource(
+            R.string.error_reason_account_sole_admin_promotion_required
+        )
+
+        ErrorReasonCode.ACCOUNT_API_TOKEN_SCOPES_REQUIRED -> stringResource(
+            R.string.error_reason_account_api_token_scopes_required
+        )
+
+        ErrorReasonCode.ACCOUNT_API_TOKEN_SCOPE_UNKNOWN ->
+            reason.str("scope")?.let { stringResource(R.string.error_reason_account_api_token_scope_unknown, it) }
+
+        ErrorReasonCode.ACCOUNT_API_TOKEN_EXPIRY_CONFLICT -> stringResource(
+            R.string.error_reason_account_api_token_expiry_conflict
+        )
+
+        ErrorReasonCode.ACCOUNT_API_TOKEN_NEVER_EXPIRES_NOT_ALLOWED -> stringResource(
+            R.string.error_reason_account_api_token_never_expires_not_allowed
+        )
+
+        ErrorReasonCode.ACCOUNT_API_TOKEN_ALREADY_REVOKED -> stringResource(
+            R.string.error_reason_account_api_token_already_revoked
+        )
+
+        ErrorReasonCode.VALIDATION_ID_NOT_POSITIVE_INTEGER -> stringResource(
+            R.string.error_reason_validation_id_not_positive_integer
+        )
+
+        ErrorReasonCode.CONTACT_SHARE_WITH_SELF -> stringResource(
+            R.string.error_reason_contact_share_with_self
+        )
+
+        ErrorReasonCode.CONTACT_SHARE_SECTION_UNKNOWN ->
+            reason.str("section")?.let { stringResource(R.string.error_reason_contact_share_section_unknown, it) }
+
+        ErrorReasonCode.CONTACT_SHARE_ALREADY_RESPONDED -> stringResource(
+            R.string.error_reason_contact_share_already_responded
+        )
+
+        ErrorReasonCode.CONTACT_SHARE_SESSION_MISMATCH -> stringResource(
+            R.string.error_reason_contact_share_session_mismatch
+        )
+
         else -> null
     }
 }

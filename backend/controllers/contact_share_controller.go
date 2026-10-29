@@ -43,7 +43,7 @@ func CreateContactShare(c *gin.Context) {
 	}
 
 	if input.ToUserID == userID {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("to_user_id", "Cannot share a contact with yourself"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("to_user_id", "Cannot share a contact with yourself").WithReason(apperrors.ReasonContactShareWithSelf, nil))
 		return
 	}
 
@@ -70,7 +70,8 @@ func CreateContactShare(c *gin.Context) {
 	sel := models.NewFieldSelection()
 	for _, token := range input.Sections {
 		if err := sel.Enable(token); err != nil {
-			apperrors.AbortWithError(c, apperrors.ErrValidation(err.Error()))
+			apperrors.AbortWithError(c, apperrors.ErrValidation(err.Error()).
+				WithReason(apperrors.ReasonContactShareSectionUnknown, map[string]any{"section": token}))
 			return
 		}
 	}
@@ -227,7 +228,7 @@ func getPendingShareForRecipient(c *gin.Context, db *gorm.DB, userID uint) (*mod
 		return nil, false
 	}
 	if share.Status != models.ContactShareStatusPending {
-		apperrors.AbortWithError(c, apperrors.ErrConflict("Share already responded to"))
+		apperrors.AbortWithError(c, apperrors.ErrConflict("Share already responded to").WithReason(apperrors.ReasonContactShareAlreadyResponded, nil))
 		return nil, false
 	}
 	return &share, true
@@ -373,7 +374,7 @@ func ConfirmContactShare(c *gin.Context, cfg *config.Config) {
 	// to flip this share's status to accepted without its own data being
 	// what actually landed. Checked before ConfirmVCF touches anything.
 	if !importSessions.SessionBelongsToShare(request.SessionID, userID, share.ID) {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("session_id", "Session does not belong to this share"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("session_id", "Session does not belong to this share").WithReason(apperrors.ReasonContactShareSessionMismatch, nil))
 		return
 	}
 

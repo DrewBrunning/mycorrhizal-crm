@@ -184,7 +184,10 @@ class ErrorTextTest {
             "n" to 1.0,
             "limit" to 1.0,
             "required_version" to "1.0.0",
-            "retry_after" to 90.0
+            "retry_after" to 90.0,
+            "supported" to "en, de",
+            "scope" to "api",
+            "section" to "names"
         )
         val rendered = mutableMapOf<String, String>()
         composeTestRule.setContent {

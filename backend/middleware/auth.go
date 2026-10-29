@@ -30,13 +30,13 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 			// Fall back to Authorization header (for API clients like CardDAV)
 			authHeader := c.GetHeader("Authorization")
 			if authHeader == "" {
-				apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Authorization token required"))
+				apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Authorization token required").WithReason(apperrors.ReasonAuthAuthorizationTokenRequired, nil))
 				return
 			}
 
 			// Check if Authorization header is formatted properly
 			if !strings.HasPrefix(authHeader, "Bearer ") {
-				apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Authorization header must start with Bearer"))
+				apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Authorization header must start with Bearer").WithReason(apperrors.ReasonAuthAuthorizationHeaderNotBearer, nil))
 				return
 			}
 
@@ -48,15 +48,17 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 			db := c.MustGet("db").(*gorm.DB)
 			apiToken, ok := LookupAPIToken(db, tokenString, now)
 			if !ok {
-				apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid token"))
+				apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid token").WithReason(apperrors.ReasonAuthBearerTokenInvalid, nil))
 				return
 			}
 			if !apiToken.HasAnyAPIScope() {
 				message := "This token is scoped to CardDAV and cannot be used for the API"
+				reason := apperrors.ReasonAuthTokenScopedCardDAV
 				if !apiToken.HasScope(models.TokenScopeCardDAV) {
 					message = "This token is scoped to CalDAV and cannot be used for the API"
+					reason = apperrors.ReasonAuthTokenScopedCalDAV
 				}
-				apperrors.AbortWithError(c, apperrors.ErrForbidden(message))
+				apperrors.AbortWithError(c, apperrors.ErrForbidden(message).WithReason(reason, nil))
 				return
 			}
 			c.Set("userID", apiToken.UserID)
@@ -82,24 +84,24 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 
 		if err != nil {
 			if errors.Is(err, jwt.ErrTokenExpired) {
-				apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Token expired"))
+				apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Token expired").WithReason(apperrors.ReasonAuthBearerTokenExpired, nil))
 				return
 			}
 			if errors.Is(err, jwt.ErrTokenMalformed) {
-				apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Malformed token"))
+				apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Malformed token").WithReason(apperrors.ReasonAuthBearerTokenMalformed, nil))
 				return
 			}
 			if errors.Is(err, jwt.ErrSignatureInvalid) {
-				apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid token signature"))
+				apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid token signature").WithReason(apperrors.ReasonAuthBearerTokenSignatureInvalid, nil))
 				return
 			}
-			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid token"))
+			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid token").WithReason(apperrors.ReasonAuthBearerTokenInvalid, nil))
 			return
 		}
 
 		if !token.Valid {
 			// # pragma: no cover — jwt.Parse returns a non-nil error whenever Valid is false, so this defense-in-depth arm is unreachable
-			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid token"))
+			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid token").WithReason(apperrors.ReasonAuthBearerTokenInvalid, nil))
 			return
 		}
 
@@ -108,7 +110,7 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
 			// # pragma: no cover — jwt.Parse always yields MapClaims, so this defense-in-depth arm is unreachable
-			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid token"))
+			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid token").WithReason(apperrors.ReasonAuthBearerTokenInvalid, nil))
 			return
 		}
 
@@ -120,7 +122,7 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 		// silently double as a bearer credential because its minting code
 		// forgot to update this list. Session tokens never carry a purpose.
 		if purpose, _ := claims["purpose"].(string); purpose != "" {
-			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid token"))
+			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid token").WithReason(apperrors.ReasonAuthBearerTokenInvalid, nil))
 			return
 		}
 
@@ -130,7 +132,7 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 
 		userID, ok := uintClaim(claims, "user_id")
 		if !ok {
-			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid token"))
+			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid token").WithReason(apperrors.ReasonAuthBearerTokenInvalid, nil))
 			return
 		}
 
@@ -139,7 +141,7 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 		// re-login instead of silently trusting unversioned tokens forever.
 		tokenVersion, ok := uintClaim(claims, "token_version")
 		if !ok {
-			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid token"))
+			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid token").WithReason(apperrors.ReasonAuthBearerTokenInvalid, nil))
 			return
 		}
 
@@ -148,11 +150,11 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 		db := c.MustGet("db").(*gorm.DB)
 		var user models.User
 		if err := db.Select("token_version").First(&user, userID).Error; err != nil {
-			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid token"))
+			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid token").WithReason(apperrors.ReasonAuthBearerTokenInvalid, nil))
 			return
 		}
 		if user.TokenVersion != tokenVersion {
-			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Session expired, please sign in again"))
+			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Session expired, please sign in again").WithReason(apperrors.ReasonAuthSessionExpired, nil))
 			return
 		}
 
@@ -164,20 +166,20 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 		// exactly as the missing-token_version case above does.
 		sid, _ := claims["sid"].(string)
 		if sid == "" {
-			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid token"))
+			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid token").WithReason(apperrors.ReasonAuthBearerTokenInvalid, nil))
 			return
 		}
 		var session models.Session
 		if err := db.Select("last_seen_at", "expires_at", "revoked_at").
 			First(&session, "id = ?", sid).Error; err != nil {
-			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Session expired, please sign in again"))
+			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Session expired, please sign in again").WithReason(apperrors.ReasonAuthSessionExpired, nil))
 			return
 		}
 		idle := time.Duration(cfg.SessionIdleTimeoutHours) * time.Hour
 		if session.RevokedAt != nil ||
 			!session.ExpiresAt.After(now) ||
 			(idle > 0 && now.Sub(session.LastSeenAt) > idle) {
-			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Session expired, please sign in again"))
+			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Session expired, please sign in again").WithReason(apperrors.ReasonAuthSessionExpired, nil))
 			return
 		}
 		// Throttled: only the first request in each sessionTouchInterval writes.

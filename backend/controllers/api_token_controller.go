@@ -51,11 +51,11 @@ func resolveTokenScopes(input models.ApiTokenInput) ([]string, *apperrors.AppErr
 	if input.Scopes != nil {
 		scopes := models.NormalizeTokenScopes(*input.Scopes)
 		if len(scopes) == 0 {
-			return nil, apperrors.ErrInvalidInput("scopes", "scopes must contain at least one scope")
+			return nil, apperrors.ErrInvalidInput("scopes", "scopes must contain at least one scope").WithReason(apperrors.ReasonAccountAPITokenScopesRequired, nil)
 		}
 		for _, scope := range scopes {
 			if !models.IsValidTokenScope(scope) {
-				return nil, apperrors.ErrInvalidInput("scopes", "Unknown scope: "+scope)
+				return nil, apperrors.ErrInvalidInput("scopes", "Unknown scope: "+scope).WithReason(apperrors.ReasonAccountAPITokenScopeUnknown, map[string]any{"scope": scope})
 			}
 		}
 		return scopes, nil
@@ -63,7 +63,7 @@ func resolveTokenScopes(input models.ApiTokenInput) ([]string, *apperrors.AppErr
 	scope := models.DefaultApiTokenScope
 	if input.Scope != "" {
 		if input.Scope != models.LegacyTokenScopeFull && input.Scope != models.LegacyTokenScopeCardDAV {
-			return nil, apperrors.ErrInvalidInput("scope", "Unknown scope: "+input.Scope)
+			return nil, apperrors.ErrInvalidInput("scope", "Unknown scope: "+input.Scope).WithReason(apperrors.ReasonAccountAPITokenScopeUnknown, map[string]any{"scope": input.Scope})
 		}
 		scope = input.Scope
 	}
@@ -121,11 +121,11 @@ func CreateApiToken(c *gin.Context) {
 	var expiresAt *time.Time
 	if input.NeverExpires {
 		if input.ExpiresInDays != nil {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("expires_in_days", "expires_in_days cannot be combined with never_expires"))
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("expires_in_days", "expires_in_days cannot be combined with never_expires").WithReason(apperrors.ReasonAccountAPITokenExpiryConflict, nil))
 			return
 		}
 		if !models.IsDAVOnlyScopes(scopes) {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("never_expires", "never_expires is only allowed for CardDAV/CalDAV app passwords"))
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("never_expires", "never_expires is only allowed for CardDAV/CalDAV app passwords").WithReason(apperrors.ReasonAccountAPITokenNeverExpiresNotAllowed, nil))
 			return
 		}
 	} else {
@@ -169,7 +169,7 @@ func RevokeApiToken(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.ParseUint(idParam, 10, 64)
 	if err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("id", "must be a positive integer"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("id", "must be a positive integer").WithReason(apperrors.ReasonValidationIDNotPositiveInteger, nil))
 		return
 	}
 
@@ -246,7 +246,7 @@ func RotateApiToken(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.ParseUint(idParam, 10, 64)
 	if err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("id", "must be a positive integer"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("id", "must be a positive integer").WithReason(apperrors.ReasonValidationIDNotPositiveInteger, nil))
 		return
 	}
 
@@ -256,7 +256,7 @@ func RotateApiToken(c *gin.Context) {
 		return
 	}
 	if oldToken.RevokedAt != nil {
-		apperrors.AbortWithError(c, apperrors.ErrConflict("API token is already revoked; nothing to rotate"))
+		apperrors.AbortWithError(c, apperrors.ErrConflict("API token is already revoked; nothing to rotate").WithReason(apperrors.ReasonAccountAPITokenAlreadyRevoked, nil))
 		return
 	}
 

@@ -279,7 +279,7 @@ func GetUser(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("id", "Invalid user ID"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("id", "Invalid user ID").WithReason(apperrors.ReasonAdminUserIDInvalid, nil))
 		return
 	}
 
@@ -332,7 +332,7 @@ func CreateUser(c *gin.Context) {
 	hashedPassword, err := services.HashPassword(input.Password)
 	if err != nil {
 		if errors.Is(err, services.ErrPasswordTooLong) {
-			apperrors.AbortWithError(c, apperrors.ErrValidation(err.Error()))
+			apperrors.AbortWithError(c, apperrors.ErrValidation(err.Error()).WithReason(apperrors.ReasonAuthPasswordTooLong, nil))
 		} else {
 			log.Error().Err(err).Msg("Failed to hash password during admin create")
 			apperrors.AbortWithError(c, apperrors.ErrInternal("Could not hash password").WithError(err))
@@ -397,7 +397,7 @@ func UpdateUser(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("id", "Invalid user ID"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("id", "Invalid user ID").WithReason(apperrors.ReasonAdminUserIDInvalid, nil))
 		return
 	}
 
@@ -426,7 +426,7 @@ func UpdateUser(c *gin.Context) {
 	// instance's sole admin. The last-admin guard below still applies to a
 	// self-demotion, so this cannot produce a zero-admin instance.
 	if input.IsAdmin != nil && !*input.IsAdmin && user.IsAdmin && user.ID != currentUserID {
-		apperrors.AbortWithError(c, apperrors.ErrForbidden("Cannot change another admin's role; an admin can only remove their own admin status"))
+		apperrors.AbortWithError(c, apperrors.ErrForbidden("Cannot change another admin's role; an admin can only remove their own admin status").WithReason(apperrors.ReasonAdminRoleChangeOtherAdminForbidden, nil))
 		return
 	}
 
@@ -439,7 +439,7 @@ func UpdateUser(c *gin.Context) {
 			return
 		}
 		if adminCount <= 1 {
-			apperrors.AbortWithError(c, apperrors.ErrForbidden("Cannot remove the last admin"))
+			apperrors.AbortWithError(c, apperrors.ErrForbidden("Cannot remove the last admin").WithReason(apperrors.ReasonAdminLastAdminRemovalForbidden, nil))
 			return
 		}
 	}
@@ -455,7 +455,7 @@ func UpdateUser(c *gin.Context) {
 		hashedPassword, err := services.HashPassword(*input.Password)
 		if err != nil {
 			if errors.Is(err, services.ErrPasswordTooLong) {
-				apperrors.AbortWithError(c, apperrors.ErrValidation(err.Error()))
+				apperrors.AbortWithError(c, apperrors.ErrValidation(err.Error()).WithReason(apperrors.ReasonAuthPasswordTooLong, nil))
 			} else {
 				log.Error().Err(err).Msg("Failed to hash password during admin update")
 				apperrors.AbortWithError(c, apperrors.ErrInternal("Could not hash password").WithError(err))
@@ -562,7 +562,7 @@ func ResetUserTwoFactor(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("id", "Invalid user ID"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("id", "Invalid user ID").WithReason(apperrors.ReasonAdminUserIDInvalid, nil))
 		return
 	}
 
@@ -658,13 +658,13 @@ func DeleteUser(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("id", "Invalid user ID"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("id", "Invalid user ID").WithReason(apperrors.ReasonAdminUserIDInvalid, nil))
 		return
 	}
 
 	// Prevent admin from deleting themselves
 	if uint(id) == currentUserID {
-		apperrors.AbortWithError(c, apperrors.ErrForbidden("Cannot delete your own account"))
+		apperrors.AbortWithError(c, apperrors.ErrForbidden("Cannot delete your own account").WithReason(apperrors.ReasonAdminDeleteSelfForbidden, nil))
 		return
 	}
 
@@ -688,7 +688,7 @@ func DeleteUser(c *gin.Context) {
 	// guard: the sole admin can neither delete themselves nor be deleted by
 	// anyone else, so a zero-admin instance stays unreachable.
 	if user.IsAdmin {
-		apperrors.AbortWithError(c, apperrors.ErrForbidden("Cannot delete another admin; the account must remove its own admin status first"))
+		apperrors.AbortWithError(c, apperrors.ErrForbidden("Cannot delete another admin; the account must remove its own admin status first").WithReason(apperrors.ReasonAdminDeleteOtherAdminForbidden, nil))
 		return
 	}
 
