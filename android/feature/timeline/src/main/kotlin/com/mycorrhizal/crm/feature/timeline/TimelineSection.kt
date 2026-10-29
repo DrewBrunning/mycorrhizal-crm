@@ -31,6 +31,7 @@ import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.activityTypeLabel
 import com.mycorrhizal.crm.ui.components.giftStatusLabelRes
 import com.mycorrhizal.crm.ui.components.lifeEventTypeLabel
+import com.mycorrhizal.crm.ui.markdown.MarkdownText
 
 /**
  * The unified timeline section for a contact detail page (Phase 2 item 10).
@@ -158,16 +159,26 @@ private fun TimelineRowBase(
     title: String,
     subtitle: String,
     onClick: () -> Unit,
-    trailing: (@Composable () -> Unit)? = null
+    trailing: (@Composable () -> Unit)? = null,
+    // Issue #2134: note text is stored Markdown; every other title is plain text.
+    markdownTitle: Boolean = false
 ) {
     androidx.compose.material3.ListItem(
         headlineContent = {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
+            if (markdownTitle) {
+                MarkdownText(
+                    source = title,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            } else {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         },
         supportingContent = {
             if (subtitle.isNotBlank()) {
@@ -212,7 +223,8 @@ private fun TimelineNoteRow(content: String, onClick: () -> Unit) {
         },
         title = content,
         subtitle = "",
-        onClick = onClick
+        onClick = onClick,
+        markdownTitle = true
     )
 }
 

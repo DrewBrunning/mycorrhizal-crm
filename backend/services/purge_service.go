@@ -3,9 +3,12 @@ package services
 import (
 	"errors"
 	"fmt"
+	"mycorrhizal/attachments"
 	"mycorrhizal/config"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -152,6 +155,11 @@ func PurgeSoftDeletedRows(db *gorm.DB, cfg config.Config) error {
 
 	var errs []error
 
+	// Files of the contacts about to be purged, collected BEFORE their rows go
+	// and removed only after the contact delete committed (ADR 0037 decision 5):
+	// delete no longer removes them, so a trashed contact stays restorable.
+	purgeFiles := collectPurgeFiles(db, cutoff)
+
 	// activity_contacts has no soft-delete. Clean up rows referencing
 	// now-purged contacts as defense-in-depth.
 	if err := db.Exec(
@@ -207,9 +215,14 @@ func PurgeSoftDeletedRows(db *gorm.DB, cfg config.Config) error {
 	}
 	cleanups := []cleanup{
 		{
-			"DELETE FROM contact_sync_links WHERE contact_id IN (SELECT id FROM contacts WHERE deleted_at IS NOT NULL AND deleted_at < ?)",
-			[]interface{}{cutoff}, "contact_sync_links",
+			// ADR 0037: a snapshot lives exactly as long as its contact's trash
+			// lifetime; keyed by the contact row id, owner-checked via user_id.
+			"DELETE FROM contact_deletion_snapshots WHERE contact_id IN (SELECT id FROM contacts WHERE deleted_at IS NOT NULL AND deleted_at < ? AND contacts.user_id = contact_deletion_snapshots.user_id)",
+			[]interface{}{cutoff}, "contact_deletion_snapshots",
 		},
+		// contact_sync_links is deliberately NOT cleaned here (ADR 0037
+		// decision 7): the link outlives the purged contact as the tombstone
+		// that stops a later CardDAV pull re-importing it.
 		{
 			"DELETE FROM calendar_event_links WHERE activity_id IN (SELECT id FROM activities WHERE deleted_at IS NOT NULL AND deleted_at < ?)",
 			[]interface{}{cutoff}, "calendar_event_links",
@@ -234,6 +247,7 @@ func PurgeSoftDeletedRows(db *gorm.DB, cfg config.Config) error {
 		logger.Error().Err(result.Error).Msg("purge: failed to delete soft-deleted contacts")
 		errs = append(errs, fmt.Errorf("purge soft-deleted contacts: %w", result.Error))
 	} else if result.RowsAffected > 0 {
+		removePurgedFiles(cfg, purgeFiles)
 		logger.Info().
 			Int64("rows", result.RowsAffected).
 			Time("cutoff", cutoff).
@@ -272,4 +286,53 @@ func PurgeDeletedRows(db *gorm.DB, cfg config.Config) (err error) {
 		PurgeSoftDeletedRows(db, cfg),
 		PurgeExpiredContactShares(db, cfg),
 	)
+}
+
+// collectPurgeFiles names the photo and attachment files of every soft-deleted
+// contact past the cutoff. A lookup failure is logged and yields no files (an
+// orphan file is recoverable; a failed purge is not worth the file).
+func collectPurgeFiles(db *gorm.DB, cutoff time.Time) PurgedFiles {
+	var files PurgedFiles
+	var photoRows []struct{ Photo, PhotoThumbnail string }
+	if err := db.Unscoped().Model(&models.Contact{}).Select("photo", "photo_thumbnail").
+		Where("deleted_at IS NOT NULL AND deleted_at < ?", cutoff).
+		Scan(&photoRows).Error; err != nil {
+		logger.Warn().Err(err).Msg("purge: failed to list contact photos")
+	}
+	for _, r := range photoRows {
+		files.Photos = appendPhotoFiles(files.Photos, r.Photo, r.PhotoThumbnail)
+	}
+	if err := db.Unscoped().Model(&models.Attachment{}).
+		Where("contact_vcard_uid IN (SELECT vcard_uid FROM contacts WHERE deleted_at IS NOT NULL AND deleted_at < ?)", cutoff).
+		Pluck("stored_name", &files.Attachments).Error; err != nil {
+		logger.Warn().Err(err).Msg("purge: failed to list contact attachments")
+	}
+	return files
+}
+
+// RemovePurgedFiles deletes the on-disk photo and attachment files of purged
+// contacts. Call it only after the purge transaction committed.
+func RemovePurgedFiles(cfg config.Config, files PurgedFiles) { removePurgedFiles(cfg, files) }
+
+func removePurgedFiles(cfg config.Config, files PurgedFiles) {
+	if cfg.ProfilePhotoDir != "" {
+		for _, name := range files.Photos {
+			p := filepath.Join(cfg.ProfilePhotoDir, name)
+			if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+				logger.Warn().Err(err).Str("path", p).Msg("purge: failed to remove contact photo")
+			}
+		}
+	}
+	if cfg.AttachmentsDir != "" {
+		for _, name := range files.Attachments {
+			p, err := attachments.StoredPath(cfg.AttachmentsDir, name)
+			if err != nil {
+				logger.Warn().Err(err).Str("stored_name", name).Msg("purge: failed to resolve attachment path")
+				continue
+			}
+			if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+				logger.Warn().Err(err).Str("path", p).Msg("purge: failed to remove contact attachment")
+			}
+		}
+	}
 }

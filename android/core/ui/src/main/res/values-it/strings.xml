@@ -1806,6 +1806,30 @@
     <string name="bulk_remove_circle">Rimuovi da un cerchio</string>
     <string name="bulk_add_tag">Aggiungi etichetta</string>
     <string name="bulk_remove_tag">Rimuovi etichetta</string>
+    <string name="add_to_activities_action">Aggiungi a un\'attività esistente</string>
+    <string name="add_to_activities_title">Aggiungi a un\'attività esistente</string>
+    <string name="add_to_activities_search">Cerca attività</string>
+    <string name="add_to_activities_submit">Aggiungi alla selezione</string>
+    <string name="add_to_activities_not_found">Non aggiunto (attività non trovata):</string>
+    <string name="add_to_activities_empty">Nessuna attività trovata</string>
+    <string name="add_to_activities_untitled">Attività senza titolo</string>
+    <string name="bulk_edit_fields">Modifica campi</string>
+    <string name="bulk_edit_fields_hint">Vengono modificati solo i campi che compili o contrassegni come Svuota. Tutto il resto resta invariato.</string>
+    <string name="bulk_edit_fields_clear">Svuota</string>
+    <string name="bulk_edit_fields_apply">Applica</string>
+    <string name="bulk_field_organization">Organizzazione</string>
+    <string name="bulk_field_department">Reparto</string>
+    <string name="bulk_field_job_title">Qualifica</string>
+    <string name="bulk_field_role">Ruolo</string>
+    <string name="bulk_field_gender">Genere</string>
+    <string name="bulk_field_how_we_met">Come ci siamo conosciuti</string>
+    <string name="bulk_field_work_information">Informazioni di lavoro</string>
+    <string name="bulk_field_contact_information">Informazioni di contatto</string>
+    <plurals name="bulk_edit_fields_title">
+        <item quantity="one">Modifica i campi di %1$d contatto</item>
+        <item quantity="many">Modifica i campi di %1$d contatti</item>
+        <item quantity="other">Modifica i campi di %1$d contatti</item>
+    </plurals>
     <string name="bulk_pick_circle">Scegli un cerchio</string>
     <string name="bulk_pick_tag">Scegli un\'etichetta</string>
     <string name="bulk_no_circles">Ancora nessun cerchio</string>
@@ -1958,6 +1982,19 @@
     </plurals>
     <string name="import_csv_mapping_ignore">-- Ignora --</string>
     <string name="import_csv_mapping_continue">Continua</string>
+    <string name="import_fixed_title">Aggiungi ogni contatto importato a</string>
+    <string name="import_fixed_description">Facoltativo. Questi cerchi e tag vengono applicati a ogni contatto importato, oltre a quelli mappati dalle colonne.</string>
+    <string name="import_fixed_circles">Cerchie</string>
+    <string name="import_fixed_tags">Tag</string>
+    <string name="import_fixed_new_circle">Nuovo cerchio</string>
+    <string name="import_fixed_new_tag">Nuovo tag</string>
+    <string name="import_fixed_name">Nome</string>
+    <string name="import_fixed_create">Crea</string>
+    <plurals name="import_fixed_summary">
+        <item quantity="one">Ogni contatto importato verrà aggiunto a: %1$s. Verrà aggiunta fino a %2$d appartenenza.</item>
+        <item quantity="many">Ogni contatto importato verrà aggiunto a: %1$s. Verranno aggiunte fino a %2$d appartenenze.</item>
+        <item quantity="other">Ogni contatto importato verrà aggiunto a: %1$s. Verranno aggiunte fino a %2$d appartenenze.</item>
+    </plurals>
 
     <!-- Etichette dei campi per la mappatura delle colonne CSV (issue #834) -->
     <string name="import_field_firstname">Nome</string>
@@ -2657,6 +2694,8 @@
     <string name="error_reason_relationship_self_edge">Origine e destinazione devono essere contatti diversi</string>
     <string name="error_reason_validation_activity_ids_range">Deve contenere tra 1 e 100 id</string>
     <string name="error_reason_validation_cursor_malformed">L\'id del cursore non è valido</string>
+    <string name="error_reason_trash_uid_in_use">Un contatto attivo usa già l\'UID di questo contatto; uniscilo o eliminalo prima</string>
+    <string name="error_reason_trash_snapshot_unsupported">L\'istantanea di eliminazione di questo contatto non è supportata da questa versione; può comunque essere eliminato definitivamente</string>
     <string name="error_reason_circle_color_invalid">Il colore deve essere uno dei colori della tavolozza</string>
     <string name="error_reason_meerkat_upload_missing">Nessun file caricato</string>
     <string name="error_reason_meerkat_session_not_found">La sessione di importazione è scaduta o non esiste</string>

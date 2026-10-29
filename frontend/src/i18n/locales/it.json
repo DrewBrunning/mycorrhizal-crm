@@ -3554,6 +3554,8 @@
       "common_test_only": "Prova {{n}}",
       "import_circles_not_found": "Uno o più cerchi non sono stati trovati",
       "import_tags_not_found": "Una o più etichette non sono state trovate",
+      "trash_uid_in_use": "Un contatto attivo usa già l'UID di questo contatto; uniscilo o eliminalo prima",
+      "trash_snapshot_unsupported": "L'istantanea di eliminazione di questo contatto non è supportata da questa versione; può comunque essere eliminato definitivamente",
       "circle_color_invalid": "Il colore deve essere uno dei colori della tavolozza",
       "validation_cursor_malformed": "L'id del cursore non è valido",
       "validation_activity_ids_range": "Deve contenere tra 1 e 100 id",

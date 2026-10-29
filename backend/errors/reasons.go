@@ -28,7 +28,7 @@ var reasonAreas = []string{
 	"bundle", "csv", "vcard", "integration", "immich", "seafile", "paperless",
 	"geopulse", "webdav", "calendar", "feed", "notification", "contact",
 	"household", "relationship", "occasion", "photo", "attachment", "validation",
-	"circle",
+	"circle", "trash",
 }
 
 // Reason constants. Each must be a key of reasonRegistry (and vice versa);
@@ -50,6 +50,8 @@ const (
 	ReasonRelationshipDayOutOfRange      ReasonCode = "relationship_day_out_of_range"
 	ReasonRelationshipEndBeforeStart     ReasonCode = "relationship_end_before_start"
 	ReasonRelationshipNotSuggestion      ReasonCode = "relationship_not_suggestion"
+	ReasonTrashUIDInUse                  ReasonCode = "trash_uid_in_use"
+	ReasonTrashSnapshotUnsupported       ReasonCode = "trash_snapshot_unsupported"
 	ReasonContactBulkNoOperations        ReasonCode = "contact_bulk_no_operations"
 	ReasonContactBulkFieldNotEditable    ReasonCode = "contact_bulk_field_not_editable"
 	ReasonContactBulkValueEmpty          ReasonCode = "contact_bulk_value_empty"
@@ -97,6 +99,8 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonRelationshipDayOutOfRange:      {Template: "The day must be between 1 and 31"},
 	ReasonRelationshipEndBeforeStart:     {Template: "The end date cannot be before the start date"},
 	ReasonRelationshipNotSuggestion:      {Template: "This relationship is not a pending suggestion"},
+	ReasonTrashUIDInUse:                  {Template: "A live contact already uses this contact's UID; merge or delete it first"},
+	ReasonTrashSnapshotUnsupported:       {Template: "This contact's deletion snapshot is not supported by this version; it can still be deleted permanently"},
 	ReasonContactBulkNoOperations:        {Template: "Provide at least one of set, clear, custom_set or custom_clear"},
 	ReasonContactBulkFieldNotEditable:    {Template: "{field} is not bulk-editable", Params: []string{"field"}},
 	ReasonContactBulkValueEmpty:          {Template: "{field} must not be empty; list it in clear to empty it", Params: []string{"field"}},

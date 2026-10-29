@@ -267,6 +267,13 @@ func CommitContactMerge(c *gin.Context) {
 			return err
 		}
 
+		// The registry now retains sync links as the CardDAV tombstone for a
+		// trashed contact (ADR 0037 decision 7). A merge loser is not
+		// restorable and keeps its pre-existing "discarded" behaviour.
+		if err := tx.Where("contact_id = ? AND user_id = ?", loser.ID, userID).Delete(&models.ContactSyncLink{}).Error; err != nil {
+			return err
+		}
+
 		if err := tx.Delete(&loser).Error; err != nil {
 			return err
 		}

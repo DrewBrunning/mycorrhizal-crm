@@ -64,6 +64,7 @@ import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.components.humanizeToken
 import com.mycorrhizal.crm.ui.components.lifeEventTypeLabel
 import com.mycorrhizal.crm.ui.components.relationshipRoleLabel
+import com.mycorrhizal.crm.ui.markdown.MarkdownText
 import com.mycorrhizal.crm.ui.theme.MycorrhizalFonts
 import java.time.LocalDate
 
@@ -450,8 +451,8 @@ private fun LastInteractionBlock(briefing: ContactBriefing, dateFormat: String) 
             }
             val description = lastActivity.description
             if (description?.isNotBlank() == true) {
-                Text(
-                    text = description,
+                MarkdownText(
+                    source = description,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(top = 4.dp)
                 )

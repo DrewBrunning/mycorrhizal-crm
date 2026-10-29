@@ -35,6 +35,7 @@ import (
 var purgeUIDColumnExcluded = map[string]string{
 	"attachments":                       "soft-deleted and purged by deleted_at (purgedSoftDeleteModels), row-keyed rather than UID-swept",
 	"audit_events":                      "append-only audit log; never hard-deleted by the purge",
+	"contact_deletion_snapshots":        "ADR 0037: keyed by contact row id and swept by a dedicated user-scoped cleanup in PurgeSoftDeletedRows",
 	"contacts":                          "the parent; purged last, row by row, by its own deleted_at",
 	"feeds":                             "change-feed bookkeeping keyed by entity id, not a contact-owned row",
 	"life_event_suggestion_resolutions": "hard-deleted by DeleteContact (user_id + uid scoped); not swept by the purge",

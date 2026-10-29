@@ -36,12 +36,12 @@ Unassigned notes are not attached to any contact. They are accessible from the N
 
 ### Markdown in notes and activities
 
-Note text and activity descriptions are rendered as a small Markdown subset on the web app: headings (`#`), bullet and numbered lists, `**bold**`, `*italic*`, `` `code` `` and fenced code blocks, `[links](https://example.com)`, blockquotes (`>`) and horizontal rules (`---`). Plain text looks the same as before: paragraphs and line breaks are kept.
+Note text and activity descriptions are rendered as a small Markdown subset on the web app and in the Android app: headings (`#`), bullet and numbered lists, `**bold**`, `*italic*`, `` `code` `` and fenced code blocks, `[links](https://example.com)`, blockquotes (`>`) and horizontal rules (`---`). Plain text looks the same as before: paragraphs and line breaks are kept.
 
 - **Scope.** Only note `content` and activity `description` render Markdown. Life-event descriptions, gift notes, `how_we_met`, `contact_information`, `work_information`, custom text fields and reminder messages stay plain text; extending the list is a separate decision per field.
 - **The stored text is the source.** The server stores exactly what you typed; editing, copy, search, CSV export and the CardDAV/vCard `NOTE` field all carry that source unchanged. Markdown is never converted to HTML on export, and never stripped on import.
 - **Safe by construction.** Raw HTML is shown as text, never interpreted. Only `http`, `https`, `mailto` and `tel` links are made clickable; `javascript:`, `data:` and relative URLs are left as text. External links open in a new tab with `rel="noopener noreferrer nofollow"`. Images are not rendered (`![alt](url)` stays visible as text).
-- **Platforms.** Web only. The Android app shows the source as plain text until a renderer is chosen (tracked in [#2134](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2134)).
+- **Platforms.** Web and Android. Android renders the same subset with a hand-written parser that mirrors `frontend/src/utils/markdown.ts` (no Markdown library): note text in the notes lists and the contact timeline, and the last-activity description in the prep view. The edit forms always show and save the source unchanged.
 
 
 ## Reminders

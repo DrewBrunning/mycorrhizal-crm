@@ -126,6 +126,33 @@ class ErrorTextTest {
     }
 
     @Test
+    fun `a trash uid-in-use reason is localized`() {
+        val error = ApiError.Client(
+            409,
+            "server text",
+            ErrorReason(ErrorReasonCode.TRASH_UID_IN_USE, emptyMap())
+        )
+        assertEquals(
+            "A live contact already uses this contact's UID; merge or delete it first",
+            render(error)
+        )
+    }
+
+    @Test
+    fun `an unsupported trash snapshot reason is localized`() {
+        val error = ApiError.Client(
+            409,
+            "server text",
+            ErrorReason(ErrorReasonCode.TRASH_SNAPSHOT_UNSUPPORTED, emptyMap())
+        )
+        assertEquals(
+            "This contact's deletion snapshot is not supported by this version; " +
+                "it can still be deleted permanently",
+            render(error)
+        )
+    }
+
+    @Test
     fun `an invalid circle colour is localized`() {
         val error = ApiError.Client(
             400,

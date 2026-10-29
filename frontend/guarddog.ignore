@@ -74,3 +74,19 @@ threat-runtime-keylogging | maplibre-gl | Only matches the DOM sanitizer test's 
 # Documentation/error-message URLs shortened with bit.ly.
 threat-network-outbound-shady-links | workbox-build | The error string links to https://bit.ly/wb-precache, Workbox's own docs shortlink.
 threat-network-outbound-shady-links | workbox-precaching | The warning string links to https://bit.ly/wb-precache, Workbox's own docs shortlink.
+
+# npm's own libraries, pulled in by license-checker-rseidelsohn@5 (@npmcli/arborist,
+# a devDependency; reads installed package metadata for `go run ./cmd/gennotices`).
+# Reviewed against the flagged lines when the 4.x -> 5.x major bump landed. The
+# install is --ignore-scripts and unit-tests.yml grants no `id-token`, so the
+# GitHub OIDC variables below are absent in the job that runs the generator.
+threat-filesystem-read | @npmcli/git | Reads ~/.gitconfig to see whether the user configured ssh/askpass.
+threat-runtime-environment-read | @npmcli/git | Reads GIT_SSH_COMMAND/GIT_ASKPASS to respect the user's git settings.
+threat-runtime-environment-read | @sigstore/sign | Reads the GitHub Actions ACTIONS_ID_TOKEN_REQUEST_* variables to request an OIDC token for signing; the license checker only reads the local tree and never signs.
+threat-runtime-environment-read | make-fetch-happen | Defaults rejectUnauthorized from NODE_TLS_REJECT_UNAUTHORIZED, the documented Node switch.
+threat-runtime-environment-read | minipass-fetch | Defaults rejectUnauthorized from NODE_TLS_REJECT_UNAUTHORIZED, the documented Node switch.
+threat-runtime-obfuscation-unicode | jsonparse | Matches a multi-byte UTF-8 test title in the package's own test file.
+threat-runtime-system-info | node-gyp | os.homedir() for the default dev dir and os.release() in its error report.
+threat-filesystem-read | npm-packlist | The .npmrc entries are default patterns excluded from a published tarball; the file is never read.
+threat-npm-http-dependency | postcss-selector-parser | Contributor URL (http://beneb.info) in package.json metadata, not an HTTP dependency specifier.
+threat-process-download-exec | tuf-js | Downloads TUF metadata/targets to a temp file and verifies length and hashes; nothing it downloads is executed.

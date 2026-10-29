@@ -45,6 +45,10 @@ const (
 	// have a live code. This is the operator-side response to a user locked
 	// out of their own account (TOTP device and recovery codes both lost).
 	AuditOpTwoFactorAdminReset = "two_factor_admin_reset"
+	// Issue #2002, ADR 0037: a contact restored from, or permanently purged
+	// from, the trash (entity = the contact).
+	AuditOpRestore = "restore"
+	AuditOpPurge   = "purge"
 )
 
 // AuditEntityType tokens stored on AuditEvent.EntityType. The first group are

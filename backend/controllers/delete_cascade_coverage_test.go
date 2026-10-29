@@ -128,7 +128,8 @@ var declaredCascadeCoverage = map[string]cascadeBucket{
 	"cadence_policies":                  goCascadeContact,
 	"circle_members":                    goCascadeContact,
 	"contact_sync_conflicts":            goCascadeContact,
-	"contact_sync_links":                goCascadeContact,
+	"contact_sync_links":                exempt, // ADR 0037 decision 7: deliberately retained as the CardDAV tombstone (a CascadeMutate no-op step)
+	"contact_deletion_snapshots":        fkCascadeUser,
 	"contact_tags":                      goCascadeContact,
 	"conversation_agenda":               goCascadeContact,
 	"data_decay_policies":               goCascadeContact,
@@ -459,6 +460,11 @@ var contactSweepSoft = map[string]bool{
 	"reminders":            true,
 }
 
+// contactSweepRetained names the seeded contact tables DeleteContact must
+// leave untouched: the CardDAV sync link is the tombstone that stops a pull
+// re-importing the deleted contact and is what a restore reuses (ADR 0037).
+var contactSweepRetained = map[string]bool{"contact_sync_links": true}
+
 // assertContactSweepExpectations asserts, per table, the delete behavior it
 // is declared to have — not merely "no live row remains", which a soft delete
 // and a hard delete both satisfy (issue #1314):
@@ -467,6 +473,10 @@ var contactSweepSoft = map[string]bool{
 func assertContactSweepExpectations(t *testing.T, db *gorm.DB, rows []seedRow) {
 	t.Helper()
 	for _, r := range rows {
+		if contactSweepRetained[r.table] {
+			assert.NotZero(t, r.run(t, db), "%s must be RETAINED by DeleteContact (ADR 0037 decision 7)", r.table)
+			continue
+		}
 		hasDeletedAt := false
 		if r.model != nil {
 			stmt := &gorm.Statement{DB: db}

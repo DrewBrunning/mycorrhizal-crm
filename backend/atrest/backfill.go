@@ -37,6 +37,7 @@ var EncryptedColumns = []string{
 	"contact_sync_conflicts.local_value",
 	"contact_sync_conflicts.remote_value",
 	"contact_sync_links.synced_values",
+	"contact_deletion_snapshots.payload",
 }
 
 // auditEventsTable and auditEventsNoUpdateTrigger name the append-only audit

@@ -1749,6 +1749,29 @@
     <string name="bulk_remove_circle">Aus Kreis entfernen</string>
     <string name="bulk_add_tag">Tag hinzufügen</string>
     <string name="bulk_remove_tag">Tag entfernen</string>
+    <string name="add_to_activities_action">Zu bestehender Aktivität hinzufügen</string>
+    <string name="add_to_activities_title">Zu bestehender Aktivität hinzufügen</string>
+    <string name="add_to_activities_search">Aktivitäten suchen</string>
+    <string name="add_to_activities_submit">Zu Auswahl hinzufügen</string>
+    <string name="add_to_activities_not_found">Nicht hinzugefügt (Aktivität nicht gefunden):</string>
+    <string name="add_to_activities_empty">Keine Aktivitäten gefunden</string>
+    <string name="add_to_activities_untitled">Aktivität ohne Titel</string>
+    <string name="bulk_edit_fields">Felder bearbeiten</string>
+    <string name="bulk_edit_fields_hint">Nur Felder, die Sie ausfüllen oder mit „Leeren“ markieren, werden geändert. Alles andere bleibt unverändert.</string>
+    <string name="bulk_edit_fields_clear">Leeren</string>
+    <string name="bulk_edit_fields_apply">Anwenden</string>
+    <string name="bulk_field_organization">Organisation</string>
+    <string name="bulk_field_department">Abteilung</string>
+    <string name="bulk_field_job_title">Berufsbezeichnung</string>
+    <string name="bulk_field_role">Rolle</string>
+    <string name="bulk_field_gender">Geschlecht</string>
+    <string name="bulk_field_how_we_met">Wie wir uns kennengelernt haben</string>
+    <string name="bulk_field_work_information">Arbeitsinformationen</string>
+    <string name="bulk_field_contact_information">Kontaktinformationen</string>
+    <plurals name="bulk_edit_fields_title">
+        <item quantity="one">Felder für %1$d Kontakt bearbeiten</item>
+        <item quantity="other">Felder für %1$d Kontakte bearbeiten</item>
+    </plurals>
     <string name="bulk_pick_circle">Kreis auswählen</string>
     <string name="bulk_pick_tag">Tag auswählen</string>
     <string name="bulk_no_circles">Noch keine Kreise</string>
@@ -1893,6 +1916,18 @@
     </plurals>
     <string name="import_csv_mapping_ignore">-- Ignorieren --</string>
     <string name="import_csv_mapping_continue">Weiter</string>
+    <string name="import_fixed_title">Jeden importierten Kontakt hinzufügen zu</string>
+    <string name="import_fixed_description">Optional. Diese Kreise und Tags werden jedem importierten Kontakt zugewiesen, zusätzlich zu Kreisen oder Tags aus Spalten.</string>
+    <string name="import_fixed_circles">Kreise</string>
+    <string name="import_fixed_tags">Tags</string>
+    <string name="import_fixed_new_circle">Neuer Kreis</string>
+    <string name="import_fixed_new_tag">Neuer Tag</string>
+    <string name="import_fixed_name">Name</string>
+    <string name="import_fixed_create">Erstellen</string>
+    <plurals name="import_fixed_summary">
+        <item quantity="one">Jeder importierte Kontakt wird hinzugefügt zu: %1$s. Bis zu %2$d Zuordnung wird angelegt.</item>
+        <item quantity="other">Jeder importierte Kontakt wird hinzugefügt zu: %1$s. Bis zu %2$d Zuordnungen werden angelegt.</item>
+    </plurals>
 
     <!-- CSV-Spaltenzuordnung: Feldbezeichnungen (issue #834) -->
     <string name="import_field_firstname">Vorname</string>
@@ -2568,6 +2603,8 @@
     <string name="error_reason_relationship_self_edge">Quelle und Ziel müssen verschiedene Kontakte sein</string>
     <string name="error_reason_validation_activity_ids_range">Muss zwischen 1 und 100 IDs enthalten</string>
     <string name="error_reason_validation_cursor_malformed">Die Cursor-ID ist ungültig</string>
+    <string name="error_reason_trash_uid_in_use">Ein aktiver Kontakt verwendet bereits die UID dieses Kontakts; führe ihn zuerst zusammen oder lösche ihn</string>
+    <string name="error_reason_trash_snapshot_unsupported">Der Löschschnappschuss dieses Kontakts wird von dieser Version nicht unterstützt; er kann weiterhin endgültig gelöscht werden</string>
     <string name="error_reason_circle_color_invalid">Die Farbe muss eine der Palettenfarben sein</string>
     <string name="error_reason_meerkat_upload_missing">Keine Datei hochgeladen</string>
     <string name="error_reason_meerkat_session_not_found">Importsitzung abgelaufen oder nicht gefunden</string>

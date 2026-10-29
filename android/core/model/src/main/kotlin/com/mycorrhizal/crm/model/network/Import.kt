@@ -28,7 +28,10 @@ data class ImportUploadResponse(
 @JsonClass(generateAdapter = true)
 data class ImportPreviewRequest(
     @Json(name = "session_id") val sessionId: String,
-    val mappings: List<ColumnMapping>
+    val mappings: List<ColumnMapping>,
+    // Issue #2135: optional fixed circles/tags for every imported contact; null = key omitted.
+    @Json(name = "assign_circle_ids") val assignCircleIds: List<String>? = null,
+    @Json(name = "assign_tag_ids") val assignTagIds: List<String>? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -77,13 +80,27 @@ data class ImportRowPreview(
 )
 
 @JsonClass(generateAdapter = true)
+data class ImportFixedAssignmentItem(val id: String = "", val name: String = "")
+
+/** Issue #2135: present on the preview only when assign_* ids were sent. */
+@JsonClass(generateAdapter = true)
+data class ImportFixedAssignment(
+    val circles: List<ImportFixedAssignmentItem> = emptyList(),
+    val tags: List<ImportFixedAssignmentItem> = emptyList(),
+    @Json(name = "contact_count") val contactCount: Int = 0,
+    /** contact_count x (circles + tags): an upper bound, already-held memberships are skipped. */
+    @Json(name = "membership_count") val membershipCount: Int = 0
+)
+
+@JsonClass(generateAdapter = true)
 data class ImportPreviewResponse(
     @Json(name = "session_id") val sessionId: String = "",
     val rows: List<ImportRowPreview> = emptyList(),
     @Json(name = "total_rows") val totalRows: Int = 0,
     @Json(name = "valid_rows") val validRows: Int = 0,
     @Json(name = "duplicate_count") val duplicateCount: Int = 0,
-    @Json(name = "error_count") val errorCount: Int = 0
+    @Json(name = "error_count") val errorCount: Int = 0,
+    @Json(name = "fixed_assignment") val fixedAssignment: ImportFixedAssignment? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -92,7 +109,9 @@ data class RowImportAction(@Json(name = "row_index") val rowIndex: Int, val acti
 @JsonClass(generateAdapter = true)
 data class ImportConfirmRequest(
     @Json(name = "session_id") val sessionId: String,
-    val actions: List<RowImportAction>
+    val actions: List<RowImportAction>,
+    @Json(name = "assign_circle_ids") val assignCircleIds: List<String>? = null,
+    @Json(name = "assign_tag_ids") val assignTagIds: List<String>? = null
 )
 
 /** T96: request body for the records-import endpoint (device-contacts path). */

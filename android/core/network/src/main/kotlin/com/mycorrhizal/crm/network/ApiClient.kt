@@ -7,6 +7,7 @@ import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ActivityInput
 import com.mycorrhizal.crm.model.network.AddCircleMemberResponse
 import com.mycorrhizal.crm.model.network.AddContactTagResponse
+import com.mycorrhizal.crm.model.network.AddContactToActivitiesResponse
 import com.mycorrhizal.crm.model.network.AddHouseholdMemberResponse
 import com.mycorrhizal.crm.model.network.AddOccasionEventAttendeeResponse
 import com.mycorrhizal.crm.model.network.AddressSuggestionsResponse
@@ -43,6 +44,7 @@ import com.mycorrhizal.crm.model.network.CircleMember
 import com.mycorrhizal.crm.model.network.CircleMemberInput
 import com.mycorrhizal.crm.model.network.CirclesPage
 import com.mycorrhizal.crm.model.network.CompletionsResponse
+import com.mycorrhizal.crm.model.network.ContactActivitiesRequest
 import com.mycorrhizal.crm.model.network.ContactActivitiesResponse
 import com.mycorrhizal.crm.model.network.ContactAddressSuggestionsResponse
 import com.mycorrhizal.crm.model.network.ContactBriefing
@@ -1482,6 +1484,21 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         }
 
     /**
+     * POST /api/v1/contacts/{id}/activities — add the contact to existing activities (issue
+     * #2136). One request for 1-100 ids; the server reports `added` / `already_member` /
+     * `not_found` per activity. Writes only the join table, never the activity itself.
+     */
+    suspend fun addContactToActivities(
+        contactId: Int,
+        activityIds: List<Int>
+    ): Result<AddContactToActivitiesResponse> = executePost(
+        "$CONTACTS_PATH/$contactId/activities",
+        ContactActivitiesRequest(activityIds)
+    ) { _, body ->
+        moshi.adapter(AddContactToActivitiesResponse::class.java).fromJson(body)
+    }
+
+    /**
      * GET /api/v1/contacts/{id}/activities — a contact's activities (M19:
      * T17 cursor-paginated; [search]/[fromDate]/[toDate] filter server-side).
      */
@@ -1548,12 +1565,14 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
     suspend fun listActivities(
         cursor: String? = null,
         limit: Int? = null,
-        includeContacts: Boolean = false
+        includeContacts: Boolean = false,
+        search: String? = null
     ): Result<ActivitiesPage> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$ACTIVITIES_PATH".toHttpUrl().newBuilder()
         cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
         limit?.let { urlBuilder.addQueryParameter("limit", it.toString()) }
         if (includeContacts) urlBuilder.addQueryParameter("include", "contacts")
+        search?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("search", it) }
         return executeGet(urlBuilder.build().toString()) { _, body ->
             moshi.adapter(ActivitiesPage::class.java).fromJson(body)
         }
