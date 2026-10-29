@@ -272,7 +272,7 @@ test('bulk delete asks for confirmation naming the count before running', async 
   fireEvent.click(screen.getByText('Delete'));
 
   expect(confirmSpy).toHaveBeenCalledWith(
-    'Delete 1 contact? This permanently removes it and all of its data. This cannot be undone.',
+    'Move 1 contact to the Trash? You can restore it until it is permanently deleted.',
   );
   expect(runBulkOperation).not.toHaveBeenCalled();
 });

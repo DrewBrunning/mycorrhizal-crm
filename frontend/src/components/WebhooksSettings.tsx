@@ -52,6 +52,8 @@ const SUPPORTED_EVENTS = [
   'contact.created',
   'contact.updated',
   'contact.deleted',
+  // Issue #2002: fired when a contact is restored from the trash.
+  'contact.restored',
   'note.created',
   'note.updated',
   'note.deleted',
