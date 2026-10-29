@@ -1,0 +1,14 @@
+-- Self contact marked ambient (issues #2193, #2192).
+--
+-- users.self_contact_ambient_set records that choosing "This is me" is what
+-- turned contacts.ambient on for the user's "Me" contact. Unmarking clears the
+-- contact's ambient flag only when this is true, so an ambient flag the user
+-- had before (or set by hand since) is never switched off behind their back.
+--
+-- It sits beside users.self_contact_vcard_uid (the "Me" pointer it qualifies)
+-- rather than on contacts, so it is CRM-only state by construction: it can
+-- never reach the neutral Card, vCard/JSContact or CardDAV.
+--
+-- No backfill: NOT NULL DEFAULT 0 gives every existing user the behaviour they
+-- have today (a "Me" contact is not ambient and unmarking changes nothing).
+ALTER TABLE users ADD COLUMN self_contact_ambient_set BOOLEAN NOT NULL DEFAULT 0;

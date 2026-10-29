@@ -62,6 +62,13 @@ type User struct {
 	// they create or are assigned one. References contacts.vcard_uid.
 	SelfContactVCardUID *string `gorm:"column:self_contact_vcard_uid" json:"self_contact_vcard_uid,omitempty"`
 
+	// SelfContactAmbientSet records that choosing "This is me" is what turned
+	// contacts.ambient on for the Me contact (migration 000082, issues
+	// #2193/#2192). Unmarking clears that contact's ambient flag only when this
+	// is true; a manual ambient edit on the Me contact, a change of Me, a delete
+	// or a merge resets it. CRM-only: lives on the user, never on the Card.
+	SelfContactAmbientSet bool `gorm:"column:self_contact_ambient_set;not null;default:false" json:"-"`
+
 	// N8 two-factor auth (migration 000024). TOTPSecretEncrypted holds the TOTP
 	// shared secret AES-256-GCM encrypted at rest (services.EncryptCredential,
 	// HKDF-derived from JWT_SECRET_KEY) — never plaintext. The secret is stored

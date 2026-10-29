@@ -251,7 +251,7 @@ func ContactCascadeRegistry() []CascadeStep {
 			Table: "users", Mode: CascadeMutate,
 			Apply: func(tx *gorm.DB, t ContactCascadeTarget, _ time.Time) error {
 				return tx.Model(&models.User{}).Where("id = ? AND self_contact_vcard_uid = ?", t.UserID, t.VCardUID).
-					Update("self_contact_vcard_uid", nil).Error
+					Updates(map[string]any{"self_contact_vcard_uid": nil, "self_contact_ambient_set": false}).Error
 			},
 			Reason: "T90: the user's \"Me\" pointer must not dangle on a soft-deleted row; a no-op in the merge path where the pointer was already re-pointed to the keeper",
 		},
