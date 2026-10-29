@@ -884,7 +884,11 @@ private fun localizedReason(reason: ErrorReason?): String? {
         )
 
         ErrorReasonCode.IMMICH_UPSTREAM_ERROR ->
-            reason.str("status")?.let { stringResource(R.string.error_reason_immich_upstream_error, it) }
+            reason.str(
+                "status"
+            )?.let {
+                stringResource(R.string.error_reason_immich_upstream_error, it)
+            }
 
         ErrorReasonCode.IMMICH_RESPONSE_UNPARSEABLE -> stringResource(
             R.string.error_reason_immich_response_unparseable
@@ -911,7 +915,11 @@ private fun localizedReason(reason: ErrorReason?): String? {
         )
 
         ErrorReasonCode.SEAFILE_UPSTREAM_ERROR ->
-            reason.str("status")?.let { stringResource(R.string.error_reason_seafile_upstream_error, it) }
+            reason.str(
+                "status"
+            )?.let {
+                stringResource(R.string.error_reason_seafile_upstream_error, it)
+            }
 
         ErrorReasonCode.SEAFILE_RESPONSE_UNPARSEABLE -> stringResource(
             R.string.error_reason_seafile_response_unparseable
@@ -938,7 +946,11 @@ private fun localizedReason(reason: ErrorReason?): String? {
         )
 
         ErrorReasonCode.PAPERLESS_UPSTREAM_ERROR ->
-            reason.str("status")?.let { stringResource(R.string.error_reason_paperless_upstream_error, it) }
+            reason.str(
+                "status"
+            )?.let {
+                stringResource(R.string.error_reason_paperless_upstream_error, it)
+            }
 
         ErrorReasonCode.PAPERLESS_RESPONSE_UNPARSEABLE -> stringResource(
             R.string.error_reason_paperless_response_unparseable
@@ -965,7 +977,11 @@ private fun localizedReason(reason: ErrorReason?): String? {
         )
 
         ErrorReasonCode.GEOPULSE_UPSTREAM_ERROR ->
-            reason.str("status")?.let { stringResource(R.string.error_reason_geopulse_upstream_error, it) }
+            reason.str(
+                "status"
+            )?.let {
+                stringResource(R.string.error_reason_geopulse_upstream_error, it)
+            }
 
         ErrorReasonCode.GEOPULSE_RESPONSE_UNPARSEABLE -> stringResource(
             R.string.error_reason_geopulse_response_unparseable
@@ -992,7 +1008,11 @@ private fun localizedReason(reason: ErrorReason?): String? {
         )
 
         ErrorReasonCode.WEBDAV_UPSTREAM_ERROR ->
-            reason.str("status")?.let { stringResource(R.string.error_reason_webdav_upstream_error, it) }
+            reason.str(
+                "status"
+            )?.let {
+                stringResource(R.string.error_reason_webdav_upstream_error, it)
+            }
 
         ErrorReasonCode.WEBDAV_RESPONSE_UNPARSEABLE -> stringResource(
             R.string.error_reason_webdav_response_unparseable
@@ -1132,15 +1152,33 @@ private fun localizedReason(reason: ErrorReason?): String? {
 
         ErrorReasonCode.NOTIFICATION_PUSH_SUBSCRIPTION_LIMIT ->
             // Passed as a string: "%d <noun>s" trips the PluralsCandidate lint.
-            reason.int("max")?.let { stringResource(R.string.error_reason_notification_push_subscription_limit, it.toString()) }
+            reason.int(
+                "max"
+            )?.let {
+                stringResource(
+                    R.string.error_reason_notification_push_subscription_limit,
+                    it.toString()
+                )
+            }
 
         ErrorReasonCode.NOTIFICATION_DEVICE_REGISTRATION_LIMIT ->
             // Passed as a string: "%d <noun>s" trips the PluralsCandidate lint.
-            reason.int("max")?.let { stringResource(R.string.error_reason_notification_device_registration_limit, it.toString()) }
+            reason.int(
+                "max"
+            )?.let {
+                stringResource(
+                    R.string.error_reason_notification_device_registration_limit,
+                    it.toString()
+                )
+            }
 
         ErrorReasonCode.FEED_LIMIT_REACHED ->
             // Passed as a string: "%d <noun>s" trips the PluralsCandidate lint.
-            reason.int("max")?.let { stringResource(R.string.error_reason_feed_limit_reached, it.toString()) }
+            reason.int(
+                "max"
+            )?.let {
+                stringResource(R.string.error_reason_feed_limit_reached, it.toString())
+            }
 
         ErrorReasonCode.FEED_ENTITY_ID_NOT_ALLOWED -> stringResource(
             R.string.error_reason_feed_entity_id_not_allowed

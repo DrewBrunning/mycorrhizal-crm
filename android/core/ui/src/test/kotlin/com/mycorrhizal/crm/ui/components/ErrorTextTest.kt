@@ -70,23 +70,37 @@ class ErrorTextTest {
 
     @Test
     fun `integration upstream and limit codes render their params and fall back without them`() {
-        val upstream = ApiError.Server(
-            503,
-            SERVER,
-            reason = ErrorReason(ErrorReasonCode.IMMICH_UPSTREAM_ERROR, mapOf("status" to "502 Bad Gateway"))
+        val rendered = renderAll(
+            listOf(
+                ApiError.Server(
+                    503,
+                    SERVER,
+                    reason = ErrorReason(
+                        ErrorReasonCode.IMMICH_UPSTREAM_ERROR,
+                        mapOf("status" to "502 Bad Gateway")
+                    )
+                ),
+                ApiError.Client(
+                    409,
+                    SERVER,
+                    ErrorReason(ErrorReasonCode.FEED_LIMIT_REACHED, mapOf("max" to 50.0))
+                ),
+                ApiError.Client(
+                    409,
+                    SERVER,
+                    ErrorReason(ErrorReasonCode.FEED_LIMIT_REACHED, emptyMap())
+                )
+            )
         )
         assertEquals(
-            "Immich returned an error (502 Bad Gateway). The instance is reachable — this request itself failed.",
-            render(upstream)
+            listOf(
+                "Immich returned an error (502 Bad Gateway). " +
+                    "The instance is reachable \u2014 this request itself failed.",
+                "feed limit reached (maximum 50 active feeds)",
+                SERVER
+            ),
+            rendered
         )
-        val limit = ApiError.Client(
-            409,
-            SERVER,
-            ErrorReason(ErrorReasonCode.FEED_LIMIT_REACHED, mapOf("max" to 50.0))
-        )
-        assertEquals("feed limit reached (maximum 50 active feeds)", render(limit))
-        val missing = ApiError.Client(409, SERVER, ErrorReason(ErrorReasonCode.FEED_LIMIT_REACHED, emptyMap()))
-        assertEquals(SERVER, render(missing))
     }
 
     @Test
