@@ -3369,7 +3369,7 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         val reason = if (error != null && reasonCode != null) {
             ErrorReason(reasonCode, error.reasonParams.orEmpty())
         } else {
-            null
+            parseFlatReason(body)
         }
         val requestId = envelope?.requestId
         // ADR 0008/0010: a stale If-Match is a typed conflict, never a generic 4xx, so a caller
@@ -3397,6 +3397,18 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
     private fun parseErrorEnvelope(body: String): BackendError? = runCatching {
         moshi.adapter(BackendError::class.java).fromJson(body)
     }.getOrNull()
+
+    /**
+     * The reason on a flat (non-envelope) body: the account-lockout 429 carries
+     * `reason_code` / `reason_params` at the top level (issue #2101, ADR 0038).
+     */
+    private fun parseFlatReason(body: String): ErrorReason? {
+        val flat = runCatching {
+            moshi.adapter(MessageResponse::class.java).fromJson(body)
+        }.getOrNull() ?: return null
+        val code = flat.reasonCode?.takeIf { it.isNotBlank() } ?: return null
+        return ErrorReason(code, flat.reasonParams.orEmpty())
+    }
 
     private fun parseErrorDisplayMessage(body: String): String? {
         val envelopeMessage = runCatching {

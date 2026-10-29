@@ -97,4 +97,37 @@ class ApiErrorReasonTest {
         assertNull(error.requestId)
         assertTrue(error.body.isNotBlank())
     }
+
+    // Issue #2101: the account-lockout 429 is a flat body (no envelope); its
+    // top-level reason_code/reason_params resolve like the envelope's.
+    @Test
+    fun `a flat lockout 429 carries its top-level reason to ApiError Client`() {
+        val error = deleteFailure(
+            MockResponse().setResponseCode(429).setBody(
+                """{"error":"Account temporarily locked","message":"Too many failed login attempts. Please try again later.","retry_after":90,"retry_after_at":"2026-01-01T00:00:00Z","reason_code":"auth_account_locked","reason_params":{"retry_after":90}}"""
+            )
+        ) as ApiError.Client
+
+        assertEquals(429, error.code)
+        assertEquals(
+            "Too many failed login attempts. Please try again later.",
+            error.displayMessage
+        )
+        assertEquals(
+            ErrorReason("auth_account_locked", mapOf("retry_after" to 90.0)),
+            error.reason
+        )
+    }
+
+    @Test
+    fun `a flat 429 without a reason keeps only the English message`() {
+        val error = deleteFailure(
+            MockResponse().setResponseCode(429).setBody(
+                """{"error":"Account temporarily locked","message":"Try later","retry_after":5}"""
+            )
+        ) as ApiError.Client
+
+        assertEquals("Try later", error.displayMessage)
+        assertNull(error.reason)
+    }
 }

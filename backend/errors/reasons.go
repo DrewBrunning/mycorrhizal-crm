@@ -152,6 +152,32 @@ const (
 	ReasonAccountUserAlreadyExists                  ReasonCode = "account_user_already_exists"
 	ReasonIntegrationWebhookNotFound                ReasonCode = "integration_webhook_not_found"
 	ReasonContactSomeNotFound                       ReasonCode = "contact_some_not_found"
+
+	// Sign-in errors (issue #2101: login, 2FA, passkeys, password reset, lockout).
+	ReasonAuthAccountLocked                    ReasonCode = "auth_account_locked"                        // #nosec G101 -- reason code, not a credential
+	ReasonAuthPasswordBreached                 ReasonCode = "auth_password_breached"                     // #nosec G101 -- reason code, not a credential
+	ReasonAuthPasswordTooLong                  ReasonCode = "auth_password_too_long"                     // #nosec G101 -- reason code, not a credential
+	ReasonAuthPasswordChangeDisabledDemo       ReasonCode = "auth_password_change_disabled_demo"         // #nosec G101 -- reason code, not a credential
+	ReasonAuthResetTokenInvalid                ReasonCode = "auth_reset_token_invalid"                   // #nosec G101 -- reason code, not a credential
+	ReasonAuthTwoFactorAlreadyEnabled          ReasonCode = "auth_two_factor_already_enabled"            // #nosec G101 -- reason code, not a credential
+	ReasonAuthTwoFactorUnavailableOIDC         ReasonCode = "auth_two_factor_unavailable_oidc"           // #nosec G101 -- reason code, not a credential
+	ReasonAuthTwoFactorSetupRequired           ReasonCode = "auth_two_factor_setup_required"             // #nosec G101 -- reason code, not a credential
+	ReasonAuthTwoFactorCodeInvalid             ReasonCode = "auth_two_factor_code_invalid"               // #nosec G101 -- reason code, not a credential
+	ReasonAuthTwoFactorNotEnabled              ReasonCode = "auth_two_factor_not_enabled"                // #nosec G101 -- reason code, not a credential
+	ReasonAuthTwoFactorLoginNotPending         ReasonCode = "auth_two_factor_login_not_pending"          // #nosec G101 -- reason code, not a credential
+	ReasonAuthTwoFactorSessionInvalid          ReasonCode = "auth_two_factor_session_invalid"            // #nosec G101 -- reason code, not a credential
+	ReasonAuthTwoFactorNoLongerEnabled         ReasonCode = "auth_two_factor_no_longer_enabled"          // #nosec G101 -- reason code, not a credential
+	ReasonAuthPasskeyNameTooLong               ReasonCode = "auth_passkey_name_too_long"                 // #nosec G101 -- reason code, not a credential
+	ReasonAuthPasskeyNameLengthInvalid         ReasonCode = "auth_passkey_name_length_invalid"           // #nosec G101 -- reason code, not a credential
+	ReasonAuthPasskeyRegistrationNotStarted    ReasonCode = "auth_passkey_registration_not_started"      // #nosec G101 -- reason code, not a credential
+	ReasonAuthPasskeyRegistrationFailed        ReasonCode = "auth_passkey_registration_failed"           // #nosec G101 -- reason code, not a credential
+	ReasonAuthPasskeyNoneRegistered            ReasonCode = "auth_passkey_none_registered"               // #nosec G101 -- reason code, not a credential
+	ReasonAuthPasskeyNoneRegisteredSignInAgain ReasonCode = "auth_passkey_none_registered_sign_in_again" // #nosec G101 -- reason code, not a credential
+	ReasonAuthPasskeyLoginNotStarted           ReasonCode = "auth_passkey_login_not_started"             // #nosec G101 -- reason code, not a credential
+	ReasonAuthPasskeyVerificationFailed        ReasonCode = "auth_passkey_verification_failed"           // #nosec G101 -- reason code, not a credential
+	ReasonAuthPasskeyNoOtherRegistered         ReasonCode = "auth_passkey_no_other_registered"           // #nosec G101 -- reason code, not a credential
+	ReasonValidationInvalidJSON                ReasonCode = "validation_invalid_json"                    // #nosec G101 -- reason code, not a credential
+	ReasonValidationInvalidRequestBody         ReasonCode = "validation_invalid_request_body"            // #nosec G101 -- reason code, not a credential
 )
 
 var reasonRegistry = map[ReasonCode]reasonSpec{
@@ -272,6 +298,32 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonAccountUserAlreadyExists:                  {Template: "User already exists"},
 	ReasonIntegrationWebhookNotFound:                {Template: "Webhook not found"},
 	ReasonContactSomeNotFound:                       {Template: "One or more contacts not found"},
+
+	// Sign-in errors (issue #2101).
+	ReasonAuthAccountLocked:                    {Template: "Too many failed attempts. Try again in {retry_after} s", Params: []string{"retry_after"}},
+	ReasonAuthPasswordBreached:                 {Template: "This password has appeared in a known data breach; please choose a different one."},
+	ReasonAuthPasswordTooLong:                  {Template: "password must not exceed 72 characters"},
+	ReasonAuthPasswordChangeDisabledDemo:       {Template: "Password changes are disabled in demo mode"},
+	ReasonAuthResetTokenInvalid:                {Template: "Password reset token is invalid or expired"},
+	ReasonAuthTwoFactorAlreadyEnabled:          {Template: "Two-factor authentication is already enabled"},
+	ReasonAuthTwoFactorUnavailableOIDC:         {Template: "Two-factor authentication is not available for accounts that sign in through an identity provider"},
+	ReasonAuthTwoFactorSetupRequired:           {Template: "Run 2FA setup first to generate a secret"},
+	ReasonAuthTwoFactorCodeInvalid:             {Template: "Invalid code. Please try again."},
+	ReasonAuthTwoFactorNotEnabled:              {Template: "Two-factor authentication is not enabled"},
+	ReasonAuthTwoFactorLoginNotPending:         {Template: "No pending two-factor login found. Please sign in again."},
+	ReasonAuthTwoFactorSessionInvalid:          {Template: "Invalid or expired two-factor session. Please sign in again."},
+	ReasonAuthTwoFactorNoLongerEnabled:         {Template: "Two-factor authentication is no longer enabled. Please sign in again."},
+	ReasonAuthPasskeyNameTooLong:               {Template: "Name must be 100 characters or fewer"},
+	ReasonAuthPasskeyNameLengthInvalid:         {Template: "Name must be between 1 and 100 characters"},
+	ReasonAuthPasskeyRegistrationNotStarted:    {Template: "No passkey registration in progress. Start again."},
+	ReasonAuthPasskeyRegistrationFailed:        {Template: "Passkey registration could not be verified"},
+	ReasonAuthPasskeyNoneRegistered:            {Template: "No passkey is registered for this account"},
+	ReasonAuthPasskeyNoneRegisteredSignInAgain: {Template: "No passkey is registered for this account. Please sign in again."},
+	ReasonAuthPasskeyLoginNotStarted:           {Template: "No passkey login in progress. Start again."},
+	ReasonAuthPasskeyVerificationFailed:        {Template: "Passkey could not be verified"},
+	ReasonAuthPasskeyNoOtherRegistered:         {Template: "No other passkey is registered to verify with"},
+	ReasonValidationInvalidJSON:                {Template: "Invalid JSON"},
+	ReasonValidationInvalidRequestBody:         {Template: "Invalid request body"},
 }
 
 // notFoundReasons maps the string-literal resources passed to ErrNotFound to their

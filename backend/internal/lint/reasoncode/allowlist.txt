@@ -44,9 +44,8 @@ controllers/search_controller.go:4
 controllers/second_factor_proof.go:2
 controllers/system_event_controller.go:2
 controllers/timeline_controller.go:4
-controllers/two_factor_controller.go:13
-controllers/user_controller.go:40
-controllers/webauthn_controller.go:19
+controllers/user_controller.go:31
+controllers/webauthn_controller.go:1
 controllers/webdav_controller.go:11
 controllers/webhook_controller.go:2
 middleware/admin.go:5

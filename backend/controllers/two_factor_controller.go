@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"time"
 
 	"mycorrhizal/config"
 	apperrors "mycorrhizal/errors"
@@ -76,17 +75,17 @@ func SetupTwoFactor(c *gin.Context) {
 		return
 	}
 	if user.TOTPEnabled {
-		apperrors.AbortWithError(c, apperrors.ErrConflict("Two-factor authentication is already enabled"))
+		apperrors.AbortWithError(c, apperrors.ErrConflict("Two-factor authentication is already enabled").WithReason(apperrors.ReasonAuthTwoFactorAlreadyEnabled, nil))
 		return
 	}
 	if user.OIDCSubject != nil && *user.OIDCSubject != "" {
-		apperrors.AbortWithError(c, apperrors.ErrForbidden(oidcUserErr))
+		apperrors.AbortWithError(c, apperrors.ErrForbidden(oidcUserErr).WithReason(apperrors.ReasonAuthTwoFactorUnavailableOIDC, nil))
 		return
 	}
 
 	var input secondFactorProofInput
 	if err := c.ShouldBindJSON(&input); err != nil && !errors.Is(err, io.EOF) {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("body", "Invalid JSON"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("body", "Invalid JSON").WithReason(apperrors.ReasonValidationInvalidJSON, nil))
 		return
 	}
 	cfg := currentConfig(c)
@@ -144,11 +143,11 @@ func ConfirmTwoFactor(c *gin.Context) {
 		return
 	}
 	if user.TOTPEnabled {
-		apperrors.AbortWithError(c, apperrors.ErrConflict("Two-factor authentication is already enabled"))
+		apperrors.AbortWithError(c, apperrors.ErrConflict("Two-factor authentication is already enabled").WithReason(apperrors.ReasonAuthTwoFactorAlreadyEnabled, nil))
 		return
 	}
 	if user.TOTPSecretEncrypted == nil || *user.TOTPSecretEncrypted == "" {
-		apperrors.AbortWithError(c, apperrors.ErrConflict("Run 2FA setup first to generate a secret"))
+		apperrors.AbortWithError(c, apperrors.ErrConflict("Run 2FA setup first to generate a secret").WithReason(apperrors.ReasonAuthTwoFactorSetupRequired, nil))
 		return
 	}
 
@@ -163,7 +162,7 @@ func ConfirmTwoFactor(c *gin.Context) {
 	secret, err := services.DecryptCredential(currentConfig(c).JWTSecretKey, *user.TOTPSecretEncrypted)
 	confirmStep, stepOK := services.ValidateTOTPStep(secret, input.Code)
 	if err != nil || !stepOK {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("code", "Invalid code. Please try again."))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("code", "Invalid code. Please try again.").WithReason(apperrors.ReasonAuthTwoFactorCodeInvalid, nil))
 		return
 	}
 
@@ -249,7 +248,7 @@ func DisableTwoFactor(c *gin.Context) {
 		return
 	}
 	if !user.TOTPEnabled {
-		apperrors.AbortWithError(c, apperrors.ErrConflict("Two-factor authentication is not enabled"))
+		apperrors.AbortWithError(c, apperrors.ErrConflict("Two-factor authentication is not enabled").WithReason(apperrors.ReasonAuthTwoFactorNotEnabled, nil))
 		return
 	}
 
@@ -345,7 +344,7 @@ func RegenerateRecoveryCodes(c *gin.Context) {
 		return
 	}
 	if len(methods) == 0 {
-		apperrors.AbortWithError(c, apperrors.ErrConflict("Two-factor authentication is not enabled"))
+		apperrors.AbortWithError(c, apperrors.ErrConflict("Two-factor authentication is not enabled").WithReason(apperrors.ReasonAuthTwoFactorNotEnabled, nil))
 		return
 	}
 
@@ -411,13 +410,13 @@ func Complete2FALogin(c *gin.Context, cfg *config.Config) {
 
 	pending, err := c.Cookie("2fa_pending")
 	if err != nil || pending == "" {
-		apperrors.AbortWithError(c, apperrors.ErrUnauthorized("No pending two-factor login found. Please sign in again."))
+		apperrors.AbortWithError(c, apperrors.ErrUnauthorized("No pending two-factor login found. Please sign in again.").WithReason(apperrors.ReasonAuthTwoFactorLoginNotPending, nil))
 		return
 	}
 
 	userID, username, ok := services.Parse2FAChallengeToken(pending, cfg)
 	if !ok {
-		apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid or expired two-factor session. Please sign in again."))
+		apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid or expired two-factor session. Please sign in again.").WithReason(apperrors.ReasonAuthTwoFactorSessionInvalid, nil))
 		return
 	}
 
@@ -429,13 +428,7 @@ func Complete2FALogin(c *gin.Context, cfg *config.Config) {
 	clientIP := c.ClientIP()
 	accountLimiter := middleware.GetAccountRateLimiter()
 	if isLocked, remainingSecs := accountLimiter.IsLoginLocked(username, clientIP); isLocked {
-		c.JSON(http.StatusTooManyRequests, gin.H{
-			"error":          "Account temporarily locked",
-			"message":        "Too many failed login attempts. Please try again later.",
-			"retry_after":    remainingSecs,
-			"retry_after_at": clock.FromContext(c).Now().Add(time.Duration(remainingSecs) * time.Second).Format(time.RFC3339),
-		})
-		c.Abort()
+		abortLoginLocked(c, remainingSecs)
 		return
 	}
 
@@ -444,7 +437,7 @@ func Complete2FALogin(c *gin.Context, cfg *config.Config) {
 	var user models.User
 	if err := db.First(&user, userID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid or expired two-factor session. Please sign in again."))
+			apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Invalid or expired two-factor session. Please sign in again.").WithReason(apperrors.ReasonAuthTwoFactorSessionInvalid, nil))
 			return
 		}
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("query user").WithError(err))
@@ -456,7 +449,7 @@ func Complete2FALogin(c *gin.Context, cfg *config.Config) {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("query second factors").WithError(err))
 		return
 	} else if len(methods) == 0 {
-		apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Two-factor authentication is no longer enabled. Please sign in again."))
+		apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Two-factor authentication is no longer enabled. Please sign in again.").WithReason(apperrors.ReasonAuthTwoFactorNoLongerEnabled, nil))
 		return
 	}
 
@@ -465,16 +458,10 @@ func Complete2FALogin(c *gin.Context, cfg *config.Config) {
 		models.RecordAuditEvent(db, models.AuditEntityAuth, user.Username, models.AuditOpLoginFailed, user.ID)
 		_, lockoutSecs := accountLimiter.RecordLoginFailure(username, clientIP)
 		if lockoutSecs > 0 {
-			c.JSON(http.StatusTooManyRequests, gin.H{
-				"error":          "Account temporarily locked",
-				"message":        "Too many failed login attempts. Please try again later.",
-				"retry_after":    lockoutSecs,
-				"retry_after_at": clock.FromContext(c).Now().Add(time.Duration(lockoutSecs) * time.Second).Format(time.RFC3339),
-			})
-			c.Abort()
+			abortLoginLocked(c, lockoutSecs)
 			return
 		}
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("code", "Invalid code. Please try again."))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("code", "Invalid code. Please try again.").WithReason(apperrors.ReasonAuthTwoFactorCodeInvalid, nil))
 		return
 	}
 	accountLimiter.RecordLoginSuccess(username, clientIP)

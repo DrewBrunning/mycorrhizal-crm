@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 
 	"mycorrhizal/config"
 	apperrors "mycorrhizal/errors"
@@ -45,7 +44,8 @@ func RegisterUser(cfg *config.Config) gin.HandlerFunc {
 		if cfg.HIBPCheckEnabled {
 			if breached, _ := services.CheckPasswordBreached(context.Request.Context(), input.Password); breached {
 				apperrors.AbortWithError(context, apperrors.ErrInvalidInput("password",
-					"This password has appeared in a known data breach; please choose a different one."))
+					"This password has appeared in a known data breach; please choose a different one.").
+					WithReason(apperrors.ReasonAuthPasswordBreached, nil))
 				return
 			}
 		}
@@ -53,7 +53,7 @@ func RegisterUser(cfg *config.Config) gin.HandlerFunc {
 		hashedPassword, hashErr := services.HashPassword(input.Password)
 		if hashErr != nil {
 			if errors.Is(hashErr, services.ErrPasswordTooLong) {
-				apperrors.AbortWithError(context, apperrors.ErrValidation(hashErr.Error()))
+				apperrors.AbortWithError(context, apperrors.ErrValidation(hashErr.Error()).WithReason(apperrors.ReasonAuthPasswordTooLong, nil))
 			} else {
 				apperrors.AbortWithError(context, apperrors.ErrInternal("Could not hash password").WithError(hashErr))
 			}
@@ -140,13 +140,7 @@ func LoginUser(context *gin.Context, cfg *config.Config) {
 	clientIP := context.ClientIP()
 	accountLimiter := middleware.GetAccountRateLimiter()
 	if isLocked, remainingSecs := accountLimiter.IsLoginLocked(identifier, clientIP); isLocked {
-		context.JSON(http.StatusTooManyRequests, gin.H{
-			"error":          "Account temporarily locked",
-			"message":        "Too many failed login attempts. Please try again later.",
-			"retry_after":    remainingSecs,
-			"retry_after_at": clock.FromContext(context).Now().Add(time.Duration(remainingSecs) * time.Second).Format(time.RFC3339),
-		})
-		context.Abort()
+		abortLoginLocked(context, remainingSecs)
 		return
 	}
 
@@ -185,13 +179,7 @@ func LoginUser(context *gin.Context, cfg *config.Config) {
 		// Record failed attempt for password mismatch
 		isLocked, lockoutSecs := accountLimiter.RecordLoginFailure(identifier, clientIP)
 		if isLocked {
-			context.JSON(http.StatusTooManyRequests, gin.H{
-				"error":          "Account temporarily locked",
-				"message":        "Too many failed login attempts. Please try again later.",
-				"retry_after":    lockoutSecs,
-				"retry_after_at": clock.FromContext(context).Now().Add(time.Duration(lockoutSecs) * time.Second).Format(time.RFC3339),
-			})
-			context.Abort()
+			abortLoginLocked(context, lockoutSecs)
 			return
 		}
 		apperrors.AbortWithError(context, apperrors.ErrInvalidCredentials())
@@ -367,7 +355,7 @@ func CheckPasswordStrength(context *gin.Context) {
 func RequestPasswordReset(context *gin.Context, cfg *config.Config) {
 	// Check if demo mode is enabled - password changes are disabled in demo
 	if cfg.DemoMode {
-		apperrors.AbortWithError(context, apperrors.ErrForbidden("Password changes are disabled in demo mode"))
+		apperrors.AbortWithError(context, apperrors.ErrForbidden("Password changes are disabled in demo mode").WithReason(apperrors.ReasonAuthPasswordChangeDisabledDemo, nil))
 		return
 	}
 
@@ -506,7 +494,7 @@ func recordPasswordResetFailure(ctx stdcontext.Context, db *gorm.DB, userID uint
 func ConfirmPasswordReset(context *gin.Context, cfg *config.Config) {
 	// Check if demo mode is enabled - password changes are disabled in demo
 	if cfg.DemoMode {
-		apperrors.AbortWithError(context, apperrors.ErrForbidden("Password changes are disabled in demo mode"))
+		apperrors.AbortWithError(context, apperrors.ErrForbidden("Password changes are disabled in demo mode").WithReason(apperrors.ReasonAuthPasswordChangeDisabledDemo, nil))
 		return
 	}
 
@@ -532,7 +520,7 @@ func ConfirmPasswordReset(context *gin.Context, cfg *config.Config) {
 	var user models.User
 	if err := db.Where("password_reset_token_hash = ?", tokenHash).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			apperrors.AbortWithError(context, apperrors.ErrInvalidInput("token", "Password reset token is invalid or expired"))
+			apperrors.AbortWithError(context, apperrors.ErrInvalidInput("token", "Password reset token is invalid or expired").WithReason(apperrors.ReasonAuthResetTokenInvalid, nil))
 			return
 		}
 
@@ -554,14 +542,15 @@ func ConfirmPasswordReset(context *gin.Context, cfg *config.Config) {
 			}).Error; err != nil {
 			log.Error().Err(err).Uint("user_id", user.ID).Msg("Failed to clear expired reset token")
 		}
-		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("token", "Password reset token is invalid or expired"))
+		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("token", "Password reset token is invalid or expired").WithReason(apperrors.ReasonAuthResetTokenInvalid, nil))
 		return
 	}
 
 	if cfg.HIBPCheckEnabled {
 		if breached, _ := services.CheckPasswordBreached(context.Request.Context(), input.Password); breached {
 			apperrors.AbortWithError(context, apperrors.ErrInvalidInput("password",
-				"This password has appeared in a known data breach; please choose a different one."))
+				"This password has appeared in a known data breach; please choose a different one.").
+				WithReason(apperrors.ReasonAuthPasswordBreached, nil))
 			return
 		}
 	}
@@ -569,7 +558,7 @@ func ConfirmPasswordReset(context *gin.Context, cfg *config.Config) {
 	hashedPassword, err := services.HashPassword(input.Password)
 	if err != nil {
 		if errors.Is(err, services.ErrPasswordTooLong) {
-			apperrors.AbortWithError(context, apperrors.ErrValidation(err.Error()))
+			apperrors.AbortWithError(context, apperrors.ErrValidation(err.Error()).WithReason(apperrors.ReasonAuthPasswordTooLong, nil))
 		} else {
 			log.Error().Err(err).Msg("Failed to hash password during reset")
 			apperrors.AbortWithError(context, apperrors.ErrInternal("Could not hash password").WithError(err))
@@ -601,7 +590,7 @@ func ConfirmPasswordReset(context *gin.Context, cfg *config.Config) {
 	if result.RowsAffected != 1 {
 		// Another confirmation consumed or rotated the token between the load
 		// above and this write. Same generic response as an invalid token.
-		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("token", "Password reset token is invalid or expired"))
+		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("token", "Password reset token is invalid or expired").WithReason(apperrors.ReasonAuthResetTokenInvalid, nil))
 		return
 	}
 
