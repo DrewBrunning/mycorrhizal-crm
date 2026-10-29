@@ -727,6 +727,14 @@
     "jumpNav": "Zum Abschnitt springen",
     "markAsMe": "Das bin ich",
     "unmarkAsMe": "Das bin nicht ich",
+    "meDialog": {
+      "markTitle": "Diesen Kontakt als dich markieren?",
+      "markBody": "Dieser Kontakt wird zu dir. Mit dir selbst in Kontakt zu bleiben ergibt keinen Sinn, deshalb wird er auch als Umgebungskontakt markiert: Er ist nie überfällig und sein Beziehungswert gilt immer als aktuell. Du kannst diese Markierung am Kontakt jederzeit wieder ausschalten.",
+      "markConfirm": "Ja, das bin ich",
+      "unmarkTitle": "Dieser Kontakt bist nicht du?",
+      "unmarkBody": "Dieser Kontakt ist nicht mehr du. Wenn die Markierung als du den Umgebungskontakt eingeschaltet hat, wird er wieder ausgeschaltet. Eine Einstellung, die du selbst gewählt hast, bleibt erhalten.",
+      "unmarkConfirm": "Ja, das bin nicht ich"
+    },
     "skills": {
       "add": "Fähigkeit oder Interesse hinzufügen",
       "createTitle": "Fähigkeit oder Interesse hinzufügen",

@@ -89,6 +89,7 @@ unleash:
         - ^seafile_service\.go$
         - ^search_consistency_service\.go$
         - ^search_service\.go$
+        - ^self_contact\.go$
         - ^session_service\.go$
         - ^source_import_session\.go$
         - ^storage_sample_service\.go$

@@ -230,7 +230,10 @@ test.describe('Contact header actions at desktop', () => {
       await expect(menu).toBeVisible();
       await expect(menu.getByRole('menuitem', { name: 'vCard 4.0' })).toBeVisible();
       await expect(menu.getByRole('menuitem', { name: 'Merge' })).toBeVisible();
-      await expect(menu.getByRole('menuitem').last()).toHaveText('Delete Contact');
+      // Issue #2192: "This is me" sits at the very bottom, after Delete.
+      const items = menu.getByRole('menuitem');
+      await expect(items.nth(-2)).toHaveText('Delete Contact');
+      await expect(items.last()).toHaveText('This is me');
     } finally {
       await deleteTestContact(page.request, contact.ID);
     }

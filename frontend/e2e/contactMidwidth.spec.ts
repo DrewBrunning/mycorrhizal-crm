@@ -73,7 +73,7 @@ for (const width of WIDTHS) {
       }
     });
 
-    test('every header action is reachable (inline or in the menu), Delete last', async ({
+    test('every header action is reachable (inline or in the menu), This is me last', async ({
       page,
     }) => {
       const contact = await createTestContact(page.request);
@@ -93,7 +93,9 @@ for (const width of WIDTHS) {
           await expect(menu.getByRole('menuitem', { name })).toBeVisible();
         }
         const items = menu.getByRole('menuitem');
-        await expect(items.last()).toHaveText('Delete Contact');
+        // Issue #2192: "This is me" sits at the very bottom, after Delete.
+        await expect(items.nth(-2)).toHaveText('Delete Contact');
+        await expect(items.last()).toHaveText('This is me');
 
         // The last item is inside the viewport, i.e. not clipped off-screen.
         const box = await items.last().boundingBox();

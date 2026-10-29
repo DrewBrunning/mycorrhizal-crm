@@ -658,8 +658,10 @@ func RepointContactAssociations(
 	// was "Me"), move it to the keeper so it doesn't dangle once the loser is
 	// soft-deleted below. If it pointed at the keeper or is NULL, the WHERE
 	// matches nothing and the write is a no-op.
+	// The ambient provenance (issue #2192) is reset: the keeper's ambient flag is
+	// a union of both records, so "marking turned it on" no longer holds.
 	if err := tx.Model(&models.User{}).Where("id = ? AND self_contact_vcard_uid = ?", userID, loser.VCardUID).
-		Update("self_contact_vcard_uid", keeper.VCardUID).Error; err != nil {
+		Updates(map[string]any{"self_contact_vcard_uid": keeper.VCardUID, "self_contact_ambient_set": false}).Error; err != nil {
 		return 0, err
 	}
 
