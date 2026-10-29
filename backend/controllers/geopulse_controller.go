@@ -21,30 +21,30 @@ import (
 func abortGeoPulseServiceError(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, services.ErrGeoPulseUnauthorized):
-		apperrors.AbortWithError(c, apperrors.ErrValidation("GeoPulse API token is invalid, expired, or not configured").WithError(err))
+		apperrors.AbortWithError(c, apperrors.ErrValidation("GeoPulse API token is invalid, expired, or not configured").WithReason(apperrors.ReasonGeopulseApiTokenInvalid, nil).WithError(err))
 	case errors.Is(err, services.ErrGeoPulseConfigUnreadable):
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to load the GeoPulse connection").WithError(err))
 	case errors.Is(err, services.ErrGeoPulseKeyUndecryptable):
-		apperrors.AbortWithError(c, apperrors.ErrValidation("The stored GeoPulse API token can no longer be decrypted — re-enter it in Settings").WithError(err))
+		apperrors.AbortWithError(c, apperrors.ErrValidation("The stored GeoPulse API token can no longer be decrypted — re-enter it in Settings").WithReason(apperrors.ReasonGeopulseTokenUndecryptable, nil).WithError(err))
 	case errors.Is(err, services.ErrGeoPulseNotFound):
 		apperrors.AbortWithError(c, apperrors.ErrNotFound("GeoPulse resource").WithError(err))
 	case errors.Is(err, services.ErrGeoPulseInvalidURL):
-		apperrors.AbortWithError(c, apperrors.ErrValidation("GeoPulse base URL is invalid"))
+		apperrors.AbortWithError(c, apperrors.ErrValidation("GeoPulse base URL is invalid").WithReason(apperrors.ReasonGeopulseBaseUrlInvalid, nil))
 	case errors.Is(err, services.ErrGeoPulseRedirect):
-		apperrors.AbortWithError(c, apperrors.ErrExternal("GeoPulse", "GeoPulse answered with a redirect — check the base URL (http vs https, path).").WithError(err))
+		apperrors.AbortWithError(c, apperrors.ErrExternal("GeoPulse", "GeoPulse answered with a redirect — check the base URL (http vs https, path).").WithReason(apperrors.ReasonGeopulseRedirect, nil).WithError(err))
 	case errors.Is(err, services.ErrGeoPulseInvalidDate):
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("date", "date must be YYYY-MM-DD and timezone a valid IANA name"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("date", "date must be YYYY-MM-DD and timezone a valid IANA name").WithReason(apperrors.ReasonGeopulseDateInvalid, nil))
 	case errors.Is(err, services.ErrGeoPulseRequestFailed):
 		status := "an unexpected status"
 		var reqErr *services.GeoPulseRequestError
 		if errors.As(err, &reqErr) {
 			status = reqErr.Status
 		}
-		apperrors.AbortWithError(c, apperrors.ErrExternal("GeoPulse", fmt.Sprintf("GeoPulse returned an error (%s). The instance is reachable — this request itself failed.", status)).WithError(err))
+		apperrors.AbortWithError(c, apperrors.ErrExternal("GeoPulse", fmt.Sprintf("GeoPulse returned an error (%s). The instance is reachable — this request itself failed.", status)).WithReason(apperrors.ReasonGeopulseUpstreamError, map[string]any{"status": status}).WithError(err))
 	case errors.Is(err, services.ErrGeoPulseInvalidData):
-		apperrors.AbortWithError(c, apperrors.ErrExternal("GeoPulse", "GeoPulse returned a response that could not be parsed. The API may have changed — check GeoPulse version compatibility.").WithError(err))
+		apperrors.AbortWithError(c, apperrors.ErrExternal("GeoPulse", "GeoPulse returned a response that could not be parsed. The API may have changed — check GeoPulse version compatibility.").WithReason(apperrors.ReasonGeopulseResponseUnparseable, nil).WithError(err))
 	default:
-		apperrors.AbortWithError(c, apperrors.ErrExternal("GeoPulse", "Could not reach GeoPulse. Is the instance up?").WithError(err))
+		apperrors.AbortWithError(c, apperrors.ErrExternal("GeoPulse", "Could not reach GeoPulse. Is the instance up?").WithReason(apperrors.ReasonGeopulseUnreachable, nil).WithError(err))
 	}
 }
 
@@ -91,7 +91,7 @@ func SaveGeoPulseConfig(c *gin.Context) {
 		return
 	}
 	if existing == nil && strings.TrimSpace(input.APIKey) == "" {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("api_key", "an API token is required when first connecting GeoPulse"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("api_key", "an API token is required when first connecting GeoPulse").WithReason(apperrors.ReasonGeopulseApiTokenRequired, nil))
 		return
 	}
 
@@ -159,7 +159,7 @@ func GetGeoPulseSuggestions(c *gin.Context) {
 
 	date := strings.TrimSpace(c.Query("date"))
 	if date == "" {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("date", "date is required (YYYY-MM-DD)"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("date", "date is required (YYYY-MM-DD)").WithReason(apperrors.ReasonGeopulseDateRequired, nil))
 		return
 	}
 

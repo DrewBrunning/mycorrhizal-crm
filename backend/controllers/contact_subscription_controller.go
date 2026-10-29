@@ -77,7 +77,7 @@ func CreateContactSubscription(c *gin.Context) {
 		return
 	}
 	if count >= maxContactSubscriptionsPerUser {
-		apperrors.AbortWithError(c, apperrors.ErrConflict("maximum of 10 contact subscriptions per user reached"))
+		apperrors.AbortWithError(c, apperrors.ErrConflict("maximum of 10 contact subscriptions per user reached").WithReason(apperrors.ReasonContactSubscriptionLimit, nil))
 		return
 	}
 
@@ -88,7 +88,7 @@ func CreateContactSubscription(c *gin.Context) {
 	}
 
 	if _, err := services.NormalizeContactSubscriptionURL(input.URL); err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("url", "must be an http or https URL"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("url", "must be an http or https URL").WithReason(apperrors.ReasonContactSubscriptionUrlSchemeInvalid, nil))
 		return
 	}
 
@@ -136,7 +136,7 @@ func UpdateContactSubscription(c *gin.Context) {
 
 	newURL, err := services.NormalizeContactSubscriptionURL(input.URL)
 	if err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("url", "must be an http or https URL"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("url", "must be an http or https URL").WithReason(apperrors.ReasonContactSubscriptionUrlSchemeInvalid, nil))
 		return
 	}
 
@@ -147,7 +147,7 @@ func UpdateContactSubscription(c *gin.Context) {
 	if input.Password == "" && !input.ClearPassword && subscription.PasswordEncrypted != "" {
 		oldURL, oldErr := services.NormalizeContactSubscriptionURL(subscription.URL)
 		if oldErr != nil || !services.SameOrigin(oldURL.String(), newURL.String()) {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("password", "re-enter the password when changing the server"))
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("password", "re-enter the password when changing the server").WithReason(apperrors.ReasonIntegrationPasswordReentryRequired, nil))
 			return
 		}
 	}
@@ -269,23 +269,23 @@ func SyncContactSubscription(c *gin.Context) {
 func contactSyncError(err error) *apperrors.AppError {
 	switch {
 	case errors.Is(err, services.ErrContactSyncInvalidURL):
-		return apperrors.ErrInvalidInput("url", "contact subscription URL is invalid")
+		return apperrors.ErrInvalidInput("url", "contact subscription URL is invalid").WithReason(apperrors.ReasonContactSubscriptionUrlInvalid, nil)
 	case errors.Is(err, services.ErrContactSyncUnauthorized):
-		return apperrors.ErrExternal("CardDAV", "authentication failed - check username and password")
+		return apperrors.ErrExternal("CardDAV", "authentication failed - check username and password").WithReason(apperrors.ReasonContactSubscriptionAuthFailed, nil)
 	case errors.Is(err, services.ErrContactSyncNotFound):
-		return apperrors.ErrExternal("CardDAV", "address book not found at the given URL")
+		return apperrors.ErrExternal("CardDAV", "address book not found at the given URL").WithReason(apperrors.ReasonContactSubscriptionNotFoundAtUrl, nil)
 	case errors.Is(err, services.ErrContactSyncPrivateAddress):
-		return apperrors.ErrExternal("CardDAV", "URL resolves to a blocked private address")
+		return apperrors.ErrExternal("CardDAV", "URL resolves to a blocked private address").WithReason(apperrors.ReasonContactSubscriptionPrivateAddress, nil)
 	case errors.Is(err, services.ErrContactSyncTooLarge):
-		return apperrors.ErrExternal("CardDAV", "server response is too large")
+		return apperrors.ErrExternal("CardDAV", "server response is too large").WithReason(apperrors.ReasonContactSubscriptionResponseTooLarge, nil)
 	case errors.Is(err, services.ErrContactSyncInvalidData):
-		return apperrors.ErrExternal("CardDAV", "server returned data that could not be parsed")
+		return apperrors.ErrExternal("CardDAV", "server returned data that could not be parsed").WithReason(apperrors.ReasonContactSubscriptionDataUnparseable, nil)
 	case errors.Is(err, services.ErrContactSyncUnreachable):
 		// issue #524: the subscription's own URL is what can't be reached —
 		// the caller's configuration, not a server malfunction — so this is a
 		// 400, not a 503 (Schemathesis's not_a_server_error check correctly
 		// refuses to accept a 5xx here).
-		return apperrors.ErrValidation("server could not be reached — check the subscription URL")
+		return apperrors.ErrValidation("server could not be reached — check the subscription URL").WithReason(apperrors.ReasonContactSubscriptionUnreachable, nil)
 	default:
 		return apperrors.ErrOperationFailed("Contact sync", err.Error())
 	}
@@ -294,7 +294,7 @@ func contactSyncError(err error) *apperrors.AppError {
 func findContactSubscription(c *gin.Context, db *gorm.DB, userID uint) (models.ContactSubscription, bool) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("id", "must be a positive integer"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("id", "must be a positive integer").WithReason(apperrors.ReasonIntegrationIdInvalid, nil))
 		return models.ContactSubscription{}, false
 	}
 

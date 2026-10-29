@@ -69,6 +69,27 @@ class ErrorTextTest {
     }
 
     @Test
+    fun `integration upstream and limit codes render their params and fall back without them`() {
+        val upstream = ApiError.Server(
+            503,
+            SERVER,
+            reason = ErrorReason(ErrorReasonCode.IMMICH_UPSTREAM_ERROR, mapOf("status" to "502 Bad Gateway"))
+        )
+        assertEquals(
+            "Immich returned an error (502 Bad Gateway). The instance is reachable — this request itself failed.",
+            render(upstream)
+        )
+        val limit = ApiError.Client(
+            409,
+            SERVER,
+            ErrorReason(ErrorReasonCode.FEED_LIMIT_REACHED, mapOf("max" to 50.0))
+        )
+        assertEquals("feed limit reached (maximum 50 active feeds)", render(limit))
+        val missing = ApiError.Client(409, SERVER, ErrorReason(ErrorReasonCode.FEED_LIMIT_REACHED, emptyMap()))
+        assertEquals(SERVER, render(missing))
+    }
+
+    @Test
     fun `the account lockout code without retry_after falls back to the server message`() {
         val error = ApiError.Client(
             429,
@@ -204,7 +225,8 @@ class ErrorTextTest {
             "section" to "names",
             "reason" to "r",
             "total" to 1.0,
-            "max" to 1.0
+            "max" to 1.0,
+            "status" to "s"
         )
         val rendered = mutableMapOf<String, String>()
         composeTestRule.setContent {
