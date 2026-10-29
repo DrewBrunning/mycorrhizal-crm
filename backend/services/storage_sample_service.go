@@ -188,16 +188,47 @@ func fitUsedBytes(in []models.StorageSample) (slope, intercept float64) {
 	return slope, my - slope*mx
 }
 
-// StorageThreshold computes the current storage tier for usedPct with -5%
-// hysteresis, persisting the tier in alert_states (key storage_threshold) so
-// the band survives restarts — the same idea as diskSpaceCondition. warnPct /
-// critPct of 0 fall back to the config defaults, so a raw config.Config built
-// without LoadConfig still behaves. It never returns an error: a failure to
-// read or persist the previous tier degrades to a fresh decision from the
-// current usage.
-func StorageThreshold(ctx context.Context, db *gorm.DB, usedPct, warnPct, critPct int) string {
-	warn, crit := resolveStorageThresholds(warnPct, critPct)
-	tier := storageThresholdTier(usedPct, warn, crit, storageThresholdPrev(ctx, db))
+// StorageLimits are the resolved storage-tier thresholds (issue #2182): a tier
+// needs usage >= its percentage AND free space below its absolute floor. A
+// floor of 0 disables the free-space clause (percentage only).
+type StorageLimits struct {
+	WarnPercent          int
+	CriticalPercent      int
+	WarnMinFreeBytes     uint64
+	CriticalMinFreeBytes uint64
+}
+
+const bytesPerGB = uint64(1) << 30
+
+// StorageLimitsFromConfig resolves cfg into StorageLimits. Percentages of 0
+// (a raw config.Config built without LoadConfig) fall back to the defaults;
+// floors of 0 stay 0 (percentage only) and negatives are treated as 0.
+func StorageLimitsFromConfig(cfg config.Config) StorageLimits {
+	warn, crit := resolveStorageThresholds(cfg.StorageWarnPercent, cfg.StorageCriticalPercent)
+	return StorageLimits{
+		WarnPercent:          warn,
+		CriticalPercent:      crit,
+		WarnMinFreeBytes:     gbToBytes(cfg.StorageWarnMinFreeGB),
+		CriticalMinFreeBytes: gbToBytes(cfg.StorageCriticalMinFreeGB),
+	}
+}
+
+func gbToBytes(gb int) uint64 {
+	if gb <= 0 {
+		return 0
+	}
+	return uint64(gb) * bytesPerGB // #nosec G115 -- gb > 0 checked above
+}
+
+// StorageThreshold computes the current storage tier for usedPct / freeBytes
+// with -5% hysteresis, persisting the tier in alert_states (key
+// storage_threshold) so the band survives restarts — the same idea as
+// diskSpaceCondition. It is the single place the thresholds are evaluated. It
+// never returns an error: a failure to read or persist the previous tier
+// degrades to a fresh decision from the current usage.
+func StorageThreshold(ctx context.Context, db *gorm.DB, usedPct int, freeBytes uint64, lim StorageLimits) string {
+	lim.WarnPercent, lim.CriticalPercent = resolveStorageThresholds(lim.WarnPercent, lim.CriticalPercent)
+	tier := storageThresholdTier(usedPct, freeBytes, lim, storageThresholdPrev(ctx, db))
 	persistStorageThreshold(ctx, db, tier)
 	return tier
 }
@@ -212,18 +243,31 @@ func resolveStorageThresholds(warnPct, critPct int) (int, int) {
 	return warnPct, critPct
 }
 
+// storageTierEntered reports whether a tier is entered: usage at or above pct
+// AND free space strictly below the floor (floor 0 = percentage only).
+func storageTierEntered(usedPct, pct int, freeBytes, floor uint64) bool {
+	return usedPct >= pct && (floor == 0 || freeBytes < floor)
+}
+
+// storageTierHeld is the hysteresis clause: a previously entered tier holds
+// until usage drops 5 points below its percentage OR free space recovers 10%
+// above its floor.
+func storageTierHeld(usedPct, pct int, freeBytes, floor uint64) bool {
+	return usedPct >= pct-storageThresholdHysteresis && (floor == 0 || freeBytes < floor+floor/10)
+}
+
 // storageThresholdTier is the pure threshold + hysteresis decision.
-func storageThresholdTier(usedPct, warnPct, critPct int, prev string) string {
-	if usedPct >= critPct {
+func storageThresholdTier(usedPct int, freeBytes uint64, lim StorageLimits, prev string) string {
+	if storageTierEntered(usedPct, lim.CriticalPercent, freeBytes, lim.CriticalMinFreeBytes) {
 		return StorageThresholdCritical
 	}
-	if prev == StorageThresholdCritical && usedPct >= critPct-storageThresholdHysteresis {
+	if prev == StorageThresholdCritical && storageTierHeld(usedPct, lim.CriticalPercent, freeBytes, lim.CriticalMinFreeBytes) {
 		return StorageThresholdCritical
 	}
-	if usedPct >= warnPct {
+	if storageTierEntered(usedPct, lim.WarnPercent, freeBytes, lim.WarnMinFreeBytes) {
 		return StorageThresholdWarning
 	}
-	if prev == StorageThresholdWarning && usedPct >= warnPct-storageThresholdHysteresis {
+	if prev == StorageThresholdWarning && storageTierHeld(usedPct, lim.WarnPercent, freeBytes, lim.WarnMinFreeBytes) {
 		return StorageThresholdWarning
 	}
 	return StorageThresholdOK

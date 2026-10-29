@@ -16205,7 +16205,10 @@ components:
               enum: [ok, warning, critical]
               description: >
                 usage_percent folded against STORAGE_WARN_PERCENT (default 75)
-                / STORAGE_CRITICAL_PERCENT (default 90) with -5% hysteresis.
+                / STORAGE_CRITICAL_PERCENT (default 90) with -5% hysteresis;
+                a tier is entered only when free space is also below
+                STORAGE_WARN_MIN_FREE_GB (default 10) / STORAGE_CRITICAL_MIN_FREE_GB
+                (default 2); a floor of 0 means percentage only.
                 Warning or critical elevates `overall` to at least degraded.
         update:
           type: object

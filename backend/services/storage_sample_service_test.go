@@ -150,38 +150,38 @@ func TestStorageThreshold_WarningHysteresis(t *testing.T) {
 	db, ctx := storageThresholdEnv(t)
 
 	// Clean start below both thresholds.
-	assert.Equal(t, StorageThresholdOK, StorageThreshold(ctx, db, 50, 75, 90))
+	assert.Equal(t, StorageThresholdOK, StorageThreshold(ctx, db, 50, gbFree(1), pctOnlyLimits))
 
 	// Crossing warn (75) raises warning.
-	assert.Equal(t, StorageThresholdWarning, StorageThreshold(ctx, db, 76, 75, 90))
+	assert.Equal(t, StorageThresholdWarning, StorageThreshold(ctx, db, 76, gbFree(1), pctOnlyLimits))
 
 	// Dropping 4 points below 75 (to 71) does NOT clear it (hysteresis).
-	assert.Equal(t, StorageThresholdWarning, StorageThreshold(ctx, db, 71, 75, 90))
+	assert.Equal(t, StorageThresholdWarning, StorageThreshold(ctx, db, 71, gbFree(1), pctOnlyLimits))
 
 	// Dropping 6 points below 75 (to 69) clears it.
-	assert.Equal(t, StorageThresholdOK, StorageThreshold(ctx, db, 69, 75, 90))
+	assert.Equal(t, StorageThresholdOK, StorageThreshold(ctx, db, 69, gbFree(1), pctOnlyLimits))
 }
 
 func TestStorageThreshold_CriticalTierAndHysteresis(t *testing.T) {
 	db, ctx := storageThresholdEnv(t)
 
 	// Cross crit (90) directly from ok.
-	assert.Equal(t, StorageThresholdCritical, StorageThreshold(ctx, db, 92, 75, 90))
+	assert.Equal(t, StorageThresholdCritical, StorageThreshold(ctx, db, 92, gbFree(1), pctOnlyLimits))
 
 	// 4 points below 90 (86) stays critical.
-	assert.Equal(t, StorageThresholdCritical, StorageThreshold(ctx, db, 86, 75, 90))
+	assert.Equal(t, StorageThresholdCritical, StorageThreshold(ctx, db, 86, gbFree(1), pctOnlyLimits))
 
 	// Below crit-5 (85) but still above warn (75) falls back to warning, not ok.
-	assert.Equal(t, StorageThresholdWarning, StorageThreshold(ctx, db, 84, 75, 90))
+	assert.Equal(t, StorageThresholdWarning, StorageThreshold(ctx, db, 84, gbFree(1), pctOnlyLimits))
 
 	// All the way down clears to ok.
-	assert.Equal(t, StorageThresholdOK, StorageThreshold(ctx, db, 69, 75, 90))
+	assert.Equal(t, StorageThresholdOK, StorageThreshold(ctx, db, 69, gbFree(1), pctOnlyLimits))
 }
 
 func TestStorageThreshold_PersistsTierInAlertStates(t *testing.T) {
 	db, ctx := storageThresholdEnv(t)
 
-	assert.Equal(t, StorageThresholdCritical, StorageThreshold(ctx, db, 95, 75, 90))
+	assert.Equal(t, StorageThresholdCritical, StorageThreshold(ctx, db, 95, gbFree(1), pctOnlyLimits))
 
 	var row models.AlertState
 	require.NoError(t, db.Where("condition_key = ?", alertConditionKeyStorageThreshold).First(&row).Error)
@@ -189,7 +189,7 @@ func TestStorageThreshold_PersistsTierInAlertStates(t *testing.T) {
 	assert.Equal(t, StorageThresholdCritical, row.Detail)
 
 	// Recovery flips the row back to ok and clears the detail.
-	assert.Equal(t, StorageThresholdOK, StorageThreshold(ctx, db, 50, 75, 90))
+	assert.Equal(t, StorageThresholdOK, StorageThreshold(ctx, db, 50, gbFree(1), pctOnlyLimits))
 	require.NoError(t, db.Where("condition_key = ?", alertConditionKeyStorageThreshold).First(&row).Error)
 	assert.Equal(t, models.AlertStateOK, row.State)
 	assert.Empty(t, row.Detail)
@@ -200,9 +200,9 @@ func TestStorageThreshold_ZeroConfigUsesDefaults(t *testing.T) {
 
 	// A raw config.Config (no LoadConfig) has zero thresholds; they must
 	// resolve to the documented defaults (75 / 90).
-	assert.Equal(t, StorageThresholdOK, StorageThreshold(ctx, db, 50, 0, 0))
-	assert.Equal(t, StorageThresholdWarning, StorageThreshold(ctx, db, 80, 0, 0))
-	assert.Equal(t, StorageThresholdCritical, StorageThreshold(ctx, db, 95, 0, 0))
+	assert.Equal(t, StorageThresholdOK, StorageThreshold(ctx, db, 50, gbFree(1), StorageLimits{}))
+	assert.Equal(t, StorageThresholdWarning, StorageThreshold(ctx, db, 80, gbFree(1), StorageLimits{}))
+	assert.Equal(t, StorageThresholdCritical, StorageThreshold(ctx, db, 95, gbFree(1), StorageLimits{}))
 }
 
 // samplerTestDB builds a real migrated DB with a config whose storage dirs are
@@ -336,4 +336,83 @@ func TestRecordStorageSampleScheduled_PrunesViaScheduledRun(t *testing.T) {
 	var count int64
 	require.NoError(t, db.Model(&models.StorageSample{}).Count(&count).Error)
 	assert.Equal(t, int64(1), count, "the scheduled run must prune the expired rows and leave its own fresh sample")
+}
+
+const gb = uint64(1) << 30
+
+func gbFree(n uint64) uint64 { return n * gb }
+
+// pctOnlyLimits is the floors-at-0 escape hatch: today's percentage-only rule.
+var pctOnlyLimits = StorageLimits{WarnPercent: 75, CriticalPercent: 90}
+
+// defaultLimits mirrors the shipped defaults (75/90 and 10 GB / 2 GB floors).
+var defaultLimits = StorageLimits{
+	WarnPercent: 75, CriticalPercent: 90,
+	WarnMinFreeBytes: 10 * gb, CriticalMinFreeBytes: 2 * gb,
+}
+
+// Issue #2182: the tier needs the percentage AND the absolute free-space floor.
+func TestStorageThresholdTier_FreeSpaceFloor(t *testing.T) {
+	tests := []struct {
+		name string
+		pct  int
+		free uint64
+		lim  StorageLimits
+		want string
+	}{
+		{"80% used, 200 GB free is ok", 80, gbFree(200), defaultLimits, StorageThresholdOK},
+		{"80% used, 5 GB free warns", 80, gbFree(5), defaultLimits, StorageThresholdWarning},
+		{"95% used, 50 GB free is ok", 95, gbFree(50), defaultLimits, StorageThresholdOK},
+		{"95% used, 5 GB free warns, not critical", 95, gbFree(5), defaultLimits, StorageThresholdWarning},
+		{"95% used, 1 GB free is critical", 95, gbFree(1), defaultLimits, StorageThresholdCritical},
+		{"low pct with tiny free is ok", 50, gbFree(1), defaultLimits, StorageThresholdOK},
+		{"exactly at warn floor is ok (strictly below)", 80, 10 * gb, defaultLimits, StorageThresholdOK},
+		{"one byte under warn floor warns", 80, 10*gb - 1, defaultLimits, StorageThresholdWarning},
+		{"exactly at critical floor is not critical", 95, 2 * gb, defaultLimits, StorageThresholdWarning},
+		{"floors 0 = percentage only: 80% warns", 80, gbFree(200), pctOnlyLimits, StorageThresholdWarning},
+		{"floors 0 = percentage only: 95% critical", 95, gbFree(200), pctOnlyLimits, StorageThresholdCritical},
+		{"warn floor only, critical pct-only", 95, gbFree(50), StorageLimits{WarnPercent: 75, CriticalPercent: 90, WarnMinFreeBytes: 10 * gb}, StorageThresholdCritical},
+		{"critical floor only, warn pct-only", 80, gbFree(200), StorageLimits{WarnPercent: 75, CriticalPercent: 90, CriticalMinFreeBytes: 2 * gb}, StorageThresholdWarning},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, storageThresholdTier(tt.pct, tt.free, tt.lim, StorageThresholdOK))
+		})
+	}
+}
+
+func TestStorageThresholdTier_FreeSpaceHysteresis(t *testing.T) {
+	// Warning entered; free recovers just above the floor: still within the
+	// hysteresis band, so it holds.
+	assert.Equal(t, StorageThresholdWarning,
+		storageThresholdTier(80, 10*gb+gb/2, defaultLimits, StorageThresholdWarning))
+	// Free well above the floor clears it.
+	assert.Equal(t, StorageThresholdOK,
+		storageThresholdTier(80, gbFree(20), defaultLimits, StorageThresholdWarning))
+	// Critical holds while free is just above its floor and usage is in band.
+	assert.Equal(t, StorageThresholdCritical,
+		storageThresholdTier(95, 2*gb+gb/20, defaultLimits, StorageThresholdCritical))
+	// Critical clears to warning (not ok) once free is well above its floor.
+	assert.Equal(t, StorageThresholdWarning,
+		storageThresholdTier(95, gbFree(5), defaultLimits, StorageThresholdCritical))
+}
+
+func TestStorageThreshold_PersistedWithFreeFloor(t *testing.T) {
+	db, ctx := storageThresholdEnv(t)
+	assert.Equal(t, StorageThresholdOK, StorageThreshold(ctx, db, 80, gbFree(200), defaultLimits))
+	assert.Equal(t, StorageThresholdWarning, StorageThreshold(ctx, db, 80, gbFree(5), defaultLimits))
+	assert.Equal(t, StorageThresholdOK, StorageThreshold(ctx, db, 80, gbFree(200), defaultLimits))
+}
+
+func TestStorageLimitsFromConfig(t *testing.T) {
+	cfg := config.Config{StorageWarnPercent: 80, StorageCriticalPercent: 95, StorageWarnMinFreeGB: 10, StorageCriticalMinFreeGB: 2}
+	lim := StorageLimitsFromConfig(cfg)
+	assert.Equal(t, StorageLimits{WarnPercent: 80, CriticalPercent: 95, WarnMinFreeBytes: 10 * gb, CriticalMinFreeBytes: 2 * gb}, lim)
+
+	// Zero percents fall back to defaults; zero floors stay 0 (pct-only).
+	lim = StorageLimitsFromConfig(config.Config{})
+	assert.Equal(t, config.DefaultStorageWarnPercent, lim.WarnPercent)
+	assert.Equal(t, config.DefaultStorageCriticalPercent, lim.CriticalPercent)
+	assert.Zero(t, lim.WarnMinFreeBytes)
+	assert.Zero(t, lim.CriticalMinFreeBytes)
 }

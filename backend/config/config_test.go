@@ -1600,3 +1600,67 @@ func TestPublicExposureWarnings_NeverSurfacesAsValidationError(t *testing.T) {
 	assert.NotEmpty(t, cfg.PublicExposureWarnings(), "sanity: this config should actually warn")
 	assert.Empty(t, cfg.Validate(), "PublicExposureWarnings must never leak into Validate()'s errors")
 }
+
+// setStorageFloorTestEnv sets the minimum env LoadConfig needs. The secret is
+// assembled so the fixture is not mistaken for a real key by the secret scan.
+func setStorageFloorTestEnv(t *testing.T) {
+	t.Helper()
+	t.Setenv("JWT_SECRET_KEY", "test-secret-key-"+"that-is-long-enough-32")
+	t.Setenv("PROFILE_PHOTO_DIR", "/tmp/photos")
+	t.Setenv("SQLITE_DB_PATH", "/tmp/test.db")
+}
+
+func TestLoadConfig_StorageFreeFloorDefaults(t *testing.T) {
+	setStorageFloorTestEnv(t)
+	cfg := LoadConfig()
+	assert.Equal(t, 10, cfg.StorageWarnMinFreeGB)
+	assert.Equal(t, 2, cfg.StorageCriticalMinFreeGB)
+	assert.Equal(t, 10, DefaultStorageWarnMinFreeGB)
+	assert.Equal(t, 2, DefaultStorageCriticalMinFreeGB)
+	assert.False(t, hasFieldError(cfg.Validate(), "STORAGE_WARN_MIN_FREE_GB"))
+	assert.False(t, hasFieldError(cfg.Validate(), "STORAGE_CRITICAL_MIN_FREE_GB"))
+}
+
+func TestLoadConfig_StorageFreeFloorOverridesAndZero(t *testing.T) {
+	setStorageFloorTestEnv(t)
+	t.Setenv("STORAGE_WARN_MIN_FREE_GB", "50")
+	t.Setenv("STORAGE_CRITICAL_MIN_FREE_GB", "0")
+	cfg := LoadConfig()
+	assert.Equal(t, 50, cfg.StorageWarnMinFreeGB)
+	assert.Equal(t, 0, cfg.StorageCriticalMinFreeGB, "0 is the percentage-only escape hatch, not 'unset'")
+	assert.False(t, hasFieldError(cfg.Validate(), "STORAGE_WARN_MIN_FREE_GB"))
+	assert.False(t, hasFieldError(cfg.Validate(), "STORAGE_CRITICAL_MIN_FREE_GB"))
+}
+
+func TestLoadConfig_StorageFreeFloorInvalid(t *testing.T) {
+	setStorageFloorTestEnv(t)
+
+	t.Setenv("STORAGE_WARN_MIN_FREE_GB", "abc")
+	assert.True(t, hasFieldError(LoadConfig().Validate(), "STORAGE_WARN_MIN_FREE_GB"), "non-numeric refuses to boot")
+
+	t.Setenv("STORAGE_WARN_MIN_FREE_GB", "-1")
+	assert.True(t, hasFieldError(LoadConfig().Validate(), "STORAGE_WARN_MIN_FREE_GB"), "negative refuses to boot")
+
+	t.Setenv("STORAGE_WARN_MIN_FREE_GB", "10")
+	t.Setenv("STORAGE_CRITICAL_MIN_FREE_GB", "x")
+	assert.True(t, hasFieldError(LoadConfig().Validate(), "STORAGE_CRITICAL_MIN_FREE_GB"))
+
+	t.Setenv("STORAGE_CRITICAL_MIN_FREE_GB", "-3")
+	assert.True(t, hasFieldError(LoadConfig().Validate(), "STORAGE_CRITICAL_MIN_FREE_GB"))
+}
+
+func TestValidate_StorageCriticalFloorMustNotExceedWarnFloor(t *testing.T) {
+	cfg := validConfig()
+	cfg.StorageWarnMinFreeGB = 10
+	cfg.StorageCriticalMinFreeGB = 11
+	assert.True(t, hasFieldError(cfg.Validate(), "STORAGE_CRITICAL_MIN_FREE_GB"), "critical floor above warn floor is contradictory")
+
+	cfg.StorageCriticalMinFreeGB = 10
+	assert.False(t, hasFieldError(cfg.Validate(), "STORAGE_CRITICAL_MIN_FREE_GB"), "equal floors are allowed")
+
+	// A zero warn floor means percentage-only for warn; the critical floor
+	// is then independent.
+	cfg.StorageWarnMinFreeGB = 0
+	cfg.StorageCriticalMinFreeGB = 2
+	assert.False(t, hasFieldError(cfg.Validate(), "STORAGE_CRITICAL_MIN_FREE_GB"))
+}

@@ -212,6 +212,8 @@ type Config struct {
 	// sampler retains StorageSampleRetentionDays of history.
 	StorageWarnPercent         int `cfgreg:"env=STORAGE_WARN_PERCENT;type=int;range=1..99, invalid value refuses to boot;default=75;required=false;restart=true;desc=usage% >= this turns the storage threshold warning"`
 	StorageCriticalPercent     int `cfgreg:"env=STORAGE_CRITICAL_PERCENT;type=int;range=>STORAGE_WARN_PERCENT and <=100, invalid value refuses to boot;default=90;required=false;restart=true;desc=usage% >= this turns the storage threshold critical"`
+	StorageWarnMinFreeGB       int `cfgreg:"env=STORAGE_WARN_MIN_FREE_GB;type=int;range=>=0 (0 = percentage only), invalid value refuses to boot;default=10;required=false;restart=true;desc=Storage warning needs free space below this many GB as well as STORAGE_WARN_PERCENT; 0 = percentage only"`
+	StorageCriticalMinFreeGB   int `cfgreg:"env=STORAGE_CRITICAL_MIN_FREE_GB;type=int;range=>=0 and <=STORAGE_WARN_MIN_FREE_GB when that is set (0 = percentage only), invalid value refuses to boot;default=2;required=false;restart=true;desc=Storage critical needs free space below this many GB as well as STORAGE_CRITICAL_PERCENT; 0 = percentage only"`
 	StorageSampleRetentionDays int `cfgreg:"env=STORAGE_SAMPLE_RETENTION_DAYS;type=int;range=>=7, invalid value refuses to boot;default=180;required=false;restart=true;desc=Days of storage_samples history kept"`
 	OIDC                       OIDCConfig
 
@@ -286,6 +288,16 @@ const (
 	// DefaultStorageCriticalPercent is the used-percent at which it turns
 	// "critical" (default 90).
 	DefaultStorageCriticalPercent = 90
+	// DefaultStorageWarnMinFreeGB is the absolute free-space floor for the
+	// "warning" tier (issue #2182): the tier needs usage >= the warn percent
+	// AND free space below this. 10 GB is ~20x the ~450 MB backup working set
+	// of a 100k-contact instance (docs/development/capacity-under-constraint.md),
+	// so a warning always fires with ample time to act. 0 = percentage only.
+	DefaultStorageWarnMinFreeGB = 10
+	// DefaultStorageCriticalMinFreeGB is the same floor for "critical"
+	// (default 2 GB, ~4x that working set and still well above the ~184 MB
+	// migration peak). 0 = percentage only.
+	DefaultStorageCriticalMinFreeGB = 2
 	// DefaultStorageSampleRetentionDays is how long storage_samples rows
 	// survive before the sampler prunes them (default 180).
 	DefaultStorageSampleRetentionDays = 180
@@ -490,6 +502,8 @@ func baseConfig() *Config {
 		AlertAuthSprayEnabled:         true,
 		StorageWarnPercent:            DefaultStorageWarnPercent,
 		StorageCriticalPercent:        DefaultStorageCriticalPercent,
+		StorageWarnMinFreeGB:          DefaultStorageWarnMinFreeGB,
+		StorageCriticalMinFreeGB:      DefaultStorageCriticalMinFreeGB,
 		StorageSampleRetentionDays:    DefaultStorageSampleRetentionDays,
 		LogLevel:                      "info",
 		GinMode:                       "debug",
@@ -683,6 +697,8 @@ func LoadConfig() *Config {
 	cfg.UpdateCheckEnabled = getBoolEnv("UPDATE_CHECK_ENABLED", cfg.UpdateCheckEnabled)
 	cfg.StorageWarnPercent = checkedInt("STORAGE_WARN_PERCENT", cfg.StorageWarnPercent)
 	cfg.StorageCriticalPercent = checkedInt("STORAGE_CRITICAL_PERCENT", cfg.StorageCriticalPercent)
+	cfg.StorageWarnMinFreeGB = checkedInt("STORAGE_WARN_MIN_FREE_GB", cfg.StorageWarnMinFreeGB)
+	cfg.StorageCriticalMinFreeGB = checkedInt("STORAGE_CRITICAL_MIN_FREE_GB", cfg.StorageCriticalMinFreeGB)
 	cfg.StorageSampleRetentionDays = checkedInt("STORAGE_SAMPLE_RETENTION_DAYS", cfg.StorageSampleRetentionDays)
 	cfg.DataEncryptionKey = getEnv("DATA_ENCRYPTION_KEY", cfg.DataEncryptionKey)
 	cfg.DataEncryptionKeyFile = getEnv("DATA_ENCRYPTION_KEY_FILE", cfg.DataEncryptionKeyFile)
@@ -1518,6 +1534,14 @@ func (c *Config) Validate() []ValidationError {
 	intRange("ALERT_INCIDENT_QUIET_HOURS", c.AlertIncidentQuietHours, 1, -1, "at least 1")
 	intRange("ALERT_BACKUP_MAX_AGE_HOURS", c.AlertBackupMaxAgeHours, 0, -1, "0 (use 2x the restore-drill interval) or positive")
 	intRange("STORAGE_WARN_PERCENT", c.StorageWarnPercent, 1, 99, "between 1 and 99")
+	intRange("STORAGE_WARN_MIN_FREE_GB", c.StorageWarnMinFreeGB, 0, -1, "0 (percentage only) or positive")
+	intRange("STORAGE_CRITICAL_MIN_FREE_GB", c.StorageCriticalMinFreeGB, 0, -1, "0 (percentage only) or positive")
+	if c.StorageWarnMinFreeGB > 0 && c.StorageCriticalMinFreeGB > c.StorageWarnMinFreeGB {
+		errors = append(errors, ValidationError{
+			Field:   "STORAGE_CRITICAL_MIN_FREE_GB",
+			Message: fmt.Sprintf("Invalid STORAGE_CRITICAL_MIN_FREE_GB '%d'. Must not exceed STORAGE_WARN_MIN_FREE_GB (%d).", c.StorageCriticalMinFreeGB, c.StorageWarnMinFreeGB),
+		})
+	}
 	intRange("STORAGE_SAMPLE_RETENTION_DAYS", c.StorageSampleRetentionDays, 7, -1, "at least 7")
 	// Per-user resource quotas (issue #950). Negative is meaningless (a quota
 	// below zero could never be met), so it fails boot rather than silently
