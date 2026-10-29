@@ -630,3 +630,67 @@ test('the empty state names the active filter', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Unfiled' }));
   await waitFor(() => expect(screen.getByText('No unfiled notes')).toBeDefined());
 });
+
+test('re-clicking the active filter keeps it selected', async () => {
+  const urls: string[] = [];
+  mockScopedNotes(urls);
+  renderPage();
+  await waitFor(() => expect(screen.getByText('Linked to Ada')).toBeDefined());
+
+  const all = screen.getByRole('button', { name: 'All notes' });
+  expect(all.getAttribute('aria-pressed')).toBe('true');
+  fireEvent.click(all);
+  expect(all.getAttribute('aria-pressed')).toBe('true');
+  expect(urls).toHaveLength(1);
+});
+
+test('a contact with no last name shows the first name only', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        notes: [{ ...filedNote, contact: { ID: 5, firstname: 'Cher' } }],
+        next_cursor: '',
+        limit: 25,
+        total: 1,
+      }),
+    })),
+  );
+  renderPage();
+
+  const link = await screen.findByRole('link', { name: 'Cher' });
+  expect(link.getAttribute('href')).toBe('/contacts/5');
+});
+
+test('editing a contact-linked note keeps its contact and saves the same contact id', async () => {
+  const putBodies: string[] = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, options?: { method?: string; body?: string }) => {
+      if (options?.method === 'PUT') {
+        putBodies.push(options.body ?? '');
+        return { ok: true, json: async () => ({ message: 'ok' }) };
+      }
+      if (url.includes('/contacts?')) {
+        return { ok: true, json: async () => ({ contacts: [] }) };
+      }
+      if (url.includes('/notes')) {
+        return {
+          ok: true,
+          json: async () => ({ notes: [filedNote], next_cursor: '', limit: 25, total: 1 }),
+        };
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    }),
+  );
+  renderPage();
+  await waitFor(() => expect(screen.getByText('Linked to Ada')).toBeDefined());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Edit Note' }));
+  await waitFor(() => expect(screen.getByRole('dialog')).toBeDefined());
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  await waitFor(() => expect(putBodies.length).toBe(1));
+  expect(JSON.parse(putBodies[0]).contact_id).toBe(5);
+});
