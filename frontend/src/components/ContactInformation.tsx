@@ -64,6 +64,7 @@ import {
 } from '../utils/linkResolution';
 import AddressFields from './AddressFields';
 import CardNotesEditor from './CardNotesEditor';
+import ContactFieldToolbar from './ContactFieldToolbar';
 import CopyButton from './CopyButton';
 import CustomFieldGroups from './CustomFieldGroups';
 import EditableArrayField from './EditableArrayField';
@@ -94,6 +95,13 @@ interface ContactInformationProps {
   // fields alone and the envelope is echoed back unchanged.
   onUpdateCard: (patch: Partial<CardModel>, crmPatch?: Partial<CRMEnvelope>) => Promise<void>;
   enabledFields?: Set<ContactFieldKey>;
+  // Issue #1997: the enabled fields hide-empty mode is currently suppressing
+  // (what the "Add a field" menu offers), how to reveal one, and how to open
+  // the per-contact "Customize fields" dialog. All optional: without them the
+  // card renders exactly as before.
+  hiddenEmptyFields?: ContactFieldKey[];
+  onRevealField?: (key: ContactFieldKey) => void;
+  onCustomizeFields?: () => void;
   // Custom fields (v2, T6/T7)
   fieldDefinitions?: FieldDefinition[];
   fieldValuesByDefinition?: Map<string, unknown>;
@@ -155,6 +163,9 @@ export default function ContactInformation({
   onEditValueChange,
   onUpdateCard,
   enabledFields,
+  hiddenEmptyFields = [],
+  onRevealField,
+  onCustomizeFields,
   fieldDefinitions = [],
   fieldValuesByDefinition,
   onSaveFieldValue,
@@ -721,6 +732,13 @@ export default function ContactInformation({
   return (
     <Card sx={{ minWidth: 0 }}>
       <CardContent sx={{ py: 2 }}>
+        {onCustomizeFields && (
+          <ContactFieldToolbar
+            hiddenEmptyFields={hiddenEmptyFields}
+            onReveal={(key) => onRevealField?.(key)}
+            onCustomize={onCustomizeFields}
+          />
+        )}
         {/* T74 Level 1: two-column field-row grid at lg+ so a field's action
             cluster lands ~530px from its value instead of ~1136px. A plain
             Box with gridAutoFlow: 'row' (the default) preserves the current

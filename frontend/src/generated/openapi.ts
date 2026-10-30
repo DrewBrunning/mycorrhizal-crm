@@ -18,6 +18,7 @@ export type AccountBundle = {
   attachments: AccountBundleAttachment[];
   exported_at: string;
   format: 'mycorrhizal-account';
+  hide_empty_fields?: boolean;
   omitted: AccountBundleOmissions;
   plan: AccountBundlePlan;
   self_contact_uid?: string;
@@ -544,8 +545,22 @@ export type ContactEmail = {
   value?: string;
 };
 
+export type ContactFieldKey = 'emails' | 'phones' | 'addresses' | 'links' | 'imppAddresses' | 'socialProfiles' | 'otherOnlineServices' | 'nickname' | 'gender' | 'birthday' | 'anniversary' | 'anniversaries' | 'prefix' | 'middle_name' | 'suffix' | 'organizations' | 'titles' | 'how_we_met' | 'work_information' | 'contact_information' | 'speakToAs' | 'personalInfo' | 'keywords' | 'cardNotes' | 'preferredLanguages' | 'cardKind' | 'language';
+
 export type ContactFieldValuesInput = {
   field_values: FieldValueInput[];
+};
+
+export type ContactFieldVisibility = {
+  defaults: ResolvedFieldVisibility;
+  hide_empty: 'inherit' | 'show' | 'hide';
+  overrides: Record<string, 'show' | 'hide'>;
+  resolved: ResolvedFieldVisibility;
+};
+
+export type ContactFieldVisibilityInput = {
+  hide_empty?: 'inherit' | 'show' | 'hide';
+  overrides?: Record<string, 'inherit' | 'show' | 'hide'>;
 };
 
 export type ContactFlat = {
@@ -1424,6 +1439,10 @@ export type HealthResponse = {
   status?: 'healthy' | 'degraded' | 'unhealthy';
   timestamp?: string;
   version?: string;
+};
+
+export type HideEmptyFieldsInput = {
+  hide_empty_fields: boolean;
 };
 
 export type Household = {
@@ -2418,6 +2437,11 @@ export type ReminderInput = {
   remind_at: string;
   reoccur_from_completion?: boolean | null;
   revision?: number;
+};
+
+export type ResolvedFieldVisibility = {
+  fields: Record<string, boolean>;
+  hide_empty: boolean;
 };
 
 export type Resource = {

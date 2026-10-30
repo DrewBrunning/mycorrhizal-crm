@@ -2749,6 +2749,8 @@
     <string name="error_reason_contact_bulk_field_not_editable">%1$s non è modificabile in blocco</string>
     <string name="error_reason_contact_bulk_no_operations">Indica almeno uno tra set, clear, custom_set o custom_clear</string>
     <string name="error_reason_contact_bulk_value_empty">%1$s non può essere vuoto; indicalo in clear per svuotarlo</string>
+    <string name="error_reason_contact_field_override_unknown_key">%1$s non è un campo che si può mostrare o nascondere</string>
+    <string name="error_reason_contact_field_override_state_invalid">%1$s accetta solo inherit, show o hide</string>
     <string name="error_reason_contact_bulk_value_too_long">La lunghezza di %1$s è al massimo %2$d</string>
     <string name="error_reason_import_circles_not_found">Uno o più cerchi non sono stati trovati</string>
     <string name="error_reason_import_tags_not_found">Una o più etichette non sono state trovate</string>

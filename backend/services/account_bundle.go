@@ -62,6 +62,9 @@ func BuildAccountBundle(db *gorm.DB, userID uint, photoDir string) (*models.Acco
 	stats.Contacts = len(contacts)
 	bundle.SelfContactUID = bundleSelfContactUID(db, userID, uidByContactID)
 	bundle.TimeFormat = bundleTimeFormat(db, userID)
+	if err := attachBundleFieldOverrides(db, userID, bundle); err != nil {
+		return nil, stats, err // # pragma: no cover — defensive: a healthy migrated schema does not fail this query
+	}
 
 	var uuidByActivityID, uuidByReminderID map[uint]string
 	bundle.Plan.Relationships, err = loadBundleRelationships(db, userID)
@@ -674,6 +677,47 @@ func bundleTimeFormat(db *gorm.DB, userID uint) string {
 		return ""
 	}
 	return user.TimeFormat
+}
+
+// attachBundleFieldOverrides copies the owner's per-contact field visibility
+// overrides (issue #1997) and the account hide-empty default onto the bundle.
+// Only overrides of contacts that are in the bundle are carried, so a stale row
+// for a purged contact never produces an entry naming a contact the file does
+// not hold. Owner preference data, outside the neutral Card.
+func attachBundleFieldOverrides(db *gorm.DB, userID uint, bundle *models.AccountBundle) error {
+	var user models.User
+	if err := db.Select("id", "hide_empty_fields").First(&user, userID).Error; err != nil {
+		return err
+	}
+	bundle.HideEmptyFields = user.HideEmptyFields
+
+	var rows []models.ContactFieldOverride
+	if err := db.Where("user_id = ?", userID).Order("id ASC").Find(&rows).Error; err != nil {
+		return err
+	}
+	if len(rows) == 0 {
+		return nil
+	}
+	byUID := make(map[string]int, len(bundle.Plan.Contacts))
+	for i, c := range bundle.Plan.Contacts {
+		byUID[c.UID] = i
+	}
+	for _, r := range rows {
+		i, ok := byUID[r.ContactVCardUID]
+		if !ok {
+			continue
+		}
+		c := &bundle.Plan.Contacts[i]
+		if r.FieldKey == models.HideEmptyOverrideKey {
+			c.HideEmptyOverride = r.State
+			continue
+		}
+		if c.FieldOverrides == nil {
+			c.FieldOverrides = map[string]string{}
+		}
+		c.FieldOverrides[r.FieldKey] = r.State
+	}
+	return nil
 }
 
 // bundleSelfContactUID returns the user's "Me" vcard_uid (issue #1375) when it

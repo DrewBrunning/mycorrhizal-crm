@@ -3225,6 +3225,74 @@
     },
     {
       "method": "GET",
+      "path": "/contacts/{id}/field-visibility",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:ContactFieldVisibility"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/contacts/{id}/field-visibility",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "request_body": "ref:ContactFieldVisibilityInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:ContactFieldVisibility"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/contacts/{id}/field-visibility",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:ContactFieldVisibility"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/contacts/{id}/life-event-suggestions",
       "parameters": [
         {
@@ -8460,6 +8528,22 @@
     },
     {
       "method": "PATCH",
+      "path": "/users/hide-empty-fields",
+      "parameters": null,
+      "request_body": "ref:HideEmptyFieldsInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "PATCH",
       "path": "/users/language",
       "parameters": null,
       "request_body": "ref:UpdateLanguageInput",
@@ -8949,6 +9033,11 @@
           "enum": [
             "mycorrhizal-account"
           ]
+        },
+        {
+          "name": "hide_empty_fields",
+          "type": "boolean",
+          "required": false
         },
         {
           "name": "omitted",
@@ -11281,12 +11370,95 @@
       ]
     },
     {
+      "name": "ContactFieldKey",
+      "properties": null,
+      "enum": [
+        "emails",
+        "phones",
+        "addresses",
+        "links",
+        "imppAddresses",
+        "socialProfiles",
+        "otherOnlineServices",
+        "nickname",
+        "gender",
+        "birthday",
+        "anniversary",
+        "anniversaries",
+        "prefix",
+        "middle_name",
+        "suffix",
+        "organizations",
+        "titles",
+        "how_we_met",
+        "work_information",
+        "contact_information",
+        "speakToAs",
+        "personalInfo",
+        "keywords",
+        "cardNotes",
+        "preferredLanguages",
+        "cardKind",
+        "language"
+      ]
+    },
+    {
       "name": "ContactFieldValuesInput",
       "properties": [
         {
           "name": "field_values",
           "type": "array\u003cobject\u003e",
           "required": true
+        }
+      ]
+    },
+    {
+      "name": "ContactFieldVisibility",
+      "properties": [
+        {
+          "name": "defaults",
+          "type": "composed[object]",
+          "required": true
+        },
+        {
+          "name": "hide_empty",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "inherit",
+            "show",
+            "hide"
+          ]
+        },
+        {
+          "name": "overrides",
+          "type": "object",
+          "required": true
+        },
+        {
+          "name": "resolved",
+          "type": "composed[object]",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "ContactFieldVisibilityInput",
+      "properties": [
+        {
+          "name": "hide_empty",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "inherit",
+            "show",
+            "hide"
+          ]
+        },
+        {
+          "name": "overrides",
+          "type": "object",
+          "required": false
         }
       ]
     },
@@ -15475,6 +15647,16 @@
           "name": "version",
           "type": "string",
           "required": false
+        }
+      ]
+    },
+    {
+      "name": "HideEmptyFieldsInput",
+      "properties": [
+        {
+          "name": "hide_empty_fields",
+          "type": "boolean",
+          "required": true
         }
       ]
     },
@@ -19688,6 +19870,21 @@
           "name": "revision",
           "type": "integer",
           "required": false
+        }
+      ]
+    },
+    {
+      "name": "ResolvedFieldVisibility",
+      "properties": [
+        {
+          "name": "fields",
+          "type": "object",
+          "required": true
+        },
+        {
+          "name": "hide_empty",
+          "type": "boolean",
+          "required": true
         }
       ]
     },

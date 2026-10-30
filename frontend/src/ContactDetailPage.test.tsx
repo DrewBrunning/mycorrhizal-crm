@@ -17,6 +17,7 @@ import type { RelationshipEdge } from './api/relationshipEdges';
 import type { Reminder, ReminderCompletion } from './api/reminders';
 import type { ContactTag, Tag } from './api/tags';
 import ContactDetailPage from './ContactDetailPage';
+import { CONTACT_FIELDS, DEFAULT_ENABLED_CONTACT_FIELDS } from './contactFields';
 import { SnackbarProvider } from './context/SnackbarContext';
 import { DateFormatProvider } from './DateFormatProvider';
 
@@ -288,6 +289,7 @@ function mockFetch({
   extraPreferences = [],
   staleWrite,
   staleOnce: staleOnceInput = [],
+  visibility = {},
 }: {
   record?: ContactRecordResponse;
   failGet?: Endpoint[];
@@ -312,12 +314,46 @@ function mockFetch({
   staleWrite?: ContactRecordResponse;
   // "METHOD /path" requests that answer 412 once (ADR 0008).
   staleOnce?: string[];
+  // GET/PUT/DELETE /contacts/1/field-visibility (issue #1997), resolved the way
+  // the server does: per-contact override > account default (enabledFields)
+  // > built-in default. `fail` makes the GET 500 (the page then falls back to
+  // the account default); `accountHideEmpty` is users.hide_empty_fields.
+  visibility?: {
+    overrides?: Record<string, 'show' | 'hide'>;
+    hideEmpty?: 'inherit' | 'show' | 'hide';
+    accountHideEmpty?: boolean;
+    fail?: boolean;
+  };
 } = {}) {
   const calls: Call[] = [];
   let current = record;
   let stale = staleWrite;
   const staleOnce = [...staleOnceInput];
   const obligations = [...occasionObligations];
+  let vis = {
+    overrides: { ...(visibility.overrides ?? {}) } as Record<string, 'show' | 'hide'>,
+    hideEmpty: visibility.hideEmpty ?? 'inherit',
+  };
+  const visibilityBody = () => {
+    const account = new Set<string>(enabledFields ?? DEFAULT_ENABLED_CONTACT_FIELDS);
+    const accountHide = visibility.accountHideEmpty ?? false;
+    const fields = (withOverrides: boolean) =>
+      Object.fromEntries(
+        CONTACT_FIELDS.map((f) => {
+          const o = withOverrides ? vis.overrides[f.key] : undefined;
+          return [f.key, o ? o === 'show' : account.has(f.key)];
+        }),
+      );
+    return {
+      overrides: vis.overrides,
+      hide_empty: vis.hideEmpty,
+      defaults: { fields: fields(false), hide_empty: accountHide },
+      resolved: {
+        fields: fields(true),
+        hide_empty: vis.hideEmpty === 'inherit' ? accountHide : vis.hideEmpty === 'hide',
+      },
+    };
+  };
 
   const get = (endpoint: Endpoint, body: () => unknown) =>
     failGet.includes(endpoint) ? errorResponse(`${endpoint} failed`) : json(body());
@@ -351,6 +387,10 @@ function mockFetch({
             return get('reminders', () => ({ reminders }));
           case '/contacts/1/field-values':
             return get('fieldValues', () => ({ field_values: [] }));
+          case '/contacts/1/field-visibility':
+            return visibility.fail
+              ? errorResponse('field visibility failed')
+              : json(visibilityBody());
           case '/contacts/1/attachments':
             return json({ attachments: [], total: 0 });
           case '/contacts/1/life-event-suggestions':
@@ -547,6 +587,23 @@ function mockFetch({
               : { ID: 1, is_favorite: action === 'favorite' },
           );
         }
+      }
+      if (path === '/contacts/1/field-visibility' && method === 'PUT') {
+        const sent = (body ?? {}) as {
+          overrides?: Record<string, 'inherit' | 'show' | 'hide'>;
+          hide_empty?: 'inherit' | 'show' | 'hide';
+        };
+        vis = {
+          overrides: Object.fromEntries(
+            Object.entries(sent.overrides ?? {}).filter(([, v]) => v !== 'inherit'),
+          ) as Record<string, 'show' | 'hide'>,
+          hideEmpty: sent.hide_empty ?? 'inherit',
+        };
+        return json(visibilityBody());
+      }
+      if (path === '/contacts/1/field-visibility' && method === 'DELETE') {
+        vis = { overrides: {}, hideEmpty: 'inherit' };
+        return json(visibilityBody());
       }
       if (path === '/occasion-obligations' && method === 'POST') {
         const created: OccasionObligation = {
@@ -2250,4 +2307,147 @@ test('wide jump-nav tabs never shrink, so labels scroll instead of overlapping (
     expect(getComputedStyle(link).flexShrink).toBe('0');
   }
   expect(getComputedStyle(nav).overflowX).toBe('auto');
+});
+
+// --- Per-contact field visibility and hide-empty (issue #1997) -----------------
+//
+// The server resolves per-contact override > account default > built-in
+// default (mocked here the same way); the page renders from the resolved set.
+// Cosmetic only: the contact record and its PUTs are untouched.
+
+const ALICE_EMAIL = /alice\.wonder@example\.com/;
+
+test('a field hidden for this contact is not rendered, though the account default shows it', async () => {
+  mockFetch({ visibility: { overrides: { emails: 'hide' } } });
+  await renderLoaded();
+
+  await waitFor(() => expect(screen.queryByText(ALICE_EMAIL)).not.toBeInTheDocument());
+  // Phones are still shown: only emails was overridden.
+  expect(screen.getByText(/\+1 555-0100/)).toBeInTheDocument();
+});
+
+test('a per-contact "show" reveals a field the account default hides', async () => {
+  // Account default: only phones enabled. Override: show emails on this contact.
+  mockFetch({ enabledFields: ['phones'], visibility: { overrides: { emails: 'show' } } });
+  await renderLoaded();
+
+  expect(await screen.findByText(ALICE_EMAIL)).toBeInTheDocument();
+});
+
+test('when the visibility request fails the account default still renders (fail soft)', async () => {
+  consoleError.mockImplementation(() => {});
+  mockFetch({ visibility: { fail: true } });
+  await renderLoaded();
+
+  expect(screen.getByText(ALICE_EMAIL)).toBeInTheDocument();
+  expect(screen.getByText('Birthday')).toBeInTheDocument();
+});
+
+test('without hide-empty, enabled fields with no value still render', async () => {
+  mockFetch();
+  await renderLoaded();
+
+  expect(screen.getByText('Birthday')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Add a field' })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Customize fields' })).toBeInTheDocument();
+});
+
+test('hide-empty suppresses fields with no value in the detail view', async () => {
+  mockFetch({ visibility: { accountHideEmpty: true } });
+  await renderLoaded();
+
+  // Alice has no birthday, gender or how-we-met: those rows are gone ...
+  await waitFor(() => expect(screen.queryByText('Birthday')).not.toBeInTheDocument());
+  expect(screen.queryByText('How We Met')).not.toBeInTheDocument();
+  // ... while fields that carry a value stay.
+  expect(screen.getByText(ALICE_EMAIL)).toBeInTheDocument();
+  expect(screen.getByText(/\+1 555-0100/)).toBeInTheDocument();
+});
+
+test('hide-empty never takes away the add-this-field affordance: the menu reveals a field and it can be filled', async () => {
+  const calls = mockFetch({ visibility: { accountHideEmpty: true } });
+  await renderLoaded();
+  await waitFor(() => expect(screen.queryByText('Birthday')).not.toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Add a field' }));
+  fireEvent.click(await screen.findByRole('menuitem', { name: 'Birthday' }));
+
+  // The empty field is rendered again, and editable, while the user fills it.
+  fireEvent.click(within(fieldRow('Birthday')).getByLabelText('Edit'));
+  const content = fieldContent('Birthday');
+  fireEvent.change(within(content).getByRole('textbox'), { target: { value: '30.04.1990' } });
+  expect(within(content).getByRole('textbox')).toHaveValue('30.04.1990');
+  fireEvent.click(within(content).getByLabelText('Save'));
+  await waitFor(() =>
+    expect(calls.some((c) => c.method === 'PUT' && c.url.endsWith('/contacts/1'))).toBe(true),
+  );
+  // Still shown after the save.
+  expect(screen.getByText('Birthday')).toBeInTheDocument();
+});
+
+test('a per-contact "show empty fields" override beats the account hide-empty default', async () => {
+  mockFetch({ visibility: { accountHideEmpty: true, hideEmpty: 'show' } });
+  await renderLoaded();
+
+  expect(screen.getByText('Birthday')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Add a field' })).not.toBeInTheDocument();
+});
+
+test("Customize fields saves the contact's overrides with PUT and never writes the contact", async () => {
+  const calls = mockFetch();
+  await renderLoaded();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Customize fields' }));
+  const dialog = await screen.findByRole('dialog');
+  const emailGroup = within(dialog).getByRole('group', { name: 'Email' });
+  fireEvent.click(within(emailGroup).getByRole('button', { name: 'Hide' }));
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Hide empty fields' }));
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  const put = calls.find(
+    (c) => c.method === 'PUT' && c.url.endsWith('/contacts/1/field-visibility'),
+  );
+  expect(put).toBeDefined();
+  expect(put?.body).toMatchObject({ overrides: { emails: 'hide' }, hide_empty: 'hide' });
+  // Display preferences are not card data: no If-Match, and the contact
+  // record itself was never written.
+  expect(JSON.stringify(put?.headers ?? {})).not.toMatch(/if-match/i);
+  expect(calls.some((c) => c.method === 'PUT' && c.url.endsWith('/contacts/1'))).toBe(false);
+  // The page now renders from the saved decision.
+  await waitFor(() => expect(screen.queryByText(ALICE_EMAIL)).not.toBeInTheDocument());
+  expect(screen.queryByText('Birthday')).not.toBeInTheDocument();
+});
+
+test('Reset to default deletes the overrides and the hidden field comes back', async () => {
+  const calls = mockFetch({ visibility: { overrides: { emails: 'hide' }, hideEmpty: 'hide' } });
+  await renderLoaded();
+  await waitFor(() => expect(screen.queryByText(ALICE_EMAIL)).not.toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Customize fields' }));
+  const dialog = await screen.findByRole('dialog');
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Reset to default' }));
+
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  expect(
+    calls.some((c) => c.method === 'DELETE' && c.url.endsWith('/contacts/1/field-visibility')),
+  ).toBe(true);
+  expect(await screen.findByText(ALICE_EMAIL)).toBeInTheDocument();
+  expect(screen.getByText('Birthday')).toBeInTheDocument();
+});
+
+test('a failed Customize save shows the error and keeps the dialog open', async () => {
+  consoleError.mockImplementation(() => {});
+  mockFetch();
+  await renderLoaded();
+  vi.mocked(fetch).mockImplementationOnce(async () => {
+    throw new Error('network down');
+  });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Customize fields' }));
+  const dialog = await screen.findByRole('dialog');
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+  expect(await within(dialog).findByRole('alert')).toBeInTheDocument();
+  expect(screen.getByRole('dialog')).toBeInTheDocument();
 });

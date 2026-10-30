@@ -50,6 +50,7 @@ func TestMigrationsAddStorageSamples(t *testing.T) {
 	// Down drops the table. 000043 is no longer the migration tip — later
 	// migrations sit on top — so roll those back first, then 000043's own down
 	// migration.
+	require.NoError(t, MigrateDown(dbPath)) // rolls back 000084_contact_field_overrides
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000083_activity_end_date
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000082_self_contact_ambient_set
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000081_contact_trash

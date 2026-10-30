@@ -31,7 +31,7 @@ export const CONTACT_SECTION_FIELDS: Record<ContactSectionKey, ContactFieldKey[]
   notes: ['cardNotes', 'how_we_met', 'contact_information'],
 };
 
-function fieldHasValue(
+export function fieldHasValue(
   card: Card,
   crm: CRMEnvelope,
   gender: string | undefined,
@@ -70,6 +70,20 @@ function fieldHasValue(
       const s = card.speakToAs;
       return !!s && (!!s.pronouns?.length || !!s.grammaticalGenders?.length);
     }
+    // The dedicated section panels (issue #1997): hide-empty needs to know
+    // whether each carries anything. Anniversaries are the non-birth entries
+    // only (birthday has its own row).
+    case 'personalInfo':
+      return !!card.personalInfo?.length;
+    case 'organizations':
+      return !!card.organizations?.length;
+    case 'titles':
+      return !!card.titles?.length;
+    case 'work_information':
+      return !!crm.work_information;
+    case 'anniversaries':
+    case 'anniversary':
+      return !!card.anniversaries?.some((a) => a.kind !== 'birth');
     default:
       return false;
   }

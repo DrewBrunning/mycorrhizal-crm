@@ -69,6 +69,13 @@ type User struct {
 	// or a merge resets it. CRM-only: lives on the user, never on the Card.
 	SelfContactAmbientSet bool `gorm:"column:self_contact_ambient_set;not null;default:false" json:"-"`
 
+	// HideEmptyFields is the account-wide default for hide-empty display mode
+	// (migration 000084, issue #1997): the contact detail view suppresses
+	// fields that carry no value. A per-contact override
+	// (ContactFieldOverride, HideEmptyOverrideKey) wins over it. Cosmetic
+	// only; surfaced through the field-visibility endpoints, not the user JSON.
+	HideEmptyFields bool `gorm:"column:hide_empty_fields;not null;default:false" json:"-"`
+
 	// N8 two-factor auth (migration 000024). TOTPSecretEncrypted holds the TOTP
 	// shared secret AES-256-GCM encrypted at rest (services.EncryptCredential,
 	// HKDF-derived from JWT_SECRET_KEY) — never plaintext. The secret is stored

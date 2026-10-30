@@ -408,6 +408,13 @@ type EnabledContactFieldsInput struct {
 	Fields []string `json:"fields" validate:"dive,max=50"`
 }
 
+// HideEmptyFieldsInput is the PATCH /users/hide-empty-fields body (issue
+// #1997): the account-wide default for hide-empty display mode. The pointer
+// makes an absent value a 400 instead of silently switching the mode off.
+type HideEmptyFieldsInput struct {
+	HideEmptyFields *bool `json:"hide_empty_fields" validate:"required"`
+}
+
 // UserRegistrationInput represents the DTO for user registration
 // This DTO intentionally excludes IsAdmin to prevent mass assignment attacks
 type UserRegistrationInput struct {

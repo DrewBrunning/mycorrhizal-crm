@@ -281,6 +281,11 @@ func ContactCascadeRegistry() []CascadeStep {
 			},
 			Reason: "issue #2063, ADR 0004: ledger row is join-shaped bookkeeping (hard-delete per ImportSourceLink); left behind it makes a re-import skip the deleted contact and the integrity scan report a dangling INV-D4 reference. Only the contact-kind row; child-entity links are not contact-keyed",
 		},
+		{
+			Table: "contact_field_overrides", NewModel: func() any { return &models.ContactFieldOverride{} },
+			Mode: CascadeHard, Match: byContactUID,
+			Reason: "issue #1997: join-shaped per-contact display preference keyed by VCardUID; hard delete leaves no orphan rows, and the rows are carried in the deletion snapshot so a trash restore brings the user's customization back",
+		},
 	}
 }
 

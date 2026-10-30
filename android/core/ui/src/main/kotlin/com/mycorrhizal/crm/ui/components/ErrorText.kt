@@ -152,6 +152,16 @@ private fun localizedReason(reason: ErrorReason?): String? {
                 stringResource(R.string.error_reason_contact_bulk_field_not_editable, it)
             }
 
+        ErrorReasonCode.CONTACT_FIELD_OVERRIDE_STATE_INVALID ->
+            field?.let {
+                stringResource(R.string.error_reason_contact_field_override_state_invalid, it)
+            }
+
+        ErrorReasonCode.CONTACT_FIELD_OVERRIDE_UNKNOWN_KEY ->
+            field?.let {
+                stringResource(R.string.error_reason_contact_field_override_unknown_key, it)
+            }
+
         ErrorReasonCode.CONTACT_BULK_NO_OPERATIONS ->
             stringResource(R.string.error_reason_contact_bulk_no_operations)
 

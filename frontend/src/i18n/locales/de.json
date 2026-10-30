@@ -786,6 +786,29 @@
         "invalidDate": "Gib ein Datum als JJJJ-MM-TT oder --MM-TT ein.",
         "saveFailed": "Jahrestag konnte nicht gespeichert werden."
       }
+    },
+    "fieldVisibility": {
+      "customize": "Felder anpassen",
+      "addField": "Feld hinzufügen",
+      "dialog": {
+        "title": "Felder für diesen Kontakt anpassen",
+        "description": "Lege fest, welche Felder bei diesem Kontakt erscheinen. Das ändert nur die Anzeige: Die Kontaktdaten und die Synchronisierung bleiben unverändert.",
+        "emptyFields": "Leere Felder",
+        "hideEmptyInherit": "Kontoeinstellung verwenden ({{state}})",
+        "hideEmptyHide": "Leere Felder ausblenden",
+        "hideEmptyShow": "Leere Felder anzeigen",
+        "fieldInherit": "Standard ({{state}})",
+        "fieldShow": "Anzeigen",
+        "fieldHide": "Ausblenden",
+        "stateShown": "angezeigt",
+        "stateHidden": "ausgeblendet",
+        "stateOn": "leere Felder ausgeblendet",
+        "stateOff": "leere Felder angezeigt",
+        "reset": "Auf Standard zurücksetzen",
+        "saved": "Feldanzeige gespeichert.",
+        "resetDone": "Feldanzeige auf den Standard zurückgesetzt.",
+        "saveError": "Die Feldanzeige konnte nicht gespeichert werden."
+      }
     }
   },
   "noteDialog": {
@@ -1675,6 +1698,10 @@
         "anniversaries": "Eine Liste von Daten, die Sie sich merken möchten, jeweils mit eigener Art.",
         "language": "Die Sprache, in der diese Kontaktkarte geschrieben ist – nicht eine Sprache, die die Person spricht.",
         "preferredLanguages": "Die Sprachen, die diese Person spricht."
+      },
+      "hideEmpty": {
+        "label": "Leere Felder ausblenden",
+        "description": "Auf der Kontaktseite werden Felder ohne Wert nicht angezeigt. Über das Menü „Feld hinzufügen“ kannst du sie trotzdem ausfüllen, und einzelne Kontakte können diese Einstellung überschreiben."
       }
     },
     "data": {
@@ -3824,7 +3851,9 @@
       "notification_push_subscription_limit": "Das Maximum von {{max}} Push-Abonnements pro Benutzer ist erreicht",
       "notification_device_registration_limit": "Das Maximum von {{max}} Geräteregistrierungen pro Benutzer ist erreicht",
       "feed_limit_reached": "Feed-Limit erreicht (höchstens {{max}} aktive Feeds)",
-      "feed_entity_id_not_allowed": "Muss bei einem Sammel-Feed leer sein"
+      "feed_entity_id_not_allowed": "Muss bei einem Sammel-Feed leer sein",
+      "contact_field_override_unknown_key": "{{field}} ist kein Feld, das ein- oder ausgeblendet werden kann",
+      "contact_field_override_state_invalid": "Für {{field}} sind nur inherit, show oder hide zulässig"
     }
   }
 }

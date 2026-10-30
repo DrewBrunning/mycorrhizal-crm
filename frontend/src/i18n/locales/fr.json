@@ -804,6 +804,29 @@
         "invalidDate": "Saisissez une date au format AAAA-MM-JJ ou --MM-JJ.",
         "saveFailed": "Impossible d'enregistrer l'anniversaire."
       }
+    },
+    "fieldVisibility": {
+      "customize": "Personnaliser les champs",
+      "addField": "Ajouter un champ",
+      "dialog": {
+        "title": "Personnaliser les champs de ce contact",
+        "description": "Choisissez les champs affichés pour ce contact. Cela ne change que ce que vous voyez : les données du contact et la synchronisation ne sont pas modifiées.",
+        "emptyFields": "Champs vides",
+        "hideEmptyInherit": "Utiliser le réglage de mon compte ({{state}})",
+        "hideEmptyHide": "Masquer les champs vides",
+        "hideEmptyShow": "Afficher les champs vides",
+        "fieldInherit": "Par défaut ({{state}})",
+        "fieldShow": "Afficher",
+        "fieldHide": "Masquer",
+        "stateShown": "affiché",
+        "stateHidden": "masqué",
+        "stateOn": "champs vides masqués",
+        "stateOff": "champs vides affichés",
+        "reset": "Rétablir les valeurs par défaut",
+        "saved": "Affichage des champs enregistré.",
+        "resetDone": "Affichage des champs rétabli par défaut.",
+        "saveError": "Impossible d’enregistrer l’affichage des champs."
+      }
     }
   },
   "noteDialog": {
@@ -1707,6 +1730,10 @@
         "anniversaries": "Une liste de dates à retenir, chacune avec son propre type.",
         "language": "La langue dans laquelle cette fiche de contact est écrite, et non une langue que parle la personne.",
         "preferredLanguages": "Les langues que parle cette personne."
+      },
+      "hideEmpty": {
+        "label": "Masquer les champs vides",
+        "description": "Sur la page d’un contact, les champs sans valeur ne sont pas affichés. Vous pouvez toujours en ajouter un depuis le menu Ajouter un champ, et chaque contact peut remplacer ce réglage."
       }
     },
     "data": {
@@ -3926,7 +3953,9 @@
       "notification_push_subscription_limit": "Le maximum de {{max}} abonnements push par utilisateur est atteint",
       "notification_device_registration_limit": "Le maximum de {{max}} enregistrements d'appareils par utilisateur est atteint",
       "feed_limit_reached": "Limite de flux atteinte (maximum {{max}} flux actifs)",
-      "feed_entity_id_not_allowed": "Doit être vide pour un flux agrégé"
+      "feed_entity_id_not_allowed": "Doit être vide pour un flux agrégé",
+      "contact_field_override_unknown_key": "{{field}} n’est pas un champ qui peut être affiché ou masqué",
+      "contact_field_override_state_invalid": "{{field}} n’accepte que inherit, show ou hide"
     }
   }
 }

@@ -114,6 +114,10 @@ var snapshotRestorers = map[string]snapshotRestorer{
 		return liveRowExists(tx, "occasion_events", userID, "id", row["event_id"])
 	}},
 	"import_source_links": {},
+	// Issue #1997: the user's per-contact field visibility comes back with the
+	// contact. The natural key (user, contact, field) makes a re-created row a
+	// no-op rather than a duplicate.
+	"contact_field_overrides": {},
 }
 
 func asIDStrings(raw []string) []string { return raw }

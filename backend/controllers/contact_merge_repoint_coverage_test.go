@@ -101,6 +101,8 @@ var mergeCoverage = map[string]mergeClass{
 		reason: "CardDAV href binding of the loser's own remote card; the keeper keeps its own link (deleted by services.DeleteContactAssociations)"},
 	"contact_sync_conflicts": {disposition: mergeDroppedByDesign, keyCol: "contact_id", byID: true,
 		reason: "pending review rows about the loser's remote card; nothing to review once the loser is gone"},
+	"contact_field_overrides": {disposition: mergeDroppedByDesign, keyCol: "contact_vcard_uid",
+		reason: "issue #1997: per-contact display preferences; the merged contact is the keeper and keeps its own, the loser's are removed with it by the delete cascade"},
 	"dismissed_duplicate_pairs": {disposition: mergeDroppedByDesign, keyCol: "uid_low",
 		reason: "a dismissal is a decision about the loser as a distinct contact; the merged contact is a new identity for duplicate detection"},
 	// --- retained history -------------------------------------------------

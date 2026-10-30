@@ -1609,6 +1609,9 @@ paths:
                     type: array
                     items: { type: string }
                     nullable: true
+                  hide_empty_fields:
+                    type: boolean
+                    description: Account-wide default for hide-empty display mode (false until set). A per-contact override wins over it.
     patch:
       summary: Set the user's enabled (visible) contact fields
       operationId: updateEnabledContactFields
@@ -1635,6 +1638,38 @@ paths:
                     items: { type: string }
         "400":
           description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /users/hide-empty-fields:
+    patch:
+      summary: Set the account-wide hide-empty display default
+      operationId: updateHideEmptyFields
+      tags:
+        - Users
+      description: |
+        When on, the contact detail view suppresses fields that have no value
+        (the "add this field" affordance stays). Cosmetic only; a per-contact
+        override (PUT /contacts/{id}/field-visibility) wins over it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HideEmptyFieldsInput"
+      responses:
+        "200":
+          description: Default updated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  hide_empty_fields: { type: boolean }
+        "400":
+          description: hide_empty_fields is missing or not a boolean.
           content:
             application/json:
               schema:
@@ -7164,6 +7199,104 @@ paths:
                 $ref: "#/components/schemas/MessageResponse"
         "404":
           description: Field definition not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /contacts/{id}/field-visibility:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      summary: Get a contact's field visibility (overrides and resolved)
+      operationId: getContactFieldVisibility
+      tags:
+        - Contacts
+      description: |
+        Returns the caller's per-contact field visibility overrides and the
+        resolved decision a client renders from. Resolution order, most
+        specific wins - per-contact override, then the account default
+        (users.enabled_contact_fields, null = the built-in default set), then
+        the built-in default - and the same order decides hide-empty mode
+        (per-contact override, then the account default
+        PATCH /users/hide-empty-fields, then off).
+
+        Cosmetic display state only: it is stored outside the neutral Card, so it
+        is never part of the contact record, vCard/JSContact exports, CardDAV or
+        CalDAV, shares or MCP, and it is NOT an access control (sensitivity is
+        still filtered server side). Writing it does not change the contact's
+        revision or ETag.
+      responses:
+        "200":
+          description: The contact's field visibility.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactFieldVisibility"
+        "404":
+          description: Contact not found (or owned by another user).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Replace a contact's field visibility overrides (full replace)
+      operationId: putContactFieldVisibility
+      tags:
+        - Contacts
+      description: |
+        Makes the stored override set exactly the one in the body: an entry
+        with state show/hide is stored, an entry with state inherit (or a field
+        left out) has no override, and an absent hide_empty means inherit. An
+        empty body object resets the contact. No If-Match is needed or checked
+        (the contact row, its revision and its ETag are not touched). Returns the
+        same body as GET.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactFieldVisibilityInput"
+      responses:
+        "200":
+          description: Overrides saved.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactFieldVisibility"
+        "400":
+          description: |
+            A key is not an overridable field (reason_code
+            contact_field_override_unknown_key) or a state is not one of
+            inherit/show/hide (reason_code contact_field_override_state_invalid).
+            Nothing is written.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Contact not found (or owned by another user).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Reset a contact's field visibility to the account default
+      operationId: resetContactFieldVisibility
+      tags:
+        - Contacts
+      description: Removes every override of the contact, so it inherits the account defaults again, and returns the resulting visibility.
+      responses:
+        "200":
+          description: Overrides removed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactFieldVisibility"
+        "404":
+          description: Contact not found (or owned by another user).
           content:
             application/json:
               schema:
@@ -14394,6 +14527,92 @@ components:
           type: array
           items: { type: string, maxLength: 50 }
           description: "Nil/absent resets to the client default set."
+    HideEmptyFieldsInput:
+      type: object
+      required: [hide_empty_fields]
+      properties:
+        hide_empty_fields: { type: boolean }
+    ContactFieldKey:
+      type: string
+      description: |
+        An overridable contact field key. Mirrors ContactFieldKey in the web
+        client (frontend/src/contactFields.ts); firstname/lastname are always
+        shown and cannot be overridden.
+      enum:
+        - emails
+        - phones
+        - addresses
+        - links
+        - imppAddresses
+        - socialProfiles
+        - otherOnlineServices
+        - nickname
+        - gender
+        - birthday
+        - anniversary
+        - anniversaries
+        - prefix
+        - middle_name
+        - suffix
+        - organizations
+        - titles
+        - how_we_met
+        - work_information
+        - contact_information
+        - speakToAs
+        - personalInfo
+        - keywords
+        - cardNotes
+        - preferredLanguages
+        - cardKind
+        - language
+    ContactFieldVisibilityInput:
+      type: object
+      description: The complete override set for one contact (full replace).
+      properties:
+        overrides:
+          type: object
+          description: Field key (a ContactFieldKey) -> state. An unknown key is rejected with 400. inherit (or leaving the field out) means no override.
+          additionalProperties:
+            type: string
+            enum: [inherit, show, hide]
+        hide_empty:
+          type: string
+          enum: [inherit, show, hide]
+          description: Per-contact hide-empty override. hide = hide empty fields on this contact, show = show them even if the account hides them. Absent = inherit.
+    ResolvedFieldVisibility:
+      type: object
+      required: [fields, hide_empty]
+      properties:
+        fields:
+          type: object
+          description: Every ContactFieldKey -> whether the field is shown.
+          additionalProperties: { type: boolean }
+        hide_empty:
+          type: boolean
+          description: Whether empty fields are suppressed in the detail view. The edit view never hides the add-this-field affordance.
+    ContactFieldVisibility:
+      type: object
+      required: [overrides, hide_empty, defaults, resolved]
+      properties:
+        overrides:
+          type: object
+          description: Only the explicit per-contact overrides (field key -> show/hide); inherited fields are absent.
+          additionalProperties:
+            type: string
+            enum: [show, hide]
+        hide_empty:
+          type: string
+          enum: [inherit, show, hide]
+          description: The raw per-contact hide-empty override.
+        defaults:
+          allOf:
+            - $ref: "#/components/schemas/ResolvedFieldVisibility"
+          description: The account-level decision the contact inherits (account default, else the built-in default set).
+        resolved:
+          allOf:
+            - $ref: "#/components/schemas/ResolvedFieldVisibility"
+          description: The decision to render from - the overrides applied on top of defaults.
     PasswordStrength:
       type: object
       properties:
@@ -18514,6 +18733,16 @@ components:
             importer treats that as auto). Importing applies it only when the
             destination account is still on auto, so it never overwrites a
             choice made on the destination.
+        hide_empty_fields:
+          type: boolean
+          description: >
+            The account's hide-empty display default (issue #1997). Additive and
+            optional: absent (false) on an older bundle. Importing adopts true
+            only while the destination is still on the default (off). A
+            contact in plan.contacts may also carry its owner's per-contact
+            field visibility as field_overrides (field key -> show/hide) and
+            hide_empty_override (show/hide); this owner preference data is
+            deliberately outside the neutral card.
         plan: { $ref: "#/components/schemas/AccountBundlePlan" }
         attachments:
           type: array

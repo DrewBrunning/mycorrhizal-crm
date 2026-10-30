@@ -73,6 +73,29 @@ export async function updateEnabledContactFields(fields: string[]): Promise<stri
   return data?.enabled_contact_fields || fields;
 }
 
+// Issue #1997: the account-wide hide-empty display default. A per-contact
+// override (api/contactFieldVisibility.ts) wins over it. Cosmetic only.
+export async function getHideEmptyFields(): Promise<boolean> {
+  const response = await apiFetch(`${API_BASE_URL}/users/enabled-contact-fields`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+
+  const data = await handleResponse(response, 'Unable to get the hide-empty setting.');
+  return data?.hide_empty_fields === true;
+}
+
+export async function updateHideEmptyFields(hideEmpty: boolean): Promise<boolean> {
+  const response = await apiFetch(`${API_BASE_URL}/users/hide-empty-fields`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ hide_empty_fields: hideEmpty }),
+  });
+
+  const data = await handleResponse(response, 'Unable to update the hide-empty setting.');
+  return data?.hide_empty_fields === true;
+}
+
 // T90: points users.self_contact_vcard_uid at one of the caller's own
 // contacts, or clears it with a null vcard_uid. The backend 404s a uid that
 // doesn't resolve to a non-deleted contact owned by the caller.

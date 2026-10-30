@@ -113,6 +113,13 @@ type MappedContact struct {
 	// target, so a source that carries one (the account bundle) sets it here,
 	// already validated against models.TargetClosenessTiers(). nil = none.
 	TargetCloseness *string
+	// FieldOverrides / HideEmptyOverride (issue #1997; account bundle only) are
+	// the owner's per-contact field visibility preferences. Applied only to a
+	// contact that is newly created by this import (never onto a merge target,
+	// whose own choices stand), after validation against the allowlist: an
+	// unrecognised key or state is dropped.
+	FieldOverrides    map[string]string
+	HideEmptyOverride string
 }
 
 // MappedRelationship is one directed relationship edge. Source/Target are the
@@ -296,17 +303,21 @@ type ImportSourcePlan struct {
 	// TimeFormat, when non-empty, is the source account's time-format
 	// preference (issue #1830; account bundle only). The engine applies it
 	// only while the destination user is still on "auto".
-	TimeFormat    string
-	Relationships []MappedRelationship
-	Notes         []MappedNote
-	Activities    []MappedActivity
-	Reminders     []MappedReminder
-	Gifts         []MappedGift
-	Preferences   []MappedPreference
-	Households    []MappedHousehold
-	Circles       []MappedCircle
-	Tags          []MappedTag
-	CustomFields  []MappedCustomField
+	TimeFormat string
+	// HideEmptyFields is the source account's hide-empty display default
+	// (issue #1997; account bundle only). The engine adopts true only while the
+	// destination user is still on the default (off).
+	HideEmptyFields bool
+	Relationships   []MappedRelationship
+	Notes           []MappedNote
+	Activities      []MappedActivity
+	Reminders       []MappedReminder
+	Gifts           []MappedGift
+	Preferences     []MappedPreference
+	Households      []MappedHousehold
+	Circles         []MappedCircle
+	Tags            []MappedTag
+	CustomFields    []MappedCustomField
 
 	// The account bundle (issue #1259) extends the plan to the remaining
 	// user-authored entities the original Meerkat/Monica mappings did not
@@ -574,6 +585,9 @@ func executeSourceImport(ctx context.Context, tx *gorm.DB, userID uint, plan *Im
 			return err
 		}
 		report.ContactsCreated++
+		if err := persistImportedFieldOverrides(tx, userID, contact.VCardUID, mc); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
+			return err
+		}
 		if isSelf {
 			if err := tx.Model(&models.User{}).Where("id = ?", userID).
 				Update("self_contact_vcard_uid", contact.VCardUID).Error; err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
@@ -683,7 +697,37 @@ func executeSourceImport(ctx context.Context, tx *gorm.DB, userID uint, plan *Im
 		}
 	}
 
+	// Account-level hide-empty default (issue #1997): adopted only while the
+	// destination is still on the default, so an import never switches off a
+	// choice the destination made.
+	if plan.HideEmptyFields {
+		if err := tx.Model(&models.User{}).Where("id = ? AND hide_empty_fields = ?", userID, false).
+			Update("hide_empty_fields", true).Error; err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
+			return err
+		}
+	}
+
 	return nil
+}
+
+// persistImportedFieldOverrides stores a newly created contact's bundled field
+// visibility overrides (issue #1997). Only entries that pass the same
+// allowlist the API enforces are kept -- the importer only ever persists a
+// value it validates -- and "inherit" is simply not stored.
+func persistImportedFieldOverrides(tx *gorm.DB, userID uint, contactUID string, mc *MappedContact) error {
+	in := models.ContactFieldVisibilityInput{Overrides: map[string]string{}}
+	for key, state := range mc.FieldOverrides {
+		if models.IsContactFieldKey(key) && (state == models.FieldStateShow || state == models.FieldStateHide) {
+			in.Overrides[key] = state
+		}
+	}
+	if mc.HideEmptyOverride == models.FieldStateShow || mc.HideEmptyOverride == models.FieldStateHide {
+		in.HideEmpty = mc.HideEmptyOverride
+	}
+	if len(in.Overrides) == 0 && in.HideEmpty == "" {
+		return nil
+	}
+	return ReplaceContactFieldOverrides(tx, userID, contactUID, in)
 }
 
 // validateMappedContact runs the shared flat validation after

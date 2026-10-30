@@ -1,7 +1,12 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import { getEnabledContactFields, updateEnabledContactFields } from '../api/users';
+import {
+  getEnabledContactFields,
+  getHideEmptyFields,
+  updateEnabledContactFields,
+  updateHideEmptyFields,
+} from '../api/users';
 import ContactFieldSettings from './ContactFieldSettings';
 
 // This codebase's vitest setup has no auto-cleanup and no globals: true.
@@ -13,12 +18,16 @@ vi.mock('../api/users', async (importOriginal) => {
     ...actual,
     getEnabledContactFields: vi.fn(),
     updateEnabledContactFields: vi.fn(),
+    getHideEmptyFields: vi.fn(),
+    updateHideEmptyFields: vi.fn(),
   };
 });
 
 beforeEach(() => {
   vi.mocked(getEnabledContactFields).mockReset();
   vi.mocked(updateEnabledContactFields).mockReset();
+  vi.mocked(getHideEmptyFields).mockReset().mockResolvedValue(false);
+  vi.mocked(updateHideEmptyFields).mockReset();
 });
 
 test('shows a loading state, then the group headers and switches once fields load', async () => {
@@ -140,4 +149,40 @@ test('jargon labels match the form wording (issue #1775)', async () => {
   expect(screen.getByLabelText('Instant messaging')).toBeInTheDocument();
   expect(screen.getByLabelText('Preferred languages')).toBeInTheDocument();
   expect(screen.queryByText('Mycorrhizal')).not.toBeInTheDocument();
+});
+
+// Issue #1997: the account-wide hide-empty default.
+test('the hide-empty switch reflects the stored account default', async () => {
+  vi.mocked(getEnabledContactFields).mockResolvedValue(['emails']);
+  vi.mocked(getHideEmptyFields).mockResolvedValue(true);
+
+  render(<ContactFieldSettings />);
+
+  await waitFor(() => expect(screen.getByLabelText('Hide empty fields')).toBeChecked());
+});
+
+test('toggling hide-empty saves the account default without touching the field list', async () => {
+  vi.mocked(getEnabledContactFields).mockResolvedValue(['emails']);
+  vi.mocked(updateHideEmptyFields).mockResolvedValue(true);
+
+  render(<ContactFieldSettings />);
+  await waitFor(() => expect(screen.getByLabelText('Hide empty fields')).not.toBeChecked());
+
+  fireEvent.click(screen.getByLabelText('Hide empty fields'));
+
+  expect(screen.getByLabelText('Hide empty fields')).toBeChecked();
+  await waitFor(() => expect(updateHideEmptyFields).toHaveBeenCalledWith(true));
+  expect(updateEnabledContactFields).not.toHaveBeenCalled();
+});
+
+test('a failed hide-empty save shows an error', async () => {
+  vi.mocked(getEnabledContactFields).mockResolvedValue(['emails']);
+  vi.mocked(updateHideEmptyFields).mockRejectedValue(new Error('Could not save hide-empty'));
+
+  render(<ContactFieldSettings />);
+  await waitFor(() => expect(screen.getByLabelText('Hide empty fields')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByLabelText('Hide empty fields'));
+
+  await waitFor(() => expect(screen.getByText('Could not save hide-empty')).toBeInTheDocument());
 });

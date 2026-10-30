@@ -34,8 +34,12 @@ func MapAccountBundle(bundle *models.AccountBundle) *ImportSourcePlan {
 			Favorite: c.IsFavorite,
 
 			TargetCloseness: bundleTargetCloseness(c.CRM.TargetCloseness),
+
+			FieldOverrides:    c.FieldOverrides,
+			HideEmptyOverride: c.HideEmptyOverride,
 		})
 	}
+	plan.HideEmptyFields = bundle.HideEmptyFields
 
 	// Only honour a self uid that names a contact the bundle actually carries.
 	if bundle.SelfContactUID != "" {

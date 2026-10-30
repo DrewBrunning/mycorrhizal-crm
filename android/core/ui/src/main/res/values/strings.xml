@@ -2671,6 +2671,8 @@
     <string name="error_reason_contact_bulk_field_not_editable">%1$s is not bulk-editable</string>
     <string name="error_reason_contact_bulk_no_operations">Provide at least one of set, clear, custom_set or custom_clear</string>
     <string name="error_reason_contact_bulk_value_empty">%1$s must not be empty; list it in clear to empty it</string>
+    <string name="error_reason_contact_field_override_unknown_key">%1$s is not a field that can be shown or hidden</string>
+    <string name="error_reason_contact_field_override_state_invalid">%1$s must be inherit, show or hide</string>
     <string name="error_reason_contact_bulk_value_too_long">%1$s length limit is %2$d</string>
     <string name="error_reason_import_circles_not_found">One or more circles were not found</string>
     <string name="error_reason_import_tags_not_found">One or more tags were not found</string>

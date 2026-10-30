@@ -35,6 +35,15 @@ Define custom fields that appear on all your contacts for tracking information t
 Give related fields the same optional **Group** (for example "Travel profile") and the contact page shows them together under that heading; on Android each group is its own drill-down. A group is only a shared label: renaming or clearing it moves no data, and fields with no group appear under "Custom fields".
 
 
+## Contact Fields and Hide Empty Fields
+
+**Contact Fields** (web) chooses which extended fields the contact form and contact page offer by default. **Hide empty fields** is an account-wide switch beside it: on a contact's page, fields that have no value yet are not shown, and an **Add a field** menu lists them so you can still fill one in.
+
+Both can be overridden for a single contact with **Customize fields** on that contact's page. For each field you pick **Default**, **Show** or **Hide**, and you can force empty fields hidden or shown on that contact. The most specific choice wins: this contact's override, then your account setting, then the built-in default set. **Reset to default** removes the contact's overrides.
+
+These are display preferences only. They never change a contact's data, are not part of the contact card, and are not synced over CardDAV/CalDAV, shared, exported as vCard or JSContact, or served to MCP clients; they do not hide anything from access (sensitivity is enforced separately). They are kept with the contact in your account export (the account bundle) and move to the trash with the contact, so restoring it brings them back.
+
+
 ## Relationship goals on a contact
 
 These live on each contact's page rather than in Settings, next to the relationship health badge.

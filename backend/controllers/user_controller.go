@@ -922,6 +922,8 @@ func GetEnabledContactFields(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"enabled_contact_fields": user.EnabledContactFields,
+		// Issue #1997: the account-wide hide-empty default (additive).
+		"hide_empty_fields": user.HideEmptyFields,
 	})
 }
 
