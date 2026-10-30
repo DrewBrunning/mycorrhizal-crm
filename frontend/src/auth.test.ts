@@ -6,6 +6,7 @@ import {
   login2FA,
   loginUser,
   loginWithPasskey,
+  logoutAndRedirect,
 } from './auth';
 import { getTimeFormat, setTimeFormat } from './timeFormat';
 import { requestOptionsWire, stubWebAuthn, unstubWebAuthn } from './webauthnTestUtils';
@@ -13,6 +14,8 @@ import { requestOptionsWire, stubWebAuthn, unstubWebAuthn } from './webauthnTest
 afterEach(() => {
   vi.unstubAllGlobals();
   unstubWebAuthn();
+  sessionStorage.clear();
+  localStorage.removeItem(USER_INFO_KEY);
 });
 
 const USER_INFO_KEY = 'user_info';
@@ -366,5 +369,31 @@ describe('passkey login', () => {
       vi.fn().mockResolvedValueOnce({ ok: true, json: async () => requestOptionsWire }),
     );
     await expect(loginWithPasskey()).rejects.toMatchObject({ name: 'NotAllowedError' });
+  });
+});
+
+describe('logoutAndRedirect', () => {
+  test('clears cached user info and every session draft before navigating', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ redirect_url: '/login' }) }),
+    );
+    localStorage.setItem(USER_INFO_KEY, JSON.stringify({ user_id: 1, username: 'u' }));
+    sessionStorage.setItem('mycorrhizal:draft:note-dialog:unassigned', '{"content":"draft"}');
+    sessionStorage.setItem('unrelated', 'keep');
+
+    const originalLocation = window.location;
+    const fakeLocation = { href: '' } as Location;
+    Object.defineProperty(window, 'location', { configurable: true, value: fakeLocation });
+    try {
+      await logoutAndRedirect();
+    } finally {
+      Object.defineProperty(window, 'location', { configurable: true, value: originalLocation });
+    }
+
+    expect(localStorage.getItem(USER_INFO_KEY)).toBeNull();
+    expect(sessionStorage.getItem('mycorrhizal:draft:note-dialog:unassigned')).toBeNull();
+    expect(sessionStorage.getItem('unrelated')).toBe('keep');
+    expect(fakeLocation.href).toBe('/login');
   });
 });

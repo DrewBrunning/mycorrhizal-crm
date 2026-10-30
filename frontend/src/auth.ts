@@ -5,6 +5,7 @@
 
 import { localizeReason } from './i18n/reason';
 import { initializeTimeFormatFromBackend } from './timeFormat';
+import { clearAllSessionDrafts } from './utils/sessionDraftStorage';
 import { getAssertion } from './webauthnCeremony';
 
 // `?.` (not just `||`) because this module is also loaded directly by Node in
@@ -271,6 +272,9 @@ async function logoutUser(): Promise<string | undefined> {
     // Ignore errors - clear local state anyway
   }
   localStorage.removeItem(USER_INFO_KEY);
+  // Drafts belong to the signed-in user: an explicit logout must not leave
+  // note/activity content for the next account on this tab to restore.
+  clearAllSessionDrafts();
   return redirectURL;
 }
 

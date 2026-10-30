@@ -1,4 +1,5 @@
 import { useCallback, useEffect } from 'react';
+import { sessionDraftKey } from '../utils/sessionDraftStorage';
 
 // Issue #557 item 4: "preserving rather than only warning" -- a draft
 // persisted to sessionStorage turns a 401/crash/accidental-close into an
@@ -8,17 +9,12 @@ import { useCallback, useEffect } from 'react';
 // life, not carried indefinitely across browser restarts on a shared/public
 // machine -- consistent with this app not persisting form drafts anywhere
 // else today.
-const STORAGE_PREFIX = 'mycorrhizal:draft:';
-
-function storageKey(key: string): string {
-  return `${STORAGE_PREFIX}${key}`;
-}
 
 // readSessionDraft reads a previously-saved draft, if any. Call it once, at
 // the point a dialog/form (re)opens, to decide what to restore.
 export function readSessionDraft<T>(key: string): T | null {
   try {
-    const raw = sessionStorage.getItem(storageKey(key));
+    const raw = sessionStorage.getItem(sessionDraftKey(key));
     if (!raw) return null;
     return JSON.parse(raw) as T;
   } catch {
@@ -47,7 +43,7 @@ export function useSessionDraft<T>(
   useEffect(() => {
     if (!enabled) return;
     try {
-      sessionStorage.setItem(storageKey(key), serializedValue);
+      sessionStorage.setItem(sessionDraftKey(key), serializedValue);
     } catch {
       // Best-effort only (quota exceeded, storage disabled) -- never block
       // the actual editing experience over a failed draft write.
@@ -56,7 +52,7 @@ export function useSessionDraft<T>(
 
   const clearDraft = useCallback(() => {
     try {
-      sessionStorage.removeItem(storageKey(key));
+      sessionStorage.removeItem(sessionDraftKey(key));
     } catch {
       // Nothing to do if storage isn't available.
     }

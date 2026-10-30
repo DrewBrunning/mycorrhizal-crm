@@ -558,9 +558,15 @@ design is ADR-0010 / CON-04, issue #479).
 ## 9. Browser-side storage (frontend SPA)
 
 - **`localStorage`**: holds only `user_info` (id/username/admin flag/self-contact UID) and UI
-  preferences — no auth token, no contact PII (`frontend/src/auth.ts:17,172`; pinned as a regression by
-  the #419 Playwright spec asserting no long-lived credential ever lands in `localStorage`/
-  `sessionStorage`/`IndexedDB`/URL). Cleared on logout (`auth.ts:172`).
+  preferences — no auth token, no contact PII (`frontend/src/auth.ts#logoutUser`; pinned as a
+  regression by the #419 Playwright spec asserting no long-lived credential ever lands in
+  `localStorage`/`sessionStorage`/`IndexedDB`/URL). Cleared on logout (`auth.ts#logoutUser`).
+- **`sessionStorage`**: the add-note/add-activity dialogs persist an in-progress draft under
+  `mycorrhizal:draft:*` so a 401, crash, or killed tab does not lose typed work (`#557`). The value
+  is that dialog's form fields — note content, or activity title/description/location — plus the
+  selected calendar day; it is tab-scoped, best-effort, never read by the service worker, and removed
+  on save, explicit discard, and logout (`frontend/src/utils/sessionDraftStorage.ts#clearAllSessionDrafts`,
+  `frontend/src/auth.ts#logoutUser`). It is not a credential.
 - **Auth token**: httpOnly session cookie — never readable by JS or the service worker, so there is
   nothing for either to leak or need to clear.
 - **Service worker cache**: `frontend/src/service-worker.ts` precaches only the static build (app shell)

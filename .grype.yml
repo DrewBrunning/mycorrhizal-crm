@@ -12,5 +12,20 @@
 #     - vulnerability: GHSA-xxxx-yyyy-zzzz
 #
 # Grype only gates on CRITICAL + HIGH (severity-cutoff in grype.yml), so
-# anything below that is already report-only and needs no entry here.
-ignore: []
+# anything below that is already report-only. An entry here records that a
+# lower-severity finding was reviewed and keeps its repeat SARIF alert out of
+# the Security tab; it never changes what fails the gate.
+ignore:
+  # GHSA-gcqx-w48m-w2h4 (deepmerge 4.3.1): no upstream patched release exists
+  # (4.3.1 is latest, advisory has no first_patched_version). It reaches the
+  # tree only as a dev/build dependency of @rollup/plugin-node-resolve via
+  # workbox-build, which merges this repo's constant plugin options — never
+  # untrusted input — so the prototype-poisoning sink is not attacker-reachable.
+  # Tracked for a real fix in docs/security/dependency-exceptions.ignore.
+  - vulnerability: GHSA-gcqx-w48m-w2h4
+  # GO-2026-5932 (golang.org/x/crypto/openpgp): the advisory is against the
+  # unmaintained openpgp subpackage, which this repo never imports. The backend
+  # uses only x/crypto/bcrypt (password hashing) and x/crypto/hkdf (at-rest key
+  # derivation); `go list -deps ./...` contains no openpgp package, so the
+  # vulnerable code is not in the shipped binary.
+  - vulnerability: GO-2026-5932
