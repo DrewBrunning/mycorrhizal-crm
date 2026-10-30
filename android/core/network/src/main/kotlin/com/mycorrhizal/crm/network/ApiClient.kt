@@ -3370,7 +3370,11 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         val reason = if (error != null && reasonCode != null) {
             ErrorReason(
                 reasonCode,
-                withLockoutRetryAfter(reasonCode, error.reasonParams.orEmpty(), error.details?.get(RETRY_AFTER_KEY))
+                withLockoutRetryAfter(
+                    reasonCode,
+                    error.reasonParams.orEmpty(),
+                    error.details?.get(RETRY_AFTER_KEY)
+                )
             )
         } else {
             parseFlatReason(body)
@@ -3411,7 +3415,10 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
             moshi.adapter(MessageResponse::class.java).fromJson(body)
         }.getOrNull() ?: return null
         val code = flat.reasonCode?.takeIf { it.isNotBlank() } ?: return null
-        return ErrorReason(code, withLockoutRetryAfter(code, flat.reasonParams.orEmpty(), flat.retryAfter))
+        return ErrorReason(
+            code,
+            withLockoutRetryAfter(code, flat.reasonParams.orEmpty(), flat.retryAfter)
+        )
     }
 
     /**
@@ -3425,7 +3432,11 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         params: Map<String, Any?>,
         retryAfter: Any?
     ): Map<String, Any?> {
-        if (code != ErrorReasonCode.AUTH_ACCOUNT_LOCKED || params[RETRY_AFTER_KEY] != null) return params
+        if (code != ErrorReasonCode.AUTH_ACCOUNT_LOCKED ||
+            params[RETRY_AFTER_KEY] != null
+        ) {
+            return params
+        }
         return if (retryAfter is Number) params + (RETRY_AFTER_KEY to retryAfter.toDouble()) else params
     }
 

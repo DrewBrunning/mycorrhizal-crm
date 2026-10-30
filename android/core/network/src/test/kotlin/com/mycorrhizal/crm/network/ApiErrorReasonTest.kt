@@ -130,6 +130,7 @@ class ApiErrorReasonTest {
         assertEquals("Try later", error.displayMessage)
         assertNull(error.reason)
     }
+
     // Issue #2107 (MAINT-02): v2.0.0 (#2108) moves the lockout into the standard
     // envelope: code ACCOUNT_LOCKED, reason_params {retry_after} and
     // details {retry_after, retry_after_at}. The lockout UI must keep getting
