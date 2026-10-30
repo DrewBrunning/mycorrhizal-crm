@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.mycorrhizal.crm.data.local.LocalServerAvailability
+import com.mycorrhizal.crm.data.local.LocalServerEndpoint
 import com.mycorrhizal.crm.data.local.LocalServerHost
 import com.mycorrhizal.crm.di.LocalServerHostEntryPoint
 import com.mycorrhizal.crm.network.LOCAL_SERVER_SENTINEL_URL
@@ -14,8 +15,12 @@ import dagger.hilt.android.EntryPointAccessors
 import java.io.File
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.runBlocking
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
+import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -47,19 +52,51 @@ class LocalOnlyModeE2eTest {
         get() = EntryPointAccessors.fromApplication(context, LocalServerHostEntryPoint::class.java)
             .localServerHost()
 
-    private fun healthOverSocket(socketPath: String): JSONObject {
+    private fun clientFor(socketPath: String, readSeconds: Long = 5): OkHttpClient {
         val provider = LocalSocketPathProvider { socketPath }
-        val client = OkHttpClient.Builder()
+        return OkHttpClient.Builder()
             .socketFactory(ProfileAwareSocketFactory(provider))
             .dns(ProfileAwareDns(provider))
             .connectTimeout(2, TimeUnit.SECONDS)
-            .readTimeout(5, TimeUnit.SECONDS)
+            .readTimeout(readSeconds, TimeUnit.SECONDS)
             .build()
-        return client.newCall(
-            Request.Builder().url("$LOCAL_SERVER_SENTINEL_URL/health").build()
-        ).execute().use { response ->
-            assertTrue("expected a healthy embedded server", response.isSuccessful)
-            JSONObject(response.body!!.string())
+    }
+
+    private fun healthOverSocket(socketPath: String): JSONObject = clientFor(socketPath).newCall(
+        Request.Builder().url("$LOCAL_SERVER_SENTINEL_URL/health").build()
+    ).execute().use { response ->
+        assertTrue("expected a healthy embedded server", response.isSuccessful)
+        JSONObject(response.body!!.string())
+    }
+
+    private fun Request.Builder.api(endpoint: LocalServerEndpoint, path: String) = apply {
+        url("$LOCAL_SERVER_SENTINEL_URL/api/v1$path")
+        header("Authorization", "Bearer ${endpoint.sessionToken}")
+    }
+
+    private fun OkHttpClient.get(endpoint: LocalServerEndpoint, path: String): Response =
+        newCall(Request.Builder().api(endpoint, path).build()).execute()
+
+    private fun OkHttpClient.post(
+        endpoint: LocalServerEndpoint,
+        path: String,
+        json: String
+    ): Response = newCall(
+        Request.Builder().api(endpoint, path)
+            .post(json.toRequestBody("application/json".toMediaType())).build()
+    ).execute()
+
+    private fun OkHttpClient.delete(endpoint: LocalServerEndpoint, path: String): Response =
+        newCall(Request.Builder().api(endpoint, path).delete().build()).execute()
+
+    private fun trashIds(client: OkHttpClient, endpoint: LocalServerEndpoint): Set<Long> {
+        val body = client.get(endpoint, "/trash/contacts?limit=200").use {
+            check(it.isSuccessful) { "GET trash failed: ${it.code}" }
+            JSONObject(it.body!!.string())
+        }
+        val contacts = body.getJSONArray("contacts")
+        return (0 until contacts.length()).mapTo(mutableSetOf()) {
+            contacts.getJSONObject(it).getJSONObject("contact").optLong("id")
         }
     }
 
@@ -96,5 +133,69 @@ class LocalOnlyModeE2eTest {
             "the embedded store must be gone after deleteLocalData",
             File(context.filesDir, "local-server").exists()
         )
+    }
+
+    /**
+     * Issue #2002: the contact Trash round-trip works in local-only mode.
+     *
+     * Runs the same snapshot-backed delete -> list -> restore -> purge calls the
+     * Trash screen makes, over the app-private socket, proving those routes are
+     * registered and work without a remote instance.
+     */
+    @Test
+    fun contactTrashRoundTripsOverTheSocket() = runBlocking {
+        assumeTrue(
+            "SKIPPED, NOT PASSED: the embedded server is arm64-v8a only and this ABI has no packaged " +
+                "binary. Local mode needs a manual real-arm64-device run before each release " +
+                "(docs/development/release-gates.md, issue #1339)",
+            LocalServerAvailability.isSupported(context)
+        )
+        host.deleteLocalData()
+        val endpoint = host.ensureStarted().getOrThrow()
+        val client = clientFor(endpoint.socketPath)
+
+        try {
+            val given = "LocalTrash${System.currentTimeMillis()}"
+            val createBody = JSONObject()
+                .put(
+                    "card",
+                    JSONObject().put(
+                        "name",
+                        JSONObject().put(
+                            "components",
+                            JSONArray()
+                                .put(JSONObject().put("kind", "given").put("value", given))
+                                .put(JSONObject().put("kind", "surname").put("value", "Socket"))
+                        )
+                    )
+                )
+                .toString()
+            val created = client.post(endpoint, "/contacts", createBody).use {
+                check(it.isSuccessful) { "POST contact failed: ${it.code} ${it.body?.string()}" }
+                JSONObject(it.body!!.string())
+            }
+            val contact = created.optJSONObject("contact") ?: created
+            val id = contact.getLong("id")
+
+            assertEquals(200, client.delete(endpoint, "/contacts/$id").use { it.code })
+            assertTrue(
+                "the deleted contact must be listed in the embedded trash",
+                id in trashIds(client, endpoint)
+            )
+
+            assertEquals(
+                200,
+                client.post(endpoint, "/trash/contacts/$id/restore", "").use { it.code }
+            )
+            assertEquals(200, client.get(endpoint, "/contacts/$id").use { it.code })
+            assertFalse("a restored contact leaves the trash", id in trashIds(client, endpoint))
+
+            assertEquals(200, client.delete(endpoint, "/contacts/$id").use { it.code })
+            assertEquals(200, client.delete(endpoint, "/trash/contacts/$id").use { it.code })
+            assertEquals(404, client.get(endpoint, "/contacts/$id").use { it.code })
+            assertFalse("a purged contact leaves the trash", id in trashIds(client, endpoint))
+        } finally {
+            host.deleteLocalData()
+        }
     }
 }

@@ -148,7 +148,19 @@ test('renders the empty state when there are no households', async () => {
 
   expect(
     await screen.findByText(
-      'No households yet. Create one to start suggesting relationships between the people who live together.',
+      'No households yet. Create one for the people who share a home to get shared-address suggestions and a combined card and gift list.',
+    ),
+  ).toBeInTheDocument();
+});
+
+test('explains what households do and how they differ from circles', async () => {
+  listHouseholdsMock.mockResolvedValue(listResponse());
+
+  renderPage();
+
+  expect(
+    await screen.findByText(
+      'Households group the people and pets who share a home. They power shared-address suggestions and a combined card and gift list, and their members count as ambient contacts for cadence. Unlike a circle, a household is about living together, not a social group.',
     ),
   ).toBeInTheDocument();
 });

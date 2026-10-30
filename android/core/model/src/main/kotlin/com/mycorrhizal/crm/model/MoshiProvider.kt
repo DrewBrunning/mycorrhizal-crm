@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.model
 
+import com.mycorrhizal.crm.model.network.ActivityInputAdapterFactory
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 
@@ -20,6 +21,7 @@ object MoshiProvider {
 
     fun get(): Moshi = instance ?: synchronized(this) {
         instance ?: Moshi.Builder()
+            .add(ActivityInputAdapterFactory)
             .add(KotlinJsonAdapterFactory())
             .build()
             .also { instance = it }

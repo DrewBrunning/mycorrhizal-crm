@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.model.util.ActivityDateRange
 import com.mycorrhizal.crm.model.util.DateFieldMode
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.DateField
@@ -85,6 +86,7 @@ fun ActivityFormScreen(
             onTitleChange = viewModel::onTitleChange,
             onTypeChange = viewModel::onTypeChange,
             onDateChange = viewModel::onDateChange,
+            onEndDateChange = viewModel::onEndDateChange,
             onDescriptionChange = viewModel::onDescriptionChange,
             onLocationChange = viewModel::onLocationChange,
             onContactSearchChange = viewModel::searchContacts,
@@ -116,6 +118,7 @@ fun ActivityFormContent(
     onTitleChange: (String) -> Unit,
     onTypeChange: (String) -> Unit,
     onDateChange: (String) -> Unit,
+    onEndDateChange: (String) -> Unit,
     onDescriptionChange: (String) -> Unit,
     onLocationChange: (String) -> Unit,
     onContactSearchChange: (String) -> Unit,
@@ -151,6 +154,23 @@ fun ActivityFormContent(
             label = stringResource(R.string.activity_date),
             mode = DateFieldMode.DATE_TIME,
             testTag = "activity-date",
+            modifier = Modifier.fillMaxWidth()
+        )
+        // Issue #2006: optional last day of a multi-day activity. A calendar day (no time), its
+        // minimum is the start day, and clearing it makes the activity single-day again.
+        DateField(
+            value = state.endDate,
+            onValueChange = onEndDateChange,
+            label = stringResource(R.string.activity_end_date),
+            mode = DateFieldMode.DATE_UTC_MIDNIGHT,
+            allowClear = true,
+            selectableFrom = ActivityDateRange.startDay(state.date),
+            errorText = if (state.endDateError) {
+                stringResource(R.string.activity_end_before_start)
+            } else {
+                null
+            },
+            testTag = "activity-end-date",
             modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(

@@ -270,6 +270,7 @@ func loadBundleActivities(db *gorm.DB, userID uint) ([]models.AccountBundleActiv
 			Description:  a.Description,
 			Location:     a.Location,
 			Date:         a.Date,
+			EndDate:      a.EndDate,
 			Type:         a.Type,
 			ExternalRef:  a.ExternalRef,
 			AttendeeUIDs: uids,

@@ -3380,15 +3380,36 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
             parseFlatReason(body)
         }
         val requestId = envelope?.requestId
+        val fieldReasons = error?.fieldReasons?.mapNotNull { (field, reasonBody) ->
+            val fieldCode = reasonBody.reasonCode?.takeIf { it.isNotBlank() }
+                ?: return@mapNotNull null
+            field to ErrorReason(fieldCode, reasonBody.reasonParams.orEmpty())
+        }?.toMap()?.takeIf { it.isNotEmpty() }
         // ADR 0008/0010: a stale If-Match is a typed conflict, never a generic 4xx, so a caller
         // can offer "load latest" instead of a bare error toast.
         if (code == HTTP_PRECONDITION_FAILED) {
             return ApiError.PreconditionFailed(message, reason, requestId)
         }
         return if (code in 400..499) {
-            ApiError.Client(code, message, reason, requestId)
+            ApiError.Client(
+                code,
+                message,
+                reason = reason,
+                requestId = requestId,
+                fieldReasons = fieldReasons,
+                details = error?.details,
+                errorCode = error?.code
+            )
         } else {
-            ApiError.Server(code, message, error?.code, reason, requestId)
+            ApiError.Server(
+                code,
+                message,
+                error?.code,
+                reason = reason,
+                requestId = requestId,
+                fieldReasons = fieldReasons,
+                details = error?.details
+            )
         }
     }
 

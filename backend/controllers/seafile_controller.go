@@ -24,24 +24,24 @@ func abortSeafileServiceError(c *gin.Context, err error) {
 		// issue #524: a missing/never-configured connection or an
 		// invalid/expired token is the caller's own credentials or setup, not
 		// a server malfunction — 400, not 503.
-		apperrors.AbortWithError(c, apperrors.ErrValidation("Seafile API token is invalid, expired, or not configured").WithError(err))
+		apperrors.AbortWithError(c, apperrors.ErrValidation("Seafile API token is invalid, expired, or not configured").WithReason(apperrors.ReasonSeafileApiTokenInvalid, nil).WithError(err))
 	case errors.Is(err, services.ErrSeafileNotFound):
 		apperrors.AbortWithError(c, apperrors.ErrNotFound("Seafile library or file").WithError(err))
 	case errors.Is(err, services.ErrSeafileInvalidURL):
-		apperrors.AbortWithError(c, apperrors.ErrValidation("Seafile base URL is invalid"))
+		apperrors.AbortWithError(c, apperrors.ErrValidation("Seafile base URL is invalid").WithReason(apperrors.ReasonSeafileBaseUrlInvalid, nil))
 	case errors.Is(err, services.ErrSeafileRedirect):
-		apperrors.AbortWithError(c, apperrors.ErrExternal("Seafile", "Seafile answered with a redirect — check the base URL (http vs https, path).").WithError(err))
+		apperrors.AbortWithError(c, apperrors.ErrExternal("Seafile", "Seafile answered with a redirect — check the base URL (http vs https, path).").WithReason(apperrors.ReasonSeafileRedirect, nil).WithError(err))
 	case errors.Is(err, services.ErrSeafileRequestFailed):
 		status := "an unexpected status"
 		var reqErr *services.SeafileRequestError
 		if errors.As(err, &reqErr) {
 			status = reqErr.Status
 		}
-		apperrors.AbortWithError(c, apperrors.ErrExternal("Seafile", fmt.Sprintf("Seafile returned an error (%s). The instance is reachable — this request itself failed.", status)).WithError(err))
+		apperrors.AbortWithError(c, apperrors.ErrExternal("Seafile", fmt.Sprintf("Seafile returned an error (%s). The instance is reachable — this request itself failed.", status)).WithReason(apperrors.ReasonSeafileUpstreamError, map[string]any{"status": status}).WithError(err))
 	case errors.Is(err, services.ErrSeafileInvalidData):
-		apperrors.AbortWithError(c, apperrors.ErrExternal("Seafile", "Seafile returned a response that could not be parsed. The API may have changed — check Seafile version compatibility.").WithError(err))
+		apperrors.AbortWithError(c, apperrors.ErrExternal("Seafile", "Seafile returned a response that could not be parsed. The API may have changed — check Seafile version compatibility.").WithReason(apperrors.ReasonSeafileResponseUnparseable, nil).WithError(err))
 	default:
-		apperrors.AbortWithError(c, apperrors.ErrExternal("Seafile", "Could not reach Seafile. Is the server up?").WithError(err))
+		apperrors.AbortWithError(c, apperrors.ErrExternal("Seafile", "Could not reach Seafile. Is the server up?").WithReason(apperrors.ReasonSeafileUnreachable, nil).WithError(err))
 	}
 }
 
@@ -93,7 +93,7 @@ func SaveSeafileConfig(c *gin.Context) {
 	}
 	// A create with no API token is a validation error ("API token required").
 	if existing == nil && strings.TrimSpace(input.APIToken) == "" {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("api_token", "an API token is required when first connecting Seafile"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("api_token", "an API token is required when first connecting Seafile").WithReason(apperrors.ReasonSeafileApiTokenRequired, nil))
 		return
 	}
 
@@ -228,15 +228,11 @@ func LinkSeafileContact(c *gin.Context) {
 		return
 	}
 	if verrs := middleware.ValidateStruct(&input); len(verrs) > 0 {
-		appErr := apperrors.ErrValidation("Request validation failed")
-		for _, ve := range verrs {
-			appErr.WithDetails(ve.Field, ve.Message)
-		}
-		apperrors.AbortWithError(c, appErr)
+		apperrors.AbortWithError(c, apperrors.ErrValidationFields(verrs).WithReason(apperrors.ReasonIntegrationRequestInvalid, nil))
 		return
 	}
 	if strings.TrimSpace(input.RepoID) == "" || strings.TrimSpace(input.Path) == "" {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("repo_id/path", "repo_id and path are required"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("repo_id/path", "repo_id and path are required").WithReason(apperrors.ReasonSeafileRepoAndPathRequired, nil))
 		return
 	}
 

@@ -90,6 +90,17 @@ const fullBriefing = {
   },
 };
 
+test('shows a subtitle explaining what the briefing contains', async () => {
+  mockBriefingFetch(fullBriefing);
+  renderPage();
+
+  expect(
+    await screen.findByText(
+      'A quick briefing before you see or call: recent history, open agenda, and upcoming dates.',
+    ),
+  ).toBeInTheDocument();
+});
+
 test('renders every briefing block from the composition endpoint', async () => {
   mockBriefingFetch(fullBriefing);
   renderPage();

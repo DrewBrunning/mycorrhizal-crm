@@ -28,6 +28,11 @@ interface DateFieldProps {
   size?: 'small' | 'medium';
   /** Marks the field as required (MUI appends " *" to the label). */
   required?: boolean;
+  /**
+   * An error the caller wants shown on this field (e.g. a server field error);
+   * the field's own typed-text errors take precedence while they are showing.
+   */
+  errorText?: string;
   sx?: SxProps<Theme>;
 }
 
@@ -113,6 +118,7 @@ export default function DateField({
   max,
   size = 'small',
   required = false,
+  errorText,
   sx,
 }: DateFieldProps) {
   const { t, i18n } = useTranslation();
@@ -154,7 +160,9 @@ export default function DateField({
   const today = localISODate(new Date());
 
   const openPicker = () => {
-    setView(selected ?? new Date());
+    // An empty field opens on its earliest allowed month (e.g. an end date opens
+    // on the start's month), otherwise on today's.
+    setView(selected ?? parseISODate(min ?? '') ?? new Date());
     setAnchorEl(anchorRef.current);
   };
 
@@ -218,7 +226,7 @@ export default function DateField({
       ? t('common.dateOutOfRange')
       : error === 'invalid'
         ? t('common.dateInvalid', { format: getDatePlaceholder() })
-        : undefined;
+        : errorText;
 
   return (
     <Box ref={anchorRef} sx={sx ?? { width: '100%' }}>
@@ -230,7 +238,7 @@ export default function DateField({
         size={size}
         fullWidth
         required={required}
-        error={error !== null}
+        error={error !== null || Boolean(errorText)}
         helperText={helperText}
         onChange={(event) => handleTyping(event.target.value)}
         onFocus={() => setFocused(true)}
@@ -269,7 +277,7 @@ export default function DateField({
             'aria-haspopup': 'dialog',
             'aria-label': required ? `${label} *` : label,
             'aria-required': required ? 'true' : undefined,
-            'aria-describedby': error !== null ? errorId : undefined,
+            'aria-describedby': helperText ? errorId : undefined,
           },
           formHelperText: { id: errorId },
         }}

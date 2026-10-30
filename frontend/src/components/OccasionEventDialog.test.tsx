@@ -20,6 +20,15 @@ test('shows the create title when no event is given', () => {
   expect(screen.getByText('Create an event')).toBeInTheDocument();
 });
 
+test('explains that an occasion event is a one-off plan, not a reminder', () => {
+  render(<OccasionEventDialog open onClose={vi.fn()} onSave={vi.fn()} />);
+  expect(
+    screen.getByText(
+      'A one-off event you are planning. Add invitees after saving, then record what each person told you.',
+    ),
+  ).toBeInTheDocument();
+});
+
 test('prefills the form when editing', () => {
   render(<OccasionEventDialog open onClose={vi.fn()} onSave={vi.fn()} event={baseEvent} />);
   expect(screen.getByText('Edit event')).toBeInTheDocument();

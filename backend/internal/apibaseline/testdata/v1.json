@@ -9279,6 +9279,11 @@
           "required": true
         },
         {
+          "name": "end_date",
+          "type": "string",
+          "required": false
+        },
+        {
           "name": "external_ref",
           "type": "string",
           "required": false
@@ -9325,6 +9330,11 @@
         },
         {
           "name": "description",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "end_date",
           "type": "string",
           "required": false
         },

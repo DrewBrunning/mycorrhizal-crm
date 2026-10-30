@@ -89,6 +89,24 @@ class TagsScreenTest {
     }
 
     @Test
+    fun `shows the tags explanation with a populated list`() {
+        setScreen(darkTheme = false)
+
+        composeTestRule
+            .onNodeWithText(str(R.string.tags_description))
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun `shows the tags explanation with the empty state`() {
+        setScreen(Result.success(emptyList()))
+
+        composeTestRule
+            .onNodeWithText(str(R.string.tags_description))
+            .assertIsDisplayed()
+    }
+
+    @Test
     fun `tags screen has no accessibility violations (dark)`() {
         setScreen(darkTheme = true)
 

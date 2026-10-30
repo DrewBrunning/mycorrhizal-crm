@@ -37,11 +37,29 @@ const (
 	// ReasonCommonTestOnly exists for tests only and is removed in #2100.
 	ReasonCommonTestOnly ReasonCode = "common_test_only"
 
-	ReasonCircleColorInvalid             ReasonCode = "circle_color_invalid"
-	ReasonImportCirclesNotFound          ReasonCode = "import_circles_not_found"
-	ReasonImportTagsNotFound             ReasonCode = "import_tags_not_found"
-	ReasonValidationCursorMalformed      ReasonCode = "validation_cursor_malformed"
-	ReasonValidationActivityIDsRange     ReasonCode = "validation_activity_ids_range"
+	ReasonCircleColorInvalid         ReasonCode = "circle_color_invalid"
+	ReasonImportCirclesNotFound      ReasonCode = "import_circles_not_found"
+	ReasonImportTagsNotFound         ReasonCode = "import_tags_not_found"
+	ReasonValidationCursorMalformed  ReasonCode = "validation_cursor_malformed"
+	ReasonValidationActivityIDsRange ReasonCode = "validation_activity_ids_range"
+
+	// Struct-tag validation (issue #2105): one code per middleware validator
+	// tag, plus validation_invalid for the default branch.
+	ReasonValidationRequired             ReasonCode = "validation_required"
+	ReasonValidationEmail                ReasonCode = "validation_email"
+	ReasonValidationMin                  ReasonCode = "validation_min"
+	ReasonValidationMax                  ReasonCode = "validation_max"
+	ReasonValidationPhone                ReasonCode = "validation_phone"
+	ReasonValidationBirthday             ReasonCode = "validation_birthday"
+	ReasonValidationStrongPassword       ReasonCode = "validation_strong_password"
+	ReasonValidationUniqueCircles        ReasonCode = "validation_unique_circles"
+	ReasonValidationNoAtSign             ReasonCode = "validation_no_at_sign"
+	ReasonValidationURL                  ReasonCode = "validation_url"
+	ReasonValidationSafeURL              ReasonCode = "validation_safeurl"
+	ReasonValidationHTTPURL              ReasonCode = "validation_httpurl"
+	ReasonValidationRelationType         ReasonCode = "validation_relation_type"
+	ReasonValidationGeoURI               ReasonCode = "validation_geouri"
+	ReasonValidationInvalid              ReasonCode = "validation_invalid"
 	ReasonRelationshipContactAmbiguous   ReasonCode = "relationship_contact_ambiguous"
 	ReasonRelationshipContactMissing     ReasonCode = "relationship_contact_missing"
 	ReasonRelationshipSelfEdge           ReasonCode = "relationship_self_edge"
@@ -96,6 +114,7 @@ const (
 	ReasonValidationMissingField                    ReasonCode = "validation_missing_field"
 	ReasonCommonUnexpectedError                     ReasonCode = "common_unexpected_error"
 	ReasonActivityNotFound                          ReasonCode = "activity_not_found"
+	ReasonActivityEndBeforeStart                    ReasonCode = "activity_end_before_start"
 	ReasonContactAddressNotFound                    ReasonCode = "contact_address_not_found"
 	ReasonAccountApiTokenNotFound                   ReasonCode = "account_api_token_not_found"
 	ReasonAttachmentNotFound                        ReasonCode = "attachment_not_found"
@@ -198,6 +217,40 @@ const (
 	ReasonValidationInvalidJSON                ReasonCode = "validation_invalid_json"                    // #nosec G101 -- reason code, not a credential
 	ReasonValidationInvalidRequestBody         ReasonCode = "validation_invalid_request_body"            // #nosec G101 -- reason code, not a credential
 
+	// Import assistants (issue #2103): CSV/vCard/JSContact, Monica, account bundle.
+	ReasonImportSessionNotFound        ReasonCode = "import_session_not_found"
+	ReasonImportSessionExpired         ReasonCode = "import_session_expired"
+	ReasonImportEndpointCSVVCFOnly     ReasonCode = "import_endpoint_csv_vcf_only"
+	ReasonImportEndpointVCFRecordsOnly ReasonCode = "import_endpoint_vcf_records_only"
+	ReasonImportPreviewRequired        ReasonCode = "import_preview_required"
+	ReasonImportFileMissing            ReasonCode = "import_file_missing"
+	ReasonImportJSContactFileTooLarge  ReasonCode = "import_jscontact_file_too_large"
+	ReasonImportFileNotJSContact       ReasonCode = "import_file_not_jscontact"
+	ReasonCSVFileTooLarge              ReasonCode = "csv_file_too_large"
+	ReasonCSVFileNotCSV                ReasonCode = "csv_file_not_csv"
+	ReasonVCardFileTooLarge            ReasonCode = "vcard_file_too_large"
+	ReasonVCardFileNotVCF              ReasonCode = "vcard_file_not_vcf"
+	ReasonMonicaSessionNotFound        ReasonCode = "monica_session_not_found"
+	ReasonMonicaSessionExpired         ReasonCode = "monica_session_expired"
+	ReasonMonicaTokenRejected          ReasonCode = "monica_token_rejected"
+	ReasonMonicaUrlInvalid             ReasonCode = "monica_url_invalid"
+	ReasonMonicaUrlPrivate             ReasonCode = "monica_url_private"
+	ReasonMonicaNotMonicaAPI           ReasonCode = "monica_not_monica_api"
+	ReasonMonicaUnreachable            ReasonCode = "monica_unreachable"
+	ReasonMonicaTooManyContacts        ReasonCode = "monica_too_many_contacts"
+	ReasonMonicaTooManyRecords         ReasonCode = "monica_too_many_records"
+	ReasonMonicaFetchInProgress        ReasonCode = "monica_fetch_in_progress"
+	ReasonMonicaNotFetched             ReasonCode = "monica_not_fetched"
+	ReasonBundleSessionNotFound        ReasonCode = "bundle_session_not_found"
+	ReasonBundleSessionExpired         ReasonCode = "bundle_session_expired"
+	ReasonBundleUploadMissing          ReasonCode = "bundle_upload_missing"
+	ReasonBundleSize                   ReasonCode = "bundle_size"
+	ReasonBundleUploadUnreadable       ReasonCode = "bundle_upload_unreadable"
+	ReasonBundleNotBundle              ReasonCode = "bundle_not_bundle"
+	ReasonBundleTooManyContacts        ReasonCode = "bundle_too_many_contacts"
+	ReasonBundleTooManyRecords         ReasonCode = "bundle_too_many_records"
+	ReasonBundleImportInProgress       ReasonCode = "bundle_import_in_progress"
+	ReasonBundleNotPrepared            ReasonCode = "bundle_not_prepared"
 	// Account, admin, API-token and contact-share errors (issue #2102).
 	ReasonAuthRequired                          ReasonCode = "auth_required"
 	ReasonAuthRegistrationDisabled              ReasonCode = "auth_registration_disabled"
@@ -240,16 +293,107 @@ const (
 	ReasonContactShareSectionUnknown            ReasonCode = "contact_share_section_unknown"
 	ReasonContactShareAlreadyResponded          ReasonCode = "contact_share_already_responded"
 	ReasonContactShareSessionMismatch           ReasonCode = "contact_share_session_mismatch"
+
+	// Integration errors (issue #2104).
+	ReasonImmichApiKeyInvalid                 ReasonCode = "immich_api_key_invalid" // #nosec G101 -- reason code, not a credential
+	ReasonImmichBaseUrlInvalid                ReasonCode = "immich_base_url_invalid"
+	ReasonImmichRedirect                      ReasonCode = "immich_redirect"
+	ReasonImmichUpstreamError                 ReasonCode = "immich_upstream_error"
+	ReasonImmichResponseUnparseable           ReasonCode = "immich_response_unparseable"
+	ReasonImmichUnreachable                   ReasonCode = "immich_unreachable"
+	ReasonImmichApiKeyRequired                ReasonCode = "immich_api_key_required"   // #nosec G101 -- reason code, not a credential
+	ReasonSeafileApiTokenInvalid              ReasonCode = "seafile_api_token_invalid" // #nosec G101 -- reason code, not a credential
+	ReasonSeafileBaseUrlInvalid               ReasonCode = "seafile_base_url_invalid"
+	ReasonSeafileRedirect                     ReasonCode = "seafile_redirect"
+	ReasonSeafileUpstreamError                ReasonCode = "seafile_upstream_error"
+	ReasonSeafileResponseUnparseable          ReasonCode = "seafile_response_unparseable"
+	ReasonSeafileUnreachable                  ReasonCode = "seafile_unreachable"
+	ReasonSeafileApiTokenRequired             ReasonCode = "seafile_api_token_required" // #nosec G101 -- reason code, not a credential
+	ReasonPaperlessApiTokenInvalid            ReasonCode = "paperless_api_token_invalid"
+	ReasonPaperlessBaseUrlInvalid             ReasonCode = "paperless_base_url_invalid"
+	ReasonPaperlessRedirect                   ReasonCode = "paperless_redirect"
+	ReasonPaperlessUpstreamError              ReasonCode = "paperless_upstream_error"
+	ReasonPaperlessResponseUnparseable        ReasonCode = "paperless_response_unparseable"
+	ReasonPaperlessUnreachable                ReasonCode = "paperless_unreachable"
+	ReasonPaperlessApiTokenRequired           ReasonCode = "paperless_api_token_required"
+	ReasonGeopulseApiTokenInvalid             ReasonCode = "geopulse_api_token_invalid" // #nosec G101 -- reason code, not a credential
+	ReasonGeopulseBaseUrlInvalid              ReasonCode = "geopulse_base_url_invalid"
+	ReasonGeopulseRedirect                    ReasonCode = "geopulse_redirect"
+	ReasonGeopulseUpstreamError               ReasonCode = "geopulse_upstream_error"
+	ReasonGeopulseResponseUnparseable         ReasonCode = "geopulse_response_unparseable"
+	ReasonGeopulseUnreachable                 ReasonCode = "geopulse_unreachable"
+	ReasonGeopulseApiTokenRequired            ReasonCode = "geopulse_api_token_required" // #nosec G101 -- reason code, not a credential
+	ReasonWebdavAppPasswordInvalid            ReasonCode = "webdav_app_password_invalid" // #nosec G101 -- reason code, not a credential
+	ReasonWebdavBaseUrlInvalid                ReasonCode = "webdav_base_url_invalid"
+	ReasonWebdavRedirect                      ReasonCode = "webdav_redirect"
+	ReasonWebdavUpstreamError                 ReasonCode = "webdav_upstream_error"
+	ReasonWebdavResponseUnparseable           ReasonCode = "webdav_response_unparseable"
+	ReasonWebdavUnreachable                   ReasonCode = "webdav_unreachable"
+	ReasonWebdavAppPasswordRequired           ReasonCode = "webdav_app_password_required" // #nosec G101 -- reason code, not a credential
+	ReasonImmichPersonIdRequired              ReasonCode = "immich_person_id_required"
+	ReasonPaperlessDocumentIdRequired         ReasonCode = "paperless_document_id_required"
+	ReasonWebdavPathRequired                  ReasonCode = "webdav_path_required"
+	ReasonSeafileRepoAndPathRequired          ReasonCode = "seafile_repo_and_path_required"
+	ReasonGeopulseDateRequired                ReasonCode = "geopulse_date_required"
+	ReasonGeopulseDateInvalid                 ReasonCode = "geopulse_date_invalid"
+	ReasonGeopulseTokenUndecryptable          ReasonCode = "geopulse_token_undecryptable" // #nosec G101 -- reason code, not a credential
+	ReasonImmichSvgUnsupported                ReasonCode = "immich_svg_unsupported"
+	ReasonIntegrationRequestInvalid           ReasonCode = "integration_request_invalid"
+	ReasonIntegrationIdInvalid                ReasonCode = "integration_id_invalid"
+	ReasonIntegrationPasswordReentryRequired  ReasonCode = "integration_password_reentry_required"
+	ReasonIntegrationWebhookLimit             ReasonCode = "integration_webhook_limit"
+	ReasonCalendarSubscriptionLimit           ReasonCode = "calendar_subscription_limit"
+	ReasonCalendarUrlSchemeInvalid            ReasonCode = "calendar_url_scheme_invalid"
+	ReasonCalendarUrlInvalid                  ReasonCode = "calendar_url_invalid"
+	ReasonCalendarAuthFailed                  ReasonCode = "calendar_auth_failed"
+	ReasonCalendarNotFoundAtUrl               ReasonCode = "calendar_not_found_at_url"
+	ReasonCalendarPrivateAddress              ReasonCode = "calendar_private_address"
+	ReasonCalendarResponseTooLarge            ReasonCode = "calendar_response_too_large"
+	ReasonCalendarDataUnparseable             ReasonCode = "calendar_data_unparseable"
+	ReasonCalendarUnreachable                 ReasonCode = "calendar_unreachable"
+	ReasonContactSubscriptionLimit            ReasonCode = "contact_subscription_limit"
+	ReasonContactSubscriptionUrlSchemeInvalid ReasonCode = "contact_subscription_url_scheme_invalid"
+	ReasonContactSubscriptionUrlInvalid       ReasonCode = "contact_subscription_url_invalid"
+	ReasonContactSubscriptionAuthFailed       ReasonCode = "contact_subscription_auth_failed"
+	ReasonContactSubscriptionNotFoundAtUrl    ReasonCode = "contact_subscription_not_found_at_url"
+	ReasonContactSubscriptionPrivateAddress   ReasonCode = "contact_subscription_private_address"
+	ReasonContactSubscriptionResponseTooLarge ReasonCode = "contact_subscription_response_too_large"
+	ReasonContactSubscriptionDataUnparseable  ReasonCode = "contact_subscription_data_unparseable"
+	ReasonContactSubscriptionUnreachable      ReasonCode = "contact_subscription_unreachable"
+	ReasonNotificationUrlInvalid              ReasonCode = "notification_url_invalid"
+	ReasonNotificationPushSubscriptionLimit   ReasonCode = "notification_push_subscription_limit"
+	ReasonNotificationDeviceRegistrationLimit ReasonCode = "notification_device_registration_limit"
+	ReasonFeedLimitReached                    ReasonCode = "feed_limit_reached"
+	ReasonFeedEntityIdNotAllowed              ReasonCode = "feed_entity_id_not_allowed"
 )
 
 var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonCommonTestOnly: {Template: "Test {n}", Params: []string{"n"}},
 
-	ReasonCircleColorInvalid:             {Template: "The colour must be one of the palette colours"},
-	ReasonImportCirclesNotFound:          {Template: "One or more circles were not found"},
-	ReasonImportTagsNotFound:             {Template: "One or more tags were not found"},
-	ReasonValidationCursorMalformed:      {Template: "The cursor id is malformed"},
-	ReasonValidationActivityIDsRange:     {Template: "Must contain between 1 and 100 ids"},
+	ReasonCircleColorInvalid:         {Template: "The colour must be one of the palette colours"},
+	ReasonImportCirclesNotFound:      {Template: "One or more circles were not found"},
+	ReasonImportTagsNotFound:         {Template: "One or more tags were not found"},
+	ReasonValidationCursorMalformed:  {Template: "The cursor id is malformed"},
+	ReasonValidationActivityIDsRange: {Template: "Must contain between 1 and 100 ids"},
+
+	// Struct-tag validation (issue #2105). The template is the English that
+	// middleware.formatValidationError produced, with the field name (and
+	// min/max bound) as params.
+	ReasonValidationRequired:             {Template: "{field} is required", Params: []string{"field"}},
+	ReasonValidationEmail:                {Template: "{field} must be a valid email address", Params: []string{"field"}},
+	ReasonValidationMin:                  {Template: "{field} must be at least {min} characters", Params: []string{"field", "min"}},
+	ReasonValidationMax:                  {Template: "{field} must be at most {max} characters", Params: []string{"field", "max"}},
+	ReasonValidationPhone:                {Template: "{field} must be a valid phone number", Params: []string{"field"}},
+	ReasonValidationBirthday:             {Template: "{field} must be in YYYY-MM-DD format (use --MM-DD if year unknown)", Params: []string{"field"}},
+	ReasonValidationStrongPassword:       {Template: "{field} is too weak. Use a longer password (15+ characters) or a passphrase (20+ characters). Avoid common passwords.", Params: []string{"field"}},
+	ReasonValidationUniqueCircles:        {Template: "{field} cannot contain duplicate circles", Params: []string{"field"}},
+	ReasonValidationNoAtSign:             {Template: "{field} cannot contain the @ character", Params: []string{"field"}},
+	ReasonValidationURL:                  {Template: "{field} must be a valid URL", Params: []string{"field"}},
+	ReasonValidationSafeURL:              {Template: "{field} uses an unsafe URL scheme", Params: []string{"field"}},
+	ReasonValidationHTTPURL:              {Template: "{field} must be an http:// or https:// URL", Params: []string{"field"}},
+	ReasonValidationRelationType:         {Template: "{field} must be a known relationship type", Params: []string{"field"}},
+	ReasonValidationGeoURI:               {Template: "{field} must be a geo: URI with latitude -90..90 and longitude -180..180", Params: []string{"field"}},
+	ReasonValidationInvalid:              {Template: "{field} is invalid", Params: []string{"field"}},
 	ReasonRelationshipContactAmbiguous:   {Template: "Specify either an existing contact or a new contact, not both"},
 	ReasonRelationshipContactMissing:     {Template: "Specify an existing contact or a new contact"},
 	ReasonRelationshipSelfEdge:           {Template: "The source and target must be different contacts"},
@@ -303,6 +447,7 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonValidationMissingField:                    {Template: "Required field '{field}' is missing", Params: []string{"field"}},
 	ReasonCommonUnexpectedError:                     {Template: "An unexpected error occurred"},
 	ReasonActivityNotFound:                          {Template: "Activity not found"},
+	ReasonActivityEndBeforeStart:                    {Template: "The end date cannot be before the start date"},
 	ReasonContactAddressNotFound:                    {Template: "Address not found"},
 	ReasonAccountApiTokenNotFound:                   {Template: "API token not found"},
 	ReasonAttachmentNotFound:                        {Template: "Attachment not found"},
@@ -405,6 +550,40 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonValidationInvalidJSON:                {Template: "Invalid JSON"},
 	ReasonValidationInvalidRequestBody:         {Template: "Invalid request body"},
 
+	// Import assistants (issue #2103).
+	ReasonImportSessionNotFound:        {Template: "Import session expired or not found"},
+	ReasonImportSessionExpired:         {Template: "Import session expired"},
+	ReasonImportEndpointCSVVCFOnly:     {Template: "This endpoint is only for CSV or VCF imports"},
+	ReasonImportEndpointVCFRecordsOnly: {Template: "This endpoint is only for VCF or records imports"},
+	ReasonImportPreviewRequired:        {Template: "Please generate a preview first"},
+	ReasonImportFileMissing:            {Template: "No file uploaded"},
+	ReasonImportJSContactFileTooLarge:  {Template: "File too large. Maximum size is {max_mb} MB", Params: []string{"max_mb"}},
+	ReasonImportFileNotJSContact:       {Template: "File must be a JSON (JSContact) file"},
+	ReasonCSVFileTooLarge:              {Template: "File too large. Maximum size is {max_mb} MB", Params: []string{"max_mb"}},
+	ReasonCSVFileNotCSV:                {Template: "File must be a CSV file"},
+	ReasonVCardFileTooLarge:            {Template: "File too large. Maximum size is {max_mb} MB", Params: []string{"max_mb"}},
+	ReasonVCardFileNotVCF:              {Template: "File must be a VCF file"},
+	ReasonMonicaSessionNotFound:        {Template: "Import session expired or not found"},
+	ReasonMonicaSessionExpired:         {Template: "Import session expired"},
+	ReasonMonicaTokenRejected:          {Template: "Monica rejected the API token"},
+	ReasonMonicaUrlInvalid:             {Template: "The Monica URL is invalid"},
+	ReasonMonicaUrlPrivate:             {Template: "The Monica URL resolves to a private address, which this server blocks"},
+	ReasonMonicaNotMonicaAPI:           {Template: "The server did not respond like a Monica API — check the URL"},
+	ReasonMonicaUnreachable:            {Template: "monica service error: The Monica instance could not be reached"},
+	ReasonMonicaTooManyContacts:        {Template: "This Monica account has {total} contacts; the import supports at most {max}", Params: []string{"total", "max"}},
+	ReasonMonicaTooManyRecords:         {Template: "This Monica account has {total} records; the import supports at most {max}", Params: []string{"total", "max"}},
+	ReasonMonicaFetchInProgress:        {Template: "A fetch is already running for this session"},
+	ReasonMonicaNotFetched:             {Template: "The Monica data is not fetched yet"},
+	ReasonBundleSessionNotFound:        {Template: "Import session expired or not found"},
+	ReasonBundleSessionExpired:         {Template: "Import session expired"},
+	ReasonBundleUploadMissing:          {Template: "No file uploaded"},
+	ReasonBundleSize:                   {Template: "The bundle is empty or larger than the 64 MiB limit"},
+	ReasonBundleUploadUnreadable:       {Template: "The upload could not be read"},
+	ReasonBundleNotBundle:              {Template: "That file is not a Mycorrhizal account bundle"},
+	ReasonBundleTooManyContacts:        {Template: "This bundle has more contacts than the import supports"},
+	ReasonBundleTooManyRecords:         {Template: "This bundle has more records than the import supports"},
+	ReasonBundleImportInProgress:       {Template: "This import is already being prepared"},
+	ReasonBundleNotPrepared:            {Template: "The account bundle is not prepared yet"},
 	// Account, admin, API-token and contact-share errors (issue #2102).
 	ReasonAuthRequired:                          {Template: "Authentication required"},
 	ReasonAuthRegistrationDisabled:              {Template: "Registration is disabled."},
@@ -447,6 +626,78 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonContactShareSectionUnknown:            {Template: "unknown export field section \"{section}\"", Params: []string{"section"}},
 	ReasonContactShareAlreadyResponded:          {Template: "Share already responded to"},
 	ReasonContactShareSessionMismatch:           {Template: "Session does not belong to this share"},
+
+	// Integration errors (issue #2104).
+	ReasonImmichApiKeyInvalid:                 {Template: "Immich API key is invalid, expired, or not configured"},
+	ReasonImmichBaseUrlInvalid:                {Template: "Immich base URL is invalid"},
+	ReasonImmichRedirect:                      {Template: "Immich answered with a redirect — check the base URL (http vs https, path)."},
+	ReasonImmichUpstreamError:                 {Template: "Immich returned an error ({status}). The instance is reachable — this request itself failed.", Params: []string{"status"}},
+	ReasonImmichResponseUnparseable:           {Template: "Immich returned a response that could not be parsed. The API may have changed — check Immich version compatibility."},
+	ReasonImmichUnreachable:                   {Template: "Could not reach Immich. Is the instance up?"},
+	ReasonImmichApiKeyRequired:                {Template: "an API key is required when first connecting Immich"},
+	ReasonSeafileApiTokenInvalid:              {Template: "Seafile API token is invalid, expired, or not configured"},
+	ReasonSeafileBaseUrlInvalid:               {Template: "Seafile base URL is invalid"},
+	ReasonSeafileRedirect:                     {Template: "Seafile answered with a redirect — check the base URL (http vs https, path)."},
+	ReasonSeafileUpstreamError:                {Template: "Seafile returned an error ({status}). The instance is reachable — this request itself failed.", Params: []string{"status"}},
+	ReasonSeafileResponseUnparseable:          {Template: "Seafile returned a response that could not be parsed. The API may have changed — check Seafile version compatibility."},
+	ReasonSeafileUnreachable:                  {Template: "Could not reach Seafile. Is the server up?"},
+	ReasonSeafileApiTokenRequired:             {Template: "an API token is required when first connecting Seafile"},
+	ReasonPaperlessApiTokenInvalid:            {Template: "Paperless API token is invalid, expired, or not configured"},
+	ReasonPaperlessBaseUrlInvalid:             {Template: "Paperless base URL is invalid"},
+	ReasonPaperlessRedirect:                   {Template: "Paperless answered with a redirect — check the base URL (http vs https, path)."},
+	ReasonPaperlessUpstreamError:              {Template: "Paperless returned an error ({status}). The instance is reachable — this request itself failed.", Params: []string{"status"}},
+	ReasonPaperlessResponseUnparseable:        {Template: "Paperless returned a response that could not be parsed. The API may have changed — check Paperless version compatibility."},
+	ReasonPaperlessUnreachable:                {Template: "Could not reach Paperless. Is the instance up?"},
+	ReasonPaperlessApiTokenRequired:           {Template: "an API token is required when first connecting Paperless"},
+	ReasonGeopulseApiTokenInvalid:             {Template: "GeoPulse API token is invalid, expired, or not configured"},
+	ReasonGeopulseBaseUrlInvalid:              {Template: "GeoPulse base URL is invalid"},
+	ReasonGeopulseRedirect:                    {Template: "GeoPulse answered with a redirect — check the base URL (http vs https, path)."},
+	ReasonGeopulseUpstreamError:               {Template: "GeoPulse returned an error ({status}). The instance is reachable — this request itself failed.", Params: []string{"status"}},
+	ReasonGeopulseResponseUnparseable:         {Template: "GeoPulse returned a response that could not be parsed. The API may have changed — check GeoPulse version compatibility."},
+	ReasonGeopulseUnreachable:                 {Template: "Could not reach GeoPulse. Is the instance up?"},
+	ReasonGeopulseApiTokenRequired:            {Template: "an API token is required when first connecting GeoPulse"},
+	ReasonWebdavAppPasswordInvalid:            {Template: "Nextcloud app password is invalid, expired, or not configured"},
+	ReasonWebdavBaseUrlInvalid:                {Template: "Nextcloud base URL is invalid"},
+	ReasonWebdavRedirect:                      {Template: "Nextcloud answered with a redirect — check the base URL (http vs https, path)."},
+	ReasonWebdavUpstreamError:                 {Template: "Nextcloud returned an error ({status}). The instance is reachable — this request itself failed.", Params: []string{"status"}},
+	ReasonWebdavResponseUnparseable:           {Template: "Nextcloud returned a response that could not be parsed. The WebDAV surface may have changed — check the instance version."},
+	ReasonWebdavUnreachable:                   {Template: "Could not reach Nextcloud. Is the instance up?"},
+	ReasonWebdavAppPasswordRequired:           {Template: "an app password is required when first connecting Nextcloud"},
+	ReasonImmichPersonIdRequired:              {Template: "person_id is required"},
+	ReasonPaperlessDocumentIdRequired:         {Template: "document_id is required"},
+	ReasonWebdavPathRequired:                  {Template: "path is required"},
+	ReasonSeafileRepoAndPathRequired:          {Template: "repo_id and path are required"},
+	ReasonGeopulseDateRequired:                {Template: "date is required (YYYY-MM-DD)"},
+	ReasonGeopulseDateInvalid:                 {Template: "date must be YYYY-MM-DD and timezone a valid IANA name"},
+	ReasonGeopulseTokenUndecryptable:          {Template: "The stored GeoPulse API token can no longer be decrypted — re-enter it in Settings"},
+	ReasonImmichSvgUnsupported:                {Template: "SVG images are not supported by the image proxy"},
+	ReasonIntegrationRequestInvalid:           {Template: "Request validation failed"},
+	ReasonIntegrationIdInvalid:                {Template: "must be a positive integer"},
+	ReasonIntegrationPasswordReentryRequired:  {Template: "re-enter the password when changing the server"},
+	ReasonIntegrationWebhookLimit:             {Template: "maximum of 20 webhooks per user reached"},
+	ReasonCalendarSubscriptionLimit:           {Template: "maximum of 10 calendar subscriptions per user reached"},
+	ReasonCalendarUrlSchemeInvalid:            {Template: "must be an http, https, or webcal URL"},
+	ReasonCalendarUrlInvalid:                  {Template: "calendar URL is invalid"},
+	ReasonCalendarAuthFailed:                  {Template: "authentication failed - check username and password"},
+	ReasonCalendarNotFoundAtUrl:               {Template: "calendar not found at the given URL"},
+	ReasonCalendarPrivateAddress:              {Template: "calendar URL resolves to a blocked private address"},
+	ReasonCalendarResponseTooLarge:            {Template: "calendar response is too large"},
+	ReasonCalendarDataUnparseable:             {Template: "calendar returned data that could not be parsed"},
+	ReasonCalendarUnreachable:                 {Template: "calendar could not be reached — check the subscription URL"},
+	ReasonContactSubscriptionLimit:            {Template: "maximum of 10 contact subscriptions per user reached"},
+	ReasonContactSubscriptionUrlSchemeInvalid: {Template: "must be an http or https URL"},
+	ReasonContactSubscriptionUrlInvalid:       {Template: "contact subscription URL is invalid"},
+	ReasonContactSubscriptionAuthFailed:       {Template: "authentication failed - check username and password"},
+	ReasonContactSubscriptionNotFoundAtUrl:    {Template: "address book not found at the given URL"},
+	ReasonContactSubscriptionPrivateAddress:   {Template: "URL resolves to a blocked private address"},
+	ReasonContactSubscriptionResponseTooLarge: {Template: "server response is too large"},
+	ReasonContactSubscriptionDataUnparseable:  {Template: "server returned data that could not be parsed"},
+	ReasonContactSubscriptionUnreachable:      {Template: "server could not be reached — check the subscription URL"},
+	ReasonNotificationUrlInvalid:              {Template: "notification URL must be a valid http or https URL"},
+	ReasonNotificationPushSubscriptionLimit:   {Template: "maximum of {max} push subscriptions per user reached", Params: []string{"max"}},
+	ReasonNotificationDeviceRegistrationLimit: {Template: "maximum of {max} device registrations per user reached", Params: []string{"max"}},
+	ReasonFeedLimitReached:                    {Template: "feed limit reached (maximum {max} active feeds)", Params: []string{"max"}},
+	ReasonFeedEntityIdNotAllowed:              {Template: "must be empty for an aggregate feed"},
 }
 
 // notFoundReasons maps the string-literal resources passed to ErrNotFound to their

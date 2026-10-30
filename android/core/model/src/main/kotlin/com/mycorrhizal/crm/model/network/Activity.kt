@@ -20,6 +20,12 @@ data class Activity(
     val description: String? = null,
     val location: String? = null,
     val date: String? = null,
+    /**
+     * Issue #2006: the optional inclusive last day of a multi-day activity ([date] stays the
+     * start). A calendar-day instant at 00:00:00Z, read as its UTC date exactly like [date]
+     * (ADR 0015); null/absent for a single-day activity. Mirrors the backend `Activity.EndDate`.
+     */
+    @Json(name = "end_date") val endDate: String? = null,
     val contacts: List<ContactFlat>? = null,
     val type: String? = null,
     @Json(name = "external_ref") val externalRef: String? = null,
@@ -38,6 +44,12 @@ data class ActivityInput(
     val description: String? = null,
     val location: String? = null,
     val date: String? = null,
+    /**
+     * Issue #2006: always written, `null` included. On a PUT an omitted `end_date`
+     * keeps the stored value while `null` clears it, so the editor must send the field every
+     * time; on create `null` means no end.
+     */
+    @Json(name = "end_date") val endDate: String? = null,
     @Json(name = "contact_ids") val contactIds: List<Int>? = null,
     val type: String? = null,
     @Json(name = "external_ref") val externalRef: String? = null

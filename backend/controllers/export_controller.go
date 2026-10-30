@@ -226,6 +226,15 @@ func parseExportFieldSelection(c *gin.Context, operation string) (*models.FieldS
 }
 
 // ExportData exports all user data as CSV files in a combined format
+// formatExportActivityEnd renders an activity's optional end date like its Date
+// column (RFC 3339), or "" for a single-day activity (issue #2006).
+func formatExportActivityEnd(end *time.Time) string {
+	if end == nil {
+		return ""
+	}
+	return end.Format(time.RFC3339)
+}
+
 func ExportData(c *gin.Context) {
 	db := c.MustGet("db").(*gorm.DB)
 	log := logger.FromContext(c)
@@ -554,6 +563,9 @@ func ExportData(c *gin.Context) {
 
 	activityHeaders := []string{
 		"ID", "Title", "Description", "Location", "Date", "Contact Names", "Created At", "Updated At",
+		// Appended last (issue #2006) so existing positional consumers do not
+		// shift; empty for a single-day activity.
+		"End Date",
 	}
 	if err := writer.Write(activityHeaders); err != nil {
 		abortExportError(c, log, "export:csv", "serialization", "Failed to write activity headers", err)
@@ -574,6 +586,7 @@ func ExportData(c *gin.Context) {
 			strings.Join(contactNames, "; "),
 			activity.CreatedAt.Format(time.RFC3339),
 			activity.UpdatedAt.Format(time.RFC3339),
+			formatExportActivityEnd(activity.EndDate),
 		}
 		if err := writer.Write(csvSafeRecord(record)); err != nil {
 			abortExportError(c, log, "export:csv", "serialization", "Failed to write activity record", err)

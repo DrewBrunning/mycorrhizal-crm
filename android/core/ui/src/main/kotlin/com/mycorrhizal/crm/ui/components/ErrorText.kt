@@ -16,13 +16,38 @@ import com.mycorrhizal.crm.ui.R
  */
 @Composable
 fun ApiError.localizedMessage(): String {
-    val base = localizedReason(reasonOrNull()) ?: clientMessage()
+    val base = localizedReason(reasonOrNull()) ?: localizedValidationFields() ?: clientMessage()
     val requestId = (this as? ApiError.Server)?.requestId
     return if (requestId != null) {
         "$base ${stringResource(R.string.error_request_ref, requestId)}"
     } else {
         base
     }
+}
+
+/**
+ * The translated per-field messages for a VALIDATION_ERROR (issue #2105), or
+ * null when any entry cannot be rendered, in which case the caller falls back
+ * to the English `details` map.
+ */
+@Composable
+private fun ApiError.localizedValidationFields(): String? {
+    val (errorCode, fieldReasons, details) = when (this) {
+        is ApiError.Client -> Triple(errorCode, fieldReasons, details)
+        is ApiError.Server -> Triple(errorCode, fieldReasons, details)
+        else -> return null
+    }
+    if (errorCode != VALIDATION_ERROR && fieldReasons.isNullOrEmpty()) return null
+
+    if (!fieldReasons.isNullOrEmpty()) {
+        val messages = fieldReasons.values.map { localizedReason(it) }
+        if (messages.all { it != null }) {
+            return messages.filterNotNull().joinToString(". ")
+        }
+    }
+
+    val values = details?.values?.filterNotNull()?.map { it.toString() }.orEmpty()
+    return if (values.isEmpty()) null else values.joinToString(". ")
 }
 
 /**
@@ -180,6 +205,63 @@ private fun localizedReason(reason: ErrorReason?): String? {
         ErrorReasonCode.VALIDATION_CURSOR_MALFORMED ->
             stringResource(R.string.error_reason_validation_cursor_malformed)
 
+        ErrorReasonCode.VALIDATION_REQUIRED ->
+            field?.let { stringResource(R.string.error_reason_validation_required, it) }
+
+        ErrorReasonCode.VALIDATION_EMAIL ->
+            field?.let { stringResource(R.string.error_reason_validation_email, it) }
+
+        ErrorReasonCode.VALIDATION_MIN -> {
+            val min = reason.int("min")
+            if (field != null && min != null) {
+                stringResource(R.string.error_reason_validation_min, field, min)
+            } else {
+                null
+            }
+        }
+
+        ErrorReasonCode.VALIDATION_MAX -> {
+            val max = reason.int("max")
+            if (field != null && max != null) {
+                stringResource(R.string.error_reason_validation_max, field, max)
+            } else {
+                null
+            }
+        }
+
+        ErrorReasonCode.VALIDATION_PHONE ->
+            field?.let { stringResource(R.string.error_reason_validation_phone, it) }
+
+        ErrorReasonCode.VALIDATION_BIRTHDAY ->
+            field?.let { stringResource(R.string.error_reason_validation_birthday, it) }
+
+        ErrorReasonCode.VALIDATION_STRONG_PASSWORD ->
+            field?.let { stringResource(R.string.error_reason_validation_strong_password, it) }
+
+        ErrorReasonCode.VALIDATION_UNIQUE_CIRCLES ->
+            field?.let { stringResource(R.string.error_reason_validation_unique_circles, it) }
+
+        ErrorReasonCode.VALIDATION_NO_AT_SIGN ->
+            field?.let { stringResource(R.string.error_reason_validation_no_at_sign, it) }
+
+        ErrorReasonCode.VALIDATION_URL ->
+            field?.let { stringResource(R.string.error_reason_validation_url, it) }
+
+        ErrorReasonCode.VALIDATION_SAFEURL ->
+            field?.let { stringResource(R.string.error_reason_validation_safeurl, it) }
+
+        ErrorReasonCode.VALIDATION_HTTPURL ->
+            field?.let { stringResource(R.string.error_reason_validation_httpurl, it) }
+
+        ErrorReasonCode.VALIDATION_RELATION_TYPE ->
+            field?.let { stringResource(R.string.error_reason_validation_relation_type, it) }
+
+        ErrorReasonCode.VALIDATION_GEOURI ->
+            field?.let { stringResource(R.string.error_reason_validation_geouri, it) }
+
+        ErrorReasonCode.VALIDATION_INVALID ->
+            field?.let { stringResource(R.string.error_reason_validation_invalid, it) }
+
         ErrorReasonCode.TRASH_UID_IN_USE -> stringResource(
             R.string.error_reason_trash_uid_in_use
         )
@@ -307,6 +389,10 @@ private fun localizedReason(reason: ErrorReason?): String? {
 
         ErrorReasonCode.COMMON_UNEXPECTED_ERROR -> stringResource(
             R.string.error_reason_common_unexpected_error
+        )
+
+        ErrorReasonCode.ACTIVITY_END_BEFORE_START -> stringResource(
+            R.string.error_reason_activity_end_before_start
         )
 
         ErrorReasonCode.ACTIVITY_NOT_FOUND -> stringResource(
@@ -704,6 +790,145 @@ private fun localizedReason(reason: ErrorReason?): String? {
             R.string.error_reason_validation_invalid_request_body
         )
 
+        ErrorReasonCode.IMPORT_SESSION_NOT_FOUND ->
+            stringResource(R.string.error_reason_import_session_not_found)
+
+        ErrorReasonCode.IMPORT_SESSION_EXPIRED ->
+            stringResource(R.string.error_reason_import_session_expired)
+
+        ErrorReasonCode.IMPORT_ENDPOINT_CSV_VCF_ONLY ->
+            stringResource(R.string.error_reason_import_endpoint_csv_vcf_only)
+
+        ErrorReasonCode.IMPORT_ENDPOINT_VCF_RECORDS_ONLY ->
+            stringResource(R.string.error_reason_import_endpoint_vcf_records_only)
+
+        ErrorReasonCode.IMPORT_PREVIEW_REQUIRED ->
+            stringResource(R.string.error_reason_import_preview_required)
+
+        ErrorReasonCode.IMPORT_FILE_MISSING ->
+            stringResource(R.string.error_reason_import_file_missing)
+
+        ErrorReasonCode.IMPORT_JSCONTACT_FILE_TOO_LARGE -> {
+            val maxMb = reason.int("max_mb")
+            if (maxMb != null) {
+                stringResource(R.string.error_reason_import_jscontact_file_too_large, maxMb)
+            } else {
+                null
+            }
+        }
+
+        ErrorReasonCode.IMPORT_FILE_NOT_JSCONTACT ->
+            stringResource(R.string.error_reason_import_file_not_jscontact)
+
+        ErrorReasonCode.CSV_FILE_TOO_LARGE -> {
+            val maxMb = reason.int("max_mb")
+            if (maxMb != null) {
+                stringResource(R.string.error_reason_csv_file_too_large, maxMb)
+            } else {
+                null
+            }
+        }
+
+        ErrorReasonCode.CSV_FILE_NOT_CSV ->
+            stringResource(R.string.error_reason_csv_file_not_csv)
+
+        ErrorReasonCode.VCARD_FILE_TOO_LARGE -> {
+            val maxMb = reason.int("max_mb")
+            if (maxMb != null) {
+                stringResource(R.string.error_reason_vcard_file_too_large, maxMb)
+            } else {
+                null
+            }
+        }
+
+        ErrorReasonCode.VCARD_FILE_NOT_VCF ->
+            stringResource(R.string.error_reason_vcard_file_not_vcf)
+
+        ErrorReasonCode.MONICA_SESSION_NOT_FOUND ->
+            stringResource(R.string.error_reason_monica_session_not_found)
+
+        ErrorReasonCode.MONICA_SESSION_EXPIRED ->
+            stringResource(R.string.error_reason_monica_session_expired)
+
+        ErrorReasonCode.MONICA_TOKEN_REJECTED ->
+            stringResource(R.string.error_reason_monica_token_rejected)
+
+        ErrorReasonCode.MONICA_URL_INVALID ->
+            stringResource(R.string.error_reason_monica_url_invalid)
+
+        ErrorReasonCode.MONICA_URL_PRIVATE ->
+            stringResource(R.string.error_reason_monica_url_private)
+
+        ErrorReasonCode.MONICA_NOT_MONICA_API ->
+            stringResource(R.string.error_reason_monica_not_monica_api)
+
+        ErrorReasonCode.MONICA_UNREACHABLE ->
+            stringResource(R.string.error_reason_monica_unreachable)
+
+        ErrorReasonCode.MONICA_TOO_MANY_CONTACTS -> {
+            val total = reason.int("total")
+            val max = reason.int("max")
+            if (total != null && max != null) {
+                stringResource(
+                    R.string.error_reason_monica_too_many_contacts,
+                    total.toString(),
+                    max
+                )
+            } else {
+                null
+            }
+        }
+
+        ErrorReasonCode.MONICA_TOO_MANY_RECORDS -> {
+            val total = reason.int("total")
+            val max = reason.int("max")
+            if (total != null && max != null) {
+                stringResource(
+                    R.string.error_reason_monica_too_many_records,
+                    total.toString(),
+                    max
+                )
+            } else {
+                null
+            }
+        }
+
+        ErrorReasonCode.MONICA_FETCH_IN_PROGRESS ->
+            stringResource(R.string.error_reason_monica_fetch_in_progress)
+
+        ErrorReasonCode.MONICA_NOT_FETCHED ->
+            stringResource(R.string.error_reason_monica_not_fetched)
+
+        ErrorReasonCode.BUNDLE_SESSION_NOT_FOUND ->
+            stringResource(R.string.error_reason_bundle_session_not_found)
+
+        ErrorReasonCode.BUNDLE_SESSION_EXPIRED ->
+            stringResource(R.string.error_reason_bundle_session_expired)
+
+        ErrorReasonCode.BUNDLE_UPLOAD_MISSING ->
+            stringResource(R.string.error_reason_bundle_upload_missing)
+
+        ErrorReasonCode.BUNDLE_SIZE ->
+            stringResource(R.string.error_reason_bundle_size)
+
+        ErrorReasonCode.BUNDLE_UPLOAD_UNREADABLE ->
+            stringResource(R.string.error_reason_bundle_upload_unreadable)
+
+        ErrorReasonCode.BUNDLE_NOT_BUNDLE ->
+            stringResource(R.string.error_reason_bundle_not_bundle)
+
+        ErrorReasonCode.BUNDLE_TOO_MANY_CONTACTS ->
+            stringResource(R.string.error_reason_bundle_too_many_contacts)
+
+        ErrorReasonCode.BUNDLE_TOO_MANY_RECORDS ->
+            stringResource(R.string.error_reason_bundle_too_many_records)
+
+        ErrorReasonCode.BUNDLE_IMPORT_IN_PROGRESS ->
+            stringResource(R.string.error_reason_bundle_import_in_progress)
+
+        ErrorReasonCode.BUNDLE_NOT_PREPARED ->
+            stringResource(R.string.error_reason_bundle_not_prepared)
+
         ErrorReasonCode.AUTH_REQUIRED -> stringResource(
             R.string.error_reason_auth_required
         )
@@ -871,9 +1096,325 @@ private fun localizedReason(reason: ErrorReason?): String? {
             R.string.error_reason_contact_share_session_mismatch
         )
 
+        ErrorReasonCode.IMMICH_API_KEY_INVALID -> stringResource(
+            R.string.error_reason_immich_api_key_invalid
+        )
+
+        ErrorReasonCode.IMMICH_BASE_URL_INVALID -> stringResource(
+            R.string.error_reason_immich_base_url_invalid
+        )
+
+        ErrorReasonCode.IMMICH_REDIRECT -> stringResource(
+            R.string.error_reason_immich_redirect
+        )
+
+        ErrorReasonCode.IMMICH_UPSTREAM_ERROR ->
+            reason.str(
+                "status"
+            )?.let {
+                stringResource(R.string.error_reason_immich_upstream_error, it)
+            }
+
+        ErrorReasonCode.IMMICH_RESPONSE_UNPARSEABLE -> stringResource(
+            R.string.error_reason_immich_response_unparseable
+        )
+
+        ErrorReasonCode.IMMICH_UNREACHABLE -> stringResource(
+            R.string.error_reason_immich_unreachable
+        )
+
+        ErrorReasonCode.IMMICH_API_KEY_REQUIRED -> stringResource(
+            R.string.error_reason_immich_api_key_required
+        )
+
+        ErrorReasonCode.SEAFILE_API_TOKEN_INVALID -> stringResource(
+            R.string.error_reason_seafile_api_token_invalid
+        )
+
+        ErrorReasonCode.SEAFILE_BASE_URL_INVALID -> stringResource(
+            R.string.error_reason_seafile_base_url_invalid
+        )
+
+        ErrorReasonCode.SEAFILE_REDIRECT -> stringResource(
+            R.string.error_reason_seafile_redirect
+        )
+
+        ErrorReasonCode.SEAFILE_UPSTREAM_ERROR ->
+            reason.str(
+                "status"
+            )?.let {
+                stringResource(R.string.error_reason_seafile_upstream_error, it)
+            }
+
+        ErrorReasonCode.SEAFILE_RESPONSE_UNPARSEABLE -> stringResource(
+            R.string.error_reason_seafile_response_unparseable
+        )
+
+        ErrorReasonCode.SEAFILE_UNREACHABLE -> stringResource(
+            R.string.error_reason_seafile_unreachable
+        )
+
+        ErrorReasonCode.SEAFILE_API_TOKEN_REQUIRED -> stringResource(
+            R.string.error_reason_seafile_api_token_required
+        )
+
+        ErrorReasonCode.PAPERLESS_API_TOKEN_INVALID -> stringResource(
+            R.string.error_reason_paperless_api_token_invalid
+        )
+
+        ErrorReasonCode.PAPERLESS_BASE_URL_INVALID -> stringResource(
+            R.string.error_reason_paperless_base_url_invalid
+        )
+
+        ErrorReasonCode.PAPERLESS_REDIRECT -> stringResource(
+            R.string.error_reason_paperless_redirect
+        )
+
+        ErrorReasonCode.PAPERLESS_UPSTREAM_ERROR ->
+            reason.str(
+                "status"
+            )?.let {
+                stringResource(R.string.error_reason_paperless_upstream_error, it)
+            }
+
+        ErrorReasonCode.PAPERLESS_RESPONSE_UNPARSEABLE -> stringResource(
+            R.string.error_reason_paperless_response_unparseable
+        )
+
+        ErrorReasonCode.PAPERLESS_UNREACHABLE -> stringResource(
+            R.string.error_reason_paperless_unreachable
+        )
+
+        ErrorReasonCode.PAPERLESS_API_TOKEN_REQUIRED -> stringResource(
+            R.string.error_reason_paperless_api_token_required
+        )
+
+        ErrorReasonCode.GEOPULSE_API_TOKEN_INVALID -> stringResource(
+            R.string.error_reason_geopulse_api_token_invalid
+        )
+
+        ErrorReasonCode.GEOPULSE_BASE_URL_INVALID -> stringResource(
+            R.string.error_reason_geopulse_base_url_invalid
+        )
+
+        ErrorReasonCode.GEOPULSE_REDIRECT -> stringResource(
+            R.string.error_reason_geopulse_redirect
+        )
+
+        ErrorReasonCode.GEOPULSE_UPSTREAM_ERROR ->
+            reason.str(
+                "status"
+            )?.let {
+                stringResource(R.string.error_reason_geopulse_upstream_error, it)
+            }
+
+        ErrorReasonCode.GEOPULSE_RESPONSE_UNPARSEABLE -> stringResource(
+            R.string.error_reason_geopulse_response_unparseable
+        )
+
+        ErrorReasonCode.GEOPULSE_UNREACHABLE -> stringResource(
+            R.string.error_reason_geopulse_unreachable
+        )
+
+        ErrorReasonCode.GEOPULSE_API_TOKEN_REQUIRED -> stringResource(
+            R.string.error_reason_geopulse_api_token_required
+        )
+
+        ErrorReasonCode.WEBDAV_APP_PASSWORD_INVALID -> stringResource(
+            R.string.error_reason_webdav_app_password_invalid
+        )
+
+        ErrorReasonCode.WEBDAV_BASE_URL_INVALID -> stringResource(
+            R.string.error_reason_webdav_base_url_invalid
+        )
+
+        ErrorReasonCode.WEBDAV_REDIRECT -> stringResource(
+            R.string.error_reason_webdav_redirect
+        )
+
+        ErrorReasonCode.WEBDAV_UPSTREAM_ERROR ->
+            reason.str(
+                "status"
+            )?.let {
+                stringResource(R.string.error_reason_webdav_upstream_error, it)
+            }
+
+        ErrorReasonCode.WEBDAV_RESPONSE_UNPARSEABLE -> stringResource(
+            R.string.error_reason_webdav_response_unparseable
+        )
+
+        ErrorReasonCode.WEBDAV_UNREACHABLE -> stringResource(
+            R.string.error_reason_webdav_unreachable
+        )
+
+        ErrorReasonCode.WEBDAV_APP_PASSWORD_REQUIRED -> stringResource(
+            R.string.error_reason_webdav_app_password_required
+        )
+
+        ErrorReasonCode.IMMICH_PERSON_ID_REQUIRED -> stringResource(
+            R.string.error_reason_immich_person_id_required
+        )
+
+        ErrorReasonCode.PAPERLESS_DOCUMENT_ID_REQUIRED -> stringResource(
+            R.string.error_reason_paperless_document_id_required
+        )
+
+        ErrorReasonCode.WEBDAV_PATH_REQUIRED -> stringResource(
+            R.string.error_reason_webdav_path_required
+        )
+
+        ErrorReasonCode.SEAFILE_REPO_AND_PATH_REQUIRED -> stringResource(
+            R.string.error_reason_seafile_repo_and_path_required
+        )
+
+        ErrorReasonCode.GEOPULSE_DATE_REQUIRED -> stringResource(
+            R.string.error_reason_geopulse_date_required
+        )
+
+        ErrorReasonCode.GEOPULSE_DATE_INVALID -> stringResource(
+            R.string.error_reason_geopulse_date_invalid
+        )
+
+        ErrorReasonCode.GEOPULSE_TOKEN_UNDECRYPTABLE -> stringResource(
+            R.string.error_reason_geopulse_token_undecryptable
+        )
+
+        ErrorReasonCode.IMMICH_SVG_UNSUPPORTED -> stringResource(
+            R.string.error_reason_immich_svg_unsupported
+        )
+
+        ErrorReasonCode.INTEGRATION_REQUEST_INVALID -> stringResource(
+            R.string.error_reason_integration_request_invalid
+        )
+
+        ErrorReasonCode.INTEGRATION_ID_INVALID -> stringResource(
+            R.string.error_reason_integration_id_invalid
+        )
+
+        ErrorReasonCode.INTEGRATION_PASSWORD_REENTRY_REQUIRED -> stringResource(
+            R.string.error_reason_integration_password_reentry_required
+        )
+
+        ErrorReasonCode.INTEGRATION_WEBHOOK_LIMIT -> stringResource(
+            R.string.error_reason_integration_webhook_limit
+        )
+
+        ErrorReasonCode.CALENDAR_SUBSCRIPTION_LIMIT -> stringResource(
+            R.string.error_reason_calendar_subscription_limit
+        )
+
+        ErrorReasonCode.CALENDAR_URL_SCHEME_INVALID -> stringResource(
+            R.string.error_reason_calendar_url_scheme_invalid
+        )
+
+        ErrorReasonCode.CALENDAR_URL_INVALID -> stringResource(
+            R.string.error_reason_calendar_url_invalid
+        )
+
+        ErrorReasonCode.CALENDAR_AUTH_FAILED -> stringResource(
+            R.string.error_reason_calendar_auth_failed
+        )
+
+        ErrorReasonCode.CALENDAR_NOT_FOUND_AT_URL -> stringResource(
+            R.string.error_reason_calendar_not_found_at_url
+        )
+
+        ErrorReasonCode.CALENDAR_PRIVATE_ADDRESS -> stringResource(
+            R.string.error_reason_calendar_private_address
+        )
+
+        ErrorReasonCode.CALENDAR_RESPONSE_TOO_LARGE -> stringResource(
+            R.string.error_reason_calendar_response_too_large
+        )
+
+        ErrorReasonCode.CALENDAR_DATA_UNPARSEABLE -> stringResource(
+            R.string.error_reason_calendar_data_unparseable
+        )
+
+        ErrorReasonCode.CALENDAR_UNREACHABLE -> stringResource(
+            R.string.error_reason_calendar_unreachable
+        )
+
+        ErrorReasonCode.CONTACT_SUBSCRIPTION_LIMIT -> stringResource(
+            R.string.error_reason_contact_subscription_limit
+        )
+
+        ErrorReasonCode.CONTACT_SUBSCRIPTION_URL_SCHEME_INVALID -> stringResource(
+            R.string.error_reason_contact_subscription_url_scheme_invalid
+        )
+
+        ErrorReasonCode.CONTACT_SUBSCRIPTION_URL_INVALID -> stringResource(
+            R.string.error_reason_contact_subscription_url_invalid
+        )
+
+        ErrorReasonCode.CONTACT_SUBSCRIPTION_AUTH_FAILED -> stringResource(
+            R.string.error_reason_contact_subscription_auth_failed
+        )
+
+        ErrorReasonCode.CONTACT_SUBSCRIPTION_NOT_FOUND_AT_URL -> stringResource(
+            R.string.error_reason_contact_subscription_not_found_at_url
+        )
+
+        ErrorReasonCode.CONTACT_SUBSCRIPTION_PRIVATE_ADDRESS -> stringResource(
+            R.string.error_reason_contact_subscription_private_address
+        )
+
+        ErrorReasonCode.CONTACT_SUBSCRIPTION_RESPONSE_TOO_LARGE -> stringResource(
+            R.string.error_reason_contact_subscription_response_too_large
+        )
+
+        ErrorReasonCode.CONTACT_SUBSCRIPTION_DATA_UNPARSEABLE -> stringResource(
+            R.string.error_reason_contact_subscription_data_unparseable
+        )
+
+        ErrorReasonCode.CONTACT_SUBSCRIPTION_UNREACHABLE -> stringResource(
+            R.string.error_reason_contact_subscription_unreachable
+        )
+
+        ErrorReasonCode.NOTIFICATION_URL_INVALID -> stringResource(
+            R.string.error_reason_notification_url_invalid
+        )
+
+        ErrorReasonCode.NOTIFICATION_PUSH_SUBSCRIPTION_LIMIT ->
+            // Passed as a string: "%d <noun>s" trips the PluralsCandidate lint.
+            reason.int(
+                "max"
+            )?.let {
+                stringResource(
+                    R.string.error_reason_notification_push_subscription_limit,
+                    it.toString()
+                )
+            }
+
+        ErrorReasonCode.NOTIFICATION_DEVICE_REGISTRATION_LIMIT ->
+            // Passed as a string: "%d <noun>s" trips the PluralsCandidate lint.
+            reason.int(
+                "max"
+            )?.let {
+                stringResource(
+                    R.string.error_reason_notification_device_registration_limit,
+                    it.toString()
+                )
+            }
+
+        ErrorReasonCode.FEED_LIMIT_REACHED ->
+            // Passed as a string: "%d <noun>s" trips the PluralsCandidate lint.
+            reason.int(
+                "max"
+            )?.let {
+                stringResource(R.string.error_reason_feed_limit_reached, it.toString())
+            }
+
+        ErrorReasonCode.FEED_ENTITY_ID_NOT_ALLOWED -> stringResource(
+            R.string.error_reason_feed_entity_id_not_allowed
+        )
+
         else -> null
     }
 }
+
+/** Mirrors backend errors.ErrCodeValidation. */
+private const val VALIDATION_ERROR = "VALIDATION_ERROR"
 
 // Moshi decodes JSON numbers as Double, so an integral param is read through
 // Number; a string that holds a number is accepted too.

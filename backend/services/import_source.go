@@ -167,6 +167,9 @@ type MappedActivity struct {
 	Description string
 	Location    string
 	Date        string
+	// EndDate is the optional inclusive end of a multi-day activity (issue
+	// #2006), RFC3339-ish like Date; empty for a single-day activity.
+	EndDate     string
 	Type        string // Activity.Type (InteractionType*), best-effort
 	ExternalRef string
 }
@@ -1385,6 +1388,26 @@ func importNotes(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported map[
 	return nil
 }
 
+// parseActivityEnd resolves a mapped activity's optional end date. An empty
+// value is a single-day activity. An unparseable end, or one before the start,
+// is reported and the activity imports without a range rather than failing the
+// whole record (issue #2006).
+func parseActivityEnd(report *ImportReport, record, raw string, start time.Time) *time.Time {
+	if raw == "" {
+		return nil
+	}
+	end, err := parseSourceTime(raw)
+	if err != nil {
+		report.appendIssue(ImportIssue{Record: record, Field: "activity.end_date", Category: ImportIssueCategoryInvalid, Message: "unparseable end date: " + raw})
+		return nil
+	}
+	if models.ActivityEndBeforeStart(start, &end) {
+		report.appendIssue(ImportIssue{Record: record, Field: "activity.end_date", Category: ImportIssueCategoryInvalid, Message: "end date precedes the start date: " + raw})
+		return nil
+	}
+	return &end
+}
+
 func importActivities(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported map[string]bool,
 	uidOf func(string, SourceRef) (string, bool), skipImported func(string, SourceRef) bool, report *ImportReport,
 ) error {
@@ -1398,6 +1421,7 @@ func importActivities(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported
 			report.appendIssue(ImportIssue{Record: record, Field: "activity.date", Category: ImportIssueCategoryInvalid, Message: "unparseable date: " + a.Date})
 			continue
 		}
+		endDate := parseActivityEnd(report, record, a.EndDate, date)
 		var contacts []models.Contact
 		for _, ref := range a.Contacts {
 			uid, ok := uidOf(record+" attendee", ref)
@@ -1420,6 +1444,7 @@ func importActivities(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported
 			Description: a.Description,
 			Location:    a.Location,
 			Date:        date,
+			EndDate:     endDate,
 			Type:        a.Type,
 			ExternalRef: a.ExternalRef,
 		}

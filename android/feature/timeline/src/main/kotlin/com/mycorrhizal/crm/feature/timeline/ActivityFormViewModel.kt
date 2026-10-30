@@ -10,6 +10,8 @@ import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ActivityInput
 import com.mycorrhizal.crm.model.network.ContactFlat
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
+import com.mycorrhizal.crm.model.util.ActivityDateRange
 import com.mycorrhizal.crm.model.util.DateFieldValue
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
@@ -40,6 +42,10 @@ data class ActivityFormState(
     val title: String = "",
     val type: String = "",
     val date: String = "",
+    /** Issue #2006: optional last day of a multi-day activity (UTC-midnight instant), "" for none. */
+    val endDate: String = "",
+    /** The server refused [endDate] as before the start (`activity_end_before_start`). */
+    val endDateRejected: Boolean = false,
     val description: String = "",
     val location: String = "",
     /** Participant contacts, all sent on save (M19 — the one-per-route-contact
@@ -65,6 +71,12 @@ data class ActivityFormState(
     val isEdit: Boolean get() = activityId != null
     val hasTitle: Boolean get() = title.isNotBlank()
 
+    /** Issue #2006: the picked end day precedes the start day (equal days are fine). */
+    val endBeforeStart: Boolean get() = ActivityDateRange.endBeforeStart(date, endDate)
+
+    /** The end field shows "cannot be before the start date" (client check or server refusal). */
+    val endDateError: Boolean get() = endBeforeStart || endDateRejected
+
     val isDirty: Boolean get() = baseline != null && editableSnapshot() != baseline
 
     private fun editableSnapshot(): ActivityFormState = copy(
@@ -78,6 +90,7 @@ data class ActivityFormState(
         isSaving = false,
         errorRes = null,
         error = null,
+        endDateRejected = false,
         conflict = false,
         baseline = null
     )
@@ -98,6 +111,8 @@ data class ActivityFormState(
         title = title.trim(),
         type = type.trim().ifBlank { null },
         date = DateFieldValue.normalizeCalendarDayInstant(date),
+        // Always present: an update with a null end clears the stored one (omitting keeps it).
+        endDate = DateFieldValue.normalizeCalendarDayInstant(endDate),
         description = description.trim().ifBlank { null },
         location = location.trim().ifBlank { null },
         contactIds = participantIds(),
@@ -232,7 +247,10 @@ class ActivityFormViewModel @Inject constructor(
 
     fun onTitleChange(value: String) = _uiState.update { it.copy(title = value) }
     fun onTypeChange(value: String) = _uiState.update { it.copy(type = value) }
-    fun onDateChange(value: String) = _uiState.update { it.copy(date = value) }
+    fun onDateChange(value: String) =
+        _uiState.update { it.copy(date = value, endDateRejected = false) }
+    fun onEndDateChange(value: String) =
+        _uiState.update { it.copy(endDate = value, endDateRejected = false) }
     fun onDescriptionChange(value: String) = _uiState.update { it.copy(description = value) }
     fun onLocationChange(value: String) = _uiState.update { it.copy(location = value) }
     fun onErrorShown() = _uiState.update { it.copy(errorRes = null, error = null) }
@@ -306,6 +324,9 @@ class ActivityFormViewModel @Inject constructor(
         val state = _uiState.value
         if (state.isSaving) return
 
+        // Issue #2006: a reversed range is already flagged on the end field; don't also toast.
+        if (state.endBeforeStart) return
+
         val problem = state.validate()
         if (problem != null) {
             _uiState.update { it.copy(errorRes = problem, error = null) }
@@ -333,6 +354,9 @@ class ActivityFormViewModel @Inject constructor(
                     _uiState.update {
                         if (error is ApiError.PreconditionFailed) {
                             it.copy(isSaving = false, conflict = true)
+                        } else if (error.isEndBeforeStart()) {
+                            // Shown on the end field itself, not as a generic snackbar.
+                            it.copy(isSaving = false, endDateRejected = true)
                         } else {
                             it.copy(isSaving = false, error = error)
                         }
@@ -350,12 +374,17 @@ class ActivityFormViewModel @Inject constructor(
         title = activity.title.orEmpty(),
         type = activity.type.orEmpty(),
         date = activity.date.orEmpty(),
+        endDate = activity.endDate.orEmpty(),
+        endDateRejected = false,
         description = activity.description.orEmpty(),
         location = activity.location.orEmpty(),
         participants = activity.contacts.orEmpty(),
         externalRef = activity.externalRef,
         revision = activity.revision
     )
+
+    private fun ApiError.isEndBeforeStart(): Boolean =
+        this is ApiError.Client && reason?.code == ErrorReasonCode.ACTIVITY_END_BEFORE_START
 
     companion object {
         private const val SEARCH_DEBOUNCE_MS = 300L

@@ -60,19 +60,27 @@ sealed class ApiError(message: String, cause: Throwable? = null) : Exception(mes
     class Network(cause: IOException) : ApiError("Network error", cause)
     class Timeout(cause: SocketTimeoutException) : ApiError("Timeout", cause)
 
-    /** [reason] and [requestId] come from the error envelope (ADR 0038); both are null when absent. */
+    /**
+     * [reason] and [requestId] come from the error envelope (ADR 0038); both are null when absent.
+     * [fieldReasons] and [details] carry the per-field VALIDATION_ERROR payload (issue #2105).
+     */
     class Server(
         val code: Int,
         val body: String,
         val errorCode: String? = null,
         val reason: ErrorReason? = null,
-        val requestId: String? = null
+        val requestId: String? = null,
+        val fieldReasons: Map<String, ErrorReason>? = null,
+        val details: Map<String, Any?>? = null
     ) : ApiError(body)
     class Client(
         val code: Int,
         val body: String,
         val reason: ErrorReason? = null,
-        val requestId: String? = null
+        val requestId: String? = null,
+        val fieldReasons: Map<String, ErrorReason>? = null,
+        val details: Map<String, Any?>? = null,
+        val errorCode: String? = null
     ) : ApiError(body)
 
     /**

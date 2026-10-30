@@ -91,6 +91,7 @@ export type Activity = {
   date: string;
   deleted?: boolean;
   description: string;
+  end_date?: string;
   external_ref?: string;
   location: string;
   revision: number;
@@ -103,6 +104,7 @@ export type ActivityInput = {
   contact_ids?: number[];
   date: string;
   description?: string;
+  end_date?: string | null;
   external_ref?: string;
   location?: string;
   title: string;
@@ -1102,6 +1104,10 @@ export type Error = {
   error?: {
     code: string;
     details?: Record<string, unknown>;
+    field_reasons?: Record<string, {
+      reason_code: string;
+      reason_params?: Record<string, unknown>;
+    }>;
     message: string;
     reason_code?: string;
     reason_params?: Record<string, unknown>;

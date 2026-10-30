@@ -9,6 +9,7 @@ import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.toApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -68,8 +69,19 @@ class TrashViewModel @Inject constructor(
         load()
     }
 
+    private var loadJob: Job? = null
+
+    /**
+     * Refetch on screen resume. The drawer restores the saved back-stack entry, so this view
+     * model outlives leaving the screen and its list goes stale; the first resume lands while
+     * the init load is still running and is skipped.
+     */
+    fun reload() {
+        if (loadJob?.isActive != true) load()
+    }
+
     fun load() {
-        viewModelScope.launch {
+        loadJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             val all = mutableListOf<TrashedContact>()
             var retention = _uiState.value.retentionDays

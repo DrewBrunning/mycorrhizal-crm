@@ -13,7 +13,11 @@ type ActivityInput struct {
 	Description string    `json:"description" validate:"max=2000"`
 	Location    string    `json:"location" validate:"max=300"`
 	Date        time.Time `json:"date" validate:"required"`
-	ContactIDs  []uint    `json:"contact_ids"` // Accept an array of contact IDs for many-to-many association
+	// EndDate is the optional end of a multi-day activity (issue #2006), same
+	// calendar-day shape as Date. On PUT an absent key keeps the stored end
+	// date; an explicit null or "" clears it.
+	EndDate    OptionalDate `json:"end_date,omitzero"`
+	ContactIDs []uint       `json:"contact_ids"` // Accept an array of contact IDs for many-to-many association
 	// Type/ExternalRef are Interaction fields (activity.go) -- open/
 	// conventional, no oneof validation, matching Activity.Type's own doc
 	// comment on why it's deliberately unvalidated.
@@ -24,6 +28,48 @@ type ActivityInput struct {
 	// explicit "": on PUT, absent/null keeps the stored value (a web edit never
 	// sends it and must not wipe a geopulse:stay:<id> dedupe key), "" clears it.
 	ExternalRef *string `json:"external_ref,omitempty"`
+}
+
+// OptionalDate is a nullable, presence-aware JSON date: Set is true when the
+// key was present at all, Value is nil for an explicit null or "" (clear) and
+// the parsed RFC 3339 instant otherwise. It exists because a plain *time.Time
+// cannot tell an absent key (keep the stored value) from null (clear it).
+type OptionalDate struct {
+	Set   bool
+	Value *time.Time
+}
+
+// IsZero is the encoding/json omitzero hook: an unset OptionalDate is omitted.
+func (o OptionalDate) IsZero() bool { return !o.Set }
+
+// UnmarshalJSON accepts null, "" (both clear) or an RFC 3339 string.
+func (o *OptionalDate) UnmarshalJSON(b []byte) error {
+	o.Set = true
+	o.Value = nil
+	if string(b) == "null" {
+		return nil
+	}
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	if s == "" {
+		return nil
+	}
+	t, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		return err
+	}
+	o.Value = &t
+	return nil
+}
+
+// MarshalJSON renders null for a set-but-empty value.
+func (o OptionalDate) MarshalJSON() ([]byte, error) {
+	if o.Value == nil {
+		return []byte("null"), nil
+	}
+	return json.Marshal(*o.Value)
 }
 
 // CircleInput is the DTO for creating/updating a Circle (circle.go). Only

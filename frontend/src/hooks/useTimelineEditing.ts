@@ -3,6 +3,7 @@ import { type Activity, deleteActivity, updateActivity } from '../api/activities
 import { isPreconditionFailed } from '../api/client';
 import { getAllContacts } from '../api/contacts';
 import { deleteNote, type Note, updateNote } from '../api/notes';
+import { activityDay, activityEndForUpdate, endDateFieldError } from '../utils/activityRange';
 import { type ErrorNotifier, handleError, handleFetchError } from '../utils/errorHandler';
 
 export function useTimelineEditing(
@@ -26,14 +27,19 @@ export function useTimelineEditing(
     activityDescription?: string;
     activityLocation?: string;
     activityDate?: string;
+    activityEndDate?: string;
     activityContacts?: { ID: number; firstname: string; lastname: string; nickname?: string }[];
   }>({});
+  // A server refusal on the activity's end_date field (issue #2006), shown on
+  // the end-date input instead of a generic error notice.
+  const [endDateError, setEndDateError] = useState('');
   const [allContacts, setAllContacts] = useState<
     { ID: number; firstname: string; lastname: string; nickname?: string }[]
   >([]);
 
   const handleStartEditTimelineItem = async (type: 'note' | 'activity', item: Note | Activity) => {
     setEditingTimelineItem({ type, id: item.ID, revision: item.revision });
+    setEndDateError('');
 
     if (type === 'note') {
       const note = item as Note;
@@ -61,6 +67,7 @@ export function useTimelineEditing(
         activityLocation: activity.location || '',
         // Stored value (saved at 00:00Z), so UTC date is right here; unlike the "today" defaults, see utils/localDate.ts (#1727).
         activityDate: activity.date ? new Date(activity.date).toISOString().split('T')[0] : '',
+        activityEndDate: activityDay(activity.end_date),
         activityContacts: activity.contacts || [],
       });
     }
@@ -107,6 +114,7 @@ export function useTimelineEditing(
           date: editTimelineValues.activityDate
             ? new Date(editTimelineValues.activityDate).toISOString()
             : new Date().toISOString(),
+          end_date: activityEndForUpdate(editTimelineValues.activityEndDate),
           contact_ids: editTimelineValues.activityContacts?.map((c) => c.ID) || [],
         },
         editingTimelineItem?.revision,
@@ -115,6 +123,11 @@ export function useTimelineEditing(
       handleCancelEditTimelineItem();
     } catch (err) {
       if (onConflict && isPreconditionFailed(err)) return onConflict();
+      const fieldError = endDateFieldError(err);
+      if (fieldError) {
+        setEndDateError(fieldError);
+        return;
+      }
       handleError(err, { operation: 'updating activity' }, notifier);
     }
   };
@@ -145,6 +158,7 @@ export function useTimelineEditing(
     editingTimelineItem,
     editTimelineValues,
     allContacts,
+    endDateError,
     handleStartEditTimelineItem,
     handleCancelEditTimelineItem,
     handleUpdateNote,
