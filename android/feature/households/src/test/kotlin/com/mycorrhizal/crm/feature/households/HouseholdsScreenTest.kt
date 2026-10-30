@@ -111,6 +111,24 @@ class HouseholdsScreenTest {
     }
 
     @Test
+    fun `shows the households explanation with a populated list`() {
+        setScreen(darkTheme = false)
+
+        composeTestRule
+            .onNodeWithText(str(R.string.households_description))
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun `shows the households explanation with the empty state`() {
+        setScreenWithList(Result.success(emptyList()))
+
+        composeTestRule
+            .onNodeWithText(str(R.string.households_description))
+            .assertIsDisplayed()
+    }
+
+    @Test
     fun `a failed load renders the inline error`() {
         setScreenWithList(Result.failure(ApiError.Client(500, "boom")))
 

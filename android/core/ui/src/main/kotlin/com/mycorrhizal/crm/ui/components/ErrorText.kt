@@ -786,6 +786,145 @@ private fun localizedReason(reason: ErrorReason?): String? {
             R.string.error_reason_validation_invalid_request_body
         )
 
+        ErrorReasonCode.IMPORT_SESSION_NOT_FOUND ->
+            stringResource(R.string.error_reason_import_session_not_found)
+
+        ErrorReasonCode.IMPORT_SESSION_EXPIRED ->
+            stringResource(R.string.error_reason_import_session_expired)
+
+        ErrorReasonCode.IMPORT_ENDPOINT_CSV_VCF_ONLY ->
+            stringResource(R.string.error_reason_import_endpoint_csv_vcf_only)
+
+        ErrorReasonCode.IMPORT_ENDPOINT_VCF_RECORDS_ONLY ->
+            stringResource(R.string.error_reason_import_endpoint_vcf_records_only)
+
+        ErrorReasonCode.IMPORT_PREVIEW_REQUIRED ->
+            stringResource(R.string.error_reason_import_preview_required)
+
+        ErrorReasonCode.IMPORT_FILE_MISSING ->
+            stringResource(R.string.error_reason_import_file_missing)
+
+        ErrorReasonCode.IMPORT_JSCONTACT_FILE_TOO_LARGE -> {
+            val maxMb = reason.int("max_mb")
+            if (maxMb != null) {
+                stringResource(R.string.error_reason_import_jscontact_file_too_large, maxMb)
+            } else {
+                null
+            }
+        }
+
+        ErrorReasonCode.IMPORT_FILE_NOT_JSCONTACT ->
+            stringResource(R.string.error_reason_import_file_not_jscontact)
+
+        ErrorReasonCode.CSV_FILE_TOO_LARGE -> {
+            val maxMb = reason.int("max_mb")
+            if (maxMb != null) {
+                stringResource(R.string.error_reason_csv_file_too_large, maxMb)
+            } else {
+                null
+            }
+        }
+
+        ErrorReasonCode.CSV_FILE_NOT_CSV ->
+            stringResource(R.string.error_reason_csv_file_not_csv)
+
+        ErrorReasonCode.VCARD_FILE_TOO_LARGE -> {
+            val maxMb = reason.int("max_mb")
+            if (maxMb != null) {
+                stringResource(R.string.error_reason_vcard_file_too_large, maxMb)
+            } else {
+                null
+            }
+        }
+
+        ErrorReasonCode.VCARD_FILE_NOT_VCF ->
+            stringResource(R.string.error_reason_vcard_file_not_vcf)
+
+        ErrorReasonCode.MONICA_SESSION_NOT_FOUND ->
+            stringResource(R.string.error_reason_monica_session_not_found)
+
+        ErrorReasonCode.MONICA_SESSION_EXPIRED ->
+            stringResource(R.string.error_reason_monica_session_expired)
+
+        ErrorReasonCode.MONICA_TOKEN_REJECTED ->
+            stringResource(R.string.error_reason_monica_token_rejected)
+
+        ErrorReasonCode.MONICA_URL_INVALID ->
+            stringResource(R.string.error_reason_monica_url_invalid)
+
+        ErrorReasonCode.MONICA_URL_PRIVATE ->
+            stringResource(R.string.error_reason_monica_url_private)
+
+        ErrorReasonCode.MONICA_NOT_MONICA_API ->
+            stringResource(R.string.error_reason_monica_not_monica_api)
+
+        ErrorReasonCode.MONICA_UNREACHABLE ->
+            stringResource(R.string.error_reason_monica_unreachable)
+
+        ErrorReasonCode.MONICA_TOO_MANY_CONTACTS -> {
+            val total = reason.int("total")
+            val max = reason.int("max")
+            if (total != null && max != null) {
+                stringResource(
+                    R.string.error_reason_monica_too_many_contacts,
+                    total.toString(),
+                    max
+                )
+            } else {
+                null
+            }
+        }
+
+        ErrorReasonCode.MONICA_TOO_MANY_RECORDS -> {
+            val total = reason.int("total")
+            val max = reason.int("max")
+            if (total != null && max != null) {
+                stringResource(
+                    R.string.error_reason_monica_too_many_records,
+                    total.toString(),
+                    max
+                )
+            } else {
+                null
+            }
+        }
+
+        ErrorReasonCode.MONICA_FETCH_IN_PROGRESS ->
+            stringResource(R.string.error_reason_monica_fetch_in_progress)
+
+        ErrorReasonCode.MONICA_NOT_FETCHED ->
+            stringResource(R.string.error_reason_monica_not_fetched)
+
+        ErrorReasonCode.BUNDLE_SESSION_NOT_FOUND ->
+            stringResource(R.string.error_reason_bundle_session_not_found)
+
+        ErrorReasonCode.BUNDLE_SESSION_EXPIRED ->
+            stringResource(R.string.error_reason_bundle_session_expired)
+
+        ErrorReasonCode.BUNDLE_UPLOAD_MISSING ->
+            stringResource(R.string.error_reason_bundle_upload_missing)
+
+        ErrorReasonCode.BUNDLE_SIZE ->
+            stringResource(R.string.error_reason_bundle_size)
+
+        ErrorReasonCode.BUNDLE_UPLOAD_UNREADABLE ->
+            stringResource(R.string.error_reason_bundle_upload_unreadable)
+
+        ErrorReasonCode.BUNDLE_NOT_BUNDLE ->
+            stringResource(R.string.error_reason_bundle_not_bundle)
+
+        ErrorReasonCode.BUNDLE_TOO_MANY_CONTACTS ->
+            stringResource(R.string.error_reason_bundle_too_many_contacts)
+
+        ErrorReasonCode.BUNDLE_TOO_MANY_RECORDS ->
+            stringResource(R.string.error_reason_bundle_too_many_records)
+
+        ErrorReasonCode.BUNDLE_IMPORT_IN_PROGRESS ->
+            stringResource(R.string.error_reason_bundle_import_in_progress)
+
+        ErrorReasonCode.BUNDLE_NOT_PREPARED ->
+            stringResource(R.string.error_reason_bundle_not_prepared)
+
         ErrorReasonCode.AUTH_REQUIRED -> stringResource(
             R.string.error_reason_auth_required
         )

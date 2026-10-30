@@ -1159,7 +1159,8 @@
     <string name="circles_remove_member_named">Remove member %1$s</string>
     <string name="circles_member_vcard_uid">Contact VCard UID</string>
     <string name="circles_empty">No circles yet</string>
-    <string name="circles_empty_body">Circles are groups of people you keep up with together.</string>
+    <string name="circles_description">Circles are groups you keep up with together, like family, friends, or colleagues. A contact can belong to several.</string>
+    <string name="circles_empty_body">Circles group people you keep up with together. A contact can belong to several.</string>
     <string name="circles_members_empty">No members yet</string>
     <string name="circles_error_missing_id">Missing circle id</string>
     <!-- Issue #218: group SMS to every circle member with a phone number. -->
@@ -1258,7 +1259,8 @@
     <string name="tags_remove_contact_named">Remove tag from contact %1$s</string>
     <string name="tags_contact_vcard_uid">Contact VCard UID</string>
     <string name="tags_empty">No tags yet</string>
-    <string name="tags_empty_body">Tags group contacts by topic, such as work or family.</string>
+    <string name="tags_description">Tags are free-form labels for topics that cut across groups, like “vegan” or “book club”. A contact can have any number.</string>
+    <string name="tags_empty_body">Tags are free-form labels for cross-cutting topics. A contact can have any number.</string>
     <string name="tags_contacts_empty">No tagged contacts yet</string>
 
     <!-- Contact field settings (issue #832, web parity) -->
@@ -1346,7 +1348,8 @@
     <string name="households_role_pet">Pet</string>
     <string name="households_role_roommate">Roommate</string>
     <string name="households_empty">No households yet</string>
-    <string name="households_empty_body">Households group people who live together.</string>
+    <string name="households_description">Households group the people and pets who share a home. They power shared-address suggestions and a combined card and gift list, and their members count as ambient contacts for cadence. Unlike a circle, a household is about living together, not a social group.</string>
+    <string name="households_empty_body">Households group people and pets who share a home, with shared-address suggestions and a combined card and gift list.</string>
     <string name="households_members_empty">No members yet</string>
     <string name="households_error_missing_id">Missing household id</string>
     <string name="households_suggest_relationships">Suggest relationships</string>
@@ -2187,7 +2190,8 @@
     <string name="occasions_title">Occasions</string>
     <string name="occasions_add_event">New event</string>
     <string name="occasions_empty">No events yet</string>
-    <string name="occasions_empty_body">Create one to start planning who to invite.</string>
+    <string name="occasions_description">Occasions are the standing things you do for people, like a yearly card or gift, and one-off events with an invitee list. Active obligations create reminders automatically; reminders are the nudge, not a second occasion. To log something that already happened, use Activities.</string>
+    <string name="occasions_empty_body">Create one to plan an event, invite people, and track RSVPs.</string>
     <string name="occasions_event_title">Title</string>
     <string name="occasions_starts_at">Starts</string>
     <string name="occasions_ends_at">Ends</string>
@@ -2198,6 +2202,7 @@
     <string name="occasions_sensitivity_private">Private</string>
     <string name="occasions_sensitivity_secret">Secret</string>
     <string name="occasions_time">Time</string>
+    <string name="occasions_event_dialog_hint">A one-off event you are planning. Add invitees after saving, then record what each person told you.</string>
     <string name="occasions_create_title">Create an event</string>
     <string name="occasions_edit_title">Edit event</string>
     <string name="occasions_delete_title">Delete event</string>
@@ -2534,6 +2539,7 @@
     <string name="contact_skills_notes_hint">Anything worth remembering about this entry</string>
     <string name="contact_skills_favorite">Favorite</string>
     <string name="contact_skills_locked">Private or secret — excluded from sync and shares</string>
+    <string name="contact_personal_info_label_hint">Optional tag shown beside the value, e.g. “work” or “learned in 2020”.</string>
     <string name="contact_personal_info_level_none">No level</string>
     <string name="contact_personal_info_level_beginner">Beginner</string>
     <string name="contact_personal_info_level_average">Average</string>
@@ -2816,6 +2822,39 @@
     <string name="error_reason_auth_passkey_no_other_registered">No other passkey is registered to verify with</string>
     <string name="error_reason_validation_invalid_json">Invalid JSON</string>
     <string name="error_reason_validation_invalid_request_body">Invalid request body</string>
+    <string name="error_reason_import_session_not_found">Import session expired or not found</string>
+    <string name="error_reason_import_session_expired">Import session expired</string>
+    <string name="error_reason_import_endpoint_csv_vcf_only">This endpoint is only for CSV or VCF imports</string>
+    <string name="error_reason_import_endpoint_vcf_records_only">This endpoint is only for VCF or records imports</string>
+    <string name="error_reason_import_preview_required">Please generate a preview first</string>
+    <string name="error_reason_import_file_missing">No file uploaded</string>
+    <string name="error_reason_import_jscontact_file_too_large">File too large. Maximum size is %1$d MB</string>
+    <string name="error_reason_import_file_not_jscontact">File must be a JSON (JSContact) file</string>
+    <string name="error_reason_csv_file_too_large">File too large. Maximum size is %1$d MB</string>
+    <string name="error_reason_csv_file_not_csv">File must be a CSV file</string>
+    <string name="error_reason_vcard_file_too_large">File too large. Maximum size is %1$d MB</string>
+    <string name="error_reason_vcard_file_not_vcf">File must be a VCF file</string>
+    <string name="error_reason_monica_session_not_found">Import session expired or not found</string>
+    <string name="error_reason_monica_session_expired">Import session expired</string>
+    <string name="error_reason_monica_token_rejected">Monica rejected the API token</string>
+    <string name="error_reason_monica_url_invalid">The Monica URL is invalid</string>
+    <string name="error_reason_monica_url_private">The Monica URL resolves to a private address, which this server blocks</string>
+    <string name="error_reason_monica_not_monica_api">The server did not respond like a Monica API — check the URL</string>
+    <string name="error_reason_monica_unreachable">monica service error: The Monica instance could not be reached</string>
+    <string name="error_reason_monica_too_many_contacts">This Monica account has %1$s contacts; the import supports at most %2$d</string>
+    <string name="error_reason_monica_too_many_records">This Monica account has %1$s records; the import supports at most %2$d</string>
+    <string name="error_reason_monica_fetch_in_progress">A fetch is already running for this session</string>
+    <string name="error_reason_monica_not_fetched">The Monica data is not fetched yet</string>
+    <string name="error_reason_bundle_session_not_found">Import session expired or not found</string>
+    <string name="error_reason_bundle_session_expired">Import session expired</string>
+    <string name="error_reason_bundle_upload_missing">No file uploaded</string>
+    <string name="error_reason_bundle_size">The bundle is empty or larger than the 64 MiB limit</string>
+    <string name="error_reason_bundle_upload_unreadable">The upload could not be read</string>
+    <string name="error_reason_bundle_not_bundle">That file is not a Mycorrhizal account bundle</string>
+    <string name="error_reason_bundle_too_many_contacts">This bundle has more contacts than the import supports</string>
+    <string name="error_reason_bundle_too_many_records">This bundle has more records than the import supports</string>
+    <string name="error_reason_bundle_import_in_progress">This import is already being prepared</string>
+    <string name="error_reason_bundle_not_prepared">The account bundle is not prepared yet</string>
     <string name="error_reason_auth_required">Authentication required</string>
     <string name="error_reason_auth_registration_disabled">Registration is disabled.</string>
     <string name="error_reason_auth_user_id_invalid">Invalid user ID</string>

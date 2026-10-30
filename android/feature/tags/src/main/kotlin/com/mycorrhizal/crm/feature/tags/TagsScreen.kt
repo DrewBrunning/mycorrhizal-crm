@@ -2,6 +2,7 @@ package com.mycorrhizal.crm.feature.tags
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -106,37 +107,49 @@ fun TagsScreen(
                 onRefresh = viewModel::load,
                 modifier = Modifier.fillMaxSize()
             ) {
-                when {
-                    state.isLoading && state.tags.isEmpty() -> LoadingSkeleton()
+                Column(Modifier.fillMaxSize()) {
+                    Text(
+                        text = stringResource(R.string.tags_description),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                    Box(Modifier.fillMaxWidth().weight(1f)) {
+                        when {
+                            state.isLoading && state.tags.isEmpty() -> LoadingSkeleton()
 
-                    state.tags.isEmpty() && state.error == null ->
-                        EmptyState(
-                            title = stringResource(R.string.tags_empty),
-                            body = stringResource(R.string.tags_empty_body),
-                            actionLabel = stringResource(R.string.tags_new),
-                            onAction = { showCreateDialog = true }
-                        )
-
-                    state.tags.isEmpty() && state.error != null -> {
-                        Text(
-                            text = state.error?.localizedMessage().orEmpty(),
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.align(Alignment.Center)
-                        )
-                    }
-
-                    else -> {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = FabListContentPadding
-                        ) {
-                            items(state.tags, key = { it.id }) { tag ->
-                                TagListItem(
-                                    tag = tag,
-                                    onClick = { onOpenTag(tag.id) },
-                                    onRename = { name -> viewModel.rename(tag.id, name) },
-                                    onDelete = { viewModel.delete(tag.id) }
+                            state.tags.isEmpty() && state.error == null ->
+                                EmptyState(
+                                    title = stringResource(R.string.tags_empty),
+                                    body = stringResource(R.string.tags_empty_body),
+                                    actionLabel = stringResource(R.string.tags_new),
+                                    onAction = { showCreateDialog = true }
                                 )
+
+                            state.tags.isEmpty() && state.error != null -> {
+                                Text(
+                                    text = state.error?.localizedMessage().orEmpty(),
+                                    color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.align(Alignment.Center)
+                                )
+                            }
+
+                            else -> {
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentPadding = FabListContentPadding
+                                ) {
+                                    items(state.tags, key = { it.id }) { tag ->
+                                        TagListItem(
+                                            tag = tag,
+                                            onClick = { onOpenTag(tag.id) },
+                                            onRename = { name ->
+                                                viewModel.rename(tag.id, name)
+                                            },
+                                            onDelete = { viewModel.delete(tag.id) }
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

@@ -141,39 +141,47 @@ fun OccasionsScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding)) {
-            when {
-                state.errorRes != null -> CenteredMessage(stringResource(state.errorRes!!))
+        Column(Modifier.fillMaxSize().padding(padding)) {
+            Text(
+                text = stringResource(R.string.occasions_description),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+            Box(Modifier.fillMaxWidth().weight(1f)) {
+                when {
+                    state.errorRes != null -> CenteredMessage(stringResource(state.errorRes!!))
 
-                state.isLoading && state.events.isEmpty() -> CenteredMessage(
-                    stringResource(R.string.a11y_state_loading)
-                )
+                    state.isLoading && state.events.isEmpty() -> CenteredMessage(
+                        stringResource(R.string.a11y_state_loading)
+                    )
 
-                state.events.isEmpty() -> EmptyState(
-                    title = stringResource(R.string.occasions_empty),
-                    body = stringResource(R.string.occasions_empty_body),
-                    actionLabel = stringResource(R.string.occasions_add_event),
-                    onAction = {
-                        editing = null
-                        showDialog = true
-                    }
-                )
+                    state.events.isEmpty() -> EmptyState(
+                        title = stringResource(R.string.occasions_empty),
+                        body = stringResource(R.string.occasions_empty_body),
+                        actionLabel = stringResource(R.string.occasions_add_event),
+                        onAction = {
+                            editing = null
+                            showDialog = true
+                        }
+                    )
 
-                else -> LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                    contentPadding = FabListContentPadding,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(state.events, key = { it.id }) { event ->
-                        OccasionEventRow(
-                            event = event,
-                            onOpen = { onOpenAttendees(event.id) },
-                            onEdit = {
-                                editing = event
-                                showDialog = true
-                            },
-                            onDelete = { pendingDelete = event }
-                        )
+                    else -> LazyColumn(
+                        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                        contentPadding = FabListContentPadding,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(state.events, key = { it.id }) { event ->
+                            OccasionEventRow(
+                                event = event,
+                                onOpen = { onOpenAttendees(event.id) },
+                                onEdit = {
+                                    editing = event
+                                    showDialog = true
+                                },
+                                onDelete = { pendingDelete = event }
+                            )
+                        }
                     }
                 }
             }
@@ -357,6 +365,11 @@ internal fun OccasionEventDialog(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                Text(
+                    text = stringResource(R.string.occasions_event_dialog_hint),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 OutlinedTextField(
                     value = title,
                     onValueChange = {
