@@ -239,6 +239,13 @@
     <string name="contact_unarchive">Desarchivar</string>
     <string name="contact_mark_as_me">Este soy yo</string>
     <string name="contact_unmark_as_me">Este no soy yo</string>
+    <!-- Issue #2206 (web #2192): confirmation before marking/unmarking the Me contact. -->
+    <string name="contact_me_mark_title">¿Marcar este contacto como tú?</string>
+    <string name="contact_me_mark_body">Este contacto pasará a ser tú. Mantener el contacto contigo mismo no tiene sentido, así que también se marca como ambiental: nunca está atrasado y su puntuación de relación siempre cuenta como al día. Puedes desactivar lo ambiental en el contacto en cualquier momento.</string>
+    <string name="contact_me_mark_confirm">Sí, este soy yo</string>
+    <string name="contact_me_unmark_title">¿Este contacto no eres tú?</string>
+    <string name="contact_me_unmark_body">Este contacto dejará de ser tú. Si al marcarlo como tú se activó lo ambiental, se vuelve a desactivar. Un ajuste ambiental que elegiste tú mismo se conserva.</string>
+    <string name="contact_me_unmark_confirm">Sí, este no soy yo</string>
     <string name="contact_you_badge">Tú</string>
     <string name="contact_export_vcf4">Exportar vCard 4.0</string>
     <string name="contact_export_vcf3">Exportar vCard 3.0</string>

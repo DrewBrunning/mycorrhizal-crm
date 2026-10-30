@@ -1284,6 +1284,57 @@ class ContactDetailViewModelTest {
         assertFalse(vm.uiState.value.isMutating)
     }
 
+    // Issue #2206: the server flips `ambient` and bumps the revision on a mark/unmark, so the
+    // contact must be re-read or the next save would 412 against our own write.
+    @Test
+    fun `toggleMe re-reads the contact so the bumped revision is not stale`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val before = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            revision = 3,
+            card = Card(name = Name(full = "Dana White"))
+        )
+        val after = before.copy(revision = 4)
+        coEvery { contactRepository.getContact(5) } returnsMany listOf(
+            Result.success(before),
+            Result.success(after)
+        )
+        coEvery { authRepository.updateSelfContact("u5") } returns Result.success(Unit)
+
+        val vm = viewModel(5, selfContactVCardUid = null)
+        advanceUntilIdle()
+        assertEquals(3, vm.uiState.value.contact?.revision)
+
+        vm.toggleMe()
+        advanceUntilIdle()
+
+        coVerify(exactly = 2) { contactRepository.getContact(5) }
+        assertEquals(4, vm.uiState.value.contact?.revision)
+    }
+
+    @Test
+    fun `toggleMe does not re-read the contact when the update fails`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(name = Name(full = "Dana White"))
+        )
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { authRepository.updateSelfContact("u5") } returns
+            Result.failure(ApiError.Server(500, "boom"))
+
+        val vm = viewModel(5, selfContactVCardUid = null)
+        advanceUntilIdle()
+        vm.toggleMe()
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { contactRepository.getContact(5) }
+    }
+
     @Test
     fun `toggleMe unmarks the contact by sending a null uid`() = runTest(
         mainDispatcherRule.testDispatcher

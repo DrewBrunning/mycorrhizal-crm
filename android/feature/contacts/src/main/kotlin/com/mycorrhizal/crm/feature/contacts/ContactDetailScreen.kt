@@ -303,6 +303,7 @@ fun ContactDetailScreen(
         }
     }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showMeConfirm by remember { mutableStateOf(false) }
     var showArchiveConfirm by remember { mutableStateOf(false) }
     var showUnarchiveConfirm by remember { mutableStateOf(false) }
     // M20: undoing a completed reminder deletes its timeline entry — web's
@@ -695,30 +696,6 @@ fun ContactDetailScreen(
                                         }
                                     )
                                 }
-                                if (!contact.archived) {
-                                    // T90 / issue #831: web parity for Mark as Me / Unmark
-                                    // as Me — hidden for an archived contact, matching the
-                                    // stay-in-touch item just above it.
-                                    DropdownMenuItem(
-                                        text = {
-                                            Text(
-                                                stringResource(
-                                                    if (isMe) R.string.contact_unmark_as_me else R.string.contact_mark_as_me
-                                                )
-                                            )
-                                        },
-                                        leadingIcon = {
-                                            Icon(
-                                                Icons.Outlined.Person,
-                                                contentDescription = null
-                                            )
-                                        },
-                                        onClick = {
-                                            menuExpanded = false
-                                            viewModel.toggleMe()
-                                        }
-                                    )
-                                }
                                 DropdownMenuItem(
                                     text = {
                                         Text(
@@ -767,6 +744,32 @@ fun ContactDetailScreen(
                                         showDeleteConfirm = true
                                     }
                                 )
+                                if (!contact.archived) {
+                                    // T90 / issue #831 + #2206: web parity for Mark as Me /
+                                    // Unmark as Me — last in the menu, below Delete behind a
+                                    // divider (matching web), and confirmed before it applies.
+                                    // Hidden for an archived contact.
+                                    HorizontalDivider()
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                stringResource(
+                                                    if (isMe) R.string.contact_unmark_as_me else R.string.contact_mark_as_me
+                                                )
+                                            )
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                Icons.Outlined.Person,
+                                                contentDescription = null
+                                            )
+                                        },
+                                        onClick = {
+                                            menuExpanded = false
+                                            showMeConfirm = true
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -931,6 +934,47 @@ fun ContactDetailScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            }
+        )
+    }
+    if (showMeConfirm && contact != null) {
+        // Issue #2206 (web #2192): the mark text must describe the ambient flag the server sets.
+        val marking = !isMe
+        AlertDialog(
+            onDismissRequest = { showMeConfirm = false },
+            title = {
+                Text(
+                    stringResource(
+                        if (marking) R.string.contact_me_mark_title else R.string.contact_me_unmark_title
+                    )
+                )
+            },
+            text = {
+                Text(
+                    stringResource(
+                        if (marking) R.string.contact_me_mark_body else R.string.contact_me_unmark_body
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !state.isMutating,
+                    onClick = {
+                        showMeConfirm = false
+                        viewModel.toggleMe()
+                    }
+                ) {
+                    Text(
+                        stringResource(
+                            if (marking) R.string.contact_me_mark_confirm else R.string.contact_me_unmark_confirm
+                        )
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showMeConfirm = false }) {
                     Text(stringResource(R.string.action_cancel))
                 }
             }

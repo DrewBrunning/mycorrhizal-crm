@@ -1269,7 +1269,13 @@ class ContactDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isMutating = true, error = null) }
             authRepository.updateSelfContact(newUid).foldApiError(
-                onSuccess = { _uiState.update { it.copy(isMutating = false) } },
+                onSuccess = {
+                    _uiState.update { it.copy(isMutating = false) }
+                    // Issue #2206 (backend #2193): marking/unmarking flips `ambient` and bumps
+                    // the contact's revision server-side, so re-read it (and the score, which
+                    // depends on ambient) or the next save would 412 against our own write.
+                    load()
+                },
                 onError = { error ->
                     _uiState.update { it.copy(isMutating = false, error = error) }
                 }

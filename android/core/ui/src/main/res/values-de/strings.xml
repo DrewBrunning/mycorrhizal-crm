@@ -232,6 +232,13 @@
     <string name="contact_unarchive">Archiv aufheben</string>
     <string name="contact_mark_as_me">Das bin ich</string>
     <string name="contact_unmark_as_me">Das bin nicht ich</string>
+    <!-- Issue #2206 (web #2192): confirmation before marking/unmarking the Me contact. -->
+    <string name="contact_me_mark_title">Diesen Kontakt als dich markieren?</string>
+    <string name="contact_me_mark_body">Dieser Kontakt wird zu dir. Mit dir selbst in Kontakt zu bleiben ergibt keinen Sinn, deshalb wird er auch als Umgebungskontakt markiert: Er ist nie überfällig und sein Beziehungswert gilt immer als aktuell. Du kannst diese Markierung am Kontakt jederzeit wieder ausschalten.</string>
+    <string name="contact_me_mark_confirm">Ja, das bin ich</string>
+    <string name="contact_me_unmark_title">Dieser Kontakt bist nicht du?</string>
+    <string name="contact_me_unmark_body">Dieser Kontakt ist nicht mehr du. Wenn die Markierung als du den Umgebungskontakt eingeschaltet hat, wird er wieder ausgeschaltet. Eine Einstellung, die du selbst gewählt hast, bleibt erhalten.</string>
+    <string name="contact_me_unmark_confirm">Ja, das bin nicht ich</string>
     <string name="contact_you_badge">Sie</string>
     <string name="contact_export_vcf4">Als vCard 4.0 exportieren</string>
     <string name="contact_export_vcf3">Als vCard 3.0 exportieren</string>
