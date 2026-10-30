@@ -311,6 +311,11 @@ func qsSeedActor(t *testing.T, db *gorm.DB, cfg *config.Config, name, tag string
 		a.note(an, act.Title, false)
 	}
 
+	// A note filed under c1: listed only by GET /notes?scope=all (#2180).
+	filedNote := models.Note{UserID: a.user.ID, Content: tag + "-noteF", Date: time.Now(), ContactID: &a.c1.ID}
+	create(&filedNote)
+	a.note("noteF", filedNote.Content, false)
+
 	// occasion events; ev1 has c1 as attendee so invitee suggestions can
 	// exclude it. Third event is the tombstone.
 	for n := 1; n <= 3; n++ {
@@ -664,6 +669,15 @@ func buildQueryScopeRows() []qsRow {
 			baseIn: qsMk("act1", "act2"),
 		},
 		qsRow{
+			name: "notes ?scope=all&include=contacts", path: "/api/v1/notes",
+			params: []string{"include", "scope"}, reads: []string{"GetUnassignedNotes:include", "GetUnassignedNotes:scope"},
+			query:   func(a *qsActor) string { return "scope=all&include=contacts" },
+			in:      qsMk("note1", "note2", "noteF"),
+			out:     qsMk("noteT"),
+			baseIn:  qsMk("note1", "note2"),
+			baseOut: qsMk("noteF"),
+		},
+		qsRow{
 			name: "audit/export ?include_snapshots=", path: "/api/v1/audit/export",
 			params: []string{"include_snapshots"}, reads: []string{"ExportAuditLog:include_snapshots"},
 			query:   func(a *qsActor) string { return "include_snapshots=true" },
@@ -805,7 +819,7 @@ func qsScanQueryReads(t *testing.T) map[string]string {
 
 func qsIsScopeName(name string) bool {
 	switch name {
-	case "since", "circle", "circle_legacy", "circle_ids", "from", "ids", "token", "include":
+	case "since", "circle", "circle_legacy", "circle_ids", "from", "ids", "token", "include", "scope":
 		return true
 	}
 	return strings.HasPrefix(name, "include_") ||

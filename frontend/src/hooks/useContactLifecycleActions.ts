@@ -181,6 +181,10 @@ export function useContactLifecycleActions({
       await updateSelfContact(newUid);
       setSelfContactUid(newUid);
       await fetchAndCacheUserInfo();
+      // Issues #2193/#2192: the server also flips the contact's ambient flag
+      // (bumping its revision), so adopt the fresh record -- otherwise the next
+      // save would 412 and the Ambient switch would read stale.
+      await syncRevision();
       showSuccess(
         willBeMe ? t('settings.selfContact.saveSuccess') : t('settings.selfContact.clearSuccess'),
       );

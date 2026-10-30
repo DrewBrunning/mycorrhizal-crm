@@ -24,6 +24,16 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
+private const val OCCASIONS_DESCRIPTION =
+    "Occasions are the standing things you do for people, like a yearly card or gift, " +
+        "and one-off events with an invitee list. Active obligations create reminders " +
+        "automatically; reminders are the nudge, not a second occasion. To log something " +
+        "that already happened, use Activities."
+
+private const val EVENT_DIALOG_HINT =
+    "A one-off event you are planning. Add invitees after saving, then record what each " +
+        "person told you."
+
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -83,12 +93,31 @@ class OccasionsScreenTest {
             .assertIsDisplayed()
     }
 
+    @Test
+    fun `shows the occasions explanation with events`() {
+        render(listOf(event()))
+        composeTestRule.onNodeWithText(OCCASIONS_DESCRIPTION).assertIsDisplayed()
+    }
+
+    @Test
+    fun `shows the occasions explanation with the empty state`() {
+        render(emptyList())
+        composeTestRule.onNodeWithText(OCCASIONS_DESCRIPTION).assertIsDisplayed()
+    }
+
+    @Test
+    fun `the create dialog explains that an event is a one-off plan`() {
+        render(emptyList())
+        composeTestRule.onNodeWithContentDescription("New event").performClick()
+        composeTestRule.onNodeWithText(EVENT_DIALOG_HINT).assertIsDisplayed()
+    }
+
     // Issue #1760: the empty state carries the same create action as the FAB.
     @Test
     fun `the empty state action opens the create dialog and explains events`() {
         render(emptyList())
         composeTestRule.onNodeWithText(
-            "Create one to start planning who to invite."
+            "Create one to plan an event, invite people, and track RSVPs."
         ).assertIsDisplayed()
         composeTestRule.onNodeWithText("New event").performClick()
         composeTestRule.onNodeWithText("Create an event").assertIsDisplayed()

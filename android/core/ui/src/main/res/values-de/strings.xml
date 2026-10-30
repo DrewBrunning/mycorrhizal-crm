@@ -1141,7 +1141,8 @@
     <string name="circles_remove_member_named">Mitglied %1$s entfernen</string>
     <string name="circles_member_vcard_uid">Kontakt-VCard-UID</string>
     <string name="circles_empty">Noch keine Kreise</string>
-    <string name="circles_empty_body">Kreise sind Gruppen von Menschen, mit denen du gemeinsam in Kontakt bleibst.</string>
+    <string name="circles_description">Kreise sind Gruppen, mit denen du gemeinsam in Kontakt bleibst, etwa Familie, Freunde oder Kollegen. Ein Kontakt kann mehreren angehören.</string>
+    <string name="circles_empty_body">Kreise gruppieren Menschen, mit denen du gemeinsam in Kontakt bleibst. Ein Kontakt kann mehreren angehören.</string>
     <string name="circles_members_empty">Noch keine Mitglieder</string>
     <string name="circles_error_missing_id">Fehlende Kreis-ID</string>
     <!-- Issue #218: group SMS to every circle member with a phone number. -->
@@ -1239,7 +1240,8 @@
     <string name="tags_remove_contact_named">Tag vom Kontakt %1$s entfernen</string>
     <string name="tags_contact_vcard_uid">Kontakt-VCard-UID</string>
     <string name="tags_empty">Noch keine Tags</string>
-    <string name="tags_empty_body">Mit Tags gruppierst du Kontakte nach Thema, etwa Arbeit oder Familie.</string>
+    <string name="tags_description">Tags sind freie Bezeichnungen für Themen, die sich durch Gruppen ziehen, etwa „vegan“ oder „Buchclub“. Ein Kontakt kann beliebig viele haben.</string>
+    <string name="tags_empty_body">Tags sind freie Bezeichnungen für übergreifende Themen. Ein Kontakt kann beliebig viele haben.</string>
     <string name="tags_contacts_empty">Noch keine getaggten Kontakte</string>
 
     <!-- Custom field definitions (issue #830) -->
@@ -1327,7 +1329,8 @@
     <string name="households_role_pet">Haustier</string>
     <string name="households_role_roommate">Mitbewohner</string>
     <string name="households_empty">Noch keine Haushalte</string>
-    <string name="households_empty_body">Haushalte fassen Menschen zusammen, die zusammenleben.</string>
+    <string name="households_description">Haushalte gruppieren die Menschen und Haustiere, die sich ein Zuhause teilen. Sie ermöglichen Vorschläge für gemeinsame Adressen und eine gemeinsame Karten- und Geschenkeliste; ihre Mitglieder zählen für die Kadenz als Umgebungskontakte. Anders als ein Kreis geht es bei einem Haushalt um das Zusammenleben, nicht um eine soziale Gruppe.</string>
+    <string name="households_empty_body">Haushalte gruppieren Menschen und Haustiere, die sich ein Zuhause teilen, mit Vorschlägen für gemeinsame Adressen und einer gemeinsamen Karten- und Geschenkeliste.</string>
     <string name="households_members_empty">Noch keine Mitglieder</string>
     <string name="households_error_missing_id">Fehlende Haushalts-ID</string>
     <string name="households_suggest_relationships">Beziehungen vorschlagen</string>
@@ -2170,7 +2173,8 @@
     <string name="occasions_title">Anlässe</string>
     <string name="occasions_add_event">Neue Veranstaltung</string>
     <string name="occasions_empty">Noch keine Veranstaltungen</string>
-    <string name="occasions_empty_body">Erstelle eine, um die Gästeliste zu planen.</string>
+    <string name="occasions_description">Anlässe sind die wiederkehrenden Dinge, die du für Menschen tust, etwa eine jährliche Karte oder ein Geschenk, sowie einmalige Veranstaltungen mit Gästeliste. Aktive Verpflichtungen erzeugen automatisch Erinnerungen; Erinnerungen sind der Hinweis, kein zweiter Anlass. Um etwas bereits Geschehenes zu erfassen, nutze Aktivitäten.</string>
+    <string name="occasions_empty_body">Erstelle eine Veranstaltung, um Gäste einzuladen und RSVPs zu erfassen.</string>
     <string name="occasions_event_title">Titel</string>
     <string name="occasions_starts_at">Beginn</string>
     <string name="occasions_ends_at">Ende</string>
@@ -2181,6 +2185,7 @@
     <string name="occasions_sensitivity_private">Privat</string>
     <string name="occasions_sensitivity_secret">Geheim</string>
     <string name="occasions_time">Uhrzeit</string>
+    <string name="occasions_event_dialog_hint">Eine einmalige Veranstaltung, die du planst. Füge nach dem Speichern Gäste hinzu und halte fest, was dir jede Person gesagt hat.</string>
     <string name="occasions_create_title">Veranstaltung erstellen</string>
     <string name="occasions_edit_title">Veranstaltung bearbeiten</string>
     <string name="occasions_delete_title">Veranstaltung löschen</string>
@@ -2517,6 +2522,7 @@
     <string name="contact_skills_notes_hint">Alles, was zu diesem Eintrag sehenswert ist</string>
     <string name="contact_skills_favorite">Favorit</string>
     <string name="contact_skills_locked">Privat oder geheim – von Synchronisierung und Freigaben ausgeschlossen</string>
+    <string name="contact_personal_info_label_hint">Optionale Bezeichnung neben dem Wert, z. B. „Arbeit“ oder „gelernt 2020“.</string>
     <string name="contact_personal_info_level_none">Kein Niveau</string>
     <string name="contact_personal_info_level_beginner">Anfänger</string>
     <string name="contact_personal_info_level_average">Durchschnittlich</string>
@@ -2784,6 +2790,39 @@
     <string name="error_reason_auth_passkey_no_other_registered">Es ist kein anderer Passkey zur Verifizierung registriert</string>
     <string name="error_reason_validation_invalid_json">Ungültiges JSON</string>
     <string name="error_reason_validation_invalid_request_body">Ungültiger Anfragetext</string>
+    <string name="error_reason_import_session_not_found">Importsitzung abgelaufen oder nicht gefunden</string>
+    <string name="error_reason_import_session_expired">Importsitzung abgelaufen</string>
+    <string name="error_reason_import_endpoint_csv_vcf_only">Dieser Endpunkt ist nur für CSV- oder VCF-Importe vorgesehen</string>
+    <string name="error_reason_import_endpoint_vcf_records_only">Dieser Endpunkt ist nur für VCF- oder Datensatz-Importe vorgesehen</string>
+    <string name="error_reason_import_preview_required">Bitte erstelle zuerst eine Vorschau</string>
+    <string name="error_reason_import_file_missing">Keine Datei hochgeladen</string>
+    <string name="error_reason_import_jscontact_file_too_large">Datei zu groß. Die maximale Größe beträgt %1$d MB</string>
+    <string name="error_reason_import_file_not_jscontact">Die Datei muss eine JSON-Datei (JSContact) sein</string>
+    <string name="error_reason_csv_file_too_large">Datei zu groß. Die maximale Größe beträgt %1$d MB</string>
+    <string name="error_reason_csv_file_not_csv">Die Datei muss eine CSV-Datei sein</string>
+    <string name="error_reason_vcard_file_too_large">Datei zu groß. Die maximale Größe beträgt %1$d MB</string>
+    <string name="error_reason_vcard_file_not_vcf">Die Datei muss eine VCF-Datei sein</string>
+    <string name="error_reason_monica_session_not_found">Importsitzung abgelaufen oder nicht gefunden</string>
+    <string name="error_reason_monica_session_expired">Importsitzung abgelaufen</string>
+    <string name="error_reason_monica_token_rejected">Monica hat das API-Token abgelehnt</string>
+    <string name="error_reason_monica_url_invalid">Die Monica-URL ist ungültig</string>
+    <string name="error_reason_monica_url_private">Die Monica-URL führt auf eine private Adresse, die dieser Server blockiert</string>
+    <string name="error_reason_monica_not_monica_api">Der Server hat nicht wie eine Monica-API geantwortet – prüfe die URL</string>
+    <string name="error_reason_monica_unreachable">Monica-Dienstfehler: Die Monica-Instanz ist nicht erreichbar</string>
+    <string name="error_reason_monica_too_many_contacts">Dieses Monica-Konto hat %1$s Kontakte; der Import unterstützt höchstens %2$d</string>
+    <string name="error_reason_monica_too_many_records">Dieses Monica-Konto hat %1$s Datensätze; der Import unterstützt höchstens %2$d</string>
+    <string name="error_reason_monica_fetch_in_progress">Für diese Sitzung läuft bereits ein Abruf</string>
+    <string name="error_reason_monica_not_fetched">Die Monica-Daten wurden noch nicht abgerufen</string>
+    <string name="error_reason_bundle_session_not_found">Importsitzung abgelaufen oder nicht gefunden</string>
+    <string name="error_reason_bundle_session_expired">Importsitzung abgelaufen</string>
+    <string name="error_reason_bundle_upload_missing">Keine Datei hochgeladen</string>
+    <string name="error_reason_bundle_size">Das Paket ist leer oder größer als das Limit von 64 MiB</string>
+    <string name="error_reason_bundle_upload_unreadable">Der Upload konnte nicht gelesen werden</string>
+    <string name="error_reason_bundle_not_bundle">Diese Datei ist kein Mycorrhizal-Kontopaket</string>
+    <string name="error_reason_bundle_too_many_contacts">Dieses Paket enthält mehr Kontakte, als der Import unterstützt</string>
+    <string name="error_reason_bundle_too_many_records">Dieses Paket enthält mehr Datensätze, als der Import unterstützt</string>
+    <string name="error_reason_bundle_import_in_progress">Dieser Import wird bereits vorbereitet</string>
+    <string name="error_reason_bundle_not_prepared">Das Kontopaket ist noch nicht vorbereitet</string>
     <string name="error_reason_auth_required">Authentifizierung erforderlich</string>
     <string name="error_reason_auth_registration_disabled">Die Registrierung ist deaktiviert.</string>
     <string name="error_reason_auth_user_id_invalid">Ungültige Benutzer-ID</string>
