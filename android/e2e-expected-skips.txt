@@ -19,4 +19,5 @@
 # emulator belong here.
 
 com.mycorrhizal.crm.e2e.LocalOnlyModeE2eTest#embeddedServerStartsServesHealthAndDeletesOverTheSocket | embedded Go server is arm64-v8a only (ADR 0028); the x86_64 CI emulator has no packaged binary. Covered by the manual real-arm64 step in docs/development/release-gates.md (issue #1339).
+com.mycorrhizal.crm.e2e.LocalOnlyModeE2eTest#contactTrashRoundTripsOverTheSocket | same arm64-only embedded server (ADR 0028); needs the manual real-arm64 run in docs/development/release-gates.md (issue #1339).
 com.mycorrhizal.crm.e2e.LocalBundleRoundTripE2eTest#exportDeleteLocalDataAndRestoreBringsTheDataBack | same arm64-only embedded server (ADR 0028); needs the manual real-arm64 run in docs/development/release-gates.md (issue #1339).

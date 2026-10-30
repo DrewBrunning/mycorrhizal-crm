@@ -615,11 +615,20 @@ paths:
                 $ref: "#/components/schemas/Error"
           description: The client is below the configured MIN_CLIENT_VERSION floor (CLIENT_NOT_SUPPORTED).
         "429":
+          x-lint-ignore: [error-envelope]
+          description: >
+            The account is temporarily locked after repeated failures. Two body
+            shapes exist. Today (through v1.x) the body is the flat shape
+            `AccountLockedFlat`, which is **deprecated** and removed in v2.0.0
+            (issues #2107, #2108); it is announced by RFC 8594 `Deprecation`,
+            `Sunset` and `Link` response headers. From v2.0.0 the body is the
+            standard `Error` envelope with `error.code` `ACCOUNT_LOCKED`
+            (`AccountLockedEnvelope`). Clients must accept both: read `retry_after`
+            and `retry_after_at` from the top level or from `error.details`.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-          description: Account temporarily locked after repeated failures.
+                $ref: "#/components/schemas/AccountLocked"
   /login/2fa:
     post:
       summary: Complete login with a TOTP or recovery code
@@ -671,11 +680,20 @@ paths:
                 $ref: "#/components/schemas/Error"
           description: The client is below the configured MIN_CLIENT_VERSION floor (CLIENT_NOT_SUPPORTED).
         "429":
+          x-lint-ignore: [error-envelope]
+          description: >
+            The account is temporarily locked after repeated failures. Two body
+            shapes exist. Today (through v1.x) the body is the flat shape
+            `AccountLockedFlat`, which is **deprecated** and removed in v2.0.0
+            (issues #2107, #2108); it is announced by RFC 8594 `Deprecation`,
+            `Sunset` and `Link` response headers. From v2.0.0 the body is the
+            standard `Error` envelope with `error.code` `ACCOUNT_LOCKED`
+            (`AccountLockedEnvelope`). Clients must accept both: read `retry_after`
+            and `retry_after_at` from the top level or from `error.details`.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-          description: Account temporarily locked after repeated failed codes.
+                $ref: "#/components/schemas/AccountLocked"
   /logout:
     post:
       summary: Log out (clears session cookies)
@@ -948,11 +966,20 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "429":
+          x-lint-ignore: [error-envelope]
+          description: >
+            The account is temporarily locked after repeated failures. Two body
+            shapes exist. Today (through v1.x) the body is the flat shape
+            `AccountLockedFlat`, which is **deprecated** and removed in v2.0.0
+            (issues #2107, #2108); it is announced by RFC 8594 `Deprecation`,
+            `Sunset` and `Link` response headers. From v2.0.0 the body is the
+            standard `Error` envelope with `error.code` `ACCOUNT_LOCKED`
+            (`AccountLockedEnvelope`). Clients must accept both: read `retry_after`
+            and `retry_after_at` from the top level or from `error.details`.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-          description: Too many wrong enrollment proofs; enrollment is temporarily locked.
+                $ref: "#/components/schemas/AccountLocked"
         "409":
           description: 2FA is already enabled.
           content:
@@ -1096,11 +1123,20 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "429":
+          x-lint-ignore: [error-envelope]
+          description: >
+            The account is temporarily locked after repeated failures. Two body
+            shapes exist. Today (through v1.x) the body is the flat shape
+            `AccountLockedFlat`, which is **deprecated** and removed in v2.0.0
+            (issues #2107, #2108); it is announced by RFC 8594 `Deprecation`,
+            `Sunset` and `Link` response headers. From v2.0.0 the body is the
+            standard `Error` envelope with `error.code` `ACCOUNT_LOCKED`
+            (`AccountLockedEnvelope`). Clients must accept both: read `retry_after`
+            and `retry_after_at` from the top level or from `error.details`.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-          description: Account temporarily locked after repeated failures.
+                $ref: "#/components/schemas/AccountLocked"
   /webauthn/register/begin:
     post:
       summary: Begin passkey enrollment
@@ -1155,11 +1191,20 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "429":
+          x-lint-ignore: [error-envelope]
+          description: >
+            The account is temporarily locked after repeated failures. Two body
+            shapes exist. Today (through v1.x) the body is the flat shape
+            `AccountLockedFlat`, which is **deprecated** and removed in v2.0.0
+            (issues #2107, #2108); it is announced by RFC 8594 `Deprecation`,
+            `Sunset` and `Link` response headers. From v2.0.0 the body is the
+            standard `Error` envelope with `error.code` `ACCOUNT_LOCKED`
+            (`AccountLockedEnvelope`). Clients must accept both: read `retry_after`
+            and `retry_after_at` from the top level or from `error.details`.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-          description: Too many wrong enrollment proofs; enrollment is temporarily locked.
+                $ref: "#/components/schemas/AccountLocked"
   /webauthn/register/finish:
     post:
       summary: Complete passkey enrollment
@@ -1445,11 +1490,20 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "429":
+          x-lint-ignore: [error-envelope]
+          description: >
+            The account is temporarily locked after repeated failures. Two body
+            shapes exist. Today (through v1.x) the body is the flat shape
+            `AccountLockedFlat`, which is **deprecated** and removed in v2.0.0
+            (issues #2107, #2108); it is announced by RFC 8594 `Deprecation`,
+            `Sunset` and `Link` response headers. From v2.0.0 the body is the
+            standard `Error` envelope with `error.code` `ACCOUNT_LOCKED`
+            (`AccountLockedEnvelope`). Clients must accept both: read `retry_after`
+            and `retry_after_at` from the top level or from `error.details`.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-          description: Account temporarily locked after repeated wrong proofs (issue #1352).
+                $ref: "#/components/schemas/AccountLocked"
         "401":
           description: Not authenticated.
           content:
@@ -14201,6 +14255,48 @@ components:
         label: { type: string, description: The formatted postal address. }
         coordinates: { type: string, description: "RFC 5870 geo: URI, e.g. geo:51.5034,-0.1276." }
     # --- Common ---
+    AccountLocked:
+      description: The account-lockout 429 body, in either shape (see the response description).
+      oneOf:
+        - $ref: "#/components/schemas/AccountLockedFlat"
+        - $ref: "#/components/schemas/AccountLockedEnvelope"
+    AccountLockedFlat:
+      type: object
+      deprecated: true
+      description: >
+        **Deprecated; removed in v2.0.0** (issues #2107, #2108, ADR 0038
+        amendment). The flat account-lockout 429 body, which is not the error
+        envelope: `error` is a string. Replaced by `AccountLockedEnvelope`.
+      required: [error, message, retry_after, retry_after_at]
+      properties:
+        error: { type: string, example: Account temporarily locked }
+        message: { type: string }
+        retry_after: { type: integer, description: Seconds until the lockout ends. }
+        retry_after_at: { type: string, format: date-time }
+        reason_code: { type: string, example: auth_account_locked }
+        reason_params:
+          type: object
+          additionalProperties: true
+          description: "`{retry_after}` (seconds)."
+    AccountLockedEnvelope:
+      description: >
+        The v2.0.0 account-lockout 429 body: the standard `Error` envelope with
+        `error.code` `ACCOUNT_LOCKED`, `error.reason_code` `auth_account_locked`,
+        `error.reason_params` `{retry_after}` and `error.details`
+        `{retry_after, retry_after_at}`. Not yet emitted (v2.0.0, issue #2108).
+      allOf:
+        - $ref: "#/components/schemas/Error"
+        - type: object
+          properties:
+            error:
+              type: object
+              properties:
+                code: { type: string, enum: [ACCOUNT_LOCKED] }
+                details:
+                  type: object
+                  properties:
+                    retry_after: { type: integer }
+                    retry_after_at: { type: string, format: date-time }
     Error:
       type: object
       description: The standard error envelope produced by apperrors.AbortWithError.

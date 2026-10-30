@@ -44,6 +44,7 @@ The name comes from mycorrhiza, the symbiotic network fungi form with plant root
 - [Observability: logs, correlation IDs, and the system-event timeline](operations/observability.md)
 - [FAQ & troubleshooting](faq.md)
 - [Security checklist (OWASP ASVS L2 + API Security Top 10)](security/asvs-l2.md)
+- [Standing shares security review (ADR 0042, #1998)](security/standing-shares-review.md)
 - [Deployment security baseline (operator security boundary)](security/deployment-baseline.md)
 - [Incident response & credential rotation runbook](security/incident-response.md)
 - [Security stewardship cadence — rotation intervals, key custody, and periodic reviews (#955, #956)](security/security-cadence.md)

@@ -90,3 +90,22 @@ raising an allowlist count.
 `reasonRegistry` starts with one test-only code, `common_test_only`, removed in
 #2100 once real codes exist. `ReasonCodes()` and `ReasonSpecFor()` feed the
 client drift tests.
+
+## Amendment: v2.0.0 target shape for the non-envelope error bodies (issue #2107)
+
+Two error bodies bypass the standard envelope. Replacing them is a breaking
+response-shape change (`error` goes from a string to an object), so it ships in
+v2.0.0 (issue #2108) after the MAINT-02 deprecation window. This amendment records
+the target only; **today's server behaviour is unchanged.**
+
+| Body today | Target in v2.0.0 |
+|---|---|
+| Account-lockout 429 (`abortLocked`; password login, `/login/2fa`, passkey login, proof-gated routes): `{"error": "Account temporarily locked", "message", "retry_after", "retry_after_at", "reason_code", "reason_params"}` | Envelope: `error.code: "ACCOUNT_LOCKED"` (a new error code), `error.reason_code: "auth_account_locked"`, `error.reason_params: {retry_after}`, `error.details: {retry_after, retry_after_at}` |
+| OIDC `failed to generate state` / `failed to generate nonce` (`oidc_controller.go`, flat `{"error": "<string>"}`) | `apperrors.ErrInternal(...)` through `AbortWithError` (the standard 500 envelope) |
+
+Until v2.0.0 the flat lockout body is marked `deprecated: true` in `openapi.yaml`, its
+responses carry the RFC 8594 `Deprecation`/`Sunset`/`Link` headers, and the register
+row `flat-lockout-429-body` in `docs/deprecations.md` tracks the removal. Clients
+must read `retry_after`/`retry_after_at` from either the top level or `error.details`
+and resolve `reason_code` from either place (web `auth.ts`, Android `ApiClient`), so
+a deployed client keeps working across the switch.

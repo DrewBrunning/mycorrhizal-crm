@@ -44,13 +44,16 @@ data class SelfContactRequest(@Json(name = "vcard_uid") val vcardUid: String?)
  * also the shape of the flat account-lockout 429 (`{ error, message, retry_after,
  * retry_after_at }`), which since issue #2101 additionally carries a top-level
  * `reason_code` / `reason_params` (ADR 0038) that ApiClient resolves like the
- * error envelope's.
+ * error envelope's. The flat shape is deprecated for removal in v2.0.0
+ * (issues #2107, #2108); [retryAfter] is its top-level `retry_after`, which
+ * ApiClient uses when the reason carries no `retry_after` param.
  */
 @JsonClass(generateAdapter = true)
 data class MessageResponse(
     val message: String? = null,
     @Json(name = "reason_code") val reasonCode: String? = null,
-    @Json(name = "reason_params") val reasonParams: Map<String, Any?>? = null
+    @Json(name = "reason_params") val reasonParams: Map<String, Any?>? = null,
+    @Json(name = "retry_after") val retryAfter: Double? = null
 )
 
 /**

@@ -47,6 +47,7 @@ per the policy.
 | id | surface | summary | deprecated-in | deprecated-on | replacement | earliest-removal | not-before | status | tracking |
 |---|---|---|---|---|---|---|---|---|---|
 | preference-category-hobby | api | `Preference.category: "hobby"` on the preferences API (create/update/read keep working, with RFC 8594 headers) | v1.5.0 | 2026-10-23 | `Card.personalInfo` with `kind: hobby` on the contact record; CRM metadata in `crm.personalInfoMeta` | v2.0 | 2027-01-21 | deprecated | #1738, #1739 |
+| flat-lockout-429-body | api | The flat account-lockout `429` body (`{error: "Account temporarily locked", message, retry_after, retry_after_at, reason_code, reason_params}`) on password login, `/login/2fa`, passkey login and proof-gated routes, and the flat OIDC `failed to generate state`/`nonce` `500` bodies (kept as-is, with RFC 8594 headers on the lockout) | v1.6.0 | 2026-10-29 | The standard error envelope: lockout becomes `code: ACCOUNT_LOCKED` with `reason_code: auth_account_locked`, `reason_params: {retry_after}`, `details: {retry_after, retry_after_at}`; OIDC becomes the `INTERNAL_ERROR` envelope (ADR 0038 amendment). Clients read both shapes from v1.6.0 | v2.0 | 2027-01-27 | deprecated | #2107, #2108 |
 
 <!-- deprecations:end -->
 
