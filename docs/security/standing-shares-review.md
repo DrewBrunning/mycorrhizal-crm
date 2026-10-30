@@ -272,8 +272,9 @@ the pointer in `threat-model.md` (Multi-user instances) only.
 ## 9. Residual risks and review follow-ups
 
 - **Recall.** Data a recipient has seen cannot be recalled. Accepted and disclosed (ADR 0042 decision 10).
-- **Live circle membership** discloses newly added members' names without a prompt (ADR 0042 open question 1).
-- **Whole-section re-confirmation** withholds more than the reclassified item (open question 3). Fail-closed.
+- **Live circle membership** discloses newly added members' names without a prompt. The maintainer accepted this risk (live only, names only, capped, no frozen option); the mitigations are the member-count display and the circle UI "shared with N people" warning.
+- **Whole-section re-confirmation** withholds more than the reclassified item (settled by the maintainer). Fail-closed.
+- **Block scope.** A block covers share grants in the first implementation. Until the committed v1.7.0 follow-up extends it to one-time `ContactShare`s, a blocked sender can still send one-time shares, which expose only a frozen copy the recipient may decline.
 - **Directory exposure** (P13) means any user can be named as a recipient; acceptance, blocking and caps bound the harm.
 - **Notification channels** are third parties; payloads carry no content. The general send path is its own review item.
 - **Attachments and images** are deliberately out of v1; adding them is a new review (path traversal, MIME, EXIF

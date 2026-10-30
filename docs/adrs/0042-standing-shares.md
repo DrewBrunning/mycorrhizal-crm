@@ -89,7 +89,7 @@ withheld from the recipient, so a later reclassification back to `normal` does n
 owner clears it with `POST /share-grants/{id}/reconfirm` after seeing what the section currently contains; the
 action is audited. The marker is set at the single persistence point for each sensitivity-bearing item (not in
 controllers), so CardDAV pulls, imports and merges that flip sensitivity are covered. Withholding the whole section
-is deliberately coarse and fail-closed; see Open question 3.
+is deliberately coarse and fail-closed; the maintainer settled this granularity (no per-item tracking).
 
 ### 6. Normal sensitivity only, filtered in the query
 
@@ -135,7 +135,7 @@ from that sender (`declined`), and `DELETE /share-grants/blocks/{user_id}` unblo
 that sender is accepted by the API and stored with the internal status `blocked`, which the sender sees as
 `pending`; the recipient sees nothing and is not notified. The sender therefore cannot use create to learn they are
 blocked. A blocked grant is reaped like any pending grant at the pending TTL. Per-sender caps on outstanding pending
-grants apply regardless (decision 11). Whether blocks should also gate one-time `ContactShare` is Open question 4.
+grants apply regardless (decision 11). The maintainer settled that a block also stops one-time `ContactShare`s from that sender; that ships as a committed v1.7.0 follow-up issue, not in this ADR's first implementation, so the one-time path is unchanged until then.
 
 ### 9. Circle grants are live membership
 
@@ -148,8 +148,7 @@ snapshot, contradicting "no payload snapshot"), it drifts from the circle the ow
 **Risk, stated plainly:** adding a contact to a shared circle discloses that person's name to the recipient with no
 further prompt, and `Contact` has no contact-level sensitivity to exclude anyone. Mitigations: the grant exposes
 names only (a member's details need their own contact grant); the circle UI shows "shared with N people" wherever
-members are added; and the owner's "Shared by me" row shows the live member count. Open question 1 asks whether a
-frozen list should be offered as an option.
+members are added; and the owner's "Shared by me" row shows the live member count. The maintainer settled this: live membership, names only and capped, with this risk accepted and no frozen-list option.
 
 ### 10. Lifecycle: effective immediately, not recallable
 
@@ -196,7 +195,7 @@ frozen list should be offered as an option.
   contact name, note text or label, because push gateways and SMTP relays are third parties.
 - **Access history.** The owner cannot see when or whether the recipient read the entity: no per-read audit and no
   `last_read_at` in this version. A read is a `GET`, and the codebase has no state-changing `GET`s (ASVS 4.2.2);
-  tracking reads would also turn a sharing feature into recipient surveillance. See Open question 2.
+  tracking reads would also turn a sharing feature into recipient surveillance. The maintainer settled this: no owner-visible access history, and the read path stays read-only.
 - **Rate limits.** Create is subject to a cap on outstanding pending grants per sender and per sender-recipient pair
   (the per-user quota mechanism, `backend/services/user_quota.go`).
 
@@ -301,21 +300,19 @@ symmetric down migration test and a populated-database upgrade check.
 - Implementation is split backend first, then web, then Android, each tied to #1998. A candidate issue list is in the
   PR that lands this ADR.
 
+## Settled by the maintainer
+
+1. **Circle membership is live**, names only and capped, with the disclosure risk of decision 9 accepted. There is no
+   frozen-list option.
+2. **No owner access history.** The owner sees no per-read audit and no `last_read_at`; the read path stays read-only.
+3. **Re-confirmation withholds the whole section** until the owner re-confirms (decision 5). No per-item tracking.
+4. **A block also stops one-time `ContactShare`s from that sender.** This is a committed v1.7.0 follow-up issue, not
+   part of the first implementation of this ADR.
+
 ## Open questions for the maintainer
 
-1. **Circle membership: live (recommended) or frozen.** Live is simplest and matches "remove from circle stops the
-   share", but it discloses newly added members' names without a prompt. Alternative: a per-grant `membership: live |
-   frozen` choice, where frozen needs a member-id list stored on the grant (a deliberate exception to "no snapshot",
-   ids only).
-2. **Owner visibility of recipient access.** Recommended none. Alternative: a coarse `last_read_at` (day precision)
-   updated by a write on the first read per day. It answers "did they ever look?" but is recipient monitoring and
-   makes the read path write.
-3. **Re-confirmation granularity.** Recommended: withhold the whole sensitivity-bearing section until the owner
-   re-confirms it. Alternative: track per-item keys (address id, edge id, field-value id) so only the reclassified item
-   needs re-confirmation. Per-item is friendlier but needs a stable id on every sensitivity-bearing item type and a
-   second table or JSON map.
-4. **Should blocks also gate one-time `ContactShare`?** Recommended yes for consistency, but it changes the one-time
-   path's behaviour, which this ADR otherwise leaves untouched. It can ship as a small follow-up.
-5. **Pending TTL of 30 days and the label shown before acceptance.** Both are defaults chosen here; the label
-   discloses a contact's display name to a possibly mis-addressed recipient. A stricter option is to show only
-   "A contact" until accepted.
+1. **Pending TTL and the pre-acceptance label.** Not yet decided. Recommendation: keep the 30-day pending TTL (long
+   enough to answer, short enough that stale offers do not linger) and keep showing the label (contact display name,
+   circle name, activity title; a note shows only "Note"), because a person cannot make an informed accept without it.
+   The cost is that a mis-addressed recipient sees a contact's display name. The stricter option is "A contact" until
+   accepted.
