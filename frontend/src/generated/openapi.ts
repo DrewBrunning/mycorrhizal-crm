@@ -61,6 +61,25 @@ export type AccountBundlePlan = {
   tags?: Record<string, unknown>[];
 };
 
+export type AccountLockedEnvelope = Error & {
+  error?: {
+    code?: 'ACCOUNT_LOCKED';
+    details?: {
+      retry_after?: number;
+      retry_after_at?: string;
+    };
+  };
+};
+
+export type AccountLockedFlat = {
+  error: string;
+  message: string;
+  reason_code?: string;
+  reason_params?: Record<string, unknown>;
+  retry_after: number;
+  retry_after_at: string;
+};
+
 export type Activity = {
   CreatedAt: string;
   DeletedAt: string | null;

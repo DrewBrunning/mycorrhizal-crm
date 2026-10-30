@@ -67,6 +67,11 @@ func TestSignInReasonCodes_LockoutBodyIsAdditive(t *testing.T) {
 		require.True(t, ok, "reason_params must be an object: %s", w.Body.String())
 		assert.Equal(t, body["retry_after"], params["retry_after"], "param mirrors retry_after")
 		assert.Len(t, params, 1)
+		// Issue #2107 (MAINT-02): the flat shape is deprecated for v2.0.0, announced
+		// by the RFC 8594 headers (docs/deprecation-policy.md) with the body unchanged.
+		assert.Equal(t, "true", w.Header().Get("Deprecation"))
+		assert.Equal(t, flatLockoutDeprecationSunset, w.Header().Get("Sunset"))
+		assert.Contains(t, w.Header().Get("Link"), `rel="deprecation"`)
 	}
 
 	t.Run("password login", func(t *testing.T) {
