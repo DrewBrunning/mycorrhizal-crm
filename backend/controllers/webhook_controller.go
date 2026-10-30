@@ -86,7 +86,7 @@ func CreateWebhook(c *gin.Context) {
 		return
 	}
 	if count >= maxWebhooksPerUser {
-		apperrors.AbortWithError(c, apperrors.ErrConflict("maximum of 20 webhooks per user reached"))
+		apperrors.AbortWithError(c, apperrors.ErrConflict("maximum of 20 webhooks per user reached").WithReason(apperrors.ReasonIntegrationWebhookLimit, nil))
 		return
 	}
 
@@ -233,7 +233,7 @@ func findWebhook(c *gin.Context, db *gorm.DB, userID uint) (models.Webhook, bool
 	idParam := c.Param("id")
 	id, err := strconv.ParseUint(idParam, 10, 64)
 	if err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("id", "must be a positive integer"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("id", "must be a positive integer").WithReason(apperrors.ReasonIntegrationIdInvalid, nil))
 		return models.Webhook{}, false
 	}
 

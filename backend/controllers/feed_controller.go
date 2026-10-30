@@ -108,7 +108,7 @@ func CreateFeed(cfg *config.Config) gin.HandlerFunc {
 		}
 		if active >= models.MaxActiveFeedsPerUser {
 			apperrors.AbortWithError(c, apperrors.ErrBusinessLogic(
-				fmt.Sprintf("feed limit reached (maximum %d active feeds)", models.MaxActiveFeedsPerUser)))
+				fmt.Sprintf("feed limit reached (maximum %d active feeds)", models.MaxActiveFeedsPerUser)).WithReason(apperrors.ReasonFeedLimitReached, map[string]any{"max": models.MaxActiveFeedsPerUser}))
 			return
 		}
 
@@ -276,7 +276,7 @@ func feedEntityID(input *models.FeedInput) string {
 func resolveFeedEntity(c *gin.Context, db *gorm.DB, userID uint, input *models.FeedInput) bool {
 	if input.Kind == models.FeedKindAggregate {
 		if input.EntityID != "" {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("entity_id", "must be empty for an aggregate feed"))
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("entity_id", "must be empty for an aggregate feed").WithReason(apperrors.ReasonFeedEntityIdNotAllowed, nil))
 			return false
 		}
 		return true
