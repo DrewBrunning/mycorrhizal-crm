@@ -70,6 +70,7 @@ export type Activity = {
   date: string;
   deleted?: boolean;
   description: string;
+  end_date?: string;
   external_ref?: string;
   location: string;
   revision: number;
@@ -82,6 +83,7 @@ export type ActivityInput = {
   contact_ids?: number[];
   date: string;
   description?: string;
+  end_date?: string | null;
   external_ref?: string;
   location?: string;
   title: string;

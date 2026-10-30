@@ -46,8 +46,15 @@ type Activity struct {
 	// picked day at 00:00:00Z and every calendar-day derivation reads the UTC
 	// date of the stored value with no zone conversion (ADR 0015 category 2,
 	// issue #1823). The wire shape stays an RFC 3339 timestamp.
-	Date     time.Time `json:"date" validate:"required"`
-	Contacts []Contact `gorm:"many2many:activity_contacts;foreignKey:ID;joinForeignKey:ActivityID;References:ID;joinReferences:ContactID" json:"contacts,omitempty"`
+	Date time.Time `json:"date" validate:"required"`
+	// EndDate optionally turns Date (the start/anchor) into an inclusive
+	// multi-day range (issue #2006). Same calendar-day semantics and RFC 3339
+	// wire shape as Date; nil means a single-day activity and the key is
+	// omitted. It is never an interaction date: reminders, occasions and
+	// cadence read Date only, so an end date cannot create a second
+	// qualifying interaction. Must not precede Date (ActivityEndBeforeStart).
+	EndDate  *time.Time `gorm:"column:end_date" json:"end_date,omitempty"`
+	Contacts []Contact  `gorm:"many2many:activity_contacts;foreignKey:ID;joinForeignKey:ActivityID;References:ID;joinReferences:ContactID" json:"contacts,omitempty"`
 
 	// Type is Interaction's classifier, conventional/unvalidated —
 	// see the InteractionType* constants above.
@@ -88,6 +95,20 @@ type Activity struct {
 	// deleted_at. gorm:"-" keeps it out of the schema; it exists purely so an
 	// incremental sync client can apply the deletion.
 	Deleted bool `gorm:"-" json:"deleted,omitempty"`
+}
+
+// ActivityEndBeforeStart reports whether end names a calendar day before
+// start's. Both are compared as the UTC date of the value (ADR 0015 category
+// 2, no zone conversion); a nil end never precedes. Equal days (a zero-length
+// range) are valid.
+func ActivityEndBeforeStart(start time.Time, end *time.Time) bool {
+	if end == nil {
+		return false
+	}
+	s, e := start.UTC(), end.UTC()
+	sd := time.Date(s.Year(), s.Month(), s.Day(), 0, 0, 0, 0, time.UTC)
+	ed := time.Date(e.Year(), e.Month(), e.Day(), 0, 0, 0, 0, time.UTC)
+	return ed.Before(sd)
 }
 
 // AfterDelete advances updated_at on a soft delete so T17 change feeds see

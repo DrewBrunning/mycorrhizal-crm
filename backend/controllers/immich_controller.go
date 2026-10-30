@@ -27,24 +27,24 @@ import (
 func abortImmichServiceError(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, services.ErrImmichUnauthorized):
-		apperrors.AbortWithError(c, apperrors.ErrValidation("Immich API key is invalid, expired, or not configured").WithError(err))
+		apperrors.AbortWithError(c, apperrors.ErrValidation("Immich API key is invalid, expired, or not configured").WithReason(apperrors.ReasonImmichApiKeyInvalid, nil).WithError(err))
 	case errors.Is(err, services.ErrImmichNotFound):
 		apperrors.AbortWithError(c, apperrors.ErrNotFound("Immich person").WithError(err))
 	case errors.Is(err, services.ErrImmichInvalidURL):
-		apperrors.AbortWithError(c, apperrors.ErrValidation("Immich base URL is invalid"))
+		apperrors.AbortWithError(c, apperrors.ErrValidation("Immich base URL is invalid").WithReason(apperrors.ReasonImmichBaseUrlInvalid, nil))
 	case errors.Is(err, services.ErrImmichRedirect):
-		apperrors.AbortWithError(c, apperrors.ErrExternal("Immich", "Immich answered with a redirect — check the base URL (http vs https, path).").WithError(err))
+		apperrors.AbortWithError(c, apperrors.ErrExternal("Immich", "Immich answered with a redirect — check the base URL (http vs https, path).").WithReason(apperrors.ReasonImmichRedirect, nil).WithError(err))
 	case errors.Is(err, services.ErrImmichRequestFailed):
 		status := "an unexpected status"
 		var reqErr *services.ImmichRequestError
 		if errors.As(err, &reqErr) {
 			status = reqErr.Status
 		}
-		apperrors.AbortWithError(c, apperrors.ErrExternal("Immich", fmt.Sprintf("Immich returned an error (%s). The instance is reachable — this request itself failed.", status)).WithError(err))
+		apperrors.AbortWithError(c, apperrors.ErrExternal("Immich", fmt.Sprintf("Immich returned an error (%s). The instance is reachable — this request itself failed.", status)).WithReason(apperrors.ReasonImmichUpstreamError, map[string]any{"status": status}).WithError(err))
 	case errors.Is(err, services.ErrImmichInvalidData):
-		apperrors.AbortWithError(c, apperrors.ErrExternal("Immich", "Immich returned a response that could not be parsed. The API may have changed — check Immich version compatibility.").WithError(err))
+		apperrors.AbortWithError(c, apperrors.ErrExternal("Immich", "Immich returned a response that could not be parsed. The API may have changed — check Immich version compatibility.").WithReason(apperrors.ReasonImmichResponseUnparseable, nil).WithError(err))
 	default:
-		apperrors.AbortWithError(c, apperrors.ErrExternal("Immich", "Could not reach Immich. Is the instance up?").WithError(err))
+		apperrors.AbortWithError(c, apperrors.ErrExternal("Immich", "Could not reach Immich. Is the instance up?").WithReason(apperrors.ReasonImmichUnreachable, nil).WithError(err))
 	}
 }
 
@@ -101,7 +101,7 @@ func SaveImmichConfig(c *gin.Context) {
 	}
 	// A create with no API key is a validation error ("API key required").
 	if existing == nil && strings.TrimSpace(input.APIKey) == "" {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("api_key", "an API key is required when first connecting Immich"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("api_key", "an API key is required when first connecting Immich").WithReason(apperrors.ReasonImmichApiKeyRequired, nil))
 		return
 	}
 
@@ -216,11 +216,11 @@ func LinkImmichContact(c *gin.Context) {
 		return
 	}
 	if verrs := middleware.ValidateStruct(&input); len(verrs) > 0 {
-		apperrors.AbortWithError(c, apperrors.ErrValidationFields(verrs))
+		apperrors.AbortWithError(c, apperrors.ErrValidationFields(verrs).WithReason(apperrors.ReasonIntegrationRequestInvalid, nil))
 		return
 	}
 	if strings.TrimSpace(input.PersonID) == "" {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("person_id", "person_id is required"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("person_id", "person_id is required").WithReason(apperrors.ReasonImmichPersonIdRequired, nil))
 		return
 	}
 
@@ -391,7 +391,7 @@ func writeImmichImage(c *gin.Context, body []byte, contentType string) {
 	lowerContentType := strings.ToLower(contentType)
 	if strings.HasPrefix(lowerContentType, "image/svg") {
 		logger.FromContext(c).Warn().Str("content_type", contentType).Msg("Rejected SVG Immich image (XSS risk)")
-		apperrors.AbortWithError(c, apperrors.ErrValidation("SVG images are not supported by the image proxy"))
+		apperrors.AbortWithError(c, apperrors.ErrValidation("SVG images are not supported by the image proxy").WithReason(apperrors.ReasonImmichSvgUnsupported, nil))
 		return
 	}
 

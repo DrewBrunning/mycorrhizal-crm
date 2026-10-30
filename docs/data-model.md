@@ -23,6 +23,8 @@ You can **archive** contacts to hide them from default search results and the da
 
 Use Activities to document events or interactions with one or more contacts (eg.dinner, phone call or meeting). Each activity has a title, date, and can optionally include a description, location, and linked contacts. If an activity has at least two linked contacts it appears in the network graph.
 
+A trip, conference or visit that spans several days is one activity with an optional **end date**: the activity's date is its first day and the end date its last day (inclusive), shown as a range such as "12-15 May". The end date can never be before the start date, and it can be left out or cleared at any time. Reminders, cadence and occasions keep using the start date, so a multi-day activity counts as a single interaction. Calendar sync imports a multi-day all-day event as one ranged activity, and the CalDAV feed serves it as an all-day event; the CSV export has an **End Date** column and the account backup carries the end date.
+
 Activities appear on each linked contact's detail page in the **Timeline** tab, most recent activities show first.
 
 The global **Activities** page lists every activity across all contacts and offers searching and a date range filter.

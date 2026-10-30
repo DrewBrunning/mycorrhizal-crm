@@ -32,6 +32,7 @@ import { useGraph } from './hooks/useGraph';
 import { useRecordConflict } from './hooks/useRecordConflict';
 import { dropStaleCircleFilter, loadNetworkFilters, saveNetworkFilters } from './networkFilters';
 import type { GraphNode } from './types/graph';
+import { activityDay, activityEndForUpdate, endDateFieldError } from './utils/activityRange';
 import { computeFilteredGraphData } from './utils/networkGraphData';
 
 export default function NetworkPage() {
@@ -68,8 +69,10 @@ export default function NetworkPage() {
     activityDescription?: string;
     activityLocation?: string;
     activityDate?: string;
+    activityEndDate?: string;
     activityContacts?: Contact[];
   }>({});
+  const [endDateError, setEndDateError] = useState('');
   const [allContacts, setAllContacts] = useState<Contact[]>([]);
 
   // Persist the consolidated filter state to localStorage
@@ -162,12 +165,14 @@ export default function NetworkPage() {
         const all = await getAllContacts({ limit: 1000 });
         setAllContacts(all || []);
       }
+      setEndDateError('');
       setEditValues({
         activityTitle: activity.title || '',
         activityDescription: activity.description || '',
         activityLocation: activity.location || '',
         // Stored value (saved at 00:00Z), so UTC date is right here; unlike the "today" defaults, see utils/localDate.ts (#1727).
         activityDate: activity.date ? new Date(activity.date).toISOString().split('T')[0] : '',
+        activityEndDate: activityDay(activity.end_date),
         activityContacts: activity.contacts || [],
       });
     } catch (err) {
@@ -192,6 +197,7 @@ export default function NetworkPage() {
           date: editValues.activityDate
             ? new Date(editValues.activityDate).toISOString()
             : new Date().toISOString(),
+          end_date: activityEndForUpdate(editValues.activityEndDate),
           contact_ids: editValues.activityContacts?.map((c) => c.ID) || [],
         },
         editingActivity.revision,
@@ -199,6 +205,11 @@ export default function NetworkPage() {
       handleActivityEditClose();
     } catch (err) {
       if (handleConflict(err)) return;
+      const fieldError = endDateFieldError(err);
+      if (fieldError) {
+        setEndDateError(fieldError);
+        return;
+      }
       console.error('Failed to update activity:', err);
     }
   };
@@ -439,8 +450,12 @@ export default function NetworkPage() {
           onDelete={() => void handleActivityDelete()}
           type="activity"
           values={editValues}
-          onChange={setEditValues}
+          onChange={(next) => {
+            setEditValues(next);
+            setEndDateError('');
+          }}
           allContacts={allContacts}
+          activityEndDateError={endDateError}
         />
       )}
     </Box>

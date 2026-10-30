@@ -105,6 +105,7 @@ func TestCreateContactSubscriptionRejectsInvalidURL(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assertAppErrorResponse(t, w, http.StatusBadRequest, apperrors.ErrCodeInvalidInput, "url")
+	requireReason(t, w, 400, "contact_subscription_url_scheme_invalid")
 	var stored int64
 	require.NoError(t, db.Model(&models.ContactSubscription{}).Where("user_id = ?", user.ID).Count(&stored).Error)
 	assert.Zero(t, stored, "a rejected create must not persist a subscription")
@@ -130,6 +131,7 @@ func TestCreateContactSubscriptionLimit(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assertAppErrorResponse(t, w, http.StatusConflict, apperrors.ErrCodeConflict, "")
+	requireReason(t, w, 409, "contact_subscription_limit")
 	var stored int64
 	require.NoError(t, db.Model(&models.ContactSubscription{}).Where("user_id = ?", user.ID).Count(&stored).Error)
 	assert.EqualValues(t, maxContactSubscriptionsPerUser, stored, "the over-limit create must not add a row")
@@ -582,6 +584,7 @@ func TestFindContactSubscription_NonNumericID_InvalidInput(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assertAppErrorResponse(t, w, http.StatusBadRequest, apperrors.ErrCodeInvalidInput, "id")
+	requireReason(t, w, 400, "integration_id_invalid")
 }
 
 // TestUpdateContactSubscription_ClearPassword exercises UpdateContactSubscription's
@@ -673,6 +676,7 @@ func TestUpdateContactSubscription_RejectsInvalidURL(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assertAppErrorResponse(t, w, http.StatusBadRequest, apperrors.ErrCodeInvalidInput, "url")
+	requireReason(t, w, 400, "contact_subscription_url_scheme_invalid")
 	var stored models.ContactSubscription
 	require.NoError(t, db.First(&stored, sub.ID).Error)
 	assert.Equal(t, sub.URL, stored.URL, "a rejected update must not change the stored URL")

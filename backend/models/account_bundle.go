@@ -174,14 +174,17 @@ type AccountBundleReminderCompletion struct {
 // AccountBundleActivity is one shared activity; attendee_uids are contact
 // vcard_uids.
 type AccountBundleActivity struct {
-	UUID         string    `json:"uuid"`
-	Title        string    `json:"title"`
-	Description  string    `json:"description,omitempty"`
-	Location     string    `json:"location,omitempty"`
-	Date         time.Time `json:"date"`
-	Type         string    `json:"type,omitempty"`
-	ExternalRef  string    `json:"external_ref,omitempty"`
-	AttendeeUIDs []string  `json:"attendee_uids"`
+	UUID        string    `json:"uuid"`
+	Title       string    `json:"title"`
+	Description string    `json:"description,omitempty"`
+	Location    string    `json:"location,omitempty"`
+	Date        time.Time `json:"date"`
+	// EndDate is the inclusive last day of a multi-day activity (issue #2006);
+	// omitted for a single-day one, so older bundles round-trip unchanged.
+	EndDate      *time.Time `json:"end_date,omitempty"`
+	Type         string     `json:"type,omitempty"`
+	ExternalRef  string     `json:"external_ref,omitempty"`
+	AttendeeUIDs []string   `json:"attendee_uids"`
 }
 
 // AccountBundleLifeEvent is one life event keyed by its UUID primary key.

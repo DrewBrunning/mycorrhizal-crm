@@ -65,7 +65,7 @@
   },
   "household": {
     "title": "Haushalte",
-    "description": "Gruppiere die Menschen (und Haustiere) in deinem Leben nach gemeinsamem Wohnort. Haushalte sind getrennt von Kreisen und dem Beziehungsgraphen — ob du eine vorgeschlagene Beziehung bestätigst oder ablehnst, ist immer deine Entscheidung.",
+    "description": "Haushalte gruppieren die Menschen und Haustiere, die sich ein Zuhause teilen. Sie ermöglichen Vorschläge für gemeinsame Adressen und eine gemeinsame Karten- und Geschenkeliste; ihre Mitglieder zählen für die Kadenz als Umgebungskontakte. Anders als ein Kreis geht es bei einem Haushalt um das Zusammenleben, nicht um eine soziale Gruppe.",
     "newHousehold": "Haushalt hinzufügen",
     "createHousehold": "Haushalt erstellen",
     "editHousehold": "Haushalt bearbeiten",
@@ -92,7 +92,7 @@
       "pet": "Haustier",
       "roommate": "Mitbewohner"
     },
-    "empty": "Noch keine Haushalte. Erstelle einen, um Beziehungen zwischen den Personen, die zusammen wohnen, vorzuschlagen.",
+    "empty": "Noch keine Haushalte. Erstelle einen für die Menschen, die sich ein Zuhause teilen, um Vorschläge für gemeinsame Adressen und eine gemeinsame Karten- und Geschenkeliste zu erhalten.",
     "deleteMessage": "Möchtest du diesen Haushalt wirklich löschen? Seine Mitglieder werden nicht gelöscht.",
     "cancel": "Abbrechen",
     "save": "Speichern",
@@ -127,8 +127,8 @@
     "add": "Hinzufügen",
     "memberCount_one": "{{count}} Kontakt",
     "memberCount_other": "{{count}} Kontakte",
-    "noCircles": "Noch keine Kreise. Füge unten einen hinzu oder über die Seite eines Kontakts.",
-    "noTags": "Noch keine Tags. Füge unten einen hinzu oder über die Seite eines Kontakts.",
+    "noCircles": "Noch keine Kreise. Kreise gruppieren Menschen, mit denen du gemeinsam in Kontakt bleibst – füge unten einen hinzu oder über die Seite eines Kontakts.",
+    "noTags": "Noch keine Tags. Tags sind freie Bezeichnungen für übergreifende Themen – füge unten einen hinzu oder über die Seite eines Kontakts.",
     "deleteCircleConfirm": "Kreis \"{{name}}\" löschen? Er wird bei jedem Kontakt entfernt, der ihn hat.",
     "deleteTagConfirm": "Tag \"{{name}}\" löschen? Er wird bei jedem Kontakt entfernt, der ihn hat.",
     "circleCreated": "Kreis erstellt",
@@ -164,7 +164,9 @@
       "life_event": "Lebensereignis",
       "external_activity": "Externe Aktivität",
       "gift": "Geschenk"
-    }
+    },
+    "circlesDescription": "Kreise sind Gruppen, mit denen du gemeinsam in Kontakt bleibst, etwa Familie, Freunde oder Kollegen. Ein Kontakt kann mehreren angehören.",
+    "tagsDescription": "Tags sind freie Bezeichnungen für Themen, die sich durch Gruppen ziehen, etwa „vegan“ oder „Buchclub“. Ein Kontakt kann beliebig viele haben."
   },
   "dashboard": {
     "title": "Dashboard",
@@ -541,7 +543,8 @@
         "medium": "Mittel",
         "low": "Niedrig"
       },
-      "label": "Bezeichnung"
+      "label": "Bezeichnung",
+      "labelHint": "Optionale Bezeichnung neben dem Wert, z. B. „Arbeit“ oder „gelernt 2020“."
     },
     "keywords": {
       "placeholder": "Schlagwort eingeben und Enter drücken"
@@ -808,6 +811,8 @@
     "location": "Ort",
     "locationPlaceholder": "Wo?",
     "date": "Datum",
+    "endDate": "Enddatum (optional)",
+    "endBeforeStart": "Das Enddatum darf nicht vor dem Startdatum liegen",
     "contacts": "Kontakte",
     "selectContacts": "Kontakte auswählen...",
     "cancel": "Abbrechen",
@@ -832,7 +837,8 @@
     "fromDate": "Von",
     "toDate": "Bis",
     "allContactsInfo": "Diese Seite zeigt alle Aktivitäten aus allen Kontakten.",
-    "logFromLocation": "Aus Standortverlauf erfassen"
+    "logFromLocation": "Aus Standortverlauf erfassen",
+    "description": "Aktivitäten sind Dinge, die bereits passiert sind – ein Anruf, ein Kaffee, eine Nachricht. Erfasse sie hier, damit die Geschichte jedes Kontakts vollständig bleibt."
   },
   "markdown": {
     "opensInNewTab": "(öffnet in einem neuen Tab)"
@@ -2893,11 +2899,12 @@
         "anchorBothOrNeither": "Legen Sie entweder Monat und Tag fest oder lassen Sie beides leer.",
         "invalidLeadTime": "Geben Sie eine gültige Anzahl an Vorlauftagen ein.",
         "saveFailed": "Anlass konnte nicht gespeichert werden."
-      }
+      },
+      "dialogHint": "Eine wiederkehrende Regel, etwa eine jährliche Karte oder ein Geschenk. Ein aktiver Anlass erzeugt zum Vorlaufzeitpunkt automatisch eine eigene Erinnerung."
     },
     "cardList": {
       "title": "Kartenliste",
-      "description": "Laden Sie eine CSV-Datei mit Namen und Adressen aller Empfänger Ihrer Feiertagskarten herunter.",
+      "description": "Lade eine CSV der Kontakte mit einem aktiven Kartenanlass herunter: eine Zeile pro aktiver Verpflichtung, mit Kontaktname, Adresse mit normaler Sensitivität und dem Anlass. Private und geheime Adressen werden weggelassen.",
       "download": "CSV herunterladen",
       "downloadFailed": "Die Kartenliste konnte nicht heruntergeladen werden."
     },
@@ -2948,12 +2955,14 @@
         "startRequired": "Wähle ein Startdatum und eine Uhrzeit.",
         "endBeforeStart": "Das Ende darf nicht vor dem Beginn liegen.",
         "saveFailed": "Veranstaltung konnte nicht gespeichert werden."
-      }
-    }
+      },
+      "dialogHint": "Eine einmalige Veranstaltung, die du planst. Füge nach dem Speichern Gäste hinzu und halte fest, was dir jede Person gesagt hat."
+    },
+    "description": "Anlässe sind die wiederkehrenden Dinge, die du für Menschen tust, etwa eine jährliche Karte oder ein Geschenk, sowie einmalige Veranstaltungen mit Gästeliste. Aktive Verpflichtungen erzeugen automatisch Erinnerungen; Erinnerungen sind der Hinweis, kein zweiter Anlass. Um etwas bereits Geschehenes zu erfassen, nutze Aktivitäten."
   },
   "prep": {
     "title": "Briefing",
-    "subtitle": "Alles, was du vor dem Treffen wissen solltest",
+    "subtitle": "Ein kurzes Briefing vor einem Treffen oder Anruf: letzte Kontakte, offene Agenda und anstehende Termine.",
     "unknownContact": "Unbekannt",
     "notFound": "Kontakt nicht gefunden",
     "view": "Ansehen",
@@ -2985,7 +2994,8 @@
       "anniversary": "Jahrestag",
       "inDays_one": "in {{count}} Tag",
       "inDays_other": "in {{count}} Tagen"
-    }
+    },
+    "entryTooltip": "Letzte Kontakte, offene Agenda und anstehende Termine – alles, was du vor dem Treffen wissen solltest."
   },
   "contactShares": {
     "title": "Kontaktfreigaben",
@@ -3571,6 +3581,7 @@
       "validation_missing_field": "Das Pflichtfeld „{{field}}“ fehlt",
       "common_unexpected_error": "Ein unerwarteter Fehler ist aufgetreten",
       "activity_not_found": "Aktivität nicht gefunden",
+      "activity_end_before_start": "Das Enddatum darf nicht vor dem Startdatum liegen",
       "contact_address_not_found": "Adresse nicht gefunden",
       "account_api_token_not_found": "API-Token nicht gefunden",
       "attachment_not_found": "Anhang nicht gefunden",
@@ -3743,7 +3754,77 @@
       "contact_share_with_self": "Ein Kontakt kann nicht mit sich selbst geteilt werden",
       "contact_share_section_unknown": "unbekannter Exportfeldabschnitt \"{{section}}\"",
       "contact_share_already_responded": "Auf die Freigabe wurde bereits geantwortet",
-      "contact_share_session_mismatch": "Die Sitzung gehört nicht zu dieser Freigabe"
+      "contact_share_session_mismatch": "Die Sitzung gehört nicht zu dieser Freigabe",
+      "immich_api_key_invalid": "API-Schlüssel für Immich ist ungültig, abgelaufen oder nicht konfiguriert",
+      "immich_base_url_invalid": "Die Basis-URL von Immich ist ungültig",
+      "immich_redirect": "Immich hat mit einer Weiterleitung geantwortet – Basis-URL prüfen (http oder https, Pfad).",
+      "immich_upstream_error": "Immich hat einen Fehler zurückgegeben ({{status}}). Die Instanz ist erreichbar – nur diese Anfrage ist fehlgeschlagen.",
+      "immich_response_unparseable": "Immich hat eine Antwort zurückgegeben, die nicht verarbeitet werden konnte. Möglicherweise hat sich die API geändert – Kompatibilität mit der Immich-Version prüfen.",
+      "immich_unreachable": "Immich ist nicht erreichbar. Läuft die Instanz?",
+      "immich_api_key_required": "Beim ersten Verbinden von Immich ist ein API-Schlüssel erforderlich",
+      "seafile_api_token_invalid": "API-Token für Seafile ist ungültig, abgelaufen oder nicht konfiguriert",
+      "seafile_base_url_invalid": "Die Basis-URL von Seafile ist ungültig",
+      "seafile_redirect": "Seafile hat mit einer Weiterleitung geantwortet – Basis-URL prüfen (http oder https, Pfad).",
+      "seafile_upstream_error": "Seafile hat einen Fehler zurückgegeben ({{status}}). Die Instanz ist erreichbar – nur diese Anfrage ist fehlgeschlagen.",
+      "seafile_response_unparseable": "Seafile hat eine Antwort zurückgegeben, die nicht verarbeitet werden konnte. Möglicherweise hat sich die API geändert – Kompatibilität mit der Seafile-Version prüfen.",
+      "seafile_unreachable": "Seafile ist nicht erreichbar. Läuft der Server?",
+      "seafile_api_token_required": "Beim ersten Verbinden von Seafile ist ein API-Token erforderlich",
+      "paperless_api_token_invalid": "API-Token für Paperless ist ungültig, abgelaufen oder nicht konfiguriert",
+      "paperless_base_url_invalid": "Die Basis-URL von Paperless ist ungültig",
+      "paperless_redirect": "Paperless hat mit einer Weiterleitung geantwortet – Basis-URL prüfen (http oder https, Pfad).",
+      "paperless_upstream_error": "Paperless hat einen Fehler zurückgegeben ({{status}}). Die Instanz ist erreichbar – nur diese Anfrage ist fehlgeschlagen.",
+      "paperless_response_unparseable": "Paperless hat eine Antwort zurückgegeben, die nicht verarbeitet werden konnte. Möglicherweise hat sich die API geändert – Kompatibilität mit der Paperless-Version prüfen.",
+      "paperless_unreachable": "Paperless ist nicht erreichbar. Läuft die Instanz?",
+      "paperless_api_token_required": "Beim ersten Verbinden von Paperless ist ein API-Token erforderlich",
+      "geopulse_api_token_invalid": "API-Token für GeoPulse ist ungültig, abgelaufen oder nicht konfiguriert",
+      "geopulse_base_url_invalid": "Die Basis-URL von GeoPulse ist ungültig",
+      "geopulse_redirect": "GeoPulse hat mit einer Weiterleitung geantwortet – Basis-URL prüfen (http oder https, Pfad).",
+      "geopulse_upstream_error": "GeoPulse hat einen Fehler zurückgegeben ({{status}}). Die Instanz ist erreichbar – nur diese Anfrage ist fehlgeschlagen.",
+      "geopulse_response_unparseable": "GeoPulse hat eine Antwort zurückgegeben, die nicht verarbeitet werden konnte. Möglicherweise hat sich die API geändert – Kompatibilität mit der GeoPulse-Version prüfen.",
+      "geopulse_unreachable": "GeoPulse ist nicht erreichbar. Läuft die Instanz?",
+      "geopulse_api_token_required": "Beim ersten Verbinden von GeoPulse ist ein API-Token erforderlich",
+      "webdav_app_password_invalid": "App-Passwort für Nextcloud ist ungültig, abgelaufen oder nicht konfiguriert",
+      "webdav_base_url_invalid": "Die Basis-URL von Nextcloud ist ungültig",
+      "webdav_redirect": "Nextcloud hat mit einer Weiterleitung geantwortet – Basis-URL prüfen (http oder https, Pfad).",
+      "webdav_upstream_error": "Nextcloud hat einen Fehler zurückgegeben ({{status}}). Die Instanz ist erreichbar – nur diese Anfrage ist fehlgeschlagen.",
+      "webdav_response_unparseable": "Nextcloud hat eine Antwort zurückgegeben, die nicht verarbeitet werden konnte. Möglicherweise hat sich die WebDAV-Schnittstelle geändert – Version der Instanz prüfen.",
+      "webdav_unreachable": "Nextcloud ist nicht erreichbar. Läuft die Instanz?",
+      "webdav_app_password_required": "Beim ersten Verbinden von Nextcloud ist ein App-Passwort erforderlich",
+      "immich_person_id_required": "person_id ist erforderlich",
+      "paperless_document_id_required": "document_id ist erforderlich",
+      "webdav_path_required": "path ist erforderlich",
+      "seafile_repo_and_path_required": "repo_id und path sind erforderlich",
+      "geopulse_date_required": "date ist erforderlich (YYYY-MM-DD)",
+      "geopulse_date_invalid": "date muss YYYY-MM-DD sein und timezone ein gültiger IANA-Name",
+      "geopulse_token_undecryptable": "Der gespeicherte GeoPulse-API-Token kann nicht mehr entschlüsselt werden – in den Einstellungen erneut eingeben",
+      "immich_svg_unsupported": "SVG-Bilder werden vom Bild-Proxy nicht unterstützt",
+      "integration_request_invalid": "Anfragevalidierung fehlgeschlagen",
+      "integration_id_invalid": "Muss eine positive ganze Zahl sein",
+      "integration_password_reentry_required": "Passwort beim Ändern des Servers erneut eingeben",
+      "integration_webhook_limit": "Das Maximum von 20 Webhooks pro Benutzer ist erreicht",
+      "calendar_subscription_limit": "Das Maximum von 10 Kalenderabonnements pro Benutzer ist erreicht",
+      "calendar_url_scheme_invalid": "Muss eine http-, https- oder webcal-URL sein",
+      "calendar_url_invalid": "Die Kalender-URL ist ungültig",
+      "calendar_auth_failed": "Authentifizierung fehlgeschlagen – Benutzername und Passwort prüfen",
+      "calendar_not_found_at_url": "Unter der angegebenen URL wurde kein Kalender gefunden",
+      "calendar_private_address": "Die Kalender-URL verweist auf eine gesperrte private Adresse",
+      "calendar_response_too_large": "Die Kalenderantwort ist zu groß",
+      "calendar_data_unparseable": "Der Kalender hat Daten zurückgegeben, die nicht verarbeitet werden konnten",
+      "calendar_unreachable": "Der Kalender ist nicht erreichbar – Abonnement-URL prüfen",
+      "contact_subscription_limit": "Das Maximum von 10 Kontaktabonnements pro Benutzer ist erreicht",
+      "contact_subscription_url_scheme_invalid": "Muss eine http- oder https-URL sein",
+      "contact_subscription_url_invalid": "Die URL des Kontaktabonnements ist ungültig",
+      "contact_subscription_auth_failed": "Authentifizierung fehlgeschlagen – Benutzername und Passwort prüfen",
+      "contact_subscription_not_found_at_url": "Unter der angegebenen URL wurde kein Adressbuch gefunden",
+      "contact_subscription_private_address": "Die URL verweist auf eine gesperrte private Adresse",
+      "contact_subscription_response_too_large": "Die Serverantwort ist zu groß",
+      "contact_subscription_data_unparseable": "Der Server hat Daten zurückgegeben, die nicht verarbeitet werden konnten",
+      "contact_subscription_unreachable": "Der Server ist nicht erreichbar – Abonnement-URL prüfen",
+      "notification_url_invalid": "Die Benachrichtigungs-URL muss eine gültige http- oder https-URL sein",
+      "notification_push_subscription_limit": "Das Maximum von {{max}} Push-Abonnements pro Benutzer ist erreicht",
+      "notification_device_registration_limit": "Das Maximum von {{max}} Geräteregistrierungen pro Benutzer ist erreicht",
+      "feed_limit_reached": "Feed-Limit erreicht (höchstens {{max}} aktive Feeds)",
+      "feed_entity_id_not_allowed": "Muss bei einem Sammel-Feed leer sein"
     }
   }
 }

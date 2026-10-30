@@ -576,6 +576,7 @@ func TestPushSubscription_OverCapRejected(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusConflict, w.Code, "a registration beyond the cap must be rejected")
+	requireReason(t, w, 409, "notification_push_subscription_limit")
 
 	var count int64
 	require.NoError(t, db.Model(&models.PushSubscription{}).Where("user_id = ?", user.ID).Count(&count).Error)
@@ -614,6 +615,7 @@ func TestDeviceRegistration_OverCapRejected(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusConflict, w.Code, "a registration beyond the cap must be rejected")
+	requireReason(t, w, 409, "notification_device_registration_limit")
 
 	var count int64
 	require.NoError(t, db.Model(&models.DeviceRegistration{}).Where("user_id = ?", user.ID).Count(&count).Error)

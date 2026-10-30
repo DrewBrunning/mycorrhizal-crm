@@ -15429,6 +15429,15 @@ components:
         description: { type: string, maxLength: 2000 }
         location: { type: string, maxLength: 300 }
         date: { type: string, format: date-time }
+        end_date:
+          type: string
+          format: date-time
+          description: >
+            Issue #2006: optional inclusive last day of a multi-day activity.
+            Same calendar-day semantics and RFC 3339 shape as `date` (the day
+            at 00:00:00Z, no zone conversion; ADR 0015). Omitted for a
+            single-day activity; never before `date`. `date` stays the
+            interaction date for reminders, occasions and cadence.
         contacts:
           type: array
           items: { $ref: "#/components/schemas/ContactFlat" }
@@ -15452,6 +15461,17 @@ components:
         description: { type: string, maxLength: 2000 }
         location: { type: string, maxLength: 300 }
         date: { type: string, format: date-time }
+        end_date:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            Issue #2006: optional inclusive last day of a multi-day activity,
+            the same calendar-day RFC 3339 shape as `date`. Must not be before
+            `date` (compared as UTC calendar days); equal days are valid. On
+            PUT an omitted key keeps the stored end date, an explicit null or
+            empty string clears it, and a `date` moved past a kept end date is
+            a 400 on the `end_date` field (never cleared silently).
         contact_ids:
           type: array
           items: { type: integer }

@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"mycorrhizal/models"
+	"mycorrhizal/services"
 
 	"github.com/emersion/go-ical"
 	"github.com/emersion/go-webdav"
@@ -176,9 +177,11 @@ func calendarObjectFromActivity(username string, a *models.Activity) *CalendarOb
 
 	event := ical.NewEvent()
 	event.Props.SetText(ical.PropUID, uid)
-	// Activity.Date is a full time.Time — a DATE-TIME, so clients never
-	// shift it by a day (the DATE-vs-DATE-TIME trap).
-	event.Props.SetDateTime(ical.PropDateTimeStart, a.Date.UTC())
+	// A single-day Activity.Date is a full time.Time — a DATE-TIME, so clients
+	// never shift it by a day (the DATE-vs-DATE-TIME trap). A multi-day
+	// activity (issue #2006) is an all-day VEVENT: DTSTART;VALUE=DATE plus an
+	// exclusive DTEND, so every client draws the same inclusive day range.
+	services.SetActivityEventTimes(event, a)
 	event.Props.SetDateTime(ical.PropDateTimeStamp, a.UpdatedAt.UTC())
 	event.Props.SetText(ical.PropSummary, a.Title)
 	if a.Description != "" {
@@ -382,7 +385,7 @@ func filterObjectsByWindow(objects []caldav.CalendarObject, query *caldav.Calend
 				keep = true
 				continue
 			}
-			if eventInWindow(&event, date, start, end) {
+			if eventInWindow(&event, date, start, end) || rangeOverlapsWindow(&event, date, start, end) {
 				keep = true
 			}
 		}
@@ -391,6 +394,18 @@ func filterObjectsByWindow(objects []caldav.CalendarObject, query *caldav.Calend
 		}
 	}
 	return out
+}
+
+// rangeOverlapsWindow reports whether a multi-day event (DTEND past its start
+// day) overlaps [start, end] even though its DTSTART is outside it, so a trip
+// that began before the queried window but is still running inside it is
+// returned (issue #2006). DTEND is exclusive.
+func rangeOverlapsWindow(event *ical.Event, dtstart, start, end time.Time) bool {
+	dtend, err := event.DateTimeEnd(time.UTC)
+	if err != nil || dtend.IsZero() || !dtend.After(dtstart) {
+		return false
+	}
+	return !dtstart.After(end) && dtend.After(start)
 }
 
 // eventInWindow tests whether an event's DTSTART (or, for an annual

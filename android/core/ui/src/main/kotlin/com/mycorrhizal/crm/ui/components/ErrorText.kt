@@ -391,6 +391,10 @@ private fun localizedReason(reason: ErrorReason?): String? {
             R.string.error_reason_common_unexpected_error
         )
 
+        ErrorReasonCode.ACTIVITY_END_BEFORE_START -> stringResource(
+            R.string.error_reason_activity_end_before_start
+        )
+
         ErrorReasonCode.ACTIVITY_NOT_FOUND -> stringResource(
             R.string.error_reason_activity_not_found
         )
@@ -1090,6 +1094,319 @@ private fun localizedReason(reason: ErrorReason?): String? {
 
         ErrorReasonCode.CONTACT_SHARE_SESSION_MISMATCH -> stringResource(
             R.string.error_reason_contact_share_session_mismatch
+        )
+
+        ErrorReasonCode.IMMICH_API_KEY_INVALID -> stringResource(
+            R.string.error_reason_immich_api_key_invalid
+        )
+
+        ErrorReasonCode.IMMICH_BASE_URL_INVALID -> stringResource(
+            R.string.error_reason_immich_base_url_invalid
+        )
+
+        ErrorReasonCode.IMMICH_REDIRECT -> stringResource(
+            R.string.error_reason_immich_redirect
+        )
+
+        ErrorReasonCode.IMMICH_UPSTREAM_ERROR ->
+            reason.str(
+                "status"
+            )?.let {
+                stringResource(R.string.error_reason_immich_upstream_error, it)
+            }
+
+        ErrorReasonCode.IMMICH_RESPONSE_UNPARSEABLE -> stringResource(
+            R.string.error_reason_immich_response_unparseable
+        )
+
+        ErrorReasonCode.IMMICH_UNREACHABLE -> stringResource(
+            R.string.error_reason_immich_unreachable
+        )
+
+        ErrorReasonCode.IMMICH_API_KEY_REQUIRED -> stringResource(
+            R.string.error_reason_immich_api_key_required
+        )
+
+        ErrorReasonCode.SEAFILE_API_TOKEN_INVALID -> stringResource(
+            R.string.error_reason_seafile_api_token_invalid
+        )
+
+        ErrorReasonCode.SEAFILE_BASE_URL_INVALID -> stringResource(
+            R.string.error_reason_seafile_base_url_invalid
+        )
+
+        ErrorReasonCode.SEAFILE_REDIRECT -> stringResource(
+            R.string.error_reason_seafile_redirect
+        )
+
+        ErrorReasonCode.SEAFILE_UPSTREAM_ERROR ->
+            reason.str(
+                "status"
+            )?.let {
+                stringResource(R.string.error_reason_seafile_upstream_error, it)
+            }
+
+        ErrorReasonCode.SEAFILE_RESPONSE_UNPARSEABLE -> stringResource(
+            R.string.error_reason_seafile_response_unparseable
+        )
+
+        ErrorReasonCode.SEAFILE_UNREACHABLE -> stringResource(
+            R.string.error_reason_seafile_unreachable
+        )
+
+        ErrorReasonCode.SEAFILE_API_TOKEN_REQUIRED -> stringResource(
+            R.string.error_reason_seafile_api_token_required
+        )
+
+        ErrorReasonCode.PAPERLESS_API_TOKEN_INVALID -> stringResource(
+            R.string.error_reason_paperless_api_token_invalid
+        )
+
+        ErrorReasonCode.PAPERLESS_BASE_URL_INVALID -> stringResource(
+            R.string.error_reason_paperless_base_url_invalid
+        )
+
+        ErrorReasonCode.PAPERLESS_REDIRECT -> stringResource(
+            R.string.error_reason_paperless_redirect
+        )
+
+        ErrorReasonCode.PAPERLESS_UPSTREAM_ERROR ->
+            reason.str(
+                "status"
+            )?.let {
+                stringResource(R.string.error_reason_paperless_upstream_error, it)
+            }
+
+        ErrorReasonCode.PAPERLESS_RESPONSE_UNPARSEABLE -> stringResource(
+            R.string.error_reason_paperless_response_unparseable
+        )
+
+        ErrorReasonCode.PAPERLESS_UNREACHABLE -> stringResource(
+            R.string.error_reason_paperless_unreachable
+        )
+
+        ErrorReasonCode.PAPERLESS_API_TOKEN_REQUIRED -> stringResource(
+            R.string.error_reason_paperless_api_token_required
+        )
+
+        ErrorReasonCode.GEOPULSE_API_TOKEN_INVALID -> stringResource(
+            R.string.error_reason_geopulse_api_token_invalid
+        )
+
+        ErrorReasonCode.GEOPULSE_BASE_URL_INVALID -> stringResource(
+            R.string.error_reason_geopulse_base_url_invalid
+        )
+
+        ErrorReasonCode.GEOPULSE_REDIRECT -> stringResource(
+            R.string.error_reason_geopulse_redirect
+        )
+
+        ErrorReasonCode.GEOPULSE_UPSTREAM_ERROR ->
+            reason.str(
+                "status"
+            )?.let {
+                stringResource(R.string.error_reason_geopulse_upstream_error, it)
+            }
+
+        ErrorReasonCode.GEOPULSE_RESPONSE_UNPARSEABLE -> stringResource(
+            R.string.error_reason_geopulse_response_unparseable
+        )
+
+        ErrorReasonCode.GEOPULSE_UNREACHABLE -> stringResource(
+            R.string.error_reason_geopulse_unreachable
+        )
+
+        ErrorReasonCode.GEOPULSE_API_TOKEN_REQUIRED -> stringResource(
+            R.string.error_reason_geopulse_api_token_required
+        )
+
+        ErrorReasonCode.WEBDAV_APP_PASSWORD_INVALID -> stringResource(
+            R.string.error_reason_webdav_app_password_invalid
+        )
+
+        ErrorReasonCode.WEBDAV_BASE_URL_INVALID -> stringResource(
+            R.string.error_reason_webdav_base_url_invalid
+        )
+
+        ErrorReasonCode.WEBDAV_REDIRECT -> stringResource(
+            R.string.error_reason_webdav_redirect
+        )
+
+        ErrorReasonCode.WEBDAV_UPSTREAM_ERROR ->
+            reason.str(
+                "status"
+            )?.let {
+                stringResource(R.string.error_reason_webdav_upstream_error, it)
+            }
+
+        ErrorReasonCode.WEBDAV_RESPONSE_UNPARSEABLE -> stringResource(
+            R.string.error_reason_webdav_response_unparseable
+        )
+
+        ErrorReasonCode.WEBDAV_UNREACHABLE -> stringResource(
+            R.string.error_reason_webdav_unreachable
+        )
+
+        ErrorReasonCode.WEBDAV_APP_PASSWORD_REQUIRED -> stringResource(
+            R.string.error_reason_webdav_app_password_required
+        )
+
+        ErrorReasonCode.IMMICH_PERSON_ID_REQUIRED -> stringResource(
+            R.string.error_reason_immich_person_id_required
+        )
+
+        ErrorReasonCode.PAPERLESS_DOCUMENT_ID_REQUIRED -> stringResource(
+            R.string.error_reason_paperless_document_id_required
+        )
+
+        ErrorReasonCode.WEBDAV_PATH_REQUIRED -> stringResource(
+            R.string.error_reason_webdav_path_required
+        )
+
+        ErrorReasonCode.SEAFILE_REPO_AND_PATH_REQUIRED -> stringResource(
+            R.string.error_reason_seafile_repo_and_path_required
+        )
+
+        ErrorReasonCode.GEOPULSE_DATE_REQUIRED -> stringResource(
+            R.string.error_reason_geopulse_date_required
+        )
+
+        ErrorReasonCode.GEOPULSE_DATE_INVALID -> stringResource(
+            R.string.error_reason_geopulse_date_invalid
+        )
+
+        ErrorReasonCode.GEOPULSE_TOKEN_UNDECRYPTABLE -> stringResource(
+            R.string.error_reason_geopulse_token_undecryptable
+        )
+
+        ErrorReasonCode.IMMICH_SVG_UNSUPPORTED -> stringResource(
+            R.string.error_reason_immich_svg_unsupported
+        )
+
+        ErrorReasonCode.INTEGRATION_REQUEST_INVALID -> stringResource(
+            R.string.error_reason_integration_request_invalid
+        )
+
+        ErrorReasonCode.INTEGRATION_ID_INVALID -> stringResource(
+            R.string.error_reason_integration_id_invalid
+        )
+
+        ErrorReasonCode.INTEGRATION_PASSWORD_REENTRY_REQUIRED -> stringResource(
+            R.string.error_reason_integration_password_reentry_required
+        )
+
+        ErrorReasonCode.INTEGRATION_WEBHOOK_LIMIT -> stringResource(
+            R.string.error_reason_integration_webhook_limit
+        )
+
+        ErrorReasonCode.CALENDAR_SUBSCRIPTION_LIMIT -> stringResource(
+            R.string.error_reason_calendar_subscription_limit
+        )
+
+        ErrorReasonCode.CALENDAR_URL_SCHEME_INVALID -> stringResource(
+            R.string.error_reason_calendar_url_scheme_invalid
+        )
+
+        ErrorReasonCode.CALENDAR_URL_INVALID -> stringResource(
+            R.string.error_reason_calendar_url_invalid
+        )
+
+        ErrorReasonCode.CALENDAR_AUTH_FAILED -> stringResource(
+            R.string.error_reason_calendar_auth_failed
+        )
+
+        ErrorReasonCode.CALENDAR_NOT_FOUND_AT_URL -> stringResource(
+            R.string.error_reason_calendar_not_found_at_url
+        )
+
+        ErrorReasonCode.CALENDAR_PRIVATE_ADDRESS -> stringResource(
+            R.string.error_reason_calendar_private_address
+        )
+
+        ErrorReasonCode.CALENDAR_RESPONSE_TOO_LARGE -> stringResource(
+            R.string.error_reason_calendar_response_too_large
+        )
+
+        ErrorReasonCode.CALENDAR_DATA_UNPARSEABLE -> stringResource(
+            R.string.error_reason_calendar_data_unparseable
+        )
+
+        ErrorReasonCode.CALENDAR_UNREACHABLE -> stringResource(
+            R.string.error_reason_calendar_unreachable
+        )
+
+        ErrorReasonCode.CONTACT_SUBSCRIPTION_LIMIT -> stringResource(
+            R.string.error_reason_contact_subscription_limit
+        )
+
+        ErrorReasonCode.CONTACT_SUBSCRIPTION_URL_SCHEME_INVALID -> stringResource(
+            R.string.error_reason_contact_subscription_url_scheme_invalid
+        )
+
+        ErrorReasonCode.CONTACT_SUBSCRIPTION_URL_INVALID -> stringResource(
+            R.string.error_reason_contact_subscription_url_invalid
+        )
+
+        ErrorReasonCode.CONTACT_SUBSCRIPTION_AUTH_FAILED -> stringResource(
+            R.string.error_reason_contact_subscription_auth_failed
+        )
+
+        ErrorReasonCode.CONTACT_SUBSCRIPTION_NOT_FOUND_AT_URL -> stringResource(
+            R.string.error_reason_contact_subscription_not_found_at_url
+        )
+
+        ErrorReasonCode.CONTACT_SUBSCRIPTION_PRIVATE_ADDRESS -> stringResource(
+            R.string.error_reason_contact_subscription_private_address
+        )
+
+        ErrorReasonCode.CONTACT_SUBSCRIPTION_RESPONSE_TOO_LARGE -> stringResource(
+            R.string.error_reason_contact_subscription_response_too_large
+        )
+
+        ErrorReasonCode.CONTACT_SUBSCRIPTION_DATA_UNPARSEABLE -> stringResource(
+            R.string.error_reason_contact_subscription_data_unparseable
+        )
+
+        ErrorReasonCode.CONTACT_SUBSCRIPTION_UNREACHABLE -> stringResource(
+            R.string.error_reason_contact_subscription_unreachable
+        )
+
+        ErrorReasonCode.NOTIFICATION_URL_INVALID -> stringResource(
+            R.string.error_reason_notification_url_invalid
+        )
+
+        ErrorReasonCode.NOTIFICATION_PUSH_SUBSCRIPTION_LIMIT ->
+            // Passed as a string: "%d <noun>s" trips the PluralsCandidate lint.
+            reason.int(
+                "max"
+            )?.let {
+                stringResource(
+                    R.string.error_reason_notification_push_subscription_limit,
+                    it.toString()
+                )
+            }
+
+        ErrorReasonCode.NOTIFICATION_DEVICE_REGISTRATION_LIMIT ->
+            // Passed as a string: "%d <noun>s" trips the PluralsCandidate lint.
+            reason.int(
+                "max"
+            )?.let {
+                stringResource(
+                    R.string.error_reason_notification_device_registration_limit,
+                    it.toString()
+                )
+            }
+
+        ErrorReasonCode.FEED_LIMIT_REACHED ->
+            // Passed as a string: "%d <noun>s" trips the PluralsCandidate lint.
+            reason.int(
+                "max"
+            )?.let {
+                stringResource(R.string.error_reason_feed_limit_reached, it.toString())
+            }
+
+        ErrorReasonCode.FEED_ENTITY_ID_NOT_ALLOWED -> stringResource(
+            R.string.error_reason_feed_entity_id_not_allowed
         )
 
         else -> null

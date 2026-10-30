@@ -426,6 +426,7 @@ export default function ContactDetailPage() {
     handleDeleteNote,
     handleDeleteActivity,
     setEditTimelineValues,
+    endDateError: activityEndDateError,
   } = useTimelineEditing(record?.id, refreshNotesAndActivities, { showError }, handleConflict);
 
   const {
@@ -1799,6 +1800,7 @@ export default function ContactDetailPage() {
           values={editTimelineValues}
           onChange={setEditTimelineValues}
           allContacts={allContacts}
+          activityEndDateError={activityEndDateError}
         />
       )}
 

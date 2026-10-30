@@ -133,7 +133,7 @@ test('shows the empty state when there are no households', () => {
   renderList({ households: [], members: [] });
   expect(
     screen.getByText(
-      'No households yet. Create one to start suggesting relationships between the people who live together.',
+      'No households yet. Create one for the people who share a home to get shared-address suggestions and a combined card and gift list.',
     ),
   ).toBeInTheDocument();
 });

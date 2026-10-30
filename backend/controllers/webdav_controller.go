@@ -23,24 +23,24 @@ import (
 func abortWebDAVServiceError(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, services.ErrWebDAVUnauthorized):
-		apperrors.AbortWithError(c, apperrors.ErrValidation("Nextcloud app password is invalid, expired, or not configured").WithError(err))
+		apperrors.AbortWithError(c, apperrors.ErrValidation("Nextcloud app password is invalid, expired, or not configured").WithReason(apperrors.ReasonWebdavAppPasswordInvalid, nil).WithError(err))
 	case errors.Is(err, services.ErrWebDAVNotFound):
 		apperrors.AbortWithError(c, apperrors.ErrNotFound("Nextcloud file or folder").WithError(err))
 	case errors.Is(err, services.ErrWebDAVInvalidURL):
-		apperrors.AbortWithError(c, apperrors.ErrValidation("Nextcloud base URL is invalid"))
+		apperrors.AbortWithError(c, apperrors.ErrValidation("Nextcloud base URL is invalid").WithReason(apperrors.ReasonWebdavBaseUrlInvalid, nil))
 	case errors.Is(err, services.ErrWebDAVRedirect):
-		apperrors.AbortWithError(c, apperrors.ErrExternal("Nextcloud", "Nextcloud answered with a redirect — check the base URL (http vs https, path).").WithError(err))
+		apperrors.AbortWithError(c, apperrors.ErrExternal("Nextcloud", "Nextcloud answered with a redirect — check the base URL (http vs https, path).").WithReason(apperrors.ReasonWebdavRedirect, nil).WithError(err))
 	case errors.Is(err, services.ErrWebDAVRequestFailed):
 		status := "an unexpected status"
 		var reqErr *services.WebDAVRequestError
 		if errors.As(err, &reqErr) {
 			status = reqErr.Status
 		}
-		apperrors.AbortWithError(c, apperrors.ErrExternal("Nextcloud", fmt.Sprintf("Nextcloud returned an error (%s). The instance is reachable — this request itself failed.", status)).WithError(err))
+		apperrors.AbortWithError(c, apperrors.ErrExternal("Nextcloud", fmt.Sprintf("Nextcloud returned an error (%s). The instance is reachable — this request itself failed.", status)).WithReason(apperrors.ReasonWebdavUpstreamError, map[string]any{"status": status}).WithError(err))
 	case errors.Is(err, services.ErrWebDAVInvalidData):
-		apperrors.AbortWithError(c, apperrors.ErrExternal("Nextcloud", "Nextcloud returned a response that could not be parsed. The WebDAV surface may have changed — check the instance version.").WithError(err))
+		apperrors.AbortWithError(c, apperrors.ErrExternal("Nextcloud", "Nextcloud returned a response that could not be parsed. The WebDAV surface may have changed — check the instance version.").WithReason(apperrors.ReasonWebdavResponseUnparseable, nil).WithError(err))
 	default:
-		apperrors.AbortWithError(c, apperrors.ErrExternal("Nextcloud", "Could not reach Nextcloud. Is the instance up?").WithError(err))
+		apperrors.AbortWithError(c, apperrors.ErrExternal("Nextcloud", "Could not reach Nextcloud. Is the instance up?").WithReason(apperrors.ReasonWebdavUnreachable, nil).WithError(err))
 	}
 }
 
@@ -93,7 +93,7 @@ func SaveWebDAVConfig(c *gin.Context) {
 	}
 	// A create with no app password is a validation error.
 	if existing == nil && strings.TrimSpace(input.AppPassword) == "" {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("app_password", "an app password is required when first connecting Nextcloud"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("app_password", "an app password is required when first connecting Nextcloud").WithReason(apperrors.ReasonWebdavAppPasswordRequired, nil))
 		return
 	}
 
@@ -208,11 +208,11 @@ func LinkWebDAVContact(c *gin.Context) {
 		return
 	}
 	if verrs := middleware.ValidateStruct(&input); len(verrs) > 0 {
-		apperrors.AbortWithError(c, apperrors.ErrValidationFields(verrs))
+		apperrors.AbortWithError(c, apperrors.ErrValidationFields(verrs).WithReason(apperrors.ReasonIntegrationRequestInvalid, nil))
 		return
 	}
 	if strings.TrimSpace(input.Path) == "" {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("path", "path is required"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("path", "path is required").WithReason(apperrors.ReasonWebdavPathRequired, nil))
 		return
 	}
 

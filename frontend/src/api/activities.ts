@@ -20,6 +20,9 @@ export interface Activity {
   description?: string;
   location?: string;
   date: string;
+  // Issue #2006: inclusive last day of a multi-day activity; same calendar-day
+  // RFC 3339 shape as `date`. Absent for a single-day activity.
+  end_date?: string;
   CreatedAt: string;
   UpdatedAt: string;
   contacts?: ActivityContact[];
@@ -140,6 +143,7 @@ export async function createActivity(data: {
   description: string;
   location: string;
   date: string;
+  end_date?: string;
   contact_ids: number[];
   // Opaque reference to the subsystem the activity came from. A repeat create of
   // a `geopulse:stay:<id>` ref returns the existing activity instead of a second.
@@ -166,6 +170,8 @@ export async function updateActivity(
     description?: string;
     location?: string;
     date?: string;
+    // Omitted keeps the stored end date; null clears it (issue #2006).
+    end_date?: string | null;
     contact_ids?: number[];
   },
   revision?: number,
