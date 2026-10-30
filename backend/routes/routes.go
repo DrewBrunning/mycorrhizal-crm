@@ -980,6 +980,7 @@ func registerCardDAVRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB) 
 	router.Handle("PROPFIND", "/.well-known/carddav", carddav.WellKnownRedirect)
 
 	handler := carddav.NewHandler(db, cfg.ProfilePhotoDir)
+	handler.SetConfig(*cfg)
 
 	cardDAVGroup := router.Group("/carddav")
 	cardDAVGroup.Use(func(c *gin.Context) {

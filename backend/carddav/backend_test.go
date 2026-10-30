@@ -347,6 +347,8 @@ func TestGetAddressObject_MultiUserIsolation(t *testing.T) {
 // soft-deleted rows by default.
 func TestDeleteAddressObject(t *testing.T) {
 	backend, db := newTestBackend(t)
+	// The trash snapshot (issue #2249) has a real FK to users, so user 1 exists.
+	require.NoError(t, db.Create(&models.User{Username: "tester", Password: "password123!A", Email: "tester@example.com"}).Error)
 	ctx := ContextWithUser(context.Background(), 1, "tester", db, backend.photoDir, "")
 
 	const uid = "delete-me-uid"
