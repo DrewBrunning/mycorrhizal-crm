@@ -308,11 +308,7 @@ symmetric down migration test and a populated-database upgrade check.
 3. **Re-confirmation withholds the whole section** until the owner re-confirms (decision 5). No per-item tracking.
 4. **A block also stops one-time `ContactShare`s from that sender.** This is a committed v1.7.0 follow-up issue, not
    part of the first implementation of this ADR.
-
-## Open questions for the maintainer
-
-1. **Pending TTL and the pre-acceptance label.** Not yet decided. Recommendation: keep the 30-day pending TTL (long
-   enough to answer, short enough that stale offers do not linger) and keep showing the label (contact display name,
-   circle name, activity title; a note shows only "Note"), because a person cannot make an informed accept without it.
-   The cost is that a mis-addressed recipient sees a contact's display name. The stricter option is "A contact" until
-   accepted.
+5. **Pending TTL and pre-acceptance label: keep both.** Pending grants expire after 30 days, and the recipient sees
+   the label (contact display name, circle name, activity title; a note shows only "Note") before accepting. A
+   mis-addressed recipient can therefore see a contact's display name; the maintainer accepted this, and the
+   mitigation is that the recipient must accept before any content is visible.

@@ -275,6 +275,7 @@ the pointer in `threat-model.md` (Multi-user instances) only.
 - **Live circle membership** discloses newly added members' names without a prompt. The maintainer accepted this risk (live only, names only, capped, no frozen option); the mitigations are the member-count display and the circle UI "shared with N people" warning.
 - **Whole-section re-confirmation** withholds more than the reclassified item (settled by the maintainer). Fail-closed.
 - **Block scope.** A block covers share grants in the first implementation. Until the committed v1.7.0 follow-up extends it to one-time `ContactShare`s, a blocked sender can still send one-time shares, which expose only a frozen copy the recipient may decline.
+- **Pre-acceptance label.** A mis-addressed recipient sees the label (for a contact, its display name) before accepting. Accepted by the maintainer; mitigation: nothing beyond the label is visible until the recipient accepts, and the owner can revoke a pending grant.
 - **Directory exposure** (P13) means any user can be named as a recipient; acceptance, blocking and caps bound the harm.
 - **Notification channels** are third parties; payloads carry no content. The general send path is its own review item.
 - **Attachments and images** are deliberately out of v1; adding them is a new review (path traversal, MIME, EXIF
