@@ -343,7 +343,7 @@ class ConflictResolutionViewModelsTest {
                 )
             )
             coEvery { activityRepository.delete(1, 2) } returns STALE
-            val vm = ActivitiesInboxViewModel(activityRepository, geoPulseWith(Result.failure(ApiError.Server(500, "x"))))
+            val vm = ActivitiesInboxViewModel(activityRepository, unconfiguredGeoPulse())
             advanceUntilIdle()
             vm.delete(1)
             advanceUntilIdle()

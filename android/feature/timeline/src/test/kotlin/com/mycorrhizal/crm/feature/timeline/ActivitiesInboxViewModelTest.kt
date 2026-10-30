@@ -23,6 +23,10 @@ import org.junit.Test
 internal fun geoPulseWith(config: Result<GeoPulseConfigResponse>): GeoPulseRepository =
     mockk<GeoPulseRepository>().also { coEvery { it.getConfig() } returns config }
 
+/** A [GeoPulseRepository] whose config fetch fails, i.e. GeoPulse treated as unconfigured. */
+internal fun unconfiguredGeoPulse(): GeoPulseRepository =
+    geoPulseWith(Result.failure(ApiError.Server(500, "unconfigured")))
+
 // M9 item 1: the Activities drawer inbox — GET /activities?include=contacts (every contact's
 // activities), distinct from ActivitiesViewModel's per-contact list.
 class ActivitiesInboxViewModelTest {
@@ -31,7 +35,7 @@ class ActivitiesInboxViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val activityRepository = mockk<ActivityRepository>()
-    private val geoPulseRepository = geoPulseWith(Result.failure(ApiError.Server(500, "x")))
+    private val geoPulseRepository = unconfiguredGeoPulse()
 
     @Test
     fun `loads every contact's activities on init`() = runTest(mainDispatcherRule.testDispatcher) {

@@ -287,7 +287,7 @@ class ActivitiesInboxScreenTest {
                 nextCursor = null
             )
         )
-        val viewModel = ActivitiesInboxViewModel(repository, geoPulseWith(Result.failure(ApiError.Server(500, "x"))))
+        val viewModel = ActivitiesInboxViewModel(repository, unconfiguredGeoPulse())
 
         composeTestRule.setContent {
             MycorrhizalTheme {
