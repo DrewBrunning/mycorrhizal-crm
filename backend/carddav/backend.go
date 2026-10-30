@@ -440,6 +440,7 @@ func (b *Backend) PutAddressObject(ctx context.Context, urlPath string, card vca
 	// it onto Contact.Photo/PhotoThumbnail (photo-bridging
 	// prerequisite), replacing the photoData/photoURL handling the legacy
 	// mapper's return values used to require here.
+	ambientBefore := contact.Ambient
 	models.ApplyRecordToContact(&contact, record, b.getPhotoDir(ctx))
 	contact.UserID = userID
 
@@ -455,8 +456,10 @@ func (b *Backend) PutAddressObject(ctx context.Context, urlPath string, card vca
 		}
 	}
 
-	// Save contact
-	if err := db.Save(&contact).Error; err != nil {
+	// The same write path as the REST create/update (issue #2255): one
+	// transaction, then the wedding-anniversary sync and the contact.created /
+	// contact.updated webhook, both only after the commit.
+	if err := services.SaveContact(ctx, db, b.cfg, userID, &contact, ambientBefore); err != nil {
 		return nil, err
 	}
 

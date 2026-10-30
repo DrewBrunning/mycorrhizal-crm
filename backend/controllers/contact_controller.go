@@ -122,19 +122,14 @@ func CreateContact(c *gin.Context) {
 		return
 	}
 
-	if err := db.Create(&contact).Error; err != nil {
+	// services.SaveContact is shared with the CardDAV PUT (issue #2255): the
+	// write, the wedding-anniversary -> married LifeEvent mirror
+	// (services/wedding_sync.go) and the contact.created webhook.
+	if err := services.SaveContact(c.Request.Context(), db, currentConfig(c), userID, &contact, false); err != nil {
 		logger.FromContext(c).Error().Err(err).Msg("Error saving contact to database")
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save contact").WithError(err))
 		return
 	}
-
-	// A wedding anniversary on the new card mirrors into a married LifeEvent
-	// (services/wedding_sync.go) so the timeline and the card never disagree.
-	if err := services.SyncWeddingFromCard(db, userID, contact.VCardUID, services.WeddingDateFromCard(&contact.Card)); err != nil {
-		logger.FromContext(c).Error().Err(err).Msg("Error syncing wedding anniversary to life event")
-	}
-
-	services.TriggerWebhooksAsync(c.Request.Context(), db, currentConfig(c), userID, "contact.created", contact)
 	c.JSON(http.StatusCreated, gin.H{"message": "Contact created successfully", "contact": models.NewContactRecordResponse(&contact, currentConfig(c).ProfilePhotoDir, db)})
 }
 
@@ -755,33 +750,18 @@ func UpdateContact(c *gin.Context) {
 		return
 	}
 
-	if err := db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Save(&contact).Error; err != nil {
-			return err
-		}
-		// A manual ambient change on the "Me" contact is the user taking
-		// ownership of the flag: unmarking "Me" must no longer override it
-		// (issues #2193/#2192).
-		if contact.Ambient != ambientBefore {
-			return services.ClearSelfAmbientProvenanceIfMe(tx, userID, contact.VCardUID)
-		}
-		return nil
-	}); err != nil {
+	// services.SaveContact is shared with the CardDAV PUT (issue #2255): the
+	// write (with the Me-contact ambient provenance reset, issues
+	// #2192/#2193), the wedding-anniversary -> married LifeEvent mirror
+	// (services/wedding_sync.go; the reverse direction is the life-event
+	// controller's) and the contact.updated webhook.
+	if err := services.SaveContact(c.Request.Context(), db, currentConfig(c), userID, &contact, ambientBefore); err != nil {
 		if handleRevisionConflict(c, "Contact", err) {
 			return
 		}
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to update contact").WithError(err))
 		return
 	}
-
-	// Mirror the (possibly changed) wedding anniversary into the contact's
-	// married LifeEvent, and vice versa is handled by the life-event
-	// controller. See services/wedding_sync.go.
-	if err := services.SyncWeddingFromCard(db, userID, contact.VCardUID, services.WeddingDateFromCard(&contact.Card)); err != nil {
-		logger.FromContext(c).Error().Err(err).Msg("Error syncing wedding anniversary to life event")
-	}
-
-	services.TriggerWebhooksAsync(c.Request.Context(), db, currentConfig(c), userID, "contact.updated", contact)
 	c.JSON(http.StatusOK, models.NewContactRecordResponse(&contact, currentConfig(c).ProfilePhotoDir, db))
 }
 
