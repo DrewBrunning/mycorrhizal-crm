@@ -130,4 +130,62 @@ class ApiErrorReasonTest {
         assertEquals("Try later", error.displayMessage)
         assertNull(error.reason)
     }
+    // Issue #2107 (MAINT-02): v2.0.0 (#2108) moves the lockout into the standard
+    // envelope: code ACCOUNT_LOCKED, reason_params {retry_after} and
+    // details {retry_after, retry_after_at}. The lockout UI must keep getting
+    // retry_after from that shape.
+    @Test
+    fun `a target-shape lockout envelope hands retry_after to the lockout UI`() {
+        val error = deleteFailure(
+            MockResponse().setResponseCode(429).setBody(
+                """{"error":{"code":"ACCOUNT_LOCKED","message":"Too many failed login attempts. Please try again later.","details":{"retry_after":90,"retry_after_at":"2026-01-01T00:00:00Z"},"reason_code":"auth_account_locked","reason_params":{"retry_after":90}},"request_id":"req-9","timestamp":"2026-01-01T00:00:00Z"}"""
+            )
+        ) as ApiError.Client
+
+        assertEquals(429, error.code)
+        assertEquals(
+            ErrorReason("auth_account_locked", mapOf("retry_after" to 90.0)),
+            error.reason
+        )
+        assertEquals("req-9", error.requestId)
+    }
+
+    @Test
+    fun `a target-shape lockout envelope without reason_params takes retry_after from details`() {
+        val error = deleteFailure(
+            MockResponse().setResponseCode(429).setBody(
+                """{"error":{"code":"ACCOUNT_LOCKED","message":"Locked","details":{"retry_after":90,"retry_after_at":"2026-01-01T00:00:00Z"},"reason_code":"auth_account_locked"}}"""
+            )
+        ) as ApiError.Client
+
+        assertEquals(
+            ErrorReason("auth_account_locked", mapOf("retry_after" to 90.0)),
+            error.reason
+        )
+    }
+
+    @Test
+    fun `a flat lockout without reason_params takes the top-level retry_after`() {
+        val error = deleteFailure(
+            MockResponse().setResponseCode(429).setBody(
+                """{"error":"Account temporarily locked","message":"Locked","retry_after":90,"retry_after_at":"2026-01-01T00:00:00Z","reason_code":"auth_account_locked"}"""
+            )
+        ) as ApiError.Client
+
+        assertEquals(
+            ErrorReason("auth_account_locked", mapOf("retry_after" to 90.0)),
+            error.reason
+        )
+    }
+
+    @Test
+    fun `the retry_after fallback does not touch other reasons`() {
+        val error = deleteFailure(
+            MockResponse().setResponseCode(409).setBody(
+                """{"error":{"code":"CONFLICT","message":"x","details":{"retry_after":5},"reason_code":"auth_passkey_none_registered"}}"""
+            )
+        ) as ApiError.Client
+
+        assertEquals(ErrorReason("auth_passkey_none_registered", emptyMap()), error.reason)
+    }
 }

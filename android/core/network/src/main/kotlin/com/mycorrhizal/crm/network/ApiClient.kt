@@ -104,6 +104,7 @@ import com.mycorrhizal.crm.model.network.EnabledContactFieldsInput
 import com.mycorrhizal.crm.model.network.EnabledContactFieldsResponse
 import com.mycorrhizal.crm.model.network.ErrorAggregationResponse
 import com.mycorrhizal.crm.model.network.ErrorReason
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.ExportLossPreflightResponse
 import com.mycorrhizal.crm.model.network.ExternalActivitiesPage
 import com.mycorrhizal.crm.model.network.ExternalActivity
@@ -3367,7 +3368,10 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         val error = envelope?.error
         val reasonCode = error?.reasonCode?.takeIf { it.isNotBlank() }
         val reason = if (error != null && reasonCode != null) {
-            ErrorReason(reasonCode, error.reasonParams.orEmpty())
+            ErrorReason(
+                reasonCode,
+                withLockoutRetryAfter(reasonCode, error.reasonParams.orEmpty(), error.details?.get(RETRY_AFTER_KEY))
+            )
         } else {
             parseFlatReason(body)
         }
@@ -3407,7 +3411,22 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
             moshi.adapter(MessageResponse::class.java).fromJson(body)
         }.getOrNull() ?: return null
         val code = flat.reasonCode?.takeIf { it.isNotBlank() } ?: return null
-        return ErrorReason(code, flat.reasonParams.orEmpty())
+        return ErrorReason(code, withLockoutRetryAfter(code, flat.reasonParams.orEmpty(), flat.retryAfter))
+    }
+
+    /**
+     * The lockout's `retry_after` lives in `reason_params` today, but the flat body (top-level
+     * `retry_after`) is deprecated for the v2.0.0 envelope (`error.details.retry_after`; issues
+     * #2107, #2108). Fill the param from whichever shape carries it so the lockout text
+     * renders on either; other reasons are untouched.
+     */
+    private fun withLockoutRetryAfter(
+        code: String,
+        params: Map<String, Any?>,
+        retryAfter: Any?
+    ): Map<String, Any?> {
+        if (code != ErrorReasonCode.AUTH_ACCOUNT_LOCKED || params[RETRY_AFTER_KEY] != null) return params
+        return if (retryAfter is Number) params + (RETRY_AFTER_KEY to retryAfter.toDouble()) else params
     }
 
     private fun parseErrorDisplayMessage(body: String): String? {
@@ -3443,6 +3462,7 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         const val IF_MATCH_HEADER = "If-Match"
         private const val HTTP_PRECONDITION_FAILED = 412
         private const val MAX_BOUNDARY_KEY_CHARS = 48
+        private const val RETRY_AFTER_KEY = "retry_after"
 
         /**
          * Every request is built against this placeholder origin and rewritten

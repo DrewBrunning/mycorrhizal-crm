@@ -30,6 +30,91 @@ describe('lockout 429 reason codes', () => {
     await expect(login2FA('000000')).rejects.toThrow('Too many failed attempts. Try again in 90 s');
   });
 
+  // Issue #2107 (MAINT-02 deprecation of the flat body, switched in v2.0.0 by
+  // #2108): the target lockout is the standard envelope with code
+  // ACCOUNT_LOCKED and the retry values under error.details. The client must
+  // read either shape, so v2.0.0 does not strand a deployed web build.
+  describe('target envelope shape (v2.0.0)', () => {
+    const envelope = (error: Record<string, unknown> = {}) => ({
+      error: {
+        code: 'ACCOUNT_LOCKED',
+        message: fallback,
+        reason_code: 'auth_account_locked',
+        reason_params: { retry_after: 90 },
+        details: { retry_after: 90, retry_after_at: '2026-01-01T00:00:00Z' },
+        ...error,
+      },
+      request_id: 'req-1',
+      timestamp: '2026-01-01T00:00:00Z',
+    });
+
+    test('login2FA localizes the lockout from the envelope reason', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValueOnce({ ok: false, status: 429, json: async () => envelope() }),
+      );
+      await expect(login2FA('000000')).rejects.toThrow(
+        'Too many failed attempts. Try again in 90 s',
+      );
+    });
+
+    test('login2FA takes retry_after from error.details when reason_params is absent', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValueOnce({
+          ok: false,
+          status: 429,
+          json: async () => envelope({ reason_params: undefined }),
+        }),
+      );
+      await expect(login2FA('000000')).rejects.toThrow(
+        'Too many failed attempts. Try again in 90 s',
+      );
+    });
+
+    test('login2FA takes a top-level retry_after when the flat body has no reason_params', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValueOnce({
+          ok: false,
+          status: 429,
+          json: async () => lockedBody({ reason_params: undefined }),
+        }),
+      );
+      await expect(login2FA('000000')).rejects.toThrow(
+        'Too many failed attempts. Try again in 90 s',
+      );
+    });
+
+    test('the retry_after fallback applies only to auth_account_locked', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValueOnce({
+          ok: false,
+          status: 429,
+          json: async () =>
+            envelope({ reason_code: 'auth_not_a_real_code', reason_params: undefined }),
+        }),
+      );
+      await expect(login2FA('000000')).rejects.toThrow(fallback);
+    });
+
+    test('passkey sign-in resolves the envelope lockout from details', async () => {
+      stubWebAuthn();
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValueOnce({
+          ok: false,
+          status: 429,
+          json: async () => envelope({ reason_params: undefined }),
+        }),
+      );
+      await expect(loginWithPasskey()).rejects.toThrow(
+        'Too many failed attempts. Try again in 90 s',
+      );
+    });
+  });
+
   test('login2FA falls back to message for an unknown code or a missing param', async () => {
     vi.stubGlobal(
       'fetch',
@@ -43,7 +128,7 @@ describe('lockout 429 reason codes', () => {
         .mockResolvedValueOnce({
           ok: false,
           status: 429,
-          json: async () => lockedBody({ reason_params: {} }),
+          json: async () => lockedBody({ reason_params: {}, retry_after: undefined }),
         }),
     );
     await expect(login2FA('000000')).rejects.toThrow(fallback);
