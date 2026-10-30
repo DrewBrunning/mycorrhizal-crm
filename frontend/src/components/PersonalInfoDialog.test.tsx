@@ -26,6 +26,13 @@ test('create mode starts with the first kind, no level and normal sensitivity', 
   expect(screen.getByRole('switch', { name: 'Favorite' })).not.toBeChecked();
 });
 
+test('explains what the optional label is for', () => {
+  renderDialog();
+  expect(
+    screen.getByText('Optional tag shown beside the value, e.g. “work” or “learned in 2020”.'),
+  ).toBeInTheDocument();
+});
+
 test('requires a value before saving', async () => {
   const onSave = vi.fn().mockResolvedValue(undefined);
   renderDialog({ onSave });

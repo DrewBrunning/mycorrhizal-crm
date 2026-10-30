@@ -66,7 +66,7 @@
   },
   "household": {
     "title": "Nuclei familiari",
-    "description": "Raggruppa le persone (e gli animali) della tua vita per residenza condivisa. I nuclei familiari sono separati dai cerchi e dal grafo delle relazioni — confermare o rifiutare una relazione suggerita è sempre una tua scelta.",
+    "description": "I nuclei familiari raggruppano le persone e gli animali che condividono una casa. Abilitano suggerimenti per indirizzi condivisi e un elenco combinato di biglietti e regali, e i loro membri contano come contatti ambientali per la cadenza. A differenza di una cerchia, un nucleo familiare riguarda la convivenza, non un gruppo sociale.",
     "newHousehold": "Aggiungi nucleo",
     "createHousehold": "Crea nucleo familiare",
     "editHousehold": "Modifica nucleo familiare",
@@ -94,7 +94,7 @@
       "pet": "Animale",
       "roommate": "Coinquilino/a"
     },
-    "empty": "Nessun nucleo familiare ancora. Creane uno per iniziare a suggerire relazioni tra le persone che vivono insieme.",
+    "empty": "Nessun nucleo familiare ancora. Creane uno per le persone che condividono una casa per ottenere suggerimenti sugli indirizzi condivisi e un elenco combinato di biglietti e regali.",
     "deleteMessage": "Vuoi davvero eliminare questo nucleo familiare? I suoi membri non verranno eliminati.",
     "cancel": "Annulla",
     "save": "Salva",
@@ -131,8 +131,8 @@
     "memberCount_one": "{{count}} contatto",
     "memberCount_other": "{{count}} contatti",
     "memberCount_many": "{{count}} contatti",
-    "noCircles": "Nessuna cerchia ancora. Aggiungine una qui sotto o dalla pagina di un contatto.",
-    "noTags": "Nessun tag ancora. Aggiungine uno qui sotto o dalla pagina di un contatto.",
+    "noCircles": "Nessuna cerchia ancora. Le cerchie raggruppano persone che segui insieme: aggiungine una qui sotto o dalla pagina di un contatto.",
+    "noTags": "Nessun tag ancora. I tag sono etichette libere per temi trasversali: aggiungine uno qui sotto o dalla pagina di un contatto.",
     "deleteCircleConfirm": "Eliminare la cerchia \"{{name}}\"? Verrà rimossa da ogni contatto che la ha.",
     "deleteTagConfirm": "Eliminare il tag \"{{name}}\"? Verrà rimosso da ogni contatto che lo ha.",
     "circleCreated": "Cerchia creata",
@@ -168,7 +168,9 @@
       "life_event": "Evento di vita",
       "external_activity": "Attività esterna",
       "gift": "Regalo"
-    }
+    },
+    "circlesDescription": "Le cerchie sono gruppi che segui insieme, come famiglia, amici o colleghi. Un contatto può appartenere a più cerchie.",
+    "tagsDescription": "I tag sono etichette libere per temi trasversali, come «vegano» o «club del libro». Un contatto può averne quanti vuoi."
   },
   "dashboard": {
     "title": "Cruscotto",
@@ -559,7 +561,8 @@
         "medium": "Medio",
         "low": "Basso"
       },
-      "label": "Etichetta"
+      "label": "Etichetta",
+      "labelHint": "Etichetta facoltativa accanto al valore, ad es. «lavoro» o «imparato nel 2020»."
     },
     "keywords": {
       "placeholder": "Digita una parola chiave e premi Invio"
@@ -850,7 +853,8 @@
     "fromDate": "Dal",
     "toDate": "Al",
     "allContactsInfo": "Questa pagina elenca tutte le attività di tutti i contatti.",
-    "logFromLocation": "Registra dalla cronologia delle posizioni"
+    "logFromLocation": "Registra dalla cronologia delle posizioni",
+    "description": "Le attività sono cose già successe: una chiamata, un caffè, un messaggio. Registrale qui per mantenere completa la storia di ogni contatto."
   },
   "markdown": {
     "opensInNewTab": "(si apre in una nuova scheda)"
@@ -2988,11 +2992,12 @@
         "anchorBothOrNeither": "Imposta sia il mese che il giorno, oppure lasciali entrambi vuoti.",
         "invalidLeadTime": "Inserisci un numero valido di giorni di anticipo.",
         "saveFailed": "Impossibile salvare l'occasione."
-      }
+      },
+      "dialogHint": "Una regola ricorrente, come un biglietto o un regalo annuale. Un'occasione attiva crea il proprio promemoria al tempo di anticipo indicato."
     },
     "cardList": {
       "title": "Elenco biglietti",
-      "description": "Scarica un CSV con nomi e indirizzi di tutte le persone nella tua lista dei biglietti d'auguri.",
+      "description": "Scarica un CSV dei contatti con un'occasione biglietto attiva: una riga per impegno attivo, con il nome del contatto, il suo indirizzo a sensibilità normale e l'occasione. Gli indirizzi privati e segreti sono esclusi.",
       "download": "Scarica CSV",
       "downloadFailed": "Impossibile scaricare l'elenco dei biglietti."
     },
@@ -3043,12 +3048,14 @@
         "startRequired": "Scegli una data e un'ora di inizio.",
         "endBeforeStart": "L'ora di fine non può essere precedente a quella di inizio.",
         "saveFailed": "Impossibile salvare l'evento."
-      }
-    }
+      },
+      "dialogHint": "Un evento una tantum che stai pianificando. Aggiungi gli invitati dopo il salvataggio, poi annota ciò che ti ha detto ciascuno."
+    },
+    "description": "Le occasioni sono le cose ricorrenti che fai per le persone, come un biglietto o un regalo annuale, e gli eventi una tantum con un elenco di invitati. Gli impegni attivi creano promemoria automaticamente; i promemoria sono l'avviso, non una seconda occasione. Per registrare qualcosa già successo, usa le attività."
   },
   "prep": {
     "title": "Vista di preparazione",
-    "subtitle": "Tutto da ricordare prima di vederli",
+    "subtitle": "Un breve briefing prima di vedere o chiamare qualcuno: storia recente, ordine del giorno aperto e date in arrivo.",
     "unknownContact": "Sconosciuto",
     "notFound": "Contatto non trovato",
     "view": "Vedi",
@@ -3081,7 +3088,8 @@
       "inDays_one": "tra {{count}} giorno",
       "inDays_other": "tra {{count}} giorni",
       "inDays_many": "tra {{count}} giorni"
-    }
+    },
+    "entryTooltip": "Storia recente, ordine del giorno aperto e date in arrivo: tutto da ricordare prima di vederli."
   },
   "contactShares": {
     "title": "Condivisioni di contatti",

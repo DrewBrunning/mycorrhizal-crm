@@ -132,7 +132,30 @@ test('renders the empty state when there are no circles', async () => {
   renderPage();
 
   expect(
-    await screen.findByText("No circles yet. Add one below, or from a contact's page."),
+    await screen.findByText(
+      "No circles yet. Circles group people you keep up with together — add one below, or from a contact's page.",
+    ),
+  ).toBeInTheDocument();
+});
+
+test('explains the difference between circles and tags on each tab', async () => {
+  listCirclesMock.mockResolvedValue(circlesResponse());
+  listTagsMock.mockResolvedValue(tagsResponse());
+
+  renderPage();
+
+  expect(
+    await screen.findByText(
+      'Circles are groups you keep up with together, like family, friends, or colleagues. A contact can belong to several.',
+    ),
+  ).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('tab', { name: 'Tags' }));
+
+  expect(
+    await screen.findByText(
+      'Tags are free-form labels for topics that cut across groups, like “vegan” or “book club”. A contact can have any number.',
+    ),
   ).toBeInTheDocument();
 });
 
@@ -195,7 +218,9 @@ test('creating a circle calls createCircle with the trimmed name, refreshes, and
   );
 
   renderPage();
-  await screen.findByText("No circles yet. Add one below, or from a contact's page.");
+  await screen.findByText(
+    "No circles yet. Circles group people you keep up with together — add one below, or from a contact's page.",
+  );
 
   fireEvent.change(screen.getByPlaceholderText('New circle name…'), {
     target: { value: '  New Circle  ' },
@@ -276,7 +301,9 @@ test('creating a tag calls createTag with the trimmed name, refreshes, and shows
   listTagsMock.mockResolvedValueOnce(tagsResponse({ tags: [tag({ id: 't2', name: 'New Tag' })] }));
 
   renderPage(['/circles-tags?tab=tags']);
-  await screen.findByText("No tags yet. Add one below, or from a contact's page.");
+  await screen.findByText(
+    "No tags yet. Tags are free-form labels for cross-cutting topics — add one below, or from a contact's page.",
+  );
 
   fireEvent.change(screen.getByPlaceholderText('New tag name…'), { target: { value: 'New Tag' } });
   fireEvent.click(screen.getByRole('button', { name: 'Add' }));
@@ -290,7 +317,9 @@ test('the tag Add button is disabled for a blank/whitespace-only name', async ()
   listTagsMock.mockResolvedValue(tagsResponse({ tags: [], contacts: [] }));
 
   renderPage(['/circles-tags?tab=tags']);
-  await screen.findByText("No tags yet. Add one below, or from a contact's page.");
+  await screen.findByText(
+    "No tags yet. Tags are free-form labels for cross-cutting topics — add one below, or from a contact's page.",
+  );
 
   const addButton = screen.getByRole('button', { name: 'Add' });
   expect(addButton).toBeDisabled();

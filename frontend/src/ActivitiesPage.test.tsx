@@ -131,6 +131,20 @@ test('the initial fetch requests contacts included at the page size', async () =
   expect(listCall?.url).toContain('include=contacts');
 });
 
+test('explains that activities record things that already happened', async () => {
+  mockFetchRoutes([
+    { pattern: '/activities?', handler: { body: { activities: [], next_cursor: '', limit: 25 } } },
+  ]);
+
+  renderPage();
+
+  expect(
+    await screen.findByText(
+      "Activities are things that already happened — a call, a coffee, a message. Log them here to keep each contact's history complete.",
+    ),
+  ).toBeInTheDocument();
+});
+
 test('typing a search term debounces before issuing a new request', async () => {
   const calls = mockFetchRoutes([
     {
