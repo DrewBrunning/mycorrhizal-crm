@@ -212,7 +212,7 @@ private fun localizedReason(reason: ErrorReason?): String? {
             field?.let { stringResource(R.string.error_reason_validation_email, it) }
 
         ErrorReasonCode.VALIDATION_MIN -> {
-            val min = reason.str("min")
+            val min = reason.int("min")
             if (field != null && min != null) {
                 stringResource(R.string.error_reason_validation_min, field, min)
             } else {
@@ -221,7 +221,7 @@ private fun localizedReason(reason: ErrorReason?): String? {
         }
 
         ErrorReasonCode.VALIDATION_MAX -> {
-            val max = reason.str("max")
+            val max = reason.int("max")
             if (field != null && max != null) {
                 stringResource(R.string.error_reason_validation_max, field, max)
             } else {
