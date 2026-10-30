@@ -66,8 +66,9 @@ content under clock skew.
 Restored from the payload (re-created as new rows, same natural keys):
 `activity_contacts`, `relationship_edges` (only edges whose other endpoint still exists and is live; otherwise
 skipped and reported), `household_members`, `circle_members`, `contact_tags`, `field_values`,
-`external_identities`, `external_activities`, `occasion_event_attendees`, and the `users.self_contact_vcard_uid`
-pointer **only if it is still null**.
+`external_identities`, `external_activities`, `occasion_event_attendees`, `contact_field_overrides` (the user's
+per-contact field visibility, issue #1997; a row the user re-created meanwhile wins and the restored one is
+skipped and reported), and the `users.self_contact_vcard_uid` pointer **only if it is still null**.
 
 Not restored, by design — each is system-generated or security-relevant, and regenerates or is re-armed by a
 person:

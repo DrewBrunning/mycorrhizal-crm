@@ -2751,6 +2751,8 @@
     <string name="error_reason_contact_bulk_field_not_editable">%1$s ne peut pas être modifié en masse</string>
     <string name="error_reason_contact_bulk_no_operations">Indiquez au moins un des champs set, clear, custom_set ou custom_clear</string>
     <string name="error_reason_contact_bulk_value_empty">%1$s ne peut pas être vide ; listez-le dans clear pour le vider</string>
+    <string name="error_reason_contact_field_override_unknown_key">%1$s n’est pas un champ qui peut être affiché ou masqué</string>
+    <string name="error_reason_contact_field_override_state_invalid">%1$s n’accepte que inherit, show ou hide</string>
     <string name="error_reason_contact_bulk_value_too_long">La longueur de %1$s est au maximum %2$d</string>
     <string name="error_reason_import_circles_not_found">Un ou plusieurs cercles sont introuvables</string>
     <string name="error_reason_import_tags_not_found">Une ou plusieurs étiquettes sont introuvables</string>

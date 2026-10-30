@@ -102,4 +102,5 @@ var Allowlist = map[string]string{
 	"AccountBundleRelationship.Metadata":         "internal versioned account-bundle document (not a rendered response); the import mapper treats absent and empty identically",
 	"AccountBundleLifeEvent.RelatedEntityIDs":    "see AccountBundleRelationship.Metadata",
 	"AccountBundleCadencePolicy.QualifyingTypes": "see AccountBundleRelationship.Metadata",
+	"AccountBundleContact.FieldOverrides":        "see AccountBundleRelationship.Metadata; absent means the contact inherits every field (issue #1997)",
 }

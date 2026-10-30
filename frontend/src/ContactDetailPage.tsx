@@ -67,6 +67,7 @@ import CadenceDialog from './components/CadenceDialog';
 import CadencePanel from './components/CadencePanel';
 import ClothingSizesPanel from './components/ClothingSizesPanel';
 import ConnectionsPanel from './components/ConnectionsPanel';
+import ContactFieldVisibilityDialog from './components/ContactFieldVisibilityDialog';
 import ContactHeader from './components/ContactHeader';
 import ContactInformation from './components/ContactInformation';
 import ContactTimeline from './components/ContactTimeline';
@@ -112,11 +113,14 @@ import TimelineExplorerDialog from './components/TimelineExplorerDialog';
 import TitleDialog, { type TitleFormData } from './components/TitleDialog';
 import WorkInformationDialog from './components/WorkInformationDialog';
 import WorkList from './components/WorkList';
+import { hiddenEmptyFields, renderedFieldSet } from './contactFieldDisplay';
+import { CONTACT_FIELDS, type ContactFieldKey } from './contactFields';
 import { useSnackbar } from './context/SnackbarContext';
 import { useCadencePolicy } from './hooks/useCadencePolicy';
 import { useContactDetailData, useContactDetailLoader } from './hooks/useContactDetailData';
 import { useContactDialogs } from './hooks/useContactDialogs';
 import { useContactFieldEditing } from './hooks/useContactFieldEditing';
+import { useContactFieldVisibility } from './hooks/useContactFieldVisibility';
 import { useContactFileLinks } from './hooks/useContactFileLinks';
 import { useContactImmichLink } from './hooks/useContactImmichLink';
 import { useContactLifecycleActions } from './hooks/useContactLifecycleActions';
@@ -362,12 +366,62 @@ export default function ContactDetailPage() {
     notes,
     activities,
     completions,
-    enabledFields,
+    enabledFields: accountEnabledFields,
     timelineRevision,
     applyCore,
     refreshNotesAndActivities,
     reloadRecord,
   } = useContactDetailData(id);
+
+  // Issue #1997: per-contact field visibility. The server resolves per-contact
+  // override > account default > built-in default; until it answers (or if it
+  // fails) the account default this page already has is used. Hide-empty then
+  // suppresses enabled fields with no value in this detail view, while the
+  // "Add a field" menu keeps them reachable (`revealedFields`). Cosmetic only.
+  const fieldVisibility = useContactFieldVisibility(record?.id);
+  // A reveal belongs to one contact: it is stored with that contact's id, so
+  // navigating to another contact starts with nothing revealed.
+  const [revealed, setRevealed] = useState<{ id?: number; keys: Set<ContactFieldKey> }>({
+    keys: new Set(),
+  });
+  const revealedFields = useMemo(
+    () => (revealed.id === record?.id ? revealed.keys : new Set<ContactFieldKey>()),
+    [revealed, record?.id],
+  );
+  const revealField = (key: ContactFieldKey) =>
+    setRevealed({ id: record?.id, keys: new Set(revealedFields).add(key) });
+  const [fieldVisibilityOpen, setFieldVisibilityOpen] = useState(false);
+  const resolvedEnabledFields = useMemo(() => {
+    const resolved = fieldVisibility.visibility?.resolved;
+    if (!resolved) return accountEnabledFields;
+    return new Set(CONTACT_FIELDS.map((f) => f.key).filter((key) => resolved.fields[key]));
+  }, [fieldVisibility.visibility, accountEnabledFields]);
+  const hideEmptyMode = fieldVisibility.visibility?.resolved.hide_empty ?? false;
+  const fieldDisplayInput = useMemo(
+    () =>
+      record
+        ? {
+            card: record.card,
+            crm: record.crm,
+            gender: record.gender,
+            enabled: resolvedEnabledFields,
+            hideEmpty: hideEmptyMode,
+            revealed: revealedFields,
+          }
+        : null,
+    [record, resolvedEnabledFields, hideEmptyMode, revealedFields],
+  );
+  const enabledFields = useMemo(
+    () =>
+      fieldDisplayInput
+        ? renderedFieldSet(fieldDisplayInput, resolvedEnabledFields)
+        : resolvedEnabledFields,
+    [fieldDisplayInput, resolvedEnabledFields],
+  );
+  const hiddenEmptyKeys = useMemo(
+    () => (fieldDisplayInput ? hiddenEmptyFields(fieldDisplayInput) : []),
+    [fieldDisplayInput],
+  );
 
   const isMe = !!record && !!selfContactUid && record.uid === selfContactUid;
   useDocumentTitle(record ? getContactDisplayName(record) : t('nav.contacts'));
@@ -1173,6 +1227,19 @@ export default function ContactDetailPage() {
 
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 1, px: 2, pb: 2 }}>
+      <ContactFieldVisibilityDialog
+        open={fieldVisibilityOpen}
+        onClose={() => setFieldVisibilityOpen(false)}
+        visibility={fieldVisibility.visibility}
+        onSave={async (input) => {
+          await fieldVisibility.save(input);
+          showSuccess(t('contactDetail.fieldVisibility.dialog.saved'));
+        }}
+        onReset={async () => {
+          await fieldVisibility.reset();
+          showSuccess(t('contactDetail.fieldVisibility.dialog.resetDone'));
+        }}
+      />
       <RecordConflictDialog
         open={conflictOpen}
         onKeepEditing={() => setConflictOpen(false)}
@@ -1310,6 +1377,9 @@ export default function ContactDetailPage() {
           onEditValueChange={fieldEditing.handleEditValueChange}
           onUpdateCard={fieldEditing.handleUpdateCard}
           enabledFields={enabledFields}
+          hiddenEmptyFields={hiddenEmptyKeys}
+          onRevealField={revealField}
+          onCustomizeFields={() => setFieldVisibilityOpen(true)}
           fieldDefinitions={fieldDefinitions}
           fieldValuesByDefinition={fieldValuesByDefinition}
           onSaveFieldValue={handleSaveFieldValue}

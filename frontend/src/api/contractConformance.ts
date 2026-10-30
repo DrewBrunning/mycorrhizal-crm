@@ -28,6 +28,8 @@
 // e.g. `Type '"ID"' does not satisfy the constraint 'never'`. Deliberate
 // differences are written as an explicit `Omit<>`/`DeliberateException`
 // with a comment saying why.
+
+import type { ContactFieldKey } from '../contactFields';
 import type * as S from '../generated/openapi';
 import type { Activity, ActivityContact } from './activities';
 import type { BriefingRelationship } from './briefings';
@@ -41,6 +43,7 @@ import type {
   ContactDetailUser,
   ImmichPersonSummary,
 } from './contactDetail';
+import type { ContactFieldVisibility } from './contactFieldVisibility';
 import type { ContactScoreFacet, ContactScoreTarget, SCORE_REASON_CODES } from './contactScore';
 import type { ContactSyncConflict } from './contactSyncConflicts';
 import type {
@@ -198,6 +201,7 @@ export type Conformance = [
   NoDrift<ResponseDrift<ContactTargetClosenessResponse, S.ContactTargetClosenessResponse>>,
   NoDrift<ResponseDrift<ContactScoreTarget, S.ContactScoreTarget>>,
   NoDrift<ResponseDrift<ContactScoreFacet, S.ContactScoreFacet>>,
+  NoDrift<ResponseDrift<ContactFieldVisibility, S.ContactFieldVisibility>>,
   // Error envelope (ADR 0038, issue #2105). `details`, `reason_params` and
   // `field_reasons` are narrowed on purpose: the spec says free-form
   // (`unknown`), the client only reads string details, string|number params,
@@ -259,6 +263,9 @@ export type Conformance = [
 // ---------------------------------------------------------------- enums
 
 export type EnumConformance = [
+  // Issue #1997: the overridable field keys the web client renders are exactly the
+  // server's allowlist.
+  Assert<SameMembers<ContactFieldKey, S.ContactFieldKey>>,
   Assert<SameMembers<(typeof FEED_KINDS)[number], S.Feed['kind']>>,
   Assert<SameMembers<(typeof FEED_DETAILS)[number], S.Feed['detail']>>,
   Assert<SameMembers<(typeof GIFT_STATUSES)[number], Defined<S.Gift['status']>>>,

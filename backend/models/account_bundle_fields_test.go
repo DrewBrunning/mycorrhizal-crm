@@ -78,7 +78,11 @@ var bundleFieldMap = map[string]bundleFieldDTO{
 	// Pure join rows: their whole content is the pair of stable IDs that the
 	// parent DTO's member/contact list carries (member_uids / contact_uids).
 	"CircleMember": {dto: AccountBundleCircle{}, renamed: map[string]string{"MemberVCardUID": "MemberUIDs", "CircleID": "ID"}},
-	"ContactTag":   {dto: AccountBundleTag{}, renamed: map[string]string{"ContactVCardUID": "ContactUIDs", "TagID": "ID"}},
+	// A per-contact override row is a (field_key -> state) entry of the
+	// contact DTO's field_overrides map (hide_empty_override for the reserved
+	// key), keyed by the contact's own UID.
+	"ContactFieldOverride": {dto: AccountBundleContact{}, renamed: map[string]string{"ContactVCardUID": "UID", "FieldKey": "FieldOverrides", "State": "FieldOverrides"}},
+	"ContactTag":           {dto: AccountBundleTag{}, renamed: map[string]string{"ContactVCardUID": "ContactUIDs", "TagID": "ID"}},
 }
 
 // bundleUniversalExcluded are row-bookkeeping columns no DTO carries, for any
@@ -121,6 +125,7 @@ var bundleFieldExcluded = map[string]map[string]string{
 		"Photo":           reasonFlatPhoto,
 		"PhotoThumbnail":  reasonFlatPhoto,
 	},
+	"ContactFieldOverride":  {"ID": reasonPK},
 	"FieldValue":            {"ID": reasonPK},
 	"HouseholdMember":       {"ID": reasonPK, "HouseholdID": "parent link; the member sits inside its household's members[] list"},
 	"OccasionEventAttendee": {"ID": reasonPK, "EventID": "parent link; the attendee sits inside its event's attendees[] list"},

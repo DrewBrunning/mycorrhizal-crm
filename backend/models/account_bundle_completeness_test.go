@@ -28,6 +28,7 @@ var bundleCovered = map[string]string{
 	"Circle":                "plan.circles",
 	"CircleMember":          "plan.circles[].member_uids",
 	"Contact":               "plan.contacts",
+	"ContactFieldOverride":  "plan.contacts[].field_overrides / hide_empty_override",
 	"ContactTag":            "plan.tags[].contact_uids",
 	"ConversationAgenda":    "plan.conversation_agenda",
 	"DataDecayPolicy":       "plan.data_decay_policies",

@@ -20,6 +20,7 @@ unleash:
         - ^contact_address_controller\.go$
         - ^contact_controller\.go$
         - ^contact_detail_controller\.go$
+        - ^contact_field_visibility_controller\.go$
         - ^contact_map_controller\.go$
         - ^contact_score_controller\.go$
         - ^contact_share_controller\.go$

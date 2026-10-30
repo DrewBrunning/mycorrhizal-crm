@@ -2654,6 +2654,8 @@
     <string name="error_reason_contact_bulk_field_not_editable">%1$s kann nicht gemeinsam bearbeitet werden</string>
     <string name="error_reason_contact_bulk_no_operations">Gib mindestens eines von set, clear, custom_set oder custom_clear an</string>
     <string name="error_reason_contact_bulk_value_empty">%1$s darf nicht leer sein; zum Leeren in clear angeben</string>
+    <string name="error_reason_contact_field_override_unknown_key">%1$s ist kein Feld, das ein- oder ausgeblendet werden kann</string>
+    <string name="error_reason_contact_field_override_state_invalid">Für %1$s sind nur inherit, show oder hide zulässig</string>
     <string name="error_reason_contact_bulk_value_too_long">Die Länge von %1$s ist höchstens %2$d</string>
     <string name="error_reason_import_circles_not_found">Einer oder mehrere Kreise wurden nicht gefunden</string>
     <string name="error_reason_import_tags_not_found">Einer oder mehrere Tags wurden nicht gefunden</string>

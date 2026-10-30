@@ -48,10 +48,16 @@ type AccountBundle struct {
 	// the field existed (the importer then leaves the destination alone, i.e.
 	// auto for a fresh account). Import applies it only while the destination
 	// is still on auto, so it never overwrites a choice made on the destination.
-	TimeFormat  string                    `json:"time_format,omitempty"`
-	Plan        AccountBundlePlan         `json:"plan"`
-	Attachments []AccountBundleAttachment `json:"attachments"`
-	Omitted     AccountBundleOmissions    `json:"omitted"`
+	TimeFormat string `json:"time_format,omitempty"`
+	// HideEmptyFields is the account-wide hide-empty display default
+	// (users.hide_empty_fields, issue #1997). Additive and optional: absent
+	// (false) on a bundle written before the field existed. Import adopts a
+	// true value only while the destination is still on the default (off), so
+	// it never overwrites a choice made on the destination.
+	HideEmptyFields bool                      `json:"hide_empty_fields,omitempty"`
+	Plan            AccountBundlePlan         `json:"plan"`
+	Attachments     []AccountBundleAttachment `json:"attachments"`
+	Omitted         AccountBundleOmissions    `json:"omitted"`
 }
 
 // AccountBundleOmissions records what the bundle deliberately did not carry,
@@ -115,6 +121,16 @@ type AccountBundleContact struct {
 	Archived     bool                     `json:"archived"`
 	IsFavorite   bool                     `json:"is_favorite"`
 	PhotoOmitted bool                     `json:"photo_omitted,omitempty"`
+	// FieldOverrides / HideEmptyOverride are the owner's per-contact field
+	// visibility preferences for this contact (contact_field_overrides, issue
+	// #1997): field key -> "show"/"hide", and the per-contact hide-empty
+	// override ("show"/"hide"). Cosmetic owner preference data kept OUTSIDE the
+	// neutral Card (so never in vCard/JSContact/CardDAV); the bundle is the
+	// full-fidelity owner export, so it travels here. Omitted when the contact
+	// inherits everything; import validates against the allowlist and drops
+	// anything unrecognised.
+	FieldOverrides    map[string]string `json:"field_overrides,omitempty"`
+	HideEmptyOverride string            `json:"hide_empty_override,omitempty"`
 }
 
 // AccountBundleRelationship is one directed edge; the stable IDs are contact

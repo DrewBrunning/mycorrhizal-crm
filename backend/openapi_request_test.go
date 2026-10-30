@@ -116,6 +116,8 @@ var requestBodyBindings = map[string]requestBodyBinding{
 	"POST /contact-shares":                     bindingFor(models.ContactShareInput{}),
 	"POST /contact-shares/{id}/confirm":        bindingFor(models.ImportConfirmRequest{}),
 	"PUT /contacts/{id}/field-values":          bindingFor(models.ContactFieldValuesInput{}),
+	"PUT /contacts/{id}/field-visibility":      bindingFor(models.ContactFieldVisibilityInput{}),
+	"PATCH /users/hide-empty-fields":           bindingFor(models.HideEmptyFieldsInput{}),
 	"POST /contacts/{id}/addresses/geocode":    bindingFor(models.GeocodeDraftInput{}),
 
 	// --- Relationship edges / notes / activities ---

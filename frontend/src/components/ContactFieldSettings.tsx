@@ -12,7 +12,12 @@ import {
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getEnabledContactFields, updateEnabledContactFields } from '../api/users';
+import {
+  getEnabledContactFields,
+  getHideEmptyFields,
+  updateEnabledContactFields,
+  updateHideEmptyFields,
+} from '../api/users';
 import {
   CONTACT_FIELD_GROUPS,
   CONTACT_FIELDS,
@@ -25,6 +30,7 @@ export default function ContactFieldSettings() {
   const [enabled, setEnabled] = useState<Set<ContactFieldKey>>(
     new Set(DEFAULT_ENABLED_CONTACT_FIELDS),
   );
+  const [hideEmpty, setHideEmpty] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -33,7 +39,11 @@ export default function ContactFieldSettings() {
     const load = async () => {
       try {
         setLoading(true);
-        const stored = await getEnabledContactFields();
+        const [stored, storedHideEmpty] = await Promise.all([
+          getEnabledContactFields(),
+          getHideEmptyFields(),
+        ]);
+        setHideEmpty(storedHideEmpty);
         const keys =
           stored == null ? DEFAULT_ENABLED_CONTACT_FIELDS : (stored as ContactFieldKey[]);
         setEnabled(new Set(keys));
@@ -58,6 +68,21 @@ export default function ContactFieldSettings() {
       setSaving(true);
       setError('');
       await updateEnabledContactFields(Array.from(next));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('settings.contactFields.saveError'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Issue #1997: the account-wide hide-empty default (a contact can override it).
+  const handleHideEmptyToggle = async () => {
+    const next = !hideEmpty;
+    setHideEmpty(next);
+    try {
+      setSaving(true);
+      setError('');
+      await updateHideEmptyFields(next);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('settings.contactFields.saveError'));
     } finally {
@@ -90,6 +115,29 @@ export default function ContactFieldSettings() {
             <Alert severity="error" sx={{ py: 0 }}>
               {error}
             </Alert>
+          )}
+
+          {!loading && (
+            <Box>
+              <FormControlLabel
+                control={
+                  <Switch
+                    size="small"
+                    checked={hideEmpty}
+                    disabled={saving}
+                    onChange={() => void handleHideEmptyToggle()}
+                  />
+                }
+                label={t('settings.contactFields.hideEmpty.label')}
+              />
+              <Typography
+                variant="caption"
+                component="p"
+                sx={{ display: 'block', ml: 4, color: 'text.secondary' }}
+              >
+                {t('settings.contactFields.hideEmpty.description')}
+              </Typography>
+            </Box>
           )}
 
           {loading ? (

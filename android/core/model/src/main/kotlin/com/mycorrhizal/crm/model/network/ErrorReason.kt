@@ -21,6 +21,8 @@ object ErrorReasonCode {
     const val CONTACT_BULK_FIELD_IN_SET_AND_CLEAR = "contact_bulk_field_in_set_and_clear"
     const val CONTACT_BULK_FIELD_NOT_EDITABLE = "contact_bulk_field_not_editable"
     const val CONTACT_BULK_NO_OPERATIONS = "contact_bulk_no_operations"
+    const val CONTACT_FIELD_OVERRIDE_STATE_INVALID = "contact_field_override_state_invalid"
+    const val CONTACT_FIELD_OVERRIDE_UNKNOWN_KEY = "contact_field_override_unknown_key"
     const val CONTACT_BULK_VALUE_EMPTY = "contact_bulk_value_empty"
     const val CONTACT_BULK_VALUE_TOO_LONG = "contact_bulk_value_too_long"
     const val IMPORT_CIRCLES_NOT_FOUND = "import_circles_not_found"

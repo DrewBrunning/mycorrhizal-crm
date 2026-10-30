@@ -88,40 +88,41 @@ const (
 // asserts that invariant — a cascade to a soft-deleted parent never fires.
 var declaredCascadeCoverage = map[string]cascadeBucket{
 	// --- user-scoped, enumerated in DeleteUser --------------------------
-	"activities":             goCascadeUser,
-	"api_tokens":             goCascadeUser,
-	"calendar_event_links":   goCascadeUser,
-	"calendar_subscriptions": goCascadeUser,
-	"carddav_sync":           goCascadeUser,
-	"circles":                goCascadeUser,
-	"contact_shares":         goCascadeUser,
-	"contact_subscriptions":  goCascadeUser,
-	"contacts":               goCascadeUser,
-	"device_grants":          goCascadeUser,
-	"device_registrations":   goCascadeUser,
-	"feeds":                  goCascadeUser,
-	"field_definitions":      goCascadeUser,
-	"households":             goCascadeUser,
-	"geopulse_configs":       goCascadeUser,
-	"idempotency_keys":       goCascadeUser,
-	"immich_configs":         goCascadeUser,
-	"import_runs":            goCascadeUser,
-	"import_source_links":    goCascadeContact,
-	"link_field_types":       goCascadeUser,
-	"notification_configs":   goCascadeUser,
-	"occasion_events":        goCascadeUser,
-	"paperless_configs":      goCascadeUser,
-	"push_subscriptions":     goCascadeUser,
-	"reach_out_cursors":      goCascadeUser,
-	"recovery_codes":         goCascadeUser,
-	"seafile_configs":        goCascadeUser,
-	"sessions":               goCascadeUser,
-	"tags":                   goCascadeUser,
-	"users":                  goCascadeUser,
-	"webauthn_credentials":   goCascadeUser,
-	"webdav_configs":         goCascadeUser,
-	"webhooks":               goCascadeUser,
-	"webhook_deliveries":     goCascadeUser,
+	"activities":              goCascadeUser,
+	"api_tokens":              goCascadeUser,
+	"calendar_event_links":    goCascadeUser,
+	"calendar_subscriptions":  goCascadeUser,
+	"carddav_sync":            goCascadeUser,
+	"circles":                 goCascadeUser,
+	"contact_shares":          goCascadeUser,
+	"contact_subscriptions":   goCascadeUser,
+	"contacts":                goCascadeUser,
+	"device_grants":           goCascadeUser,
+	"device_registrations":    goCascadeUser,
+	"feeds":                   goCascadeUser,
+	"field_definitions":       goCascadeUser,
+	"households":              goCascadeUser,
+	"geopulse_configs":        goCascadeUser,
+	"idempotency_keys":        goCascadeUser,
+	"immich_configs":          goCascadeUser,
+	"import_runs":             goCascadeUser,
+	"import_source_links":     goCascadeContact,
+	"contact_field_overrides": goCascadeContact,
+	"link_field_types":        goCascadeUser,
+	"notification_configs":    goCascadeUser,
+	"occasion_events":         goCascadeUser,
+	"paperless_configs":       goCascadeUser,
+	"push_subscriptions":      goCascadeUser,
+	"reach_out_cursors":       goCascadeUser,
+	"recovery_codes":          goCascadeUser,
+	"seafile_configs":         goCascadeUser,
+	"sessions":                goCascadeUser,
+	"tags":                    goCascadeUser,
+	"users":                   goCascadeUser,
+	"webauthn_credentials":    goCascadeUser,
+	"webdav_configs":          goCascadeUser,
+	"webhooks":                goCascadeUser,
+	"webhook_deliveries":      goCascadeUser,
 	// --- contact-scoped, enumerated in services.ContactCascadeRegistry ---------
 	"activity_contacts":                 goCascadeContact,
 	"attachments":                       goCascadeContact,
@@ -379,6 +380,7 @@ func TestDeleteCascadeCoverage_DeleteContactSweepsEveryDeclaredContactTable(t *t
 		scopedCount("contact_tags", &models.ContactTag{}, "user_id = ?", user.ID),
 		scopedCount("conversation_agenda", &models.ConversationAgenda{}, "user_id = ?", user.ID),
 		scopedCount("data_decay_policies", &models.DataDecayPolicy{}, "user_id = ?", user.ID),
+		scopedCount("contact_field_overrides", &models.ContactFieldOverride{}, "user_id = ?", user.ID),
 		scopedCount("dismissed_duplicate_pairs", &models.DismissedDuplicatePair{}, "user_id = ?", user.ID),
 		scopedCount("external_activities", &models.ExternalActivity{}, "user_id = ?", user.ID),
 		scopedCount("external_identities", &models.ExternalIdentity{}, "user_id = ?", user.ID),
@@ -412,6 +414,7 @@ func TestDeleteCascadeCoverage_DeleteContactSweepsEveryDeclaredContactTable(t *t
 	require.NoError(t, db.Create(&models.ContactSyncLink{SubscriptionID: containers.subID, UserID: user.ID, Href: "/dav/1.vcf", ContactID: contact.ID, ContentHash: "h"}).Error)
 	require.NoError(t, db.Create(&models.ContactTag{TagID: containers.tagID, UserID: user.ID, ContactVCardUID: uid}).Error)
 	require.NoError(t, db.Create(&models.ConversationAgenda{UserID: user.ID, EntityID: uid, Content: "agenda"}).Error)
+	require.NoError(t, db.Create(&models.ContactFieldOverride{UserID: user.ID, ContactVCardUID: uid, FieldKey: "emails", State: "hide"}).Error)
 	require.NoError(t, db.Create(&models.DismissedDuplicatePair{UserID: user.ID, UIDLow: uid, UIDHigh: "00000000-0000-4000-8000-000000000001"}).Error)
 	require.NoError(t, db.Create(&models.ExternalActivity{UserID: user.ID, EntityID: uid, SourceSystem: "immich", ExternalID: "a-1", Type: "photo-appearance", OccurredAt: time.Now()}).Error)
 	require.NoError(t, db.Create(&models.ExternalIdentity{UserID: user.ID, EntityID: uid, System: "immich", ExternalID: "p-1"}).Error)
@@ -649,6 +652,7 @@ func seedUserCascadeFixtures(t *testing.T, db *gorm.DB, admin, target models.Use
 		scopedCount("data_decay_policies", &models.DataDecayPolicy{}, "user_id = ?", target.ID),
 		scopedCount("device_grants", &models.DeviceGrant{}, "user_id = ?", target.ID),
 		scopedCount("device_registrations", &models.DeviceRegistration{}, "user_id = ?", target.ID),
+		scopedCount("contact_field_overrides", &models.ContactFieldOverride{}, "user_id = ?", target.ID),
 		scopedCount("dismissed_duplicate_pairs", &models.DismissedDuplicatePair{}, "user_id = ?", target.ID),
 		scopedCount("dismissed_household_suggestions", &models.DismissedHouseholdSuggestion{}, "user_id = ?", target.ID),
 		scopedCount("external_activities", &models.ExternalActivity{}, "user_id = ?", target.ID),
@@ -702,6 +706,7 @@ func seedUserCascadeFixtures(t *testing.T, db *gorm.DB, admin, target models.Use
 	require.NoError(t, db.Create(&models.ContactSyncLink{SubscriptionID: containers.subID, UserID: target.ID, Href: "/dav/1.vcf", ContactID: contact.ID, ContentHash: "h"}).Error)
 	require.NoError(t, db.Create(&models.ContactTag{TagID: containers.tagID, UserID: target.ID, ContactVCardUID: uid}).Error)
 	require.NoError(t, db.Create(&models.ConversationAgenda{UserID: target.ID, EntityID: uid, Content: "agenda"}).Error)
+	require.NoError(t, db.Create(&models.ContactFieldOverride{UserID: target.ID, ContactVCardUID: uid, FieldKey: "emails", State: "hide"}).Error)
 	require.NoError(t, db.Create(&models.DismissedDuplicatePair{UserID: target.ID, UIDLow: uid, UIDHigh: "00000000-0000-4000-8000-000000000001"}).Error)
 	require.NoError(t, db.Create(&models.ExternalActivity{UserID: target.ID, EntityID: uid, SourceSystem: "immich", ExternalID: "a-1", Type: "photo-appearance", OccurredAt: time.Now()}).Error)
 	require.NoError(t, db.Create(&models.ExternalIdentity{UserID: target.ID, EntityID: uid, System: "immich", ExternalID: "p-1"}).Error)

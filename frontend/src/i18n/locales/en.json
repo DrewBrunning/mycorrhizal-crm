@@ -786,6 +786,29 @@
         "invalidDate": "Enter a date as YYYY-MM-DD or --MM-DD.",
         "saveFailed": "Couldn't save this anniversary."
       }
+    },
+    "fieldVisibility": {
+      "customize": "Customize fields",
+      "addField": "Add a field",
+      "dialog": {
+        "title": "Customize fields for this contact",
+        "description": "Choose which fields appear on this contact. This only changes what you see: it does not change the contact's data or what syncs.",
+        "emptyFields": "Empty fields",
+        "hideEmptyInherit": "Use my account setting ({{state}})",
+        "hideEmptyHide": "Hide empty fields",
+        "hideEmptyShow": "Show empty fields",
+        "fieldInherit": "Default ({{state}})",
+        "fieldShow": "Show",
+        "fieldHide": "Hide",
+        "stateShown": "shown",
+        "stateHidden": "hidden",
+        "stateOn": "hiding empty fields",
+        "stateOff": "showing empty fields",
+        "reset": "Reset to default",
+        "saved": "Field visibility saved.",
+        "resetDone": "Field visibility reset to the default.",
+        "saveError": "Unable to save field visibility."
+      }
     }
   },
   "noteDialog": {
@@ -1715,6 +1738,10 @@
         "anniversaries": "A list of dates you want to remember, each with its own type.",
         "language": "The language this contact card is written in, not a language the person speaks.",
         "preferredLanguages": "The languages this person speaks."
+      },
+      "hideEmpty": {
+        "label": "Hide empty fields",
+        "description": "On a contact's page, don't show fields that have no value yet. You can still add one from the Add a field menu, and a single contact can override this."
       }
     },
     "data": {
@@ -3824,7 +3851,9 @@
       "notification_push_subscription_limit": "maximum of {{max}} push subscriptions per user reached",
       "notification_device_registration_limit": "maximum of {{max}} device registrations per user reached",
       "feed_limit_reached": "feed limit reached (maximum {{max}} active feeds)",
-      "feed_entity_id_not_allowed": "must be empty for an aggregate feed"
+      "feed_entity_id_not_allowed": "must be empty for an aggregate feed",
+      "contact_field_override_unknown_key": "{{field}} is not a field that can be shown or hidden",
+      "contact_field_override_state_invalid": "{{field}} must be inherit, show or hide"
     }
   }
 }

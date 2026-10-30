@@ -320,6 +320,13 @@ func deleteUserCascade(tx *gorm.DB, userID uint) error {
 		return err
 	}
 
+	// Issue #1997: per-contact field visibility overrides (hard, join-shaped
+	// display preference — account gone, no tombstoning needed; the FK cascade
+	// would cover it, but the manual checklist stays complete)
+	if err := tx.Where("user_id = ?", userID).Delete(&models.ContactFieldOverride{}).Error; err != nil {
+		return err
+	}
+
 	// N8: hashed 2FA recovery codes (hard, join-shaped — a code is its
 	// hash; the FK cascade on recovery_codes.user_id would cover it, but
 	// the manual-cascade checklist stays complete rather than relying on

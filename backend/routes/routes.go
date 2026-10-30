@@ -174,6 +174,8 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			}
 			protected.GET("/users/enabled-contact-fields", controllers.GetEnabledContactFields)
 			protected.PATCH("/users/enabled-contact-fields", middleware.ValidateJSONMiddleware(&models.EnabledContactFieldsInput{}), controllers.UpdateEnabledContactFields)
+			// Issue #1997: account default for hide-empty display mode.
+			protected.PATCH("/users/hide-empty-fields", middleware.ValidateJSONMiddleware(&models.HideEmptyFieldsInput{}), controllers.UpdateHideEmptyFields)
 			protected.GET("/users/me", controllers.GetCurrentUser)
 			// Issue #972: self-service erasure. The admin-only DELETE
 			// /admin/users/:id refuses self-deletion, which left the common
@@ -522,6 +524,12 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.PUT("/field-definitions/reorder", middleware.ValidateJSONMiddleware(&models.FieldDefinitionReorderInput{}), controllers.ReorderFieldDefinitions)
 			protected.PUT("/field-definitions/:id", middleware.ValidateJSONMiddleware(&models.FieldDefinitionInput{}), controllers.UpdateFieldDefinition)
 			protected.DELETE("/field-definitions/:id", controllers.DeleteFieldDefinition)
+			// Per-contact field visibility overrides (issue #1997): cosmetic
+			// display state outside the neutral Card; never bumps the contact
+			// revision (no If-Match, like field-values).
+			protected.GET("/contacts/:id/field-visibility", controllers.GetContactFieldVisibility)
+			protected.PUT("/contacts/:id/field-visibility", middleware.ValidateJSONMiddleware(&models.ContactFieldVisibilityInput{}), controllers.PutContactFieldVisibility)
+			protected.DELETE("/contacts/:id/field-visibility", controllers.ResetContactFieldVisibility)
 			protected.GET("/contacts/:id/field-values", controllers.ListContactFieldValues)
 			protected.PUT("/contacts/:id/field-values", middleware.ValidateJSONMiddleware(&models.ContactFieldValuesInput{}), controllers.ReplaceContactFieldValues)
 

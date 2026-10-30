@@ -74,11 +74,15 @@ const (
 	ReasonContactBulkFieldNotEditable    ReasonCode = "contact_bulk_field_not_editable"
 	ReasonContactBulkValueEmpty          ReasonCode = "contact_bulk_value_empty"
 	ReasonContactBulkValueTooLong        ReasonCode = "contact_bulk_value_too_long"
-	ReasonContactBulkFieldInSetAndClear  ReasonCode = "contact_bulk_field_in_set_and_clear"
-	ReasonContactBulkCustomFieldNotFound ReasonCode = "contact_bulk_custom_field_not_found"
-	ReasonContactBulkCustomFieldDupe     ReasonCode = "contact_bulk_custom_field_duplicate"
-	ReasonContactBulkCustomFieldInBoth   ReasonCode = "contact_bulk_custom_field_in_both"
-	ReasonContactBulkCustomFieldInvalid  ReasonCode = "contact_bulk_custom_field_invalid"
+
+	// Per-contact field visibility overrides (issue #1997).
+	ReasonContactFieldOverrideUnknownKey   ReasonCode = "contact_field_override_unknown_key"
+	ReasonContactFieldOverrideStateInvalid ReasonCode = "contact_field_override_state_invalid"
+	ReasonContactBulkFieldInSetAndClear    ReasonCode = "contact_bulk_field_in_set_and_clear"
+	ReasonContactBulkCustomFieldNotFound   ReasonCode = "contact_bulk_custom_field_not_found"
+	ReasonContactBulkCustomFieldDupe       ReasonCode = "contact_bulk_custom_field_duplicate"
+	ReasonContactBulkCustomFieldInBoth     ReasonCode = "contact_bulk_custom_field_in_both"
+	ReasonContactBulkCustomFieldInvalid    ReasonCode = "contact_bulk_custom_field_invalid"
 
 	// Meerkat live import (issue #2100, services/meerkat_import_*.go).
 	ReasonMeerkatUploadMissing         ReasonCode = "meerkat_upload_missing"
@@ -408,11 +412,14 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonContactBulkFieldNotEditable:    {Template: "{field} is not bulk-editable", Params: []string{"field"}},
 	ReasonContactBulkValueEmpty:          {Template: "{field} must not be empty; list it in clear to empty it", Params: []string{"field"}},
 	ReasonContactBulkValueTooLong:        {Template: "{field} must be at most {limit} characters", Params: []string{"field", "limit"}},
-	ReasonContactBulkFieldInSetAndClear:  {Template: "{field} cannot be in both set and clear", Params: []string{"field"}},
-	ReasonContactBulkCustomFieldNotFound: {Template: "A custom field definition was not found or is not yours"},
-	ReasonContactBulkCustomFieldDupe:     {Template: "A custom field definition appears more than once"},
-	ReasonContactBulkCustomFieldInBoth:   {Template: "A custom field cannot be in both custom_set and custom_clear"},
-	ReasonContactBulkCustomFieldInvalid:  {Template: "{field} has an invalid value", Params: []string{"field"}},
+
+	ReasonContactFieldOverrideUnknownKey:   {Template: "{field} is not a field that can be shown or hidden", Params: []string{"field"}},
+	ReasonContactFieldOverrideStateInvalid: {Template: "{field} must be inherit, show or hide", Params: []string{"field"}},
+	ReasonContactBulkFieldInSetAndClear:    {Template: "{field} cannot be in both set and clear", Params: []string{"field"}},
+	ReasonContactBulkCustomFieldNotFound:   {Template: "A custom field definition was not found or is not yours"},
+	ReasonContactBulkCustomFieldDupe:       {Template: "A custom field definition appears more than once"},
+	ReasonContactBulkCustomFieldInBoth:     {Template: "A custom field cannot be in both custom_set and custom_clear"},
+	ReasonContactBulkCustomFieldInvalid:    {Template: "{field} has an invalid value", Params: []string{"field"}},
 
 	ReasonMeerkatUploadMissing:         {Template: "No file uploaded"},
 	ReasonMeerkatSessionNotFound:       {Template: "Import session expired or not found"},

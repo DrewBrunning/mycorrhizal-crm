@@ -804,6 +804,29 @@
         "invalidDate": "Inserisci una data come AAAA-MM-GG o --MM-GG.",
         "saveFailed": "Impossibile salvare l'anniversario."
       }
+    },
+    "fieldVisibility": {
+      "customize": "Personalizza i campi",
+      "addField": "Aggiungi un campo",
+      "dialog": {
+        "title": "Personalizza i campi di questo contatto",
+        "description": "Scegli quali campi compaiono per questo contatto. Cambia solo ciò che vedi: i dati del contatto e la sincronizzazione restano invariati.",
+        "emptyFields": "Campi vuoti",
+        "hideEmptyInherit": "Usa l’impostazione del mio account ({{state}})",
+        "hideEmptyHide": "Nascondi i campi vuoti",
+        "hideEmptyShow": "Mostra i campi vuoti",
+        "fieldInherit": "Predefinito ({{state}})",
+        "fieldShow": "Mostra",
+        "fieldHide": "Nascondi",
+        "stateShown": "visibile",
+        "stateHidden": "nascosto",
+        "stateOn": "campi vuoti nascosti",
+        "stateOff": "campi vuoti visibili",
+        "reset": "Ripristina i valori predefiniti",
+        "saved": "Visibilità dei campi salvata.",
+        "resetDone": "Visibilità dei campi ripristinata.",
+        "saveError": "Impossibile salvare la visibilità dei campi."
+      }
     }
   },
   "noteDialog": {
@@ -1707,6 +1730,10 @@
         "anniversaries": "Un elenco di date da ricordare, ciascuna con il proprio tipo.",
         "language": "La lingua in cui è scritta questa scheda contatto, non una lingua parlata dalla persona.",
         "preferredLanguages": "Le lingue parlate da questa persona."
+      },
+      "hideEmpty": {
+        "label": "Nascondi i campi vuoti",
+        "description": "Nella pagina di un contatto non vengono mostrati i campi senza valore. Puoi comunque aggiungerne uno dal menu Aggiungi un campo, e ogni contatto può sostituire questa impostazione."
       }
     },
     "data": {
@@ -3926,7 +3953,9 @@
       "notification_push_subscription_limit": "Raggiunto il massimo di {{max}} iscrizioni push per utente",
       "notification_device_registration_limit": "Raggiunto il massimo di {{max}} registrazioni di dispositivi per utente",
       "feed_limit_reached": "Limite di feed raggiunto (massimo {{max}} feed attivi)",
-      "feed_entity_id_not_allowed": "Deve essere vuoto per un feed aggregato"
+      "feed_entity_id_not_allowed": "Deve essere vuoto per un feed aggregato",
+      "contact_field_override_unknown_key": "{{field}} non è un campo che si può mostrare o nascondere",
+      "contact_field_override_state_invalid": "{{field}} accetta solo inherit, show o hide"
     }
   }
 }
