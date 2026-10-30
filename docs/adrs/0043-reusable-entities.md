@@ -146,7 +146,7 @@ normalization (then it is dropped as a duplicate). Consequences, stated so they 
 - `contacts.organization` and the other flat columns, the contact list, search and sort are unchanged: they derive
   from the stored Card. An organisation-only contact therefore shows its entity in the link UI and under
   `GET /contacts?entity_id=`, not in the legacy `organization` column. Making list and search read through the
-  projection is a deferred decision (Open questions).
+  projection is out of scope for v1 (settled, below).
 
 **Adopt.** `POST /contacts/{id}/entity-links/{linkId}/adopt` copies the entity's current org/address into the
 contact's own Card as an ordinary contact value (through `ApplyRecordToContact` and the card-merge path; never by
@@ -447,30 +447,19 @@ from their own.
 - **Merging automatically** on exact name match: even exact matches are different employers sometimes ("Springfield
   Elementary" in two states).
 
-## Open questions for the maintainer
+## Settled by the maintainer
 
-These are real trade-offs the recommendation above settles provisionally; each can be reversed before
-implementation without invalidating the rest.
+Each of these was an open trade-off in the draft; the maintainer confirmed the recommendation, and the answer is
+folded into the decision section named.
 
-1. **Own-value precedence: append vs. suppress.** Recommended: append after own values (vCard 4.0 and JSContact show
-   both; vCard 3.0 shows only the own one). The alternative suppresses a primary link whenever the contact has any
-   own ORG (or, for ADR, any own address), which avoids the v3 loss and duplicate-looking entries but hides a place
-   link behind an unrelated home address, which defeats the feature for places. Reverse if mixed ORG lists confuse
-   downstream clients in practice.
-2. **Past/future links stop projecting.** Recommended (current-only). Alternative: the primary flag alone decides.
-   The risk of the alternative is a stale ex-employer on every card until the user remembers to move the flag.
-3. **Should list, search and sort read through the projection?** Recommended: not in v1 (the flat columns stay
-   derived from the stored Card, ADR 0002 appendix). The cost is that an organisation-only contact is not found by
-   typing the company name into contact search. A later change could add the primary organisation name to the FTS
-   document and `sort_name` derivation, which is an ADR 0016/0012 INV-D9 change in its own right.
-4. **Entity restore scope.** Recommended: restore reuses the ADR 0037 snapshot pattern at entity scale (a fourth
-   table). A lighter v1 would omit entity restore and rely on purge-window recovery by support, accepting that an
-   accidental organisation delete loses all its links' roles and dates. The snapshot is cheap given the pattern, but
-   it is a second restore path to maintain.
-5. **Entities in MCP and standing shares.** Recommended: neither in v1. Revisit after #1998 ships if users ask to
-   share "the family cabin" as an object rather than through the contacts that live there.
-6. **Pet projection.** There is no standard ORG/ADR equivalent for pets; they are CRM-internal. If the maintainer
-   wants pets in vCard, the only honest route is `KIND:individual` with `X-` properties, which ADR 0002 forbids
-   inventing without a spec home.
-7. **Legal-suffix list and diacritic folding for suggestions** are English-biased by design. A locale-aware list is
-   a localization follow-up; the exact tier is unaffected.
+1. **Own ORG/ADR plus a primary link: append** (decision 3). The contact's own value comes first; the projected value
+   is dropped when value-equal after normalization. vCard 3.0 clients see the own value, and a diagnostic flags the
+   overlap.
+2. **Dated links:** only a link whose dates include today projects (decision 3). Past and future primary links stop
+   projecting and remain in history.
+3. **List, search and sort do not read through the projection in v1** (decision 3).
+4. **Entity restore: yes**, via `entity_deletion_snapshots`, consistent with contact trash (decision 6).
+5. **Entities stay out of MCP and standing shares in v1** (decision 4).
+6. **Pets have no standards home.** They are CRM-only and a named loss on every standards surface (decision 3).
+7. **Suggestion normalization is English-biased for now** (decision 8). Follow-up for v1.7.0+: diacritic folding and
+   localized legal-suffix lists; the exact-name tier is unaffected.
