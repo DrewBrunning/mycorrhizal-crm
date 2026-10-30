@@ -198,13 +198,14 @@ export type Conformance = [
   NoDrift<ResponseDrift<ContactTargetClosenessResponse, S.ContactTargetClosenessResponse>>,
   NoDrift<ResponseDrift<ContactScoreTarget, S.ContactScoreTarget>>,
   NoDrift<ResponseDrift<ContactScoreFacet, S.ContactScoreFacet>>,
-  // Error envelope (ADR 0038). `details` and `reason_params` are narrowed on
-  // purpose: the spec says free-form (`unknown`), the client only reads string
-  // details and string|number params, and getDisplayMessage guards on type.
+  // Error envelope (ADR 0038, issue #2105). `details`, `reason_params` and
+  // `field_reasons` are narrowed on purpose: the spec says free-form
+  // (`unknown`), the client only reads string details, string|number params,
+  // and guarded field reasons, and getDisplayMessage guards on type.
   NoDrift<
     ResponseDrift<
-      Omit<BackendErrorResponse['error'], 'details' | 'reason_params'>,
-      Omit<NonNullable<S.Error['error']>, 'details' | 'reason_params'>
+      Omit<BackendErrorResponse['error'], 'details' | 'reason_params' | 'field_reasons'>,
+      Omit<NonNullable<S.Error['error']>, 'details' | 'reason_params' | 'field_reasons'>
     >
   >,
   NoDrift<ResponseDrift<ExternalIdentity, S.ExternalIdentity>>,

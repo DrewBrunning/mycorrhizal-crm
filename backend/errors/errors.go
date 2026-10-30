@@ -14,8 +14,28 @@ type AppError struct {
 	// ReasonCode/ReasonParams are set by WithReason (ADR 0038).
 	ReasonCode   string         `json:"reason_code,omitempty"`
 	ReasonParams map[string]any `json:"reason_params,omitempty"`
-	HTTPStatus   int            `json:"-"`
-	Err          error          `json:"-"`
+	// FieldReasons carries the per-field reason codes for a VALIDATION_ERROR
+	// (issue #2105) so clients can translate each message. Details keeps the
+	// English field -> message map clients already consume.
+	FieldReasons map[string]FieldReason `json:"field_reasons,omitempty"`
+	HTTPStatus   int                    `json:"-"`
+	Err          error                  `json:"-"`
+}
+
+// FieldReason is one field's stable reason code and template params.
+type FieldReason struct {
+	ReasonCode   ReasonCode     `json:"reason_code"`
+	ReasonParams map[string]any `json:"reason_params,omitempty"`
+}
+
+// ValidationError is one struct-tag validation failure from
+// middleware.ValidateStruct. Field is the JSON field name, Message the English
+// sentence, and ReasonCode/ReasonParams the translatable equivalent.
+type ValidationError struct {
+	Field        string         `json:"field"`
+	Message      string         `json:"message"`
+	ReasonCode   ReasonCode     `json:"reason_code,omitempty"`
+	ReasonParams map[string]any `json:"reason_params,omitempty"`
 }
 
 // Error implements the error interface
@@ -296,6 +316,29 @@ func ErrValidation(message string) *AppError {
 		message = "Validation failed"
 	}
 	return NewError(ErrCodeValidation, message, http.StatusBadRequest)
+}
+
+// ErrValidationFields builds the VALIDATION_ERROR envelope for a list of
+// struct-tag failures (issue #2105). It keeps the historical field -> English
+// message `details` map unchanged and adds `field_reasons`, which clients
+// translate from. A field without a registered reason is omitted from
+// field_reasons (clients fall back to details).
+func ErrValidationFields(verrs []ValidationError) *AppError {
+	appErr := ErrValidation("Request validation failed")
+	for _, ve := range verrs {
+		appErr.WithDetails(ve.Field, ve.Message)
+		if ve.ReasonCode == "" {
+			continue
+		}
+		if appErr.FieldReasons == nil {
+			appErr.FieldReasons = make(map[string]FieldReason, len(verrs))
+		}
+		appErr.FieldReasons[ve.Field] = FieldReason{
+			ReasonCode:   ve.ReasonCode,
+			ReasonParams: ve.ReasonParams,
+		}
+	}
+	return appErr
 }
 
 // ErrInvalidInput returns an invalid input error

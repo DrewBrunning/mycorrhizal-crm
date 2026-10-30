@@ -16,13 +16,38 @@ import com.mycorrhizal.crm.ui.R
  */
 @Composable
 fun ApiError.localizedMessage(): String {
-    val base = localizedReason(reasonOrNull()) ?: clientMessage()
+    val base = localizedReason(reasonOrNull()) ?: localizedValidationFields() ?: clientMessage()
     val requestId = (this as? ApiError.Server)?.requestId
     return if (requestId != null) {
         "$base ${stringResource(R.string.error_request_ref, requestId)}"
     } else {
         base
     }
+}
+
+/**
+ * The translated per-field messages for a VALIDATION_ERROR (issue #2105), or
+ * null when any entry cannot be rendered, in which case the caller falls back
+ * to the English `details` map.
+ */
+@Composable
+private fun ApiError.localizedValidationFields(): String? {
+    val (errorCode, fieldReasons, details) = when (this) {
+        is ApiError.Client -> Triple(errorCode, fieldReasons, details)
+        is ApiError.Server -> Triple(errorCode, fieldReasons, details)
+        else -> return null
+    }
+    if (errorCode != VALIDATION_ERROR && fieldReasons.isNullOrEmpty()) return null
+
+    if (!fieldReasons.isNullOrEmpty()) {
+        val messages = fieldReasons.values.map { localizedReason(it) }
+        if (messages.all { it != null }) {
+            return messages.filterNotNull().joinToString(". ")
+        }
+    }
+
+    val values = details?.values?.filterNotNull()?.map { it.toString() }.orEmpty()
+    return if (values.isEmpty()) null else values.joinToString(". ")
 }
 
 /**
@@ -179,6 +204,63 @@ private fun localizedReason(reason: ErrorReason?): String? {
 
         ErrorReasonCode.VALIDATION_CURSOR_MALFORMED ->
             stringResource(R.string.error_reason_validation_cursor_malformed)
+
+        ErrorReasonCode.VALIDATION_REQUIRED ->
+            field?.let { stringResource(R.string.error_reason_validation_required, it) }
+
+        ErrorReasonCode.VALIDATION_EMAIL ->
+            field?.let { stringResource(R.string.error_reason_validation_email, it) }
+
+        ErrorReasonCode.VALIDATION_MIN -> {
+            val min = reason.int("min")
+            if (field != null && min != null) {
+                stringResource(R.string.error_reason_validation_min, field, min)
+            } else {
+                null
+            }
+        }
+
+        ErrorReasonCode.VALIDATION_MAX -> {
+            val max = reason.int("max")
+            if (field != null && max != null) {
+                stringResource(R.string.error_reason_validation_max, field, max)
+            } else {
+                null
+            }
+        }
+
+        ErrorReasonCode.VALIDATION_PHONE ->
+            field?.let { stringResource(R.string.error_reason_validation_phone, it) }
+
+        ErrorReasonCode.VALIDATION_BIRTHDAY ->
+            field?.let { stringResource(R.string.error_reason_validation_birthday, it) }
+
+        ErrorReasonCode.VALIDATION_STRONG_PASSWORD ->
+            field?.let { stringResource(R.string.error_reason_validation_strong_password, it) }
+
+        ErrorReasonCode.VALIDATION_UNIQUE_CIRCLES ->
+            field?.let { stringResource(R.string.error_reason_validation_unique_circles, it) }
+
+        ErrorReasonCode.VALIDATION_NO_AT_SIGN ->
+            field?.let { stringResource(R.string.error_reason_validation_no_at_sign, it) }
+
+        ErrorReasonCode.VALIDATION_URL ->
+            field?.let { stringResource(R.string.error_reason_validation_url, it) }
+
+        ErrorReasonCode.VALIDATION_SAFEURL ->
+            field?.let { stringResource(R.string.error_reason_validation_safeurl, it) }
+
+        ErrorReasonCode.VALIDATION_HTTPURL ->
+            field?.let { stringResource(R.string.error_reason_validation_httpurl, it) }
+
+        ErrorReasonCode.VALIDATION_RELATION_TYPE ->
+            field?.let { stringResource(R.string.error_reason_validation_relation_type, it) }
+
+        ErrorReasonCode.VALIDATION_GEOURI ->
+            field?.let { stringResource(R.string.error_reason_validation_geouri, it) }
+
+        ErrorReasonCode.VALIDATION_INVALID ->
+            field?.let { stringResource(R.string.error_reason_validation_invalid, it) }
 
         ErrorReasonCode.TRASH_UID_IN_USE -> stringResource(
             R.string.error_reason_trash_uid_in_use
@@ -1330,6 +1412,9 @@ private fun localizedReason(reason: ErrorReason?): String? {
         else -> null
     }
 }
+
+/** Mirrors backend errors.ErrCodeValidation. */
+private const val VALIDATION_ERROR = "VALIDATION_ERROR"
 
 // Moshi decodes JSON numbers as Double, so an integral param is read through
 // Number; a string that holds a number is accepted too.
