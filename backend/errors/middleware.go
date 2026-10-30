@@ -25,6 +25,9 @@ type ErrorDetail struct {
 	// ReasonCode/ReasonParams let clients localize the message (ADR 0038).
 	ReasonCode   string         `json:"reason_code,omitempty"`
 	ReasonParams map[string]any `json:"reason_params,omitempty"`
+	// FieldReasons carries one reason per field on a VALIDATION_ERROR
+	// (issue #2105).
+	FieldReasons map[string]FieldReason `json:"field_reasons,omitempty"`
 }
 
 // ErrorHandlerMiddleware handles panics and formats error responses
@@ -86,6 +89,7 @@ func RespondWithError(c *gin.Context, err *AppError) {
 
 			ReasonCode:   err.ReasonCode,
 			ReasonParams: err.ReasonParams,
+			FieldReasons: err.FieldReasons,
 		},
 		RequestID: requestIDStr,
 		Timestamp: time.Now().UTC().Format(time.RFC3339),

@@ -130,4 +130,49 @@ class ApiErrorReasonTest {
         assertEquals("Try later", error.displayMessage)
         assertNull(error.reason)
     }
+
+    // Issue #2105: per-field reasons on a VALIDATION_ERROR.
+    @Test
+    fun `a 400 validation envelope carries field reasons, details and error code`() {
+        val error = deleteFailure(
+            MockResponse().setResponseCode(400).setBody(
+                """{"error":{"code":"VALIDATION_ERROR","message":"Request validation failed","details":{"Name":"Name is required","Blank":"x"},"field_reasons":{"Name":{"reason_code":"validation_required","reason_params":{"field":"Name"}},"Blank":{"reason_code":" "},"NoCode":{}}}}"""
+            )
+        ) as ApiError.Client
+
+        assertEquals("VALIDATION_ERROR", error.errorCode)
+        assertEquals("Name is required", error.details?.get("Name"))
+        assertEquals(
+            mapOf(
+                "Name" to ErrorReason("validation_required", mapOf("field" to "Name"))
+            ),
+            error.fieldReasons
+        )
+    }
+
+    @Test
+    fun `field reasons without a usable code collapse to null`() {
+        val error = deleteFailure(
+            MockResponse().setResponseCode(400).setBody(
+                """{"error":{"code":"VALIDATION_ERROR","message":"bad","field_reasons":{"A":{"reason_code":""}}}}"""
+            )
+        ) as ApiError.Client
+
+        assertNull(error.fieldReasons)
+    }
+
+    @Test
+    fun `a 5xx envelope keeps field reasons and details on ApiError Server`() {
+        val error = deleteFailure(
+            MockResponse().setResponseCode(500).setBody(
+                """{"error":{"code":"VALIDATION_ERROR","message":"bad","details":{"A":"a bad"},"field_reasons":{"A":{"reason_code":"validation_invalid","reason_params":{"field":"A"}}}}}"""
+            )
+        ) as ApiError.Server
+
+        assertEquals(mapOf("A" to "a bad"), error.details)
+        assertEquals(
+            mapOf("A" to ErrorReason("validation_invalid", mapOf("field" to "A"))),
+            error.fieldReasons
+        )
+    }
 }

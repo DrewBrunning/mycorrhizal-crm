@@ -237,8 +237,10 @@ function parseBlocks(lines: string[], quoteDepth: number): Block[] {
 
     if (QUOTE.test(line)) {
       const inner: string[] = [];
-      while (i < lines.length && QUOTE.test(lines[i])) {
-        inner.push(QUOTE.exec(lines[i])![1]);
+      while (i < lines.length) {
+        const quote = QUOTE.exec(lines[i]);
+        if (!quote) break;
+        inner.push(quote[1]);
         i += 1;
       }
       push({
