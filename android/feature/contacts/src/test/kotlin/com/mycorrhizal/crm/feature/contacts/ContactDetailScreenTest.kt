@@ -1505,7 +1505,7 @@ class ContactDetailScreenTest {
         composeTestRule.onNodeWithContentDescription("Edit Renewal").performClick()
         // Rendered in the user's date format (EU by default) by the shared field.
         inGroup("10.08.2026")
-        composeTestRule.onNodeWithTag("custom-field-date-d1").performClick()
+        composeTestRule.onNodeWithTag("custom-field-date-d1-picker-open").performClick()
         composeTestRule.onNodeWithText("Confirm").performClick()
         composeTestRule.onNodeWithText("Save").performClick()
 

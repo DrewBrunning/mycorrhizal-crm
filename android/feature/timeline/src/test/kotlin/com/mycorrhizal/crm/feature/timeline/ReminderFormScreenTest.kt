@@ -89,7 +89,7 @@ class ReminderFormScreenTest {
             onRemindAtChange = { picked = it }
         )
 
-        composeTestRule.onNodeWithTag("reminder-date").performClick()
+        composeTestRule.onNodeWithTag("reminder-date-picker-open").performClick()
         composeTestRule.onNodeWithTag("date-picker-confirm").performClick()
 
         assertEquals("${today}T00:00:00Z", picked)

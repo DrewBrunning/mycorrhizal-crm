@@ -353,7 +353,7 @@ class LifeEventFormTest {
         // Issue #1726: the partial date is one picker field, rendered in the
         // user's date format (EU by default), not Year/Month/Day text boxes.
         composeTestRule.onNodeWithText("15.06.").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("life-event-date").performClick()
+        composeTestRule.onNodeWithTag("life-event-date-picker-open").performClick()
         composeTestRule.onNodeWithTag("date-field-year-unknown").assertIsOn()
         composeTestRule.onNodeWithText("Cancel").performClick()
 

@@ -1118,6 +1118,8 @@
     <string name="date_field_remove_time">Quitar hora</string>
     <string name="date_field_time">Hora</string>
     <string name="date_field_year_unknown">Año desconocido</string>
+    <string name="date_field_error_invalid">Introduce una fecha válida con el formato %1$s.</string>
+    <string name="date_field_error_range">Esa fecha está fuera del rango permitido.</string>
     <string name="reminder_reoccur_from_completion">Reprogramar desde la fecha de finalización</string>
     <string name="reminder_reoccur_from_completion_hint">Al completarse, el próximo recordatorio se programará desde la fecha de finalización en lugar de la fecha original.</string>
     <string name="reminder_completed">Recordatorio completado</string>
