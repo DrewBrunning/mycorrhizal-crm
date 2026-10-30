@@ -39,7 +39,7 @@ Facts about the current server that the design depends on, verified in code:
   relies on that; `backend/controllers/user_delete_cascade.go#deleteUserCascade` deletes members then circles by hand.
 - **`DeleteAddressObject` calls a bare `db.Delete(&contact)`** and does not use `services.DeleteContact`, so a CardDAV
   delete runs no cascade-registry step and writes no trash snapshot (ADR 0035, ADR 0037). That is a pre-existing gap
-  this ADR depends on closing (decision 5).
+  tracked and fixed separately in #2249, which lands before this work (decision 5).
 
 ## Decision
 
@@ -106,6 +106,10 @@ scope. Both tables hold only ids and a mode, no PII; `docs/security/pii-inventor
 `docs/security/data-retention-lifecycle.md` get rows in the implementing PR. Both are hard-delete, edge-shaped rows
 (trap #7).
 
+**Account bundle.** The scope is deliberately **not** part of the account bundle (`GET /api/v1/export/account`), an
+exception to the bundle's full-fidelity rule: it is per-deployment device configuration and circle ids may be remapped on
+restore. After a bundle import the scope is `all`.
+
 ### 3. Deleting a circle that is in the scope
 
 The circle is **dropped from the scope** (the join row cascades), and `default_circle_id` is set null if it pointed at
@@ -157,8 +161,9 @@ fallback. Consequently:
   404 status for that href inside the multistatus). A contact is never revealed by being asked for by name.
 - `Archived` stays orthogonal: an archived contact is served today and is served or hidden by scope exactly like any
   other.
-- A contact created by an inbound CardDAV *subscription* is an ordinary contact and is subject to the scope; it gets no
-  default circle (that applies to server PUTs only, decision 5).
+- A contact created by an inbound CardDAV *subscription* is an ordinary contact and is subject to the scope. It has no
+  circle and gets no default circle (that applies to server PUTs only, decision 5), so it stays out of `include`
+  scopes. This is as designed: the web settings help and `docs/carddav.md` must say so.
 
 **Sensitivity is independent.** Scope decides *which contacts*; `RecordForContactForSync` still decides *what a served
 contact contains*, unchanged and in the same query path. Scope never widens what sensitivity allows, and sensitivity
@@ -206,8 +211,8 @@ to probe an out-of-scope resource.
 - **UID reuse:** a PUT whose UID matches only a *trashed* contact creates a new live contact (current behaviour, ADR
   0037 decision 6) and then follows C or D.
 - **DELETE of an in-scope contact:** a normal soft delete, but through `services.DeleteContact` (cascade registry and
-  trash snapshot, ADR 0035/0037) instead of today's bare `db.Delete`. This is required: otherwise a phone-side delete
-  cannot be restored from trash. It also fixes an existing gap, and the implementing issue calls it out.
+  trash snapshot, ADR 0035/0037) instead of today's bare `db.Delete`. That fix is #2249 and precedes this work; the scope
+  work assumes it and only adds the out-of-scope 404.
 - **DELETE of an out-of-scope or unknown resource: `404`**, with no side effect. This matches
   `GetAddressObject`/`DeleteAddressObject`, which already answer `404` for a missing card (the TEST-09 interop finding
   in `backend.go`: DAVx5, Apple Contacts and vdirsyncer read `404` as "already gone"). It also matters operationally:
@@ -246,7 +251,7 @@ A "CardDAV sync scope" card on the Settings page, shown only when CardDAV is ena
 selected circles / All except selected circles), a multi-select over the user's circles (id-backed, colours from ADR
 0039), and a default-circle select constrained to the legal values for the mode. It shows the live "N of M contacts
 sync" and the preview count before save, the warnings banner from decision 3, and a confirm step when saving would
-remove contacts from devices. Android and other REST clients are unaffected; they do not use CardDAV.
+remove contacts from devices. Its help text states that contacts pulled in by an inbound CardDAV subscription have no circle and so are not synced under "Only selected circles". Android and other REST clients are unaffected; they do not use CardDAV.
 
 ## Alternatives considered
 
@@ -264,8 +269,6 @@ remove contacts from devices. Android and other REST clients are unaffected; the
 
 - Two additive tables with a symmetric down migration. **Down-migrating drops the scope, which reverts every user to
   `all` and widens what the next sync serves**; the release note for the version that ships it says so.
-- A CardDAV delete now goes through the contact delete service. That is a behaviour change for DELETE (cascade and
-  snapshot) beyond scope, and needs its own regression test.
 - `DeleteCircle` stays correct without new code (FK cascade); its web confirm dialog gains a pre-flight check.
 - For modes other than `all` the predicate adds a correlated `EXISTS` on the indexed `circle_members.member_vcard_uid`;
   the large-dataset job should cover an `include` scope over a large book.
@@ -309,11 +312,9 @@ pre-flight. A real-client DAVx5 leg that narrows the scope and asserts the conta
 the `docs/development/reference-client-matrix.md` harness supports an incremental re-sync (today it covers provision
 and pull only).
 
-## Open questions for the maintainer
+## Settled by the maintainer
 
-1. **Account bundle.** Should the scope travel in the account bundle (`GET /api/v1/export/account`)? Recommendation:
-   **no** for the first implementation. It is per-deployment device configuration, circle ids may be remapped on
-   restore, and a restored instance falling back to `all` is the documented default. Including it later is additive.
-2. **Subscription-pulled contacts under `include`.** A contact created by an inbound CardDAV subscription has no
-   circle and is invisible to a phone on an `include` scope. Recommendation: leave as is and say so in the docs;
-   a per-subscription default circle is a separate feature.
+1. **Account bundle.** The sync scope does not travel in the account bundle for now; after an import it defaults to
+   `all`. Including it later is additive.
+2. **Subscribed contacts.** Contacts created by an inbound CardDAV subscription have no circle, so they stay out of
+   `include` scopes. This is behaving as designed; the web settings help and `docs/carddav.md` state it.
