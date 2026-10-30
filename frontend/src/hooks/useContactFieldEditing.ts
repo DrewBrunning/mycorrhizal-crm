@@ -36,7 +36,7 @@ export function useContactFieldEditing({
   onConflict,
 }: ContactFieldEditingOptions) {
   const { t } = useTranslation();
-  const { formatBirthdayForInput, parseBirthdayInput, autoFormatBirthdayInput } = useDateFormat();
+  const { formatBirthdayForInput, parseDateInput, autoFormatBirthdayInput } = useDateFormat();
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>('');
   const [validationError, setValidationError] = useState<string>('');
@@ -84,8 +84,8 @@ export function useContactFieldEditing({
     if (isDateField(field)) {
       // Blank clears the date; anything else must parse in the user's
       // display format.
-      // parseBirthdayInput returns '' for blank input and null only for invalid.
-      const parsed = parseBirthdayInput(editValue);
+      // parseDateInput returns '' for blank input and null only for invalid.
+      const parsed = parseDateInput(editValue);
       if (parsed === null) {
         setValidationError(t('contactDetail.birthdayError'));
         return;

@@ -51,6 +51,7 @@ The name comes from mycorrhiza, the symbiotic network fungi form with plant root
 - [Disaster recovery boundaries (what recovery guarantees exist, and where they stop)](operations/disaster-recovery.md)
 - [Migration recovery runbook](operations/migration-recovery.md)
 - [Rebuilding the full-text search index](operations/search-index.md)
+- [Repairing contacts deleted over CardDAV before #2249](operations/carddav-delete-repair.md)
 - [Derived-data inventory (what is denormalized, how it rebuilds)](derived-data-inventory.md)
 - [Verifying release artifacts](security/release-verification.md)
 - [Reproducible builds (REL-04)](security/reproducible-builds.md)

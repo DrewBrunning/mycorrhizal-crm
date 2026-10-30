@@ -15,6 +15,8 @@
 //	doctor                       # detect; exit 1 if any violation, 0 if clean
 //	doctor -repair               # dry run: print what repair WOULD delete
 //	doctor -repair -confirm      # actually delete truly-orphaned join/edge rows
+//	doctor -repair-dav-deletes   # dry run: contacts deleted over CardDAV before #2249
+//	doctor -repair-dav-deletes -apply [-write-snapshot]
 //	doctor -json                 # machine-readable output (any mode)
 //	doctor -db /path/to/app.db   # or set SQLITE_DB_PATH
 //
@@ -76,6 +78,9 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	repair := fs.Bool("repair", false, "repair truly-orphaned hard-delete join/edge rows (dry run unless -confirm)")
 	confirm := fs.Bool("confirm", false, "with -repair: actually perform the deletions")
 	asJSON := fs.Bool("json", false, "emit machine-readable JSON")
+	davRepair := fs.Bool("repair-dav-deletes", false, "repair contacts deleted over CardDAV before issue #2249 (soft-deleted, no trash snapshot); dry run unless -apply")
+	apply := fs.Bool("apply", false, "with -repair-dav-deletes: run the missing delete cascade")
+	writeSnapshot := fs.Bool("write-snapshot", false, "with -repair-dav-deletes -apply: also write a best-effort trash snapshot (lossy) so the contact appears in Trash and restores")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -85,6 +90,19 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	}
 	if *confirm && !*repair {
 		fmt.Fprintln(stderr, "doctor: -confirm has no effect without -repair")
+		return 2
+	}
+
+	if (*apply || *writeSnapshot) && !*davRepair {
+		fmt.Fprintln(stderr, "doctor: -apply and -write-snapshot have no effect without -repair-dav-deletes")
+		return 2
+	}
+	if *writeSnapshot && !*apply {
+		fmt.Fprintln(stderr, "doctor: -write-snapshot requires -apply")
+		return 2
+	}
+	if *davRepair && (*repair || *confirm) {
+		fmt.Fprintln(stderr, "doctor: -repair-dav-deletes cannot be combined with -repair/-confirm; run them separately")
 		return 2
 	}
 
@@ -121,6 +139,9 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
+	if *davRepair {
+		return runDavDeleteRepair(context.Background(), db, *apply, *writeSnapshot, *asJSON, stdout, stderr)
+	}
 	if *repair {
 		return runRepair(context.Background(), db, *confirm, *asJSON, stdout, stderr)
 	}

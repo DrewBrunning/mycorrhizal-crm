@@ -9,7 +9,7 @@ import {
   formatDateWithFormat,
   getDateFormat,
   initializeDateFormatFromBackend,
-  parseBirthdayInputWithFormat,
+  parseDateInputWithFormat,
   setDateFormatPreference,
   subscribeDateFormat,
   useDateFormat,
@@ -189,7 +189,7 @@ describe('formatBirthdayForInputWithFormat', () => {
   });
 
   test('month-name formats keep the numeric input form', () => {
-    // Input stays digit-driven (see parseBirthdayInputWithFormat); the pretty
+    // Input stays digit-driven (see parseDateInputWithFormat); the pretty
     // month-name rendering is the read display, not the edit field.
     expect(formatBirthdayForInputWithFormat('1990-04-30', 'us-mmm')).toBe('04/30/1990');
     expect(formatBirthdayForInputWithFormat('1990-04-30', 'us-mmmm')).toBe('04/30/1990');
@@ -205,57 +205,57 @@ describe('formatBirthdayForInputWithFormat', () => {
   });
 });
 
-describe('parseBirthdayInputWithFormat', () => {
+describe('parseDateInputWithFormat', () => {
   test('parses EU full dates and pads day/month', () => {
-    expect(parseBirthdayInputWithFormat('30.04.1990', 'eu')).toBe('1990-04-30');
-    expect(parseBirthdayInputWithFormat('1.4.1990', 'eu')).toBe('1990-04-01');
+    expect(parseDateInputWithFormat('30.04.1990', 'eu')).toBe('1990-04-30');
+    expect(parseDateInputWithFormat('1.4.1990', 'eu')).toBe('1990-04-01');
   });
 
   test('parses EU year-less dates with and without trailing dot', () => {
-    expect(parseBirthdayInputWithFormat('30.04.', 'eu')).toBe('--04-30');
-    expect(parseBirthdayInputWithFormat('30.04', 'eu')).toBe('--04-30');
+    expect(parseDateInputWithFormat('30.04.', 'eu')).toBe('--04-30');
+    expect(parseDateInputWithFormat('30.04', 'eu')).toBe('--04-30');
   });
 
   test('parses US full and year-less dates', () => {
-    expect(parseBirthdayInputWithFormat('04/30/1990', 'us')).toBe('1990-04-30');
-    expect(parseBirthdayInputWithFormat('04/30', 'us')).toBe('--04-30');
+    expect(parseDateInputWithFormat('04/30/1990', 'us')).toBe('1990-04-30');
+    expect(parseDateInputWithFormat('04/30', 'us')).toBe('--04-30');
   });
 
   test('parses the built-out numeric formats', () => {
-    expect(parseBirthdayInputWithFormat('30/04/1990', 'ca')).toBe('1990-04-30');
-    expect(parseBirthdayInputWithFormat('30/04', 'ca')).toBe('--04-30');
-    expect(parseBirthdayInputWithFormat('30-04-1990', 'eu-hyphen')).toBe('1990-04-30');
-    expect(parseBirthdayInputWithFormat('30-04', 'eu-hyphen')).toBe('--04-30');
+    expect(parseDateInputWithFormat('30/04/1990', 'ca')).toBe('1990-04-30');
+    expect(parseDateInputWithFormat('30/04', 'ca')).toBe('--04-30');
+    expect(parseDateInputWithFormat('30-04-1990', 'eu-hyphen')).toBe('1990-04-30');
+    expect(parseDateInputWithFormat('30-04', 'eu-hyphen')).toBe('--04-30');
   });
 
   test('month-name formats parse their numeric input form', () => {
-    expect(parseBirthdayInputWithFormat('04/30/1990', 'us-mmm')).toBe('1990-04-30');
-    expect(parseBirthdayInputWithFormat('04/30', 'us-mmm')).toBe('--04-30');
-    expect(parseBirthdayInputWithFormat('30.04.1990', 'eu-mmm')).toBe('1990-04-30');
-    expect(parseBirthdayInputWithFormat('30.04.', 'eu-mmm')).toBe('--04-30');
+    expect(parseDateInputWithFormat('04/30/1990', 'us-mmm')).toBe('1990-04-30');
+    expect(parseDateInputWithFormat('04/30', 'us-mmm')).toBe('--04-30');
+    expect(parseDateInputWithFormat('30.04.1990', 'eu-mmm')).toBe('1990-04-30');
+    expect(parseDateInputWithFormat('30.04.', 'eu-mmm')).toBe('--04-30');
   });
 
   test('accepts ISO input directly regardless of format', () => {
-    expect(parseBirthdayInputWithFormat('1990-04-30', 'eu')).toBe('1990-04-30');
-    expect(parseBirthdayInputWithFormat('--04-30', 'us')).toBe('--04-30');
-    expect(parseBirthdayInputWithFormat('1990-04-30', 'us-mmm')).toBe('1990-04-30');
+    expect(parseDateInputWithFormat('1990-04-30', 'eu')).toBe('1990-04-30');
+    expect(parseDateInputWithFormat('--04-30', 'us')).toBe('--04-30');
+    expect(parseDateInputWithFormat('1990-04-30', 'us-mmm')).toBe('1990-04-30');
   });
 
   test('returns empty string for empty input', () => {
-    expect(parseBirthdayInputWithFormat('', 'eu')).toBe('');
-    expect(parseBirthdayInputWithFormat('   ', 'eu')).toBe('');
+    expect(parseDateInputWithFormat('', 'eu')).toBe('');
+    expect(parseDateInputWithFormat('   ', 'eu')).toBe('');
   });
 
   test('rejects out-of-range and malformed input', () => {
-    expect(parseBirthdayInputWithFormat('32.01.1990', 'eu')).toBeNull();
-    expect(parseBirthdayInputWithFormat('30.13.1990', 'eu')).toBeNull();
-    expect(parseBirthdayInputWithFormat('13/30/1990', 'us')).toBeNull();
-    expect(parseBirthdayInputWithFormat('13/31/1990', 'us')).toBeNull();
-    expect(parseBirthdayInputWithFormat('1990-13-31', 'iso')).toBeNull();
-    expect(parseBirthdayInputWithFormat('hello', 'eu')).toBeNull();
+    expect(parseDateInputWithFormat('32.01.1990', 'eu')).toBeNull();
+    expect(parseDateInputWithFormat('30.13.1990', 'eu')).toBeNull();
+    expect(parseDateInputWithFormat('13/30/1990', 'us')).toBeNull();
+    expect(parseDateInputWithFormat('13/31/1990', 'us')).toBeNull();
+    expect(parseDateInputWithFormat('1990-13-31', 'iso')).toBeNull();
+    expect(parseDateInputWithFormat('hello', 'eu')).toBeNull();
     // Wrong separator for the active format
-    expect(parseBirthdayInputWithFormat('04/30/1990', 'eu')).toBeNull();
-    expect(parseBirthdayInputWithFormat('30/04/1990', 'eu-hyphen')).toBeNull();
+    expect(parseDateInputWithFormat('04/30/1990', 'eu')).toBeNull();
+    expect(parseDateInputWithFormat('30/04/1990', 'eu-hyphen')).toBeNull();
   });
 });
 

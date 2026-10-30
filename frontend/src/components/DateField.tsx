@@ -122,7 +122,7 @@ export default function DateField({
   sx,
 }: DateFieldProps) {
   const { t, i18n } = useTranslation();
-  const { formatDate, formatBirthdayForInput, parseBirthdayInput, getDatePlaceholder } =
+  const { formatDate, formatBirthdayForInput, parseDateInput, getDatePlaceholder } =
     useDateFormat();
   const errorId = useId();
   // The text being typed, or null when the field mirrors `value`.
@@ -184,7 +184,7 @@ export default function DateField({
   // Typed text must be a complete, real calendar day in the user's Date
   // format. A year-less entry ("15.01.") is not a valid value for this field.
   const parseTyped = (text: string): TypedDate => {
-    const parsed = parseBirthdayInput(text);
+    const parsed = parseDateInput(text);
     if (parsed === null || !isRealCalendarDay(parsed)) return { error: 'invalid' };
     return disabled(parsed) ? { error: 'range' } : { iso: parsed };
   };
