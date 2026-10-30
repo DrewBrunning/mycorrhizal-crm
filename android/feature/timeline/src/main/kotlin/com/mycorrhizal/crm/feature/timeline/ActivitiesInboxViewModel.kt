@@ -3,6 +3,7 @@ package com.mycorrhizal.crm.feature.timeline
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.ActivityRepository
+import com.mycorrhizal.crm.domain.repository.GeoPulseRepository
 import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
@@ -28,12 +29,20 @@ data class ActivitiesInboxUiState(
     val deletingId: Int? = null,
     val error: ApiError? = null,
     /** ADR 0008: a delete was rejected with 412 — the record changed elsewhere since the list loaded. */
-    val conflict: Boolean = false
+    val conflict: Boolean = false,
+    /**
+     * Issue #2205 (web #2179): whether the user has a GeoPulse connection stored (`has_api_key`
+     * on `GET /geopulse/config`). Gates the "Log from location history" action. Safe default
+     * `false`, kept on any fetch failure (same treatment as the contact detail's
+     * `immichConfigured`) so the action never appears for a user who cannot use it.
+     */
+    val geoPulseConfigured: Boolean = false
 )
 
 @HiltViewModel
 class ActivitiesInboxViewModel @Inject constructor(
-    private val activityRepository: ActivityRepository
+    private val activityRepository: ActivityRepository,
+    private val geoPulseRepository: GeoPulseRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ActivitiesInboxUiState())
@@ -44,6 +53,7 @@ class ActivitiesInboxViewModel @Inject constructor(
     }
 
     fun load() {
+        loadGeoPulseConfigured()
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             activityRepository.listAll().foldApiError(
@@ -59,6 +69,17 @@ class ActivitiesInboxViewModel @Inject constructor(
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error) }
                 }
+            )
+        }
+    }
+
+    private fun loadGeoPulseConfigured() {
+        viewModelScope.launch {
+            geoPulseRepository.getConfig().foldApiError(
+                onSuccess = { config ->
+                    _uiState.update { it.copy(geoPulseConfigured = config.hasApiKey) }
+                },
+                onError = { _uiState.update { it.copy(geoPulseConfigured = false) } }
             )
         }
     }

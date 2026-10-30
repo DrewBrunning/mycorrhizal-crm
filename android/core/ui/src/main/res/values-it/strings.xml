@@ -239,6 +239,13 @@
     <string name="contact_unarchive">Ripristina</string>
     <string name="contact_mark_as_me">Questo sono io</string>
     <string name="contact_unmark_as_me">Questo non sono io</string>
+    <!-- Issue #2206 (web #2192): confirmation before marking/unmarking the Me contact. -->
+    <string name="contact_me_mark_title">Contrassegnare questo contatto come te?</string>
+    <string name="contact_me_mark_body">Questo contatto diventerà te. Restare in contatto con se stessi non ha senso, quindi viene anche contrassegnato come ambientale: non è mai in ritardo e il suo punteggio di relazione conta sempre come aggiornato. Puoi disattivare l\'opzione ambientale sul contatto in qualsiasi momento.</string>
+    <string name="contact_me_mark_confirm">Sì, questo sono io</string>
+    <string name="contact_me_unmark_title">Questo contatto non sei tu?</string>
+    <string name="contact_me_unmark_body">Questo contatto non sarà più te. Se contrassegnarlo come te ha attivato l\'opzione ambientale, viene disattivata di nuovo. Un\'impostazione ambientale scelta da te viene mantenuta.</string>
+    <string name="contact_me_unmark_confirm">Sì, questo non sono io</string>
     <string name="contact_you_badge">Tu</string>
     <string name="contact_export_vcf4">Esporta vCard 4.0</string>
     <string name="contact_export_vcf3">Esporta vCard 3.0</string>

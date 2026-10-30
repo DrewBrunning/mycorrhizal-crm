@@ -63,9 +63,24 @@ class ActivitiesInboxScreenTest {
     @Test
     fun `the location-history entry point is shown only when wired and fires on tap`() {
         var taps = 0
-        setContent(ActivitiesInboxUiState(isLoading = false), onLogFromLocation = { taps++ })
+        setContent(
+            ActivitiesInboxUiState(isLoading = false, geoPulseConfigured = true),
+            onLogFromLocation = { taps++ }
+        )
         composeTestRule.onNodeWithContentDescription("Log from location history").performClick()
         assertEquals(1, taps)
+    }
+
+    // Issue #2205: wired but GeoPulse not configured (or config fetch failed) -> hidden.
+    @Test
+    fun `no location-history entry point when GeoPulse is not configured`() {
+        setContent(
+            ActivitiesInboxUiState(isLoading = false, geoPulseConfigured = false),
+            onLogFromLocation = {}
+        )
+        composeTestRule.onNodeWithContentDescription(
+            "Log from location history"
+        ).assertDoesNotExist()
     }
 
     @Test
@@ -272,7 +287,7 @@ class ActivitiesInboxScreenTest {
                 nextCursor = null
             )
         )
-        val viewModel = ActivitiesInboxViewModel(repository)
+        val viewModel = ActivitiesInboxViewModel(repository, geoPulseWith(Result.failure(ApiError.Server(500, "x"))))
 
         composeTestRule.setContent {
             MycorrhizalTheme {

@@ -239,6 +239,13 @@
     <string name="contact_unarchive">Désarchiver</string>
     <string name="contact_mark_as_me">C\'est moi</string>
     <string name="contact_unmark_as_me">Ce n\'est pas moi</string>
+    <!-- Issue #2206 (web #2192): confirmation before marking/unmarking the Me contact. -->
+    <string name="contact_me_mark_title">Marquer ce contact comme étant vous ?</string>
+    <string name="contact_me_mark_body">Ce contact deviendra vous. Garder le contact avec soi-même n\'a pas de sens : il est donc aussi marqué comme ambiant, jamais en retard, et son score de relation compte toujours comme à jour. Vous pouvez désactiver l\'option ambiant sur le contact à tout moment.</string>
+    <string name="contact_me_mark_confirm">Oui, c\'est moi</string>
+    <string name="contact_me_unmark_title">Ce contact n\'est pas vous ?</string>
+    <string name="contact_me_unmark_body">Ce contact ne sera plus vous. Si le fait de le marquer comme vous a activé l\'option ambiant, elle est désactivée de nouveau. Un réglage ambiant que vous avez choisi vous-même est conservé.</string>
+    <string name="contact_me_unmark_confirm">Oui, ce n\'est pas moi</string>
     <string name="contact_you_badge">Vous</string>
     <string name="contact_export_vcf4">Exporter en vCard 4.0</string>
     <string name="contact_export_vcf3">Exporter en vCard 3.0</string>

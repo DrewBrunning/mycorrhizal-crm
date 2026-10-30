@@ -2220,8 +2220,7 @@ class ContactDetailScreenTest {
 
     // --- T90 / issue #831: Mark as Me / Unmark as Me in the action menu (web parity) ---
 
-    @Test
-    fun `mark as me in the action menu invokes toggleMe`() {
+    private fun meViewModel(selfUid: String?): ContactDetailViewModel {
         val contact = ContactRecordResponse(
             id = 5,
             uid = "uid-5",
@@ -2229,20 +2228,72 @@ class ContactDetailScreenTest {
         )
         val viewModel = mockk<ContactDetailViewModel>(relaxed = true)
         every { viewModel.uiState } returns MutableStateFlow(
-            ContactDetailUiState(contact = contact, selfContactVCardUid = null)
+            ContactDetailUiState(contact = contact, selfContactVCardUid = selfUid)
         )
         every { viewModel.events } returns MutableStateFlow<ContactDetailEvent?>(null)
-
         composeTestRule.setContent {
             MycorrhizalTheme {
                 ContactDetailScreen(onBack = {}, onShareContact = {}, viewModel = viewModel)
             }
         }
+        return viewModel
+    }
+
+    // Issue #2206 (web #2192): the item opens a confirmation; only confirm toggles.
+    @Test
+    fun `mark as me opens a confirmation and only confirm invokes toggleMe`() {
+        val viewModel = meViewModel(selfUid = null)
 
         composeTestRule.onNodeWithContentDescription("Contact actions").performClick()
         composeTestRule.onNodeWithText("This is me").performClick()
 
-        verify { viewModel.toggleMe() }
+        composeTestRule.onNodeWithText("Mark this contact as you?").assertIsDisplayed()
+        verify(exactly = 0) { viewModel.toggleMe() }
+
+        composeTestRule.onNodeWithText("Yes, this is me").performClick()
+
+        verify(exactly = 1) { viewModel.toggleMe() }
+        composeTestRule.onNodeWithText("Mark this contact as you?").assertDoesNotExist()
+    }
+
+    @Test
+    fun `cancelling the mark as me confirmation does not invoke toggleMe`() {
+        val viewModel = meViewModel(selfUid = null)
+
+        composeTestRule.onNodeWithContentDescription("Contact actions").performClick()
+        composeTestRule.onNodeWithText("This is me").performClick()
+        composeTestRule.onNodeWithText("Cancel").performClick()
+
+        composeTestRule.onNodeWithText("Mark this contact as you?").assertDoesNotExist()
+        verify(exactly = 0) { viewModel.toggleMe() }
+    }
+
+    @Test
+    fun `unmark as me also confirms before invoking toggleMe`() {
+        val viewModel = meViewModel(selfUid = "uid-5")
+
+        composeTestRule.onNodeWithContentDescription("Contact actions").performClick()
+        composeTestRule.onNodeWithText("This isn't me").performClick()
+
+        composeTestRule.onNodeWithText("This contact isn't you?").assertIsDisplayed()
+        verify(exactly = 0) { viewModel.toggleMe() }
+
+        composeTestRule.onNodeWithText("Yes, this isn't me").performClick()
+
+        verify(exactly = 1) { viewModel.toggleMe() }
+    }
+
+    @Test
+    fun `this is me is the last item in the action menu, below delete`() {
+        meViewModel(selfUid = null)
+
+        composeTestRule.onNodeWithContentDescription("Contact actions").performClick()
+
+        val meTop = composeTestRule.onNodeWithText("This is me")
+            .fetchSemanticsNode().boundsInRoot.top
+        val deleteTop = composeTestRule.onNodeWithText("Delete contact")
+            .fetchSemanticsNode().boundsInRoot.top
+        assertTrue("This is me ($meTop) should sit below Delete ($deleteTop)", meTop > deleteTop)
     }
 
     @Test
