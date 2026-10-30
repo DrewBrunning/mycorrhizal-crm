@@ -16,11 +16,7 @@ import java.lang.reflect.Type
  * clears.
  */
 object ActivityInputAdapterFactory : JsonAdapter.Factory {
-    override fun create(
-        type: Type,
-        annotations: Set<Annotation>,
-        moshi: Moshi
-    ): JsonAdapter<*>? {
+    override fun create(type: Type, annotations: Set<Annotation>, moshi: Moshi): JsonAdapter<*>? {
         if (type != ActivityInput::class.java || annotations.isNotEmpty()) return null
         val delegate = moshi.nextAdapter<ActivityInput>(this, type, annotations)
         val mapAdapter = moshi.adapter(Any::class.java)

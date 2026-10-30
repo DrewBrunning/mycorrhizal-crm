@@ -15,7 +15,9 @@ class ActivityEndDateTest {
     @Test
     fun `an activity with an end_date decodes it`() {
         val activity = moshi.adapter(Activity::class.java)
-            .fromJson("""{"ID":7,"date":"2026-05-12T00:00:00Z","end_date":"2026-05-15T00:00:00Z"}""")
+            .fromJson(
+                """{"ID":7,"date":"2026-05-12T00:00:00Z","end_date":"2026-05-15T00:00:00Z"}"""
+            )
         assertEquals("2026-05-15T00:00:00Z", activity?.endDate)
     }
 
