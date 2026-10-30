@@ -61,6 +61,8 @@ export type AccountBundlePlan = {
   tags?: Record<string, unknown>[];
 };
 
+export type AccountLocked = AccountLockedFlat | AccountLockedEnvelope;
+
 export type AccountLockedEnvelope = Error & {
   error?: {
     code?: 'ACCOUNT_LOCKED';
