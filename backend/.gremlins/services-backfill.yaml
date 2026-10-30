@@ -22,6 +22,7 @@ unleash:
         - ^contact_share_purge_service\.go$
         - ^contact_sync_service\.go$
         - ^contact_trash\.go$
+        - ^contact_write\.go$
         - ^credential_crypto\.go$
         - ^custom_field_service\.go$
         - ^data_decay_service\.go$
