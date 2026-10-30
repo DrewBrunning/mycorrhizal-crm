@@ -24,9 +24,9 @@ Facts in the code that the design depends on:
    The avatar path decodes JPEG, PNG and HEIC (`github.com/gen2brain/heic`, a WASM decoder run by
    `wazero`) and resizes with `github.com/nfnt/resize`.
 2. **Sensitivity is not a column on contacts, notes or activities.** It exists on relationship edges,
-   field definitions and values, preferences, addresses and occasions. "Inherit the parent's sensitivity"
-   therefore has no stored input today; decision 7 makes it a single resolver so a future per-parent
-   sensitivity needs no image migration.
+   field definitions and values, preferences, addresses and occasions. A rule that inherited an image's
+   sensitivity from its parent would therefore make every image `normal`, so each image carries its own
+   (decision 7).
 3. **Contact delete does not delete activities.** `ContactCascadeRegistry` removes only the
    `activity_contacts` join row (`backend/services/contact_delete.go#ContactCascadeRegistry`), because an
    activity survives its other attendees. Activity images are owned by the activity, not the contact.
@@ -72,6 +72,8 @@ type ImageFields struct {
     Width, Height  int    `gorm:"not null" json:"width"`                          // of the stored full variant
     SizeBytes      int64  `gorm:"column:size_bytes;not null" json:"size_bytes"`
     ThumbSizeBytes int64  `gorm:"column:thumb_size_bytes;not null" json:"-"`
+
+    Sensitivity string   `gorm:"column:sensitivity;not null;default:normal;index" json:"sensitivity"` // normal|private|secret (decision 7)
 
     DHash     *int64     `gorm:"column:dhash" json:"-"`         // 64-bit difference hash (decision 9)
     TakenAt   *time.Time `gorm:"column:taken_at" json:"taken_at"`   // instant, UTC (ADR 0015 category 1)
@@ -201,7 +203,7 @@ decision 3), so images belong in it; leaving them out would be silent data loss.
   { "uuid": "...", "owner_kind": "contact|note|activity",
     "owner": "<contact vcard_uid | note uuid | activity uuid>",
     "mime_type": "image/jpeg", "width": 2048, "height": 1365,
-    "taken_at": null, "taken_date": "2024-07-03",
+    "taken_at": null, "taken_date": "2024-07-03", "sensitivity": "normal",
     "crop": {"x": 0.1, "y": 0.0, "w": 0.8, "h": 1.0}, "created_at": "...",
     "data": "<base64 of the full variant>" } ],
 "contacts[].main_image": "<image uuid>",
@@ -294,22 +296,48 @@ soft-deleted rows (both occupy disk). `storage_samples` gains `image_dir_bytes`
 (`backend/models/storage_sample.go`, filled by `storageDirBytes` in
 `backend/services/storage_sample_service.go`) so growth projections include images.
 
-### 7. Sensitivity: inherited from the parent, filtered in the query
+### 7. Sensitivity: a column on every image, filtered in the query
 
-An image has **no sensitivity column**. Its effective sensitivity is its parent's, through one function,
-`models.ImageSensitivity(kind, owner)`. Today it returns `normal` for every parent (fact 2). When a parent
-gains a sensitivity (or an activity takes the strictest of its attendees), that one function changes and
-no image row does.
+Each image carries its **own** `sensitivity` (`normal|private|secret`, `NOT NULL DEFAULT 'normal'`,
+indexed), on the shared `ImageFields` and so on all three tables, using the same value set as
+`RelationshipEdge` and field definitions. It replaces "inherit from the parent", which would have made
+every image `normal` (fact 2). Existing rows and uploads that do not say otherwise are `normal`.
 
-- **Nothing that leaves the instance carries image bytes** except (i) the **derived avatar** and (ii) the
-  **account bundle**, a deliberate full-fidelity owner-backup exception like the CSV and the contact map
-  (backend/AGENTS.md). CardDAV/CalDAV sync, contact shares, the MCP server, vCard and JSContact export, CSV
-  and webhooks do not emit gallery, note or activity images. Adding one is a policy change that filters in
-  the query and takes that surface's include flag.
-- **The CardDAV/vCard/JSContact/export avatar is derived only from the main image of a `normal`
-  contact.** The derivation writes `contacts.photo` (decision 10); outward builders reach it only through
-  `backend/models/contact_record.go#RecordForContactFiltered`, which is where a sensitivity test belongs,
-  and `backend/models/contact_record_outward_census_test.go` already forces every builder to be classified.
+- **Set and change.** Upload accepts an optional multipart field `sensitivity` (default `normal`;
+  anything else is a `400`). `PATCH .../images/:image_id` accepts `sensitivity` alongside `crop` in its
+  allowlist. `adopt` copies the source's sensitivity and never lowers it. If a dHash duplicate matches
+  (decision 9), the existing image is returned and its sensitivity is raised to the higher of the two,
+  never silently lowered.
+- **Filtering stays in the query on every surface that leaves the instance.** An image above `normal` is
+  excluded by the SQL `WHERE`, not after loading, and is re-includable only through that surface's explicit
+  include flag (`?include_sensitive=true`, or the same field in a share/MCP request), exactly as
+  backend/AGENTS.md defines. Today no sync, share, MCP, vCard/JSContact, CSV or webhook surface emits
+  gallery, note or activity images; adding one is a policy change that must use this filter.
+- **The account bundle is a deliberate full-fidelity exception**, like the CSV export and the contact map
+  (backend/AGENTS.md): it carries every image, each with its `sensitivity` (an `images[].sensitivity`
+  field), and import restores it. Filtering the bundle would be silent data loss and is a policy change.
+- **The derived CardDAV/vCard/JSContact/export avatar comes only from a main image whose own sensitivity is
+  `normal`.** `contacts.photo` is still written when a main image is chosen (decision 10) and still drives
+  the in-app avatar for the owner. The outward builders reach it only through
+  `backend/models/contact_record.go#RecordForContactFiltered`, which omits the photo when the contact's main
+  image is `private` or `secret` and the surface's include flag is absent; the
+  `backend/models/contact_record_outward_census_test.go` classification already forces every builder to
+  state which it is. A contact with no main image (a legacy photo) is unchanged. Changing the main image's
+  sensitivity, or setting a non-`normal` image as main, bumps the contact's revision and ETag (ADR 0006,
+  ADR 0018), so a CardDAV client re-pulls the card and the photo disappears from (or returns to) it.
+- **The owner sees everything in the app.** The aggregated Photos view (`GET /contacts/:id/photos`) and
+  the per-owner lists return all of the owner's images regardless of sensitivity, each with its
+  `sensitivity`, and clients show a badge on `private`/`secret` ones. This is the owner's own in-app view,
+  like the contact map; sensitivity is about copies that leave the instance, not an access tier against the
+  owner.
+- **Future parent-level sensitivity: effective = max(image, parent).** Order is
+  `normal < private < secret`. If a contact, note or activity ever gains its own sensitivity, a surface
+  filters on `max(image.sensitivity, parent.sensitivity)`; for an activity the parent value is the maximum
+  across its attendees. Taking the maximum means a stricter parent can only hide more and an image marked
+  `private` inside a `normal` note stays private, so neither setting can be used to widen the other. The
+  maximum is computed in one function, `models.EffectiveImageSensitivity(image, parent)`, which returns
+  `image.sensitivity` until a parent column exists, so adding one changes that function and the queries
+  that call it, not the image schema.
 - **URLs are owner-scoped and authenticated** (decision 8). There is no public, signed or guessable file
   path, and no stored name is ever returned.
 
@@ -320,15 +348,15 @@ attachments and the profile picture, `backend/routes/routes.go`):
 
 | Method and path | Purpose |
 |---|---|
-| `POST /{contacts\|notes\|activities}/:id/images` | multipart upload, field `file`; `201` with the image DTO. A dHash duplicate on a contact returns `200` with the existing image and `deduplicated: true`. |
+| `POST /{contacts\|notes\|activities}/:id/images` | multipart upload, field `file` and optional `sensitivity`; `201` with the image DTO. A dHash duplicate on a contact returns `200` with the existing image and `deduplicated: true`. |
 | `GET  /{...}/:id/images` | `{images: [...], total}`; the slice has no `omitempty` (frontend trap #8) |
 | `GET  /{...}/:id/images/:image_id/file` | full variant bytes |
 | `GET  /{...}/:id/images/:image_id/thumbnail` | thumbnail bytes |
-| `PATCH /{...}/:id/images/:image_id` | allowlisted fields only: `crop` (null clears) |
+| `PATCH /{...}/:id/images/:image_id` | allowlisted fields only: `crop` (null clears) and `sensitivity` |
 | `DELETE /{...}/:id/images/:image_id` | soft delete, then post-commit file removal |
 | `PUT` / `DELETE /contacts/:id/main-image` | set (`{image_id}`) or clear the main image (slice c) |
 | `POST /contacts/:id/images/adopt` | copy a note's or activity's image into `contact_images`: `{source_kind, source_id, image_id}` (slice c) |
-| `GET  /contacts/:id/photos` | the Photos tab: own, notes' and activities' images, newest first by `COALESCE(taken_at, created_at)`, keyset-paginated, each item labelled with `source: {kind, id, label}` (slice c) |
+| `GET  /contacts/:id/photos` | the Photos tab: own, notes' and activities' images, newest first by `COALESCE(taken_at, created_at)`, keyset-paginated, each item labelled with `source: {kind, id, label}` and carrying its `sensitivity`; the owner sees every image (slice c) |
 
 **Why owner-nested and not a flat `/images/:id`.** Three tables have overlapping integer ids, so a flat
 route needs a kind discriminator in the id or the path - a polymorphic lookup, the thing decision 1 avoids.
@@ -449,15 +477,11 @@ for the operator and the sweeper, and the release note says so), a schema-parity
   from stored bytes; oversize bytes and pixels; the per-owner cap; a user-delete test asserting rows and
   files are gone; and a trash-restore test that brings images back.
 
-## Open questions for the maintainer
+## Settled by the maintainer
 
-1. **HEIC asymmetry.** The avatar upload accepts HEIC today (existing `gen2brain/heic`, WASM) while the
-   gallery rejects it, so an iPhone HEIC works as an avatar but not as a gallery image. Recommendation:
-   keep it rejected for v1.6.0 and revisit once the pipeline exists; enabling it is a decoder-set change
-   with no schema work.
-2. **Parent sensitivity does not exist.** Decision 7 is correct but, today, vacuous: contacts, notes and
-   activities have no sensitivity. If the intent is that a user can mark a note or contact private or
-   secret, that is a separate, larger decision (it changes sync, shares, MCP and the census) and needs its
-   own issue; this ADR needs no change when it lands.
-3. **Originals.** Only the 2048 px re-encode is kept. A user who needs the original camera file has the
-   existing attachment feature; confirm that is acceptable rather than keeping a third variant.
+- **HEIC.** The gallery rejects HEIC in v1.6.0 (`image_heic_unsupported`); the avatar endpoint keeps
+  accepting HEIC through the existing `gen2brain/heic` dependency. An iPhone HEIC therefore works as an
+  avatar but not as a gallery image until a later decoder-set change, which needs no schema work.
+- **Originals.** Only the re-encode (2048 px long edge plus a thumbnail) is stored. Full resolution is the
+  existing attachment feature; no third variant is kept.
+- **Sensitivity.** Each image has its own column (decision 7), not inheritance.
