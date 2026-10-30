@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
@@ -63,7 +64,7 @@ func (f davDeleteFixture) seedDependants(t *testing.T) uint {
 
 // httpDelete drives a real DAV DELETE through the handler as user u and
 // returns the response status (go-webdav maps the backend result to it).
-func (f davDeleteFixture) httpDelete(t *testing.T, u models.User, path string) int {
+func (f davDeleteFixture) httpDelete(t *testing.T, u models.User, path string, clk ...clock.Clock) int {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	h := &Handler{backend: f.backend, db: f.db, photoDir: f.backend.photoDir}
@@ -74,6 +75,9 @@ func (f davDeleteFixture) httpDelete(t *testing.T, u models.User, path string) i
 	c.Request, _ = http.NewRequest(http.MethodDelete, path, nil)
 	c.Set("userID", u.ID)
 	c.Set("username", u.Username)
+	for _, k := range clk {
+		clock.Install(c, k)
+	}
 	h.GinHandler()(c)
 	return w.Code
 }
@@ -175,4 +179,35 @@ func TestDeleteAddressObject_AlreadyDeletedIs404(t *testing.T) {
 	var snaps int64
 	require.NoError(t, f.db.Model(&models.ContactDeletionSnapshot{}).Count(&snaps).Error)
 	assert.EqualValues(t, 1, snaps, "second delete adds no snapshot")
+}
+
+func TestDeleteAddressObject_UsesTheRequestClockForTheTrashSnapshot(t *testing.T) {
+	f := newDavDeleteFixture(t)
+	at := time.Date(2031, 2, 3, 4, 5, 6, 0, time.UTC)
+
+	require.Equal(t, http.StatusOK, f.httpDelete(t, f.user, f.path, clock.NewFake(at)))
+
+	var snap models.ContactDeletionSnapshot
+	require.NoError(t, f.db.Where("contact_id = ?", f.contact.ID).First(&snap).Error)
+	assert.True(t, snap.TrashedAt.Equal(at), "trashed_at %v, want %v", snap.TrashedAt, at)
+}
+
+func TestDeleteAddressObject_ServiceFailureRollsBackAndSendsNoWebhook(t *testing.T) {
+	f := newDavDeleteFixture(t)
+	f.seedDependants(t)
+	var received atomic.Int64
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		received.Add(1)
+	}))
+	defer srv.Close()
+	require.NoError(t, f.db.Create(&models.Webhook{UserID: f.user.ID, Name: "h", URL: srv.URL,
+		Events: []string{"contact.deleted"}, IsActive: true}).Error)
+	dbtest.HideTable(t, f.db, "gifts")
+
+	require.Error(t, f.backend.DeleteAddressObject(f.ctx(f.user), f.path))
+	services.WaitForWebhookGoroutines()
+
+	var c models.Contact
+	require.NoError(t, f.db.First(&c, f.contact.ID).Error, "contact still live after the rolled-back delete")
+	assert.Zero(t, received.Load(), "no contact.deleted webhook for a failed delete")
 }
