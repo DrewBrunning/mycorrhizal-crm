@@ -214,7 +214,8 @@ class ErrorTextTest {
             "section" to "names",
             "reason" to "r",
             "total" to 1.0,
-            "max" to 1.0
+            "max" to 1.0,
+            "max_mb" to 1.0
         )
         val rendered = mutableMapOf<String, String>()
         composeTestRule.setContent {
@@ -351,6 +352,68 @@ class ErrorTextTest {
         assertEquals(
             listOf(
                 "Contacts on this Meerkat account: 6000. The import supports at most 5000",
+                "Server says no"
+            ),
+            rendered
+        )
+    }
+
+    @Test
+    fun `an import assistant code renders its translated template`() {
+        val rendered = renderAll(
+            listOf(
+                ApiError.Client(
+                    400,
+                    "Server says no",
+                    ErrorReason(ErrorReasonCode.MONICA_TOKEN_REJECTED, emptyMap())
+                ),
+                ApiError.Client(
+                    404,
+                    "Server says no",
+                    ErrorReason(ErrorReasonCode.BUNDLE_SESSION_NOT_FOUND, emptyMap())
+                )
+            )
+        )
+        assertEquals(
+            listOf("Monica rejected the API token", "Import session expired or not found"),
+            rendered
+        )
+    }
+
+    @Test
+    fun `the import size limits render their params and fall back without them`() {
+        val rendered = renderAll(
+            listOf(
+                ApiError.Client(
+                    400,
+                    "Server says no",
+                    ErrorReason(ErrorReasonCode.CSV_FILE_TOO_LARGE, mapOf("max_mb" to 20.0))
+                ),
+                ApiError.Client(
+                    400,
+                    "Server says no",
+                    ErrorReason(ErrorReasonCode.CSV_FILE_TOO_LARGE, emptyMap())
+                ),
+                ApiError.Client(
+                    400,
+                    "Server says no",
+                    ErrorReason(
+                        ErrorReasonCode.MONICA_TOO_MANY_CONTACTS,
+                        mapOf("total" to 6000.0, "max" to 5000.0)
+                    )
+                ),
+                ApiError.Client(
+                    400,
+                    "Server says no",
+                    ErrorReason(ErrorReasonCode.MONICA_TOO_MANY_RECORDS, mapOf("total" to 6000.0))
+                )
+            )
+        )
+        assertEquals(
+            listOf(
+                "File too large. Maximum size is 20 MB",
+                "Server says no",
+                "This Monica account has 6000 contacts; the import supports at most 5000",
                 "Server says no"
             ),
             rendered

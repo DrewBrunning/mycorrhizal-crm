@@ -146,90 +146,110 @@ fun HouseholdsScreen(
                 onRefresh = viewModel::load,
                 modifier = Modifier.fillMaxSize()
             ) {
-                when {
-                    state.isLoading && state.households.isEmpty() -> LoadingSkeleton()
+                Column(Modifier.fillMaxSize()) {
+                    Text(
+                        text = stringResource(R.string.households_description),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                    Box(Modifier.fillMaxWidth().weight(1f)) {
+                        when {
+                            state.isLoading && state.households.isEmpty() -> LoadingSkeleton()
 
-                    state.households.isEmpty() && !state.suggestionsLoaded && state.error == null ->
-                        EmptyState(
-                            title = stringResource(R.string.households_empty),
-                            body = stringResource(R.string.households_empty_body),
-                            actionLabel = stringResource(R.string.households_new),
-                            onAction = { showCreateDialog = true }
-                        )
-
-                    state.households.isEmpty() && !state.suggestionsLoaded && state.error != null -> {
-                        Text(
-                            text = state.error?.localizedMessage().orEmpty(),
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.align(Alignment.Center)
-                        )
-                    }
-
-                    else -> {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = FabListContentPadding
-                        ) {
-                            if (state.suggestionsLoaded) {
-                                item(key = "suggestion-header") {
-                                    Text(
-                                        text = stringResource(
-                                            R.string.households_address_suggestions
-                                        ),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        modifier = Modifier.padding(
-                                            horizontal = 16.dp,
-                                            vertical = 8.dp
-                                        )
-                                    )
-                                }
-                                if (state.addressSuggestions.isEmpty()) {
-                                    item(key = "suggestion-empty") {
-                                        Text(
-                                            text = stringResource(
-                                                R.string.households_no_address_suggestions
-                                            ),
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.padding(
-                                                horizontal = 16.dp,
-                                                vertical = 8.dp
-                                            )
-                                        )
-                                    }
-                                } else {
-                                    items(
-                                        state.addressSuggestions,
-                                        key = { suggestionKey(it) }
-                                    ) { suggestion ->
-                                        val key = suggestionKey(suggestion)
-                                        AddressSuggestionCard(
-                                            suggestion = suggestion,
-                                            contactsByUid = state.contactsByUid,
-                                            pending = state.pendingSuggestionKey == "accept:$key" ||
-                                                state.pendingSuggestionKey == "dismiss:$key",
-                                            onAccept = { viewModel.acceptSuggestion(suggestion) },
-                                            onDismiss = { viewModel.dismissSuggestion(suggestion) }
-                                        )
-                                    }
-                                }
-                                item(key = "suggestion-divider") {
-                                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                                }
-                            }
-                            items(state.households, key = { it.id }) { household ->
-                                HouseholdListItem(
-                                    household = household,
-                                    onClick = { onOpenHousehold(household.id) },
-                                    onUpdate = { name, type ->
-                                        viewModel.rename(
-                                            household.id,
-                                            name,
-                                            type
-                                        )
-                                    },
-                                    onDelete = { viewModel.delete(household.id) }
+                            state.households.isEmpty() && !state.suggestionsLoaded &&
+                                state.error == null ->
+                                EmptyState(
+                                    title = stringResource(R.string.households_empty),
+                                    body = stringResource(R.string.households_empty_body),
+                                    actionLabel = stringResource(R.string.households_new),
+                                    onAction = { showCreateDialog = true }
                                 )
+
+                            state.households.isEmpty() && !state.suggestionsLoaded &&
+                                state.error != null -> {
+                                Text(
+                                    text = state.error?.localizedMessage().orEmpty(),
+                                    color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.align(Alignment.Center)
+                                )
+                            }
+
+                            else -> {
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentPadding = FabListContentPadding
+                                ) {
+                                    if (state.suggestionsLoaded) {
+                                        item(key = "suggestion-header") {
+                                            Text(
+                                                text = stringResource(
+                                                    R.string.households_address_suggestions
+                                                ),
+                                                style = MaterialTheme.typography.titleMedium,
+                                                modifier = Modifier.padding(
+                                                    horizontal = 16.dp,
+                                                    vertical = 8.dp
+                                                )
+                                            )
+                                        }
+                                        if (state.addressSuggestions.isEmpty()) {
+                                            item(key = "suggestion-empty") {
+                                                Text(
+                                                    text = stringResource(
+                                                        R.string.households_no_address_suggestions
+                                                    ),
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.padding(
+                                                        horizontal = 16.dp,
+                                                        vertical = 8.dp
+                                                    )
+                                                )
+                                            }
+                                        } else {
+                                            items(
+                                                state.addressSuggestions,
+                                                key = { suggestionKey(it) }
+                                            ) { suggestion ->
+                                                val key = suggestionKey(suggestion)
+                                                val isPending =
+                                                    state.pendingSuggestionKey == "accept:$key" ||
+                                                        state.pendingSuggestionKey == "dismiss:$key"
+                                                AddressSuggestionCard(
+                                                    suggestion = suggestion,
+                                                    contactsByUid = state.contactsByUid,
+                                                    pending = isPending,
+                                                    onAccept = {
+                                                        viewModel.acceptSuggestion(suggestion)
+                                                    },
+                                                    onDismiss = {
+                                                        viewModel.dismissSuggestion(suggestion)
+                                                    }
+                                                )
+                                            }
+                                        }
+                                        item(key = "suggestion-divider") {
+                                            HorizontalDivider(
+                                                modifier = Modifier.padding(vertical = 8.dp)
+                                            )
+                                        }
+                                    }
+                                    items(state.households, key = { it.id }) { household ->
+                                        HouseholdListItem(
+                                            household = household,
+                                            onClick = { onOpenHousehold(household.id) },
+                                            onUpdate = { name, type ->
+                                                viewModel.rename(
+                                                    household.id,
+                                                    name,
+                                                    type
+                                                )
+                                            },
+                                            onDelete = { viewModel.delete(household.id) }
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

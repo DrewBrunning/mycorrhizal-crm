@@ -561,6 +561,9 @@ private fun PersonalInfoFormScreen(
                 value = label,
                 onValueChange = { label = it },
                 label = { Text(stringResource(R.string.contact_personal_info_label)) },
+                supportingText = {
+                    Text(stringResource(R.string.contact_personal_info_label_hint))
+                },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth().testTag("personal-info-label")
             )

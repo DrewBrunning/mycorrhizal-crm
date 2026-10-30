@@ -154,10 +154,10 @@ func (m *MycorrhizalImportManager) get(sessionID string, userID uint) (*mycorrhi
 	s, exists := m.sessions[sessionID]
 	m.mu.RUnlock()
 	if !exists {
-		return nil, apperrors.ErrNotFoundMessage("Import session expired or not found")
+		return nil, apperrors.ErrNotFoundMessage("Import session expired or not found").WithReason(apperrors.ReasonBundleSessionNotFound, nil)
 	}
 	if s.userID != userID {
-		return nil, apperrors.ErrNotFoundMessage("Import session expired or not found")
+		return nil, apperrors.ErrNotFoundMessage("Import session expired or not found").WithReason(apperrors.ReasonBundleSessionNotFound, nil)
 	}
 	s.mu.Lock()
 	now := Now()
@@ -171,7 +171,7 @@ func (m *MycorrhizalImportManager) get(sessionID string, userID uint) (*mycorrhi
 	s.mu.Unlock()
 	if expired {
 		m.Delete(sessionID)
-		return nil, apperrors.ErrNotFoundMessage("Import session expired")
+		return nil, apperrors.ErrNotFoundMessage("Import session expired").WithReason(apperrors.ReasonBundleSessionExpired, nil)
 	}
 	return s, nil
 }
@@ -223,36 +223,36 @@ func (m *MycorrhizalImportManager) Cancel(userID uint, sessionID string) *apperr
 // the per-section totals.
 func (m *MycorrhizalImportManager) Upload(userID uint, header *multipart.FileHeader) (*models.MycorrhizalUploadResponse, *apperrors.AppError) {
 	if header.Size <= 0 || header.Size > MaxMycorrhizalBundleSize {
-		return nil, apperrors.ErrInvalidInput("file", "The bundle is empty or larger than the 64 MiB limit")
+		return nil, apperrors.ErrInvalidInput("file", "The bundle is empty or larger than the 64 MiB limit").WithReason(apperrors.ReasonBundleSize, nil)
 	}
 	src, err := header.Open()
 	if err != nil { // # pragma: no cover — defensive: header.Open on a staged multipart file
-		return nil, apperrors.ErrInvalidInput("file", "The upload could not be read") // # pragma: no cover — defensive: header.Open on a staged multipart file
+		return nil, apperrors.ErrInvalidInput("file", "The upload could not be read").WithReason(apperrors.ReasonBundleUploadUnreadable, nil) // # pragma: no cover — defensive: header.Open on a staged multipart file
 	}
 	defer src.Close()
 
 	data, err := io.ReadAll(io.LimitReader(src, MaxMycorrhizalBundleSize+1))
 	if err != nil || int64(len(data)) > MaxMycorrhizalBundleSize { // # pragma: no cover — defensive: reading a bounded in-memory upload
-		return nil, apperrors.ErrInvalidInput("file", "The upload could not be read") // # pragma: no cover — defensive: reading a bounded in-memory upload
+		return nil, apperrors.ErrInvalidInput("file", "The upload could not be read").WithReason(apperrors.ReasonBundleUploadUnreadable, nil) // # pragma: no cover — defensive: reading a bounded in-memory upload
 	}
 
 	var bundle models.AccountBundle
 	if err := json.Unmarshal(data, &bundle); err != nil {
-		return nil, apperrors.ErrInvalidInput("file", "That file is not a Mycorrhizal account bundle")
+		return nil, apperrors.ErrInvalidInput("file", "That file is not a Mycorrhizal account bundle").WithReason(apperrors.ReasonBundleNotBundle, nil)
 	}
 	if bundle.Format != models.AccountBundleFormat {
 		return nil, apperrors.NewError(apperrors.ErrCodeInvalidInput,
-			"That file is not a Mycorrhizal account bundle", http.StatusUnprocessableEntity)
+			"That file is not a Mycorrhizal account bundle", http.StatusUnprocessableEntity).WithReason(apperrors.ReasonBundleNotBundle, nil)
 	}
 	if bundle.Version != models.AccountBundleVersion {
 		return nil, apperrors.NewError(apperrors.ErrCodeInvalidInput,
 			"Unsupported account bundle version", http.StatusUnprocessableEntity)
 	}
 	if len(bundle.Plan.Contacts) > MaxMycorrhizalContacts { // # pragma: no cover — requires a >20k-contact document; the cap is enforced by the constant and the route's body limit bounds memory first
-		return nil, apperrors.ErrInvalidInput("file", "This bundle has more contacts than the import supports") // # pragma: no cover — requires a >20k-contact document
+		return nil, apperrors.ErrInvalidInput("file", "This bundle has more contacts than the import supports").WithReason(apperrors.ReasonBundleTooManyContacts, nil) // # pragma: no cover — requires a >20k-contact document
 	}
 	if mycorrhizalEntityTotal(&bundle) > MaxMycorrhizalEntities { // # pragma: no cover — requires a >500k-entity document; see the contact cap
-		return nil, apperrors.ErrInvalidInput("file", "This bundle has more records than the import supports") // # pragma: no cover — requires a >500k-entity document
+		return nil, apperrors.ErrInvalidInput("file", "This bundle has more records than the import supports").WithReason(apperrors.ReasonBundleTooManyRecords, nil) // # pragma: no cover — requires a >500k-entity document
 	}
 
 	sessionID := generateSessionID()
@@ -317,7 +317,7 @@ func (m *MycorrhizalImportManager) StartFetch(db *gorm.DB, userID uint, req mode
 	s.mu.Lock()
 	if s.phase != models.SourceImportPhaseConnecting && s.phase != models.SourceImportPhaseFailed {
 		s.mu.Unlock()
-		return apperrors.ErrConflict("This import is already being prepared")
+		return apperrors.ErrConflict("This import is already being prepared").WithReason(apperrors.ReasonBundleImportInProgress, nil)
 	}
 	s.phase = models.SourceImportPhaseMapping
 	s.phaseDone, s.phaseTotal, s.errMsg = 0, 0, ""
@@ -389,7 +389,7 @@ func (m *MycorrhizalImportManager) Preview(userID uint, sessionID string) (*mode
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.phase != models.SourceImportPhaseReady || s.plan == nil {
-		return nil, apperrors.ErrInvalidInput("session", "The account bundle is not prepared yet")
+		return nil, apperrors.ErrInvalidInput("session", "The account bundle is not prepared yet").WithReason(apperrors.ReasonBundleNotPrepared, nil)
 	}
 	validRows, dupCount, errCount, totals := previewTotals(s.previews, len(s.plan.Relationships))
 	return &models.SourceImportPreviewResponse{
@@ -414,7 +414,7 @@ func (m *MycorrhizalImportManager) Confirm(db *gorm.DB, userID uint, req models.
 	s.mu.Lock()
 	if s.phase != models.SourceImportPhaseReady || s.plan == nil {
 		s.mu.Unlock()
-		return apperrors.ErrInvalidInput("session", "The account bundle is not prepared yet")
+		return apperrors.ErrInvalidInput("session", "The account bundle is not prepared yet").WithReason(apperrors.ReasonBundleNotPrepared, nil)
 	}
 	plan := s.plan
 	previews := s.previews

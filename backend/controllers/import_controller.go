@@ -62,17 +62,17 @@ func UploadCSVForImport(c *gin.Context) {
 	file, err := c.FormFile("file")
 	if err != nil {
 		log.Info().Err(err).Msg("No file uploaded")
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", "No file uploaded"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", "No file uploaded").WithReason(apperrors.ReasonImportFileMissing, nil))
 		return
 	}
 
 	if file.Size > services.MaxCSVSize {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", fmt.Sprintf("File too large. Maximum size is %d MB", services.MaxCSVSize/(1024*1024))))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", fmt.Sprintf("File too large. Maximum size is %d MB", services.MaxCSVSize/(1024*1024))).WithReason(apperrors.ReasonCSVFileTooLarge, map[string]any{"max_mb": services.MaxCSVSize / (1024 * 1024)}))
 		return
 	}
 
 	if !strings.HasSuffix(strings.ToLower(file.Filename), ".csv") {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", "File must be a CSV file"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", "File must be a CSV file").WithReason(apperrors.ReasonCSVFileNotCSV, nil))
 		return
 	}
 
@@ -139,17 +139,17 @@ func UploadVCFForImport(c *gin.Context, cfg *config.Config) {
 	file, err := c.FormFile("file")
 	if err != nil {
 		log.Info().Err(err).Msg("No file uploaded")
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", "No file uploaded"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", "No file uploaded").WithReason(apperrors.ReasonImportFileMissing, nil))
 		return
 	}
 
 	if file.Size > services.MaxVCFSize {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", fmt.Sprintf("File too large. Maximum size is %d MB", services.MaxVCFSize/(1024*1024))))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", fmt.Sprintf("File too large. Maximum size is %d MB", services.MaxVCFSize/(1024*1024))).WithReason(apperrors.ReasonVCardFileTooLarge, map[string]any{"max_mb": services.MaxVCFSize / (1024 * 1024)}))
 		return
 	}
 
 	if !strings.HasSuffix(strings.ToLower(file.Filename), ".vcf") {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", "File must be a VCF file"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", "File must be a VCF file").WithReason(apperrors.ReasonVCardFileNotVCF, nil))
 		return
 	}
 
@@ -219,17 +219,17 @@ func UploadJSContactForImport(c *gin.Context) {
 	file, err := c.FormFile("file")
 	if err != nil {
 		log.Info().Err(err).Msg("No file uploaded")
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", "No file uploaded"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", "No file uploaded").WithReason(apperrors.ReasonImportFileMissing, nil))
 		return
 	}
 
 	if file.Size > services.MaxVCFSize {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", fmt.Sprintf("File too large. Maximum size is %d MB", services.MaxVCFSize/(1024*1024))))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", fmt.Sprintf("File too large. Maximum size is %d MB", services.MaxVCFSize/(1024*1024))).WithReason(apperrors.ReasonImportJSContactFileTooLarge, map[string]any{"max_mb": services.MaxVCFSize / (1024 * 1024)}))
 		return
 	}
 
 	if !strings.HasSuffix(strings.ToLower(file.Filename), ".json") {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", "File must be a JSON (JSContact) file"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", "File must be a JSON (JSContact) file").WithReason(apperrors.ReasonImportFileNotJSContact, nil))
 		return
 	}
 

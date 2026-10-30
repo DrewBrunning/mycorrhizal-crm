@@ -1165,7 +1165,8 @@
     <string name="circles_remove_member_named">Rimuovi il membro %1$s</string>
     <string name="circles_member_vcard_uid">UID VCard del contatto</string>
     <string name="circles_empty">Ancora nessun cerchio</string>
-    <string name="circles_empty_body">I cerchi sono gruppi di persone con cui resti in contatto.</string>
+    <string name="circles_description">Le cerchie sono gruppi che segui insieme, come famiglia, amici o colleghi. Un contatto può appartenere a più cerchie.</string>
+    <string name="circles_empty_body">Le cerchie raggruppano persone che segui insieme. Un contatto può appartenere a più cerchie.</string>
     <string name="circles_members_empty">Ancora nessun membro</string>
     <string name="circles_error_missing_id">ID cerchio mancante</string>
     <!-- Issue #218: group SMS to every circle member with a phone number. -->
@@ -1271,7 +1272,8 @@
     <string name="tags_remove_contact_named">Rimuovi l\'etichetta dal contatto %1$s</string>
     <string name="tags_contact_vcard_uid">UID VCard del contatto</string>
     <string name="tags_empty">Ancora nessuna etichetta</string>
-    <string name="tags_empty_body">Le etichette raggruppano i contatti per argomento, come lavoro o famiglia.</string>
+    <string name="tags_description">I tag sono etichette libere per temi trasversali, come «vegano» o «club del libro». Un contatto può averne quanti vuoi.</string>
+    <string name="tags_empty_body">I tag sono etichette libere per temi trasversali. Un contatto può averne quanti vuoi.</string>
     <string name="tags_contacts_empty">Ancora nessun contatto etichettato</string>
 
     <!-- Custom field definitions (issue #830) -->
@@ -1359,7 +1361,8 @@
     <string name="households_role_pet">Animale</string>
     <string name="households_role_roommate">Coinquilino/a</string>
     <string name="households_empty">Ancora nessuna famiglia</string>
-    <string name="households_empty_body">Le famiglie raggruppano le persone che vivono insieme.</string>
+    <string name="households_description">I nuclei familiari raggruppano le persone e gli animali che condividono una casa. Abilitano suggerimenti per indirizzi condivisi e un elenco combinato di biglietti e regali, e i loro membri contano come contatti ambientali per la cadenza. A differenza di una cerchia, un nucleo familiare riguarda la convivenza, non un gruppo sociale.</string>
+    <string name="households_empty_body">I nuclei familiari raggruppano persone e animali che condividono una casa, con suggerimenti per indirizzi condivisi e un elenco combinato di biglietti e regali.</string>
     <string name="households_members_empty">Ancora nessun membro</string>
     <string name="households_error_missing_id">ID famiglia mancante</string>
     <string name="households_suggest_relationships">Suggerisci relazioni</string>
@@ -2245,7 +2248,8 @@
     <string name="occasions_title">Occasioni</string>
     <string name="occasions_add_event">Nuovo evento</string>
     <string name="occasions_empty">Nessun evento per ora</string>
-    <string name="occasions_empty_body">Creane uno per pianificare chi invitare.</string>
+    <string name="occasions_description">Le occasioni sono le cose ricorrenti che fai per le persone, come un biglietto o un regalo annuale, e gli eventi una tantum con un elenco di invitati. Gli impegni attivi creano promemoria automaticamente; i promemoria sono l’avviso, non una seconda occasione. Per registrare qualcosa già successo, usa le attività.</string>
+    <string name="occasions_empty_body">Creane uno per pianificare un evento, invitare persone e registrare le risposte.</string>
     <string name="occasions_event_title">Titolo</string>
     <string name="occasions_starts_at">Inizio</string>
     <string name="occasions_ends_at">Fine</string>
@@ -2256,6 +2260,7 @@
     <string name="occasions_sensitivity_private">Privato</string>
     <string name="occasions_sensitivity_secret">Segreto</string>
     <string name="occasions_time">Ora</string>
+    <string name="occasions_event_dialog_hint">Un evento una tantum che stai pianificando. Aggiungi gli invitati dopo il salvataggio, poi annota ciò che ti ha detto ciascuno.</string>
     <string name="occasions_create_title">Crea un evento</string>
     <string name="occasions_edit_title">Modifica evento</string>
     <string name="occasions_delete_title">Elimina evento</string>
@@ -2604,6 +2609,7 @@
     <string name="contact_skills_notes_hint">Qualcosa che vale la pena ricordare su questa voce</string>
     <string name="contact_skills_favorite">Preferito</string>
     <string name="contact_skills_locked">Privato o segreto: escluso da sincronizzazione e condivisioni</string>
+    <string name="contact_personal_info_label_hint">Etichetta facoltativa accanto al valore, ad es. «lavoro» o «imparato nel 2020».</string>
     <string name="contact_personal_info_level_none">Nessun livello</string>
     <string name="contact_personal_info_level_beginner">Principiante</string>
     <string name="contact_personal_info_level_average">Intermedio</string>
@@ -2880,6 +2886,39 @@
     <string name="error_reason_auth_passkey_no_other_registered">Non è registrata nessun\'altra passkey con cui verificare</string>
     <string name="error_reason_validation_invalid_json">JSON non valido</string>
     <string name="error_reason_validation_invalid_request_body">Corpo della richiesta non valido</string>
+    <string name="error_reason_import_session_not_found">Sessione di importazione scaduta o non trovata</string>
+    <string name="error_reason_import_session_expired">Sessione di importazione scaduta</string>
+    <string name="error_reason_import_endpoint_csv_vcf_only">Questo endpoint è riservato alle importazioni CSV o VCF</string>
+    <string name="error_reason_import_endpoint_vcf_records_only">Questo endpoint è riservato alle importazioni VCF o di record</string>
+    <string name="error_reason_import_preview_required">Genera prima un’anteprima</string>
+    <string name="error_reason_import_file_missing">Nessun file caricato</string>
+    <string name="error_reason_import_jscontact_file_too_large">File troppo grande. La dimensione massima è %1$d MB</string>
+    <string name="error_reason_import_file_not_jscontact">Il file deve essere un file JSON (JSContact)</string>
+    <string name="error_reason_csv_file_too_large">File troppo grande. La dimensione massima è %1$d MB</string>
+    <string name="error_reason_csv_file_not_csv">Il file deve essere un file CSV</string>
+    <string name="error_reason_vcard_file_too_large">File troppo grande. La dimensione massima è %1$d MB</string>
+    <string name="error_reason_vcard_file_not_vcf">Il file deve essere un file VCF</string>
+    <string name="error_reason_monica_session_not_found">Sessione di importazione scaduta o non trovata</string>
+    <string name="error_reason_monica_session_expired">Sessione di importazione scaduta</string>
+    <string name="error_reason_monica_token_rejected">Monica ha rifiutato il token API</string>
+    <string name="error_reason_monica_url_invalid">L’URL di Monica non è valido</string>
+    <string name="error_reason_monica_url_private">L’URL di Monica punta a un indirizzo privato, che questo server blocca</string>
+    <string name="error_reason_monica_not_monica_api">Il server non ha risposto come un’API di Monica: controlla l’URL</string>
+    <string name="error_reason_monica_unreachable">Errore del servizio Monica: impossibile raggiungere l’istanza di Monica</string>
+    <string name="error_reason_monica_too_many_contacts">Questo account Monica ha %1$s contatti; l’importazione ne supporta al massimo %2$d</string>
+    <string name="error_reason_monica_too_many_records">Questo account Monica ha %1$s record; l’importazione ne supporta al massimo %2$d</string>
+    <string name="error_reason_monica_fetch_in_progress">Per questa sessione è già in corso un recupero</string>
+    <string name="error_reason_monica_not_fetched">I dati di Monica non sono ancora stati recuperati</string>
+    <string name="error_reason_bundle_session_not_found">Sessione di importazione scaduta o non trovata</string>
+    <string name="error_reason_bundle_session_expired">Sessione di importazione scaduta</string>
+    <string name="error_reason_bundle_upload_missing">Nessun file caricato</string>
+    <string name="error_reason_bundle_size">Il pacchetto è vuoto o supera il limite di 64 MiB</string>
+    <string name="error_reason_bundle_upload_unreadable">Impossibile leggere il file caricato</string>
+    <string name="error_reason_bundle_not_bundle">Quel file non è un pacchetto account di Mycorrhizal</string>
+    <string name="error_reason_bundle_too_many_contacts">Questo pacchetto contiene più contatti di quelli supportati dall’importazione</string>
+    <string name="error_reason_bundle_too_many_records">Questo pacchetto contiene più record di quelli supportati dall’importazione</string>
+    <string name="error_reason_bundle_import_in_progress">Questa importazione è già in preparazione</string>
+    <string name="error_reason_bundle_not_prepared">Il pacchetto account non è ancora pronto</string>
     <string name="error_reason_auth_required">Autenticazione richiesta</string>
     <string name="error_reason_auth_registration_disabled">La registrazione è disattivata.</string>
     <string name="error_reason_auth_user_id_invalid">ID utente non valido</string>
