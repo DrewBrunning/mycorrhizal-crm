@@ -16,6 +16,7 @@ unleash:
         - ^calendar_sync_service\.go$
         - ^capacity_preflight\.go$
         - ^clock\.go$
+        - ^contact_dav_delete_repair\.go$
         - ^contact_delete\.go$
         - ^contact_field_visibility\.go$
         - ^contact_score_service\.go$
