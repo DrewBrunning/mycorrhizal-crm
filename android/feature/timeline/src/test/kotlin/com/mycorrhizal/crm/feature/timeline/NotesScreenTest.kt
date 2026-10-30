@@ -181,7 +181,7 @@ class NotesScreenTest {
             NotesUiState(contactId = 5, notes = emptyList(), fromDate = "2026-08-01"),
             onFromDateChange = { from = it }
         )
-        composeTestRule.onNodeWithTag("timeline-from-date").performClick()
+        composeTestRule.onNodeWithTag("timeline-from-date-picker-open").performClick()
         composeTestRule.onNodeWithText("Confirm").performClick()
         assertEquals("2026-08-01", from)
     }
@@ -193,7 +193,7 @@ class NotesScreenTest {
             NotesUiState(contactId = 5, notes = emptyList(), toDate = "2026-08-10"),
             onToDateChange = { to = it }
         )
-        composeTestRule.onNodeWithTag("timeline-to-date").performClick()
+        composeTestRule.onNodeWithTag("timeline-to-date-picker-open").performClick()
         composeTestRule.onNodeWithText("Confirm").performClick()
         assertEquals("2026-08-10", to)
     }

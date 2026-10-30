@@ -1118,6 +1118,8 @@
     <string name="date_field_remove_time">Rimuovi ora</string>
     <string name="date_field_time">Ora</string>
     <string name="date_field_year_unknown">Anno sconosciuto</string>
+    <string name="date_field_error_invalid">Inserisci una data valida nel formato %1$s.</string>
+    <string name="date_field_error_range">Questa data è fuori dall\'intervallo consentito.</string>
     <string name="reminder_reoccur_from_completion">Riprogramma dalla data di completamento</string>
     <string name="reminder_reoccur_from_completion_hint">Al completamento, il prossimo promemoria verrà programmato dalla data di completamento invece che dalla data originale.</string>
     <string name="reminder_completed">Promemoria completato</string>

@@ -166,7 +166,7 @@ class ActivityFormScreenTest {
         )
 
         composeTestRule.onNodeWithText("10.08.2026").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("activity-date").performClick()
+        composeTestRule.onNodeWithTag("activity-date-picker-open").performClick()
         composeTestRule.onNodeWithText("Add time").assertIsDisplayed()
         composeTestRule.onNodeWithText("Confirm").performClick()
 

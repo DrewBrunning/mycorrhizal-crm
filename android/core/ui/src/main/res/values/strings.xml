@@ -1113,6 +1113,8 @@
     <string name="date_field_remove_time">Remove time</string>
     <string name="date_field_time">Time</string>
     <string name="date_field_year_unknown">Year unknown</string>
+    <string name="date_field_error_invalid">Enter a valid date as %1$s.</string>
+    <string name="date_field_error_range">That date is outside the allowed range.</string>
     <string name="reminder_reoccur_from_completion">Reschedule from completion date</string>
     <string name="reminder_reoccur_from_completion_hint">When completed, the next reminder is scheduled from the completion date instead of the original date.</string>
     <string name="reminder_completed">Reminder completed</string>

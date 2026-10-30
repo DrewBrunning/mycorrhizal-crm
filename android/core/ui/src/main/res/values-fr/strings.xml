@@ -1118,6 +1118,8 @@
     <string name="date_field_remove_time">Supprimer l\'heure</string>
     <string name="date_field_time">Heure</string>
     <string name="date_field_year_unknown">Année inconnue</string>
+    <string name="date_field_error_invalid">Saisissez une date valide au format %1$s.</string>
+    <string name="date_field_error_range">Cette date est en dehors de la plage autorisée.</string>
     <string name="reminder_reoccur_from_completion">Reprogrammer depuis la date de complétion</string>
     <string name="reminder_reoccur_from_completion_hint">Une fois terminé, le prochain rappel sera programmé à partir de la date de complétion plutôt que de la date initiale.</string>
     <string name="reminder_completed">Rappel terminé</string>

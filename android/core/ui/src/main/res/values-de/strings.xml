@@ -1094,6 +1094,8 @@
     <string name="date_field_remove_time">Uhrzeit entfernen</string>
     <string name="date_field_time">Uhrzeit</string>
     <string name="date_field_year_unknown">Jahr unbekannt</string>
+    <string name="date_field_error_invalid">Gib ein gültiges Datum im Format %1$s ein.</string>
+    <string name="date_field_error_range">Dieses Datum liegt außerhalb des zulässigen Bereichs.</string>
     <string name="reminder_reoccur_from_completion">Ab Erledigungsdatum neu planen</string>
     <string name="reminder_reoccur_from_completion_hint">Bei Erledigung wird die nächste Erinnerung ab dem Erledigungsdatum statt ab dem ursprünglichen Datum geplant.</string>
     <string name="reminder_completed">Erinnerung erledigt</string>
