@@ -198,6 +198,40 @@ const (
 	ReasonValidationInvalidJSON                ReasonCode = "validation_invalid_json"                    // #nosec G101 -- reason code, not a credential
 	ReasonValidationInvalidRequestBody         ReasonCode = "validation_invalid_request_body"            // #nosec G101 -- reason code, not a credential
 
+	// Import assistants (issue #2103): CSV/vCard/JSContact, Monica, account bundle.
+	ReasonImportSessionNotFound        ReasonCode = "import_session_not_found"
+	ReasonImportSessionExpired         ReasonCode = "import_session_expired"
+	ReasonImportEndpointCSVVCFOnly     ReasonCode = "import_endpoint_csv_vcf_only"
+	ReasonImportEndpointVCFRecordsOnly ReasonCode = "import_endpoint_vcf_records_only"
+	ReasonImportPreviewRequired        ReasonCode = "import_preview_required"
+	ReasonImportFileMissing            ReasonCode = "import_file_missing"
+	ReasonImportJSContactFileTooLarge  ReasonCode = "import_jscontact_file_too_large"
+	ReasonImportFileNotJSContact       ReasonCode = "import_file_not_jscontact"
+	ReasonCSVFileTooLarge              ReasonCode = "csv_file_too_large"
+	ReasonCSVFileNotCSV                ReasonCode = "csv_file_not_csv"
+	ReasonVCardFileTooLarge            ReasonCode = "vcard_file_too_large"
+	ReasonVCardFileNotVCF              ReasonCode = "vcard_file_not_vcf"
+	ReasonMonicaSessionNotFound        ReasonCode = "monica_session_not_found"
+	ReasonMonicaSessionExpired         ReasonCode = "monica_session_expired"
+	ReasonMonicaTokenRejected          ReasonCode = "monica_token_rejected"
+	ReasonMonicaUrlInvalid             ReasonCode = "monica_url_invalid"
+	ReasonMonicaUrlPrivate             ReasonCode = "monica_url_private"
+	ReasonMonicaNotMonicaAPI           ReasonCode = "monica_not_monica_api"
+	ReasonMonicaUnreachable            ReasonCode = "monica_unreachable"
+	ReasonMonicaTooManyContacts        ReasonCode = "monica_too_many_contacts"
+	ReasonMonicaTooManyRecords         ReasonCode = "monica_too_many_records"
+	ReasonMonicaFetchInProgress        ReasonCode = "monica_fetch_in_progress"
+	ReasonMonicaNotFetched             ReasonCode = "monica_not_fetched"
+	ReasonBundleSessionNotFound        ReasonCode = "bundle_session_not_found"
+	ReasonBundleSessionExpired         ReasonCode = "bundle_session_expired"
+	ReasonBundleUploadMissing          ReasonCode = "bundle_upload_missing"
+	ReasonBundleSize                   ReasonCode = "bundle_size"
+	ReasonBundleUploadUnreadable       ReasonCode = "bundle_upload_unreadable"
+	ReasonBundleNotBundle              ReasonCode = "bundle_not_bundle"
+	ReasonBundleTooManyContacts        ReasonCode = "bundle_too_many_contacts"
+	ReasonBundleTooManyRecords         ReasonCode = "bundle_too_many_records"
+	ReasonBundleImportInProgress       ReasonCode = "bundle_import_in_progress"
+	ReasonBundleNotPrepared            ReasonCode = "bundle_not_prepared"
 	// Account, admin, API-token and contact-share errors (issue #2102).
 	ReasonAuthRequired                          ReasonCode = "auth_required"
 	ReasonAuthRegistrationDisabled              ReasonCode = "auth_registration_disabled"
@@ -405,6 +439,40 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonValidationInvalidJSON:                {Template: "Invalid JSON"},
 	ReasonValidationInvalidRequestBody:         {Template: "Invalid request body"},
 
+	// Import assistants (issue #2103).
+	ReasonImportSessionNotFound:        {Template: "Import session expired or not found"},
+	ReasonImportSessionExpired:         {Template: "Import session expired"},
+	ReasonImportEndpointCSVVCFOnly:     {Template: "This endpoint is only for CSV or VCF imports"},
+	ReasonImportEndpointVCFRecordsOnly: {Template: "This endpoint is only for VCF or records imports"},
+	ReasonImportPreviewRequired:        {Template: "Please generate a preview first"},
+	ReasonImportFileMissing:            {Template: "No file uploaded"},
+	ReasonImportJSContactFileTooLarge:  {Template: "File too large. Maximum size is {max_mb} MB", Params: []string{"max_mb"}},
+	ReasonImportFileNotJSContact:       {Template: "File must be a JSON (JSContact) file"},
+	ReasonCSVFileTooLarge:              {Template: "File too large. Maximum size is {max_mb} MB", Params: []string{"max_mb"}},
+	ReasonCSVFileNotCSV:                {Template: "File must be a CSV file"},
+	ReasonVCardFileTooLarge:            {Template: "File too large. Maximum size is {max_mb} MB", Params: []string{"max_mb"}},
+	ReasonVCardFileNotVCF:              {Template: "File must be a VCF file"},
+	ReasonMonicaSessionNotFound:        {Template: "Import session expired or not found"},
+	ReasonMonicaSessionExpired:         {Template: "Import session expired"},
+	ReasonMonicaTokenRejected:          {Template: "Monica rejected the API token"},
+	ReasonMonicaUrlInvalid:             {Template: "The Monica URL is invalid"},
+	ReasonMonicaUrlPrivate:             {Template: "The Monica URL resolves to a private address, which this server blocks"},
+	ReasonMonicaNotMonicaAPI:           {Template: "The server did not respond like a Monica API — check the URL"},
+	ReasonMonicaUnreachable:            {Template: "monica service error: The Monica instance could not be reached"},
+	ReasonMonicaTooManyContacts:        {Template: "This Monica account has {total} contacts; the import supports at most {max}", Params: []string{"total", "max"}},
+	ReasonMonicaTooManyRecords:         {Template: "This Monica account has {total} records; the import supports at most {max}", Params: []string{"total", "max"}},
+	ReasonMonicaFetchInProgress:        {Template: "A fetch is already running for this session"},
+	ReasonMonicaNotFetched:             {Template: "The Monica data is not fetched yet"},
+	ReasonBundleSessionNotFound:        {Template: "Import session expired or not found"},
+	ReasonBundleSessionExpired:         {Template: "Import session expired"},
+	ReasonBundleUploadMissing:          {Template: "No file uploaded"},
+	ReasonBundleSize:                   {Template: "The bundle is empty or larger than the 64 MiB limit"},
+	ReasonBundleUploadUnreadable:       {Template: "The upload could not be read"},
+	ReasonBundleNotBundle:              {Template: "That file is not a Mycorrhizal account bundle"},
+	ReasonBundleTooManyContacts:        {Template: "This bundle has more contacts than the import supports"},
+	ReasonBundleTooManyRecords:         {Template: "This bundle has more records than the import supports"},
+	ReasonBundleImportInProgress:       {Template: "This import is already being prepared"},
+	ReasonBundleNotPrepared:            {Template: "The account bundle is not prepared yet"},
 	// Account, admin, API-token and contact-share errors (issue #2102).
 	ReasonAuthRequired:                          {Template: "Authentication required"},
 	ReasonAuthRegistrationDisabled:              {Template: "Registration is disabled."},

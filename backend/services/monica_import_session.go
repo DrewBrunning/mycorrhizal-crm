@@ -162,10 +162,10 @@ func (m *MonicaImportManager) get(sessionID string, userID uint) (*monicaImportS
 	s, exists := m.sessions[sessionID]
 	m.mu.RUnlock()
 	if !exists {
-		return nil, apperrors.ErrNotFoundMessage("Import session expired or not found")
+		return nil, apperrors.ErrNotFoundMessage("Import session expired or not found").WithReason(apperrors.ReasonMonicaSessionNotFound, nil)
 	}
 	if s.userID != userID {
-		return nil, apperrors.ErrNotFoundMessage("Import session expired or not found")
+		return nil, apperrors.ErrNotFoundMessage("Import session expired or not found").WithReason(apperrors.ReasonMonicaSessionNotFound, nil)
 	}
 	s.mu.Lock()
 	now := Now()
@@ -179,7 +179,7 @@ func (m *MonicaImportManager) get(sessionID string, userID uint) (*monicaImportS
 	s.mu.Unlock()
 	if expired {
 		m.Delete(sessionID)
-		return nil, apperrors.ErrNotFoundMessage("Import session expired")
+		return nil, apperrors.ErrNotFoundMessage("Import session expired").WithReason(apperrors.ReasonMonicaSessionExpired, nil)
 	}
 	return s, nil
 }
@@ -250,11 +250,15 @@ func userSafeMonicaError(err error) string {
 func monicaAppError(err error) *apperrors.AppError {
 	switch {
 	case errors.Is(err, monica.ErrUnauthorized):
-		return apperrors.ErrInvalidInput("api_token", userSafeMonicaError(err))
-	case errors.Is(err, monica.ErrInvalidURL), errors.Is(err, monica.ErrPrivateAddress), errors.Is(err, monica.ErrInvalidData):
-		return apperrors.ErrInvalidInput("base_url", userSafeMonicaError(err))
+		return apperrors.ErrInvalidInput("api_token", userSafeMonicaError(err)).WithReason(apperrors.ReasonMonicaTokenRejected, nil)
+	case errors.Is(err, monica.ErrInvalidURL):
+		return apperrors.ErrInvalidInput("base_url", userSafeMonicaError(err)).WithReason(apperrors.ReasonMonicaUrlInvalid, nil)
+	case errors.Is(err, monica.ErrPrivateAddress):
+		return apperrors.ErrInvalidInput("base_url", userSafeMonicaError(err)).WithReason(apperrors.ReasonMonicaUrlPrivate, nil)
+	case errors.Is(err, monica.ErrInvalidData):
+		return apperrors.ErrInvalidInput("base_url", userSafeMonicaError(err)).WithReason(apperrors.ReasonMonicaNotMonicaAPI, nil)
 	default:
-		return apperrors.ErrExternal("monica", userSafeMonicaError(err)).WithError(err)
+		return apperrors.ErrExternal("monica", userSafeMonicaError(err)).WithError(err).WithReason(apperrors.ReasonMonicaUnreachable, nil)
 	}
 }
 
@@ -277,11 +281,13 @@ func (m *MonicaImportManager) Connect(ctx context.Context, userID uint, req mode
 	}
 	if counts.Contacts > MaxMonicaContacts {
 		return nil, apperrors.ErrInvalidInput("base_url",
-			fmt.Sprintf("This Monica account has %d contacts; the import supports at most %d", counts.Contacts, MaxMonicaContacts))
+			fmt.Sprintf("This Monica account has %d contacts; the import supports at most %d", counts.Contacts, MaxMonicaContacts)).
+			WithReason(apperrors.ReasonMonicaTooManyContacts, map[string]any{"total": counts.Contacts, "max": MaxMonicaContacts})
 	}
 	if total := counts.Total(); total > MaxMonicaEntities {
 		return nil, apperrors.ErrInvalidInput("base_url",
-			fmt.Sprintf("This Monica account has %d records; the import supports at most %d", total, MaxMonicaEntities))
+			fmt.Sprintf("This Monica account has %d records; the import supports at most %d", total, MaxMonicaEntities)).
+			WithReason(apperrors.ReasonMonicaTooManyRecords, map[string]any{"total": total, "max": MaxMonicaEntities})
 	}
 
 	sessionID := generateSessionID()
@@ -328,7 +334,7 @@ func (m *MonicaImportManager) StartFetch(db *gorm.DB, userID uint, req models.Mo
 	s.mu.Lock()
 	if s.phase != models.MonicaPhaseConnecting && s.phase != models.MonicaPhaseFailed {
 		s.mu.Unlock()
-		return apperrors.ErrConflict("A fetch is already running for this session")
+		return apperrors.ErrConflict("A fetch is already running for this session").WithReason(apperrors.ReasonMonicaFetchInProgress, nil)
 	}
 	s.phase = models.MonicaPhaseFetchingContacts
 	s.phaseDone = 0
@@ -486,7 +492,7 @@ func (m *MonicaImportManager) Preview(userID uint, sessionID string) (*models.Mo
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.phase != models.MonicaPhaseReady || s.plan == nil {
-		return nil, apperrors.ErrInvalidInput("session", "The Monica data is not fetched yet")
+		return nil, apperrors.ErrInvalidInput("session", "The Monica data is not fetched yet").WithReason(apperrors.ReasonMonicaNotFetched, nil)
 	}
 
 	validRows, dupCount, errCount, totals := previewTotals(s.previews, len(s.plan.Relationships))
@@ -522,7 +528,7 @@ func (m *MonicaImportManager) Confirm(db *gorm.DB, userID uint, req models.Monic
 	s.mu.Lock()
 	if s.phase != models.MonicaPhaseReady || s.plan == nil {
 		s.mu.Unlock()
-		return apperrors.ErrInvalidInput("session", "The Monica data is not fetched yet")
+		return apperrors.ErrInvalidInput("session", "The Monica data is not fetched yet").WithReason(apperrors.ReasonMonicaNotFetched, nil)
 	}
 	plan := s.plan
 	previews := s.previews
