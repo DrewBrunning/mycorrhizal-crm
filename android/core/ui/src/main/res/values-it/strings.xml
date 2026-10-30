@@ -1165,7 +1165,8 @@
     <string name="circles_remove_member_named">Rimuovi il membro %1$s</string>
     <string name="circles_member_vcard_uid">UID VCard del contatto</string>
     <string name="circles_empty">Ancora nessun cerchio</string>
-    <string name="circles_empty_body">I cerchi sono gruppi di persone con cui resti in contatto.</string>
+    <string name="circles_description">Le cerchie sono gruppi che segui insieme, come famiglia, amici o colleghi. Un contatto può appartenere a più cerchie.</string>
+    <string name="circles_empty_body">Le cerchie raggruppano persone che segui insieme. Un contatto può appartenere a più cerchie.</string>
     <string name="circles_members_empty">Ancora nessun membro</string>
     <string name="circles_error_missing_id">ID cerchio mancante</string>
     <!-- Issue #218: group SMS to every circle member with a phone number. -->
@@ -1271,7 +1272,8 @@
     <string name="tags_remove_contact_named">Rimuovi l\'etichetta dal contatto %1$s</string>
     <string name="tags_contact_vcard_uid">UID VCard del contatto</string>
     <string name="tags_empty">Ancora nessuna etichetta</string>
-    <string name="tags_empty_body">Le etichette raggruppano i contatti per argomento, come lavoro o famiglia.</string>
+    <string name="tags_description">I tag sono etichette libere per temi trasversali, come «vegano» o «club del libro». Un contatto può averne quanti vuoi.</string>
+    <string name="tags_empty_body">I tag sono etichette libere per temi trasversali. Un contatto può averne quanti vuoi.</string>
     <string name="tags_contacts_empty">Ancora nessun contatto etichettato</string>
 
     <!-- Custom field definitions (issue #830) -->
@@ -1359,7 +1361,8 @@
     <string name="households_role_pet">Animale</string>
     <string name="households_role_roommate">Coinquilino/a</string>
     <string name="households_empty">Ancora nessuna famiglia</string>
-    <string name="households_empty_body">Le famiglie raggruppano le persone che vivono insieme.</string>
+    <string name="households_description">I nuclei familiari raggruppano le persone e gli animali che condividono una casa. Abilitano suggerimenti per indirizzi condivisi e un elenco combinato di biglietti e regali, e i loro membri contano come contatti ambientali per la cadenza. A differenza di una cerchia, un nucleo familiare riguarda la convivenza, non un gruppo sociale.</string>
+    <string name="households_empty_body">I nuclei familiari raggruppano persone e animali che condividono una casa, con suggerimenti per indirizzi condivisi e un elenco combinato di biglietti e regali.</string>
     <string name="households_members_empty">Ancora nessun membro</string>
     <string name="households_error_missing_id">ID famiglia mancante</string>
     <string name="households_suggest_relationships">Suggerisci relazioni</string>
@@ -2245,7 +2248,8 @@
     <string name="occasions_title">Occasioni</string>
     <string name="occasions_add_event">Nuovo evento</string>
     <string name="occasions_empty">Nessun evento per ora</string>
-    <string name="occasions_empty_body">Creane uno per pianificare chi invitare.</string>
+    <string name="occasions_description">Le occasioni sono le cose ricorrenti che fai per le persone, come un biglietto o un regalo annuale, e gli eventi una tantum con un elenco di invitati. Gli impegni attivi creano promemoria automaticamente; i promemoria sono l’avviso, non una seconda occasione. Per registrare qualcosa già successo, usa le attività.</string>
+    <string name="occasions_empty_body">Creane uno per pianificare un evento, invitare persone e registrare le risposte.</string>
     <string name="occasions_event_title">Titolo</string>
     <string name="occasions_starts_at">Inizio</string>
     <string name="occasions_ends_at">Fine</string>
@@ -2256,6 +2260,7 @@
     <string name="occasions_sensitivity_private">Privato</string>
     <string name="occasions_sensitivity_secret">Segreto</string>
     <string name="occasions_time">Ora</string>
+    <string name="occasions_event_dialog_hint">Un evento una tantum che stai pianificando. Aggiungi gli invitati dopo il salvataggio, poi annota ciò che ti ha detto ciascuno.</string>
     <string name="occasions_create_title">Crea un evento</string>
     <string name="occasions_edit_title">Modifica evento</string>
     <string name="occasions_delete_title">Elimina evento</string>
@@ -2604,6 +2609,7 @@
     <string name="contact_skills_notes_hint">Qualcosa che vale la pena ricordare su questa voce</string>
     <string name="contact_skills_favorite">Preferito</string>
     <string name="contact_skills_locked">Privato o segreto: escluso da sincronizzazione e condivisioni</string>
+    <string name="contact_personal_info_label_hint">Etichetta facoltativa accanto al valore, ad es. «lavoro» o «imparato nel 2020».</string>
     <string name="contact_personal_info_level_none">Nessun livello</string>
     <string name="contact_personal_info_level_beginner">Principiante</string>
     <string name="contact_personal_info_level_average">Intermedio</string>

@@ -1165,7 +1165,8 @@
     <string name="circles_remove_member_named">Eliminar miembro %1$s</string>
     <string name="circles_member_vcard_uid">UID de VCard del contacto</string>
     <string name="circles_empty">Aún no hay círculos</string>
-    <string name="circles_empty_body">Los círculos son grupos de personas con las que mantienes el contacto.</string>
+    <string name="circles_description">Los círculos son grupos con los que te mantienes en contacto en conjunto, como familia, amistades o colegas. Un contacto puede pertenecer a varios.</string>
+    <string name="circles_empty_body">Los círculos agrupan a personas con las que te mantienes en contacto en conjunto. Un contacto puede pertenecer a varios.</string>
     <string name="circles_members_empty">Aún no hay miembros</string>
     <string name="circles_error_missing_id">Falta el ID del círculo</string>
     <!-- Issue #218: group SMS to every circle member with a phone number. -->
@@ -1271,7 +1272,8 @@
     <string name="tags_remove_contact_named">Quitar etiqueta del contacto %1$s</string>
     <string name="tags_contact_vcard_uid">UID de VCard del contacto</string>
     <string name="tags_empty">Aún no hay etiquetas</string>
-    <string name="tags_empty_body">Las etiquetas agrupan contactos por tema, como trabajo o familia.</string>
+    <string name="tags_description">Las etiquetas son marcas libres para temas que cruzan grupos, como «vegano» o «club de lectura». Un contacto puede tener cualquier número.</string>
+    <string name="tags_empty_body">Las etiquetas son marcas libres para temas transversales. Un contacto puede tener cualquier número.</string>
     <string name="tags_contacts_empty">Aún no hay contactos etiquetados</string>
 
     <!-- Custom field definitions (issue #830) -->
@@ -1359,7 +1361,8 @@
     <string name="households_role_pet">Mascota</string>
     <string name="households_role_roommate">Compañero/a de piso</string>
     <string name="households_empty">Aún no hay hogares</string>
-    <string name="households_empty_body">Los hogares agrupan a personas que viven juntas.</string>
+    <string name="households_description">Los hogares agrupan a las personas y mascotas que comparten una vivienda. Habilitan sugerencias de direcciones compartidas y una lista combinada de tarjetas y regalos, y sus miembros cuentan como contactos ambientales para la cadencia. A diferencia de un círculo, un hogar se trata de vivir juntos, no de un grupo social.</string>
+    <string name="households_empty_body">Los hogares agrupan a personas y mascotas que comparten una vivienda, con sugerencias de direcciones compartidas y una lista combinada de tarjetas y regalos.</string>
     <string name="households_members_empty">Aún no hay miembros</string>
     <string name="households_error_missing_id">Falta el ID del hogar</string>
     <string name="households_suggest_relationships">Sugerir relaciones</string>
@@ -2245,7 +2248,8 @@
     <string name="occasions_title">Ocasiones</string>
     <string name="occasions_add_event">Nuevo evento</string>
     <string name="occasions_empty">Aún no hay eventos</string>
-    <string name="occasions_empty_body">Crea uno para planificar a quién invitar.</string>
+    <string name="occasions_description">Las ocasiones son las cosas recurrentes que haces por las personas, como una tarjeta o un regalo anual, y eventos puntuales con una lista de invitados. Las obligaciones activas crean recordatorios automáticamente; los recordatorios son el aviso, no una segunda ocasión. Para registrar algo que ya ocurrió, usa Actividades.</string>
+    <string name="occasions_empty_body">Crea uno para planificar un evento, invitar a personas y registrar las respuestas.</string>
     <string name="occasions_event_title">Título</string>
     <string name="occasions_starts_at">Comienza</string>
     <string name="occasions_ends_at">Termina</string>
@@ -2256,6 +2260,7 @@
     <string name="occasions_sensitivity_private">Privado</string>
     <string name="occasions_sensitivity_secret">Secreto</string>
     <string name="occasions_time">Hora</string>
+    <string name="occasions_event_dialog_hint">Un evento puntual que estás planeando. Agrega invitados después de guardar y anota lo que te dijo cada persona.</string>
     <string name="occasions_create_title">Crear un evento</string>
     <string name="occasions_edit_title">Editar evento</string>
     <string name="occasions_delete_title">Eliminar evento</string>
@@ -2604,6 +2609,7 @@
     <string name="contact_skills_notes_hint">Cualquier cosa que merezca recordarse sobre esta entrada</string>
     <string name="contact_skills_favorite">Favorito</string>
     <string name="contact_skills_locked">Privado o secreto: excluido de la sincronización y las comparticiones</string>
+    <string name="contact_personal_info_label_hint">Etiqueta opcional junto al valor, p. ej. «trabajo» o «aprendido en 2020».</string>
     <string name="contact_personal_info_level_none">Sin nivel</string>
     <string name="contact_personal_info_level_beginner">Principiante</string>
     <string name="contact_personal_info_level_average">Intermedio</string>
