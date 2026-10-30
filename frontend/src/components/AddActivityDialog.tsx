@@ -282,7 +282,6 @@ export default function AddActivityDialog({
       setError(t('activityDialog.required'));
       return;
     }
-    if (endBeforeStart) return;
 
     setSaving(true);
     try {

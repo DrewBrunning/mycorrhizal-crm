@@ -147,3 +147,43 @@ test('a failure that is not about end_date still shows the generic error', async
   fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
   expect(await screen.findByText('Failed to save activity')).toBeInTheDocument();
 });
+
+test('a dirty draft restores the end date after a remount', async () => {
+  const first = renderDialog({ prefill: undefined });
+  await waitFor(() => expect(getContacts).toHaveBeenCalled());
+  fireEvent.change(screen.getByLabelText('Title *'), { target: { value: 'Trip' } });
+  await pickDate('Date *', '2026-05-12');
+  await pickDate('End date (optional)', '2026-05-15', '2026-05-12');
+  first.unmount();
+
+  renderDialog({ prefill: undefined });
+  await waitFor(() =>
+    expect(screen.getByRole('textbox', { name: 'End date (optional)' })).toHaveValue('15.05.2026'),
+  );
+});
+
+test('changing the start clears a stale server error on the end field', async () => {
+  const onSave = vi
+    .fn()
+    .mockRejectedValue(
+      new ApiError(
+        'bad',
+        'INVALID_INPUT',
+        400,
+        { field: 'end_date' },
+        undefined,
+        'activity_end_before_start',
+      ),
+    );
+  renderDialog({ onSave });
+  await waitFor(() => expect(getContacts).toHaveBeenCalled());
+  await pickDate('End date (optional)', '2026-05-15', '2026-05-12');
+  fireEvent.change(screen.getByLabelText('Title *'), { target: { value: 'Trip' } });
+  fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+  expect(
+    await screen.findByText('The end date cannot be before the start date'),
+  ).toBeInTheDocument();
+
+  await pickDate('Date *', '2026-05-13', '2026-05-12');
+  expect(screen.queryByText('The end date cannot be before the start date')).toBeNull();
+});
