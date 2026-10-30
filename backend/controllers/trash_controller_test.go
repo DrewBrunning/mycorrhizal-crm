@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -165,6 +166,33 @@ func TestTrash_PurgeAndEmpty(t *testing.T) {
 	var n int64
 	require.NoError(t, db.Unscoped().Model(&models.Contact{}).Where("user_id = ?", uid).Count(&n).Error)
 	assert.Zero(t, n)
+}
+
+func TestTrash_RestoreFiresContactRestoredWebhookOnce(t *testing.T) {
+	db, router, uid := trashRouter(t, 30)
+	var hits int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		atomic.AddInt32(&hits, 1)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	require.NoError(t, db.Create(&models.Webhook{
+		UserID: uid, Name: "trash", URL: srv.URL,
+		Events: []string{"contact.restored"}, Secret: "s", IsActive: true,
+	}).Error)
+	c := trashContact(t, db, router, uid, "Webhook")
+
+	w := trashDo(router, http.MethodPost, fmt.Sprintf("/trash/contacts/%d/restore", c.ID))
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	services.WaitForWebhookGoroutines()
+	assert.EqualValues(t, 1, atomic.LoadInt32(&hits), "restore must fire contact.restored once")
+
+	// The snapshot is consumed, so the repeat is a checked 404 with no second event.
+	w = trashDo(router, http.MethodPost, fmt.Sprintf("/trash/contacts/%d/restore", c.ID))
+	require.Equal(t, http.StatusNotFound, w.Code)
+	services.WaitForWebhookGoroutines()
+	assert.EqualValues(t, 1, atomic.LoadInt32(&hits), "a repeat restore must not fire the webhook again")
 }
 
 func TestTrash_BadIDIs404(t *testing.T) {

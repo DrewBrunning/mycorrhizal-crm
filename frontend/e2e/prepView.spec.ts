@@ -39,7 +39,11 @@ test.describe('Prep view', () => {
       // The contact's own name proves the page rendered rather than the
       // ErrorBoundary's failure surface.
       await expect(page.getByText('Prep Empty')).toBeVisible({ timeout: 15000 });
-      await expect(page.getByText('Everything to remember before you see them')).toBeVisible();
+      await expect(
+        page.getByText(
+          'A quick briefing before you see or call: recent history, open agenda, and upcoming dates.',
+        ),
+      ).toBeVisible();
 
       // The empty-state copy, not a crash.
       await expect(page.getByText('No interactions recorded yet')).toBeVisible();
@@ -213,7 +217,7 @@ test.describe('Prep view', () => {
       await expect(page.getByText(/Send a card/)).toBeVisible();
 
       // Upcoming dates — the birthday set 7 days out.
-      await expect(page.getByText('Upcoming dates')).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Upcoming dates' })).toBeVisible();
       await expect(page.getByText(/in \d+ day/)).toBeVisible();
     } finally {
       await deleteTestContact(request, contact.ID);

@@ -40,6 +40,7 @@ import {
   Stack,
   SvgIcon,
   TextField,
+  Tooltip,
   Typography,
   useMediaQuery,
   useTheme,
@@ -1050,19 +1051,21 @@ export default function ContactHeader({
                             </Button>
                           )}
                           {onPrepView && (
-                            <Button
-                              variant="outlined"
-                              size="small"
-                              startIcon={
-                                <SvgIcon>
-                                  <path d={mdiNoteMultipleOutline} />
-                                </SvgIcon>
-                              }
-                              onClick={onPrepView}
-                              sx={{ whiteSpace: 'nowrap' }}
-                            >
-                              {t('prep.title')}
-                            </Button>
+                            <Tooltip title={t('prep.entryTooltip')} describeChild>
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                startIcon={
+                                  <SvgIcon>
+                                    <path d={mdiNoteMultipleOutline} />
+                                  </SvgIcon>
+                                }
+                                onClick={onPrepView}
+                                sx={{ whiteSpace: 'nowrap' }}
+                              >
+                                {t('prep.title')}
+                              </Button>
+                            </Tooltip>
                           )}
                           {onShareContact && (
                             <Button

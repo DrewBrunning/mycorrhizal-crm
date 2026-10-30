@@ -66,7 +66,7 @@
   },
   "household": {
     "title": "Foyers",
-    "description": "Regroupe les personnes (et animaux) de votre vie par résidence partagée. Les foyers sont distincts des cercles et du graphe relationnel — confirmer ou rejeter une relation suggérée reste toujours votre choix.",
+    "description": "Les foyers regroupent les personnes et les animaux qui partagent un logement. Ils alimentent les suggestions d'adresses partagées et une liste combinée de cartes et de cadeaux, et leurs membres comptent comme contacts ambiants pour la cadence. Contrairement à un cercle, un foyer concerne la vie commune, pas un groupe social.",
     "newHousehold": "Ajouter un foyer",
     "createHousehold": "Créer un foyer",
     "editHousehold": "Modifier le foyer",
@@ -94,7 +94,7 @@
       "pet": "Animal",
       "roommate": "Colocataire"
     },
-    "empty": "Aucun foyer pour l'instant. Créez-en un pour commencer à suggérer des relations entre les personnes qui vivent ensemble.",
+    "empty": "Aucun foyer pour l'instant. Créez-en un pour les personnes qui partagent un logement afin d'obtenir des suggestions d'adresses partagées et une liste combinée de cartes et de cadeaux.",
     "deleteMessage": "Voulez-vous vraiment supprimer ce foyer ? Ses membres ne seront pas supprimés.",
     "cancel": "Annuler",
     "save": "Enregistrer",
@@ -131,8 +131,8 @@
     "memberCount_one": "{{count}} contact",
     "memberCount_other": "{{count}} contacts",
     "memberCount_many": "{{count}} contacts",
-    "noCircles": "Aucun cercle pour l'instant. Ajoutez-en un ci-dessous ou depuis la page d'un contact.",
-    "noTags": "Aucune étiquette pour l'instant. Ajoutez-en une ci-dessous ou depuis la page d'un contact.",
+    "noCircles": "Aucun cercle pour l'instant. Les cercles regroupent des personnes que vous suivez ensemble — ajoutez-en un ci-dessous ou depuis la page d'un contact.",
+    "noTags": "Aucune étiquette pour l'instant. Les étiquettes sont des libellés libres pour des thèmes transversaux — ajoutez-en une ci-dessous ou depuis la page d'un contact.",
     "deleteCircleConfirm": "Supprimer le cercle « {{name}} » ? Il sera retiré de chaque contact qui l'a.",
     "deleteTagConfirm": "Supprimer l'étiquette « {{name}} » ? Elle sera retirée de chaque contact qui l'a.",
     "circleCreated": "Cercle créé",
@@ -168,7 +168,9 @@
       "life_event": "Événement de vie",
       "external_activity": "Activité externe",
       "gift": "Cadeau"
-    }
+    },
+    "circlesDescription": "Les cercles sont des groupes que vous suivez ensemble, comme la famille, les amis ou les collègues. Un contact peut en faire partie de plusieurs.",
+    "tagsDescription": "Les étiquettes sont des libellés libres pour des thèmes transversaux, comme « végétarien » ou « club de lecture ». Un contact peut en avoir autant que vous voulez."
   },
   "dashboard": {
     "title": "Tableau de bord",
@@ -559,7 +561,8 @@
         "medium": "Moyen",
         "low": "Faible"
       },
-      "label": "Libellé"
+      "label": "Libellé",
+      "labelHint": "Étiquette facultative à côté de la valeur, p. ex. « travail » ou « appris en 2020 »."
     },
     "keywords": {
       "placeholder": "Saisissez un mot-clé puis Entrée"
@@ -852,7 +855,8 @@
     "fromDate": "Du",
     "toDate": "Au",
     "allContactsInfo": "Cette page répertorie toutes les activités de tous les contacts.",
-    "logFromLocation": "Enregistrer depuis l'historique de position"
+    "logFromLocation": "Enregistrer depuis l'historique de position",
+    "description": "Les activités sont des choses déjà arrivées : un appel, un café, un message. Enregistrez-les ici pour garder l'historique complet de chaque contact."
   },
   "markdown": {
     "opensInNewTab": "(s’ouvre dans un nouvel onglet)"
@@ -2990,11 +2994,12 @@
         "anchorBothOrNeither": "Renseignez à la fois le mois et le jour, ou laissez les deux vides.",
         "invalidLeadTime": "Saisissez un nombre de jours de délai valide.",
         "saveFailed": "Échec de l'enregistrement de l'occasion."
-      }
+      },
+      "dialogHint": "Une règle récurrente, comme une carte ou un cadeau annuel. Une occasion active crée son propre rappel au délai indiqué."
     },
     "cardList": {
       "title": "Liste de cartes",
-      "description": "Téléchargez un CSV des noms et adresses de toutes les personnes de votre liste de cartes de vœux.",
+      "description": "Téléchargez un CSV des contacts ayant une occasion de carte active : une ligne par obligation active, avec le nom du contact, son adresse de sensibilité normale et l'occasion. Les adresses privées et secrètes sont exclues.",
       "download": "Télécharger le CSV",
       "downloadFailed": "Échec du téléchargement de la liste de cartes."
     },
@@ -3045,12 +3050,14 @@
         "startRequired": "Choisissez une date et une heure de début.",
         "endBeforeStart": "L'heure de fin ne peut pas précéder l'heure de début.",
         "saveFailed": "Impossible d'enregistrer l'événement."
-      }
-    }
+      },
+      "dialogHint": "Un événement ponctuel que vous organisez. Ajoutez des invités après l'enregistrement, puis notez ce que chaque personne vous a dit."
+    },
+    "description": "Les occasions sont les choses récurrentes que vous faites pour les gens, comme une carte ou un cadeau annuel, et les événements ponctuels avec une liste d'invités. Les obligations actives créent automatiquement des rappels ; les rappels sont le signal, pas une seconde occasion. Pour enregistrer quelque chose qui a déjà eu lieu, utilisez les activités."
   },
   "prep": {
     "title": "Vue de préparation",
-    "subtitle": "Tout à retenir avant de les voir",
+    "subtitle": "Un bref briefing avant de voir ou d'appeler quelqu'un : historique récent, ordre du jour ouvert et dates à venir.",
     "unknownContact": "Inconnu",
     "notFound": "Contact introuvable",
     "view": "Voir",
@@ -3083,7 +3090,8 @@
       "inDays_one": "dans {{count}} jour",
       "inDays_other": "dans {{count}} jours",
       "inDays_many": "dans {{count}} jours"
-    }
+    },
+    "entryTooltip": "Historique récent, ordre du jour ouvert et dates à venir — tout ce qu'il faut retenir avant de les voir."
   },
   "contactShares": {
     "title": "Partages de contacts",

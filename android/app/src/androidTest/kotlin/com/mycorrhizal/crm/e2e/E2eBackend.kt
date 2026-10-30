@@ -127,6 +127,20 @@ class E2eBackend(private val serverUrl: String = E2eConfig.serverUrl) {
         }
     }
 
+    /** The caller's trash entries, newest first (issue #2002). */
+    fun trashEntries(limit: Int = 200): List<JSONObject> =
+        get("/trash/contacts?limit=$limit", authenticated = true).use {
+            check(it.code == 200) { "trash list failed: ${it.code} ${it.body?.string().orEmpty()}" }
+            val contacts = JSONObject(
+                it.body?.string().orEmpty()
+            ).optJSONArray("contacts") ?: JSONArray()
+            (0 until contacts.length()).map { i -> contacts.getJSONObject(i) }
+        }
+
+    /** True when the contact is live (a 200 from the detail endpoint). */
+    fun contactExists(id: Long): Boolean =
+        get("/contacts/$id", authenticated = true).use { it.code == 200 }
+
     /** The detail endpoint's flat state, parsed as JSON — carries `archived`
      *  and `is_favorite` alongside the nested card. */
     fun contactState(id: Long): JSONObject {

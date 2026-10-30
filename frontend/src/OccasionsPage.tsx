@@ -106,8 +106,11 @@ export default function OccasionsPage() {
 
   return (
     <Box sx={{ maxWidth: 900, mx: 'auto', mt: 2, p: 2 }}>
-      <Typography variant="h5" component="h1" sx={{ mb: 3 }}>
+      <Typography variant="h5" component="h1" sx={{ mb: 1 }}>
         {t('nav.occasions')}
+      </Typography>
+      <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
+        {t('occasions.description')}
       </Typography>
 
       <Card sx={{ mb: 3 }}>

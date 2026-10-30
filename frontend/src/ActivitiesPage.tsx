@@ -295,6 +295,10 @@ const ActivitiesPage: React.FC = () => {
         }
       />
 
+      <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+        {t('activities.description')}
+      </Typography>
+
       <Popover
         id={infoPopoverId}
         open={infoOpen}

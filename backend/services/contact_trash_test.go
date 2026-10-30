@@ -226,6 +226,23 @@ func TestPurgeContact_RemovesEverythingAndReportsFiles(t *testing.T) {
 	assert.ErrorIs(t, err, ErrContactNotInTrash)
 }
 
+func TestRestoreContact_AfterPurgeIsNotFoundAndTheUIDIsFree(t *testing.T) {
+	f := newCascadeFixture(t)
+	require.NoError(t, DeleteContact(f.db, f.contact, f.userID, trashNow))
+	_, err := PurgeContact(f.db, f.userID, f.contact.ID)
+	require.NoError(t, err)
+
+	// A purged contact has no snapshot, so restore cannot resurrect it.
+	_, err = RestoreContact(f.db, f.userID, f.contact.ID, trashNow)
+	assert.ErrorIs(t, err, ErrContactNotInTrash)
+	assert.Zero(t, count(t, f.db, true, &models.Contact{}, "id = ?", f.contact.ID))
+
+	// The UID is free after a purge; reusing it must not make the old row restorable.
+	require.NoError(t, f.db.Create(&models.Contact{UserID: f.userID, VCardUID: f.contact.VCardUID, Firstname: "Reused"}).Error)
+	_, err = RestoreContact(f.db, f.userID, f.contact.ID, trashNow)
+	assert.ErrorIs(t, err, ErrContactNotInTrash)
+}
+
 func TestPurgeContact_CrossUserIsNotFoundWithNoSideEffect(t *testing.T) {
 	f := newCascadeFixture(t)
 	require.NoError(t, DeleteContact(f.db, f.contact, f.userID, trashNow))

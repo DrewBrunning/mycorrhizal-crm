@@ -158,6 +158,7 @@ export default function PersonalInfoDialog({
               markDirty();
               setLabel(e.target.value);
             }}
+            helperText={t('contacts.personalInfo.labelHint')}
             fullWidth
           />
           <TextField
