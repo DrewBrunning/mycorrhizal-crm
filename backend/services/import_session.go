@@ -199,18 +199,18 @@ func (m *ImportSessionManager) get(sessionID string, userID uint) (*importSessio
 	m.mu.RUnlock()
 
 	if !exists {
-		return nil, apperrors.ErrNotFoundMessage("Import session expired or not found")
+		return nil, apperrors.ErrNotFoundMessage("Import session expired or not found").WithReason(apperrors.ReasonImportSessionNotFound, nil)
 	}
 
 	if sessionData.session.UserID != userID {
-		return nil, apperrors.ErrNotFoundMessage("Import session expired or not found")
+		return nil, apperrors.ErrNotFoundMessage("Import session expired or not found").WithReason(apperrors.ReasonImportSessionNotFound, nil)
 	}
 
 	if Now().After(sessionData.session.ExpiresAt) {
 		m.mu.Lock()
 		delete(m.sessions, sessionID)
 		m.mu.Unlock()
-		return nil, apperrors.ErrNotFoundMessage("Import session expired")
+		return nil, apperrors.ErrNotFoundMessage("Import session expired").WithReason(apperrors.ReasonImportSessionExpired, nil)
 	}
 
 	return sessionData, nil
@@ -432,7 +432,7 @@ func (m *ImportSessionManager) Confirm(db *gorm.DB, userID uint, req models.Impo
 	// here would panic; it must go through ConfirmVCF like every VCF-like
 	// session. Mirrors ConfirmVCF's importType guard.
 	if sessionData.importType != "csv" && sessionData.importType != "vcf" {
-		return nil, apperrors.ErrInvalidInput("session", "This endpoint is only for CSV or VCF imports")
+		return nil, apperrors.ErrInvalidInput("session", "This endpoint is only for CSV or VCF imports").WithReason(apperrors.ReasonImportEndpointCSVVCFOnly, nil)
 	}
 
 	sessionData.dataMu.RLock()
@@ -443,7 +443,7 @@ func (m *ImportSessionManager) Confirm(db *gorm.DB, userID uint, req models.Impo
 	sessionData.dataMu.RUnlock()
 
 	if !previewCached {
-		return nil, apperrors.ErrInvalidInput("session", "Please generate a preview first")
+		return nil, apperrors.ErrInvalidInput("session", "Please generate a preview first").WithReason(apperrors.ReasonImportPreviewRequired, nil)
 	}
 
 	// Issue #2000: validate the fixed circle/tag ids before anything is
@@ -615,7 +615,7 @@ func (m *ImportSessionManager) ConfirmVCF(db *gorm.DB, userID uint, req models.I
 	}
 
 	if sessionData.importType != "vcf" && sessionData.importType != "records" {
-		return nil, apperrors.ErrInvalidInput("session", "This endpoint is only for VCF or records imports")
+		return nil, apperrors.ErrInvalidInput("session", "This endpoint is only for VCF or records imports").WithReason(apperrors.ReasonImportEndpointVCFRecordsOnly, nil)
 	}
 
 	// The import-type label used in the per-contact merge note ("VCF Import
@@ -632,7 +632,7 @@ func (m *ImportSessionManager) ConfirmVCF(db *gorm.DB, userID uint, req models.I
 	sessionData.dataMu.RUnlock()
 
 	if !previewCached {
-		return nil, apperrors.ErrInvalidInput("session", "Please generate a preview first")
+		return nil, apperrors.ErrInvalidInput("session", "Please generate a preview first").WithReason(apperrors.ReasonImportPreviewRequired, nil)
 	}
 
 	// Issue #2000: validate the fixed circle/tag ids before anything is
