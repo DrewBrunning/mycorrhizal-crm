@@ -122,6 +122,15 @@ class TrashScreenTest {
     }
 
     @Test
+    fun `resuming the screen reloads the list`() {
+        // The drawer restores a saved back-stack entry, so the view model outlives
+        // leaving the screen; without a resume reload the list stays stale.
+        val vm = screenWith(TrashUiState(items = listOf(ada)))
+
+        verify { vm.reload() }
+    }
+
+    @Test
     fun `loading with no items shows the skeleton`() {
         screenWith(TrashUiState(isLoading = true))
         composeTestRule.onNodeWithTag("trash-loading").assertIsDisplayed()

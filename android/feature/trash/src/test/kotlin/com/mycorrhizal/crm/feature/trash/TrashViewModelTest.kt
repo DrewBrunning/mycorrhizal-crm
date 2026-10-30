@@ -66,6 +66,33 @@ class TrashViewModelTest {
     }
 
     @Test
+    fun `reload picks up rows that changed while the screen was away`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stubList(row(1, "Ada"))
+        val model = vm()
+        advanceUntilIdle()
+
+        stubList(row(2, "Bob"), row(1, "Ada"))
+        model.reload()
+        advanceUntilIdle()
+
+        assertEquals(listOf(2, 1), model.uiState.value.items.map { it.contact.id })
+    }
+
+    @Test
+    fun `reload while a load is already running does not fetch twice`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stubList(row(1, "Ada"))
+        val model = vm() // init starts the first load
+        model.reload() // the first ON_RESUME lands before that load finishes
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { trash.list(any(), any()) }
+    }
+
+    @Test
     fun `a load failure sets the error and keeps no rows`() = runTest(
         mainDispatcherRule.testDispatcher
     ) {
