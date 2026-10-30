@@ -25,9 +25,17 @@ export interface BackendErrorResponse {
     // ADR 0038: optional, flat string/number params for the reason's template.
     reason_code?: string;
     reason_params?: Record<string, string | number>;
+    // Issue #2105: one reason per field on a VALIDATION_ERROR, alongside the
+    // legacy field -> English message `details` map.
+    field_reasons?: Record<string, FieldReasonResponse>;
   };
   request_id?: string;
   timestamp?: string;
+}
+
+export interface FieldReasonResponse {
+  reason_code: string;
+  reason_params?: Record<string, string | number>;
 }
 
 // Custom API error class with detailed information
@@ -38,6 +46,7 @@ export class ApiError extends Error {
   requestId?: string;
   reasonCode?: string;
   reasonParams?: Record<string, string | number>;
+  fieldReasons?: Record<string, FieldReasonResponse>;
 
   constructor(
     message: string,
@@ -47,6 +56,7 @@ export class ApiError extends Error {
     requestId?: string,
     reasonCode?: string,
     reasonParams?: Record<string, string | number>,
+    fieldReasons?: Record<string, FieldReasonResponse>,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -56,6 +66,7 @@ export class ApiError extends Error {
     this.requestId = requestId;
     this.reasonCode = reasonCode;
     this.reasonParams = reasonParams;
+    this.fieldReasons = fieldReasons;
   }
 
   // The translated message for reasonCode, or undefined when the client cannot
@@ -64,6 +75,23 @@ export class ApiError extends Error {
   // template with an unfilled {{placeholder}}.
   private localizedReason(): string | undefined {
     return localizeReason(this.reasonCode, this.reasonParams);
+  }
+
+  // The translated per-field messages for a VALIDATION_ERROR, or undefined when
+  // any entry cannot be rendered (unknown code, or a missing param) so the
+  // caller can fall back to the English `details` map (issue #2105).
+  private localizedFieldReasons(): string[] | undefined {
+    const fieldReasons = this.fieldReasons;
+    if (!fieldReasons) return undefined;
+    const entries = Object.values(fieldReasons);
+    if (entries.length === 0) return undefined;
+    const messages: string[] = [];
+    for (const entry of entries) {
+      const translated = localizeReason(entry.reason_code, entry.reason_params);
+      if (translated === undefined) return undefined;
+      messages.push(translated);
+    }
+    return messages;
   }
 
   // Get a user-friendly error message including field details.
@@ -101,14 +129,15 @@ export class ApiError extends Error {
       if (typeof reason === 'string' && reason !== '') {
         message = reason;
       }
-    } else if (
-      this.code === 'VALIDATION_ERROR' &&
-      this.details &&
-      Object.keys(this.details).length > 0
-    ) {
-      message = Object.values(this.details)
-        .map((msg) => `${msg}`)
-        .join('. ');
+    } else if (this.code === 'VALIDATION_ERROR') {
+      const localizedFields = this.localizedFieldReasons();
+      if (localizedFields !== undefined) {
+        message = localizedFields.join('. ');
+      } else if (this.details && Object.keys(this.details).length > 0) {
+        message = Object.values(this.details)
+          .map((msg) => `${msg}`)
+          .join('. ');
+      }
     }
 
     if (this.status >= 500 && this.requestId) {
@@ -152,6 +181,7 @@ export async function parseErrorResponse(response: Response): Promise<ApiError> 
         data.request_id,
         data.error.reason_code,
         data.error.reason_params,
+        data.error.field_reasons,
       );
     }
   } catch {

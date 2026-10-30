@@ -1083,6 +1083,10 @@ export type Error = {
   error?: {
     code: string;
     details?: Record<string, unknown>;
+    field_reasons?: Record<string, {
+      reason_code: string;
+      reason_params?: Record<string, unknown>;
+    }>;
     message: string;
     reason_code?: string;
     reason_params?: Record<string, unknown>;
