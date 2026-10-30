@@ -242,6 +242,7 @@ class ErrorTextTest {
             "field" to "f",
             "n" to 1.0,
             "limit" to 1.0,
+            "min" to 1.0,
             "required_version" to "1.0.0",
             "retry_after" to 90.0,
             "supported" to "en, de",
@@ -460,6 +461,157 @@ class ErrorTextTest {
     fun `a 5xx appends the request reference`() {
         val error = ApiError.Server(503, "Server error", requestId = "abc")
         assertEquals("Server error (503) (ref: abc)", render(error))
+    }
+
+    @Test
+    fun `validation field reasons all resolve to a joined translated message`() {
+        val error = ApiError.Client(
+            400,
+            "Request validation failed",
+            fieldReasons = mapOf(
+                "Name" to ErrorReason(
+                    ErrorReasonCode.VALIDATION_REQUIRED,
+                    mapOf("field" to "Name")
+                ),
+                "Email" to ErrorReason(
+                    ErrorReasonCode.VALIDATION_EMAIL,
+                    mapOf("field" to "Email")
+                )
+            ),
+            details = mapOf(
+                "Name" to "Name is required",
+                "Email" to "Email must be a valid email address"
+            )
+        )
+        assertEquals(
+            "Name is required. Email must be a valid email address",
+            render(error)
+        )
+    }
+
+    @Test
+    fun `one unknown validation field reason falls back to the details map`() {
+        val error = ApiError.Client(
+            400,
+            "Request validation failed",
+            fieldReasons = mapOf(
+                "Name" to ErrorReason(
+                    ErrorReasonCode.VALIDATION_REQUIRED,
+                    mapOf("field" to "Name")
+                ),
+                "Mystery" to ErrorReason("not_a_real_code", emptyMap())
+            ),
+            details = mapOf(
+                "Name" to "Name is required",
+                "Mystery" to "Mystery is invalid"
+            )
+        )
+        assertEquals("Name is required. Mystery is invalid", render(error))
+    }
+
+    @Test
+    fun `every validation code renders its template, min and max with their param`() {
+        val codes = listOf(
+            ErrorReasonCode.VALIDATION_PHONE to "Phone",
+            ErrorReasonCode.VALIDATION_BIRTHDAY to "Birthday",
+            ErrorReasonCode.VALIDATION_STRONG_PASSWORD to "Password",
+            ErrorReasonCode.VALIDATION_UNIQUE_CIRCLES to "Circles",
+            ErrorReasonCode.VALIDATION_NO_AT_SIGN to "Username",
+            ErrorReasonCode.VALIDATION_URL to "Url",
+            ErrorReasonCode.VALIDATION_SAFEURL to "Url",
+            ErrorReasonCode.VALIDATION_HTTPURL to "Url",
+            ErrorReasonCode.VALIDATION_RELATION_TYPE to "Type",
+            ErrorReasonCode.VALIDATION_GEOURI to "Geo",
+            ErrorReasonCode.VALIDATION_INVALID to "Other",
+            ErrorReasonCode.VALIDATION_MIN to "Age",
+            ErrorReasonCode.VALIDATION_MAX to "Age"
+        )
+        val rendered = renderAll(
+            codes.map { (code, field) ->
+                ApiError.Client(
+                    400,
+                    SERVER,
+                    ErrorReason(code, mapOf("field" to field, "min" to 1.0, "max" to 9.0))
+                )
+            }
+        )
+        assertEquals(emptyList<String>(), rendered.filter { it == SERVER })
+    }
+
+    @Test
+    fun `validation codes without their field or limit param fall back`() {
+        val rendered = renderAll(
+            listOf(
+                ErrorReasonCode.VALIDATION_REQUIRED,
+                ErrorReasonCode.VALIDATION_EMAIL,
+                ErrorReasonCode.VALIDATION_PHONE,
+                ErrorReasonCode.VALIDATION_MIN,
+                ErrorReasonCode.VALIDATION_MAX
+            ).map { ApiError.Client(400, SERVER, ErrorReason(it, emptyMap())) } +
+                listOf(ErrorReasonCode.VALIDATION_MIN, ErrorReasonCode.VALIDATION_MAX).map {
+                    ApiError.Client(400, SERVER, ErrorReason(it, mapOf("field" to "Age")))
+                }
+        )
+        assertEquals(List(7) { SERVER }, rendered)
+    }
+
+    @Test
+    fun `a server validation error renders its field reasons`() {
+        val error = ApiError.Server(
+            422,
+            "bad",
+            errorCode = "VALIDATION_ERROR",
+            fieldReasons = mapOf(
+                "Age" to ErrorReason(
+                    ErrorReasonCode.VALIDATION_MIN,
+                    mapOf("field" to "Age", "min" to 18.0)
+                )
+            )
+        )
+        assertEquals(
+            "Age must be at least 18 characters",
+            render(error)
+        )
+    }
+
+    @Test
+    fun `a validation error with only details renders the details values`() {
+        val error = ApiError.Client(
+            400,
+            "Request validation failed",
+            errorCode = "VALIDATION_ERROR",
+            details = mapOf("Name" to "Name is required", "Skip" to null)
+        )
+        assertEquals("Name is required", render(error))
+    }
+
+    @Test
+    fun `a validation error without details falls back to the message`() {
+        val error = ApiError.Client(
+            400,
+            "Request validation failed",
+            errorCode = "VALIDATION_ERROR"
+        )
+        assertEquals("Request validation failed", render(error))
+    }
+
+    @Test
+    fun `non-validation errors with details ignore them`() {
+        val error = ApiError.Client(
+            400,
+            "Server says no",
+            errorCode = "INVALID_INPUT",
+            details = mapOf("A" to "detail")
+        )
+        assertEquals("Server says no", render(error))
+    }
+
+    @Test
+    fun `a precondition failure skips validation field rendering`() {
+        assertEquals(
+            "Changed elsewhere — load the latest version",
+            render(ApiError.PreconditionFailed("x"))
+        )
     }
 }
 

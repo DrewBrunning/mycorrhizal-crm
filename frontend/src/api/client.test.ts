@@ -59,6 +59,58 @@ describe('ApiError.getDisplayMessage', () => {
     const err = new ApiError('Validation failed', 'VALIDATION_ERROR', 400, {});
     expect(err.getDisplayMessage()).toBe('Validation failed');
   });
+
+  // Issue #2105: field_reasons is the translatable companion to details.
+  test('joins translated field_reasons for a validation error', () => {
+    const err = new ApiError(
+      'Request validation failed',
+      'VALIDATION_ERROR',
+      400,
+      { Name: 'Name is required', Email: 'Email must be a valid email address' },
+      undefined,
+      undefined,
+      undefined,
+      {
+        Name: { reason_code: 'validation_required', reason_params: { field: 'Name' } },
+        Email: {
+          reason_code: 'validation_email',
+          reason_params: { field: 'Email' },
+        },
+      },
+    );
+    expect(err.getDisplayMessage()).toBe('Name is required. Email must be a valid email address');
+  });
+
+  test('falls back to details when field_reasons is empty', () => {
+    const err = new ApiError(
+      'Request validation failed',
+      'VALIDATION_ERROR',
+      400,
+      { Name: 'Name is required' },
+      undefined,
+      undefined,
+      undefined,
+      {},
+    );
+    expect(err.getDisplayMessage()).toBe('Name is required');
+  });
+
+  test('falls back to details when one field reason is unknown', () => {
+    const err = new ApiError(
+      'Request validation failed',
+      'VALIDATION_ERROR',
+      400,
+      { Name: 'Name is required', Mystery: 'Mystery is invalid' },
+      undefined,
+      undefined,
+      undefined,
+      {
+        Name: { reason_code: 'validation_required', reason_params: { field: 'Name' } },
+        Mystery: { reason_code: 'not_a_real_code', reason_params: {} },
+      },
+    );
+    expect(err.getDisplayMessage()).toBe('Name is required. Mystery is invalid');
+  });
 });
 
 describe('parseErrorResponse', () => {
@@ -78,6 +130,28 @@ describe('parseErrorResponse', () => {
     expect(err.status).toBe(404);
     expect(err.details).toEqual({ id: '42' });
     expect(err.requestId).toBe('req-123');
+  });
+
+  test('parses field_reasons on a validation error', async () => {
+    const response = new Response(
+      JSON.stringify({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Request validation failed',
+          details: { Name: 'Name is required' },
+          field_reasons: {
+            Name: { reason_code: 'validation_required', reason_params: { field: 'Name' } },
+          },
+        },
+      }),
+      { status: 400 },
+    );
+
+    const err = await parseErrorResponse(response);
+    expect(err.fieldReasons).toEqual({
+      Name: { reason_code: 'validation_required', reason_params: { field: 'Name' } },
+    });
+    expect(err.getDisplayMessage()).toBe('Name is required');
   });
 
   test('falls back to status text for a non-JSON body', async () => {

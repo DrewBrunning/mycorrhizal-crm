@@ -228,11 +228,7 @@ func LinkSeafileContact(c *gin.Context) {
 		return
 	}
 	if verrs := middleware.ValidateStruct(&input); len(verrs) > 0 {
-		appErr := apperrors.ErrValidation("Request validation failed").WithReason(apperrors.ReasonIntegrationRequestInvalid, nil)
-		for _, ve := range verrs {
-			appErr.WithDetails(ve.Field, ve.Message)
-		}
-		apperrors.AbortWithError(c, appErr)
+		apperrors.AbortWithError(c, apperrors.ErrValidationFields(verrs).WithReason(apperrors.ReasonIntegrationRequestInvalid, nil))
 		return
 	}
 	if strings.TrimSpace(input.RepoID) == "" || strings.TrimSpace(input.Path) == "" {
