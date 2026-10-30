@@ -173,6 +173,56 @@ class ErrorTextTest {
     }
 
     @Test
+    fun `a contact field override code renders its field`() {
+        val rendered = renderAll(
+            listOf(
+                ApiError.Client(
+                    400,
+                    "Server says no",
+                    ErrorReason(
+                        ErrorReasonCode.CONTACT_FIELD_OVERRIDE_UNKNOWN_KEY,
+                        mapOf("field" to "nickname")
+                    )
+                ),
+                ApiError.Client(
+                    400,
+                    "Server says no",
+                    ErrorReason(
+                        ErrorReasonCode.CONTACT_FIELD_OVERRIDE_STATE_INVALID,
+                        mapOf("field" to "emails")
+                    )
+                )
+            )
+        )
+        assertEquals(
+            listOf(
+                "nickname is not a field that can be shown or hidden",
+                "emails must be inherit, show or hide"
+            ),
+            rendered
+        )
+    }
+
+    @Test
+    fun `a contact field override code without field falls back`() {
+        val rendered = renderAll(
+            listOf(
+                ApiError.Client(
+                    400,
+                    "Server says no",
+                    ErrorReason(ErrorReasonCode.CONTACT_FIELD_OVERRIDE_UNKNOWN_KEY, emptyMap())
+                ),
+                ApiError.Client(
+                    400,
+                    "Server says no",
+                    ErrorReason(ErrorReasonCode.CONTACT_FIELD_OVERRIDE_STATE_INVALID, emptyMap())
+                )
+            )
+        )
+        assertEquals(listOf("Server says no", "Server says no"), rendered)
+    }
+
+    @Test
     fun `an error without a reason uses the display message`() {
         assertEquals("Server says no", render(ApiError.Client(400, "Server says no")))
     }

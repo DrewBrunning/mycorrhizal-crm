@@ -14630,6 +14630,10 @@ components:
         hide_empty_fields: { type: boolean }
     ContactFieldKey:
       type: string
+      # Referenced by generated TS types (gentsapi) and contractConformance.ts,
+      # not by a $ref here: OAS 3.0 has no way to constrain the keys of a
+      # free-form object map. The overrides schemas document the link.
+      x-lint-ignore: [oas3-unused-component]
       description: |
         An overridable contact field key. Mirrors ContactFieldKey in the web
         client (frontend/src/contactFields.ts); firstname/lastname are always
