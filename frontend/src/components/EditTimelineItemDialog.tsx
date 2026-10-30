@@ -28,6 +28,8 @@ export interface TimelineItemValues {
   activityDescription?: string;
   activityLocation?: string;
   activityDate?: string;
+  // Issue #2006: the picked last day (YYYY-MM-DD), '' / absent for a single day.
+  activityEndDate?: string;
   activityContacts?: { ID: number; firstname: string; lastname: string; nickname?: string }[];
 }
 
@@ -40,6 +42,8 @@ interface EditTimelineItemDialogProps {
   values: TimelineItemValues;
   onChange: (values: TimelineItemValues) => void;
   allContacts: { ID: number; firstname: string; lastname: string; nickname?: string }[];
+  // A server refusal on the end_date field, shown on the end-date input.
+  activityEndDateError?: string;
 }
 
 interface ContactBrief {
@@ -69,6 +73,7 @@ export default function EditTimelineItemDialog({
   values,
   onChange,
   allContacts,
+  activityEndDateError,
 }: EditTimelineItemDialogProps) {
   const { t } = useTranslation();
 
@@ -296,6 +301,20 @@ export default function EditTimelineItemDialog({
               value={values.activityDate || ''}
               onChange={(value) => updateValues({ ...values, activityDate: value })}
               label={t('activityDialog.date')}
+            />
+            <DateField
+              value={values.activityEndDate || ''}
+              onChange={(value) => updateValues({ ...values, activityEndDate: value })}
+              label={t('activityDialog.endDate')}
+              min={values.activityDate || undefined}
+              errorText={
+                activityEndDateError ||
+                (values.activityEndDate &&
+                values.activityDate &&
+                values.activityEndDate < values.activityDate
+                  ? t('activityDialog.endBeforeStart')
+                  : undefined)
+              }
             />
             <Autocomplete
               multiple

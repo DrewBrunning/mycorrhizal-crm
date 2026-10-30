@@ -15,11 +15,21 @@ import (
 	"gorm.io/gorm"
 )
 
+// activityEndBeforeStartError is the 400 field error on end_date (issue #2006).
+func activityEndBeforeStartError() *apperrors.AppError {
+	return apperrors.ErrInvalidInput("end_date", "end date precedes the start date").WithReason(apperrors.ReasonActivityEndBeforeStart, nil)
+}
+
 func CreateActivity(c *gin.Context) {
 	// Get validated input from validation middleware
 	activityInput, err := middleware.GetValidated[models.ActivityInput](c)
 	if err != nil {
 		apperrors.AbortWithError(c, err)
+		return
+	}
+
+	if models.ActivityEndBeforeStart(activityInput.Date, activityInput.EndDate.Value) {
+		apperrors.AbortWithError(c, activityEndBeforeStartError())
 		return
 	}
 
@@ -73,6 +83,7 @@ func CreateActivity(c *gin.Context) {
 		UserID:      userID,
 		Title:       activityInput.Title,
 		Date:        activityInput.Date,
+		EndDate:     activityInput.EndDate.Value,
 		Description: activityInput.Description,
 		Location:    activityInput.Location,
 		Type:        activityType,
@@ -317,6 +328,15 @@ func UpdateActivity(c *gin.Context) {
 	activity.Description = activityInput.Description
 	activity.Location = activityInput.Location
 	activity.Date = activityInput.Date
+	// Omitted end_date keeps the stored value; null or "" clears it. A start
+	// moved past a kept end is rejected, never cleared silently (issue #2006).
+	if activityInput.EndDate.Set {
+		activity.EndDate = activityInput.EndDate.Value
+	}
+	if models.ActivityEndBeforeStart(activity.Date, activity.EndDate) {
+		apperrors.AbortWithError(c, activityEndBeforeStartError())
+		return
+	}
 	// Omitted/null type keeps the stored value; an explicit "" clears it.
 	if activityInput.Type != nil {
 		activity.Type = *activityInput.Type

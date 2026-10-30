@@ -70,6 +70,7 @@ object ErrorReasonCode {
     const val VALIDATION_MISSING_FIELD = "validation_missing_field"
     const val COMMON_UNEXPECTED_ERROR = "common_unexpected_error"
     const val ACTIVITY_NOT_FOUND = "activity_not_found"
+    const val ACTIVITY_END_BEFORE_START = "activity_end_before_start"
     const val CONTACT_ADDRESS_NOT_FOUND = "contact_address_not_found"
     const val ACCOUNT_API_TOKEN_NOT_FOUND = "account_api_token_not_found"
     const val ATTACHMENT_NOT_FOUND = "attachment_not_found"

@@ -2786,6 +2786,7 @@
     <string name="error_reason_validation_missing_field">Falta el campo obligatorio «%1$s»</string>
     <string name="error_reason_common_unexpected_error">Se produjo un error inesperado</string>
     <string name="error_reason_activity_not_found">No se encontró: actividad</string>
+    <string name="error_reason_activity_end_before_start">La fecha de fin no puede ser anterior a la de inicio</string>
     <string name="error_reason_contact_address_not_found">No se encontró: dirección</string>
     <string name="error_reason_account_api_token_not_found">No se encontró: token de API</string>
     <string name="error_reason_attachment_not_found">No se encontró: archivo adjunto</string>

@@ -309,6 +309,10 @@ private fun localizedReason(reason: ErrorReason?): String? {
             R.string.error_reason_common_unexpected_error
         )
 
+        ErrorReasonCode.ACTIVITY_END_BEFORE_START -> stringResource(
+            R.string.error_reason_activity_end_before_start
+        )
+
         ErrorReasonCode.ACTIVITY_NOT_FOUND -> stringResource(
             R.string.error_reason_activity_not_found
         )

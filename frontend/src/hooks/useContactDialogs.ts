@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { createActivity } from '../api/activities';
 import { createNote } from '../api/notes';
+import { activityWireDates, endDateFieldError } from '../utils/activityRange';
 import { type ErrorNotifier, getErrorMessage, handleError } from '../utils/errorHandler';
 
 export function useContactDialogs(
@@ -32,6 +33,7 @@ export function useContactDialogs(
     description: string;
     location: string;
     date: string;
+    end_date?: string;
     contact_ids: number[];
   }) => {
     try {
@@ -39,11 +41,13 @@ export function useContactDialogs(
         title: activity.title,
         description: activity.description,
         location: activity.location,
-        date: new Date(activity.date).toISOString(),
+        ...activityWireDates(activity),
         contact_ids: activity.contact_ids,
       });
       await onRefresh();
     } catch (err) {
+      // A refusal on the end_date field belongs on that field (the dialog reads it).
+      if (endDateFieldError(err)) throw err;
       handleError(err, { operation: 'saving activity' }, notifier);
       throw new Error(getErrorMessage(err));
     }

@@ -123,6 +123,7 @@ func MapAccountBundle(bundle *models.AccountBundle) *ImportSourcePlan {
 			Description: a.Description,
 			Location:    a.Location,
 			Date:        formatBundleTime(a.Date),
+			EndDate:     formatBundleTimePtr(a.EndDate),
 			Type:        a.Type,
 			ExternalRef: a.ExternalRef,
 		})

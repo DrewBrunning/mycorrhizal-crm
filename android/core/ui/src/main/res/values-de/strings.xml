@@ -2691,6 +2691,7 @@
     <string name="error_reason_validation_missing_field">Das Pflichtfeld „%1$s“ fehlt</string>
     <string name="error_reason_common_unexpected_error">Ein unerwarteter Fehler ist aufgetreten</string>
     <string name="error_reason_activity_not_found">Aktivität nicht gefunden</string>
+    <string name="error_reason_activity_end_before_start">Das Enddatum darf nicht vor dem Startdatum liegen</string>
     <string name="error_reason_contact_address_not_found">Adresse nicht gefunden</string>
     <string name="error_reason_account_api_token_not_found">API-Token nicht gefunden</string>
     <string name="error_reason_attachment_not_found">Anhang nicht gefunden</string>
