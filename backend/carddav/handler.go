@@ -1,6 +1,9 @@
 package carddav
 
 import (
+	"context"
+	"mycorrhizal/config"
+	"mycorrhizal/internal/clock"
 	"net/http"
 	"strings"
 
@@ -34,6 +37,10 @@ func NewHandler(db *gorm.DB, photoDir string) *Handler {
 	}
 }
 
+// SetConfig supplies the server config the backend needs to deliver webhooks
+// (contact.deleted on a DAV DELETE, issue #2249).
+func (h *Handler) SetConfig(cfg config.Config) { h.backend.cfg = cfg }
+
 // GinHandler returns a Gin handler function that wraps the CardDAV handler
 func (h *Handler) GinHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -48,6 +55,7 @@ func (h *Handler) GinHandler() gin.HandlerFunc {
 		// doesn't surface the RFC 6352 address-data content-type/version
 		// request attributes to GetAddressObject/ListAddressObjects).
 		ctx := ContextWithUser(c.Request.Context(), userID.(uint), username.(string), h.db, h.photoDir, c.Request.Header.Get("Accept"))
+		ctx = context.WithValue(ctx, clockKey, clock.FromContext(c))
 		c.Request = c.Request.WithContext(ctx)
 
 		// Handle principals endpoint specially for proper discovery

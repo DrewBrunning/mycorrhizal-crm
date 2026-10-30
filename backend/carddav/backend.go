@@ -5,15 +5,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"mycorrhizal/config"
 	"mycorrhizal/contactmodel"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
+	"mycorrhizal/services"
 	"mycorrhizal/vcard3"
 	"mycorrhizal/vcard4"
 	"net/http"
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/emersion/go-vcard"
 	"github.com/emersion/go-webdav"
@@ -31,6 +35,7 @@ const (
 	dbKey        contextKey = "db"
 	photoDir     contextKey = "photoDir"
 	acceptHeader contextKey = "acceptHeader"
+	clockKey     contextKey = "clock"
 )
 
 // DefaultVCardVersion is the vCard version served by GetAddressObject/
@@ -59,6 +64,9 @@ func envOrDefault(key, def string) string {
 type Backend struct {
 	db       *gorm.DB
 	photoDir string
+	// cfg is the server config webhook delivery needs (SSRF policy, timeouts);
+	// set by Handler.SetConfig. The zero value is the safe default.
+	cfg config.Config
 }
 
 // NewBackend creates a new CardDAV backend
@@ -483,8 +491,24 @@ func (b *Backend) DeleteAddressObject(ctx context.Context, urlPath string) error
 		return webdav.NewHTTPError(http.StatusNotFound, fmt.Errorf("contact not found"))
 	}
 
-	// Soft delete
-	return db.Delete(&contact).Error
+	// The same service the REST delete uses (issue #2249): registry cascade,
+	// ADR 0037 trash snapshot (so Trash can restore it), and the contact row's
+	// soft delete in one transaction; the audit events come from the model
+	// hooks inside it. Photo/attachment files stay on disk until purge.
+	if err := services.DeleteContact(db, contact, userID, b.now(ctx)); err != nil {
+		return err
+	}
+	services.TriggerWebhooksAsync(ctx, db, b.cfg, userID, "contact.deleted", map[string]any{"id": contact.ID})
+	return nil
+}
+
+// now is the request's injected clock (installed by Handler.GinHandler) or the
+// system clock when the backend is driven directly.
+func (b *Backend) now(ctx context.Context) time.Time {
+	if c, ok := ctx.Value(clockKey).(clock.Clock); ok {
+		return c.Now()
+	}
+	return time.Now()
 }
 
 // contactToAddressObject converts a Contact to a CardDAV AddressObject.
