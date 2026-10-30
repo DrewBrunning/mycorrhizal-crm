@@ -47,3 +47,4 @@ ticket backlog moved to GitHub Issues.
 | [0039](0039-circle-metadata-and-aggregate-timeline.md) | Circle description/colour and the aggregate circle timeline | accepted |
 | [0040](0040-images-for-contacts-notes-and-activities.md) | Images for contacts, notes and activities — per-owner tables by composition, pure-Go re-encode | accepted |
 | [0041](0041-carddav-sync-scope.md) | CardDAV sync scope by circle — one filtered address book | accepted |
+| [0042](0042-standing-shares.md) | Standing shares — read-only live grants (`ShareGrant`) | accepted |
