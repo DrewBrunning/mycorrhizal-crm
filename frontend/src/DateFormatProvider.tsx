@@ -41,7 +41,7 @@ const SUPPORTED_DATE_FORMATS: DateFormat[] = [
 // Month names for the month-name display formats. English by design: these
 // formats are the en-US-style "mmm/mmmm" tokens the user asked for, and they
 // are a display preference independent of UI language. Input still uses the
-// numeric form (see parseBirthdayInputWithFormat) so typing stays digit-driven.
+// numeric form (see parseDateInputWithFormat) so typing stays digit-driven.
 const MONTHS_SHORT = [
   'Jan',
   'Feb',
@@ -77,7 +77,7 @@ interface DateFormatContextValue {
   formatDate: (dateString: string) => string;
   formatBirthday: (birthday: string, includeAge?: boolean) => string;
   formatBirthdayForInput: (birthday: string) => string;
-  parseBirthdayInput: (input: string) => string | null;
+  parseDateInput: (input: string) => string | null;
   autoFormatBirthdayInput: (newValue: string, prevValue: string) => string;
   getBirthdayPlaceholder: () => string;
   getBirthdayFormatHint: () => string;
@@ -412,7 +412,7 @@ function isValidDateParts(monthStr: string, dayStr: string): boolean {
  * Parse user input in display format back to ISO format for storage
  * Returns null if input is invalid
  */
-export function parseBirthdayInputWithFormat(input: string, format: DateFormat): string | null {
+export function parseDateInputWithFormat(input: string, format: DateFormat): string | null {
   if (!input || input.trim() === '') return '';
 
   const trimmed = input.trim();
@@ -604,8 +604,8 @@ export function DateFormatProvider({ children }: { children: ReactNode }) {
     [dateFormat],
   );
 
-  const parseBirthdayInput = useCallback(
-    (input: string) => parseBirthdayInputWithFormat(input, dateFormat),
+  const parseDateInput = useCallback(
+    (input: string) => parseDateInputWithFormat(input, dateFormat),
     [dateFormat],
   );
 
@@ -675,7 +675,7 @@ export function DateFormatProvider({ children }: { children: ReactNode }) {
       formatDate,
       formatBirthday,
       formatBirthdayForInput,
-      parseBirthdayInput,
+      parseDateInput,
       autoFormatBirthdayInput,
       getBirthdayPlaceholder,
       getBirthdayFormatHint,
@@ -688,7 +688,7 @@ export function DateFormatProvider({ children }: { children: ReactNode }) {
       formatDate,
       formatBirthday,
       formatBirthdayForInput,
-      parseBirthdayInput,
+      parseDateInput,
       autoFormatBirthdayInput,
       getBirthdayPlaceholder,
       getBirthdayFormatHint,

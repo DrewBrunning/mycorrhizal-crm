@@ -43,12 +43,6 @@ export function useSessionDraft<T>(
   useEffect(() => {
     if (!enabled) return;
     try {
-      // CodeQL flags this because DateField parses dates with the
-      // birthday-named helper `parseBirthdayInput`, and its private-data
-      // heuristic matches that name. The value here is the note/activity
-      // calendar day, not a date of birth or a credential; the draft is
-      // tab-scoped, best-effort, and cleared on save, discard, and logout.
-      // codeql[js/clear-text-storage-of-sensitive-data]
       sessionStorage.setItem(sessionDraftKey(key), serializedValue);
     } catch {
       // Best-effort only (quota exceeded, storage disabled) -- never block

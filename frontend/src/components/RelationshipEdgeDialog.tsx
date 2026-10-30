@@ -84,7 +84,7 @@ export default function RelationshipEdgeDialog({
 }: RelationshipEdgeDialogProps) {
   const { t } = useTranslation();
   const { showError } = useSnackbar();
-  const { parseBirthdayInput, getBirthdayPlaceholder, autoFormatBirthdayInput } = useDateFormat();
+  const { parseDateInput, getBirthdayPlaceholder, autoFormatBirthdayInput } = useDateFormat();
   const [entryMode, setEntryMode] = useState<EntryMode>('manual');
   const [name, setName] = useState('');
   const [type, setType] = useState<RelationshipEdgeType | ''>('');
@@ -212,7 +212,7 @@ export default function RelationshipEdgeDialog({
 
     let birthdayISO: string | undefined;
     if (!isEditing && entryMode === 'manual' && birthday.trim()) {
-      const parsed = parseBirthdayInput(birthday);
+      const parsed = parseDateInput(birthday);
       if (parsed === null) {
         setError(t('contactDetail.birthdayError'));
         return;

@@ -129,30 +129,11 @@ jobs:
           languages: javascript-typescript
           build-mode: none
           queries: security-extended
-          # Same alert-suppression query as the Go job: a justified
-          # `// codeql[<id>]` comment (e.g. the note-draft date sink, whose
-          # source name trips CodeQL's private-data heuristic) is tagged in the
-          # SARIF and dismissed by the step below instead of lingering.
-          packs: codeql/javascript-queries:AlertSuppression.ql
 
       - name: Perform CodeQL Analysis
-        id: analyze
         uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           category: '/language:javascript-typescript'
-          output: sarif-results
-
-      # Mirror the Go job: dismiss alerts the SARIF marks as suppressed, on the
-      # default branch only (dismissal is global), so a justified suppression
-      # is recorded and auto-re-opened if the comment is removed.
-      - name: Dismiss suppressed alerts
-        if: github.ref == 'refs/heads/main'
-        uses: advanced-security/dismiss-alerts@a18f986bdb40edba0dd7a74382c15d4a3d50a1c8 # v2.0.3
-        with:
-          sarif-id: ${{ steps.analyze.outputs.sarif-id }}
-          sarif-file: sarif-results
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
 
   analyze-java-kotlin:
     name: Analyze (java-kotlin)
