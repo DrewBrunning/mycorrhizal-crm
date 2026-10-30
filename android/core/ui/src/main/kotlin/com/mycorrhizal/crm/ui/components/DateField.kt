@@ -1,15 +1,11 @@
 package com.mycorrhizal.crm.ui.components
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Close
@@ -34,12 +30,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import com.mycorrhizal.crm.model.util.DateFieldInput
 import com.mycorrhizal.crm.model.util.DateFieldMode
+import com.mycorrhizal.crm.model.util.DateFieldState
 import com.mycorrhizal.crm.model.util.DateFieldValue
+import com.mycorrhizal.crm.model.util.TypedDate
 import com.mycorrhizal.crm.ui.LocalDateFormat
 import com.mycorrhizal.crm.ui.LocalIs24Hour
 import com.mycorrhizal.crm.ui.R
@@ -49,22 +51,34 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZoneOffset
 
+/** Why the text typed into a [DateField] was not accepted. */
+private enum class DateTypingError { INVALID, OUT_OF_RANGE }
+
 /**
- * Issue #1726: the one date-entry component for every Android date field.
+ * Issue #1726 / #2207: the one date-entry component for every Android date field.
  *
- * A read-only text field renders the stored value in the user's date-format
- * (and 12/24-hour) preference; tapping it opens a Material3 [DatePickerDialog].
+ * An editable text field shows the stored value in the user's date-format (and
+ * 12/24-hour) preference. A date can be **typed** in that format's digit order
+ * and separator (month-name formats are typed numerically; a pasted ISO
+ * `YYYY-MM-DD` is also accepted, see [DateFieldInput]). A complete, real date
+ * is reported as soon as it is typed; an invalid or out-of-range entry shows an
+ * inline error on Done / focus loss, keeps its text and leaves the value
+ * untouched. The Material3 [DatePickerDialog] is an add-on, opened from the
+ * trailing calendar icon; a picker choice replaces any half-typed text.
+ *
  * [mode] decides the wire shape and whether the flow offers a time:
- *  - [DateFieldMode.DATE_ONLY] / [DateFieldMode.DATE_UTC_MIDNIGHT] /
- *    [DateFieldMode.PARTIAL]: date picker only (partial adds a "Year unknown"
- *    checkbox);
- *  - [DateFieldMode.DATE_TIME] / [DateFieldMode.DATE_TIME_OPTIONAL]: the same
- *    date dialog also offers "Add time", which opens a [TimePicker] in the
- *    same flow. Confirming without a time keeps the date-only shape.
+ *  - [DateFieldMode.DATE_ONLY] / [DateFieldMode.DATE_UTC_MIDNIGHT]:
+ *    typed full dates only;
+ *  - [DateFieldMode.PARTIAL]: a full date, or day+month only in the format's
+ *    order (`15.01.`, `01/15`), which means "year unknown" (`--MM-DD`); the
+ *    picker keeps its "Year unknown" checkbox;
+ *  - [DateFieldMode.DATE_TIME] / [DateFieldMode.DATE_TIME_OPTIONAL]: typing
+ *    applies to the date part and keeps the stored time; the picker dialog
+ *    also offers "Add time", which opens a [TimePicker] in the same flow.
+ *    Confirming without a time keeps the date-only shape.
  *
  * [allowClear] adds the clear (×) action the list filters need.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DateField(
     value: String?,
@@ -83,72 +97,201 @@ fun DateField(
 ) {
     val dateFormat = LocalDateFormat.current
     val is24Hour = LocalIs24Hour.current
-    val display = DateFieldValue.display(value, mode, dateFormat, is24Hour)
+    val focusManager = LocalFocusManager.current
+    val zone = ZoneId.systemDefault()
+    val stored = remember(value, mode) { DateFieldValue.parse(value, mode, zone) }
     var showPicker by remember { mutableStateOf(false) }
+    // The text being typed, or null while the field mirrors [value].
+    var draft by remember { mutableStateOf<String?>(null) }
+    var focused by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<DateTypingError?>(null) }
     val hasValue = !value.isNullOrBlank()
     val clear = {
         if (onClear != null) onClear() else onValueChange("")
     }
+    val allowYearless = mode == DateFieldMode.PARTIAL
 
-    val actionsWidth = if (allowClear && hasValue) 96.dp else 48.dp
-    Box(modifier = modifier.fillMaxWidth()) {
-        OutlinedTextField(
-            value = display,
-            onValueChange = {},
-            readOnly = true,
-            enabled = enabled,
-            label = { Text(label) },
-            // The actions are drawn over the field below so the whole field
-            // can be the picker's tap target without swallowing the icons.
-            trailingIcon = { Spacer(Modifier.width(actionsWidth)) },
-            singleLine = true,
-            isError = errorText != null,
-            supportingText = errorText?.let { message -> { Text(message) } },
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(if (testTag != null) Modifier.testTag(testTag) else Modifier)
+    fun parseTyped(text: String): TypedDate = DateFieldInput.parse(
+        text = text,
+        dateFormat = dateFormat,
+        allowYearless = allowYearless,
+        notBefore = selectableFrom,
+        alwaysAllowed = stored.date.takeIf { !stored.yearUnknown }
+    )
+
+    fun report(day: TypedDate.Day) {
+        val picked = DateFieldValue.pick(
+            date = day.date,
+            time = if (mode.allowsTime) stored.time else null,
+            mode = mode,
+            yearUnknown = day.yearUnknown,
+            zone = zone
         )
-        if (enabled) {
-            // A read-only text field still consumes taps itself, so the tap
-            // target is an overlay between the field and its actions.
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .clickable(onClickLabel = label) { showPicker = true }
-            )
-            Row(
-                modifier = Modifier
-                    .matchParentSize()
-                    .padding(end = 4.dp),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (allowClear && hasValue) {
-                    IconButton(onClick = clear, enabled = enabled) {
-                        Icon(
-                            imageVector = Icons.Outlined.Close,
-                            contentDescription = stringResource(R.string.date_field_clear_date)
-                        )
-                    }
-                }
-                IconButton(onClick = { showPicker = true }, enabled = enabled) {
-                    Icon(
-                        imageVector = Icons.Outlined.CalendarToday,
-                        contentDescription = stringResource(R.string.date_field_pick_date)
-                    )
-                }
-            }
+        if (picked != value) onValueChange(picked)
+    }
+
+    // Report a complete valid date (or an emptied field) as it is typed; the
+    // text itself is only normalised on Done / focus loss so the caret never moves.
+    fun handleTyping(text: String) {
+        draft = text
+        error = null
+        when (val typed = parseTyped(text)) {
+            TypedDate.Empty -> if (hasValue) clear()
+            is TypedDate.Day -> report(typed)
+            TypedDate.Invalid, TypedDate.OutOfRange -> Unit
         }
     }
+
+    // Settle what was typed: a valid date is shown in the preferred format, an
+    // invalid one keeps its text, shows an error and never touches the value.
+    fun settle() {
+        val text = draft ?: return
+        when (val typed = parseTyped(text)) {
+            TypedDate.Empty -> draft = null
+
+            is TypedDate.Day -> {
+                report(typed)
+                draft = null
+            }
+
+            TypedDate.Invalid -> error = DateTypingError.INVALID
+
+            TypedDate.OutOfRange -> error = DateTypingError.OUT_OF_RANGE
+        }
+    }
+
+    val shown = draft ?: if (focused && enabled) {
+        editableText(stored, value, dateFormat, is24Hour, mode)
+    } else {
+        DateFieldValue.display(value, mode, dateFormat, is24Hour)
+    }
+    val openPicker = { showPicker = true }
+
+    OutlinedTextField(
+        value = shown,
+        onValueChange = ::handleTyping,
+        readOnly = !enabled,
+        enabled = enabled,
+        label = { Text(label) },
+        placeholder = { Text(DateFieldInput.pattern(dateFormat, allowYearless)) },
+        isError = error != null || errorText != null,
+        supportingText = error?.let { problem ->
+            {
+                Text(
+                    when (problem) {
+                        DateTypingError.OUT_OF_RANGE -> stringResource(
+                            R.string.date_field_error_range
+                        )
+
+                        DateTypingError.INVALID -> stringResource(
+                            R.string.date_field_error_invalid,
+                            DateFieldInput.pattern(dateFormat, allowYearless)
+                        )
+                    }
+                )
+            }
+        } ?: errorText?.let { message -> { Text(message) } },
+        trailingIcon = if (enabled) {
+            {
+                DateFieldActions(
+                    showClear = allowClear && hasValue,
+                    onClear = {
+                        draft = null
+                        error = null
+                        clear()
+                    },
+                    onOpenPicker = openPicker,
+                    pickerTag = testTag?.let { "$it-picker-open" }
+                )
+            }
+        } else {
+            null
+        },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Text,
+            imeAction = ImeAction.Done
+        ),
+        keyboardActions = KeyboardActions(
+            onDone = {
+                settle()
+                focusManager.clearFocus()
+            }
+        ),
+        modifier = modifier
+            .fillMaxWidth()
+            .onFocusChanged {
+                if (focused && !it.isFocused) settle()
+                focused = it.isFocused
+            }
+            .then(if (testTag != null) Modifier.testTag(testTag) else Modifier)
+    )
 
     if (showPicker) {
         DateFieldPickerDialog(
             value = value,
             mode = mode,
             selectableFrom = selectableFrom,
-            onConfirm = onValueChange,
+            onConfirm = {
+                // A picker choice replaces whatever was half-typed.
+                draft = null
+                error = null
+                onValueChange(it)
+            },
             onDismiss = { showPicker = false }
         )
+    }
+}
+
+/**
+ * The text a focused, un-edited field offers for editing: the numeric form in
+ * the user's format (month-name formats included). A date-time field edits only
+ * the date part; its stored time is kept. Reduced-precision partials
+ * (year-only, year+month) are shown as stored.
+ */
+private fun editableText(
+    stored: DateFieldState,
+    value: String?,
+    dateFormat: String,
+    is24Hour: Boolean,
+    mode: DateFieldMode
+): String {
+    val date = stored.date
+    return when {
+        date == null -> ""
+
+        stored.yearOnly != null || stored.yearMonth != null ->
+            DateFieldValue.display(value, mode, dateFormat, is24Hour)
+
+        else -> DateFieldInput.editText(date, stored.yearUnknown, dateFormat)
+    }
+}
+
+@Composable
+private fun DateFieldActions(
+    showClear: Boolean,
+    onClear: () -> Unit,
+    onOpenPicker: () -> Unit,
+    pickerTag: String?
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        if (showClear) {
+            IconButton(onClick = onClear) {
+                Icon(
+                    imageVector = Icons.Outlined.Close,
+                    contentDescription = stringResource(R.string.date_field_clear_date)
+                )
+            }
+        }
+        IconButton(
+            onClick = onOpenPicker,
+            modifier = if (pickerTag != null) Modifier.testTag(pickerTag) else Modifier
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.CalendarToday,
+                contentDescription = stringResource(R.string.date_field_pick_date)
+            )
+        }
     }
 }
 
@@ -244,6 +387,8 @@ private fun DateFieldPickerDialog(
         }
     ) {
         Column {
+            // Typed entry lives in the field itself (in the user's date format);
+            // Material3's own input mode would use the system-locale pattern.
             DatePicker(state = dateState, showModeToggle = false)
             if (mode == DateFieldMode.PARTIAL) {
                 Row(

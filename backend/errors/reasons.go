@@ -275,6 +275,78 @@ const (
 	ReasonContactShareSectionUnknown            ReasonCode = "contact_share_section_unknown"
 	ReasonContactShareAlreadyResponded          ReasonCode = "contact_share_already_responded"
 	ReasonContactShareSessionMismatch           ReasonCode = "contact_share_session_mismatch"
+
+	// Integration errors (issue #2104).
+	ReasonImmichApiKeyInvalid                 ReasonCode = "immich_api_key_invalid" // #nosec G101 -- reason code, not a credential
+	ReasonImmichBaseUrlInvalid                ReasonCode = "immich_base_url_invalid"
+	ReasonImmichRedirect                      ReasonCode = "immich_redirect"
+	ReasonImmichUpstreamError                 ReasonCode = "immich_upstream_error"
+	ReasonImmichResponseUnparseable           ReasonCode = "immich_response_unparseable"
+	ReasonImmichUnreachable                   ReasonCode = "immich_unreachable"
+	ReasonImmichApiKeyRequired                ReasonCode = "immich_api_key_required"   // #nosec G101 -- reason code, not a credential
+	ReasonSeafileApiTokenInvalid              ReasonCode = "seafile_api_token_invalid" // #nosec G101 -- reason code, not a credential
+	ReasonSeafileBaseUrlInvalid               ReasonCode = "seafile_base_url_invalid"
+	ReasonSeafileRedirect                     ReasonCode = "seafile_redirect"
+	ReasonSeafileUpstreamError                ReasonCode = "seafile_upstream_error"
+	ReasonSeafileResponseUnparseable          ReasonCode = "seafile_response_unparseable"
+	ReasonSeafileUnreachable                  ReasonCode = "seafile_unreachable"
+	ReasonSeafileApiTokenRequired             ReasonCode = "seafile_api_token_required" // #nosec G101 -- reason code, not a credential
+	ReasonPaperlessApiTokenInvalid            ReasonCode = "paperless_api_token_invalid"
+	ReasonPaperlessBaseUrlInvalid             ReasonCode = "paperless_base_url_invalid"
+	ReasonPaperlessRedirect                   ReasonCode = "paperless_redirect"
+	ReasonPaperlessUpstreamError              ReasonCode = "paperless_upstream_error"
+	ReasonPaperlessResponseUnparseable        ReasonCode = "paperless_response_unparseable"
+	ReasonPaperlessUnreachable                ReasonCode = "paperless_unreachable"
+	ReasonPaperlessApiTokenRequired           ReasonCode = "paperless_api_token_required"
+	ReasonGeopulseApiTokenInvalid             ReasonCode = "geopulse_api_token_invalid" // #nosec G101 -- reason code, not a credential
+	ReasonGeopulseBaseUrlInvalid              ReasonCode = "geopulse_base_url_invalid"
+	ReasonGeopulseRedirect                    ReasonCode = "geopulse_redirect"
+	ReasonGeopulseUpstreamError               ReasonCode = "geopulse_upstream_error"
+	ReasonGeopulseResponseUnparseable         ReasonCode = "geopulse_response_unparseable"
+	ReasonGeopulseUnreachable                 ReasonCode = "geopulse_unreachable"
+	ReasonGeopulseApiTokenRequired            ReasonCode = "geopulse_api_token_required" // #nosec G101 -- reason code, not a credential
+	ReasonWebdavAppPasswordInvalid            ReasonCode = "webdav_app_password_invalid" // #nosec G101 -- reason code, not a credential
+	ReasonWebdavBaseUrlInvalid                ReasonCode = "webdav_base_url_invalid"
+	ReasonWebdavRedirect                      ReasonCode = "webdav_redirect"
+	ReasonWebdavUpstreamError                 ReasonCode = "webdav_upstream_error"
+	ReasonWebdavResponseUnparseable           ReasonCode = "webdav_response_unparseable"
+	ReasonWebdavUnreachable                   ReasonCode = "webdav_unreachable"
+	ReasonWebdavAppPasswordRequired           ReasonCode = "webdav_app_password_required" // #nosec G101 -- reason code, not a credential
+	ReasonImmichPersonIdRequired              ReasonCode = "immich_person_id_required"
+	ReasonPaperlessDocumentIdRequired         ReasonCode = "paperless_document_id_required"
+	ReasonWebdavPathRequired                  ReasonCode = "webdav_path_required"
+	ReasonSeafileRepoAndPathRequired          ReasonCode = "seafile_repo_and_path_required"
+	ReasonGeopulseDateRequired                ReasonCode = "geopulse_date_required"
+	ReasonGeopulseDateInvalid                 ReasonCode = "geopulse_date_invalid"
+	ReasonGeopulseTokenUndecryptable          ReasonCode = "geopulse_token_undecryptable" // #nosec G101 -- reason code, not a credential
+	ReasonImmichSvgUnsupported                ReasonCode = "immich_svg_unsupported"
+	ReasonIntegrationRequestInvalid           ReasonCode = "integration_request_invalid"
+	ReasonIntegrationIdInvalid                ReasonCode = "integration_id_invalid"
+	ReasonIntegrationPasswordReentryRequired  ReasonCode = "integration_password_reentry_required"
+	ReasonIntegrationWebhookLimit             ReasonCode = "integration_webhook_limit"
+	ReasonCalendarSubscriptionLimit           ReasonCode = "calendar_subscription_limit"
+	ReasonCalendarUrlSchemeInvalid            ReasonCode = "calendar_url_scheme_invalid"
+	ReasonCalendarUrlInvalid                  ReasonCode = "calendar_url_invalid"
+	ReasonCalendarAuthFailed                  ReasonCode = "calendar_auth_failed"
+	ReasonCalendarNotFoundAtUrl               ReasonCode = "calendar_not_found_at_url"
+	ReasonCalendarPrivateAddress              ReasonCode = "calendar_private_address"
+	ReasonCalendarResponseTooLarge            ReasonCode = "calendar_response_too_large"
+	ReasonCalendarDataUnparseable             ReasonCode = "calendar_data_unparseable"
+	ReasonCalendarUnreachable                 ReasonCode = "calendar_unreachable"
+	ReasonContactSubscriptionLimit            ReasonCode = "contact_subscription_limit"
+	ReasonContactSubscriptionUrlSchemeInvalid ReasonCode = "contact_subscription_url_scheme_invalid"
+	ReasonContactSubscriptionUrlInvalid       ReasonCode = "contact_subscription_url_invalid"
+	ReasonContactSubscriptionAuthFailed       ReasonCode = "contact_subscription_auth_failed"
+	ReasonContactSubscriptionNotFoundAtUrl    ReasonCode = "contact_subscription_not_found_at_url"
+	ReasonContactSubscriptionPrivateAddress   ReasonCode = "contact_subscription_private_address"
+	ReasonContactSubscriptionResponseTooLarge ReasonCode = "contact_subscription_response_too_large"
+	ReasonContactSubscriptionDataUnparseable  ReasonCode = "contact_subscription_data_unparseable"
+	ReasonContactSubscriptionUnreachable      ReasonCode = "contact_subscription_unreachable"
+	ReasonNotificationUrlInvalid              ReasonCode = "notification_url_invalid"
+	ReasonNotificationPushSubscriptionLimit   ReasonCode = "notification_push_subscription_limit"
+	ReasonNotificationDeviceRegistrationLimit ReasonCode = "notification_device_registration_limit"
+	ReasonFeedLimitReached                    ReasonCode = "feed_limit_reached"
+	ReasonFeedEntityIdNotAllowed              ReasonCode = "feed_entity_id_not_allowed"
 )
 
 var reasonRegistry = map[ReasonCode]reasonSpec{
@@ -517,6 +589,78 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonContactShareSectionUnknown:            {Template: "unknown export field section \"{section}\"", Params: []string{"section"}},
 	ReasonContactShareAlreadyResponded:          {Template: "Share already responded to"},
 	ReasonContactShareSessionMismatch:           {Template: "Session does not belong to this share"},
+
+	// Integration errors (issue #2104).
+	ReasonImmichApiKeyInvalid:                 {Template: "Immich API key is invalid, expired, or not configured"},
+	ReasonImmichBaseUrlInvalid:                {Template: "Immich base URL is invalid"},
+	ReasonImmichRedirect:                      {Template: "Immich answered with a redirect — check the base URL (http vs https, path)."},
+	ReasonImmichUpstreamError:                 {Template: "Immich returned an error ({status}). The instance is reachable — this request itself failed.", Params: []string{"status"}},
+	ReasonImmichResponseUnparseable:           {Template: "Immich returned a response that could not be parsed. The API may have changed — check Immich version compatibility."},
+	ReasonImmichUnreachable:                   {Template: "Could not reach Immich. Is the instance up?"},
+	ReasonImmichApiKeyRequired:                {Template: "an API key is required when first connecting Immich"},
+	ReasonSeafileApiTokenInvalid:              {Template: "Seafile API token is invalid, expired, or not configured"},
+	ReasonSeafileBaseUrlInvalid:               {Template: "Seafile base URL is invalid"},
+	ReasonSeafileRedirect:                     {Template: "Seafile answered with a redirect — check the base URL (http vs https, path)."},
+	ReasonSeafileUpstreamError:                {Template: "Seafile returned an error ({status}). The instance is reachable — this request itself failed.", Params: []string{"status"}},
+	ReasonSeafileResponseUnparseable:          {Template: "Seafile returned a response that could not be parsed. The API may have changed — check Seafile version compatibility."},
+	ReasonSeafileUnreachable:                  {Template: "Could not reach Seafile. Is the server up?"},
+	ReasonSeafileApiTokenRequired:             {Template: "an API token is required when first connecting Seafile"},
+	ReasonPaperlessApiTokenInvalid:            {Template: "Paperless API token is invalid, expired, or not configured"},
+	ReasonPaperlessBaseUrlInvalid:             {Template: "Paperless base URL is invalid"},
+	ReasonPaperlessRedirect:                   {Template: "Paperless answered with a redirect — check the base URL (http vs https, path)."},
+	ReasonPaperlessUpstreamError:              {Template: "Paperless returned an error ({status}). The instance is reachable — this request itself failed.", Params: []string{"status"}},
+	ReasonPaperlessResponseUnparseable:        {Template: "Paperless returned a response that could not be parsed. The API may have changed — check Paperless version compatibility."},
+	ReasonPaperlessUnreachable:                {Template: "Could not reach Paperless. Is the instance up?"},
+	ReasonPaperlessApiTokenRequired:           {Template: "an API token is required when first connecting Paperless"},
+	ReasonGeopulseApiTokenInvalid:             {Template: "GeoPulse API token is invalid, expired, or not configured"},
+	ReasonGeopulseBaseUrlInvalid:              {Template: "GeoPulse base URL is invalid"},
+	ReasonGeopulseRedirect:                    {Template: "GeoPulse answered with a redirect — check the base URL (http vs https, path)."},
+	ReasonGeopulseUpstreamError:               {Template: "GeoPulse returned an error ({status}). The instance is reachable — this request itself failed.", Params: []string{"status"}},
+	ReasonGeopulseResponseUnparseable:         {Template: "GeoPulse returned a response that could not be parsed. The API may have changed — check GeoPulse version compatibility."},
+	ReasonGeopulseUnreachable:                 {Template: "Could not reach GeoPulse. Is the instance up?"},
+	ReasonGeopulseApiTokenRequired:            {Template: "an API token is required when first connecting GeoPulse"},
+	ReasonWebdavAppPasswordInvalid:            {Template: "Nextcloud app password is invalid, expired, or not configured"},
+	ReasonWebdavBaseUrlInvalid:                {Template: "Nextcloud base URL is invalid"},
+	ReasonWebdavRedirect:                      {Template: "Nextcloud answered with a redirect — check the base URL (http vs https, path)."},
+	ReasonWebdavUpstreamError:                 {Template: "Nextcloud returned an error ({status}). The instance is reachable — this request itself failed.", Params: []string{"status"}},
+	ReasonWebdavResponseUnparseable:           {Template: "Nextcloud returned a response that could not be parsed. The WebDAV surface may have changed — check the instance version."},
+	ReasonWebdavUnreachable:                   {Template: "Could not reach Nextcloud. Is the instance up?"},
+	ReasonWebdavAppPasswordRequired:           {Template: "an app password is required when first connecting Nextcloud"},
+	ReasonImmichPersonIdRequired:              {Template: "person_id is required"},
+	ReasonPaperlessDocumentIdRequired:         {Template: "document_id is required"},
+	ReasonWebdavPathRequired:                  {Template: "path is required"},
+	ReasonSeafileRepoAndPathRequired:          {Template: "repo_id and path are required"},
+	ReasonGeopulseDateRequired:                {Template: "date is required (YYYY-MM-DD)"},
+	ReasonGeopulseDateInvalid:                 {Template: "date must be YYYY-MM-DD and timezone a valid IANA name"},
+	ReasonGeopulseTokenUndecryptable:          {Template: "The stored GeoPulse API token can no longer be decrypted — re-enter it in Settings"},
+	ReasonImmichSvgUnsupported:                {Template: "SVG images are not supported by the image proxy"},
+	ReasonIntegrationRequestInvalid:           {Template: "Request validation failed"},
+	ReasonIntegrationIdInvalid:                {Template: "must be a positive integer"},
+	ReasonIntegrationPasswordReentryRequired:  {Template: "re-enter the password when changing the server"},
+	ReasonIntegrationWebhookLimit:             {Template: "maximum of 20 webhooks per user reached"},
+	ReasonCalendarSubscriptionLimit:           {Template: "maximum of 10 calendar subscriptions per user reached"},
+	ReasonCalendarUrlSchemeInvalid:            {Template: "must be an http, https, or webcal URL"},
+	ReasonCalendarUrlInvalid:                  {Template: "calendar URL is invalid"},
+	ReasonCalendarAuthFailed:                  {Template: "authentication failed - check username and password"},
+	ReasonCalendarNotFoundAtUrl:               {Template: "calendar not found at the given URL"},
+	ReasonCalendarPrivateAddress:              {Template: "calendar URL resolves to a blocked private address"},
+	ReasonCalendarResponseTooLarge:            {Template: "calendar response is too large"},
+	ReasonCalendarDataUnparseable:             {Template: "calendar returned data that could not be parsed"},
+	ReasonCalendarUnreachable:                 {Template: "calendar could not be reached — check the subscription URL"},
+	ReasonContactSubscriptionLimit:            {Template: "maximum of 10 contact subscriptions per user reached"},
+	ReasonContactSubscriptionUrlSchemeInvalid: {Template: "must be an http or https URL"},
+	ReasonContactSubscriptionUrlInvalid:       {Template: "contact subscription URL is invalid"},
+	ReasonContactSubscriptionAuthFailed:       {Template: "authentication failed - check username and password"},
+	ReasonContactSubscriptionNotFoundAtUrl:    {Template: "address book not found at the given URL"},
+	ReasonContactSubscriptionPrivateAddress:   {Template: "URL resolves to a blocked private address"},
+	ReasonContactSubscriptionResponseTooLarge: {Template: "server response is too large"},
+	ReasonContactSubscriptionDataUnparseable:  {Template: "server returned data that could not be parsed"},
+	ReasonContactSubscriptionUnreachable:      {Template: "server could not be reached — check the subscription URL"},
+	ReasonNotificationUrlInvalid:              {Template: "notification URL must be a valid http or https URL"},
+	ReasonNotificationPushSubscriptionLimit:   {Template: "maximum of {max} push subscriptions per user reached", Params: []string{"max"}},
+	ReasonNotificationDeviceRegistrationLimit: {Template: "maximum of {max} device registrations per user reached", Params: []string{"max"}},
+	ReasonFeedLimitReached:                    {Template: "feed limit reached (maximum {max} active feeds)", Params: []string{"max"}},
+	ReasonFeedEntityIdNotAllowed:              {Template: "must be empty for an aggregate feed"},
 }
 
 // notFoundReasons maps the string-literal resources passed to ErrNotFound to their

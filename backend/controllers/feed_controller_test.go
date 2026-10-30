@@ -150,6 +150,7 @@ func TestCreateFeed_AggregateWithEntityID_Returns400(t *testing.T) {
 
 	w := postFeed(router, models.FeedInput{Name: "Bad", Kind: models.FeedKindAggregate, EntityID: "11111111-1111-4111-8111-111111111111"})
 	alAssertError(t, w, http.StatusBadRequest, "INVALID_INPUT", "entity_id")
+	requireReason(t, w, 400, "feed_entity_id_not_allowed")
 	var n int64
 	require.NoError(t, db.Model(&models.Feed{}).Count(&n).Error)
 	assert.Zero(t, n, "a rejected create must not insert a feed")
@@ -167,6 +168,7 @@ func TestCreateFeed_FiftyFirst_Returns422(t *testing.T) {
 
 	w := postFeed(router, models.FeedInput{Name: "one too many", Kind: models.FeedKindAggregate})
 	assert.Equal(t, http.StatusUnprocessableEntity, w.Code, w.Body.String())
+	requireReason(t, w, 422, "feed_limit_reached")
 }
 
 func TestListFeeds_ExcludesRevoked(t *testing.T) {

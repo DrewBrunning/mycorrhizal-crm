@@ -25,24 +25,24 @@ func abortPaperlessServiceError(c *gin.Context, err error) {
 		// issue #524: a missing/never-configured connection or an
 		// invalid/expired token is the caller's own credentials or setup, not
 		// a server malfunction — 400, not 503.
-		apperrors.AbortWithError(c, apperrors.ErrValidation("Paperless API token is invalid, expired, or not configured").WithError(err))
+		apperrors.AbortWithError(c, apperrors.ErrValidation("Paperless API token is invalid, expired, or not configured").WithReason(apperrors.ReasonPaperlessApiTokenInvalid, nil).WithError(err))
 	case errors.Is(err, services.ErrPaperlessNotFound):
 		apperrors.AbortWithError(c, apperrors.ErrNotFound("Paperless document").WithError(err))
 	case errors.Is(err, services.ErrPaperlessInvalidURL):
-		apperrors.AbortWithError(c, apperrors.ErrValidation("Paperless base URL is invalid"))
+		apperrors.AbortWithError(c, apperrors.ErrValidation("Paperless base URL is invalid").WithReason(apperrors.ReasonPaperlessBaseUrlInvalid, nil))
 	case errors.Is(err, services.ErrPaperlessRedirect):
-		apperrors.AbortWithError(c, apperrors.ErrExternal("Paperless", "Paperless answered with a redirect — check the base URL (http vs https, path).").WithError(err))
+		apperrors.AbortWithError(c, apperrors.ErrExternal("Paperless", "Paperless answered with a redirect — check the base URL (http vs https, path).").WithReason(apperrors.ReasonPaperlessRedirect, nil).WithError(err))
 	case errors.Is(err, services.ErrPaperlessRequestFailed):
 		status := "an unexpected status"
 		var reqErr *services.PaperlessRequestError
 		if errors.As(err, &reqErr) {
 			status = reqErr.Status
 		}
-		apperrors.AbortWithError(c, apperrors.ErrExternal("Paperless", fmt.Sprintf("Paperless returned an error (%s). The instance is reachable — this request itself failed.", status)).WithError(err))
+		apperrors.AbortWithError(c, apperrors.ErrExternal("Paperless", fmt.Sprintf("Paperless returned an error (%s). The instance is reachable — this request itself failed.", status)).WithReason(apperrors.ReasonPaperlessUpstreamError, map[string]any{"status": status}).WithError(err))
 	case errors.Is(err, services.ErrPaperlessInvalidData):
-		apperrors.AbortWithError(c, apperrors.ErrExternal("Paperless", "Paperless returned a response that could not be parsed. The API may have changed — check Paperless version compatibility.").WithError(err))
+		apperrors.AbortWithError(c, apperrors.ErrExternal("Paperless", "Paperless returned a response that could not be parsed. The API may have changed — check Paperless version compatibility.").WithReason(apperrors.ReasonPaperlessResponseUnparseable, nil).WithError(err))
 	default:
-		apperrors.AbortWithError(c, apperrors.ErrExternal("Paperless", "Could not reach Paperless. Is the instance up?").WithError(err))
+		apperrors.AbortWithError(c, apperrors.ErrExternal("Paperless", "Could not reach Paperless. Is the instance up?").WithReason(apperrors.ReasonPaperlessUnreachable, nil).WithError(err))
 	}
 }
 
@@ -95,7 +95,7 @@ func SavePaperlessConfig(c *gin.Context) {
 	}
 	// A create with no API token is a validation error ("API token required").
 	if existing == nil && strings.TrimSpace(input.APIToken) == "" {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("api_token", "an API token is required when first connecting Paperless"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("api_token", "an API token is required when first connecting Paperless").WithReason(apperrors.ReasonPaperlessApiTokenRequired, nil))
 		return
 	}
 
@@ -201,7 +201,7 @@ func LinkPaperlessContact(c *gin.Context) {
 		return
 	}
 	if verrs := middleware.ValidateStruct(&input); len(verrs) > 0 {
-		appErr := apperrors.ErrValidation("Request validation failed")
+		appErr := apperrors.ErrValidation("Request validation failed").WithReason(apperrors.ReasonIntegrationRequestInvalid, nil)
 		for _, ve := range verrs {
 			appErr.WithDetails(ve.Field, ve.Message)
 		}
@@ -209,7 +209,7 @@ func LinkPaperlessContact(c *gin.Context) {
 		return
 	}
 	if strings.TrimSpace(input.DocumentID) == "" {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("document_id", "document_id is required"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("document_id", "document_id is required").WithReason(apperrors.ReasonPaperlessDocumentIdRequired, nil))
 		return
 	}
 

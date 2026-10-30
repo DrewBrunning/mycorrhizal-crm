@@ -254,6 +254,7 @@ func TestCreateWebhookLimit(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	mzErrorCode(t, w, http.StatusConflict, "CONFLICT")
+	requireReason(t, w, 409, "integration_webhook_limit")
 	var count int64
 	require.NoError(t, db.Model(&models.Webhook{}).Where("user_id = ?", user.ID).Count(&count).Error)
 	assert.Equal(t, int64(maxWebhooksPerUser), count, "the over-limit create must not insert a row")

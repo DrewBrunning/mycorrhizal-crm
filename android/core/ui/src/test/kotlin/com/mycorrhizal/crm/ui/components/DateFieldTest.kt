@@ -49,7 +49,7 @@ class DateFieldTest {
         }
 
         composeTestRule.onNodeWithText("08/10/2026").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("date").performClick()
+        composeTestRule.onNodeWithTag("date-picker-open").performClick()
         composeTestRule.onNodeWithText("Confirm").performClick()
 
         assertEquals("2026-08-10", picked)
@@ -71,7 +71,7 @@ class DateFieldTest {
         }
 
         composeTestRule.onNodeWithText("29.02.").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("birthday").performClick()
+        composeTestRule.onNodeWithTag("birthday-picker-open").performClick()
         composeTestRule.onNodeWithTag("date-field-year-unknown").assertIsOn()
         composeTestRule.onNodeWithText("Confirm").performClick()
 
@@ -137,7 +137,7 @@ class DateFieldTest {
             }
         }
 
-        composeTestRule.onNodeWithTag("date-time").performClick()
+        composeTestRule.onNodeWithTag("date-time-picker-open").performClick()
         composeTestRule.onNodeWithText("Add time").performClick()
         composeTestRule.onNodeWithText("Time").assertIsDisplayed()
         composeTestRule.onNodeWithTag("time-picker-confirm").performClick()
@@ -184,7 +184,7 @@ class DateFieldTest {
             }
         }
 
-        composeTestRule.onNodeWithTag("date-time").performClick()
+        composeTestRule.onNodeWithTag("date-time-picker-open").performClick()
         composeTestRule.onNodeWithTag("date-picker-time").performClick()
         composeTestRule.onNodeWithTag("time-picker-remove").performClick()
         composeTestRule.onNodeWithTag("date-picker-confirm").performClick()

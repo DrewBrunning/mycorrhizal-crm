@@ -110,7 +110,7 @@ func SaveNotificationConfig(c *gin.Context) {
 		// reject it as a 400 with the specific reason immediately at save time,
 		// rather than only on first use.
 		if errors.Is(err, services.ErrInvalidNotificationURL) {
-			apperrors.AbortWithError(c, apperrors.ErrValidation(err.Error()))
+			apperrors.AbortWithError(c, apperrors.ErrValidation(err.Error()).WithReason(apperrors.ReasonNotificationUrlInvalid, nil))
 			return
 		}
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save notification config").WithError(err))
@@ -150,7 +150,7 @@ func TestNotificationChannel(c *gin.Context) {
 		return
 	}
 	if verrs := middleware.ValidateStruct(&input); len(verrs) > 0 {
-		appErr := apperrors.ErrValidation("Request validation failed")
+		appErr := apperrors.ErrValidation("Request validation failed").WithReason(apperrors.ReasonIntegrationRequestInvalid, nil)
 		for _, ve := range verrs {
 			appErr.WithDetails(ve.Field, ve.Message)
 		}
@@ -212,7 +212,7 @@ func CreatePushSubscription(c *gin.Context) {
 		return
 	}
 	if count >= MaxPushSubscriptionsPerUser {
-		apperrors.AbortWithError(c, apperrors.ErrConflict(fmt.Sprintf("maximum of %d push subscriptions per user reached", MaxPushSubscriptionsPerUser)))
+		apperrors.AbortWithError(c, apperrors.ErrConflict(fmt.Sprintf("maximum of %d push subscriptions per user reached", MaxPushSubscriptionsPerUser)).WithReason(apperrors.ReasonNotificationPushSubscriptionLimit, map[string]any{"max": MaxPushSubscriptionsPerUser}))
 		return
 	}
 
@@ -234,7 +234,7 @@ func DeletePushSubscription(c *gin.Context) {
 
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("id", "must be a positive integer"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("id", "must be a positive integer").WithReason(apperrors.ReasonIntegrationIdInvalid, nil))
 		return
 	}
 
@@ -304,7 +304,7 @@ func CreateDeviceRegistration(c *gin.Context) {
 		return
 	}
 	if count >= MaxDeviceRegistrationsPerUser {
-		apperrors.AbortWithError(c, apperrors.ErrConflict(fmt.Sprintf("maximum of %d device registrations per user reached", MaxDeviceRegistrationsPerUser)))
+		apperrors.AbortWithError(c, apperrors.ErrConflict(fmt.Sprintf("maximum of %d device registrations per user reached", MaxDeviceRegistrationsPerUser)).WithReason(apperrors.ReasonNotificationDeviceRegistrationLimit, map[string]any{"max": MaxDeviceRegistrationsPerUser}))
 		return
 	}
 
@@ -327,7 +327,7 @@ func DeleteDeviceRegistration(c *gin.Context) {
 
 	id, err := strconv.ParseUint(c.Param("id"), 10, strconv.IntSize)
 	if err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("id", "must be a positive integer"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("id", "must be a positive integer").WithReason(apperrors.ReasonIntegrationIdInvalid, nil))
 		return
 	}
 

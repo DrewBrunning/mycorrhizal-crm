@@ -137,7 +137,8 @@ fun ActivitiesInboxScreenContent(
                     )
                 },
                 actions = {
-                    onLogFromLocation?.let { onLog ->
+                    // Issue #2205: also requires a stored GeoPulse connection.
+                    onLogFromLocation?.takeIf { state.geoPulseConfigured }?.let { onLog ->
                         AccessibleIconButton(onClick = onLog) {
                             Icon(
                                 Icons.Outlined.LocationOn,

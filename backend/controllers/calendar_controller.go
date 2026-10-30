@@ -45,7 +45,7 @@ func CreateCalendarSubscription(c *gin.Context) {
 		return
 	}
 	if count >= maxCalendarSubscriptionsPerUser {
-		apperrors.AbortWithError(c, apperrors.ErrConflict("maximum of 10 calendar subscriptions per user reached"))
+		apperrors.AbortWithError(c, apperrors.ErrConflict("maximum of 10 calendar subscriptions per user reached").WithReason(apperrors.ReasonCalendarSubscriptionLimit, nil))
 		return
 	}
 
@@ -56,7 +56,7 @@ func CreateCalendarSubscription(c *gin.Context) {
 	}
 
 	if _, err := services.NormalizeCalendarURL(input.URL); err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("url", "must be an http, https, or webcal URL"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("url", "must be an http, https, or webcal URL").WithReason(apperrors.ReasonCalendarUrlSchemeInvalid, nil))
 		return
 	}
 
@@ -111,7 +111,7 @@ func UpdateCalendarSubscription(c *gin.Context) {
 
 	newURL, err := services.NormalizeCalendarURL(input.URL)
 	if err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("url", "must be an http, https, or webcal URL"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("url", "must be an http, https, or webcal URL").WithReason(apperrors.ReasonCalendarUrlSchemeInvalid, nil))
 		return
 	}
 
@@ -122,7 +122,7 @@ func UpdateCalendarSubscription(c *gin.Context) {
 	if input.Password == "" && !input.ClearPassword && subscription.PasswordEncrypted != "" {
 		oldURL, oldErr := services.NormalizeCalendarURL(subscription.URL)
 		if oldErr != nil || !services.SameOrigin(oldURL.String(), newURL.String()) {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("password", "re-enter the password when changing the server"))
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("password", "re-enter the password when changing the server").WithReason(apperrors.ReasonIntegrationPasswordReentryRequired, nil))
 			return
 		}
 	}
@@ -227,23 +227,23 @@ func SyncCalendarSubscription(c *gin.Context) {
 func calendarSyncError(err error) *apperrors.AppError {
 	switch {
 	case errors.Is(err, services.ErrCalendarInvalidURL):
-		return apperrors.ErrInvalidInput("url", "calendar URL is invalid")
+		return apperrors.ErrInvalidInput("url", "calendar URL is invalid").WithReason(apperrors.ReasonCalendarUrlInvalid, nil)
 	case errors.Is(err, services.ErrCalendarUnauthorized):
-		return apperrors.ErrExternal("Calendar", "authentication failed - check username and password")
+		return apperrors.ErrExternal("Calendar", "authentication failed - check username and password").WithReason(apperrors.ReasonCalendarAuthFailed, nil)
 	case errors.Is(err, services.ErrCalendarNotFound):
-		return apperrors.ErrExternal("Calendar", "calendar not found at the given URL")
+		return apperrors.ErrExternal("Calendar", "calendar not found at the given URL").WithReason(apperrors.ReasonCalendarNotFoundAtUrl, nil)
 	case errors.Is(err, services.ErrCalendarPrivateAddress):
-		return apperrors.ErrExternal("Calendar", "calendar URL resolves to a blocked private address")
+		return apperrors.ErrExternal("Calendar", "calendar URL resolves to a blocked private address").WithReason(apperrors.ReasonCalendarPrivateAddress, nil)
 	case errors.Is(err, services.ErrCalendarTooLarge):
-		return apperrors.ErrExternal("Calendar", "calendar response is too large")
+		return apperrors.ErrExternal("Calendar", "calendar response is too large").WithReason(apperrors.ReasonCalendarResponseTooLarge, nil)
 	case errors.Is(err, services.ErrCalendarInvalidData):
-		return apperrors.ErrExternal("Calendar", "calendar returned data that could not be parsed")
+		return apperrors.ErrExternal("Calendar", "calendar returned data that could not be parsed").WithReason(apperrors.ReasonCalendarDataUnparseable, nil)
 	case errors.Is(err, services.ErrCalendarUnreachable):
 		// issue #524: the subscription's own URL is what can't be reached —
 		// the caller's configuration, not a server malfunction — so this is a
 		// 400, not a 503 (Schemathesis's not_a_server_error check correctly
 		// refuses to accept a 5xx here).
-		return apperrors.ErrValidation("calendar could not be reached — check the subscription URL")
+		return apperrors.ErrValidation("calendar could not be reached — check the subscription URL").WithReason(apperrors.ReasonCalendarUnreachable, nil)
 	default:
 		return apperrors.ErrOperationFailed("Calendar sync", err.Error())
 	}
@@ -252,7 +252,7 @@ func calendarSyncError(err error) *apperrors.AppError {
 func findCalendarSubscription(c *gin.Context, db *gorm.DB, userID uint) (models.CalendarSubscription, bool) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("id", "must be a positive integer"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("id", "must be a positive integer").WithReason(apperrors.ReasonIntegrationIdInvalid, nil))
 		return models.CalendarSubscription{}, false
 	}
 
