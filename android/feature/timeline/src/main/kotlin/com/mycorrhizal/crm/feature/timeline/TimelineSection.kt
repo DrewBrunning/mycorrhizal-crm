@@ -27,6 +27,8 @@ import androidx.compose.ui.unit.dp
 import com.mycorrhizal.crm.model.network.ExternalActivity
 import com.mycorrhizal.crm.model.network.Gift
 import com.mycorrhizal.crm.model.network.LifeEvent
+import com.mycorrhizal.crm.model.util.ActivityDateRange
+import com.mycorrhizal.crm.ui.LocalDateFormat
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.activityTypeLabel
 import com.mycorrhizal.crm.ui.components.giftStatusLabelRes
@@ -91,11 +93,22 @@ fun TimelineItemRow(
     onUndoCompletion: (Int) -> Unit = {}
 ) {
     when (item) {
-        is TimelineItem.ActivityItem -> TimelineActivityRow(
-            item.activity.title.orEmpty(),
-            item.activity.type?.takeIf { it.isNotBlank() }?.let { activityTypeLabel(it) }.orEmpty(),
-            onClick = { onEditActivity(item.activity.id) }
-        )
+        is TimelineItem.ActivityItem -> {
+            // Issue #2006: only a multi-day activity adds its range; a single day keeps the
+            // type-only subtitle the row always had.
+            val range = ActivityDateRange.rangeOrNull(
+                item.activity.date,
+                item.activity.endDate,
+                LocalDateFormat.current
+            )
+            val type = item.activity.type?.takeIf { it.isNotBlank() }
+                ?.let { activityTypeLabel(it) }
+            TimelineActivityRow(
+                item.activity.title.orEmpty(),
+                listOfNotNull(type, range).joinToString(" · "),
+                onClick = { onEditActivity(item.activity.id) }
+            )
+        }
 
         is TimelineItem.NoteItem -> TimelineNoteRow(
             item.note.content.orEmpty(),

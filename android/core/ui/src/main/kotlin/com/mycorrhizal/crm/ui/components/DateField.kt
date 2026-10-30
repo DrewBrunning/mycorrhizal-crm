@@ -77,7 +77,9 @@ fun DateField(
     onClear: (() -> Unit)? = null,
     /** Earliest date a *new* selection may make (reminders' `min: today`). */
     selectableFrom: LocalDate? = null,
-    testTag: String? = null
+    testTag: String? = null,
+    /** Issue #2006: an inline validation message under the field (also marks it as an error). */
+    errorText: String? = null
 ) {
     val dateFormat = LocalDateFormat.current
     val is24Hour = LocalIs24Hour.current
@@ -100,6 +102,8 @@ fun DateField(
             // can be the picker's tap target without swallowing the icons.
             trailingIcon = { Spacer(Modifier.width(actionsWidth)) },
             singleLine = true,
+            isError = errorText != null,
+            supportingText = errorText?.let { message -> { Text(message) } },
             modifier = Modifier
                 .fillMaxWidth()
                 .then(if (testTag != null) Modifier.testTag(testTag) else Modifier)
@@ -159,7 +163,10 @@ private fun DateFieldPickerDialog(
 ) {
     val zone = ZoneId.systemDefault()
     val initial = remember(value, mode) { DateFieldValue.parse(value, mode, zone) }
-    val initialDate = initial.date ?: LocalDate.now()
+    // A field with a floor (a reminder's today, an activity's end after its start) opens on the
+    // first selectable day rather than a day the picker would refuse.
+    val today = LocalDate.now()
+    val initialDate = initial.date ?: selectableFrom?.let { maxOf(today, it) } ?: today
     val initialMillis = initialDate.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
     val dateState = rememberDatePickerState(
         initialSelectedDateMillis = initialMillis,

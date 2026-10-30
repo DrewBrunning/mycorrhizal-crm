@@ -1005,6 +1005,8 @@
     <string name="activity_type">Art</string>
     <string name="activity_type_hint">call, visit, meal, message, gift, …</string>
     <string name="activity_date">Datum</string>
+    <string name="activity_end_date">Enddatum (optional)</string>
+    <string name="activity_end_before_start">Das Enddatum darf nicht vor dem Startdatum liegen</string>
     <string name="activity_location">Ort</string>
     <string name="activity_description">Beschreibung</string>
     <string name="activity_create">Aktivität erstellen</string>

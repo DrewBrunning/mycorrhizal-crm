@@ -1028,6 +1028,8 @@
     <string name="activity_type">Type</string>
     <string name="activity_type_hint">call, visit, meal, message, gift, …</string>
     <string name="activity_date">Date</string>
+    <string name="activity_end_date">Date de fin (facultative)</string>
+    <string name="activity_end_before_start">La date de fin ne peut pas être antérieure à la date de début</string>
     <string name="activity_location">Lieu</string>
     <string name="activity_description">Description</string>
     <string name="activity_create">Créer l\'activité</string>

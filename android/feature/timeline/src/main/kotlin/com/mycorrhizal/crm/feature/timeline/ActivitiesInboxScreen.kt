@@ -45,7 +45,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ContactFlat
-import com.mycorrhizal.crm.model.util.DateFormat
+import com.mycorrhizal.crm.model.util.ActivityDateRange
 import com.mycorrhizal.crm.ui.LocalDateFormat
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
@@ -280,11 +280,9 @@ private fun InboxActivityRow(
             val subtitle = listOfNotNull(
                 activity.type?.takeIf { it.isNotBlank() }?.let { activityTypeLabel(it) },
                 activity.location?.takeIf { it.isNotBlank() },
+                // Issue #2006: a multi-day activity shows its range, else the start day.
                 activity.date?.let {
-                    DateFormat.formatTimestamp(
-                        it,
-                        dateFormat
-                    )
+                    ActivityDateRange.format(it, activity.endDate, dateFormat)
                 }?.takeIf { it.isNotBlank() }
             ).joinToString(" · ")
             if (subtitle.isNotBlank()) {

@@ -61,6 +61,7 @@ class ActivityFormScreenTest {
                         onTitleChange = {},
                         onTypeChange = {},
                         onDateChange = onDateChange,
+                        onEndDateChange = {},
                         onDescriptionChange = {},
                         onLocationChange = {},
                         onContactSearchChange = onSearchChange,
