@@ -111,7 +111,7 @@ func LoginUser(context *gin.Context, cfg *config.Config) {
 
 	err := context.ShouldBindJSON(&input)
 	if err != nil {
-		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("", err.Error()))
+		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("", err.Error()).WithReason(apperrors.ReasonAuthLoginRequestInvalid, map[string]any{"reason": err.Error()}))
 		return
 	}
 
@@ -364,13 +364,13 @@ func RequestPasswordReset(context *gin.Context, cfg *config.Config) {
 
 	validated, exists := context.Get("validated")
 	if !exists {
-		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("", "validation data not found"))
+		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("", "validation data not found").WithReason(apperrors.ReasonValidationDataNotFound, nil))
 		return
 	}
 
 	inputPtr, ok := validated.(*models.PasswordResetRequestInput)
 	if !ok || inputPtr == nil {
-		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("", "invalid validation data type"))
+		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("", "invalid validation data type").WithReason(apperrors.ReasonValidationDataTypeInvalid, nil))
 		return
 	}
 	input := *inputPtr
@@ -503,13 +503,13 @@ func ConfirmPasswordReset(context *gin.Context, cfg *config.Config) {
 
 	validated, exists := context.Get("validated")
 	if !exists {
-		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("", "validation data not found"))
+		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("", "validation data not found").WithReason(apperrors.ReasonValidationDataNotFound, nil))
 		return
 	}
 
 	inputPtr, ok := validated.(*models.PasswordResetConfirmInput)
 	if !ok || inputPtr == nil {
-		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("", "invalid validation data type"))
+		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("", "invalid validation data type").WithReason(apperrors.ReasonValidationDataTypeInvalid, nil))
 		return
 	}
 	input := *inputPtr
@@ -938,13 +938,13 @@ func ChangePassword(context *gin.Context, cfg *config.Config) {
 
 	validated, exists := context.Get("validated")
 	if !exists {
-		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("", "validation data not found"))
+		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("", "validation data not found").WithReason(apperrors.ReasonValidationDataNotFound, nil))
 		return
 	}
 
 	inputPtr, ok := validated.(*models.ChangePasswordInput)
 	if !ok || inputPtr == nil {
-		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("", "invalid validation data type"))
+		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("", "invalid validation data type").WithReason(apperrors.ReasonValidationDataTypeInvalid, nil))
 		return
 	}
 	input := *inputPtr

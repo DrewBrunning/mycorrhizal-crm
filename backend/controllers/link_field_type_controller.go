@@ -288,7 +288,7 @@ func ReorderLinkFieldTypes(c *gin.Context) {
 		return
 	}
 	if int(count) != len(input.Order) || int(total) != len(input.Order) {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("order", "must include every one of the user's link field types exactly once, with no duplicates"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("order", "must include every one of the user's link field types exactly once, with no duplicates").WithReason(apperrors.ReasonContactLinkFieldOrderIncomplete, nil))
 		return
 	}
 

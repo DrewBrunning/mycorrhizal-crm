@@ -92,7 +92,7 @@ func RequireInteractiveSessionForCredentials() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if isAPIToken, _ := c.Get("isAPIToken"); isAPIToken == true && IsCredentialManagementRoute(c.FullPath()) {
 			apperrors.AbortWithError(c, apperrors.ErrForbidden(
-				"This endpoint requires an interactive session; API tokens cannot manage credentials"))
+				"This endpoint requires an interactive session; API tokens cannot manage credentials").WithReason(apperrors.ReasonAuthInteractiveSessionRequired, nil))
 			return
 		}
 		c.Next()
@@ -116,5 +116,5 @@ func requireTokenScope(c *gin.Context, token *models.ApiToken, scope string) {
 		return
 	}
 	apperrors.AbortWithError(c, apperrors.ErrForbidden(
-		"This token does not have the "+scope+" scope required for this request"))
+		"This token does not have the "+scope+" scope required for this request").WithReason(apperrors.ReasonAuthTokenScopeRequired, map[string]any{"scope": scope}))
 }

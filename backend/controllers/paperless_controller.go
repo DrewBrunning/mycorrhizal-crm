@@ -106,7 +106,7 @@ func SavePaperlessConfig(c *gin.Context) {
 			return
 		}
 		if errors.Is(saveErr, services.ErrPaperlessSecretRequired) {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("api_token", saveErr.Error()))
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("api_token", saveErr.Error()).WithReason(apperrors.ReasonIntegrationSaveFailed, map[string]any{"reason": saveErr.Error()}))
 			return
 		}
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save Paperless config").WithError(saveErr))
@@ -197,7 +197,7 @@ func LinkPaperlessContact(c *gin.Context) {
 		DocumentID string `json:"document_id" validate:"required,min=1,max=64"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("request body", err.Error()))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("request body", err.Error()).WithReason(apperrors.ReasonIntegrationRequestBodyInvalid, map[string]any{"reason": err.Error()}))
 		return
 	}
 	if verrs := middleware.ValidateStruct(&input); len(verrs) > 0 {

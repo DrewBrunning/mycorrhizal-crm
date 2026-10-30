@@ -245,7 +245,7 @@ func resolveGraphScope(c *gin.Context, db *gorm.DB, userID uint) (graphScope, bo
 		fullParamSeen = true
 		full, err := strconv.ParseBool(raw)
 		if err != nil {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("full", "full must be true or false"))
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("full", "full must be true or false").WithReason(apperrors.ReasonGraphFullInvalid, nil))
 			return graphScope{}, false
 		}
 		if full {
@@ -257,7 +257,7 @@ func resolveGraphScope(c *gin.Context, db *gorm.DB, userID uint) (graphScope, bo
 	if raw := c.Query("depth"); raw != "" {
 		parsed, err := strconv.Atoi(raw)
 		if err != nil || parsed < 1 || parsed > services.MaxGraphDepth {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("depth", fmt.Sprintf("depth must be an integer from 1 to %d", services.MaxGraphDepth)))
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("depth", fmt.Sprintf("depth must be an integer from 1 to %d", services.MaxGraphDepth)).WithReason(apperrors.ReasonGraphDepthInvalid, map[string]any{"max": services.MaxGraphDepth}))
 			return graphScope{}, false
 		}
 		depth = parsed
@@ -326,7 +326,7 @@ func GetGraphConnections(c *gin.Context) {
 
 	from := strings.TrimSpace(c.Query("from"))
 	if from == "" {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("from", "from (a Contact.VCardUID) is required"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("from", "from (a Contact.VCardUID) is required").WithReason(apperrors.ReasonGraphFromRequired, nil))
 		return
 	}
 
@@ -334,7 +334,7 @@ func GetGraphConnections(c *gin.Context) {
 	if raw := c.Query("depth"); raw != "" {
 		parsed, err := strconv.Atoi(raw)
 		if err != nil || parsed < 1 {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("depth", "depth must be a positive integer"))
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("depth", "depth must be a positive integer").WithReason(apperrors.ReasonGraphDepthNotPositive, nil))
 			return
 		}
 		depth = parsed
@@ -353,7 +353,7 @@ func GetGraphConnections(c *gin.Context) {
 	chains, err := services.TraverseGraph(db, userID, from, depth, c.Query("relation"))
 	if err != nil {
 		if errors.Is(err, services.ErrTraversalTooDeep) {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("depth", "depth must be at most 5"))
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("depth", "depth must be at most 5").WithReason(apperrors.ReasonGraphDepthTooLarge, map[string]any{"max": 5}))
 			return
 		}
 		abortQueryFailure(c, "Failed to traverse graph", err)

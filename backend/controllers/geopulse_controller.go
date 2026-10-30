@@ -102,7 +102,7 @@ func SaveGeoPulseConfig(c *gin.Context) {
 			return
 		}
 		if errors.Is(saveErr, services.ErrGeoPulseTokenRequired) {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("api_key", saveErr.Error()))
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("api_key", saveErr.Error()).WithReason(apperrors.ReasonIntegrationSaveFailed, map[string]any{"reason": saveErr.Error()}))
 			return
 		}
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save GeoPulse config").WithError(saveErr))

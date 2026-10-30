@@ -79,7 +79,7 @@ func IdempotencyMiddleware() gin.HandlerFunc {
 		}
 		if len(key) > maxIdempotencyKeyLen {
 			apperrors.AbortWithError(c, apperrors.ErrInvalidInput(IdempotencyKeyHeader,
-				"must be at most 255 characters"))
+				"must be at most 255 characters").WithReason(apperrors.ReasonCommonIdempotencyKeyTooLong, map[string]any{"max": maxIdempotencyKeyLen}))
 			return
 		}
 
@@ -100,7 +100,7 @@ func IdempotencyMiddleware() gin.HandlerFunc {
 
 		body, err := io.ReadAll(c.Request.Body)
 		if err != nil {
-			apperrors.AbortWithError(c, apperrors.ErrValidation("Failed to read request body"))
+			apperrors.AbortWithError(c, apperrors.ErrValidation("Failed to read request body").WithReason(apperrors.ReasonCommonRequestBodyUnreadable, nil))
 			return
 		}
 		_ = c.Request.Body.Close()

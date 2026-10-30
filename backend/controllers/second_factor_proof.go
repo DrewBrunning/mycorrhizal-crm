@@ -63,7 +63,7 @@ func requireSecondFactorProof(c *gin.Context, db *gorm.DB, cfg *config.Config, u
 		proved = valid2FAProof(db, user, in.Code, cfg.JWTSecretKey)
 	}
 	if sameCredential {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("assertion", "That is the passkey being removed. Verify with a different passkey."))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("assertion", "That is the passkey being removed. Verify with a different passkey.").WithReason(apperrors.ReasonAuthPasskeyRemovalVerifyOther, nil))
 		return false
 	}
 	if !proved {
@@ -71,7 +71,7 @@ func requireSecondFactorProof(c *gin.Context, db *gorm.DB, cfg *config.Config, u
 			abortLocked(c, secs, "Too many failed verification attempts. Please try again later.")
 			return false
 		}
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput(opts.field, "Invalid code. Please try again."))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput(opts.field, "Invalid code. Please try again.").WithReason(apperrors.ReasonAuthTwoFactorCodeInvalid, nil))
 		return false
 	}
 	limiter.RecordSuccessfulLogin(key)

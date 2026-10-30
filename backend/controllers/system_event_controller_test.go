@@ -157,3 +157,13 @@ func TestListSystemEvents_LimitCap(t *testing.T) {
 	events := decodeSystemEvents(t, w.Body.Bytes())
 	assert.Len(t, events, 1)
 }
+
+func TestListSystemEvents_RejectsMalformedUntil(t *testing.T) {
+	_, router := setupSystemEventRouter(t)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/admin/system-events?until=not-a-time", nil)
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusBadRequest, w.Code)
+	code, _ := wireReason(t, w)
+	assert.Equal(t, "validation_timestamp_invalid", code)
+}

@@ -116,7 +116,7 @@ func SaveImmichConfig(c *gin.Context) {
 			return
 		}
 		if errors.Is(saveErr, services.ErrImmichSecretRequired) {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("api_key", saveErr.Error()))
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("api_key", saveErr.Error()).WithReason(apperrors.ReasonIntegrationSaveFailed, map[string]any{"reason": saveErr.Error()}))
 			return
 		}
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save Immich config").WithError(saveErr))
@@ -212,7 +212,7 @@ func LinkImmichContact(c *gin.Context) {
 		PersonName string `json:"person_name,omitempty" validate:"max=200"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("request body", err.Error()))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("request body", err.Error()).WithReason(apperrors.ReasonIntegrationRequestBodyInvalid, map[string]any{"reason": err.Error()}))
 		return
 	}
 	if verrs := middleware.ValidateStruct(&input); len(verrs) > 0 {

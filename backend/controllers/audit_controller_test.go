@@ -218,3 +218,18 @@ func TestUndoAuditEvent_RestoresAmbientFlag(t *testing.T) {
 	assert.False(t, reloaded.Ambient, "undo must revert the ambient flag the edit set")
 	assert.Nil(t, reloaded.CRM.Ambient, "the persisted envelope must follow the restored flat flag")
 }
+
+func TestUndoAuditEvent_RejectsUnsupportedEntityType(t *testing.T) {
+	db, router, user := setupAuditRouter(t, config.Config{AuditRetentionDays: 90})
+	event := models.AuditEvent{
+		EntityType: "note", EntityID: "some-note", Operation: models.AuditOpUpdate, UserID: user.ID,
+	}
+	require.NoError(t, db.Create(&event).Error)
+
+	req, _ := http.NewRequest("POST", "/audit/"+auditItoa(event.ID)+"/undo", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	code, _ := wireReason(t, w)
+	assert.Equal(t, "audit_undo_entity_unsupported", code)
+}

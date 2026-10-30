@@ -342,3 +342,24 @@ func TestCreateContact_RealValidation_UnusualNestedDataAccepted(t *testing.T) {
 		assert.Contains(t, jsContactProps, "/some/unknown/pointer")
 	}
 }
+
+func TestCreateContact_RejectsMissingName(t *testing.T) {
+	_, router := newValidatedContactRouter(t)
+	w := doJSONRequest(router, "POST", "/contacts", []byte(`{"card":{}}`))
+	require.Equal(t, http.StatusBadRequest, w.Code)
+	code, _ := wireReason(t, w)
+	assert.Equal(t, "validation_request_failed", code)
+}
+
+func TestUpdateContact_RejectsMissingName(t *testing.T) {
+	db, router := newValidatedContactRouter(t)
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+	contact := models.Contact{UserID: user.ID, Firstname: "Keeper"}
+	require.NoError(t, db.Create(&contact).Error)
+
+	w := doJSONRequest(router, "PUT", "/contacts/"+strconv.FormatUint(uint64(contact.ID), 10), []byte(`{"card":{}}`))
+	require.Equal(t, http.StatusBadRequest, w.Code)
+	code, _ := wireReason(t, w)
+	assert.Equal(t, "validation_request_failed", code)
+}

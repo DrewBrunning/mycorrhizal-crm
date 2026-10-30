@@ -775,7 +775,7 @@ func (m *ImportSessionManager) ConfirmVCF(db *gorm.DB, userID uint, req models.I
 
 	if txErr != nil {
 		if errors.Is(txErr, errInvalidImportFieldMapping) {
-			return nil, apperrors.ErrInvalidInput("field_mappings", strings.TrimPrefix(txErr.Error(), errInvalidImportFieldMapping.Error()+": "))
+			return nil, apperrors.ErrInvalidInput("field_mappings", strings.TrimPrefix(txErr.Error(), errInvalidImportFieldMapping.Error()+": ")).WithReason(apperrors.ReasonImportFieldMappingsInvalid, map[string]any{"reason": strings.TrimPrefix(txErr.Error(), errInvalidImportFieldMapping.Error()+": ")})
 		}
 		return nil, apperrors.ErrDatabase("Import failed").WithError(txErr)
 	}

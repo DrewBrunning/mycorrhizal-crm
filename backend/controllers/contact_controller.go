@@ -68,7 +68,7 @@ func rejectInvalidPeriods(c *gin.Context, card contactmodel.Card, crm contactmod
 	if len(bad) == 0 {
 		return false
 	}
-	apperrors.AbortWithError(c, apperrors.ErrValidation("Request validation failed").
+	apperrors.AbortWithError(c, apperrors.ErrValidation("Request validation failed").WithReason(apperrors.ReasonValidationRequestFailed, nil).
 		WithDetails("crm.periods", fmt.Sprintf(
 			"%d period(s) reference a missing entry, are empty, or end before they start", len(bad))))
 	return true
@@ -118,7 +118,7 @@ func CreateContact(c *gin.Context) {
 	// component, or a Name.Full, is present" is a derived condition, not a
 	// single field.
 	if contact.Firstname == "" {
-		apperrors.AbortWithError(c, apperrors.ErrValidation("Request validation failed").WithDetails("card.name", "at least one name component (kind=given) or name.full is required"))
+		apperrors.AbortWithError(c, apperrors.ErrValidation("Request validation failed").WithReason(apperrors.ReasonValidationRequestFailed, nil).WithDetails("card.name", "at least one name component (kind=given) or name.full is required"))
 		return
 	}
 
@@ -283,7 +283,7 @@ func GetContacts(c *gin.Context) {
 			hasContactInfo = true
 		case "false":
 		default:
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("has_contact_info", "must be one of: true, false"))
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("has_contact_info", "must be one of: true, false").WithReason(apperrors.ReasonContactHasContactInfoInvalid, nil))
 			return
 		}
 	}
@@ -301,7 +301,7 @@ func GetContacts(c *gin.Context) {
 	// fallback to (updated_at, id) — a sync client would believe it held a
 	// name-ordered feed and quietly diverge.
 	if params.Since && (nameSorted || createdSorted) {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("sort", "sort=name and sort=created_at cannot be combined with since="))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("sort", "sort=name and sort=created_at cannot be combined with since=").WithReason(apperrors.ReasonContactSortSinceConflict, nil))
 		return
 	}
 	if err := CheckFeedCursorAge(c, params); err != nil {
@@ -320,7 +320,7 @@ func GetContacts(c *gin.Context) {
 		if params.Cursor != nil {
 			id, ok := parseCursorID(params.Cursor)
 			if !ok {
-				apperrors.AbortWithError(c, apperrors.ErrInvalidInput("since", "cursor id is malformed"))
+				apperrors.AbortWithError(c, apperrors.ErrInvalidInput("since", "cursor id is malformed").WithReason(apperrors.ReasonValidationCursorMalformed, nil))
 				return
 			}
 			pred, t, idv := cursorPredicate("contacts", params.Cursor, id, false)
@@ -423,7 +423,7 @@ func GetContacts(c *gin.Context) {
 		// combining sequences), so the length check stays conservative.
 		searchTerm = services.NormalizeSearchTerm(searchTerm)
 		if len([]rune(searchTerm)) > services.MaxSearchTermLen {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("search", fmt.Sprintf("search must be at most %d characters", services.MaxSearchTermLen)))
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("search", fmt.Sprintf("search must be at most %d characters", services.MaxSearchTermLen)).WithReason(apperrors.ReasonContactSearchTooLong, map[string]any{"max": services.MaxSearchTermLen}))
 			return
 		}
 		query = applyContactSearch(query, userID, searchTerm)
@@ -473,7 +473,7 @@ func GetContacts(c *gin.Context) {
 	if params.NameCursor != nil {
 		id, ok := parseUintID(params.NameCursor.ID)
 		if !ok {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed"))
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed").WithReason(apperrors.ReasonValidationCursorMalformed, nil))
 			return
 		}
 		pred, t, idv := nameCursorPredicate("contacts", params.NameCursor, id, desc)
@@ -481,7 +481,7 @@ func GetContacts(c *gin.Context) {
 	} else if params.CreatedCursor != nil {
 		id, ok := parseCursorID(params.CreatedCursor)
 		if !ok {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed"))
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed").WithReason(apperrors.ReasonValidationCursorMalformed, nil))
 			return
 		}
 		pred, t, idv := createdAtCursorPredicate("contacts", params.CreatedCursor, id, desc)
@@ -489,7 +489,7 @@ func GetContacts(c *gin.Context) {
 	} else if params.Cursor != nil {
 		id, ok := parseCursorID(params.Cursor)
 		if !ok {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed"))
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed").WithReason(apperrors.ReasonValidationCursorMalformed, nil))
 			return
 		}
 		pred, t, idv := cursorPredicate("contacts", params.Cursor, id, desc)
@@ -736,7 +736,7 @@ func UpdateContact(c *gin.Context) {
 	// echoed UID is a no-op; anything else is rejected before any save. CardDAV
 	// and import have their own UID semantics and do not use this guard.
 	if record.Card.UID != "" && record.Card.UID != contact.VCardUID {
-		apperrors.AbortWithError(c, apperrors.ErrConflict("Contact UID cannot be changed").
+		apperrors.AbortWithError(c, apperrors.ErrConflict("Contact UID cannot be changed").WithReason(apperrors.ReasonContactUIDImmutable, nil).
 			WithDetails("field", "card.uid"))
 		return
 	}
@@ -746,7 +746,7 @@ func UpdateContact(c *gin.Context) {
 	models.ApplyRecordToContact(&contact, record, currentConfig(c).ProfilePhotoDir)
 
 	if contact.Firstname == "" {
-		apperrors.AbortWithError(c, apperrors.ErrValidation("Request validation failed").WithDetails("card.name", "at least one name component (kind=given) or name.full is required"))
+		apperrors.AbortWithError(c, apperrors.ErrValidation("Request validation failed").WithReason(apperrors.ReasonValidationRequestFailed, nil).WithDetails("card.name", "at least one name component (kind=given) or name.full is required"))
 		return
 	}
 

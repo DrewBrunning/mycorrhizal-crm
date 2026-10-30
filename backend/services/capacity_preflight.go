@@ -65,7 +65,7 @@ func preflightImportDiskSpace(db *gorm.DB, approxContacts int) *apperrors.AppErr
 	if err := diskspace.Require(filepath.Dir(path), need); err != nil {
 		return apperrors.ErrInsufficientStorage(fmt.Sprintf(
 			"not enough disk space to import %d contact(s): %v", approxContacts, err,
-		)).WithError(err)
+		)).WithReason(apperrors.ReasonImportDiskSpaceLow, map[string]any{"total": approxContacts, "reason": err}).WithError(err)
 	}
 	return nil
 }

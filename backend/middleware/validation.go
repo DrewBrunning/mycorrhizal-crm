@@ -407,11 +407,11 @@ func ValidateVar(value interface{}, tag string) bool {
 func GetValidated[T any](c *gin.Context) (*T, *apperrors.AppError) {
 	validated, exists := c.Get("validated")
 	if !exists {
-		return nil, apperrors.ErrInvalidInput("request", "validation data not found")
+		return nil, apperrors.ErrInvalidInput("request", "validation data not found").WithReason(apperrors.ReasonValidationDataNotFound, nil)
 	}
 	result, ok := validated.(*T)
 	if !ok {
-		return nil, apperrors.ErrInvalidInput("request", "invalid validation data type")
+		return nil, apperrors.ErrInvalidInput("request", "invalid validation data type").WithReason(apperrors.ReasonValidationDataTypeInvalid, nil)
 	}
 	return result, nil
 }
@@ -432,7 +432,7 @@ func ValidateJSONMiddleware(template interface{}) gin.HandlerFunc {
 		if err := c.ShouldBindJSON(obj); err != nil {
 			logger.FromContext(c).Info().Err(err).Msg("Invalid JSON in request body")
 
-			appErr := apperrors.ErrInvalidInput("request body", err.Error())
+			appErr := apperrors.ErrInvalidInput("request body", err.Error()).WithReason(apperrors.ReasonValidationRequestBodyInvalid, map[string]any{"reason": err.Error()})
 			apperrors.AbortWithError(c, appErr)
 			return
 		}
@@ -443,7 +443,7 @@ func ValidateJSONMiddleware(template interface{}) gin.HandlerFunc {
 			logger.FromContext(c).Info().Interface("validation_errors", validationErrors).Msg("Validation failed")
 
 			// Build detailed validation error
-			appErr := apperrors.ErrValidation("Request validation failed")
+			appErr := apperrors.ErrValidation("Request validation failed").WithReason(apperrors.ReasonValidationRequestFailed, nil)
 			for _, ve := range validationErrors {
 				appErr.WithDetails(ve.Field, ve.Message)
 			}

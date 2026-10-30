@@ -146,7 +146,7 @@ func TestNotificationChannel(c *gin.Context) {
 		Channel string `json:"channel" validate:"required,oneof=ntfy gotify push"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("request body", err.Error()))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("request body", err.Error()).WithReason(apperrors.ReasonIntegrationRequestBodyInvalid, map[string]any{"reason": err.Error()}))
 		return
 	}
 	if verrs := middleware.ValidateStruct(&input); len(verrs) > 0 {

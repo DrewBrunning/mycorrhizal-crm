@@ -163,7 +163,9 @@ func TestGetContacts_NameSortRejectsUnknownSort(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, w.Code)
 	var body map[string]any
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
-	assert.Contains(t, body["error"].(map[string]any)["message"].(string), "sort")
+	errBody := body["error"].(map[string]any)
+	assert.Equal(t, "validation_sort_invalid", errBody["reason_code"])
+	assert.Equal(t, "sort", errBody["details"].(map[string]any)["field"])
 }
 
 // TestGetContacts_NameSortRejectsSince pins the decided T73 behavior: the

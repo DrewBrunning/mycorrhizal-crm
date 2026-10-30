@@ -271,7 +271,9 @@ func TestGetContacts_ContactInfoFilterRejectsMalformed(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, w.Code, "has_contact_info=%s must be a 400", bad)
 		var body map[string]any
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
-		assert.Contains(t, body["error"].(map[string]any)["message"].(string), "has_contact_info")
+		errBody := body["error"].(map[string]any)
+		assert.Equal(t, "contact_has_contact_info_invalid", errBody["reason_code"])
+		assert.Equal(t, "has_contact_info", errBody["details"].(map[string]any)["field"])
 	}
 
 	// The two valid values still work.

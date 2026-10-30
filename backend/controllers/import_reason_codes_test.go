@@ -38,10 +38,12 @@ func TestImportReasonCodes_CSVUpload(t *testing.T) {
 		router.ServeHTTP(w, newFileUploadRequest(t, "/contacts/import/upload", "contacts.txt", csvFixture([3]string{"A", "B", "a@example.com"})))
 		requireReason(t, w, http.StatusBadRequest, "csv_file_not_csv")
 	})
-	t.Run("parser error is not migrated", func(t *testing.T) {
+	t.Run("parser error carries the wrapper reason", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, newFileUploadRequest(t, "/contacts/import/upload", "empty.csv", []byte("First Name,Last Name,Email\n")))
-		requireReason(t, w, http.StatusBadRequest, "")
+		requireReason(t, w, http.StatusBadRequest, "import_file_unreadable")
+		_, params := wireReason(t, w)
+		assert.Contains(t, params["reason"], "no data rows")
 	})
 }
 

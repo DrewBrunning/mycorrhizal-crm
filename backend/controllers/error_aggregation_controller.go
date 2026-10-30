@@ -34,7 +34,7 @@ func GetErrorAggregation(c *gin.Context) {
 	if raw := c.Query("window_hours"); raw != "" {
 		n, err := strconv.Atoi(raw)
 		if err != nil || n < 1 || n > errAggMaxWindowHours {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("window_hours", "must be an integer between 1 and 168"))
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("window_hours", "must be an integer between 1 and 168").WithReason(apperrors.ReasonAdminErrorWindowInvalid, nil))
 			return
 		}
 		windowHours = n
