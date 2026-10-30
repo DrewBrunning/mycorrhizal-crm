@@ -37,7 +37,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.dp
 import com.mycorrhizal.crm.model.util.DateFieldInput
 import com.mycorrhizal.crm.model.util.DateFieldMode
 import com.mycorrhizal.crm.model.util.DateFieldState
@@ -178,7 +177,10 @@ fun DateField(
             {
                 Text(
                     when (problem) {
-                        DateTypingError.OUT_OF_RANGE -> stringResource(R.string.date_field_error_range)
+                        DateTypingError.OUT_OF_RANGE -> stringResource(
+                            R.string.date_field_error_range
+                        )
+
                         DateTypingError.INVALID -> stringResource(
                             R.string.date_field_error_invalid,
                             DateFieldInput.pattern(dateFormat, allowYearless)
@@ -204,7 +206,10 @@ fun DateField(
             null
         },
         singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Done),
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Text,
+            imeAction = ImeAction.Done
+        ),
         keyboardActions = KeyboardActions(
             onDone = {
                 settle()

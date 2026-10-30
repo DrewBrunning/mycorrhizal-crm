@@ -115,7 +115,8 @@ class DateFieldInputTest {
 
     @Test
     fun `year-less entry is day and month in the format's order when allowed`() {
-        val jan15 = TypedDate.Day(LocalDate.of(DateFieldValue.PARTIAL_PLACEHOLDER_YEAR, 1, 15), true)
+        val placeholder = DateFieldValue.PARTIAL_PLACEHOLDER_YEAR
+        val jan15 = TypedDate.Day(LocalDate.of(placeholder, 1, 15), true)
         mapOf(
             "eu" to "15.01.",
             "eu-mmm" to "15.01",

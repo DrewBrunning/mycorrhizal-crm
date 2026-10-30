@@ -161,7 +161,9 @@ class DateFieldTypingTest {
         type("09.08.2026")
         done()
 
-        composeTestRule.onNodeWithText("That date is outside the allowed range.").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "That date is outside the allowed range."
+        ).assertIsDisplayed()
         assertTrue(emitted.isEmpty())
 
         type("11.08.2026")
