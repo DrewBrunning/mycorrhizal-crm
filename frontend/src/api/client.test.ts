@@ -81,6 +81,20 @@ describe('ApiError.getDisplayMessage', () => {
     expect(err.getDisplayMessage()).toBe('Name is required. Email must be a valid email address');
   });
 
+  test('falls back to details when field_reasons is empty', () => {
+    const err = new ApiError(
+      'Request validation failed',
+      'VALIDATION_ERROR',
+      400,
+      { Name: 'Name is required' },
+      undefined,
+      undefined,
+      undefined,
+      {},
+    );
+    expect(err.getDisplayMessage()).toBe('Name is required');
+  });
+
   test('falls back to details when one field reason is unknown', () => {
     const err = new ApiError(
       'Request validation failed',
