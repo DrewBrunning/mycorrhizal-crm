@@ -455,6 +455,12 @@ describe('toggle Me (T90)', () => {
     expect(showSuccess).toHaveBeenCalledWith('Self contact updated.');
   });
 
+  test('re-reads the record after the toggle, since the server also flips ambient (#2193)', async () => {
+    const { result } = setup();
+    await act(() => result.current.handleToggleMe());
+    expect(getContactRecord).toHaveBeenCalledWith('1');
+  });
+
   test('clears Me when this contact already is Me', async () => {
     const { result } = setup({ selfContactUid: 'alice-uid' });
     await act(() => result.current.handleToggleMe());

@@ -747,6 +747,7 @@ func UpdateContact(c *gin.Context) {
 	}
 
 	contact.Gender = input.Gender
+	ambientBefore := contact.Ambient
 	models.ApplyRecordToContact(&contact, record, currentConfig(c).ProfilePhotoDir)
 
 	if contact.Firstname == "" {
@@ -754,7 +755,18 @@ func UpdateContact(c *gin.Context) {
 		return
 	}
 
-	if err := db.Save(&contact).Error; err != nil {
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Save(&contact).Error; err != nil {
+			return err
+		}
+		// A manual ambient change on the "Me" contact is the user taking
+		// ownership of the flag: unmarking "Me" must no longer override it
+		// (issues #2193/#2192).
+		if contact.Ambient != ambientBefore {
+			return services.ClearSelfAmbientProvenanceIfMe(tx, userID, contact.VCardUID)
+		}
+		return nil
+	}); err != nil {
 		if handleRevisionConflict(c, "Contact", err) {
 			return
 		}

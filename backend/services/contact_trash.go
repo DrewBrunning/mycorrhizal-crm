@@ -48,6 +48,10 @@ type ContactDeletionPayload struct {
 	Hard map[string][]map[string]any `json:"hard"`
 	// SelfContact records that the user's "Me" pointer named this contact.
 	SelfContact bool `json:"self_contact"`
+	// SelfAmbientSet records that marking "Me" had turned this contact's
+	// ambient flag on (users.self_contact_ambient_set, issue #2192), so a
+	// restore returns the pointer with its provenance. Absent in older payloads.
+	SelfAmbientSet bool `json:"self_ambient_set,omitempty"`
 }
 
 // RestoreSkip reports rows a restore could not bring back.
@@ -162,11 +166,12 @@ func captureContactDeletion(tx *gorm.DB, contact models.Contact, userID uint) (C
 			// revoked and the sync link is retained (ADR 0037).
 		}
 	}
-	var n int64
-	if err := tx.Model(&models.User{}).Where("id = ? AND self_contact_vcard_uid = ?", userID, contact.VCardUID).Count(&n).Error; err != nil {
+	var meRows []models.User
+	if err := tx.Select("id", "self_contact_ambient_set").Where("id = ? AND self_contact_vcard_uid = ?", userID, contact.VCardUID).Find(&meRows).Error; err != nil {
 		return payload, err
 	}
-	payload.SelfContact = n > 0
+	payload.SelfContact = len(meRows) > 0
+	payload.SelfAmbientSet = len(meRows) > 0 && meRows[0].SelfContactAmbientSet
 	return payload, nil
 }
 
@@ -282,7 +287,7 @@ func RestoreContact(db *gorm.DB, userID, contactID uint, now time.Time) (*Restor
 		if payload.SelfContact {
 			// Only if the pointer is still free: never overwrite a newer choice.
 			if err := tx.Model(&models.User{}).Where("id = ? AND self_contact_vcard_uid IS NULL", userID).
-				Update("self_contact_vcard_uid", contact.VCardUID).Error; err != nil {
+				Updates(map[string]any{"self_contact_vcard_uid": contact.VCardUID, "self_contact_ambient_set": payload.SelfAmbientSet}).Error; err != nil {
 				return err
 			}
 		}
