@@ -152,22 +152,35 @@ export async function loginWithPasskey(): Promise<LoginResponse> {
 
 type ReasonParams = Record<string, string | number>;
 
+const ACCOUNT_LOCKED_REASON = 'auth_account_locked';
+
+type ErrorBody = {
+  message?: unknown;
+  reason_code?: unknown;
+  reason_params?: ReasonParams;
+  retry_after?: unknown;
+  details?: { retry_after?: unknown };
+};
+
 // The message to show for an error body from the sign-in endpoints. The
-// account-lockout 429 is a flat body whose reason_code/reason_params sit at the
-// top level (issue #2101, ADR 0038); every other failure is the error envelope
-// with them under `error`. Either resolves through the same lookup, falling
-// back to the server's English `message` when the client cannot render the code.
+// account-lockout 429 is, today, a flat body whose fields sit at the top level
+// (issue #2101, ADR 0038); every other failure is the error envelope with them
+// under `error`. The flat lockout is deprecated for removal in v2.0.0 (issues
+// #2107, #2108), when it becomes the envelope (code ACCOUNT_LOCKED, retry values
+// under error.details), so both shapes resolve through the same lookup here,
+// falling back to the server's English `message` when the client cannot render
+// the code.
 function serverErrorMessage(data: unknown): string | undefined {
   if (typeof data !== 'object' || data === null) return undefined;
-  const flat = data as {
-    message?: unknown;
-    reason_code?: unknown;
-    reason_params?: ReasonParams;
-    error?: { message?: unknown; reason_code?: unknown; reason_params?: ReasonParams } | string;
-  };
+  const flat = data as ErrorBody & { error?: ErrorBody | string };
   const envelope = typeof flat.error === 'object' ? flat.error : undefined;
   const code = flat.reason_code ?? envelope?.reason_code;
-  const params = flat.reason_params ?? envelope?.reason_params;
+  let params = flat.reason_params ?? envelope?.reason_params;
+  if (code === ACCOUNT_LOCKED_REASON && params?.retry_after === undefined) {
+    // retry_after at the top level (flat) or under error.details (envelope).
+    const retryAfter = flat.retry_after ?? envelope?.details?.retry_after;
+    if (typeof retryAfter === 'number') params = { ...params, retry_after: retryAfter };
+  }
   const localized = typeof code === 'string' ? localizeReason(code, params) : undefined;
   if (localized) return localized;
   // 429 lockout carries a top-level message; other failures nest it.

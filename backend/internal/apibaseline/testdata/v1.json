@@ -5960,7 +5960,7 @@
         },
         {
           "status": "429",
-          "schema": "ref:Error"
+          "schema": "ref:AccountLocked"
         }
       ]
     },
@@ -5994,7 +5994,7 @@
         },
         {
           "status": "429",
-          "schema": "ref:Error"
+          "schema": "ref:AccountLocked"
         }
       ]
     },
@@ -8313,7 +8313,7 @@
         },
         {
           "status": "429",
-          "schema": "ref:Error"
+          "schema": "ref:AccountLocked"
         }
       ]
     },
@@ -8345,7 +8345,7 @@
         },
         {
           "status": "429",
-          "schema": "ref:Error"
+          "schema": "ref:AccountLocked"
         }
       ]
     },
@@ -8677,7 +8677,7 @@
         },
         {
           "status": "429",
-          "schema": "ref:Error"
+          "schema": "ref:AccountLocked"
         }
       ]
     },
@@ -8709,7 +8709,7 @@
         },
         {
           "status": "429",
-          "schema": "ref:Error"
+          "schema": "ref:AccountLocked"
         }
       ]
     },
@@ -9132,6 +9132,106 @@
           "name": "tags",
           "type": "array\u003cobject\u003e",
           "required": false
+        }
+      ]
+    },
+    {
+      "name": "AccountLocked",
+      "properties": [
+        {
+          "name": "error",
+          "type": "object",
+          "required": true
+        },
+        {
+          "name": "message",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "reason_code",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "reason_params",
+          "type": "object",
+          "required": false
+        },
+        {
+          "name": "request_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "retry_after",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "retry_after_at",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "timestamp",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "AccountLockedEnvelope",
+      "properties": [
+        {
+          "name": "error",
+          "type": "object",
+          "required": false
+        },
+        {
+          "name": "request_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "timestamp",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "AccountLockedFlat",
+      "properties": [
+        {
+          "name": "error",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "message",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "reason_code",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "reason_params",
+          "type": "object",
+          "required": false
+        },
+        {
+          "name": "retry_after",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "retry_after_at",
+          "type": "string",
+          "required": true
         }
       ]
     },
