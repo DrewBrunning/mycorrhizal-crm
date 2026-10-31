@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"mycorrhizal/config"
 	"mycorrhizal/contactmodel"
+	apperrors "mycorrhizal/errors"
 	"mycorrhizal/internal/clock"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
@@ -376,6 +377,23 @@ func (b *Backend) PutAddressObject(ctx context.Context, urlPath string, card vca
 		isNew = true
 	}
 
+	// Scope is checked before If-Match so a 412 can never be used to probe an
+	// out-of-scope resource (ADR 0041 decision 5). An existing contact outside
+	// the scope is an explicit 403: a silent 404 on PUT would make the client
+	// retry the create and produce a duplicate. The contact exists and is the
+	// caller's own, so this reveals nothing about another account.
+	if !isNew {
+		inScope, scopeErr := services.ContactInCardDAVSyncScope(db, userID, contact)
+		if scopeErr != nil {
+			return nil, scopeErr
+		}
+		if !inScope {
+			return nil, webdav.NewHTTPError(http.StatusForbidden,
+				apperrors.ErrForbidden("Contact is outside this device's CardDAV sync scope").
+					WithReason(apperrors.ReasonCircleSyncScopeOutOfScope, nil))
+		}
+	}
+
 	// Check ETag for conflict detection on updates (If-Match header)
 	if !isNew && opts != nil && opts.IfMatch.IsSet() {
 		matched, err := opts.IfMatch.MatchETag(contact.ETag)
@@ -465,8 +483,27 @@ func (b *Backend) PutAddressObject(ctx context.Context, urlPath string, card vca
 	// The same write path as the REST create/update (issue #2255): one
 	// transaction, then the wedding-anniversary sync and the contact.created /
 	// contact.updated webhook, both only after the commit.
-	if err := services.SaveContact(ctx, db, b.cfg, userID, &contact, ambientBefore); err != nil {
-		return nil, err
+	var saveErr error
+	if isNew {
+		// A phone-created contact joins the default circle in the same
+		// transaction as the insert (ADR 0041 decision 5), so it cannot be
+		// committed outside the scope and vanish on the next sync.
+		saveErr = services.SaveContactWithCreateHook(ctx, db, b.cfg, userID, &contact, ambientBefore,
+			func(tx *gorm.DB) error {
+				return services.ApplyCardDAVSyncScopeOnCreate(tx, userID, contact)
+			})
+	} else {
+		saveErr = services.SaveContact(ctx, db, b.cfg, userID, &contact, ambientBefore)
+	}
+	if saveErr != nil {
+		// A scope refusal is an AppError; go-webdav renders only its own
+		// HTTPError type with the intended status, so translate at the
+		// protocol boundary.
+		var appErr *apperrors.AppError
+		if errors.As(saveErr, &appErr) {
+			return nil, webdav.NewHTTPError(appErr.HTTPStatus, appErr)
+		}
+		return nil, saveErr
 	}
 
 	return b.contactToAddressObject(ctx, &contact), nil
@@ -486,13 +523,17 @@ func (b *Backend) DeleteAddressObject(ctx context.Context, urlPath string) error
 
 	db := b.getDB(ctx)
 
-	// Find contact by vcard_uid or ID
+	// Find contact by vcard_uid or ID. An out-of-scope contact is a 404 for
+	// DELETE just like a missing one: as far as this collection is concerned
+	// the resource does not exist. That is also the answer a phone needs after
+	// narrowing, when it deletes a stale local copy before syncing; a 403
+	// would put the client in a retry loop (ADR 0041 decision 5).
 	var contact models.Contact
-	err = db.Where("user_id = ? AND vcard_uid = ?", userID, uid).First(&contact).Error
+	err = services.ApplyCardDAVSyncScope(db.Where("user_id = ? AND vcard_uid = ?", userID, uid)).First(&contact).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		var id uint
 		if _, scanErr := fmt.Sscanf(uid, "%d", &id); scanErr == nil {
-			err = db.Where("user_id = ? AND id = ?", userID, id).First(&contact).Error
+			err = services.ApplyCardDAVSyncScope(db.Where("user_id = ? AND id = ?", userID, id)).First(&contact).Error
 		}
 	}
 	if err != nil {

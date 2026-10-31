@@ -31,10 +31,29 @@ import (
 // A write error is returned unwrapped so callers can classify it (revision
 // conflict, unique violation) and map it to their own protocol's status.
 func SaveContact(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint, contact *models.Contact, ambientBefore bool) error {
+	return saveContact(ctx, db, cfg, userID, contact, ambientBefore, nil)
+}
+
+// SaveContactWithCreateHook is SaveContact with an extra step inside the same
+// transaction, immediately after a new contact row is created. The CardDAV
+// write path uses it to file a phone-created contact into the sync scope's
+// default circle atomically with the insert (ADR 0041 decision 5), so a create
+// can never commit without the membership that keeps it visible.
+func SaveContactWithCreateHook(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint, contact *models.Contact, ambientBefore bool, afterCreate func(tx *gorm.DB) error) error {
+	return saveContact(ctx, db, cfg, userID, contact, ambientBefore, afterCreate)
+}
+
+func saveContact(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint, contact *models.Contact, ambientBefore bool, afterCreate func(tx *gorm.DB) error) error {
 	isNew := contact.ID == 0
 	if err := db.Transaction(func(tx *gorm.DB) error {
 		if isNew {
-			return tx.Create(contact).Error
+			if err := tx.Create(contact).Error; err != nil {
+				return err
+			}
+			if afterCreate != nil {
+				return afterCreate(tx)
+			}
+			return nil
 		}
 		if err := tx.Save(contact).Error; err != nil {
 			return err

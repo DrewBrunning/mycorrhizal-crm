@@ -248,6 +248,49 @@ func ApplyCardDAVSyncScope(db *gorm.DB) *gorm.DB {
 	return db.Where(CardDAVSyncScopeContactCondition)
 }
 
+// ApplyCardDAVSyncScopeOnCreate files a newly created CardDAV contact into the
+// default circle inside the same transaction as the insert (ADR 0041 decision
+// 5). In include mode a contact has no circle yet, so one is required; in
+// exclude mode the contact is already in scope and a configured default is
+// applied as a convenience. All mode adds nothing. A missing default circle
+// refuses the create with 403 rather than committing an invisible contact.
+func ApplyCardDAVSyncScopeOnCreate(tx *gorm.DB, userID uint, contact models.Contact) error {
+	scope, ids, err := LoadCardDAVSyncScope(tx, userID)
+	if err != nil {
+		return err
+	}
+	sel := CardDAVSyncScopeSelectionFrom(scope, ids)
+	switch sel.Mode {
+	case models.CardDAVSyncScopeModeInclude:
+		if sel.DefaultCircleID == nil {
+			return apperrors.ErrForbidden("No default circle is configured for the CardDAV sync scope").
+				WithReason(apperrors.ReasonCircleSyncScopeNoDefault, nil)
+		}
+	case models.CardDAVSyncScopeModeExclude:
+		if sel.DefaultCircleID == nil {
+			return nil
+		}
+	default:
+		return nil
+	}
+
+	var owned int64
+	if err := tx.Model(&models.Circle{}).
+		Where("id = ? AND user_id = ?", *sel.DefaultCircleID, userID).
+		Count(&owned).Error; err != nil {
+		return err
+	}
+	if owned == 0 {
+		return apperrors.ErrForbidden("No default circle is configured for the CardDAV sync scope").
+			WithReason(apperrors.ReasonCircleSyncScopeNoDefault, nil)
+	}
+	return tx.Create(&models.CircleMember{
+		CircleID:       *sel.DefaultCircleID,
+		UserID:         userID,
+		MemberVCardUID: contact.VCardUID,
+	}).Error
+}
+
 // ContactInCardDAVSyncScope reports whether one live, owned contact is in the
 // scope. CardDAV writes use it to distinguish an out-of-scope edit (403) from a
 // missing resource (create) before the If-Match comparison.
