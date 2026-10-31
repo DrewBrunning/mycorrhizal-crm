@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 )
@@ -329,9 +330,14 @@ func (p *writeProbe) start() {
 					p.maxStall = stall
 				}
 				if err != nil {
-					// SQLITE_BUSY after the full busy_timeout: the operation
-					// under test has held the write lock for >5s.
-					p.stalledOut = true
+					// Only SQLITE_BUSY / SQLITE_LOCKED means the operation
+					// under test held the write lock past the busy_timeout.
+					// Any other error (an I/O failure on a saturated runner, a
+					// closed handle) is not a write-lock stall and must not
+					// flip this deterministic signal.
+					if isLockError(err) {
+						p.stalledOut = true
+					}
 					continue
 				}
 				p.writes++
@@ -353,6 +359,34 @@ func (p *writeProbe) stop() {
 // busy_timeout, and BEGIN IMMEDIATE so a blocked write actually waits on the
 // busy handler instead of failing instantly (CLAUDE.md backend trap #9).
 // database.openDSN is unexported, so this is a deliberate small copy.
+//
+// It diverges on ONE setting: synchronous(NORMAL). The app's connection keeps
+// SQLite's default FULL, so every probe INSERT would fsync the WAL on commit —
+// 200 fsyncs/s from the probe alone. On a saturated CI runner that turns the
+// observer into the thing it is observing: the probe's own commits (and the
+// disk queue they create) can exceed the 5s busy_timeout, flipping the "this
+// operation stalled writers" flag on an operation that held the lock only
+// briefly (the flake ledger's import.vcf stalls, issues #2270–#2272). NORMAL
+// in WAL mode drops the per-commit fsync while remaining crash-safe, so the
+// probe adds no I/O storm and its elapsed time is the lock wait it is meant
+// to measure.
 func probeDSN(path string, busyTimeoutMS int) string {
-	return fmt.Sprintf("%s?_pragma=journal_mode(WAL)&_pragma=foreign_keys(1)&_pragma=busy_timeout(%d)&_txlock=immediate", path, busyTimeoutMS)
+	return fmt.Sprintf("%s?_pragma=journal_mode(WAL)&_pragma=foreign_keys(1)&_pragma=synchronous(NORMAL)&_pragma=busy_timeout(%d)&_txlock=immediate", path, busyTimeoutMS)
+}
+
+// isLockError reports whether err is SQLite write-lock contention
+// (SQLITE_BUSY / SQLITE_LOCKED). Anything else — an I/O error, a closed
+// connection — is not evidence that the operation under test held the write
+// lock, so it must not set ProbeStalledOut.
+func isLockError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	for _, marker := range []string{"sqlite_busy", "sqlite_locked", "database is locked", "database table is locked"} {
+		if strings.Contains(msg, marker) {
+			return true
+		}
+	}
+	return false
 }
