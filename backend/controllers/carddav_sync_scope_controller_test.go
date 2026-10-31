@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"mycorrhizal/internal/dbtest"
@@ -239,4 +240,75 @@ func TestCardDAVSyncScope_PerUserIsolation(t *testing.T) {
 	otherResp := decodeCardDAVSyncScope(t, cardDAVSyncScopeDo(t, otherRouter, http.MethodGet, "/users/me/carddav-sync-scope", nil))
 	require.Equal(t, models.CardDAVSyncScopeModeAll, otherResp.Mode)
 	require.Empty(t, otherResp.CircleIDs)
+}
+
+func newBareCardDAVSyncScopeRouter(db *gorm.DB, withUser bool) *gin.Engine {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("db", db)
+		if withUser {
+			c.Set("userID", uint(1))
+		}
+		c.Next()
+	})
+	r.GET("/users/me/carddav-sync-scope", GetCardDAVSyncScope)
+	r.PUT("/users/me/carddav-sync-scope", PutCardDAVSyncScope)
+	r.POST("/users/me/carddav-sync-scope/preview", PreviewCardDAVSyncScope)
+	return r
+}
+
+func TestCardDAVSyncScope_Unauthenticated(t *testing.T) {
+	db := dbtest.New(t)
+	r := newBareCardDAVSyncScopeRouter(db, false)
+
+	for _, tc := range []struct{ method, path string }{
+		{http.MethodGet, "/users/me/carddav-sync-scope"},
+		{http.MethodPut, "/users/me/carddav-sync-scope"},
+		{http.MethodPost, "/users/me/carddav-sync-scope/preview"},
+	} {
+		w := cardDAVSyncScopeDo(t, r, tc.method, tc.path, models.CardDAVSyncScopeInput{Mode: "all"})
+		require.Equal(t, http.StatusUnauthorized, w.Code, "%s %s: %s", tc.method, tc.path, w.Body.String())
+	}
+}
+
+func TestCardDAVSyncScope_MissingValidatedBody(t *testing.T) {
+	db := dbtest.New(t)
+	r := newBareCardDAVSyncScopeRouter(db, true)
+
+	for _, path := range []string{"/users/me/carddav-sync-scope", "/users/me/carddav-sync-scope/preview"} {
+		method := http.MethodPut
+		if strings.HasSuffix(path, "/preview") {
+			method = http.MethodPost
+		}
+		w := cardDAVSyncScopeDo(t, r, method, path, models.CardDAVSyncScopeInput{Mode: "all"})
+		require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	}
+}
+
+func TestCardDAVSyncScope_DatabaseErrors(t *testing.T) {
+	cases := map[string]struct {
+		method string
+		path   string
+		body   any
+		hide   string
+		want   int
+	}{
+		"GET scope load":   {http.MethodGet, "/users/me/carddav-sync-scope", nil, "carddav_sync_scopes", http.StatusInternalServerError},
+		"GET counts":       {http.MethodGet, "/users/me/carddav-sync-scope", nil, "contacts", http.StatusInternalServerError},
+		"PUT replace":      {http.MethodPut, "/users/me/carddav-sync-scope", models.CardDAVSyncScopeInput{Mode: "all"}, "carddav_sync_scope_circles", http.StatusInternalServerError},
+		"PUT build":        {http.MethodPut, "/users/me/carddav-sync-scope", models.CardDAVSyncScopeInput{Mode: "all"}, "contacts", http.StatusInternalServerError},
+		"preview validate": {http.MethodPost, "/users/me/carddav-sync-scope/preview", models.CardDAVSyncScopeInput{Mode: "all"}, "circles", http.StatusInternalServerError},
+		"preview counts":   {http.MethodPost, "/users/me/carddav-sync-scope/preview", models.CardDAVSyncScopeInput{Mode: "all"}, "contacts", http.StatusInternalServerError},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			db := dbtest.New(t)
+			owner, _, _, _, _, _, _ := seedScopeFixture(t, db)
+			r := newCardDAVSyncScopeRouter(t, db, owner.ID)
+			dbtest.HideTable(t, db, tc.hide)
+			w := cardDAVSyncScopeDo(t, r, tc.method, tc.path, tc.body)
+			require.Equal(t, tc.want, w.Code, w.Body.String())
+		})
+	}
 }
