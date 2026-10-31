@@ -130,7 +130,11 @@ export default function AttachmentsSection({ contactId }: AttachmentsSectionProp
       )}
 
       {loading ? (
-        <CircularProgress size={20} sx={{ display: 'block', mx: 'auto', my: 2 }} />
+        <CircularProgress
+          size={20}
+          aria-label={t('common.loading')}
+          sx={{ display: 'block', mx: 'auto', my: 2 }}
+        />
       ) : attachments.length === 0 ? (
         <Typography
           variant="body2"
