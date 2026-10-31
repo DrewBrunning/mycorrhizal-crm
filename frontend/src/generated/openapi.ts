@@ -432,6 +432,35 @@ export type Card = {
   updated?: Timestamp;
 };
 
+export type CardDAVSyncScopeInput = {
+  circle_ids?: string[];
+  default_circle_id?: string | null;
+  mode: 'all' | 'include' | 'exclude';
+};
+
+export type CardDAVSyncScopePreviewResponse = {
+  circle_ids: string[];
+  in_scope_count: number;
+  mode: 'all' | 'include' | 'exclude';
+  total_count: number;
+  warnings: CardDAVSyncScopeWarning[];
+};
+
+export type CardDAVSyncScopeResponse = {
+  circle_ids: string[];
+  default_circle_id?: string | null;
+  in_scope_count: number;
+  mode: 'all' | 'include' | 'exclude';
+  total_count: number;
+  updated_at?: string | null;
+  warnings: CardDAVSyncScopeWarning[];
+};
+
+export type CardDAVSyncScopeWarning = {
+  code: 'scope_empty' | 'default_circle_missing' | 'exclusion_empty';
+  message: string;
+};
+
 export type CardNote = {
   author?: Author;
   created?: Timestamp;

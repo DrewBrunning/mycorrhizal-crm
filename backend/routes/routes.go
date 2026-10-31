@@ -189,6 +189,13 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// T90: mark a contact as "Me". Single-purpose, follows the shape of
 			// the other /users mutation routes above.
 			protected.PATCH("/users/me/self-contact", middleware.ValidateJSONMiddleware(&models.SelfContactInput{}), controllers.UpdateSelfContact)
+			if !cfg.IsEmbedded() {
+				// CardDAV sync scope by circle (issue #1993, ADR 0041). A user
+				// with no saved scope is "all", exactly today's behaviour.
+				protected.GET("/users/me/carddav-sync-scope", controllers.GetCardDAVSyncScope)
+				protected.PUT("/users/me/carddav-sync-scope", middleware.ValidateJSONMiddleware(&models.CardDAVSyncScopeInput{}), controllers.PutCardDAVSyncScope)
+				protected.POST("/users/me/carddav-sync-scope/preview", middleware.ValidateJSONMiddleware(&models.CardDAVSyncScopeInput{}), controllers.PreviewCardDAVSyncScope)
+			}
 			// N8 2FA management (issue #158). Status is read-only; setup
 			// mints a pending secret, confirm flips it on + mints recovery
 			// codes, disable/regenerate gate on a live TOTP code.

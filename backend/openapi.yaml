@@ -1788,6 +1788,101 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  # --- CardDAV sync scope by circle (issue #1993, ADR 0041) ---
+  /users/me/carddav-sync-scope:
+    get:
+      summary: Get the caller's CardDAV sync scope
+      operationId: getCardDAVSyncScope
+      tags:
+        - Users
+      description: >
+        Returns the per-user CardDAV sync scope, live contact counts, and
+        derived warnings. A user with no stored scope is in "all" mode, which
+        serves every contact exactly as before. Warnings are computed on read
+        (scope_empty, default_circle_missing, exclusion_empty) and are not
+        persisted.
+      responses:
+        "200":
+          description: The current sync scope.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CardDAVSyncScopeResponse"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Replace the caller's CardDAV sync scope
+      operationId: putCardDAVSyncScope
+      tags:
+        - Users
+      description: >
+        Whole-object replace: there is no partial update. all requires empty
+        circle_ids and a null default_circle_id; include requires at least one
+        circle and a default_circle_id that is one of them; exclude requires at
+        least one circle and, if set, a default_circle_id that is not excluded.
+        Every circle must belong to the caller; an unknown id and another
+        user's id are the same 400.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CardDAVSyncScopeInput"
+      responses:
+        "200":
+          description: The saved sync scope with live counts and warnings.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CardDAVSyncScopeResponse"
+        "400":
+          description: Validation or ownership failure.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /users/me/carddav-sync-scope/preview:
+    post:
+      summary: Preview a proposed CardDAV sync scope
+      operationId: previewCardDAVSyncScope
+      tags:
+        - Users
+      description: Validates a proposed scope and returns live counts and warnings without persisting anything.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CardDAVSyncScopeInput"
+      responses:
+        "200":
+          description: Counts for the proposed scope; nothing was saved.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CardDAVSyncScopePreviewResponse"
+        "400":
+          description: Validation or ownership failure.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   # --- Self-service account deletion (issue #972) ---
   /account:
     delete:
@@ -14789,6 +14884,68 @@ components:
             allow_dav_password:
               type: boolean
               description: Whether the account password may authenticate CardDAV/CalDAV when no second factor is enrolled (issue #2010).
+    CardDAVSyncScopeInput:
+      type: object
+      required: [mode]
+      properties:
+        mode:
+          type: string
+          enum: [all, include, exclude]
+        circle_ids:
+          type: array
+          items: { type: string, format: uuid }
+        default_circle_id:
+          type: string
+          format: uuid
+          nullable: true
+    CardDAVSyncScopeWarning:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum: [scope_empty, default_circle_missing, exclusion_empty]
+        message: { type: string }
+    CardDAVSyncScopeResponse:
+      type: object
+      required: [mode, circle_ids, in_scope_count, total_count, warnings]
+      properties:
+        mode:
+          type: string
+          enum: [all, include, exclude]
+        circle_ids:
+          type: array
+          items: { type: string, format: uuid }
+        default_circle_id:
+          type: string
+          format: uuid
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+        in_scope_count: { type: integer }
+        total_count: { type: integer }
+        warnings:
+          type: array
+          items:
+            $ref: "#/components/schemas/CardDAVSyncScopeWarning"
+    CardDAVSyncScopePreviewResponse:
+      type: object
+      required: [mode, circle_ids, in_scope_count, total_count, warnings]
+      properties:
+        mode:
+          type: string
+          enum: [all, include, exclude]
+        circle_ids:
+          type: array
+          items: { type: string, format: uuid }
+        in_scope_count: { type: integer }
+        total_count: { type: integer }
+        warnings:
+          type: array
+          items:
+            $ref: "#/components/schemas/CardDAVSyncScopeWarning"
     SelfContactInput:
       type: object
       description: >

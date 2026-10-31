@@ -61,13 +61,15 @@ func bindingFor(v any) requestBodyBinding {
 // noBodyMutatingRoutes) fails loudly if it drifts.
 var requestBodyBindings = map[string]requestBodyBinding{
 	// --- Auth / users (middleware-bound) ---
-	"POST /register":                      bindingFor(models.UserRegistrationInput{}),
-	"POST /password-reset/request":        bindingFor(models.PasswordResetRequestInput{}),
-	"POST /password-reset/confirm":        bindingFor(models.PasswordResetConfirmInput{}),
-	"POST /users/change-password":         bindingFor(models.ChangePasswordInput{}),
-	"PATCH /users/dav-password-policy":    bindingFor(models.DAVPasswordPolicyInput{}),
-	"PATCH /users/enabled-contact-fields": bindingFor(models.EnabledContactFieldsInput{}),
-	"PATCH /users/me/self-contact":        bindingFor(models.SelfContactInput{}),
+	"POST /register":                            bindingFor(models.UserRegistrationInput{}),
+	"POST /password-reset/request":              bindingFor(models.PasswordResetRequestInput{}),
+	"POST /password-reset/confirm":              bindingFor(models.PasswordResetConfirmInput{}),
+	"POST /users/change-password":               bindingFor(models.ChangePasswordInput{}),
+	"PATCH /users/dav-password-policy":          bindingFor(models.DAVPasswordPolicyInput{}),
+	"PATCH /users/enabled-contact-fields":       bindingFor(models.EnabledContactFieldsInput{}),
+	"PATCH /users/me/self-contact":              bindingFor(models.SelfContactInput{}),
+	"PUT /users/me/carddav-sync-scope":          bindingFor(models.CardDAVSyncScopeInput{}),
+	"POST /users/me/carddav-sync-scope/preview": bindingFor(models.CardDAVSyncScopeInput{}),
 
 	// --- Auth / users (direct ShouldBindJSON) ---
 	"POST /login":              bindingFor(controllers.LoginInput{}),

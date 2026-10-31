@@ -125,6 +125,16 @@ func deleteUserCascade(tx *gorm.DB, userID uint) error {
 		return err
 	}
 
+	// Delete CardDAV sync scope rows, then circles (child before parent;
+	// the scope's default_circle_id FK is ON DELETE SET NULL, but the rows
+	// die with the account anyway -- ADR 0041).
+	if err := tx.Where("user_id = ?", userID).Delete(&models.CardDAVSyncScopeCircle{}).Error; err != nil {
+		return err
+	}
+	if err := tx.Where("user_id = ?", userID).Delete(&models.CardDAVSyncScope{}).Error; err != nil {
+		return err
+	}
+
 	// Delete circle memberships, then circles (child before parent)
 	if err := tx.Where("user_id = ?", userID).Delete(&models.CircleMember{}).Error; err != nil {
 		return err

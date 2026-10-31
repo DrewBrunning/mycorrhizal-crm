@@ -130,7 +130,14 @@ It sits outside the soft-delete model above precisely because it is a copy, not 
 `CalendarEventLink`, `OccasionEventAttendee`, `LifeEventSuggestionResolution` (issue #1233 — the
 permanent memory of a user's decision about one inferred candidate, keyed by its natural tuple and
 hard-deleted per T26; ADR 0025), `FieldValue`, `activity_contacts`, `NotificationDelivery`,
-`ContactSyncConflict`.
+`ContactSyncConflict`, `CardDAVSyncScopeCircle`.
+
+**CardDAV sync scope (issue #1993, ADR 0041).** `carddav_sync_scopes` is the per-user mode
+(`all`/`include`/`exclude`) and optional default circle; `carddav_sync_scope_circles` is the selected
+circle set. Both are hard-delete edge rows holding only ids and a mode. Deleting a circle removes its
+scope row (FK cascade) and nulls a default circle reference (FK `SET NULL`); it never deletes contact
+data and never widens a scope. The scope is deliberately not in the account bundle (device
+configuration; circle ids may be remapped on restore), so a bundle import leaves the scope at `all`.
 
 **Contact trash (issue #2002, ADR 0037).** Most of these rows are hard-deleted by the contact-delete
 cascade, so a restore could not otherwise bring them back. `DeleteContact` therefore also writes one
@@ -350,6 +357,11 @@ External DAV clients (phones, desktop DAV apps) sync against `backend/carddav`, 
   (`backend/models/contact_card_merge.go#PreserveSensitiveAddresses`) so a client edit cannot
   silently delete it; deleting such an address is only possible where it is visible to the owner
   (the REST/Android editor).
+- **Sync scope (issue #1993, ADR 0041)**: the single address book is filtered in the query by the
+  caller's `all`/`include`/`exclude` scope. A narrowed scope removes contacts from the next listing;
+  clients delete their local copies, but the server deletes no row and writes no tombstone. Widening
+  re-downloads them with unchanged ETags. Sensitivity filtering is independent and still applies to
+  every served in-scope contact.
 - **Retention**: matches §1 exactly — a DAV client sees whatever the primary table currently shows.
 - **Deletion / propagation**: `go-webdav` v0.7.0 (this project's DAV library) has **no RFC 6578
   sync-collection REPORT support** — there is no incremental delta protocol to push a tombstone through.
