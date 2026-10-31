@@ -67,7 +67,7 @@ func ExportAccountBundle(c *gin.Context) {
 			"The account bundle is %.1f MiB, which is over the %d MiB limit the import accepts. "+
 				"Remove contacts or profile photos you no longer need and try again, or use the CSV/vCard export instead.",
 			float64(len(payload))/(1<<20), accountBundleMaxBytes>>20,
-		)).WithDetails("operation", exportOpAccount).
+		)).WithReason(apperrors.ReasonBundleExportTooLarge, map[string]any{"used": fmt.Sprintf("%.1f", float64(len(payload))/(1<<20)), "max": accountBundleMaxBytes >> 20}).WithDetails("operation", exportOpAccount).
 			WithDetails("category", exportCatValidation).
 			WithDetails("bundle_bytes", len(payload)).
 			WithDetails("limit_bytes", accountBundleMaxBytes))

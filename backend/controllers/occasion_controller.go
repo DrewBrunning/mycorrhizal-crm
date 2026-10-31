@@ -37,7 +37,7 @@ func GetUpcomingOccasions(c *gin.Context) {
 	if raw := c.Query("days"); raw != "" {
 		parsed, err := strconv.Atoi(raw)
 		if err != nil || (parsed != 30 && parsed != 90) {
-			apperrors.AbortWithError(c, apperrors.ErrValidation("days must be 30 or 90"))
+			apperrors.AbortWithError(c, apperrors.ErrValidation("days must be 30 or 90").WithReason(apperrors.ReasonOccasionDaysInvalid, nil))
 			return
 		}
 		days = parsed
@@ -97,7 +97,7 @@ func GetOccasionCardListCSV(c *gin.Context) {
 	// output-encoding guarantee that also covers non-control unsafe bytes
 	// (quotes, slashes, non-ASCII).
 	if !validKindQuery(kind) {
-		apperrors.AbortWithError(c, apperrors.ErrValidation("kind must not contain control characters"))
+		apperrors.AbortWithError(c, apperrors.ErrValidation("kind must not contain control characters").WithReason(apperrors.ReasonOccasionKindInvalid, nil))
 		return
 	}
 	includeSensitive := c.Query("include_sensitive") == "true"
@@ -237,7 +237,7 @@ func GetGiftShoppingList(c *gin.Context) {
 	if raw := c.Query("days"); raw != "" {
 		parsed, err := strconv.Atoi(raw)
 		if err != nil || (parsed != 30 && parsed != 90) {
-			apperrors.AbortWithError(c, apperrors.ErrValidation("days must be 30 or 90"))
+			apperrors.AbortWithError(c, apperrors.ErrValidation("days must be 30 or 90").WithReason(apperrors.ReasonOccasionDaysInvalid, nil))
 			return
 		}
 		days = parsed

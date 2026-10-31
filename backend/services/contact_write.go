@@ -18,14 +18,16 @@ import (
 // update, loaded it scoped by user_id and checked its If-Match / ETag
 // precondition). SaveContact then:
 //
-//  1. writes the row in one transaction: Create when contact.ID is zero, else
+//  1. refuses a create with the opt-in per-user contact quota (issue #2261),
+//     before anything is written, so REST and CardDAV cannot diverge;
+//  2. writes the row in one transaction: Create when contact.ID is zero, else
 //     Save (revision CAS, ADR 0018; the audit events come from the model hooks
 //     inside it), plus ClearSelfAmbientProvenanceIfMe when the ambient flag
 //     changed from ambientBefore (issues #2192/#2193);
-//  2. after the commit, mirrors the card's wedding anniversary into the
+//  3. after the commit, mirrors the card's wedding anniversary into the
 //     married LifeEvent (SyncWeddingFromCard; a failure is logged, not
 //     returned, because the contact write has already committed);
-//  3. fires the contact.created / contact.updated webhook, so a failed write
+//  4. fires the contact.created / contact.updated webhook, so a failed write
 //     delivers nothing.
 //
 // A write error is returned unwrapped so callers can classify it (revision
@@ -45,6 +47,11 @@ func SaveContactWithCreateHook(ctx context.Context, db *gorm.DB, cfg config.Conf
 
 func saveContact(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint, contact *models.Contact, ambientBefore bool, afterCreate func(tx *gorm.DB) error) error {
 	isNew := contact.ID == 0
+	if isNew {
+		if err := UserQuotaFromConfig(cfg).CheckContactCreate(db, userID); err != nil {
+			return err
+		}
+	}
 	if err := db.Transaction(func(tx *gorm.DB) error {
 		if isNew {
 			if err := tx.Create(contact).Error; err != nil {

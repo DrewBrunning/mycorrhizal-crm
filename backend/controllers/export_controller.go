@@ -208,7 +208,7 @@ func parseExportFieldSelection(c *gin.Context, operation string) (*models.FieldS
 				continue
 			}
 			if err := sel.Enable(token); err != nil {
-				apperrors.AbortWithError(c, apperrors.ErrValidation(err.Error()).
+				apperrors.AbortWithError(c, apperrors.ErrValidation(err.Error()).WithReason(apperrors.ReasonExportSelectionInvalid, map[string]any{"reason": err.Error()}).
 					WithDetails("operation", operation).
 					WithDetails("category", exportCatValidation))
 				return nil, false
@@ -940,7 +940,7 @@ func guardExportContactCount(c *gin.Context, db *gorm.DB, userID uint, op string
 	if n > int64(exportContactsLimit) {
 		apperrors.AbortWithError(c, apperrors.ErrInsufficientStorage(fmt.Sprintf(
 			"Export of %d contacts exceeds the single-request limit of %d; use the paginated /contacts API instead", n, exportContactsLimit,
-		)).WithDetails("operation", op).WithDetails("category", exportCatValidation))
+		)).WithReason(apperrors.ReasonExportContactsLimit, map[string]any{"total": n, "max": exportContactsLimit}).WithDetails("operation", op).WithDetails("category", exportCatValidation))
 		return false
 	}
 	return true
@@ -1016,7 +1016,7 @@ func ExportAuditLog(c *gin.Context) {
 		return
 	}
 	if len(events) > auditExportLimit {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("export", fmt.Sprintf("Audit log exceeds the export limit of %d rows; use the paginated /audit endpoint instead", auditExportLimit)).
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("export", fmt.Sprintf("Audit log exceeds the export limit of %d rows; use the paginated /audit endpoint instead", auditExportLimit)).WithReason(apperrors.ReasonExportAuditLimit, map[string]any{"max": auditExportLimit}).
 			WithDetails("operation", exportOpAudit).
 			WithDetails("category", exportCatValidation))
 		return

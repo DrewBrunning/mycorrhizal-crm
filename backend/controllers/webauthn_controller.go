@@ -41,7 +41,7 @@ import (
 func webAuthnRelyingParty(c *gin.Context, cfg *config.Config) (*webauthn.WebAuthn, bool) {
 	wa, err := services.NewWebAuthn(cfg)
 	if err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrConflict(err.Error()))
+		apperrors.AbortWithError(c, apperrors.ErrConflict(err.Error()).WithReason(apperrors.ReasonAuthWebAuthnConfigInvalid, map[string]any{"reason": err.Error()}))
 		return nil, false
 	}
 	return wa, true

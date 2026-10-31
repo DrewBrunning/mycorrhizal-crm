@@ -81,7 +81,8 @@ func TestValidateJSONMiddleware_InvalidJSON(t *testing.T) {
 	err := json.Unmarshal(resp.Body.Bytes(), &response)
 	assert.NoError(t, err)
 	assert.Equal(t, "INVALID_INPUT", response.Error.Code)
-	assert.Contains(t, response.Error.Message, "request body")
+	assert.Equal(t, "validation_request_body_invalid", response.Error.ReasonCode)
+	assert.Equal(t, "request body", response.Error.Details["field"])
 }
 
 func TestValidateJSONMiddleware_MissingRequiredFields(t *testing.T) {

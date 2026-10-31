@@ -54,7 +54,7 @@ func appendDataDecayPolicyConflict(db *gorm.DB, userID uint, keeperVCardUID, los
 // malformed requests identically.
 func loadMergePair(db *gorm.DB, userID uint, input *models.ContactMergeRequest) (keeper, loser models.Contact, appErr *apperrors.AppError) {
 	if input.KeepID == input.MergeID {
-		return keeper, loser, apperrors.ErrInvalidInput("merge_id", "must differ from keep_id")
+		return keeper, loser, apperrors.ErrInvalidInput("merge_id", "must differ from keep_id").WithReason(apperrors.ReasonContactMergeSameID, nil)
 	}
 	if err := db.Where("user_id = ?", userID).First(&keeper, input.KeepID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -215,7 +215,7 @@ func CommitContactMerge(c *gin.Context) {
 		missing := missingResolutions(resolution.Conflicts, input.Resolutions)
 		missing = append(missing, missingResolutions(resolution.FieldValueConflicts, input.Resolutions)...)
 		if len(missing) > 0 {
-			return apperrors.ErrValidation("Unresolved merge conflicts").WithDetails("fields", missing)
+			return apperrors.ErrValidation("Unresolved merge conflicts").WithReason(apperrors.ReasonContactMergeUnresolvedConflicts, nil).WithDetails("fields", missing)
 		}
 
 		// T107: adopt the loser's photo when the keeper has none of its own,

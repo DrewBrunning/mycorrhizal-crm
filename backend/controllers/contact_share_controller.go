@@ -303,7 +303,7 @@ func AcceptContactShare(c *gin.Context) {
 	contacts, previews, stats, err := services.ParseJSContact(strings.NewReader(share.Payload), db, userID)
 	if err != nil {
 		log.Warn().Err(err).Str("share_id", share.ID).Msg("Failed to parse contact share payload")
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("payload", err.Error()))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("payload", err.Error()).WithReason(apperrors.ReasonContactSharePayloadInvalid, map[string]any{"reason": err.Error()}))
 		return
 	}
 

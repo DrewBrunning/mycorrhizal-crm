@@ -263,7 +263,7 @@ func ApplyContactAddressSuggestion(db *gorm.DB, userID uint, input *models.Apply
 	key := neutralAddressKey(address)
 	for _, a := range contact.Addresses {
 		if AddressNormalizedKey(a) == key {
-			return nil, apperrors.ErrConflict("The contact already has this address")
+			return nil, apperrors.ErrConflict("The contact already has this address").WithReason(apperrors.ReasonContactAddressAlreadyExists, nil)
 		}
 	}
 
@@ -279,7 +279,7 @@ func ApplyContactAddressSuggestion(db *gorm.DB, userID uint, input *models.Apply
 func suggestedAddressFor(db *gorm.DB, userID uint, input *models.ApplyContactAddressSuggestionInput) (contactmodel.Address, *apperrors.AppError) {
 	key := input.AddressKey
 	if key == "" {
-		return contactmodel.Address{}, apperrors.ErrInvalidInput("address_key", "address_key is required")
+		return contactmodel.Address{}, apperrors.ErrInvalidInput("address_key", "address_key is required").WithReason(apperrors.ReasonContactAddressKeyRequired, nil)
 	}
 
 	switch input.SourceKind {
@@ -294,7 +294,7 @@ func suggestedAddressFor(db *gorm.DB, userID uint, input *models.ApplyContactAdd
 			input.ContactVCardUID, input.SourceID, input.SourceID, input.ContactVCardUID,
 		).First(&edge).Error
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return contactmodel.Address{}, apperrors.ErrConflict("The suggested relationship no longer exists — re-run the address suggestion scan")
+			return contactmodel.Address{}, apperrors.ErrConflict("The suggested relationship no longer exists — re-run the address suggestion scan").WithReason(apperrors.ReasonRelationshipSuggestionStale, nil)
 		}
 		if err != nil {
 			return contactmodel.Address{}, apperrors.ErrDatabase("Failed to verify the suggested relationship").WithError(err)
@@ -311,7 +311,7 @@ func suggestedAddressFor(db *gorm.DB, userID uint, input *models.ApplyContactAdd
 				return models.AddressFromContactAddress(a), nil
 			}
 		}
-		return contactmodel.Address{}, apperrors.ErrConflict("The source contact no longer has that address — re-run the address suggestion scan")
+		return contactmodel.Address{}, apperrors.ErrConflict("The source contact no longer has that address — re-run the address suggestion scan").WithReason(apperrors.ReasonContactAddressSuggestionStale, nil)
 
 	case addressSuggestionSourceHousehold:
 		var household models.Household
@@ -326,15 +326,15 @@ func suggestedAddressFor(db *gorm.DB, userID uint, input *models.ApplyContactAdd
 			return contactmodel.Address{}, apperrors.ErrDatabase("Failed to verify household membership").WithError(err)
 		}
 		if membershipCount == 0 {
-			return contactmodel.Address{}, apperrors.ErrConflict("The contact is no longer a member of this household")
+			return contactmodel.Address{}, apperrors.ErrConflict("The contact is no longer a member of this household").WithReason(apperrors.ReasonHouseholdSuggestionMemberStale, nil)
 		}
 		if household.Address == nil || neutralAddressKey(*household.Address) != key {
-			return contactmodel.Address{}, apperrors.ErrConflict("The household no longer has that address — re-run the address suggestion scan")
+			return contactmodel.Address{}, apperrors.ErrConflict("The household no longer has that address — re-run the address suggestion scan").WithReason(apperrors.ReasonHouseholdAddressStale, nil)
 		}
 		return *household.Address, nil
 
 	default:
-		return contactmodel.Address{}, apperrors.ErrInvalidInput("source_kind", "source_kind must be one of relationship, household")
+		return contactmodel.Address{}, apperrors.ErrInvalidInput("source_kind", "source_kind must be one of relationship, household").WithReason(apperrors.ReasonContactAddressSourceKindInvalid, nil)
 	}
 }
 

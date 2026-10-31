@@ -60,7 +60,7 @@ func getContactIDByVCardUID(db *gorm.DB, userID uint, vcardUID string) (*uint, e
 // nil/open end is always fine. Returns nil when the range is valid.
 func validateLifeEventRange(start, end *contactmodel.PartialDate) *apperrors.AppError {
 	if (contactmodel.TemporalRange{Start: start, End: end}).Reversed() {
-		return apperrors.ErrInvalidInput("end_date", "end date precedes the start date")
+		return apperrors.ErrInvalidInput("end_date", "end date precedes the start date").WithReason(apperrors.ReasonContactLifeEventEndBeforeStart, nil)
 	}
 	return nil
 }

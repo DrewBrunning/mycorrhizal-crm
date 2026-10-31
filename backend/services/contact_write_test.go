@@ -9,6 +9,7 @@ import (
 
 	"mycorrhizal/config"
 	"mycorrhizal/contactmodel"
+	apperrors "mycorrhizal/errors"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/internal/logtest"
 	"mycorrhizal/models"
@@ -58,6 +59,24 @@ func TestSaveContact_ErrorIsReturnedAndFiresNothing(t *testing.T) {
 	require.Error(t, SaveContact(context.Background(), db, config.Config{}, user.ID, &c, false))
 	WaitForWebhookGoroutines()
 	assert.Zero(t, hits.Load())
+}
+
+func TestSaveContact_CreateRespectsContactQuota(t *testing.T) {
+	db, user := selfApplyFixture(t)
+	require.NoError(t, db.Create(&models.Contact{UserID: user.ID, Firstname: "Existing"}).Error)
+
+	c := models.Contact{UserID: user.ID, Firstname: "New"}
+	err := SaveContact(context.Background(), db, config.Config{PerUserContactLimit: 1}, user.ID, &c, false)
+
+	var appErr *apperrors.AppError
+	require.ErrorAs(t, err, &appErr)
+	assert.Equal(t, http.StatusInsufficientStorage, appErr.HTTPStatus)
+	assert.Contains(t, appErr.Message, "PER_USER_CONTACT_LIMIT")
+	assert.Zero(t, c.ID, "the refused create wrote no row")
+
+	var count int64
+	require.NoError(t, db.Model(&models.Contact{}).Where("user_id = ?", user.ID).Count(&count).Error)
+	assert.EqualValues(t, 1, count)
 }
 
 func TestSaveContact_AmbientChangeOnMeClearsProvenance(t *testing.T) {

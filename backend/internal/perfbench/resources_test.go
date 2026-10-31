@@ -2,6 +2,7 @@ package perfbench
 
 import (
 	"database/sql"
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -133,6 +134,41 @@ func TestWriteProbe_StallsAndTimesOutUnderALockHold(t *testing.T) {
 	assert.Greater(t, p.maxStall, 100*time.Millisecond)
 }
 
+// TestWriteProbe_NonLockErrorIsNotAStallOut is the regression test for the
+// import.vcf stall-out flake (issues #2270–#2272). A probe whose Exec fails
+// for a reason other than SQLite's write-lock contention (here: the handle is
+// closed, standing in for an I/O error on a saturated runner) must not report
+// that the operation under test stalled writers.
+func TestWriteProbe_NonLockErrorIsNotAStallOut(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "probe.db")
+	seed, err := sql.Open("sqlite", probeDSN(dbPath, probeBusyTimeoutMS))
+	require.NoError(t, err)
+	_, err = seed.Exec("CREATE TABLE t (x)")
+	require.NoError(t, err)
+	require.NoError(t, seed.Close())
+
+	p, err := newWriteProbe(dbPath, 50)
+	require.NoError(t, err)
+	// Break the probe's only connection: every subsequent Exec returns
+	// "sql: database is closed", a non-lock error.
+	require.NoError(t, p.db.Close())
+
+	p.start()
+	time.Sleep(60 * time.Millisecond) // several probe ticks
+	p.stop()
+
+	assert.False(t, p.stalledOut, "a non-lock probe error is not a write-lock stall-out")
+	assert.Zero(t, p.writes)
+}
+
+func TestIsLockError(t *testing.T) {
+	assert.False(t, isLockError(nil))
+	assert.True(t, isLockError(errors.New("database is locked (5) (SQLITE_BUSY)")))
+	assert.True(t, isLockError(errors.New("database table is locked (6) (SQLITE_LOCKED)")))
+	assert.False(t, isLockError(errors.New("disk I/O error (10) (SQLITE_IOERR_WRITE)")))
+	assert.False(t, isLockError(errors.New("sql: database is closed")))
+}
+
 func TestSanitizeOpName(t *testing.T) {
 	assert.Equal(t, "import_vcf", sanitizeOpName("import.vcf"))
 	assert.Equal(t, "a_b_c", sanitizeOpName("a/b.c"))
@@ -150,6 +186,6 @@ func TestHumanBytes(t *testing.T) {
 
 func TestProbeDSN(t *testing.T) {
 	assert.Equal(t,
-		"/x/y.db?_pragma=journal_mode(WAL)&_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)&_txlock=immediate",
+		"/x/y.db?_pragma=journal_mode(WAL)&_pragma=foreign_keys(1)&_pragma=synchronous(NORMAL)&_pragma=busy_timeout(5000)&_txlock=immediate",
 		probeDSN("/x/y.db", 5000))
 }
