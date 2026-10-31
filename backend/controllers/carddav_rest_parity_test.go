@@ -17,12 +17,14 @@ import (
 	"testing"
 
 	"mycorrhizal/carddav"
+	"mycorrhizal/config"
 	"mycorrhizal/contactmodel"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 
 	"github.com/emersion/go-vcard"
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -193,4 +195,60 @@ func TestCardDAVPutAndRESTWriteLeaveIdenticalDerivedState(t *testing.T) {
 			require.NotEmpty(t, rest.WebhookEvents, "control: the REST side really fired a webhook")
 		})
 	}
+}
+
+// davPutContact drives a real CardDAV PUT for user as the DAV handler, so the
+// returned recorder carries the status a DAV client actually sees.
+func davPutContact(t *testing.T, db *gorm.DB, cfg config.Config, user models.User, uid string) *httptest.ResponseRecorder {
+	t.Helper()
+	gin.SetMode(gin.TestMode)
+	h := carddav.NewHandler(db, t.TempDir())
+	h.SetConfig(cfg)
+
+	card := vcard.Card{}
+	card.SetValue(vcard.FieldVersion, "4.0")
+	card.SetValue(vcard.FieldUID, uid)
+	card.SetValue(vcard.FieldFormattedName, "Parity New")
+	card.SetValue(vcard.FieldName, "New;Parity;;;")
+	var body bytes.Buffer
+	require.NoError(t, vcard.NewEncoder(&body).Encode(card))
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request, _ = http.NewRequest(http.MethodPut,
+		"/carddav/addressbooks/"+user.Username+"/contacts/"+uid+".vcf", &body)
+	c.Request.Header.Set("Content-Type", vcard.MIMEType)
+	c.Set("userID", user.ID)
+	c.Set("username", user.Username)
+	h.GinHandler()(c)
+	c.Writer.WriteHeaderNow()
+	return w
+}
+
+// TestContactCreateQuota_CardDAVAndRESTAgree pins issue #2261's parity
+// requirement: at the limit, a new contact is refused the same way whether it
+// arrives over REST or over a CardDAV PUT (507, operator-actionable message,
+// nothing written). Both reach services.SaveContact, so this also pins that a
+// future caller cannot bypass the quota.
+func TestContactCreateQuota_CardDAVAndRESTAgree(t *testing.T) {
+	cfg := config.Config{PerUserContactLimit: 1}
+	db, router, alice, _, _ := setupQuotaRouter(t, cfg)
+
+	first := quotaPost(t, router, "/contacts", "alice", contactBody("Alice One"))
+	require.Equal(t, http.StatusCreated, first.Code, first.Body.String())
+
+	rest := quotaPost(t, router, "/contacts", "alice", contactBody("Alice Two"))
+	require.Equal(t, http.StatusInsufficientStorage, rest.Code, rest.Body.String())
+
+	dav := davPutContact(t, db, cfg, alice, "quota-parity-uid")
+	require.Equal(t, http.StatusInsufficientStorage, dav.Code, dav.Body.String())
+
+	for name, w := range map[string]*httptest.ResponseRecorder{"REST": rest, "CardDAV": dav} {
+		assert.Contains(t, w.Body.String(), "PER_USER_CONTACT_LIMIT", "%s names the config variable", name)
+		assert.Contains(t, w.Body.String(), "quota", "%s explains it is a quota", name)
+	}
+
+	var count int64
+	require.NoError(t, db.Model(&models.Contact{}).Where("user_id = ?", alice.ID).Count(&count).Error)
+	assert.EqualValues(t, 1, count, "neither refusal may write a contact")
 }

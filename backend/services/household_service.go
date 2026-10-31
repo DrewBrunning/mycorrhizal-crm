@@ -432,10 +432,10 @@ func GenerateAddressHouseholdSuggestions(db *gorm.DB, userID uint) ([]AddressSug
 // to "adult" for every member.
 func AcceptAddressHouseholdSuggestion(db *gorm.DB, userID uint, memberVCardUIDs []string, name, householdType string) (*models.Household, error) {
 	if len(memberVCardUIDs) < 2 {
-		return nil, apperrors.ErrInvalidInput("member_vcard_uids", "at least two contacts are required to form a household")
+		return nil, apperrors.ErrInvalidInput("member_vcard_uids", "at least two contacts are required to form a household").WithReason(apperrors.ReasonHouseholdMembersRequired, nil)
 	}
 	if householdType != "" && !validHouseholdType(householdType) {
-		return nil, apperrors.ErrInvalidInput("type", "type must be one of family_unit, roommates, other")
+		return nil, apperrors.ErrInvalidInput("type", "type must be one of family_unit, roommates, other").WithReason(apperrors.ReasonHouseholdTypeInvalid, nil)
 	}
 
 	uids := make([]string, len(memberVCardUIDs))
@@ -449,7 +449,7 @@ func AcceptAddressHouseholdSuggestion(db *gorm.DB, userID uint, memberVCardUIDs 
 	}
 	uids = deduped
 	if len(uids) < 2 {
-		return nil, apperrors.ErrInvalidInput("member_vcard_uids", "at least two distinct contacts are required to form a household")
+		return nil, apperrors.ErrInvalidInput("member_vcard_uids", "at least two distinct contacts are required to form a household").WithReason(apperrors.ReasonHouseholdMembersDistinctRequired, nil)
 	}
 
 	var contacts []models.Contact
@@ -472,7 +472,7 @@ func AcceptAddressHouseholdSuggestion(db *gorm.DB, userID uint, memberVCardUIDs 
 	}
 	sharedKey, sharedAddress := sharedAddressKey(orderedContacts)
 	if sharedKey == "" {
-		return nil, apperrors.ErrConflict("The suggested members no longer share an address — re-run the suggestion scan")
+		return nil, apperrors.ErrConflict("The suggested members no longer share an address — re-run the suggestion scan").WithReason(apperrors.ReasonHouseholdSuggestionStale, nil)
 	}
 
 	addressHash := sha256Hex(sharedKey)
@@ -483,7 +483,7 @@ func AcceptAddressHouseholdSuggestion(db *gorm.DB, userID uint, memberVCardUIDs 
 		return nil, err
 	}
 	if coMember {
-		return nil, apperrors.ErrConflict("These contacts are already in a household together")
+		return nil, apperrors.ErrConflict("These contacts are already in a household together").WithReason(apperrors.ReasonHouseholdMembersAlreadyTogether, nil)
 	}
 
 	dismissed, err := groupIsDismissed(db, userID, addressHash, memberHash)
@@ -491,7 +491,7 @@ func AcceptAddressHouseholdSuggestion(db *gorm.DB, userID uint, memberVCardUIDs 
 		return nil, err
 	}
 	if dismissed {
-		return nil, apperrors.ErrConflict("This suggestion was dismissed — re-run the scan to re-offer it, or create the household manually")
+		return nil, apperrors.ErrConflict("This suggestion was dismissed — re-run the scan to re-offer it, or create the household manually").WithReason(apperrors.ReasonHouseholdSuggestionDismissed, nil)
 	}
 
 	if householdType == "" {
@@ -622,7 +622,7 @@ func DismissAddressHouseholdSuggestion(db *gorm.DB, userID uint, memberVCardUIDs
 	}
 	uids = deduped
 	if len(uids) < 2 {
-		return apperrors.ErrInvalidInput("member_vcard_uids", "at least two distinct contacts are required")
+		return apperrors.ErrInvalidInput("member_vcard_uids", "at least two distinct contacts are required").WithReason(apperrors.ReasonHouseholdMembersDistinctRequiredShort, nil)
 	}
 
 	var contacts []models.Contact
@@ -636,7 +636,7 @@ func DismissAddressHouseholdSuggestion(db *gorm.DB, userID uint, memberVCardUIDs
 	// Recover the shared address key from the members' actual addresses.
 	sharedKey, _ := sharedAddressKey(contacts)
 	if sharedKey == "" {
-		return apperrors.ErrInvalidInput("member_vcard_uids", "these contacts do not share an address")
+		return apperrors.ErrInvalidInput("member_vcard_uids", "these contacts do not share an address").WithReason(apperrors.ReasonHouseholdMembersAddressMismatch, nil)
 	}
 
 	addressHash := sha256Hex(sharedKey)

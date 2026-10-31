@@ -480,9 +480,10 @@ func (b *Backend) PutAddressObject(ctx context.Context, urlPath string, card vca
 		}
 	}
 
-	// The same write path as the REST create/update (issue #2255): one
-	// transaction, then the wedding-anniversary sync and the contact.created /
-	// contact.updated webhook, both only after the commit.
+	// The same write path as the REST create/update (issue #2255): the opt-in
+	// contact quota (issue #2261), one transaction, then the
+	// wedding-anniversary sync and the contact.created / contact.updated
+	// webhook, both only after the commit.
 	var saveErr error
 	if isNew {
 		// A phone-created contact joins the default circle in the same
@@ -496,9 +497,10 @@ func (b *Backend) PutAddressObject(ctx context.Context, urlPath string, card vca
 		saveErr = services.SaveContact(ctx, db, b.cfg, userID, &contact, ambientBefore)
 	}
 	if saveErr != nil {
-		// A scope refusal is an AppError; go-webdav renders only its own
-		// HTTPError type with the intended status, so translate at the
-		// protocol boundary.
+		// A quota or scope refusal is an AppError carrying the status the REST
+		// create returns. go-webdav renders only its own HTTPError type with
+		// the intended status (anything else becomes a 500), so translate it
+		// at the protocol boundary rather than leaking an internal error.
 		var appErr *apperrors.AppError
 		if errors.As(saveErr, &appErr) {
 			return nil, webdav.NewHTTPError(appErr.HTTPStatus, appErr)

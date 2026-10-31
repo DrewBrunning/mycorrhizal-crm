@@ -33,7 +33,7 @@ func GetProfilePicture(c *gin.Context, cfg *config.Config) {
 	idParam := c.Param("id")
 	contactID, err := strconv.Atoi(idParam)
 	if err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrValidation("Invalid contact ID"))
+		apperrors.AbortWithError(c, apperrors.ErrValidation("Invalid contact ID").WithReason(apperrors.ReasonContactInvalidID, nil))
 		return
 	}
 	var contact models.Contact
@@ -96,7 +96,7 @@ func GetProfilePicture(c *gin.Context, cfg *config.Config) {
 
 	// Prevent path traversal attacks
 	if strings.Contains(contact.Photo, "..") || filepath.IsAbs(contact.Photo) {
-		apperrors.AbortWithError(c, apperrors.ErrValidation("Invalid photo path"))
+		apperrors.AbortWithError(c, apperrors.ErrValidation("Invalid photo path").WithReason(apperrors.ReasonPhotoInvalidPath, nil))
 		return
 	}
 
@@ -114,14 +114,14 @@ func GetProfilePicture(c *gin.Context, cfg *config.Config) {
 func AddPhotoToContact(c *gin.Context, cfg *config.Config) {
 	// Check if demo mode is enabled - photo uploads are disabled in demo
 	if cfg.DemoMode {
-		apperrors.AbortWithError(c, apperrors.ErrForbidden("Photo uploads are disabled in demo mode"))
+		apperrors.AbortWithError(c, apperrors.ErrForbidden("Photo uploads are disabled in demo mode").WithReason(apperrors.ReasonPhotoUploadsDisabledDemo, nil))
 		return
 	}
 
 	idParam := c.Param("id")
 	contactID, err := strconv.Atoi(idParam)
 	if err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrValidation("Invalid contact ID"))
+		apperrors.AbortWithError(c, apperrors.ErrValidation("Invalid contact ID").WithReason(apperrors.ReasonContactInvalidID, nil))
 		return
 	}
 	var contact models.Contact
@@ -148,7 +148,7 @@ func AddPhotoToContact(c *gin.Context, cfg *config.Config) {
 		// Validate file size (10MB limit to prevent DoS)
 		const maxFileSize = 10 * 1024 * 1024 // 10MB
 		if file.Size > maxFileSize {
-			apperrors.AbortWithError(c, apperrors.ErrValidation("File too large. Maximum size is 10MB"))
+			apperrors.AbortWithError(c, apperrors.ErrValidation("File too large. Maximum size is 10MB").WithReason(apperrors.ReasonPhotoFileTooLarge, map[string]any{"max_mb": "10"}))
 			return
 		}
 
@@ -165,7 +165,7 @@ func AddPhotoToContact(c *gin.Context, cfg *config.Config) {
 			// path on an os.MkdirAll/os.Create failure) goes through
 			// WithError only — never interpolated into the message, per the
 			// fail-secure no-detail-leak posture (CLAUDE.md).
-			apperrors.AbortWithError(c, apperrors.ErrValidation("Failed to process photo — check the file is a valid JPEG, PNG, or HEIC image").WithError(err))
+			apperrors.AbortWithError(c, apperrors.ErrValidation("Failed to process photo — check the file is a valid JPEG, PNG, or HEIC image").WithReason(apperrors.ReasonPhotoProcessFailed, nil).WithError(err))
 			return
 		}
 		oldPhoto := contact.Photo
@@ -375,7 +375,7 @@ func ProxyImage(c *gin.Context) {
 		// issue #524: the caller-supplied url is what's unreachable/invalid —
 		// the caller's own input, not a server malfunction — so this is a
 		// 400, not a 503.
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("url", "Failed to fetch image from URL").WithError(err))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("url", "Failed to fetch image from URL").WithReason(apperrors.ReasonPhotoFetchFailed, nil).WithError(err))
 		return
 	}
 
@@ -387,7 +387,7 @@ func ProxyImage(c *gin.Context) {
 	lowerContentType := strings.ToLower(contentType)
 	if strings.HasPrefix(lowerContentType, "image/svg") {
 		logger.FromContext(c).Warn().Str("url", logger.SanitizeLogField(imageURL)).Str("content_type", contentType).Msg("Rejected SVG image from proxy (XSS risk)")
-		apperrors.AbortWithError(c, apperrors.ErrValidation("SVG images are not supported by the image proxy"))
+		apperrors.AbortWithError(c, apperrors.ErrValidation("SVG images are not supported by the image proxy").WithReason(apperrors.ReasonPhotoSvgUnsupported, nil))
 		return
 	}
 

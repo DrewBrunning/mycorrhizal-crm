@@ -65,7 +65,7 @@ func parseTimelineParams(c *gin.Context) (limit int, order string, cur *timeline
 	if raw := c.Query("cursor"); raw != "" {
 		parsed, err := decodeTimelineCursor(raw)
 		if err != nil {
-			return 0, "", nil, nil, "", apperrors.ErrInvalidInput("cursor", err.Error())
+			return 0, "", nil, nil, "", apperrors.ErrInvalidInput("cursor", err.Error()).WithReason(apperrors.ReasonValidationCursorInvalid, map[string]any{"reason": err.Error()})
 		}
 		cur = parsed
 	}
@@ -91,7 +91,7 @@ func parseTimelineTypeFilter(raw string) ([]string, *apperrors.AppError) {
 		tok = strings.TrimSpace(tok)
 		if _, ok := models.TimelineTypeRank(tok); !ok {
 			return nil, apperrors.ErrInvalidInput("type",
-				fmt.Sprintf("unknown timeline type %q; expected one of: %s", tok, strings.Join(models.TimelineTypes, ", ")))
+				fmt.Sprintf("unknown timeline type %q; expected one of: %s", tok, strings.Join(models.TimelineTypes, ", "))).WithReason(apperrors.ReasonTimelineTypeInvalid, map[string]any{"type": tok, "supported": strings.Join(models.TimelineTypes, ", ")})
 		}
 		if !seen[tok] {
 			seen[tok] = true
@@ -115,7 +115,7 @@ func parseTimelineBucket(raw string) (string, *apperrors.AppError) {
 		return raw, nil
 	default:
 		return "", apperrors.ErrInvalidInput("bucket",
-			"must be one of: last_7_days, last_30_days, last_90_days, this_year, all")
+			"must be one of: last_7_days, last_30_days, last_90_days, this_year, all").WithReason(apperrors.ReasonTimelineBucketInvalid, nil)
 	}
 }
 
@@ -177,7 +177,7 @@ func GetContactTimeline(c *gin.Context) {
 	})
 	if err != nil {
 		if errors.Is(err, services.ErrTimelineBadCursor) {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed"))
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed").WithReason(apperrors.ReasonValidationCursorMalformed, nil))
 			return
 		}
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve contact timeline").WithError(err))

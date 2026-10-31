@@ -372,7 +372,7 @@ func RestoreContactSyncConflict(db *gorm.DB, userID uint, id string) error {
 		return fmt.Errorf("loading sync conflict: %w", err)
 	}
 	if conflict.Status == models.SyncConflictStatusDismissed {
-		return apperrors.ErrConflict("sync conflict already resolved")
+		return apperrors.ErrConflict("sync conflict already resolved").WithReason(apperrors.ReasonContactSyncConflictAlreadyResolved, nil)
 	}
 
 	var contact models.Contact
@@ -384,7 +384,7 @@ func RestoreContactSyncConflict(db *gorm.DB, userID uint, id string) error {
 	}
 
 	if err := restoreConflictFieldValue(&contact, conflict.Field, conflict.LocalValue); err != nil {
-		return apperrors.ErrOperationFailed("Restore sync conflict", err.Error())
+		return apperrors.ErrOperationFailed("Restore sync conflict", err.Error()).WithReason(apperrors.ReasonContactSyncConflictRestoreFailed, map[string]any{"reason": err.Error()})
 	}
 
 	return db.Transaction(func(tx *gorm.DB) error {

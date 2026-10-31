@@ -287,7 +287,7 @@ func contactSyncError(err error) *apperrors.AppError {
 		// refuses to accept a 5xx here).
 		return apperrors.ErrValidation("server could not be reached — check the subscription URL").WithReason(apperrors.ReasonContactSubscriptionUnreachable, nil)
 	default:
-		return apperrors.ErrOperationFailed("Contact sync", err.Error())
+		return apperrors.ErrOperationFailed("Contact sync", err.Error()).WithReason(apperrors.ReasonContactSubscriptionSyncFailed, map[string]any{"reason": err.Error()})
 	}
 }
 

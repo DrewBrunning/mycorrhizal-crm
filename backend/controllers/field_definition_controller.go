@@ -313,7 +313,7 @@ func ReorderFieldDefinitions(c *gin.Context) {
 		return
 	}
 	if int(count) != len(input.Order) || int(total) != len(input.Order) {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("order", "must include every one of the user's field definitions exactly once, with no duplicates"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("order", "must include every one of the user's field definitions exactly once, with no duplicates").WithReason(apperrors.ReasonContactFieldOrderIncomplete, nil))
 		return
 	}
 
@@ -417,11 +417,11 @@ func ReplaceContactFieldValues(c *gin.Context) {
 	for i, fv := range input.FieldValues {
 		def, ok := defByID[fv.FieldDefinitionID]
 		if !ok {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("field_definition_id", "unknown or not-owned field definition"))
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("field_definition_id", "unknown or not-owned field definition").WithReason(apperrors.ReasonContactFieldDefinitionUnknown, nil))
 			return
 		}
 		if err := services.ValidateFieldValue(def, fv.Value); err != nil {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("value", err.Error()))
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("value", err.Error()).WithReason(apperrors.ReasonContactFieldValueInvalid, map[string]any{"reason": err.Error()}))
 			return
 		}
 		incoming[i] = fv
@@ -512,7 +512,7 @@ func resolveOwnedContactByID(c *gin.Context, db *gorm.DB, userID uint, id string
 	// the correct 400 (issue #524). Validate first so every caller of this
 	// shared resolver — detail, timeline, field-values GET/PUT — gets the fix.
 	if _, err := strconv.ParseUint(id, 10, 64); err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("id", "must be a positive integer").WithDetails("id", id))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("id", "must be a positive integer").WithReason(apperrors.ReasonIntegrationIdInvalid, nil).WithDetails("id", id))
 		return nil, false
 	}
 	var contact models.Contact

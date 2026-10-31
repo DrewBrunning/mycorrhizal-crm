@@ -73,6 +73,20 @@ implementations the automated legs run against — lives in the development docs
 - **One address book by design.** The server exposes a single address book per
   user. A client that tries to create a second one (`MKCOL`) is refused with
   `403` — the interop-correct "single address book" answer, not a server error.
+- **A new contact past `PER_USER_CONTACT_LIMIT` is refused with `507
+  Insufficient Storage`.** The quota is opt-in (`0`, the default, means
+  unlimited) and applies to a CardDAV PUT that creates a contact as well as to
+  the REST create; updating an existing contact at the limit still succeeds.
+  `507` is the same status the REST create already returns for this refusal and
+  RFC 4918's "server is unable to store the representation" answer, so the
+  client learns this is a capacity limit rather than bad credentials or a
+  missing permission. A refused create writes nothing and fires no
+  `contact.created` webhook. DAVx5 classifies every non-auth HTTP error,
+  including this one, as a hard sync error (`SyncExceptionHandler`) and reports
+  it instead of retrying it as transient; the exact Apple Contacts presentation
+  is not automated (see
+  [reference-client-matrix.md](development/reference-client-matrix.md)), so it
+  is not asserted here.
 - **No CardDAV `sync-token`.** go-webdav does not implement it, so clients fall
   back to a `PROPFIND` of depth 1 and compare locally. Incremental sync
   therefore costs a full listing of the collection.

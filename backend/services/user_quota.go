@@ -92,7 +92,7 @@ func (q UserQuota) CheckAttachmentUpload(db *gorm.DB, userID uint, incomingBytes
 	if used > q.AttachmentBytes || incomingBytes > q.AttachmentBytes-used {
 		return apperrors.ErrInsufficientStorage(fmt.Sprintf(
 			"per-user attachment storage quota reached (%s of %s used); delete attachments or raise PER_USER_ATTACHMENT_QUOTA_MB",
-			formatMiB(used), formatMiB(q.AttachmentBytes)))
+			formatMiB(used), formatMiB(q.AttachmentBytes))).WithReason(apperrors.ReasonAccountAttachmentQuotaReached, map[string]any{"used": formatMiB(used), "max_mb": formatMiB(q.AttachmentBytes)})
 	}
 	return nil
 }
@@ -112,7 +112,7 @@ func (q UserQuota) checkRowQuota(db *gorm.DB, model any, envVar string, limit in
 	if count >= int64(limit) {
 		return apperrors.ErrInsufficientStorage(fmt.Sprintf(
 			"per-user %s quota reached (%d of %d); delete some %s or raise %s",
-			resource, count, limit, resource, envVar))
+			resource, count, limit, resource, envVar)).WithReason(apperrors.ReasonAccountResourceQuotaReached, map[string]any{"resource": resource, "n": count, "limit": limit, "env_var": envVar})
 	}
 	return nil
 }

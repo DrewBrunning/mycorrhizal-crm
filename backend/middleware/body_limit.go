@@ -46,7 +46,7 @@ func BodySizeLimitMiddleware(maxBytes int64) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if lengthStr := c.Request.Header.Get("Content-Length"); lengthStr != "" {
 			if length, err := strconv.ParseInt(lengthStr, 10, 64); err == nil && length > maxBytes {
-				apperrors.AbortWithError(c, apperrors.ErrPayloadTooLarge("request body too large"))
+				apperrors.AbortWithError(c, apperrors.ErrPayloadTooLarge("request body too large").WithReason(apperrors.ReasonCommonRequestBodyTooLarge, nil))
 				return
 			}
 		}

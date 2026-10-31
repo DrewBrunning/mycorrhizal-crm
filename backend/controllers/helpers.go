@@ -43,7 +43,7 @@ type PaginationParams struct {
 func requirePathUintID(c *gin.Context, param string) (string, bool) {
 	raw := c.Param(param)
 	if _, err := strconv.ParseUint(raw, 10, 64); err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput(param, "must be a positive integer").WithDetails(param, raw))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput(param, "must be a positive integer").WithReason(apperrors.ReasonIntegrationIdInvalid, nil).WithDetails(param, raw))
 		return "", false
 	}
 	return raw, true
@@ -52,13 +52,13 @@ func requirePathUintID(c *gin.Context, param string) (string, bool) {
 func currentUserID(c *gin.Context) (uint, bool) {
 	value, exists := c.Get("userID")
 	if !exists {
-		apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Authentication required"))
+		apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Authentication required").WithReason(apperrors.ReasonAuthRequired, nil))
 		return 0, false
 	}
 
 	userID, ok := value.(uint)
 	if !ok {
-		apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Authentication required"))
+		apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Authentication required").WithReason(apperrors.ReasonAuthRequired, nil))
 		return 0, false
 	}
 
@@ -99,7 +99,7 @@ func checkIfMatch(c *gin.Context, currentRevision int64) bool {
 	if ifMatchSatisfied(c.GetHeader("If-Match"), currentRevision) {
 		return true
 	}
-	apperrors.AbortWithError(c, apperrors.ErrPreconditionFailed("").
+	apperrors.AbortWithError(c, apperrors.ErrPreconditionFailed("").WithReason(apperrors.ReasonCommonPreconditionFailed, nil).
 		WithDetails("expected_revision", currentRevision).
 		WithDetails("if_match", c.GetHeader("If-Match")))
 	return false
@@ -146,7 +146,7 @@ func handleRevisionConflict(c *gin.Context, entityName string, err error) bool {
 		apperrors.AbortWithError(c, apperrors.ErrNotFound(entityName).WithDetails("id", fmt.Sprint(conflict.ID)))
 		return true
 	}
-	apperrors.AbortWithError(c, apperrors.ErrPreconditionFailed("").
+	apperrors.AbortWithError(c, apperrors.ErrPreconditionFailed("").WithReason(apperrors.ReasonCommonPreconditionFailed, nil).
 		WithDetails("expected_revision", conflict.ExpectedRevision).
 		WithDetails("reason", "revision changed concurrently"))
 	return true
@@ -187,7 +187,7 @@ func parseContactSort(c *gin.Context) (string, *apperrors.AppError) {
 	case "updated_at", "name", "created_at":
 		return sort, nil
 	default:
-		return "", apperrors.ErrInvalidInput("sort", "must be one of: updated_at, name, created_at")
+		return "", apperrors.ErrInvalidInput("sort", "must be one of: updated_at, name, created_at").WithReason(apperrors.ReasonValidationSortInvalid, map[string]any{"supported": "updated_at, name, created_at"})
 	}
 }
 
@@ -521,25 +521,25 @@ func cursorParams(c *gin.Context, kind cursorKind) (CursorParams, *apperrors.App
 		case cursorName:
 			cur, err := DecodeNameCursor(raw)
 			if err != nil {
-				return params, apperrors.ErrInvalidInput("cursor", err.Error())
+				return params, apperrors.ErrInvalidInput("cursor", err.Error()).WithReason(apperrors.ReasonValidationCursorInvalid, map[string]any{"reason": err.Error()})
 			}
 			params.NameCursor = cur
 		case cursorPosition:
 			cur, err := DecodePositionCursor(raw)
 			if err != nil {
-				return params, apperrors.ErrInvalidInput("cursor", err.Error())
+				return params, apperrors.ErrInvalidInput("cursor", err.Error()).WithReason(apperrors.ReasonValidationCursorInvalid, map[string]any{"reason": err.Error()})
 			}
 			params.PositionCursor = cur
 		case cursorCreatedAt:
 			cur, err := DecodeCreatedCursor(raw)
 			if err != nil {
-				return params, apperrors.ErrInvalidInput("cursor", err.Error())
+				return params, apperrors.ErrInvalidInput("cursor", err.Error()).WithReason(apperrors.ReasonValidationCursorInvalid, map[string]any{"reason": err.Error()})
 			}
 			params.CreatedCursor = cur
 		case cursorUpdatedAt:
 			cur, err := DecodeCursor(raw)
 			if err != nil {
-				return params, apperrors.ErrInvalidInput("cursor", err.Error())
+				return params, apperrors.ErrInvalidInput("cursor", err.Error()).WithReason(apperrors.ReasonValidationCursorInvalid, map[string]any{"reason": err.Error()})
 			}
 			params.Cursor = cur
 		}
@@ -547,7 +547,7 @@ func cursorParams(c *gin.Context, kind cursorKind) (CursorParams, *apperrors.App
 	if raw := c.Query("since"); raw != "" {
 		cur, err := DecodeCursor(raw)
 		if err != nil {
-			return params, apperrors.ErrInvalidInput("since", err.Error())
+			return params, apperrors.ErrInvalidInput("since", err.Error()).WithReason(apperrors.ReasonValidationSinceInvalid, map[string]any{"reason": err.Error()})
 		}
 		params.Cursor = cur
 		params.Since = true
@@ -575,9 +575,9 @@ func CheckFeedCursorAge(c *gin.Context, params CursorParams) *apperrors.AppError
 	cutoff := clock.FromContext(c).Now().AddDate(0, 0, -currentConfig(c).DeleteRetentionDays)
 	if params.Cursor.UpdatedAt.Before(cutoff) {
 		return apperrors.ErrGone(
-			"cursor is older than the retention window (DELETED_RETENTION_DAYS); " +
+			"cursor is older than the retention window (DELETED_RETENTION_DAYS); "+
 				"deleted rows have been purged — full resync required",
-		)
+		).WithReason(apperrors.ReasonValidationCursorExpired, nil)
 	}
 	return nil
 }

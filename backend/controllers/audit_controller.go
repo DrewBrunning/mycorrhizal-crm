@@ -81,14 +81,14 @@ func UndoAuditEvent(c *gin.Context) {
 	}
 
 	if event.Operation != models.AuditOpUpdate {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("operation", "undo supports update events only"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("operation", "undo supports update events only").WithReason(apperrors.ReasonAuditUndoUpdateOnly, nil))
 		return
 	}
 
 	// Reject events past the retention window (a purged event is unrecoverable).
 	retention := time.Duration(cfg.AuditRetentionDays) * 24 * time.Hour
 	if retention > 0 && clock.FromContext(c).Now().Sub(event.CreatedAt) > retention {
-		apperrors.AbortWithError(c, apperrors.ErrGone("This audit event is past its retention window and can no longer be undone"))
+		apperrors.AbortWithError(c, apperrors.ErrGone("This audit event is past its retention window and can no longer be undone").WithReason(apperrors.ReasonAuditEventPastRetention, nil))
 		return
 	}
 
@@ -96,7 +96,7 @@ func UndoAuditEvent(c *gin.Context) {
 	case models.AuditEntityContact:
 		undoContact(c, db, userID, event)
 	default:
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("entity_type", "undo is not supported for "+event.EntityType))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("entity_type", "undo is not supported for "+event.EntityType).WithReason(apperrors.ReasonAuditUndoEntityUnsupported, map[string]any{"entity_type": event.EntityType}))
 	}
 }
 

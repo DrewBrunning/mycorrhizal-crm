@@ -178,7 +178,7 @@ func GetUnassignedNotes(c *gin.Context) {
 		if params.Cursor != nil {
 			id, ok := parseCursorID(params.Cursor)
 			if !ok {
-				apperrors.AbortWithError(c, apperrors.ErrInvalidInput("since", "cursor id is malformed"))
+				apperrors.AbortWithError(c, apperrors.ErrInvalidInput("since", "cursor id is malformed").WithReason(apperrors.ReasonValidationCursorMalformed, nil))
 				return
 			}
 			pred, t, idv := cursorPredicate("notes", params.Cursor, id, false)
@@ -269,7 +269,7 @@ func GetUnassignedNotes(c *gin.Context) {
 	if params.Cursor != nil {
 		id, ok := parseCursorID(params.Cursor)
 		if !ok {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed"))
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed").WithReason(apperrors.ReasonValidationCursorMalformed, nil))
 			return
 		}
 		pred, t, idv := cursorPredicate("notes", params.Cursor, id, desc)
@@ -480,7 +480,7 @@ func GetNotesForContact(c *gin.Context) {
 	if params.Cursor != nil {
 		id, ok := parseCursorID(params.Cursor)
 		if !ok {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed"))
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed").WithReason(apperrors.ReasonValidationCursorMalformed, nil))
 			return
 		}
 		pred, t, idv := cursorPredicate("notes", params.Cursor, id, desc)
