@@ -2687,6 +2687,8 @@
     <string name="error_reason_trash_uid_in_use">Ein aktiver Kontakt verwendet bereits die UID dieses Kontakts; führe ihn zuerst zusammen oder lösche ihn</string>
     <string name="error_reason_trash_snapshot_unsupported">Der Löschschnappschuss dieses Kontakts wird von dieser Version nicht unterstützt; er kann weiterhin endgültig gelöscht werden</string>
     <string name="error_reason_circle_color_invalid">Die Farbe muss eine der Palettenfarben sein</string>
+    <string name="error_reason_circle_sync_scope_out_of_scope">Der Kontakt liegt außerhalb des CardDAV-Synchronisierungsbereichs dieses Geräts</string>
+    <string name="error_reason_circle_sync_scope_no_default">Für den CardDAV-Synchronisierungsbereich ist kein Standardkreis konfiguriert</string>
     <string name="error_reason_meerkat_upload_missing">Keine Datei hochgeladen</string>
     <string name="error_reason_meerkat_session_not_found">Importsitzung abgelaufen oder nicht gefunden</string>
     <string name="error_reason_meerkat_session_not_owned">Die Sitzung gehört nicht zum aktuellen Benutzer</string>

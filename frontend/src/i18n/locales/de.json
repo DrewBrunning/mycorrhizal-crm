@@ -3542,6 +3542,8 @@
       "trash_uid_in_use": "Ein aktiver Kontakt verwendet bereits die UID dieses Kontakts; führe ihn zuerst zusammen oder lösche ihn",
       "trash_snapshot_unsupported": "Der Löschschnappschuss dieses Kontakts wird von dieser Version nicht unterstützt; er kann weiterhin endgültig gelöscht werden",
       "circle_color_invalid": "Die Farbe muss eine der Palettenfarben sein",
+      "circle_sync_scope_out_of_scope": "Der Kontakt liegt außerhalb des CardDAV-Synchronisierungsbereichs dieses Geräts",
+      "circle_sync_scope_no_default": "Für den CardDAV-Synchronisierungsbereich ist kein Standardkreis konfiguriert",
       "validation_cursor_malformed": "Die Cursor-ID ist ungültig",
       "validation_activity_ids_range": "Muss zwischen 1 und 100 IDs enthalten",
       "validation_required": "{{field}} ist erforderlich",

@@ -3542,6 +3542,8 @@
       "trash_uid_in_use": "A live contact already uses this contact's UID; merge or delete it first",
       "trash_snapshot_unsupported": "This contact's deletion snapshot is not supported by this version; it can still be deleted permanently",
       "circle_color_invalid": "The colour must be one of the palette colours",
+      "circle_sync_scope_out_of_scope": "The contact is outside this device's CardDAV sync scope",
+      "circle_sync_scope_no_default": "No default circle is configured for the CardDAV sync scope",
       "validation_cursor_malformed": "The cursor id is malformed",
       "validation_activity_ids_range": "Must contain between 1 and 100 ids",
       "validation_required": "{{field}} is required",
