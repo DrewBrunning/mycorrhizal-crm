@@ -369,3 +369,50 @@ func TestApplyContactAddressSuggestion_RejectsStaleSuggestion(t *testing.T) {
 		assert.Equal(t, apperrors.ErrCodeNotFound, appErr.Code)
 	})
 }
+
+// TestApplyContactAddressSuggestion_InputAndSuggestionGuards covers the
+// remaining rejection branches: a missing address key, a stale household
+// address, and an unknown source kind (issue #2105).
+func TestApplyContactAddressSuggestion_InputAndSuggestionGuards(t *testing.T) {
+	t.Run("address key required", func(t *testing.T) {
+		db := setupAddressSuggestionTestDB(t)
+		user := createAddressTestUser(t, db, "guards")
+		alice := createAddressTestContact(t, db, user.ID, "Alice")
+
+		_, err := ApplyContactAddressSuggestion(db, user.ID, &models.ApplyContactAddressSuggestionInput{
+			ContactVCardUID: alice.VCardUID, SourceKind: addressSuggestionSourceRelationship, SourceID: alice.VCardUID,
+		})
+		var appErr *apperrors.AppError
+		require.ErrorAs(t, err, &appErr)
+		assert.Equal(t, "contact_address_key_required", appErr.ReasonCode)
+	})
+
+	t.Run("household address changed", func(t *testing.T) {
+		db := setupAddressSuggestionTestDB(t)
+		user := createAddressTestUser(t, db, "guards")
+		alice := createAddressTestContact(t, db, user.ID, "Alice")
+		household := createAddressTestHousehold(t, db, user.ID, "Home", clarkSt, alice)
+
+		_, err := ApplyContactAddressSuggestion(db, user.ID, &models.ApplyContactAddressSuggestionInput{
+			ContactVCardUID: alice.VCardUID, SourceKind: addressSuggestionSourceHousehold,
+			SourceID: household.ID, AddressKey: AddressNormalizedKey(models.ContactAddress{Street: "Elsewhere"}),
+		})
+		var appErr *apperrors.AppError
+		require.ErrorAs(t, err, &appErr)
+		assert.Equal(t, "household_address_stale", appErr.ReasonCode)
+	})
+
+	t.Run("unknown source kind", func(t *testing.T) {
+		db := setupAddressSuggestionTestDB(t)
+		user := createAddressTestUser(t, db, "guards")
+		alice := createAddressTestContact(t, db, user.ID, "Alice")
+
+		_, err := ApplyContactAddressSuggestion(db, user.ID, &models.ApplyContactAddressSuggestionInput{
+			ContactVCardUID: alice.VCardUID, SourceKind: "elsewhere", SourceID: alice.VCardUID,
+			AddressKey: AddressNormalizedKey(clarkSt),
+		})
+		var appErr *apperrors.AppError
+		require.ErrorAs(t, err, &appErr)
+		assert.Equal(t, "contact_address_source_kind_invalid", appErr.ReasonCode)
+	})
+}

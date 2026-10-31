@@ -25,7 +25,7 @@ import (
 // uses (this codebase has no cross-field struct-tag validator).
 func validateOccasionEventTimes(input *models.OccasionEventInput) *apperrors.AppError {
 	if input.EndsAt != nil && input.EndsAt.Before(*input.StartsAt) {
-		return apperrors.ErrValidation("Event end time cannot be before its start time")
+		return apperrors.ErrValidation("Event end time cannot be before its start time").WithReason(apperrors.ReasonOccasionEventEndBeforeStart, nil)
 	}
 	return nil
 }
@@ -187,7 +187,7 @@ func ListOccasionEvents(c *gin.Context) {
 
 	from, to, windowErr := parseEventWindow(c)
 	if windowErr != nil {
-		apperrors.AbortWithError(c, apperrors.ErrValidation("from and to must be RFC 3339 timestamps"))
+		apperrors.AbortWithError(c, apperrors.ErrValidation("from and to must be RFC 3339 timestamps").WithReason(apperrors.ReasonOccasionEventTimeInvalid, nil))
 		return
 	}
 
@@ -497,7 +497,7 @@ func GetInviteeSuggestions(c *gin.Context) {
 
 	raw := strings.TrimSpace(c.Query("circle_ids"))
 	if raw == "" {
-		apperrors.AbortWithError(c, apperrors.ErrValidation("circle_ids is required"))
+		apperrors.AbortWithError(c, apperrors.ErrValidation("circle_ids is required").WithReason(apperrors.ReasonOccasionEventCirclesRequired, nil))
 		return
 	}
 	requested := map[string]bool{}
@@ -511,7 +511,7 @@ func GetInviteeSuggestions(c *gin.Context) {
 		circleIDs = append(circleIDs, id)
 	}
 	if len(circleIDs) == 0 {
-		apperrors.AbortWithError(c, apperrors.ErrValidation("circle_ids is required"))
+		apperrors.AbortWithError(c, apperrors.ErrValidation("circle_ids is required").WithReason(apperrors.ReasonOccasionEventCirclesRequired, nil))
 		return
 	}
 

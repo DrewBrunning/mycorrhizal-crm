@@ -19,7 +19,7 @@ import (
 // meaningless — so the pair must be set together.
 func validateGiftValueCurrency(input *models.GiftInput) *apperrors.AppError {
 	if (input.ValueCents > 0) != (input.Currency != "") {
-		return apperrors.ErrValidation("A gift value requires an explicit ISO 4217 currency, and a currency is only meaningful alongside a value")
+		return apperrors.ErrValidation("A gift value requires an explicit ISO 4217 currency, and a currency is only meaningful alongside a value").WithReason(apperrors.ReasonContactGiftCurrencyRequired, nil)
 	}
 	return nil
 }

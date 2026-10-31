@@ -302,7 +302,13 @@ class ErrorTextTest {
             "total" to 1.0,
             "max" to 1.0,
             "status" to "s",
-            "max_mb" to 1.0
+            "max_mb" to 1.0,
+            "sensitivity" to "x",
+            "entity_type" to "x",
+            "type" to "x",
+            "used" to "x",
+            "resource" to "x",
+            "env_var" to "x"
         )
         val rendered = mutableMapOf<String, String>()
         composeTestRule.setContent {
@@ -316,6 +322,28 @@ class ErrorTextTest {
         composeTestRule.waitForIdle()
         val fellBack = rendered.filterValues { it == SERVER }.keys
         assertEquals("codes that fell back to the server message", emptySet<String>(), fellBack)
+    }
+
+    @Test
+    fun `every mirrored code without params falls back or renders`() {
+        val codes = ErrorReasonCode::class.java.declaredFields
+            .filter { Modifier.isStatic(it.modifiers) && it.type == String::class.java }
+            .map { it.apply { isAccessible = true }.get(null) as String }
+        val rendered = mutableMapOf<String, String>()
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                codes.forEach { code ->
+                    rendered[code] =
+                        ApiError.Client(
+                            400,
+                            SERVER,
+                            ErrorReason(code, emptyMap())
+                        ).localizedMessage()
+                }
+            }
+        }
+        composeTestRule.waitForIdle()
+        assertEquals(codes.size, rendered.size)
     }
 
     @Test

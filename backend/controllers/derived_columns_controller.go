@@ -35,7 +35,7 @@ func RebuildDerivedColumnsHandler(c *gin.Context) {
 
 	stats, err := services.RebuildDerivedContactColumnsExclusive(ctx, db)
 	if errors.Is(err, services.ErrJobSkipped) {
-		apperrors.AbortWithError(c, apperrors.ErrConflict("A derived-column rebuild is already in progress"))
+		apperrors.AbortWithError(c, apperrors.ErrConflict("A derived-column rebuild is already in progress").WithReason(apperrors.ReasonContactDerivedRebuildInProgress, nil))
 		return
 	}
 	if err != nil {

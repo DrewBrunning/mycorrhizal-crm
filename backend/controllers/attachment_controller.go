@@ -70,7 +70,7 @@ func UploadAttachment(c *gin.Context, cfg *config.Config) {
 	idParam := c.Param("id")
 	contactID, err := strconv.Atoi(idParam)
 	if err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrValidation("Invalid contact ID"))
+		apperrors.AbortWithError(c, apperrors.ErrValidation("Invalid contact ID").WithReason(apperrors.ReasonContactInvalidID, nil))
 		return
 	}
 	db := c.MustGet("db").(*gorm.DB)
@@ -91,11 +91,11 @@ func UploadAttachment(c *gin.Context, cfg *config.Config) {
 
 	fileHeader, err := c.FormFile("file")
 	if err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", "No file uploaded"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", "No file uploaded").WithReason(apperrors.ReasonAttachmentFileMissing, nil))
 		return
 	}
 	if fileHeader.Size > maxAttachmentSize {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", "File too large. Maximum size is 25MB"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", "File too large. Maximum size is 25MB").WithReason(apperrors.ReasonAttachmentFileTooLarge, map[string]any{"max_mb": "25"}))
 		return
 	}
 
@@ -111,7 +111,7 @@ func UploadAttachment(c *gin.Context, cfg *config.Config) {
 		return
 	}
 	if len(data) > maxAttachmentSize {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", "File too large. Maximum size is 25MB"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", "File too large. Maximum size is 25MB").WithReason(apperrors.ReasonAttachmentFileTooLarge, map[string]any{"max_mb": "25"}))
 		return
 	}
 
@@ -120,7 +120,7 @@ func UploadAttachment(c *gin.Context, cfg *config.Config) {
 	// what the bytes actually are.
 	contentType := http.DetectContentType(data)
 	if isRenderableVulnerableType(contentType) || hasMarkupSignature(data) {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", "SVG and HTML files are not supported"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", "SVG and HTML files are not supported").WithReason(apperrors.ReasonAttachmentUnsupportedType, nil))
 		return
 	}
 
@@ -166,7 +166,7 @@ func ListContactAttachments(c *gin.Context) {
 	idParam := c.Param("id")
 	contactID, err := strconv.Atoi(idParam)
 	if err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrValidation("Invalid contact ID"))
+		apperrors.AbortWithError(c, apperrors.ErrValidation("Invalid contact ID").WithReason(apperrors.ReasonContactInvalidID, nil))
 		return
 	}
 	db := c.MustGet("db").(*gorm.DB)
@@ -203,7 +203,7 @@ func loadOwnedAttachment(c *gin.Context, idStr string) (*models.Attachment, bool
 	}
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrValidation("Invalid attachment ID"))
+		apperrors.AbortWithError(c, apperrors.ErrValidation("Invalid attachment ID").WithReason(apperrors.ReasonAttachmentInvalidID, nil))
 		return nil, false
 	}
 	var attachment models.Attachment

@@ -91,7 +91,7 @@ func UploadCSVForImport(c *gin.Context) {
 	headers, dataRows, err := services.ParseCSV(f)
 	if err != nil {
 		log.Info().Err(err).Msg("Failed to parse CSV")
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", err.Error()))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", err.Error()).WithReason(apperrors.ReasonImportFileUnreadable, map[string]any{"reason": err.Error()}))
 		return
 	}
 
@@ -166,7 +166,7 @@ func UploadVCFForImport(c *gin.Context, cfg *config.Config) {
 	vcfContacts, previews, stats, err := services.ParseVCF(f, db, userID)
 	if err != nil {
 		log.Info().Err(err).Msg("Failed to parse VCF")
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", err.Error()))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", err.Error()).WithReason(apperrors.ReasonImportFileUnreadable, map[string]any{"reason": err.Error()}))
 		return
 	}
 
@@ -244,7 +244,7 @@ func UploadJSContactForImport(c *gin.Context) {
 	contacts, previews, stats, err := services.ParseJSContact(f, db, userID)
 	if err != nil {
 		log.Info().Err(err).Msg("Failed to parse JSContact file")
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", err.Error()))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", err.Error()).WithReason(apperrors.ReasonImportFileUnreadable, map[string]any{"reason": err.Error()}))
 		return
 	}
 

@@ -245,7 +245,7 @@ func calendarSyncError(err error) *apperrors.AppError {
 		// refuses to accept a 5xx here).
 		return apperrors.ErrValidation("calendar could not be reached — check the subscription URL").WithReason(apperrors.ReasonCalendarUnreachable, nil)
 	default:
-		return apperrors.ErrOperationFailed("Calendar sync", err.Error())
+		return apperrors.ErrOperationFailed("Calendar sync", err.Error()).WithReason(apperrors.ReasonCalendarSyncFailed, map[string]any{"reason": err.Error()})
 	}
 }
 

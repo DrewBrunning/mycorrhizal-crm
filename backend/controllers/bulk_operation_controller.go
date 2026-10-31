@@ -63,7 +63,7 @@ func BulkContactOperation(c *gin.Context) {
 	switch input.Action {
 	case "add_circle", "remove_circle":
 		if input.CircleID == "" {
-			apperrors.AbortWithError(c, apperrors.ErrValidation("circle_id is required for this action"))
+			apperrors.AbortWithError(c, apperrors.ErrValidation("circle_id is required for this action").WithReason(apperrors.ReasonContactBulkCircleRequired, nil))
 			return
 		}
 		var circleRow models.Circle
@@ -78,7 +78,7 @@ func BulkContactOperation(c *gin.Context) {
 		circle = &circleRow
 	case "add_tag", "remove_tag":
 		if input.TagID == "" {
-			apperrors.AbortWithError(c, apperrors.ErrValidation("tag_id is required for this action"))
+			apperrors.AbortWithError(c, apperrors.ErrValidation("tag_id is required for this action").WithReason(apperrors.ReasonContactBulkTagRequired, nil))
 			return
 		}
 		var tagRow models.Tag

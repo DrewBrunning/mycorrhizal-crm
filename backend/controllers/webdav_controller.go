@@ -104,7 +104,7 @@ func SaveWebDAVConfig(c *gin.Context) {
 			return
 		}
 		if errors.Is(saveErr, services.ErrWebDAVSecretRequired) {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("app_password", saveErr.Error()))
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("app_password", saveErr.Error()).WithReason(apperrors.ReasonIntegrationSaveFailed, map[string]any{"reason": saveErr.Error()}))
 			return
 		}
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save Nextcloud config").WithError(saveErr))
@@ -204,7 +204,7 @@ func LinkWebDAVContact(c *gin.Context) {
 		FileID     string `json:"file_id,omitempty" validate:"omitempty,max=64"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("request body", err.Error()))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("request body", err.Error()).WithReason(apperrors.ReasonIntegrationRequestBodyInvalid, map[string]any{"reason": err.Error()}))
 		return
 	}
 	if verrs := middleware.ValidateStruct(&input); len(verrs) > 0 {

@@ -44,7 +44,7 @@ func validatePreferenceLevel(c *gin.Context, category, level string) bool {
 		return true
 	}
 	apperrors.AbortWithError(c, apperrors.ErrInvalidInput(
-		"level", "a proficiency level is only valid for hobby/skill categories"))
+		"level", "a proficiency level is only valid for hobby/skill categories").WithReason(apperrors.ReasonContactPreferenceLevelInvalid, nil))
 	return false
 }
 

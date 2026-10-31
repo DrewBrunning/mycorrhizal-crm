@@ -329,7 +329,7 @@ func UpdateHouseholdMember(c *gin.Context) {
 	}
 	var input memberUpdate
 	if err := c.ShouldBindJSON(&input); err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrValidation("Invalid request body"))
+		apperrors.AbortWithError(c, apperrors.ErrValidation("Invalid request body").WithReason(apperrors.ReasonValidationInvalidRequestBody, nil))
 		return
 	}
 

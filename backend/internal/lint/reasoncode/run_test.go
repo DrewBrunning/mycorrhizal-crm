@@ -38,18 +38,20 @@ func run(t *testing.T, args ...string) (int, string, string) {
 	return code, out.String(), errb.String()
 }
 
+const fixturePattern = "./internal/lint/reasoncode/testdata/src/runfixture/"
+
 func TestRunWriteThenCheckThenRatchet(t *testing.T) {
 	list := filepath.Join(t.TempDir(), "allow.txt")
 
-	// controllers has unmigrated sites, so a write records them.
-	code, out, _ := run(t, "-allowlist", list, "-write-allowlist", "./controllers/")
+	// The fixture has one unmigrated site, so a write records it.
+	code, out, _ := run(t, "-allowlist", list, "-write-allowlist", fixturePattern)
 	require.Equal(t, 0, code)
 	assert.Contains(t, out, "wrote")
 	allow := mustParse(t, list)
 	require.NotEmpty(t, allow)
 
 	// Exactly matching passes.
-	code, _, errs := run(t, "-allowlist", list, "./controllers/")
+	code, _, errs := run(t, "-allowlist", list, fixturePattern)
 	assert.Equal(t, 0, code, errs)
 
 	// Lowering the recorded count below reality (a new site) fails.
@@ -61,11 +63,13 @@ func TestRunWriteThenCheckThenRatchet(t *testing.T) {
 		break
 	}
 	writeAllow(t, list, allow)
-	code, _, errs = run(t, "-allowlist", list, "./controllers/")
+	code, _, errs = run(t, "-allowlist", list, fixturePattern)
 	assert.Equal(t, 1, code)
 	assert.Contains(t, errs, "reason code")
 
 	// A clean package against an allowlist that still lists sites: lower it.
+	code, _, _ = run(t, "-allowlist", list, "-write-allowlist", fixturePattern)
+	require.Equal(t, 0, code)
 	code, _, errs = run(t, "-allowlist", list, "./errors/")
 	assert.Equal(t, 1, code)
 	assert.Contains(t, errs, "lower it")
@@ -123,19 +127,19 @@ func emptyAllowlist(t *testing.T) string {
 // the ratchet must have reached zero, not merely stopped growing.
 func TestReleaseTagRequiresEmptyAllowlist(t *testing.T) {
 	list := filepath.Join(t.TempDir(), "allow.txt")
-	code, _, _ := run(t, "-allowlist", list, "-write-allowlist", "./controllers/")
+	code, _, _ := run(t, "-allowlist", list, "-write-allowlist", fixturePattern)
 	require.Equal(t, 0, code)
 	require.NotEmpty(t, mustParse(t, list))
 
 	// Before the milestone the recorded count is accepted, as always.
 	for _, tag := range []string{"v1.5.9", "v1.5.1", "v1.5.9-rc.1"} {
-		code, _, errs := run(t, "-allowlist", list, "-release-tag", tag, "./controllers/")
+		code, _, errs := run(t, "-allowlist", list, "-release-tag", tag, fixturePattern)
 		assert.Equal(t, 0, code, "%s: %s", tag, errs)
 	}
 
 	// At and after it, a non-empty allowlist blocks the release, naming the count.
 	for _, tag := range []string{"v1.6.0", "v1.6.0-rc.1", "v1.6.1", "v1.7.0", "v2.0.0"} {
-		code, _, errs := run(t, "-allowlist", list, "-release-tag", tag, "./controllers/")
+		code, _, errs := run(t, "-allowlist", list, "-release-tag", tag, fixturePattern)
 		assert.Equal(t, 1, code, tag)
 		assert.Contains(t, errs, "#2093", tag)
 		assert.Contains(t, errs, "unmigrated", tag)
@@ -152,7 +156,7 @@ func TestReleaseTagStillEnforcesTheRatchet(t *testing.T) {
 	// The release-tag mode is additive: an allowlist that disagrees with the
 	// code fails before the milestone too.
 	list := filepath.Join(t.TempDir(), "allow.txt")
-	code, _, _ := run(t, "-allowlist", list, "-write-allowlist", "./controllers/")
+	code, _, _ := run(t, "-allowlist", list, "-write-allowlist", fixturePattern)
 	require.Equal(t, 0, code)
 	code, _, errs := run(t, "-allowlist", list, "-release-tag", "v1.5.9", "./errors/")
 	assert.Equal(t, 1, code, errs)
@@ -165,4 +169,13 @@ func TestReleaseTagRejectsMalformedTags(t *testing.T) {
 		assert.Equal(t, 2, code, tag)
 		assert.Contains(t, errs, "release-tag", tag)
 	}
+}
+
+// TestRealPackagesHaveNoUnmigratedSites is the milestone gate in the small: the
+// real controllers/services/middleware packages must all carry reason codes, so
+// the shipped allowlist is empty (issue #2105). It also loads the analyzer over
+// the full production package set, which keeps its type-driven branches covered.
+func TestRealPackagesHaveNoUnmigratedSites(t *testing.T) {
+	code, _, errs := run(t, "-allowlist", emptyAllowlist(t), "./controllers/", "./services/", "./middleware/")
+	assert.Equal(t, 0, code, errs)
 }

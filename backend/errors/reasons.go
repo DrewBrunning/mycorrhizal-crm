@@ -29,6 +29,12 @@ var reasonAreas = []string{
 	"geopulse", "webdav", "calendar", "feed", "notification", "contact",
 	"household", "relationship", "occasion", "photo", "attachment", "validation",
 	"circle", "activity", "nextcloud", "trash",
+	"audit",
+	"export",
+	"search",
+	"timeline",
+	"graph",
+	"geocoder",
 }
 
 // Reason constants. Each must be a key of reasonRegistry (and vice versa);
@@ -369,6 +375,114 @@ const (
 	ReasonNotificationDeviceRegistrationLimit ReasonCode = "notification_device_registration_limit"
 	ReasonFeedLimitReached                    ReasonCode = "feed_limit_reached"
 	ReasonFeedEntityIdNotAllowed              ReasonCode = "feed_entity_id_not_allowed"
+
+	// Remaining contact/core-entity and request-validation errors (issue #2105).
+	ReasonAccountAttachmentQuotaReached         ReasonCode = "account_attachment_quota_reached"
+	ReasonAccountResourceQuotaReached           ReasonCode = "account_resource_quota_reached"
+	ReasonAdminErrorWindowInvalid               ReasonCode = "admin_error_window_invalid"
+	ReasonAttachmentFileMissing                 ReasonCode = "attachment_file_missing"
+	ReasonAttachmentFileTooLarge                ReasonCode = "attachment_file_too_large"
+	ReasonAttachmentInvalidID                   ReasonCode = "attachment_invalid_id"
+	ReasonAttachmentUnsupportedType             ReasonCode = "attachment_unsupported_type"
+	ReasonAuditEventPastRetention               ReasonCode = "audit_event_past_retention"
+	ReasonAuditUndoEntityUnsupported            ReasonCode = "audit_undo_entity_unsupported"
+	ReasonAuditUndoUpdateOnly                   ReasonCode = "audit_undo_update_only"
+	ReasonAuthInteractiveSessionRequired        ReasonCode = "auth_interactive_session_required"
+	ReasonAuthLoginRequestInvalid               ReasonCode = "auth_login_request_invalid"
+	ReasonAuthPasskeyRemovalVerifyOther         ReasonCode = "auth_passkey_removal_verify_other" // #nosec G101 -- reason code, not a credential
+	ReasonAuthTokenScopeRequired                ReasonCode = "auth_token_scope_required"         // #nosec G101 -- reason code, not a credential
+	ReasonAuthWebAuthnConfigInvalid             ReasonCode = "auth_webauthn_config_invalid"
+	ReasonBundleExportTooLarge                  ReasonCode = "bundle_export_too_large"
+	ReasonCalendarSyncFailed                    ReasonCode = "calendar_sync_failed"
+	ReasonCommonIdempotencyKeyTooLong           ReasonCode = "common_idempotency_key_too_long"
+	ReasonCommonPreconditionFailed              ReasonCode = "common_precondition_failed"
+	ReasonCommonRequestBodyTooLarge             ReasonCode = "common_request_body_too_large"
+	ReasonCommonRequestBodyUnreadable           ReasonCode = "common_request_body_unreadable"
+	ReasonContactAddressAlreadyExists           ReasonCode = "contact_address_already_exists"
+	ReasonContactAddressKeyRequired             ReasonCode = "contact_address_key_required"
+	ReasonContactAddressSensitive               ReasonCode = "contact_address_sensitive"
+	ReasonContactAddressSourceKindInvalid       ReasonCode = "contact_address_source_kind_invalid"
+	ReasonContactAddressSuggestionStale         ReasonCode = "contact_address_suggestion_stale"
+	ReasonContactBulkCircleRequired             ReasonCode = "contact_bulk_circle_required"
+	ReasonContactBulkTagRequired                ReasonCode = "contact_bulk_tag_required"
+	ReasonContactDerivedRebuildInProgress       ReasonCode = "contact_derived_rebuild_in_progress"
+	ReasonContactFieldDefinitionUnknown         ReasonCode = "contact_field_definition_unknown"
+	ReasonContactFieldOrderIncomplete           ReasonCode = "contact_field_order_incomplete"
+	ReasonContactFieldValueInvalid              ReasonCode = "contact_field_value_invalid"
+	ReasonContactGiftCurrencyRequired           ReasonCode = "contact_gift_currency_required"
+	ReasonContactHasContactInfoInvalid          ReasonCode = "contact_has_contact_info_invalid"
+	ReasonContactInvalidID                      ReasonCode = "contact_invalid_id"
+	ReasonContactLifeEventEndBeforeStart        ReasonCode = "contact_life_event_end_before_start"
+	ReasonContactLinkFieldOrderIncomplete       ReasonCode = "contact_link_field_order_incomplete"
+	ReasonContactMergeSameID                    ReasonCode = "contact_merge_same_id"
+	ReasonContactMergeUnresolvedConflicts       ReasonCode = "contact_merge_unresolved_conflicts"
+	ReasonContactPreferenceLevelInvalid         ReasonCode = "contact_preference_level_invalid"
+	ReasonContactSearchTooLong                  ReasonCode = "contact_search_too_long"
+	ReasonContactSharePayloadInvalid            ReasonCode = "contact_share_payload_invalid"
+	ReasonContactSortSinceConflict              ReasonCode = "contact_sort_since_conflict"
+	ReasonContactSubscriptionSyncFailed         ReasonCode = "contact_subscription_sync_failed"
+	ReasonContactSyncConflictAlreadyResolved    ReasonCode = "contact_sync_conflict_already_resolved"
+	ReasonContactSyncConflictRestoreFailed      ReasonCode = "contact_sync_conflict_restore_failed"
+	ReasonContactUIDImmutable                   ReasonCode = "contact_uid_immutable"
+	ReasonExportAuditLimit                      ReasonCode = "export_audit_limit"
+	ReasonExportContactsLimit                   ReasonCode = "export_contacts_limit"
+	ReasonExportFormatInvalid                   ReasonCode = "export_format_invalid"
+	ReasonExportSelectionInvalid                ReasonCode = "export_selection_invalid"
+	ReasonGeocoderCredentialsRejected           ReasonCode = "geocoder_credentials_rejected" // #nosec G101 -- reason code, not a credential
+	ReasonGeocoderDisabled                      ReasonCode = "geocoder_disabled"
+	ReasonGeocoderNoResult                      ReasonCode = "geocoder_no_result"
+	ReasonGeocoderPrivateAddress                ReasonCode = "geocoder_private_address"
+	ReasonGeocoderRateLimited                   ReasonCode = "geocoder_rate_limited"
+	ReasonGeocoderResponseUnusable              ReasonCode = "geocoder_response_unusable"
+	ReasonGeocoderUnreachable                   ReasonCode = "geocoder_unreachable"
+	ReasonGraphDepthInvalid                     ReasonCode = "graph_depth_invalid"
+	ReasonGraphDepthNotPositive                 ReasonCode = "graph_depth_not_positive"
+	ReasonGraphDepthTooLarge                    ReasonCode = "graph_depth_too_large"
+	ReasonGraphFromRequired                     ReasonCode = "graph_from_required"
+	ReasonGraphFullInvalid                      ReasonCode = "graph_full_invalid"
+	ReasonHouseholdAddressStale                 ReasonCode = "household_address_stale"
+	ReasonHouseholdMembersAddressMismatch       ReasonCode = "household_members_address_mismatch"
+	ReasonHouseholdMembersAlreadyTogether       ReasonCode = "household_members_already_together"
+	ReasonHouseholdMembersDistinctRequired      ReasonCode = "household_members_distinct_required"
+	ReasonHouseholdMembersDistinctRequiredShort ReasonCode = "household_members_distinct_required_short"
+	ReasonHouseholdMembersRequired              ReasonCode = "household_members_required"
+	ReasonHouseholdSuggestionDismissed          ReasonCode = "household_suggestion_dismissed"
+	ReasonHouseholdSuggestionMemberStale        ReasonCode = "household_suggestion_member_stale"
+	ReasonHouseholdSuggestionStale              ReasonCode = "household_suggestion_stale"
+	ReasonHouseholdTypeInvalid                  ReasonCode = "household_type_invalid"
+	ReasonImportDiskSpaceLow                    ReasonCode = "import_disk_space_low"
+	ReasonImportFieldMappingsInvalid            ReasonCode = "import_field_mappings_invalid"
+	ReasonImportFileUnreadable                  ReasonCode = "import_file_unreadable"
+	ReasonIntegrationRequestBodyInvalid         ReasonCode = "integration_request_body_invalid"
+	ReasonIntegrationSaveFailed                 ReasonCode = "integration_save_failed"
+	ReasonOccasionAnchorDateIncomplete          ReasonCode = "occasion_anchor_date_incomplete"
+	ReasonOccasionDaysInvalid                   ReasonCode = "occasion_days_invalid"
+	ReasonOccasionEventCirclesRequired          ReasonCode = "occasion_event_circles_required"
+	ReasonOccasionEventEndBeforeStart           ReasonCode = "occasion_event_end_before_start"
+	ReasonOccasionEventTimeInvalid              ReasonCode = "occasion_event_time_invalid"
+	ReasonOccasionKindInvalid                   ReasonCode = "occasion_kind_invalid"
+	ReasonPhotoFetchFailed                      ReasonCode = "photo_fetch_failed"
+	ReasonPhotoFileTooLarge                     ReasonCode = "photo_file_too_large"
+	ReasonPhotoInvalidPath                      ReasonCode = "photo_invalid_path"
+	ReasonPhotoProcessFailed                    ReasonCode = "photo_process_failed"
+	ReasonPhotoSvgUnsupported                   ReasonCode = "photo_svg_unsupported"
+	ReasonPhotoUploadsDisabledDemo              ReasonCode = "photo_uploads_disabled_demo"
+	ReasonRelationshipSuggestionStale           ReasonCode = "relationship_suggestion_stale"
+	ReasonSearchLimitInvalid                    ReasonCode = "search_limit_invalid"
+	ReasonSearchQueryRequired                   ReasonCode = "search_query_required"
+	ReasonSearchQueryTooLong                    ReasonCode = "search_query_too_long"
+	ReasonSearchRebuildInProgress               ReasonCode = "search_rebuild_in_progress"
+	ReasonTimelineBucketInvalid                 ReasonCode = "timeline_bucket_invalid"
+	ReasonTimelineTypeInvalid                   ReasonCode = "timeline_type_invalid"
+	ReasonValidationCursorExpired               ReasonCode = "validation_cursor_expired"
+	ReasonValidationCursorInvalid               ReasonCode = "validation_cursor_invalid"
+	ReasonValidationDataNotFound                ReasonCode = "validation_data_not_found"
+	ReasonValidationDataTypeInvalid             ReasonCode = "validation_data_type_invalid"
+	ReasonValidationRequestBodyInvalid          ReasonCode = "validation_request_body_invalid"
+	ReasonValidationRequestFailed               ReasonCode = "validation_request_failed"
+	ReasonValidationSinceInvalid                ReasonCode = "validation_since_invalid"
+	ReasonValidationSortInvalid                 ReasonCode = "validation_sort_invalid"
+	ReasonValidationTimestampInvalid            ReasonCode = "validation_timestamp_invalid"
 )
 
 var reasonRegistry = map[ReasonCode]reasonSpec{
@@ -705,7 +819,113 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonNotificationDeviceRegistrationLimit: {Template: "maximum of {max} device registrations per user reached", Params: []string{"max"}},
 	ReasonFeedLimitReached:                    {Template: "feed limit reached (maximum {max} active feeds)", Params: []string{"max"}},
 	ReasonFeedEntityIdNotAllowed:              {Template: "must be empty for an aggregate feed"},
-}
+
+	ReasonAccountAttachmentQuotaReached:         {Template: "per-user attachment storage quota reached ({used} of {max_mb} used); delete attachments or raise PER_USER_ATTACHMENT_QUOTA_MB", Params: []string{"used", "max_mb"}},
+	ReasonAccountResourceQuotaReached:           {Template: "per-user {resource} quota reached ({n} of {limit}); delete some {resource} or raise {env_var}", Params: []string{"resource", "n", "limit", "env_var"}},
+	ReasonAdminErrorWindowInvalid:               {Template: "must be an integer between 1 and 168", Params: nil},
+	ReasonAttachmentFileMissing:                 {Template: "No file uploaded", Params: nil},
+	ReasonAttachmentFileTooLarge:                {Template: "File too large. Maximum size is {max_mb}MB", Params: []string{"max_mb"}},
+	ReasonAttachmentInvalidID:                   {Template: "Invalid attachment ID", Params: nil},
+	ReasonAttachmentUnsupportedType:             {Template: "SVG and HTML files are not supported", Params: nil},
+	ReasonAuditEventPastRetention:               {Template: "This audit event is past its retention window and can no longer be undone", Params: nil},
+	ReasonAuditUndoEntityUnsupported:            {Template: "undo is not supported for {entity_type}", Params: []string{"entity_type"}},
+	ReasonAuditUndoUpdateOnly:                   {Template: "undo supports update events only", Params: nil},
+	ReasonAuthInteractiveSessionRequired:        {Template: "This endpoint requires an interactive session; API tokens cannot manage credentials", Params: nil},
+	ReasonAuthLoginRequestInvalid:               {Template: "{reason}", Params: []string{"reason"}},
+	ReasonAuthPasskeyRemovalVerifyOther:         {Template: "That is the passkey being removed. Verify with a different passkey.", Params: nil},
+	ReasonAuthTokenScopeRequired:                {Template: "This token does not have the {scope} scope required for this request", Params: []string{"scope"}},
+	ReasonAuthWebAuthnConfigInvalid:             {Template: "{reason}", Params: []string{"reason"}},
+	ReasonBundleExportTooLarge:                  {Template: "The account bundle is {used} MiB, which is over the {max} MiB limit the import accepts. Remove contacts or profile photos you no longer need and try again, or use the CSV/vCard export instead.", Params: []string{"used", "max"}},
+	ReasonCalendarSyncFailed:                    {Template: "{reason}", Params: []string{"reason"}},
+	ReasonCommonIdempotencyKeyTooLong:           {Template: "must be at most {max} characters", Params: []string{"max"}},
+	ReasonCommonPreconditionFailed:              {Template: "Precondition failed — the resource was modified since you last read it; re-fetch and retry", Params: nil},
+	ReasonCommonRequestBodyTooLarge:             {Template: "request body too large", Params: nil},
+	ReasonCommonRequestBodyUnreadable:           {Template: "Failed to read request body", Params: nil},
+	ReasonContactAddressAlreadyExists:           {Template: "The contact already has this address", Params: nil},
+	ReasonContactAddressKeyRequired:             {Template: "address_key is required", Params: nil},
+	ReasonContactAddressSensitive:               {Template: "This address is marked {sensitivity}; send include_sensitive=true to geocode it", Params: []string{"sensitivity"}},
+	ReasonContactAddressSourceKindInvalid:       {Template: "source_kind must be one of relationship, household", Params: nil},
+	ReasonContactAddressSuggestionStale:         {Template: "The source contact no longer has that address — re-run the address suggestion scan", Params: nil},
+	ReasonContactBulkCircleRequired:             {Template: "circle_id is required for this action", Params: nil},
+	ReasonContactBulkTagRequired:                {Template: "tag_id is required for this action", Params: nil},
+	ReasonContactDerivedRebuildInProgress:       {Template: "A derived-column rebuild is already in progress", Params: nil},
+	ReasonContactFieldDefinitionUnknown:         {Template: "unknown or not-owned field definition", Params: nil},
+	ReasonContactFieldOrderIncomplete:           {Template: "must include every one of the user's field definitions exactly once, with no duplicates", Params: nil},
+	ReasonContactFieldValueInvalid:              {Template: "{reason}", Params: []string{"reason"}},
+	ReasonContactGiftCurrencyRequired:           {Template: "A gift value requires an explicit ISO 4217 currency, and a currency is only meaningful alongside a value", Params: nil},
+	ReasonContactHasContactInfoInvalid:          {Template: "must be one of: true, false", Params: nil},
+	ReasonContactInvalidID:                      {Template: "Invalid contact ID", Params: nil},
+	ReasonContactLifeEventEndBeforeStart:        {Template: "end date precedes the start date", Params: nil},
+	ReasonContactLinkFieldOrderIncomplete:       {Template: "must include every one of the user's link field types exactly once, with no duplicates", Params: nil},
+	ReasonContactMergeSameID:                    {Template: "must differ from keep_id", Params: nil},
+	ReasonContactMergeUnresolvedConflicts:       {Template: "Unresolved merge conflicts", Params: nil},
+	ReasonContactPreferenceLevelInvalid:         {Template: "a proficiency level is only valid for hobby/skill categories", Params: nil},
+	ReasonContactSearchTooLong:                  {Template: "search must be at most {max} characters", Params: []string{"max"}},
+	ReasonContactSharePayloadInvalid:            {Template: "{reason}", Params: []string{"reason"}},
+	ReasonContactSortSinceConflict:              {Template: "sort=name and sort=created_at cannot be combined with since=", Params: nil},
+	ReasonContactSubscriptionSyncFailed:         {Template: "{reason}", Params: []string{"reason"}},
+	ReasonContactSyncConflictAlreadyResolved:    {Template: "sync conflict already resolved", Params: nil},
+	ReasonContactSyncConflictRestoreFailed:      {Template: "{reason}", Params: []string{"reason"}},
+	ReasonContactUIDImmutable:                   {Template: "Contact UID cannot be changed", Params: nil},
+	ReasonExportAuditLimit:                      {Template: "Audit log exceeds the export limit of {max} rows; use the paginated /audit endpoint instead", Params: []string{"max"}},
+	ReasonExportContactsLimit:                   {Template: "Export of {total} contacts exceeds the single-request limit of {max}; use the paginated /contacts API instead", Params: []string{"total", "max"}},
+	ReasonExportFormatInvalid:                   {Template: "format must be one of vcard4, vcard3, jscontact", Params: nil},
+	ReasonExportSelectionInvalid:                {Template: "{reason}", Params: []string{"reason"}},
+	ReasonGeocoderCredentialsRejected:           {Template: "the provider rejected this server's credentials (check GEOCODER_API_KEY)", Params: nil},
+	ReasonGeocoderDisabled:                      {Template: "geocoding is not enabled on this server", Params: nil},
+	ReasonGeocoderNoResult:                      {Template: "the geocoder found no match for that address", Params: nil},
+	ReasonGeocoderPrivateAddress:                {Template: "the provider resolved to a private address and was blocked", Params: nil},
+	ReasonGeocoderRateLimited:                   {Template: "the provider is rate limiting requests; try again shortly", Params: nil},
+	ReasonGeocoderResponseUnusable:              {Template: "the provider returned an unusable response", Params: nil},
+	ReasonGeocoderUnreachable:                   {Template: "the provider could not be reached", Params: nil},
+	ReasonGraphDepthInvalid:                     {Template: "depth must be an integer from 1 to {max}", Params: []string{"max"}},
+	ReasonGraphDepthNotPositive:                 {Template: "depth must be a positive integer", Params: nil},
+	ReasonGraphDepthTooLarge:                    {Template: "depth must be at most {max}", Params: []string{"max"}},
+	ReasonGraphFromRequired:                     {Template: "from (a Contact.VCardUID) is required", Params: nil},
+	ReasonGraphFullInvalid:                      {Template: "full must be true or false", Params: nil},
+	ReasonHouseholdAddressStale:                 {Template: "The household no longer has that address — re-run the address suggestion scan", Params: nil},
+	ReasonHouseholdMembersAddressMismatch:       {Template: "these contacts do not share an address", Params: nil},
+	ReasonHouseholdMembersAlreadyTogether:       {Template: "These contacts are already in a household together", Params: nil},
+	ReasonHouseholdMembersDistinctRequired:      {Template: "at least two distinct contacts are required to form a household", Params: nil},
+	ReasonHouseholdMembersDistinctRequiredShort: {Template: "at least two distinct contacts are required", Params: nil},
+	ReasonHouseholdMembersRequired:              {Template: "at least two contacts are required to form a household", Params: nil},
+	ReasonHouseholdSuggestionDismissed:          {Template: "This suggestion was dismissed — re-run the scan to re-offer it, or create the household manually", Params: nil},
+	ReasonHouseholdSuggestionMemberStale:        {Template: "The contact is no longer a member of this household", Params: nil},
+	ReasonHouseholdSuggestionStale:              {Template: "The suggested members no longer share an address — re-run the suggestion scan", Params: nil},
+	ReasonHouseholdTypeInvalid:                  {Template: "type must be one of family_unit, roommates, other", Params: nil},
+	ReasonImportDiskSpaceLow:                    {Template: "not enough disk space to import {total} contacts: {reason}", Params: []string{"total", "reason"}},
+	ReasonImportFieldMappingsInvalid:            {Template: "{reason}", Params: []string{"reason"}},
+	ReasonImportFileUnreadable:                  {Template: "{reason}", Params: []string{"reason"}},
+	ReasonIntegrationRequestBodyInvalid:         {Template: "{reason}", Params: []string{"reason"}},
+	ReasonIntegrationSaveFailed:                 {Template: "{reason}", Params: []string{"reason"}},
+	ReasonOccasionAnchorDateIncomplete:          {Template: "An occasion anchor date requires both a month and a day, or neither", Params: nil},
+	ReasonOccasionDaysInvalid:                   {Template: "days must be 30 or 90", Params: nil},
+	ReasonOccasionEventCirclesRequired:          {Template: "circle_ids is required", Params: nil},
+	ReasonOccasionEventEndBeforeStart:           {Template: "Event end time cannot be before its start time", Params: nil},
+	ReasonOccasionEventTimeInvalid:              {Template: "from and to must be RFC 3339 timestamps", Params: nil},
+	ReasonOccasionKindInvalid:                   {Template: "kind must not contain control characters", Params: nil},
+	ReasonPhotoFetchFailed:                      {Template: "Failed to fetch image from URL", Params: nil},
+	ReasonPhotoFileTooLarge:                     {Template: "File too large. Maximum size is {max_mb}MB", Params: []string{"max_mb"}},
+	ReasonPhotoInvalidPath:                      {Template: "Invalid photo path", Params: nil},
+	ReasonPhotoProcessFailed:                    {Template: "Failed to process photo — check the file is a valid JPEG, PNG, or HEIC image", Params: nil},
+	ReasonPhotoSvgUnsupported:                   {Template: "SVG images are not supported by the image proxy", Params: nil},
+	ReasonPhotoUploadsDisabledDemo:              {Template: "Photo uploads are disabled in demo mode", Params: nil},
+	ReasonRelationshipSuggestionStale:           {Template: "The suggested relationship no longer exists — re-run the address suggestion scan", Params: nil},
+	ReasonSearchLimitInvalid:                    {Template: "limit must be a positive integer", Params: nil},
+	ReasonSearchQueryRequired:                   {Template: "q (a search term) is required", Params: nil},
+	ReasonSearchQueryTooLong:                    {Template: "q must be at most {max} characters", Params: []string{"max"}},
+	ReasonSearchRebuildInProgress:               {Template: "A search index rebuild is already in progress", Params: nil},
+	ReasonTimelineBucketInvalid:                 {Template: "must be one of: last_7_days, last_30_days, last_90_days, this_year, all", Params: nil},
+	ReasonTimelineTypeInvalid:                   {Template: "unknown timeline type \"{type}\"; expected one of: {supported}", Params: []string{"type", "supported"}},
+	ReasonValidationCursorExpired:               {Template: "cursor is older than the retention window (DELETED_RETENTION_DAYS); deleted rows have been purged — full resync required", Params: nil},
+	ReasonValidationCursorInvalid:               {Template: "{reason}", Params: []string{"reason"}},
+	ReasonValidationDataNotFound:                {Template: "validation data not found", Params: nil},
+	ReasonValidationDataTypeInvalid:             {Template: "invalid validation data type", Params: nil},
+	ReasonValidationRequestBodyInvalid:          {Template: "{reason}", Params: []string{"reason"}},
+	ReasonValidationRequestFailed:               {Template: "Request validation failed", Params: nil},
+	ReasonValidationSinceInvalid:                {Template: "{reason}", Params: []string{"reason"}},
+	ReasonValidationSortInvalid:                 {Template: "must be one of: {supported}", Params: []string{"supported"}},
+	ReasonValidationTimestampInvalid:            {Template: "must be an RFC3339 timestamp", Params: nil}}
 
 // notFoundReasons maps the string-literal resources passed to ErrNotFound to their
 // reason code. A resource not listed (including one passed as a variable) gets

@@ -313,3 +313,12 @@ func TestBulkValidationErrors(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, code)
 	})
 }
+
+func TestBulkTagActionRequiresTagID(t *testing.T) {
+	_, router := bulkTestRouter(t)
+	code, _ := doBulk(t, router, models.BulkContactOperationInput{
+		Action:    "add_tag",
+		VCardUIDs: []string{"00000000-0000-4000-8000-000000000001"},
+	})
+	assert.Equal(t, http.StatusBadRequest, code)
+}

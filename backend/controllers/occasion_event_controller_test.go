@@ -467,3 +467,13 @@ func TestOccasionEvent_RealMigratedSchema(t *testing.T) {
 	require.NoError(t, db.Unscoped().First(&unscoped, "id = ?", eventID).Error)
 	assert.True(t, unscoped.DeletedAt.Valid)
 }
+
+func TestGetInviteeSuggestionsRejectsOnlyBlankCircleIDs(t *testing.T) {
+	_, router := setupRouter(t)
+	registerOccasionEventRoutes(t, router)
+
+	w := doOccasionJSON(router, "GET", "/occasion-events/invitee-suggestions?circle_ids=,,", nil)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	code, _ := wireReason(t, w)
+	assert.Equal(t, "occasion_event_circles_required", code)
+}

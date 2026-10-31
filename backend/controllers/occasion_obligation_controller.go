@@ -21,7 +21,7 @@ import (
 // validator).
 func validateOccasionAnchorPair(input *models.OccasionObligationInput) *apperrors.AppError {
 	if (input.AnchorMonth == nil) != (input.AnchorDay == nil) {
-		return apperrors.ErrValidation("An occasion anchor date requires both a month and a day, or neither")
+		return apperrors.ErrValidation("An occasion anchor date requires both a month and a day, or neither").WithReason(apperrors.ReasonOccasionAnchorDateIncomplete, nil)
 	}
 	return nil
 }

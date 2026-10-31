@@ -104,7 +104,7 @@ func SaveSeafileConfig(c *gin.Context) {
 			return
 		}
 		if errors.Is(saveErr, services.ErrSeafileSecretRequired) {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("api_token", saveErr.Error()))
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("api_token", saveErr.Error()).WithReason(apperrors.ReasonIntegrationSaveFailed, map[string]any{"reason": saveErr.Error()}))
 			return
 		}
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save Seafile config").WithError(saveErr))
@@ -224,7 +224,7 @@ func LinkSeafileContact(c *gin.Context) {
 		MTime  int64  `json:"mtime,omitempty"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("request body", err.Error()))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("request body", err.Error()).WithReason(apperrors.ReasonIntegrationRequestBodyInvalid, map[string]any{"reason": err.Error()}))
 		return
 	}
 	if verrs := middleware.ValidateStruct(&input); len(verrs) > 0 {

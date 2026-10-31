@@ -26,7 +26,7 @@ func rejectInvalidAddressMapFields(c *gin.Context, card contactmodel.Card) bool 
 	if len(problems) == 0 {
 		return false
 	}
-	appErr := apperrors.ErrValidation("Request validation failed")
+	appErr := apperrors.ErrValidation("Request validation failed").WithReason(apperrors.ReasonValidationRequestFailed, nil)
 	for field, reason := range problems {
 		appErr = appErr.WithDetails(field, reason)
 	}
@@ -94,13 +94,13 @@ func GeocodeContactAddress(geocoder addressGeocoder) gin.HandlerFunc {
 		// geocoder, and the answer must not depend on whether geocoding is on.
 		if addr.Sensitivity != "" && addr.Sensitivity != models.RelationshipSensitivityNormal && !includeSensitiveRequested(c) {
 			apperrors.AbortWithError(c, apperrors.ErrValidation("This address is marked "+addr.Sensitivity+
-				"; send include_sensitive=true to geocode it").
+				"; send include_sensitive=true to geocode it").WithReason(apperrors.ReasonContactAddressSensitive, map[string]any{"sensitivity": addr.Sensitivity}).
 				WithDetails("sensitivity", addr.Sensitivity))
 			return
 		}
 
 		if !geocoder.Enabled() {
-			apperrors.AbortWithError(c, apperrors.ErrBusinessLogic(services.ErrGeocoderDisabled.Error()))
+			apperrors.AbortWithError(c, apperrors.ErrBusinessLogic(services.ErrGeocoderDisabled.Error()).WithReason(apperrors.ReasonGeocoderDisabled, nil))
 			return
 		}
 
@@ -186,13 +186,13 @@ func GeocodeContactAddressDraft(geocoder addressGeocoder) gin.HandlerFunc {
 		// depend on whether geocoding is enabled.
 		if addr.Sensitivity != "" && addr.Sensitivity != models.RelationshipSensitivityNormal && !includeSensitiveRequested(c) {
 			apperrors.AbortWithError(c, apperrors.ErrValidation("This address is marked "+addr.Sensitivity+
-				"; send include_sensitive=true to geocode it").
+				"; send include_sensitive=true to geocode it").WithReason(apperrors.ReasonContactAddressSensitive, map[string]any{"sensitivity": addr.Sensitivity}).
 				WithDetails("sensitivity", addr.Sensitivity))
 			return
 		}
 
 		if !geocoder.Enabled() {
-			apperrors.AbortWithError(c, apperrors.ErrBusinessLogic(services.ErrGeocoderDisabled.Error()))
+			apperrors.AbortWithError(c, apperrors.ErrBusinessLogic(services.ErrGeocoderDisabled.Error()).WithReason(apperrors.ReasonGeocoderDisabled, nil))
 			return
 		}
 
@@ -228,20 +228,20 @@ func includeSensitiveRequested(c *gin.Context) bool {
 func abortGeocodeError(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, services.ErrGeocoderDisabled):
-		apperrors.AbortWithError(c, apperrors.ErrBusinessLogic(services.ErrGeocoderDisabled.Error()))
+		apperrors.AbortWithError(c, apperrors.ErrBusinessLogic(services.ErrGeocoderDisabled.Error()).WithReason(apperrors.ReasonGeocoderDisabled, nil))
 	case errors.Is(err, services.ErrGeocoderNoResult):
-		apperrors.AbortWithError(c, apperrors.ErrBusinessLogic(services.ErrGeocoderNoResult.Error()))
+		apperrors.AbortWithError(c, apperrors.ErrBusinessLogic(services.ErrGeocoderNoResult.Error()).WithReason(apperrors.ReasonGeocoderNoResult, nil))
 	case errors.Is(err, services.ErrGeocoderRateLimited):
-		apperrors.AbortWithError(c, apperrors.ErrExternal("Geocoder", "the provider is rate limiting requests; try again shortly"))
+		apperrors.AbortWithError(c, apperrors.ErrExternal("Geocoder", "the provider is rate limiting requests; try again shortly").WithReason(apperrors.ReasonGeocoderRateLimited, nil))
 	case errors.Is(err, services.ErrGeocoderUnauthorized):
-		apperrors.AbortWithError(c, apperrors.ErrExternal("Geocoder", "the provider rejected this server's credentials (check GEOCODER_API_KEY)"))
+		apperrors.AbortWithError(c, apperrors.ErrExternal("Geocoder", "the provider rejected this server's credentials (check GEOCODER_API_KEY)").WithReason(apperrors.ReasonGeocoderCredentialsRejected, nil))
 	case errors.Is(err, services.ErrGeocoderPrivateAddr):
-		apperrors.AbortWithError(c, apperrors.ErrExternal("Geocoder", "the provider resolved to a private address and was blocked"))
+		apperrors.AbortWithError(c, apperrors.ErrExternal("Geocoder", "the provider resolved to a private address and was blocked").WithReason(apperrors.ReasonGeocoderPrivateAddress, nil))
 	case errors.Is(err, services.ErrGeocoderInvalidData):
-		apperrors.AbortWithError(c, apperrors.ErrExternal("Geocoder", "the provider returned an unusable response"))
+		apperrors.AbortWithError(c, apperrors.ErrExternal("Geocoder", "the provider returned an unusable response").WithReason(apperrors.ReasonGeocoderResponseUnusable, nil))
 	case errors.Is(err, services.ErrGeocoderUnreachable), errors.Is(err, services.ErrGeocoderNotFound),
 		errors.Is(err, services.ErrGeocoderRequestFailed):
-		apperrors.AbortWithError(c, apperrors.ErrExternal("Geocoder", "the provider could not be reached"))
+		apperrors.AbortWithError(c, apperrors.ErrExternal("Geocoder", "the provider could not be reached").WithReason(apperrors.ReasonGeocoderUnreachable, nil))
 	default:
 		logger.FromContext(c).Error().Err(err).Msg("Unexpected geocoder error")
 		apperrors.AbortWithError(c, apperrors.ErrInternal("Geocoding failed").WithError(err))

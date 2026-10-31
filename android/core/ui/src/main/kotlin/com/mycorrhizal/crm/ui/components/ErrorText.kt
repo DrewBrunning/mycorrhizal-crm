@@ -1419,6 +1419,466 @@ private fun localizedReason(reason: ErrorReason?): String? {
             R.string.error_reason_feed_entity_id_not_allowed
         )
 
+        ErrorReasonCode.ACCOUNT_ATTACHMENT_QUOTA_REACHED -> {
+            val p1 = reason.str("used")
+            val p2 = reason.str("max_mb")
+            if (p1 != null && p2 != null) {
+                stringResource(R.string.error_reason_account_attachment_quota_reached, p1, p2)
+            } else {
+                null
+            }
+        }
+
+        ErrorReasonCode.ACCOUNT_RESOURCE_QUOTA_REACHED -> {
+            val p1 = reason.str("resource")
+            val p2 = reason.str("n")
+            val p3 = reason.str("limit")
+            val p4 = reason.str("env_var")
+            if (p1 != null && p2 != null && p3 != null && p4 != null) {
+                stringResource(R.string.error_reason_account_resource_quota_reached, p1, p2, p3, p4)
+            } else {
+                null
+            }
+        }
+
+        ErrorReasonCode.ADMIN_ERROR_WINDOW_INVALID -> stringResource(
+            R.string.error_reason_admin_error_window_invalid
+        )
+
+        ErrorReasonCode.ATTACHMENT_FILE_MISSING -> stringResource(
+            R.string.error_reason_attachment_file_missing
+        )
+
+        ErrorReasonCode.ATTACHMENT_FILE_TOO_LARGE -> reason.str(
+            "max_mb"
+        )?.let { stringResource(R.string.error_reason_attachment_file_too_large, it) }
+
+        ErrorReasonCode.ATTACHMENT_INVALID_ID -> stringResource(
+            R.string.error_reason_attachment_invalid_id
+        )
+
+        ErrorReasonCode.ATTACHMENT_UNSUPPORTED_TYPE -> stringResource(
+            R.string.error_reason_attachment_unsupported_type
+        )
+
+        ErrorReasonCode.AUDIT_EVENT_PAST_RETENTION -> stringResource(
+            R.string.error_reason_audit_event_past_retention
+        )
+
+        ErrorReasonCode.AUDIT_UNDO_ENTITY_UNSUPPORTED -> reason.str(
+            "entity_type"
+        )?.let { stringResource(R.string.error_reason_audit_undo_entity_unsupported, it) }
+
+        ErrorReasonCode.AUDIT_UNDO_UPDATE_ONLY -> stringResource(
+            R.string.error_reason_audit_undo_update_only
+        )
+
+        ErrorReasonCode.AUTH_INTERACTIVE_SESSION_REQUIRED -> stringResource(
+            R.string.error_reason_auth_interactive_session_required
+        )
+
+        ErrorReasonCode.AUTH_LOGIN_REQUEST_INVALID -> reason.str(
+            "reason"
+        )?.let { stringResource(R.string.error_reason_auth_login_request_invalid, it) }
+
+        ErrorReasonCode.AUTH_PASSKEY_REMOVAL_VERIFY_OTHER -> stringResource(
+            R.string.error_reason_auth_passkey_removal_verify_other
+        )
+
+        ErrorReasonCode.AUTH_TOKEN_SCOPE_REQUIRED -> reason.str(
+            "scope"
+        )?.let { stringResource(R.string.error_reason_auth_token_scope_required, it) }
+
+        ErrorReasonCode.AUTH_WEBAUTHN_CONFIG_INVALID -> reason.str(
+            "reason"
+        )?.let { stringResource(R.string.error_reason_auth_webauthn_config_invalid, it) }
+
+        ErrorReasonCode.BUNDLE_EXPORT_TOO_LARGE -> {
+            val p1 = reason.str("used")
+            val p2 = reason.str("max")
+            if (p1 != null && p2 != null) {
+                stringResource(R.string.error_reason_bundle_export_too_large, p1, p2)
+            } else {
+                null
+            }
+        }
+
+        ErrorReasonCode.CALENDAR_SYNC_FAILED -> reason.str(
+            "reason"
+        )?.let { stringResource(R.string.error_reason_calendar_sync_failed, it) }
+
+        ErrorReasonCode.COMMON_IDEMPOTENCY_KEY_TOO_LONG -> reason.str(
+            "max"
+        )?.let { stringResource(R.string.error_reason_common_idempotency_key_too_long, it) }
+
+        ErrorReasonCode.COMMON_PRECONDITION_FAILED -> stringResource(
+            R.string.error_reason_common_precondition_failed
+        )
+
+        ErrorReasonCode.COMMON_REQUEST_BODY_TOO_LARGE -> stringResource(
+            R.string.error_reason_common_request_body_too_large
+        )
+
+        ErrorReasonCode.COMMON_REQUEST_BODY_UNREADABLE -> stringResource(
+            R.string.error_reason_common_request_body_unreadable
+        )
+
+        ErrorReasonCode.CONTACT_ADDRESS_ALREADY_EXISTS -> stringResource(
+            R.string.error_reason_contact_address_already_exists
+        )
+
+        ErrorReasonCode.CONTACT_ADDRESS_KEY_REQUIRED -> stringResource(
+            R.string.error_reason_contact_address_key_required
+        )
+
+        ErrorReasonCode.CONTACT_ADDRESS_SENSITIVE -> reason.str(
+            "sensitivity"
+        )?.let { stringResource(R.string.error_reason_contact_address_sensitive, it) }
+
+        ErrorReasonCode.CONTACT_ADDRESS_SOURCE_KIND_INVALID -> stringResource(
+            R.string.error_reason_contact_address_source_kind_invalid
+        )
+
+        ErrorReasonCode.CONTACT_ADDRESS_SUGGESTION_STALE -> stringResource(
+            R.string.error_reason_contact_address_suggestion_stale
+        )
+
+        ErrorReasonCode.CONTACT_BULK_CIRCLE_REQUIRED -> stringResource(
+            R.string.error_reason_contact_bulk_circle_required
+        )
+
+        ErrorReasonCode.CONTACT_BULK_TAG_REQUIRED -> stringResource(
+            R.string.error_reason_contact_bulk_tag_required
+        )
+
+        ErrorReasonCode.CONTACT_DERIVED_REBUILD_IN_PROGRESS -> stringResource(
+            R.string.error_reason_contact_derived_rebuild_in_progress
+        )
+
+        ErrorReasonCode.CONTACT_FIELD_DEFINITION_UNKNOWN -> stringResource(
+            R.string.error_reason_contact_field_definition_unknown
+        )
+
+        ErrorReasonCode.CONTACT_FIELD_ORDER_INCOMPLETE -> stringResource(
+            R.string.error_reason_contact_field_order_incomplete
+        )
+
+        ErrorReasonCode.CONTACT_FIELD_VALUE_INVALID -> reason.str(
+            "reason"
+        )?.let { stringResource(R.string.error_reason_contact_field_value_invalid, it) }
+
+        ErrorReasonCode.CONTACT_GIFT_CURRENCY_REQUIRED -> stringResource(
+            R.string.error_reason_contact_gift_currency_required
+        )
+
+        ErrorReasonCode.CONTACT_HAS_CONTACT_INFO_INVALID -> stringResource(
+            R.string.error_reason_contact_has_contact_info_invalid
+        )
+
+        ErrorReasonCode.CONTACT_INVALID_ID -> stringResource(
+            R.string.error_reason_contact_invalid_id
+        )
+
+        ErrorReasonCode.CONTACT_LIFE_EVENT_END_BEFORE_START -> stringResource(
+            R.string.error_reason_contact_life_event_end_before_start
+        )
+
+        ErrorReasonCode.CONTACT_LINK_FIELD_ORDER_INCOMPLETE -> stringResource(
+            R.string.error_reason_contact_link_field_order_incomplete
+        )
+
+        ErrorReasonCode.CONTACT_MERGE_SAME_ID -> stringResource(
+            R.string.error_reason_contact_merge_same_id
+        )
+
+        ErrorReasonCode.CONTACT_MERGE_UNRESOLVED_CONFLICTS -> stringResource(
+            R.string.error_reason_contact_merge_unresolved_conflicts
+        )
+
+        ErrorReasonCode.CONTACT_PREFERENCE_LEVEL_INVALID -> stringResource(
+            R.string.error_reason_contact_preference_level_invalid
+        )
+
+        ErrorReasonCode.CONTACT_SEARCH_TOO_LONG -> reason.str(
+            "max"
+        )?.let { stringResource(R.string.error_reason_contact_search_too_long, it) }
+
+        ErrorReasonCode.CONTACT_SHARE_PAYLOAD_INVALID -> reason.str(
+            "reason"
+        )?.let { stringResource(R.string.error_reason_contact_share_payload_invalid, it) }
+
+        ErrorReasonCode.CONTACT_SORT_SINCE_CONFLICT -> stringResource(
+            R.string.error_reason_contact_sort_since_conflict
+        )
+
+        ErrorReasonCode.CONTACT_SUBSCRIPTION_SYNC_FAILED -> reason.str(
+            "reason"
+        )?.let { stringResource(R.string.error_reason_contact_subscription_sync_failed, it) }
+
+        ErrorReasonCode.CONTACT_SYNC_CONFLICT_ALREADY_RESOLVED -> stringResource(
+            R.string.error_reason_contact_sync_conflict_already_resolved
+        )
+
+        ErrorReasonCode.CONTACT_SYNC_CONFLICT_RESTORE_FAILED -> reason.str(
+            "reason"
+        )?.let { stringResource(R.string.error_reason_contact_sync_conflict_restore_failed, it) }
+
+        ErrorReasonCode.CONTACT_UID_IMMUTABLE -> stringResource(
+            R.string.error_reason_contact_uid_immutable
+        )
+
+        ErrorReasonCode.EXPORT_AUDIT_LIMIT -> reason.str(
+            "max"
+        )?.let { stringResource(R.string.error_reason_export_audit_limit, it) }
+
+        ErrorReasonCode.EXPORT_CONTACTS_LIMIT -> {
+            val p1 = reason.str("total")
+            val p2 = reason.str("max")
+            if (p1 != null && p2 != null) {
+                stringResource(R.string.error_reason_export_contacts_limit, p1, p2)
+            } else {
+                null
+            }
+        }
+
+        ErrorReasonCode.EXPORT_FORMAT_INVALID -> stringResource(
+            R.string.error_reason_export_format_invalid
+        )
+
+        ErrorReasonCode.EXPORT_SELECTION_INVALID -> reason.str(
+            "reason"
+        )?.let { stringResource(R.string.error_reason_export_selection_invalid, it) }
+
+        ErrorReasonCode.GEOCODER_CREDENTIALS_REJECTED -> stringResource(
+            R.string.error_reason_geocoder_credentials_rejected
+        )
+
+        ErrorReasonCode.GEOCODER_DISABLED -> stringResource(R.string.error_reason_geocoder_disabled)
+
+        ErrorReasonCode.GEOCODER_NO_RESULT -> stringResource(
+            R.string.error_reason_geocoder_no_result
+        )
+
+        ErrorReasonCode.GEOCODER_PRIVATE_ADDRESS -> stringResource(
+            R.string.error_reason_geocoder_private_address
+        )
+
+        ErrorReasonCode.GEOCODER_RATE_LIMITED -> stringResource(
+            R.string.error_reason_geocoder_rate_limited
+        )
+
+        ErrorReasonCode.GEOCODER_RESPONSE_UNUSABLE -> stringResource(
+            R.string.error_reason_geocoder_response_unusable
+        )
+
+        ErrorReasonCode.GEOCODER_UNREACHABLE -> stringResource(
+            R.string.error_reason_geocoder_unreachable
+        )
+
+        ErrorReasonCode.GRAPH_DEPTH_INVALID -> reason.str(
+            "max"
+        )?.let { stringResource(R.string.error_reason_graph_depth_invalid, it) }
+
+        ErrorReasonCode.GRAPH_DEPTH_NOT_POSITIVE -> stringResource(
+            R.string.error_reason_graph_depth_not_positive
+        )
+
+        ErrorReasonCode.GRAPH_DEPTH_TOO_LARGE -> reason.str(
+            "max"
+        )?.let { stringResource(R.string.error_reason_graph_depth_too_large, it) }
+
+        ErrorReasonCode.GRAPH_FROM_REQUIRED -> stringResource(
+            R.string.error_reason_graph_from_required
+        )
+
+        ErrorReasonCode.GRAPH_FULL_INVALID -> stringResource(
+            R.string.error_reason_graph_full_invalid
+        )
+
+        ErrorReasonCode.HOUSEHOLD_ADDRESS_STALE -> stringResource(
+            R.string.error_reason_household_address_stale
+        )
+
+        ErrorReasonCode.HOUSEHOLD_MEMBERS_ADDRESS_MISMATCH -> stringResource(
+            R.string.error_reason_household_members_address_mismatch
+        )
+
+        ErrorReasonCode.HOUSEHOLD_MEMBERS_ALREADY_TOGETHER -> stringResource(
+            R.string.error_reason_household_members_already_together
+        )
+
+        ErrorReasonCode.HOUSEHOLD_MEMBERS_DISTINCT_REQUIRED -> stringResource(
+            R.string.error_reason_household_members_distinct_required
+        )
+
+        ErrorReasonCode.HOUSEHOLD_MEMBERS_DISTINCT_REQUIRED_SHORT -> stringResource(
+            R.string.error_reason_household_members_distinct_required_short
+        )
+
+        ErrorReasonCode.HOUSEHOLD_MEMBERS_REQUIRED -> stringResource(
+            R.string.error_reason_household_members_required
+        )
+
+        ErrorReasonCode.HOUSEHOLD_SUGGESTION_DISMISSED -> stringResource(
+            R.string.error_reason_household_suggestion_dismissed
+        )
+
+        ErrorReasonCode.HOUSEHOLD_SUGGESTION_MEMBER_STALE -> stringResource(
+            R.string.error_reason_household_suggestion_member_stale
+        )
+
+        ErrorReasonCode.HOUSEHOLD_SUGGESTION_STALE -> stringResource(
+            R.string.error_reason_household_suggestion_stale
+        )
+
+        ErrorReasonCode.HOUSEHOLD_TYPE_INVALID -> stringResource(
+            R.string.error_reason_household_type_invalid
+        )
+
+        ErrorReasonCode.IMPORT_DISK_SPACE_LOW -> {
+            val p1 = reason.str("total")
+            val p2 = reason.str("reason")
+            if (p1 != null && p2 != null) {
+                stringResource(R.string.error_reason_import_disk_space_low, p1, p2)
+            } else {
+                null
+            }
+        }
+
+        ErrorReasonCode.IMPORT_FIELD_MAPPINGS_INVALID -> reason.str(
+            "reason"
+        )?.let { stringResource(R.string.error_reason_import_field_mappings_invalid, it) }
+
+        ErrorReasonCode.IMPORT_FILE_UNREADABLE -> reason.str(
+            "reason"
+        )?.let { stringResource(R.string.error_reason_import_file_unreadable, it) }
+
+        ErrorReasonCode.INTEGRATION_REQUEST_BODY_INVALID -> reason.str(
+            "reason"
+        )?.let { stringResource(R.string.error_reason_integration_request_body_invalid, it) }
+
+        ErrorReasonCode.INTEGRATION_SAVE_FAILED -> reason.str(
+            "reason"
+        )?.let { stringResource(R.string.error_reason_integration_save_failed, it) }
+
+        ErrorReasonCode.OCCASION_ANCHOR_DATE_INCOMPLETE -> stringResource(
+            R.string.error_reason_occasion_anchor_date_incomplete
+        )
+
+        ErrorReasonCode.OCCASION_DAYS_INVALID -> stringResource(
+            R.string.error_reason_occasion_days_invalid
+        )
+
+        ErrorReasonCode.OCCASION_EVENT_CIRCLES_REQUIRED -> stringResource(
+            R.string.error_reason_occasion_event_circles_required
+        )
+
+        ErrorReasonCode.OCCASION_EVENT_END_BEFORE_START -> stringResource(
+            R.string.error_reason_occasion_event_end_before_start
+        )
+
+        ErrorReasonCode.OCCASION_EVENT_TIME_INVALID -> stringResource(
+            R.string.error_reason_occasion_event_time_invalid
+        )
+
+        ErrorReasonCode.OCCASION_KIND_INVALID -> stringResource(
+            R.string.error_reason_occasion_kind_invalid
+        )
+
+        ErrorReasonCode.PHOTO_FETCH_FAILED -> stringResource(
+            R.string.error_reason_photo_fetch_failed
+        )
+
+        ErrorReasonCode.PHOTO_FILE_TOO_LARGE -> reason.str(
+            "max_mb"
+        )?.let { stringResource(R.string.error_reason_photo_file_too_large, it) }
+
+        ErrorReasonCode.PHOTO_INVALID_PATH -> stringResource(
+            R.string.error_reason_photo_invalid_path
+        )
+
+        ErrorReasonCode.PHOTO_PROCESS_FAILED -> stringResource(
+            R.string.error_reason_photo_process_failed
+        )
+
+        ErrorReasonCode.PHOTO_SVG_UNSUPPORTED -> stringResource(
+            R.string.error_reason_photo_svg_unsupported
+        )
+
+        ErrorReasonCode.PHOTO_UPLOADS_DISABLED_DEMO -> stringResource(
+            R.string.error_reason_photo_uploads_disabled_demo
+        )
+
+        ErrorReasonCode.RELATIONSHIP_SUGGESTION_STALE -> stringResource(
+            R.string.error_reason_relationship_suggestion_stale
+        )
+
+        ErrorReasonCode.SEARCH_LIMIT_INVALID -> stringResource(
+            R.string.error_reason_search_limit_invalid
+        )
+
+        ErrorReasonCode.SEARCH_QUERY_REQUIRED -> stringResource(
+            R.string.error_reason_search_query_required
+        )
+
+        ErrorReasonCode.SEARCH_QUERY_TOO_LONG -> reason.str(
+            "max"
+        )?.let { stringResource(R.string.error_reason_search_query_too_long, it) }
+
+        ErrorReasonCode.SEARCH_REBUILD_IN_PROGRESS -> stringResource(
+            R.string.error_reason_search_rebuild_in_progress
+        )
+
+        ErrorReasonCode.TIMELINE_BUCKET_INVALID -> stringResource(
+            R.string.error_reason_timeline_bucket_invalid
+        )
+
+        ErrorReasonCode.TIMELINE_TYPE_INVALID -> {
+            val p1 = reason.str("type")
+            val p2 = reason.str("supported")
+            if (p1 != null && p2 != null) {
+                stringResource(R.string.error_reason_timeline_type_invalid, p1, p2)
+            } else {
+                null
+            }
+        }
+
+        ErrorReasonCode.VALIDATION_CURSOR_EXPIRED -> stringResource(
+            R.string.error_reason_validation_cursor_expired
+        )
+
+        ErrorReasonCode.VALIDATION_CURSOR_INVALID -> reason.str(
+            "reason"
+        )?.let { stringResource(R.string.error_reason_validation_cursor_invalid, it) }
+
+        ErrorReasonCode.VALIDATION_DATA_NOT_FOUND -> stringResource(
+            R.string.error_reason_validation_data_not_found
+        )
+
+        ErrorReasonCode.VALIDATION_DATA_TYPE_INVALID -> stringResource(
+            R.string.error_reason_validation_data_type_invalid
+        )
+
+        ErrorReasonCode.VALIDATION_REQUEST_BODY_INVALID -> reason.str(
+            "reason"
+        )?.let { stringResource(R.string.error_reason_validation_request_body_invalid, it) }
+
+        ErrorReasonCode.VALIDATION_REQUEST_FAILED -> stringResource(
+            R.string.error_reason_validation_request_failed
+        )
+
+        ErrorReasonCode.VALIDATION_SINCE_INVALID -> reason.str(
+            "reason"
+        )?.let { stringResource(R.string.error_reason_validation_since_invalid, it) }
+
+        ErrorReasonCode.VALIDATION_SORT_INVALID -> reason.str(
+            "supported"
+        )?.let { stringResource(R.string.error_reason_validation_sort_invalid, it) }
+
+        ErrorReasonCode.VALIDATION_TIMESTAMP_INVALID -> stringResource(
+            R.string.error_reason_validation_timestamp_invalid
+        )
+
         else -> null
     }
 }

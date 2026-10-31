@@ -198,7 +198,7 @@ func ExportPreflight(c *gin.Context) {
 	format := strings.TrimSpace(c.Query("format"))
 	if !validExportFormats[format] {
 		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("format",
-			"format must be one of vcard4, vcard3, jscontact").WithDetails("operation", exportOpPreflight).WithDetails("category", exportCatValidation))
+			"format must be one of vcard4, vcard3, jscontact").WithReason(apperrors.ReasonExportFormatInvalid, nil).WithDetails("operation", exportOpPreflight).WithDetails("category", exportCatValidation))
 		return
 	}
 

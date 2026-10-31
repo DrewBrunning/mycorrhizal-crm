@@ -52,7 +52,7 @@ func ListSystemEvents(c *gin.Context) {
 	if v := c.Query("since"); v != "" {
 		t, err := time.Parse(time.RFC3339, v)
 		if err != nil {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("since", "must be an RFC3339 timestamp"))
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("since", "must be an RFC3339 timestamp").WithReason(apperrors.ReasonValidationTimestampInvalid, nil))
 			return
 		}
 		query = query.Where("occurred_at >= ?", t)
@@ -60,7 +60,7 @@ func ListSystemEvents(c *gin.Context) {
 	if v := c.Query("until"); v != "" {
 		t, err := time.Parse(time.RFC3339, v)
 		if err != nil {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("until", "must be an RFC3339 timestamp"))
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("until", "must be an RFC3339 timestamp").WithReason(apperrors.ReasonValidationTimestampInvalid, nil))
 			return
 		}
 		query = query.Where("occurred_at <= ?", t)

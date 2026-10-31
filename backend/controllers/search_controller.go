@@ -30,11 +30,11 @@ func SearchAll(c *gin.Context) {
 
 	term := strings.TrimSpace(c.Query("q"))
 	if term == "" {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("q", "q (a search term) is required"))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("q", "q (a search term) is required").WithReason(apperrors.ReasonSearchQueryRequired, nil))
 		return
 	}
 	if len([]rune(term)) > services.MaxSearchTermLen {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("q", fmt.Sprintf("q must be at most %d characters", services.MaxSearchTermLen)))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("q", fmt.Sprintf("q must be at most %d characters", services.MaxSearchTermLen)).WithReason(apperrors.ReasonSearchQueryTooLong, map[string]any{"max": services.MaxSearchTermLen}))
 		return
 	}
 
@@ -42,7 +42,7 @@ func SearchAll(c *gin.Context) {
 	if raw := c.Query("limit"); raw != "" {
 		parsed, err := strconv.Atoi(raw)
 		if err != nil || parsed < 1 {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("limit", "limit must be a positive integer"))
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("limit", "limit must be a positive integer").WithReason(apperrors.ReasonSearchLimitInvalid, nil))
 			return
 		}
 		limit = parsed
@@ -94,7 +94,7 @@ func RebuildSearchIndexHandler(c *gin.Context) {
 		// Nothing ran, so there is no job_runs row to record — and the
 		// in-progress rebuild holds SQLite's write lock, so a diagnostic
 		// insert here would only block on it. The 409 is the whole signal.
-		apperrors.AbortWithError(c, apperrors.ErrConflict("A search index rebuild is already in progress"))
+		apperrors.AbortWithError(c, apperrors.ErrConflict("A search index rebuild is already in progress").WithReason(apperrors.ReasonSearchRebuildInProgress, nil))
 		return
 	}
 	if err != nil {
