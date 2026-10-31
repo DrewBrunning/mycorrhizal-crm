@@ -2704,6 +2704,8 @@
     <string name="error_reason_trash_uid_in_use">A live contact already uses this contact\'s UID; merge or delete it first</string>
     <string name="error_reason_trash_snapshot_unsupported">This contact\'s deletion snapshot is not supported by this version; it can still be deleted permanently</string>
     <string name="error_reason_circle_color_invalid">The colour must be one of the palette colours</string>
+    <string name="error_reason_circle_sync_scope_out_of_scope">The contact is outside this device\'s CardDAV sync scope</string>
+    <string name="error_reason_circle_sync_scope_no_default">No default circle is configured for the CardDAV sync scope</string>
     <string name="error_reason_meerkat_upload_missing">No file uploaded</string>
     <string name="error_reason_meerkat_session_not_found">Import session expired or not found</string>
     <string name="error_reason_meerkat_session_not_owned">Session does not belong to current user</string>
