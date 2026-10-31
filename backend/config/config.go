@@ -131,7 +131,7 @@ type Config struct {
 	// never counts against another's (docs/security/threat-model.md
 	// "Multi-user instances"). Quotas count live rows only; a soft-deleted row
 	// is not charged against the quota (it is the user's undo window).
-	PerUserContactLimit          int `cfgreg:"env=PER_USER_CONTACT_LIMIT;type=int;range=>=0, 0 disables the quota, invalid value refuses to boot;default=0;required=false;restart=true;desc=Maximum live contacts a single user may hold (0 = unlimited)"`
+	PerUserContactLimit          int `cfgreg:"env=PER_USER_CONTACT_LIMIT;type=int;range=>=0, 0 disables the quota, invalid value refuses to boot;default=0;required=false;restart=true;desc=Maximum live contacts a single user may hold, enforced on REST and CardDAV creates (0 = unlimited)"`
 	PerUserNoteLimit             int `cfgreg:"env=PER_USER_NOTE_LIMIT;type=int;range=>=0, 0 disables the quota, invalid value refuses to boot;default=0;required=false;restart=true;desc=Maximum live notes a single user may hold (0 = unlimited)"`
 	PerUserRelationshipEdgeLimit int `cfgreg:"env=PER_USER_RELATIONSHIP_EDGE_LIMIT;type=int;range=>=0, 0 disables the quota, invalid value refuses to boot;default=0;required=false;restart=true;desc=Maximum live relationship edges a single user may hold (0 = unlimited)"`
 	PerUserAttachmentQuotaMB     int `cfgreg:"env=PER_USER_ATTACHMENT_QUOTA_MB;type=int;range=>=0, 0 disables the quota, invalid value refuses to boot;default=0;required=false;restart=true;desc=Maximum attachment bytes a single user may store, in MiB (0 = unlimited)"`

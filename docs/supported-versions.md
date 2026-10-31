@@ -156,9 +156,13 @@ an account on someone else's instance:
   #950) are opt-in — `0`, the default, means unlimited — and account strictly
   per user, so being at your limit never refuses a peer's create. When set, the
   matching create is refused with `507 Insufficient Storage` before anything is
-  written. The cross-user half is pinned by
+  written, on both REST and CardDAV creates (updates are never refused); the
+  shared `services.SaveContact` path enforces the contact quota so the two
+  protocols cannot drift. The cross-user half is pinned by
   `backend/services/user_quota_test.go` and
-  `backend/controllers/user_quota_enforcement_test.go`; the config surface is in
+  `backend/controllers/user_quota_enforcement_test.go`, and the CardDAV/REST
+  parity by `backend/controllers/carddav_rest_parity_test.go` and
+  `backend/carddav/put_quota_test.go`; the config surface is in
   [`docs/configuration-reference.md`](configuration-reference.md).
 
 ### What is per-user versus per-instance

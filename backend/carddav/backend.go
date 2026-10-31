@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"mycorrhizal/config"
 	"mycorrhizal/contactmodel"
+	apperrors "mycorrhizal/errors"
 	"mycorrhizal/internal/clock"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
@@ -456,10 +457,19 @@ func (b *Backend) PutAddressObject(ctx context.Context, urlPath string, card vca
 		}
 	}
 
-	// The same write path as the REST create/update (issue #2255): one
-	// transaction, then the wedding-anniversary sync and the contact.created /
-	// contact.updated webhook, both only after the commit.
+	// The same write path as the REST create/update (issue #2255): the opt-in
+	// contact quota (issue #2261), one transaction, then the
+	// wedding-anniversary sync and the contact.created / contact.updated
+	// webhook, both only after the commit.
 	if err := services.SaveContact(ctx, db, b.cfg, userID, &contact, ambientBefore); err != nil {
+		// A quota refusal is an AppError carrying the same 507 the REST create
+		// returns. go-webdav renders only its own HTTPError type with the
+		// intended status (anything else becomes a 500), so translate it at
+		// the protocol boundary rather than leaking an internal error.
+		var appErr *apperrors.AppError
+		if errors.As(err, &appErr) {
+			return nil, webdav.NewHTTPError(appErr.HTTPStatus, appErr)
+		}
 		return nil, err
 	}
 
