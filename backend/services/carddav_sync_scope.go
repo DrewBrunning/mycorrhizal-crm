@@ -8,6 +8,7 @@ import (
 	"mycorrhizal/models"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // CardDAVSyncScopeSelection is a validated, normalized sync scope. CircleIDs
@@ -141,7 +142,13 @@ func ReplaceCardDAVSyncScope(db *gorm.DB, userID uint, sel CardDAVSyncScopeSelec
 			Mode:            sel.Mode,
 			DefaultCircleID: sel.DefaultCircleID,
 		}
-		if err := tx.Save(&saved).Error; err != nil {
+		// Upsert rather than Save: Save writes every column on an existing
+		// row, which would reset created_at to the zero time. Preserve the
+		// original creation time and only update the mutable fields.
+		if err := tx.Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "user_id"}},
+			DoUpdates: clause.AssignmentColumns([]string{"mode", "default_circle_id", "updated_at"}),
+		}).Create(&saved).Error; err != nil {
 			return err
 		}
 		return nil
