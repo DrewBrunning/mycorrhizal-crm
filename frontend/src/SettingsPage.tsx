@@ -70,6 +70,7 @@ import { updateDateFormat, updateLanguage, updateSelfContact, updateTimeFormat }
 import { fetchAndCacheUserInfo, isAdmin } from './auth';
 import AppDialog from './components/AppDialog';
 import BuildVersionCard from './components/BuildVersionCard';
+import CardDAVSyncScopeSettings from './components/CardDAVSyncScopeSettings';
 import DAVPasswordSettings from './components/DAVPasswordSettings';
 import DeleteAccountSettings from './components/DeleteAccountSettings';
 import FeedsSettings from './components/FeedsSettings';
@@ -731,6 +732,9 @@ export default function SettingsPage() {
 
       {/* Issue #2010: CardDAV/CalDAV account-password policy */}
       <DAVPasswordSettings />
+
+      {/* Issue #1993 / ADR 0041: which circles the CardDAV address book serves */}
+      <CardDAVSyncScopeSettings />
 
       {/* Issue #866: active-session inventory */}
       <SessionsSettings />

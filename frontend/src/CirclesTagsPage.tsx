@@ -2,6 +2,7 @@ import { Box, LinearProgress, Tab, Tabs, Typography } from '@mui/material';
 import { type SyntheticEvent, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
+import { getCardDAVSyncScope } from './api/carddavSyncScope';
 import CircleDetailDialog from './components/CircleDetailDialog';
 import CircleTagEntityList from './components/CircleTagEntityList';
 import LoadError from './components/LoadError';
@@ -108,7 +109,29 @@ export default function CirclesTagsPage() {
             addLabel={t('circlesTags.add')}
             emptyLabel={t('circlesTags.noCircles')}
             memberCountLabel={(count) => t('circlesTags.memberCount', { count })}
-            deleteConfirmLabel={(name) => t('circlesTags.deleteCircleConfirm', { name })}
+            deleteConfirmLabel={async (name, id) => {
+              const base = t('circlesTags.deleteCircleConfirm', { name });
+              // ADR 0041: deleting a circle in the sync scope changes what
+              // syncs, so warn before the destructive action. A failed read
+              // (CardDAV disabled/unavailable) just falls back to the base
+              // confirmation.
+              try {
+                const scope = await getCardDAVSyncScope();
+                if (scope.mode === 'include') {
+                  if (scope.default_circle_id === id) {
+                    return `${base} ${t('circlesTags.deleteCircleScopeDefault')}`;
+                  }
+                  if (scope.circle_ids.includes(id)) {
+                    return `${base} ${t('circlesTags.deleteCircleScopeInclude')}`;
+                  }
+                } else if (scope.mode === 'exclude' && scope.circle_ids.includes(id)) {
+                  return `${base} ${t('circlesTags.deleteCircleScopeExclude')}`;
+                }
+              } catch {
+                // fall through to the ordinary confirmation
+              }
+              return base;
+            }}
             onCreate={async (name) => {
               // handleCreateCircle doesn't refresh internally (ContactDetailPage's
               // handleCircleAdd orchestrates that itself the same way) — do it here.

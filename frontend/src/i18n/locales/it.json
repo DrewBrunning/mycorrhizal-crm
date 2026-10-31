@@ -134,6 +134,9 @@
     "noCircles": "Nessuna cerchia ancora. Le cerchie raggruppano persone che segui insieme: aggiungine una qui sotto o dalla pagina di un contatto.",
     "noTags": "Nessun tag ancora. I tag sono etichette libere per temi trasversali: aggiungine uno qui sotto o dalla pagina di un contatto.",
     "deleteCircleConfirm": "Eliminare la cerchia \"{{name}}\"? Verrà rimossa da ogni contatto che la ha.",
+    "deleteCircleScopeDefault": "Questo cerchio è il tuo cerchio predefinito per i contatti creati sul telefono; il valore predefinito verrà rimosso.",
+    "deleteCircleScopeInclude": "Questo cerchio fa parte del tuo ambito di sincronizzazione CardDAV; eliminandolo i suoi contatti verranno rimossi dai tuoi dispositivi.",
+    "deleteCircleScopeExclude": "Questo cerchio è escluso dal tuo ambito di sincronizzazione CardDAV; eliminandolo i suoi contatti inizieranno a sincronizzarsi con i tuoi dispositivi.",
     "deleteTagConfirm": "Eliminare il tag \"{{name}}\"? Verrà rimosso da ogni contatto che lo ha.",
     "circleCreated": "Cerchia creata",
     "circleRenamed": "Cerchia rinominata",
@@ -3634,6 +3637,33 @@
     "success": "Politica della password CardDAV/CalDAV aggiornata.",
     "error": "Impossibile aggiornare la politica della password CardDAV/CalDAV.",
     "loadError": "Impossibile caricare la politica della password CardDAV/CalDAV."
+  },
+  "carddavSyncScope": {
+    "title": "Ambito di sincronizzazione CardDAV",
+    "description": "Scegli quali contatti serve l’unica rubrica CardDAV. «Tutti i contatti» è l’impostazione predefinita e si comporta esattamente come prima. Riguarda solo i client CardDAV; interfaccia web, API REST e app Android conservano sempre tutti i contatti.",
+    "modeLabel": "Quali contatti sincronizzare",
+    "modeAll": "Tutti i contatti",
+    "modeInclude": "Solo i cerchi selezionati",
+    "modeExclude": "Tutti i contatti tranne i cerchi selezionati",
+    "includedCircles": "Cerchi inclusi",
+    "excludedCircles": "Cerchi esclusi",
+    "defaultCircle": "Cerchio predefinito per i contatti creati sul telefono",
+    "noDefaultCircle": "Nessun cerchio predefinito",
+    "counts": "Verranno sincronizzati {{inScope}} contatti su {{total}}.",
+    "help": "I contatti aggiunti tramite un abbonamento CardDAV non hanno un cerchio, quindi si sincronizzano solo con «Tutti i contatti» o «Tutti i contatti tranne i cerchi selezionati». Ridurre l’ambito elimina i contatti rimossi alla prossima sincronizzazione del dispositivo; Mycorrhizal conserva tutti i record.",
+    "save": "Salva ambito di sincronizzazione",
+    "saving": "Salvataggio…",
+    "saveSuccess": "Ambito di sincronizzazione CardDAV salvato.",
+    "saveError": "Impossibile salvare l’ambito di sincronizzazione CardDAV.",
+    "loadError": "Impossibile caricare l’ambito di sincronizzazione CardDAV.",
+    "confirmRemoval_one": "Salvando verrà rimosso {{count}} contatto dai tuoi dispositivi alla prossima sincronizzazione. Mycorrhizal conserva il record. Continuare?",
+    "confirmRemoval_many": "Salvando verranno rimossi {{count}} di contatti dai tuoi dispositivi alla prossima sincronizzazione. Mycorrhizal conserva i record. Continuare?",
+    "confirmRemoval_other": "Salvando verranno rimossi {{count}} contatti dai tuoi dispositivi alla prossima sincronizzazione. Mycorrhizal conserva i record. Continuare?",
+    "warnings": {
+      "scope_empty": "Nessun cerchio è selezionato, quindi nessun contatto verrà sincronizzato con i client CardDAV.",
+      "default_circle_missing": "Nessun cerchio predefinito è impostato, quindi i contatti creati sul telefono non possono essere salvati.",
+      "exclusion_empty": "Nessun cerchio è escluso, quindi tutti i contatti verranno sincronizzati con i client CardDAV."
+    }
   },
   "errors": {
     "requestRef": "(rif.: {{id}})",
