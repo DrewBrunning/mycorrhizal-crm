@@ -151,7 +151,9 @@ func ReplaceCardDAVSyncScope(db *gorm.DB, userID uint, sel CardDAVSyncScopeSelec
 		}).Create(&saved).Error; err != nil {
 			return err
 		}
-		return nil
+		// Return the persisted row (not the insert attempt) so created_at is
+		// populated on both the insert and the update path.
+		return tx.Where("user_id = ?", userID).First(&saved).Error
 	})
 	return saved, err
 }
