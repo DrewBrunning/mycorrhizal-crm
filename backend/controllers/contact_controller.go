@@ -83,13 +83,6 @@ func CreateContact(c *gin.Context) {
 		return
 	}
 
-	// Opt-in per-user quota (issue #950): refuse before any write once the
-	// user's live-contact count has reached the operator's limit.
-	if err := services.UserQuotaFromConfig(currentConfig(c)).CheckContactCreate(db, userID); err != nil {
-		apperrors.AbortWithError(c, err)
-		return
-	}
-
 	// Get validated input from validation middleware., this
 	// is the new nested Card/CRM shape (models.ContactRecordInput), not the
 	// old flat models.ContactInput.
@@ -123,9 +116,15 @@ func CreateContact(c *gin.Context) {
 	}
 
 	// services.SaveContact is shared with the CardDAV PUT (issue #2255): the
-	// write, the wedding-anniversary -> married LifeEvent mirror
-	// (services/wedding_sync.go) and the contact.created webhook.
+	// opt-in contact quota (issue #2261), the write, the wedding-anniversary
+	// -> married LifeEvent mirror (services/wedding_sync.go) and the
+	// contact.created webhook.
 	if err := services.SaveContact(c.Request.Context(), db, currentConfig(c), userID, &contact, false); err != nil {
+		var appErr *apperrors.AppError
+		if errors.As(err, &appErr) {
+			apperrors.AbortWithError(c, appErr)
+			return
+		}
 		logger.FromContext(c).Error().Err(err).Msg("Error saving contact to database")
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save contact").WithError(err))
 		return
