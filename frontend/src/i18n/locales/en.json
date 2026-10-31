@@ -130,6 +130,9 @@
     "noCircles": "No circles yet. Circles group people you keep up with together — add one below, or from a contact's page.",
     "noTags": "No tags yet. Tags are free-form labels for cross-cutting topics — add one below, or from a contact's page.",
     "deleteCircleConfirm": "Delete the circle \"{{name}}\"? It will be removed from every contact that has it.",
+    "deleteCircleScopeDefault": "This circle is your default circle for phone-created contacts; the default will be cleared.",
+    "deleteCircleScopeInclude": "This circle is in your CardDAV sync scope; deleting it will remove its contacts from your devices.",
+    "deleteCircleScopeExclude": "This circle is excluded from your CardDAV sync scope; deleting it will start syncing its contacts to your devices.",
     "deleteTagConfirm": "Delete the tag \"{{name}}\"? It will be removed from every contact that has it.",
     "circleCreated": "Circle created",
     "circleRenamed": "Circle renamed",
@@ -3532,6 +3535,32 @@
     "success": "CardDAV/CalDAV password policy updated.",
     "error": "Unable to update the CardDAV/CalDAV password policy.",
     "loadError": "Unable to load the CardDAV/CalDAV password policy."
+  },
+  "carddavSyncScope": {
+    "title": "CardDAV sync scope",
+    "description": "Choose which contacts the single CardDAV address book serves. “All contacts” is the default and behaves exactly as before. This affects CardDAV clients only; the web UI, REST API and Android app always keep every contact.",
+    "modeLabel": "Which contacts to sync",
+    "modeAll": "All contacts",
+    "modeInclude": "Only selected circles",
+    "modeExclude": "All contacts except selected circles",
+    "includedCircles": "Included circles",
+    "excludedCircles": "Excluded circles",
+    "defaultCircle": "Default circle for contacts created on a phone",
+    "noDefaultCircle": "No default circle",
+    "counts": "{{inScope}} of {{total}} contacts will sync.",
+    "help": "Contacts pulled in by a CardDAV subscription have no circle, so they only sync under “All contacts” or “All contacts except selected circles”. Narrowing the scope deletes the removed contacts on the next device sync; Mycorrhizal keeps every record.",
+    "save": "Save sync scope",
+    "saving": "Saving…",
+    "saveSuccess": "CardDAV sync scope saved.",
+    "saveError": "Unable to save the CardDAV sync scope.",
+    "loadError": "Unable to load the CardDAV sync scope.",
+    "confirmRemoval_one": "Saving will remove {{count}} contact from your devices on the next sync. Mycorrhizal keeps the record. Continue?",
+    "confirmRemoval_other": "Saving will remove {{count}} contacts from your devices on the next sync. Mycorrhizal keeps the records. Continue?",
+    "warnings": {
+      "scope_empty": "No circles are selected, so no contacts will sync to CardDAV clients.",
+      "default_circle_missing": "No default circle is set, so contacts created on a phone cannot be saved.",
+      "exclusion_empty": "No circles are excluded, so every contact will sync to CardDAV clients."
+    }
   },
   "errors": {
     "requestRef": "(ref: {{id}})",
