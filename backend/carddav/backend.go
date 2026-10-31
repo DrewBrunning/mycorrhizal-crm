@@ -274,13 +274,16 @@ func (b *Backend) GetAddressObject(ctx context.Context, urlPath string, req *car
 	db := b.getDB(ctx)
 	var contact models.Contact
 
-	// Try to find by vcard_uid first, then by ID
-	err = db.Where("user_id = ? AND vcard_uid = ?", userID, uid).First(&contact).Error
+	// Every lookup is restricted to the caller's CardDAV sync scope (ADR 0041
+	// decision 4), including the legacy numeric-id fallback, so an
+	// out-of-scope resource is indistinguishable from a missing one (404).
+	// Try to find by vcard_uid first, then by ID.
+	err = services.ApplyCardDAVSyncScope(db.Where("user_id = ? AND vcard_uid = ?", userID, uid)).First(&contact).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		// Try parsing as numeric ID for backwards compatibility
 		var id uint
 		if _, scanErr := fmt.Sscanf(uid, "%d", &id); scanErr == nil {
-			err = db.Where("user_id = ? AND id = ?", userID, id).First(&contact).Error
+			err = services.ApplyCardDAVSyncScope(db.Where("user_id = ? AND id = ?", userID, id)).First(&contact).Error
 		}
 	}
 	if err != nil {
@@ -303,7 +306,10 @@ func (b *Backend) ListAddressObjects(ctx context.Context, urlPath string, req *c
 
 	db := b.getDB(ctx)
 	var contacts []models.Contact
-	if err := db.Where("user_id = ?", userID).Find(&contacts).Error; err != nil {
+	// The scope is applied in the query, never by post-filtering, so
+	// PROPFIND/REPORT listings never materialize an out-of-scope contact
+	// (ADR 0041 decision 4).
+	if err := services.ApplyCardDAVSyncScope(db.Where("user_id = ?", userID)).Find(&contacts).Error; err != nil {
 		return nil, err
 	}
 
