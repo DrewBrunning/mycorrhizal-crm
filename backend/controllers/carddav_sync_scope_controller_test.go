@@ -149,6 +149,10 @@ func TestCardDAVSyncScope_RoundTripCountsAndWarnings(t *testing.T) {
 	require.Empty(t, resp.Warnings)
 	require.NotNil(t, resp.UpdatedAt)
 
+	var firstScope models.CardDAVSyncScope
+	require.NoError(t, db.Where("user_id = ?", owner.ID).First(&firstScope).Error)
+	require.False(t, firstScope.CreatedAt.IsZero())
+
 	// Exclude B: only c2 is in B, so c1 and c3 sync.
 	put = cardDAVSyncScopeDo(t, r, http.MethodPut, "/users/me/carddav-sync-scope", models.CardDAVSyncScopeInput{
 		Mode: "exclude", CircleIDs: []string{b.ID},
@@ -159,6 +163,10 @@ func TestCardDAVSyncScope_RoundTripCountsAndWarnings(t *testing.T) {
 	require.Equal(t, 2, resp.InScopeCount)
 	require.Nil(t, resp.DefaultCircleID)
 	require.Empty(t, resp.Warnings)
+
+	var secondScope models.CardDAVSyncScope
+	require.NoError(t, db.Where("user_id = ?", owner.ID).First(&secondScope).Error)
+	require.Equal(t, firstScope.CreatedAt, secondScope.CreatedAt, "PUT must not reset created_at")
 
 	// PUT replaces the whole object: switching to all clears the circles.
 	put = cardDAVSyncScopeDo(t, r, http.MethodPut, "/users/me/carddav-sync-scope", models.CardDAVSyncScopeInput{Mode: "all"})
