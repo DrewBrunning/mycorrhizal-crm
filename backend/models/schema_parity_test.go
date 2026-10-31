@@ -49,6 +49,8 @@ var registeredModels = []any{
 	&CalendarEventLink{},
 	&CalendarSubscription{},
 	&CardDAVSync{},
+	&CardDAVSyncScope{},
+	&CardDAVSyncScopeCircle{},
 	&Circle{},
 	&CircleMember{},
 	&Contact{},

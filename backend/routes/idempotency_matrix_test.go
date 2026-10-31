@@ -130,6 +130,7 @@ func buildIdemTable() map[string]idemRow {
 	// --- idemExempt: safe-to-repeat POSTs -------------------------------
 	for _, k := range []string{
 		"POST /api/v1/contacts/merge/preview",
+		"POST /api/v1/users/me/carddav-sync-scope/preview",
 		"POST /api/v1/contacts/address-suggestions",
 		"POST /api/v1/contacts/address-suggestions/apply",
 		"POST /api/v1/contacts/duplicates/dismiss",

@@ -351,6 +351,8 @@ func buildCWTable(s seeded) map[string]cwRow {
 		"PATCH /api/v1/users/enabled-contact-fields":       exempt(reasonAuth),
 		"PATCH /api/v1/users/hide-empty-fields":            exempt(reasonAuth),
 		"PATCH /api/v1/users/me/self-contact":              exempt(reasonAuth),
+		"PUT /api/v1/users/me/carddav-sync-scope":          exempt(reasonIntegration),
+		"POST /api/v1/users/me/carddav-sync-scope/preview": exempt(reasonIntegration),
 		"POST /api/v1/users/2fa/setup":                     exempt(reasonAuth),
 		"POST /api/v1/users/2fa/confirm":                   exempt(reasonAuth),
 		"POST /api/v1/users/2fa/disable":                   exempt(reasonAuth),

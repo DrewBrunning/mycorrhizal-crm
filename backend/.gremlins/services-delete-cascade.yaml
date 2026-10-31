@@ -15,6 +15,7 @@ unleash:
         - ^cadence_service\.go$
         - ^calendar_sync_service\.go$
         - ^capacity_preflight\.go$
+        - ^carddav_sync_scope\.go$
         - ^clock\.go$
         - ^contact_dav_delete_repair\.go$
         - ^contact_field_visibility\.go$

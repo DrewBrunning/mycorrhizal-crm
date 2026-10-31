@@ -8574,6 +8574,61 @@
       ]
     },
     {
+      "method": "GET",
+      "path": "/users/me/carddav-sync-scope",
+      "parameters": null,
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:CardDAVSyncScopeResponse"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/users/me/carddav-sync-scope",
+      "parameters": null,
+      "request_body": "ref:CardDAVSyncScopeInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:CardDAVSyncScopeResponse"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/users/me/carddav-sync-scope/preview",
+      "parameters": null,
+      "request_body": "ref:CardDAVSyncScopeInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:CardDAVSyncScopePreviewResponse"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
       "method": "PATCH",
       "path": "/users/me/self-contact",
       "parameters": null,
@@ -10851,6 +10906,131 @@
           "name": "updated",
           "type": "ref:Timestamp",
           "required": false
+        }
+      ]
+    },
+    {
+      "name": "CardDAVSyncScopeInput",
+      "properties": [
+        {
+          "name": "circle_ids",
+          "type": "array\u003cstring\u003e",
+          "required": false
+        },
+        {
+          "name": "default_circle_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "mode",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "all",
+            "include",
+            "exclude"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "CardDAVSyncScopePreviewResponse",
+      "properties": [
+        {
+          "name": "circle_ids",
+          "type": "array\u003cstring\u003e",
+          "required": true
+        },
+        {
+          "name": "in_scope_count",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "mode",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "all",
+            "include",
+            "exclude"
+          ]
+        },
+        {
+          "name": "total_count",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "warnings",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "CardDAVSyncScopeResponse",
+      "properties": [
+        {
+          "name": "circle_ids",
+          "type": "array\u003cstring\u003e",
+          "required": true
+        },
+        {
+          "name": "default_circle_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "in_scope_count",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "mode",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "all",
+            "include",
+            "exclude"
+          ]
+        },
+        {
+          "name": "total_count",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "updated_at",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "warnings",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "CardDAVSyncScopeWarning",
+      "properties": [
+        {
+          "name": "code",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "scope_empty",
+            "default_circle_missing",
+            "exclusion_empty"
+          ]
+        },
+        {
+          "name": "message",
+          "type": "string",
+          "required": true
         }
       ]
     },

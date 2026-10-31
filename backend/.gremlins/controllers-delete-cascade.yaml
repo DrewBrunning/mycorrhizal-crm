@@ -15,6 +15,7 @@ unleash:
         - ^bulk_update_fields\.go$
         - ^cadence_controller\.go$
         - ^calendar_controller\.go$
+        - ^carddav_sync_scope_controller\.go$
         - ^circle_controller\.go$
         - ^contact_address_controller\.go$
         - ^contact_controller\.go$

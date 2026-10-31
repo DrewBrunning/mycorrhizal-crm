@@ -515,6 +515,20 @@ func buildBodyOwnershipTable(fx ownFixtures) map[string]ownRow {
 				},
 				h.fx.ownerC1UID, h.fx.victimC1UID, ownNonexistentUID, http.StatusNotFound, false)
 		}),
+		"CardDAVSyncScopeInput.CircleIDs": dto(func(t *testing.T, h *ownHarness) {
+			h.assertMasked(http.MethodPut, "/api/v1/users/me/carddav-sync-scope",
+				func(uid string) string {
+					return fmt.Sprintf(`{"mode":"include","circle_ids":[%s],"default_circle_id":%s}`, jstr(uid), jstr(uid))
+				},
+				h.fx.ownerCircleID, h.fx.victimCircleID, ownNonexistentUID, http.StatusBadRequest, false)
+		}),
+		"CardDAVSyncScopeInput.DefaultCircleID": dto(func(t *testing.T, h *ownHarness) {
+			h.assertMasked(http.MethodPut, "/api/v1/users/me/carddav-sync-scope",
+				func(uid string) string {
+					return fmt.Sprintf(`{"mode":"include","circle_ids":[%s],"default_circle_id":%s}`, jstr(h.fx.ownerCircleID), jstr(uid))
+				},
+				h.fx.ownerCircleID, h.fx.victimCircleID, ownNonexistentUID, http.StatusBadRequest, false)
+		}),
 		"SelfContactInput.VCardUID": dto(func(t *testing.T, h *ownHarness) {
 			h.assertMasked(http.MethodPatch, "/api/v1/users/me/self-contact",
 				func(uid string) string { return fmt.Sprintf(`{"vcard_uid":%s}`, jstr(uid)) },

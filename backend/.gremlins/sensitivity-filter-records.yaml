@@ -21,6 +21,7 @@ unleash:
         - ^calendar_date\.go$
         - ^calendar_subscription\.go$
         - ^carddav\.go$
+        - ^carddav_sync_scope\.go$
         - ^circle\.go$
         - ^contact\.go$
         - ^contact_address_ids\.go$
