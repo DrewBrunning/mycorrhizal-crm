@@ -3644,6 +3644,8 @@
       "trash_uid_in_use": "Un contact actif utilise déjà l'UID de ce contact ; fusionnez-le ou supprimez-le d'abord",
       "trash_snapshot_unsupported": "Cette version ne prend pas en charge l'instantané de suppression de ce contact ; il peut toujours être supprimé définitivement",
       "circle_color_invalid": "La couleur doit être l'une des couleurs de la palette",
+      "circle_sync_scope_out_of_scope": "Le contact est en dehors de la portée de synchronisation CardDAV de cet appareil",
+      "circle_sync_scope_no_default": "Aucun cercle par défaut n'est configuré pour la portée de synchronisation CardDAV",
       "validation_cursor_malformed": "L'identifiant du curseur est mal formé",
       "validation_activity_ids_range": "Doit contenir entre 1 et 100 identifiants",
       "validation_required": "{{field}} est obligatoire",

@@ -284,6 +284,14 @@ private fun localizedReason(reason: ErrorReason?): String? {
             R.string.error_reason_circle_color_invalid
         )
 
+        ErrorReasonCode.CIRCLE_SYNC_SCOPE_OUT_OF_SCOPE -> stringResource(
+            R.string.error_reason_circle_sync_scope_out_of_scope
+        )
+
+        ErrorReasonCode.CIRCLE_SYNC_SCOPE_NO_DEFAULT -> stringResource(
+            R.string.error_reason_circle_sync_scope_no_default
+        )
+
         ErrorReasonCode.MEERKAT_UPLOAD_MISSING ->
             stringResource(R.string.error_reason_meerkat_upload_missing)
 

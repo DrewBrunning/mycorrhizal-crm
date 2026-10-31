@@ -2784,6 +2784,8 @@
     <string name="error_reason_trash_uid_in_use">Un contact actif utilise déjà l\'UID de ce contact ; fusionnez-le ou supprimez-le d\'abord</string>
     <string name="error_reason_trash_snapshot_unsupported">Cette version ne prend pas en charge l\'instantané de suppression de ce contact ; il peut toujours être supprimé définitivement</string>
     <string name="error_reason_circle_color_invalid">La couleur doit être l\'une des couleurs de la palette</string>
+    <string name="error_reason_circle_sync_scope_out_of_scope">Le contact est en dehors de la portée de synchronisation CardDAV de cet appareil</string>
+    <string name="error_reason_circle_sync_scope_no_default">Aucun cercle par défaut n\'est configuré pour la portée de synchronisation CardDAV</string>
     <string name="error_reason_meerkat_upload_missing">Aucun fichier téléversé</string>
     <string name="error_reason_meerkat_session_not_found">La session d’importation a expiré ou est introuvable</string>
     <string name="error_reason_meerkat_session_not_owned">La session n’appartient pas à l’utilisateur actuel</string>
