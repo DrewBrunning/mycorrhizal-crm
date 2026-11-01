@@ -3,15 +3,16 @@
 package gitchanges
 
 import (
-	"os/signal"
+	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"testing"
 )
 
-// TestTempIndexWriteFailure forces the temporary-index write to fail with
-// RLIMIT_FSIZE rather than adding a production seam solely for this branch.
+// TestTempIndexWriteFailure forces the temporary-index write to fail on a
+// read-only file. The earlier RLIMIT_FSIZE approach changed a process-wide
+// limit and raced the Go test logger under -coverpkg=./..., producing
+// "testlog.txt: file too large" instead of the expected error.
 func TestTempIndexWriteFailure(t *testing.T) {
 	const commit = "0123456789abcdef0123456789abcdef01234567"
 	root := t.TempDir()
@@ -22,22 +23,19 @@ func TestTempIndexWriteFailure(t *testing.T) {
 esac
 `)
 
-	signal.Ignore(syscall.SIGXFSZ)
-	defer signal.Reset(syscall.SIGXFSZ)
-	var old syscall.Rlimit
-	if err := syscall.Getrlimit(syscall.RLIMIT_FSIZE, &old); err != nil {
-		t.Fatalf("get file-size limit: %v", err)
-	}
-	limited := old
-	limited.Cur = 0
-	if err := syscall.Setrlimit(syscall.RLIMIT_FSIZE, &limited); err != nil {
-		t.Fatalf("limit file size: %v", err)
-	}
-	defer func() {
-		if err := syscall.Setrlimit(syscall.RLIMIT_FSIZE, &old); err != nil {
-			t.Errorf("restore file-size limit: %v", err)
+	orig := createTempIndex
+	t.Cleanup(func() { createTempIndex = orig })
+	createTempIndex = func(dir, pattern string) (*os.File, error) {
+		file, err := os.CreateTemp(dir, pattern)
+		if err != nil {
+			return nil, err
 		}
-	}()
+		name := file.Name()
+		if err := file.Close(); err != nil {
+			return nil, err
+		}
+		return os.Open(name) // read-only: the subsequent Write fails
+	}
 
 	if _, err := UnifiedDiff(root, "HEAD", "*.go"); err == nil || !strings.Contains(err.Error(), "write temporary git index") {
 		t.Fatalf("UnifiedDiff error = %v, want the temporary-index write failure", err)

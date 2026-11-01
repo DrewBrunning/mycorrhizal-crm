@@ -539,6 +539,37 @@ private fun localizedReason(reason: ErrorReason?): String? {
             R.string.error_reason_household_suggestion_dismissal_already_exists
         )
 
+        ErrorReasonCode.IMAGE_TOO_LARGE ->
+            reason.int("max_mb")?.let { stringResource(R.string.error_reason_image_too_large, it) }
+
+        ErrorReasonCode.IMAGE_PIXELS_EXCEEDED ->
+            reason.int("max_pixels")?.let {
+                stringResource(R.string.error_reason_image_pixels_exceeded, it)
+            }
+
+        ErrorReasonCode.IMAGE_UNSUPPORTED_FORMAT ->
+            stringResource(R.string.error_reason_image_unsupported_format)
+
+        ErrorReasonCode.IMAGE_HEIC_UNSUPPORTED ->
+            stringResource(R.string.error_reason_image_heic_unsupported)
+
+        ErrorReasonCode.IMAGE_CORRUPT ->
+            stringResource(R.string.error_reason_image_corrupt)
+
+        ErrorReasonCode.IMAGE_LIMIT_REACHED ->
+            reason.int(
+                "limit"
+            )?.let { stringResource(R.string.error_reason_image_limit_reached, it) }
+
+        ErrorReasonCode.IMAGE_PROCESSING_BUSY ->
+            stringResource(R.string.error_reason_image_processing_busy)
+
+        ErrorReasonCode.IMAGE_NOT_FOUND ->
+            stringResource(R.string.error_reason_image_not_found)
+
+        ErrorReasonCode.IMAGE_INSUFFICIENT_STORAGE ->
+            stringResource(R.string.error_reason_image_insufficient_storage)
+
         ErrorReasonCode.PHOTO_IMAGE_NOT_FOUND -> stringResource(
             R.string.error_reason_photo_image_not_found
         )

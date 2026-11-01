@@ -707,6 +707,19 @@ func DeleteUser(c *gin.Context) {
 		return
 	}
 
+	// Capture gallery image names too (ADR 0040); both variants live on disk.
+	var userImageNames []string
+	if err := db.Model(&models.ActivityImage{}).Where("user_id = ?", uint(id)).Pluck("stored_name", &userImageNames).Error; err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("load user images").WithError(err))
+		return
+	}
+	var userThumbNames []string
+	if err := db.Model(&models.ActivityImage{}).Where("user_id = ?", uint(id)).Pluck("thumb_name", &userThumbNames).Error; err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("load user image thumbnails").WithError(err))
+		return
+	}
+	userImageNames = append(userImageNames, userThumbNames...)
+
 	// Delete user's data in a transaction. The cascade itself is shared with
 	// the self-service DeleteOwnAccount (user_delete_cascade.go) — only the
 	// guards above and the audit/response handling below differ per caller.
@@ -725,6 +738,7 @@ func DeleteUser(c *gin.Context) {
 	// (file deletion can't be rolled back). Uses the admin's own context for
 	// the config; the deleted user's files are addressed by stored name.
 	deleteUserAttachmentFiles(c, userAttachmentNames)
+	deleteUserImageFiles(c, uint(id), userImageNames)
 
 	// T18 audit: admin deleted an account (issue #381). Recorded after the
 	// transaction so the event itself (UserID = acting admin) survives the

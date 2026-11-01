@@ -123,12 +123,13 @@ export default function GeoPulseSuggestionsDialog({
       contact_ids: number[];
       external_ref?: string;
     }) => {
-      await createActivity({ ...activity, ...activityWireDates(activity) });
+      const created = await createActivity({ ...activity, ...activityWireDates(activity) });
       if (activity.external_ref) {
         const ref = activity.external_ref;
         setLoggedRefs((prev) => new Set(prev).add(ref));
       }
       onLogged?.();
+      return created;
     },
     [onLogged],
   );

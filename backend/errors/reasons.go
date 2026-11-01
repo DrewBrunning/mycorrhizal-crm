@@ -35,6 +35,7 @@ var reasonAreas = []string{
 	"timeline",
 	"graph",
 	"geocoder",
+	"image",
 }
 
 // Reason constants. Each must be a key of reasonRegistry (and vice versa);
@@ -110,23 +111,35 @@ const (
 	ReasonMeerkatRemoteTooManyContacts ReasonCode = "meerkat_remote_too_many_contacts"
 	ReasonMeerkatVersionUntested       ReasonCode = "meerkat_version_untested"
 	// Constructor defaults (issue #2099).
-	ReasonCommonDatabaseError                       ReasonCode = "common_database_error"
-	ReasonCommonDatabaseBusy                        ReasonCode = "common_database_busy"
-	ReasonAuthInvalidCredentials                    ReasonCode = "auth_invalid_credentials" // #nosec G101 -- reason code, not a credential
-	ReasonAuthTokenExpired                          ReasonCode = "auth_token_expired"       // #nosec G101 -- reason code, not a credential
-	ReasonAuthTokenInvalid                          ReasonCode = "auth_token_invalid"       // #nosec G101 -- reason code, not a credential
-	ReasonCommonClientNotSupported                  ReasonCode = "common_client_not_supported"
-	ReasonCommonRateLimited                         ReasonCode = "common_rate_limited"
-	ReasonCommonPayloadTooLarge                     ReasonCode = "common_payload_too_large"
-	ReasonCommonIdempotencyKeyReused                ReasonCode = "common_idempotency_key_reused"
-	ReasonCommonRequestInProgress                   ReasonCode = "common_request_in_progress"
-	ReasonCommonRequestResultUnavailable            ReasonCode = "common_request_result_unavailable"
-	ReasonValidationMissingField                    ReasonCode = "validation_missing_field"
-	ReasonCommonUnexpectedError                     ReasonCode = "common_unexpected_error"
-	ReasonActivityNotFound                          ReasonCode = "activity_not_found"
-	ReasonActivityEndBeforeStart                    ReasonCode = "activity_end_before_start"
-	ReasonContactAddressNotFound                    ReasonCode = "contact_address_not_found"
-	ReasonAccountApiTokenNotFound                   ReasonCode = "account_api_token_not_found"
+	ReasonCommonDatabaseError            ReasonCode = "common_database_error"
+	ReasonCommonDatabaseBusy             ReasonCode = "common_database_busy"
+	ReasonAuthInvalidCredentials         ReasonCode = "auth_invalid_credentials" // #nosec G101 -- reason code, not a credential
+	ReasonAuthTokenExpired               ReasonCode = "auth_token_expired"       // #nosec G101 -- reason code, not a credential
+	ReasonAuthTokenInvalid               ReasonCode = "auth_token_invalid"       // #nosec G101 -- reason code, not a credential
+	ReasonCommonClientNotSupported       ReasonCode = "common_client_not_supported"
+	ReasonCommonRateLimited              ReasonCode = "common_rate_limited"
+	ReasonCommonPayloadTooLarge          ReasonCode = "common_payload_too_large"
+	ReasonCommonIdempotencyKeyReused     ReasonCode = "common_idempotency_key_reused"
+	ReasonCommonRequestInProgress        ReasonCode = "common_request_in_progress"
+	ReasonCommonRequestResultUnavailable ReasonCode = "common_request_result_unavailable"
+	ReasonValidationMissingField         ReasonCode = "validation_missing_field"
+	ReasonCommonUnexpectedError          ReasonCode = "common_unexpected_error"
+	ReasonActivityNotFound               ReasonCode = "activity_not_found"
+	ReasonActivityEndBeforeStart         ReasonCode = "activity_end_before_start"
+	ReasonContactAddressNotFound         ReasonCode = "contact_address_not_found"
+	ReasonAccountApiTokenNotFound        ReasonCode = "account_api_token_not_found"
+
+	// Gallery images (ADR 0040 slice a, issue #1994).
+	ReasonImageTooLarge            ReasonCode = "image_too_large"
+	ReasonImagePixelsExceeded      ReasonCode = "image_pixels_exceeded"
+	ReasonImageUnsupportedFormat   ReasonCode = "image_unsupported_format"
+	ReasonImageHEICUnsupported     ReasonCode = "image_heic_unsupported"
+	ReasonImageCorrupt             ReasonCode = "image_corrupt"
+	ReasonImageLimitReached        ReasonCode = "image_limit_reached"
+	ReasonImageProcessingBusy      ReasonCode = "image_processing_busy"
+	ReasonImageNotFound            ReasonCode = "image_not_found"
+	ReasonImageInsufficientStorage ReasonCode = "image_insufficient_storage"
+
 	ReasonAttachmentNotFound                        ReasonCode = "attachment_not_found"
 	ReasonAttachmentFileNotFound                    ReasonCode = "attachment_file_not_found"
 	ReasonAdminAuditEventNotFound                   ReasonCode = "admin_audit_event_not_found"
@@ -554,23 +567,33 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonMeerkatRemoteTooManyContacts: {Template: "Contacts on this Meerkat account: {total}. The import supports at most {max}", Params: []string{"total", "max"}},
 	ReasonMeerkatVersionUntested:       {Template: "This Meerkat version is not tested with the importer. Confirm to try anyway; nothing is written until you review the preview."},
 	// Constructor defaults (issue #2099).
-	ReasonCommonDatabaseError:                       {Template: "Something went wrong while saving or loading your data"},
-	ReasonCommonDatabaseBusy:                        {Template: "The server is busy. Try again in a moment"},
-	ReasonAuthInvalidCredentials:                    {Template: "Invalid email or password"},
-	ReasonAuthTokenExpired:                          {Template: "Your session has expired. Sign in again"},
-	ReasonAuthTokenInvalid:                          {Template: "Your session is no longer valid. Sign in again"},
-	ReasonCommonClientNotSupported:                  {Template: "This app version is no longer supported. Update to {required_version} or later", Params: []string{"required_version"}},
-	ReasonCommonRateLimited:                         {Template: "Too many requests. Try again later"},
-	ReasonCommonPayloadTooLarge:                     {Template: "The upload is too large"},
-	ReasonCommonIdempotencyKeyReused:                {Template: "Idempotency-Key was already used for a different request; use a fresh key"},
-	ReasonCommonRequestInProgress:                   {Template: "a request with this Idempotency-Key is still being processed; retry shortly"},
-	ReasonCommonRequestResultUnavailable:            {Template: "a previous request with this Idempotency-Key completed but its response is not available for replay; do not resubmit it with this key"},
-	ReasonValidationMissingField:                    {Template: "Required field '{field}' is missing", Params: []string{"field"}},
-	ReasonCommonUnexpectedError:                     {Template: "An unexpected error occurred"},
-	ReasonActivityNotFound:                          {Template: "Activity not found"},
-	ReasonActivityEndBeforeStart:                    {Template: "The end date cannot be before the start date"},
-	ReasonContactAddressNotFound:                    {Template: "Address not found"},
-	ReasonAccountApiTokenNotFound:                   {Template: "API token not found"},
+	ReasonCommonDatabaseError:            {Template: "Something went wrong while saving or loading your data"},
+	ReasonCommonDatabaseBusy:             {Template: "The server is busy. Try again in a moment"},
+	ReasonAuthInvalidCredentials:         {Template: "Invalid email or password"},
+	ReasonAuthTokenExpired:               {Template: "Your session has expired. Sign in again"},
+	ReasonAuthTokenInvalid:               {Template: "Your session is no longer valid. Sign in again"},
+	ReasonCommonClientNotSupported:       {Template: "This app version is no longer supported. Update to {required_version} or later", Params: []string{"required_version"}},
+	ReasonCommonRateLimited:              {Template: "Too many requests. Try again later"},
+	ReasonCommonPayloadTooLarge:          {Template: "The upload is too large"},
+	ReasonCommonIdempotencyKeyReused:     {Template: "Idempotency-Key was already used for a different request; use a fresh key"},
+	ReasonCommonRequestInProgress:        {Template: "a request with this Idempotency-Key is still being processed; retry shortly"},
+	ReasonCommonRequestResultUnavailable: {Template: "a previous request with this Idempotency-Key completed but its response is not available for replay; do not resubmit it with this key"},
+	ReasonValidationMissingField:         {Template: "Required field '{field}' is missing", Params: []string{"field"}},
+	ReasonCommonUnexpectedError:          {Template: "An unexpected error occurred"},
+	ReasonActivityNotFound:               {Template: "Activity not found"},
+	ReasonActivityEndBeforeStart:         {Template: "The end date cannot be before the start date"},
+	ReasonContactAddressNotFound:         {Template: "Address not found"},
+	ReasonAccountApiTokenNotFound:        {Template: "API token not found"},
+	ReasonImageTooLarge:                  {Template: "File too large. Maximum size is {max_mb}MB", Params: []string{"max_mb"}},
+	ReasonImagePixelsExceeded:            {Template: "Image dimensions exceed the {max_pixels} pixel limit", Params: []string{"max_pixels"}},
+	ReasonImageUnsupportedFormat:         {Template: "Unsupported image format; use JPEG, PNG or GIF"},
+	ReasonImageHEICUnsupported:           {Template: "HEIC images are not supported; convert to JPEG first"},
+	ReasonImageCorrupt:                   {Template: "The image is corrupt or truncated"},
+	ReasonImageLimitReached:              {Template: "This item already has the maximum of {limit} images", Params: []string{"limit"}},
+	ReasonImageProcessingBusy:            {Template: "Image processing is busy; try again shortly"},
+	ReasonImageNotFound:                  {Template: "Image not found"},
+	ReasonImageInsufficientStorage:       {Template: "Not enough disk space to store the image"},
+
 	ReasonAttachmentNotFound:                        {Template: "Attachment not found"},
 	ReasonAttachmentFileNotFound:                    {Template: "Attachment file not found"},
 	ReasonAdminAuditEventNotFound:                   {Template: "Audit event not found"},
@@ -934,6 +957,7 @@ var notFoundReasons = map[string]ReasonCode{
 	"API token":                ReasonAccountApiTokenNotFound,
 	"Activity":                 ReasonActivityNotFound,
 	"Address":                  ReasonContactAddressNotFound,
+	"Image":                    ReasonImageNotFound,
 	"Attachment":               ReasonAttachmentNotFound,
 	"Attachment file":          ReasonAttachmentFileNotFound,
 	"Audit event":              ReasonAdminAuditEventNotFound,
@@ -957,7 +981,6 @@ var notFoundReasons = map[string]ReasonCode{
 	"Gift":                     ReasonContactGiftNotFound,
 	"Household":                ReasonHouseholdNotFound,
 	"Household membership":     ReasonHouseholdMembershipNotFound,
-	"Image":                    ReasonPhotoImageNotFound,
 	"Immich link":              ReasonImmichLinkNotFound,
 	"Immich person":            ReasonImmichPersonNotFound,
 	"Life event":               ReasonContactLifeEventNotFound,

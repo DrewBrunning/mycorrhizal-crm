@@ -3959,7 +3959,28 @@
       "validation_request_failed": "Request validation failed",
       "validation_since_invalid": "{{reason}}",
       "validation_sort_invalid": "must be one of: {{supported}}",
-      "validation_timestamp_invalid": "must be an RFC3339 timestamp"
+      "validation_timestamp_invalid": "must be an RFC3339 timestamp",
+      "image_too_large": "File too large. Maximum size is {{max_mb}}MB",
+      "image_pixels_exceeded": "Image dimensions exceed the {{max_pixels}} pixel limit",
+      "image_unsupported_format": "Unsupported image format; use JPEG, PNG or GIF",
+      "image_heic_unsupported": "HEIC images are not supported; convert to JPEG first",
+      "image_corrupt": "The image is corrupt or truncated",
+      "image_limit_reached": "This item already has the maximum of {{limit}} images",
+      "image_processing_busy": "Image processing is busy; try again shortly",
+      "image_not_found": "Image not found",
+      "image_insufficient_storage": "Not enough disk space to store the image"
     }
+  },
+  "activityImages": {
+    "add": "Add photos",
+    "alt": "Activity photo",
+    "delete": "Delete photo",
+    "deleteFailed": "Could not delete the photo.",
+    "loadFailed": "Could not load photos.",
+    "loading": "Loading photos",
+    "uploadFailed": "Could not upload the photo.",
+    "uploading": "Uploading...",
+    "queued_one": "{{count}} photo selected",
+    "queued_other": "{{count}} photos selected"
   }
 }

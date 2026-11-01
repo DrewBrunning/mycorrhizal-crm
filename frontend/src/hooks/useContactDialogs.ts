@@ -37,7 +37,7 @@ export function useContactDialogs(
     contact_ids: number[];
   }) => {
     try {
-      await createActivity({
+      const created = await createActivity({
         title: activity.title,
         description: activity.description,
         location: activity.location,
@@ -45,6 +45,7 @@ export function useContactDialogs(
         contact_ids: activity.contact_ids,
       });
       await onRefresh();
+      return created;
     } catch (err) {
       // A refusal on the end_date field belongs on that field (the dialog reads it).
       if (endDateFieldError(err)) throw err;

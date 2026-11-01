@@ -3164,4 +3164,13 @@
     <string name="error_reason_validation_since_invalid">%1$s</string>
     <string name="error_reason_validation_sort_invalid">debe ser uno de: %1$s</string>
     <string name="error_reason_validation_timestamp_invalid">debe ser una marca de tiempo RFC3339</string>
+    <string name="error_reason_image_too_large">Archivo demasiado grande. El tamaño máximo es %1$d MB</string>
+    <string name="error_reason_image_pixels_exceeded">Las dimensiones de la imagen superan el límite de píxeles (%1$d)</string>
+    <string name="error_reason_image_unsupported_format">Formato de imagen no compatible; usa JPEG, PNG o GIF</string>
+    <string name="error_reason_image_heic_unsupported">Las imágenes HEIC no son compatibles; conviértelas a JPEG primero</string>
+    <string name="error_reason_image_corrupt">La imagen está dañada o truncada</string>
+    <string name="error_reason_image_limit_reached">Este elemento ya tiene el número máximo de imágenes (%1$d)</string>
+    <string name="error_reason_image_processing_busy">El procesamiento de imágenes está ocupado; inténtalo de nuevo en breve</string>
+    <string name="error_reason_image_not_found">Imagen no encontrada</string>
+    <string name="error_reason_image_insufficient_storage">No hay suficiente espacio en disco para guardar la imagen</string>
 </resources>

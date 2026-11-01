@@ -2,7 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import { addContactToActivities, getActivities } from '../api/activities';
+import { addContactToActivities, getActivities, uploadActivityImage } from '../api/activities';
 import { type Contact, getContacts } from '../api/contacts';
 import { DateFormatProvider } from '../DateFormatProvider';
 import { pickDate } from '../testSupport/dateField';
@@ -26,7 +26,12 @@ vi.mock('../api/contacts', async (importOriginal) => {
 
 vi.mock('../api/activities', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api/activities')>();
-  return { ...actual, getActivities: vi.fn(), addContactToActivities: vi.fn() };
+  return {
+    ...actual,
+    getActivities: vi.fn(),
+    addContactToActivities: vi.fn(),
+    uploadActivityImage: vi.fn(),
+  };
 });
 
 function contact(overrides: Partial<Contact> = {}): Contact {
@@ -36,6 +41,22 @@ function contact(overrides: Partial<Contact> = {}): Contact {
 beforeEach(() => {
   vi.mocked(getActivities).mockReset();
   vi.mocked(addContactToActivities).mockReset();
+  vi.mocked(uploadActivityImage).mockReset();
+  vi.mocked(uploadActivityImage).mockResolvedValue({
+    id: 9,
+    uuid: 'i',
+    activity_id: 42,
+    mime_type: 'image/jpeg',
+    width: 1,
+    height: 1,
+    size_bytes: 1,
+    sensitivity: 'normal',
+    taken_at: null,
+    taken_date: null,
+    created_at: '2026-01-01T00:00:00Z',
+    file_url: '/f',
+    thumbnail_url: '/t',
+  });
   vi.mocked(getActivities).mockResolvedValue({
     activities: [
       { ID: 11, title: 'Group dinner', date: '2026-08-01T00:00:00Z' },
@@ -640,4 +661,20 @@ test('a closed dialog loads nothing', () => {
   renderDialog({ open: false, preselectedContactId: 1 });
   expect(getContacts).not.toHaveBeenCalled();
   expect(getActivities).not.toHaveBeenCalled();
+});
+
+describe('activity images', () => {
+  test('uploads the picked photos after the activity is created', async () => {
+    const onSave = vi.fn().mockResolvedValue({ ID: 42 });
+    renderDialog({ onSave });
+    await waitFor(() => expect(getContacts).toHaveBeenCalled());
+
+    const file = new File(['x'], 'photo.jpg', { type: 'image/jpeg' });
+    const input = screen.getByLabelText('Add photos');
+    fireEvent.change(input, { target: { files: [file] } });
+    fireEvent.change(screen.getByLabelText('Title *'), { target: { value: 'Trip' } });
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+
+    await waitFor(() => expect(uploadActivityImage).toHaveBeenCalledWith(42, file));
+  });
 });

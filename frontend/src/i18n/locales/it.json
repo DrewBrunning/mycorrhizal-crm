@@ -4061,7 +4061,29 @@
       "validation_request_failed": "La validazione della richiesta non è riuscita",
       "validation_since_invalid": "{{reason}}",
       "validation_sort_invalid": "deve essere uno di: {{supported}}",
-      "validation_timestamp_invalid": "deve essere un timestamp RFC3339"
+      "validation_timestamp_invalid": "deve essere un timestamp RFC3339",
+      "image_too_large": "File troppo grande. Dimensione massima {{max_mb}} MB",
+      "image_pixels_exceeded": "Le dimensioni dell’immagine superano il limite di {{max_pixels}} pixel",
+      "image_unsupported_format": "Formato immagine non supportato; usa JPEG, PNG o GIF",
+      "image_heic_unsupported": "Le immagini HEIC non sono supportate; convertile prima in JPEG",
+      "image_corrupt": "L’immagine è danneggiata o troncata",
+      "image_limit_reached": "Questo elemento ha già il massimo di {{limit}} immagini",
+      "image_processing_busy": "L’elaborazione delle immagini è occupata; riprova tra poco",
+      "image_not_found": "Immagine non trovata",
+      "image_insufficient_storage": "Spazio su disco insufficiente per salvare l’immagine"
     }
+  },
+  "activityImages": {
+    "add": "Aggiungi foto",
+    "alt": "Foto dell'attività",
+    "delete": "Elimina foto",
+    "deleteFailed": "Impossibile eliminare la foto.",
+    "loadFailed": "Impossibile caricare le foto.",
+    "loading": "Caricamento foto",
+    "uploadFailed": "Impossibile caricare la foto.",
+    "uploading": "Caricamento in corso...",
+    "queued_one": "{{count}} foto selezionata",
+    "queued_other": "{{count}} foto selezionate",
+    "queued_many": "{{count}} foto selezionate"
   }
 }

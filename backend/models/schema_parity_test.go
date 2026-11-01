@@ -43,6 +43,7 @@ var registeredModels = []any{
 	&AlertState{},
 	&ApiToken{},
 	&Activity{},
+	&ActivityImage{},
 	&Attachment{},
 	&AuditEvent{},
 	&CadencePolicy{},
@@ -118,7 +119,9 @@ var registeredModels = []any{
 // AST heuristic in TestRegisteredModelsComplete (they embed gorm.Model, carry
 // a primaryKey tag, or declare TableName) but are not persisted models in
 // their own right. Each entry needs a reason.
-var nonTableStructs = map[string]string{}
+var nonTableStructs = map[string]string{
+	"ImageFields": "embedded column set shared by the image owner tables (ADR 0040); never persisted on its own",
+}
 
 // tablesWithoutModel are migrated tables that deliberately have no GORM model
 // (raw-SQL-only tables, FTS virtual tables and their shadow tables, the

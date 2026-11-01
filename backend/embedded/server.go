@@ -29,6 +29,7 @@ import (
 	"mycorrhizal/database"
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/i18n"
+	"mycorrhizal/imaging"
 	"mycorrhizal/internal/fireandforget"
 	"mycorrhizal/internal/fsguard"
 	"mycorrhizal/logger"
@@ -239,6 +240,8 @@ func Start(ctx context.Context, cfg *config.Config, opts Options) (*Server, erro
 	if err := i18n.Init(); err != nil {
 		return fail(fmt.Errorf("initializing i18n: %w", err))
 	}
+
+	imaging.SetConcurrency(cfg.ImageProcessConcurrency)
 
 	logger.Info().Msg("Running scheduler...")
 	if !cfg.UseResend {

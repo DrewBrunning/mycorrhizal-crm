@@ -215,3 +215,34 @@ func TestUserQuota_DatabaseErrorIsTyped(t *testing.T) {
 	require.NotNil(t, err)
 	assert.Equal(t, apperrors.ErrCodeDatabase, err.Code)
 }
+
+// ADR 0040: gallery image bytes count against the same attachment quota, and
+// the accounting is owner-scoped like attachments.
+func TestUserQuota_AttachmentBytesIncludesActivityImages(t *testing.T) {
+	db := quotaTestDB(t)
+	user := mkUser(t, db, "quota-images")
+	activity := models.Activity{UserID: user.ID, Title: "trip", Date: Now()}
+	require.NoError(t, db.Create(&activity).Error)
+	require.NoError(t, db.Create(&models.ActivityImage{
+		ImageFields: models.ImageFields{
+			UserID: user.ID, UUID: "quota-image", StoredName: "s", ThumbName: "t",
+			MIMEType: "image/jpeg", ThumbMIMEType: "image/jpeg", Width: 1, Height: 1,
+			SizeBytes: 60, ThumbSizeBytes: 10, Sensitivity: models.ImageSensitivityNormal,
+		},
+		ActivityID: activity.ID,
+	}).Error)
+
+	q := UserQuota{AttachmentBytes: 100}
+	assert.Nil(t, q.CheckAttachmentUpload(db, user.ID, 30), "60+10+30 == 100")
+	err := q.CheckAttachmentUpload(db, user.ID, 31)
+	require.NotNil(t, err)
+	assert.Equal(t, apperrors.ErrCodeInsufficientStorage, err.Code)
+
+	// A store already over quota refuses further uploads.
+	assert.NotNil(t, (UserQuota{AttachmentBytes: 1}).CheckAttachmentUpload(db, user.ID, 0))
+
+	dbtest.HideTable(t, db, "activity_images")
+	err = q.CheckAttachmentUpload(db, user.ID, 0)
+	require.NotNil(t, err)
+	assert.Equal(t, apperrors.ErrCodeDatabase, err.Code)
+}

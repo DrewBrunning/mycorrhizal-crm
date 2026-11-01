@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"mycorrhizal/attachments"
 	"mycorrhizal/config"
+	"mycorrhizal/imaging"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
 	"os"
@@ -44,6 +45,10 @@ var purgedSoftDeleteModels = []any{
 	// N7: attachment files are removed at delete time by the
 	// controllers/cascade, so only the metadata row needs purging here.
 	&models.Attachment{},
+	// Gallery images (ADR 0040): individually deleted rows age out here; rows
+	// whose parent activity was deleted are removed by the explicit cleanup
+	// below (their own deleted_at is still NULL while the parent is trashed).
+	&models.ActivityImage{},
 	// Occasions (ADR 0024/0026): user-authored, soft-deleted. Issue #1310:
 	// these were missing, so a deleted contact's obligations outlived the
 	// contact as orphans and soft-deleted events were kept forever.
@@ -227,6 +232,10 @@ func PurgeSoftDeletedRows(db *gorm.DB, cfg config.Config) error {
 			"DELETE FROM calendar_event_links WHERE activity_id IN (SELECT id FROM activities WHERE deleted_at IS NOT NULL AND deleted_at < ?)",
 			[]interface{}{cutoff}, "calendar_event_links",
 		},
+		{
+			"DELETE FROM activity_images WHERE activity_id IN (SELECT id FROM activities WHERE deleted_at IS NOT NULL AND deleted_at < ?)",
+			[]interface{}{cutoff}, "activity_images",
+		},
 	}
 	// VCardUID-keyed rows: owner-scoped, see purgeContactUIDCleanups (#1351).
 	for _, spec := range purgeContactUIDCleanups {
@@ -246,12 +255,16 @@ func PurgeSoftDeletedRows(db *gorm.DB, cfg config.Config) error {
 	if result.Error != nil {
 		logger.Error().Err(result.Error).Msg("purge: failed to delete soft-deleted contacts")
 		errs = append(errs, fmt.Errorf("purge soft-deleted contacts: %w", result.Error))
-	} else if result.RowsAffected > 0 {
+	} else {
+		// Image files can belong to a purged activity even when no contact was
+		// purged, so file removal must not be conditional on the contact count.
 		removePurgedFiles(cfg, purgeFiles)
-		logger.Info().
-			Int64("rows", result.RowsAffected).
-			Time("cutoff", cutoff).
-			Msg("Purged soft-deleted rows")
+		if result.RowsAffected > 0 {
+			logger.Info().
+				Int64("rows", result.RowsAffected).
+				Time("cutoff", cutoff).
+				Msg("Purged soft-deleted rows")
+		}
 	}
 
 	return errors.Join(errs...)
@@ -307,6 +320,23 @@ func collectPurgeFiles(db *gorm.DB, cutoff time.Time) PurgedFiles {
 		Pluck("stored_name", &files.Attachments).Error; err != nil {
 		logger.Warn().Err(err).Msg("purge: failed to list contact attachments")
 	}
+
+	// Activity images are removed when the activity is purged, or when the image
+	// itself was deleted past retention.
+	var imageRows []struct {
+		UserID     uint
+		StoredName string
+		ThumbName  string
+	}
+	if err := db.Unscoped().Model(&models.ActivityImage{}).
+		Select("user_id", "stored_name", "thumb_name").
+		Where("(deleted_at IS NOT NULL AND deleted_at < ?) OR activity_id IN (SELECT id FROM activities WHERE deleted_at IS NOT NULL AND deleted_at < ?)", cutoff, cutoff).
+		Scan(&imageRows).Error; err != nil {
+		logger.Warn().Err(err).Msg("purge: failed to list activity images")
+	}
+	for _, r := range imageRows {
+		files.Images = appendImageFiles(files.Images, r.UserID, r.StoredName, r.ThumbName)
+	}
 	return files
 }
 
@@ -320,6 +350,14 @@ func removePurgedFiles(cfg config.Config, files PurgedFiles) {
 			p := filepath.Join(cfg.ProfilePhotoDir, name)
 			if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
 				logger.Warn().Err(err).Str("path", p).Msg("purge: failed to remove contact photo")
+			}
+		}
+	}
+	if cfg.ImagesDir != "" {
+		store := imaging.Store{Dir: cfg.ImagesDir}
+		for _, f := range files.Images {
+			if err := store.Remove(f.UserID, f.Name); err != nil {
+				logger.Warn().Err(err).Str("stored_name", f.Name).Msg("purge: failed to remove image file")
 			}
 		}
 	}

@@ -3959,7 +3959,28 @@
       "validation_request_failed": "Anfragevalidierung fehlgeschlagen",
       "validation_since_invalid": "{{reason}}",
       "validation_sort_invalid": "muss einer von: {{supported}} sein",
-      "validation_timestamp_invalid": "muss ein RFC3339-Zeitstempel sein"
+      "validation_timestamp_invalid": "muss ein RFC3339-Zeitstempel sein",
+      "image_too_large": "Datei zu groß. Maximal {{max_mb}} MB",
+      "image_pixels_exceeded": "Die Bildabmessungen überschreiten das Limit von {{max_pixels}} Pixeln",
+      "image_unsupported_format": "Nicht unterstütztes Bildformat; verwende JPEG, PNG oder GIF",
+      "image_heic_unsupported": "HEIC-Bilder werden nicht unterstützt; zuerst in JPEG umwandeln",
+      "image_corrupt": "Das Bild ist beschädigt oder abgeschnitten",
+      "image_limit_reached": "Dieses Element hat bereits das Maximum von {{limit}} Bildern",
+      "image_processing_busy": "Die Bildverarbeitung ist ausgelastet; versuche es gleich noch einmal",
+      "image_not_found": "Bild nicht gefunden",
+      "image_insufficient_storage": "Nicht genügend Speicherplatz für das Bild"
     }
+  },
+  "activityImages": {
+    "add": "Fotos hinzufügen",
+    "alt": "Aktivitätsfoto",
+    "delete": "Foto löschen",
+    "deleteFailed": "Das Foto konnte nicht gelöscht werden.",
+    "loadFailed": "Die Fotos konnten nicht geladen werden.",
+    "loading": "Fotos werden geladen",
+    "uploadFailed": "Das Foto konnte nicht hochgeladen werden.",
+    "uploading": "Wird hochgeladen...",
+    "queued_one": "{{count}} Foto ausgewählt",
+    "queued_other": "{{count}} Fotos ausgewählt"
   }
 }

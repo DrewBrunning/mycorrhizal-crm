@@ -14,9 +14,14 @@ import {
   ToggleButtonGroup,
   Typography,
 } from '@mui/material';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { type Activity, addContactToActivities, getActivities } from '../api/activities';
+import {
+  type Activity,
+  addContactToActivities,
+  getActivities,
+  uploadActivityImage,
+} from '../api/activities';
 import { type Contact, getContacts } from '../api/contacts';
 import { useDiscardGuard } from '../hooks/useDiscardGuard';
 import { readSessionDraft, useSessionDraft } from '../hooks/useSessionDraft';
@@ -49,7 +54,7 @@ interface AddActivityDialogProps {
     end_date?: string;
     contact_ids: number[];
     external_ref?: string;
-  }) => Promise<void>;
+  }) => Promise<Activity | undefined>;
   preselectedContactId?: number;
   prefill?: ActivityPrefill;
   // Called after "Add to existing" changed at least one activity, so the
@@ -90,6 +95,10 @@ export default function AddActivityDialog({
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
+  // ADR 0040 slice (a): images are uploaded after the activity exists, so the
+  // dialog keeps the picked files until onSave returns the created activity.
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   // Issue #2007: from a contact's page the dialog can instead add that contact
   // to existing activities. The new-activity state above is left untouched while
@@ -137,7 +146,8 @@ export default function AddActivityDialog({
     (hasPrefill
       ? Boolean(title.trim() || description.trim())
       : Boolean(title.trim() || description.trim() || location.trim())) ||
-    selectedActivityIds.length > 0;
+    selectedActivityIds.length > 0 ||
+    selectedImages.length > 0;
   const { clearDraft } = useSessionDraft(
     draftKey,
     { title, description, location, date, endDate },
@@ -163,6 +173,7 @@ export default function AddActivityDialog({
     setExistingActivities([]);
     setSelectedActivityIds([]);
     setExistingError('');
+    setSelectedImages([]);
     onClose();
   }, [clearDraft, onClose]);
   // Issue #557 + #805: one discard guard covers every way of leaving a dirty
@@ -285,7 +296,7 @@ export default function AddActivityDialog({
 
     setSaving(true);
     try {
-      await onSave({
+      const created = await onSave({
         title,
         description,
         location,
@@ -294,6 +305,11 @@ export default function AddActivityDialog({
         contact_ids: selectedContacts.map((c) => c.ID),
         ...(prefill?.externalRef ? { external_ref: prefill.externalRef } : {}),
       });
+      if (created && selectedImages.length > 0) {
+        for (const file of selectedImages) {
+          await uploadActivityImage(created.ID, file);
+        }
+      }
       handleClose();
     } catch (err) {
       const fieldError = endDateFieldError(err);
@@ -471,6 +487,27 @@ export default function AddActivityDialog({
           </Box>
         )}
       </DialogContent>
+      <Box sx={{ mt: 1 }}>
+        <input
+          ref={imageInputRef}
+          type="file"
+          aria-label={t('activityImages.add')}
+          accept="image/jpeg,image/png,image/gif"
+          multiple
+          hidden
+          onChange={(event) =>
+            setSelectedImages((prev) => [...prev, ...Array.from(event.target.files ?? [])])
+          }
+        />
+        <Button size="small" onClick={() => imageInputRef.current?.click()}>
+          {t('activityImages.add')}
+        </Button>
+        {selectedImages.length > 0 && (
+          <Typography variant="caption" sx={{ ml: 1, color: 'text.secondary' }}>
+            {t('activityImages.queued', { count: selectedImages.length })}
+          </Typography>
+        )}
+      </Box>
       <DialogActions>
         <Button onClick={handleRequestClose} disabled={saving}>
           {t('activityDialog.cancel')}
