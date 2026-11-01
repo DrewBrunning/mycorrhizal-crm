@@ -130,6 +130,9 @@
     "noCircles": "Noch keine Kreise. Kreise gruppieren Menschen, mit denen du gemeinsam in Kontakt bleibst – füge unten einen hinzu oder über die Seite eines Kontakts.",
     "noTags": "Noch keine Tags. Tags sind freie Bezeichnungen für übergreifende Themen – füge unten einen hinzu oder über die Seite eines Kontakts.",
     "deleteCircleConfirm": "Kreis \"{{name}}\" löschen? Er wird bei jedem Kontakt entfernt, der ihn hat.",
+    "deleteCircleScopeDefault": "Dieser Kreis ist dein Standardkreis für auf dem Telefon erstellte Kontakte; der Standard wird geleert.",
+    "deleteCircleScopeInclude": "Dieser Kreis gehört zu deinem CardDAV-Synchronisierungsbereich; beim Löschen werden seine Kontakte von deinen Geräten entfernt.",
+    "deleteCircleScopeExclude": "Dieser Kreis ist von deinem CardDAV-Synchronisierungsbereich ausgeschlossen; beim Löschen werden seine Kontakte auf deine Geräte synchronisiert.",
     "deleteTagConfirm": "Tag \"{{name}}\" löschen? Er wird bei jedem Kontakt entfernt, der ihn hat.",
     "circleCreated": "Kreis erstellt",
     "circleRenamed": "Kreis umbenannt",
@@ -3532,6 +3535,32 @@
     "success": "Richtlinie für das CardDAV-/CalDAV-Passwort aktualisiert.",
     "error": "Die Richtlinie für das CardDAV-/CalDAV-Passwort konnte nicht aktualisiert werden.",
     "loadError": "Die Richtlinie für das CardDAV-/CalDAV-Passwort konnte nicht geladen werden."
+  },
+  "carddavSyncScope": {
+    "title": "CardDAV-Synchronisierungsbereich",
+    "description": "Wähle, welche Kontakte das einzelne CardDAV-Adressbuch bereitstellt. „Alle Kontakte“ ist die Voreinstellung und verhält sich genau wie bisher. Das betrifft nur CardDAV-Clients; Weboberfläche, REST-API und Android-App behalten immer alle Kontakte.",
+    "modeLabel": "Welche Kontakte synchronisieren",
+    "modeAll": "Alle Kontakte",
+    "modeInclude": "Nur ausgewählte Kreise",
+    "modeExclude": "Alle Kontakte außer ausgewählten Kreisen",
+    "includedCircles": "Eingeschlossene Kreise",
+    "excludedCircles": "Ausgeschlossene Kreise",
+    "defaultCircle": "Standardkreis für auf dem Telefon erstellte Kontakte",
+    "noDefaultCircle": "Kein Standardkreis",
+    "counts": "{{inScope}} von {{total}} Kontakten werden synchronisiert.",
+    "help": "Über ein CardDAV-Abonnement hinzugefügte Kontakte haben keinen Kreis und werden daher nur unter „Alle Kontakte“ oder „Alle Kontakte außer ausgewählten Kreisen“ synchronisiert. Eine Verengung löscht die entfernten Kontakte beim nächsten Gerätesync; Mycorrhizal behält alle Datensätze.",
+    "save": "Synchronisierungsbereich speichern",
+    "saving": "Wird gespeichert…",
+    "saveSuccess": "CardDAV-Synchronisierungsbereich gespeichert.",
+    "saveError": "Der CardDAV-Synchronisierungsbereich konnte nicht gespeichert werden.",
+    "loadError": "Der CardDAV-Synchronisierungsbereich konnte nicht geladen werden.",
+    "confirmRemoval_one": "Beim Speichern wird {{count}} Kontakt beim nächsten Sync von deinen Geräten entfernt. Mycorrhizal behält den Datensatz. Fortfahren?",
+    "confirmRemoval_other": "Beim Speichern werden {{count}} Kontakte beim nächsten Sync von deinen Geräten entfernt. Mycorrhizal behält die Datensätze. Fortfahren?",
+    "warnings": {
+      "scope_empty": "Es sind keine Kreise ausgewählt, daher werden keine Kontakte an CardDAV-Clients gesendet.",
+      "default_circle_missing": "Es ist kein Standardkreis festgelegt, daher können auf dem Telefon erstellte Kontakte nicht gespeichert werden.",
+      "exclusion_empty": "Es sind keine Kreise ausgeschlossen, daher werden alle Kontakte an CardDAV-Clients gesendet."
+    }
   },
   "errors": {
     "requestRef": "(Ref.: {{id}})",

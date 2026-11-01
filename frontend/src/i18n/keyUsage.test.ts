@@ -91,6 +91,12 @@ const DYNAMIC_KEY_SOURCES: readonly DynamicKeySource[] = [
     reason: 'interaction type tokens are a backend enum',
   },
   {
+    prefix: 'carddavSyncScope.warnings.',
+    file: 'components/CardDAVSyncScopeSettings.tsx',
+    values: ['scope_empty', 'default_circle_missing', 'exclusion_empty'],
+    reason: 'the sync-scope preview warning code is a closed backend enum',
+  },
+  {
     prefix: 'contactDetail.',
     file: 'components/ContactHeader.tsx',
     values: ['animal'],
