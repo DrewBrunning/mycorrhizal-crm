@@ -142,3 +142,39 @@ data class AddContactToActivitiesResponse(
     @Json(name = "contact_id") val contactId: Int = 0,
     val results: List<AddToActivityResult> = emptyList()
 )
+
+/**
+ * One image attached to an activity (ADR 0040 slice a, issue #1994). The server
+ * stores a metadata-free re-encode plus a thumbnail and returns ready-made
+ * relative URLs; [fileUrl]/[thumbnailUrl] already include `/api/v1`, so a
+ * client resolves them against the configured API origin, never the UI origin.
+ */
+@JsonClass(generateAdapter = true)
+data class ActivityImage(
+    val id: Int = 0,
+    val uuid: String? = null,
+    @Json(name = "activity_id") val activityId: Int = 0,
+    @Json(name = "mime_type") val mimeType: String? = null,
+    val width: Int = 0,
+    val height: Int = 0,
+    @Json(name = "size_bytes") val sizeBytes: Long = 0,
+    val sensitivity: String? = null,
+    @Json(name = "taken_at") val takenAt: String? = null,
+    @Json(name = "taken_date") val takenDate: String? = null,
+    @Json(name = "created_at") val createdAt: String? = null,
+    @Json(name = "file_url") val fileUrl: String? = null,
+    @Json(name = "thumbnail_url") val thumbnailUrl: String? = null
+)
+
+/** GET /activities/{id}/images — always present (possibly empty) array plus a total. */
+@JsonClass(generateAdapter = true)
+data class ActivityImagesResponse(
+    @Json(name = "images") val imagesRaw: List<ActivityImage>? = null,
+    val total: Int = 0
+) {
+    val images: List<ActivityImage> get() = imagesRaw.orEmpty()
+}
+
+/** POST /activities/{id}/images response — `{ image }`. */
+@JsonClass(generateAdapter = true)
+data class UploadActivityImageResponse(val image: ActivityImage? = null)
