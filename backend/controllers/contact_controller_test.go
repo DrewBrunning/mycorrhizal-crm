@@ -1373,3 +1373,59 @@ func TestRecreateContactAfterDeleteUsesSameVCardUID(t *testing.T) {
 	require.NoError(t, db.Unscoped().Model(&models.Contact{}).Where("user_id = ?", user.ID).Count(&total).Error)
 	assert.Equal(t, int64(2), total, "the soft-deleted original and the re-created contact both remain")
 }
+
+// GET /contacts/:id must return reminders in a deterministic order. The
+// real-release upgrade harness compares the pre- and post-upgrade read-back
+// positionally, and two reach-out reminders created milliseconds apart used to
+// come back in rowid order on one side and a different order on the other.
+// Order by remind_at with id as the tiebreak, matching the contact-detail
+// endpoint and giving equal reminders a stable order.
+func TestGetContact_RemindersOrderedByRemindAtThenID(t *testing.T) {
+	db, router := setupRouter(t)
+
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+
+	contact := models.Contact{UserID: user.ID, Firstname: "Ordered"}
+	require.NoError(t, db.Create(&contact).Error)
+
+	// Without an explicit ORDER BY the preload's row order depends on which
+	// index the planner picks; the real-release upgrade leg saw the two reads
+	// choose different plans. Drop the reminder indexes so the plan falls back
+	// to a table scan and the rowid order (later, tie, earlier) proves the
+	// response must not rely on the planner for its order.
+	for _, index := range []string{
+		"idx_reminders_remind_at", "idx_reminders_contact_id",
+		"idx_reminders_user_id", "idx_reminders_deleted_at",
+	} {
+		require.NoError(t, db.Exec("DROP INDEX "+index).Error)
+	}
+
+	later := time.Date(2026, 3, 2, 10, 0, 0, 0, time.UTC)
+	earlier := later.Add(-time.Hour)
+	reminders := []models.Reminder{
+		{UserID: user.ID, ContactID: &contact.ID, Message: "later", RemindAt: later, Recurrence: "once"},
+		{UserID: user.ID, ContactID: &contact.ID, Message: "earlier", RemindAt: earlier, Recurrence: "once"},
+		{UserID: user.ID, ContactID: &contact.ID, Message: "tie", RemindAt: earlier, Recurrence: "once"},
+	}
+	for i := range reminders {
+		require.NoError(t, db.Create(&reminders[i]).Error)
+	}
+
+	router.GET("/contacts/:id", GetContact)
+	req, _ := http.NewRequest("GET", fmt.Sprintf("/contacts/%d", contact.ID), nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var body struct {
+		Reminders []struct {
+			Message string `json:"message"`
+		} `json:"reminders"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	require.Len(t, body.Reminders, 3)
+	assert.Equal(t, []string{"earlier", "tie", "later"},
+		[]string{body.Reminders[0].Message, body.Reminders[1].Message, body.Reminders[2].Message},
+		"reminders are ordered by remind_at then id")
+}

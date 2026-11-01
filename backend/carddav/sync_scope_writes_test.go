@@ -214,3 +214,38 @@ func TestSyncScope_PutReusingTrashedUID(t *testing.T) {
 }
 
 var _ = gorm.ErrRecordNotFound
+
+// A vCard UID that merely begins with a number must not be retried as a
+// numeric primary key on DELETE: the prefix can resolve to a different,
+// in-scope contact and delete it. Only a UID that is entirely decimal is the
+// legacy numeric form.
+func TestSyncScope_DeleteNumericPrefixUIDDoesNotHitAnotherContact(t *testing.T) {
+	f := newScopeReadFixture(t)
+	f.setScope(t, models.CardDAVSyncScopeModeInclude, []string{f.a.ID})
+
+	uid := itoa(f.c2.ID) + "-out-of-scope"
+	require.NoError(t, f.backend.db.Model(&models.Contact{}).Where("id = ?", f.c3.ID).Update("vcard_uid", uid).Error)
+	f.c3.VCardUID = uid
+
+	w := f.deleteViaHandler(t, uid)
+	require.Equal(t, http.StatusNotFound, w.Code, w.Body.String())
+
+	for _, id := range []uint{f.c2.ID, f.c3.ID} {
+		var stored models.Contact
+		require.NoError(t, f.backend.db.Unscoped().First(&stored, id).Error)
+		assert.False(t, stored.DeletedAt.Valid, "contact %d must survive", id)
+	}
+}
+
+// The legacy numeric-id fallback still deletes a bare decimal UID.
+func TestSyncScope_DeleteNumericUIDStillWorks(t *testing.T) {
+	f := newScopeReadFixture(t)
+	f.setScope(t, models.CardDAVSyncScopeModeInclude, []string{f.a.ID})
+
+	w := f.deleteViaHandler(t, itoa(f.c1.ID))
+	require.True(t, w.Code >= 200 && w.Code < 300, "%d %s", w.Code, w.Body.String())
+
+	var stored models.Contact
+	require.NoError(t, f.backend.db.Unscoped().First(&stored, f.c1.ID).Error)
+	assert.True(t, stored.DeletedAt.Valid)
+}
