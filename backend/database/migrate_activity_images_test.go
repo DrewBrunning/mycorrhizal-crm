@@ -46,7 +46,8 @@ func TestMigrationsAddActivityImages(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NoError(t, sqlDB.Close())
-	require.NoError(t, MigrateDown(dbPath))
+	require.NoError(t, MigrateDown(dbPath)) // 000087_note_images
+	require.NoError(t, MigrateDown(dbPath)) // 000086_activity_images
 
 	sqlDB2, err := sql.Open("sqlite", openDSN(dbPath))
 	require.NoError(t, err)

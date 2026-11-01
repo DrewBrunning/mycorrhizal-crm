@@ -86,6 +86,11 @@ func deleteUserCascade(tx *gorm.DB, userID uint) error {
 		return err
 	}
 
+	// Delete note images (hard — account gone, no tombstoning needed; ADR 0040).
+	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.NoteImage{}).Error; err != nil {
+		return err
+	}
+
 	// Delete notes (hard)
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.Note{}).Error; err != nil {
 		return err

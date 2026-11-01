@@ -439,3 +439,29 @@ func TestCollectPurgeFiles_ImageQueryFailureYieldsNoFiles(t *testing.T) {
 		assert.Empty(t, files.Images)
 	})
 }
+
+func TestPurgeSoftDeletedRows_RemovesNoteImageRowsAndFiles(t *testing.T) {
+	db, userID := newPurgeDB(t)
+	dir := t.TempDir()
+	cfg := purgeConfig()
+	cfg.ImagesDir = dir
+	store := imaging.Store{Dir: dir}
+
+	note := models.Note{UserID: userID, Content: "old note", Date: time.Now()}
+	require.NoError(t, db.Create(&note).Error)
+	full, thumb, err := store.Save(userID, []byte("full"), []byte("thumb"), "jpg", "jpg")
+	require.NoError(t, err)
+	img := models.NoteImage{ImageFields: models.ImageFields{UserID: userID, UUID: "purge-note-image", StoredName: full, ThumbName: thumb, MIMEType: "image/jpeg", ThumbMIMEType: "image/jpeg", Width: 1, Height: 1, SizeBytes: 4, ThumbSizeBytes: 5, Sensitivity: models.ImageSensitivityNormal}, NoteID: note.ID}
+	require.NoError(t, db.Create(&img).Error)
+	softDeleteAt(t, db, &models.Note{}, note.ID, time.Now().AddDate(0, 0, -60))
+
+	require.NoError(t, PurgeSoftDeletedRows(db, cfg))
+
+	var count int64
+	require.NoError(t, db.Unscoped().Model(&models.NoteImage{}).Where("id = ?", img.ID).Count(&count).Error)
+	assert.Zero(t, count)
+	for _, name := range []string{full, thumb} {
+		_, statErr := os.Stat(filepath.Join(dir, "u"+strconv.FormatUint(uint64(userID), 10), name))
+		assert.True(t, os.IsNotExist(statErr), "note image file %q must be removed", name)
+	}
+}
