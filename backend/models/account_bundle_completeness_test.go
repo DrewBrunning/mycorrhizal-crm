@@ -54,6 +54,7 @@ var bundleCovered = map[string]string{
 var bundleExcluded = map[string]string{
 	"ActivityImage":                 "ADR 0040 slice (a): image bytes are not yet carried in the account bundle; the images section follows with the note/gallery slices",
 	"AlertState":                    "global operational alert bookkeeping, not user-authored contact data",
+	"NoteImage":                     "ADR 0040 slice (b): image bytes are not yet carried in the account bundle; the images section follows",
 	"ApiToken":                      "credential material; never exported",
 	"AuditEvent":                    "tamper-evident audit log; has its own export endpoint",
 	"CalendarEventLink":             "external-sync ledger row; re-derived on the destination",

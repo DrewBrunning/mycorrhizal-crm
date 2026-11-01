@@ -93,3 +93,18 @@ type OwnerRef struct {
 	ID  uint
 	UID string
 }
+
+// NoteImage is one image owned by a note (ADR 0040 slice b).
+type NoteImage struct {
+	ImageFields
+	NoteID uint `gorm:"column:note_id;not null;index" json:"note_id"`
+}
+
+// TableName pins the table name so it never drifts from the migration.
+func (NoteImage) TableName() string { return "note_images" }
+
+// OwnerColumn is the column that names this image's owning note.
+func (n *NoteImage) OwnerColumn() string { return "note_id" }
+
+// SetOwner assigns the owner key.
+func (n *NoteImage) SetOwner(owner OwnerRef) { n.NoteID = owner.ID }
