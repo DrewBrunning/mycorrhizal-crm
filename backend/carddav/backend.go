@@ -285,9 +285,11 @@ func (b *Backend) GetAddressObject(ctx context.Context, urlPath string, req *car
 		// Try parsing as numeric ID for backwards compatibility. The whole
 		// UID must be decimal: a vCard UID like "2-out-of-scope" has a
 		// numeric prefix, and Sscanf would resolve it to contact id 2 and
-		// serve the wrong card.
-		if id, parseErr := strconv.ParseUint(uid, 10, 64); parseErr == nil {
-			err = services.ApplyCardDAVSyncScope(db.Where("user_id = ? AND id = ?", userID, uint(id))).First(&contact).Error
+		// serve the wrong card. Atoi rejects trailing text; SQLite ids are
+		// int64, so it loses no valid id, and the non-negative check rejects a
+		// sign/negative form before the id is bound.
+		if id, parseErr := strconv.Atoi(uid); parseErr == nil && id >= 0 {
+			err = services.ApplyCardDAVSyncScope(db.Where("user_id = ? AND id = ?", userID, id)).First(&contact).Error
 		}
 	}
 	if err != nil {
@@ -536,8 +538,8 @@ func (b *Backend) DeleteAddressObject(ctx context.Context, urlPath string) error
 	var contact models.Contact
 	err = services.ApplyCardDAVSyncScope(db.Where("user_id = ? AND vcard_uid = ?", userID, uid)).First(&contact).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		if id, parseErr := strconv.ParseUint(uid, 10, 64); parseErr == nil {
-			err = services.ApplyCardDAVSyncScope(db.Where("user_id = ? AND id = ?", userID, uint(id))).First(&contact).Error
+		if id, parseErr := strconv.Atoi(uid); parseErr == nil && id >= 0 {
+			err = services.ApplyCardDAVSyncScope(db.Where("user_id = ? AND id = ?", userID, id)).First(&contact).Error
 		}
 	}
 	if err != nil {
