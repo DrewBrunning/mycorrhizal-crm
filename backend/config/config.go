@@ -108,6 +108,7 @@ type Config struct {
 	ImageMaxUploadMB             int      `cfgreg:"env=IMAGE_MAX_UPLOAD_MB;type=int;range=>=1, invalid value refuses to boot;default=20;required=false;restart=true;desc=Maximum size of one uploaded gallery image, in MiB (0 = default 20)"`
 	ImageMaxPixels               int      `cfgreg:"env=IMAGE_MAX_PIXELS;type=int;range=>=1, invalid value refuses to boot;default=50000000;required=false;restart=true;desc=Maximum decoded pixel count of one gallery image, 0 uses the default 50,000,000 (decompression-bomb guard)"`
 	ImageMaxPerActivity          int      `cfgreg:"env=IMAGE_MAX_PER_ACTIVITY;type=int;range=>=0, 0 disables the cap;default=10;required=false;restart=true;desc=Maximum live images on one activity (0 = unlimited)"`
+	ImageMaxPerNote              int      `cfgreg:"env=IMAGE_MAX_PER_NOTE;type=int;range=>=0, 0 disables the cap;default=10;required=false;restart=true;desc=Maximum live images on one note (0 = unlimited)"`
 	ImageProcessConcurrency      int      `cfgreg:"env=IMAGE_PROCESS_CONCURRENCY;type=int;range=>=0, 0 uses the default;default=0;required=false;restart=true;desc=Maximum concurrent image decode/encode operations (0 = min(2, GOMAXPROCS))"`
 	CardDAVEnabled               bool     `cfgreg:"env=CARDDAV_ENABLED;type=bool;default=false;required=false;restart=true;desc=Enable the CardDAV contact-sync server"`                        // Enable CardDAV server for contact sync
 	CalDAVEnabled                bool     `cfgreg:"env=CALDAV_ENABLED;type=bool;default=false;required=false;restart=true;desc=Enable the CalDAV interaction/life-event sync server"`           // Enable CalDAV server for Interaction/LifeEvent sync (T12b)
@@ -491,6 +492,7 @@ func baseConfig() *Config {
 		ImageMaxUploadMB:              20,
 		ImageMaxPixels:                50_000_000,
 		ImageMaxPerActivity:           10,
+		ImageMaxPerNote:               10,
 		MapTileStyleURL:               DefaultMapTileStyleURL,
 		GeocoderProvider:              GeocoderProviderNone,
 		DBIntegrityCheckEnabled:       true,
@@ -649,6 +651,7 @@ func LoadConfig() *Config {
 	cfg.ImageMaxUploadMB = checkedInt("IMAGE_MAX_UPLOAD_MB", cfg.ImageMaxUploadMB)
 	cfg.ImageMaxPixels = checkedInt("IMAGE_MAX_PIXELS", cfg.ImageMaxPixels)
 	cfg.ImageMaxPerActivity = checkedInt("IMAGE_MAX_PER_ACTIVITY", cfg.ImageMaxPerActivity)
+	cfg.ImageMaxPerNote = checkedInt("IMAGE_MAX_PER_NOTE", cfg.ImageMaxPerNote)
 	cfg.ImageProcessConcurrency = checkedInt("IMAGE_PROCESS_CONCURRENCY", cfg.ImageProcessConcurrency)
 	cfg.CardDAVEnabled = getBoolEnv("CARDDAV_ENABLED", cfg.CardDAVEnabled)
 	cfg.CalDAVEnabled = getBoolEnv("CALDAV_ENABLED", cfg.CalDAVEnabled)
@@ -1575,6 +1578,7 @@ func (c *Config) Validate() []ValidationError {
 	intRange("IMAGE_MAX_UPLOAD_MB", c.ImageMaxUploadMB, 0, -1, "0 (default) or positive")
 	intRange("IMAGE_MAX_PIXELS", c.ImageMaxPixels, 0, -1, "0 (default) or positive")
 	intRange("IMAGE_MAX_PER_ACTIVITY", c.ImageMaxPerActivity, 0, -1, "0 (unlimited) or positive")
+	intRange("IMAGE_MAX_PER_NOTE", c.ImageMaxPerNote, 0, -1, "0 (unlimited) or positive")
 	intRange("IMAGE_PROCESS_CONCURRENCY", c.ImageProcessConcurrency, 0, -1, "0 (default) or positive")
 
 	// STORAGE_CRITICAL_PERCENT is checked against STORAGE_WARN_PERCENT's own

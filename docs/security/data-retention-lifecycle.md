@@ -31,7 +31,7 @@ doc; a handful of genuine gaps are called out explicitly in [Known gaps](#known-
 `ConversationAgenda`, `Gift`, `OccasionObligation`, `OccasionEvent`, `LinkFieldType`,
 `CalendarSubscription`/`ContactSubscription`,
 `ImmichConfig`/`PaperlessConfig`/`GeoPulseConfig`/`SeafileConfig`/`WebDAVConfig`, `Webhook`, `ReminderCompletion`,
-`Attachment` (metadata row only), `ActivityImage` (metadata row; bytes in §5) — see [§5](#5-attachments--profile-photos-files-on-disk).
+`Attachment` (metadata row only), `ActivityImage` and `NoteImage` (metadata rows; bytes in §5) — see [§5](#5-attachments--profile-photos-files-on-disk).
 
 - **Where / who**: `mycorrhizal.db`, scoped by `user_id` in every query (backend/AGENTS.md trap #5). Reachable
   only via the authenticated owner's API session.
@@ -301,6 +301,8 @@ Session/JWT cookies, TOTP recovery codes, WebAuthn passkey credentials, password
 
 - **Where / who**: `PROFILE_PHOTO_DIR` / `ATTACHMENTS_DIR` / `IMAGES_DIR` on the host filesystem, one
   file per attachment/photo/image, filenames server-generated (never user-controlled — path-traversal-safe).
+- **Note images (ADR 0040, issue #2004)**: `note_images` follow the same lifecycle as activity images;
+  deleting the note image row removes both variants, and purge removes the rows and files.
 - **Activity images (ADR 0040, issue #1994)**: `activity_images` metadata rows soft-delete with the
   activity; deleting an image row removes both variants (full + thumbnail) immediately after the
   transaction commits. Files belonging to a soft-deleted activity stay until that activity is purged,

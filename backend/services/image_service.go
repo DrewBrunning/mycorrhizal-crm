@@ -57,6 +57,25 @@ type ImageService[T any, P interface {
 	Quota    UserQuota
 }
 
+// NoteImageService builds the note-image service from config (ADR 0040 slice b).
+func NoteImageService(db *gorm.DB, store imaging.Store, limit, maxPixels int, maxBytes int64, quota UserQuota) *ImageService[models.NoteImage, *models.NoteImage] {
+	if maxPixels <= 0 {
+		maxPixels = imaging.DefaultLimits.MaxPixels
+	}
+	if maxBytes <= 0 {
+		maxBytes = 20 << 20
+	}
+	return &ImageService[models.NoteImage, *models.NoteImage]{
+		DB:       db,
+		Store:    store,
+		Kind:     OwnerKindNote,
+		Limit:    limit,
+		Limits:   imaging.Limits{MaxPixels: maxPixels},
+		MaxBytes: maxBytes,
+		Quota:    quota,
+	}
+}
+
 // ActivityImageService builds the activity-image service from config.
 func ActivityImageService(db *gorm.DB, store imaging.Store, limit, maxPixels int, maxBytes int64, quota UserQuota) *ImageService[models.ActivityImage, *models.ActivityImage] {
 	if maxPixels <= 0 {

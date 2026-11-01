@@ -44,6 +44,7 @@ var registeredModels = []any{
 	&ApiToken{},
 	&Activity{},
 	&ActivityImage{},
+	&NoteImage{},
 	&Attachment{},
 	&AuditEvent{},
 	&CadencePolicy{},
