@@ -160,7 +160,7 @@ test('deleting requires window.confirm and calls onDelete with the id when confi
 
   fireEvent.click(screen.getAllByLabelText('Delete')[0]);
 
-  expect(confirmSpy).toHaveBeenCalledWith('Delete Close Friends?');
+  await waitFor(() => expect(confirmSpy).toHaveBeenCalledWith('Delete Close Friends?'));
   await waitFor(() => expect(onDelete).toHaveBeenCalledWith('1'));
 });
 
