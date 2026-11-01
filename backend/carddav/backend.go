@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -281,10 +282,12 @@ func (b *Backend) GetAddressObject(ctx context.Context, urlPath string, req *car
 	// Try to find by vcard_uid first, then by ID.
 	err = services.ApplyCardDAVSyncScope(db.Where("user_id = ? AND vcard_uid = ?", userID, uid)).First(&contact).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		// Try parsing as numeric ID for backwards compatibility
-		var id uint
-		if _, scanErr := fmt.Sscanf(uid, "%d", &id); scanErr == nil {
-			err = services.ApplyCardDAVSyncScope(db.Where("user_id = ? AND id = ?", userID, id)).First(&contact).Error
+		// Try parsing as numeric ID for backwards compatibility. The whole
+		// UID must be decimal: a vCard UID like "2-out-of-scope" has a
+		// numeric prefix, and Sscanf would resolve it to contact id 2 and
+		// serve the wrong card.
+		if id, parseErr := strconv.ParseUint(uid, 10, 64); parseErr == nil {
+			err = services.ApplyCardDAVSyncScope(db.Where("user_id = ? AND id = ?", userID, uint(id))).First(&contact).Error
 		}
 	}
 	if err != nil {
@@ -533,9 +536,8 @@ func (b *Backend) DeleteAddressObject(ctx context.Context, urlPath string) error
 	var contact models.Contact
 	err = services.ApplyCardDAVSyncScope(db.Where("user_id = ? AND vcard_uid = ?", userID, uid)).First(&contact).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		var id uint
-		if _, scanErr := fmt.Sscanf(uid, "%d", &id); scanErr == nil {
-			err = services.ApplyCardDAVSyncScope(db.Where("user_id = ? AND id = ?", userID, id)).First(&contact).Error
+		if id, parseErr := strconv.ParseUint(uid, 10, 64); parseErr == nil {
+			err = services.ApplyCardDAVSyncScope(db.Where("user_id = ? AND id = ?", userID, uint(id))).First(&contact).Error
 		}
 	}
 	if err != nil {
