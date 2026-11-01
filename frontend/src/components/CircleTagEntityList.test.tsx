@@ -94,6 +94,17 @@ test('pressing Enter in the new-name field also creates the entity', async () =>
   await waitFor(() => expect(onCreate).toHaveBeenCalledWith('Neighbors'));
 });
 
+test('pressing Enter with a blank new name does not create the entity', () => {
+  const onCreate = vi.fn();
+  renderList({ onCreate });
+
+  const input = screen.getByPlaceholderText('New circle name');
+  fireEvent.change(input, { target: { value: '   ' } });
+  fireEvent.keyDown(input, { key: 'Enter' });
+
+  expect(onCreate).not.toHaveBeenCalled();
+});
+
 test('clicking edit switches the row into an editable text field prefilled with the name', () => {
   renderList();
 
@@ -141,6 +152,17 @@ test('pressing Enter while editing saves via onRename', async () => {
   await waitFor(() => expect(onRename).toHaveBeenCalledWith('1', 'Best Friends'));
 });
 
+test('saving an edit with a blank name does not rename', () => {
+  const onRename = vi.fn();
+  renderList({ onRename });
+
+  fireEvent.click(screen.getAllByLabelText('Edit')[0]);
+  fireEvent.change(screen.getByDisplayValue('Close Friends'), { target: { value: '   ' } });
+  fireEvent.click(screen.getByLabelText('Save'));
+
+  expect(onRename).not.toHaveBeenCalled();
+});
+
 test('clicking cancel while editing discards the change', () => {
   const onRename = vi.fn();
   renderList({ onRename });
@@ -162,6 +184,24 @@ test('deleting requires window.confirm and calls onDelete with the id when confi
 
   await waitFor(() => expect(confirmSpy).toHaveBeenCalledWith('Delete Close Friends?'));
   await waitFor(() => expect(onDelete).toHaveBeenCalledWith('1'));
+});
+
+test('shows a progress indicator while a confirmed delete is pending', async () => {
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  let resolveDelete: () => void = () => {};
+  const onDelete = vi.fn(
+    () =>
+      new Promise<void>((resolve) => {
+        resolveDelete = resolve;
+      }),
+  );
+  renderList({ onDelete });
+
+  fireEvent.click(screen.getAllByLabelText('Delete')[0]);
+
+  await waitFor(() => expect(screen.getByRole('progressbar')).toBeInTheDocument());
+  resolveDelete();
+  await waitFor(() => expect(screen.queryByRole('progressbar')).not.toBeInTheDocument());
 });
 
 test('declining the confirm dialog does not call onDelete', () => {
