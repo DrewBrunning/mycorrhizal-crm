@@ -504,7 +504,7 @@ func GetContacts(c *gin.Context) {
 			case "activities":
 				query = query.Preload("Activities", "activities.user_id = ?", userID)
 			case "reminders":
-				query = query.Preload("Reminders", "reminders.user_id = ?", userID)
+				query = query.Preload("Reminders", preloadUserReminders(userID))
 			}
 		}
 	}
@@ -670,7 +670,7 @@ func GetContact(c *gin.Context) {
 	query := db.Where("user_id = ?", userID).
 		Preload("Notes", "notes.user_id = ?", userID).
 		Preload("Activities", "activities.user_id = ?", userID).
-		Preload("Reminders", "reminders.user_id = ?", userID)
+		Preload("Reminders", preloadUserReminders(userID))
 
 	if err := query.First(&contact, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -681,6 +681,17 @@ func GetContact(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, models.NewContactRecordResponse(&contact, currentConfig(c).ProfilePhotoDir, db))
+}
+
+// preloadUserReminders loads a contact's reminders in a total order. The
+// real-release upgrade harness compares the pre- and post-upgrade read-back
+// positionally, and two reminders created milliseconds apart used to come back
+// in different orders when the query planner picked a different index. Order by
+// remind_at with id as the tiebreak, matching GetContactDetail.
+func preloadUserReminders(userID uint) func(*gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		return db.Where("reminders.user_id = ?", userID).Order("remind_at ASC, id ASC")
+	}
 }
 
 func UpdateContact(c *gin.Context) {

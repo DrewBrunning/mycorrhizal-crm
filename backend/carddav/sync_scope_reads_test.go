@@ -260,3 +260,38 @@ func itoa(n uint) string {
 	}
 	return string(buf[i:])
 }
+
+// A vCard UID that merely begins with a number must not be retried as a
+// numeric primary key: doing so resolves to a different contact and leaks or
+// deletes it. Only a UID that is entirely decimal is the legacy numeric form.
+func TestSyncScope_GetNumericPrefixUIDDoesNotReturnAnotherContact(t *testing.T) {
+	f := newScopeReadFixture(t)
+	f.setScope(t, models.CardDAVSyncScopeModeInclude, []string{f.a.ID})
+
+	uid := itoa(f.c2.ID) + "-out-of-scope"
+	require.NoError(t, f.backend.db.Model(&models.Contact{}).Where("id = ?", f.c3.ID).Update("vcard_uid", uid).Error)
+	f.c3.VCardUID = uid
+
+	gin.SetMode(gin.TestMode)
+	h := NewHandler(f.backend.db, f.backend.photoDir).GinHandler()
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/carddav/addressbooks/"+f.user.Username+"/contacts/"+uid+".vcf", nil)
+	c, _ := gin.CreateTestContext(w)
+	c.Request = req
+	c.Set("userID", f.user.ID)
+	c.Set("username", f.user.Username)
+	h(c)
+
+	require.Equal(t, http.StatusNotFound, w.Code, w.Body.String())
+	assert.NotContains(t, w.Body.String(), "Two", "the in-scope contact behind the numeric prefix must not leak")
+}
+
+// The legacy numeric-id fallback still serves a bare decimal UID.
+func TestSyncScope_GetNumericUIDStillWorks(t *testing.T) {
+	f := newScopeReadFixture(t)
+	f.setScope(t, models.CardDAVSyncScopeModeInclude, []string{f.a.ID})
+
+	object, err := f.backend.GetAddressObject(f.ctx(), "/carddav/addressbooks/"+f.user.Username+"/contacts/"+itoa(f.c1.ID)+".vcf", nil)
+	require.NoError(t, err)
+	assert.Contains(t, object.Path, f.c1.VCardUID+".vcf")
+}
