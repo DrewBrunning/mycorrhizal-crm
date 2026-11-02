@@ -6,15 +6,28 @@ name: Agent eval collector
 # matrix leg, so the nightly failure alarm opens an issue instead of letting the
 # trend rot silently.
 #
-# Disabled until the AGENT_EVAL_PROFILE repository variable names a profile in
+# Enabled when the AGENT_EVAL_PROFILE repository variable names a profile in
 # testdata/agent-eval/agents.yaml and AGENT_EVAL_MODEL_KEY is available to the
 # agent subprocess. A skipped schedule is not a failure. Never add a
 # pull_request/pull_request_target trigger: the agent executes code and receives
 # a model credential.
+#
+# Billing window: DeepSeek bills 01:00-04:00 and 06:00-10:00 UTC Monday-Friday
+# at the peak rate; all weekend is off-peak at half price. Sunday 04:00 UTC is
+# far from any peak window even if GitHub delays the scheduled start (a delayed
+# run observed in 2026-11 started ~7h late). The discover job also refuses a
+# start that could run into a peak window, so a change to this cron or a manual
+# dispatch cannot silently pay peak rates.
 on:
   schedule:
-    - cron: '0 4 * * 0' # Sundays, 04:00 UTC
+    - cron: '0 4 * * 0' # Sundays, 04:00 UTC (off-peak; weekends bill at half rate)
   workflow_dispatch:
+    inputs:
+      allow_peak:
+        description: Accept possible DeepSeek peak billing (the run may extend into a peak window)
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
@@ -38,6 +51,18 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      - name: Enforce DeepSeek off-peak billing window
+        env:
+          ALLOW_PEAK: ${{ github.event_name == 'workflow_dispatch' && inputs.allow_peak || false }}
+        run: |
+          set -euo pipefail
+          # Three waves of six 90-minute tasks is the collector's worst case.
+          args=(--margin-minutes 270)
+          if [ "$ALLOW_PEAK" = "true" ]; then
+            args+=(--allow-peak)
+          fi
+          bash .github/scripts/deepseek-offpeak.sh "${args[@]}"
 
       - name: List task directories
         id: list

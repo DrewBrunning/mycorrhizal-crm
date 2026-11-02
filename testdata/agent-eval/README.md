@@ -73,7 +73,10 @@ scope/hand-edit/integrity/unexpected-change counts rise, or the configuration
 fingerprint changes (the baseline is no longer comparable; re-baseline after
 review). The artifact
 records the exact regressions; wall-clock and changed-file counts are
-deliberately not compared.
+deliberately not compared. A committed-file test
+(`TestCommittedBaselineConfigHashes`) recomputes every entry's fingerprint from
+the committed profile, task spec and suite commands, so a stale or hand-edited
+`config_hash` fails `go test ./...`.
 
 ## Refusal tasks
 
@@ -87,9 +90,26 @@ missing deprecation window), so a silent no-op does not pass.
 main tree with `-require-baseline`, so a missing baseline entry is visible
 instead of green. It is enabled with `AGENT_EVAL_PROFILE=pinned-opencode` and
 `AGENT_EVAL_MODEL_KEY` set to the model credential; the profile command maps the
-latter to the provider variable opencode reads. It is dispatch-only and
-scheduled, never triggered by a pull request, and is registered in the nightly
-failure alarm and the reconcile list by `cmd/nightlyalertcheck`.
+latter to the provider variable opencode reads. It is scheduled and can also be
+dispatched, is never triggered by a pull request, and is registered in the
+nightly failure alarm and the reconcile list by `cmd/nightlyalertcheck`.
+
+### Billing window
+
+DeepSeek bills **01:00-04:00 and 06:00-10:00 UTC, Monday-Friday** at the peak
+rate; all weekend (and every other hour) is off-peak at half price. The weekly
+cron is Sunday 04:00 UTC, which leaves ample margin from any peak window even
+when GitHub delays the start. Both `agent-eval-collect.yml` and `agent-eval.yml`
+run
+`.github/scripts/deepseek-offpeak.sh` before the agent is invoked: a run that
+would start or extend into a peak window stops with a `::error::` and makes no
+model call. A manual dispatch can pass `allow_peak: true` to accept possible
+peak-rate billing deliberately; a dry-run dispatch is exempt because it costs
+nothing. The guard is conservative on a weekday Chinese public holiday (which
+DeepSeek bills off-peak): it has no holiday calendar, so the weekly Sunday run
+is the intended path and a holiday dispatch needs `allow_peak`. The artifact's
+`started_at`/`finished_at` fields are UTC, so a run's billing window can be
+audited after the fact.
 
 ## Control
 

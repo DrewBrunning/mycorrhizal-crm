@@ -145,6 +145,12 @@ jobs:
       - name: Test workflow shell scripts
         run: bash .github/scripts/tests/run-fuzz-targets.test.sh
 
+      # DeepSeek bills 01:00-04:00 and 06:00-10:00 UTC Mon-Fri at double the
+      # off-peak rate. Pins the guard's window boundaries and the rule that a
+      # run starting off-peak but crossing into a peak window is refused.
+      - name: Test DeepSeek off-peak window guard
+        run: bash .github/scripts/tests/deepseek-offpeak.test.sh
+
       # Issue #929: pins the release.yml registration bug fix -- a dry run
       # rehearsing an already-shipped version must decide SKIP, not append a
       # duplicate SupportedReleases entry (which corrupted the frozen-chain
