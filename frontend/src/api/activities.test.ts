@@ -13,6 +13,7 @@ import {
   updateActivity,
   uploadActivityImage,
 } from './activities';
+import { API_BASE_URL } from './client';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -302,8 +303,9 @@ describe('activity images', () => {
   });
 
   test('activityImageSrc prepends only the configured API origin', () => {
+    const origin = API_BASE_URL.replace(/\/api\/v1$/, '');
     expect(activityImageSrc('/api/v1/activities/4/images/9/file')).toBe(
-      '/api/v1/activities/4/images/9/file',
+      `${origin}/api/v1/activities/4/images/9/file`,
     );
   });
 });

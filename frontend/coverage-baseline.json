@@ -34,9 +34,9 @@
     },
     "src/CirclesTagsPage.tsx": {
       "lines": 100,
-      "linesTotal": 44,
+      "linesTotal": 54,
       "branches": 100,
-      "branchesTotal": 28
+      "branchesTotal": 38
     },
     "src/ContactDetailPage.tsx": {
       "lines": 86.6,
@@ -51,7 +51,7 @@
       "branchesTotal": 37
     },
     "src/ContactsPage.tsx": {
-      "lines": 90.14,
+      "lines": 89.65,
       "linesTotal": 203,
       "branches": 84.67,
       "branchesTotal": 137
@@ -223,6 +223,12 @@
       "linesTotal": 11,
       "branches": 100,
       "branchesTotal": 2
+    },
+    "src/api/carddavSyncScope.ts": {
+      "lines": 100,
+      "linesTotal": 10,
+      "branches": 50,
+      "branchesTotal": 6
     },
     "src/api/circles.ts": {
       "lines": 100,
@@ -605,7 +611,7 @@
     "src/auth.ts": {
       "lines": 89.77,
       "linesTotal": 88,
-      "branches": 92.42,
+      "branches": 90.9,
       "branchesTotal": 66
     },
     "src/components/AcceptContactShareDialog.tsx": {
@@ -746,6 +752,12 @@
       "branches": 78.16,
       "branchesTotal": 87
     },
+    "src/components/CardDAVSyncScopeSettings.tsx": {
+      "lines": 87.5,
+      "linesTotal": 112,
+      "branches": 63.96,
+      "branchesTotal": 111
+    },
     "src/components/CardNotesEditor.tsx": {
       "lines": 100,
       "linesTotal": 14,
@@ -761,7 +773,7 @@
     "src/components/CircleTagEntityList.tsx": {
       "lines": 100,
       "linesTotal": 51,
-      "branches": 92.68,
+      "branches": 97.56,
       "branchesTotal": 41
     },
     "src/components/ClothingSizesPanel.tsx": {
@@ -1371,7 +1383,7 @@
       "branchesTotal": 20
     },
     "src/components/RelationshipEdgeDialog.tsx": {
-      "lines": 96.12,
+      "lines": 95.48,
       "linesTotal": 155,
       "branches": 89.62,
       "branchesTotal": 106

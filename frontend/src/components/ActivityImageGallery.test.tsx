@@ -44,7 +44,10 @@ describe('ActivityImageGallery', () => {
   it('renders thumbnails from the owner-nested endpoint', async () => {
     render(<ActivityImageGallery activityId={4} />);
     const thumb = await screen.findByRole('img', { name: /activity photo/i });
-    expect(thumb).toHaveAttribute('src', '/api/v1/activities/4/images/9/thumbnail');
+    const src = thumb.getAttribute('src') ?? '';
+    expect(new URL(src, window.location.href).pathname).toBe(
+      '/api/v1/activities/4/images/9/thumbnail',
+    );
   });
 
   it('deletes a photo from the editable surface', async () => {
