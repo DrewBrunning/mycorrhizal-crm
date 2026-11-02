@@ -5,3 +5,8 @@ regenerates the fixtures, and what not to do: never hand-edit the dump.
 
 Link the entry from the developer docs and keep every internal link and anchor
 valid. Do not change runtime code.
+
+Change only files under `docs/` and `README-developer.md`. Do not edit anything
+under `backend/` — even a README there, including the schema-fixture README —
+or under `frontend/`, `android/` or `.github/`. The deployment guide and the
+developer docs are the only surfaces this task owns.
