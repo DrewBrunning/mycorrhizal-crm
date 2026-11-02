@@ -3173,4 +3173,9 @@
     <string name="error_reason_image_processing_busy">L’elaborazione delle immagini è occupata; riprova tra poco</string>
     <string name="error_reason_image_not_found">Immagine non trovata</string>
     <string name="error_reason_image_insufficient_storage">Spazio su disco insufficiente per salvare l’immagine</string>
+    <string name="activity_images_add">Aggiungi foto</string>
+    <string name="activity_images_empty">Ancora nessuna foto</string>
+    <string name="activity_images_alt">Foto dell’attività</string>
+    <string name="activity_images_delete">Elimina foto</string>
+    <string name="activity_images_pending">Foto da caricare: %1$d</string>
 </resources>

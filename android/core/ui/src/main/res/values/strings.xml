@@ -3095,4 +3095,9 @@
     <string name="error_reason_image_processing_busy">Image processing is busy; try again shortly</string>
     <string name="error_reason_image_not_found">Image not found</string>
     <string name="error_reason_image_insufficient_storage">Not enough disk space to store the image</string>
+    <string name="activity_images_add">Add photos</string>
+    <string name="activity_images_empty">No photos yet</string>
+    <string name="activity_images_alt">Activity photo</string>
+    <string name="activity_images_delete">Delete photo</string>
+    <string name="activity_images_pending">Photos to upload: %1$d</string>
 </resources>

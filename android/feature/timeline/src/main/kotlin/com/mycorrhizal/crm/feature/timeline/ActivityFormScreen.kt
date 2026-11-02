@@ -1,5 +1,8 @@
 package com.mycorrhizal.crm.feature.timeline
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -50,6 +54,24 @@ fun ActivityFormScreen(
     val events by viewModel.events.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val currentOnSaved = rememberUpdatedState(onSaved)
+    val context = LocalContext.current
+    val imagePicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickMultipleVisualMedia(10)
+    ) { uris ->
+        val picked = uris.mapNotNull { uri ->
+            val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+            if (bytes == null) {
+                null
+            } else {
+                PendingActivityImage(
+                    fileName = "photo.jpg",
+                    mimeType = context.contentResolver.getType(uri) ?: "image/jpeg",
+                    bytes = bytes
+                )
+            }
+        }
+        viewModel.addImages(picked)
+    }
 
     LaunchedEffect(events) {
         if (events is ActivityFormEvent.Saved) {
@@ -92,6 +114,12 @@ fun ActivityFormScreen(
             onContactSearchChange = viewModel::searchContacts,
             onAddParticipant = viewModel::onAddParticipant,
             onRemoveParticipant = viewModel::onRemoveParticipant,
+            onAddImages = {
+                imagePicker.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                )
+            },
+            onDeleteImage = viewModel::deleteImage,
             modifier = Modifier.padding(padding)
         )
     }
@@ -124,7 +152,9 @@ fun ActivityFormContent(
     onContactSearchChange: (String) -> Unit,
     onAddParticipant: (ContactSummary) -> Unit,
     onRemoveParticipant: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onAddImages: () -> Unit = {},
+    onDeleteImage: (Int) -> Unit = {}
 ) {
     Column(
         modifier = modifier
@@ -226,6 +256,21 @@ fun ActivityFormContent(
             onQueryChange = onContactSearchChange,
             onPick = onAddParticipant,
             labelRes = R.string.activity_search_contact
+        )
+
+        HorizontalDivider()
+        Text(
+            text = stringResource(R.string.activity_images_add),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        ActivityImageSection(
+            images = state.images,
+            pendingCount = state.pendingImages.size,
+            loading = state.imagesLoading,
+            busy = state.imagesBusy,
+            onAdd = onAddImages,
+            onDelete = onDeleteImage
         )
     }
 }
