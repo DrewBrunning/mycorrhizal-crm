@@ -12445,6 +12445,11 @@
           "required": true
         },
         {
+          "name": "contact_vcard_uid",
+          "type": "string",
+          "required": false
+        },
+        {
           "name": "created_at",
           "type": "string",
           "required": true

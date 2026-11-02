@@ -17291,6 +17291,7 @@ components:
         id: { type: integer }
         uuid: { type: string, format: uuid }
         contact_id: { type: integer }
+        contact_vcard_uid: { type: string, format: uuid }
         mime_type: { type: string, enum: [image/jpeg, image/png] }
         width: { type: integer }
         height: { type: integer }

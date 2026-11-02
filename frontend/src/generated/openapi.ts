@@ -674,6 +674,7 @@ export type ContactIMPP = {
 
 export type ContactImage = {
   contact_id: number;
+  contact_vcard_uid?: string;
   created_at: string;
   file_url: string;
   height: number;
