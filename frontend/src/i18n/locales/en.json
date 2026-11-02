@@ -4013,5 +4013,17 @@
     "uploading": "Uploading...",
     "queued_one": "{{count}} photo selected",
     "queued_other": "{{count}} photos selected"
+  },
+  "noteImages": {
+    "add": "Add photos",
+    "queued_one": "{{count}} photo selected",
+    "queued_other": "{{count}} photos selected",
+    "alt": "Note photo",
+    "delete": "Delete photo",
+    "deleteFailed": "Could not delete the photo.",
+    "loadFailed": "Could not load photos.",
+    "loading": "Loading photos",
+    "uploadFailed": "Could not upload the photo.",
+    "uploading": "Uploading..."
   }
 }

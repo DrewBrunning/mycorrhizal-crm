@@ -1245,19 +1245,11 @@ func DeleteOwnAccount(c *gin.Context, cfg *config.Config) {
 	}
 
 	// Capture gallery image names too (ADR 0040); both variants live on disk.
-	var userImageNames []string
-	if err := db.Model(&models.ActivityImage{}).Where("user_id = ?", userID).Pluck("stored_name", &userImageNames).Error; err != nil {
-		log.Error().Err(err).Uint("user_id", userID).Msg("Failed to load image files for self-deletion")
+	userImageNames, err := loadUserImageNames(db, userID, &models.ActivityImage{}, &models.NoteImage{})
+	if err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("load user images").WithError(err))
 		return
 	}
-	var userThumbNames []string
-	if err := db.Model(&models.ActivityImage{}).Where("user_id = ?", userID).Pluck("thumb_name", &userThumbNames).Error; err != nil {
-		log.Error().Err(err).Uint("user_id", userID).Msg("Failed to load image thumbnails for self-deletion")
-		apperrors.AbortWithError(c, apperrors.ErrDatabase("load user image thumbnails").WithError(err))
-		return
-	}
-	userImageNames = append(userImageNames, userThumbNames...)
 
 	flushAuditBeforeUserDelete(db, userID)
 	err = db.Transaction(func(tx *gorm.DB) error {

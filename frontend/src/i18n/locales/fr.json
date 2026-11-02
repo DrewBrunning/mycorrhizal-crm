@@ -4117,5 +4117,18 @@
     "queued_one": "{{count}} photo sélectionnée",
     "queued_other": "{{count}} photos sélectionnées",
     "queued_many": "{{count}} de photos sélectionnées"
+  },
+  "noteImages": {
+    "add": "Ajouter des photos",
+    "queued_one": "{{count}} photo sélectionnée",
+    "queued_other": "{{count}} photos sélectionnées",
+    "queued_many": "{{count}} de photos sélectionnées",
+    "alt": "Photo de la note",
+    "delete": "Supprimer la photo",
+    "deleteFailed": "Impossible de supprimer la photo.",
+    "loadFailed": "Impossible de charger les photos.",
+    "loading": "Chargement des photos",
+    "uploadFailed": "Impossible de téléverser la photo.",
+    "uploading": "Téléversement..."
   }
 }

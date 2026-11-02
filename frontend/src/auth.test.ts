@@ -3,6 +3,7 @@ import {
   API_BASE_URL,
   fetchAndCacheUserInfo,
   getCachedSelfContactVCardUID,
+  isAdmin,
   login2FA,
   loginUser,
   loginWithPasskey,
@@ -372,6 +373,28 @@ describe('passkey login', () => {
   });
 });
 
+describe('isAdmin', () => {
+  test('is false without cached user info', () => {
+    localStorage.removeItem(USER_INFO_KEY);
+    expect(isAdmin()).toBe(false);
+  });
+
+  test('reads the cached admin flag and treats corrupt cache as non-admin', () => {
+    localStorage.setItem(
+      USER_INFO_KEY,
+      JSON.stringify({ user_id: 1, username: 'u', is_admin: true }),
+    );
+    expect(isAdmin()).toBe(true);
+    localStorage.setItem(
+      USER_INFO_KEY,
+      JSON.stringify({ user_id: 1, username: 'u', is_admin: false }),
+    );
+    expect(isAdmin()).toBe(false);
+    localStorage.setItem(USER_INFO_KEY, '{not json');
+    expect(isAdmin()).toBe(false);
+  });
+});
+
 describe('logoutAndRedirect', () => {
   test('clears cached user info and every session draft before navigating', async () => {
     vi.stubGlobal(
@@ -394,6 +417,19 @@ describe('logoutAndRedirect', () => {
     expect(localStorage.getItem(USER_INFO_KEY)).toBeNull();
     expect(sessionStorage.getItem('mycorrhizal:draft:note-dialog:unassigned')).toBeNull();
     expect(sessionStorage.getItem('unrelated')).toBe('keep');
+    expect(fakeLocation.href).toBe('/login');
+  });
+
+  test('falls back to /login when the server returns no redirect URL', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({}) }));
+    const originalLocation = window.location;
+    const fakeLocation = { href: '' } as Location;
+    Object.defineProperty(window, 'location', { configurable: true, value: fakeLocation });
+    try {
+      await logoutAndRedirect();
+    } finally {
+      Object.defineProperty(window, 'location', { configurable: true, value: originalLocation });
+    }
     expect(fakeLocation.href).toBe('/login');
   });
 });

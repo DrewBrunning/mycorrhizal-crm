@@ -708,17 +708,11 @@ func DeleteUser(c *gin.Context) {
 	}
 
 	// Capture gallery image names too (ADR 0040); both variants live on disk.
-	var userImageNames []string
-	if err := db.Model(&models.ActivityImage{}).Where("user_id = ?", uint(id)).Pluck("stored_name", &userImageNames).Error; err != nil {
+	userImageNames, err := loadUserImageNames(db, uint(id), &models.ActivityImage{}, &models.NoteImage{})
+	if err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("load user images").WithError(err))
 		return
 	}
-	var userThumbNames []string
-	if err := db.Model(&models.ActivityImage{}).Where("user_id = ?", uint(id)).Pluck("thumb_name", &userThumbNames).Error; err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrDatabase("load user image thumbnails").WithError(err))
-		return
-	}
-	userImageNames = append(userImageNames, userThumbNames...)
 
 	// Delete user's data in a transaction. The cascade itself is shared with
 	// the self-service DeleteOwnAccount (user_delete_cascade.go) — only the

@@ -49,6 +49,7 @@ var purgedSoftDeleteModels = []any{
 	// whose parent activity was deleted are removed by the explicit cleanup
 	// below (their own deleted_at is still NULL while the parent is trashed).
 	&models.ActivityImage{},
+	&models.NoteImage{},
 	// Occasions (ADR 0024/0026): user-authored, soft-deleted. Issue #1310:
 	// these were missing, so a deleted contact's obligations outlived the
 	// contact as orphans and soft-deleted events were kept forever.
@@ -319,6 +320,23 @@ func collectPurgeFiles(db *gorm.DB, cutoff time.Time) PurgedFiles {
 		Where("contact_vcard_uid IN (SELECT vcard_uid FROM contacts WHERE deleted_at IS NOT NULL AND deleted_at < ?)", cutoff).
 		Pluck("stored_name", &files.Attachments).Error; err != nil {
 		logger.Warn().Err(err).Msg("purge: failed to list contact attachments")
+	}
+
+	// Note images follow the same rule as activity images: purge of the parent
+	// note, or of the image itself past retention.
+	var noteImageRows []struct {
+		UserID     uint
+		StoredName string
+		ThumbName  string
+	}
+	if err := db.Unscoped().Model(&models.NoteImage{}).
+		Select("user_id", "stored_name", "thumb_name").
+		Where("(deleted_at IS NOT NULL AND deleted_at < ?) OR note_id IN (SELECT id FROM notes WHERE deleted_at IS NOT NULL AND deleted_at < ?)", cutoff, cutoff).
+		Scan(&noteImageRows).Error; err != nil {
+		logger.Warn().Err(err).Msg("purge: failed to list note images")
+	}
+	for _, r := range noteImageRows {
+		files.Images = appendImageFiles(files.Images, r.UserID, r.StoredName, r.ThumbName)
 	}
 
 	// Activity images are removed when the activity is purged, or when the image

@@ -2078,6 +2078,22 @@ export type Note = {
   revision: number;
 };
 
+export type NoteImage = {
+  created_at: string;
+  file_url: string;
+  height: number;
+  id: number;
+  mime_type: 'image/jpeg' | 'image/png';
+  note_id: number;
+  sensitivity: 'normal' | 'private' | 'secret';
+  size_bytes: number;
+  taken_at?: string | null;
+  taken_date?: string | null;
+  thumbnail_url: string;
+  uuid: string;
+  width: number;
+};
+
 export type NoteInput = {
   contact_id?: number | null;
   content: string;

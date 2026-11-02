@@ -117,6 +117,16 @@ func ContactCascadeRegistry() []CascadeStep {
 			Reason: "user-authored history: soft delete; FK cascade to contacts never fires",
 		},
 		{
+			// Note images must be tombstoned before their note: the contact
+			// cascade soft-deletes both, and a restore brings the rows back by id.
+			Table: "note_images", NewModel: func() any { return &models.NoteImage{} },
+			Mode: CascadeSoft,
+			Match: func(t ContactCascadeTarget) (string, []any) {
+				return "note_id IN (SELECT id FROM notes WHERE contact_id = ? AND user_id = ?)", []any{t.ID, t.UserID}
+			},
+			Reason: "ADR 0040 slice (b): user-authored image content; soft delete with its note so trash restore revives it; files stay until purge",
+		},
+		{
 			Table: "notes", NewModel: func() any { return &models.Note{} },
 			Mode: CascadeSoft, Match: byID,
 			// Bulk soft deletes skip Note.AfterDelete (it fires on a zero-value

@@ -62,6 +62,7 @@ unleash:
         - ^monica_import_controller\.go$
         - ^mycorrhizal_import_controller\.go$
         - ^note_controller\.go$
+        - ^note_image_controller\.go$
         - ^notification_controller\.go$
         - ^notification_health_controller\.go$
         - ^occasion_controller\.go$

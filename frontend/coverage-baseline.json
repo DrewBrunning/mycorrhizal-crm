@@ -51,15 +51,15 @@
       "branchesTotal": 37
     },
     "src/ContactsPage.tsx": {
-      "lines": 89.65,
+      "lines": 90.14,
       "linesTotal": 203,
       "branches": 84.67,
       "branchesTotal": 137
     },
     "src/DashboardPage.tsx": {
-      "lines": 77.1,
+      "lines": 77.71,
       "linesTotal": 166,
-      "branches": 67.27,
+      "branches": 68.18,
       "branchesTotal": 110
     },
     "src/DataSettingsPage.tsx": {
@@ -105,8 +105,8 @@
       "branchesTotal": 0
     },
     "src/NotesPage.tsx": {
-      "lines": 88.88,
-      "linesTotal": 81,
+      "lines": 87.95,
+      "linesTotal": 83,
       "branches": 93.24,
       "branchesTotal": 74
     },
@@ -129,14 +129,14 @@
       "branchesTotal": 38
     },
     "src/SettingsPage.tsx": {
-      "lines": 82.32,
+      "lines": 83.13,
       "linesTotal": 249,
-      "branches": 68.05,
+      "branches": 69.44,
       "branchesTotal": 144
     },
     "src/ShareTargetPage.tsx": {
-      "lines": 92.59,
-      "linesTotal": 27,
+      "lines": 92.85,
+      "linesTotal": 28,
       "branches": 90,
       "branchesTotal": 10
     },
@@ -460,9 +460,9 @@
     },
     "src/api/notes.ts": {
       "lines": 100,
-      "linesTotal": 39,
+      "linesTotal": 51,
       "branches": 100,
-      "branchesTotal": 28
+      "branchesTotal": 34
     },
     "src/api/notificationHealth.ts": {
       "lines": 100,
@@ -609,9 +609,9 @@
       "branchesTotal": 4
     },
     "src/auth.ts": {
-      "lines": 89.77,
+      "lines": 88.63,
       "linesTotal": 88,
-      "branches": 90.9,
+      "branches": 92.42,
       "branchesTotal": 66
     },
     "src/components/AcceptContactShareDialog.tsx": {
@@ -621,13 +621,13 @@
       "branchesTotal": 28
     },
     "src/components/ActivityImageGallery.tsx": {
-      "lines": 64,
+      "lines": 100,
       "linesTotal": 50,
-      "branches": 74.19,
+      "branches": 90.32,
       "branchesTotal": 31
     },
     "src/components/AddActivityDialog.tsx": {
-      "lines": 98.77,
+      "lines": 99.38,
       "linesTotal": 163,
       "branches": 89.9,
       "branchesTotal": 109
@@ -639,10 +639,10 @@
       "branchesTotal": 104
     },
     "src/components/AddNoteDialog.tsx": {
-      "lines": 85.91,
-      "linesTotal": 71,
-      "branches": 76.31,
-      "branchesTotal": 38
+      "lines": 86.74,
+      "linesTotal": 83,
+      "branches": 78,
+      "branchesTotal": 50
     },
     "src/components/AddressFields.tsx": {
       "lines": 100,
@@ -753,9 +753,9 @@
       "branchesTotal": 87
     },
     "src/components/CardDAVSyncScopeSettings.tsx": {
-      "lines": 87.5,
+      "lines": 89.28,
       "linesTotal": 112,
-      "branches": 63.96,
+      "branches": 65.76,
       "branchesTotal": 111
     },
     "src/components/CardNotesEditor.tsx": {
@@ -795,9 +795,9 @@
       "branchesTotal": 34
     },
     "src/components/ContactAddressSuggestions.tsx": {
-      "lines": 86.36,
+      "lines": 95.45,
       "linesTotal": 44,
-      "branches": 69.23,
+      "branches": 73.07,
       "branchesTotal": 26
     },
     "src/components/ContactFieldSettings.tsx": {
@@ -845,8 +845,8 @@
     "src/components/ContactTimeline.tsx": {
       "lines": 93.1,
       "linesTotal": 29,
-      "branches": 93.33,
-      "branchesTotal": 90
+      "branches": 93.47,
+      "branchesTotal": 92
     },
     "src/components/ConversationAgendaDialog.tsx": {
       "lines": 97.05,
@@ -885,7 +885,7 @@
       "branchesTotal": 24
     },
     "src/components/DAVPasswordSettings.tsx": {
-      "lines": 93.75,
+      "lines": 96.87,
       "linesTotal": 32,
       "branches": 78.57,
       "branchesTotal": 14
@@ -1238,6 +1238,12 @@
       "branches": 100,
       "branchesTotal": 0
     },
+    "src/components/NoteImageGallery.tsx": {
+      "lines": 64,
+      "linesTotal": 50,
+      "branches": 74.19,
+      "branchesTotal": 31
+    },
     "src/components/NotificationHealthPanel.tsx": {
       "lines": 100,
       "linesTotal": 13,
@@ -1245,9 +1251,9 @@
       "branchesTotal": 23
     },
     "src/components/NotificationSettings.tsx": {
-      "lines": 76.97,
+      "lines": 77.69,
       "linesTotal": 139,
-      "branches": 62.38,
+      "branches": 63.3,
       "branchesTotal": 109
     },
     "src/components/OccasionEventAttendeesDialog.tsx": {
@@ -1678,7 +1684,7 @@
     },
     "src/hooks/useContactDialogs.ts": {
       "lines": 100,
-      "linesTotal": 18,
+      "linesTotal": 19,
       "branches": 75,
       "branchesTotal": 4
     },

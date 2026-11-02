@@ -6538,6 +6538,146 @@
     },
     {
       "method": "GET",
+      "path": "/notes/{id}/images",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/notes/{id}/images",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "201",
+          "schema": "object"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "413",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/notes/{id}/images/{image_id}",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        },
+        {
+          "name": "image_id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:MessageResponse"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/notes/{id}/images/{image_id}/file",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        },
+        {
+          "name": "image_id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": ""
+        },
+        {
+          "status": "304",
+          "schema": ""
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/notes/{id}/images/{image_id}/thumbnail",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        },
+        {
+          "name": "image_id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": ""
+        },
+        {
+          "status": "304",
+          "schema": ""
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/notifications/config",
       "parameters": null,
       "responses": [
@@ -18535,6 +18675,85 @@
         },
         {
           "name": "revision",
+          "type": "integer",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "NoteImage",
+      "properties": [
+        {
+          "name": "created_at",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "file_url",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "height",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "id",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "mime_type",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "image/jpeg",
+            "image/png"
+          ]
+        },
+        {
+          "name": "note_id",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "sensitivity",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "normal",
+            "private",
+            "secret"
+          ]
+        },
+        {
+          "name": "size_bytes",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "taken_at",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "taken_date",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "thumbnail_url",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "uuid",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "width",
           "type": "integer",
           "required": true
         }

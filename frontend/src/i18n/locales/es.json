@@ -4117,5 +4117,18 @@
     "queued_one": "{{count}} foto seleccionada",
     "queued_other": "{{count}} fotos seleccionadas",
     "queued_many": "{{count}} fotos seleccionadas"
+  },
+  "noteImages": {
+    "add": "Añadir fotos",
+    "queued_one": "{{count}} foto seleccionada",
+    "queued_other": "{{count}} fotos seleccionadas",
+    "queued_many": "{{count}} fotos seleccionadas",
+    "alt": "Foto de la nota",
+    "delete": "Eliminar foto",
+    "deleteFailed": "No se pudo eliminar la foto.",
+    "loadFailed": "No se pudieron cargar las fotos.",
+    "loading": "Cargando fotos",
+    "uploadFailed": "No se pudo subir la foto.",
+    "uploading": "Subiendo..."
   }
 }

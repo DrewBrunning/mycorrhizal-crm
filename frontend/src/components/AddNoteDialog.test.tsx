@@ -324,3 +324,33 @@ test('initialContent prefills the content and beats a stale session draft', asyn
   });
   expect(onSave).not.toHaveBeenCalled();
 });
+test('uploads picked photos after the note is created', async () => {
+  const calls: string[] = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, options?: { method?: string }) => {
+      calls.push(`${options?.method ?? 'GET'} ${url}`);
+      if (url.includes('/contacts?')) {
+        return { ok: true, json: async () => contactsResponse() };
+      }
+      if (url.includes('/notes/9/images')) {
+        return { ok: true, json: async () => ({ image: { id: 9, note_id: 9 } }) };
+      }
+      if (url.endsWith('/notes') && options?.method === 'POST') {
+        return { ok: true, json: async () => ({ ID: 9, content: 'hi', date: '2026-01-01' }) };
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    }),
+  );
+
+  const onSave = vi.fn().mockResolvedValue({ ID: 9 });
+  renderDialog({ onSave });
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeDefined());
+
+  const file = new File(['x'], 'photo.jpg', { type: 'image/jpeg' });
+  fireEvent.change(screen.getByLabelText('Add photos'), { target: { files: [file] } });
+  fireEvent.change(screen.getByLabelText('Content *'), { target: { value: 'hi' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  await waitFor(() => expect(calls.some((c) => c.includes('/notes/9/images'))).toBe(true));
+});

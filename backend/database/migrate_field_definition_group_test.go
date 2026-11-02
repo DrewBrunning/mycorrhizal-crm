@@ -43,6 +43,7 @@ func TestMigrationFieldDefinitionGroup(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NoError(t, sqlDB.Close())
+	require.NoError(t, MigrateDown(dbPath)) // rolls back 000087_note_images
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000086_activity_images
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000085_carddav_sync_scope
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000084_contact_field_overrides

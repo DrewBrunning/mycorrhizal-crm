@@ -57,6 +57,25 @@ type ImageService[T any, P interface {
 	Quota    UserQuota
 }
 
+// NoteImageService builds the note-image service from config (ADR 0040 slice b).
+func NoteImageService(db *gorm.DB, store imaging.Store, limit, maxPixels int, maxBytes int64, quota UserQuota) *ImageService[models.NoteImage, *models.NoteImage] {
+	if maxPixels <= 0 {
+		maxPixels = imaging.DefaultLimits.MaxPixels
+	}
+	if maxBytes <= 0 {
+		maxBytes = 20 << 20
+	}
+	return &ImageService[models.NoteImage, *models.NoteImage]{
+		DB:       db,
+		Store:    store,
+		Kind:     OwnerKindNote,
+		Limit:    limit,
+		Limits:   imaging.Limits{MaxPixels: maxPixels},
+		MaxBytes: maxBytes,
+		Quota:    quota,
+	}
+}
+
 // ActivityImageService builds the activity-image service from config.
 func ActivityImageService(db *gorm.DB, store imaging.Store, limit, maxPixels int, maxBytes int64, quota UserQuota) *ImageService[models.ActivityImage, *models.ActivityImage] {
 	if maxPixels <= 0 {
@@ -73,6 +92,19 @@ func ActivityImageService(db *gorm.DB, store imaging.Store, limit, maxPixels int
 		Limits:   imaging.Limits{MaxPixels: maxPixels},
 		MaxBytes: maxBytes,
 		Quota:    quota,
+	}
+}
+
+func (s *ImageService[T, P]) auditEntity() string {
+	switch s.Kind {
+	case OwnerKindNote:
+		return models.AuditEntityNote
+	case OwnerKindContact:
+		return models.AuditEntityContact
+	case OwnerKindActivity:
+		return models.AuditEntityActivity
+	default:
+		return models.AuditEntityActivity
 	}
 }
 
@@ -130,7 +162,11 @@ func (s *ImageService[T, P]) Upload(ctx context.Context, userID uint, owner Owne
 		}
 	}
 
-	data, err := io.ReadAll(src)
+	reader := src
+	if s.MaxBytes > 0 {
+		reader = io.LimitReader(src, s.MaxBytes+1)
+	}
+	data, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, imageError(imaging.ErrCorrupt, s.Limits.MaxPixels, s.MaxBytes)
 	}
@@ -182,7 +218,7 @@ func (s *ImageService[T, P]) Upload(ctx context.Context, userID uint, owner Owne
 		_ = s.Store.Remove(userID, thumbName)
 		return nil, apperrors.ErrDatabase("Failed to save image").WithError(err)
 	}
-	models.RecordAuditEvent(s.DB, models.AuditEntityActivity, imageAuditID(owner), models.AuditOpCreate, userID)
+	models.RecordAuditEvent(s.DB, s.auditEntity(), imageAuditID(owner), models.AuditOpCreate, userID)
 	return p, nil
 }
 
@@ -201,7 +237,7 @@ func (s *ImageService[T, P]) Delete(ctx context.Context, userID uint, owner Owne
 		if err := tx.Delete(row).Error; err != nil {
 			return err
 		}
-		models.RecordAuditEvent(tx, models.AuditEntityActivity, imageAuditID(owner), models.AuditOpDelete, userID)
+		models.RecordAuditEvent(tx, s.auditEntity(), imageAuditID(owner), models.AuditOpDelete, userID)
 		return nil
 	}); err != nil {
 		return apperrors.ErrDatabase("Failed to delete image").WithError(err)

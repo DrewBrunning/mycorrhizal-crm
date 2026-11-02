@@ -86,6 +86,11 @@ func deleteUserCascade(tx *gorm.DB, userID uint) error {
 		return err
 	}
 
+	// Delete note images (hard — account gone, no tombstoning needed; ADR 0040).
+	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.NoteImage{}).Error; err != nil {
+		return err
+	}
+
 	// Delete notes (hard)
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.Note{}).Error; err != nil {
 		return err
@@ -382,6 +387,24 @@ func deleteUserCascade(tx *gorm.DB, userID uint) error {
 	}
 
 	return nil
+}
+
+// loadUserImageNames collects both variants' stored names for the given image
+// models, so account deletion can remove files after the rows are gone.
+func loadUserImageNames(db *gorm.DB, userID uint, imageModels ...any) ([]string, error) {
+	var names []string
+	for _, model := range imageModels {
+		var stored, thumbs []string
+		if err := db.Model(model).Where("user_id = ?", userID).Pluck("stored_name", &stored).Error; err != nil {
+			return nil, err
+		}
+		if err := db.Model(model).Where("user_id = ?", userID).Pluck("thumb_name", &thumbs).Error; err != nil {
+			return nil, err
+		}
+		names = append(names, stored...)
+		names = append(names, thumbs...)
+	}
+	return names, nil
 }
 
 // deleteUserImageFiles removes gallery image files owned by a deleted user.

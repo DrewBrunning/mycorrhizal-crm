@@ -145,6 +145,7 @@ var declaredCascadeCoverage = map[string]cascadeBucket{
 	"household_members":                 goCascadeContact,
 	"life_events":                       goCascadeContact,
 	"life_event_suggestion_resolutions": goCascadeContact,
+	"note_images":                       goCascadeContact,
 	"notes":                             goCascadeContact,
 	"notification_deliveries":           goCascadeContact,
 	"occasion_event_attendees":          goCascadeContact,
@@ -429,7 +430,9 @@ func TestDeleteCascadeCoverage_DeleteContactSweepsEveryDeclaredContactTable(t *t
 	require.NoError(t, db.Create(&models.OccasionEventAttendee{UserID: user.ID, EventID: occasionEvent.ID, EntityID: uid, RSVP: models.OccasionEventRSVPPending}).Error)
 	require.NoError(t, db.Create(&models.HouseholdMember{HouseholdID: containers.householdID, UserID: user.ID, MemberVCardUID: uid, Role: "adult"}).Error)
 	require.NoError(t, db.Create(&models.LifeEvent{UserID: user.ID, EntityID: uid, Type: "custom"}).Error)
-	require.NoError(t, db.Create(&models.Note{UserID: user.ID, ContactID: &contact.ID, Content: "n", Date: time.Now()}).Error)
+	note := models.Note{UserID: user.ID, ContactID: &contact.ID, Content: "n", Date: time.Now()}
+	require.NoError(t, db.Create(&note).Error)
+	require.NoError(t, db.Create(&models.NoteImage{ImageFields: models.ImageFields{UserID: user.ID, UUID: "note-image-1", StoredName: "s", ThumbName: "t", MIMEType: "image/jpeg", ThumbMIMEType: "image/jpeg", Width: 1, Height: 1, SizeBytes: 1, ThumbSizeBytes: 1, Sensitivity: models.ImageSensitivityNormal}, NoteID: note.ID}).Error)
 	require.NoError(t, db.Create(&models.Preference{UserID: user.ID, EntityID: uid, Category: "food", Value: "pizza"}).Error)
 	require.NoError(t, db.Create(&models.ReachOutSuggestion{UserID: user.ID, ContactVCardUID: uid, Kind: "organization", OldValue: "a", NewValue: "b", AuditEventID: 1, Status: "pending"}).Error)
 	require.NoError(t, db.Create(&models.RelationshipEdge{UserID: user.ID, SourceID: uid, TargetID: uid, Type: "related_to"}).Error)
@@ -676,6 +679,7 @@ func seedUserCascadeFixtures(t *testing.T, db *gorm.DB, admin, target models.Use
 		scopedCount("life_events", &models.LifeEvent{}, "user_id = ?", target.ID),
 		scopedCount("link_field_types", &models.LinkFieldType{}, "user_id = ?", target.ID),
 		scopedCount("notes", &models.Note{}, "user_id = ?", target.ID),
+		scopedCount("note_images", &models.NoteImage{}, "user_id = ?", target.ID),
 		scopedCount("notification_configs", &models.NotificationConfig{}, "user_id = ?", target.ID),
 		rawCount("notification_deliveries", "reminder_id IN (SELECT id FROM reminders WHERE user_id = ?)", target.ID),
 		scopedCount("occasion_obligations", &models.OccasionObligation{}, "user_id = ?", target.ID),
@@ -727,7 +731,9 @@ func seedUserCascadeFixtures(t *testing.T, db *gorm.DB, admin, target models.Use
 	require.NoError(t, db.Create(&models.OccasionEventAttendee{UserID: target.ID, EventID: userOccasionEvent.ID, EntityID: uid, RSVP: models.OccasionEventRSVPPending}).Error)
 	require.NoError(t, db.Create(&models.HouseholdMember{HouseholdID: containers.householdID, UserID: target.ID, MemberVCardUID: uid, Role: "adult"}).Error)
 	require.NoError(t, db.Create(&models.LifeEvent{UserID: target.ID, EntityID: uid, Type: "custom"}).Error)
-	require.NoError(t, db.Create(&models.Note{UserID: target.ID, ContactID: &contact.ID, Content: "n", Date: time.Now()}).Error)
+	userNote := models.Note{UserID: target.ID, ContactID: &contact.ID, Content: "n", Date: time.Now()}
+	require.NoError(t, db.Create(&userNote).Error)
+	require.NoError(t, db.Create(&models.NoteImage{ImageFields: models.ImageFields{UserID: target.ID, UUID: "note-image-user", StoredName: "s", ThumbName: "t", MIMEType: "image/jpeg", ThumbMIMEType: "image/jpeg", Width: 1, Height: 1, SizeBytes: 1, ThumbSizeBytes: 1, Sensitivity: models.ImageSensitivityNormal}, NoteID: userNote.ID}).Error)
 	require.NoError(t, db.Create(&models.Preference{UserID: target.ID, EntityID: uid, Category: "food", Value: "pizza"}).Error)
 	require.NoError(t, db.Create(&models.ReachOutSuggestion{UserID: target.ID, ContactVCardUID: uid, Kind: "organization", OldValue: "a", NewValue: "b", AuditEventID: 1, Status: "pending"}).Error)
 	require.NoError(t, db.Create(&models.RelationshipEdge{UserID: target.ID, SourceID: uid, TargetID: uid, Type: "related_to"}).Error)

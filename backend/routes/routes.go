@@ -464,6 +464,13 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.POST("/notes", middleware.ValidateJSONMiddleware(&models.NoteInput{}), controllers.CreateUnassignedNote)
 			protected.PUT("/notes/:id", middleware.ValidateJSONMiddleware(&models.NoteInput{}), controllers.UpdateNote)
 			protected.DELETE("/notes/:id", controllers.DeleteNote)
+			// Note images (ADR 0040 slice b, issue #2004). Same owner-first
+			// ownership checks and per-route body cap as activity images.
+			protected.POST("/notes/:id/images", middleware.BodySizeLimitMiddleware(controllers.NoteImageUploadBodyLimit(cfg)), controllers.UploadNoteImage)
+			protected.GET("/notes/:id/images", controllers.ListNoteImages)
+			protected.GET("/notes/:id/images/:image_id/file", func(c *gin.Context) { controllers.DownloadNoteImage(c, false) })
+			protected.GET("/notes/:id/images/:image_id/thumbnail", func(c *gin.Context) { controllers.DownloadNoteImage(c, true) })
+			protected.DELETE("/notes/:id/images/:image_id", controllers.DeleteNoteImage)
 
 			// Activity routes
 			protected.GET("/contacts/:id/activities", controllers.GetActivitiesForContact)

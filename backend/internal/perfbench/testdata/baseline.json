@@ -122,12 +122,12 @@
       "expected_growth": "constant",
       "profiles": {
         "smoke": {
-          "queries": 123,
+          "queries": 124,
           "result_size": 0,
           "row_scale": 350
         },
         "typical": {
-          "queries": 123,
+          "queries": 124,
           "result_size": 0,
           "row_scale": 945
         }
@@ -170,12 +170,12 @@
       "expected_growth": "constant",
       "profiles": {
         "smoke": {
-          "queries": 70,
+          "queries": 72,
           "result_size": 0,
           "row_scale": 350
         },
         "typical": {
-          "queries": 70,
+          "queries": 72,
           "result_size": 0,
           "row_scale": 945
         }

@@ -174,3 +174,58 @@ export async function deleteNote(id: string | number, revision?: number): Promis
     throw await parseErrorResponse(response);
   }
 }
+
+// --- Note images (ADR 0040 slice b, issue #2004) ---
+
+export interface NoteImage {
+  id: number;
+  uuid: string;
+  note_id: number;
+  mime_type: 'image/jpeg' | 'image/png';
+  width: number;
+  height: number;
+  size_bytes: number;
+  sensitivity: 'normal' | 'private' | 'secret';
+  taken_at: string | null;
+  taken_date: string | null;
+  created_at: string;
+  file_url: string;
+  thumbnail_url: string;
+}
+
+export interface NoteImagesResponse {
+  images: NoteImage[];
+  total: number;
+}
+
+export function noteImageSrc(path: string): string {
+  return `${API_BASE_URL.replace(/\/api\/v1$/, '')}${path}`;
+}
+
+export async function getNoteImages(noteId: string | number): Promise<NoteImagesResponse> {
+  const response = await apiFetch(`${API_BASE_URL}/notes/${noteId}/images`, {
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) throw await parseErrorResponse(response);
+  return response.json();
+}
+
+export async function uploadNoteImage(noteId: string | number, file: File): Promise<NoteImage> {
+  const form = new FormData();
+  form.append('file', file);
+  const response = await apiFetch(`${API_BASE_URL}/notes/${noteId}/images`, {
+    method: 'POST',
+    body: form,
+  });
+  if (!response.ok) throw await parseErrorResponse(response);
+  const body: { image: NoteImage } = await response.json();
+  return body.image;
+}
+
+export async function deleteNoteImage(noteId: string | number, imageId: number): Promise<void> {
+  const response = await apiFetch(`${API_BASE_URL}/notes/${noteId}/images/${imageId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) throw await parseErrorResponse(response);
+}

@@ -6037,6 +6037,162 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  # --- Note images (ADR 0040 slice a, issue #1994) ---
+  /notes/{id}/images:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      summary: List a note's images
+      operationId: listNoteImages
+      tags: [Activities]
+      responses:
+        "200":
+          description: The activity's live images, newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [images, total]
+                properties:
+                  images:
+                    type: array
+                    items: { $ref: "#/components/schemas/NoteImage" }
+                  total: { type: integer }
+        "404":
+          description: Note not found (or not owned by the caller).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    post:
+      summary: Upload an image to a note
+      operationId: uploadNoteImage
+      tags: [Activities]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        "201":
+          description: The stored image.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [image]
+                properties:
+                  image: { $ref: "#/components/schemas/NoteImage" }
+        "400":
+          description: Unsupported, corrupt, HEIC or oversized-pixel image.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Note not found (or not owned by the caller).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: The activity already has the maximum number of images.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "413":
+          description: The uploaded file exceeds the configured byte limit.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /notes/{id}/images/{image_id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+      - name: image_id
+        in: path
+        required: true
+        schema: { type: integer }
+    delete:
+      summary: Delete a note image (soft delete)
+      operationId: deleteNoteImage
+      tags: [Activities]
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MessageResponse" }
+        "404":
+          description: Note or image not found.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /notes/{id}/images/{image_id}/file:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+      - name: image_id
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      summary: Download a note image's full variant
+      operationId: downloadNoteImage
+      tags: [Activities]
+      responses:
+        "200":
+          description: The stored image bytes.
+          content:
+            image/jpeg:
+              schema: { type: string, format: binary }
+            image/png:
+              schema: { type: string, format: binary }
+        "304":
+          description: The caller's cached copy is current (If-None-Match matched after the ownership check).
+        "404":
+          description: Note or image not found.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /notes/{id}/images/{image_id}/thumbnail:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+      - name: image_id
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      summary: Download a note image's thumbnail
+      operationId: downloadNoteImageThumbnail
+      tags: [Activities]
+      responses:
+        "200":
+          description: The stored thumbnail bytes.
+          content:
+            image/jpeg:
+              schema: { type: string, format: binary }
+            image/png:
+              schema: { type: string, format: binary }
+        "304":
+          description: The caller's cached copy is current (If-None-Match matched after the ownership check).
+        "404":
+          description: Note or image not found.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
   # --- Activity images (ADR 0040 slice a, issue #1994) ---
   /activities/{id}/images:
     parameters:
@@ -16943,6 +17099,24 @@ components:
         id: { type: integer }
         uuid: { type: string, format: uuid }
         activity_id: { type: integer }
+        mime_type: { type: string, enum: [image/jpeg, image/png] }
+        width: { type: integer }
+        height: { type: integer }
+        size_bytes: { type: integer }
+        sensitivity: { type: string, enum: [normal, private, secret] }
+        taken_at: { type: string, format: date-time, nullable: true }
+        taken_date: { type: string, nullable: true, description: "Camera local wall-clock capture day (YYYY-MM-DD)." }
+        created_at: { type: string, format: date-time }
+        file_url: { type: string, description: Authenticated relative URL of the full variant. }
+        thumbnail_url: { type: string, description: Authenticated relative URL of the thumbnail. }
+    NoteImage:
+      type: object
+      description: One image attached to a note (ADR 0040). Bytes are stored under server-generated UUID names; the original filename is not retained.
+      required: [id, uuid, note_id, mime_type, width, height, size_bytes, sensitivity, created_at, file_url, thumbnail_url]
+      properties:
+        id: { type: integer }
+        uuid: { type: string, format: uuid }
+        note_id: { type: integer }
         mime_type: { type: string, enum: [image/jpeg, image/png] }
         width: { type: integer }
         height: { type: integer }

@@ -29,6 +29,7 @@ import { formatActivityDateRange } from '../utils/activityRange';
 import { calendarDateOnly } from '../utils/localDate';
 import ActivityImageGallery from './ActivityImageGallery';
 import MarkdownText from './MarkdownText';
+import NoteImageGallery from './NoteImageGallery';
 import { timelineMobileDateSx, timelinePhoneSx } from './timelineLayout';
 
 interface ContactTimelineProps {
@@ -316,6 +317,7 @@ export default function ContactTimeline({
                 {item.type === 'activity' && (
                   <ActivityImageGallery activityId={(item.data as Activity).ID} />
                 )}
+                {item.type === 'note' && <NoteImageGallery noteId={(item.data as Note).ID} />}
                 {item.type === 'activity' && (item.data as Activity).location && (
                   <Typography
                     variant="caption"
