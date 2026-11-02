@@ -4,8 +4,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasProgressBarRangeInfo
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -239,6 +241,9 @@ class ActivityFormScreenTest {
             )
         )
         composeTestRule.onNodeWithText("Photos to upload: 1").assertIsDisplayed()
+        composeTestRule.onNode(
+            hasProgressBarRangeInfo(ProgressBarRangeInfo.Indeterminate)
+        ).assertIsDisplayed()
     }
 
     @Test
