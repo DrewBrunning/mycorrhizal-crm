@@ -59,4 +59,52 @@ describe('NoteImageGallery', () => {
     await waitFor(() => expect(getNoteImages).toHaveBeenCalledWith(4));
     expect(container).toBeEmptyDOMElement();
   });
+  it('shows a load error even on a read-only gallery', async () => {
+    getNoteImages.mockRejectedValue(new Error('down'));
+    render(<NoteImageGallery noteId={4} />);
+    expect(await screen.findByText('Could not load photos.')).toBeTruthy();
+  });
+
+  it('uploads selected files, reloads and notifies the parent', async () => {
+    const onChanged = vi.fn();
+    const { container } = render(<NoteImageGallery noteId={4} editable onChanged={onChanged} />);
+    await screen.findByRole('img', { name: /note photo/i });
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File(['x'], 'photo.jpg', { type: 'image/jpeg' });
+    fireEvent.change(input, { target: { files: [file] } });
+    await waitFor(() => expect(uploadNoteImage).toHaveBeenCalledWith(4, file));
+    await waitFor(() => expect(getNoteImages).toHaveBeenCalledTimes(2));
+    expect(onChanged).toHaveBeenCalled();
+  });
+
+  it('shows an upload error', async () => {
+    uploadNoteImage.mockRejectedValue(new Error('upload failed'));
+    const { container } = render(<NoteImageGallery noteId={4} editable />);
+    await screen.findByRole('img', { name: /note photo/i });
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, {
+      target: { files: [new File(['x'], 'photo.jpg', { type: 'image/jpeg' })] },
+    });
+    expect(await screen.findByText('Could not upload the photo.')).toBeTruthy();
+  });
+
+  it('shows a delete error', async () => {
+    deleteNoteImage.mockRejectedValue(new Error('delete failed'));
+    render(<NoteImageGallery noteId={4} editable />);
+    fireEvent.click(await screen.findByRole('button', { name: /delete photo/i }));
+    expect(await screen.findByText('Could not delete the photo.')).toBeTruthy();
+  });
+
+  it('opens the lightbox and shows the full image', async () => {
+    render(<NoteImageGallery noteId={4} />);
+    fireEvent.click(await screen.findByRole('img', { name: /note photo/i }));
+    expect(screen.getByRole('dialog')).toBeTruthy();
+  });
+
+  it('offers an add button on an editable empty gallery', async () => {
+    getNoteImages.mockResolvedValue({ images: [], total: 0 });
+    render(<NoteImageGallery noteId={4} editable />);
+    expect(await screen.findByRole('button', { name: 'Add photos' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Add photos' }));
+  });
 });

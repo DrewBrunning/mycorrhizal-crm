@@ -102,7 +102,7 @@ export default function NoteImageGallery({
     );
   }
 
-  if (!editable && images.length === 0) return null;
+  if (!editable && images.length === 0 && !error) return null;
 
   return (
     <Box sx={{ mt: 1.5 }}>
