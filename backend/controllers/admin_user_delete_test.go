@@ -404,3 +404,36 @@ func TestDeleteUser_RemovesNoteImageFilesFromDisk(t *testing.T) {
 		assert.True(t, os.IsNotExist(statErr), "note image file %q must be removed", name)
 	}
 }
+
+func TestDeleteUser_RemovesContactImageFilesFromDisk(t *testing.T) {
+	db := realDB(t)
+	user := models.User{Username: "del-gallery-img", Email: "del-gallery-img@example.com", Password: "password123"}
+	require.NoError(t, db.Create(&user).Error)
+	contact := models.Contact{UserID: user.ID, Firstname: "Gallery"}
+	require.NoError(t, db.Create(&contact).Error)
+
+	imagesDir := filepath.Join(t.TempDir(), "images")
+	store := imaging.Store{Dir: imagesDir}
+	full, thumb, err := store.Save(user.ID, []byte("full"), []byte("thumb"), "jpg", "jpg")
+	require.NoError(t, err)
+	require.NoError(t, db.Create(&models.ContactImage{ImageFields: models.ImageFields{UserID: user.ID, UUID: "del-contact-image", StoredName: full, ThumbName: thumb, MIMEType: "image/jpeg", ThumbMIMEType: "image/jpeg", Width: 1, Height: 1, SizeBytes: 4, ThumbSizeBytes: 5, Sensitivity: models.ImageSensitivityNormal}, ContactVCardUID: contact.VCardUID}).Error)
+
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.Default()
+	router.Use(func(c *gin.Context) {
+		c.Set("db", db)
+		c.Set("userID", uint(999999))
+		c.Set("cfg", config.Config{ImagesDir: imagesDir})
+		c.Next()
+	})
+	router.DELETE("/users/:id", DeleteUser)
+
+	req, _ := http.NewRequest("DELETE", "/users/"+strconv.Itoa(int(user.ID)), nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	for _, name := range []string{full, thumb} {
+		_, statErr := os.Stat(filepath.Join(imagesDir, "u"+strconv.Itoa(int(user.ID)), name))
+		assert.True(t, os.IsNotExist(statErr), "contact image file %q must be removed", name)
+	}
+}
