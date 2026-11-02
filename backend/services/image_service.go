@@ -130,7 +130,11 @@ func (s *ImageService[T, P]) Upload(ctx context.Context, userID uint, owner Owne
 		}
 	}
 
-	data, err := io.ReadAll(src)
+	reader := src
+	if s.MaxBytes > 0 {
+		reader = io.LimitReader(src, s.MaxBytes+1)
+	}
+	data, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, imageError(imaging.ErrCorrupt, s.Limits.MaxPixels, s.MaxBytes)
 	}

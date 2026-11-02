@@ -98,6 +98,9 @@ export default function AddActivityDialog({
   // ADR 0040 slice (a): images are uploaded after the activity exists, so the
   // dialog keeps the picked files until onSave returns the created activity.
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  // Set only after the activity exists, so a failed image upload and retry
+  // never creates a second activity.
+  const [createdId, setCreatedId] = useState<number | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   // Issue #2007: from a contact's page the dialog can instead add that contact
@@ -174,6 +177,7 @@ export default function AddActivityDialog({
     setSelectedActivityIds([]);
     setExistingError('');
     setSelectedImages([]);
+    setCreatedId(null);
     onClose();
   }, [clearDraft, onClose]);
   // Issue #557 + #805: one discard guard covers every way of leaving a dirty
@@ -296,18 +300,23 @@ export default function AddActivityDialog({
 
     setSaving(true);
     try {
-      const created = await onSave({
-        title,
-        description,
-        location,
-        date,
-        ...(endDate ? { end_date: endDate } : {}),
-        contact_ids: selectedContacts.map((c) => c.ID),
-        ...(prefill?.externalRef ? { external_ref: prefill.externalRef } : {}),
-      });
-      if (created && selectedImages.length > 0) {
+      let activityId = createdId;
+      if (activityId == null) {
+        const created = await onSave({
+          title,
+          description,
+          location,
+          date,
+          ...(endDate ? { end_date: endDate } : {}),
+          contact_ids: selectedContacts.map((c) => c.ID),
+          ...(prefill?.externalRef ? { external_ref: prefill.externalRef } : {}),
+        });
+        activityId = created?.ID ?? null;
+        if (activityId != null) setCreatedId(activityId);
+      }
+      if (activityId != null) {
         for (const file of selectedImages) {
-          await uploadActivityImage(created.ID, file);
+          await uploadActivityImage(activityId, file);
         }
       }
       handleClose();

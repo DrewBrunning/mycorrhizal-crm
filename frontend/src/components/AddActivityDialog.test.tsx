@@ -682,3 +682,35 @@ describe('activity images', () => {
     await waitFor(() => expect(uploadActivityImage).toHaveBeenCalledWith(42, file));
   });
 });
+test('a failed image upload does not create the activity twice on retry', async () => {
+  const onSave = vi.fn().mockResolvedValue({ ID: 42 });
+  vi.mocked(uploadActivityImage)
+    .mockRejectedValueOnce(new Error('upload failed'))
+    .mockResolvedValueOnce({
+      id: 9,
+      uuid: 'i',
+      activity_id: 42,
+      mime_type: 'image/jpeg',
+      width: 1,
+      height: 1,
+      size_bytes: 1,
+      sensitivity: 'normal',
+      taken_at: null,
+      taken_date: null,
+      created_at: '2026-01-01T00:00:00Z',
+      file_url: '/f',
+      thumbnail_url: '/t',
+    });
+  renderDialog({ onSave });
+  await waitFor(() => expect(getContacts).toHaveBeenCalled());
+
+  const file = new File(['x'], 'photo.jpg', { type: 'image/jpeg' });
+  fireEvent.change(screen.getByLabelText('Add photos'), { target: { files: [file] } });
+  fireEvent.change(screen.getByLabelText('Title *'), { target: { value: 'Trip' } });
+  fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+  await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+
+  fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+  await waitFor(() => expect(uploadActivityImage).toHaveBeenCalledTimes(2));
+  expect(onSave).toHaveBeenCalledTimes(1);
+});
