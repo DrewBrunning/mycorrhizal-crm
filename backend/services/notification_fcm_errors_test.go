@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -51,7 +52,7 @@ func TestFCMAccessToken_PrivateKeyErrors(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			sa := newFCMServiceAccount(t)
 			sa.PrivateKey = tc.key
-			token, err := fcmAccessToken(config.Config{}, sa)
+			token, err := fcmAccessToken(context.Background(), config.Config{}, sa)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tc.wantErr)
 			assert.Empty(t, token)
@@ -80,7 +81,7 @@ func TestFCMAccessToken_TokenEndpointFailures(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			fcmTestEndpoints(t, tc.handler, func(http.ResponseWriter, *http.Request) {})
-			token, err := fcmAccessToken(config.Config{}, sa)
+			token, err := fcmAccessToken(context.Background(), config.Config{}, sa)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tc.wantErr)
 			assert.Empty(t, token)
@@ -96,7 +97,7 @@ func TestSendFCMMessage_Failures(t *testing.T) {
 			w.WriteHeader(http.StatusInternalServerError)
 			_, _ = w.Write([]byte(" backend down "))
 		})
-		stale, err := sendFCMMessage(config.Config{}, sa, "device", "T", "B", nil)
+		stale, err := sendFCMMessage(context.Background(), config.Config{}, sa, "device", "T", "B", nil)
 		require.EqualError(t, err, "unexpected status 500 from FCM: backend down")
 		assert.False(t, stale, "a 5xx is a delivery error, not a stale registration")
 	})
@@ -106,7 +107,7 @@ func TestSendFCMMessage_Failures(t *testing.T) {
 		fcmTestEndpoints(t, func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusForbidden)
 		}, func(http.ResponseWriter, *http.Request) { sent = true })
-		stale, err := sendFCMMessage(config.Config{}, sa, "device", "T", "B", nil)
+		stale, err := sendFCMMessage(context.Background(), config.Config{}, sa, "device", "T", "B", nil)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "unexpected status 403 from Google token endpoint")
 		assert.False(t, stale)
@@ -116,7 +117,7 @@ func TestSendFCMMessage_Failures(t *testing.T) {
 	t.Run("send transport failure", func(t *testing.T) {
 		fcmTestEndpoints(t, okToken, func(http.ResponseWriter, *http.Request) {})
 		fcmSendEndpoint = "http://127.0.0.1:1" // nothing listens; restored by the helper's cleanup
-		stale, err := sendFCMMessage(config.Config{}, sa, "device", "T", "B", nil)
+		stale, err := sendFCMMessage(context.Background(), config.Config{}, sa, "device", "T", "B", nil)
 		require.Error(t, err)
 		assert.False(t, stale)
 	})

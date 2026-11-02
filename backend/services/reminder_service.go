@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"mycorrhizal/config"
@@ -422,7 +423,7 @@ func unpad(s string) string {
 }
 
 // Send email using Resend with daily reminders and upcoming birthdays
-func sendReminderEmail(user models.User, reminders []models.Reminder, config config.Config, db *gorm.DB) error {
+func sendReminderEmail(ctx context.Context, user models.User, reminders []models.Reminder, config config.Config, db *gorm.DB) error {
 	if user.Email == "" {
 		logger.Warn().Uint("user_id", user.ID).Msg("Skipping reminder email because user email is missing")
 		return nil
@@ -517,7 +518,7 @@ func sendReminderEmail(user models.User, reminders []models.Reminder, config con
 
 	logger.Debug().Int("reminder_count", len(reminderItems)).Int("birthday_count", len(birthdayItems)).Uint("user_id", user.ID).Str("language", lang).Msg("Sending reminder email")
 
-	if err := SendEmail(config, EmailMessage{
+	if err := SendEmail(ctx, config, EmailMessage{
 		To:      user.Email,
 		Subject: i18n.T(lang, "email.reminder.subject"),
 		HTML:    htmlContent,

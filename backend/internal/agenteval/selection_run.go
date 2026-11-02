@@ -53,7 +53,7 @@ func ResolveCommit(root, ref string) (string, error) {
 	if strings.HasPrefix(ref, "-") || strings.ContainsAny(ref, " \t\n") {
 		return "", fmt.Errorf("invalid base ref %q", ref)
 	}
-	out, err := exec.Command("git", "-C", root, "rev-parse", "--verify", ref+"^{commit}").Output() // #nosec G204 -- ref is validated above
+	out, err := exec.CommandContext(context.Background(), "git", "-C", root, "rev-parse", "--verify", ref+"^{commit}").Output() // #nosec G204 -- ref is validated above
 	if err != nil {
 		return "", fmt.Errorf("resolve base ref %q: %w", ref, err)
 	}

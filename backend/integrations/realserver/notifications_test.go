@@ -2,6 +2,7 @@ package realserver
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -44,7 +45,7 @@ func TestNtfy_DeliveredMessageIsReadableFromServer(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	require.NoError(t, services.TestNotificationChannel(db, testCfg(), user, models.ChannelNtfy))
+	require.NoError(t, services.TestNotificationChannel(context.Background(), db, testCfg(), user, models.ChannelNtfy))
 
 	resp, err := http.Get(base + "/" + topic + "/json?poll=1&since=all") //nolint:gosec,noctx // fixed local test server
 	require.NoError(t, err)
@@ -80,7 +81,7 @@ func TestNtfy_RejectedRequestIsAnError(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	err = services.TestNotificationChannel(db, testCfg(), user, models.ChannelNtfy)
+	err = services.TestNotificationChannel(context.Background(), db, testCfg(), user, models.ChannelNtfy)
 	require.Error(t, err, "a non-2xx from ntfy must surface as an error")
 	assert.Contains(t, err.Error(), "unexpected status")
 }
@@ -132,7 +133,7 @@ func TestGotify_DeliveredMessageIsReadableFromServer(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	require.NoError(t, services.TestNotificationChannel(db, testCfg(), user, models.ChannelGotify))
+	require.NoError(t, services.TestNotificationChannel(context.Background(), db, testCfg(), user, models.ChannelGotify))
 
 	var page struct {
 		Messages []gotifyMessage `json:"messages"`
@@ -158,7 +159,7 @@ func TestGotify_WrongTokenIsRejected(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	err = services.TestNotificationChannel(db, testCfg(), user, models.ChannelGotify)
+	err = services.TestNotificationChannel(context.Background(), db, testCfg(), user, models.ChannelGotify)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "401")
 }

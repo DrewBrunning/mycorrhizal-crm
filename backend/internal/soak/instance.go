@@ -67,7 +67,7 @@ func StartInstance(ctx context.Context, dir string) (*Instance, error) {
 	// gin prints every route at registration in debug mode; the soak output
 	// is a report, not a route dump.
 	gin.SetMode(gin.ReleaseMode)
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	ln, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		return nil, fmt.Errorf("listen: %w", err)
 	}

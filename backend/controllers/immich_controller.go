@@ -163,7 +163,7 @@ func TestImmichConnection(c *gin.Context) {
 	}
 
 	cfg := currentConfig(c)
-	result, err := services.TestImmichConnection(db, cfg, userID)
+	result, err := services.TestImmichConnection(c.Request.Context(), db, cfg, userID)
 	if err != nil {
 		abortImmichServiceError(c, err)
 		return
@@ -183,7 +183,7 @@ func ListImmichPeople(c *gin.Context) {
 	}
 
 	cfg := currentConfig(c)
-	people, err := services.ListImmichPeopleForUser(db, cfg, userID)
+	people, err := services.ListImmichPeopleForUser(c.Request.Context(), db, cfg, userID)
 	if err != nil {
 		abortImmichServiceError(c, err)
 		return
@@ -297,7 +297,7 @@ func GetImmichContactSummary(c *gin.Context) {
 	}
 
 	cfg := currentConfig(c)
-	summary := services.FetchImmichPersonSummary(db, cfg, userID, &identity)
+	summary := services.FetchImmichPersonSummary(c.Request.Context(), db, cfg, userID, &identity)
 	c.JSON(http.StatusOK, gin.H{"summary": summary})
 }
 
@@ -312,7 +312,7 @@ func SyncImmichNow(c *gin.Context) {
 	}
 
 	cfg := currentConfig(c)
-	if err := services.SyncImmichForUser(db, cfg, userID); err != nil {
+	if err := services.SyncImmichForUser(c.Request.Context(), db, cfg, userID); err != nil {
 		abortImmichServiceError(c, err)
 		return
 	}
@@ -333,7 +333,7 @@ func GetImmichThumbnail(c *gin.Context) {
 
 	contactUID := c.Param("vcard_uid")
 	cfg := currentConfig(c)
-	body, contentType, err := services.FetchImmichThumbnail(db, cfg, userID, contactUID)
+	body, contentType, err := services.FetchImmichThumbnail(c.Request.Context(), db, cfg, userID, contactUID)
 	if err != nil {
 		abortImmichServiceError(c, err)
 		return
@@ -354,7 +354,7 @@ func ListImmichContactAssets(c *gin.Context) {
 
 	contactUID := c.Param("vcard_uid")
 	cfg := currentConfig(c)
-	assets, err := services.ListImmichRecentAssetsForContact(db, cfg, userID, contactUID)
+	assets, err := services.ListImmichRecentAssetsForContact(c.Request.Context(), db, cfg, userID, contactUID)
 	if err != nil {
 		abortImmichServiceError(c, err)
 		return
@@ -375,7 +375,7 @@ func GetImmichAssetImage(c *gin.Context) {
 	contactUID := c.Param("vcard_uid")
 	assetID := c.Param("asset_id")
 	cfg := currentConfig(c)
-	body, contentType, err := services.FetchImmichAssetImage(db, cfg, userID, contactUID, assetID)
+	body, contentType, err := services.FetchImmichAssetImage(c.Request.Context(), db, cfg, userID, contactUID, assetID)
 	if err != nil {
 		abortImmichServiceError(c, err)
 		return

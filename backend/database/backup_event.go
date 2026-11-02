@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"os"
@@ -39,7 +40,7 @@ func RecordOperatorBackupCompleted(dbPath, snapshotPath string) error {
 	}
 
 	now := time.Now().UTC()
-	_, err = sqlDB.Exec(
+	_, err = sqlDB.ExecContext(context.Background(),
 		`INSERT INTO system_events (created_at, occurred_at, event_type, severity, component, operation, result, detail)
 		 VALUES (?, ?, 'backup_completed', 'info', 'backup', 'operator_backup', 'success', ?)`,
 		now, now, fmt.Sprintf("path=%s bytes=%d", logger.SanitizeLogField(snapshotPath), size),

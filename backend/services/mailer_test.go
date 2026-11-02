@@ -3,6 +3,7 @@ package services
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"net"
 	"strings"
 	"testing"
@@ -40,7 +41,7 @@ func TestSendEmail_LogsMaskRecipientAddress(t *testing.T) {
 
 	// No channel configured -> the "not sent" warning path, which names the
 	// recipient. This is the exact line the pre-fix real-log capture caught.
-	err := SendEmail(config.Config{}, EmailMessage{
+	err := SendEmail(context.Background(), config.Config{}, EmailMessage{
 		To:      "sensitive.person@recipient.example",
 		Subject: "hi",
 		HTML:    "<p>hi</p>",
@@ -150,7 +151,7 @@ func startRecordingSMTPServer(t *testing.T) (host string, port int, got <-chan s
 // consulted.
 func TestSendEmail_NoRecipient(t *testing.T) {
 	cfg := config.Config{UseSMTP: true, SMTPHost: "127.0.0.1", SMTPPort: 1, SMTPFromEmail: "noreply@example.com"}
-	err := SendEmail(cfg, EmailMessage{To: "", Subject: "hi", HTML: "<p>hi</p>"})
+	err := SendEmail(context.Background(), cfg, EmailMessage{To: "", Subject: "hi", HTML: "<p>hi</p>"})
 	assert.NoError(t, err)
 }
 
@@ -158,7 +159,7 @@ func TestSendEmail_NoRecipient(t *testing.T) {
 // when neither Resend nor SMTP is configured.
 func TestSendEmail_NoChannelConfigured(t *testing.T) {
 	cfg := config.Config{}
-	err := SendEmail(cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
+	err := SendEmail(context.Background(), cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
 	assert.NoError(t, err)
 }
 
@@ -171,7 +172,7 @@ func TestSendEmail_SMTPFailure(t *testing.T) {
 		SMTPPort:      1, // nothing listens here: connection refused, fast failure
 		SMTPFromEmail: "noreply@example.com",
 	}
-	err := SendEmail(cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
+	err := SendEmail(context.Background(), cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "smtp:")
 	assert.Contains(t, err.Error(), "all email channels failed")
@@ -187,7 +188,7 @@ func TestSendEmail_SMTPSuccess(t *testing.T) {
 		SMTPPort:      port,
 		SMTPFromEmail: "noreply@example.com",
 	}
-	err := SendEmail(cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
+	err := SendEmail(context.Background(), cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
 	require.NoError(t, err)
 	cap := <-got
 	assert.Contains(t, cap.MailFrom, "noreply@example.com")
@@ -207,7 +208,7 @@ func TestSendViaSMTP_Success(t *testing.T) {
 		SMTPPort:      port,
 		SMTPFromEmail: "noreply@example.com",
 	}
-	err := sendViaSMTP(cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
+	err := sendViaSMTP(context.Background(), cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
 	require.NoError(t, err)
 	cap := <-got
 	assert.Contains(t, cap.MailFrom, "noreply@example.com")
@@ -231,7 +232,7 @@ func TestSendViaSMTP_SuccessWithAuth(t *testing.T) {
 		SMTPUsername:  "smtpuser",
 		SMTPPassword:  "smtppass",
 	}
-	err := sendViaSMTP(cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
+	err := sendViaSMTP(context.Background(), cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
 	require.NoError(t, err)
 	cap := <-got
 	assert.Contains(t, cap.MailFrom, "noreply@example.com")
@@ -252,7 +253,7 @@ func TestSendViaSMTP_ConnectionRefused(t *testing.T) {
 		SMTPPort:      1,
 		SMTPFromEmail: "noreply@example.com",
 	}
-	err := sendViaSMTP(cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
+	err := sendViaSMTP(context.Background(), cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
 	require.ErrorContains(t, err, "smtp dial:", "the refused connect must surface through the smtp dial wrapper")
 }
 
@@ -266,7 +267,7 @@ func TestSendViaSMTP_ImplicitTLSConnectionRefused(t *testing.T) {
 		SMTPFromEmail: "noreply@example.com",
 		SMTPUseTLS:    true,
 	}
-	err := sendViaSMTP(cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
+	err := sendViaSMTP(context.Background(), cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "tls dial:")
 }
@@ -279,7 +280,7 @@ func TestSendViaSMTP_ImplicitTLSConnectionRefused(t *testing.T) {
 // success/post-dial branch has no test seam (same class of limitation as
 // sendViaResend).
 func TestSendSMTPImplicitTLS_DialFailure(t *testing.T) {
-	err := sendSMTPImplicitTLS(config.Config{SMTPHost: "127.0.0.1"}, "127.0.0.1:1", nil, "user@example.com", []byte("body"))
+	err := sendSMTPImplicitTLS(context.Background(), config.Config{SMTPHost: "127.0.0.1"}, "127.0.0.1:1", nil, "user@example.com", []byte("body"))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "tls dial:")
 }
@@ -342,7 +343,7 @@ func TestSendEmail_RejectsCRLFInRecipient(t *testing.T) {
 		SMTPPort:      1, // nothing listens here — a real attempt would fail fast anyway
 		SMTPFromEmail: "noreply@example.com",
 	}
-	err := SendEmail(cfg, EmailMessage{
+	err := SendEmail(context.Background(), cfg, EmailMessage{
 		To:      "user@example.com\r\nBcc: attacker@evil.example",
 		Subject: "hi",
 		HTML:    "<p>hi</p>",

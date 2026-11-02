@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -86,7 +87,7 @@ func TestConfirmVCFInjectedDBErrorFailsClosed(t *testing.T) {
 	injected := errors.New("injected db failure mid-import")
 	faults.ArmError(faultImportConfirm, injected)
 
-	result, appErr := m.ConfirmVCF(db, 1, req, cfg, log)
+	result, appErr := m.ConfirmVCF(context.Background(), db, 1, req, cfg, log)
 	assert.Nil(t, result)
 	require.NotNil(t, appErr)
 	assert.ErrorIs(t, appErr, injected)
@@ -96,7 +97,7 @@ func TestConfirmVCFInjectedDBErrorFailsClosed(t *testing.T) {
 	assert.Equal(t, int64(0), count, "a failed-closed VCF confirm must not leave partial contact rows")
 
 	faults.Disarm(faultImportConfirm)
-	result, appErr = m.ConfirmVCF(db, 1, req, cfg, log)
+	result, appErr = m.ConfirmVCF(context.Background(), db, 1, req, cfg, log)
 	require.Nil(t, appErr)
 	require.NotNil(t, result)
 	assert.Equal(t, 1, result.Created)

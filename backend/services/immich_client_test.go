@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -42,7 +43,7 @@ func TestImmichClientDo_StatusClassification(t *testing.T) {
 			client, err := NewImmichClient(server.URL, "k", false)
 			require.NoError(t, err)
 
-			_, err = client.ListPeople()
+			_, err = client.ListPeople(context.Background())
 			require.ErrorIs(t, err, tc.wantErr, "expected %v, got %v", tc.wantErr, err)
 			assert.False(t, errors.Is(err, ErrImmichUnreachable), "a real HTTP response must never map to ErrImmichUnreachable")
 		})
@@ -63,7 +64,7 @@ func TestImmichClientDo_RequestFailedPreservesStatus(t *testing.T) {
 	client, err := NewImmichClient(server.URL, "k", false)
 	require.NoError(t, err)
 
-	_, err = client.ListPeople()
+	_, err = client.ListPeople(context.Background())
 	require.ErrorIs(t, err, ErrImmichRequestFailed)
 
 	var reqErr *ImmichRequestError
@@ -84,7 +85,7 @@ func TestImmichClientDo_TransportFailureStillUnreachable(t *testing.T) {
 	client, err := NewImmichClient(url, "k", false)
 	require.NoError(t, err)
 
-	_, err = client.ListPeople()
+	_, err = client.ListPeople(context.Background())
 	require.ErrorIs(t, err, ErrImmichUnreachable)
 	assert.False(t, errors.Is(err, ErrImmichRequestFailed))
 }
@@ -108,7 +109,7 @@ func TestImmichClientDo_MidPaginationFailureSurfaces(t *testing.T) {
 	client, err := NewImmichClient(server.URL, "k", false)
 	require.NoError(t, err)
 
-	people, err := client.ListPeople()
+	people, err := client.ListPeople(context.Background())
 	require.ErrorIs(t, err, ErrImmichRequestFailed)
 	assert.Nil(t, people, "a mid-pagination failure must not return a partial list")
 }

@@ -83,7 +83,9 @@ func TestNotificationDelivery_InjectedFaultRecordsFailureAndKeepsReminderDue(t *
 	reminder := newDueReminder(t, db, user, "Call Jane")
 
 	originalSender := sendReminderEmailFn
-	sendReminderEmailFn = func(u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error { return nil }
+	sendReminderEmailFn = func(_ context.Context, u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error {
+		return nil
+	}
 	t.Cleanup(func() { sendReminderEmailFn = originalSender })
 
 	faults.ArmError(faultNotificationDelivery, errors.New("ntfy endpoint unreachable"))
@@ -136,7 +138,9 @@ func TestNotificationDelivery_InjectedFaultOnWebPushKeepsSubscription(t *testing
 	require.NoError(t, db.Create(&sub).Error)
 
 	originalSender := sendReminderEmailFn
-	sendReminderEmailFn = func(u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error { return nil }
+	sendReminderEmailFn = func(_ context.Context, u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error {
+		return nil
+	}
 	t.Cleanup(func() { sendReminderEmailFn = originalSender })
 
 	faults.ArmError(faultNotificationDelivery, errors.New("push service unreachable"))

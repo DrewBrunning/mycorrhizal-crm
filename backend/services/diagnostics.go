@@ -102,7 +102,7 @@ func RunDiagnostics(ctx context.Context, db *gorm.DB, cfg config.Config) Diagnos
 
 	out.Checks = append(out.Checks,
 		diagnosticsConfig(cfg),
-		diagnosticsDatabase(db),
+		diagnosticsDatabase(ctx, db),
 		diagnosticsMigrations(db),
 		diagnosticsFilesystem(cfg),
 		diagnosticsBackup(db, cfg),
@@ -166,11 +166,11 @@ func diagnosticsConfig(cfg config.Config) DiagnosticCheck {
 // diagnosticsDatabase reuses liveDatabaseReadCheck (the same read probe
 // GET /health runs). A database read failure is the only check that is an
 // outright error — the app cannot function without its database.
-func diagnosticsDatabase(db *gorm.DB) DiagnosticCheck {
+func diagnosticsDatabase(ctx context.Context, db *gorm.DB) DiagnosticCheck {
 	if db == nil {
 		return DiagnosticCheck{Name: "database", Status: DiagStatusError, Message: "no database handle"}
 	}
-	d := liveDatabaseReadCheck(db)
+	d := liveDatabaseReadCheck(ctx, db)
 	if d.Status == DeepStatusUnhealthy {
 		return DiagnosticCheck{Name: "database", Status: DiagStatusError, Message: "database unreachable"}
 	}

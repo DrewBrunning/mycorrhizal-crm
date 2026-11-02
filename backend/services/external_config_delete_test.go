@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"testing"
 
 	"mycorrhizal/internal/dbtest"
@@ -160,7 +161,7 @@ func TestListImmichPeopleForUser(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	people, err := ListImmichPeopleForUser(db, cfg, user.ID)
+	people, err := ListImmichPeopleForUser(context.Background(), db, cfg, user.ID)
 	require.NoError(t, err)
 	require.Len(t, people, 2)
 	assert.Equal(t, "sekret", fake.LastAPIKey, "the client must send the user's API key")
@@ -170,7 +171,7 @@ func TestListImmichPeopleForUser_NoConnection(t *testing.T) {
 	db, user := setupExternalConfigTestDB(t)
 	cfg := immichTestConfig()
 
-	_, err := ListImmichPeopleForUser(db, cfg, user.ID)
+	_, err := ListImmichPeopleForUser(context.Background(), db, cfg, user.ID)
 	require.ErrorIs(t, err, ErrImmichUnauthorized, "expected an unauthorized sentinel for a missing connection")
 }
 
@@ -191,7 +192,7 @@ func TestFetchImmichThumbnail(t *testing.T) {
 	cfg := immichTestConfig()
 	connectImmichForUser(t, db, user.ID, contact.VCardUID, fake.URL(), "sekret")
 
-	data, contentType, err := FetchImmichThumbnail(db, cfg, user.ID, contact.VCardUID)
+	data, contentType, err := FetchImmichThumbnail(context.Background(), db, cfg, user.ID, contact.VCardUID)
 	require.NoError(t, err)
 	assert.Equal(t, "fake-jpeg-bytes", string(data))
 	assert.Equal(t, "image/jpeg", contentType)
@@ -203,6 +204,6 @@ func TestFetchImmichThumbnail_UnlinkedContact(t *testing.T) {
 	require.NoError(t, db.Create(&contact).Error)
 
 	cfg := immichTestConfig()
-	_, _, err := FetchImmichThumbnail(db, cfg, user.ID, contact.VCardUID)
+	_, _, err := FetchImmichThumbnail(context.Background(), db, cfg, user.ID, contact.VCardUID)
 	require.ErrorIs(t, err, ErrImmichNotFound, "a contact with no Immich identity link must not be fetchable")
 }

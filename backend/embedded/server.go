@@ -297,7 +297,7 @@ func Start(ctx context.Context, cfg *config.Config, opts Options) (*Server, erro
 			sched.Stop()
 			return fail(errors.New("embedded: Options.Listener is required (embedded serves only the caller's listener)"))
 		}
-		listener, err = net.Listen("tcp", fmt.Sprintf(":%s", cfg.Port))
+		listener, err = (&net.ListenConfig{}).Listen(context.Background(), "tcp", fmt.Sprintf(":%s", cfg.Port))
 		if err != nil {
 			sched.Stop()
 			return fail(fmt.Errorf("listening on :%s: %w", cfg.Port, err))

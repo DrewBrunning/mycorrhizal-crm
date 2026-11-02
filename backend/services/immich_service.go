@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"mycorrhizal/config"
@@ -212,13 +213,13 @@ func buildImmichClient(db *gorm.DB, cfg config.Config, userID uint) (*ImmichClie
 // exactly like every other Immich endpoint. A populated, non-error result
 // with OK:false is a *successful* diagnosis of an upstream problem, not an
 // application error — this always responds 200.
-func TestImmichConnection(db *gorm.DB, cfg config.Config, userID uint) (*ImmichConnectionTestResult, error) {
+func TestImmichConnection(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint) (*ImmichConnectionTestResult, error) {
 	client, _, err := buildImmichClient(db, cfg, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := client.Ping(); err != nil {
+	if err := client.Ping(ctx); err != nil {
 		// Ping is expected to be unauthenticated on real Immich, but if a
 		// proxy or version in front of it gates on the key anyway, an
 		// unauthorized response is still an auth problem, not a
@@ -232,7 +233,7 @@ func TestImmichConnection(db *gorm.DB, cfg config.Config, userID uint) (*ImmichC
 		return diagnoseImmichConnectionFailure(stage, err), nil
 	}
 
-	user, err := client.GetMyUser()
+	user, err := client.GetMyUser(ctx)
 	if err != nil {
 		logger.Warn().Err(err).Uint("user_id", userID).Msg("Immich test connection: auth failed")
 		return diagnoseImmichConnectionFailure("auth", err), nil
@@ -272,12 +273,12 @@ func diagnoseImmichConnectionFailure(stage string, err error) *ImmichConnectionT
 
 // ListImmichPeopleForUser browses every person in the user's Immich instance
 // (the L1 picker). Requires a configured connection.
-func ListImmichPeopleForUser(db *gorm.DB, cfg config.Config, userID uint) ([]ImmichPerson, error) {
+func ListImmichPeopleForUser(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint) ([]ImmichPerson, error) {
 	client, _, err := buildImmichClient(db, cfg, userID)
 	if err != nil {
 		return nil, err
 	}
-	return client.ListPeople()
+	return client.ListPeople(ctx)
 }
 
 // LinkImmichPerson persists a person link as an ExternalIdentity (system:
@@ -317,7 +318,7 @@ func LinkImmichPerson(db *gorm.DB, cfg config.Config, userID uint, contactUID, p
 // the last successful sync) rather than erroring the contact page (T16 trap:
 // "an Immich instance that is down must degrade to no-photos rather than
 // erroring").
-func FetchImmichPersonSummary(db *gorm.DB, cfg config.Config, userID uint, identity *models.ExternalIdentity) *ImmichPersonSummary {
+func FetchImmichPersonSummary(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint, identity *models.ExternalIdentity) *ImmichPersonSummary {
 	summary := &ImmichPersonSummary{
 		Identity: *identity,
 	}
@@ -341,13 +342,13 @@ func FetchImmichPersonSummary(db *gorm.DB, cfg config.Config, userID uint, ident
 		return summary
 	}
 
-	count, err := client.GetStatistics(identity.ExternalID)
+	count, err := client.GetStatistics(ctx, identity.ExternalID)
 	if err != nil {
 		return summary
 	}
 	summary.PhotoCount = count
 
-	assets, err := client.RecentAssets(identity.ExternalID, 1)
+	assets, err := client.RecentAssets(ctx, identity.ExternalID, 1)
 	if err != nil {
 		return summary
 	}
@@ -395,7 +396,7 @@ func parseMetadataTime(v any) (time.Time, bool) {
 // Failure policy: a whole-failure (unreachable instance / expired key) records
 // sync_status=error and stops; a single person's failure (e.g. unlinked
 // upstream) is logged and skipped so one bad person cannot take down the rest.
-func SyncImmichForUser(db *gorm.DB, cfg config.Config, userID uint) error {
+func SyncImmichForUser(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint) error {
 	ic, err := GetImmichConfigForUser(db, userID)
 	if err != nil {
 		return err
@@ -421,7 +422,7 @@ func SyncImmichForUser(db *gorm.DB, cfg config.Config, userID uint) error {
 
 	for i := range identities {
 		identity := &identities[i]
-		if err := syncImmichPerson(db, client, userID, identity, now); err != nil {
+		if err := syncImmichPerson(ctx, db, client, userID, identity, now); err != nil {
 			logger.Warn().Err(err).Uint("user_id", userID).Str("person_id", identity.ExternalID).
 				Msg("Immich sync: skipping person (will retry next run)")
 			if firstErr == nil {
@@ -438,12 +439,12 @@ func SyncImmichForUser(db *gorm.DB, cfg config.Config, userID uint) error {
 // syncImmichPerson syncs one linked person: fetch statistics + recent
 // appearances, upsert ExternalActivity rows (deduped on the natural key), and
 // refresh the identity's cached metadata + sync lifecycle.
-func syncImmichPerson(db *gorm.DB, client *ImmichClient, userID uint, identity *models.ExternalIdentity, now time.Time) error {
-	stats, err := client.GetStatistics(identity.ExternalID)
+func syncImmichPerson(ctx context.Context, db *gorm.DB, client *ImmichClient, userID uint, identity *models.ExternalIdentity, now time.Time) error {
+	stats, err := client.GetStatistics(ctx, identity.ExternalID)
 	if err != nil {
 		return err
 	}
-	assets, err := client.RecentAssets(identity.ExternalID, immichSyncLimitAssets)
+	assets, err := client.RecentAssets(ctx, identity.ExternalID, immichSyncLimitAssets)
 	if err != nil {
 		return err
 	}
@@ -550,8 +551,11 @@ func SyncImmichWithRateLimit(db *gorm.DB, cfg config.Config) {
 		logger.Error().Err(err).Msg("Immich sync: failed to load enabled connections")
 		return
 	}
+	// Scheduled work has no request context; the background context is the
+	// run-scoped context for the whole sweep.
+	ctx := context.Background()
 	for _, ic := range configs {
-		if err := SyncImmichForUser(db, cfg, ic.UserID); err != nil {
+		if err := SyncImmichForUser(ctx, db, cfg, ic.UserID); err != nil {
 			logger.Warn().Err(err).Uint("user_id", ic.UserID).Msg("Immich sync: user sync failed")
 		}
 	}
@@ -577,7 +581,7 @@ func GetImmichIdentityForContact(db *gorm.DB, userID uint, contactUID string) (*
 // the fetch runs with the user's own connection credentials. The caller
 // (controller) applies the same SVG rejection + Content-Disposition/CSP
 // hardening as the existing image proxy.
-func FetchImmichThumbnail(db *gorm.DB, cfg config.Config, userID uint, contactUID string) ([]byte, string, error) {
+func FetchImmichThumbnail(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint, contactUID string) ([]byte, string, error) {
 	identity, err := GetImmichIdentityForContact(db, userID, contactUID)
 	if err != nil {
 		return nil, "", err
@@ -586,7 +590,7 @@ func FetchImmichThumbnail(db *gorm.DB, cfg config.Config, userID uint, contactUI
 	if err != nil {
 		return nil, "", err
 	}
-	return client.Thumbnail(identity.ExternalID)
+	return client.Thumbnail(ctx, identity.ExternalID)
 }
 
 // ImmichAssetSummary is the slice of an Immich asset the contact-photo picker
@@ -606,7 +610,7 @@ const immichPhotoPickerAssetLimit = 30
 // photos (id + occurred_at) for the contact-photo picker (browse-then-pick,
 // T16 follow-on): requires an existing link — the same trust boundary as
 // FetchImmichThumbnail, reusing the identity lookup.
-func ListImmichRecentAssetsForContact(db *gorm.DB, cfg config.Config, userID uint, contactUID string) ([]ImmichAssetSummary, error) {
+func ListImmichRecentAssetsForContact(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint, contactUID string) ([]ImmichAssetSummary, error) {
 	identity, err := GetImmichIdentityForContact(db, userID, contactUID)
 	if err != nil {
 		return nil, err
@@ -615,7 +619,7 @@ func ListImmichRecentAssetsForContact(db *gorm.DB, cfg config.Config, userID uin
 	if err != nil {
 		return nil, err
 	}
-	assets, err := client.RecentAssets(identity.ExternalID, immichPhotoPickerAssetLimit)
+	assets, err := client.RecentAssets(ctx, identity.ExternalID, immichPhotoPickerAssetLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -633,7 +637,7 @@ func ListImmichRecentAssetsForContact(db *gorm.DB, cfg config.Config, userID uin
 // contact, so an arbitrary assetID under that key is "can see any of my own
 // Immich photos," not a cross-user access issue; the link-exists check is
 // what gates the feature being reachable at all.
-func FetchImmichAssetImage(db *gorm.DB, cfg config.Config, userID uint, contactUID, assetID string) ([]byte, string, error) {
+func FetchImmichAssetImage(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint, contactUID, assetID string) ([]byte, string, error) {
 	if _, err := GetImmichIdentityForContact(db, userID, contactUID); err != nil {
 		return nil, "", err
 	}
@@ -641,5 +645,5 @@ func FetchImmichAssetImage(db *gorm.DB, cfg config.Config, userID uint, contactU
 	if err != nil {
 		return nil, "", err
 	}
-	return client.AssetThumbnail(assetID)
+	return client.AssetThumbnail(ctx, assetID)
 }

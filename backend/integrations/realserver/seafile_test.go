@@ -79,10 +79,10 @@ func seedSeafile(t *testing.T) *seafileFixture {
 func TestSeafile_ConnectionAndBrowseAgainstRealServer(t *testing.T) {
 	f := seedSeafile(t)
 
-	require.NoError(t, f.client.Ping(), "Test Connection stage 1 (unauthenticated)")
-	require.NoError(t, f.client.PingAuth(), "Test Connection stage 2 (token)")
+	require.NoError(t, f.client.Ping(context.Background()), "Test Connection stage 1 (unauthenticated)")
+	require.NoError(t, f.client.PingAuth(context.Background()), "Test Connection stage 2 (token)")
 
-	libs, err := f.client.ListLibraries()
+	libs, err := f.client.ListLibraries(context.Background())
 	require.NoError(t, err)
 	var lib *services.SeafileLibrary
 	for i := range libs {
@@ -93,13 +93,13 @@ func TestSeafile_ConnectionAndBrowseAgainstRealServer(t *testing.T) {
 	require.NotNil(t, lib, "the seeded library must be listed (got %d)", len(libs))
 	assert.Equal(t, f.library, lib.Name)
 
-	root, err := f.client.ListDir(f.repoID, "/")
+	root, err := f.client.ListDir(context.Background(), f.repoID, "/")
 	require.NoError(t, err)
 	require.Len(t, root, 1)
 	assert.Equal(t, "Docs", root[0].Name)
 	assert.Equal(t, "dir", root[0].Type)
 
-	docs, err := f.client.ListDir(f.repoID, "/Docs")
+	docs, err := f.client.ListDir(context.Background(), f.repoID, "/Docs")
 	require.NoError(t, err)
 	require.Len(t, docs, 1)
 	assert.Equal(t, "hello.txt", docs[0].Name)
@@ -115,10 +115,10 @@ func TestSeafile_ConnectionAndBrowseAgainstRealServer(t *testing.T) {
 func TestSeafile_ErrorsMapToSentinels(t *testing.T) {
 	f := seedSeafile(t)
 
-	_, err := f.client.ListDir("00000000-0000-4000-8000-000000000000", "/")
+	_, err := f.client.ListDir(context.Background(), "00000000-0000-4000-8000-000000000000", "/")
 	require.ErrorIs(t, err, services.ErrSeafileNotFound)
 
 	bad, err := services.NewSeafileClient(f.base, "0000000000000000000000000000000000000000", false)
 	require.NoError(t, err)
-	require.ErrorIs(t, bad.PingAuth(), services.ErrSeafileUnauthorized)
+	require.ErrorIs(t, bad.PingAuth(context.Background()), services.ErrSeafileUnauthorized)
 }

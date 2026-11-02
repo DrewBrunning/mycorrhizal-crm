@@ -113,8 +113,8 @@ type cachedDeepSection struct {
 // DeepHealthSnapshot assembles the deep-health picture. The live section (DB
 // read probe, migration lag, background-job locks) is computed every call; the
 // rest is served from a deepHealthCacheTTL cache.
-func DeepHealthSnapshot(db *gorm.DB, cfg config.Config) DeepHealth {
-	cached := cachedDeepHealthSection(db, cfg)
+func DeepHealthSnapshot(ctx context.Context, db *gorm.DB, cfg config.Config) DeepHealth {
+	cached := cachedDeepHealthSection(ctx, db, cfg)
 
 	h := DeepHealth{
 		Migrations:     migrationLagCheck(db),
@@ -125,7 +125,7 @@ func DeepHealthSnapshot(db *gorm.DB, cfg config.Config) DeepHealth {
 		Integrations:   cached.integrations,
 	}
 
-	if read := liveDatabaseReadCheck(db); read.Status == DeepStatusUnhealthy {
+	if read := liveDatabaseReadCheck(ctx, db); read.Status == DeepStatusUnhealthy {
 		h.Database = read
 	} else {
 		// Read works; the DB facet then reflects the (cached) write probe, so a
@@ -153,7 +153,7 @@ func SetDeepHealthCacheTTL(d time.Duration) time.Duration {
 	return prev
 }
 
-func cachedDeepHealthSection(db *gorm.DB, cfg config.Config) cachedDeepSection {
+func cachedDeepHealthSection(ctx context.Context, db *gorm.DB, cfg config.Config) cachedDeepSection {
 	deepHealthCache.mu.Lock()
 	defer deepHealthCache.mu.Unlock()
 
@@ -171,7 +171,7 @@ func cachedDeepHealthSection(db *gorm.DB, cfg config.Config) cachedDeepSection {
 			cfg.DBIntegrityCheckEnabled, cfg.DBIntegrityCheckIntervalHours),
 		restoreDrill: persistedCheckDetail(db, models.JobNameRestoreDrill,
 			cfg.DBRestoreDrillEnabled, cfg.DBRestoreDrillIntervalHours),
-		integrations: probeServerIntegrations(cfg),
+		integrations: probeServerIntegrations(ctx, cfg),
 	}
 
 	deepHealthCache.at = Now()
@@ -180,13 +180,13 @@ func cachedDeepHealthSection(db *gorm.DB, cfg config.Config) cachedDeepSection {
 }
 
 // liveDatabaseReadCheck is the only facet that can 503 the endpoint.
-func liveDatabaseReadCheck(db *gorm.DB) HealthCheckDetail {
+func liveDatabaseReadCheck(ctx context.Context, db *gorm.DB) HealthCheckDetail {
 	sqlDB, err := db.DB()
 	if err != nil {
 		logger.Error().Err(err).Msg("deep health: no database handle")
 		return HealthCheckDetail{Status: DeepStatusUnhealthy, Reason: "no database handle"}
 	}
-	if err := sqlDB.Ping(); err != nil {
+	if err := sqlDB.PingContext(ctx); err != nil {
 		logger.Error().Err(err).Msg("deep health: database ping failed")
 		return HealthCheckDetail{Status: DeepStatusUnhealthy, Reason: "database unreachable"}
 	}
@@ -323,18 +323,18 @@ func persistedCheckDetail(db *gorm.DB, checkName string, enabled bool, intervalH
 // server-wide, and fanning out N-users x M-integrations of outbound calls on
 // it would be an abuse vector. An unreachable dependency is always degraded,
 // never unhealthy.
-func probeServerIntegrations(cfg config.Config) map[string]HealthCheckDetail {
+func probeServerIntegrations(ctx context.Context, cfg config.Config) map[string]HealthCheckDetail {
 	out := map[string]HealthCheckDetail{}
 
 	if cfg.OIDC.Enabled && cfg.OIDC.ProviderURL != "" {
-		out["oidc"] = probeHTTP("oidc", strings.TrimRight(cfg.OIDC.ProviderURL, "/")+"/.well-known/openid-configuration", 2*time.Second)
+		out["oidc"] = probeHTTP(ctx, "oidc", strings.TrimRight(cfg.OIDC.ProviderURL, "/")+"/.well-known/openid-configuration", 2*time.Second)
 	}
 
 	switch {
 	case cfg.UseResend:
-		out["email"] = probeTCP("email", "api.resend.com:443", 2*time.Second)
+		out["email"] = probeTCP(ctx, "email", "api.resend.com:443", 2*time.Second)
 	case cfg.UseSMTP:
-		out["email"] = probeTCP("email", net.JoinHostPort(cfg.SMTPHost, fmt.Sprint(cfg.SMTPPort)), 2*time.Second)
+		out["email"] = probeTCP(ctx, "email", net.JoinHostPort(cfg.SMTPHost, fmt.Sprint(cfg.SMTPPort)), 2*time.Second)
 	}
 
 	if cfg.FCMServiceAccountFile != "" {
@@ -355,8 +355,9 @@ func probeServerIntegrations(cfg config.Config) map[string]HealthCheckDetail {
 // log, never into the response body — an unauthenticated caller must not learn
 // the operator's internal SMTP host / OIDC URL or the raw dial error (ASVS
 // 7.4.1). The integration key ("email" / "oidc") already says which one.
-func probeTCP(name, addr string, timeout time.Duration) HealthCheckDetail {
-	conn, err := net.DialTimeout("tcp", addr, timeout)
+func probeTCP(ctx context.Context, name, addr string, timeout time.Duration) HealthCheckDetail {
+	dialer := net.Dialer{Timeout: timeout}
+	conn, err := dialer.DialContext(ctx, "tcp", addr)
 	if err != nil {
 		logger.Warn().Err(err).Str("integration", name).Str("addr", addr).
 			Msg("deep health: integration TCP probe failed")
@@ -366,8 +367,8 @@ func probeTCP(name, addr string, timeout time.Duration) HealthCheckDetail {
 	return HealthCheckDetail{Status: DeepStatusOK}
 }
 
-func probeHTTP(name, url string, timeout time.Duration) HealthCheckDetail {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+func probeHTTP(ctx context.Context, name, url string, timeout time.Duration) HealthCheckDetail {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {

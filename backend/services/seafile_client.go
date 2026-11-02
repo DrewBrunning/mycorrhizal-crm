@@ -183,8 +183,8 @@ func seafilePrivateBlockingDialContext(ctx context.Context, network, addr string
 
 // do performs a GET against the Seafile API, applying the token header and
 // mapping auth/not-found responses to sentinel errors.
-func (c *SeafileClient) do(path string) (*http.Response, error) {
-	req, err := http.NewRequest(http.MethodGet, c.baseURL+path, nil)
+func (c *SeafileClient) do(ctx context.Context, path string) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
 	if err != nil {
 		return nil, ErrSeafileInvalidURL
 	}
@@ -222,8 +222,8 @@ func (c *SeafileClient) do(path string) (*http.Response, error) {
 
 // doUnauthenticated is do() without the token header — used only by Ping
 // (GET /api2/ping/ requires no auth on real Seafile).
-func (c *SeafileClient) doUnauthenticated(path string) (*http.Response, error) {
-	req, err := http.NewRequest(http.MethodGet, c.baseURL+path, nil)
+func (c *SeafileClient) doUnauthenticated(ctx context.Context, path string) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
 	if err != nil {
 		return nil, ErrSeafileInvalidURL
 	}
@@ -269,8 +269,8 @@ func decodeSeafileJSON(resp *http.Response, out any) error {
 // Ping checks basic reachability of the Seafile server (GET /api2/ping/),
 // independent of token validity. The endpoint answers the quoted string
 // "pong".
-func (c *SeafileClient) Ping() error {
-	resp, err := c.doUnauthenticated("/api2/ping/")
+func (c *SeafileClient) Ping(ctx context.Context) error {
+	resp, err := c.doUnauthenticated(ctx, "/api2/ping/")
 	if err != nil {
 		return err
 	}
@@ -287,8 +287,8 @@ func (c *SeafileClient) Ping() error {
 
 // PingAuth validates the token (GET /api2/auth/ping/) — used only by Test
 // Connection's second stage. The endpoint answers the quoted string "pong".
-func (c *SeafileClient) PingAuth() error {
-	resp, err := c.do("/api2/auth/ping/")
+func (c *SeafileClient) PingAuth(ctx context.Context) error {
+	resp, err := c.do(ctx, "/api2/auth/ping/")
 	if err != nil {
 		return err
 	}
@@ -305,8 +305,8 @@ func (c *SeafileClient) PingAuth() error {
 
 // ListLibraries returns every library (repo) the token can access
 // (GET /api2/repos/).
-func (c *SeafileClient) ListLibraries() ([]SeafileLibrary, error) {
-	resp, err := c.do("/api2/repos/")
+func (c *SeafileClient) ListLibraries(ctx context.Context) ([]SeafileLibrary, error) {
+	resp, err := c.do(ctx, "/api2/repos/")
 	if err != nil {
 		return nil, err
 	}
@@ -319,14 +319,14 @@ func (c *SeafileClient) ListLibraries() ([]SeafileLibrary, error) {
 
 // ListDir returns the contents of a library folder (GET /api2/repos/:id/dir/).
 // path must begin with "/" (root is "/").
-func (c *SeafileClient) ListDir(repoID, path string) ([]SeafileItem, error) {
+func (c *SeafileClient) ListDir(ctx context.Context, repoID, path string) ([]SeafileItem, error) {
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
 	}
 	params := url.Values{}
 	params.Set("p", path)
 	params.Set("recursive", "0")
-	resp, err := c.do("/api2/repos/" + url.PathEscape(repoID) + "/dir/?" + params.Encode())
+	resp, err := c.do(ctx, "/api2/repos/"+url.PathEscape(repoID)+"/dir/?"+params.Encode())
 	if err != nil {
 		return nil, err
 	}

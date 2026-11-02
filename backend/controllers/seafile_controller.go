@@ -146,7 +146,7 @@ func TestSeafileConnection(c *gin.Context) {
 	}
 
 	cfg := currentConfig(c)
-	result, err := services.TestSeafileConnection(db, cfg, userID)
+	result, err := services.TestSeafileConnection(c.Request.Context(), db, cfg, userID)
 	if err != nil {
 		abortSeafileServiceError(c, err)
 		return
@@ -166,7 +166,7 @@ func ListSeafileLibraries(c *gin.Context) {
 	}
 
 	cfg := currentConfig(c)
-	libraries, err := services.ListSeafileLibrariesForUser(db, cfg, userID)
+	libraries, err := services.ListSeafileLibrariesForUser(c.Request.Context(), db, cfg, userID)
 	if err != nil {
 		abortSeafileServiceError(c, err)
 		return
@@ -191,7 +191,7 @@ func ListSeafileDir(c *gin.Context) {
 	}
 
 	cfg := currentConfig(c)
-	items, err := services.ListSeafileDirForUser(db, cfg, userID, repoID, path)
+	items, err := services.ListSeafileDirForUser(c.Request.Context(), db, cfg, userID, repoID, path)
 	if err != nil {
 		abortSeafileServiceError(c, err)
 		return

@@ -378,7 +378,7 @@ func ConfirmContactShare(c *gin.Context, cfg *config.Config) {
 		return
 	}
 
-	result, appErr := importSessions.ConfirmVCF(db, userID, *request, cfg, log)
+	result, appErr := importSessions.ConfirmVCF(c.Request.Context(), db, userID, *request, cfg, log)
 	if appErr != nil {
 		apperrors.AbortWithError(c, appErr)
 		return

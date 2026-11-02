@@ -369,7 +369,7 @@ func ProxyImage(c *gin.Context) {
 	}
 
 	// Use the shared SSRF-protected fetch function
-	body, contentType, err := httputil.FetchImageFromURL(imageURL)
+	body, contentType, err := httputil.FetchImageFromURL(c.Request.Context(), imageURL)
 	if err != nil {
 		logger.FromContext(c).Warn().Err(err).Str("url", logger.SanitizeLogField(imageURL)).Msg("Failed to fetch image from URL")
 		// issue #524: the caller-supplied url is what's unreachable/invalid —

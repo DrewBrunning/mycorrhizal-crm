@@ -112,8 +112,8 @@ func newPaperlessClient(t *testing.T) (c *services.PaperlessClient, base, token 
 func TestPaperless_PickerFlowAgainstRealServer(t *testing.T) {
 	c, base, token := newPaperlessClient(t)
 
-	require.NoError(t, c.Ping(), "Test Connection stage 1")
-	me, err := c.GetMe()
+	require.NoError(t, c.Ping(context.Background()), "Test Connection stage 1")
+	me, err := c.GetMe(context.Background())
 	require.NoError(t, err, "Test Connection stage 2 (token resolves to an account)")
 	assert.Equal(t, "admin", me.UserName)
 	assert.Positive(t, me.ID)
@@ -122,7 +122,7 @@ func TestPaperless_PickerFlowAgainstRealServer(t *testing.T) {
 	title := "Contract invoice " + marker
 	paperlessUpload(t, base, token, title, "Invoice for contract testing. Unique marker: "+marker+"\n")
 
-	all, err := c.ListDocuments("")
+	all, err := c.ListDocuments(context.Background(), "")
 	require.NoError(t, err)
 	var docID int
 	for _, d := range all {
@@ -138,7 +138,7 @@ func TestPaperless_PickerFlowAgainstRealServer(t *testing.T) {
 	// Paperless's full-text index is updated asynchronously after consumption.
 	var found bool
 	for i := 0; i < 30 && !found; i++ {
-		hits, err := c.ListDocuments(marker)
+		hits, err := c.ListDocuments(context.Background(), marker)
 		require.NoError(t, err)
 		for _, d := range hits {
 			found = found || d.ID == docID
@@ -149,7 +149,7 @@ func TestPaperless_PickerFlowAgainstRealServer(t *testing.T) {
 	}
 	assert.True(t, found, "a full-text search for the document's unique marker must find it")
 
-	doc, err := c.GetDocument(docID)
+	doc, err := c.GetDocument(context.Background(), docID)
 	require.NoError(t, err)
 	assert.Equal(t, docID, doc.ID)
 	assert.Equal(t, title, doc.Title)
@@ -161,11 +161,11 @@ func TestPaperless_PickerFlowAgainstRealServer(t *testing.T) {
 func TestPaperless_ErrorsMapToSentinels(t *testing.T) {
 	c, base, _ := newPaperlessClient(t)
 
-	_, err := c.GetDocument(987654321)
+	_, err := c.GetDocument(context.Background(), 987654321)
 	require.ErrorIs(t, err, services.ErrPaperlessNotFound)
 
 	bad, err := services.NewPaperlessClient(base, "0000000000000000000000000000000000000000", false)
 	require.NoError(t, err)
-	_, err = bad.GetMe()
+	_, err = bad.GetMe(context.Background())
 	require.ErrorIs(t, err, services.ErrPaperlessUnauthorized)
 }

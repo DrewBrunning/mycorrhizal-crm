@@ -967,13 +967,13 @@ func resolveRemoteObjectURL(subscriptionURL, remotePath string) (*url.URL, error
 // object is unchanged and may answer 412; pushLocalEdits then applies the
 // documented local-wins retry without If-Match. That is a compatibility
 // fallback, not a change to conflict detection (which uses the content hash).
-func putCalendarObject(httpClient webdav.HTTPClient, remoteURL *url.URL, cal *ical.Calendar, ifMatch string) (string, int, error) {
+func putCalendarObject(ctx context.Context, httpClient webdav.HTTPClient, remoteURL *url.URL, cal *ical.Calendar, ifMatch string) (string, int, error) {
 	var buf bytes.Buffer
 	if err := ical.NewEncoder(&buf).Encode(cal); err != nil {
 		return "", 0, fmt.Errorf("encoding pushed event: %w", err)
 	}
 
-	req, err := http.NewRequest(http.MethodPut, remoteURL.String(), &buf)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, remoteURL.String(), &buf)
 	if err != nil {
 		return "", 0, fmt.Errorf("building push request: %w", err)
 	}
@@ -1044,11 +1044,11 @@ func (s *CalendarSyncService) pushLocalEdits(ctx context.Context, db *gorm.DB, s
 		// Push with If-Match. A 412 means the remote moved on after our last
 		// fetch — the both-changed case — and the policy is local-wins, so
 		// retry unconditionally (the remote edit is deliberately overwritten).
-		newETag, status, err := putCalendarObject(httpClient, remoteURL, activityToICalendar(link.UID, &activity), link.RemoteETag)
+		newETag, status, err := putCalendarObject(ctx, httpClient, remoteURL, activityToICalendar(link.UID, &activity), link.RemoteETag)
 		if status == http.StatusPreconditionFailed {
 			logger.Info().Uint("subscription_id", sub.ID).Str("uid", link.UID).
 				Msg("Calendar push conflict (412) — local-wins policy overwrites the remote edit")
-			newETag, status, err = putCalendarObject(httpClient, remoteURL, activityToICalendar(link.UID, &activity), "")
+			newETag, status, err = putCalendarObject(ctx, httpClient, remoteURL, activityToICalendar(link.UID, &activity), "")
 		}
 		if err != nil {
 			return stats, err

@@ -245,7 +245,7 @@ func isSafeWebDAVPath(path string) bool {
 
 // propfind performs a Depth:1 PROPFIND on a path relative to the dav root,
 // returning the parsed multistatus. Errors map to the sentinel set.
-func (c *WebDAVClient) propfind(relPath string) (*webdavMultistatus, error) {
+func (c *WebDAVClient) propfind(ctx context.Context, relPath string) (*webdavMultistatus, error) {
 	reqURL, err := c.davRequestURL(relPath)
 	if err != nil {
 		return nil, err
@@ -253,7 +253,7 @@ func (c *WebDAVClient) propfind(relPath string) (*webdavMultistatus, error) {
 
 	// PROPFIND is not one of the stdlib http.Method constants; the method
 	// string is the canonical WebDAV verb.
-	req, err := http.NewRequest("PROPFIND", reqURL.String(), strings.NewReader(propfindXML))
+	req, err := http.NewRequestWithContext(ctx, "PROPFIND", reqURL.String(), strings.NewReader(propfindXML))
 	if err != nil {
 		return nil, ErrWebDAVInvalidURL
 	}
@@ -337,19 +337,19 @@ func (rt *webdavResourceType) IsCollection() bool {
 // on the root) — Test Connection uses it as its only stage, since WebDAV
 // cannot split "reachable" from "authenticated" without a separate
 // unauthenticated request. A 401 surfaces as ErrWebDAVUnauthorized.
-func (c *WebDAVClient) Ping() error {
-	_, err := c.propfind("/")
+func (c *WebDAVClient) Ping(ctx context.Context) error {
+	_, err := c.propfind(ctx, "/")
 	return err
 }
 
 // ListDir returns the immediate children of a directory (a Depth:1 PROPFIND),
 // excluding the directory itself. relPath is relative to the dav root, "/" for
 // the root itself.
-func (c *WebDAVClient) ListDir(relPath string) ([]WebDAVItem, error) {
+func (c *WebDAVClient) ListDir(ctx context.Context, relPath string) ([]WebDAVItem, error) {
 	if relPath == "" || relPath == "/" {
 		relPath = "/"
 	}
-	ms, err := c.propfind(relPath)
+	ms, err := c.propfind(ctx, relPath)
 	if err != nil {
 		return nil, err
 	}

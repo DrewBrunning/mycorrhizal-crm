@@ -17,6 +17,7 @@ package photostore
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"fmt"
 	"image"
@@ -207,9 +208,9 @@ func cropToSquare(img image.Image) image.Image {
 }
 
 // FetchPhotoFromURL fetches a photo from a URL with SSRF protection.
-// Returns the photo data, media type, and any error.
-func FetchPhotoFromURL(photoURL string) ([]byte, string, error) {
-	return httputil.FetchImageFromURL(photoURL)
+// Returns the photo data, media type, and any error. ctx bounds the fetch.
+func FetchPhotoFromURL(ctx context.Context, photoURL string) ([]byte, string, error) {
+	return httputil.FetchImageFromURL(ctx, photoURL)
 }
 
 // ReadContactPhoto reads a contact's photo for serialization: it prefers the

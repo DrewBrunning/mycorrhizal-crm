@@ -400,7 +400,7 @@ func TestPutCalendarObjectPreservesEscapedResponseETag(t *testing.T) {
 	require.NoError(t, err)
 
 	cal := activityToICalendar("event-1", &models.Activity{Title: "Pushed", Date: Now()})
-	etag, status, err := putCalendarObject(client, remoteURL, cal, "")
+	etag, status, err := putCalendarObject(context.Background(), client, remoteURL, cal, "")
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, status)
 	assert.Equal(t, `a\b`, etag, "the stored ETag must be the opaque value the server issued")

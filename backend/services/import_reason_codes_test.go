@@ -76,7 +76,7 @@ func TestImportSession_CSVVCardReasons(t *testing.T) {
 	})
 	t.Run("csv session on the vcf endpoint", func(t *testing.T) {
 		id := m.CreateCSVSession(user.ID, []string{"First"}, [][]string{{"Alice"}})
-		_, appErr := m.ConfirmVCF(db, user.ID, models.ImportConfirmRequest{SessionID: id}, nil, log)
+		_, appErr := m.ConfirmVCF(context.Background(), db, user.ID, models.ImportConfirmRequest{SessionID: id}, nil, log)
 		requireImportReason(t, appErr, apperrors.ReasonImportEndpointVCFRecordsOnly, nil)
 	})
 	t.Run("vcf confirm before preview", func(t *testing.T) {
@@ -84,7 +84,7 @@ func TestImportSession_CSVVCardReasons(t *testing.T) {
 		m.mu.Lock()
 		m.sessions[id].session.PreviewCached = false
 		m.mu.Unlock()
-		_, appErr := m.ConfirmVCF(db, user.ID, models.ImportConfirmRequest{SessionID: id}, nil, log)
+		_, appErr := m.ConfirmVCF(context.Background(), db, user.ID, models.ImportConfirmRequest{SessionID: id}, nil, log)
 		requireImportReason(t, appErr, apperrors.ReasonImportPreviewRequired, nil)
 	})
 }

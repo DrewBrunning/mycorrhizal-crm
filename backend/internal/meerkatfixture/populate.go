@@ -1,6 +1,7 @@
 package meerkatfixture
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -114,7 +115,7 @@ func createSchema(db *sql.DB) error {
 		)`,
 	}
 	for _, s := range stmts {
-		if _, err := db.Exec(s); err != nil { // # pragma: no cover — defensive
+		if _, err := db.ExecContext(context.Background(), s); err != nil { // # pragma: no cover — defensive
 			return fmt.Errorf("meerkatfixture: creating schema: %w", err)
 		}
 	}
@@ -141,7 +142,7 @@ func insertUsers(db *sql.DB, m *Manifest) error {
 		}
 	}
 	for _, r := range rows {
-		if _, err := db.Exec(
+		if _, err := db.ExecContext(context.Background(),
 			`INSERT INTO users (id, created_at, updated_at, username, password, email)
 			 VALUES (?, datetime('now'), datetime('now'), ?, ?, ?)`,
 			r.id, r.username, "fixture-password", r.email,
@@ -176,7 +177,7 @@ func insertContacts(db *sql.DB, m *Manifest) error {
 		if c.Archived { // # pragma: no cover — defensive
 			archived = 1
 		}
-		_, err := db.Exec(`INSERT INTO contacts (
+		_, err := db.ExecContext(context.Background(), `INSERT INTO contacts (
 			id, created_at, updated_at, deleted_at,
 			firstname, lastname, nickname, gender, email, phone, birthday, address,
 			photo, photo_thumbnail,
@@ -215,7 +216,7 @@ func insertRelationships(db *sql.DB, m *Manifest) error {
 		if r.Deleted { // # pragma: no cover — defensive
 			deletedAt = "2024-01-01 00:00:00"
 		}
-		_, err := db.Exec(`INSERT INTO relationships (
+		_, err := db.ExecContext(context.Background(), `INSERT INTO relationships (
 			id, created_at, updated_at, deleted_at, name, type,
 			contact_id, related_contact_id, user_id
 		) VALUES (?, datetime('now'), datetime('now'), ?, ?, ?, ?, ?, ?)`,
@@ -235,7 +236,7 @@ func insertNotes(db *sql.DB, m *Manifest) error {
 		if n.Deleted {
 			deletedAt = "2024-01-01 00:00:00"
 		}
-		_, err := db.Exec(`INSERT INTO notes (
+		_, err := db.ExecContext(context.Background(), `INSERT INTO notes (
 			id, created_at, updated_at, deleted_at, content, date, contact_id, user_id
 		) VALUES (?, datetime('now'), datetime('now'), ?, ?, ?, ?, ?)`,
 			n.ID, deletedAt, n.Content, n.Date, contactID, m.User.ID,
@@ -253,7 +254,7 @@ func insertActivities(db *sql.DB, m *Manifest) error {
 		if a.Deleted { // # pragma: no cover — defensive
 			deletedAt = "2024-01-01 00:00:00"
 		}
-		_, err := db.Exec(`INSERT INTO activities (
+		_, err := db.ExecContext(context.Background(), `INSERT INTO activities (
 			id, created_at, updated_at, deleted_at, title, description, location, date, user_id
 		) VALUES (?, datetime('now'), datetime('now'), ?, ?, ?, ?, ?, ?)`,
 			a.ID, deletedAt, a.Title, a.Description, a.Location, a.Date, m.User.ID,
@@ -263,7 +264,7 @@ func insertActivities(db *sql.DB, m *Manifest) error {
 		}
 		for _, c := range a.Contacts {
 			contactID, _ := m.idByName(c)
-			if _, err := db.Exec(
+			if _, err := db.ExecContext(context.Background(),
 				`INSERT INTO activity_contacts (activity_id, contact_id) VALUES (?, ?)`,
 				a.ID, contactID,
 			); err != nil { // # pragma: no cover — defensive
@@ -285,7 +286,7 @@ func insertReminders(db *sql.DB, m *Manifest) error {
 		if !r.ReoccurFromCompletion {
 			reoccur = 0
 		}
-		_, err := db.Exec(`INSERT INTO reminders (
+		_, err := db.ExecContext(context.Background(), `INSERT INTO reminders (
 			id, created_at, updated_at, deleted_at, message, remind_at, recurrence,
 			reoccur_from_completion, contact_id, user_id
 		) VALUES (?, datetime('now'), datetime('now'), ?, ?, ?, ?, ?, ?, ?)`,

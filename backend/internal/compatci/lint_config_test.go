@@ -56,18 +56,22 @@ func TestGolangciConfigEnablesAdoptedLinters(t *testing.T) {
 		"ineffassign", "staticcheck", "unused",
 		"exhaustive", "rowserrcheck", "sqlclosecheck", "nilerr",
 		"bidichk", "durationcheck", "copyloopvar", "unconvert", "misspell",
+		// Adopted with the #1939 context-propagation refactor.
+		"noctx",
 	} {
 		assert.True(t, enabled[l], "%s must be enabled (issue #1906 adoption)", l)
 	}
 
-	// Rejected in the same spike, each with a recorded reason in the header.
-	for _, l := range []string{"forcetypeassert", "noctx", "contextcheck"} {
-		assert.False(t, enabled[l], "%s was deliberately rejected in issue #1906", l)
+	// Rejected, each with a recorded reason in the header. noctx was deferred
+	// by #1906 and adopted by #1939; contextcheck's assessment is recorded
+	// there and it remains off.
+	for _, l := range []string{"forcetypeassert", "contextcheck"} {
+		assert.False(t, enabled[l], "%s is deliberately not enabled", l)
 	}
 
-	// The noctx/contextcheck deferral must name its owner issue.
+	// The contextcheck assessment must name the issue that made it.
 	assert.Contains(t, raw, "#1939",
-		"the noctx/contextcheck deferral must link the context-propagation issue (#1939)")
+		"the contextcheck assessment must link the context-propagation issue (#1939)")
 	assert.Contains(t, raw, "forcetypeassert",
 		"the header must record why forcetypeassert is not enabled")
 }
@@ -92,6 +96,7 @@ func TestGolangciConfigTestExemptionsMatchThePolicy(t *testing.T) {
 	for _, l := range []string{
 		"errcheck", "errorlint", "ineffassign", "staticcheck", "unused",
 		"exhaustive", "rowserrcheck", "sqlclosecheck", "nilerr", "durationcheck",
+		"noctx",
 	} {
 		assert.True(t, testExempt[l], "%s must stay exempt on test files", l)
 	}

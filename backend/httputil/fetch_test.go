@@ -1,6 +1,7 @@
 package httputil
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -53,7 +54,7 @@ func TestValidateURLForSSRF(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			parsed, err := validateURLForSSRF(tt.rawURL)
+			parsed, err := validateURLForSSRF(context.Background(), tt.rawURL)
 			if tt.wantErr == "" {
 				require.NoError(t, err)
 				require.NotNil(t, parsed)
@@ -78,21 +79,21 @@ func TestValidateURLForSSRF(t *testing.T) {
 
 func TestFetchImageFromURL_BlocksLocalhostHostname(t *testing.T) {
 	t.Parallel()
-	if _, _, err := FetchImageFromURL("http://localhost/photo.jpg"); err == nil {
+	if _, _, err := FetchImageFromURL(context.Background(), "http://localhost/photo.jpg"); err == nil {
 		t.Error("expected fetching from localhost to be rejected as an SSRF target")
 	}
 }
 
 func TestFetchImageFromURL_BlocksLoopbackIPv4Literal(t *testing.T) {
 	t.Parallel()
-	if _, _, err := FetchImageFromURL("http://127.0.0.1/photo.jpg"); err == nil {
+	if _, _, err := FetchImageFromURL(context.Background(), "http://127.0.0.1/photo.jpg"); err == nil {
 		t.Error("expected fetching from 127.0.0.1 to be rejected as an SSRF target")
 	}
 }
 
 func TestFetchImageFromURL_BlocksLoopbackIPv6Literal(t *testing.T) {
 	t.Parallel()
-	if _, _, err := FetchImageFromURL("http://[::1]/photo.jpg"); err == nil {
+	if _, _, err := FetchImageFromURL(context.Background(), "http://[::1]/photo.jpg"); err == nil {
 		t.Error("expected fetching from [::1] to be rejected as an SSRF target")
 	}
 }
@@ -102,7 +103,7 @@ func TestFetchImageFromURL_BlocksUnspecifiedAddress(t *testing.T) {
 	// 0.0.0.0 is in fetch.go's blockedHosts list but not photostore's -- worth
 	// its own case since it is a real SSRF vector (many OSes route 0.0.0.0 to
 	// the local host) and is checked by hostname string, not resolved IP.
-	if _, _, err := FetchImageFromURL("http://0.0.0.0/photo.jpg"); err == nil {
+	if _, _, err := FetchImageFromURL(context.Background(), "http://0.0.0.0/photo.jpg"); err == nil {
 		t.Error("expected fetching from 0.0.0.0 to be rejected as an SSRF target")
 	}
 }
@@ -112,7 +113,7 @@ func TestFetchImageFromURL_BlocksPrivateLANAddress(t *testing.T) {
 	// 192.168.0.0/16 is not in the hardcoded hostname blocklist at all -- this
 	// proves the resolved-IP check (IsPublicIP), not just the hostname string
 	// list, actually rejects it.
-	if _, _, err := FetchImageFromURL("http://192.168.1.1/photo.jpg"); err == nil {
+	if _, _, err := FetchImageFromURL(context.Background(), "http://192.168.1.1/photo.jpg"); err == nil {
 		t.Error("expected fetching from a private LAN address (192.168.1.1) to be rejected")
 	}
 }
@@ -121,14 +122,14 @@ func TestFetchImageFromURL_BlocksLinkLocalMetadataAddress(t *testing.T) {
 	t.Parallel()
 	// 169.254.169.254 is the classic cloud-metadata SSRF target (AWS/GCP/Azure
 	// instance metadata service); IsPublicIP must catch it.
-	if _, _, err := FetchImageFromURL("http://169.254.169.254/latest/meta-data/"); err == nil {
+	if _, _, err := FetchImageFromURL(context.Background(), "http://169.254.169.254/latest/meta-data/"); err == nil {
 		t.Error("expected fetching from the link-local metadata address to be rejected")
 	}
 }
 
 func TestFetchImageFromURL_RejectsNonHTTPScheme(t *testing.T) {
 	t.Parallel()
-	if _, _, err := FetchImageFromURL("file:///etc/passwd"); err == nil {
+	if _, _, err := FetchImageFromURL(context.Background(), "file:///etc/passwd"); err == nil {
 		t.Error("expected a non-http(s) scheme to be rejected")
 	}
 }
@@ -140,14 +141,14 @@ func TestFetchImageFromURL_RejectsUnparsableURL(t *testing.T) {
 	if err == nil {
 		t.Skip("test environment's url.Parse unexpectedly accepted the malformed URL")
 	}
-	if _, _, err := FetchImageFromURL("http://\x7f"); err == nil {
+	if _, _, err := FetchImageFromURL(context.Background(), "http://\x7f"); err == nil {
 		t.Error("expected an unparsable URL to be rejected")
 	}
 }
 
 func TestFetchImageFromURL_RejectsURLWithNoHost(t *testing.T) {
 	t.Parallel()
-	if _, _, err := FetchImageFromURL("http://"); err == nil {
+	if _, _, err := FetchImageFromURL(context.Background(), "http://"); err == nil {
 		t.Error("expected a URL with no host to be rejected")
 	}
 }
@@ -163,7 +164,7 @@ func TestFetchImageFromURL_SanitizesEmbeddedWhitespaceBeforeValidating(t *testin
 	// the specific "internal hosts" rejection rather than a generic parse
 	// error, the cleanup ran and the result was still correctly blocked.
 	dirty := "http://127.0.0.1/pho\r\nto.jpg"
-	_, _, err := FetchImageFromURL(dirty)
+	_, _, err := FetchImageFromURL(context.Background(), dirty)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "internal hosts",
 		"expected the whitespace-cleaned URL to be rejected as a loopback target, not fail as an unparsable URL")
@@ -193,7 +194,7 @@ func TestFetchImageFromURL_LoopbackIPv4LiteralNeverReachesListener(t *testing.T)
 	// loopback literal validateURLForSSRF must block.
 	require.True(t, strings.HasPrefix(server.URL, "http://127.0.0.1:"), "sanity check: httptest.Server must bind to loopback for this test to prove anything")
 
-	data, contentType, err := FetchImageFromURL(server.URL + "/photo.jpg")
+	data, contentType, err := FetchImageFromURL(context.Background(), server.URL+"/photo.jpg")
 	assert.ErrorContains(t, err, "internal hosts", "expected the loopback listener to be rejected as an SSRF target")
 	assert.Nil(t, data)
 	assert.Empty(t, contentType)
@@ -215,7 +216,7 @@ func TestFetchImageFromURL_LocalhostHostnameNeverReachesListener(t *testing.T) {
 	require.NoError(t, err)
 	localhostURL := "http://localhost:" + serverURL.Port() + "/photo.jpg"
 
-	data, contentType, err := FetchImageFromURL(localhostURL)
+	data, contentType, err := FetchImageFromURL(context.Background(), localhostURL)
 	assert.ErrorContains(t, err, "internal hosts", "expected the localhost listener to be rejected as an SSRF target")
 	assert.Nil(t, data)
 	assert.Empty(t, contentType)

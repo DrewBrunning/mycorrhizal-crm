@@ -178,13 +178,13 @@ func seedImmich(t *testing.T) *immichFixture {
 func TestImmich_ConnectionAndPickerFlowAgainstRealServer(t *testing.T) {
 	f := seedImmich(t)
 
-	require.NoError(t, f.client.Ping(), "Test Connection stage 1")
-	me, err := f.client.GetMyUser()
+	require.NoError(t, f.client.Ping(context.Background()), "Test Connection stage 1")
+	me, err := f.client.GetMyUser(context.Background())
 	require.NoError(t, err, "Test Connection stage 2")
 	assert.Equal(t, immichAdminEmail, me.Email)
 	assert.Equal(t, "Contract Admin", me.Name)
 
-	people, err := f.client.ListPeople()
+	people, err := f.client.ListPeople(context.Background())
 	require.NoError(t, err)
 	var found bool
 	for _, p := range people {
@@ -196,7 +196,7 @@ func TestImmich_ConnectionAndPickerFlowAgainstRealServer(t *testing.T) {
 	// our "photo count" display depends on.
 	var count int
 	for i := 0; i < 60 && count < 1; i++ {
-		count, err = f.client.GetStatistics(f.personID)
+		count, err = f.client.GetStatistics(context.Background(), f.personID)
 		require.NoError(t, err)
 		if count < 1 {
 			time.Sleep(2 * time.Second)
@@ -204,7 +204,7 @@ func TestImmich_ConnectionAndPickerFlowAgainstRealServer(t *testing.T) {
 	}
 	assert.Equal(t, 1, count, "GetStatistics")
 
-	assets, err := f.client.RecentAssets(f.personID, 5)
+	assets, err := f.client.RecentAssets(context.Background(), f.personID, 5)
 	require.NoError(t, err)
 	require.Len(t, assets, 1, "RecentAssets via POST /api/search/metadata")
 	assert.Equal(t, f.assetID, assets[0].ID)
@@ -216,7 +216,7 @@ func TestImmich_ConnectionAndPickerFlowAgainstRealServer(t *testing.T) {
 	var body []byte
 	var ctype string
 	for i := 0; i < 60; i++ {
-		body, ctype, err = f.client.AssetThumbnail(f.assetID)
+		body, ctype, err = f.client.AssetThumbnail(context.Background(), f.assetID)
 		if err == nil {
 			break
 		}
@@ -227,7 +227,7 @@ func TestImmich_ConnectionAndPickerFlowAgainstRealServer(t *testing.T) {
 	assert.True(t, looksLikeRaster(body), "the thumbnail bytes must be a JPEG/WebP/PNG image, got %d bytes starting % x", len(body), body[:min(len(body), 12)])
 
 	for i := 0; i < 60; i++ {
-		body, ctype, err = f.client.Thumbnail(f.personID)
+		body, ctype, err = f.client.Thumbnail(context.Background(), f.personID)
 		if err == nil {
 			break
 		}
@@ -262,7 +262,7 @@ func looksLikeRaster(b []byte) bool {
 func TestImmich_ErrorsMapToSentinels(t *testing.T) {
 	f := seedImmich(t)
 
-	_, err := f.client.GetStatistics("00000000-0000-4000-8000-000000000000")
+	_, err := f.client.GetStatistics(context.Background(), "00000000-0000-4000-8000-000000000000")
 	require.ErrorIs(t, err, services.ErrImmichRequestFailed)
 	var reqErr *services.ImmichRequestError
 	require.ErrorAs(t, err, &reqErr)
@@ -270,6 +270,6 @@ func TestImmich_ErrorsMapToSentinels(t *testing.T) {
 
 	bad, err := services.NewImmichClient(f.base, "definitely-not-an-api-key", false)
 	require.NoError(t, err)
-	_, err = bad.GetMyUser()
+	_, err = bad.GetMyUser(context.Background())
 	require.ErrorIs(t, err, services.ErrImmichUnauthorized)
 }

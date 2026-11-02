@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"net"
 	"testing"
@@ -57,7 +58,7 @@ func TestSendViaSMTP_StalledServerIsBounded(t *testing.T) {
 
 	done := make(chan error, 1)
 	go func() {
-		done <- sendViaSMTP(cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
+		done <- sendViaSMTP(context.Background(), cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
 	}()
 
 	select {
@@ -81,7 +82,7 @@ func TestSendViaSMTP_DialTimeoutIsBounded(t *testing.T) {
 
 	done := make(chan error, 1)
 	go func() {
-		done <- sendViaSMTP(cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
+		done <- sendViaSMTP(context.Background(), cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
 	}()
 
 	select {
@@ -107,7 +108,7 @@ func TestSendEmail_InjectedSendFaultSurfaces(t *testing.T) {
 	// whole outcome.
 	cfg := config.Config{UseSMTP: true, SMTPHost: "127.0.0.1", SMTPPort: 2525, SMTPFromEmail: "noreply@example.com"}
 
-	err := SendEmail(cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
+	err := SendEmail(context.Background(), cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), sentinel.Error(), "the armed fault must reach the caller")
 	assert.Contains(t, err.Error(), "all email channels failed")
@@ -123,6 +124,6 @@ func TestSendViaResend_InjectedFaultSurfaces(t *testing.T) {
 	faults.ArmError(faultEmailSend, sentinel)
 	t.Cleanup(func() { faults.Disarm(faultEmailSend) })
 
-	err := sendViaResend(config.Config{ResendAPIKey: "test"}, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
+	err := sendViaResend(context.Background(), config.Config{ResendAPIKey: "test"}, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
 	require.ErrorIs(t, err, sentinel)
 }
