@@ -6,6 +6,7 @@ import com.mycorrhizal.crm.domain.repository.ContactNotesPage
 import com.mycorrhizal.crm.domain.repository.NoteRepository
 import com.mycorrhizal.crm.domain.repository.UnfiledNotesPage
 import com.mycorrhizal.crm.model.network.Note
+import com.mycorrhizal.crm.model.network.NoteImage
 import com.mycorrhizal.crm.model.network.NoteInput
 import com.mycorrhizal.crm.network.ApiClient
 import javax.inject.Inject
@@ -77,6 +78,19 @@ class NoteRepositoryImpl @Inject constructor(
         if (result.isSuccess) dao.deleteById(id)
         return result
     }
+
+    override suspend fun listImages(noteId: Int): Result<List<NoteImage>> =
+        apiClient.listNoteImages(noteId).map { it.images }
+
+    override suspend fun uploadImage(
+        noteId: Int,
+        fileName: String,
+        mimeType: String,
+        bytes: ByteArray
+    ): Result<NoteImage> = apiClient.uploadNoteImage(noteId, fileName, mimeType, bytes)
+
+    override suspend fun deleteImage(noteId: Int, imageId: Int): Result<Unit> =
+        apiClient.deleteNoteImage(noteId, imageId)
 
     private fun Note.toCached(): CachedNote = CachedNote(
         id = id,

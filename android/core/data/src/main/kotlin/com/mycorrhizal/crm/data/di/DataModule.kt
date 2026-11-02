@@ -40,6 +40,7 @@ import com.mycorrhizal.crm.data.repository.CadencePolicyRepositoryImpl
 import com.mycorrhizal.crm.data.repository.CalendarSubscriptionRepositoryImpl
 import com.mycorrhizal.crm.data.repository.CircleRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ContactFieldVisibilityRepositoryImpl
+import com.mycorrhizal.crm.data.repository.ContactImageRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ContactRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ContactScoreRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ContactShareRepositoryImpl
@@ -100,6 +101,7 @@ import com.mycorrhizal.crm.domain.repository.CadencePolicyRepository
 import com.mycorrhizal.crm.domain.repository.CalendarSubscriptionRepository
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactFieldVisibilityRepository
+import com.mycorrhizal.crm.domain.repository.ContactImageRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ContactScoreRepository
 import com.mycorrhizal.crm.domain.repository.ContactShareRepository
@@ -602,6 +604,12 @@ abstract class DataBindsModule {
     abstract fun bindContactFieldVisibilityRepository(
         impl: ContactFieldVisibilityRepositoryImpl
     ): ContactFieldVisibilityRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindContactImageRepository(
+        impl: ContactImageRepositoryImpl
+    ): ContactImageRepository
 
     @Binds
     @Singleton

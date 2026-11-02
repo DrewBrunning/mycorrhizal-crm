@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.NoteRepository
 import com.mycorrhizal.crm.model.network.Note
+import com.mycorrhizal.crm.model.network.NoteImage
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
@@ -22,6 +23,8 @@ import kotlinx.coroutines.launch
 data class NotesUiState(
     val contactId: Int = 0,
     val notes: List<Note> = emptyList(),
+    /** ADR 0040: each row's image thumbnails, loaded after the page lands. */
+    val imagesByNote: Map<Int, List<NoteImage>> = emptyMap(),
     /** M19: T17 cursor-pagination state — null/empty means no more pages. */
     val nextCursor: String? = null,
     val searchQuery: String = "",
@@ -110,6 +113,7 @@ class NotesViewModel @Inject constructor(
                             nextCursor = page.nextCursor
                         )
                     }
+                    loadImagesFor(page.notes)
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error) }
@@ -139,6 +143,7 @@ class NotesViewModel @Inject constructor(
                             nextCursor = page.nextCursor
                         )
                     }
+                    loadImagesFor(page.notes)
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoadingMore = false, error = error) }
@@ -171,7 +176,11 @@ class NotesViewModel @Inject constructor(
             noteRepository.delete(id, revisionOf(id)).foldApiError(
                 onSuccess = {
                     _uiState.update { state ->
-                        state.copy(deletingId = null, notes = state.notes.filterNot { it.id == id })
+                        state.copy(
+                            deletingId = null,
+                            notes = state.notes.filterNot { it.id == id },
+                            imagesByNote = state.imagesByNote - id
+                        )
                     }
                 },
                 onError = { error ->
@@ -184,6 +193,24 @@ class NotesViewModel @Inject constructor(
                     }
                 }
             )
+        }
+    }
+
+    private fun loadImagesFor(notes: List<Note>) {
+        if (notes.isEmpty()) return
+        viewModelScope.launch {
+            val loaded = buildMap {
+                for (note in notes) {
+                    // A failed thumbnail fetch must not fail the list; the row just
+                    // renders without images.
+                    runCatching { noteRepository.listImages(note.id) }
+                        .getOrNull()
+                        ?.onSuccess { put(note.id, it) }
+                }
+            }
+            if (loaded.isNotEmpty()) {
+                _uiState.update { it.copy(imagesByNote = it.imagesByNote + loaded) }
+            }
         }
     }
 

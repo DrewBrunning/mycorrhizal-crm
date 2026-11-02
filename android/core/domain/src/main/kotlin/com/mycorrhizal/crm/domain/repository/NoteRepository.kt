@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm.domain.repository
 
 import com.mycorrhizal.crm.model.network.Note
+import com.mycorrhizal.crm.model.network.NoteImage
 import com.mycorrhizal.crm.model.network.NoteInput
 
 /** A page of the N4 unfiled-notes inbox, with its T17 cursor-pagination state and queue depth. */
@@ -45,4 +46,18 @@ interface NoteRepository {
 
     /** Delete a note (soft delete server-side; removes the local cache row). */
     suspend fun delete(id: Int, revision: Int?): Result<Unit>
+
+    /** The note's images, newest first (ADR 0040 slice b). */
+    suspend fun listImages(noteId: Int): Result<List<NoteImage>>
+
+    /** Upload one image; the server re-encodes, stores and returns its metadata. */
+    suspend fun uploadImage(
+        noteId: Int,
+        fileName: String,
+        mimeType: String,
+        bytes: ByteArray
+    ): Result<NoteImage>
+
+    /** Delete one image (soft delete server-side; files are removed after commit). */
+    suspend fun deleteImage(noteId: Int, imageId: Int): Result<Unit>
 }

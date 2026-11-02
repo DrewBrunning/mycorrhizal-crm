@@ -3200,4 +3200,17 @@
     <string name="contact_field_not_set">Non défini</string>
     <string name="settings_contact_fields_hide_empty_label">Masquer les champs vides</string>
     <string name="settings_contact_fields_hide_empty_description">Sur la page d’un contact, les champs sans valeur ne sont pas affichés. Vous pouvez toujours en ajouter un depuis le menu Ajouter un champ, et chaque contact peut remplacer ce réglage.</string>
+    <string name="note_images_add">Ajouter des photos</string>
+    <string name="note_images_empty">Aucune photo pour l’instant</string>
+    <string name="note_images_alt">Photo de la note</string>
+    <string name="note_images_delete">Supprimer la photo</string>
+    <string name="note_images_pending">Photos à téléverser : %1$d</string>
+    <string name="contact_images_title">Photos</string>
+    <string name="contact_images_add">Ajouter des photos</string>
+    <string name="contact_images_empty">Aucune photo pour l’instant</string>
+    <string name="contact_images_empty_body">Ajoutez des photos de ce contact pour les garder ensemble.</string>
+    <string name="contact_images_alt">Photo du contact</string>
+    <string name="contact_images_delete">Supprimer la photo</string>
+    <string name="contact_images_delete_title">Supprimer la photo ?</string>
+    <string name="contact_images_delete_confirm">Supprimer cette photo ? Cette action est irréversible.</string>
 </resources>

@@ -12,6 +12,7 @@ import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.Name
 import com.mycorrhizal.crm.model.network.Note
+import com.mycorrhizal.crm.model.network.NoteImage
 import com.mycorrhizal.crm.model.network.NoteInput
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
@@ -363,6 +364,35 @@ class NotesViewModelTest {
         assertEquals(1, vm.uiState.value.notes.size)
         assertEquals("boom", vm.uiState.value.error?.message)
         assertNull(vm.uiState.value.deletingId)
+    }
+
+    @Test
+    fun `loads each note's images after the page lands`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery {
+            noteRepository.listForContact(
+                5,
+                null,
+                null,
+                null,
+                null,
+                null
+            )
+        } returns Result.success(
+            ContactNotesPage(
+                notes = listOf(Note(id = 3, content = "Loves climbing")),
+                nextCursor = null
+            )
+        )
+        coEvery { noteRepository.listImages(3) } returns Result.success(
+            listOf(NoteImage(id = 9, noteId = 3, thumbnailUrl = "/thumb"))
+        )
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        assertEquals(listOf(9), vm.uiState.value.imagesByNote[3]?.map { it.id })
     }
 }
 
@@ -781,5 +811,126 @@ class NoteFormViewModelTest {
         coVerify(exactly = 1) { contactRepository.listContacts(search = "al", limit = 25) }
         coVerify(exactly = 0) { contactRepository.listContacts(search = "a", limit = 25) }
         assertEquals(1, vm.uiState.value.contactSearchResults.size)
+    }
+
+    @Test
+    fun `edit mode loads the note's images`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { noteRepository.get(3) } returns Result.success(
+            Note(id = 3, content = "Loves climbing", date = "2026-08-10T14:00:00Z")
+        )
+        coEvery { noteRepository.listImages(3) } returns Result.success(
+            listOf(NoteImage(id = 9, noteId = 3))
+        )
+
+        val vm = createViewModel(noteId = 3)
+        advanceUntilIdle()
+
+        assertEquals(listOf(9), vm.uiState.value.images.map { it.id })
+    }
+
+    @Test
+    fun `create mode uploads queued images after the note is created`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { noteRepository.createUnassigned(any()) } returns Result.success(
+            Note(id = 12, content = "Loves climbing")
+        )
+        coEvery {
+            noteRepository.uploadImage(12, "a.jpg", "image/jpeg", any())
+        } returns Result.success(NoteImage(id = 1, noteId = 12))
+
+        val vm = createViewModel(contactId = 0)
+        vm.onContentChange("Loves climbing")
+        vm.onDateChange("2026-08-10")
+        vm.addImages(listOf(PendingNoteImage("a.jpg", "image/jpeg", byteArrayOf(1))))
+        assertEquals(1, vm.uiState.value.pendingImages.size)
+
+        vm.save()
+        advanceUntilIdle()
+
+        coVerify { noteRepository.uploadImage(12, "a.jpg", "image/jpeg", any()) }
+        assertEquals(NoteFormEvent.Saved, vm.events.value)
+    }
+
+    @Test
+    fun `deleting an image removes it from the form`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { noteRepository.get(3) } returns Result.success(
+            Note(id = 3, content = "Loves climbing", date = "2026-08-10T14:00:00Z")
+        )
+        coEvery { noteRepository.listImages(3) } returns Result.success(
+            listOf(NoteImage(id = 9, noteId = 3))
+        )
+        coEvery { noteRepository.deleteImage(3, 9) } returns Result.success(Unit)
+
+        val vm = createViewModel(noteId = 3)
+        advanceUntilIdle()
+        vm.deleteImage(9)
+        advanceUntilIdle()
+
+        assertTrue(vm.uiState.value.images.isEmpty())
+    }
+
+    @Test
+    fun `edit mode uploads picked images immediately`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { noteRepository.get(3) } returns Result.success(
+            Note(id = 3, content = "Loves climbing", date = "2026-08-10T14:00:00Z")
+        )
+        coEvery { noteRepository.listImages(3) } returns Result.success(emptyList())
+        coEvery { noteRepository.uploadImage(3, "a.jpg", "image/jpeg", any()) } returns
+            Result.success(NoteImage(id = 9, noteId = 3))
+
+        val vm = createViewModel(noteId = 3)
+        advanceUntilIdle()
+        vm.addImages(listOf(PendingNoteImage("a.jpg", "image/jpeg", byteArrayOf(1))))
+        advanceUntilIdle()
+
+        coVerify { noteRepository.uploadImage(3, "a.jpg", "image/jpeg", any()) }
+        assertTrue(vm.uiState.value.pendingImages.isEmpty())
+    }
+
+    @Test
+    fun `an image load failure leaves the form usable`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { noteRepository.get(3) } returns Result.success(
+            Note(id = 3, content = "Loves climbing", date = "2026-08-10T14:00:00Z")
+        )
+        coEvery { noteRepository.listImages(3) } returns Result.failure(
+            ApiError.Client(500, "boom")
+        )
+
+        val vm = createViewModel(noteId = 3)
+        advanceUntilIdle()
+
+        assertFalse(vm.uiState.value.imagesLoading)
+        assertTrue(vm.uiState.value.images.isEmpty())
+        assertEquals("Loves climbing", vm.uiState.value.content)
+    }
+
+    @Test
+    fun `a delete image failure surfaces the error and keeps the row`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { noteRepository.get(3) } returns Result.success(
+            Note(id = 3, content = "Loves climbing", date = "2026-08-10T14:00:00Z")
+        )
+        coEvery { noteRepository.listImages(3) } returns Result.success(
+            listOf(NoteImage(id = 9, noteId = 3))
+        )
+        coEvery { noteRepository.deleteImage(3, 9) } returns Result.failure(
+            ApiError.Client(500, "boom")
+        )
+
+        val vm = createViewModel(noteId = 3)
+        advanceUntilIdle()
+        vm.deleteImage(9)
+        advanceUntilIdle()
+
+        assertEquals("boom", vm.uiState.value.error?.message)
+        assertEquals(1, vm.uiState.value.images.size)
     }
 }

@@ -1,5 +1,7 @@
 package com.mycorrhizal.crm.feature.timeline
 
+import android.content.ContentResolver
+import android.net.Uri
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.remember
@@ -7,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -15,8 +18,12 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.swipeUp
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.model.network.NoteImage
 import com.mycorrhizal.crm.ui.components.FormScaffold
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
+import io.mockk.every
+import io.mockk.mockk
+import java.io.ByteArrayInputStream
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -41,7 +48,9 @@ class NoteFormScreenTest {
         onSearchChange: (String) -> Unit = {},
         onPickContact: (ContactSummary) -> Unit = {},
         onClearContact: () -> Unit = {},
-        onSave: () -> Unit = {}
+        onSave: () -> Unit = {},
+        onAddImages: () -> Unit = {},
+        onDeleteImage: (Int) -> Unit = {}
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -60,11 +69,56 @@ class NoteFormScreenTest {
                         onContactSearchChange = onSearchChange,
                         onPickContact = onPickContact,
                         onClearContact = onClearContact,
+                        onAddImages = onAddImages,
+                        onDeleteImage = onDeleteImage,
                         modifier = Modifier.padding(padding)
                     )
                 }
             }
         }
+    }
+
+    @Test
+    fun `readPickedNoteImages maps bytes and mime types`() {
+        val resolver = mockk<ContentResolver>()
+        val uri = Uri.parse("content://test/1")
+        every { resolver.openInputStream(uri) } returns ByteArrayInputStream(byteArrayOf(1, 2))
+        every { resolver.getType(uri) } returns "image/png"
+
+        val picked = readPickedNoteImages(resolver, listOf(uri))
+
+        assertEquals(1, picked.size)
+        assertEquals("image/png", picked[0].mimeType)
+        assertEquals(2, picked[0].bytes.size)
+    }
+
+    @Test
+    fun `the image section offers add photos`() {
+        var added = 0
+        setContent(NoteFormState(contactId = 5), onAddImages = { added += 1 })
+        composeTestRule.onNodeWithContentDescription("Add photos")
+            .performScrollTo()
+            .performClick()
+        assertEquals(1, added)
+    }
+
+    @Test
+    fun `renders an existing image and forwards delete`() {
+        var deleted: Int? = null
+        setContent(
+            NoteFormState(
+                contactId = 5,
+                images = listOf(NoteImage(id = 9, noteId = 5)),
+                pendingImages = listOf(
+                    PendingNoteImage("a.jpg", "image/jpeg", byteArrayOf(1))
+                )
+            ),
+            onDeleteImage = { deleted = it }
+        )
+        composeTestRule.onNodeWithContentDescription("Delete photo")
+            .performScrollTo()
+            .performClick()
+        assertEquals(9, deleted)
     }
 
     @Test

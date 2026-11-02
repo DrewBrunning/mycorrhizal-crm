@@ -11,6 +11,7 @@ import androidx.lifecycle.SavedStateHandle
 import com.mycorrhizal.crm.domain.repository.ContactNotesPage
 import com.mycorrhizal.crm.domain.repository.NoteRepository
 import com.mycorrhizal.crm.model.network.Note
+import com.mycorrhizal.crm.model.network.NoteImage
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
@@ -87,6 +88,20 @@ class NotesScreenTest {
     fun `shows empty state when no notes`() {
         setContent(NotesUiState(contactId = 5, notes = emptyList()))
         composeTestRule.onNodeWithText("No notes yet").assertIsDisplayed()
+    }
+
+    @Test
+    fun `a note with images renders its thumbnails`() {
+        setContent(
+            NotesUiState(
+                contactId = 5,
+                notes = listOf(Note(id = 3, content = "Loves climbing")),
+                imagesByNote = mapOf(
+                    3 to listOf(NoteImage(id = 9, noteId = 3, thumbnailUrl = "/thumb"))
+                )
+            )
+        )
+        composeTestRule.onNodeWithContentDescription("Note photo").assertExists()
     }
 
     // Issue #1760: the unfiltered empty state carries the create action; a

@@ -3198,4 +3198,17 @@
     <string name="contact_field_not_set">Non impostato</string>
     <string name="settings_contact_fields_hide_empty_label">Nascondi i campi vuoti</string>
     <string name="settings_contact_fields_hide_empty_description">Nella pagina di un contatto non vengono mostrati i campi senza valore. Puoi comunque aggiungerne uno dal menu Aggiungi un campo, e ogni contatto può sostituire questa impostazione.</string>
+    <string name="note_images_add">Aggiungi foto</string>
+    <string name="note_images_empty">Ancora nessuna foto</string>
+    <string name="note_images_alt">Foto della nota</string>
+    <string name="note_images_delete">Elimina foto</string>
+    <string name="note_images_pending">Foto da caricare: %1$d</string>
+    <string name="contact_images_title">Foto</string>
+    <string name="contact_images_add">Aggiungi foto</string>
+    <string name="contact_images_empty">Ancora nessuna foto</string>
+    <string name="contact_images_empty_body">Aggiungi foto di questo contatto per tenerle insieme.</string>
+    <string name="contact_images_alt">Foto del contatto</string>
+    <string name="contact_images_delete">Elimina foto</string>
+    <string name="contact_images_delete_title">Eliminare la foto?</string>
+    <string name="contact_images_delete_confirm">Eliminare questa foto? L’operazione non può essere annullata.</string>
 </resources>
