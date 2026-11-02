@@ -271,7 +271,7 @@ function parseBlocks(lines: string[], quoteDepth: number): Block[] {
           /^ {2,}\S/.test(lines[i]) &&
           !startsBlock(lines[i].trimStart())
         ) {
-          item += `\n${lines[i].trim()}`;
+          item += '\n' + lines[i].trim();
           i += 1;
         }
         items.push(item);

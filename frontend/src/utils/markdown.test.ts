@@ -85,6 +85,6 @@ describe('parseMarkdown', () => {
   });
 
   it('survives deeply nested quotes', () => {
-    expect(() => parseMarkdown(`${'> '.repeat(500)}x`)).not.toThrow();
+    expect(() => parseMarkdown('> '.repeat(500) + 'x')).not.toThrow();
   });
 });

@@ -271,7 +271,6 @@ describe('MAINT-02: unknown response fields are ignored, never fatal', () => {
     if (value && typeof value === 'object') {
       const out: Record<string, unknown> = { ...(value as Record<string, unknown>) };
       if (!('__maint02_unknown_field__' in out)) {
-        // biome-ignore lint/complexity/useLiteralKeys: a deliberately unknown field name
         out['__maint02_unknown_field__'] = { nested: ['a', 1, null] };
       }
       for (const [k, v] of Object.entries(out)) {

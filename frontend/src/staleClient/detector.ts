@@ -135,6 +135,7 @@ export async function checkNow(): Promise<void> {
         emitNoneIfBlocked();
         await kickServiceWorkerUpdate();
         break;
+      case 'compatible':
       default:
         emitNoneIfBlocked();
         break;
