@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -15,11 +16,13 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.swipeUp
+import com.mycorrhizal.crm.model.network.ActivityImage
 import com.mycorrhizal.crm.model.network.ContactFlat
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.ui.components.FormScaffold
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -43,6 +46,8 @@ class ActivityFormScreenTest {
         onSearchChange: (String) -> Unit = {},
         onAddParticipant: (ContactSummary) -> Unit = {},
         onRemoveParticipant: (Int) -> Unit = {},
+        onAddImages: () -> Unit = {},
+        onDeleteImage: (Int) -> Unit = {},
         onDateChange: (String) -> Unit = {},
         onSave: () -> Unit = {}
     ) {
@@ -67,6 +72,8 @@ class ActivityFormScreenTest {
                         onContactSearchChange = onSearchChange,
                         onAddParticipant = onAddParticipant,
                         onRemoveParticipant = onRemoveParticipant,
+                        onAddImages = onAddImages,
+                        onDeleteImage = onDeleteImage,
                         modifier = Modifier.padding(padding)
                     )
                 }
@@ -172,5 +179,40 @@ class ActivityFormScreenTest {
         composeTestRule.onNodeWithText("Confirm").performClick()
 
         assertEquals("2026-08-10T00:00:00Z", picked)
+    }
+
+    @Test
+    fun `images render and can be added or removed`() {
+        var added = false
+        var removed: Int? = null
+        setContent(
+            ActivityFormState(
+                contactId = 5,
+                images = listOf(
+                    ActivityImage(id = 9, activityId = 5, thumbnailUrl = "/t", fileUrl = "/f")
+                )
+            ),
+            onAddImages = { added = true },
+            onDeleteImage = { removed = it }
+        )
+        composeTestRule.onNodeWithContentDescription(
+            "Delete photo"
+        ).performScrollTo().performClick()
+        assertEquals(9, removed)
+        composeTestRule.onNodeWithContentDescription("Add photos").performScrollTo().performClick()
+        assertTrue(added)
+    }
+
+    @Test
+    fun `pending create images are reported`() {
+        setContent(
+            ActivityFormState(
+                contactId = 5,
+                pendingImages = listOf(
+                    PendingActivityImage("a.jpg", "image/jpeg", byteArrayOf(1))
+                )
+            )
+        )
+        composeTestRule.onNodeWithText("Photos to upload: 1").performScrollTo().assertIsDisplayed()
     }
 }

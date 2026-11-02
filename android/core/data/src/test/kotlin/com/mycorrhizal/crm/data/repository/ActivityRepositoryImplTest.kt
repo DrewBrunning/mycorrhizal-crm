@@ -7,6 +7,7 @@ import com.mycorrhizal.crm.data.local.AppDatabase
 import com.mycorrhizal.crm.data.local.CachedActivity
 import com.mycorrhizal.crm.model.network.ActivitiesPage
 import com.mycorrhizal.crm.model.network.Activity
+import com.mycorrhizal.crm.model.network.ActivityImage
 import com.mycorrhizal.crm.model.network.ActivityInput
 import com.mycorrhizal.crm.model.network.AddContactToActivitiesResponse
 import com.mycorrhizal.crm.model.network.AddToActivityResult
@@ -330,5 +331,38 @@ class ActivityRepositoryImplTest {
 
         assertTrue(result.isFailure)
         assertEquals(1, db.cachedActivityDao().getAll().size)
+    }
+
+    @Test
+    fun `image methods delegate to the client`() = runTest {
+        val image = ActivityImage(
+            id = 9,
+            uuid = "u",
+            activityId = 1,
+            mimeType = "image/jpeg",
+            width = 10,
+            height = 10,
+            sizeBytes = 100,
+            sensitivity = "normal",
+            createdAt = "2026-01-01T00:00:00Z",
+            fileUrl = "/f",
+            thumbnailUrl = "/t"
+        )
+        coEvery { apiClient.listActivityImages(1) } returns Result.success(
+            com.mycorrhizal.crm.model.network.ActivityImagesResponse(
+                imagesRaw = listOf(image),
+                total = 1
+            )
+        )
+        coEvery { apiClient.uploadActivityImage(1, "a.jpg", "image/jpeg", byteArrayOf(1)) } returns
+            Result.success(image)
+        coEvery { apiClient.deleteActivityImage(1, 9) } returns Result.success(Unit)
+
+        assertEquals(listOf(image), repository.listImages(1).getOrThrow())
+        assertEquals(
+            image,
+            repository.uploadImage(1, "a.jpg", "image/jpeg", byteArrayOf(1)).getOrThrow()
+        )
+        assertTrue(repository.deleteImage(1, 9).isSuccess)
     }
 }
