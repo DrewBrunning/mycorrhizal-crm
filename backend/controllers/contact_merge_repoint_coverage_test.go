@@ -73,6 +73,7 @@ var mergeCoverage = map[string]mergeClass{
 	// --- repointed --------------------------------------------------------
 	"activity_contacts":                 {disposition: mergeRepointed, keyCol: "contact_id", byID: true},
 	"attachments":                       {disposition: mergeRepointed, keyCol: "contact_vcard_uid"},
+	"contact_images":                    {disposition: mergeRepointed, keyCol: "contact_vcard_uid"},
 	"cadence_policies":                  {disposition: mergeRepointed, keyCol: "entity_id"},
 	"circle_members":                    {disposition: mergeRepointed, keyCol: "member_vcard_uid"},
 	"contact_tags":                      {disposition: mergeRepointed, keyCol: "contact_vcard_uid"},
@@ -199,6 +200,9 @@ var mergeSeeders = map[string]func(t *testing.T, f *mergeFixture, c models.Conta
 	},
 	"attachments": func(t *testing.T, f *mergeFixture, c models.Contact) {
 		require.NoError(t, f.db.Create(&models.Attachment{UserID: f.userID, ContactVCardUID: c.VCardUID, StoredName: "s", OriginalName: "o", ContentType: "text/plain", SizeBytes: 1}).Error)
+	},
+	"contact_images": func(t *testing.T, f *mergeFixture, c models.Contact) {
+		require.NoError(t, f.db.Create(&models.ContactImage{ImageFields: models.ImageFields{UserID: f.userID, UUID: "merge-image", StoredName: "s", ThumbName: "t", MIMEType: "image/jpeg", ThumbMIMEType: "image/jpeg", Width: 1, Height: 1, SizeBytes: 1, ThumbSizeBytes: 1, Sensitivity: models.ImageSensitivityNormal}, ContactVCardUID: c.VCardUID}).Error)
 	},
 	"cadence_policies": func(t *testing.T, f *mergeFixture, c models.Contact) {
 		require.NoError(t, f.db.Create(&models.CadencePolicy{UserID: f.userID, EntityID: c.VCardUID, TargetIntervalDays: 30}).Error)

@@ -490,6 +490,10 @@ func RepointContactAssociations(
 		Update("contact_vcard_uid", keeper.VCardUID).Error; err != nil {
 		return 0, err
 	}
+	if err := tx.Model(&models.ContactImage{}).Where("contact_vcard_uid = ? AND user_id = ?", loser.VCardUID, userID).
+		Update("contact_vcard_uid", keeper.VCardUID).Error; err != nil {
+		return 0, err
+	}
 	if err := tx.Model(&models.Preference{}).Where("entity_id = ? AND user_id = ?", loser.VCardUID, userID).
 		Update("entity_id", keeper.VCardUID).Error; err != nil {
 		return 0, err

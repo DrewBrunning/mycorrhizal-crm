@@ -50,6 +50,7 @@ var purgedSoftDeleteModels = []any{
 	// below (their own deleted_at is still NULL while the parent is trashed).
 	&models.ActivityImage{},
 	&models.NoteImage{},
+	&models.ContactImage{},
 	// Occasions (ADR 0024/0026): user-authored, soft-deleted. Issue #1310:
 	// these were missing, so a deleted contact's obligations outlived the
 	// contact as orphans and soft-deleted events were kept forever.
@@ -82,6 +83,7 @@ type contactUIDCleanup struct {
 // re-created one — see colPredicate for the predicate that prevents that.
 var purgeContactUIDCleanups = []contactUIDCleanup{
 	{"occasion_event_attendees", []string{"entity_id"}},
+	{"contact_images", []string{"contact_vcard_uid"}},
 	{"circle_members", []string{"member_vcard_uid"}},
 	{"contact_tags", []string{"contact_vcard_uid"}},
 	{"household_members", []string{"member_vcard_uid"}},
@@ -336,6 +338,22 @@ func collectPurgeFiles(db *gorm.DB, cutoff time.Time) PurgedFiles {
 		logger.Warn().Err(err).Msg("purge: failed to list note images")
 	}
 	for _, r := range noteImageRows {
+		files.Images = appendImageFiles(files.Images, r.UserID, r.StoredName, r.ThumbName)
+	}
+
+	// Contact gallery images: purge with the contact, or individually past retention.
+	var contactImageRows []struct {
+		UserID     uint
+		StoredName string
+		ThumbName  string
+	}
+	if err := db.Unscoped().Model(&models.ContactImage{}).
+		Select("user_id", "stored_name", "thumb_name").
+		Where("(deleted_at IS NOT NULL AND deleted_at < ?) OR contact_vcard_uid IN (SELECT vcard_uid FROM contacts WHERE deleted_at IS NOT NULL AND deleted_at < ?)", cutoff, cutoff).
+		Scan(&contactImageRows).Error; err != nil {
+		logger.Warn().Err(err).Msg("purge: failed to list contact images")
+	}
+	for _, r := range contactImageRows {
 		files.Images = appendImageFiles(files.Images, r.UserID, r.StoredName, r.ThumbName)
 	}
 

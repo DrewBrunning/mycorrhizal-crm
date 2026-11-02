@@ -253,6 +253,11 @@ func ContactCascadeRegistry() []CascadeStep {
 			Reason: "T14: enrichment event keyed by VCardUID; hard delete",
 		},
 		{
+			Table: "contact_images", NewModel: func() any { return &models.ContactImage{} },
+			Mode: CascadeSoft, Match: byContactUID,
+			Reason: "ADR 0040 slice (c): user-authored gallery content; soft delete with the contact so trash restore revives it, files stay until purge",
+		},
+		{
 			Table: "attachments", NewModel: func() any { return &models.Attachment{} },
 			Mode: CascadeSoft, Match: byContactUID,
 			Reason: "N7: user-authored content: soft delete; on-disk files are removed by the caller after the transaction commits",

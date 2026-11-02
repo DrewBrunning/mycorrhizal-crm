@@ -19,6 +19,7 @@ func TestLoadConfig_ImageDefaultsAndEnv(t *testing.T) {
 	assert.Equal(t, 50_000_000, cfg.ImageMaxPixels)
 	assert.Equal(t, 10, cfg.ImageMaxPerActivity)
 	assert.Equal(t, 10, cfg.ImageMaxPerNote)
+	assert.Equal(t, 50, cfg.ImageMaxPerContact)
 	assert.Zero(t, cfg.ImageProcessConcurrency)
 
 	t.Setenv("IMAGES_DIR", "/var/images")
@@ -26,6 +27,7 @@ func TestLoadConfig_ImageDefaultsAndEnv(t *testing.T) {
 	t.Setenv("IMAGE_MAX_PIXELS", "1000000")
 	t.Setenv("IMAGE_MAX_PER_ACTIVITY", "3")
 	t.Setenv("IMAGE_MAX_PER_NOTE", "4")
+	t.Setenv("IMAGE_MAX_PER_CONTACT", "5")
 	t.Setenv("IMAGE_PROCESS_CONCURRENCY", "4")
 	cfg = LoadConfig()
 	assert.Equal(t, "/var/images", cfg.ImagesDir)
@@ -33,6 +35,7 @@ func TestLoadConfig_ImageDefaultsAndEnv(t *testing.T) {
 	assert.Equal(t, 1_000_000, cfg.ImageMaxPixels)
 	assert.Equal(t, 3, cfg.ImageMaxPerActivity)
 	assert.Equal(t, 4, cfg.ImageMaxPerNote)
+	assert.Equal(t, 5, cfg.ImageMaxPerContact)
 	assert.Equal(t, 4, cfg.ImageProcessConcurrency)
 }
 

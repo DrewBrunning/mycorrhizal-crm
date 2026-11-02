@@ -374,11 +374,13 @@ func buildCWTable(s seeded) map[string]cwRow {
 		"POST /api/v1/admin/contacts/rebuild-derived": exempt(reasonAdmin),
 
 		// === Uploads (multipart, not a JSON row replace) ===
-		"POST /api/v1/contacts/:id/attachments":     exempt(reasonCollectionOp),
-		"POST /api/v1/contacts/:id/profile_picture": exempt(reasonCollectionOp),
-		"POST /api/v1/activities/:id/images":        exempt(reasonCollectionOp),
-		"POST /api/v1/notes/:id/images":             exempt(reasonCollectionOp),
-		"DELETE /api/v1/notes/:id/images/:image_id": exempt(reasonNonRevision),
+		"POST /api/v1/contacts/:id/attachments":        exempt(reasonCollectionOp),
+		"POST /api/v1/contacts/:id/profile_picture":    exempt(reasonCollectionOp),
+		"POST /api/v1/activities/:id/images":           exempt(reasonCollectionOp),
+		"POST /api/v1/notes/:id/images":                exempt(reasonCollectionOp),
+		"POST /api/v1/contacts/:id/images":             exempt(reasonCollectionOp),
+		"DELETE /api/v1/notes/:id/images/:image_id":    exempt(reasonNonRevision),
+		"DELETE /api/v1/contacts/:id/images/:image_id": exempt(reasonNonRevision),
 		// Image rows have no revision column (ADR 0006 excludes them): a delete
 		// is a last-writer-wins tombstone, not a conditional replace.
 		"DELETE /api/v1/activities/:id/images/:image_id": exempt(reasonNonRevision),

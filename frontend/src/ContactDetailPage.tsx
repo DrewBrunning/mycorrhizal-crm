@@ -69,6 +69,7 @@ import ClothingSizesPanel from './components/ClothingSizesPanel';
 import ConnectionsPanel from './components/ConnectionsPanel';
 import ContactFieldVisibilityDialog from './components/ContactFieldVisibilityDialog';
 import ContactHeader from './components/ContactHeader';
+import ContactImageGallery from './components/ContactImageGallery';
 import ContactInformation from './components/ContactInformation';
 import ContactTimeline from './components/ContactTimeline';
 import ConversationAgendaDialog, {
@@ -1357,6 +1358,7 @@ export default function ContactDetailPage() {
           { id: 'gifts', label: t('gifts.title') },
           { id: 'occasions', label: t('occasions.obligation.title') },
           { id: 'external-links', label: t('externalLinks.title') },
+          { id: 'photos', label: t('contactImages.title') },
           { id: 'attachments', label: t('attachments.title') },
         ]}
       />
@@ -1808,6 +1810,12 @@ export default function ContactDetailPage() {
             onLinkNextcloud={fileLinks.handleLinkNextcloud}
             onUnlinkFileSystem={fileLinks.handleUnlink}
           />
+        </PanelCard>
+      </SectionGroup>
+
+      <SectionGroup id="photos">
+        <PanelCard title={t('contactImages.title')}>
+          <ContactImageGallery contactId={Number(id ?? 0)} editable />
         </PanelCard>
       </SectionGroup>
 

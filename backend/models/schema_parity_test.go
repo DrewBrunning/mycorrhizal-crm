@@ -62,6 +62,7 @@ var registeredModels = []any{
 	&ContactSyncLink{},
 	&ContactDeletionSnapshot{},
 	&ContactFieldOverride{},
+	&ContactImage{},
 	&ContactTag{},
 	&ConversationAgenda{},
 	&DataDecayPolicy{},

@@ -46,6 +46,7 @@ func TestMigrationsAddActivityImages(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NoError(t, sqlDB.Close())
+	require.NoError(t, MigrateDown(dbPath)) // 000088_contact_images
 	require.NoError(t, MigrateDown(dbPath)) // 000087_note_images
 	require.NoError(t, MigrateDown(dbPath)) // 000086_activity_images
 

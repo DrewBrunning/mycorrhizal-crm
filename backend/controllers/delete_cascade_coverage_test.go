@@ -111,6 +111,7 @@ var declaredCascadeCoverage = map[string]cascadeBucket{
 	"import_runs":                goCascadeUser,
 	"import_source_links":        goCascadeContact,
 	"contact_field_overrides":    goCascadeContact,
+	"contact_images":             goCascadeContact,
 	"link_field_types":           goCascadeUser,
 	"notification_configs":       goCascadeUser,
 	"occasion_events":            goCascadeUser,
@@ -368,6 +369,7 @@ func TestDeleteCascadeCoverage_DeleteContactSweepsEveryDeclaredContactTable(t *t
 	contact := models.Contact{UserID: user.ID, Firstname: "Cascade", Lastname: "Sweep"}
 	require.NoError(t, db.Create(&contact).Error)
 	uid := contact.VCardUID
+	require.NoError(t, db.Create(&models.ContactImage{ImageFields: models.ImageFields{UserID: user.ID, UUID: "contact-image-1", StoredName: "s", ThumbName: "t", MIMEType: "image/jpeg", ThumbMIMEType: "image/jpeg", Width: 1, Height: 1, SizeBytes: 1, ThumbSizeBytes: 1, Sensitivity: models.ImageSensitivityNormal}, ContactVCardUID: uid}).Error)
 
 	containers := seedContactContainers(t, db, user.ID, contact)
 	activity := models.Activity{UserID: user.ID, Title: "cascade", Date: time.Now()}
@@ -377,6 +379,7 @@ func TestDeleteCascadeCoverage_DeleteContactSweepsEveryDeclaredContactTable(t *t
 
 	seeded := []seedRow{
 		scopedCount("attachments", &models.Attachment{}, "user_id = ?", user.ID),
+		scopedCount("contact_images", &models.ContactImage{}, "user_id = ?", user.ID),
 		scopedCount("cadence_policies", &models.CadencePolicy{}, "user_id = ?", user.ID),
 		scopedCount("circle_members", &models.CircleMember{}, "user_id = ?", user.ID),
 		scopedCount("contact_sync_conflicts", &models.ContactSyncConflict{}, "user_id = ?", user.ID),
@@ -457,6 +460,7 @@ func TestDeleteCascadeCoverage_DeleteContactSweepsEveryDeclaredContactTable(t *t
 // each entry agrees with the model (soft <=> the model carries DeletedAt).
 var contactSweepSoft = map[string]bool{
 	"attachments":          true,
+	"contact_images":       true,
 	"cadence_policies":     true,
 	"conversation_agenda":  true,
 	"data_decay_policies":  true,
@@ -604,6 +608,7 @@ func seedUserCascadeFixtures(t *testing.T, db *gorm.DB, admin, target models.Use
 	containers := seedContactContainers(t, db, target.ID, contact)
 	require.NoError(t, db.Create(&models.CardDAVSyncScope{UserID: target.ID, Mode: models.CardDAVSyncScopeModeInclude, DefaultCircleID: &containers.circleID}).Error)
 	require.NoError(t, db.Create(&models.CardDAVSyncScopeCircle{UserID: target.ID, CircleID: containers.circleID}).Error)
+	require.NoError(t, db.Create(&models.ContactImage{ImageFields: models.ImageFields{UserID: target.ID, UUID: "contact-image-user", StoredName: "s", ThumbName: "t", MIMEType: "image/jpeg", ThumbMIMEType: "image/jpeg", Width: 1, Height: 1, SizeBytes: 1, ThumbSizeBytes: 1, Sensitivity: models.ImageSensitivityNormal}, ContactVCardUID: uid}).Error)
 	activity := models.Activity{UserID: target.ID, Title: "cascade", Date: time.Now()}
 	require.NoError(t, db.Create(&activity).Error)
 	require.NoError(t, db.Exec("INSERT INTO activity_contacts (activity_id, contact_id) VALUES (?, ?)", activity.ID, contact.ID).Error)
@@ -645,6 +650,7 @@ func seedUserCascadeFixtures(t *testing.T, db *gorm.DB, admin, target models.Use
 		rawCount("activity_contacts", "activity_id = ?", activity.ID),
 		scopedCount("api_tokens", &models.ApiToken{}, "user_id = ?", target.ID),
 		scopedCount("attachments", &models.Attachment{}, "user_id = ?", target.ID),
+		scopedCount("contact_images", &models.ContactImage{}, "user_id = ?", target.ID),
 		scopedCount("cadence_policies", &models.CadencePolicy{}, "user_id = ?", target.ID),
 		scopedCount("calendar_event_links", &models.CalendarEventLink{}, "user_id = ?", target.ID),
 		scopedCount("calendar_subscriptions", &models.CalendarSubscription{}, "user_id = ?", target.ID),

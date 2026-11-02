@@ -92,11 +92,13 @@ func (q UserQuota) CheckAttachmentUpload(db *gorm.DB, userID uint, incomingBytes
 	// decision 6); the setting keeps its attachment-centric name so an operator
 	// config does not break.
 	var imageBytes int64
-	if err := db.Model(&models.ActivityImage{}).
-		Where("user_id = ?", userID).
-		Select("COALESCE(SUM(size_bytes + thumb_size_bytes), 0)").
-		Scan(&imageBytes).Error; err != nil {
-		return apperrors.ErrDatabase("Failed to check the attachment quota").WithError(err)
+	for _, model := range []any{&models.ActivityImage{}, &models.NoteImage{}, &models.ContactImage{}} {
+		var n int64
+		if err := db.Model(model).Where("user_id = ?", userID).
+			Select("COALESCE(SUM(size_bytes + thumb_size_bytes), 0)").Scan(&n).Error; err != nil {
+			return apperrors.ErrDatabase("Failed to check the attachment quota").WithError(err)
+		}
+		imageBytes += n
 	}
 	used += imageBytes
 

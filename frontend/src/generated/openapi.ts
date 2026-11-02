@@ -672,6 +672,22 @@ export type ContactIMPP = {
   value?: string;
 };
 
+export type ContactImage = {
+  contact_id: number;
+  created_at: string;
+  file_url: string;
+  height: number;
+  id: number;
+  mime_type: 'image/jpeg' | 'image/png';
+  sensitivity: 'normal' | 'private' | 'secret';
+  size_bytes: number;
+  taken_at?: string | null;
+  taken_date?: string | null;
+  thumbnail_url: string;
+  uuid: string;
+  width: number;
+};
+
 export type ContactMapPoint = {
   address_id: string;
   contact_id: number;
