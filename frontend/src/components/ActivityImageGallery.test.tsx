@@ -82,8 +82,11 @@ describe('ActivityImageGallery', () => {
     render(<ActivityImageGallery activityId={4} editable onChanged={onChanged} />);
 
     await screen.findByRole('img', { name: /activity photo/i });
-    fireEvent.click(screen.getByRole('button', { name: /add photos/i }));
     const input = screen.getByLabelText(/add photos/i);
+    const inputClick = vi.fn();
+    input.addEventListener('click', inputClick);
+    fireEvent.click(screen.getByRole('button', { name: /add photos/i }));
+    expect(inputClick).toHaveBeenCalledTimes(1);
     fireEvent.change(input, { target: { files: [first, second] } });
 
     await waitFor(() => {

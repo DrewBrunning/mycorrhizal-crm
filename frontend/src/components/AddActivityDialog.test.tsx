@@ -669,9 +669,12 @@ describe('activity images', () => {
     renderDialog({ onSave });
     await waitFor(() => expect(getContacts).toHaveBeenCalled());
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add photos' }));
     const file = new File(['x'], 'photo.jpg', { type: 'image/jpeg' });
     const input = screen.getByLabelText('Add photos');
+    const inputClick = vi.fn();
+    input.addEventListener('click', inputClick);
+    fireEvent.click(screen.getByRole('button', { name: 'Add photos' }));
+    expect(inputClick).toHaveBeenCalledTimes(1);
     fireEvent.change(input, { target: { files: [file] } });
     fireEvent.change(screen.getByLabelText('Title *'), { target: { value: 'Trip' } });
     fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
