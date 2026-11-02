@@ -3180,4 +3180,22 @@
     <string name="activity_images_alt">Foto de la actividad</string>
     <string name="activity_images_delete">Eliminar foto</string>
     <string name="activity_images_pending">Fotos para subir: %1$d</string>
+    <string name="contact_field_visibility_customize">Personalizar campos</string>
+    <string name="contact_field_visibility_add_field">Añadir un campo</string>
+    <string name="contact_field_visibility_title">Personalizar los campos de este contacto</string>
+    <string name="contact_field_visibility_description">Elige qué campos aparecen en este contacto. Solo cambia lo que ves: no modifica los datos del contacto ni lo que se sincroniza.</string>
+    <string name="contact_field_visibility_empty_fields">Campos vacíos</string>
+    <string name="contact_field_visibility_inherit">Predeterminado (%1$s)</string>
+    <string name="contact_field_visibility_show">Mostrar</string>
+    <string name="contact_field_visibility_hide">Ocultar</string>
+    <string name="contact_field_visibility_default_shown">visible</string>
+    <string name="contact_field_visibility_default_hidden">oculto</string>
+    <string name="contact_field_visibility_default_on">campos vacíos ocultos</string>
+    <string name="contact_field_visibility_default_off">campos vacíos visibles</string>
+    <string name="contact_field_visibility_hide_empty_on">Ocultar campos vacíos</string>
+    <string name="contact_field_visibility_hide_empty_off">Mostrar campos vacíos</string>
+    <string name="contact_field_visibility_reset">Restablecer valores predeterminados</string>
+    <string name="contact_field_not_set">Sin definir</string>
+    <string name="settings_contact_fields_hide_empty_label">Ocultar campos vacíos</string>
+    <string name="settings_contact_fields_hide_empty_description">En la página de un contacto, no se muestran los campos que aún no tienen valor. Puedes añadir uno desde el menú Añadir un campo, y cada contacto puede anular este ajuste.</string>
 </resources>

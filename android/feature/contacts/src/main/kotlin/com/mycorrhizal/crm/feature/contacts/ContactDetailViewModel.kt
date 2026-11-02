@@ -8,6 +8,7 @@ import com.mycorrhizal.crm.domain.repository.AttachmentRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.CadencePolicyRepository
 import com.mycorrhizal.crm.domain.repository.CircleRepository
+import com.mycorrhizal.crm.domain.repository.ContactFieldVisibilityRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ContactScoreRepository
 import com.mycorrhizal.crm.domain.repository.ConversationAgendaRepository
@@ -29,6 +30,8 @@ import com.mycorrhizal.crm.model.network.CadencePolicyInput
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.ContactFieldKey
 import com.mycorrhizal.crm.model.network.ContactFieldValuesInput
+import com.mycorrhizal.crm.model.network.ContactFieldVisibility
+import com.mycorrhizal.crm.model.network.ContactFieldVisibilityInput
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactScoreResponse
 import com.mycorrhizal.crm.model.network.DEFAULT_ENABLED_CONTACT_FIELDS
@@ -195,8 +198,29 @@ data class ContactDetailUiState(
     val relationshipCount: Int? = null,
     val attachmentCount: Int? = null,
     /** 0 or 1 — a contact has at most one cadence policy. */
-    val cadenceCount: Int? = null
-)
+    val cadenceCount: Int? = null,
+    /**
+     * Issue #1997: the per-contact field visibility resolved by the server.
+     * Null until the fetch lands (or if it fails), in which case the detail
+     * view falls back to the account default in [enabledFields].
+     */
+    val fieldVisibility: ContactFieldVisibility? = null,
+    val fieldVisibilitySaving: Boolean = false,
+    val fieldVisibilityError: ApiError? = null
+) {
+    /** Per-contact overrides > account default: the set the detail view renders. */
+    val resolvedEnabledFields: Set<ContactFieldKey>
+        get() = fieldVisibility?.resolved?.fields
+            ?.filterValues { it }
+            ?.keys
+            ?.mapNotNull { ContactFieldKey.fromWireKey(it) }
+            ?.toSet()
+            ?: enabledFields
+
+    /** Whether this contact's detail view suppresses fields with no value. */
+    val resolvedHideEmpty: Boolean
+        get() = fieldVisibility?.resolved?.hideEmpty ?: false
+}
 
 sealed interface ContactDetailEvent {
     /** A successful soft-delete — the screen should navigate back. */
@@ -207,11 +231,15 @@ sealed interface ContactDetailEvent {
      * [version] is null (vCard 4.0) or 3 (vCard 3.0), for the filename.
      */
     data class ExportReady(val version: Int?, val bytes: ByteArray) : ContactDetailEvent
+
+    /** Issue #1997: a save/reset succeeded — the screen can close the dialog. */
+    data object FieldVisibilitySaved : ContactDetailEvent
 }
 
 @HiltViewModel
 class ContactDetailViewModel @Inject constructor(
     private val contactRepository: ContactRepository,
+    private val contactFieldVisibilityRepository: ContactFieldVisibilityRepository,
     private val reminderRepository: ReminderRepository,
     private val authRepository: AuthRepository,
     // T84 shipped read-only custom-field display via a direct ApiClient dependency; issue #830
@@ -309,6 +337,72 @@ class ContactDetailViewModel @Inject constructor(
         loadCustomFields()
         loadCompletions()
         loadScore()
+        loadFieldVisibility()
+    }
+
+    /**
+     * Issue #1997: fetch the per-contact visibility overrides. Fails soft —
+     * the page keeps rendering the account default it already has, so a
+     * transient error never blanks a contact's fields.
+     */
+    private fun loadFieldVisibility() {
+        if (contactId == 0) return
+        viewModelScope.launch {
+            runCatching { contactFieldVisibilityRepository.get(contactId) }
+                .getOrNull()
+                ?.foldApiError(
+                    onSuccess = { visibility ->
+                        _uiState.update { it.copy(fieldVisibility = visibility) }
+                    },
+                    onError = {}
+                )
+        }
+    }
+
+    /** Replace this contact's overrides and hide-empty choice (full replace). */
+    fun saveFieldVisibility(input: ContactFieldVisibilityInput) {
+        if (contactId == 0 || _uiState.value.fieldVisibilitySaving) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(fieldVisibilitySaving = true, fieldVisibilityError = null) }
+            contactFieldVisibilityRepository.put(contactId, input).foldApiError(
+                onSuccess = { visibility ->
+                    _uiState.update {
+                        it.copy(fieldVisibility = visibility, fieldVisibilitySaving = false)
+                    }
+                    _events.value = ContactDetailEvent.FieldVisibilitySaved
+                },
+                onError = { error ->
+                    _uiState.update {
+                        it.copy(fieldVisibilitySaving = false, fieldVisibilityError = error)
+                    }
+                }
+            )
+        }
+    }
+
+    /** Remove every override so the contact inherits the account defaults again. */
+    fun resetFieldVisibility() {
+        if (contactId == 0 || _uiState.value.fieldVisibilitySaving) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(fieldVisibilitySaving = true, fieldVisibilityError = null) }
+            contactFieldVisibilityRepository.reset(contactId).foldApiError(
+                onSuccess = { visibility ->
+                    _uiState.update {
+                        it.copy(fieldVisibility = visibility, fieldVisibilitySaving = false)
+                    }
+                    _events.value = ContactDetailEvent.FieldVisibilitySaved
+                },
+                onError = { error ->
+                    _uiState.update {
+                        it.copy(fieldVisibilitySaving = false, fieldVisibilityError = error)
+                    }
+                }
+            )
+        }
+    }
+
+    fun onFieldVisibilityErrorShown() {
+        _uiState.update { it.copy(fieldVisibilityError = null) }
     }
 
     /**

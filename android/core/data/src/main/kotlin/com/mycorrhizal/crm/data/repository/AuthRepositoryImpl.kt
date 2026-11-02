@@ -294,6 +294,18 @@ class AuthRepositoryImpl @Inject constructor(
         return Result.success(stored)
     }
 
+    override suspend fun getHideEmptyFields(): Result<Boolean> {
+        val result = apiClient.getEnabledContactFields()
+        val response = result.getOrElse { return Result.failure(it.toApiError()) }
+        return Result.success(response.hideEmptyFields)
+    }
+
+    override suspend fun updateHideEmptyFields(hideEmpty: Boolean): Result<Boolean> {
+        val result = apiClient.updateHideEmptyFields(hideEmpty)
+        val response = result.getOrElse { return Result.failure(it.toApiError()) }
+        return Result.success(response.hideEmptyFields)
+    }
+
     override suspend fun changePassword(
         currentPassword: String,
         newPassword: String

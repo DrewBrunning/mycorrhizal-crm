@@ -5,6 +5,7 @@ import com.mycorrhizal.crm.domain.repository.AttachmentRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.CadencePolicyRepository
 import com.mycorrhizal.crm.domain.repository.CircleRepository
+import com.mycorrhizal.crm.domain.repository.ContactFieldVisibilityRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ContactScoreRepository
 import com.mycorrhizal.crm.domain.repository.ConversationAgendaRepository
@@ -27,7 +28,10 @@ import com.mycorrhizal.crm.model.network.CRMEnvelope
 import com.mycorrhizal.crm.model.network.CadencePolicy
 import com.mycorrhizal.crm.model.network.CadencePolicyInput
 import com.mycorrhizal.crm.model.network.Card
+import com.mycorrhizal.crm.model.network.ContactFieldKey
 import com.mycorrhizal.crm.model.network.ContactFieldValuesInput
+import com.mycorrhizal.crm.model.network.ContactFieldVisibility
+import com.mycorrhizal.crm.model.network.ContactFieldVisibilityInput
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactScoreResponse
 import com.mycorrhizal.crm.model.network.ContactTargetClosenessResponse
@@ -43,6 +47,7 @@ import com.mycorrhizal.crm.model.network.Name
 import com.mycorrhizal.crm.model.network.PaperlessDocument
 import com.mycorrhizal.crm.model.network.Preference
 import com.mycorrhizal.crm.model.network.RelationshipEdge
+import com.mycorrhizal.crm.model.network.ResolvedFieldVisibility
 import com.mycorrhizal.crm.model.network.SeafileItem
 import com.mycorrhizal.crm.model.network.SeafileLibrary
 import com.mycorrhizal.crm.model.network.SeafileLinkRequest
@@ -72,6 +77,7 @@ class ContactDetailViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val contactRepository = mockk<ContactRepository>()
+    private val contactFieldVisibilityRepository = mockk<ContactFieldVisibilityRepository>()
     private val reminderRepository = mockk<ReminderRepository>()
     private val authRepository = mockk<AuthRepository>()
     private val fieldDefinitionRepository = mockk<FieldDefinitionRepository>()
@@ -96,7 +102,8 @@ class ContactDetailViewModelTest {
         id: Int,
         dateFormat: String? = null,
         selfContactVCardUid: String? = null,
-        enabledContactFields: List<String>? = null
+        enabledContactFields: List<String>? = null,
+        fieldVisibility: ContactFieldVisibility = ContactFieldVisibility()
     ): ContactDetailViewModel {
         coEvery { contactRepository.getDeviceLookupKey(any()) } returns null
         every { authRepository.observeSession() } returns
@@ -118,8 +125,12 @@ class ContactDetailViewModelTest {
         stubExternalLinks()
         stubScore()
         stubCounts()
+        coEvery {
+            contactFieldVisibilityRepository.get(any())
+        } returns Result.success(fieldVisibility)
         return ContactDetailViewModel(
             contactRepository,
+            contactFieldVisibilityRepository,
             reminderRepository,
             authRepository,
             fieldDefinitionRepository,
@@ -347,6 +358,7 @@ class ContactDetailViewModelTest {
 
         val vm = ContactDetailViewModel(
             contactRepository,
+            contactFieldVisibilityRepository,
             reminderRepository,
             authRepository,
             fieldDefinitionRepository,
@@ -486,7 +498,7 @@ class ContactDetailViewModelTest {
 
         val vm =
             ContactDetailViewModel(
-                contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, lifeEventRepository, giftRepository, preferenceRepository, conversationAgendaRepository, relationshipEdgeRepository, attachmentRepository, cadencePolicyRepository,
+                contactRepository, contactFieldVisibilityRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, lifeEventRepository, giftRepository, preferenceRepository, conversationAgendaRepository, relationshipEdgeRepository, attachmentRepository, cadencePolicyRepository,
                 SavedStateHandle(
                     mapOf("contactId" to 5)
                 )
@@ -519,7 +531,7 @@ class ContactDetailViewModelTest {
 
         val vm =
             ContactDetailViewModel(
-                contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, lifeEventRepository, giftRepository, preferenceRepository, conversationAgendaRepository, relationshipEdgeRepository, attachmentRepository, cadencePolicyRepository,
+                contactRepository, contactFieldVisibilityRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, lifeEventRepository, giftRepository, preferenceRepository, conversationAgendaRepository, relationshipEdgeRepository, attachmentRepository, cadencePolicyRepository,
                 SavedStateHandle(
                     mapOf("contactId" to 5)
                 )
@@ -556,7 +568,7 @@ class ContactDetailViewModelTest {
 
         val vm =
             ContactDetailViewModel(
-                contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, lifeEventRepository, giftRepository, preferenceRepository, conversationAgendaRepository, relationshipEdgeRepository, attachmentRepository, cadencePolicyRepository,
+                contactRepository, contactFieldVisibilityRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, lifeEventRepository, giftRepository, preferenceRepository, conversationAgendaRepository, relationshipEdgeRepository, attachmentRepository, cadencePolicyRepository,
                 SavedStateHandle(
                     mapOf("contactId" to 5)
                 )
@@ -601,7 +613,7 @@ class ContactDetailViewModelTest {
 
             val vm =
                 ContactDetailViewModel(
-                    contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, lifeEventRepository, giftRepository, preferenceRepository, conversationAgendaRepository, relationshipEdgeRepository, attachmentRepository, cadencePolicyRepository,
+                    contactRepository, contactFieldVisibilityRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, lifeEventRepository, giftRepository, preferenceRepository, conversationAgendaRepository, relationshipEdgeRepository, attachmentRepository, cadencePolicyRepository,
                     SavedStateHandle(
                         mapOf("contactId" to 5)
                     )
@@ -2819,5 +2831,113 @@ class ContactDetailViewModelTest {
 
         assertNull(vm.uiState.value.score)
         coVerify(exactly = 0) { contactScoreRepository.getScore(any()) }
+    }
+
+    @Test
+    fun `loads the per-contact field visibility`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { contactRepository.getContact(5) } returns Result.success(
+            ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        )
+
+        val vm = viewModel(
+            5,
+            fieldVisibility = ContactFieldVisibility(
+                overrides = mapOf("emails" to "hide"),
+                resolved = ResolvedFieldVisibility(
+                    fields = mapOf("emails" to false, "phones" to true),
+                    hideEmpty = true
+                )
+            )
+        )
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertFalse(ContactFieldKey.EMAILS in state.resolvedEnabledFields)
+        assertTrue(ContactFieldKey.PHONES in state.resolvedEnabledFields)
+        assertTrue(state.resolvedHideEmpty)
+    }
+
+    @Test
+    fun `saving field visibility updates the resolved set and emits Saved`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { contactRepository.getContact(5) } returns Result.success(
+            ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        )
+        coEvery {
+            contactFieldVisibilityRepository.put(5, any())
+        } returns Result.success(
+            ContactFieldVisibility(
+                overrides = mapOf("emails" to "hide"),
+                resolved = ResolvedFieldVisibility(
+                    fields = mapOf("emails" to false, "phones" to true),
+                    hideEmpty = true
+                )
+            )
+        )
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+        vm.saveFieldVisibility(
+            ContactFieldVisibilityInput(
+                overrides = mapOf("emails" to "hide"),
+                hideEmpty = "hide"
+            )
+        )
+        advanceUntilIdle()
+
+        assertEquals(ContactDetailEvent.FieldVisibilitySaved, vm.events.value)
+        assertFalse(ContactFieldKey.EMAILS in vm.uiState.value.resolvedEnabledFields)
+        assertTrue(vm.uiState.value.resolvedHideEmpty)
+        assertFalse(vm.uiState.value.fieldVisibilitySaving)
+    }
+
+    @Test
+    fun `resetting field visibility restores the account defaults`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { contactRepository.getContact(5) } returns Result.success(
+            ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        )
+        coEvery { contactFieldVisibilityRepository.reset(5) } returns Result.success(
+            ContactFieldVisibility(
+                resolved = ResolvedFieldVisibility(
+                    fields = mapOf("emails" to true, "phones" to false),
+                    hideEmpty = false
+                )
+            )
+        )
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+        vm.resetFieldVisibility()
+        advanceUntilIdle()
+
+        assertEquals(ContactDetailEvent.FieldVisibilitySaved, vm.events.value)
+        assertTrue(ContactFieldKey.EMAILS in vm.uiState.value.resolvedEnabledFields)
+        assertFalse(vm.uiState.value.resolvedHideEmpty)
+    }
+
+    @Test
+    fun `a failed field visibility save surfaces the error and keeps the dialog state`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { contactRepository.getContact(5) } returns Result.success(
+            ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        )
+        coEvery {
+            contactFieldVisibilityRepository.put(5, any())
+        } returns Result.failure(ApiError.Client(400, "bad overrides"))
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+        vm.saveFieldVisibility(ContactFieldVisibilityInput())
+        advanceUntilIdle()
+
+        assertEquals("bad overrides", vm.uiState.value.fieldVisibilityError?.message)
+        assertFalse(vm.uiState.value.fieldVisibilitySaving)
+        assertNull(vm.events.value)
     }
 }

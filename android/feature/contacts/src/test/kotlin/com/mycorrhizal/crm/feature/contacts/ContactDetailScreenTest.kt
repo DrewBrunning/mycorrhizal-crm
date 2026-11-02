@@ -80,13 +80,23 @@ class ContactDetailScreenTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    private fun setContent(state: ContactDetailUiState) {
+    private fun setContent(
+        state: ContactDetailUiState,
+        hideEmpty: Boolean = true,
+        revealedFields: Set<ContactFieldKey> = emptySet(),
+        onRevealField: (ContactFieldKey) -> Unit = {},
+        onCustomizeFields: () -> Unit = {}
+    ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 ContactDetailContent(
                     contact = state.contact!!,
                     dateFormat = state.dateFormat,
-                    enabledFields = state.enabledFields
+                    accountEnabledFields = state.enabledFields,
+                    hideEmpty = hideEmpty,
+                    revealedFields = revealedFields,
+                    onRevealField = onRevealField,
+                    onCustomizeFields = onCustomizeFields
                 )
             }
         }
@@ -755,6 +765,64 @@ class ContactDetailScreenTest {
     }
 
     @Test
+    fun `the toolbar opens the customize-fields callback`() {
+        var opened = 0
+        setContent(
+            ContactDetailUiState(
+                contact = ContactRecordResponse(
+                    id = 5,
+                    card = Card(name = Name(full = "Dana White"))
+                )
+            ),
+            onCustomizeFields = { opened += 1 }
+        )
+
+        scrollTo("Customize fields").performClick()
+
+        assertEquals(1, opened)
+    }
+
+    @Test
+    fun `the add-a-field menu reveals a hidden empty field`() {
+        var revealed: ContactFieldKey? = null
+        setContent(
+            ContactDetailUiState(
+                contact = ContactRecordResponse(
+                    id = 5,
+                    card = Card(name = Name(full = "Dana White"))
+                ),
+                enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.PHONES
+            ),
+            onRevealField = { revealed = it }
+        )
+
+        composeTestRule.onNodeWithText("Add a field")
+            .performScrollTo()
+            .assertIsDisplayed()
+            .performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Phone", useUnmergedTree = true).performClick()
+
+        assertEquals(ContactFieldKey.PHONES, revealed)
+    }
+
+    @Test
+    fun `empty fields render placeholders when hide-empty is off`() {
+        setContent(
+            ContactDetailUiState(
+                contact = ContactRecordResponse(
+                    id = 5,
+                    card = Card(name = Name(full = "Dana White"))
+                )
+            ),
+            hideEmpty = false
+        )
+
+        // A single empty contact exercises every standard field's placeholder branch.
+        composeTestRule.onAllNodesWithText("Not set")[0].assertExists()
+    }
+
+    @Test
     fun `link section renders open and copy actions`() {
         val contact = ContactRecordResponse(
             id = 5,
@@ -989,7 +1057,7 @@ class ContactDetailScreenTest {
             MycorrhizalTheme {
                 ContactDetailContent(
                     contact = contact,
-                    enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.KEYWORDS
+                    accountEnabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.KEYWORDS
                 )
             }
         }
@@ -1010,7 +1078,7 @@ class ContactDetailScreenTest {
             MycorrhizalTheme {
                 ContactDetailContent(
                     contact = contact,
-                    enabledFields =
+                    accountEnabledFields =
                         DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.PREFERRED_LANGUAGES
                 )
             }
@@ -1045,7 +1113,8 @@ class ContactDetailScreenTest {
             MycorrhizalTheme {
                 ContactDetailContent(
                     contact = contact,
-                    enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.ANNIVERSARIES
+                    accountEnabledFields =
+                        DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.ANNIVERSARIES
                 )
             }
         }
@@ -1100,7 +1169,7 @@ class ContactDetailScreenTest {
             MycorrhizalTheme {
                 ContactDetailContent(
                     contact = contact,
-                    enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.TITLES
+                    accountEnabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.TITLES
                 )
             }
         }
@@ -1126,7 +1195,7 @@ class ContactDetailScreenTest {
             MycorrhizalTheme {
                 ContactDetailContent(
                     contact = contact,
-                    enabledFields =
+                    accountEnabledFields =
                         DEFAULT_ENABLED_CONTACT_FIELDS - ContactFieldKey.WORK_INFORMATION
                 )
             }

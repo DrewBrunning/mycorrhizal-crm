@@ -3085,4 +3085,22 @@
     <string name="activity_images_alt">Aktivitätsfoto</string>
     <string name="activity_images_delete">Foto löschen</string>
     <string name="activity_images_pending">Fotos zum Hochladen: %1$d</string>
+    <string name="contact_field_visibility_customize">Felder anpassen</string>
+    <string name="contact_field_visibility_add_field">Feld hinzufügen</string>
+    <string name="contact_field_visibility_title">Felder für diesen Kontakt anpassen</string>
+    <string name="contact_field_visibility_description">Lege fest, welche Felder bei diesem Kontakt erscheinen. Das ändert nur die Anzeige: Die Kontaktdaten und die Synchronisierung bleiben unverändert.</string>
+    <string name="contact_field_visibility_empty_fields">Leere Felder</string>
+    <string name="contact_field_visibility_inherit">Standard (%1$s)</string>
+    <string name="contact_field_visibility_show">Anzeigen</string>
+    <string name="contact_field_visibility_hide">Ausblenden</string>
+    <string name="contact_field_visibility_default_shown">angezeigt</string>
+    <string name="contact_field_visibility_default_hidden">ausgeblendet</string>
+    <string name="contact_field_visibility_default_on">leere Felder ausgeblendet</string>
+    <string name="contact_field_visibility_default_off">leere Felder angezeigt</string>
+    <string name="contact_field_visibility_hide_empty_on">Leere Felder ausblenden</string>
+    <string name="contact_field_visibility_hide_empty_off">Leere Felder anzeigen</string>
+    <string name="contact_field_visibility_reset">Auf Standard zurücksetzen</string>
+    <string name="contact_field_not_set">Nicht gesetzt</string>
+    <string name="settings_contact_fields_hide_empty_label">Leere Felder ausblenden</string>
+    <string name="settings_contact_fields_hide_empty_description">Auf der Kontaktseite werden Felder ohne Wert nicht angezeigt. Über das Menü „Feld hinzufügen“ kannst du sie trotzdem ausfüllen, und einzelne Kontakte können diese Einstellung überschreiben.</string>
 </resources>

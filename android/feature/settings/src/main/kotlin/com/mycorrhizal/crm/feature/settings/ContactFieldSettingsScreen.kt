@@ -83,6 +83,7 @@ fun ContactFieldSettingsScreen(
         ContactFieldSettingsContent(
             state = state,
             onToggle = viewModel::onToggle,
+            onToggleHideEmpty = viewModel::onToggleHideEmpty,
             modifier = Modifier.padding(padding)
         )
     }
@@ -93,7 +94,8 @@ fun ContactFieldSettingsScreen(
 fun ContactFieldSettingsContent(
     state: ContactFieldSettingsUiState,
     modifier: Modifier = Modifier,
-    onToggle: (ContactFieldKey) -> Unit = {}
+    onToggle: (ContactFieldKey) -> Unit = {},
+    onToggleHideEmpty: () -> Unit = {}
 ) {
     Column(
         modifier = modifier
@@ -131,6 +133,24 @@ fun ContactFieldSettingsContent(
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
             )
         }
+        state.hideEmptyError?.let {
+            Text(
+                it.localizedMessage(),
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
+            )
+        }
+
+        // Issue #1997: the account-wide hide-empty default. A contact can
+        // override it from its own "Customize fields" dialog.
+        FieldToggleRow(
+            label = stringResource(R.string.settings_contact_fields_hide_empty_label),
+            description = stringResource(R.string.settings_contact_fields_hide_empty_description),
+            checked = state.hideEmpty,
+            enabled = state.savingKey == null && !state.savingHideEmpty,
+            onCheckedChange = { onToggleHideEmpty() }
+        )
 
         CONTACT_FIELD_GROUP_ORDER.forEach { group ->
             val keysInGroup = CONTACT_FIELD_GROUP.entries.filter {

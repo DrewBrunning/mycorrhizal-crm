@@ -52,6 +52,8 @@ import com.mycorrhizal.crm.model.network.ContactAddressSuggestionsResponse
 import com.mycorrhizal.crm.model.network.ContactBriefing
 import com.mycorrhizal.crm.model.network.ContactFieldValuesInput
 import com.mycorrhizal.crm.model.network.ContactFieldValuesResponse
+import com.mycorrhizal.crm.model.network.ContactFieldVisibility
+import com.mycorrhizal.crm.model.network.ContactFieldVisibilityInput
 import com.mycorrhizal.crm.model.network.ContactMapResponse
 import com.mycorrhizal.crm.model.network.ContactMergeCommitResponse
 import com.mycorrhizal.crm.model.network.ContactMergePreviewResponse
@@ -125,6 +127,8 @@ import com.mycorrhizal.crm.model.network.Gift
 import com.mycorrhizal.crm.model.network.GiftInput
 import com.mycorrhizal.crm.model.network.GiftsPage
 import com.mycorrhizal.crm.model.network.GraphConnectionsResponse
+import com.mycorrhizal.crm.model.network.HideEmptyFieldsInput
+import com.mycorrhizal.crm.model.network.HideEmptyFieldsResponse
 import com.mycorrhizal.crm.model.network.Household
 import com.mycorrhizal.crm.model.network.HouseholdDetailResponse
 import com.mycorrhizal.crm.model.network.HouseholdInput
@@ -791,6 +795,18 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
     ) { _, body ->
         moshi.adapter(EnabledContactFieldsResponse::class.java).fromJson(body)
     }
+
+    /**
+     * PATCH /api/v1/users/hide-empty-fields (issue #1997) — the account-wide
+     * hide-empty default. A per-contact override wins over it.
+     */
+    suspend fun updateHideEmptyFields(hideEmpty: Boolean): Result<HideEmptyFieldsResponse> =
+        executePatch(
+            "$PLACEHOLDER_ORIGIN$USERS_PATH/hide-empty-fields",
+            HideEmptyFieldsInput(hideEmpty)
+        ) { _, body ->
+            moshi.adapter(HideEmptyFieldsResponse::class.java).fromJson(body)
+        }
 
     /**
      * POST /api/v1/users/change-password — the server bumps TokenVersion on
@@ -1488,6 +1504,31 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
     ): Result<ContactFieldValuesResponse> =
         executePut("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/field-values", input) { _, body ->
             moshi.adapter(ContactFieldValuesResponse::class.java).fromJson(body)
+        }
+
+    // --- Per-contact field visibility (issue #1997) ---
+
+    /** GET /contacts/{id}/field-visibility — overrides plus the resolved rendering decision. */
+    suspend fun getContactFieldVisibility(contactId: Int): Result<ContactFieldVisibility> =
+        executeGet("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/field-visibility") { _, body ->
+            moshi.adapter(ContactFieldVisibility::class.java).fromJson(body)
+        }
+
+    /** PUT /contacts/{id}/field-visibility — full replace of the override set. */
+    suspend fun putContactFieldVisibility(
+        contactId: Int,
+        input: ContactFieldVisibilityInput
+    ): Result<ContactFieldVisibility> = executePut(
+        "$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/field-visibility",
+        input
+    ) { _, body ->
+        moshi.adapter(ContactFieldVisibility::class.java).fromJson(body)
+    }
+
+    /** DELETE /contacts/{id}/field-visibility — reset to the account defaults. */
+    suspend fun resetContactFieldVisibility(contactId: Int): Result<ContactFieldVisibility> =
+        executeDelete("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/field-visibility") { _, body ->
+            moshi.adapter(ContactFieldVisibility::class.java).fromJson(body)
         }
 
     /**

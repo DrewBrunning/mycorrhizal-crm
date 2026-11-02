@@ -151,4 +151,56 @@ class ContactFieldSettingsViewModelTest {
             )
         }
     }
+
+    @Test
+    fun `loads the account hide-empty default`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { repository.getEnabledContactFields() } returns Result.success(null)
+        coEvery { repository.getHideEmptyFields() } returns Result.success(true)
+
+        val vm = ContactFieldSettingsViewModel(repository)
+        advanceUntilIdle()
+
+        assertTrue(vm.uiState.value.hideEmpty)
+    }
+
+    @Test
+    fun `toggling hide-empty patches the account default`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { repository.getEnabledContactFields() } returns Result.success(null)
+        coEvery { repository.getHideEmptyFields() } returns Result.success(false)
+        val captured = mutableListOf<Boolean>()
+        coEvery { repository.updateHideEmptyFields(any()) } answers {
+            captured.add(firstArg())
+            Result.success(firstArg())
+        }
+
+        val vm = ContactFieldSettingsViewModel(repository)
+        advanceUntilIdle()
+        vm.onToggleHideEmpty()
+        advanceUntilIdle()
+
+        assertTrue(vm.uiState.value.hideEmpty)
+        assertEquals(listOf(true), captured)
+        assertFalse(vm.uiState.value.savingHideEmpty)
+    }
+
+    @Test
+    fun `a failed hide-empty toggle reverts and surfaces the error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { repository.getEnabledContactFields() } returns Result.success(null)
+        coEvery { repository.getHideEmptyFields() } returns Result.success(false)
+        coEvery { repository.updateHideEmptyFields(any()) } returns Result.failure(
+            ApiError.Client(500, "boom")
+        )
+
+        val vm = ContactFieldSettingsViewModel(repository)
+        advanceUntilIdle()
+        vm.onToggleHideEmpty()
+        advanceUntilIdle()
+
+        assertFalse(vm.uiState.value.hideEmpty)
+        assertEquals("boom", vm.uiState.value.hideEmptyError?.message)
+    }
 }
