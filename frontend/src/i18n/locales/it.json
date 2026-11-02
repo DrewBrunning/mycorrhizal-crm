@@ -4130,5 +4130,16 @@
     "loading": "Caricamento foto",
     "uploadFailed": "Impossibile caricare la foto.",
     "uploading": "Caricamento in corso..."
+  },
+  "contactImages": {
+    "title": "Foto",
+    "add": "Aggiungi foto",
+    "alt": "Foto del contatto",
+    "delete": "Elimina foto",
+    "deleteFailed": "Impossibile eliminare la foto.",
+    "loadFailed": "Impossibile caricare le foto.",
+    "loading": "Caricamento foto",
+    "uploadFailed": "Impossibile caricare la foto.",
+    "uploading": "Caricamento in corso..."
   }
 }

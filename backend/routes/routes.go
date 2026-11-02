@@ -292,6 +292,12 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 				protected.POST("/contacts/:id/addresses/:addressId/geocode", controllers.GeocodeContactAddress(geocoder))
 			}
 			protected.DELETE("/contacts/:id", controllers.DeleteContact)
+			// Contact gallery images (ADR 0040 slice c, issue #2004).
+			protected.POST("/contacts/:id/images", middleware.BodySizeLimitMiddleware(controllers.ContactImageUploadBodyLimit(cfg)), controllers.UploadContactImage)
+			protected.GET("/contacts/:id/images", controllers.ListContactImages)
+			protected.GET("/contacts/:id/images/:image_id/file", func(c *gin.Context) { controllers.DownloadContactImage(c, false) })
+			protected.GET("/contacts/:id/images/:image_id/thumbnail", func(c *gin.Context) { controllers.DownloadContactImage(c, true) })
+			protected.DELETE("/contacts/:id/images/:image_id", controllers.DeleteContactImage)
 			// Contact trash (issue #2002, ADR 0037).
 			protected.GET("/trash/contacts", controllers.ListTrashedContacts)
 			protected.DELETE("/trash/contacts", controllers.EmptyTrash)

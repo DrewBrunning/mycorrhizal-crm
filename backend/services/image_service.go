@@ -57,6 +57,25 @@ type ImageService[T any, P interface {
 	Quota    UserQuota
 }
 
+// ContactImageService builds the contact-gallery service from config (ADR 0040 slice c).
+func ContactImageService(db *gorm.DB, store imaging.Store, limit, maxPixels int, maxBytes int64, quota UserQuota) *ImageService[models.ContactImage, *models.ContactImage] {
+	if maxPixels <= 0 {
+		maxPixels = imaging.DefaultLimits.MaxPixels
+	}
+	if maxBytes <= 0 {
+		maxBytes = 20 << 20
+	}
+	return &ImageService[models.ContactImage, *models.ContactImage]{
+		DB:       db,
+		Store:    store,
+		Kind:     OwnerKindContact,
+		Limit:    limit,
+		Limits:   imaging.Limits{MaxPixels: maxPixels},
+		MaxBytes: maxBytes,
+		Quota:    quota,
+	}
+}
+
 // NoteImageService builds the note-image service from config (ADR 0040 slice b).
 func NoteImageService(db *gorm.DB, store imaging.Store, limit, maxPixels int, maxBytes int64, quota UserQuota) *ImageService[models.NoteImage, *models.NoteImage] {
 	if maxPixels <= 0 {

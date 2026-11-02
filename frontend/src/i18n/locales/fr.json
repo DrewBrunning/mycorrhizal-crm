@@ -4130,5 +4130,16 @@
     "loading": "Chargement des photos",
     "uploadFailed": "Impossible de téléverser la photo.",
     "uploading": "Téléversement..."
+  },
+  "contactImages": {
+    "title": "Photos",
+    "add": "Ajouter des photos",
+    "alt": "Photo du contact",
+    "delete": "Supprimer la photo",
+    "deleteFailed": "Impossible de supprimer la photo.",
+    "loadFailed": "Impossible de charger les photos.",
+    "loading": "Chargement des photos",
+    "uploadFailed": "Impossible de téléverser la photo.",
+    "uploading": "Téléversement..."
   }
 }

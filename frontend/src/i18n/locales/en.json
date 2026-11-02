@@ -4025,5 +4025,16 @@
     "loading": "Loading photos",
     "uploadFailed": "Could not upload the photo.",
     "uploading": "Uploading..."
+  },
+  "contactImages": {
+    "title": "Photos",
+    "add": "Add photos",
+    "alt": "Contact photo",
+    "delete": "Delete photo",
+    "deleteFailed": "Could not delete the photo.",
+    "loadFailed": "Could not load photos.",
+    "loading": "Loading photos",
+    "uploadFailed": "Could not upload the photo.",
+    "uploading": "Uploading..."
   }
 }

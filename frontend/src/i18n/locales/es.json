@@ -4130,5 +4130,16 @@
     "loading": "Cargando fotos",
     "uploadFailed": "No se pudo subir la foto.",
     "uploading": "Subiendo..."
+  },
+  "contactImages": {
+    "title": "Fotos",
+    "add": "Añadir fotos",
+    "alt": "Foto del contacto",
+    "delete": "Eliminar foto",
+    "deleteFailed": "No se pudo eliminar la foto.",
+    "loadFailed": "No se pudieron cargar las fotos.",
+    "loading": "Cargando fotos",
+    "uploadFailed": "No se pudo subir la foto.",
+    "uploading": "Subiendo..."
   }
 }

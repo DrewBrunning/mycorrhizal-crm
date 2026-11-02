@@ -76,5 +76,5 @@ func DefaultBodySizeLimitMiddleware() gin.HandlerFunc {
 // explicit per-route BodySizeLimitMiddleware, exactly like the exact-path
 // allowlist above.
 func isLargeBodyRoute(path string) bool {
-	return (strings.HasPrefix(path, "/api/v1/activities/") || strings.HasPrefix(path, "/api/v1/notes/")) && strings.HasSuffix(path, "/images")
+	return (strings.HasPrefix(path, "/api/v1/activities/") || strings.HasPrefix(path, "/api/v1/notes/") || strings.HasPrefix(path, "/api/v1/contacts/")) && strings.HasSuffix(path, "/images")
 }

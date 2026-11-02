@@ -108,3 +108,18 @@ func (n *NoteImage) OwnerColumn() string { return "note_id" }
 
 // SetOwner assigns the owner key.
 func (n *NoteImage) SetOwner(owner OwnerRef) { n.NoteID = owner.ID }
+
+// ContactImage is one image in a contact's gallery (ADR 0040 slice c).
+type ContactImage struct {
+	ImageFields
+	ContactVCardUID string `gorm:"column:contact_vcard_uid;not null;index" json:"contact_vcard_uid"`
+}
+
+// TableName pins the table name so it never drifts from the migration.
+func (ContactImage) TableName() string { return "contact_images" }
+
+// OwnerColumn is the column that names this image's owning contact.
+func (c *ContactImage) OwnerColumn() string { return "contact_vcard_uid" }
+
+// SetOwner assigns the contact owner key.
+func (c *ContactImage) SetOwner(owner OwnerRef) { c.ContactVCardUID = owner.UID }

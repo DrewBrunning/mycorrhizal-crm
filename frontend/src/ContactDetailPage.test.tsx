@@ -520,6 +520,7 @@ function mockFetch({
             }
             if (/^\/activities\/\d+\/images$/.test(path)) return json({ images: [], total: 0 });
             if (/^\/notes\/\d+\/images$/.test(path)) return json({ images: [], total: 0 });
+            if (/^\/contacts\/\d+\/images$/.test(path)) return json({ images: [], total: 0 });
             if (path === '/users/directory') return json({ users: [] });
             if (path.startsWith('/contact-shares')) {
               return json({ contact_shares: [] });

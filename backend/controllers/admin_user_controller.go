@@ -708,7 +708,7 @@ func DeleteUser(c *gin.Context) {
 	}
 
 	// Capture gallery image names too (ADR 0040); both variants live on disk.
-	userImageNames, err := loadUserImageNames(db, uint(id), &models.ActivityImage{}, &models.NoteImage{})
+	userImageNames, err := loadUserImageNames(db, uint(id), &models.ActivityImage{}, &models.NoteImage{}, &models.ContactImage{})
 	if err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("load user images").WithError(err))
 		return

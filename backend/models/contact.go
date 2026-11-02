@@ -160,6 +160,10 @@ type Contact struct {
 	// read before the save) and undo bumpRevisionCAS's compare-and-swap in
 	// the same transaction.
 	ETag string `gorm:"column:etag;<-:create" json:"-"`
+	// MainImageID optionally points at the contact's chosen gallery image
+	// (ADR 0040 slice c). Cleared by the FK when that image row is deleted.
+	MainImageID *uint `gorm:"column:main_image_id" json:"main_image_id,omitempty"`
+
 	// Revision is the monotonic per-row write counter (issue #591, CON-01a —
 	// docs/adrs/0006-revision-token-schema.md): starts at 1 on create,
 	// incremented on every persisted write, and the ETag is derived from it

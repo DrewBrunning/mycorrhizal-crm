@@ -46,6 +46,7 @@ func TestMigrationsAddNoteImages(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NoError(t, sqlDB.Close())
+	require.NoError(t, MigrateDown(dbPath)) // 000088_contact_images
 	require.NoError(t, MigrateDown(dbPath))
 
 	sqlDB2, err := sql.Open("sqlite", openDSN(dbPath))

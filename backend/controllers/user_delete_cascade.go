@@ -376,6 +376,11 @@ func deleteUserCascade(tx *gorm.DB, userID uint) error {
 		return err
 	}
 
+	// Delete contact gallery images (hard — account gone, no tombstoning).
+	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.ContactImage{}).Error; err != nil {
+		return err
+	}
+
 	// Delete contacts (hard)
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.Contact{}).Error; err != nil {
 		return err

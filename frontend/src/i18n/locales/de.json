@@ -4025,5 +4025,16 @@
     "loading": "Fotos werden geladen",
     "uploadFailed": "Das Foto konnte nicht hochgeladen werden.",
     "uploading": "Wird hochgeladen..."
+  },
+  "contactImages": {
+    "title": "Fotos",
+    "add": "Fotos hinzufügen",
+    "alt": "Kontaktfoto",
+    "delete": "Foto löschen",
+    "deleteFailed": "Das Foto konnte nicht gelöscht werden.",
+    "loadFailed": "Die Fotos konnten nicht geladen werden.",
+    "loading": "Fotos werden geladen",
+    "uploadFailed": "Das Foto konnte nicht hochgeladen werden.",
+    "uploading": "Wird hochgeladen..."
   }
 }

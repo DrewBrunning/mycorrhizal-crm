@@ -21,6 +21,7 @@ unleash:
         - ^contact_controller\.go$
         - ^contact_detail_controller\.go$
         - ^contact_field_visibility_controller\.go$
+        - ^contact_image_controller\.go$
         - ^contact_map_controller\.go$
         - ^contact_merge_controller\.go$
         - ^contact_score_controller\.go$

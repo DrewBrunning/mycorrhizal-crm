@@ -295,6 +295,7 @@ var noBodyMutatingRoutes = map[string]bool{
 	"POST /contacts/{id}/attachments":                   true,
 	"POST /activities/{id}/images":                      true, // multipart upload, own body cap
 	"POST /notes/{id}/images":                           true, // multipart upload, own body cap
+	"POST /contacts/{id}/images":                        true, // multipart upload, own body cap
 	"POST /contacts/{id}/profile_picture":               true,
 	"POST /households/{id}/suggest-relationships":       true,
 	"POST /households/suggest-addresses":                true,
