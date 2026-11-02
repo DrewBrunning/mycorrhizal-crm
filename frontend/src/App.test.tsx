@@ -27,7 +27,23 @@ afterEach(() => {
 
 vi.mock('./auth', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./auth')>();
-  return { ...actual, isAdmin: vi.fn() };
+  return { ...actual, isAdmin: vi.fn(), fetchAndCacheUserInfo: vi.fn().mockResolvedValue(null) };
+});
+
+// This file asserts the shell (routing, nav, layout), not page data. Some
+// routes it renders still mount data-loading components (e.g. /settings/data
+// mounts ContactFieldSettings + CustomFieldsSettings), and a real fetch that
+// settles after the test environment has been torn down makes React dispatch a
+// state update with no `window` -- Vitest then fails the whole file on the
+// unhandled rejection even though every test passed (#2283 nightly). Reject
+// immediately instead: callers take their normal error path within the test,
+// nothing reaches the network, and no request can outlive the environment.
+vi.mock('./api/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./api/client')>();
+  return {
+    ...actual,
+    apiFetch: vi.fn().mockRejectedValue(new Error('test: network disabled')),
+  };
 });
 
 // The logged-in shell lands on the dashboard, which fires its own fetches on
