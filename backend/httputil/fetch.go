@@ -4,6 +4,7 @@
 package httputil
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net"
@@ -14,7 +15,7 @@ import (
 )
 
 // validateURLForSSRF checks if a URL is safe to fetch (not pointing to internal resources)
-func validateURLForSSRF(rawURL string) (*url.URL, error) {
+func validateURLForSSRF(ctx context.Context, rawURL string) (*url.URL, error) {
 	parsedURL, err := url.Parse(rawURL)
 	if err != nil {
 		return nil, errors.New("invalid URL format")
@@ -40,7 +41,7 @@ func validateURLForSSRF(rawURL string) (*url.URL, error) {
 	}
 
 	// Resolve the hostname to IP addresses
-	ips, err := net.LookupIP(host)
+	addrs, err := net.DefaultResolver.LookupIPAddr(ctx, host)
 	if err != nil {
 		return nil, errors.New("failed to resolve hostname")
 	}
@@ -48,8 +49,8 @@ func validateURLForSSRF(rawURL string) (*url.URL, error) {
 	// Reject if *any* answer is non-public, not merely if all of them are: a
 	// host that resolves to a mix of public and internal addresses has no
 	// legitimate reason to be fetched here.
-	for _, ip := range ips {
-		if !IsPublicIP(ip) {
+	for _, addr := range addrs {
+		if !IsPublicIP(addr.IP) {
 			return nil, errors.New("access to internal IP addresses is not allowed")
 		}
 	}
@@ -63,17 +64,18 @@ const maxImageSize = 10 * 1024 * 1024
 // FetchImageFromURL fetches an image from a URL with SSRF protection.
 // Returns the image data, content type, and any error.
 // The URL is sanitized to remove whitespace (handles Google VCF format).
-func FetchImageFromURL(imageURL string) ([]byte, string, error) {
+// The request, DNS resolution, and dial all honor ctx.
+func FetchImageFromURL(ctx context.Context, imageURL string) ([]byte, string, error) {
 	// Clean URL - remove spaces and newlines (Google VCF format may have these)
 	cleanURL := sanitizeURL(imageURL)
 
 	// Validate the URL format and scheme
-	parsedURL, err := validateURLForSSRF(cleanURL)
+	parsedURL, err := validateURLForSSRF(ctx, cleanURL)
 	if err != nil {
 		return nil, "", err
 	}
 
-	return fetchImageWithClient(parsedURL.String(), buildImageClient())
+	return fetchImageWithClient(ctx, parsedURL.String(), buildImageClient())
 }
 
 // sanitizeURL removes whitespace characters that a line-folded URL (Google VCF
@@ -105,8 +107,9 @@ func buildImageClient() *http.Client {
 			DialContext: safeDialContext,
 		},
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			// Validate redirect target URL format
-			_, err := validateURLForSSRF(req.URL.String())
+			// Validate redirect target URL format; the redirect request carries
+			// the caller's context, so resolution honors cancellation too.
+			_, err := validateURLForSSRF(req.Context(), req.URL.String())
 			if err != nil {
 				return errors.New("redirect to disallowed location")
 			}
@@ -123,9 +126,9 @@ func buildImageClient() *http.Client {
 // the caller (URL validation) and the client's dialer/redirect policy; this
 // function is deliberately free of network-safety logic so it can be exercised
 // directly against a loopback test server.
-func fetchImageWithClient(rawURL string, client *http.Client) ([]byte, string, error) {
+func fetchImageWithClient(ctx context.Context, rawURL string, client *http.Client) ([]byte, string, error) {
 	// Fetch the image using the validated URL
-	req, err := http.NewRequest("GET", rawURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
 		return nil, "", err
 	}

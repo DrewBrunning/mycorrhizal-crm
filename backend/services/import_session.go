@@ -598,7 +598,7 @@ type photoTask struct {
 // then consumes the session — keeping a tombstone so a retried confirm of the
 // same session_id replays the original result instead of double-importing
 // (T57 idempotency; see Confirm's doc comment).
-func (m *ImportSessionManager) ConfirmVCF(db *gorm.DB, userID uint, req models.ImportConfirmRequest, cfg *config.Config, log *zerolog.Logger) (*models.ImportResult, *apperrors.AppError) {
+func (m *ImportSessionManager) ConfirmVCF(ctx context.Context, db *gorm.DB, userID uint, req models.ImportConfirmRequest, cfg *config.Config, log *zerolog.Logger) (*models.ImportResult, *apperrors.AppError) {
 	sessionData, sessErr := m.get(req.SessionID, userID)
 	if sessErr != nil {
 		if res, ok := m.replayConfirmed(req.SessionID, userID); ok {
@@ -792,7 +792,7 @@ func (m *ImportSessionManager) ConfirmVCF(db *gorm.DB, userID uint, req models.I
 		} else if task.photoURL != "" {
 			// Fetch photo from URL
 			var err error
-			photoData, mediaType, err = photostore.FetchPhotoFromURL(task.photoURL)
+			photoData, mediaType, err = photostore.FetchPhotoFromURL(ctx, task.photoURL)
 			if err != nil {
 				log.Warn().Err(err).Uint("contact_id", task.contactID).Str("photo_url", task.photoURL).Msg("Failed to fetch photo from URL")
 				continue

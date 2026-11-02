@@ -1,6 +1,7 @@
 package schemafixture
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"sort"
@@ -86,7 +87,7 @@ func extractData(db *gorm.DB) (map[string]tableData, error) {
 // tableColumns returns a table's column names via PRAGMA table_info, keeping
 // the name from sqlite_master (internal, not request input).
 func tableColumns(conn *sql.DB, table string) ([]string, error) {
-	rows, err := conn.Query(fmt.Sprintf("PRAGMA table_info(%s)", quoteIdent(table)))
+	rows, err := conn.QueryContext(context.Background(), fmt.Sprintf("PRAGMA table_info(%s)", quoteIdent(table)))
 	if err != nil {
 		return nil, fmt.Errorf("schemafixture: reading columns of %s: %w", table, err) // # pragma: no cover — a real table always answers PRAGMA
 	}
@@ -110,7 +111,7 @@ func tableColumns(conn *sql.DB, table string) ([]string, error) {
 // preserving column order.
 func readAllRows(conn *sql.DB, table string, cols []string) ([][]any, error) {
 	colList := quoteIdents(cols)
-	rows, err := conn.Query(fmt.Sprintf("SELECT %s FROM %s", colList, quoteIdent(table)))
+	rows, err := conn.QueryContext(context.Background(), fmt.Sprintf("SELECT %s FROM %s", colList, quoteIdent(table)))
 	if err != nil {
 		return nil, fmt.Errorf("schemafixture: selecting from %s: %w", table, err) // # pragma: no cover — a real table always selects
 	}
@@ -176,7 +177,7 @@ func copyData(conn *sql.DB, data map[string]tableData) error {
 			}
 			fmt.Fprintf(&b, "(%s)", strings.Join(values, ","))
 		}
-		if _, err := conn.Exec(b.String()); err != nil {
+		if _, err := conn.ExecContext(context.Background(), b.String()); err != nil {
 			return fmt.Errorf("schemafixture: copying %s into historical schema: %w", name, err) // # pragma: no cover — an INSERT against columns just read from this schema cannot fail
 		}
 	}
@@ -187,7 +188,7 @@ func copyData(conn *sql.DB, data map[string]tableData) error {
 // historical schema, from PRAGMA table_info.
 func presentColumns(conn *sql.DB) (map[string]map[string]bool, error) {
 	var tables []string
-	rows, err := conn.Query("SELECT name FROM sqlite_master WHERE type='table'")
+	rows, err := conn.QueryContext(context.Background(), "SELECT name FROM sqlite_master WHERE type='table'")
 	if err != nil {
 		return nil, err // # pragma: no cover — a schema dump just applied always answers sqlite_master
 	}

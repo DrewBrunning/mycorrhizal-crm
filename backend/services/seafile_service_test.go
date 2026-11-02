@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"net/http"
@@ -75,12 +76,12 @@ func TestListSeafileLibrariesAndDirForUser_BrowsesFake(t *testing.T) {
 	}
 	connectSeafileForUser(t, db, user.ID, fake.URL(), "sekret")
 
-	libs, err := ListSeafileLibrariesForUser(db, paperlessTestConfig(), user.ID)
+	libs, err := ListSeafileLibrariesForUser(context.Background(), db, paperlessTestConfig(), user.ID)
 	require.NoError(t, err)
 	require.Len(t, libs, 1)
 	assert.Equal(t, "Personal", libs[0].Name)
 
-	items, err := ListSeafileDirForUser(db, paperlessTestConfig(), user.ID, "repo-1", "/")
+	items, err := ListSeafileDirForUser(context.Background(), db, paperlessTestConfig(), user.ID, "repo-1", "/")
 	require.NoError(t, err)
 	require.Len(t, items, 2)
 	assert.Equal(t, "contract.pdf", items[1].Name)
@@ -138,7 +139,7 @@ func TestTestSeafileConnection_SuccessAndDiagnosis(t *testing.T) {
 	defer fake.Close()
 	connectSeafileForUser(t, db, user.ID, fake.URL(), "sekret")
 
-	result, err := TestSeafileConnection(db, paperlessTestConfig(), user.ID)
+	result, err := TestSeafileConnection(context.Background(), db, paperlessTestConfig(), user.ID)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	assert.True(t, result.OK)
@@ -146,7 +147,7 @@ func TestTestSeafileConnection_SuccessAndDiagnosis(t *testing.T) {
 	// Wrong token → diagnosed auth failure (non-error, OK:false).
 	require.NoError(t, db.Model(&models.SeafileConfig{}).Where("user_id = ?", user.ID).
 		Update("api_token_encrypted", mustEncrypt(t, "test-jwt-secret-0123456789abcdef0123456789abcdef", "wrong")).Error)
-	result2, err := TestSeafileConnection(db, paperlessTestConfig(), user.ID)
+	result2, err := TestSeafileConnection(context.Background(), db, paperlessTestConfig(), user.ID)
 	require.NoError(t, err)
 	require.NotNil(t, result2)
 	assert.False(t, result2.OK)
@@ -160,6 +161,6 @@ func TestSeafileClient_RejectsUnexpectedStatus(t *testing.T) {
 
 	client, err := NewSeafileClient(fake.URL(), "sekret", false)
 	require.NoError(t, err)
-	_, err = client.ListLibraries()
+	_, err = client.ListLibraries(context.Background())
 	assert.ErrorIs(t, err, ErrSeafileRequestFailed)
 }

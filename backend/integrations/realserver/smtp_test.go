@@ -1,6 +1,7 @@
 package realserver
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -48,7 +49,7 @@ func TestSMTP_SendEmailIsReceivedByRealServer(t *testing.T) {
 	html := "<p>Hello — <b>contract</b> test</p>"
 	to := fmt.Sprintf("rcpt-%d@example.com", time.Now().UnixNano())
 
-	require.NoError(t, services.SendEmail(cfg, services.EmailMessage{To: to, Subject: subject, HTML: html}))
+	require.NoError(t, services.SendEmail(context.Background(), cfg, services.EmailMessage{To: to, Subject: subject, HTML: html}))
 
 	var list struct {
 		Messages []mailpitMessage `json:"messages"`

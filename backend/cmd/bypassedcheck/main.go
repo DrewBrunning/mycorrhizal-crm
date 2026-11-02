@@ -26,6 +26,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -169,7 +170,7 @@ func (g *ghClient) pages(path string, decode func([]byte) (int, error)) error {
 		if strings.Contains(path, "?") {
 			sep = "&"
 		}
-		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s%s%sper_page=%d&page=%d", g.base, path, sep, perPage, page), nil)
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, fmt.Sprintf("%s%s%sper_page=%d&page=%d", g.base, path, sep, perPage, page), nil)
 		if err != nil {
 			return err
 		}

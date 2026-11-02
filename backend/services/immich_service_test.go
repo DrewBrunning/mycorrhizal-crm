@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"mycorrhizal/config"
@@ -102,7 +103,7 @@ func TestImmichClient_ListPeople(t *testing.T) {
 	client, err := NewImmichClient(fake.URL(), "sekret", false)
 	require.NoError(t, err)
 
-	people, err := client.ListPeople()
+	people, err := client.ListPeople(context.Background())
 	require.NoError(t, err)
 	require.Len(t, people, 2)
 	names := map[string]string{}
@@ -122,7 +123,7 @@ func TestImmichClient_Unauthorized(t *testing.T) {
 	client, err := NewImmichClient(fake.URL(), "wrong-key", false)
 	require.NoError(t, err)
 
-	_, err = client.ListPeople()
+	_, err = client.ListPeople(context.Background())
 	assert.True(t, errors.Is(err, ErrImmichUnauthorized), "expired/invalid key must map to ErrImmichUnauthorized, got %v", err)
 }
 
@@ -135,7 +136,7 @@ func TestImmichClient_Unreachable(t *testing.T) {
 	client, err := NewImmichClient(url, "sekret", false)
 	require.NoError(t, err)
 
-	_, err = client.ListPeople()
+	_, err = client.ListPeople(context.Background())
 	assert.True(t, errors.Is(err, ErrImmichUnreachable), "an unreachable instance must map to ErrImmichUnreachable, got %v", err)
 }
 
@@ -146,7 +147,7 @@ func TestImmichClient_NotFound(t *testing.T) {
 	client, err := NewImmichClient(fake.URL(), "", false)
 	require.NoError(t, err)
 
-	_, err = client.GetStatistics("no-such-person")
+	_, err = client.GetStatistics(context.Background(), "no-such-person")
 	assert.True(t, errors.Is(err, ErrImmichNotFound), "a missing person must map to ErrImmichNotFound, got %v", err)
 }
 
@@ -165,7 +166,7 @@ func TestImmichClient_RecentAssetsOrdersByOccurrence(t *testing.T) {
 	client, err := NewImmichClient(fake.URL(), "", false)
 	require.NoError(t, err)
 
-	assets, err := client.RecentAssets("p1", 25)
+	assets, err := client.RecentAssets(context.Background(), "p1", 25)
 	require.NoError(t, err)
 	require.Len(t, assets, 3)
 	assert.Equal(t, "new", assets[0].ID)
@@ -175,7 +176,7 @@ func TestImmichClient_RecentAssetsOrdersByOccurrence(t *testing.T) {
 	// Bounded to limit: size is requested as the limit, so a limit-1 call
 	// gets the server's newest-taken asset on a single request.
 	fake.SearchPages = nil
-	limited, err := client.RecentAssets("p1", 1)
+	limited, err := client.RecentAssets(context.Background(), "p1", 1)
 	require.NoError(t, err)
 	require.Len(t, limited, 1)
 	assert.Equal(t, "new", limited[0].ID)
@@ -202,7 +203,7 @@ func TestImmichClient_RecentAssetsSafetyNetSortOnDivergence(t *testing.T) {
 
 	// Fetched-then-sorted: with both assets in hand the client's fallback
 	// reorders the no-EXIF asset ahead of the taken-date order.
-	assets, err := client.RecentAssets("p1", 25)
+	assets, err := client.RecentAssets(context.Background(), "p1", 25)
 	require.NoError(t, err)
 	require.Len(t, assets, 2)
 	assert.Equal(t, "noexif", assets[0].ID, "the createdAt fallback sorts ahead once both assets are fetched")
@@ -211,7 +212,7 @@ func TestImmichClient_RecentAssetsSafetyNetSortOnDivergence(t *testing.T) {
 	// fetched, so the no-EXIF asset (paged last by an empty fileCreatedAt) is
 	// missed. This is T83's documented, accepted approximation.
 	fake.SearchPages = nil
-	limited, err := client.RecentAssets("p1", 1)
+	limited, err := client.RecentAssets(context.Background(), "p1", 1)
 	require.NoError(t, err)
 	require.Len(t, limited, 1)
 	assert.Equal(t, "taken", limited[0].ID, "limit 1 trusts the server order and stops immediately")
@@ -233,7 +234,7 @@ func TestImmichClient_RecentAssetsRequestCountBoundedByLimit(t *testing.T) {
 		client, err := NewImmichClient(fake.URL(), "", false)
 		require.NoError(t, err)
 
-		got, err := client.RecentAssets("p1", 1)
+		got, err := client.RecentAssets(context.Background(), "p1", 1)
 		require.NoError(t, err)
 		require.Len(t, got, 1)
 		assert.Equal(t, []int{1}, fake.SearchPages, "a limit-1 summary must never walk the library")
@@ -251,7 +252,7 @@ func TestImmichClient_RecentAssetsRequestCountBoundedByLimit(t *testing.T) {
 		require.NoError(t, err)
 
 		// 25 assets at 10/page => pages 1, 2, 3 (10+10+10), not all 10.
-		got, err := client.RecentAssets("p1", 25)
+		got, err := client.RecentAssets(context.Background(), "p1", 25)
 		require.NoError(t, err)
 		require.Len(t, got, 25)
 		assert.Equal(t, []int{1, 2, 3}, fake.SearchPages, "stop once 25 are in hand, don't walk to the end")
@@ -297,7 +298,7 @@ func TestImmichClient_RecentAssetsPaginatesAcrossPages(t *testing.T) {
 	client, err := NewImmichClient(fake.URL(), "", false)
 	require.NoError(t, err)
 
-	got, err := client.RecentAssets("p1", 25)
+	got, err := client.RecentAssets(context.Background(), "p1", 25)
 	require.NoError(t, err, "pagination must not fail — a 400 here is the T70 regression")
 	require.Len(t, got, 5, "every page's assets must be collected, not just the first")
 	assert.Equal(t, "a5", got[0].ID, "still sorted newest-first across pages")
@@ -332,7 +333,7 @@ func TestImmichClient_RecentAssetsStopsOnUnusablePageToken(t *testing.T) {
 			client, err := NewImmichClient(srv.URL, "", false)
 			require.NoError(t, err)
 
-			got, err := client.RecentAssets("p1", 25)
+			got, err := client.RecentAssets(context.Background(), "p1", 25)
 			require.NoError(t, err, "an unusable token must not fail the sync")
 			require.Len(t, got, 1, "assets gathered before stopping must be returned")
 		})
@@ -347,7 +348,7 @@ func TestImmichClient_Thumbnail(t *testing.T) {
 	client, err := NewImmichClient(fake.URL(), "", false)
 	require.NoError(t, err)
 
-	body, contentType, err := client.Thumbnail("p1")
+	body, contentType, err := client.Thumbnail(context.Background(), "p1")
 	require.NoError(t, err)
 	assert.Equal(t, []byte{0xff, 0xd8, 0xff}, body)
 	assert.Equal(t, "image/jpeg", contentType)
@@ -361,7 +362,7 @@ func TestImmichClient_AssetThumbnail(t *testing.T) {
 	client, err := NewImmichClient(fake.URL(), "", false)
 	require.NoError(t, err)
 
-	body, contentType, err := client.AssetThumbnail("asset-1")
+	body, contentType, err := client.AssetThumbnail(context.Background(), "asset-1")
 	require.NoError(t, err)
 	assert.Equal(t, []byte{0xff, 0xd8, 0xff, 0xaa}, body)
 	assert.Equal(t, "image/jpeg", contentType)
@@ -374,7 +375,7 @@ func TestImmichClient_AssetThumbnailNotFound(t *testing.T) {
 	client, err := NewImmichClient(fake.URL(), "", false)
 	require.NoError(t, err)
 
-	_, _, err = client.AssetThumbnail("no-such-asset")
+	_, _, err = client.AssetThumbnail(context.Background(), "no-such-asset")
 	assert.True(t, errors.Is(err, ErrImmichNotFound), "a missing asset must map to ErrImmichNotFound, got %v", err)
 }
 
@@ -392,7 +393,7 @@ func TestImmichClient_ThumbnailRejectsNonImageContentType(t *testing.T) {
 	client, err := NewImmichClient(server.URL, "", false)
 	require.NoError(t, err)
 
-	_, _, err = client.Thumbnail("p1")
+	_, _, err = client.Thumbnail(context.Background(), "p1")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "non-image content type")
 }
@@ -404,7 +405,7 @@ func TestImmichClient_Ping(t *testing.T) {
 	client, err := NewImmichClient(fake.URL(), "", false)
 	require.NoError(t, err)
 
-	assert.NoError(t, client.Ping())
+	assert.NoError(t, client.Ping(context.Background()))
 	assert.Equal(t, []string{"GET /server/ping"}, fake.PingRequests, "Ping must hit the ping endpoint exactly once")
 }
 
@@ -416,7 +417,7 @@ func TestImmichClient_PingUnreachable(t *testing.T) {
 	client, err := NewImmichClient(url, "", false)
 	require.NoError(t, err)
 
-	err = client.Ping()
+	err = client.Ping(context.Background())
 	assert.True(t, errors.Is(err, ErrImmichUnreachable), "an unreachable instance must map to ErrImmichUnreachable, got %v", err)
 }
 
@@ -428,7 +429,7 @@ func TestImmichClient_GetMyUser(t *testing.T) {
 	client, err := NewImmichClient(fake.URL(), "sekret", false)
 	require.NoError(t, err)
 
-	user, err := client.GetMyUser()
+	user, err := client.GetMyUser(context.Background())
 	require.NoError(t, err)
 	assert.Equal(t, "alice@example.com", user.Email)
 }
@@ -440,7 +441,7 @@ func TestImmichClient_GetMyUserUnauthorized(t *testing.T) {
 	client, err := NewImmichClient(fake.URL(), "wrong-key", false)
 	require.NoError(t, err)
 
-	_, err = client.GetMyUser()
+	_, err = client.GetMyUser(context.Background())
 	assert.True(t, errors.Is(err, ErrImmichUnauthorized), "an invalid key must map to ErrImmichUnauthorized, got %v", err)
 }
 
@@ -454,7 +455,7 @@ func TestTestImmichConnection_Success(t *testing.T) {
 
 	connectImmichForUser(t, db, user.ID, contact.VCardUID, fake.URL(), "sekret")
 
-	result, err := TestImmichConnection(db, immichTestConfig(), user.ID)
+	result, err := TestImmichConnection(context.Background(), db, immichTestConfig(), user.ID)
 	require.NoError(t, err)
 	assert.True(t, result.OK)
 	assert.Equal(t, "ok", result.Stage)
@@ -471,7 +472,7 @@ func TestTestImmichConnection_AuthFailure(t *testing.T) {
 	// Stored key no longer matches (simulates a revoked/expired key).
 	connectImmichForUser(t, db, user.ID, contact.VCardUID, fake.URL(), "now-stale-key")
 
-	result, err := TestImmichConnection(db, immichTestConfig(), user.ID)
+	result, err := TestImmichConnection(context.Background(), db, immichTestConfig(), user.ID)
 	require.NoError(t, err, "a diagnosed upstream failure is a successful check, not a Go error")
 	assert.False(t, result.OK)
 	assert.Equal(t, "auth", result.Stage)
@@ -488,7 +489,7 @@ func TestTestImmichConnection_Unreachable(t *testing.T) {
 
 	connectImmichForUser(t, db, user.ID, contact.VCardUID, url, "")
 
-	result, err := TestImmichConnection(db, immichTestConfig(), user.ID)
+	result, err := TestImmichConnection(context.Background(), db, immichTestConfig(), user.ID)
 	require.NoError(t, err)
 	assert.False(t, result.OK)
 	assert.Equal(t, "reachability", result.Stage)
@@ -498,7 +499,7 @@ func TestTestImmichConnection_NoConfigReturnsError(t *testing.T) {
 	db := newImmichTestDB(t)
 	user, _ := seedImmichUser(t, db)
 
-	_, err := TestImmichConnection(db, immichTestConfig(), user.ID)
+	_, err := TestImmichConnection(context.Background(), db, immichTestConfig(), user.ID)
 	require.ErrorIs(t, err, ErrImmichUnauthorized, "no saved connection must be a Go error, not a diagnosed result")
 }
 
@@ -517,7 +518,7 @@ func TestSyncImmichForUser_WritesActivitiesAndDedups(t *testing.T) {
 
 	// First sync: two ExternalActivity rows (one per asset), identity metadata
 	// refreshed, connection status recorded.
-	err := SyncImmichForUser(db, immichTestConfig(), user.ID)
+	err := SyncImmichForUser(context.Background(), db, immichTestConfig(), user.ID)
 	require.NoError(t, err)
 
 	var activities []models.ExternalActivity
@@ -540,7 +541,7 @@ func TestSyncImmichForUser_WritesActivitiesAndDedups(t *testing.T) {
 
 	// Second sync (re-sync, same upstream data): the natural key dedupes — no
 	// new rows, no error.
-	err = SyncImmichForUser(db, immichTestConfig(), user.ID)
+	err = SyncImmichForUser(context.Background(), db, immichTestConfig(), user.ID)
 	require.NoError(t, err)
 	var count int64
 	require.NoError(t, db.Model(&models.ExternalActivity{}).Where("user_id = ? AND source_system = ?", user.ID, ExternalSystemImmich).Count(&count).Error)
@@ -558,7 +559,7 @@ func TestSyncImmichForUser_ExpiredKeyRecordsError(t *testing.T) {
 	// Store a config whose key no longer matches (simulates expiry).
 	connectImmichForUser(t, db, user.ID, contact.VCardUID, fake.URL(), "now-stale-key")
 
-	err := SyncImmichForUser(db, immichTestConfig(), user.ID)
+	err := SyncImmichForUser(context.Background(), db, immichTestConfig(), user.ID)
 	require.ErrorIs(t, err, ErrImmichUnauthorized)
 
 	var config models.ImmichConfig
@@ -582,7 +583,7 @@ func TestSyncImmichForUser_UnreachableRecordsError(t *testing.T) {
 
 	connectImmichForUser(t, db, user.ID, contact.VCardUID, url, "")
 
-	err := SyncImmichForUser(db, immichTestConfig(), user.ID)
+	err := SyncImmichForUser(context.Background(), db, immichTestConfig(), user.ID)
 	require.ErrorIs(t, err, ErrImmichUnreachable)
 
 	var config models.ImmichConfig
@@ -651,7 +652,7 @@ func TestFetchImmichPersonSummary_LiveAndCachedDegradation(t *testing.T) {
 	require.NoError(t, db.Where("user_id = ? AND system = ?", user.ID, ExternalSystemImmich).First(&identity).Error)
 
 	// Live summary against the reachable instance.
-	summary := FetchImmichPersonSummary(db, immichTestConfig(), user.ID, &identity)
+	summary := FetchImmichPersonSummary(context.Background(), db, immichTestConfig(), user.ID, &identity)
 	assert.Equal(t, 7, summary.PhotoCount)
 	assert.Equal(t, "latest-1", summary.LatestAssetID)
 	require.NotNil(t, summary.LatestAt)
@@ -662,7 +663,7 @@ func TestFetchImmichPersonSummary_LiveAndCachedDegradation(t *testing.T) {
 	require.NoError(t, db.Save(&identity).Error)
 	fake.FailWithStatus = 503
 
-	degraded := FetchImmichPersonSummary(db, immichTestConfig(), user.ID, &identity)
+	degraded := FetchImmichPersonSummary(context.Background(), db, immichTestConfig(), user.ID, &identity)
 	assert.Equal(t, "Alice", degraded.PersonName, "the name is still available from cached metadata")
 	assert.EqualValues(t, 7, degraded.PhotoCount, "photo count degrades to the cache on failure")
 }
@@ -684,7 +685,7 @@ func TestFetchImmichPersonSummary_RecentAssetsIsASingleRequest(t *testing.T) {
 	var identity models.ExternalIdentity
 	require.NoError(t, db.Where("user_id = ? AND system = ?", user.ID, ExternalSystemImmich).First(&identity).Error)
 
-	summary := FetchImmichPersonSummary(db, immichTestConfig(), user.ID, &identity)
+	summary := FetchImmichPersonSummary(context.Background(), db, immichTestConfig(), user.ID, &identity)
 	require.NotNil(t, summary.LatestAssetID, "the live summary must resolve the newest asset")
 	assert.Equal(t, []int{1}, fake.SearchPages, "a limit-1 summary must be exactly one search request")
 	assert.Equal(t, []int{1}, fake.SearchSizes, "and that request must ask for size 1, not 200")
@@ -703,7 +704,7 @@ func TestListImmichRecentAssetsForContact(t *testing.T) {
 
 	connectImmichForUser(t, db, user.ID, contact.VCardUID, fake.URL(), "sekret")
 
-	assets, err := ListImmichRecentAssetsForContact(db, immichTestConfig(), user.ID, contact.VCardUID)
+	assets, err := ListImmichRecentAssetsForContact(context.Background(), db, immichTestConfig(), user.ID, contact.VCardUID)
 	require.NoError(t, err)
 	require.Len(t, assets, 2)
 	assert.Equal(t, "asset-new", assets[0].ID, "newest first")
@@ -714,7 +715,7 @@ func TestListImmichRecentAssetsForContact_NoLinkIsNotFound(t *testing.T) {
 	db := newImmichTestDB(t)
 	user, contact := seedImmichUser(t, db)
 
-	_, err := ListImmichRecentAssetsForContact(db, immichTestConfig(), user.ID, contact.VCardUID)
+	_, err := ListImmichRecentAssetsForContact(context.Background(), db, immichTestConfig(), user.ID, contact.VCardUID)
 	assert.True(t, errors.Is(err, ErrImmichNotFound), "no link must map to ErrImmichNotFound, got %v", err)
 }
 
@@ -728,7 +729,7 @@ func TestFetchImmichAssetImage(t *testing.T) {
 
 	connectImmichForUser(t, db, user.ID, contact.VCardUID, fake.URL(), "sekret")
 
-	body, contentType, err := FetchImmichAssetImage(db, immichTestConfig(), user.ID, contact.VCardUID, "asset-1")
+	body, contentType, err := FetchImmichAssetImage(context.Background(), db, immichTestConfig(), user.ID, contact.VCardUID, "asset-1")
 	require.NoError(t, err)
 	assert.Equal(t, []byte{0xff, 0xd8, 0xff, 0xbb}, body)
 	assert.Equal(t, "image/jpeg", contentType)
@@ -738,7 +739,7 @@ func TestFetchImmichAssetImage_NoLinkIsNotFound(t *testing.T) {
 	db := newImmichTestDB(t)
 	user, contact := seedImmichUser(t, db)
 
-	_, _, err := FetchImmichAssetImage(db, immichTestConfig(), user.ID, contact.VCardUID, "asset-1")
+	_, _, err := FetchImmichAssetImage(context.Background(), db, immichTestConfig(), user.ID, contact.VCardUID, "asset-1")
 	assert.True(t, errors.Is(err, ErrImmichNotFound), "no link must map to ErrImmichNotFound, got %v", err)
 }
 

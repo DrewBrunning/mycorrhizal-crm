@@ -14,6 +14,7 @@ package meerkat
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -270,7 +271,7 @@ func deref(s *string) string {
 // presentColumns returns the columns that actually exist on table, or nil
 // when the table itself is missing.
 func presentColumns(db *sql.DB, table string) ([]string, error) {
-	rows, err := db.Query("PRAGMA table_info(" + table + ")")
+	rows, err := db.QueryContext(context.Background(), "PRAGMA table_info("+table+")")
 	if err != nil { // # pragma: no cover — I/O error path against a readable SQLite file
 		return nil, fmt.Errorf("meerkat: reading schema of %s: %w", table, err)
 	}
@@ -298,7 +299,7 @@ func presentColumns(db *sql.DB, table string) ([]string, error) {
 // treated as an error.
 func tableExists(db *sql.DB, table string) bool {
 	var name string
-	err := db.QueryRow(
+	err := db.QueryRowContext(context.Background(),
 		"SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
 		table,
 	).Scan(&name)
@@ -358,7 +359,7 @@ func readContacts(db *sql.DB, snap *Snapshot) error {
 	if query == "" {
 		return nil
 	}
-	rows, err := db.Query(query)
+	rows, err := db.QueryContext(context.Background(), query)
 	if err != nil { // # pragma: no cover — I/O error path against a readable SQLite file
 		return fmt.Errorf("meerkat: reading contacts: %w", err)
 	}
@@ -499,7 +500,7 @@ func readSimpleTable(db *sql.DB, table string, want []string, skipped *[]string,
 	if query == "" {
 		return nil
 	}
-	rows, err := db.Query(query)
+	rows, err := db.QueryContext(context.Background(), query)
 	if err != nil { // # pragma: no cover — I/O error path against a readable SQLite file
 		return fmt.Errorf("meerkat: reading %s: %w", table, err)
 	}

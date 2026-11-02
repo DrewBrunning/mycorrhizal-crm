@@ -191,7 +191,7 @@ func (emailNotificationSender) Send(ctx context.Context, db *gorm.DB, cfg config
 		}
 	}
 
-	if err := sendReminderEmailFn(user, eligible, cfg, db); err != nil {
+	if err := sendReminderEmailFn(ctx, user, eligible, cfg, db); err != nil {
 		for _, r := range eligible {
 			recordNotificationDelivery(ctx, db, r.ID, models.ChannelEmail, false, err.Error())
 		}
@@ -240,13 +240,13 @@ func (ntfyNotificationSender) Enabled(db *gorm.DB, _ config.Config, user models.
 // unit tests used accepted either shape, so this shipped until the real-server
 // contract test (issue #1490, integrations/realserver) read the message back
 // from an actual ntfy.
-func sendNtfyMessage(cfg config.Config, nc *models.NotificationConfig, title, message string) error {
+func sendNtfyMessage(ctx context.Context, cfg config.Config, nc *models.NotificationConfig, title, message string) error {
 	target := strings.TrimRight(nc.NtfyURL, "/") + "/"
 	payload, err := json.Marshal(map[string]string{"topic": nc.NtfyTopic, "title": title, "message": message})
 	if err != nil {
 		return err
 	}
-	return postNotificationJSON(cfg, target, payload, "", "")
+	return postNotificationJSON(ctx, cfg, target, payload, "", "")
 }
 
 func (ntfyNotificationSender) Send(ctx context.Context, db *gorm.DB, cfg config.Config, user models.User, reminders []models.Reminder) error {
@@ -265,7 +265,7 @@ func (ntfyNotificationSender) Send(ctx context.Context, db *gorm.DB, cfg config.
 	var sendErr error
 	for _, r := range reminders {
 		body := notificationShortBody(r, contactMap)
-		if err := sendNtfyMessage(cfg, nc, title, body); err != nil {
+		if err := sendNtfyMessage(ctx, cfg, nc, title, body); err != nil {
 			recordNotificationDelivery(ctx, db, r.ID, models.ChannelNtfy, false, err.Error())
 			if sendErr == nil {
 				sendErr = err
@@ -298,7 +298,7 @@ func (gotifyNotificationSender) Enabled(db *gorm.DB, _ config.Config, user model
 }
 
 // sendGotifyMessage posts a single message to the user's Gotify instance.
-func sendGotifyMessage(cfg config.Config, nc *models.NotificationConfig, title, message string) error {
+func sendGotifyMessage(ctx context.Context, cfg config.Config, nc *models.NotificationConfig, title, message string) error {
 	token, err := DecryptCredential(cfg.JWTSecretKey, nc.GotifyTokenEncrypted)
 	if err != nil {
 		return fmt.Errorf("failed to decrypt Gotify token: %w", err)
@@ -312,7 +312,7 @@ func sendGotifyMessage(cfg config.Config, nc *models.NotificationConfig, title, 
 	if err != nil {
 		return err
 	}
-	return postNotificationJSON(cfg, target, payload, "X-Gotify-Key", token)
+	return postNotificationJSON(ctx, cfg, target, payload, "X-Gotify-Key", token)
 }
 
 func (gotifyNotificationSender) Send(ctx context.Context, db *gorm.DB, cfg config.Config, user models.User, reminders []models.Reminder) error {
@@ -331,7 +331,7 @@ func (gotifyNotificationSender) Send(ctx context.Context, db *gorm.DB, cfg confi
 	var sendErr error
 	for _, r := range reminders {
 		body := notificationShortBody(r, contactMap)
-		if err := sendGotifyMessage(cfg, nc, title, body); err != nil {
+		if err := sendGotifyMessage(ctx, cfg, nc, title, body); err != nil {
 			recordNotificationDelivery(ctx, db, r.ID, models.ChannelGotify, false, err.Error())
 			if sendErr == nil {
 				sendErr = err
@@ -604,7 +604,7 @@ func (pushNotificationSender) Send(ctx context.Context, db *gorm.DB, cfg config.
 		}
 		for _, r := range reminders {
 			body := notificationShortBody(r, contactMap)
-			stale, err := sendFCMMessage(cfg, fcmAccount, device.Token, title, body, fcmReminderData(r))
+			stale, err := sendFCMMessage(ctx, cfg, fcmAccount, device.Token, title, body, fcmReminderData(r))
 			if err != nil {
 				recordNotificationDelivery(ctx, db, r.ID, models.ChannelPush, false, err.Error())
 				if sendErr == nil {
@@ -697,8 +697,8 @@ func LoadFCMServiceAccount(path string) (*fcmServiceAccount, error) {
 // endpoint (github.com/golang-jwt/jwt/v4 — already a dependency). The access
 // token is minted fresh per call; reminder dispatch is a low-frequency daily
 // job, so caching adds complexity for no measurable win.
-func sendFCMMessage(cfg config.Config, sa *fcmServiceAccount, token, title, message string, data map[string]string) (stale bool, err error) {
-	accessToken, err := fcmAccessToken(cfg, sa)
+func sendFCMMessage(ctx context.Context, cfg config.Config, sa *fcmServiceAccount, token, title, message string, data map[string]string) (stale bool, err error) {
+	accessToken, err := fcmAccessToken(ctx, cfg, sa)
 	if err != nil {
 		return false, err
 	}
@@ -721,7 +721,7 @@ func sendFCMMessage(cfg config.Config, sa *fcmServiceAccount, token, title, mess
 	}
 
 	target := fcmSendEndpoint + "/projects/" + sa.ProjectID + "/messages:send"
-	req, err := http.NewRequest("POST", target, bytes.NewReader(payload))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, target, bytes.NewReader(payload))
 	if err != nil {
 		return false, err
 	}
@@ -795,7 +795,7 @@ func contactWebPath(id uint) string {
 // minting a signed JWT from the service account's private key and exchanging
 // it at Google's token endpoint (the two-legged OAuth2 JWT flow, RFC 7523).
 // Uses clientFor(cfg) so the webhook SSRF dialer policy governs the call.
-func fcmAccessToken(cfg config.Config, sa *fcmServiceAccount) (string, error) {
+func fcmAccessToken(ctx context.Context, cfg config.Config, sa *fcmServiceAccount) (string, error) {
 	block, _ := pem.Decode([]byte(sa.PrivateKey))
 	if block == nil {
 		return "", fmt.Errorf("failed to decode FCM service account private key")
@@ -826,7 +826,7 @@ func fcmAccessToken(cfg config.Config, sa *fcmServiceAccount) (string, error) {
 	form.Set("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer")
 	form.Set("assertion", signed)
 
-	req, err := http.NewRequest("POST", fcmTokenEndpoint, strings.NewReader(form.Encode()))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fcmTokenEndpoint, strings.NewReader(form.Encode()))
 	if err != nil {
 		return "", err
 	}
@@ -923,7 +923,7 @@ func DeleteDeviceRegistration(db *gorm.DB, userID uint, id uint) error {
 // webpush-go's own HTTP client, which reuses clientFor too). When
 // WEBHOOK_BLOCK_PRIVATE_URLS is on, a private-address target is rejected with
 // ErrNotificationPrivateAddress before any network call.
-func postNotificationJSON(cfg config.Config, rawURL string, body []byte, headerKey, headerValue string) error {
+func postNotificationJSON(ctx context.Context, cfg config.Config, rawURL string, body []byte, headerKey, headerValue string) error {
 	// Issue #434 failure-injection seam for the ntfy / Gotify POST path. An
 	// armed fault surfaces to the sender, which records a failed
 	// NotificationDelivery row and leaves the reminder due for the next run.
@@ -931,11 +931,11 @@ func postNotificationJSON(cfg config.Config, rawURL string, body []byte, headerK
 		return err
 	}
 
-	if cfg.WebhookBlockPrivateURLs && isPrivateURL(rawURL) {
+	if cfg.WebhookBlockPrivateURLs && isPrivateURL(ctx, rawURL) {
 		return ErrNotificationPrivateAddress
 	}
 
-	req, err := http.NewRequest("POST", rawURL, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, rawURL, bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
@@ -1083,7 +1083,7 @@ func SaveNotificationConfig(db *gorm.DB, jwtSecret string, userID uint, input mo
 // records. Returns a descriptive error when the channel is unconfigured,
 // misconfigured, or the delivery fails — the Settings "test" button surfaces
 // it verbatim.
-func TestNotificationChannel(db *gorm.DB, cfg config.Config, user models.User, channel models.NotificationChannel) error {
+func TestNotificationChannel(ctx context.Context, db *gorm.DB, cfg config.Config, user models.User, channel models.NotificationChannel) error {
 	lang := notificationLanguage(user)
 	title := i18n.T(lang, "notifications.testTitle")
 	message := i18n.T(lang, "notifications.testBody")
@@ -1097,7 +1097,7 @@ func TestNotificationChannel(db *gorm.DB, cfg config.Config, user models.User, c
 		if nc == nil || nc.NtfyURL == "" || nc.NtfyTopic == "" {
 			return fmt.Errorf("ntfy is not configured — set a URL and topic and save first")
 		}
-		return sendNtfyMessage(cfg, nc, title, message)
+		return sendNtfyMessage(ctx, cfg, nc, title, message)
 
 	case models.ChannelGotify:
 		nc, err := GetNotificationConfigForUser(db, user.ID)
@@ -1107,14 +1107,14 @@ func TestNotificationChannel(db *gorm.DB, cfg config.Config, user models.User, c
 		if nc == nil || nc.GotifyURL == "" || !nc.HasGotifyToken() {
 			return fmt.Errorf("gotify is not configured — set a URL and token and save first")
 		}
-		return sendGotifyMessage(cfg, nc, title, message)
+		return sendGotifyMessage(ctx, cfg, nc, title, message)
 
 	case models.ChannelPush:
 		// M2: the test button probes every registered push endpoint — browser
 		// Web Push subscriptions AND FCM mobile devices — mirroring
 		// pushNotificationSender.Send's dispatch (design decision 5: one
 		// "push" channel, tested as one unit).
-		return deliverPushToUser(db, cfg, user, title, message)
+		return deliverPushToUser(ctx, db, cfg, user, title, message)
 
 	case models.ChannelEmail:
 		// Email delivery is configured globally (SMTP), not per-user, so the
@@ -1133,7 +1133,7 @@ func TestNotificationChannel(db *gorm.DB, cfg config.Config, user models.User, c
 // least one endpoint accepted the message. Shared by the Settings "test" button
 // (TestNotificationChannel) and operational alerting (issue #428), so the two
 // dispatch the push channel identically.
-func deliverPushToUser(db *gorm.DB, cfg config.Config, user models.User, title, message string) error {
+func deliverPushToUser(ctx context.Context, db *gorm.DB, cfg config.Config, user models.User, title, message string) error {
 	var subs []models.PushSubscription
 	if err := db.Where("user_id = ?", user.ID).Find(&subs).Error; err != nil {
 		return err
@@ -1185,7 +1185,7 @@ func deliverPushToUser(db *gorm.DB, cfg config.Config, user models.User, title, 
 		} else {
 			for _, device := range devices {
 				attempted = true
-				stale, err := sendFCMMessage(cfg, fcmAccount, device.Token, title, message, nil)
+				stale, err := sendFCMMessage(ctx, cfg, fcmAccount, device.Token, title, message, nil)
 				if err != nil {
 					if sendErr == nil {
 						sendErr = err

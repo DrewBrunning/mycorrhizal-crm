@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"os"
@@ -197,7 +198,7 @@ func statDir(dir, label string) error {
 // liveAttachmentRefs returns one MissingRef-shaped reference per non-deleted
 // attachment row (the file may or may not exist yet — missingRefs decides).
 func liveAttachmentRefs(db *sql.DB) ([]MissingRef, error) {
-	rows, err := db.Query(`SELECT id, stored_name FROM attachments WHERE deleted_at IS NULL AND stored_name <> ''`)
+	rows, err := db.QueryContext(context.Background(), `SELECT id, stored_name FROM attachments WHERE deleted_at IS NULL AND stored_name <> ''`)
 	if err != nil {
 		return nil, fmt.Errorf("query attachments: %w", err)
 	}
@@ -229,7 +230,7 @@ func liveAttachmentRefs(db *sql.DB) ([]MissingRef, error) {
 // data URLs and never touch disk; the filename form is legacy but cheap to
 // cover.
 func livePhotoRefs(db *sql.DB) ([]MissingRef, error) {
-	rows, err := db.Query(`
+	rows, err := db.QueryContext(context.Background(), `
 		SELECT COALESCE(NULLIF(vcard_uid, ''), 'contact#' || id) AS owner,
 		       COALESCE(photo, ''), COALESCE(photo_thumbnail, '')
 		FROM contacts

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"mycorrhizal/config"
@@ -158,13 +159,13 @@ func buildPaperlessClient(db *gorm.DB, cfg config.Config, userID uint) (*Paperle
 // other Paperless endpoint. A populated, non-error result with OK:false is a
 // *successful* diagnosis of an upstream problem, not an application error —
 // this always responds 200.
-func TestPaperlessConnection(db *gorm.DB, cfg config.Config, userID uint) (*PaperlessConnectionTestResult, error) {
+func TestPaperlessConnection(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint) (*PaperlessConnectionTestResult, error) {
 	client, _, err := buildPaperlessClient(db, cfg, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := client.Ping(); err != nil {
+	if err := client.Ping(ctx); err != nil {
 		stage := "reachability"
 		if errors.Is(err, ErrPaperlessUnauthorized) {
 			stage = "auth"
@@ -173,7 +174,7 @@ func TestPaperlessConnection(db *gorm.DB, cfg config.Config, userID uint) (*Pape
 		return diagnosePaperlessConnectionFailure(stage, err), nil
 	}
 
-	user, err := client.GetMe()
+	user, err := client.GetMe(ctx)
 	if err != nil {
 		logger.Warn().Err(err).Uint("user_id", userID).Msg("Paperless test connection: auth failed")
 		return diagnosePaperlessConnectionFailure("auth", err), nil
@@ -214,12 +215,12 @@ func diagnosePaperlessConnectionFailure(stage string, err error) *PaperlessConne
 // ListPaperlessDocumentsForUser browses documents in the user's Paperless
 // instance (the L1 picker), optionally filtered by a query string. Requires a
 // configured connection.
-func ListPaperlessDocumentsForUser(db *gorm.DB, cfg config.Config, userID uint, query string) ([]PaperlessDocument, error) {
+func ListPaperlessDocumentsForUser(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint, query string) ([]PaperlessDocument, error) {
 	client, _, err := buildPaperlessClient(db, cfg, userID)
 	if err != nil {
 		return nil, err
 	}
-	return client.ListDocuments(query)
+	return client.ListDocuments(ctx, query)
 }
 
 // LinkPaperlessDocument persists a document link as an ExternalIdentity
@@ -229,7 +230,7 @@ func ListPaperlessDocumentsForUser(db *gorm.DB, cfg config.Config, userID uint, 
 // URL points at the Paperless document detail page. A duplicate (system,
 // document, user) link is surfaced to the caller as a 409 via the controller's
 // own pre-check.
-func LinkPaperlessDocument(db *gorm.DB, cfg config.Config, userID uint, contactUID, documentID string) (*models.ExternalIdentity, error) {
+func LinkPaperlessDocument(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint, contactUID, documentID string) (*models.ExternalIdentity, error) {
 	client, pc, err := buildPaperlessClient(db, cfg, userID)
 	if err != nil {
 		return nil, err
@@ -238,7 +239,7 @@ func LinkPaperlessDocument(db *gorm.DB, cfg config.Config, userID uint, contactU
 	if err != nil {
 		return nil, err
 	}
-	doc, err := client.GetDocument(id)
+	doc, err := client.GetDocument(ctx, id)
 	if err != nil {
 		return nil, err
 	}

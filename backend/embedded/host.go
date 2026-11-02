@@ -156,7 +156,7 @@ func RunHosted(ctx context.Context, hc HostConfig, ready func(*Server)) error {
 		_ = os.Remove(hc.SocketPath)
 	}
 
-	ln, err := net.Listen("unix", hc.SocketPath)
+	ln, err := (&net.ListenConfig{}).Listen(context.Background(), "unix", hc.SocketPath)
 	if err != nil {
 		return fmt.Errorf("embedded: listening on %s: %w", hc.SocketPath, err)
 	}

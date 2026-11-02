@@ -1,6 +1,7 @@
 package perfbench
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"math"
@@ -306,7 +307,7 @@ func newWriteProbe(dbPath string, busyTimeoutMS int) (*writeProbe, error) {
 		return nil, err
 	}
 	db.SetMaxOpenConns(1)
-	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS _perfbench_write_probe (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL)`); err != nil {
+	if _, err := db.ExecContext(context.Background(), `CREATE TABLE IF NOT EXISTS _perfbench_write_probe (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL)`); err != nil {
 		_ = db.Close()
 		return nil, err
 	}
@@ -324,7 +325,7 @@ func (p *writeProbe) start() {
 				return
 			case <-t.C:
 				began := time.Now()
-				_, err := p.db.Exec("INSERT INTO _perfbench_write_probe (ts) VALUES (?)", began.UnixNano())
+				_, err := p.db.ExecContext(context.Background(), "INSERT INTO _perfbench_write_probe (ts) VALUES (?)", began.UnixNano())
 				stall := time.Since(began)
 				if stall > p.maxStall {
 					p.maxStall = stall
@@ -349,7 +350,7 @@ func (p *writeProbe) start() {
 func (p *writeProbe) stop() {
 	close(p.stopCh)
 	<-p.doneCh
-	if _, err := p.db.Exec("DROP TABLE IF EXISTS _perfbench_write_probe"); err != nil { // # pragma: no cover — DROP on a table this probe created
+	if _, err := p.db.ExecContext(context.Background(), "DROP TABLE IF EXISTS _perfbench_write_probe"); err != nil { // # pragma: no cover — DROP on a table this probe created
 		_ = err
 	}
 	_ = p.db.Close()

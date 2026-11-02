@@ -1,6 +1,7 @@
 package schemafixture
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
@@ -56,7 +57,7 @@ func TransplantDataToVersion(srcDB *gorm.DB, version uint, outPath string) error
 
 	// Fold the -wal/-shm sidecars into the main file so outPath is complete on
 	// its own.
-	if _, err := conn.Exec("PRAGMA wal_checkpoint(TRUNCATE)"); err != nil { // # pragma: no cover — a freshly-written database always accepts a checkpoint
+	if _, err := conn.ExecContext(context.Background(), "PRAGMA wal_checkpoint(TRUNCATE)"); err != nil { // # pragma: no cover — a freshly-written database always accepts a checkpoint
 		return fmt.Errorf("schemafixture: checkpointing %s: %w", outPath, err)
 	}
 	return nil

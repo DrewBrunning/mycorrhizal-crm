@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"testing"
 
 	"mycorrhizal/internal/dbtest"
@@ -46,7 +47,7 @@ func confirmVCFLikeAdd(
 	id := create(userID, []VCFContactData{{Contact: contact}},
 		[]models.ImportRowPreview{{RowIndex: 0, SuggestedAction: "add"}})
 
-	result, appErr := m.ConfirmVCF(db, userID, models.ImportConfirmRequest{
+	result, appErr := m.ConfirmVCF(context.Background(), db, userID, models.ImportConfirmRequest{
 		SessionID: id,
 		Actions:   []models.RowImportAction{{RowIndex: 0, Action: "add"}},
 	}, testImportConfig(t), testImportLogger())
@@ -148,7 +149,7 @@ func TestConfirmVCF_ErrorRows_RecordedAsErrorCount(t *testing.T) {
 			{RowIndex: 1, SuggestedAction: "add"},
 		})
 
-	result, appErr := m.ConfirmVCF(db, user.ID, models.ImportConfirmRequest{
+	result, appErr := m.ConfirmVCF(context.Background(), db, user.ID, models.ImportConfirmRequest{
 		SessionID: id,
 		Actions: []models.RowImportAction{
 			{RowIndex: 0, Action: "update"},

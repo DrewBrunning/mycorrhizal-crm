@@ -6,6 +6,7 @@ package gitchanges
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -176,7 +177,7 @@ func tempIndex(root, mergeBase string) (path string, cleanup func(), err error) 
 }
 
 func runGit(root string, env []string, stdin []byte, args ...string) (stdout, stderr []byte, err error) {
-	cmd := exec.Command("git", append([]string{"-C", root}, args...)...) // #nosec G204 -- fixed binary, resolved root, validated ref/pathspecs
+	cmd := exec.CommandContext(context.Background(), "git", append([]string{"-C", root}, args...)...) // #nosec G204 -- fixed binary, resolved root, validated ref/pathspecs
 	if len(env) > 0 {
 		cmd.Env = mergeEnv(os.Environ(), env)
 	}

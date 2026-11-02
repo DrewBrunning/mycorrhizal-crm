@@ -197,17 +197,17 @@ func trimSuccessfulDeliveryPayload(body []byte) []byte {
 //
 // Fails closed: an unparseable URL or a failed lookup counts as private, since
 // we cannot show it is safe.
-func isPrivateURL(rawURL string) bool {
+func isPrivateURL(ctx context.Context, rawURL string) bool {
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		return true
 	}
-	ips, err := net.LookupIP(u.Hostname())
+	addrs, err := net.DefaultResolver.LookupIPAddr(ctx, u.Hostname())
 	if err != nil {
 		return true
 	}
-	for _, ip := range ips {
-		if !httputil.IsPublicIP(ip) {
+	for _, addr := range addrs {
+		if !httputil.IsPublicIP(addr.IP) {
 			return true
 		}
 	}
@@ -297,13 +297,13 @@ func deliverWebhook(ctx context.Context, db *gorm.DB, cfg config.Config, wh mode
 		return d
 	}
 
-	if cfg.WebhookBlockPrivateURLs && isPrivateURL(wh.URL) {
+	if cfg.WebhookBlockPrivateURLs && isPrivateURL(ctx, wh.URL) {
 		errStr := "webhook URL resolves to a private or loopback address"
 		return finish(saveDelivery(db, wh.ID, eventType, string(body), nil, &errStr, attempt, nil, false, ""), errStr)
 	}
 
 	sig := computeSignature(wh.Secret, body)
-	req, err := http.NewRequest("POST", wh.URL, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, wh.URL, bytes.NewReader(body))
 	if err != nil {
 		logger.Ctx(ctx).Warn().Err(err).Uint("webhook_id", wh.ID).Str("event", eventType).
 			Msg("webhook delivery: could not build request from configured URL")

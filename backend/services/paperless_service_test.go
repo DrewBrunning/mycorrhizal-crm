@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"mycorrhizal/config"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
@@ -88,7 +89,7 @@ func TestLinkPaperlessDocument_FetchesAuthoritativeMetadataAndBuildsURL(t *testi
 	fake.Docs[42] = &fakePaperlessDoc{Title: "Signed Contract", FileName: "contract.pdf", Created: "2026-03-01", Added: "2026-03-10T10:00:00Z"}
 	connectPaperlessForUser(t, db, user.ID, fake.URL(), "sekret")
 
-	identity, err := LinkPaperlessDocument(db, paperlessTestConfig(), user.ID, contact.VCardUID, "42")
+	identity, err := LinkPaperlessDocument(context.Background(), db, paperlessTestConfig(), user.ID, contact.VCardUID, "42")
 	require.NoError(t, err)
 
 	assert.Equal(t, ExternalSystemPaperless, identity.System)
@@ -116,11 +117,11 @@ func TestListPaperlessDocumentsForUser_BrowsesAndSearches(t *testing.T) {
 	fake.Docs[2] = &fakePaperlessDoc{Title: "Passport", FileName: "passport.pdf", Created: "2026-02-01", Added: "2026-02-05T10:00:00Z"}
 	connectPaperlessForUser(t, db, user.ID, fake.URL(), "sekret")
 
-	docs, err := ListPaperlessDocumentsForUser(db, paperlessTestConfig(), user.ID, "")
+	docs, err := ListPaperlessDocumentsForUser(context.Background(), db, paperlessTestConfig(), user.ID, "")
 	require.NoError(t, err)
 	require.Len(t, docs, 2)
 
-	filtered, err := ListPaperlessDocumentsForUser(db, paperlessTestConfig(), user.ID, "passport")
+	filtered, err := ListPaperlessDocumentsForUser(context.Background(), db, paperlessTestConfig(), user.ID, "passport")
 	require.NoError(t, err)
 	require.Len(t, filtered, 1)
 	assert.Equal(t, "Passport", filtered[0].Title)
@@ -135,7 +136,7 @@ func TestTestPaperlessConnection_SuccessAndDiagnosis(t *testing.T) {
 	fake.Me = map[string]any{"username": "alice", "id": 2}
 	connectPaperlessForUser(t, db, user.ID, fake.URL(), "sekret")
 
-	result, err := TestPaperlessConnection(db, paperlessTestConfig(), user.ID)
+	result, err := TestPaperlessConnection(context.Background(), db, paperlessTestConfig(), user.ID)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	assert.True(t, result.OK)
@@ -147,7 +148,7 @@ func TestTestPaperlessConnection_SuccessAndDiagnosis(t *testing.T) {
 	require.NoError(t, db.Model(&models.PaperlessConfig{}).Where("user_id = ?", user.ID).
 		Update("api_token_encrypted", mustEncrypt(t, "test-jwt-secret-0123456789abcdef0123456789abcdef", "wrong")).Error)
 
-	result2, err := TestPaperlessConnection(db, paperlessTestConfig(), user.ID)
+	result2, err := TestPaperlessConnection(context.Background(), db, paperlessTestConfig(), user.ID)
 	require.NoError(t, err)
 	require.NotNil(t, result2)
 	assert.False(t, result2.OK)
@@ -164,7 +165,7 @@ func TestPaperlessClient_RejectsUnexpectedStatus(t *testing.T) {
 
 	client, err := NewPaperlessClient(fake.URL(), "sekret", false)
 	require.NoError(t, err)
-	_, err = client.GetDocument(1)
+	_, err = client.GetDocument(context.Background(), 1)
 	assert.ErrorIs(t, err, ErrPaperlessRequestFailed)
 }
 
@@ -177,6 +178,6 @@ func TestPaperlessClient_GetDocumentMissingIsNotFound(t *testing.T) {
 
 	client, err := NewPaperlessClient(fake.URL(), "sekret", false)
 	require.NoError(t, err)
-	_, err = client.GetDocument(999)
+	_, err = client.GetDocument(context.Background(), 999)
 	assert.ErrorIs(t, err, ErrPaperlessNotFound)
 }

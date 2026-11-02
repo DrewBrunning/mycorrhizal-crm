@@ -57,7 +57,7 @@ func (r *VerifyResult) OK() bool { return len(r.Diffs) == 0 && len(r.Problems) =
 
 // freePort asks the kernel for an unused TCP port.
 func freePort() (string, error) {
-	l, err := net.Listen("tcp", "127.0.0.1:0")
+	l, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		return "", err
 	}

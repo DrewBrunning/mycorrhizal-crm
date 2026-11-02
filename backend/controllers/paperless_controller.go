@@ -149,7 +149,7 @@ func TestPaperlessConnection(c *gin.Context) {
 	}
 
 	cfg := currentConfig(c)
-	result, err := services.TestPaperlessConnection(db, cfg, userID)
+	result, err := services.TestPaperlessConnection(c.Request.Context(), db, cfg, userID)
 	if err != nil {
 		abortPaperlessServiceError(c, err)
 		return
@@ -169,7 +169,7 @@ func ListPaperlessDocuments(c *gin.Context) {
 	}
 
 	cfg := currentConfig(c)
-	documents, err := services.ListPaperlessDocumentsForUser(db, cfg, userID, c.Query("query"))
+	documents, err := services.ListPaperlessDocumentsForUser(c.Request.Context(), db, cfg, userID, c.Query("query"))
 	if err != nil {
 		abortPaperlessServiceError(c, err)
 		return
@@ -222,7 +222,7 @@ func LinkPaperlessContact(c *gin.Context) {
 	}
 
 	cfg := currentConfig(c)
-	identity, err := services.LinkPaperlessDocument(db, cfg, userID, contactUID, input.DocumentID)
+	identity, err := services.LinkPaperlessDocument(c.Request.Context(), db, cfg, userID, contactUID, input.DocumentID)
 	if err != nil {
 		abortPaperlessServiceError(c, err)
 		return

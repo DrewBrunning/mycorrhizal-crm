@@ -103,7 +103,7 @@ func integrationClientCases() []integrationClientCase {
 			build: func(t *testing.T, baseURL string) func() error {
 				c, err := NewPaperlessClient(baseURL, "tok", false)
 				require.NoError(t, err)
-				return c.Ping
+				return func() error { return c.Ping(context.Background()) }
 			},
 			sentinels: clientSentinels{ErrPaperlessUnreachable, ErrPaperlessUnauthorized, ErrPaperlessNotFound},
 		},
@@ -125,7 +125,7 @@ func integrationClientCases() []integrationClientCase {
 			build: func(t *testing.T, baseURL string) func() error {
 				c, err := NewSeafileClient(baseURL, "tok", false)
 				require.NoError(t, err)
-				return c.PingAuth
+				return func() error { return c.PingAuth(context.Background()) }
 			},
 			sentinels: clientSentinels{ErrSeafileUnreachable, ErrSeafileUnauthorized, ErrSeafileNotFound},
 		},
@@ -136,7 +136,7 @@ func integrationClientCases() []integrationClientCase {
 			build: func(t *testing.T, baseURL string) func() error {
 				c, err := NewWebDAVClient(baseURL, "user", "pw", false)
 				require.NoError(t, err)
-				return c.Ping
+				return func() error { return c.Ping(context.Background()) }
 			},
 			sentinels: clientSentinels{ErrWebDAVUnreachable, ErrWebDAVUnauthorized, ErrWebDAVNotFound},
 		},

@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"os"
@@ -120,7 +121,7 @@ func backupSnapshot(sqlDB *sql.DB, outPath string) error {
 	// is inlined and single quotes are escaped (the only escaping SQLite needs
 	// inside a string literal). The path is operator-supplied, never user input.
 	escaped := strings.ReplaceAll(outPath, "'", "''")
-	if _, err := sqlDB.Exec("VACUUM INTO '" + escaped + "'"); err != nil { // #nosec G202 -- operator-supplied path, quotes escaped; not user input
+	if _, err := sqlDB.ExecContext(context.Background(), "VACUUM INTO '"+escaped+"'"); err != nil { // #nosec G202 -- operator-supplied path, quotes escaped; not user input
 		return fmt.Errorf("VACUUM INTO %q: %w", outPath, err)
 	}
 	return nil
@@ -137,7 +138,7 @@ func backupSnapshot(sqlDB *sql.DB, outPath string) error {
 // situation it exists for. PASSIVE never returns busy.
 func checkpoint(sqlDB *sql.DB) error {
 	var busy, log, checkpointed int
-	if err := sqlDB.QueryRow("PRAGMA wal_checkpoint(PASSIVE)").Scan(&busy, &log, &checkpointed); err != nil {
+	if err := sqlDB.QueryRowContext(context.Background(), "PRAGMA wal_checkpoint(PASSIVE)").Scan(&busy, &log, &checkpointed); err != nil {
 		return fmt.Errorf("wal_checkpoint(PASSIVE): %w", err)
 	}
 	return nil
@@ -156,7 +157,7 @@ func verifyBackup(tmpPath string) error {
 	defer sqlDB.Close()
 
 	var result string
-	if err := sqlDB.QueryRow("PRAGMA integrity_check").Scan(&result); err != nil {
+	if err := sqlDB.QueryRowContext(context.Background(), "PRAGMA integrity_check").Scan(&result); err != nil {
 		return fmt.Errorf("integrity check of backup %q failed: %w", tmpPath, err)
 	}
 	if result != "ok" {

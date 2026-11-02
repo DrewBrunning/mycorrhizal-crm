@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -64,7 +65,7 @@ func TestReminderCatchup_RestartTwiceInWindow_OneDeliveryPerChannel(t *testing.T
 
 	sends := 0
 	origSender := sendReminderEmailFn
-	sendReminderEmailFn = func(models.User, []models.Reminder, config.Config, *gorm.DB) error {
+	sendReminderEmailFn = func(context.Context, models.User, []models.Reminder, config.Config, *gorm.DB) error {
 		sends++
 		return nil
 	}
@@ -110,7 +111,7 @@ func TestReminderCatchup_TwoRestartsNinetyMinutesApart_SecondIsSuppressed(t *tes
 	// ReminderMinInterval keeps its real default here (JobCatchupWindow(24h) ≈ 23h30m).
 	sends := 0
 	origSender := sendReminderEmailFn
-	sendReminderEmailFn = func(models.User, []models.Reminder, config.Config, *gorm.DB) error {
+	sendReminderEmailFn = func(context.Context, models.User, []models.Reminder, config.Config, *gorm.DB) error {
 		sends++
 		return nil
 	}

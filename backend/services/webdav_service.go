@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"mycorrhizal/config"
@@ -157,13 +158,13 @@ func buildWebDAVClient(db *gorm.DB, cfg config.Config, userID uint) (*WebDAVClie
 // through abortWebDAVServiceError. A populated, non-error result with OK:false
 // is a *successful* diagnosis of an upstream problem, not an application error
 // — this always responds 200.
-func TestWebDAVConnection(db *gorm.DB, cfg config.Config, userID uint) (*WebDAVConnectionTestResult, error) {
+func TestWebDAVConnection(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint) (*WebDAVConnectionTestResult, error) {
 	client, _, err := buildWebDAVClient(db, cfg, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := client.Ping(); err != nil {
+	if err := client.Ping(ctx); err != nil {
 		logger.Warn().Err(err).Uint("user_id", userID).Msg("Nextcloud test connection failed")
 		return diagnoseWebDAVConnectionFailure(err), nil
 	}
@@ -202,12 +203,12 @@ func diagnoseWebDAVConnectionFailure(err error) *WebDAVConnectionTestResult {
 
 // ListWebDAVDirForUser lists a directory's children (the L1 picker's
 // navigation), relative to the dav root. Requires a configured connection.
-func ListWebDAVDirForUser(db *gorm.DB, cfg config.Config, userID uint, path string) ([]WebDAVItem, error) {
+func ListWebDAVDirForUser(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint, path string) ([]WebDAVItem, error) {
 	client, _, err := buildWebDAVClient(db, cfg, userID)
 	if err != nil {
 		return nil, err
 	}
-	return client.ListDir(path)
+	return client.ListDir(ctx, path)
 }
 
 // WebDAVLinkMetadata is the subset of a browsed WebDAV item the link request

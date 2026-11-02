@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"mycorrhizal/contactmodel"
 	"mycorrhizal/logger"
 	"mycorrhizal/photostore"
@@ -486,7 +487,10 @@ func applyMedia(c *Contact, card contactmodel.Card, photoDir string) {
 		return
 	}
 	if len(data) == 0 && photoURL != "" {
-		fetched, fetchedMediaType, err := photostore.FetchPhotoFromURL(photoURL)
+		// The model layer has no request context to carry; this is a best-effort
+		// repair of a CardDAV/JSContact photo URI and runs on the write path's
+		// background context.
+		fetched, fetchedMediaType, err := photostore.FetchPhotoFromURL(context.Background(), photoURL)
 		if err != nil {
 			logger.Warn().Err(err).Str("photo_url", photoURL).Msg("ApplyRecordToContact: failed to fetch photo from URL")
 			return

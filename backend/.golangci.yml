@@ -50,6 +50,15 @@
 #                   1.22+ already gives each iteration its own binding.
 #   - unconvert   — conversions that do not change the type.
 #   - misspell    — spelling in comments and identifiers, with autofix.
+#   - noctx       — outbound HTTP requests, DNS resolution, raw database/sql
+#                   calls, os/exec commands and net.Listener binds must use the
+#                   context-aware variant. The convention (issue #1939): a
+#                   handler passes c.Request.Context() through services to the
+#                   HTTP/SQL boundary; scheduled/startup/CLI work has no request
+#                   context and uses a run-scoped context.Background() at its
+#                   entry point, not a fresh one at the syscall. Test files are
+#                   exempt (see the exclusions below) because fixtures and
+#                   fake servers call clients directly.
 #
 # Deliberately NOT enabled:
 #   - forcetypeassert: 588 findings on main (353 outside tests), 334 of them
@@ -59,12 +68,16 @@
 #     those as checked assertions is a large, low-value sweep that would bury
 #     the few genuine unchecked assertions in noise. Rejected for this
 #     adoption pass; revisit as a targeted cleanup if a real panic surfaces.
-#   - noctx / contextcheck: the HTTP helpers and the database layer (the
-#     golang-migrate sqlite driver in database/) do not thread contexts
-#     through their signatures; wiring them in is a context-propagation
-#     refactor across the SSRF-guarded fetcher, the SMTP client, and the DB
-#     driver. That refactor is tracked in issue #1939 rather than rushed
-#     behind a red gate.
+#   - contextcheck: assessed alongside the noctx adoption (issue #1939). It
+#     reports 33 findings, concentrated in the model-layer photo repair
+#     (ApplyRecordToContact -> applyMedia, reached from several background
+#     backfills), startup/scheduler goroutines in embedded/, and CLI/tooling
+#     under internal/. Those paths have no request context to inherit; making
+#     them pass one would change signatures across call sites that are
+#     deliberately background work, for no cancellation win. noctx (above) is
+#     the gate that catches the bug class — a context-capable API called
+#     without its context — while contextcheck's remaining findings are
+#     propagation style in non-request-scoped code.
 #
 # gosec G104 (unhandled errors) stays excluded — errcheck is now the one
 # owner of that rule, with a real exclusion list instead of a blanket skip.
@@ -102,6 +115,7 @@ linters:
     - copyloopvar
     - unconvert
     - misspell
+    - noctx
   settings:
     exhaustive:
       # A `default` must not hide a newly added enum member: the missing case
@@ -178,6 +192,7 @@ linters:
           - sqlclosecheck
           - nilerr
           - durationcheck
+          - noctx
       # CLI tools under cmd/ print reports to stdout/stderr; a failed write
       # to the terminal has no recovery path worth writing.
       - path: '^cmd/'

@@ -146,7 +146,7 @@ func TestWebDAVConnection(c *gin.Context) {
 	}
 
 	cfg := currentConfig(c)
-	result, err := services.TestWebDAVConnection(db, cfg, userID)
+	result, err := services.TestWebDAVConnection(c.Request.Context(), db, cfg, userID)
 	if err != nil {
 		abortWebDAVServiceError(c, err)
 		return
@@ -171,7 +171,7 @@ func ListWebDAVDir(c *gin.Context) {
 	}
 
 	cfg := currentConfig(c)
-	items, err := services.ListWebDAVDirForUser(db, cfg, userID, path)
+	items, err := services.ListWebDAVDirForUser(c.Request.Context(), db, cfg, userID, path)
 	if err != nil {
 		abortWebDAVServiceError(c, err)
 		return

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"mime"
@@ -64,7 +65,7 @@ type EmailMessage struct {
 // Delivery is best-effort: returns nil if at least one configured channel
 // succeeds, and a combined error only if all configured channels fail. If no
 // channel is configured it logs a warning and returns nil (no-op)
-func SendEmail(cfg config.Config, msg EmailMessage) error {
+func SendEmail(ctx context.Context, cfg config.Config, msg EmailMessage) error {
 	if msg.To == "" {
 		logger.Warn().Msg("Skipping email because recipient address is empty")
 		return nil
@@ -93,7 +94,7 @@ func SendEmail(cfg config.Config, msg EmailMessage) error {
 
 	if cfg.UseResend {
 		attempted++
-		if err := sendViaResend(cfg, msg); err != nil {
+		if err := sendViaResend(ctx, cfg, msg); err != nil {
 			logger.Error().Err(err).Str("to", logger.MaskEmail(msg.To)).Msg("Failed to send email via Resend")
 			errs = append(errs, fmt.Sprintf("resend: %v", err))
 		} else {
@@ -103,7 +104,7 @@ func SendEmail(cfg config.Config, msg EmailMessage) error {
 
 	if cfg.UseSMTP {
 		attempted++
-		if err := sendViaSMTP(cfg, msg); err != nil {
+		if err := sendViaSMTP(ctx, cfg, msg); err != nil {
 			logger.Error().Err(err).Str("to", logger.MaskEmail(msg.To)).Msg("Failed to send email via SMTP")
 			errs = append(errs, fmt.Sprintf("smtp: %v", err))
 		} else {
@@ -147,7 +148,7 @@ func newResendClient(apiKey string) *resend.Client {
 }
 
 // delivers the message through the Resend API.
-func sendViaResend(cfg config.Config, msg EmailMessage) error {
+func sendViaResend(ctx context.Context, cfg config.Config, msg EmailMessage) error {
 	if err := faults.Hook(faultEmailSend); err != nil {
 		return err
 	}
@@ -161,7 +162,7 @@ func sendViaResend(cfg config.Config, msg EmailMessage) error {
 		Html:    msg.HTML,
 	}
 
-	sent, err := client.Emails.Send(params)
+	sent, err := client.Emails.SendWithContext(ctx, params)
 	if err != nil {
 		return err
 	}
@@ -171,7 +172,7 @@ func sendViaResend(cfg config.Config, msg EmailMessage) error {
 }
 
 // delivers the message through an SMTP server
-func sendViaSMTP(cfg config.Config, msg EmailMessage) error {
+func sendViaSMTP(ctx context.Context, cfg config.Config, msg EmailMessage) error {
 	if err := faults.Hook(faultEmailSend); err != nil {
 		return err
 	}
@@ -185,11 +186,11 @@ func sendViaSMTP(cfg config.Config, msg EmailMessage) error {
 	}
 
 	if cfg.SMTPUseTLS {
-		if err := sendSMTPImplicitTLS(cfg, addr, auth, msg.To, body); err != nil {
+		if err := sendSMTPImplicitTLS(ctx, cfg, addr, auth, msg.To, body); err != nil {
 			return err
 		}
 	} else {
-		if err := sendSMTPStartTLS(cfg, addr, auth, msg.To, body); err != nil {
+		if err := sendSMTPStartTLS(ctx, cfg, addr, auth, msg.To, body); err != nil {
 			return err
 		}
 	}
@@ -203,8 +204,8 @@ func sendViaSMTP(cfg config.Config, msg EmailMessage) error {
 // and the conversation are both bounded: SendMail sets no deadline, so a
 // stalled server hangs the caller forever. The STARTTLS-when-advertised and
 // PlainAuth behavior is preserved exactly.
-func sendSMTPStartTLS(cfg config.Config, addr string, auth smtp.Auth, to string, body []byte) error {
-	conn, err := net.DialTimeout("tcp", addr, smtpDialTimeout)
+func sendSMTPStartTLS(ctx context.Context, cfg config.Config, addr string, auth smtp.Auth, to string, body []byte) error {
+	conn, err := (&net.Dialer{Timeout: smtpDialTimeout}).DialContext(ctx, "tcp", addr)
 	if err != nil {
 		return fmt.Errorf("smtp dial: %w", err)
 	}
@@ -236,8 +237,8 @@ func sendSMTPStartTLS(cfg config.Config, addr string, auth smtp.Auth, to string,
 }
 
 // sendSMTPImplicitTLS sends a message over a connection that is wrapped in TLS (implicit TLS, typically port 465).
-func sendSMTPImplicitTLS(cfg config.Config, addr string, auth smtp.Auth, to string, body []byte) error {
-	conn, err := tls.DialWithDialer(&net.Dialer{Timeout: smtpDialTimeout}, "tcp", addr, smtpTLSConfig(cfg.SMTPHost))
+func sendSMTPImplicitTLS(ctx context.Context, cfg config.Config, addr string, auth smtp.Auth, to string, body []byte) error {
+	conn, err := (&tls.Dialer{NetDialer: &net.Dialer{Timeout: smtpDialTimeout}, Config: smtpTLSConfig(cfg.SMTPHost)}).DialContext(ctx, "tcp", addr)
 	if err != nil {
 		return fmt.Errorf("tls dial: %w", err)
 	}

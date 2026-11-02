@@ -2,6 +2,7 @@ package services
 
 import (
 	"bufio"
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/tls"
@@ -178,7 +179,7 @@ func TestSendViaSMTP_STARTTLSNegotiated(t *testing.T) {
 		SMTPHost: host, SMTPPort: port, SMTPFromEmail: "noreply@example.com",
 		SMTPUsername: "u", SMTPPassword: "p",
 	}
-	err := sendViaSMTP(cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
+	err := sendViaSMTP(context.Background(), cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
 	assert.NoError(t, err)
 }
 
@@ -191,7 +192,7 @@ func TestSendViaSMTP_ImplicitTLSSuccess(t *testing.T) {
 		SMTPHost: host, SMTPPort: port, SMTPFromEmail: "noreply@example.com",
 		SMTPUseTLS: true, SMTPUsername: "u", SMTPPassword: "p",
 	}
-	err := sendViaSMTP(cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
+	err := sendViaSMTP(context.Background(), cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
 	assert.NoError(t, err)
 }
 
@@ -204,7 +205,7 @@ func TestSendViaSMTP_ImplicitTLSAuthRejected(t *testing.T) {
 		SMTPHost: host, SMTPPort: port, SMTPFromEmail: "noreply@example.com",
 		SMTPUseTLS: true, SMTPUsername: "u", SMTPPassword: "p",
 	}
-	err := sendViaSMTP(cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
+	err := sendViaSMTP(context.Background(), cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "auth")
 }
@@ -230,7 +231,7 @@ func TestSendViaSMTP_ServerRejectsAtEachStep(t *testing.T) {
 				SMTPHost: host, SMTPPort: port, SMTPFromEmail: "noreply@example.com",
 				SMTPUsername: "u", SMTPPassword: "p",
 			}
-			err := sendViaSMTP(cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
+			err := sendViaSMTP(context.Background(), cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tc.wantMsg)
 		})
@@ -258,10 +259,10 @@ func TestSendViaResend_SuccessAndError(t *testing.T) {
 	cfg := config.Config{ResendAPIKey: "test", ResendFromEmail: "noreply@example.com"}
 
 	status = http.StatusOK
-	require.NoError(t, sendViaResend(cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"}))
+	require.NoError(t, sendViaResend(context.Background(), cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"}))
 
 	status = http.StatusUnprocessableEntity
-	require.ErrorContains(t, sendViaResend(cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"}),
+	require.ErrorContains(t, sendViaResend(context.Background(), cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"}),
 		"[ERROR]: 422 Unprocessable Entity", "a non-2xx Resend response must surface as an error")
 }
 
@@ -287,7 +288,7 @@ func TestSendEmail_PartialChannelFailure(t *testing.T) {
 	}
 	buf := captureLoggerOutput(t)
 
-	err := SendEmail(cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
+	err := SendEmail(context.Background(), cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"})
 	require.NoError(t, err, "one working channel is enough for overall success")
 	assert.Contains(t, buf.String(), "some but not all")
 }
@@ -307,7 +308,7 @@ func TestSendEmail_ResendOnlySuccess(t *testing.T) {
 	t.Cleanup(func() { resendBaseURLOverride = orig })
 
 	cfg := config.Config{UseResend: true, ResendAPIKey: "test", ResendFromEmail: "noreply@example.com"}
-	require.NoError(t, SendEmail(cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"}))
+	require.NoError(t, SendEmail(context.Background(), cfg, EmailMessage{To: "user@example.com", Subject: "hi", HTML: "<p>hi</p>"}))
 	assert.Equal(t, "Bearer test", gotAuth)
 	assert.Equal(t, "/emails", gotPath)
 	assert.Equal(t, "noreply@example.com", gotBody["from"])

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"mycorrhizal/config"
 	"mycorrhizal/internal/clock"
 	"mycorrhizal/internal/dbtest"
@@ -298,7 +299,7 @@ func TestSendReminders(t *testing.T) {
 	)
 
 	originalSender := sendReminderEmailFn
-	sendReminderEmailFn = func(u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error {
+	sendReminderEmailFn = func(_ context.Context, u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error {
 		calledUser = u
 		calledReminders = reminders
 		callCount++
@@ -373,7 +374,7 @@ func TestSendReminders_ExcludesCompletedAndAlreadySentReminders(t *testing.T) {
 
 	var calledReminders []models.Reminder
 	originalSender := sendReminderEmailFn
-	sendReminderEmailFn = func(u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error {
+	sendReminderEmailFn = func(_ context.Context, u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error {
 		calledReminders = reminders
 		return nil
 	}
@@ -426,7 +427,7 @@ func TestSendRemindersWithRateLimit_FirstRun(t *testing.T) {
 
 	callCount := 0
 	originalSender := sendReminderEmailFn
-	sendReminderEmailFn = func(u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error {
+	sendReminderEmailFn = func(_ context.Context, u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error {
 		callCount++
 		return nil
 	}
@@ -482,7 +483,7 @@ func TestSendRemindersWithRateLimit_RateLimited(t *testing.T) {
 
 	callCount := 0
 	originalSender := sendReminderEmailFn
-	sendReminderEmailFn = func(u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error {
+	sendReminderEmailFn = func(_ context.Context, u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error {
 		callCount++
 		return nil
 	}
@@ -540,7 +541,7 @@ func TestSendRemindersWithRateLimit_AllowsAfterInterval(t *testing.T) {
 
 	callCount := 0
 	originalSender := sendReminderEmailFn
-	sendReminderEmailFn = func(u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error {
+	sendReminderEmailFn = func(_ context.Context, u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error {
 		callCount++
 		return nil
 	}
@@ -722,7 +723,7 @@ func TestSendReminderEmail_MissingEmailSkips(t *testing.T) {
 
 	cfg := config.Config{}
 
-	err := sendReminderEmail(user, nil, cfg, db)
+	err := sendReminderEmail(context.Background(), user, nil, cfg, db)
 	assert.NoError(t, err, "missing email should be skipped silently, not an error")
 }
 
@@ -759,7 +760,7 @@ func TestSendReminderEmail_NoChannelConfiguredRendersWithoutSending(t *testing.T
 
 	cfg := config.Config{} // UseResend=false, UseSMTP=false -> EmailEnabled() == false
 
-	err := sendReminderEmail(user, []models.Reminder{reminder}, cfg, db)
+	err := sendReminderEmail(context.Background(), user, []models.Reminder{reminder}, cfg, db)
 	assert.NoError(t, err, "no channel configured should render but not error")
 }
 
@@ -868,7 +869,7 @@ func TestSendReminders_BirthdayOnlyUserIncluded(t *testing.T) {
 		callCount       int
 	)
 	originalSender := sendReminderEmailFn
-	sendReminderEmailFn = func(u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error {
+	sendReminderEmailFn = func(_ context.Context, u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error {
 		calledUser = u
 		calledReminders = reminders
 		callCount++
@@ -980,7 +981,7 @@ func TestSendRemindersAt_DayBoundaryUsesReminderZone(t *testing.T) {
 
 			var sent []string
 			originalSender := sendReminderEmailFn
-			sendReminderEmailFn = func(u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error {
+			sendReminderEmailFn = func(_ context.Context, u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error {
 				for _, r := range reminders {
 					sent = append(sent, r.Message)
 				}
@@ -1023,7 +1024,7 @@ func TestSendRemindersAt_LeapDayBirthdayReachesTheDigestOnMarchFirstNonLeap(t *t
 
 			callCount := 0
 			originalSender := sendReminderEmailFn
-			sendReminderEmailFn = func(u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error {
+			sendReminderEmailFn = func(_ context.Context, u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error {
 				callCount++
 				return nil
 			}
@@ -1063,7 +1064,7 @@ func TestSendRemindersAt_RunsOncePerCalendarDayOnTheSameDay(t *testing.T) {
 
 	callCount := 0
 	originalSender := sendReminderEmailFn
-	sendReminderEmailFn = func(u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error {
+	sendReminderEmailFn = func(_ context.Context, u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error {
 		callCount++
 		return nil
 	}

@@ -24,6 +24,7 @@ package services
 // reference is never fetched.
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -55,7 +56,7 @@ func TestWebDAVClient_Propfind_InternalEntityXXE_RejectedNotExpanded(t *testing.
 	client, err := NewWebDAVClient(server.URL, "testuser", "app-password", false)
 	require.NoError(t, err)
 
-	pingErr := client.Ping()
+	pingErr := client.Ping(context.Background())
 	require.ErrorIs(t, pingErr, ErrWebDAVInvalidData,
 		"an undefined entity reference must surface as a parse failure, not succeed with expanded/leaked data")
 	assert.NotContains(t, pingErr.Error(), "root:", "no /etc/passwd content must ever appear, even in the error text")
@@ -94,6 +95,6 @@ func TestWebDAVClient_Propfind_ExternalDTDReference_NeverFetched(t *testing.T) {
 	// Whether this parses successfully (Go tolerates the DOCTYPE token
 	// without acting on it) or errors doesn't matter for this test -- what
 	// matters is that the external DTD URL is never requested.
-	_ = client.Ping()
+	_ = client.Ping(context.Background())
 	assert.False(t, dtdServerHit, "an external DTD reference must never be fetched")
 }

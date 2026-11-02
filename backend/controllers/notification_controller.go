@@ -160,7 +160,7 @@ func TestNotificationChannel(c *gin.Context) {
 	}
 
 	cfg := currentConfig(c)
-	if err := services.TestNotificationChannel(db, cfg, user, models.NotificationChannel(input.Channel)); err != nil {
+	if err := services.TestNotificationChannel(c.Request.Context(), db, cfg, user, models.NotificationChannel(input.Channel)); err != nil {
 		// Issue #606: the full diagnostic goes to the server log — where an
 		// operator can still tell the SSRF guard's distinct sentinels apart —
 		// while only the bounded, normalized message reaches the client.

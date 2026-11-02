@@ -203,7 +203,7 @@ func newMCPServer(db *gorm.DB, userID uint, cfg config.Config, clk clock.Clock) 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "get_contact",
 		Description: "Everything known about one contact in a single call (same as GET /contacts/:id/detail): the record plus notes, activities, reminders, relationships, life events, gifts and more.",
-	}, func(_ context.Context, _ *mcp.CallToolRequest, in mcpGetContactInput) (*mcp.CallToolResult, any, error) {
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in mcpGetContactInput) (*mcp.CallToolResult, any, error) {
 		contact, ok := mcpOwnedContact(db, userID, in.ID)
 		if !ok {
 			return mcpToolError("contact %d not found", in.ID)
@@ -212,7 +212,7 @@ func newMCPServer(db *gorm.DB, userID uint, cfg config.Config, clk clock.Clock) 
 		if in.IncludeSensitive {
 			excluded = nil
 		}
-		detail, err := buildContactDetailScoped(db, userID, contact, cfg, in.IncludeSensitive, excluded)
+		detail, err := buildContactDetailScoped(ctx, db, userID, contact, cfg, in.IncludeSensitive, excluded)
 		if err != nil {
 			return mcpToolError("failed to compose contact detail")
 		}
