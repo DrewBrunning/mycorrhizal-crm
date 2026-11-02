@@ -175,6 +175,7 @@ import com.mycorrhizal.crm.ui.components.HealthScoreBadge
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.ScreenTitle
 import com.mycorrhizal.crm.ui.components.WriteConflictDialog
+import com.mycorrhizal.crm.ui.components.contactFieldLabel
 import com.mycorrhizal.crm.ui.components.healthBandColor
 import com.mycorrhizal.crm.ui.components.localizedMessage
 import com.mycorrhizal.crm.ui.components.scoreReasonText
@@ -286,6 +287,10 @@ fun ContactDetailScreen(
     // capturing a stale string -- lint's LocalContextGetResourceValueCall.
     val cropFailedMessage = stringResource(R.string.profile_picture_crop_failed)
     val photoTooLargeMessage = stringResource(R.string.profile_picture_error_too_large)
+    // Issue #1997: per-contact field visibility. A reveal belongs to this visit
+    // only; the server copy is the source of truth across screens.
+    var showFieldVisibilityDialog by remember { mutableStateOf(false) }
+    var revealedFields by remember { mutableStateOf(emptySet<ContactFieldKey>()) }
     LaunchedEffect(event) {
         when (event) {
             is ContactDetailEvent.ContactDeleted -> {
@@ -297,6 +302,11 @@ fun ContactDetailScreen(
                 val ready = event as ContactDetailEvent.ExportReady
                 viewModel.onEventShown()
                 shareExportedVcf(context, state.contact, ready.version, ready.bytes)
+            }
+
+            is ContactDetailEvent.FieldVisibilitySaved -> {
+                viewModel.onEventShown()
+                showFieldVisibilityDialog = false
             }
 
             null -> Unit
@@ -813,91 +823,99 @@ fun ContactDetailScreen(
 
                 state.contact == null -> EmptyState(stringResource(R.string.contact_not_found))
 
-                else -> ContactDetailContent(
-                    contact = state.contact!!,
-                    listState = listState,
-                    headerContentAlpha = 1f - collapseProgress,
-                    deviceLookupKey = state.deviceLookupKey,
-                    dateFormat = state.dateFormat,
-                    enabledFields = state.enabledFields,
-                    fieldDefinitions = state.fieldDefinitions,
-                    fieldValuesByDefinitionId = state.fieldValuesByDefinitionId,
-                    savingFieldDefinitionId = state.savingFieldDefinitionId,
-                    onSaveFieldValue = viewModel::saveFieldValue,
-                    allCircles = state.allCircles,
-                    contactCircles = state.contactCircles,
-                    allTags = state.allTags,
-                    contactTags = state.contactTags,
-                    onAddCircle = viewModel::addCircle,
-                    onRemoveCircle = viewModel::removeCircle,
-                    onAddTag = viewModel::addTag,
-                    onRemoveTag = viewModel::removeTag,
-                    onOpenInContacts = onOpenInContacts,
-                    onViewActivities = onViewActivities,
-                    onAddToActivity = { showAddToActivities = true },
-                    onViewNotes = onViewNotes,
-                    onViewReminders = onViewReminders,
-                    onViewAttachments = onViewAttachments,
-                    onViewRelationships = onViewRelationships,
-                    onViewCadence = onViewCadence,
-                    onViewLifeEvents = onViewLifeEvents,
-                    onViewGifts = onViewGifts,
-                    onViewPreferences = onViewPreferences,
-                    onViewSkills = onViewSkills,
-                    onViewWork = onViewWork,
-                    onViewAnniversaries = onViewAnniversaries,
-                    onViewAgenda = onViewAgenda,
-                    onViewTimeline = onViewTimeline,
-                    onEditActivity = onEditActivity,
-                    onEditNote = onEditNote,
-                    onEditReminder = onEditReminder,
-                    onCompleteReminder = viewModel::completeReminder,
-                    completions = state.completions,
-                    onUndoCompletion = { id -> pendingUndoCompletionId = id },
-                    onUploadProfilePicture = onUploadProfilePicture,
-                    // Issue #212: the header star toggle (web #173).
-                    onToggleFavorite = viewModel::toggleFavorite,
-                    // T90 / issue #831: the header "You" badge (web parity).
-                    isMe = isMe,
-                    // Issue #383 (ADR-0023): the relationship health score badge.
-                    score = state.score,
-                    // Issue #1798: the target picker/offer flow.
-                    onSetTargetCloseness = viewModel::setTargetCloseness,
-                    cadencePolicyOffer = state.cadencePolicyOffer,
-                    onAcceptCadenceOffer = viewModel::acceptCadenceOffer,
-                    onDismissCadenceOffer = viewModel::dismissCadenceOffer,
-                    externalIdentities = state.externalIdentities,
-                    immichSummary = state.immichSummary,
-                    onDeleteExternalIdentity = { pendingExternalLinkDelete = it },
-                    onUnlinkImmich = { pendingImmichUnlink = true },
-                    // Issue #836: sync-now has no confirmation dialog (web parity).
-                    immichSyncing = state.immichSyncing,
-                    onSyncImmich = viewModel::syncImmich,
-                    externalActivities = state.externalActivities,
-                    // Issue #236: the "Add link" entry points, gated per system.
-                    paperlessConfigured = state.paperlessConfigured,
-                    seafileConfigured = state.seafileConfigured,
-                    nextcloudConfigured = state.nextcloudConfigured,
-                    lifeEventCount = state.lifeEventCount,
-                    giftCount = state.giftCount,
-                    preferenceCount = state.preferenceCount,
-                    agendaCount = state.agendaCount,
-                    relationshipCount = state.relationshipCount,
-                    attachmentCount = state.attachmentCount,
-                    cadenceCount = state.cadenceCount,
-                    onAddPaperlessLink = {
-                        paperlessPickerOpen = true
-                        viewModel.loadPaperlessDocuments()
-                    },
-                    onAddSeafileLink = {
-                        seafilePickerOpen = true
-                        viewModel.loadSeafileLibraries()
-                    },
-                    onAddNextcloudLink = {
-                        nextcloudPickerOpen = true
-                        viewModel.loadNextcloudDir()
-                    }
-                )
+                else -> {
+                    val contact = state.contact!!
+                    ContactDetailContent(
+                        contact = contact,
+                        listState = listState,
+                        headerContentAlpha = 1f - collapseProgress,
+                        deviceLookupKey = state.deviceLookupKey,
+                        dateFormat = state.dateFormat,
+                        accountEnabledFields = state.resolvedEnabledFields,
+                        hideEmpty = state.resolvedHideEmpty,
+                        revealedFields = revealedFields,
+                        onRevealField = { revealedFields = revealedFields + it },
+                        onCustomizeFields = { showFieldVisibilityDialog = true },
+                        onEdit = onEdit,
+                        fieldDefinitions = state.fieldDefinitions,
+                        fieldValuesByDefinitionId = state.fieldValuesByDefinitionId,
+                        savingFieldDefinitionId = state.savingFieldDefinitionId,
+                        onSaveFieldValue = viewModel::saveFieldValue,
+                        allCircles = state.allCircles,
+                        contactCircles = state.contactCircles,
+                        allTags = state.allTags,
+                        contactTags = state.contactTags,
+                        onAddCircle = viewModel::addCircle,
+                        onRemoveCircle = viewModel::removeCircle,
+                        onAddTag = viewModel::addTag,
+                        onRemoveTag = viewModel::removeTag,
+                        onOpenInContacts = onOpenInContacts,
+                        onViewActivities = onViewActivities,
+                        onAddToActivity = { showAddToActivities = true },
+                        onViewNotes = onViewNotes,
+                        onViewReminders = onViewReminders,
+                        onViewAttachments = onViewAttachments,
+                        onViewRelationships = onViewRelationships,
+                        onViewCadence = onViewCadence,
+                        onViewLifeEvents = onViewLifeEvents,
+                        onViewGifts = onViewGifts,
+                        onViewPreferences = onViewPreferences,
+                        onViewSkills = onViewSkills,
+                        onViewWork = onViewWork,
+                        onViewAnniversaries = onViewAnniversaries,
+                        onViewAgenda = onViewAgenda,
+                        onViewTimeline = onViewTimeline,
+                        onEditActivity = onEditActivity,
+                        onEditNote = onEditNote,
+                        onEditReminder = onEditReminder,
+                        onCompleteReminder = viewModel::completeReminder,
+                        completions = state.completions,
+                        onUndoCompletion = { id -> pendingUndoCompletionId = id },
+                        onUploadProfilePicture = onUploadProfilePicture,
+                        // Issue #212: the header star toggle (web #173).
+                        onToggleFavorite = viewModel::toggleFavorite,
+                        // T90 / issue #831: the header "You" badge (web parity).
+                        isMe = isMe,
+                        // Issue #383 (ADR-0023): the relationship health score badge.
+                        score = state.score,
+                        // Issue #1798: the target picker/offer flow.
+                        onSetTargetCloseness = viewModel::setTargetCloseness,
+                        cadencePolicyOffer = state.cadencePolicyOffer,
+                        onAcceptCadenceOffer = viewModel::acceptCadenceOffer,
+                        onDismissCadenceOffer = viewModel::dismissCadenceOffer,
+                        externalIdentities = state.externalIdentities,
+                        immichSummary = state.immichSummary,
+                        onDeleteExternalIdentity = { pendingExternalLinkDelete = it },
+                        onUnlinkImmich = { pendingImmichUnlink = true },
+                        // Issue #836: sync-now has no confirmation dialog (web parity).
+                        immichSyncing = state.immichSyncing,
+                        onSyncImmich = viewModel::syncImmich,
+                        externalActivities = state.externalActivities,
+                        // Issue #236: the "Add link" entry points, gated per system.
+                        paperlessConfigured = state.paperlessConfigured,
+                        seafileConfigured = state.seafileConfigured,
+                        nextcloudConfigured = state.nextcloudConfigured,
+                        lifeEventCount = state.lifeEventCount,
+                        giftCount = state.giftCount,
+                        preferenceCount = state.preferenceCount,
+                        agendaCount = state.agendaCount,
+                        relationshipCount = state.relationshipCount,
+                        attachmentCount = state.attachmentCount,
+                        cadenceCount = state.cadenceCount,
+                        onAddPaperlessLink = {
+                            paperlessPickerOpen = true
+                            viewModel.loadPaperlessDocuments()
+                        },
+                        onAddSeafileLink = {
+                            seafilePickerOpen = true
+                            viewModel.loadSeafileLibraries()
+                        },
+                        onAddNextcloudLink = {
+                            nextcloudPickerOpen = true
+                            viewModel.loadNextcloudDir()
+                        }
+                    )
+                }
             }
         }
     }
@@ -906,6 +924,19 @@ fun ContactDetailScreen(
     // confirmation semantics (soft-delete per /CLAUDE.md); unarchive is confirmed too, since
     // the ticket calls for confirmation on both directions.
     val contact = state.contact
+    if (showFieldVisibilityDialog) {
+        ContactFieldVisibilityDialog(
+            visibility = state.fieldVisibility,
+            saving = state.fieldVisibilitySaving,
+            error = state.fieldVisibilityError?.localizedMessage(),
+            onDismiss = {
+                showFieldVisibilityDialog = false
+                viewModel.onFieldVisibilityErrorShown()
+            },
+            onSave = viewModel::saveFieldVisibility,
+            onReset = viewModel::resetFieldVisibility
+        )
+    }
     if (showDeleteConfirm && contact != null) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
@@ -1280,7 +1311,15 @@ fun ContactDetailContent(
      * [DEFAULT_ENABLED_CONTACT_FIELDS] so a caller that doesn't pass this (tests, previews)
      * sees the same fields Android showed before this feature existed.
      */
-    enabledFields: Set<ContactFieldKey> = DEFAULT_ENABLED_CONTACT_FIELDS,
+    accountEnabledFields: Set<ContactFieldKey> = DEFAULT_ENABLED_CONTACT_FIELDS,
+    /** Issue #1997: whether empty enabled fields are suppressed on this detail view. */
+    hideEmpty: Boolean = true,
+    /** Fields the user revealed in this visit, so hide-empty keeps them visible. */
+    revealedFields: Set<ContactFieldKey> = emptySet(),
+    onRevealField: (ContactFieldKey) -> Unit = {},
+    onCustomizeFields: () -> Unit = {},
+    /** Opens the full edit form (the placeholder rows' "Add" action). */
+    onEdit: (Int) -> Unit = {},
     /** The user's custom field definitions and this contact's values (issue #830: editable). */
     fieldDefinitions: List<FieldDefinition> = emptyList(),
     fieldValuesByDefinitionId: Map<String, Any?> = emptyMap(),
@@ -1380,6 +1419,11 @@ fun ContactDetailContent(
     cadenceCount: Int? = null
 ) {
     val card = contact.card
+    // Issue #1997: per-contact overrides and hide-empty are applied here so a
+    // caller that passes only the account set still gets the resolved view.
+    val enabledFields = contact.renderedFieldKeys(accountEnabledFields, hideEmpty, revealedFields)
+    val hiddenEmptyFields =
+        contact.hiddenEmptyFieldKeys(accountEnabledFields, hideEmpty, revealedFields)
     // Issue #1763: counts for the three drill-downs whose rows are already
     // preloaded on the contact record. The other seven arrive via the
     // ViewModel's independent, best-effort count loads (null = not loaded).
@@ -1525,12 +1569,16 @@ fun ContactDetailContent(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                if (birthday != null && ContactFieldKey.BIRTHDAY in enabledFields) {
+                if (ContactFieldKey.BIRTHDAY in enabledFields) {
                     Text(
-                        text = stringResource(
-                            R.string.contact_birthday_label,
-                            birthday.display(dateFormat ?: DateFormat.EU)
-                        ),
+                        text = if (birthday != null) {
+                            stringResource(
+                                R.string.contact_birthday_label,
+                                birthday.display(dateFormat ?: DateFormat.EU)
+                            )
+                        } else {
+                            stringResource(R.string.contact_field_not_set)
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1549,14 +1597,22 @@ fun ContactDetailContent(
                 // Issue #832: crm.gender — free text, shown alongside nickname/birthday
                 // rather than in its own SectionCard (matches web's compact header treatment).
                 val gender = contact.crm?.gender
-                if (!gender.isNullOrBlank() && ContactFieldKey.GENDER in enabledFields) {
+                if (ContactFieldKey.GENDER in enabledFields) {
                     Text(
-                        text = gender,
+                        text = gender?.takeIf { it.isNotBlank() }
+                            ?: stringResource(R.string.contact_field_not_set),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
+        }
+        item {
+            ContactFieldToolbar(
+                hiddenEmptyFields = hiddenEmptyFields,
+                onReveal = onRevealField,
+                onCustomize = onCustomizeFields
+            )
         }
         // Issue #1728: non-birth anniversaries moved to their own drill-down
         // (the header's birthday entry stays above). Kept here only for the
@@ -1564,103 +1620,114 @@ fun ContactDetailContent(
         val otherAnniversaries = card?.anniversaries.orEmpty().filter { it.kind != "birth" }
         val pronouns = card?.speakToAs?.pronouns.orEmpty()
         val grammaticalGenders = card?.speakToAs?.grammaticalGenders.orEmpty()
-        if ((pronouns.isNotEmpty() || grammaticalGenders.isNotEmpty()) &&
-            ContactFieldKey.SPEAK_TO_AS in enabledFields
-        ) {
+        if (ContactFieldKey.SPEAK_TO_AS in enabledFields) {
             item {
                 SectionCard(stringResource(R.string.contact_speak_to_as)) {
-                    pronouns.forEach { p -> p.pronouns?.let { InfoRow(it) } }
-                    grammaticalGenders.forEach { g -> g.value?.let { InfoRow(it) } }
+                    if (pronouns.isEmpty() && grammaticalGenders.isEmpty()) {
+                        EmptyFieldRow(onAdd = { onEdit(contact.id) })
+                    } else {
+                        pronouns.forEach { p -> p.pronouns?.let { InfoRow(it) } }
+                        grammaticalGenders.forEach { g -> g.value?.let { InfoRow(it) } }
+                    }
                 }
             }
         }
         // Issue #1728: personal info (skills & interests) moved to its own drill-down.
-        if (!card?.keywords.isNullOrEmpty() && ContactFieldKey.KEYWORDS in enabledFields) {
+        if (ContactFieldKey.KEYWORDS in enabledFields) {
             item {
                 SectionCard(stringResource(R.string.contact_keywords)) {
-                    InfoRow(card.keywords.orEmpty().joinToString(", "))
+                    val keywords = card?.keywords.orEmpty()
+                    if (keywords.isEmpty()) {
+                        EmptyFieldRow(onAdd = { onEdit(contact.id) })
+                    } else {
+                        InfoRow(keywords.joinToString(", "))
+                    }
                 }
             }
         }
-        if (!card?.preferredLanguages.isNullOrEmpty() &&
-            ContactFieldKey.PREFERRED_LANGUAGES in enabledFields
-        ) {
+        if (ContactFieldKey.PREFERRED_LANGUAGES in enabledFields) {
             item {
                 SectionCard(stringResource(R.string.contact_preferred_languages)) {
-                    card.preferredLanguages?.forEach { pref -> pref.language?.let { InfoRow(it) } }
+                    val languages = card?.preferredLanguages.orEmpty()
+                    if (languages.isEmpty()) {
+                        EmptyFieldRow(onAdd = { onEdit(contact.id) })
+                    } else {
+                        languages.forEach { pref -> pref.language?.let { InfoRow(it) } }
+                    }
                 }
             }
         }
-        if (!card?.phones.isNullOrEmpty() && ContactFieldKey.PHONES in enabledFields) {
+        if (ContactFieldKey.PHONES in enabledFields) {
             item {
                 SectionCard(stringResource(R.string.contact_phone)) {
-                    card.phones?.forEach { PhoneRow(it) }
+                    val phones = card?.phones.orEmpty()
+                    if (phones.isEmpty()) {
+                        EmptyFieldRow(onAdd = { onEdit(contact.id) })
+                    } else {
+                        phones.forEach { PhoneRow(it) }
+                    }
                 }
             }
         }
-        if (!card?.addresses.isNullOrEmpty() && ContactFieldKey.ADDRESSES in enabledFields) {
+        if (ContactFieldKey.ADDRESSES in enabledFields) {
             item {
                 SectionCard(stringResource(R.string.contact_address)) {
-                    card.addresses?.forEach { AddressRow(it) }
+                    val addresses = card?.addresses.orEmpty()
+                    if (addresses.isEmpty()) {
+                        EmptyFieldRow(onAdd = { onEdit(contact.id) })
+                    } else {
+                        addresses.forEach { AddressRow(it) }
+                    }
                 }
             }
         }
-        if (!card?.emails.isNullOrEmpty() && ContactFieldKey.EMAILS in enabledFields) {
+        if (ContactFieldKey.EMAILS in enabledFields) {
             item {
                 SectionCard(stringResource(R.string.contact_email)) {
-                    card.emails?.forEach { EmailRow(it) }
+                    val emails = card?.emails.orEmpty()
+                    if (emails.isEmpty()) {
+                        EmptyFieldRow(onAdd = { onEdit(contact.id) })
+                    } else {
+                        emails.forEach { EmailRow(it) }
+                    }
                 }
             }
         }
         // Issue #832: each sub-list is gated independently before concatenation — this is
         // one merged UI section for three separate ContactFieldKeys, so disabling e.g.
         // socialProfiles must not hide impp/otherOnlineServices entries.
-        val onlineServices = (
-            (
-                if (ContactFieldKey.IMPP_ADDRESSES in
-                    enabledFields
-                ) {
-                    card?.imppAddresses.orEmpty()
-                } else {
-                    emptyList()
-                }
-                ) +
-                (
-                    if (ContactFieldKey.SOCIAL_PROFILES in
-                        enabledFields
-                    ) {
-                        card?.socialProfiles.orEmpty()
-                    } else {
-                        emptyList()
-                    }
-                    ) +
-                (
-                    if (ContactFieldKey.OTHER_ONLINE_SERVICES in
-                        enabledFields
-                    ) {
-                        card?.otherOnlineServices.orEmpty()
-                    } else {
-                        emptyList()
-                    }
-                    )
-            )
-        if (onlineServices.isNotEmpty()) {
+        val onlineSections = listOf(
+            ContactFieldKey.IMPP_ADDRESSES to card?.imppAddresses.orEmpty(),
+            ContactFieldKey.SOCIAL_PROFILES to card?.socialProfiles.orEmpty(),
+            ContactFieldKey.OTHER_ONLINE_SERVICES to card?.otherOnlineServices.orEmpty()
+        ).filter { (key, _) -> key in enabledFields }
+        if (onlineSections.isNotEmpty()) {
+            val onlineServices = onlineSections.flatMap { it.second }
             item {
                 SectionCard(stringResource(R.string.contact_online_services)) {
-                    onlineServices.forEach { OnlineServiceRow(it) }
+                    if (onlineServices.isEmpty()) {
+                        EmptyFieldRow(onAdd = { onEdit(contact.id) })
+                    } else {
+                        onlineServices.forEach { OnlineServiceRow(it) }
+                    }
                 }
             }
         }
-        if (!card?.links.isNullOrEmpty() && ContactFieldKey.LINKS in enabledFields) {
+        if (ContactFieldKey.LINKS in enabledFields) {
             item {
                 SectionCard(stringResource(R.string.contact_links)) {
-                    card.links?.forEach { link ->
-                        val uri = link.uri.orEmpty()
-                        LinkRow(
-                            uri = uri,
-                            label = link.label ?: uri,
-                            linkType = MobileLinkRegistry.forProtocol(link.label)
-                        )
+                    val links = card?.links.orEmpty()
+                    if (links.isEmpty()) {
+                        EmptyFieldRow(onAdd = { onEdit(contact.id) })
+                    } else {
+                        links.forEach { link ->
+                            val uri = link.uri.orEmpty()
+                            LinkRow(
+                                uri = uri,
+                                label = link.label ?: uri,
+                                linkType = MobileLinkRegistry.forProtocol(link.label)
+                            )
+                        }
                     }
                 }
             }
@@ -1668,28 +1735,37 @@ fun ContactDetailContent(
         // Issue #1728: organizations, titles and work_information moved to the
         // Work drill-down; how_we_met/contact_information stay inline.
         val howWeMet = contact.crm?.howWeMet
-        if (!howWeMet.isNullOrBlank() && ContactFieldKey.HOW_WE_MET in enabledFields) {
+        if (ContactFieldKey.HOW_WE_MET in enabledFields) {
             item {
                 SectionCard(stringResource(R.string.contact_how_we_met)) {
-                    InfoRow(howWeMet)
+                    if (howWeMet.isNullOrBlank()) {
+                        EmptyFieldRow(onAdd = { onEdit(contact.id) })
+                    } else {
+                        InfoRow(howWeMet)
+                    }
                 }
             }
         }
         val contactInformation = contact.crm?.contactInformation
-        if (!contactInformation.isNullOrBlank() &&
-            ContactFieldKey.CONTACT_INFORMATION in enabledFields
-        ) {
+        if (ContactFieldKey.CONTACT_INFORMATION in enabledFields) {
             item {
                 SectionCard(stringResource(R.string.contact_contact_information)) {
-                    InfoRow(contactInformation)
+                    if (contactInformation.isNullOrBlank()) {
+                        EmptyFieldRow(onAdd = { onEdit(contact.id) })
+                    } else {
+                        InfoRow(contactInformation)
+                    }
                 }
             }
         }
-        if (!card?.notes.isNullOrEmpty() && ContactFieldKey.CARD_NOTES in enabledFields) {
+        if (ContactFieldKey.CARD_NOTES in enabledFields) {
             item {
                 SectionCard(stringResource(R.string.contact_notes)) {
-                    card.notes?.forEach { note ->
-                        note.note?.let { InfoRow(it) }
+                    val notes = card?.notes.orEmpty()
+                    if (notes.isEmpty()) {
+                        EmptyFieldRow(onAdd = { onEdit(contact.id) })
+                    } else {
+                        notes.forEach { note -> note.note?.let { InfoRow(it) } }
                     }
                 }
             }
@@ -1731,6 +1807,8 @@ fun ContactDetailContent(
         if (fieldDefinitions.isNotEmpty()) {
             item {
                 // Issue #1731: one drill-down row per group instead of every definition inline.
+                // Hide-empty deliberately does not apply to custom fields (web parity: they are
+                // not in HIDE_EMPTY_FIELD_KEYS), so a definition with no value still renders.
                 CustomFieldGroupsCard(
                     definitions = fieldDefinitions,
                     values = fieldValuesByDefinitionId,
@@ -3202,5 +3280,82 @@ private fun AddExternalLinkRow(label: String, onClick: () -> Unit) {
     ) {
         Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
         Text(label)
+    }
+}
+
+/**
+ * Issue #1997: the two display affordances above a contact's fields.
+ * "Add a field" lists exactly the enabled fields hide-empty is suppressing
+ * (nothing when there are none); "Customize fields" opens the per-contact
+ * show/hide dialog. Cosmetic controls only.
+ */
+@Composable
+private fun ContactFieldToolbar(
+    hiddenEmptyFields: List<ContactFieldKey>,
+    onReveal: (ContactFieldKey) -> Unit,
+    onCustomize: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.End,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (hiddenEmptyFields.isNotEmpty()) {
+            var expanded by remember { mutableStateOf(false) }
+            Box {
+                TextButton(onClick = { expanded = true }) {
+                    Icon(
+                        Icons.Outlined.Add,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        stringResource(R.string.contact_field_visibility_add_field),
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
+                }
+                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    hiddenEmptyFields.forEach { key ->
+                        DropdownMenuItem(
+                            text = { Text(contactFieldLabel(key)) },
+                            onClick = {
+                                expanded = false
+                                onReveal(key)
+                            }
+                        )
+                    }
+                }
+            }
+        }
+        TextButton(onClick = onCustomize) {
+            Icon(
+                Icons.Outlined.Tune,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+            Text(
+                stringResource(R.string.contact_field_visibility_customize),
+                modifier = Modifier.padding(start = 4.dp)
+            )
+        }
+    }
+}
+
+/** A muted placeholder for an enabled field with no value (hide-empty off). */
+@Composable
+private fun EmptyFieldRow(onAdd: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = stringResource(R.string.contact_field_not_set),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f)
+        )
+        TextButton(onClick = onAdd) {
+            Text(stringResource(R.string.action_add))
+        }
     }
 }

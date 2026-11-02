@@ -3102,4 +3102,22 @@
     <string name="activity_images_alt">Activity photo</string>
     <string name="activity_images_delete">Delete photo</string>
     <string name="activity_images_pending">Photos to upload: %1$d</string>
+    <string name="contact_field_visibility_customize">Customize fields</string>
+    <string name="contact_field_visibility_add_field">Add a field</string>
+    <string name="contact_field_visibility_title">Customize fields for this contact</string>
+    <string name="contact_field_visibility_description">Choose which fields appear on this contact. This only changes what you see: it does not change the contact\'s data or what syncs.</string>
+    <string name="contact_field_visibility_empty_fields">Empty fields</string>
+    <string name="contact_field_visibility_inherit">Default (%1$s)</string>
+    <string name="contact_field_visibility_show">Show</string>
+    <string name="contact_field_visibility_hide">Hide</string>
+    <string name="contact_field_visibility_default_shown">shown</string>
+    <string name="contact_field_visibility_default_hidden">hidden</string>
+    <string name="contact_field_visibility_default_on">hiding empty fields</string>
+    <string name="contact_field_visibility_default_off">showing empty fields</string>
+    <string name="contact_field_visibility_hide_empty_on">Hiding empty fields</string>
+    <string name="contact_field_visibility_hide_empty_off">Showing empty fields</string>
+    <string name="contact_field_visibility_reset">Reset to default</string>
+    <string name="contact_field_not_set">Not set</string>
+    <string name="settings_contact_fields_hide_empty_label">Hide empty fields</string>
+    <string name="settings_contact_fields_hide_empty_description">On a contact\'s page, don\'t show fields that have no value yet. You can still add one from the Add a field menu, and a single contact can override this.</string>
 </resources>

@@ -21,8 +21,12 @@ data class ContactFieldSettingsUiState(
     val enabled: Set<ContactFieldKey> = DEFAULT_ENABLED_CONTACT_FIELDS,
     /** The one row whose switch is disabled while its own PATCH is in flight. */
     val savingKey: ContactFieldKey? = null,
+    /** Issue #1997: the account-wide hide-empty default (a contact can override it). */
+    val hideEmpty: Boolean = false,
+    val savingHideEmpty: Boolean = false,
     val loadError: ApiError? = null,
-    val saveError: ApiError? = null
+    val saveError: ApiError? = null,
+    val hideEmptyError: ApiError? = null
 )
 
 /**
@@ -59,6 +63,13 @@ class ContactFieldSettingsViewModel @Inject constructor(
                 .onFailure { e ->
                     _uiState.update { it.copy(isLoading = false, loadError = e.toApiError()) }
                 }
+            // Issue #1997: the hide-empty default is additive on the same GET;
+            // a failure leaves the switch off rather than failing the screen.
+            runCatching { authRepository.getHideEmptyFields() }
+                .getOrNull()
+                ?.onSuccess { hideEmpty ->
+                    _uiState.update { it.copy(hideEmpty = hideEmpty) }
+                }
         }
     }
 
@@ -89,7 +100,35 @@ class ContactFieldSettingsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Issue #1997: optimistically flip the account hide-empty default, then
+     * PATCH it. On failure, revert and surface the inline error.
+     */
+    fun onToggleHideEmpty() {
+        if (_uiState.value.savingHideEmpty) return
+        val previous = _uiState.value.hideEmpty
+        val next = !previous
+        _uiState.update {
+            it.copy(hideEmpty = next, savingHideEmpty = true, hideEmptyError = null)
+        }
+        viewModelScope.launch {
+            authRepository.updateHideEmptyFields(next)
+                .onSuccess {
+                    _uiState.update { it.copy(savingHideEmpty = false) }
+                }
+                .onFailure { e ->
+                    _uiState.update {
+                        it.copy(
+                            hideEmpty = previous,
+                            savingHideEmpty = false,
+                            hideEmptyError = e.toApiError()
+                        )
+                    }
+                }
+        }
+    }
+
     fun onSaveErrorShown() {
-        _uiState.update { it.copy(saveError = null) }
+        _uiState.update { it.copy(saveError = null, hideEmptyError = null) }
     }
 }

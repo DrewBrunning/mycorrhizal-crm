@@ -75,7 +75,20 @@ data class EnabledContactFieldsInput(val fields: List<String>)
  */
 @JsonClass(generateAdapter = true)
 data class EnabledContactFieldsResponse(
-    @Json(name = "enabled_contact_fields") val enabledContactFields: List<String>? = null
+    @Json(name = "enabled_contact_fields") val enabledContactFields: List<String>? = null,
+    /** Issue #1997: the account-wide hide-empty default (additive on the same GET). */
+    @Json(name = "hide_empty_fields") val hideEmptyFields: Boolean = false
+)
+
+/** PATCH /users/hide-empty-fields request body (issue #1997). */
+@JsonClass(generateAdapter = true)
+data class HideEmptyFieldsInput(@Json(name = "hide_empty_fields") val hideEmptyFields: Boolean)
+
+/** PATCH /users/hide-empty-fields response. */
+@JsonClass(generateAdapter = true)
+data class HideEmptyFieldsResponse(
+    val message: String? = null,
+    @Json(name = "hide_empty_fields") val hideEmptyFields: Boolean = false
 )
 
 /** Notification-channel test endpoints accept `ntfy | gotify | push` — never `email`. */

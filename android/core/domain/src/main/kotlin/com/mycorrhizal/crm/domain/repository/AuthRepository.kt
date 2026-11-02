@@ -167,6 +167,19 @@ interface AuthRepository {
     suspend fun updateEnabledContactFields(fields: List<String>): Result<List<String>>
 
     /**
+     * Issue #1997: the account-wide hide-empty default, carried on the same
+     * `GET /users/enabled-contact-fields` response. A per-contact override
+     * wins over it.
+     */
+    suspend fun getHideEmptyFields(): Result<Boolean>
+
+    /**
+     * PATCH /users/hide-empty-fields (issue #1997) — the account-wide
+     * hide-empty default. Returns the stored value.
+     */
+    suspend fun updateHideEmptyFields(hideEmpty: Boolean): Result<Boolean>
+
+    /**
      * POST /users/change-password. On success the server bumps TokenVersion,
      * invalidating every JWT (including this session's), so the caller must
      * re-login — the web re-issues a cookie, bearer-token Android cannot.

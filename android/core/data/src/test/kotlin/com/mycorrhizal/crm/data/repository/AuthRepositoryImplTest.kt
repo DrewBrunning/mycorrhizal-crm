@@ -7,6 +7,7 @@ import com.mycorrhizal.crm.domain.repository.LoginOutcome
 import com.mycorrhizal.crm.domain.repository.SecondFactorProof
 import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.model.network.EnabledContactFieldsResponse
+import com.mycorrhizal.crm.model.network.HideEmptyFieldsResponse
 import com.mycorrhizal.crm.model.network.MessageResponse
 import com.mycorrhizal.crm.model.network.TwoFactorConfirmResponse
 import com.mycorrhizal.crm.model.network.TwoFactorSetupResponse
@@ -470,6 +471,53 @@ class AuthRepositoryImplTest {
                 h.sessionManager.observeSession().first().enabledContactFields
             )
         }
+
+    @Test
+    fun `getHideEmptyFields returns the account default from the same GET`() = runTest {
+        val h = Harness()
+        coEvery { h.apiClient.getEnabledContactFields() } returns Result.success(
+            EnabledContactFieldsResponse(enabledContactFields = null, hideEmptyFields = true)
+        )
+
+        val result = h.repository.getHideEmptyFields()
+
+        assertTrue(result.isSuccess)
+        assertTrue(result.getOrThrow())
+    }
+
+    @Test
+    fun `getHideEmptyFields propagates a server failure`() = runTest {
+        val h = Harness()
+        coEvery { h.apiClient.getEnabledContactFields() } returns Result.failure(
+            ApiError.Server(500, "boom")
+        )
+
+        assertTrue(h.repository.getHideEmptyFields().isFailure)
+    }
+
+    @Test
+    fun `updateHideEmptyFields patches and returns the stored value`() = runTest {
+        val h = Harness()
+        coEvery { h.apiClient.updateHideEmptyFields(true) } returns Result.success(
+            HideEmptyFieldsResponse(hideEmptyFields = true)
+        )
+
+        val result = h.repository.updateHideEmptyFields(true)
+
+        assertTrue(result.isSuccess)
+        assertTrue(result.getOrThrow())
+        coVerify { h.apiClient.updateHideEmptyFields(true) }
+    }
+
+    @Test
+    fun `updateHideEmptyFields propagates a server failure`() = runTest {
+        val h = Harness()
+        coEvery { h.apiClient.updateHideEmptyFields(false) } returns Result.failure(
+            ApiError.Client(500, "boom")
+        )
+
+        assertTrue(h.repository.updateHideEmptyFields(false).isFailure)
+    }
 
     @Test
     fun `changePassword delegates to the api client`() = runTest {

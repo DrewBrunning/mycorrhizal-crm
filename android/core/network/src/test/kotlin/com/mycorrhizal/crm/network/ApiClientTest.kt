@@ -4,6 +4,7 @@ import com.mycorrhizal.crm.model.network.ActivityInput
 import com.mycorrhizal.crm.model.network.AddToActivityStatus
 import com.mycorrhizal.crm.model.network.CRMEnvelope
 import com.mycorrhizal.crm.model.network.Card
+import com.mycorrhizal.crm.model.network.ContactFieldVisibilityInput
 import com.mycorrhizal.crm.model.network.ContactRecordInput
 import com.mycorrhizal.crm.model.network.DeviceRegistrationInput
 import com.mycorrhizal.crm.model.network.ImportConfirmRequest
@@ -3768,6 +3769,84 @@ class ApiClientTest {
             val request = server.takeRequest()
             assertTrue(request.body.readUtf8().contains("\"fields\":[]"))
         }
+
+    // --- Issue #1997: per-contact field visibility and hide-empty ---
+
+    @Test
+    fun `get contact field visibility parses overrides and the resolved set`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"overrides":{"emails":"hide"},"hide_empty":"show","defaults":{"fields":{"emails":true},"hide_empty":false},"resolved":{"fields":{"emails":false},"hide_empty":true}}"""
+            )
+        )
+
+        val result = client.getContactFieldVisibility(5)
+
+        assertTrue(result.isSuccess)
+        assertEquals("hide", result.getOrThrow().overrides["emails"])
+        assertEquals("show", result.getOrThrow().hideEmpty)
+        assertFalse(result.getOrThrow().resolved.fields.getValue("emails"))
+        assertTrue(result.getOrThrow().resolved.hideEmpty)
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/api/v1/contacts/5/field-visibility", request.path)
+    }
+
+    @Test
+    fun `put contact field visibility sends the complete override set`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"overrides":{},"hide_empty":"inherit","defaults":{"fields":{},"hide_empty":false},"resolved":{"fields":{},"hide_empty":false}}"""
+            )
+        )
+
+        val result = client.putContactFieldVisibility(
+            5,
+            ContactFieldVisibilityInput(mapOf("emails" to "hide"), "hide")
+        )
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("PUT", request.method)
+        assertEquals("/api/v1/contacts/5/field-visibility", request.path)
+        val body = request.body.readUtf8()
+        assertTrue(body.contains("\"emails\":\"hide\""))
+        assertTrue(body.contains("\"hide_empty\":\"hide\""))
+    }
+
+    @Test
+    fun `reset contact field visibility deletes and parses the response`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"overrides":{},"hide_empty":"inherit","defaults":{"fields":{},"hide_empty":false},"resolved":{"fields":{},"hide_empty":false}}"""
+            )
+        )
+
+        val result = client.resetContactFieldVisibility(5)
+
+        assertTrue(result.isSuccess)
+        assertEquals("inherit", result.getOrThrow().hideEmpty)
+        val request = server.takeRequest()
+        assertEquals("DELETE", request.method)
+        assertEquals("/api/v1/contacts/5/field-visibility", request.path)
+    }
+
+    @Test
+    fun `update hide empty fields patches the account default`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200)
+                .setBody("""{"message":"ok","hide_empty_fields":true}""")
+        )
+
+        val result = client.updateHideEmptyFields(true)
+
+        assertTrue(result.isSuccess)
+        assertTrue(result.getOrThrow().hideEmptyFields)
+        val request = server.takeRequest()
+        assertEquals("PATCH", request.method)
+        assertEquals("/api/v1/users/hide-empty-fields", request.path)
+        assertTrue(request.body.readUtf8().contains("\"hide_empty_fields\":true"))
+    }
 
     @Test
     fun `change password posts current and new password and parses the message`() = runBlocking {

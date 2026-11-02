@@ -194,4 +194,46 @@ class ContactFieldSettingsScreenTest {
         composeTestRule.onNodeWithText("Instant messaging").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Preferred languages").performScrollTo().assertIsDisplayed()
     }
+
+    @Test
+    fun `the hide-empty row reflects and toggles the account default`() {
+        var toggled = 0
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactFieldSettingsContent(
+                    state = ContactFieldSettingsUiState(isLoading = false, hideEmpty = true),
+                    onToggleHideEmpty = { toggled += 1 }
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Hide empty fields")
+            .performScrollTo()
+            .assertIsToggleable()
+            .assertIsOn()
+            .performClick()
+        assertEquals(1, toggled)
+    }
+
+    @Test
+    fun `a hide-empty save error is announced as an assertive live region`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactFieldSettingsContent(
+                    state = ContactFieldSettingsUiState(
+                        isLoading = false,
+                        hideEmptyError = ApiError.Client(400, "Could not save hide-empty")
+                    )
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Could not save hide-empty")
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.LiveRegion,
+                    LiveRegionMode.Assertive
+                )
+            )
+    }
 }
