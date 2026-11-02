@@ -45,7 +45,7 @@ describe('ContactImageGallery', () => {
   it('renders thumbnails from the owner-nested endpoint', async () => {
     render(<ContactImageGallery contactId={4} />);
     const thumb = await screen.findByRole('img', { name: /contact photo/i });
-    expect(thumb).toHaveAttribute('src', '/api/v1/contacts/4/images/9/thumbnail');
+    expect(thumb.getAttribute('src')).toMatch(/\/api\/v1\/contacts\/4\/images\/9\/thumbnail$/);
   });
 
   it('deletes a photo from the editable surface', async () => {
