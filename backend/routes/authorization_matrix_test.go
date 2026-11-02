@@ -424,11 +424,16 @@ func buildTable(s seeded) map[string]authzRow {
 		"GET /api/v1/proxy/image": {class: classProtected},
 
 		// --- notes ----------------------------------------------------------
-		"GET /api/v1/notes":        {class: classProtected},
-		"POST /api/v1/notes":       {class: classProtected},
-		"GET /api/v1/notes/:id":    {class: classItem, probe: "/api/v1/notes/" + s.note},
-		"PUT /api/v1/notes/:id":    {class: classItem, probe: "/api/v1/notes/" + s.note},
-		"DELETE /api/v1/notes/:id": {class: classItem, probe: "/api/v1/notes/" + s.note},
+		"GET /api/v1/notes":                                {class: classProtected},
+		"POST /api/v1/notes":                               {class: classProtected},
+		"GET /api/v1/notes/:id":                            {class: classItem, probe: "/api/v1/notes/" + s.note},
+		"PUT /api/v1/notes/:id":                            {class: classItem, probe: "/api/v1/notes/" + s.note},
+		"DELETE /api/v1/notes/:id":                         {class: classItem, probe: "/api/v1/notes/" + s.note},
+		"GET /api/v1/notes/:id/images":                     {class: classItem, probe: "/api/v1/notes/" + s.note + "/images"},
+		"POST /api/v1/notes/:id/images":                    {class: classItem, probe: "/api/v1/notes/" + s.note + "/images"},
+		"GET /api/v1/notes/:id/images/:image_id/file":      {class: classItem, probe: "/api/v1/notes/" + s.note + "/images/" + fabricatedNum + "/file"},
+		"GET /api/v1/notes/:id/images/:image_id/thumbnail": {class: classItem, probe: "/api/v1/notes/" + s.note + "/images/" + fabricatedNum + "/thumbnail"},
+		"DELETE /api/v1/notes/:id/images/:image_id":        {class: classItem, probe: "/api/v1/notes/" + s.note + "/images/" + fabricatedNum},
 
 		// --- activities -----------------------------------------------------
 		"POST /api/v1/activities":                               {class: classProtected},

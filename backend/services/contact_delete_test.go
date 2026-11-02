@@ -40,6 +40,7 @@ var contactCascadeNotRegistered = map[string]string{
 // through a parent row (so the column scan cannot see them).
 var registryIndirectTables = map[string]string{
 	"notification_deliveries": "keyed by reminder_id; reaches the contact through its reminder",
+	"note_images":             "keyed by note_id; reaches the contact through its note",
 }
 
 func contactReferencingTables(t *testing.T, db *gorm.DB) map[string]string {

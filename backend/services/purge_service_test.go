@@ -465,3 +465,12 @@ func TestPurgeSoftDeletedRows_RemovesNoteImageRowsAndFiles(t *testing.T) {
 		assert.True(t, os.IsNotExist(statErr), "note image file %q must be removed", name)
 	}
 }
+
+func TestCollectPurgeFiles_NoteImageQueryFailureYieldsNoFiles(t *testing.T) {
+	db, _ := newPurgeDB(t)
+	dbtest.HideTable(t, db, "note_images")
+	assert.NotPanics(t, func() {
+		files := collectPurgeFiles(db, Now().AddDate(0, 0, -30))
+		assert.Empty(t, files.Images)
+	})
+}

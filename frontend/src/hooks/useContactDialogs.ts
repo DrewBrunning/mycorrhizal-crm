@@ -16,12 +16,13 @@ export function useContactDialogs(
     if (!contactId) return;
 
     try {
-      await createNote(contactId, {
+      const created = await createNote(contactId, {
         content,
         date: new Date(date).toISOString(),
         contact_id: parseInt(contactId, 10),
       });
       await onRefresh();
+      return created;
     } catch (err) {
       handleError(err, { operation: 'saving note' }, notifier);
       throw new Error(getErrorMessage(err));

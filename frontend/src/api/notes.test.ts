@@ -1,14 +1,18 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import { errorEnvelope, mockApi, setupMswServer } from '../test/mswServer';
 import { ApiError } from './client';
 import {
   createNote,
   createUnassignedNote,
   deleteNote,
+  deleteNoteImage,
   getContactNotes,
   getNote,
+  getNoteImages,
   getUnassignedNotes,
+  noteImageSrc,
   updateNote,
+  uploadNoteImage,
 } from './notes';
 
 setupMswServer();
@@ -131,5 +135,71 @@ describe('notes API requests', () => {
   test('deleteNote maps errors', async () => {
     mockApi('delete', '/notes/4', err404());
     await expectApiError(deleteNote('4'));
+  });
+});
+
+describe('note image API requests', () => {
+  const image = {
+    id: 9,
+    uuid: 'u',
+    note_id: 4,
+    mime_type: 'image/jpeg',
+    width: 10,
+    height: 10,
+    size_bytes: 100,
+    sensitivity: 'normal',
+    taken_at: null,
+    taken_date: null,
+    created_at: '2026-01-01T00:00:00Z',
+    file_url: '/api/v1/notes/4/images/9/file',
+    thumbnail_url: '/api/v1/notes/4/images/9/thumbnail',
+  };
+
+  test('lists and deletes note images through the owner-nested routes', async () => {
+    const getCalls = mockApi('get', '/notes/4/images', { images: [image], total: 1 });
+    expect((await getNoteImages(4)).images).toEqual([image]);
+    expect(getCalls[0].url).toBe('/api/v1/notes/4/images');
+
+    const deleteCalls = mockApi('delete', '/notes/4/images/9', { message: 'Image deleted' });
+    await deleteNoteImage(4, 9);
+    expect(deleteCalls[0].method).toBe('DELETE');
+  });
+
+  test('maps note image errors', async () => {
+    mockApi('get', '/notes/4/images', err404());
+    await expectApiError(getNoteImages(4));
+    mockApi('delete', '/notes/4/images/9', err404());
+    await expectApiError(deleteNoteImage(4, 9));
+  });
+
+  test('noteImageSrc prepends only the API origin', () => {
+    expect(noteImageSrc('/api/v1/notes/4/images/9/file')).toBe('/api/v1/notes/4/images/9/file');
+  });
+});
+describe('note image upload', () => {
+  test('POSTs multipart without a JSON content-type and returns the image', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ image: { id: 9, note_id: 4 } }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const file = new File(['x'], 'photo.jpg', { type: 'image/jpeg' });
+    expect((await uploadNoteImage(4, file)).id).toBe(9);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain('/notes/4/images');
+    expect(init.method).toBe('POST');
+    expect(init.body).toBeInstanceOf(FormData);
+    vi.unstubAllGlobals();
+  });
+
+  test('maps upload errors', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce(errorEnvelope(400, 'VALIDATION_ERROR', 'bad')),
+    );
+    await expect(uploadNoteImage(4, new File(['x'], 'photo.jpg'))).rejects.toMatchObject({
+      status: 400,
+    });
+    vi.unstubAllGlobals();
   });
 });

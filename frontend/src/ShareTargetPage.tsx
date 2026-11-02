@@ -38,12 +38,13 @@ export default function ShareTargetPage() {
 
   const handleSave = async (content: string, date: string, contactId?: number) => {
     try {
-      await createUnassignedNote({
+      const created = await createUnassignedNote({
         content,
         date: new Date(date).toISOString(),
         contact_id: contactId,
       });
       saved.current = true;
+      return created;
     } catch (err) {
       handleError(err, { operation: 'creating note' });
       throw err;

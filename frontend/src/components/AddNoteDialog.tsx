@@ -8,10 +8,12 @@ import {
   DialogContent,
   DialogTitle,
   TextField,
+  Typography,
 } from '@mui/material';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { type Contact, getContacts } from '../api/contacts';
+import { type Note, uploadNoteImage } from '../api/notes';
 import { useDiscardGuard } from '../hooks/useDiscardGuard';
 import { readSessionDraft, useSessionDraft } from '../hooks/useSessionDraft';
 import { handleFetchError } from '../utils/errorHandler';
@@ -41,7 +43,7 @@ function contactLabel(contact: ContactBrief): string {
 interface AddNoteDialogProps {
   open: boolean;
   onClose: () => void;
-  onSave: (content: string, date: string, contactId?: number) => Promise<void>;
+  onSave: (content: string, date: string, contactId?: number) => Promise<Note | undefined>;
   noteContactId?: number;
   noteContactName?: string;
   // Prefills the content (the Web Share Target, issue #1294). The user still
@@ -68,6 +70,8 @@ export default function AddNoteDialog({
   const [date, setDate] = useState(todayLocalISODate());
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const lockedContact = noteContactId != null;
   // Issue #557: scoped per target contact (or "unassigned" for the global
@@ -158,7 +162,16 @@ export default function AddNoteDialog({
 
     setSaving(true);
     try {
-      await onSave(content, date, lockedContact ? noteContactId : selectedContact?.ID);
+      const created = await onSave(
+        content,
+        date,
+        lockedContact ? noteContactId : selectedContact?.ID,
+      );
+      if (created && selectedImages.length > 0) {
+        for (const file of selectedImages) {
+          await uploadNoteImage(created.ID, file);
+        }
+      }
       handleClose();
     } catch {
       setError(t('noteDialog.saveError'));
@@ -235,6 +248,27 @@ export default function AddNoteDialog({
           <DateField label={t('noteDialog.date')} value={date} onChange={setDate} />
         </Box>
       </DialogContent>
+      <Box sx={{ mt: 1 }}>
+        <input
+          ref={imageInputRef}
+          type="file"
+          aria-label={t('noteImages.add')}
+          accept="image/jpeg,image/png,image/gif"
+          multiple
+          hidden
+          onChange={(event) =>
+            setSelectedImages((prev) => [...prev, ...Array.from(event.target.files ?? [])])
+          }
+        />
+        <Button size="small" onClick={() => imageInputRef.current?.click()}>
+          {t('noteImages.add')}
+        </Button>
+        {selectedImages.length > 0 && (
+          <Typography variant="caption" sx={{ ml: 1, color: 'text.secondary' }}>
+            {t('noteImages.queued', { count: selectedImages.length })}
+          </Typography>
+        )}
+      </Box>
       <DialogActions>
         <Button onClick={handleRequestClose} disabled={saving}>
           {t('noteDialog.cancel')}

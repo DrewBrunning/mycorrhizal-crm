@@ -245,3 +245,15 @@ func TestImageService_QuotaImageQueryFailure(t *testing.T) {
 	require.ErrorAs(t, err, &appErr)
 	assert.Equal(t, apperrors.ErrCodeDatabase, appErr.Code)
 }
+
+func TestImageService_AuditEntityByKind(t *testing.T) {
+	var svc ImageService[models.NoteImage, *models.NoteImage]
+	svc.Kind = OwnerKindNote
+	assert.Equal(t, models.AuditEntityNote, svc.auditEntity())
+	svc.Kind = OwnerKindActivity
+	assert.Equal(t, models.AuditEntityActivity, svc.auditEntity())
+	svc.Kind = OwnerKindContact
+	assert.Equal(t, models.AuditEntityContact, svc.auditEntity())
+	svc.Kind = OwnerKind("")
+	assert.Equal(t, models.AuditEntityActivity, svc.auditEntity())
+}

@@ -95,6 +95,19 @@ func ActivityImageService(db *gorm.DB, store imaging.Store, limit, maxPixels int
 	}
 }
 
+func (s *ImageService[T, P]) auditEntity() string {
+	switch s.Kind {
+	case OwnerKindNote:
+		return models.AuditEntityNote
+	case OwnerKindContact:
+		return models.AuditEntityContact
+	case OwnerKindActivity:
+		return models.AuditEntityActivity
+	default:
+		return models.AuditEntityActivity
+	}
+}
+
 func (s *ImageService[T, P]) ownerValue(owner OwnerRef) any {
 	if s.Kind == OwnerKindContact {
 		return owner.UID
@@ -201,7 +214,7 @@ func (s *ImageService[T, P]) Upload(ctx context.Context, userID uint, owner Owne
 		_ = s.Store.Remove(userID, thumbName)
 		return nil, apperrors.ErrDatabase("Failed to save image").WithError(err)
 	}
-	models.RecordAuditEvent(s.DB, models.AuditEntityActivity, imageAuditID(owner), models.AuditOpCreate, userID)
+	models.RecordAuditEvent(s.DB, s.auditEntity(), imageAuditID(owner), models.AuditOpCreate, userID)
 	return p, nil
 }
 
@@ -220,7 +233,7 @@ func (s *ImageService[T, P]) Delete(ctx context.Context, userID uint, owner Owne
 		if err := tx.Delete(row).Error; err != nil {
 			return err
 		}
-		models.RecordAuditEvent(tx, models.AuditEntityActivity, imageAuditID(owner), models.AuditOpDelete, userID)
+		models.RecordAuditEvent(tx, s.auditEntity(), imageAuditID(owner), models.AuditOpDelete, userID)
 		return nil
 	}); err != nil {
 		return apperrors.ErrDatabase("Failed to delete image").WithError(err)

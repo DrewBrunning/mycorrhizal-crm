@@ -33,6 +33,7 @@ import EditTimelineItemDialog from './components/EditTimelineItemDialog';
 import LoadError from './components/LoadError';
 import { ListSkeleton } from './components/LoadingSkeletons';
 import MarkdownText from './components/MarkdownText';
+import NoteImageGallery from './components/NoteImageGallery';
 import PageHeader from './components/PageHeader';
 import { useAnnouncer } from './context/AnnouncerContext';
 import { useDateFormat } from './DateFormatProvider';
@@ -116,13 +117,14 @@ const NotesPage: React.FC = () => {
 
   const handleNoteSave = async (content: string, date: string, contactId?: number) => {
     try {
-      await createUnassignedNote({
+      const created = await createUnassignedNote({
         content,
         date: new Date(date).toISOString(),
         contact_id: contactId,
       });
       setAddDialogOpen(false);
       void refetch();
+      return created;
     } catch (err) {
       handleError(err, { operation: 'creating note' });
       throw err;
@@ -371,7 +373,14 @@ const NotesPage: React.FC = () => {
                         alignItems: 'flex-start',
                       }}
                     >
-                      <MarkdownText text={note.content} sx={{ flex: 1 }} />
+                      <Box sx={{ flex: 1 }}>
+                        <MarkdownText text={note.content} />
+                        <NoteImageGallery
+                          noteId={note.ID}
+                          editable
+                          onChanged={() => void refetch()}
+                        />
+                      </Box>
                       <Box
                         className="edit-actions"
                         sx={{ opacity: 0, transition: 'opacity 0.2s', display: 'flex', gap: 1 }}

@@ -30,6 +30,8 @@ function mockFetchByUrl(handlers: Record<string, () => unknown>) {
           return { ok: true, json: async () => respond() };
         }
       }
+      if (url.includes('/images'))
+        return { ok: true, json: async () => ({ images: [], total: 0 }) };
       throw new Error(`unexpected fetch: ${url}`);
     }),
   );
@@ -568,6 +570,10 @@ function mockScopedNotes(urls: string[]) {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: string) => {
+      // Note image galleries are loaded per note; they are not part of the
+      // filter/count assertions in these tests.
+      if (url.includes('/images'))
+        return { ok: true, json: async () => ({ images: [], total: 0 }) };
       urls.push(url);
       if (!url.includes('/notes')) throw new Error(`unexpected fetch: ${url}`);
       const all = url.includes('scope=all');
@@ -693,4 +699,61 @@ test('editing a contact-linked note keeps its contact and saves the same contact
 
   await waitFor(() => expect(putBodies.length).toBe(1));
   expect(JSON.parse(putBodies[0]).contact_id).toBe(5);
+});
+test('renders note images and refetches after deleting one', async () => {
+  let deletes = 0;
+  let listCalls = 0;
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, options?: { method?: string }) => {
+      if (url.includes('/images/9') && options?.method === 'DELETE') {
+        deletes += 1;
+        return { ok: true, json: async () => ({ message: 'Image deleted' }) };
+      }
+      if (url.includes('/images')) {
+        return {
+          ok: true,
+          json: async () => ({
+            images: [
+              {
+                id: 9,
+                note_id: 1,
+                thumbnail_url: '/api/v1/notes/1/images/9/thumbnail',
+                file_url: '/api/v1/notes/1/images/9/file',
+              },
+            ],
+            total: 1,
+          }),
+        };
+      }
+      if (url.includes('/notes?')) {
+        listCalls += 1;
+        return {
+          ok: true,
+          json: async () => ({
+            notes: [
+              {
+                ID: 1,
+                content: 'with a photo',
+                date: '2026-01-01T00:00:00Z',
+                contact_id: null,
+                CreatedAt: '',
+                UpdatedAt: '',
+              },
+            ],
+            next_cursor: '',
+            limit: 25,
+            total: 1,
+          }),
+        };
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    }),
+  );
+  renderPage();
+  await waitFor(() => expect(screen.getByText('with a photo')).toBeDefined());
+  const del = await screen.findByRole('button', { name: 'Delete photo' });
+  fireEvent.click(del);
+  await waitFor(() => expect(deletes).toBe(1));
+  await waitFor(() => expect(listCalls).toBeGreaterThan(1));
 });

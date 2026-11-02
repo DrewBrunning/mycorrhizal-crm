@@ -53,7 +53,7 @@
       }
     }
 
-    setStatus('Cleared ' + cleared + ' cached bucket(s). Reloading\u2026');
+    setStatus(`Cleared ${cleared} cached bucket(s). Reloading\u2026`);
 
     // The reload must not be held hostage by whatever worker was in control:
     // after unregister() the navigation falls through to the network, which is

@@ -124,112 +124,110 @@ export default function SessionExpiredGate() {
   };
 
   return (
-    <>
-      <AppDialog open={dialogOpen} onClose={handleNotNow} maxWidth="xs" fullWidth>
-        <DialogTitle>{t('sessionExpired.title')}</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2}>
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              {t('sessionExpired.description')}
-            </Typography>
+    <AppDialog open={dialogOpen} onClose={handleNotNow} maxWidth="xs" fullWidth>
+      <DialogTitle>{t('sessionExpired.title')}</DialogTitle>
+      <DialogContent>
+        <Stack spacing={2}>
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+            {t('sessionExpired.description')}
+          </Typography>
 
-            {step === 'twoFactor' ? (
-              <form onSubmit={(p0) => void handleCodeSubmit(p0)}>
-                <Stack spacing={2}>
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    {t('login.twoFactorDescription')}
-                  </Typography>
-                  <TextField
-                    label={t('login.twoFactorCode')}
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                    required
-                    fullWidth
-                    autoFocus
-                    error={Boolean(error)}
-                    slotProps={{
-                      htmlInput: {
-                        'aria-describedby': error ? 'session-expired-error' : undefined,
-                      },
-                    }}
-                  />
-                  {error && (
-                    <Alert severity="error" id="session-expired-error" ref={errorRef} tabIndex={-1}>
-                      {error}
-                    </Alert>
-                  )}
-                  <Button type="submit" variant="contained" disabled={loading}>
-                    {loading ? t('login.loggingIn') : t('login.loginButton')}
-                  </Button>
-                </Stack>
-              </form>
-            ) : (
-              <form onSubmit={(p0) => void handleCredentialsSubmit(p0)}>
-                <Stack spacing={2}>
-                  <TextField
-                    label={t('login.identifier')}
-                    value={identifier}
-                    onChange={(e) => setIdentifier(e.target.value)}
-                    required
-                    fullWidth
-                    autoFocus
-                    error={Boolean(error)}
-                    slotProps={{
-                      htmlInput: {
-                        'aria-describedby': error ? 'session-expired-error' : undefined,
-                      },
-                    }}
-                  />
-                  <TextField
-                    label={t('login.password')}
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    fullWidth
-                    error={Boolean(error)}
-                    slotProps={{
-                      htmlInput: {
-                        'aria-describedby': error ? 'session-expired-error' : undefined,
-                      },
-                    }}
-                  />
-                  {error && (
-                    <Alert severity="error" id="session-expired-error" ref={errorRef} tabIndex={-1}>
-                      {error}
-                    </Alert>
-                  )}
-                  <Button type="submit" variant="contained" disabled={loading}>
-                    {loading ? t('login.loggingIn') : t('sessionExpired.signIn')}
-                  </Button>
-                  {oidcConfig.enabled && (
-                    <>
-                      <Divider>{t('login.orSeparator')}</Divider>
-                      <Button
-                        variant="outlined"
-                        onClick={() => {
-                          window.location.href = `${API_BASE_URL}/auth/oidc/login`;
-                        }}
-                      >
-                        {t('sessionExpired.ssoButton', { provider: oidcConfig.provider_name })}
-                      </Button>
-                    </>
-                  )}
-                </Stack>
-              </form>
-            )}
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Box sx={{ flex: 1 }} />
-          <Button onClick={handleNotNow} disabled={loading}>
-            {t('sessionExpired.notNow')}
-          </Button>
-          <Button onClick={() => void logoutAndRedirect()} disabled={loading}>
-            {t('sessionExpired.logOut')}
-          </Button>
-        </DialogActions>
-      </AppDialog>
-    </>
+          {step === 'twoFactor' ? (
+            <form onSubmit={(p0) => void handleCodeSubmit(p0)}>
+              <Stack spacing={2}>
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                  {t('login.twoFactorDescription')}
+                </Typography>
+                <TextField
+                  label={t('login.twoFactorCode')}
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  required
+                  fullWidth
+                  autoFocus
+                  error={Boolean(error)}
+                  slotProps={{
+                    htmlInput: {
+                      'aria-describedby': error ? 'session-expired-error' : undefined,
+                    },
+                  }}
+                />
+                {error && (
+                  <Alert severity="error" id="session-expired-error" ref={errorRef} tabIndex={-1}>
+                    {error}
+                  </Alert>
+                )}
+                <Button type="submit" variant="contained" disabled={loading}>
+                  {loading ? t('login.loggingIn') : t('login.loginButton')}
+                </Button>
+              </Stack>
+            </form>
+          ) : (
+            <form onSubmit={(p0) => void handleCredentialsSubmit(p0)}>
+              <Stack spacing={2}>
+                <TextField
+                  label={t('login.identifier')}
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  required
+                  fullWidth
+                  autoFocus
+                  error={Boolean(error)}
+                  slotProps={{
+                    htmlInput: {
+                      'aria-describedby': error ? 'session-expired-error' : undefined,
+                    },
+                  }}
+                />
+                <TextField
+                  label={t('login.password')}
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  fullWidth
+                  error={Boolean(error)}
+                  slotProps={{
+                    htmlInput: {
+                      'aria-describedby': error ? 'session-expired-error' : undefined,
+                    },
+                  }}
+                />
+                {error && (
+                  <Alert severity="error" id="session-expired-error" ref={errorRef} tabIndex={-1}>
+                    {error}
+                  </Alert>
+                )}
+                <Button type="submit" variant="contained" disabled={loading}>
+                  {loading ? t('login.loggingIn') : t('sessionExpired.signIn')}
+                </Button>
+                {oidcConfig.enabled && (
+                  <>
+                    <Divider>{t('login.orSeparator')}</Divider>
+                    <Button
+                      variant="outlined"
+                      onClick={() => {
+                        window.location.href = `${API_BASE_URL}/auth/oidc/login`;
+                      }}
+                    >
+                      {t('sessionExpired.ssoButton', { provider: oidcConfig.provider_name })}
+                    </Button>
+                  </>
+                )}
+              </Stack>
+            </form>
+          )}
+        </Stack>
+      </DialogContent>
+      <DialogActions>
+        <Box sx={{ flex: 1 }} />
+        <Button onClick={handleNotNow} disabled={loading}>
+          {t('sessionExpired.notNow')}
+        </Button>
+        <Button onClick={() => void logoutAndRedirect()} disabled={loading}>
+          {t('sessionExpired.logOut')}
+        </Button>
+      </DialogActions>
+    </AppDialog>
   );
 }

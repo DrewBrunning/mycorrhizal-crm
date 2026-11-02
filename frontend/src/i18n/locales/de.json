@@ -4013,5 +4013,17 @@
     "uploading": "Wird hochgeladen...",
     "queued_one": "{{count}} Foto ausgewählt",
     "queued_other": "{{count}} Fotos ausgewählt"
+  },
+  "noteImages": {
+    "add": "Fotos hinzufügen",
+    "queued_one": "{{count}} Foto ausgewählt",
+    "queued_other": "{{count}} Fotos ausgewählt",
+    "alt": "Notizfoto",
+    "delete": "Foto löschen",
+    "deleteFailed": "Das Foto konnte nicht gelöscht werden.",
+    "loadFailed": "Die Fotos konnten nicht geladen werden.",
+    "loading": "Fotos werden geladen",
+    "uploadFailed": "Das Foto konnte nicht hochgeladen werden.",
+    "uploading": "Wird hochgeladen..."
   }
 }
