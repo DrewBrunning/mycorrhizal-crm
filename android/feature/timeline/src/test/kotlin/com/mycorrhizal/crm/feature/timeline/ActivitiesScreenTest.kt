@@ -11,6 +11,7 @@ import androidx.lifecycle.SavedStateHandle
 import com.mycorrhizal.crm.domain.repository.ActivityRepository
 import com.mycorrhizal.crm.domain.repository.ContactActivitiesPage
 import com.mycorrhizal.crm.model.network.Activity
+import com.mycorrhizal.crm.model.network.ActivityImage
 import com.mycorrhizal.crm.model.network.ContactFlat
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.R
@@ -377,5 +378,19 @@ class ActivitiesScreenTest {
         composeTestRule.waitForIdle()
 
         composeTestRule.onNodeWithText("Coffee with Dana").assertIsDisplayed()
+    }
+
+    @Test
+    fun `renders activity image thumbnails`() {
+        setContent(
+            ActivitiesUiState(
+                contactId = 5,
+                activities = listOf(Activity(id = 1, title = "Trip")),
+                imagesByActivity = mapOf(
+                    1 to listOf(ActivityImage(id = 9, activityId = 1, thumbnailUrl = "/t"))
+                )
+            )
+        )
+        composeTestRule.onNodeWithContentDescription("Activity photo").assertIsDisplayed()
     }
 }

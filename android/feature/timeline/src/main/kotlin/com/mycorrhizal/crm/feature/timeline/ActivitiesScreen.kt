@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.timeline
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -8,7 +9,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -38,12 +41,16 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.AsyncImage
 import com.mycorrhizal.crm.model.network.Activity
+import com.mycorrhizal.crm.model.network.ActivityImage
 import com.mycorrhizal.crm.model.network.ContactFlat
 import com.mycorrhizal.crm.model.util.ActivityDateRange
 import com.mycorrhizal.crm.ui.LocalDateFormat
@@ -223,6 +230,7 @@ fun ActivitiesScreenContent(
                                         onContactClick = onContactClick,
                                         onDelete = { pendingDelete = activity },
                                         isDeleting = state.deletingId == activity.id,
+                                        images = state.imagesByActivity[activity.id].orEmpty(),
                                         // Issue #1763: this list is already scoped to one
                                         // contact, so repeating its chip on every row is noise.
                                         showContactChips = false
@@ -308,6 +316,7 @@ fun ActivityListItem(
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
     isDeleting: Boolean = false,
+    images: List<ActivityImage> = emptyList(),
     // Issue #1763: hide the participant chips when the list is already scoped to
     // this contact (the per-contact Activities screen) instead of repeating it.
     showContactChips: Boolean = true
@@ -352,6 +361,24 @@ fun ActivityListItem(
                         AssistChip(
                             onClick = { onContactClick(contact.id) },
                             label = { Text(contact.displayName) }
+                        )
+                    }
+                }
+            }
+            if (images.isNotEmpty()) {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.padding(top = 6.dp)
+                ) {
+                    items(images, key = { it.id }) { image ->
+                        AsyncImage(
+                            model = image.thumbnailUrl,
+                            contentDescription = stringResource(R.string.activity_images_alt),
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(64.dp)
+                                .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
                         )
                     }
                 }

@@ -6374,4 +6374,30 @@ class ApiClientTest {
             assertTrue(error is ApiError.Client)
             assertEquals("geocoding is not enabled on this server", error.displayMessage)
         }
+
+    @Test
+    fun `activity images list upload and delete use the owner-nested routes`() = runBlocking {
+        server.enqueue(
+            MockResponse().setBody(
+                """{"images":[{"id":9,"uuid":"u","activity_id":4,"mime_type":"image/jpeg","width":10,"height":10,"size_bytes":100,"sensitivity":"normal","created_at":"2026-01-01T00:00:00Z","file_url":"/api/v1/activities/4/images/9/file","thumbnail_url":"/api/v1/activities/4/images/9/thumbnail"}],"total":1}"""
+            )
+        )
+        val listed = client.listActivityImages(4)
+        assertEquals(1, listed.getOrThrow().images.size)
+        assertEquals("/api/v1/activities/4/images", server.takeRequest().path)
+
+        server.enqueue(MockResponse().setBody("""{"image":{"id":9,"activity_id":4}}"""))
+        val uploaded = client.uploadActivityImage(4, "photo.jpg", "image/jpeg", byteArrayOf(1, 2))
+        assertEquals(9, uploaded.getOrThrow().id)
+        val uploadRequest = server.takeRequest()
+        assertEquals("/api/v1/activities/4/images", uploadRequest.path)
+        assertEquals("POST", uploadRequest.method)
+        assertTrue(uploadRequest.body.readUtf8().contains("photo.jpg"))
+
+        server.enqueue(MockResponse().setBody("{}"))
+        assertTrue(client.deleteActivityImage(4, 9).isSuccess)
+        val deleteRequest = server.takeRequest()
+        assertEquals("/api/v1/activities/4/images/9", deleteRequest.path)
+        assertEquals("DELETE", deleteRequest.method)
+    }
 }

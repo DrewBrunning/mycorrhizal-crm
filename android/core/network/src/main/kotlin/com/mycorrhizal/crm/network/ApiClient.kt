@@ -4,6 +4,8 @@ import com.mycorrhizal.crm.model.network.AcceptHouseholdSuggestionInput
 import com.mycorrhizal.crm.model.network.AcceptHouseholdSuggestionResponse
 import com.mycorrhizal.crm.model.network.ActivitiesPage
 import com.mycorrhizal.crm.model.network.Activity
+import com.mycorrhizal.crm.model.network.ActivityImage
+import com.mycorrhizal.crm.model.network.ActivityImagesResponse
 import com.mycorrhizal.crm.model.network.ActivityInput
 import com.mycorrhizal.crm.model.network.AddCircleMemberResponse
 import com.mycorrhizal.crm.model.network.AddContactTagResponse
@@ -243,6 +245,7 @@ import com.mycorrhizal.crm.model.network.TwoFactorSetupResponse
 import com.mycorrhizal.crm.model.network.TwoFactorStatusResponse
 import com.mycorrhizal.crm.model.network.UpdateDateFormatRequest
 import com.mycorrhizal.crm.model.network.UpdateLanguageRequest
+import com.mycorrhizal.crm.model.network.UploadActivityImageResponse
 import com.mycorrhizal.crm.model.network.UserDirectoryEntry
 import com.mycorrhizal.crm.model.network.UserDirectoryResponse
 import com.mycorrhizal.crm.model.network.UserProfile
@@ -1560,6 +1563,45 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         executeGet("$PLACEHOLDER_ORIGIN$ACTIVITIES_PATH/$id") { _, body ->
             moshi.adapter(Activity::class.java).fromJson(body)
         }
+
+    // --- Activity images (ADR 0040 slice a, issue #1994) ---
+
+    /** GET /api/v1/activities/{id}/images — the activity's live images, newest first. */
+    suspend fun listActivityImages(activityId: Int): Result<ActivityImagesResponse> =
+        executeGet("$PLACEHOLDER_ORIGIN$ACTIVITIES_PATH/$activityId/images") { _, body ->
+            moshi.adapter(ActivityImagesResponse::class.java).fromJson(body)
+        }
+
+    /**
+     * POST /api/v1/activities/{id}/images — multipart `file`. The server sniffs and
+     * re-encodes the bytes, so [mimeType]/[fileName] are informational only.
+     */
+    suspend fun uploadActivityImage(
+        activityId: Int,
+        fileName: String,
+        mimeType: String,
+        bytes: ByteArray
+    ): Result<ActivityImage> = executeMultipartUpload(
+        path = "$ACTIVITIES_PATH/$activityId/images",
+        fieldName = "file",
+        fileName = fileName,
+        mediaType = mimeType,
+        fileBytes = bytes
+    ) { _, body ->
+        moshi.adapter(UploadActivityImageResponse::class.java).fromJson(body)?.image
+    }
+
+    /** DELETE /api/v1/activities/{id}/images/{imageId} — soft-deletes the image. */
+    suspend fun deleteActivityImage(activityId: Int, imageId: Int): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$ACTIVITIES_PATH/$activityId/images/$imageId")
+
+    /** GET the stored full variant bytes; [path] is the server's ready-made relative URL. */
+    suspend fun downloadActivityImage(path: String): Result<ByteArray> =
+        executeGetBytes("$PLACEHOLDER_ORIGIN$path")
+
+    /** GET the stored thumbnail bytes; [path] is the server's ready-made relative URL. */
+    suspend fun downloadActivityImageThumbnail(path: String): Result<ByteArray> =
+        executeGetBytes("$PLACEHOLDER_ORIGIN$path")
 
     /**
      * GET /api/v1/activities (cursor-paginated, all activities). [includeContacts] appends

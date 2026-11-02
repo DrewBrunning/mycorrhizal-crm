@@ -2,6 +2,7 @@ package com.mycorrhizal.crm.domain.repository
 
 import com.mycorrhizal.crm.model.network.ActivitiesPage
 import com.mycorrhizal.crm.model.network.Activity
+import com.mycorrhizal.crm.model.network.ActivityImage
 import com.mycorrhizal.crm.model.network.ActivityInput
 import com.mycorrhizal.crm.model.network.AddContactToActivitiesResponse
 
@@ -59,4 +60,18 @@ interface ActivityRepository {
 
     /** Delete an activity (soft delete server-side; removes the local cache row). */
     suspend fun delete(id: Int, revision: Int?): Result<Unit>
+
+    /** The activity's images, newest first (ADR 0040 slice a). */
+    suspend fun listImages(activityId: Int): Result<List<ActivityImage>>
+
+    /** Upload one image; the server re-encodes, stores and returns its metadata. */
+    suspend fun uploadImage(
+        activityId: Int,
+        fileName: String,
+        mimeType: String,
+        bytes: ByteArray
+    ): Result<ActivityImage>
+
+    /** Delete one image (soft delete server-side; files are removed after commit). */
+    suspend fun deleteImage(activityId: Int, imageId: Int): Result<Unit>
 }

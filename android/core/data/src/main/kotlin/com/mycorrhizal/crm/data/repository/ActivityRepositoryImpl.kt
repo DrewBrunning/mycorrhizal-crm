@@ -6,6 +6,7 @@ import com.mycorrhizal.crm.domain.repository.ActivityRepository
 import com.mycorrhizal.crm.domain.repository.ContactActivitiesPage
 import com.mycorrhizal.crm.model.network.ActivitiesPage
 import com.mycorrhizal.crm.model.network.Activity
+import com.mycorrhizal.crm.model.network.ActivityImage
 import com.mycorrhizal.crm.model.network.ActivityInput
 import com.mycorrhizal.crm.model.network.AddContactToActivitiesResponse
 import com.mycorrhizal.crm.model.network.AddToActivityStatus
@@ -106,4 +107,16 @@ class ActivityRepositoryImpl @Inject constructor(
         type = type,
         deleted = deleted
     )
+    override suspend fun listImages(activityId: Int): Result<List<ActivityImage>> =
+        apiClient.listActivityImages(activityId).map { it.images }
+
+    override suspend fun uploadImage(
+        activityId: Int,
+        fileName: String,
+        mimeType: String,
+        bytes: ByteArray
+    ): Result<ActivityImage> = apiClient.uploadActivityImage(activityId, fileName, mimeType, bytes)
+
+    override suspend fun deleteImage(activityId: Int, imageId: Int): Result<Unit> =
+        apiClient.deleteActivityImage(activityId, imageId)
 }
