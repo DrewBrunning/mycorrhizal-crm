@@ -221,10 +221,10 @@ func TestContactImages_UploadValidationAndLimit(t *testing.T) {
 	// Per-contact cap.
 	cfgEnv := env
 	for i := 0; i < 10; i++ {
-		capRec := uploadContactImageForTest(t, cfgEnv, contact.ID, testJPEG(t))
+		capRec := uploadContactImageForTest(t, cfgEnv, contact.ID, testJPEGVariant(t, i))
 		require.Equal(t, http.StatusCreated, capRec.Code, capRec.Body.String())
 	}
-	overRec := uploadContactImageForTest(t, cfgEnv, contact.ID, testJPEG(t))
+	overRec := uploadContactImageForTest(t, cfgEnv, contact.ID, testJPEGVariant(t, 10))
 	assert.Equal(t, http.StatusConflict, overRec.Code, overRec.Body.String())
 }
 

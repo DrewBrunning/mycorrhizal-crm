@@ -75,7 +75,19 @@ func CheckImageDimensions(r io.Reader) error {
 // SaveContactPhoto saves photo data to disk and generates a thumbnail.
 // Returns the photo filename (relative to photoDir) and a base64 data-URL
 // thumbnail suitable for storing directly on Contact.PhotoThumbnail.
+// CropRect is an optional fractional crop of the source image (ADR 0040
+// decision 10). Values are fractions of the full variant's width/height.
+type CropRect struct {
+	X, Y, W, H float64
+}
+
 func SaveContactPhoto(photoData []byte, mediaType string, photoDir string) (string, string, error) {
+	return SaveContactPhotoCropped(photoData, mediaType, nil, photoDir)
+}
+
+// SaveContactPhotoCropped derives the profile avatar from a gallery image,
+// applying the user's stored crop before the existing centered square resize.
+func SaveContactPhotoCropped(photoData []byte, mediaType string, crop *CropRect, photoDir string) (string, string, error) {
 	if len(photoData) == 0 {
 		return "", "", nil
 	}
@@ -127,6 +139,10 @@ func SaveContactPhoto(photoData []byte, mediaType string, photoDir string) (stri
 		return "", "", err
 	}
 
+	if crop != nil {
+		img = applyCrop(img, *crop)
+	}
+
 	// Crop to centered square if rectangular
 	img = cropToSquare(img)
 
@@ -170,6 +186,36 @@ func SaveContactPhoto(photoData []byte, mediaType string, photoDir string) (stri
 	thumbnailBase64 := "data:image/jpeg;base64," + base64.StdEncoding.EncodeToString(thumbnailBuf.Bytes())
 
 	return photoPath, thumbnailBase64, nil
+}
+
+// applyCrop cuts the requested fractional rectangle out of img, clamped to
+// the source bounds. A degenerate rectangle leaves the image untouched.
+func applyCrop(img image.Image, c CropRect) image.Image {
+	b := img.Bounds()
+	w, h := b.Dx(), b.Dy()
+	x := b.Min.X + int(c.X*float64(w))
+	y := b.Min.Y + int(c.Y*float64(h))
+	cw := int(c.W * float64(w))
+	ch := int(c.H * float64(h))
+	if cw <= 0 || ch <= 0 {
+		return img
+	}
+	rect := image.Rect(x, y, x+cw, y+ch).Intersect(b)
+	if rect.Empty() {
+		return img
+	}
+	if sub, ok := img.(interface {
+		SubImage(image.Rectangle) image.Image
+	}); ok {
+		return sub.SubImage(rect)
+	}
+	out := image.NewRGBA(image.Rect(0, 0, rect.Dx(), rect.Dy()))
+	for yy := 0; yy < rect.Dy(); yy++ {
+		for xx := 0; xx < rect.Dx(); xx++ {
+			out.Set(xx, yy, img.At(rect.Min.X+xx, rect.Min.Y+yy))
+		}
+	}
+	return out
 }
 
 // cropToSquare crops an image to a centered square

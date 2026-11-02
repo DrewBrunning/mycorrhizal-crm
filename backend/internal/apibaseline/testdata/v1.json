@@ -3486,6 +3486,59 @@
       ]
     },
     {
+      "method": "POST",
+      "path": "/contacts/{id}/images/adopt",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "request_body": "ref:AdoptImageInput",
+      "responses": [
+        {
+          "status": "201",
+          "schema": "object"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/contacts/{id}/images/{image_id}",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        },
+        {
+          "name": "image_id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "request_body": "ref:ContactImagePatchInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
       "method": "DELETE",
       "path": "/contacts/{id}/images/{image_id}",
       "parameters": [
@@ -3597,6 +3650,45 @@
       ]
     },
     {
+      "method": "PUT",
+      "path": "/contacts/{id}/main-image",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "request_body": "ref:MainImageInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:MessageResponse"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/contacts/{id}/main-image",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:MessageResponse"
+        }
+      ]
+    },
+    {
       "method": "GET",
       "path": "/contacts/{id}/notes",
       "parameters": [
@@ -3670,6 +3762,27 @@
         {
           "status": "400",
           "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/contacts/{id}/photos",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:ContactPhotosResponse"
         },
         {
           "status": "404",
@@ -10278,6 +10391,30 @@
       ]
     },
     {
+      "name": "AdoptImageInput",
+      "properties": [
+        {
+          "name": "image_id",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "source_id",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "source_kind",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "note",
+            "activity"
+          ]
+        }
+      ]
+    },
+    {
       "name": "Anniversary",
       "properties": [
         {
@@ -12521,6 +12658,31 @@
       ]
     },
     {
+      "name": "ContactImagePatchInput",
+      "properties": [
+        {
+          "name": "crop",
+          "type": "ref:ImageCrop",
+          "required": false
+        },
+        {
+          "name": "reset_crop",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "sensitivity",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "normal",
+            "private",
+            "secret"
+          ]
+        }
+      ]
+    },
+    {
       "name": "ContactMapPoint",
       "properties": [
         {
@@ -12802,6 +12964,110 @@
           "name": "value",
           "type": "string",
           "required": false
+        }
+      ]
+    },
+    {
+      "name": "ContactPhoto",
+      "properties": [
+        {
+          "name": "created_at",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "file_url",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "height",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "id",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "kind",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "contact",
+            "note",
+            "activity"
+          ]
+        },
+        {
+          "name": "mime_type",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "image/jpeg",
+            "image/png"
+          ]
+        },
+        {
+          "name": "sensitivity",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "normal",
+            "private",
+            "secret"
+          ]
+        },
+        {
+          "name": "size_bytes",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "source_id",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "source_label",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "taken_at",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "taken_date",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "thumbnail_url",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "width",
+          "type": "integer",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "ContactPhotosResponse",
+      "properties": [
+        {
+          "name": "photos",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        },
+        {
+          "name": "total",
+          "type": "integer",
+          "required": true
         }
       ]
     },
@@ -16659,6 +16925,31 @@
       ]
     },
     {
+      "name": "ImageCrop",
+      "properties": [
+        {
+          "name": "h",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "w",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "x",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "y",
+          "type": "number",
+          "required": true
+        }
+      ]
+    },
+    {
       "name": "ImmichAssetSummary",
       "properties": [
         {
@@ -17993,6 +18284,16 @@
           "name": "vcard_uid",
           "type": "string",
           "required": false
+        }
+      ]
+    },
+    {
+      "name": "MainImageInput",
+      "properties": [
+        {
+          "name": "image_id",
+          "type": "integer",
+          "required": true
         }
       ]
     },

@@ -127,12 +127,16 @@ func UploadContactImage(c *gin.Context) {
 	defer file.Close()
 
 	svc := contactImageService(c)
-	img, err := svc.Upload(c.Request.Context(), userID, contactOwnerRef(activity), file)
+	img, duplicated, err := svc.UploadDeduped(c.Request.Context(), userID, contactOwnerRef(activity), file)
 	if err != nil {
 		apperrors.AbortWithError(c, apperrors.GetAppError(err))
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{"image": contactImageDTO(*img, activity.ID)})
+	status := http.StatusCreated
+	if duplicated {
+		status = http.StatusOK
+	}
+	c.JSON(status, gin.H{"image": contactImageDTO(*img, activity.ID), "deduplicated": duplicated})
 }
 
 // ListContactImages returns a contact's live images, newest first.
@@ -231,7 +235,194 @@ func DeleteContactImage(c *gin.Context) {
 		apperrors.AbortWithError(c, apperrors.GetAppError(err))
 		return
 	}
+	if activity.MainImageID != nil && *activity.MainImageID == uint(id) {
+		db := c.MustGet("db").(*gorm.DB)
+		if _, err := services.ClearContactMainImage(c.Request.Context(), db, userID, activity, currentConfig(c).ProfilePhotoDir); err != nil {
+			apperrors.AbortWithError(c, apperrors.GetAppError(err))
+			return
+		}
+	}
 	c.JSON(http.StatusOK, gin.H{"message": "Image deleted"})
+}
+
+// ContactPhotoDTO is one aggregated Photos-tab item.
+type ContactPhotoDTO struct {
+	ID           uint       `json:"id"`
+	Kind         string     `json:"kind"`
+	SourceID     uint       `json:"source_id"`
+	SourceLabel  string     `json:"source_label"`
+	MIMEType     string     `json:"mime_type"`
+	Width        int        `json:"width"`
+	Height       int        `json:"height"`
+	SizeBytes    int64      `json:"size_bytes"`
+	Sensitivity  string     `json:"sensitivity"`
+	TakenAt      *time.Time `json:"taken_at"`
+	TakenDate    *string    `json:"taken_date"`
+	CreatedAt    time.Time  `json:"created_at"`
+	FileURL      string     `json:"file_url"`
+	ThumbnailURL string     `json:"thumbnail_url"`
+}
+
+func contactPhotoDTO(photo services.ContactPhoto, contactID uint) ContactPhotoDTO {
+	var base string
+	switch photo.Kind {
+	case "note":
+		base = fmt.Sprintf("/api/v1/notes/%d/images/%d", photo.SourceID, photo.ImageID)
+	case "activity":
+		base = fmt.Sprintf("/api/v1/activities/%d/images/%d", photo.SourceID, photo.ImageID)
+	default:
+		base = fmt.Sprintf("/api/v1/contacts/%d/images/%d", contactID, photo.ImageID)
+	}
+	return ContactPhotoDTO{
+		ID:           photo.ImageID,
+		Kind:         photo.Kind,
+		SourceID:     photo.SourceID,
+		SourceLabel:  photo.SourceLabel,
+		MIMEType:     photo.MIMEType,
+		Width:        photo.Width,
+		Height:       photo.Height,
+		SizeBytes:    photo.SizeBytes,
+		Sensitivity:  photo.Sensitivity,
+		TakenAt:      photo.TakenAt,
+		TakenDate:    photo.TakenDate,
+		CreatedAt:    photo.CreatedAt,
+		FileURL:      base + "/file",
+		ThumbnailURL: base + "/thumbnail",
+	}
+}
+
+// PatchContactImage updates the image's sensitivity and/or crop (ADR 0040
+// decision 8). Crop is contact-gallery-only in practice; nothing here touches
+// the contact row or its revision.
+func PatchContactImage(c *gin.Context) {
+	contact, ok := loadOwnedContact(c)
+	if !ok {
+		return
+	}
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+	id, err := strconv.ParseUint(c.Param("image_id"), 10, 64)
+	if err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrValidation("Invalid image ID").WithReason(apperrors.ReasonAttachmentInvalidID, nil))
+		return
+	}
+	var input models.ContactImagePatchInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("body", "invalid request body").WithReason(apperrors.ReasonValidationInvalidRequestBody, nil))
+		return
+	}
+	svc := contactImageService(c)
+	img, err := svc.Update(c.Request.Context(), userID, contactOwnerRef(contact), uint(id), input)
+	if err != nil {
+		apperrors.AbortWithError(c, apperrors.GetAppError(err))
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"image": contactImageDTO(*img, contact.ID)})
+}
+
+// PutContactMainImage sets the contact's main image and derives its avatar.
+func PutContactMainImage(c *gin.Context) {
+	contact, ok := loadOwnedContact(c)
+	if !ok {
+		return
+	}
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+	var input struct {
+		ImageID uint `json:"image_id" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil || input.ImageID == 0 {
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("image_id", "required").WithReason(apperrors.ReasonValidationMissingField, map[string]any{"field": "image_id"}))
+		return
+	}
+	cfg := currentConfig(c)
+	svc := contactImageService(c)
+	img, err := svc.Get(c.Request.Context(), userID, contactOwnerRef(contact), input.ImageID)
+	if err != nil {
+		apperrors.AbortWithError(c, apperrors.GetAppError(err))
+		return
+	}
+	db := c.MustGet("db").(*gorm.DB)
+	if _, err := services.SetContactMainImage(c.Request.Context(), db, svc.Store, userID, contact, img, cfg.ProfilePhotoDir); err != nil {
+		apperrors.AbortWithError(c, apperrors.GetAppError(err))
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Main image updated", "main_image_id": input.ImageID})
+}
+
+// DeleteContactMainImage clears the pointer and the derived avatar.
+func DeleteContactMainImage(c *gin.Context) {
+	contact, ok := loadOwnedContact(c)
+	if !ok {
+		return
+	}
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+	db := c.MustGet("db").(*gorm.DB)
+	if _, err := services.ClearContactMainImage(c.Request.Context(), db, userID, contact, currentConfig(c).ProfilePhotoDir); err != nil {
+		apperrors.AbortWithError(c, apperrors.GetAppError(err))
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Main image cleared"})
+}
+
+// AdoptContactImage copies a note/activity image into the contact gallery.
+func AdoptContactImage(c *gin.Context) {
+	contact, ok := loadOwnedContact(c)
+	if !ok {
+		return
+	}
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+	var input struct {
+		SourceKind string `json:"source_kind" binding:"required"`
+		SourceID   uint   `json:"source_id" binding:"required"`
+		ImageID    uint   `json:"image_id" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("body", "invalid request body").WithReason(apperrors.ReasonValidationInvalidRequestBody, nil))
+		return
+	}
+	cfg := currentConfig(c)
+	db := c.MustGet("db").(*gorm.DB)
+	svc := contactImageService(c)
+	img, err := services.AdoptImageIntoContact(c.Request.Context(), db, svc.Store, userID, contact, input.SourceKind, input.SourceID, input.ImageID, cfg.ImageMaxPerContact)
+	if err != nil {
+		apperrors.AbortWithError(c, apperrors.GetAppError(err))
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"image": contactImageDTO(*img, contact.ID)})
+}
+
+// GetContactPhotos returns the aggregated Photos tab (own + notes + activities).
+func GetContactPhotos(c *gin.Context) {
+	contact, ok := loadOwnedContact(c)
+	if !ok {
+		return
+	}
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+	db := c.MustGet("db").(*gorm.DB)
+	photos, err := services.ListContactPhotos(c.Request.Context(), db, userID, contact, 200)
+	if err != nil {
+		apperrors.AbortWithError(c, apperrors.GetAppError(err))
+		return
+	}
+	dtos := make([]ContactPhotoDTO, 0, len(photos))
+	for _, photo := range photos {
+		dtos = append(dtos, contactPhotoDTO(photo, contact.ID))
+	}
+	c.JSON(http.StatusOK, gin.H{"photos": dtos, "total": len(dtos)})
 }
 
 // contactImageUploadBodyLimit is the per-request body cap for an image upload: the

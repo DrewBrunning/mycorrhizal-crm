@@ -123,3 +123,22 @@ func (c *ContactImage) OwnerColumn() string { return "contact_vcard_uid" }
 
 // SetOwner assigns the contact owner key.
 func (c *ContactImage) SetOwner(owner OwnerRef) { c.ContactVCardUID = owner.UID }
+
+// ImageCrop is a fractional crop rectangle for a gallery image (ADR 0040
+// decision 10). Values are fractions of the full variant's width/height.
+type ImageCrop struct {
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
+	W float64 `json:"w"`
+	H float64 `json:"h"`
+}
+
+// ContactImagePatchInput is the PATCH body for a gallery image. Only these
+// fields are writable (no mass assignment): sensitivity and the crop.
+type ContactImagePatchInput struct {
+	Sensitivity *string    `json:"sensitivity"`
+	Crop        *ImageCrop `json:"crop"`
+	// ResetCrop clears a stored crop. Kept separate from a nil Crop because
+	// encoding/json cannot distinguish an absent field from an explicit null.
+	ResetCrop bool `json:"reset_crop"`
+}

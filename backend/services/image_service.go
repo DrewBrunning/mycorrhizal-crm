@@ -166,10 +166,9 @@ func (s *ImageService[T, P]) Get(ctx context.Context, userID uint, owner OwnerRe
 	return &row, nil
 }
 
-// Upload validates and stores one image, then inserts its row. The on-disk
-// files are removed if the row insert fails, so a failed request leaves no
-// orphan behind (ADR 0040 decision 5).
-func (s *ImageService[T, P]) Upload(ctx context.Context, userID uint, owner OwnerRef, src io.Reader) (*T, error) {
+// processUpload validates and processes one image without touching disk or the
+// database, so dedupe can decide before storing anything.
+func (s *ImageService[T, P]) processUpload(ctx context.Context, userID uint, owner OwnerRef, src io.Reader) (*imaging.Result, error) {
 	if s.Limit > 0 {
 		var count int64
 		var model T
@@ -207,7 +206,12 @@ func (s *ImageService[T, P]) Upload(ctx context.Context, userID uint, owner Owne
 			return nil, apperrors.ErrInsufficientStorage(err.Error()).WithReason(apperrors.ReasonImageInsufficientStorage, nil)
 		}
 	}
+	return result, nil
+}
 
+// storeUpload writes the processed variants and inserts the row. A failed
+// insert removes the files so no orphan is left behind (ADR 0040 decision 5).
+func (s *ImageService[T, P]) storeUpload(ctx context.Context, userID uint, owner OwnerRef, result *imaging.Result) (*T, error) {
 	storedName, thumbName, err := s.Store.Save(userID, result.Full, result.Thumb, result.Ext, result.Ext)
 	if err != nil {
 		return nil, apperrors.ErrInternal("Failed to store image").WithError(err)
@@ -239,6 +243,84 @@ func (s *ImageService[T, P]) Upload(ctx context.Context, userID uint, owner Owne
 	}
 	models.RecordAuditEvent(s.DB, s.auditEntity(), imageAuditID(owner), models.AuditOpCreate, userID)
 	return p, nil
+}
+
+// Upload validates and stores one image, then inserts its row. The on-disk
+// files are removed if the row insert fails, so a failed request leaves no
+// orphan behind (ADR 0040 decision 5).
+func (s *ImageService[T, P]) Upload(ctx context.Context, userID uint, owner OwnerRef, src io.Reader) (*T, error) {
+	result, err := s.processUpload(ctx, userID, owner, src)
+	if err != nil {
+		return nil, err
+	}
+	return s.storeUpload(ctx, userID, owner, result)
+}
+
+// UploadDeduped is Upload for the contact gallery: a live image on the same
+// contact whose dHash is within imaging.DedupeMaxHamming is returned instead
+// of inserting a re-encoded copy (ADR 0040 decision 9). Other owner kinds
+// never dedupe. The bool reports whether an existing row was returned.
+func (s *ImageService[T, P]) UploadDeduped(ctx context.Context, userID uint, owner OwnerRef, src io.Reader) (*T, bool, error) {
+	result, err := s.processUpload(ctx, userID, owner, src)
+	if err != nil {
+		return nil, false, err
+	}
+	if s.Kind == OwnerKindContact {
+		var rows []T
+		if err := s.baseQuery(ctx, userID, owner).Where("dhash IS NOT NULL").Find(&rows).Error; err != nil {
+			return nil, false, apperrors.ErrDatabase("Failed to check for a duplicate image").WithError(err)
+		}
+		for i := range rows {
+			hash := P(&rows[i]).Fields().DHash
+			if hash != nil && imaging.HammingDistance(*hash, result.DHash) <= imaging.DedupeMaxHamming {
+				return &rows[i], true, nil
+			}
+		}
+	}
+	row, err := s.storeUpload(ctx, userID, owner, result)
+	return row, false, err
+}
+
+// Update applies the PATCH allowlist (sensitivity and crop) to one image.
+func (s *ImageService[T, P]) Update(ctx context.Context, userID uint, owner OwnerRef, id uint, in models.ContactImagePatchInput) (*T, error) {
+	row, err := s.Get(ctx, userID, owner, id)
+	if err != nil {
+		return nil, err
+	}
+	updates := map[string]any{}
+	if in.Sensitivity != nil {
+		switch *in.Sensitivity {
+		case models.ImageSensitivityNormal, models.ImageSensitivityPrivate, models.ImageSensitivitySecret:
+			updates["sensitivity"] = *in.Sensitivity
+		default:
+			return nil, apperrors.ErrInvalidInput("sensitivity", "must be normal, private or secret").
+				WithReason(apperrors.ReasonValidationInvalid, map[string]any{"field": "sensitivity"})
+		}
+	}
+	if in.ResetCrop {
+		updates["crop_x"] = nil
+		updates["crop_y"] = nil
+		updates["crop_w"] = nil
+		updates["crop_h"] = nil
+	} else if in.Crop != nil {
+		c := *in.Crop
+		if c.X < 0 || c.Y < 0 || c.W <= 0 || c.H <= 0 || c.X+c.W > 1 || c.Y+c.H > 1 {
+			return nil, apperrors.ErrInvalidInput("crop", "crop fractions must be inside the image").
+				WithReason(apperrors.ReasonValidationInvalid, map[string]any{"field": "crop"})
+		}
+		updates["crop_x"] = c.X
+		updates["crop_y"] = c.Y
+		updates["crop_w"] = c.W
+		updates["crop_h"] = c.H
+	}
+	if len(updates) == 0 {
+		return row, nil
+	}
+	if err := s.DB.WithContext(ctx).Model(row).Updates(updates).Error; err != nil {
+		return nil, apperrors.ErrDatabase("Failed to update image").WithError(err)
+	}
+	models.RecordAuditEvent(s.DB, s.auditEntity(), imageAuditID(owner), models.AuditOpUpdate, userID)
+	return s.Get(ctx, userID, owner, id)
 }
 
 // Delete soft-deletes one image and, after the transaction commits, removes

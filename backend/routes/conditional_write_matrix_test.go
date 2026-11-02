@@ -381,6 +381,10 @@ func buildCWTable(s seeded) map[string]cwRow {
 		"POST /api/v1/contacts/:id/images":             exempt(reasonCollectionOp),
 		"DELETE /api/v1/notes/:id/images/:image_id":    exempt(reasonNonRevision),
 		"DELETE /api/v1/contacts/:id/images/:image_id": exempt(reasonNonRevision),
+		"PATCH /api/v1/contacts/:id/images/:image_id":  exempt(reasonNonRevision),
+		"POST /api/v1/contacts/:id/images/adopt":       exempt(reasonCollectionOp),
+		"PUT /api/v1/contacts/:id/main-image":          exempt(reasonCollectionOp),
+		"DELETE /api/v1/contacts/:id/main-image":       exempt(reasonCollectionOp),
 		// Image rows have no revision column (ADR 0006 excludes them): a delete
 		// is a last-writer-wins tombstone, not a conditional replace.
 		"DELETE /api/v1/activities/:id/images/:image_id": exempt(reasonNonRevision),
