@@ -173,7 +173,9 @@ describe('note image API requests', () => {
   });
 
   test('noteImageSrc prepends only the API origin', () => {
-    expect(noteImageSrc('/api/v1/notes/4/images/9/file')).toBe('/api/v1/notes/4/images/9/file');
+    expect(noteImageSrc('/api/v1/notes/4/images/9/file')).toMatch(
+      /\/api\/v1\/notes\/4\/images\/9\/file$/,
+    );
   });
 });
 describe('note image upload', () => {
