@@ -4,9 +4,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -214,5 +216,49 @@ class ActivityFormScreenTest {
             )
         )
         composeTestRule.onNodeWithText("Photos to upload: 1").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `empty image section offers add`() {
+        var added = false
+        setContent(
+            ActivityFormState(contactId = 5),
+            onAddImages = { added = true }
+        )
+        composeTestRule.onNodeWithContentDescription("Add photos").performScrollTo().performClick()
+        assertTrue(added)
+    }
+
+    @Test
+    fun `pending images and a busy pipeline render without losing the count`() {
+        setContent(
+            ActivityFormState(
+                contactId = 5,
+                pendingImages = listOf(PendingActivityImage("a", "image/jpeg", byteArrayOf(1))),
+                imagesBusy = true
+            )
+        )
+        composeTestRule.onNodeWithText("Photos to upload: 1").assertIsDisplayed()
+    }
+
+    @Test
+    fun `tapping a thumbnail opens the lightbox`() {
+        setContent(
+            ActivityFormState(
+                contactId = 5,
+                images = listOf(
+                    ActivityImage(
+                        id = 9,
+                        activityId = 5,
+                        thumbnailUrl = "/t",
+                        fileUrl = "/f"
+                    )
+                )
+            )
+        )
+        composeTestRule.onNodeWithContentDescription(
+            "Activity photo"
+        ).performScrollTo().performClick()
+        composeTestRule.onAllNodesWithContentDescription("Activity photo").assertCountEquals(2)
     }
 }
