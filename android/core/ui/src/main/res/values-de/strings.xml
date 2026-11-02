@@ -3078,4 +3078,9 @@
     <string name="error_reason_image_processing_busy">Die Bildverarbeitung ist ausgelastet; versuche es gleich noch einmal</string>
     <string name="error_reason_image_not_found">Bild nicht gefunden</string>
     <string name="error_reason_image_insufficient_storage">Nicht genügend Speicherplatz für das Bild</string>
+    <string name="activity_images_add">Fotos hinzufügen</string>
+    <string name="activity_images_empty">Noch keine Fotos</string>
+    <string name="activity_images_alt">Aktivitätsfoto</string>
+    <string name="activity_images_delete">Foto löschen</string>
+    <string name="activity_images_pending">Fotos zum Hochladen: %1$d</string>
 </resources>

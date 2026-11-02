@@ -5,6 +5,7 @@ import com.mycorrhizal.crm.domain.repository.ActivityRepository
 import com.mycorrhizal.crm.domain.repository.ContactActivitiesPage
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.model.network.Activity
+import com.mycorrhizal.crm.model.network.ActivityImage
 import com.mycorrhizal.crm.model.network.ActivityInput
 import com.mycorrhizal.crm.model.network.ContactFlat
 import com.mycorrhizal.crm.model.network.ContactSummary
@@ -31,6 +32,11 @@ class ActivitiesViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val activityRepository = mockk<ActivityRepository>()
+
+    @Before
+    fun stubImages() {
+        coEvery { activityRepository.listImages(any()) } returns Result.success(emptyList())
+    }
 
     private fun viewModel(contactId: Int = 5): ActivitiesViewModel =
         ActivitiesViewModel(activityRepository, SavedStateHandle(mapOf("contactId" to contactId)))
@@ -302,6 +308,26 @@ class ActivitiesViewModelTest {
         assertEquals(listOf(2), vm.uiState.value.activities.map { it.id })
         assertEquals("boom", vm.uiState.value.error?.message)
     }
+
+    @Test
+    fun `loads image thumbnails for the page`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery {
+            activityRepository.listForContact(5, null, null, null, null, null)
+        } returns Result.success(
+            ContactActivitiesPage(
+                activities = listOf(Activity(id = 1, title = "Coffee")),
+                nextCursor = null
+            )
+        )
+        coEvery { activityRepository.listImages(1) } returns Result.success(
+            listOf(ActivityImage(id = 9, activityId = 1, thumbnailUrl = "/t"))
+        )
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        assertEquals(1, vm.uiState.value.imagesByActivity[1]?.size)
+    }
 }
 
 class ActivityFormViewModelTest {
@@ -314,6 +340,11 @@ class ActivityFormViewModelTest {
 
     @Before
     fun setUp() {
+        coEvery { activityRepository.listImages(any()) } returns Result.success(emptyList())
+        coEvery { activityRepository.uploadImage(any(), any(), any(), any()) } returns
+            Result.failure(RuntimeException("not used"))
+        coEvery { activityRepository.deleteImage(any(), any()) } returns
+            Result.failure(RuntimeException("not used"))
         // Create mode seeds the participant list with the route contact
         // (best-effort name resolution); the failure fallback is a bare
         // "#id" chip, which is all these tests need.
@@ -659,5 +690,94 @@ class ActivityFormViewModelTest {
         assertEquals("duplicate", vm.uiState.value.error?.message)
         assertFalse(vm.uiState.value.isSaving)
         assertNull(vm.events.value)
+    }
+
+    @Test
+    fun `edit mode loads images and uploads a picked image immediately`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery {
+            activityRepository.get(1)
+        } returns Result.success(Activity(id = 1, title = "Trip"))
+        coEvery { activityRepository.listImages(1) } returns Result.success(
+            listOf(ActivityImage(id = 9, activityId = 1))
+        )
+        coEvery {
+            activityRepository.uploadImage(1, any(), any(), any())
+        } returns Result.success(ActivityImage(id = 10, activityId = 1))
+
+        val vm = createViewModel(activityId = 1)
+        advanceUntilIdle()
+        assertEquals(1, vm.uiState.value.images.size)
+
+        vm.addImages(listOf(PendingActivityImage("a.jpg", "image/jpeg", byteArrayOf(1))))
+        advanceUntilIdle()
+        coVerify { activityRepository.uploadImage(1, "a.jpg", "image/jpeg", byteArrayOf(1)) }
+    }
+
+    @Test
+    fun `create mode uploads pending images after the activity exists`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery {
+            activityRepository.create(any())
+        } returns Result.success(Activity(id = 42, title = "Trip"))
+        coEvery {
+            activityRepository.uploadImage(42, any(), any(), any())
+        } returns Result.success(ActivityImage(id = 7, activityId = 42))
+
+        val vm = createViewModel()
+        advanceUntilIdle()
+        vm.onTitleChange("Trip")
+        vm.onDateChange("2026-01-01T00:00:00Z")
+        vm.addImages(listOf(PendingActivityImage("a.jpg", "image/jpeg", byteArrayOf(1))))
+        vm.save()
+        advanceUntilIdle()
+
+        coVerify { activityRepository.uploadImage(42, "a.jpg", "image/jpeg", byteArrayOf(1)) }
+    }
+
+    @Test
+    fun `delete image removes it on success and reports failure`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery {
+            activityRepository.get(1)
+        } returns Result.success(Activity(id = 1, title = "Trip"))
+        coEvery { activityRepository.listImages(1) } returns Result.success(
+            listOf(ActivityImage(id = 9, activityId = 1))
+        )
+        coEvery { activityRepository.deleteImage(1, 9) } returns Result.success(Unit)
+
+        val vm = createViewModel(activityId = 1)
+        advanceUntilIdle()
+        vm.deleteImage(9)
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.images.isEmpty())
+
+        coEvery { activityRepository.deleteImage(1, 10) } returns Result.failure(
+            com.mycorrhizal.crm.network.ApiError.Client(500, "boom")
+        )
+        vm.deleteImage(10)
+        advanceUntilIdle()
+        assertEquals("boom", vm.uiState.value.error?.message)
+    }
+
+    @Test
+    fun `edit upload failure surfaces the error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery {
+            activityRepository.get(1)
+        } returns Result.success(Activity(id = 1, title = "Trip"))
+        coEvery {
+            activityRepository.uploadImage(1, any(), any(), any())
+        } returns Result.failure(com.mycorrhizal.crm.network.ApiError.Client(400, "bad image"))
+
+        val vm = createViewModel(activityId = 1)
+        advanceUntilIdle()
+        vm.addImages(listOf(PendingActivityImage("a.jpg", "image/jpeg", byteArrayOf(1))))
+        advanceUntilIdle()
+        assertEquals("bad image", vm.uiState.value.error?.message)
     }
 }

@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.ActivityRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.model.network.Activity
+import com.mycorrhizal.crm.model.network.ActivityImage
 import com.mycorrhizal.crm.model.network.ActivityInput
 import com.mycorrhizal.crm.model.network.ContactFlat
 import com.mycorrhizal.crm.model.network.ContactSummary
@@ -25,6 +26,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+/** One picked image awaiting the activity id (create mode). */
+data class PendingActivityImage(val fileName: String, val mimeType: String, val bytes: ByteArray)
 
 /**
  * Editable form state for an activity (Interaction). The `type` classifier is
@@ -51,6 +55,12 @@ data class ActivityFormState(
     /** Participant contacts, all sent on save (M19 — the one-per-route-contact
      *  limit was the bug). In create mode this is seeded with the route contact. */
     val participants: List<ContactFlat> = emptyList(),
+    /** ADR 0040: the activity's server-side images (edit mode). */
+    val images: List<ActivityImage> = emptyList(),
+    /** Picked in create mode; uploaded after the activity exists. */
+    val pendingImages: List<PendingActivityImage> = emptyList(),
+    val imagesLoading: Boolean = false,
+    val imagesBusy: Boolean = false,
     val contactSearchQuery: String = "",
     val contactSearchResults: List<ContactSummary> = emptyList(),
     val contactSearchLoading: Boolean = false,
@@ -92,6 +102,9 @@ data class ActivityFormState(
         error = null,
         endDateRejected = false,
         conflict = false,
+        images = emptyList(),
+        imagesLoading = false,
+        imagesBusy = false,
         baseline = null
     )
 
@@ -213,6 +226,7 @@ class ActivityFormViewModel @Inject constructor(
                         val loaded = state.toFormState(activity).copy(isLoading = false)
                         loaded.copy(baseline = loaded.snapshotForBaseline())
                     }
+                    loadImages()
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error) }
@@ -320,6 +334,61 @@ class ActivityFormViewModel @Inject constructor(
         _uiState.update { it.copy(participants = it.participants.filterNot { p -> p.id == id }) }
     }
 
+    private fun loadImages() {
+        val id = activityId ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(imagesLoading = true) }
+            runCatching { activityRepository.listImages(id) }.getOrNull()?.fold(
+                onSuccess = { images ->
+                    _uiState.update { it.copy(images = images, imagesLoading = false) }
+                },
+                onFailure = { _uiState.update { it.copy(imagesLoading = false) } }
+            ) ?: _uiState.update { it.copy(imagesLoading = false) }
+        }
+    }
+
+    /**
+     * Queue picked images. An edit uploads immediately (the activity id exists);
+     * a create keeps them pending until [save] creates the activity.
+     */
+    fun addImages(picked: List<PendingActivityImage>) {
+        if (picked.isEmpty()) return
+        val id = activityId
+        if (id == null) {
+            _uiState.update { it.copy(pendingImages = it.pendingImages + picked) }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(imagesBusy = true, error = null) }
+            var failed: ApiError? = null
+            for (image in picked) {
+                activityRepository.uploadImage(id, image.fileName, image.mimeType, image.bytes)
+                    .onFailure { failed = it as? ApiError }
+            }
+            _uiState.update { it.copy(imagesBusy = false, error = failed) }
+            loadImages()
+        }
+    }
+
+    /** Remove a server-side image (edit mode). */
+    fun deleteImage(imageId: Int) {
+        val id = activityId ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(imagesBusy = true, error = null) }
+            activityRepository.deleteImage(id, imageId).fold(
+                onSuccess = {
+                    _uiState.update { state ->
+                        state.copy(images = state.images.filterNot { it.id == imageId })
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update { it.copy(error = error as? ApiError) }
+                }
+            )
+            _uiState.update { it.copy(imagesBusy = false) }
+        }
+    }
+
     fun save() {
         val state = _uiState.value
         if (state.isSaving) return
@@ -342,7 +411,20 @@ class ActivityFormViewModel @Inject constructor(
                 activityRepository.create(input)
             }
             result.foldApiError(
-                onSuccess = {
+                onSuccess = { saved ->
+                    val pending = _uiState.value.pendingImages
+                    if (state.activityId == null && pending.isNotEmpty()) {
+                        viewModelScope.launch {
+                            for (image in pending) {
+                                activityRepository.uploadImage(
+                                    saved.id,
+                                    image.fileName,
+                                    image.mimeType,
+                                    image.bytes
+                                )
+                            }
+                        }
+                    }
                     _uiState.update {
                         it.copy(
                             isSaving = false

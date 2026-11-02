@@ -3175,4 +3175,9 @@
     <string name="error_reason_image_processing_busy">Le traitement des images est occupé ; réessayez bientôt</string>
     <string name="error_reason_image_not_found">Image introuvable</string>
     <string name="error_reason_image_insufficient_storage">Espace disque insuffisant pour enregistrer l’image</string>
+    <string name="activity_images_add">Ajouter des photos</string>
+    <string name="activity_images_empty">Pas encore de photos</string>
+    <string name="activity_images_alt">Photo de l’activité</string>
+    <string name="activity_images_delete">Supprimer la photo</string>
+    <string name="activity_images_pending">Photos à téléverser : %1$d</string>
 </resources>
