@@ -3103,4 +3103,17 @@
     <string name="contact_field_not_set">Nicht gesetzt</string>
     <string name="settings_contact_fields_hide_empty_label">Leere Felder ausblenden</string>
     <string name="settings_contact_fields_hide_empty_description">Auf der Kontaktseite werden Felder ohne Wert nicht angezeigt. Über das Menü „Feld hinzufügen“ kannst du sie trotzdem ausfüllen, und einzelne Kontakte können diese Einstellung überschreiben.</string>
+    <string name="note_images_add">Fotos hinzufügen</string>
+    <string name="note_images_empty">Noch keine Fotos</string>
+    <string name="note_images_alt">Notizfoto</string>
+    <string name="note_images_delete">Foto löschen</string>
+    <string name="note_images_pending">Fotos zum Hochladen: %1$d</string>
+    <string name="contact_images_title">Fotos</string>
+    <string name="contact_images_add">Fotos hinzufügen</string>
+    <string name="contact_images_empty">Noch keine Fotos</string>
+    <string name="contact_images_empty_body">Füge Fotos dieses Kontakts hinzu, um sie beisammen zu halten.</string>
+    <string name="contact_images_alt">Kontaktfoto</string>
+    <string name="contact_images_delete">Foto löschen</string>
+    <string name="contact_images_delete_title">Foto löschen?</string>
+    <string name="contact_images_delete_confirm">Dieses Foto löschen? Das kann nicht rückgängig gemacht werden.</string>
 </resources>

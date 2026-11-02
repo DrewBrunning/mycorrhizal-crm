@@ -9,6 +9,7 @@ import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.NoteRepository
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.Note
+import com.mycorrhizal.crm.model.network.NoteImage
 import com.mycorrhizal.crm.model.network.NoteInput
 import com.mycorrhizal.crm.model.util.DateFieldValue
 import com.mycorrhizal.crm.network.ApiError
@@ -23,6 +24,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+/** One picked image awaiting the note id (create mode). */
+data class PendingNoteImage(val fileName: String, val mimeType: String, val bytes: ByteArray)
 
 /**
  * Editable form state for a note. `content` and `date` are required by the
@@ -53,6 +57,12 @@ data class NoteFormState(
     val revision: Int? = null,
     /** ADR 0008: the save was rejected with 412 — the record changed elsewhere since it loaded. */
     val conflict: Boolean = false,
+    /** ADR 0040: the note's server-side images (edit mode). */
+    val images: List<NoteImage> = emptyList(),
+    /** Picked in create mode; uploaded after the note exists. */
+    val pendingImages: List<PendingNoteImage> = emptyList(),
+    val imagesLoading: Boolean = false,
+    val imagesBusy: Boolean = false,
     /** Issue #1751: the editable state the form opened with, for [isDirty]. */
     val baseline: NoteFormState? = null
 ) {
@@ -71,6 +81,10 @@ data class NoteFormState(
         errorRes = null,
         error = null,
         conflict = false,
+        images = emptyList(),
+        pendingImages = emptyList(),
+        imagesLoading = false,
+        imagesBusy = false,
         baseline = null
     )
 
@@ -189,6 +203,7 @@ class NoteFormViewModel @Inject constructor(
                         loaded.copy(baseline = loaded.snapshotForBaseline())
                     }
                     note.contactId?.let { contactId -> resolveContactName(contactId) }
+                    loadImages()
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error) }
@@ -260,6 +275,64 @@ class NoteFormViewModel @Inject constructor(
         _uiState.update { it.copy(targetContactId = null, targetContactName = null) }
     }
 
+    /**
+     * Queue picked images. An edit uploads immediately (the note id exists);
+     * a create keeps them pending until [save] creates the note.
+     */
+    fun addImages(picked: List<PendingNoteImage>) {
+        if (picked.isEmpty()) return
+        val id = noteId
+        if (id == null) {
+            _uiState.update { it.copy(pendingImages = it.pendingImages + picked) }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(imagesBusy = true, error = null) }
+            var failed: ApiError? = null
+            for (image in picked) {
+                noteRepository.uploadImage(id, image.fileName, image.mimeType, image.bytes)
+                    .onFailure { failed = it as? ApiError }
+            }
+            _uiState.update { it.copy(imagesBusy = false, error = failed) }
+            loadImages()
+        }
+    }
+
+    /** Remove a server-side image (edit mode). */
+    fun deleteImage(imageId: Int) {
+        val id = noteId ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(imagesBusy = true, error = null) }
+            noteRepository.deleteImage(id, imageId).fold(
+                onSuccess = {
+                    _uiState.update { state ->
+                        state.copy(images = state.images.filterNot { it.id == imageId })
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update { it.copy(error = error as? ApiError) }
+                }
+            )
+            _uiState.update { it.copy(imagesBusy = false) }
+        }
+    }
+
+    private fun loadImages() {
+        val id = noteId ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(imagesLoading = true) }
+            runCatching { noteRepository.listImages(id) }
+                .getOrNull()
+                ?.fold(
+                    onSuccess = { images ->
+                        _uiState.update { it.copy(images = images, imagesLoading = false) }
+                    },
+                    onFailure = { _uiState.update { it.copy(imagesLoading = false) } }
+                )
+                ?: _uiState.update { it.copy(imagesLoading = false) }
+        }
+    }
+
     fun save() {
         val state = _uiState.value
         if (state.isSaving) return
@@ -278,15 +351,9 @@ class NoteFormViewModel @Inject constructor(
                 state.targetContactId != null -> noteRepository.create(state.targetContactId, input)
                 else -> noteRepository.createUnassigned(input)
             }
+            var savedId: Int? = null
             result.foldApiError(
-                onSuccess = {
-                    _uiState.update {
-                        it.copy(
-                            isSaving = false
-                        )
-                    }
-                    _events.value = NoteFormEvent.Saved
-                },
+                onSuccess = { saved -> savedId = saved.id },
                 onError = { error ->
                     _uiState.update {
                         if (error is ApiError.PreconditionFailed) {
@@ -297,6 +364,26 @@ class NoteFormViewModel @Inject constructor(
                     }
                 }
             )
+            val id = savedId ?: return@launch
+            val pending = _uiState.value.pendingImages
+            var failed: ApiError? = null
+            if (state.noteId == null && pending.isNotEmpty()) {
+                for (image in pending) {
+                    noteRepository.uploadImage(
+                        id,
+                        image.fileName,
+                        image.mimeType,
+                        image.bytes
+                    ).onFailure { failed = it as? ApiError }
+                }
+            }
+            _uiState.update {
+                it.copy(
+                    isSaving = false,
+                    error = failed
+                )
+            }
+            _events.value = NoteFormEvent.Saved
         }
     }
 

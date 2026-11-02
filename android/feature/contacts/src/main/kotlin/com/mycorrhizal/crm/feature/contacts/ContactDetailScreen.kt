@@ -58,6 +58,7 @@ import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.StarBorder
@@ -220,6 +221,8 @@ fun ContactDetailScreen(
     onViewReminders: (Int) -> Unit = {},
     // N7: the contact-attachments sub-screen (issue #710, web parity).
     onViewAttachments: (Int) -> Unit = {},
+    // ADR 0040 slice c: the contact photo gallery (web Photos section parity).
+    onViewPhotos: (Int) -> Unit = {},
     onViewRelationships: (Int) -> Unit = {},
     onViewCadence: (Int) -> Unit = {},
     onOpenInContacts: (String) -> Unit = {},
@@ -855,6 +858,7 @@ fun ContactDetailScreen(
                         onViewNotes = onViewNotes,
                         onViewReminders = onViewReminders,
                         onViewAttachments = onViewAttachments,
+                        onViewPhotos = onViewPhotos,
                         onViewRelationships = onViewRelationships,
                         onViewCadence = onViewCadence,
                         onViewLifeEvents = onViewLifeEvents,
@@ -1344,6 +1348,8 @@ fun ContactDetailContent(
     onViewReminders: (Int) -> Unit = {},
     // N7: the contact-attachments sub-screen (issue #710, web parity).
     onViewAttachments: (Int) -> Unit = {},
+    // ADR 0040 slice c: the contact photo gallery (web Photos section parity).
+    onViewPhotos: (Int) -> Unit = {},
     onViewRelationships: (Int) -> Unit = {},
     onViewCadence: (Int) -> Unit = {},
     onViewLifeEvents: (Int) -> Unit = {},
@@ -2042,6 +2048,14 @@ fun ContactDetailContent(
                 icon = Icons.Outlined.People,
                 count = relationshipCount,
                 onClick = { onViewRelationships(contact.id) }
+            )
+        }
+        item {
+            DrillDownRow(
+                label = stringResource(R.string.contact_images_title),
+                icon = Icons.Outlined.PhotoLibrary,
+                count = null,
+                onClick = { onViewPhotos(contact.id) }
             )
         }
         item {

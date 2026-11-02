@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.Note
+import com.mycorrhizal.crm.model.network.NoteImage
 import com.mycorrhizal.crm.model.util.DateFieldMode
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.ui.LocalDateFormat
@@ -213,7 +214,8 @@ fun NotesScreenContent(
                                         note = note,
                                         onClick = { onEditNote(note.id) },
                                         onDelete = { pendingDelete = note },
-                                        isDeleting = state.deletingId == note.id
+                                        isDeleting = state.deletingId == note.id,
+                                        images = state.imagesByNote[note.id].orEmpty()
                                     )
                                 }
                                 if (!state.nextCursor.isNullOrEmpty()) {
@@ -336,7 +338,8 @@ fun NoteListItem(
     onClick: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
-    isDeleting: Boolean = false
+    isDeleting: Boolean = false,
+    images: List<NoteImage> = emptyList()
 ) {
     val dateFormat = LocalDateFormat.current
     androidx.compose.material3.ListItem(
@@ -347,13 +350,18 @@ fun NoteListItem(
                 overflow = TextOverflow.Ellipsis
             )
         },
-        supportingContent = note.date?.let {
-            DateFormat.formatTimestamp(
-                it,
-                dateFormat
-            )
-        }?.takeIf { it.isNotBlank() }?.let { date ->
-            { Text(date, style = MaterialTheme.typography.bodySmall) }
+        supportingContent = {
+            Column {
+                note.date?.let {
+                    DateFormat.formatTimestamp(
+                        it,
+                        dateFormat
+                    )
+                }?.takeIf { it.isNotBlank() }?.let { date ->
+                    Text(date, style = MaterialTheme.typography.bodySmall)
+                }
+                NoteImageRow(images, modifier = Modifier.padding(top = 6.dp))
+            }
         },
         trailingContent = {
             IconButton(onClick = onDelete, enabled = !isDeleting) {

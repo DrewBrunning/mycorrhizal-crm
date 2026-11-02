@@ -110,6 +110,7 @@ import com.mycorrhizal.crm.feature.contacts.AttachmentsScreen
 import com.mycorrhizal.crm.feature.contacts.ContactAnniversariesScreen
 import com.mycorrhizal.crm.feature.contacts.ContactDetailScreen
 import com.mycorrhizal.crm.feature.contacts.ContactFormScreen
+import com.mycorrhizal.crm.feature.contacts.ContactGalleryScreen
 import com.mycorrhizal.crm.feature.contacts.ContactListScreen
 import com.mycorrhizal.crm.feature.contacts.ContactListViewModel
 import com.mycorrhizal.crm.feature.contacts.ContactSkillsScreen
@@ -1363,6 +1364,7 @@ private fun AppNavGraph(
                 onViewNotes = { id -> navController.navigate("contacts/$id/notes") },
                 onViewReminders = { id -> navController.navigate("contacts/$id/reminders") },
                 onViewAttachments = { id -> navController.navigate("contacts/$id/attachments") },
+                onViewPhotos = { id -> navController.navigate("contacts/$id/photos") },
                 onViewRelationships = { id ->
                     navController.navigate(
                         "contacts/$id/relationships"
@@ -1601,6 +1603,17 @@ private fun AppNavGraph(
         ) { entry ->
             val contactId = entry.arguments?.getInt("contactId") ?: 0
             AttachmentsScreen(
+                onBack = { navController.popBackStack() },
+                contactId = contactId
+            )
+        }
+        // ADR 0040 slice c: the contact photo gallery.
+        composable(
+            route = "contacts/{contactId}/photos",
+            arguments = listOf(navArgument("contactId") { type = NavType.IntType })
+        ) { entry ->
+            val contactId = entry.arguments?.getInt("contactId") ?: 0
+            ContactGalleryScreen(
                 onBack = { navController.popBackStack() },
                 contactId = contactId
             )

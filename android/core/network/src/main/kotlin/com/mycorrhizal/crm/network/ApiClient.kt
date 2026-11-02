@@ -54,6 +54,8 @@ import com.mycorrhizal.crm.model.network.ContactFieldValuesInput
 import com.mycorrhizal.crm.model.network.ContactFieldValuesResponse
 import com.mycorrhizal.crm.model.network.ContactFieldVisibility
 import com.mycorrhizal.crm.model.network.ContactFieldVisibilityInput
+import com.mycorrhizal.crm.model.network.ContactImage
+import com.mycorrhizal.crm.model.network.ContactImagesResponse
 import com.mycorrhizal.crm.model.network.ContactMapResponse
 import com.mycorrhizal.crm.model.network.ContactMergeCommitResponse
 import com.mycorrhizal.crm.model.network.ContactMergePreviewResponse
@@ -173,6 +175,8 @@ import com.mycorrhizal.crm.model.network.NextcloudConnectionTestResult
 import com.mycorrhizal.crm.model.network.NextcloudItemsResponse
 import com.mycorrhizal.crm.model.network.NextcloudLinkRequest
 import com.mycorrhizal.crm.model.network.Note
+import com.mycorrhizal.crm.model.network.NoteImage
+import com.mycorrhizal.crm.model.network.NoteImagesResponse
 import com.mycorrhizal.crm.model.network.NoteInput
 import com.mycorrhizal.crm.model.network.NotesPage
 import com.mycorrhizal.crm.model.network.NotificationConfig
@@ -250,6 +254,8 @@ import com.mycorrhizal.crm.model.network.TwoFactorStatusResponse
 import com.mycorrhizal.crm.model.network.UpdateDateFormatRequest
 import com.mycorrhizal.crm.model.network.UpdateLanguageRequest
 import com.mycorrhizal.crm.model.network.UploadActivityImageResponse
+import com.mycorrhizal.crm.model.network.UploadContactImageResponse
+import com.mycorrhizal.crm.model.network.UploadNoteImageResponse
 import com.mycorrhizal.crm.model.network.UserDirectoryEntry
 import com.mycorrhizal.crm.model.network.UserDirectoryResponse
 import com.mycorrhizal.crm.model.network.UserProfile
@@ -1664,6 +1670,62 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
             moshi.adapter(ActivitiesPage::class.java).fromJson(body)
         }
     }
+
+    // --- Note images (ADR 0040 slice b, issue #2004) ---
+
+    suspend fun listNoteImages(noteId: Int): Result<NoteImagesResponse> =
+        executeGet("$PLACEHOLDER_ORIGIN$NOTES_PATH/$noteId/images") { _, body ->
+            moshi.adapter(NoteImagesResponse::class.java).fromJson(body)
+        }
+
+    suspend fun uploadNoteImage(
+        noteId: Int,
+        fileName: String,
+        mimeType: String,
+        bytes: ByteArray
+    ): Result<NoteImage> = executeMultipartUpload(
+        path = "$NOTES_PATH/$noteId/images",
+        fieldName = "file",
+        fileName = fileName,
+        mediaType = mimeType,
+        fileBytes = bytes
+    ) { _, body ->
+        moshi.adapter(UploadNoteImageResponse::class.java).fromJson(body)?.image
+    }
+
+    suspend fun deleteNoteImage(noteId: Int, imageId: Int): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$NOTES_PATH/$noteId/images/$imageId")
+
+    suspend fun downloadNoteImage(path: String): Result<ByteArray> =
+        executeGetBytes("$PLACEHOLDER_ORIGIN$path")
+
+    // --- Contact gallery images (ADR 0040 slice c, issue #2004) ---
+
+    suspend fun listContactImages(contactId: Int): Result<ContactImagesResponse> =
+        executeGet("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/images") { _, body ->
+            moshi.adapter(ContactImagesResponse::class.java).fromJson(body)
+        }
+
+    suspend fun uploadContactImage(
+        contactId: Int,
+        fileName: String,
+        mimeType: String,
+        bytes: ByteArray
+    ): Result<ContactImage> = executeMultipartUpload(
+        path = "$CONTACTS_PATH/$contactId/images",
+        fieldName = "file",
+        fileName = fileName,
+        mediaType = mimeType,
+        fileBytes = bytes
+    ) { _, body ->
+        moshi.adapter(UploadContactImageResponse::class.java).fromJson(body)?.image
+    }
+
+    suspend fun deleteContactImage(contactId: Int, imageId: Int): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/images/$imageId")
+
+    suspend fun downloadContactImage(path: String): Result<ByteArray> =
+        executeGetBytes("$PLACEHOLDER_ORIGIN$path")
 
     /** GET /api/v1/notes — the N4 unfiled-notes inbox (M9 Notes drawer entry), cursor-paginated. */
     suspend fun listNotes(cursor: String? = null, limit: Int? = null): Result<NotesPage> {

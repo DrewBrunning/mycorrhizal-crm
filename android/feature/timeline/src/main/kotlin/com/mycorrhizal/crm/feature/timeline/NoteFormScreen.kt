@@ -1,5 +1,10 @@
 package com.mycorrhizal.crm.feature.timeline
 
+import android.content.ContentResolver
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,6 +29,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -36,6 +42,26 @@ import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.WriteConflictDialog
 import com.mycorrhizal.crm.ui.components.localizedMessage
 
+/**
+ * Reads the picked URIs into upload payloads. Extracted from the composable so
+ * the byte/type mapping is testable without the system photo picker.
+ */
+internal fun readPickedNoteImages(
+    resolver: ContentResolver,
+    uris: List<Uri>
+): List<PendingNoteImage> = uris.mapNotNull { uri ->
+    val bytes = resolver.openInputStream(uri)?.use { it.readBytes() }
+    if (bytes == null) {
+        null
+    } else {
+        PendingNoteImage(
+            fileName = "photo.jpg",
+            mimeType = resolver.getType(uri) ?: "image/jpeg",
+            bytes = bytes
+        )
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NoteFormScreen(
@@ -47,6 +73,12 @@ fun NoteFormScreen(
     val events by viewModel.events.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val currentOnSaved = rememberUpdatedState(onSaved)
+    val context = LocalContext.current
+    val pickImageRequest =
+        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+    val imagePicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickMultipleVisualMedia(10)
+    ) { uris -> viewModel.addImages(readPickedNoteImages(context.contentResolver, uris)) }
 
     LaunchedEffect(events) {
         if (events is NoteFormEvent.Saved) {
@@ -88,6 +120,8 @@ fun NoteFormScreen(
                 onContactSearchChange = viewModel::searchContacts,
                 onPickContact = viewModel::selectContact,
                 onClearContact = viewModel::clearContact,
+                onAddImages = { imagePicker.launch(pickImageRequest) },
+                onDeleteImage = viewModel::deleteImage,
                 modifier = Modifier.padding(padding)
             )
         }
@@ -117,7 +151,9 @@ fun NoteFormContent(
     onContactSearchChange: (String) -> Unit,
     onPickContact: (com.mycorrhizal.crm.model.network.ContactSummary) -> Unit,
     onClearContact: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onAddImages: () -> Unit = {},
+    onDeleteImage: (Int) -> Unit = {}
 ) {
     Column(
         modifier = modifier
@@ -185,5 +221,20 @@ fun NoteFormContent(
                 labelRes = R.string.note_search_contact
             )
         }
+
+        HorizontalDivider()
+        Text(
+            text = stringResource(R.string.note_images_add),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        NoteImageSection(
+            images = state.images,
+            pendingCount = state.pendingImages.size,
+            loading = state.imagesLoading,
+            busy = state.imagesBusy,
+            onAdd = onAddImages,
+            onDelete = onDeleteImage
+        )
     }
 }

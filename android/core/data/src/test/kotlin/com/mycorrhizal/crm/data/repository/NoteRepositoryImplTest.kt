@@ -7,6 +7,8 @@ import com.mycorrhizal.crm.data.local.AppDatabase
 import com.mycorrhizal.crm.data.local.CachedNote
 import com.mycorrhizal.crm.model.network.ContactNotesResponse
 import com.mycorrhizal.crm.model.network.Note
+import com.mycorrhizal.crm.model.network.NoteImage
+import com.mycorrhizal.crm.model.network.NoteImagesResponse
 import com.mycorrhizal.crm.model.network.NoteInput
 import com.mycorrhizal.crm.model.network.NotesPage
 import com.mycorrhizal.crm.network.ApiClient
@@ -273,5 +275,35 @@ class NoteRepositoryImplTest {
 
         assertTrue(result.exceptionOrNull() is ApiError.PreconditionFailed)
         assertEquals(1, db.cachedNoteDao().getAll().size)
+    }
+
+    @Test
+    fun `listImages returns the note's images`() = runTest {
+        coEvery { apiClient.listNoteImages(3) } returns Result.success(
+            NoteImagesResponse(imagesRaw = listOf(NoteImage(id = 9, noteId = 3)))
+        )
+
+        val result = repository.listImages(3)
+
+        assertTrue(result.isSuccess)
+        assertEquals(listOf(9), result.getOrThrow().map { it.id })
+    }
+
+    @Test
+    fun `uploadImage forwards the bytes to the API`() = runTest {
+        coEvery {
+            apiClient.uploadNoteImage(3, "a.jpg", "image/jpeg", any())
+        } returns Result.success(NoteImage(id = 9, noteId = 3))
+
+        val result = repository.uploadImage(3, "a.jpg", "image/jpeg", byteArrayOf(1))
+
+        assertEquals(9, result.getOrThrow().id)
+    }
+
+    @Test
+    fun `deleteImage forwards the image id`() = runTest {
+        coEvery { apiClient.deleteNoteImage(3, 9) } returns Result.success(Unit)
+
+        assertTrue(repository.deleteImage(3, 9).isSuccess)
     }
 }

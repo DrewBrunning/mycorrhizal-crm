@@ -6479,4 +6479,37 @@ class ApiClientTest {
         assertEquals("/api/v1/activities/4/images/9", deleteRequest.path)
         assertEquals("DELETE", deleteRequest.method)
     }
+
+    @Test
+    fun `note and contact image routes use the owner-nested paths`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"images":[{"id":9,"note_id":4}],"total":1}"""))
+        assertEquals(1, client.listNoteImages(4).getOrThrow().images.size)
+        assertEquals("/api/v1/notes/4/images", server.takeRequest().path)
+
+        server.enqueue(MockResponse().setBody("""{"image":{"id":9,"note_id":4}}"""))
+        assertEquals(
+            9,
+            client.uploadNoteImage(4, "p.jpg", "image/jpeg", byteArrayOf(1)).getOrThrow().id
+        )
+        assertEquals("/api/v1/notes/4/images", server.takeRequest().path)
+
+        server.enqueue(MockResponse().setBody("{}"))
+        assertTrue(client.deleteNoteImage(4, 9).isSuccess)
+        assertEquals("/api/v1/notes/4/images/9", server.takeRequest().path)
+
+        server.enqueue(MockResponse().setBody("""{"images":[{"id":9,"contact_id":5}],"total":1}"""))
+        assertEquals(1, client.listContactImages(5).getOrThrow().images.size)
+        assertEquals("/api/v1/contacts/5/images", server.takeRequest().path)
+
+        server.enqueue(MockResponse().setBody("""{"image":{"id":9,"contact_id":5}}"""))
+        assertEquals(
+            9,
+            client.uploadContactImage(5, "p.jpg", "image/jpeg", byteArrayOf(1)).getOrThrow().id
+        )
+        assertEquals("/api/v1/contacts/5/images", server.takeRequest().path)
+
+        server.enqueue(MockResponse().setBody("{}"))
+        assertTrue(client.deleteContactImage(5, 9).isSuccess)
+        assertEquals("/api/v1/contacts/5/images/9", server.takeRequest().path)
+    }
 }
