@@ -31,6 +31,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -444,7 +445,7 @@ func doJSON(client *http.Client, method, url string, body interface{}) ([]byte, 
 		}
 		reader = bytes.NewReader(b)
 	}
-	req, err := http.NewRequest(method, url, reader)
+	req, err := http.NewRequestWithContext(context.Background(), method, url, reader)
 	if err != nil {
 		return nil, 0, fmt.Errorf("build request: %w", err)
 	}

@@ -2,6 +2,7 @@ package photostore
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"image"
 	"image/jpeg"
@@ -244,21 +245,21 @@ func TestExtractPhotoData_ReferencedURI(t *testing.T) {
 
 func TestFetchPhotoFromURL_BlocksLocalhostHostname(t *testing.T) {
 	t.Parallel()
-	if _, _, err := FetchPhotoFromURL("http://localhost/photo.jpg"); err == nil {
+	if _, _, err := FetchPhotoFromURL(context.Background(), "http://localhost/photo.jpg"); err == nil {
 		t.Error("expected fetching from localhost to be rejected as an SSRF target")
 	}
 }
 
 func TestFetchPhotoFromURL_BlocksLoopbackIPv4Literal(t *testing.T) {
 	t.Parallel()
-	if _, _, err := FetchPhotoFromURL("http://127.0.0.1/photo.jpg"); err == nil {
+	if _, _, err := FetchPhotoFromURL(context.Background(), "http://127.0.0.1/photo.jpg"); err == nil {
 		t.Error("expected fetching from 127.0.0.1 to be rejected as an SSRF target")
 	}
 }
 
 func TestFetchPhotoFromURL_BlocksLoopbackIPv6Literal(t *testing.T) {
 	t.Parallel()
-	if _, _, err := FetchPhotoFromURL("http://[::1]/photo.jpg"); err == nil {
+	if _, _, err := FetchPhotoFromURL(context.Background(), "http://[::1]/photo.jpg"); err == nil {
 		t.Error("expected fetching from [::1] to be rejected as an SSRF target")
 	}
 }
@@ -268,7 +269,7 @@ func TestFetchPhotoFromURL_BlocksPrivateLANAddress(t *testing.T) {
 	// 192.168.0.0/16 is not in the hardcoded hostname blocklist at all -- this
 	// proves the resolved-IP check (ip.IsPrivate()), not just the hostname
 	// string list, actually rejects it.
-	if _, _, err := FetchPhotoFromURL("http://192.168.1.1/photo.jpg"); err == nil {
+	if _, _, err := FetchPhotoFromURL(context.Background(), "http://192.168.1.1/photo.jpg"); err == nil {
 		t.Error("expected fetching from a private LAN address (192.168.1.1) to be rejected")
 	}
 }
@@ -277,14 +278,14 @@ func TestFetchPhotoFromURL_BlocksLinkLocalMetadataAddress(t *testing.T) {
 	t.Parallel()
 	// 169.254.169.254 is the classic cloud-metadata SSRF target (AWS/GCP/Azure
 	// instance metadata service); ip.IsLinkLocalUnicast() must catch it.
-	if _, _, err := FetchPhotoFromURL("http://169.254.169.254/latest/meta-data/"); err == nil {
+	if _, _, err := FetchPhotoFromURL(context.Background(), "http://169.254.169.254/latest/meta-data/"); err == nil {
 		t.Error("expected fetching from the link-local metadata address to be rejected")
 	}
 }
 
 func TestFetchPhotoFromURL_RejectsNonHTTPScheme(t *testing.T) {
 	t.Parallel()
-	if _, _, err := FetchPhotoFromURL("file:///etc/passwd"); err == nil {
+	if _, _, err := FetchPhotoFromURL(context.Background(), "file:///etc/passwd"); err == nil {
 		t.Error("expected a non-http(s) scheme to be rejected")
 	}
 }
@@ -296,7 +297,7 @@ func TestFetchPhotoFromURL_RejectsUnparsableURL(t *testing.T) {
 	if err == nil {
 		t.Skip("test environment's url.Parse unexpectedly accepted the malformed URL")
 	}
-	if _, _, err := FetchPhotoFromURL("http://\x7f"); err == nil {
+	if _, _, err := FetchPhotoFromURL(context.Background(), "http://\x7f"); err == nil {
 		t.Error("expected an unparsable URL to be rejected")
 	}
 }

@@ -241,14 +241,14 @@ func immichPrivateBlockingDialContext(ctx context.Context, network, addr string)
 // exactly what's being called and what Immich returned — the "add debugging"
 // half of the fix for the swallowed-error bug users hit when a connection
 // silently doesn't work.
-func (c *ImmichClient) do(path string) (*http.Response, error) {
-	return c.doRequest(http.MethodGet, path, nil)
+func (c *ImmichClient) do(ctx context.Context, path string) (*http.Response, error) {
+	return c.doRequest(ctx, http.MethodGet, path, nil)
 }
 
 // doPost performs a POST against the Immich API with a JSON body. The
 // status-code mapping is the same as do().
-func (c *ImmichClient) doPost(path string, body any) (*http.Response, error) {
-	return c.doRequest(http.MethodPost, path, body)
+func (c *ImmichClient) doPost(ctx context.Context, path string, body any) (*http.Response, error) {
+	return c.doRequest(ctx, http.MethodPost, path, body)
 }
 
 // faultImmichRequest is the failure-injection seam for the Immich client's
@@ -263,7 +263,7 @@ func (c *ImmichClient) doPost(path string, body any) (*http.Response, error) {
 // docs/development/fault-injection.md.
 const faultImmichRequest = "services.immich.request"
 
-func (c *ImmichClient) doRequest(method, path string, body any) (*http.Response, error) {
+func (c *ImmichClient) doRequest(ctx context.Context, method, path string, body any) (*http.Response, error) {
 	// Issue #434 failure-injection seam. Unarmed, faults.Hook returns nil and
 	// this line is a no-op; armed, the fault's error replaces the request —
 	// which is exactly how an unreachable/auth-expired/not-found upstream
@@ -280,7 +280,7 @@ func (c *ImmichClient) doRequest(method, path string, body any) (*http.Response,
 		}
 		bodyReader = bytes.NewReader(b)
 	}
-	req, err := http.NewRequest(method, c.baseURL+path, bodyReader)
+	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, bodyReader)
 	if err != nil {
 		return nil, ErrImmichInvalidURL
 	}
@@ -344,11 +344,11 @@ func decodeJSON(resp *http.Response, out any) error {
 //	Older:  {"people": [...], "total": N}
 //
 // decodeJSON is not used here because the two shapes need different structs.
-func (c *ImmichClient) ListPeople() ([]ImmichPerson, error) {
+func (c *ImmichClient) ListPeople(ctx context.Context) ([]ImmichPerson, error) {
 	var people []ImmichPerson
 	page := 1
 	for {
-		resp, err := c.do(fmt.Sprintf("/api/people?withHidden=false&size=500&page=%d", page))
+		resp, err := c.do(ctx, fmt.Sprintf("/api/people?withHidden=false&size=500&page=%d", page))
 		if err != nil {
 			return nil, err
 		}
@@ -399,8 +399,8 @@ func (c *ImmichClient) ListPeople() ([]ImmichPerson, error) {
 // independent of API key validity — this endpoint requires no auth, so it
 // isolates "is the URL even right and reachable" from "is the key valid"
 // (Test Connection's first stage).
-func (c *ImmichClient) Ping() error {
-	resp, err := c.do("/api/server/ping")
+func (c *ImmichClient) Ping(ctx context.Context) error {
+	resp, err := c.do(ctx, "/api/server/ping")
 	if err != nil {
 		return err
 	}
@@ -410,8 +410,8 @@ func (c *ImmichClient) Ping() error {
 
 // GetMyUser resolves the API key's owning account (GET /api/users/me) — used
 // only to validate a key (Test Connection's second stage).
-func (c *ImmichClient) GetMyUser() (*ImmichUser, error) {
-	resp, err := c.do("/api/users/me")
+func (c *ImmichClient) GetMyUser(ctx context.Context) (*ImmichUser, error) {
+	resp, err := c.do(ctx, "/api/users/me")
 	if err != nil {
 		return nil, err
 	}
@@ -423,9 +423,9 @@ func (c *ImmichClient) GetMyUser() (*ImmichUser, error) {
 }
 
 // GetStatistics returns a person's photo count (GET /api/people/:id/statistics).
-func (c *ImmichClient) GetStatistics(personID string) (int, error) {
+func (c *ImmichClient) GetStatistics(ctx context.Context, personID string) (int, error) {
 	var stats ImmichPersonStatistics
-	resp, err := c.do("/api/people/" + url.PathEscape(personID) + "/statistics")
+	resp, err := c.do(ctx, "/api/people/"+url.PathEscape(personID)+"/statistics")
 	if err != nil {
 		return 0, err
 	}
@@ -503,7 +503,7 @@ func parseImmichPage(raw json.RawMessage) (int, bool) {
 // so in practice the two orders agree and the fetched window is the correct
 // answer.  Full correctness for no-EXIF assets requires the entire walk this
 // early-stop exists to eliminate.
-func (c *ImmichClient) RecentAssets(personID string, limit int) ([]ImmichAsset, error) {
+func (c *ImmichClient) RecentAssets(ctx context.Context, personID string, limit int) ([]ImmichAsset, error) {
 	if limit < 1 {
 		limit = 1
 	}
@@ -528,7 +528,7 @@ func (c *ImmichClient) RecentAssets(personID string, limit int) ([]ImmichAsset, 
 		if sendPage {
 			reqBody["page"] = pageNum
 		}
-		resp, err := c.doPost("/api/search/metadata", reqBody)
+		resp, err := c.doPost(ctx, "/api/search/metadata", reqBody)
 		if err != nil {
 			return nil, err
 		}
@@ -582,23 +582,23 @@ func (c *ImmichClient) RecentAssets(personID string, limit int) ([]ImmichAsset, 
 // Thumbnail fetches a person's thumbnail image, returning the bytes and the
 // Content-Type from the server (raster only — SVG is rejected by the proxy
 // handler that serves this to browsers, mirroring ProxyImage's hardening).
-func (c *ImmichClient) Thumbnail(personID string) ([]byte, string, error) {
-	return c.fetchImage("/api/people/" + url.PathEscape(personID) + "/thumbnail")
+func (c *ImmichClient) Thumbnail(ctx context.Context, personID string) ([]byte, string, error) {
+	return c.fetchImage(ctx, "/api/people/"+url.PathEscape(personID)+"/thumbnail")
 }
 
 // AssetThumbnail fetches one asset's thumbnail image (the contact-photo
 // picker's "load this candidate photo" step, L1: browse a linked person's
 // recent photos and pick one). Same hardening as Thumbnail.
-func (c *ImmichClient) AssetThumbnail(assetID string) ([]byte, string, error) {
-	return c.fetchImage("/api/assets/" + url.PathEscape(assetID) + "/thumbnail")
+func (c *ImmichClient) AssetThumbnail(ctx context.Context, assetID string) ([]byte, string, error) {
+	return c.fetchImage(ctx, "/api/assets/"+url.PathEscape(assetID)+"/thumbnail")
 }
 
 // fetchImage performs the shared image-fetch-and-validate behind Thumbnail
 // and AssetThumbnail: non-image content types are rejected at this layer
 // before the body reaches the caller, matching httputil.FetchImageFromURL's
 // own validation.
-func (c *ImmichClient) fetchImage(path string) ([]byte, string, error) {
-	resp, err := c.do(path)
+func (c *ImmichClient) fetchImage(ctx context.Context, path string) ([]byte, string, error) {
+	resp, err := c.do(ctx, path)
 	if err != nil {
 		return nil, "", err
 	}

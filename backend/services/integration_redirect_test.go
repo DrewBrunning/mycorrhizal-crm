@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -63,37 +64,37 @@ func TestIntegrationClients_RedirectIsNotFollowedAndCredentialNotForwarded(t *te
 		{"immich GET", ErrImmichRedirect, func(base string) error {
 			c, err := NewImmichClient(base, "immich-secret", false)
 			require.NoError(t, err)
-			_, err = c.do("/api/users/me")
+			_, err = c.do(context.Background(), "/api/users/me")
 			return err
 		}},
 		{"immich POST", ErrImmichRedirect, func(base string) error {
 			c, err := NewImmichClient(base, "immich-secret", false)
 			require.NoError(t, err)
-			_, err = c.doPost("/api/search/metadata", map[string]any{"q": 1})
+			_, err = c.doPost(context.Background(), "/api/search/metadata", map[string]any{"q": 1})
 			return err
 		}},
 		{"paperless", ErrPaperlessRedirect, func(base string) error {
 			c, err := NewPaperlessClient(base, "paperless-secret", false)
 			require.NoError(t, err)
-			_, err = c.do("/api/documents/")
+			_, err = c.do(context.Background(), "/api/documents/")
 			return err
 		}},
 		{"seafile", ErrSeafileRedirect, func(base string) error {
 			c, err := NewSeafileClient(base, "seafile-secret", false)
 			require.NoError(t, err)
-			_, err = c.do("/api2/repos/")
+			_, err = c.do(context.Background(), "/api2/repos/")
 			return err
 		}},
 		{"seafile unauthenticated ping", ErrSeafileRedirect, func(base string) error {
 			c, err := NewSeafileClient(base, "seafile-secret", false)
 			require.NoError(t, err)
-			_, err = c.doUnauthenticated("/api2/ping/")
+			_, err = c.doUnauthenticated(context.Background(), "/api2/ping/")
 			return err
 		}},
 		{"nextcloud", ErrWebDAVRedirect, func(base string) error {
 			c, err := NewWebDAVClient(base, "alice", "nextcloud-secret", false)
 			require.NoError(t, err)
-			_, err = c.propfind("/")
+			_, err = c.propfind(context.Background(), "/")
 			return err
 		}},
 	}

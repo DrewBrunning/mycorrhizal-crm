@@ -253,8 +253,8 @@ func addWorktree(ctx context.Context, root, wt, ref string) error {
 }
 
 func removeWorktree(root, wt string) {
-	_ = exec.Command("git", "-C", root, "worktree", "remove", "--force", wt).Run() // #nosec G204 -- wt is a temp dir this process created
-	_ = exec.Command("git", "-C", root, "worktree", "prune").Run()                 // #nosec G204 -- fixed git command, root is the caller repo
+	_ = exec.CommandContext(context.Background(), "git", "-C", root, "worktree", "remove", "--force", wt).Run() // #nosec G204 -- wt is a temp dir this process created
+	_ = exec.CommandContext(context.Background(), "git", "-C", root, "worktree", "prune").Run()                 // #nosec G204 -- fixed git command, root is the caller repo
 }
 
 // applySeedPatch applies a patch with --3way. A patch that does not apply fails

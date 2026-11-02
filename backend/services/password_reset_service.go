@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
@@ -54,7 +55,7 @@ func PasswordResetExpiryFrom(now time.Time) time.Time {
 
 // SendPasswordResetEmail dispatches a reset email when Resend is configured.
 // The lang parameter specifies the user's preferred language for the email content.
-func SendPasswordResetEmail(email, token, lang string, cfg *config.Config) error {
+func SendPasswordResetEmail(ctx context.Context, email, token, lang string, cfg *config.Config) error {
 	if cfg == nil {
 		return fmt.Errorf("config is required")
 	}
@@ -80,7 +81,7 @@ func SendPasswordResetEmail(email, token, lang string, cfg *config.Config) error
 		return fmt.Errorf("failed to render password reset email: %w", err)
 	}
 
-	if err := SendEmail(*cfg, EmailMessage{
+	if err := SendEmail(ctx, *cfg, EmailMessage{
 		To:      email,
 		Subject: i18n.T(lang, "email.passwordReset.subject"),
 		HTML:    htmlBody,
@@ -97,7 +98,7 @@ func SendPasswordResetEmail(email, token, lang string, cfg *config.Config) error
 // wasn't initiated by them. Sent after ConfirmPasswordReset succeeds; the
 // caller treats a failure here as non-fatal -- the password change itself
 // has already happened and must not be undone by a notification error.
-func SendPasswordChangedEmail(email, lang string, cfg *config.Config) error {
+func SendPasswordChangedEmail(ctx context.Context, email, lang string, cfg *config.Config) error {
 	if cfg == nil {
 		return fmt.Errorf("config is required")
 	}
@@ -120,7 +121,7 @@ func SendPasswordChangedEmail(email, lang string, cfg *config.Config) error {
 		return fmt.Errorf("failed to render password-changed email: %w", err)
 	}
 
-	if err := SendEmail(*cfg, EmailMessage{
+	if err := SendEmail(ctx, *cfg, EmailMessage{
 		To:      email,
 		Subject: i18n.T(lang, "email.passwordChanged.subject"),
 		HTML:    htmlBody,

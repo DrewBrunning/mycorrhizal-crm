@@ -93,6 +93,13 @@ shipped broken at least once. Test against the real migrated schema, never `Auto
 - **The Go toolchain is pinned** (`backend/go.mod`; the Dockerfile `golang` stages). Don't float it.
   Dependabot's toolchain bump does not update the Dockerfile `FROM` line, so `docker-build-check.yml`
   enforces that the two agree.
+- **Context propagation (issue #1939):** handlers pass `c.Request.Context()` into services and on
+  to the HTTP/SQL boundary — `http.NewRequestWithContext`, the `QueryContext`/`ExecContext` family,
+  `DialContext`, and `exec.CommandContext`. Scheduled/startup/CLI code has no request context, so its
+  entry point creates one run-scoped `context.Background()` and threads it; do not create a fresh
+  background context at an inner call. `noctx` enforces the boundary variants (tests exempt);
+  `contextcheck` stays off because its remaining findings are propagation style in deliberately
+  background code (`.golangci.yml` records the assessment).
 - Controllers: follow `circle_controller.go` / `life_event_controller.go` (the newer idiom) over
   older ones. `currentUserID(c)`, `middleware.GetValidated[T]`, `apperrors.AbortWithError`,
   `GetPaginationParams`.

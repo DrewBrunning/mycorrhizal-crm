@@ -2,6 +2,7 @@ package perfbench
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -346,7 +347,7 @@ type httpResult struct {
 }
 
 func (e *Env) do(method, path string, body []byte) httpResult {
-	req := httptest.NewRequest(method, path, bytes.NewReader(body))
+	req := httptest.NewRequestWithContext(context.Background(), method, path, bytes.NewReader(body))
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}

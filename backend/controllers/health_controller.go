@@ -214,7 +214,7 @@ func HealthCheck(c *gin.Context) {
 	var deep services.DeepHealth
 	if db != nil {
 		dbHealth = checkDatabaseHealth(db)
-		deep = services.DeepHealthSnapshot(db, cfg)
+		deep = services.DeepHealthSnapshot(c.Request.Context(), db, cfg)
 	} else {
 		deep.Status = services.DeepStatusUnhealthy
 		deep.Database = services.HealthCheckDetail{Status: services.DeepStatusUnhealthy, Reason: "no database handle"}

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"testing"
 
 	apperrors "mycorrhizal/errors"
@@ -122,13 +123,13 @@ func TestConfirm_FixedAssignmentWriteFailure_IsReportedPerRow(t *testing.T) {
 		dbtest.HideTable(t, db, "circle_members")
 		cfg := testImportConfig(t)
 
-		res, appErr := m.ConfirmVCF(db, userID, req(addID, "add", fixed), cfg, log)
+		res, appErr := m.ConfirmVCF(context.Background(), db, userID, req(addID, "add", fixed), cfg, log)
 		require.Nil(t, appErr)
 		assert.Equal(t, 1, res.Created)
 		require.Len(t, res.Errors, 1)
 		assert.Contains(t, res.Errors[0], "apply fixed circles/tags")
 
-		res, appErr = m.ConfirmVCF(db, userID, req(updID, "update", fixed), cfg, log)
+		res, appErr = m.ConfirmVCF(context.Background(), db, userID, req(updID, "update", fixed), cfg, log)
 		require.Nil(t, appErr)
 		assert.Equal(t, 1, res.Updated)
 		require.Len(t, res.Errors, 1)

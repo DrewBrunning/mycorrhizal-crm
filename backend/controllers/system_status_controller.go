@@ -46,7 +46,7 @@ func GetSystemStatus(c *gin.Context) {
 	db := c.MustGet("db").(*gorm.DB)
 	cfg := currentConfig(c)
 
-	deep := services.DeepHealthSnapshot(db, cfg)
+	deep := services.DeepHealthSnapshot(c.Request.Context(), db, cfg)
 
 	storage := systemStatusStorage(db, cfg)
 

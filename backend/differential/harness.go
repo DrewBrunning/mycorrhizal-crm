@@ -2,6 +2,7 @@ package differential
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -30,7 +31,7 @@ func NewPyRef() (pyRef, string) {
 	if err != nil {
 		return pyRef{}, "vobject reference unavailable: python3 not on PATH (install it or run the differential CI leg)"
 	}
-	probe := exec.Command(python, "-c", "import vobject") // #nosec G204 -- `python` is the path exec.LookPath resolved for the system python3 binary, never request/input-controlled; this is the reference-availability probe
+	probe := exec.CommandContext(context.Background(), python, "-c", "import vobject") // #nosec G204 -- `python` is the path exec.LookPath resolved for the system python3 binary, never request/input-controlled; this is the reference-availability probe
 	if err := probe.Run(); err != nil {
 		return pyRef{}, "vobject reference unavailable: `python3 -c \"import vobject\"` failed (pip install vobject==0.9.9, see docs/development/testing.md)"
 	}
@@ -56,7 +57,7 @@ func (r pyRef) toNeutral(raw []byte) ([]byte, error) {
 func (r pyRef) run(args []string, stdin []byte) ([]byte, error) {
 	// #nosec G204 -- args is always the fixed checked-in script path plus a
 	// fixed subcommand (see toFormat/toNeutral), never request-controlled
-	cmd := exec.Command(r.python, args...)
+	cmd := exec.CommandContext(context.Background(), r.python, args...)
 	cmd.Stdin = bytes.NewReader(stdin)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
@@ -110,7 +111,7 @@ func (r calcardRef) run(subcommand string, stdin []byte) ([]byte, error) {
 	// built binary / docker invocation) or a fixed prebuilt-binary path, plus a
 	// fixed subcommand token — the same operator-controlled posture as
 	// cmd/schemagate's report path, never request-controlled
-	cmd := exec.Command(argv[0], argv[1:]...)
+	cmd := exec.CommandContext(context.Background(), argv[0], argv[1:]...)
 	cmd.Stdin = bytes.NewReader(stdin)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

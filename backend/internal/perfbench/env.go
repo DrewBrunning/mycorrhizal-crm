@@ -27,6 +27,7 @@
 package perfbench
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -281,7 +282,7 @@ func (e *Env) forkForDestructive(workDir string) (*Env, error) {
 	if err != nil { // # pragma: no cover — e.seedDB is a live handle
 		return nil, err
 	}
-	if _, err := sqlDB.Exec("PRAGMA wal_checkpoint(TRUNCATE)"); err != nil { // # pragma: no cover — checkpoint on a healthy WAL db
+	if _, err := sqlDB.ExecContext(context.Background(), "PRAGMA wal_checkpoint(TRUNCATE)"); err != nil { // # pragma: no cover — checkpoint on a healthy WAL db
 		return nil, err
 	}
 

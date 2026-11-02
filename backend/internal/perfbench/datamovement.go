@@ -2,6 +2,7 @@ package perfbench
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -317,7 +318,7 @@ func (w *discardResponseWriter) WriteHeader(status int) { w.status = status }
 func exportViaDiscard(e *Env, handler func(*gin.Context), path string) (int64, error) {
 	w := &discardResponseWriter{}
 	c, _ := gin.CreateTestContext(w)
-	c.Request = httptest.NewRequest(http.MethodGet, path, nil)
+	c.Request = httptest.NewRequestWithContext(context.Background(), http.MethodGet, path, nil)
 	c.Set("db", e.DB)
 	c.Set("userID", e.UserID)
 	c.Set("cfg", e.Cfg)

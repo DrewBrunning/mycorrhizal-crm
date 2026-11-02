@@ -1,6 +1,7 @@
 package schemafixture
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -58,7 +59,7 @@ func GenerateDump(version uint, tag string) (string, error) {
 	}
 	// Fold the WAL sidecar into the main file so the scratch file is a
 	// complete, consistent snapshot before any raw reads.
-	if _, err := sqlDB.Exec("PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
+	if _, err := sqlDB.ExecContext(context.Background(), "PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
 		_ = sqlDB.Close()
 		return "", fmt.Errorf("genschema: checkpointing schema database: %w", err) // # pragma: no cover — a just-opened WAL database accepts a checkpoint
 	}

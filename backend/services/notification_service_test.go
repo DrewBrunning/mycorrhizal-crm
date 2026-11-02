@@ -201,7 +201,9 @@ func TestSendReminders_DispatchesToNtfy(t *testing.T) {
 	reminder := newDueReminder(t, db, user, "Call Jane")
 
 	originalSender := sendReminderEmailFn
-	sendReminderEmailFn = func(u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error { return nil }
+	sendReminderEmailFn = func(_ context.Context, u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error {
+		return nil
+	}
 	defer func() { sendReminderEmailFn = originalSender }()
 
 	cfg := config.Config{UseResend: true, ResendAPIKey: "k", ResendFromEmail: "noreply@example.com", ReminderTime: "12:00"}
@@ -242,7 +244,9 @@ func TestSendReminders_ChannelFailureIsolation(t *testing.T) {
 	reminder := newDueReminder(t, db, user, "Isolate failures")
 
 	originalSender := sendReminderEmailFn
-	sendReminderEmailFn = func(u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error { return nil }
+	sendReminderEmailFn = func(_ context.Context, u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error {
+		return nil
+	}
 	defer func() { sendReminderEmailFn = originalSender }()
 
 	cfg := config.Config{UseResend: true, ResendAPIKey: "k", ResendFromEmail: "noreply@example.com", ReminderTime: "12:00", JWTSecretKey: "test-jwt-secret-that-is-long-enough"}
@@ -300,7 +304,9 @@ func TestSendReminders_PrivateAddressPerPolicy(t *testing.T) {
 	reminder := newDueReminder(t, db, user, "SSRF policy")
 
 	originalSender := sendReminderEmailFn
-	sendReminderEmailFn = func(u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error { return nil }
+	sendReminderEmailFn = func(_ context.Context, u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error {
+		return nil
+	}
 	defer func() { sendReminderEmailFn = originalSender }()
 
 	cfg := config.Config{ReminderTime: "12:00"}
@@ -346,7 +352,9 @@ func TestSendReminders_PushPrivateAddressBlocked(t *testing.T) {
 	require.NoError(t, db.Create(&sub).Error)
 
 	originalSender := sendReminderEmailFn
-	sendReminderEmailFn = func(u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error { return nil }
+	sendReminderEmailFn = func(_ context.Context, u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error {
+		return nil
+	}
 	defer func() { sendReminderEmailFn = originalSender }()
 
 	cfg := config.Config{ReminderTime: "12:00", WebhookBlockPrivateURLs: true}
@@ -383,7 +391,9 @@ func TestSendReminders_PushDeliversAndRecords(t *testing.T) {
 	require.NoError(t, db.Create(&sub).Error)
 
 	originalSender := sendReminderEmailFn
-	sendReminderEmailFn = func(u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error { return nil }
+	sendReminderEmailFn = func(_ context.Context, u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error {
+		return nil
+	}
 	defer func() { sendReminderEmailFn = originalSender }()
 
 	cfg := config.Config{ReminderTime: "12:00"}
@@ -422,7 +432,9 @@ func TestPushSender_RemovesStaleSubscription(t *testing.T) {
 	require.NoError(t, db.Create(&sub).Error)
 
 	originalSender := sendReminderEmailFn
-	sendReminderEmailFn = func(u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error { return nil }
+	sendReminderEmailFn = func(_ context.Context, u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error {
+		return nil
+	}
 	defer func() { sendReminderEmailFn = originalSender }()
 
 	cfg := config.Config{ReminderTime: "12:00"}
@@ -448,7 +460,7 @@ func TestSendReminders_EmailAndNtfyBothDispatch(t *testing.T) {
 
 	var emailCalls int
 	originalSender := sendReminderEmailFn
-	sendReminderEmailFn = func(u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error {
+	sendReminderEmailFn = func(_ context.Context, u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error {
 		emailCalls++
 		return nil
 	}
@@ -562,7 +574,7 @@ func TestTestNotificationChannel(t *testing.T) {
 	user := newNotificationUser(t, db, true, false, false, fake.URL(), "")
 
 	cfg := config.Config{ReminderTime: "12:00"}
-	require.NoError(t, TestNotificationChannel(db, cfg, user, models.ChannelNtfy))
+	require.NoError(t, TestNotificationChannel(context.Background(), db, cfg, user, models.ChannelNtfy))
 	assert.Equal(t, 1, fake.count(), "the test button must send one ntfy notification")
 
 	// No delivery rows are written for a test — it is not reminder-scoped.
@@ -573,13 +585,13 @@ func TestTestNotificationChannel(t *testing.T) {
 	// Unconfigured channel: descriptive error, no panic.
 	other := models.User{Username: "n9-unconfigured", Password: "password123", Email: "u@example.com"}
 	require.NoError(t, db.Create(&other).Error)
-	err := TestNotificationChannel(db, cfg, other, models.ChannelNtfy)
+	err := TestNotificationChannel(context.Background(), db, cfg, other, models.ChannelNtfy)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not configured")
 
 	// Email is a real channel but is configured globally (SMTP), so the
 	// per-user test button must say so rather than silently doing nothing.
-	err = TestNotificationChannel(db, cfg, other, models.ChannelEmail)
+	err = TestNotificationChannel(context.Background(), db, cfg, other, models.ChannelEmail)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "email is not a per-user test channel")
 }
@@ -696,7 +708,7 @@ func TestTestNotificationChannel_PushBodySizeMatchesPayload(t *testing.T) {
 	require.NoError(t, db.Create(&sub).Error)
 
 	cfg := config.Config{ReminderTime: "12:00"}
-	require.NoError(t, TestNotificationChannel(db, cfg, user, models.ChannelPush))
+	require.NoError(t, TestNotificationChannel(context.Background(), db, cfg, user, models.ChannelPush))
 	require.Equal(t, 1, fake.count(), "the test button must send one push notification")
 
 	lang := notificationLanguage(user)
@@ -721,7 +733,9 @@ func TestSendReminders_JobLockStillPreventsDoubleSend(t *testing.T) {
 	newDueReminder(t, db, user, "Locked reminder")
 
 	originalSender := sendReminderEmailFn
-	sendReminderEmailFn = func(u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error { return nil }
+	sendReminderEmailFn = func(_ context.Context, u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error {
+		return nil
+	}
 	defer func() { sendReminderEmailFn = originalSender }()
 
 	originalInterval := ReminderMinInterval
@@ -1030,7 +1044,7 @@ func TestSendFCMMessage_HappyPath(t *testing.T) {
 	fcmSendEndpoint = fake.URL()
 	defer func() { fcmSendEndpoint = originalSendURL }()
 
-	stale, err := sendFCMMessage(config.Config{ReminderTime: "12:00"}, sa, "device-token", "Title", "Body", map[string]string{"type": "reminder"})
+	stale, err := sendFCMMessage(context.Background(), config.Config{ReminderTime: "12:00"}, sa, "device-token", "Title", "Body", map[string]string{"type": "reminder"})
 	require.NoError(t, err)
 	assert.False(t, stale)
 	require.Equal(t, 1, fake.count())
@@ -1054,7 +1068,7 @@ func TestSendFCMMessage_StaleToken(t *testing.T) {
 	fcmSendEndpoint = fake.URL()
 	defer func() { fcmSendEndpoint = originalSendURL }()
 
-	stale, err := sendFCMMessage(config.Config{ReminderTime: "12:00"}, sa, "dead-token", "T", "B", nil)
+	stale, err := sendFCMMessage(context.Background(), config.Config{ReminderTime: "12:00"}, sa, "dead-token", "T", "B", nil)
 	require.NoError(t, err)
 	assert.True(t, stale, "a 404 from FCM must be reported as stale")
 }
@@ -1082,7 +1096,9 @@ func TestSendReminders_FCMDelivers(t *testing.T) {
 	require.NoError(t, err)
 
 	originalSender := sendReminderEmailFn
-	sendReminderEmailFn = func(u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error { return nil }
+	sendReminderEmailFn = func(_ context.Context, u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error {
+		return nil
+	}
 	defer func() { sendReminderEmailFn = originalSender }()
 
 	// Write the service account to a temp file so SendReminders can load it
@@ -1150,7 +1166,9 @@ func TestSendReminders_FCMStaleRegistrationDropped(t *testing.T) {
 	require.NoError(t, err)
 
 	originalSender := sendReminderEmailFn
-	sendReminderEmailFn = func(u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error { return nil }
+	sendReminderEmailFn = func(_ context.Context, u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error {
+		return nil
+	}
 	defer func() { sendReminderEmailFn = originalSender }()
 
 	saJSON := map[string]string{
@@ -1186,7 +1204,9 @@ func TestSendReminders_APNSNeverMarkedSent(t *testing.T) {
 	require.NoError(t, err)
 
 	originalSender := sendReminderEmailFn
-	sendReminderEmailFn = func(u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error { return nil }
+	sendReminderEmailFn = func(_ context.Context, u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error {
+		return nil
+	}
 	defer func() { sendReminderEmailFn = originalSender }()
 
 	cfg := config.Config{ReminderTime: "12:00"}
@@ -1228,7 +1248,9 @@ func TestSendReminders_PushChannelDispatchToBoth(t *testing.T) {
 	require.NoError(t, err)
 
 	originalSender := sendReminderEmailFn
-	sendReminderEmailFn = func(u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error { return nil }
+	sendReminderEmailFn = func(_ context.Context, u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error {
+		return nil
+	}
 	defer func() { sendReminderEmailFn = originalSender }()
 
 	saJSON := map[string]string{
@@ -1293,7 +1315,7 @@ func TestTestNotificationChannel_ProbesFCMDevice(t *testing.T) {
 	require.NoError(t, os.WriteFile(saPath, data, 0o600))
 
 	cfg := config.Config{ReminderTime: "12:00", FCMServiceAccountFile: saPath}
-	require.NoError(t, TestNotificationChannel(db, cfg, user, models.ChannelPush))
+	require.NoError(t, TestNotificationChannel(context.Background(), db, cfg, user, models.ChannelPush))
 	require.Equal(t, 1, fake.count(), "the test button must reach the FCM endpoint for a registered device")
 	assert.Equal(t, "/projects/my-project/messages:send", fake.hits[0])
 
@@ -1315,7 +1337,7 @@ func TestTestNotificationChannel_FCMDeviceWithoutServerConfig(t *testing.T) {
 	require.NoError(t, err)
 
 	cfg := config.Config{ReminderTime: "12:00"} // FCMServiceAccountFile unset
-	err = TestNotificationChannel(db, cfg, user, models.ChannelPush)
+	err = TestNotificationChannel(context.Background(), db, cfg, user, models.ChannelPush)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not configured")
 }

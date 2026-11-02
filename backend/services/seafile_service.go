@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"mycorrhizal/config"
@@ -146,13 +147,13 @@ func buildSeafileClient(db *gorm.DB, cfg config.Config, userID uint) (*SeafileCl
 // TestSeafileConnection checks the current user's saved Seafile connection in
 // two stages — reachability (Ping, unauthenticated) then auth (PingAuth) — so
 // a failure is diagnosed rather than just reported.
-func TestSeafileConnection(db *gorm.DB, cfg config.Config, userID uint) (*SeafileConnectionTestResult, error) {
+func TestSeafileConnection(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint) (*SeafileConnectionTestResult, error) {
 	client, _, err := buildSeafileClient(db, cfg, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := client.Ping(); err != nil {
+	if err := client.Ping(ctx); err != nil {
 		stage := "reachability"
 		if errors.Is(err, ErrSeafileUnauthorized) {
 			stage = "auth"
@@ -161,7 +162,7 @@ func TestSeafileConnection(db *gorm.DB, cfg config.Config, userID uint) (*Seafil
 		return diagnoseSeafileConnectionFailure(stage, err), nil
 	}
 
-	if err := client.PingAuth(); err != nil {
+	if err := client.PingAuth(ctx); err != nil {
 		logger.Warn().Err(err).Uint("user_id", userID).Msg("Seafile test connection: auth failed")
 		return diagnoseSeafileConnectionFailure("auth", err), nil
 	}
@@ -200,22 +201,22 @@ func diagnoseSeafileConnectionFailure(stage string, err error) *SeafileConnectio
 
 // ListSeafileLibrariesForUser browses every library the token can access (the
 // L1 picker's first level). Requires a configured connection.
-func ListSeafileLibrariesForUser(db *gorm.DB, cfg config.Config, userID uint) ([]SeafileLibrary, error) {
+func ListSeafileLibrariesForUser(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint) ([]SeafileLibrary, error) {
 	client, _, err := buildSeafileClient(db, cfg, userID)
 	if err != nil {
 		return nil, err
 	}
-	return client.ListLibraries()
+	return client.ListLibraries(ctx)
 }
 
 // ListSeafileDirForUser lists a library folder's contents (the L1 picker's
 // navigation). Requires a configured connection.
-func ListSeafileDirForUser(db *gorm.DB, cfg config.Config, userID uint, repoID, path string) ([]SeafileItem, error) {
+func ListSeafileDirForUser(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint, repoID, path string) ([]SeafileItem, error) {
 	client, _, err := buildSeafileClient(db, cfg, userID)
 	if err != nil {
 		return nil, err
 	}
-	return client.ListDir(repoID, path)
+	return client.ListDir(ctx, repoID, path)
 }
 
 // SeafileLinkMetadata is the subset of a browsed Seafile item the link request

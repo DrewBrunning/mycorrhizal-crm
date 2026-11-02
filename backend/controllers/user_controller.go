@@ -466,7 +466,7 @@ func RequestPasswordReset(context *gin.Context, cfg *config.Config) {
 			log.Info().Uint("user_id", userID).Msg("Password reset request throttled by the per-account cooldown")
 			return
 		}
-		if err := services.SendPasswordResetEmail(userEmail, token, userLang, cfg); err != nil {
+		if err := services.SendPasswordResetEmail(context.Request.Context(), userEmail, token, userLang, cfg); err != nil {
 			log.Error().Err(err).Uint("user_id", userID).Msg("Failed to send password reset email")
 			recordPasswordResetFailure(stdcontext.Background(), db, userID, "send_email", err)
 		}
@@ -633,7 +633,7 @@ func ConfirmPasswordReset(context *gin.Context, cfg *config.Config) {
 	// so they notice if it wasn't them. Best-effort -- the password is
 	// already changed and every session/token already revoked above, so a
 	// failed notification must not turn into a failed reset.
-	if err := services.SendPasswordChangedEmail(user.Email, user.Language, cfg); err != nil {
+	if err := services.SendPasswordChangedEmail(context.Request.Context(), user.Email, user.Language, cfg); err != nil {
 		log.Warn().Err(err).Uint("user_id", user.ID).Msg("Failed to send password-changed notification email")
 	}
 

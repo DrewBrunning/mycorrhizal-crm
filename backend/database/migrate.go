@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"embed"
 	"errors"
@@ -449,7 +450,7 @@ func (e *ErrPopulatedVersionlessDatabase) Error() string {
 // means the database has been migrated before (issue #926). Internal SQLite
 // tables (`sqlite_%`) and the migration bookkeeping table are excluded.
 func applicationTables(db *sql.DB) ([]string, error) {
-	rows, err := db.Query(
+	rows, err := db.QueryContext(context.Background(),
 		`SELECT name FROM sqlite_master
 		 WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name <> ?
 		 ORDER BY name LIMIT 5`, defaultMigrationsTable)
@@ -686,7 +687,7 @@ func recordMigrationEvent(db *sql.DB, from, to uint, elapsed time.Duration) {
 	defer func() { _ = recover() }()
 	now := time.Now().UTC()
 	ms := elapsed.Milliseconds()
-	_, err := db.Exec(
+	_, err := db.ExecContext(context.Background(),
 		`INSERT INTO system_events (created_at, occurred_at, event_type, severity, component, operation, duration_ms, result, detail)
 		 VALUES (?, ?, 'migration_completed', 'info', 'migration', 'run_migrations', ?, 'success', ?)`,
 		now, now, ms, fmt.Sprintf("from_version=%d to_version=%d", from, to),
@@ -710,7 +711,7 @@ func recordMigrationFailedEvent(db *sql.DB, from, version uint, elapsed time.Dur
 	if runes := []rune(errText); len(runes) > maxMigrationEventErrorLen {
 		errText = string(runes[:maxMigrationEventErrorLen])
 	}
-	_, err := db.Exec(
+	_, err := db.ExecContext(context.Background(),
 		`INSERT INTO system_events (created_at, occurred_at, event_type, severity, component, operation, duration_ms, result, error, detail)
 		 VALUES (?, ?, 'migration_failed', 'error', 'migration', 'run_migrations', ?, 'failure', ?, ?)`,
 		now, now, ms, errText, fmt.Sprintf("from_version=%d to_version=%d", from, version),

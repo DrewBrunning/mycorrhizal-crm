@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"os"
@@ -29,7 +30,7 @@ func IntegrityCheck(dbPath string) (string, error) {
 	defer sqlDB.Close()
 
 	var result string
-	if err := sqlDB.QueryRow("PRAGMA integrity_check").Scan(&result); err != nil {
+	if err := sqlDB.QueryRowContext(context.Background(), "PRAGMA integrity_check").Scan(&result); err != nil {
 		return "", fmt.Errorf("integrity check on %q: %w", dbPath, err)
 	}
 	return result, nil

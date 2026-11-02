@@ -30,6 +30,7 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"sort"
@@ -370,7 +371,7 @@ func TestSearchMutationPath_BulkVCFImport(t *testing.T) {
 	}
 	sessionID := m.CreateVCFSession(user.ID, vcfContacts, previews)
 
-	result, appErr := m.ConfirmVCF(db, user.ID, models.ImportConfirmRequest{
+	result, appErr := m.ConfirmVCF(context.Background(), db, user.ID, models.ImportConfirmRequest{
 		SessionID: sessionID,
 		Actions: []models.RowImportAction{
 			{RowIndex: 0, Action: "add"},

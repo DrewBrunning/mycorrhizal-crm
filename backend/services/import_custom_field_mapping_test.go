@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -535,7 +536,7 @@ func TestConfirmVCF_CustomFieldExportReimportRoundTrip(t *testing.T) {
 	// Confirm with no wizard input: the projection auto-map promotes it.
 	m := NewImportSessionManager()
 	sessionID := m.CreateVCFSession(user.ID, contacts, previews)
-	result, appErr := m.ConfirmVCF(db, user.ID, models.ImportConfirmRequest{
+	result, appErr := m.ConfirmVCF(context.Background(), db, user.ID, models.ImportConfirmRequest{
 		SessionID: sessionID,
 		Actions:   []models.RowImportAction{{RowIndex: 0, Action: "add"}},
 	}, testImportConfig(t), testImportLogger())
@@ -578,7 +579,7 @@ func TestConfirmVCF_UnmappedXPropertyStaysInPassthrough(t *testing.T) {
 
 	m := NewImportSessionManager()
 	sessionID := m.CreateVCFSession(user.ID, contacts, previews)
-	_, appErr := m.ConfirmVCF(db, user.ID, models.ImportConfirmRequest{
+	_, appErr := m.ConfirmVCF(context.Background(), db, user.ID, models.ImportConfirmRequest{
 		SessionID: sessionID,
 		Actions:   []models.RowImportAction{{RowIndex: 0, Action: "add"}},
 	}, testImportConfig(t), testImportLogger())
@@ -613,7 +614,7 @@ func TestConfirmVCF_WizardCreatePromotesToNewDefinition(t *testing.T) {
 
 	m := NewImportSessionManager()
 	sessionID := m.CreateVCFSession(user.ID, contacts, previews)
-	result, appErr := m.ConfirmVCF(db, user.ID, models.ImportConfirmRequest{
+	result, appErr := m.ConfirmVCF(context.Background(), db, user.ID, models.ImportConfirmRequest{
 		SessionID: sessionID,
 		Actions:   []models.RowImportAction{{RowIndex: 0, Action: "add"}},
 		FieldMappings: []models.ImportFieldMapping{
@@ -658,7 +659,7 @@ func TestConfirmVCF_WizardMapPromotesIntoExistingDefinition(t *testing.T) {
 
 	m := NewImportSessionManager()
 	sessionID := m.CreateVCFSession(user.ID, contacts, previews)
-	_, appErr := m.ConfirmVCF(db, user.ID, models.ImportConfirmRequest{
+	_, appErr := m.ConfirmVCF(context.Background(), db, user.ID, models.ImportConfirmRequest{
 		SessionID: sessionID,
 		Actions:   []models.RowImportAction{{RowIndex: 0, Action: "add"}},
 		FieldMappings: []models.ImportFieldMapping{
@@ -700,7 +701,7 @@ func TestConfirmVCF_WizardIgnoreKeepsProjectionMatchInPassthrough(t *testing.T) 
 
 	m := NewImportSessionManager()
 	sessionID := m.CreateVCFSession(user.ID, contacts, previews)
-	_, appErr := m.ConfirmVCF(db, user.ID, models.ImportConfirmRequest{
+	_, appErr := m.ConfirmVCF(context.Background(), db, user.ID, models.ImportConfirmRequest{
 		SessionID: sessionID,
 		Actions:   []models.RowImportAction{{RowIndex: 0, Action: "add"}},
 		FieldMappings: []models.ImportFieldMapping{
@@ -746,7 +747,7 @@ func TestConfirmVCF_UpdatePromotesOntoExistingContact(t *testing.T) {
 
 	m := NewImportSessionManager()
 	sessionID := m.CreateVCFSession(user.ID, contacts, previews)
-	result, appErr := m.ConfirmVCF(db, user.ID, models.ImportConfirmRequest{
+	result, appErr := m.ConfirmVCF(context.Background(), db, user.ID, models.ImportConfirmRequest{
 		SessionID: sessionID,
 		Actions:   []models.RowImportAction{{RowIndex: 0, Action: "update"}},
 	}, testImportConfig(t), testImportLogger())
@@ -781,7 +782,7 @@ func TestConfirmVCF_InvalidMappedValueWarnsContactStillCreated(t *testing.T) {
 
 	m := NewImportSessionManager()
 	sessionID := m.CreateVCFSession(user.ID, contacts, previews)
-	result, appErr := m.ConfirmVCF(db, user.ID, models.ImportConfirmRequest{
+	result, appErr := m.ConfirmVCF(context.Background(), db, user.ID, models.ImportConfirmRequest{
 		SessionID: sessionID,
 		Actions:   []models.RowImportAction{{RowIndex: 0, Action: "add"}},
 		FieldMappings: []models.ImportFieldMapping{
@@ -808,7 +809,7 @@ func TestConfirmVCF_InvalidMappingFailsClosed(t *testing.T) {
 
 	m := NewImportSessionManager()
 	sessionID := m.CreateVCFSession(user.ID, contacts, previews)
-	_, appErr := m.ConfirmVCF(db, user.ID, models.ImportConfirmRequest{
+	_, appErr := m.ConfirmVCF(context.Background(), db, user.ID, models.ImportConfirmRequest{
 		SessionID: sessionID,
 		Actions:   []models.RowImportAction{{RowIndex: 0, Action: "add"}},
 		FieldMappings: []models.ImportFieldMapping{

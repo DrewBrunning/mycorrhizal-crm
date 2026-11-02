@@ -56,14 +56,14 @@ func newNextcloudClient(t *testing.T) (c *services.WebDAVClient, base, user, pas
 // href percent-encoding to the decoded path we store as external_id.
 func TestNextcloudWebDAV_BrowseListsRealFilesAndFolders(t *testing.T) {
 	c, base, user, pass := newNextcloudClient(t)
-	require.NoError(t, c.Ping(), "Test Connection against a real Nextcloud")
+	require.NoError(t, c.Ping(context.Background()), "Test Connection against a real Nextcloud")
 
 	folder := "Contract " + time.Now().Format("150405.000")
 	davSeed(t, base, user, pass, "MKCOL", "/"+folder, "")
 	davSeed(t, base, user, pass, "PUT", "/"+folder+"/Résumé & notes.txt", "hello nextcloud")
 	davSeed(t, base, user, pass, "MKCOL", "/"+folder+"/Sub", "")
 
-	root, err := c.ListDir("/")
+	root, err := c.ListDir(context.Background(), "/")
 	require.NoError(t, err)
 	var found *services.WebDAVItem
 	for i := range root {
@@ -76,7 +76,7 @@ func TestNextcloudWebDAV_BrowseListsRealFilesAndFolders(t *testing.T) {
 	assert.Equal(t, "/"+folder+"/", found.Path)
 	assert.NotEmpty(t, found.FileID, "Nextcloud exposes oc:fileid; the deep link depends on it")
 
-	items, err := c.ListDir("/" + folder)
+	items, err := c.ListDir(context.Background(), "/"+folder)
 	require.NoError(t, err)
 	require.Len(t, items, 2, "the folder's own entry must be excluded, leaving the file and Sub")
 	byName := map[string]services.WebDAVItem{}
@@ -100,10 +100,10 @@ func TestNextcloudWebDAV_BrowseListsRealFilesAndFolders(t *testing.T) {
 func TestNextcloudWebDAV_ErrorsMapToSentinels(t *testing.T) {
 	c, base, user, _ := newNextcloudClient(t)
 
-	_, err := c.ListDir("/definitely-not-a-real-folder-" + time.Now().Format("150405"))
+	_, err := c.ListDir(context.Background(), "/definitely-not-a-real-folder-"+time.Now().Format("150405"))
 	require.ErrorIs(t, err, services.ErrWebDAVNotFound)
 
 	bad, err := services.NewWebDAVClient(base, user, "wrong-app-password", false)
 	require.NoError(t, err)
-	require.ErrorIs(t, bad.Ping(), services.ErrWebDAVUnauthorized)
+	require.ErrorIs(t, bad.Ping(context.Background()), services.ErrWebDAVUnauthorized)
 }

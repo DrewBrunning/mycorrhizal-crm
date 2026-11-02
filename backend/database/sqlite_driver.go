@@ -6,6 +6,7 @@ package database
 // I've chosen this approach since a drift here is still less a risk than implementing a full custom driver
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -60,7 +61,7 @@ func withInstance(instance *sql.DB, config *sqliteConfig) (database.Driver, erro
 		return nil, errNilConfig
 	}
 
-	if err := instance.Ping(); err != nil {
+	if err := instance.PingContext(context.Background()); err != nil {
 		return nil, err
 	}
 
@@ -94,7 +95,7 @@ func (m *sqliteDriver) ensureVersionTable() (err error) {
   CREATE UNIQUE INDEX IF NOT EXISTS version_unique ON %s (version);
   `, m.config.MigrationsTable, m.config.MigrationsTable)
 
-	if _, err := m.db.Exec(query); err != nil {
+	if _, err := m.db.ExecContext(context.Background(), query); err != nil {
 		return err
 	}
 	return nil
@@ -143,7 +144,7 @@ func (m *sqliteDriver) Close() error {
 
 func (m *sqliteDriver) Drop() (err error) {
 	query := `SELECT name FROM sqlite_master WHERE type = 'table';`
-	tables, err := m.db.Query(query)
+	tables, err := m.db.QueryContext(context.Background(), query)
 	if err != nil {
 		return &database.Error{OrigErr: err, Query: []byte(query)}
 	}
@@ -176,7 +177,7 @@ func (m *sqliteDriver) Drop() (err error) {
 			}
 		}
 		query := "VACUUM"
-		_, err = m.db.Exec(query)
+		_, err = m.db.ExecContext(context.Background(), query)
 		if err != nil {
 			return &database.Error{OrigErr: err, Query: []byte(query)}
 		}
@@ -228,11 +229,11 @@ func (m *sqliteDriver) Run(migration io.Reader) error {
 }
 
 func (m *sqliteDriver) executeQuery(query string) error {
-	tx, err := m.db.Begin()
+	tx, err := m.db.BeginTx(context.Background(), nil)
 	if err != nil {
 		return &database.Error{OrigErr: err, Err: "transaction start failed"}
 	}
-	if _, err := tx.Exec(query); err != nil {
+	if _, err := tx.ExecContext(context.Background(), query); err != nil {
 		if errRollback := tx.Rollback(); errRollback != nil {
 			err = errors.Join(err, errRollback)
 		}
@@ -245,26 +246,26 @@ func (m *sqliteDriver) executeQuery(query string) error {
 }
 
 func (m *sqliteDriver) executeQueryNoTx(query string) error {
-	if _, err := m.db.Exec(query); err != nil {
+	if _, err := m.db.ExecContext(context.Background(), query); err != nil {
 		return &database.Error{OrigErr: err, Query: []byte(query)}
 	}
 	return nil
 }
 
 func (m *sqliteDriver) SetVersion(version int, dirty bool) error {
-	tx, err := m.db.Begin()
+	tx, err := m.db.BeginTx(context.Background(), nil)
 	if err != nil {
 		return &database.Error{OrigErr: err, Err: "transaction start failed"}
 	}
 
 	query := "DELETE FROM " + m.config.MigrationsTable // #nosec G202 -- table name is an internal config constant, not user input
-	if _, err := tx.Exec(query); err != nil {
+	if _, err := tx.ExecContext(context.Background(), query); err != nil {
 		return &database.Error{OrigErr: err, Query: []byte(query)}
 	}
 
 	if version >= 0 || (version == database.NilVersion && dirty) {
 		query := fmt.Sprintf(`INSERT INTO %s (version, dirty) VALUES (?, ?)`, m.config.MigrationsTable) // #nosec G201 -- table name is an internal config constant, not user input
-		if _, err := tx.Exec(query, version, dirty); err != nil {
+		if _, err := tx.ExecContext(context.Background(), query, version, dirty); err != nil {
 			if errRollback := tx.Rollback(); errRollback != nil {
 				err = errors.Join(err, errRollback)
 			}
@@ -281,7 +282,7 @@ func (m *sqliteDriver) SetVersion(version int, dirty bool) error {
 
 func (m *sqliteDriver) Version() (version int, dirty bool, err error) {
 	query := "SELECT version, dirty FROM " + m.config.MigrationsTable + " LIMIT 1"
-	err = m.db.QueryRow(query).Scan(&version, &dirty)
+	err = m.db.QueryRowContext(context.Background(), query).Scan(&version, &dirty)
 	if err != nil {
 		// golang-migrate treats a missing version row (including a missing
 		// migrations table) as "no version yet", not as a driver failure.

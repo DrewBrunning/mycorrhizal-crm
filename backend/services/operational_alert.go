@@ -145,7 +145,7 @@ func deliverOperationalAlertToUser(ctx context.Context, db *gorm.DB, cfg config.
 	}
 
 	if cfg.EmailEnabled() && user.Email != "" {
-		if err := SendEmail(cfg, EmailMessage{To: user.Email, Subject: subject, HTML: operationalAlertHTML(body)}); err != nil {
+		if err := SendEmail(ctx, cfg, EmailMessage{To: user.Email, Subject: subject, HTML: operationalAlertHTML(body)}); err != nil {
 			logger.Ctx(ctx).Warn().Err(err).Uint("user_id", user.ID).Msg("operational alert: email delivery failed")
 			failed++
 		} else {
@@ -153,7 +153,7 @@ func deliverOperationalAlertToUser(ctx context.Context, db *gorm.DB, cfg config.
 		}
 	}
 	if user.NotifyNtfy && nc != nil && nc.NtfyURL != "" && nc.NtfyTopic != "" {
-		if err := sendNtfyMessage(cfg, nc, subject, body); err != nil {
+		if err := sendNtfyMessage(ctx, cfg, nc, subject, body); err != nil {
 			logger.Ctx(ctx).Warn().Err(err).Uint("user_id", user.ID).Msg("operational alert: ntfy delivery failed")
 			failed++
 		} else {
@@ -161,7 +161,7 @@ func deliverOperationalAlertToUser(ctx context.Context, db *gorm.DB, cfg config.
 		}
 	}
 	if user.NotifyGotify && nc != nil && nc.GotifyURL != "" && nc.HasGotifyToken() {
-		if err := sendGotifyMessage(cfg, nc, subject, body); err != nil {
+		if err := sendGotifyMessage(ctx, cfg, nc, subject, body); err != nil {
 			logger.Ctx(ctx).Warn().Err(err).Uint("user_id", user.ID).Msg("operational alert: gotify delivery failed")
 			failed++
 		} else {
@@ -169,7 +169,7 @@ func deliverOperationalAlertToUser(ctx context.Context, db *gorm.DB, cfg config.
 		}
 	}
 	if user.NotifyPush {
-		if err := deliverPushToUser(db, cfg, user, subject, body); err != nil {
+		if err := deliverPushToUser(ctx, db, cfg, user, subject, body); err != nil {
 			logger.Ctx(ctx).Warn().Err(err).Uint("user_id", user.ID).Msg("operational alert: push delivery failed")
 			failed++
 		} else {

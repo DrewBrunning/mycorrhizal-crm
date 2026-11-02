@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"errors"
 	"mycorrhizal/config"
 	apperrors "mycorrhizal/errors"
@@ -33,7 +34,7 @@ func GetContactDetail(c *gin.Context) {
 		return
 	}
 
-	detail, err := buildContactDetail(db, userID, contact, currentConfig(c))
+	detail, err := buildContactDetail(c.Request.Context(), db, userID, contact, currentConfig(c))
 	if err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to compose contact detail").WithError(err))
 		return
@@ -51,8 +52,8 @@ func GetContactDetail(c *gin.Context) {
 // T66 bounds the six timeline-eligible blocks at timelinePreviewLimit each
 // (see the inline comment on the notes query for the reasoning); the
 // remaining blocks stay unpaginated by design (M4 design decision 6).
-func buildContactDetail(db *gorm.DB, userID uint, contact *models.Contact, cfg config.Config) (*models.ContactDetailResponse, error) {
-	return buildContactDetailScoped(db, userID, contact, cfg, false,
+func buildContactDetail(ctx context.Context, db *gorm.DB, userID uint, contact *models.Contact, cfg config.Config) (*models.ContactDetailResponse, error) {
+	return buildContactDetailScoped(ctx, db, userID, contact, cfg, false,
 		[]string{models.RelationshipSensitivitySecret})
 }
 
@@ -62,7 +63,7 @@ func buildContactDetail(db *gorm.DB, userID uint, contact *models.Contact, cfg c
 // relationship-edge tiers left out of relationship_edges. The REST handler
 // passes (false, [secret]); the MCP get_contact tool passes a stricter scope
 // by default (ADR 0032 §4).
-func buildContactDetailScoped(db *gorm.DB, userID uint, contact *models.Contact, cfg config.Config, includeSensitive bool, excludedEdgeSensitivities []string) (*models.ContactDetailResponse, error) {
+func buildContactDetailScoped(ctx context.Context, db *gorm.DB, userID uint, contact *models.Contact, cfg config.Config, includeSensitive bool, excludedEdgeSensitivities []string) (*models.ContactDetailResponse, error) {
 	detail := &models.ContactDetailResponse{
 		Contact: models.NewContactRecordResponseFiltered(contact, cfg.ProfilePhotoDir, db, includeSensitive),
 	}
@@ -152,7 +153,7 @@ func buildContactDetailScoped(db *gorm.DB, userID uint, contact *models.Contact,
 		return nil, err
 	}
 
-	if err := attachContactDetailImmich(db, cfg, userID, contact, detail); err != nil {
+	if err := attachContactDetailImmich(ctx, db, cfg, userID, contact, detail); err != nil {
 		return nil, err
 	}
 
@@ -233,7 +234,7 @@ func attachContactDetailTags(db *gorm.DB, userID uint, contact *models.Contact, 
 // contact is linked to an Immich person. Summary stays nil when no link
 // exists; a link is resolved into a live summary exactly like
 // GetImmichContactSummary (immich_controller.go) does per-contact today.
-func attachContactDetailImmich(db *gorm.DB, cfg config.Config, userID uint, contact *models.Contact, detail *models.ContactDetailResponse) error {
+func attachContactDetailImmich(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint, contact *models.Contact, detail *models.ContactDetailResponse) error {
 	immichCfg, err := services.GetImmichConfigForUser(db, userID)
 	if err != nil {
 		return err
@@ -254,7 +255,7 @@ func attachContactDetailImmich(db *gorm.DB, cfg config.Config, userID uint, cont
 		return err
 	}
 
-	summary := services.FetchImmichPersonSummary(db, cfg, userID, &identity)
+	summary := services.FetchImmichPersonSummary(ctx, db, cfg, userID, &identity)
 	if summary == nil {
 		return nil
 	}

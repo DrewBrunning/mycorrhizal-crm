@@ -199,8 +199,8 @@ func paperlessPrivateBlockingDialContext(ctx context.Context, network, addr stri
 // doRequest performs a GET against the Paperless API, applying the token
 // header and mapping auth/not-found responses to sentinel errors. Every call
 // is logged at Debug (method/path/outcome, never the token).
-func (c *PaperlessClient) do(path string) (*http.Response, error) {
-	req, err := http.NewRequest(http.MethodGet, c.baseURL+path, nil)
+func (c *PaperlessClient) do(ctx context.Context, path string) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
 	if err != nil {
 		return nil, ErrPaperlessInvalidURL
 	}
@@ -256,8 +256,8 @@ func decodePaperlessJSON(resp *http.Response, out any) error {
 // redirects are never followed here (they would forward the credential). An
 // unauthorized response surfaces as ErrPaperlessUnauthorized so Test
 // Connection can classify by sentinel, not by which call failed.
-func (c *PaperlessClient) Ping() error {
-	resp, err := c.do("/api/documents/?page_size=1&fields=id")
+func (c *PaperlessClient) Ping(ctx context.Context) error {
+	resp, err := c.do(ctx, "/api/documents/?page_size=1&fields=id")
 	if err != nil {
 		return err
 	}
@@ -268,8 +268,8 @@ func (c *PaperlessClient) Ping() error {
 // GetMe resolves the token's owning account (GET /api/ui_settings/, whose
 // "user" object carries id + username) — used only to validate a token and
 // name the account in Test Connection's second stage.
-func (c *PaperlessClient) GetMe() (*PaperlessUser, error) {
-	resp, err := c.do("/api/ui_settings/")
+func (c *PaperlessClient) GetMe(ctx context.Context) (*PaperlessUser, error) {
+	resp, err := c.do(ctx, "/api/ui_settings/")
 	if err != nil {
 		return nil, err
 	}
@@ -286,8 +286,8 @@ func (c *PaperlessClient) GetMe() (*PaperlessUser, error) {
 // link time so the metadata stored on the ExternalIdentity is authoritative —
 // fetched from Paperless under the user's own token, never trusted from the
 // client.
-func (c *PaperlessClient) GetDocument(id int) (*PaperlessDocument, error) {
-	resp, err := c.do("/api/documents/" + strconv.Itoa(id) + "/")
+func (c *PaperlessClient) GetDocument(ctx context.Context, id int) (*PaperlessDocument, error) {
+	resp, err := c.do(ctx, "/api/documents/"+strconv.Itoa(id)+"/")
 	if err != nil {
 		return nil, err
 	}
@@ -305,7 +305,7 @@ func (c *PaperlessClient) GetDocument(id int) (*PaperlessDocument, error) {
 // content, and OCR fields by Paperless itself), paginated client-side until
 // exhausted. An empty query lists every document. Documents are returned in
 // added order (newest first), which is what the L1 picker wants.
-func (c *PaperlessClient) ListDocuments(query string) ([]PaperlessDocument, error) {
+func (c *PaperlessClient) ListDocuments(ctx context.Context, query string) ([]PaperlessDocument, error) {
 	var all []PaperlessDocument
 	page := 1
 	for page <= maxPaperlessSearchPages {
@@ -318,7 +318,7 @@ func (c *PaperlessClient) ListDocuments(query string) ([]PaperlessDocument, erro
 			params.Set("query", strings.TrimSpace(query))
 		}
 
-		resp, err := c.do("/api/documents/?" + params.Encode())
+		resp, err := c.do(ctx, "/api/documents/?"+params.Encode())
 		if err != nil {
 			return nil, err
 		}

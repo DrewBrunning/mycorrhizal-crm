@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -94,7 +95,7 @@ func TestConfirmVCF_RefusesWhenDiskTooFull(t *testing.T) {
 	req := models.ImportConfirmRequest{SessionID: id, Actions: []models.RowImportAction{{RowIndex: 0, Action: "add"}}}
 
 	restore := diskspace.StubForTest(1 << 20)
-	result, appErr := m.ConfirmVCF(db, user.ID, req, cfg, testImportLogger())
+	result, appErr := m.ConfirmVCF(context.Background(), db, user.ID, req, cfg, testImportLogger())
 	restore()
 
 	require.NotNil(t, appErr)
@@ -105,7 +106,7 @@ func TestConfirmVCF_RefusesWhenDiskTooFull(t *testing.T) {
 	require.NoError(t, db.Model(&models.Contact{}).Where("user_id = ?", user.ID).Count(&count).Error)
 	assert.Equal(t, int64(0), count)
 
-	result, appErr = m.ConfirmVCF(db, user.ID, req, cfg, testImportLogger())
+	result, appErr = m.ConfirmVCF(context.Background(), db, user.ID, req, cfg, testImportLogger())
 	require.Nil(t, appErr)
 	require.NotNil(t, result)
 	assert.Equal(t, 1, result.Created)

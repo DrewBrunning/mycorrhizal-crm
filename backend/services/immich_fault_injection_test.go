@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -33,22 +34,22 @@ func TestImmichInjectedRequestFaultCrossesBoundaryUnchanged(t *testing.T) {
 		{
 			name:     "unreachable",
 			sentinel: ErrImmichUnreachable,
-			method:   func() error { return client.Ping() },
+			method:   func() error { return client.Ping(context.Background()) },
 		},
 		{
 			name:     "auth expired",
 			sentinel: ErrImmichUnauthorized,
-			method:   func() error { return client.Ping() },
+			method:   func() error { return client.Ping(context.Background()) },
 		},
 		{
 			name:     "resource deleted remotely",
 			sentinel: ErrImmichNotFound,
-			method:   func() error { return client.Ping() },
+			method:   func() error { return client.Ping(context.Background()) },
 		},
 		{
 			name:     "custom upstream failure",
 			sentinel: errors.New("proxy timeout"),
-			method:   func() error { return client.Ping() },
+			method:   func() error { return client.Ping(context.Background()) },
 		},
 	}
 
@@ -77,10 +78,10 @@ func TestImmichInjectedFaultDoesNotPersistBeyondArm(t *testing.T) {
 	require.NoError(t, err)
 
 	faults.ArmError(faultImmichRequest, ErrImmichUnauthorized)
-	require.ErrorIs(t, client.Ping(), ErrImmichUnauthorized)
+	require.ErrorIs(t, client.Ping(context.Background()), ErrImmichUnauthorized)
 
 	faults.Disarm(faultImmichRequest)
-	err = client.Ping()
+	err = client.Ping(context.Background())
 	require.Error(t, err, "the real request still fails (unreachable DNS) but...")
 	assert.NotErrorIs(t, err, ErrImmichUnauthorized, "...not with the injected sentinel")
 	assert.ErrorIs(t, err, ErrImmichUnreachable, "the real failure class surfaces instead")
@@ -106,7 +107,7 @@ func TestImmichInjectedFaultReachesServiceDiagnostics(t *testing.T) {
 	require.NoError(t, err)
 
 	// Prove the seam is what failed: Ping must return the injected sentinel.
-	require.ErrorIs(t, client.Ping(), ErrImmichUnreachable)
+	require.ErrorIs(t, client.Ping(context.Background()), ErrImmichUnreachable)
 
 	// And diagnoseImmichConnectionFailure (the service's classification) must
 	// render the sentinel-specific message, not a generic one.

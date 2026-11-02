@@ -22,6 +22,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -183,10 +184,10 @@ func runner(root string) prepr.Runner {
 
 func commandFor(step prepr.Step) *exec.Cmd {
 	if step.Command.Shell != "" {
-		return exec.Command("bash", "-c", step.Command.Shell) // #nosec G204 -- fixed command table, not user input
+		return exec.CommandContext(context.Background(), "bash", "-c", step.Command.Shell) // #nosec G204 -- fixed command table, not user input
 	}
 	argv := step.Command.Argv
-	return exec.Command(argv[0], argv[1:]...) // #nosec G204 -- fixed command table plus validated changed-file paths
+	return exec.CommandContext(context.Background(), argv[0], argv[1:]...) // #nosec G204 -- fixed command table plus validated changed-file paths
 }
 
 func dirForDisplay(dir string) string {

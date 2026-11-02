@@ -29,6 +29,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"image"
@@ -599,7 +600,7 @@ func (r *smokeRun) wellKnownDiscoveryRelative() error {
 		{"/.well-known/carddav", "/carddav/"},
 		{"/.well-known/caldav", "/caldav/"},
 	} {
-		req, err := http.NewRequest(http.MethodGet, r.baseURL+wk.path, nil)
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, r.baseURL+wk.path, nil)
 		if err != nil { // # pragma: no cover — method and URL are always well-formed constants
 			return fmt.Errorf("build request for %s: %w", wk.path, err)
 		}
@@ -647,7 +648,7 @@ func (r *smokeRun) assetLinksReachesBackend() error {
 			return http.ErrUseLastResponse
 		},
 	}
-	req, err := http.NewRequest(http.MethodGet, r.baseURL+path, nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, r.baseURL+path, nil)
 	if err != nil { // # pragma: no cover — method and URL are always well-formed constants
 		return fmt.Errorf("build request for %s: %w", path, err)
 	}
@@ -709,7 +710,7 @@ func (r *smokeRun) mcpReachesBackend() error {
 	if err != nil { // # pragma: no cover — a static map always marshals
 		return fmt.Errorf("marshal MCP request: %w", err)
 	}
-	req, err := http.NewRequest(http.MethodPost, r.baseURL+path, bytes.NewReader(payload))
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, r.baseURL+path, bytes.NewReader(payload))
 	if err != nil { // # pragma: no cover — the URL is a constant plus the fixed base URL
 		return fmt.Errorf("build request for %s: %w", path, err)
 	}
@@ -913,7 +914,7 @@ func (r *smokeRun) do(method, path, contentType string, body []byte) ([]byte, in
 	if body != nil {
 		reader = bytes.NewReader(body)
 	}
-	req, err := http.NewRequest(method, r.baseURL+path, reader)
+	req, err := http.NewRequestWithContext(context.Background(), method, r.baseURL+path, reader)
 	if err != nil { // # pragma: no cover — method and URL are always well-formed constants
 		return nil, 0, fmt.Errorf("build request: %w", err)
 	}
@@ -940,7 +941,7 @@ func (r *smokeRun) doResp(method, path, contentType string, body []byte) (int, h
 	if body != nil {
 		reader = bytes.NewReader(body)
 	}
-	req, err := http.NewRequest(method, r.baseURL+path, reader)
+	req, err := http.NewRequestWithContext(context.Background(), method, r.baseURL+path, reader)
 	if err != nil { // # pragma: no cover — method and URL are always well-formed constants
 		return 0, nil, nil, fmt.Errorf("build request: %w", err)
 	}

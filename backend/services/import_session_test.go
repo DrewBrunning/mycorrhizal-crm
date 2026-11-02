@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -666,7 +667,7 @@ func TestConfirmVCF_Update_StaleDuplicateReference_ErrorsButBatchContinues(t *te
 			{RowIndex: 1, Action: "add"},
 		},
 	}
-	result, appErr := m.ConfirmVCF(db, 1, req, cfg, log)
+	result, appErr := m.ConfirmVCF(context.Background(), db, 1, req, cfg, log)
 	require.Nil(t, appErr)
 	require.NotNil(t, result)
 
@@ -819,7 +820,7 @@ func TestConfirmVCF_WrongImportType_InvalidInput(t *testing.T) {
 	require.Nil(t, appErr)
 
 	req := models.ImportConfirmRequest{SessionID: id, Actions: []models.RowImportAction{{RowIndex: 0, Action: "add"}}}
-	result, appErr := m.ConfirmVCF(db, 1, req, cfg, log)
+	result, appErr := m.ConfirmVCF(context.Background(), db, 1, req, cfg, log)
 	assert.Nil(t, result)
 	require.NotNil(t, appErr)
 	assert.Equal(t, apperrors.ErrCodeInvalidInput, appErr.Code)
@@ -837,7 +838,7 @@ func TestConfirmVCF_WrongUser_ErrorPropagatesFromGet(t *testing.T) {
 	id := m.CreateVCFSession(1, []VCFContactData{{Contact: contact}}, []models.ImportRowPreview{{RowIndex: 0, SuggestedAction: "add"}})
 
 	req := models.ImportConfirmRequest{SessionID: id, Actions: []models.RowImportAction{{RowIndex: 0, Action: "add"}}}
-	result, appErr := m.ConfirmVCF(db, 2, req, cfg, log) // wrong user
+	result, appErr := m.ConfirmVCF(context.Background(), db, 2, req, cfg, log) // wrong user
 	assert.Nil(t, result)
 	require.NotNil(t, appErr)
 }
@@ -863,7 +864,7 @@ func TestConfirmVCF_PreviewNotCached_InvalidInput(t *testing.T) {
 	m.mu.Unlock()
 
 	req := models.ImportConfirmRequest{SessionID: id, Actions: []models.RowImportAction{{RowIndex: 0, Action: "add"}}}
-	result, appErr := m.ConfirmVCF(db, 1, req, cfg, log)
+	result, appErr := m.ConfirmVCF(context.Background(), db, 1, req, cfg, log)
 	assert.Nil(t, result)
 	require.NotNil(t, appErr)
 	assert.Equal(t, apperrors.ErrCodeInvalidInput, appErr.Code)
@@ -886,7 +887,7 @@ func TestConfirmVCF_SkipAction_NoDBRow(t *testing.T) {
 	_ = previewedID
 
 	req := models.ImportConfirmRequest{SessionID: id, Actions: []models.RowImportAction{{RowIndex: 0, Action: "skip"}}}
-	result, appErr := m.ConfirmVCF(db, 1, req, cfg, log)
+	result, appErr := m.ConfirmVCF(context.Background(), db, 1, req, cfg, log)
 	require.Nil(t, appErr)
 	assert.Equal(t, 1, result.Skipped)
 	assert.Equal(t, 0, result.Created)
@@ -917,7 +918,7 @@ func TestConfirmVCF_UpdateWithNilDuplicateMatch_ErrorsButBatchContinues(t *testi
 		{RowIndex: 0, Action: "update"},
 		{RowIndex: 1, Action: "add"},
 	}}
-	result, appErr := m.ConfirmVCF(db, 1, req, cfg, log)
+	result, appErr := m.ConfirmVCF(context.Background(), db, 1, req, cfg, log)
 	require.Nil(t, appErr)
 	assert.Equal(t, 1, result.Skipped)
 	assert.NotEmpty(t, result.Errors)
@@ -951,7 +952,7 @@ func TestConfirmVCF_Update_NoExistingPhoto_QueuesIncomingPhoto(t *testing.T) {
 	id := m.CreateVCFSession(1, vcfContacts, previews)
 
 	req := models.ImportConfirmRequest{SessionID: id, Actions: []models.RowImportAction{{RowIndex: 0, Action: "update"}}}
-	result, appErr := m.ConfirmVCF(db, 1, req, cfg, log)
+	result, appErr := m.ConfirmVCF(context.Background(), db, 1, req, cfg, log)
 	require.Nil(t, appErr)
 	require.Equal(t, 1, result.Updated)
 
@@ -972,7 +973,7 @@ func TestConfirmVCF_Add_PersistsRow_AndReconfirmIsIdempotent(t *testing.T) {
 	id := m.CreateVCFSession(1, vcfContacts, previews)
 
 	req := models.ImportConfirmRequest{SessionID: id, Actions: []models.RowImportAction{{RowIndex: 0, Action: "add"}}}
-	result, appErr := m.ConfirmVCF(db, 1, req, cfg, log)
+	result, appErr := m.ConfirmVCF(context.Background(), db, 1, req, cfg, log)
 	require.Nil(t, appErr)
 	require.NotNil(t, result)
 	assert.Equal(t, 1, result.Created)
@@ -986,7 +987,7 @@ func TestConfirmVCF_Add_PersistsRow_AndReconfirmIsIdempotent(t *testing.T) {
 	_, getErr := m.get(id, 1)
 	require.NotNil(t, getErr)
 
-	replayed, appErr := m.ConfirmVCF(db, 1, req, cfg, log)
+	replayed, appErr := m.ConfirmVCF(context.Background(), db, 1, req, cfg, log)
 	require.Nil(t, appErr)
 	require.NotNil(t, replayed)
 	assert.Equal(t, *result, *replayed)
@@ -1035,7 +1036,7 @@ func TestConfirmVCF_RecordsSession_ConcurrentReconfirms_ApplyExactlyOnce(t *test
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			res, err := m.ConfirmVCF(db, 1, req, cfg, log)
+			res, err := m.ConfirmVCF(context.Background(), db, 1, req, cfg, log)
 			if err == nil {
 				results[i] = res
 			}
@@ -1107,7 +1108,7 @@ func TestConfirmVCF_Add_EmbeddedPhoto_PersistsPhotoAndValidETag(t *testing.T) {
 	id := m.CreateVCFSession(1, vcfContacts, previews)
 
 	req := models.ImportConfirmRequest{SessionID: id, Actions: []models.RowImportAction{{RowIndex: 0, Action: "add"}}}
-	result, appErr := m.ConfirmVCF(db, 1, req, cfg, log)
+	result, appErr := m.ConfirmVCF(context.Background(), db, 1, req, cfg, log)
 	require.Nil(t, appErr)
 	require.Equal(t, 1, result.Created)
 
@@ -1149,7 +1150,7 @@ func TestConfirmVCF_Add_PhotoURL_Success_PersistsPhoto(t *testing.T) {
 	id := m.CreateVCFSession(1, vcfContacts, previews)
 
 	req := models.ImportConfirmRequest{SessionID: id, Actions: []models.RowImportAction{{RowIndex: 0, Action: "add"}}}
-	result, appErr := m.ConfirmVCF(db, 1, req, cfg, log)
+	result, appErr := m.ConfirmVCF(context.Background(), db, 1, req, cfg, log)
 	require.Nil(t, appErr)
 	require.Equal(t, 1, result.Created)
 
@@ -1186,7 +1187,7 @@ func TestConfirmVCF_Add_PhotoURLFetchFailure_ContactStillCreatedPhotoSkipped(t *
 	id := m.CreateVCFSession(1, vcfContacts, previews)
 
 	req := models.ImportConfirmRequest{SessionID: id, Actions: []models.RowImportAction{{RowIndex: 0, Action: "add"}}}
-	result, appErr := m.ConfirmVCF(db, 1, req, cfg, log)
+	result, appErr := m.ConfirmVCF(context.Background(), db, 1, req, cfg, log)
 
 	// The degradation policy (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md) requires
 	// this to be a soft failure: the contact is still created even though
@@ -1220,7 +1221,7 @@ func TestConfirmVCF_Update_ExistingPhotoNotOverwritten(t *testing.T) {
 	id := m.CreateVCFSession(1, vcfContacts, previews)
 
 	req := models.ImportConfirmRequest{SessionID: id, Actions: []models.RowImportAction{{RowIndex: 0, Action: "update"}}}
-	result, appErr := m.ConfirmVCF(db, 1, req, cfg, log)
+	result, appErr := m.ConfirmVCF(context.Background(), db, 1, req, cfg, log)
 	require.Nil(t, appErr)
 	require.Equal(t, 1, result.Updated)
 
@@ -1317,7 +1318,7 @@ func TestConfirmVCF_Add_PhotoAttachFailure_LeavesNoOrphanFile(t *testing.T) {
 	id := m.CreateVCFSession(1, vcfContacts, []models.ImportRowPreview{{RowIndex: 0, SuggestedAction: "add"}})
 
 	req := models.ImportConfirmRequest{SessionID: id, Actions: []models.RowImportAction{{RowIndex: 0, Action: "add"}}}
-	result, appErr := m.ConfirmVCF(db, 1, req, cfg, log)
+	result, appErr := m.ConfirmVCF(context.Background(), db, 1, req, cfg, log)
 	require.Nil(t, appErr)
 	require.Equal(t, 1, result.Created)
 
@@ -1347,7 +1348,7 @@ func TestConfirmVCF_Add_PhotoContactGone_LeavesNoOrphanFile(t *testing.T) {
 	id := m.CreateVCFSession(1, vcfContacts, []models.ImportRowPreview{{RowIndex: 0, SuggestedAction: "add"}})
 
 	req := models.ImportConfirmRequest{SessionID: id, Actions: []models.RowImportAction{{RowIndex: 0, Action: "add"}}}
-	_, appErr := m.ConfirmVCF(db, 1, req, cfg, log)
+	_, appErr := m.ConfirmVCF(context.Background(), db, 1, req, cfg, log)
 	require.Nil(t, appErr)
 
 	entries, err := os.ReadDir(cfg.ProfilePhotoDir)

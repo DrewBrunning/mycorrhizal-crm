@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"net/http"
@@ -82,7 +83,7 @@ func TestListWebDAVDirForUser_BrowsesFake(t *testing.T) {
 	connectWebDAVForUser(t, db, user.ID, fake.URL(), "alice", "sekret")
 
 	// Root listing excludes the root itself.
-	items, err := ListWebDAVDirForUser(db, paperlessTestConfig(), user.ID, "/")
+	items, err := ListWebDAVDirForUser(context.Background(), db, paperlessTestConfig(), user.ID, "/")
 	require.NoError(t, err)
 	require.Len(t, items, 1)
 	assert.Equal(t, "Documents", items[0].Name)
@@ -92,7 +93,7 @@ func TestListWebDAVDirForUser_BrowsesFake(t *testing.T) {
 	assert.Equal(t, "sekret", fake.LastPass)
 
 	// Inside Documents: the file with size + file id.
-	items, err = ListWebDAVDirForUser(db, paperlessTestConfig(), user.ID, "/Documents")
+	items, err = ListWebDAVDirForUser(context.Background(), db, paperlessTestConfig(), user.ID, "/Documents")
 	require.NoError(t, err)
 	require.Len(t, items, 1)
 	assert.Equal(t, "contract.pdf", items[0].Name)
@@ -139,7 +140,7 @@ func TestTestWebDAVConnection_SuccessAndDiagnosis(t *testing.T) {
 	seedWebDAVFakeServer(fake, "alice")
 	connectWebDAVForUser(t, db, user.ID, fake.URL(), "alice", "sekret")
 
-	result, err := TestWebDAVConnection(db, paperlessTestConfig(), user.ID)
+	result, err := TestWebDAVConnection(context.Background(), db, paperlessTestConfig(), user.ID)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	assert.True(t, result.OK)
@@ -147,7 +148,7 @@ func TestTestWebDAVConnection_SuccessAndDiagnosis(t *testing.T) {
 	// Wrong app password → diagnosed failure (non-error, OK:false).
 	require.NoError(t, db.Model(&models.WebDAVConfig{}).Where("user_id = ?", user.ID).
 		Update("app_password_encrypted", mustEncrypt(t, "test-jwt-secret-0123456789abcdef0123456789abcdef", "wrong")).Error)
-	result2, err := TestWebDAVConnection(db, paperlessTestConfig(), user.ID)
+	result2, err := TestWebDAVConnection(context.Background(), db, paperlessTestConfig(), user.ID)
 	require.NoError(t, err)
 	require.NotNil(t, result2)
 	assert.False(t, result2.OK)
@@ -160,7 +161,7 @@ func TestWebDAVClient_RejectsUnexpectedStatus(t *testing.T) {
 
 	client, err := NewWebDAVClient(fake.URL(), "alice", "sekret", false)
 	require.NoError(t, err)
-	_, err = client.ListDir("/")
+	_, err = client.ListDir(context.Background(), "/")
 	assert.ErrorIs(t, err, ErrWebDAVRequestFailed)
 }
 
@@ -189,7 +190,7 @@ func TestWebDAVClient_RejectsUnsafePaths(t *testing.T) {
 		{name: "control character", path: "/a\x00b"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := client.ListDir(tc.path)
+			_, err := client.ListDir(context.Background(), tc.path)
 			assert.ErrorIs(t, err, ErrWebDAVInvalidURL)
 		})
 	}
@@ -208,7 +209,7 @@ func TestWebDAVClient_ListDir_EncodesLegitPaths(t *testing.T) {
 	client, err := NewWebDAVClient(fake.URL(), "alice", "sekret", false)
 	require.NoError(t, err)
 
-	items, err := client.ListDir("/My Documents")
+	items, err := client.ListDir(context.Background(), "/My Documents")
 	require.NoError(t, err)
 	require.Len(t, items, 1)
 	assert.Equal(t, "readme.txt", items[0].Name)

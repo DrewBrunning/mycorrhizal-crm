@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"os"
@@ -154,7 +155,7 @@ func recordPreMigrationBackupEvent(dbPath string, from, to uint, path string) {
 	}
 	defer sqlDB.Close()
 	now := time.Now().UTC()
-	_, err = sqlDB.Exec(
+	_, err = sqlDB.ExecContext(context.Background(),
 		`INSERT INTO system_events (created_at, occurred_at, event_type, severity, component, operation, result, detail)
 		 VALUES (?, ?, 'backup_completed', 'info', 'migration', 'pre_migration_backup', 'success', ?)`,
 		now, now, fmt.Sprintf("from_version=%d to_version=%d path=%s", from, to, logger.SanitizeLogField(path)),

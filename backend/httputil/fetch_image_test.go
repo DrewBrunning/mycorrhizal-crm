@@ -1,6 +1,7 @@
 package httputil
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -33,7 +34,7 @@ func TestFetchImageWithClient_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	data, contentType, err := fetchImageWithClient(server.URL+"/photo.png", plainTestClient())
+	data, contentType, err := fetchImageWithClient(context.Background(), server.URL+"/photo.png", plainTestClient())
 	require.NoError(t, err)
 	assert.Equal(t, []byte{0x89, 'P', 'N', 'G'}, data)
 	assert.Equal(t, "image/png", contentType)
@@ -49,7 +50,7 @@ func TestFetchImageWithClient_Non200Status(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, _, err := fetchImageWithClient(server.URL+"/missing.jpg", plainTestClient())
+	_, _, err := fetchImageWithClient(context.Background(), server.URL+"/missing.jpg", plainTestClient())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "remote server returned 404 Not Found")
 }
@@ -63,7 +64,7 @@ func TestFetchImageWithClient_NonImageContentType(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, _, err := fetchImageWithClient(server.URL+"/page.html", plainTestClient())
+	_, _, err := fetchImageWithClient(context.Background(), server.URL+"/page.html", plainTestClient())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "URL does not point to an image")
 }
@@ -79,7 +80,7 @@ func TestFetchImageWithClient_ContentTypePrefixOnly(t *testing.T) {
 	}))
 	defer server.Close()
 
-	data, contentType, err := fetchImageWithClient(server.URL+"/p.jpg", plainTestClient())
+	data, contentType, err := fetchImageWithClient(context.Background(), server.URL+"/p.jpg", plainTestClient())
 	require.NoError(t, err)
 	assert.Equal(t, []byte{0xff, 0xd8}, data)
 	assert.Equal(t, "image/jpeg; charset=binary", contentType)
@@ -94,7 +95,7 @@ func TestFetchImageWithClient_TooLarge(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, _, err := fetchImageWithClient(server.URL+"/big.png", plainTestClient())
+	_, _, err := fetchImageWithClient(context.Background(), server.URL+"/big.png", plainTestClient())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "image is too large")
 }
@@ -108,7 +109,7 @@ func TestFetchImageWithClient_ExactlyAtLimitIsAccepted(t *testing.T) {
 	}))
 	defer server.Close()
 
-	data, _, err := fetchImageWithClient(server.URL+"/max.png", plainTestClient())
+	data, _, err := fetchImageWithClient(context.Background(), server.URL+"/max.png", plainTestClient())
 	require.NoError(t, err)
 	assert.Len(t, data, maxImageSize, "a body exactly at the limit must be accepted")
 }
@@ -201,7 +202,7 @@ func TestFetchImageFromURL_StillRejectsLoopbackAfterRefactor(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, _, err := FetchImageFromURL(server.URL + "/photo.jpg")
+	_, _, err := FetchImageFromURL(context.Background(), server.URL+"/photo.jpg")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "internal hosts")
 }
@@ -211,7 +212,31 @@ func TestFetchImageFromURL_CleanedURLPassesToResponseContract(t *testing.T) {
 	// Not a real fetch: the URL fails SSRF validation, but the error must be
 	// the *cleaned* URL's error (loopback rejection), proving sanitization ran
 	// before validation on the full pipeline.
-	_, _, err := FetchImageFromURL("http://127.0.0.1/pho\r\nto.jpg")
+	_, _, err := FetchImageFromURL(context.Background(), "http://127.0.0.1/pho\r\nto.jpg")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "internal hosts")
+}
+
+// TestFetchImageWithClient_HonorsRequestContext proves the outbound request is
+// built with the caller's context, so a canceled request aborts instead of
+// running to the client timeout.
+func TestFetchImageWithClient_HonorsRequestContext(t *testing.T) {
+	t.Parallel()
+
+	started := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		close(started)
+		<-r.Context().Done()
+	}))
+	defer server.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		<-started
+		cancel()
+	}()
+
+	_, _, err := fetchImageWithClient(ctx, server.URL+"/slow.png", plainTestClient())
+	require.Error(t, err)
+	assert.ErrorIs(t, err, context.Canceled)
 }

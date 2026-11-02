@@ -1,6 +1,7 @@
 package schemafixture
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"os"
@@ -130,7 +131,7 @@ func openHistoricalSchema(path string, release Release) (*sql.DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("opening fixture database: %w", err) // # pragma: no cover — a driver already registered cannot fail to open a file DSN
 	}
-	if _, err := conn.Exec(string(dump)); err != nil {
+	if _, err := conn.ExecContext(context.Background(), string(dump)); err != nil {
 		_ = conn.Close()
 		return nil, fmt.Errorf("applying %s schema dump: %w", release.Tag, err) // # pragma: no cover — committed dumps are generated to apply cleanly
 	}
