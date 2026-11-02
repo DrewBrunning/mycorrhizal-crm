@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.ActivityRepository
 import com.mycorrhizal.crm.model.network.Activity
+import com.mycorrhizal.crm.model.network.ActivityImage
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
@@ -22,6 +23,8 @@ import kotlinx.coroutines.launch
 data class ActivitiesUiState(
     val contactId: Int = 0,
     val activities: List<Activity> = emptyList(),
+    /** ADR 0040: each row's image thumbnails, loaded after the page lands. */
+    val imagesByActivity: Map<Int, List<ActivityImage>> = emptyMap(),
     /** M19: T17 cursor-pagination state — null/empty means no more pages. */
     val nextCursor: String? = null,
     val searchQuery: String = "",
@@ -110,6 +113,7 @@ class ActivitiesViewModel @Inject constructor(
                             nextCursor = page.nextCursor
                         )
                     }
+                    viewModelScope.launch { loadImagesFor(page.activities) }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error) }
@@ -139,11 +143,28 @@ class ActivitiesViewModel @Inject constructor(
                             nextCursor = page.nextCursor
                         )
                     }
+                    viewModelScope.launch { loadImagesFor(page.activities) }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoadingMore = false, error = error) }
                 }
             )
+        }
+    }
+
+    private suspend fun loadImagesFor(activities: List<Activity>) {
+        if (activities.isEmpty()) return
+        val loaded = buildMap {
+            for (activity in activities) {
+                // A failed thumbnail fetch must not fail the list; the row just
+                // renders without images (and keeps working in older tests).
+                runCatching { activityRepository.listImages(activity.id) }
+                    .getOrNull()
+                    ?.onSuccess { put(activity.id, it) }
+            }
+        }
+        if (loaded.isNotEmpty()) {
+            _uiState.update { it.copy(imagesByActivity = it.imagesByActivity + loaded) }
         }
     }
 
