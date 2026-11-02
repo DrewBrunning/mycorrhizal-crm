@@ -89,7 +89,10 @@ issue per workflow on a failed `schedule` run and closes it on the next green on
 `workflow_run.workflows` list must equal the set of workflows with a `schedule:` trigger —
 `go run ./cmd/nightlyalertcheck` (docs-citations job) fails otherwise. Adding a scheduled workflow
 therefore means registering it in both `nightly-failure-alert.yml` and
-`nightly-failure-reconcile.yml`'s `workflow_file` matrix.
+`nightly-failure-reconcile.yml`'s `workflow_file` matrix. Agent-eval runs are
+scheduled off-peak: DeepSeek bills 01:00–04:00 and 06:00–10:00 UTC Monday–Friday
+at the peak rate, and both eval workflows run `.github/scripts/deepseek-offpeak.sh`
+before invoking the model.
 
 ## Workflow-specific notes
 

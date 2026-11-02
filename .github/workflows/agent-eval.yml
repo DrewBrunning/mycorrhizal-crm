@@ -10,9 +10,18 @@ name: Agent evaluation (dispatch only)
 # the agent executes code and receives a model credential. If a schedule: is
 # ever added, it must run the trusted main tree only and be registered in
 # cmd/nightlyalertcheck.
+#
+# DeepSeek bills 01:00-04:00 and 06:00-10:00 UTC Monday-Friday at the peak
+# rate; all weekend is off-peak at half price. A dispatch that would run into
+# a peak window stops before the agent is invoked unless allow_peak is set.
 on:
   workflow_dispatch:
     inputs:
+      allow_peak:
+        description: Accept possible DeepSeek peak billing (the run may extend into a peak window)
+        type: boolean
+        required: false
+        default: false
       mode:
         description: task (produce a change) or select (score skill routing)
         type: choice
@@ -96,6 +105,36 @@ jobs:
           # not contain it.
           fetch-depth: 0
           persist-credentials: false
+
+      # A dry-run profile costs nothing, so the window guard only applies to a
+      # real agent configuration.
+      - name: Enforce DeepSeek off-peak billing window
+        id: offpeak
+        if: ${{ inputs.profile != '' || inputs.agent_name != 'dry-run' || inputs.agent_command != 'true' }}
+        env:
+          ALLOW_PEAK: ${{ inputs.allow_peak }}
+        run: |
+          set -euo pipefail
+          args=(--margin-minutes 90)
+          if [ "$ALLOW_PEAK" = "true" ]; then
+            args+=(--allow-peak)
+          fi
+          bash .github/scripts/deepseek-offpeak.sh "${args[@]}"
+
+      # The job is continue-on-error, so a guard refusal would otherwise look
+      # like a completed run with no artifact. Make the refusal explicit.
+      - name: Report a refused eval
+        if: ${{ always() && steps.offpeak.outcome == 'failure' }}
+        run: |
+          set -euo pipefail
+          echo "::error::Agent eval did not run: the DeepSeek off-peak guard refused this dispatch."
+          {
+            echo "## Agent eval refused (off-peak guard)"
+            echo
+            echo "No agent was invoked and no model tokens were spent. The dispatch would have started or run into DeepSeek peak billing hours (01:00-04:00 or 06:00-10:00 UTC, Mon-Fri)."
+            echo
+            echo "Re-dispatch off-peak, or set \`allow_peak: true\` to accept possible peak-rate billing."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
