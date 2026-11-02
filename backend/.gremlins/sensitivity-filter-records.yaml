@@ -55,6 +55,7 @@ unleash:
         - ^gift_shopping\.go$
         - ^household\.go$
         - ^idempotency_key\.go$
+        - ^image\.go$
         - ^immich_config\.go$
         - ^import\.go$
         - ^import_run\.go$

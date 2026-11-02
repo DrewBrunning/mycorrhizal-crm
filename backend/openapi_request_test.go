@@ -293,6 +293,7 @@ var noBodyMutatingRoutes = map[string]bool{
 	"POST /relationship-edges/suggest":                  true,
 	"PATCH /relationship-edges/{id}/accept":             true,
 	"POST /contacts/{id}/attachments":                   true,
+	"POST /activities/{id}/images":                      true, // multipart upload, own body cap
 	"POST /contacts/{id}/profile_picture":               true,
 	"POST /households/{id}/suggest-relationships":       true,
 	"POST /households/suggest-addresses":                true,

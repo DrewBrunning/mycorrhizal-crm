@@ -380,11 +380,28 @@ func ListTrash(db *gorm.DB, userID uint, offset, limit int) ([]TrashEntry, int64
 type PurgedFiles struct {
 	Photos      []string
 	Attachments []string
+	Images      []ImageFile
+}
+
+// ImageFile names one gallery file and the user directory it lives under.
+type ImageFile struct {
+	UserID uint
+	Name   string
 }
 
 func (f *PurgedFiles) merge(o PurgedFiles) {
 	f.Photos = append(f.Photos, o.Photos...)
 	f.Attachments = append(f.Attachments, o.Attachments...)
+	f.Images = append(f.Images, o.Images...)
+}
+
+func appendImageFiles(dst []ImageFile, userID uint, names ...string) []ImageFile {
+	for _, name := range names {
+		if name != "" {
+			dst = append(dst, ImageFile{UserID: userID, Name: name})
+		}
+	}
+	return dst
 }
 
 // purgeContactInTx hard-deletes one trashed contact, its batch-soft-deleted

@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"mycorrhizal/attachments"
+	"mycorrhizal/imaging"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
 
@@ -92,6 +93,12 @@ func deleteUserCascade(tx *gorm.DB, userID uint) error {
 
 	// Delete activity_contacts associations (many-to-many)
 	if err := tx.Exec("DELETE FROM activity_contacts WHERE activity_id IN (SELECT id FROM activities WHERE user_id = ?)", userID).Error; err != nil {
+		return err
+	}
+
+	// Delete activity images (hard — account gone, no tombstoning needed;
+	// ADR 0040). Files are removed by the caller after this transaction commits.
+	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.ActivityImage{}).Error; err != nil {
 		return err
 	}
 
@@ -375,6 +382,22 @@ func deleteUserCascade(tx *gorm.DB, userID uint) error {
 	}
 
 	return nil
+}
+
+// deleteUserImageFiles removes gallery image files owned by a deleted user.
+// storedNames were captured before the transaction deleted the rows.
+func deleteUserImageFiles(c *gin.Context, userID uint, storedNames []string) {
+	dir := currentConfig(c).ImagesDir
+	if dir == "" || len(storedNames) == 0 {
+		return
+	}
+	store := imaging.Store{Dir: dir}
+	log := logger.FromContext(c)
+	for _, name := range storedNames {
+		if err := store.Remove(userID, name); err != nil {
+			log.Warn().Err(err).Str("stored_name", name).Msg("Failed to delete user image file")
+		}
+	}
 }
 
 // deleteUserAttachmentFiles removes attachment files owned by a deleted user

@@ -473,6 +473,14 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.GET("/activities/:id", controllers.GetActivity)
 			protected.PUT("/activities/:id", middleware.ValidateJSONMiddleware(&models.ActivityInput{}), controllers.UpdateActivity)
 			protected.DELETE("/activities/:id", controllers.DeleteActivity)
+			// Activity images (ADR 0040 slice a, issue #1994). Upload carries its
+			// own body cap; the other routes are JSON/metadata sized. Every route
+			// resolves the activity by user_id first, then the image by owner.
+			protected.POST("/activities/:id/images", middleware.BodySizeLimitMiddleware(controllers.ImageUploadBodyLimit(cfg)), controllers.UploadActivityImage)
+			protected.GET("/activities/:id/images", controllers.ListActivityImages)
+			protected.GET("/activities/:id/images/:image_id/file", func(c *gin.Context) { controllers.DownloadActivityImage(c, false) })
+			protected.GET("/activities/:id/images/:image_id/thumbnail", func(c *gin.Context) { controllers.DownloadActivityImage(c, true) })
+			protected.DELETE("/activities/:id/images/:image_id", controllers.DeleteActivityImage)
 
 			// Circle routes
 			protected.POST("/circles", middleware.ValidateJSONMiddleware(&models.CircleInput{}), controllers.CreateCircle)

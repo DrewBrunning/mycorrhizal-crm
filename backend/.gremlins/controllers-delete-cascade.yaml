@@ -48,6 +48,7 @@ unleash:
         - ^health_controller\.go$
         - ^helpers\.go$
         - ^household_controller\.go$
+        - ^image_controller\.go$
         - ^immich_controller\.go$
         - ^import_controller\.go$
         - ^integrity_controller\.go$

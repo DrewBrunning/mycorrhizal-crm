@@ -52,6 +52,7 @@ unleash:
         - ^hibp_service\.go$
         - ^household_service\.go$
         - ^idempotency_purge_service\.go$
+        - ^image_service\.go$
         - ^immich_client\.go$
         - ^immich_service\.go$
         - ^import_custom_field_mapping\.go$

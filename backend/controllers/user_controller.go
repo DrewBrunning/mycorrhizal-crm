@@ -1244,6 +1244,21 @@ func DeleteOwnAccount(c *gin.Context, cfg *config.Config) {
 		return
 	}
 
+	// Capture gallery image names too (ADR 0040); both variants live on disk.
+	var userImageNames []string
+	if err := db.Model(&models.ActivityImage{}).Where("user_id = ?", userID).Pluck("stored_name", &userImageNames).Error; err != nil {
+		log.Error().Err(err).Uint("user_id", userID).Msg("Failed to load image files for self-deletion")
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("load user images").WithError(err))
+		return
+	}
+	var userThumbNames []string
+	if err := db.Model(&models.ActivityImage{}).Where("user_id = ?", userID).Pluck("thumb_name", &userThumbNames).Error; err != nil {
+		log.Error().Err(err).Uint("user_id", userID).Msg("Failed to load image thumbnails for self-deletion")
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("load user image thumbnails").WithError(err))
+		return
+	}
+	userImageNames = append(userImageNames, userThumbNames...)
+
 	flushAuditBeforeUserDelete(db, userID)
 	err = db.Transaction(func(tx *gorm.DB) error {
 		if promoteUser != nil {
@@ -1262,6 +1277,7 @@ func DeleteOwnAccount(c *gin.Context, cfg *config.Config) {
 	// Remove the user's attachment files after the transaction committed
 	// (file deletion can't be rolled back) — mirrors DeleteUser.
 	deleteUserAttachmentFiles(c, userAttachmentNames)
+	deleteUserImageFiles(c, userID, userImageNames)
 
 	// Issue #972 decision 3: audit_events.user_id is NOT NULL with an
 	// ON DELETE CASCADE FK to users.id, and actor == target here, so no

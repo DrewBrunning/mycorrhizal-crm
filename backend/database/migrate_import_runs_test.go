@@ -61,6 +61,7 @@ func TestMigrationsAddImportRuns(t *testing.T) {
 	// Down drops the table. 000042 is no longer the migration tip — later
 	// migrations sit on top — so roll those back first, then 000042's own
 	// down migration.
+	require.NoError(t, MigrateDown(dbPath)) // rolls back 000086_activity_images
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000085_carddav_sync_scope
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000084_contact_field_overrides
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000083_activity_end_date

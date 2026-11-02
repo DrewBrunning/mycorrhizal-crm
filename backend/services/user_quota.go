@@ -70,7 +70,7 @@ func (q UserQuota) CheckRelationshipEdgeCreate(db *gorm.DB, userID uint) *apperr
 }
 
 // CheckAttachmentUpload refuses an upload of incomingBytes with a 507 when it
-// would push the user's summed live attachment bytes past
+// would push the user's summed live attachment and image bytes past
 // PerUserAttachmentQuotaMB. It is a preflight: the caller must run it before
 // writing the file to disk, so a refused upload leaves nothing behind.
 func (q UserQuota) CheckAttachmentUpload(db *gorm.DB, userID uint, incomingBytes int64) *apperrors.AppError {
@@ -88,6 +88,17 @@ func (q UserQuota) CheckAttachmentUpload(db *gorm.DB, userID uint, incomingBytes
 		Scan(&used).Error; err != nil {
 		return apperrors.ErrDatabase("Failed to check the attachment quota").WithError(err)
 	}
+	// Gallery images count against the same opt-in byte quota (ADR 0040
+	// decision 6); the setting keeps its attachment-centric name so an operator
+	// config does not break.
+	var imageBytes int64
+	if err := db.Model(&models.ActivityImage{}).
+		Where("user_id = ?", userID).
+		Select("COALESCE(SUM(size_bytes + thumb_size_bytes), 0)").
+		Scan(&imageBytes).Error; err != nil {
+		return apperrors.ErrDatabase("Failed to check the attachment quota").WithError(err)
+	}
+	used += imageBytes
 
 	if used > q.AttachmentBytes || incomingBytes > q.AttachmentBytes-used {
 		return apperrors.ErrInsufficientStorage(fmt.Sprintf(

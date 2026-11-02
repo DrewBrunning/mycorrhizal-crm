@@ -2,10 +2,14 @@ package services
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
 	"mycorrhizal/config"
+	"mycorrhizal/imaging"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
@@ -382,4 +386,56 @@ func TestPurgeDeletedRows_SecondRunIsRateLimitedByJobLock(t *testing.T) {
 
 	require.NoError(t, db.Unscoped().Model(&models.Contact{}).Where("id = ?", second.ID).Count(&count).Error)
 	assert.Equal(t, int64(1), count, "the job lock must rate-limit a second run within the interval")
+}
+
+func TestPurgeSoftDeletedRows_RemovesActivityImageRowsAndFiles(t *testing.T) {
+	db, userID := newPurgeDB(t)
+	dir := t.TempDir()
+	cfg := purgeConfig()
+	cfg.ImagesDir = dir
+	store := imaging.Store{Dir: dir}
+
+	activity := models.Activity{UserID: userID, Title: "old trip", Date: time.Now()}
+	require.NoError(t, db.Create(&activity).Error)
+	oldActivityID := activity.ID
+	full, thumb, err := store.Save(userID, []byte("full"), []byte("thumb"), "jpg", "jpg")
+	require.NoError(t, err)
+	img := models.ActivityImage{ImageFields: models.ImageFields{UserID: userID, UUID: "purge-activity-image", StoredName: full, ThumbName: thumb, MIMEType: "image/jpeg", ThumbMIMEType: "image/jpeg", Width: 1, Height: 1, SizeBytes: 4, ThumbSizeBytes: 5, Sensitivity: models.ImageSensitivityNormal}, ActivityID: oldActivityID}
+	require.NoError(t, db.Create(&img).Error)
+	softDeleteAt(t, db, &models.Activity{}, oldActivityID, time.Now().AddDate(0, 0, -60))
+
+	// A separately soft-deleted image on a live activity is also purged, with
+	// its own files.
+	liveActivity := models.Activity{UserID: userID, Title: "live trip", Date: time.Now()}
+	require.NoError(t, db.Create(&liveActivity).Error)
+	full2, thumb2, err := store.Save(userID, []byte("full2"), []byte("thumb2"), "jpg", "jpg")
+	require.NoError(t, err)
+	img2 := models.ActivityImage{ImageFields: models.ImageFields{UserID: userID, UUID: "purge-live-image", StoredName: full2, ThumbName: thumb2, MIMEType: "image/jpeg", ThumbMIMEType: "image/jpeg", Width: 1, Height: 1, SizeBytes: 5, ThumbSizeBytes: 6, Sensitivity: models.ImageSensitivityNormal}, ActivityID: liveActivity.ID}
+	require.NoError(t, db.Create(&img2).Error)
+	softDeleteAt(t, db, &models.ActivityImage{}, img2.ID, time.Now().AddDate(0, 0, -60))
+
+	require.NoError(t, PurgeSoftDeletedRows(db, cfg))
+
+	var count int64
+	require.NoError(t, db.Unscoped().Model(&models.ActivityImage{}).Where("id IN ?", []uint{img.ID, img2.ID}).Count(&count).Error)
+	assert.Zero(t, count)
+	for _, name := range []string{full, thumb, full2, thumb2} {
+		_, statErr := os.Stat(filepath.Join(dir, "u"+strconv.FormatUint(uint64(userID), 10), name))
+		assert.True(t, os.IsNotExist(statErr), "image file %q must be removed", name)
+	}
+}
+
+func TestRemovePurgedFiles_LogsImageRemoveFailureAndKeepsGoing(t *testing.T) {
+	assert.NotPanics(t, func() {
+		RemovePurgedFiles(config.Config{ImagesDir: t.TempDir()}, PurgedFiles{Images: []ImageFile{{UserID: 1, Name: "../escape.jpg"}}})
+	})
+}
+
+func TestCollectPurgeFiles_ImageQueryFailureYieldsNoFiles(t *testing.T) {
+	db, _ := newPurgeDB(t)
+	dbtest.HideTable(t, db, "activity_images")
+	assert.NotPanics(t, func() {
+		files := collectPurgeFiles(db, Now().AddDate(0, 0, -30))
+		assert.Empty(t, files.Images)
+	})
 }

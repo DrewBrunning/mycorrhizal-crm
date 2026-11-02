@@ -10,6 +10,7 @@ import (
 
 	"mycorrhizal/attachments"
 	"mycorrhizal/config"
+	"mycorrhizal/imaging"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
@@ -292,4 +293,80 @@ func TestDeleteUserAttachmentFiles_LogsRemoveFailureForExistingFile(t *testing.T
 
 	_, err = os.Stat(filepath.Join(dir, good))
 	assert.NoError(t, err, "the file must survive a failed remove")
+}
+
+// --- deleteUserImageFiles (unit) ---
+
+func deleteImageContextWithDir(dir string) *gin.Context {
+	gin.SetMode(gin.TestMode)
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest(http.MethodDelete, "/users/1", nil)
+	c.Set("cfg", config.Config{ImagesDir: dir})
+	return c
+}
+
+func TestDeleteUserImageFiles_EmptyDirOrNamesIsNoop(t *testing.T) {
+	assert.NotPanics(t, func() { deleteUserImageFiles(deleteImageContextWithDir(""), 1, []string{"x"}) })
+	assert.NotPanics(t, func() { deleteUserImageFiles(deleteImageContextWithDir(t.TempDir()), 1, nil) })
+}
+
+func TestDeleteUserImageFiles_RemovesBothVariantsAndSkipsBadNames(t *testing.T) {
+	dir := t.TempDir()
+	store := imaging.Store{Dir: dir}
+	full, thumb, err := store.Save(7, []byte("full"), []byte("thumb"), "jpg", "jpg")
+	require.NoError(t, err)
+
+	c := deleteImageContextWithDir(dir)
+	deleteUserImageFiles(c, 7, []string{full, thumb, "../escape.jpg", "missing.jpg"})
+
+	_, err = os.Stat(filepath.Join(dir, "u7", full))
+	assert.True(t, os.IsNotExist(err))
+	_, err = os.Stat(filepath.Join(dir, "u7", thumb))
+	assert.True(t, os.IsNotExist(err))
+}
+
+func TestDeleteUser_ImageCaptureFailuresAbort(t *testing.T) {
+	t.Run("stored_name query", func(t *testing.T) {
+		db := realDB(t)
+		dbtest.HideTable(t, db, "activity_images")
+		target := models.User{Username: "del-img-store", Email: "del-img-store@example.com", Password: "password123"}
+		require.NoError(t, db.Create(&target).Error)
+
+		gin.SetMode(gin.ReleaseMode)
+		router := gin.Default()
+		router.Use(func(c *gin.Context) {
+			c.Set("db", db)
+			c.Set("userID", uint(999999))
+			c.Set("cfg", config.Config{})
+			c.Next()
+		})
+		router.DELETE("/users/:id", DeleteUser)
+
+		req, _ := http.NewRequest("DELETE", "/users/"+strconv.Itoa(int(target.ID)), nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
+	})
+
+	t.Run("thumb_name query", func(t *testing.T) {
+		db := realDB(t)
+		require.NoError(t, db.Exec("ALTER TABLE activity_images DROP COLUMN thumb_name").Error)
+		target := models.User{Username: "del-img-thumb", Email: "del-img-thumb@example.com", Password: "password123"}
+		require.NoError(t, db.Create(&target).Error)
+
+		gin.SetMode(gin.ReleaseMode)
+		router := gin.Default()
+		router.Use(func(c *gin.Context) {
+			c.Set("db", db)
+			c.Set("userID", uint(999999))
+			c.Set("cfg", config.Config{})
+			c.Next()
+		})
+		router.DELETE("/users/:id", DeleteUser)
+
+		req, _ := http.NewRequest("DELETE", "/users/"+strconv.Itoa(int(target.ID)), nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
+	})
 }

@@ -99,16 +99,21 @@ type Config struct {
 	SMTPUseTLS                   bool     `cfgreg:"env=SMTP_USE_TLS;type=bool;default=false;required=false;restart=true;desc=Use implicit TLS (e.g. port 465) instead of STARTTLS"` // implicit TLS (e.g. port 465); otherwise STARTTLS is used when available
 	JWTSecretKey                 string   `cfgreg:"env=JWT_SECRET_KEY;type=string;range=>=32 bytes, not a known placeholder, sufficient entropy;default=;required=true;restart=true;desc=Secret key signing auth JWTs"`
 	JWTExpiryHours               int      `cfgreg:"env=JWT_EXPIRY_HOURS;type=int;range=1..8760;default=96;required=false;restart=true;desc=JWT absolute expiry, in hours"`
-	ReadTimeout                  int      `cfgreg:"env=HTTP_READ_TIMEOUT;type=int;range=1..300;default=15;required=false;restart=true;desc=HTTP server read timeout, in seconds"`                                                // HTTP server read timeout in seconds
-	WriteTimeout                 int      `cfgreg:"env=HTTP_WRITE_TIMEOUT;type=int;range=1..300;default=15;required=false;restart=true;desc=HTTP server write timeout, in seconds"`                                              // HTTP server write timeout in seconds
-	IdleTimeout                  int      `cfgreg:"env=HTTP_IDLE_TIMEOUT;type=int;range=1..300;default=60;required=false;restart=true;desc=HTTP server idle timeout, in seconds"`                                                // HTTP server idle timeout in seconds
-	ProfilePhotoDir              string   `cfgreg:"env=PROFILE_PHOTO_DIR;type=string;range=absolute path;default=;required=true;restart=true;desc=Directory storing profile photos"`                                             // Directory for storing profile photos (must be absolute path)
-	AttachmentsDir               string   `cfgreg:"env=ATTACHMENTS_DIR;type=string;range=absolute path;default=(PROFILE_PHOTO_DIR's parent)/attachments;required=false;restart=true;desc=Directory storing contact attachments"` // Directory for storing contact attachments (N7; alongside the photo dir, must be absolute path)
-	CardDAVEnabled               bool     `cfgreg:"env=CARDDAV_ENABLED;type=bool;default=false;required=false;restart=true;desc=Enable the CardDAV contact-sync server"`                                                         // Enable CardDAV server for contact sync
-	CalDAVEnabled                bool     `cfgreg:"env=CALDAV_ENABLED;type=bool;default=false;required=false;restart=true;desc=Enable the CalDAV interaction/life-event sync server"`                                            // Enable CalDAV server for Interaction/LifeEvent sync (T12b)
-	CalDAVTwoWayEnabled          bool     `cfgreg:"env=CALDAV_TWO_WAY_ENABLED;type=bool;default=false;required=false;restart=true;desc=Allow calendar sync to push local edits back out"`                                        // Allow calendar sync to push local edits back out (T13)
-	CookieSecure                 bool     `cfgreg:"env=COOKIE_SECURE;type=bool;default=false;required=false;restart=true;desc=Set Secure flag on the auth cookie (requires HTTPS)"`                                              // Set Secure flag on auth cookie (requires HTTPS)
-	CookieDomain                 string   `cfgreg:"env=COOKIE_DOMAIN;type=string;range=hostname, optionally dot-prefixed;default=;required=false;restart=true;desc=Domain for the auth cookie"`                                  // Domain for auth cookie (empty = current domain only)
+	ReadTimeout                  int      `cfgreg:"env=HTTP_READ_TIMEOUT;type=int;range=1..300;default=15;required=false;restart=true;desc=HTTP server read timeout, in seconds"`                                                      // HTTP server read timeout in seconds
+	WriteTimeout                 int      `cfgreg:"env=HTTP_WRITE_TIMEOUT;type=int;range=1..300;default=15;required=false;restart=true;desc=HTTP server write timeout, in seconds"`                                                    // HTTP server write timeout in seconds
+	IdleTimeout                  int      `cfgreg:"env=HTTP_IDLE_TIMEOUT;type=int;range=1..300;default=60;required=false;restart=true;desc=HTTP server idle timeout, in seconds"`                                                      // HTTP server idle timeout in seconds
+	ProfilePhotoDir              string   `cfgreg:"env=PROFILE_PHOTO_DIR;type=string;range=absolute path;default=;required=true;restart=true;desc=Directory storing profile photos"`                                                   // Directory for storing profile photos (must be absolute path)
+	AttachmentsDir               string   `cfgreg:"env=ATTACHMENTS_DIR;type=string;range=absolute path;default=(PROFILE_PHOTO_DIR's parent)/attachments;required=false;restart=true;desc=Directory storing contact attachments"`       // Directory for storing contact attachments (N7; alongside the photo dir, must be absolute path)
+	ImagesDir                    string   `cfgreg:"env=IMAGES_DIR;type=string;range=absolute path;default=(PROFILE_PHOTO_DIR's parent)/images;required=false;restart=true;desc=Directory storing gallery images and their thumbnails"` // Directory for storing gallery images (ADR 0040; alongside the photo dir, must be absolute path)
+	ImageMaxUploadMB             int      `cfgreg:"env=IMAGE_MAX_UPLOAD_MB;type=int;range=>=1, invalid value refuses to boot;default=20;required=false;restart=true;desc=Maximum size of one uploaded gallery image, in MiB (0 = default 20)"`
+	ImageMaxPixels               int      `cfgreg:"env=IMAGE_MAX_PIXELS;type=int;range=>=1, invalid value refuses to boot;default=50000000;required=false;restart=true;desc=Maximum decoded pixel count of one gallery image, 0 uses the default 50,000,000 (decompression-bomb guard)"`
+	ImageMaxPerActivity          int      `cfgreg:"env=IMAGE_MAX_PER_ACTIVITY;type=int;range=>=0, 0 disables the cap;default=10;required=false;restart=true;desc=Maximum live images on one activity (0 = unlimited)"`
+	ImageProcessConcurrency      int      `cfgreg:"env=IMAGE_PROCESS_CONCURRENCY;type=int;range=>=0, 0 uses the default;default=0;required=false;restart=true;desc=Maximum concurrent image decode/encode operations (0 = min(2, GOMAXPROCS))"`
+	CardDAVEnabled               bool     `cfgreg:"env=CARDDAV_ENABLED;type=bool;default=false;required=false;restart=true;desc=Enable the CardDAV contact-sync server"`                        // Enable CardDAV server for contact sync
+	CalDAVEnabled                bool     `cfgreg:"env=CALDAV_ENABLED;type=bool;default=false;required=false;restart=true;desc=Enable the CalDAV interaction/life-event sync server"`           // Enable CalDAV server for Interaction/LifeEvent sync (T12b)
+	CalDAVTwoWayEnabled          bool     `cfgreg:"env=CALDAV_TWO_WAY_ENABLED;type=bool;default=false;required=false;restart=true;desc=Allow calendar sync to push local edits back out"`       // Allow calendar sync to push local edits back out (T13)
+	CookieSecure                 bool     `cfgreg:"env=COOKIE_SECURE;type=bool;default=false;required=false;restart=true;desc=Set Secure flag on the auth cookie (requires HTTPS)"`             // Set Secure flag on auth cookie (requires HTTPS)
+	CookieDomain                 string   `cfgreg:"env=COOKIE_DOMAIN;type=string;range=hostname, optionally dot-prefixed;default=;required=false;restart=true;desc=Domain for the auth cookie"` // Domain for auth cookie (empty = current domain only)
 	RegistrationDisabled         bool     `cfgreg:"env=DISABLE_REGISTRATION;type=bool;default=false;required=false;restart=true;desc=Disable new user registration"`
 	WebhookBlockPrivateURLs      bool     `cfgreg:"env=WEBHOOK_BLOCK_PRIVATE_URLS;type=bool;default=false;required=false;restart=true;desc=Block webhook deliveries to private/loopback addresses"`
 	CalDAVSyncIntervalHours      int      `cfgreg:"env=CALDAV_SYNC_INTERVAL_HOURS;type=int;range=>=1, invalid value refuses to boot;default=6;required=false;restart=true;desc=Interval for the scheduled calendar sync job, in hours"`
@@ -483,6 +488,9 @@ func baseConfig() *Config {
 		AuthSprayIdentifierThreshold:  15,
 		AuthSprayThrottleSeconds:      300,
 		ImmichSyncIntervalHours:       6,
+		ImageMaxUploadMB:              20,
+		ImageMaxPixels:                50_000_000,
+		ImageMaxPerActivity:           10,
 		MapTileStyleURL:               DefaultMapTileStyleURL,
 		GeocoderProvider:              GeocoderProviderNone,
 		DBIntegrityCheckEnabled:       true,
@@ -637,6 +645,11 @@ func LoadConfig() *Config {
 	cfg.IdleTimeout = idleTimeout
 	cfg.ProfilePhotoDir = getEnv("PROFILE_PHOTO_DIR", cfg.ProfilePhotoDir)
 	cfg.AttachmentsDir = getEnv("ATTACHMENTS_DIR", filepath.Join(filepath.Dir(getEnv("PROFILE_PHOTO_DIR", "")), "attachments"))
+	cfg.ImagesDir = getEnv("IMAGES_DIR", filepath.Join(filepath.Dir(getEnv("PROFILE_PHOTO_DIR", "")), "images"))
+	cfg.ImageMaxUploadMB = checkedInt("IMAGE_MAX_UPLOAD_MB", cfg.ImageMaxUploadMB)
+	cfg.ImageMaxPixels = checkedInt("IMAGE_MAX_PIXELS", cfg.ImageMaxPixels)
+	cfg.ImageMaxPerActivity = checkedInt("IMAGE_MAX_PER_ACTIVITY", cfg.ImageMaxPerActivity)
+	cfg.ImageProcessConcurrency = checkedInt("IMAGE_PROCESS_CONCURRENCY", cfg.ImageProcessConcurrency)
 	cfg.CardDAVEnabled = getBoolEnv("CARDDAV_ENABLED", cfg.CardDAVEnabled)
 	cfg.CalDAVEnabled = getBoolEnv("CALDAV_ENABLED", cfg.CalDAVEnabled)
 	cfg.CalDAVTwoWayEnabled = getBoolEnv("CALDAV_TWO_WAY_ENABLED", cfg.CalDAVTwoWayEnabled)
@@ -1138,6 +1151,15 @@ func (c *Config) Validate() []ValidationError {
 		})
 	}
 
+	// Validate the gallery image directory the same way as attachments: it is
+	// derived from the photo dir's parent by default, so it must be absolute.
+	if c.ImagesDir != "" && !filepath.IsAbs(c.ImagesDir) {
+		errors = append(errors, ValidationError{
+			Field:   "IMAGES_DIR",
+			Message: fmt.Sprintf("Images directory '%s' must be an absolute path for security.", c.ImagesDir),
+		})
+	}
+
 	// Validate Port
 	if c.Port == "" {
 		errors = append(errors, ValidationError{
@@ -1550,6 +1572,10 @@ func (c *Config) Validate() []ValidationError {
 	intRange("PER_USER_NOTE_LIMIT", c.PerUserNoteLimit, 0, -1, "0 (unlimited) or positive")
 	intRange("PER_USER_RELATIONSHIP_EDGE_LIMIT", c.PerUserRelationshipEdgeLimit, 0, -1, "0 (unlimited) or positive")
 	intRange("PER_USER_ATTACHMENT_QUOTA_MB", c.PerUserAttachmentQuotaMB, 0, -1, "0 (unlimited) or positive")
+	intRange("IMAGE_MAX_UPLOAD_MB", c.ImageMaxUploadMB, 0, -1, "0 (default) or positive")
+	intRange("IMAGE_MAX_PIXELS", c.ImageMaxPixels, 0, -1, "0 (default) or positive")
+	intRange("IMAGE_MAX_PER_ACTIVITY", c.ImageMaxPerActivity, 0, -1, "0 (unlimited) or positive")
+	intRange("IMAGE_PROCESS_CONCURRENCY", c.ImageProcessConcurrency, 0, -1, "0 (default) or positive")
 
 	// STORAGE_CRITICAL_PERCENT is checked against STORAGE_WARN_PERCENT's own
 	// (already-validated-above) value, not a fixed floor, so it doesn't fit

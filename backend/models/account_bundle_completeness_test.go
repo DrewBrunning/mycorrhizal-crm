@@ -52,6 +52,7 @@ var bundleCovered = map[string]string{
 // bundleExcluded maps a user-scoped model deliberately outside the bundle to
 // the reason. Each entry is a decision, not an oversight.
 var bundleExcluded = map[string]string{
+	"ActivityImage":                 "ADR 0040 slice (a): image bytes are not yet carried in the account bundle; the images section follows with the note/gallery slices",
 	"AlertState":                    "global operational alert bookkeeping, not user-authored contact data",
 	"ApiToken":                      "credential material; never exported",
 	"AuditEvent":                    "tamper-evident audit log; has its own export endpoint",

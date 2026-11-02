@@ -431,11 +431,16 @@ func buildTable(s seeded) map[string]authzRow {
 		"DELETE /api/v1/notes/:id": {class: classItem, probe: "/api/v1/notes/" + s.note},
 
 		// --- activities -----------------------------------------------------
-		"POST /api/v1/activities":       {class: classProtected},
-		"GET /api/v1/activities":        {class: classProtected},
-		"GET /api/v1/activities/:id":    {class: classItem, probe: "/api/v1/activities/" + s.activity},
-		"PUT /api/v1/activities/:id":    {class: classItem, probe: "/api/v1/activities/" + s.activity},
-		"DELETE /api/v1/activities/:id": {class: classItem, probe: "/api/v1/activities/" + s.activity},
+		"POST /api/v1/activities":                               {class: classProtected},
+		"GET /api/v1/activities":                                {class: classProtected},
+		"GET /api/v1/activities/:id":                            {class: classItem, probe: "/api/v1/activities/" + s.activity},
+		"PUT /api/v1/activities/:id":                            {class: classItem, probe: "/api/v1/activities/" + s.activity},
+		"DELETE /api/v1/activities/:id":                         {class: classItem, probe: "/api/v1/activities/" + s.activity},
+		"GET /api/v1/activities/:id/images":                     {class: classItem, probe: "/api/v1/activities/" + s.activity + "/images"},
+		"POST /api/v1/activities/:id/images":                    {class: classItem, probe: "/api/v1/activities/" + s.activity + "/images"},
+		"GET /api/v1/activities/:id/images/:image_id/file":      {class: classItem, probe: "/api/v1/activities/" + s.activity + "/images/" + fabricatedNum + "/file"},
+		"GET /api/v1/activities/:id/images/:image_id/thumbnail": {class: classItem, probe: "/api/v1/activities/" + s.activity + "/images/" + fabricatedNum + "/thumbnail"},
+		"DELETE /api/v1/activities/:id/images/:image_id":        {class: classItem, probe: "/api/v1/activities/" + s.activity + "/images/" + fabricatedNum},
 
 		// --- circles --------------------------------------------------------
 		"POST /api/v1/circles":                          {class: classProtected},

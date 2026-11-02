@@ -31,7 +31,7 @@ doc; a handful of genuine gaps are called out explicitly in [Known gaps](#known-
 `ConversationAgenda`, `Gift`, `OccasionObligation`, `OccasionEvent`, `LinkFieldType`,
 `CalendarSubscription`/`ContactSubscription`,
 `ImmichConfig`/`PaperlessConfig`/`GeoPulseConfig`/`SeafileConfig`/`WebDAVConfig`, `Webhook`, `ReminderCompletion`,
-`Attachment` (metadata row only — see [§5](#5-attachments--profile-photos-files-on-disk)).
+`Attachment` (metadata row only), `ActivityImage` (metadata row; bytes in §5) — see [§5](#5-attachments--profile-photos-files-on-disk).
 
 - **Where / who**: `mycorrhizal.db`, scoped by `user_id` in every query (backend/AGENTS.md trap #5). Reachable
   only via the authenticated owner's API session.
@@ -299,8 +299,14 @@ Session/JWT cookies, TOTP recovery codes, WebAuthn passkey credentials, password
 
 ## 5. Attachments & profile photos (files on disk)
 
-- **Where / who**: `PROFILE_PHOTO_DIR` / `ATTACHMENTS_DIR` on the host filesystem, one file per
-  attachment/photo, filenames server-generated (never user-controlled — path-traversal-safe).
+- **Where / who**: `PROFILE_PHOTO_DIR` / `ATTACHMENTS_DIR` / `IMAGES_DIR` on the host filesystem, one
+  file per attachment/photo/image, filenames server-generated (never user-controlled — path-traversal-safe).
+- **Activity images (ADR 0040, issue #1994)**: `activity_images` metadata rows soft-delete with the
+  activity; deleting an image row removes both variants (full + thumbnail) immediately after the
+  transaction commits. Files belonging to a soft-deleted activity stay until that activity is purged,
+  so the trash/undo window remains restorable. The scheduled purge hard-deletes the rows and then the
+  files. Stored bytes are a metadata-free JPEG/PNG re-encode (no GPS, serial number or camera
+  thumbnail), not the camera original.
 - **Retention**: the metadata row (`Attachment`) follows §1's soft-delete/purge window. An attachment
   deleted on its own (`DeleteAttachment`) has its file removed immediately (N7: "an attachment's
   content IS the file; a tombstone that outlives a vanished file is acceptable for the change feed, an

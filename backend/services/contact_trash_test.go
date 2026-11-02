@@ -382,3 +382,11 @@ func TestListTrash_SurfacesQueryFailure(t *testing.T) {
 	_, _, err := ListTrash(db, userID, 0, 10)
 	assert.Error(t, err)
 }
+
+func TestPurgedFiles_MergeCarriesImageFiles(t *testing.T) {
+	var files PurgedFiles
+	files.merge(PurgedFiles{Images: []ImageFile{{UserID: 1, Name: "a.jpg"}}})
+	files.Images = appendImageFiles(files.Images, 2, "b.jpg", "", "b_t.jpg")
+	require.Len(t, files.Images, 3)
+	assert.Equal(t, ImageFile{UserID: 2, Name: "b_t.jpg"}, files.Images[2])
+}

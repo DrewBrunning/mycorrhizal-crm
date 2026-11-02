@@ -27,6 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { Link as RouterLink } from 'react-router';
 import { type Activity, createActivity, deleteActivity, updateActivity } from './api/activities';
 import { type Contact, getAllContacts } from './api/contacts';
+import ActivityImageGallery from './components/ActivityImageGallery';
 import AddActivityDialog from './components/AddActivityDialog';
 import DateField from './components/DateField';
 import EditTimelineItemDialog from './components/EditTimelineItemDialog';
@@ -138,12 +139,13 @@ const ActivitiesPage: React.FC = () => {
     contact_ids: number[];
   }) => {
     try {
-      await createActivity({
+      const created = await createActivity({
         ...activity,
         ...activityWireDates(activity),
       });
       setAddDialogOpen(false);
       void refetch();
+      return created;
     } catch (err) {
       console.error('Failed to create activity:', err);
       throw err;
@@ -432,6 +434,11 @@ const ActivitiesPage: React.FC = () => {
                             📍 {activity.location}
                           </Typography>
                         )}
+                        <ActivityImageGallery
+                          activityId={activity.ID}
+                          editable
+                          onChanged={() => void refetch()}
+                        />
                       </Box>
                       <Box
                         className="edit-actions"

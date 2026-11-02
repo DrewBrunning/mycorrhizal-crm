@@ -50,6 +50,9 @@ function mockFetchRoutes(
       pattern: '/geopulse/config',
       handler: { body: { base_url: 'https://gp.example', has_api_key: true } },
     },
+    // Activity image galleries are loaded per activity; the list fixture has
+    // none, so every gallery resolves to an empty array.
+    { pattern: '/images', handler: { body: { images: [], total: 0 } } },
   ];
   const calls: Call[] = [];
   const callCounts = new Map<string, number>();
@@ -234,7 +237,9 @@ test('Load more appends the next cursor page without dropping the first page', a
   // Both pages are visible -- loadMore appends rather than replaces.
   expect(screen.getByText('First')).toBeDefined();
 
-  const loadMoreCall = calls.filter((c) => c.method === 'GET').at(-1);
+  const loadMoreCall = calls
+    .filter((c) => c.method === 'GET' && c.url.includes('/activities?'))
+    .at(-1);
   expect(loadMoreCall?.url).toContain('cursor=cursor-abc');
 
   // The button disappears once next_cursor comes back empty.
