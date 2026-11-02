@@ -45,6 +45,8 @@ const (
 	ReasonCommonTestOnly ReasonCode = "common_test_only"
 
 	ReasonCircleColorInvalid         ReasonCode = "circle_color_invalid"
+	ReasonCircleSyncScopeOutOfScope  ReasonCode = "circle_sync_scope_out_of_scope"
+	ReasonCircleSyncScopeNoDefault   ReasonCode = "circle_sync_scope_no_default"
 	ReasonImportCirclesNotFound      ReasonCode = "import_circles_not_found"
 	ReasonImportTagsNotFound         ReasonCode = "import_tags_not_found"
 	ReasonValidationCursorMalformed  ReasonCode = "validation_cursor_malformed"
@@ -502,6 +504,8 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonCommonTestOnly: {Template: "Test {n}", Params: []string{"n"}},
 
 	ReasonCircleColorInvalid:         {Template: "The colour must be one of the palette colours"},
+	ReasonCircleSyncScopeOutOfScope:  {Template: "The contact is outside this device's CardDAV sync scope"},
+	ReasonCircleSyncScopeNoDefault:   {Template: "No default circle is configured for the CardDAV sync scope"},
 	ReasonImportCirclesNotFound:      {Template: "One or more circles were not found"},
 	ReasonImportTagsNotFound:         {Template: "One or more tags were not found"},
 	ReasonValidationCursorMalformed:  {Template: "The cursor id is malformed"},

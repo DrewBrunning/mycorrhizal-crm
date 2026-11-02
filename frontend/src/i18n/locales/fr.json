@@ -134,6 +134,9 @@
     "noCircles": "Aucun cercle pour l'instant. Les cercles regroupent des personnes que vous suivez ensemble — ajoutez-en un ci-dessous ou depuis la page d'un contact.",
     "noTags": "Aucune étiquette pour l'instant. Les étiquettes sont des libellés libres pour des thèmes transversaux — ajoutez-en une ci-dessous ou depuis la page d'un contact.",
     "deleteCircleConfirm": "Supprimer le cercle « {{name}} » ? Il sera retiré de chaque contact qui l'a.",
+    "deleteCircleScopeDefault": "Ce cercle est votre cercle par défaut pour les contacts créés sur un téléphone ; cette valeur par défaut sera effacée.",
+    "deleteCircleScopeInclude": "Ce cercle fait partie de votre portée de synchronisation CardDAV ; le supprimer retirera ses contacts de vos appareils.",
+    "deleteCircleScopeExclude": "Ce cercle est exclu de votre portée de synchronisation CardDAV ; le supprimer fera synchroniser ses contacts avec vos appareils.",
     "deleteTagConfirm": "Supprimer l'étiquette « {{name}} » ? Elle sera retirée de chaque contact qui l'a.",
     "circleCreated": "Cercle créé",
     "circleRenamed": "Cercle renommé",
@@ -3635,6 +3638,33 @@
     "error": "Impossible de mettre à jour la politique de mot de passe CardDAV/CalDAV.",
     "loadError": "Impossible de charger la politique de mot de passe CardDAV/CalDAV."
   },
+  "carddavSyncScope": {
+    "title": "Portée de synchronisation CardDAV",
+    "description": "Choisissez les contacts servis par l’unique carnet d’adresses CardDAV. « Tous les contacts » est la valeur par défaut et se comporte exactement comme avant. Cela ne concerne que les clients CardDAV ; l’interface web, l’API REST et l’application Android conservent toujours tous les contacts.",
+    "modeLabel": "Contacts à synchroniser",
+    "modeAll": "Tous les contacts",
+    "modeInclude": "Uniquement les cercles sélectionnés",
+    "modeExclude": "Tous les contacts sauf les cercles sélectionnés",
+    "includedCircles": "Cercles inclus",
+    "excludedCircles": "Cercles exclus",
+    "defaultCircle": "Cercle par défaut pour les contacts créés sur un téléphone",
+    "noDefaultCircle": "Aucun cercle par défaut",
+    "counts": "{{inScope}} contacts sur {{total}} seront synchronisés.",
+    "help": "Les contacts ajoutés par un abonnement CardDAV n’ont pas de cercle ; ils ne se synchronisent donc qu’avec « Tous les contacts » ou « Tous les contacts sauf les cercles sélectionnés ». Réduire la portée supprime les contacts retirés lors de la prochaine synchronisation de l’appareil ; Mycorrhizal conserve tous les enregistrements.",
+    "save": "Enregistrer la portée",
+    "saving": "Enregistrement…",
+    "saveSuccess": "Portée de synchronisation CardDAV enregistrée.",
+    "saveError": "Impossible d’enregistrer la portée de synchronisation CardDAV.",
+    "loadError": "Impossible de charger la portée de synchronisation CardDAV.",
+    "confirmRemoval_one": "L’enregistrement supprimera {{count}} contact de vos appareils lors de la prochaine synchronisation. Mycorrhizal conserve l’enregistrement. Continuer ?",
+    "confirmRemoval_many": "L’enregistrement supprimera {{count}} de contacts de vos appareils lors de la prochaine synchronisation. Mycorrhizal conserve les enregistrements. Continuer ?",
+    "confirmRemoval_other": "L’enregistrement supprimera {{count}} contacts de vos appareils lors de la prochaine synchronisation. Mycorrhizal conserve les enregistrements. Continuer ?",
+    "warnings": {
+      "scope_empty": "Aucun cercle n’est sélectionné, donc aucun contact ne sera synchronisé avec les clients CardDAV.",
+      "default_circle_missing": "Aucun cercle par défaut n’est défini ; les contacts créés sur un téléphone ne peuvent donc pas être enregistrés.",
+      "exclusion_empty": "Aucun cercle n’est exclu, donc tous les contacts seront synchronisés avec les clients CardDAV."
+    }
+  },
   "errors": {
     "requestRef": "(réf. : {{id}})",
     "reason": {
@@ -3644,6 +3674,8 @@
       "trash_uid_in_use": "Un contact actif utilise déjà l'UID de ce contact ; fusionnez-le ou supprimez-le d'abord",
       "trash_snapshot_unsupported": "Cette version ne prend pas en charge l'instantané de suppression de ce contact ; il peut toujours être supprimé définitivement",
       "circle_color_invalid": "La couleur doit être l'une des couleurs de la palette",
+      "circle_sync_scope_out_of_scope": "Le contact est en dehors de la portée de synchronisation CardDAV de cet appareil",
+      "circle_sync_scope_no_default": "Aucun cercle par défaut n'est configuré pour la portée de synchronisation CardDAV",
       "validation_cursor_malformed": "L'identifiant du curseur est mal formé",
       "validation_activity_ids_range": "Doit contenir entre 1 et 100 identifiants",
       "validation_required": "{{field}} est obligatoire",

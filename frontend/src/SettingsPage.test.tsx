@@ -46,6 +46,7 @@ vi.mock('./components/SeafileSettings', () => ({ default: () => null }));
 vi.mock('./components/NextcloudSettings', () => ({ default: () => null }));
 vi.mock('./components/LinkFieldTypesSettings', () => ({ default: () => null }));
 vi.mock('./components/GeoPulseSettings', () => ({ default: () => null }));
+vi.mock('./components/CardDAVSyncScopeSettings', () => ({ default: () => null }));
 // PasskeySettings is rendered for real; its list call must not leave the test
 // process (it used to hit 127.0.0.1:3000 and log ECONNREFUSED in every test).
 vi.mock('./api/webauthn', async (importOriginal) => ({

@@ -55,6 +55,8 @@ object ErrorReasonCode {
     const val TRASH_UID_IN_USE = "trash_uid_in_use"
     const val TRASH_SNAPSHOT_UNSUPPORTED = "trash_snapshot_unsupported"
     const val CIRCLE_COLOR_INVALID = "circle_color_invalid"
+    const val CIRCLE_SYNC_SCOPE_OUT_OF_SCOPE = "circle_sync_scope_out_of_scope"
+    const val CIRCLE_SYNC_SCOPE_NO_DEFAULT = "circle_sync_scope_no_default"
     const val MEERKAT_UPLOAD_MISSING = "meerkat_upload_missing"
     const val MEERKAT_SESSION_NOT_FOUND = "meerkat_session_not_found"
     const val MEERKAT_SESSION_NOT_OWNED = "meerkat_session_not_owned"

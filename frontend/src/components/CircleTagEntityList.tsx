@@ -45,7 +45,9 @@ interface CircleTagEntityListProps {
   addLabel: string;
   emptyLabel: string;
   memberCountLabel: (count: number) => string;
-  deleteConfirmLabel: (name: string) => string;
+  // May be async so a caller can pre-flight server state (e.g. the CardDAV
+  // sync scope) before asking for confirmation (issue #1993).
+  deleteConfirmLabel: (name: string, id: string) => string | Promise<string>;
   onCreate: (name: string) => Promise<void>;
   onRename: (id: string, name: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
@@ -115,7 +117,7 @@ export default function CircleTagEntityList({
   };
 
   const handleDeleteClick = async (item: CircleTagEntityListItem) => {
-    if (!window.confirm(deleteConfirmLabel(item.name))) return;
+    if (!window.confirm(await deleteConfirmLabel(item.name, item.id))) return;
     setDeletingId(item.id);
     try {
       await onDelete(item.id);

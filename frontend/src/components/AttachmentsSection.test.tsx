@@ -46,6 +46,16 @@ const sampleAttachment = {
   size_bytes: 2048,
 };
 
+test('loading spinner has an accessible name', () => {
+  // Never-resolving request keeps the loading state on screen (nightly #2269:
+  // the E2E a11y scan reached the contact detail page while this spinner was
+  // up, and an unnamed role="progressbar" is a serious axe violation).
+  vi.mocked(listContactAttachments).mockReturnValue(new Promise(() => {}));
+  renderSection();
+
+  expect(screen.getByRole('progressbar', { name: /loading/i })).toBeInTheDocument();
+});
+
 test('lists attachments with size and type', async () => {
   vi.mocked(listContactAttachments).mockResolvedValue({
     attachments: [sampleAttachment],

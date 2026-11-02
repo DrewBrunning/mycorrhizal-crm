@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import './i18n/config';
+import { getCardDAVSyncScope } from './api/carddavSyncScope';
 import {
   type Circle,
   type CircleListResponse,
@@ -21,6 +22,9 @@ import {
 } from './api/tags';
 import CirclesTagsPage from './CirclesTagsPage';
 import { SnackbarProvider } from './context/SnackbarContext';
+
+vi.mock('./api/carddavSyncScope', () => ({ getCardDAVSyncScope: vi.fn() }));
+const getScopeMock = vi.mocked(getCardDAVSyncScope);
 
 // This codebase's vitest setup has no auto-cleanup and no globals: true.
 afterEach(() => {
@@ -103,6 +107,16 @@ function tagsResponse(overrides: Partial<TagListResponse> = {}): TagListResponse
 }
 
 beforeEach(() => {
+  getScopeMock.mockReset();
+  getScopeMock.mockResolvedValue({
+    mode: 'all',
+    circle_ids: [],
+    default_circle_id: null,
+    updated_at: null,
+    in_scope_count: 0,
+    total_count: 0,
+    warnings: [],
+  });
   listTagsMock.mockResolvedValue(tagsResponse({ tags: [], contacts: [] }));
 });
 
@@ -159,12 +173,15 @@ test('explains the difference between circles and tags on each tab', async () =>
   ).toBeInTheDocument();
 });
 
-test('a circles fetch failure surfaces an error alert', async () => {
+test('a circles fetch failure surfaces an error alert and retries in place', async () => {
   listCirclesMock.mockRejectedValue(new Error('circles down'));
 
   renderPage();
 
   expect(await screen.findByText('circles down')).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+  await waitFor(() => expect(listCirclesMock).toHaveBeenCalledTimes(2));
 });
 
 test('the tags tab loads and renders tags with member counts, driven by the ?tab= query param', async () => {
@@ -178,13 +195,16 @@ test('the tags tab loads and renders tags with member counts, driven by the ?tab
   expect(listTagsMock).toHaveBeenCalledWith({ limit: 200, include_contacts: true });
 });
 
-test('a tags fetch failure surfaces an error alert on the tags tab', async () => {
+test('a tags fetch failure surfaces an error alert on the tags tab and retries in place', async () => {
   listCirclesMock.mockResolvedValue(circlesResponse({ circles: [], members: [] }));
   listTagsMock.mockRejectedValue(new Error('tags down'));
 
   renderPage(['/circles-tags?tab=tags']);
 
   expect(await screen.findByText('tags down')).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+  await waitFor(() => expect(listTagsMock).toHaveBeenCalledTimes(2));
 });
 
 test('clicking the Tags tab switches the view without reloading circles data again', async () => {
@@ -272,8 +292,10 @@ test('deleting a circle prompts for confirmation naming the circle and calls del
 
   fireEvent.click(screen.getByLabelText('Delete'));
 
-  expect(confirmSpy).toHaveBeenCalledWith(
-    'Delete the circle "Book Club"? It will be removed from every contact that has it.',
+  await waitFor(() =>
+    expect(confirmSpy).toHaveBeenCalledWith(
+      'Delete the circle "Book Club"? It will be removed from every contact that has it.',
+    ),
   );
   await waitFor(() => expect(deleteCircleMock).toHaveBeenCalledWith('c1'));
   expect(await screen.findByText('Circle deleted')).toBeInTheDocument();
@@ -291,6 +313,140 @@ test('declining the delete confirmation never calls deleteCircle', async () => {
   fireEvent.click(screen.getByLabelText('Delete'));
 
   expect(deleteCircleMock).not.toHaveBeenCalled();
+  confirmSpy.mockRestore();
+});
+
+test('deleting a circle that is in the CardDAV sync scope adds the pre-flight warning', async () => {
+  const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+  listCirclesMock.mockResolvedValue(circlesResponse());
+  getScopeMock.mockResolvedValue({
+    mode: 'include',
+    circle_ids: ['c1'],
+    default_circle_id: 'c1',
+    updated_at: '2026-01-01T00:00:00Z',
+    in_scope_count: 1,
+    total_count: 1,
+    warnings: [],
+  });
+
+  renderPage();
+  await screen.findByText('Book Club');
+  fireEvent.click(screen.getByLabelText('Delete'));
+
+  await waitFor(() =>
+    expect(confirmSpy).toHaveBeenCalledWith(
+      'Delete the circle "Book Club"? It will be removed from every contact that has it. This circle is your default circle for phone-created contacts; the default will be cleared.',
+    ),
+  );
+  expect(deleteCircleMock).not.toHaveBeenCalled();
+  confirmSpy.mockRestore();
+});
+
+const baseDeleteConfirm =
+  'Delete the circle "Book Club"? It will be removed from every contact that has it.';
+
+test('deleting a non-default circle included in the sync scope warns its contacts will leave', async () => {
+  const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+  listCirclesMock.mockResolvedValue(circlesResponse());
+  getScopeMock.mockResolvedValue({
+    mode: 'include',
+    circle_ids: ['c1'],
+    default_circle_id: 'other',
+    updated_at: '2026-01-01T00:00:00Z',
+    in_scope_count: 1,
+    total_count: 1,
+    warnings: [],
+  });
+
+  renderPage();
+  await screen.findByText('Book Club');
+  fireEvent.click(screen.getByLabelText('Delete'));
+
+  await waitFor(() =>
+    expect(confirmSpy).toHaveBeenCalledWith(
+      `${baseDeleteConfirm} This circle is in your CardDAV sync scope; deleting it will remove its contacts from your devices.`,
+    ),
+  );
+  confirmSpy.mockRestore();
+});
+
+test('deleting a circle outside an include scope uses the plain confirmation', async () => {
+  const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+  listCirclesMock.mockResolvedValue(circlesResponse());
+  getScopeMock.mockResolvedValue({
+    mode: 'include',
+    circle_ids: [],
+    default_circle_id: null,
+    updated_at: '2026-01-01T00:00:00Z',
+    in_scope_count: 0,
+    total_count: 1,
+    warnings: [],
+  });
+
+  renderPage();
+  await screen.findByText('Book Club');
+  fireEvent.click(screen.getByLabelText('Delete'));
+
+  await waitFor(() => expect(confirmSpy).toHaveBeenCalledWith(baseDeleteConfirm));
+  confirmSpy.mockRestore();
+});
+
+test('deleting a circle excluded from the sync scope warns its contacts will start syncing', async () => {
+  const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+  listCirclesMock.mockResolvedValue(circlesResponse());
+  getScopeMock.mockResolvedValue({
+    mode: 'exclude',
+    circle_ids: ['c1'],
+    default_circle_id: null,
+    updated_at: '2026-01-01T00:00:00Z',
+    in_scope_count: 0,
+    total_count: 1,
+    warnings: [],
+  });
+
+  renderPage();
+  await screen.findByText('Book Club');
+  fireEvent.click(screen.getByLabelText('Delete'));
+
+  await waitFor(() =>
+    expect(confirmSpy).toHaveBeenCalledWith(
+      `${baseDeleteConfirm} This circle is excluded from your CardDAV sync scope; deleting it will start syncing its contacts to your devices.`,
+    ),
+  );
+  confirmSpy.mockRestore();
+});
+
+test('deleting a circle not excluded from an exclude scope uses the plain confirmation', async () => {
+  const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+  listCirclesMock.mockResolvedValue(circlesResponse());
+  getScopeMock.mockResolvedValue({
+    mode: 'exclude',
+    circle_ids: [],
+    default_circle_id: null,
+    updated_at: '2026-01-01T00:00:00Z',
+    in_scope_count: 1,
+    total_count: 1,
+    warnings: [],
+  });
+
+  renderPage();
+  await screen.findByText('Book Club');
+  fireEvent.click(screen.getByLabelText('Delete'));
+
+  await waitFor(() => expect(confirmSpy).toHaveBeenCalledWith(baseDeleteConfirm));
+  confirmSpy.mockRestore();
+});
+
+test('a failed sync-scope read falls back to the plain confirmation', async () => {
+  const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+  listCirclesMock.mockResolvedValue(circlesResponse());
+  getScopeMock.mockRejectedValue(new Error('carddav unavailable'));
+
+  renderPage();
+  await screen.findByText('Book Club');
+  fireEvent.click(screen.getByLabelText('Delete'));
+
+  await waitFor(() => expect(confirmSpy).toHaveBeenCalledWith(baseDeleteConfirm));
   confirmSpy.mockRestore();
 });
 
@@ -356,8 +512,10 @@ test('deleting a tag prompts for confirmation naming the tag and calls deleteTag
 
   fireEvent.click(screen.getByLabelText('Delete'));
 
-  expect(confirmSpy).toHaveBeenCalledWith(
-    'Delete the tag "VIP"? It will be removed from every contact that has it.',
+  await waitFor(() =>
+    expect(confirmSpy).toHaveBeenCalledWith(
+      'Delete the tag "VIP"? It will be removed from every contact that has it.',
+    ),
   );
   await waitFor(() => expect(deleteTagMock).toHaveBeenCalledWith('t1'));
   expect(await screen.findByText('Tag deleted')).toBeInTheDocument();
