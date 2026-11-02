@@ -669,6 +669,7 @@ describe('activity images', () => {
     renderDialog({ onSave });
     await waitFor(() => expect(getContacts).toHaveBeenCalled());
 
+    fireEvent.click(screen.getByRole('button', { name: 'Add photos' }));
     const file = new File(['x'], 'photo.jpg', { type: 'image/jpeg' });
     const input = screen.getByLabelText('Add photos');
     fireEvent.change(input, { target: { files: [file] } });
