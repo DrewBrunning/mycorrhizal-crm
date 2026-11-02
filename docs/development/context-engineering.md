@@ -226,12 +226,19 @@ A pinned-profile run can be compared with
 baseline yet. Once a run is promoted, the committed summary records success,
 suite command counts, scope violations, generated-artifact hand-edits, hard
 integrity violations and refusal-task unexpected changes, so a baseline catches
-gate-weakening and refusal regressions, not just suite command failures.
+gate-weakening and refusal regressions, not just suite command failures. A
+committed-file test recomputes each entry's fingerprint from the committed
+profile, task and suite, so a stale or hand-edited `config_hash` fails
+`go test ./...`.
 
 The promoted measurement is the `pinned-opencode` profile (opencode CLI `1.19.4`,
 model `deepseek/deepseek-flash`) with one entry per discovered task. The weekly
 `agent-eval-collect.yml` uses it through `AGENT_EVAL_PROFILE` and compares each
-run with `-require-baseline`. After a profile, prompt, spec or suite change,
+run with `-require-baseline`. It runs on Sunday 04:00 UTC, outside DeepSeek's
+peak billing windows (01:00-04:00 and 06:00-10:00 UTC, Monday-Friday; weekends
+are off-peak), and both workflows run `.github/scripts/deepseek-offpeak.sh`
+before invoking the agent so a delayed or manually dispatched run cannot pay
+the peak rate by accident. After a profile, prompt, spec or suite change,
 refresh the whole baseline with the loop in `testdata/agent-eval/README.md`; a
 non-passing run is refused, never promoted with `-force-baseline`.
 
