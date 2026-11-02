@@ -101,10 +101,13 @@ describe('NoteImageGallery', () => {
     expect(screen.getByRole('dialog')).toBeTruthy();
   });
 
-  it('offers an add button on an editable empty gallery', async () => {
+  it('offers an add button that opens the file picker on an editable empty gallery', async () => {
     getNoteImages.mockResolvedValue({ images: [], total: 0 });
-    render(<NoteImageGallery noteId={4} editable />);
-    expect(await screen.findByRole('button', { name: 'Add photos' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Add photos' }));
+    const { container } = render(<NoteImageGallery noteId={4} editable />);
+    const button = await screen.findByRole('button', { name: 'Add photos' });
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const click = vi.spyOn(input, 'click').mockImplementation(() => {});
+    fireEvent.click(button);
+    expect(click).toHaveBeenCalled();
   });
 });
