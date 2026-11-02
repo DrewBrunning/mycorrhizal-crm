@@ -89,6 +89,7 @@ const (
 var declaredCascadeCoverage = map[string]cascadeBucket{
 	// --- user-scoped, enumerated in DeleteUser --------------------------
 	"activities":                 goCascadeUser,
+	"activity_images":            goCascadeUser,
 	"api_tokens":                 goCascadeUser,
 	"calendar_event_links":       goCascadeUser,
 	"calendar_subscriptions":     goCascadeUser,
@@ -637,6 +638,7 @@ func seedUserCascadeFixtures(t *testing.T, db *gorm.DB, admin, target models.Use
 
 	seeded := []seedRow{
 		scopedCount("activities", &models.Activity{}, "user_id = ?", target.ID),
+		scopedCount("activity_images", &models.ActivityImage{}, "user_id = ?", target.ID),
 		rawCount("activity_contacts", "activity_id = ?", activity.ID),
 		scopedCount("api_tokens", &models.ApiToken{}, "user_id = ?", target.ID),
 		scopedCount("attachments", &models.Attachment{}, "user_id = ?", target.ID),
@@ -705,6 +707,7 @@ func seedUserCascadeFixtures(t *testing.T, db *gorm.DB, admin, target models.Use
 	// Seed the user-scoped rows referencing the contact (the contact-scoped
 	// side of tables that are both, so DeleteUser empties them by user_id).
 	require.NoError(t, db.Create(&models.Attachment{UserID: target.ID, ContactVCardUID: uid, StoredName: "s", OriginalName: "o", ContentType: "text/plain", SizeBytes: 1}).Error)
+	require.NoError(t, db.Create(&models.ActivityImage{ImageFields: models.ImageFields{UserID: target.ID, UUID: "image-1", StoredName: "s", ThumbName: "t", MIMEType: "image/jpeg", ThumbMIMEType: "image/jpeg", Width: 1, Height: 1, SizeBytes: 1, ThumbSizeBytes: 1, Sensitivity: models.ImageSensitivityNormal}, ActivityID: activity.ID}).Error)
 	require.NoError(t, db.Create(&models.CadencePolicy{UserID: target.ID, EntityID: uid, TargetIntervalDays: 30}).Error)
 	require.NoError(t, db.Create(&models.DataDecayPolicy{UserID: target.ID, EntityID: uid, IntervalDays: 365}).Error)
 	require.NoError(t, db.Create(&models.CircleMember{CircleID: containers.circleID, UserID: target.ID, MemberVCardUID: uid}).Error)

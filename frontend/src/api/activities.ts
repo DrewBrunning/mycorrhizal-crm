@@ -200,3 +200,71 @@ export async function deleteActivity(id: string | number, revision?: number): Pr
     throw await parseErrorResponse(response);
   }
 }
+
+// --- Activity images (ADR 0040 slice a, issue #1994) ---
+
+export interface ActivityImage {
+  id: number;
+  uuid: string;
+  activity_id: number;
+  mime_type: 'image/jpeg' | 'image/png';
+  width: number;
+  height: number;
+  size_bytes: number;
+  sensitivity: 'normal' | 'private' | 'secret';
+  taken_at: string | null;
+  taken_date: string | null;
+  created_at: string;
+  file_url: string;
+  thumbnail_url: string;
+}
+
+export interface ActivityImagesResponse {
+  images: ActivityImage[];
+  total: number;
+}
+
+// The server returns owner-relative URLs that already include /api/v1; only
+// the configured API origin (which may be a separate host) is prepended.
+export function activityImageSrc(path: string): string {
+  return `${API_BASE_URL.replace(/\/api\/v1$/, '')}${path}`;
+}
+
+export async function getActivityImages(
+  activityId: string | number,
+): Promise<ActivityImagesResponse> {
+  const response = await apiFetch(`${API_BASE_URL}/activities/${activityId}/images`, {
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) throw await parseErrorResponse(response);
+  return response.json();
+}
+
+export async function uploadActivityImage(
+  activityId: string | number,
+  file: File,
+): Promise<ActivityImage> {
+  const form = new FormData();
+  form.append('file', file);
+  // Never set Content-Type: the browser must add the multipart boundary.
+  // No auth/content-type header: the session cookie authenticates, and the
+  // browser must add the multipart boundary itself.
+  const response = await apiFetch(`${API_BASE_URL}/activities/${activityId}/images`, {
+    method: 'POST',
+    body: form,
+  });
+  if (!response.ok) throw await parseErrorResponse(response);
+  const body: { image: ActivityImage } = await response.json();
+  return body.image;
+}
+
+export async function deleteActivityImage(
+  activityId: string | number,
+  imageId: number,
+): Promise<void> {
+  const response = await apiFetch(`${API_BASE_URL}/activities/${activityId}/images/${imageId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) throw await parseErrorResponse(response);
+}

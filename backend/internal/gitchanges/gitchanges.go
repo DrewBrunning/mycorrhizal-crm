@@ -115,6 +115,11 @@ func mergeBase(root, base string) (string, error) {
 	return mb, nil
 }
 
+// createTempIndex is a seam for the write-failure test. RLIMIT_FSIZE on a
+// whole test process races the Go test logger, which can then fail to write
+// its own testlog.txt instead of the test observing the intended error.
+var createTempIndex = os.CreateTemp
+
 // tempIndex copies the repository's index to a temporary file so intent-to-add
 // entries for untracked files do not mutate the contributor's real index. An
 // empty temporary index is initialised from the merge base.
@@ -133,7 +138,7 @@ func tempIndex(root, mergeBase string) (path string, cleanup func(), err error) 
 		return "", nil, fmt.Errorf("read git index %s: %w", indexPath, readErr)
 	}
 
-	file, err := os.CreateTemp("", "gitchanges-index-*")
+	file, err := createTempIndex("", "gitchanges-index-*")
 	if err != nil {
 		return "", nil, fmt.Errorf("create temporary git index: %w", err)
 	}

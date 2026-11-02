@@ -1,14 +1,19 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
   type Activity,
+  activityImageSrc,
   addContactToActivities,
   createActivity,
   deleteActivity,
+  deleteActivityImage,
   getActivities,
   getActivity,
+  getActivityImages,
   getContactActivities,
   updateActivity,
+  uploadActivityImage,
 } from './activities';
+import { API_BASE_URL } from './client';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -244,5 +249,63 @@ describe('addContactToActivities', () => {
     await expect(addContactToActivities(5, [1])).rejects.toMatchObject({
       message: expect.any(String),
     });
+  });
+});
+
+describe('activity images', () => {
+  const image = {
+    id: 9,
+    uuid: '0f0e0d0c-0b0a-4908-8706-050403020100',
+    activity_id: 4,
+    mime_type: 'image/jpeg' as const,
+    width: 10,
+    height: 10,
+    size_bytes: 100,
+    sensitivity: 'normal' as const,
+    taken_at: null,
+    taken_date: null,
+    created_at: '2026-01-01T00:00:00Z',
+    file_url: '/api/v1/activities/4/images/9/file',
+    thumbnail_url: '/api/v1/activities/4/images/9/thumbnail',
+  };
+
+  test('lists, uploads and deletes through the owner-nested routes', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ images: [image], total: 1 }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ image }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({}) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(getActivityImages(4)).resolves.toEqual({ images: [image], total: 1 });
+    await expect(
+      uploadActivityImage(4, new File(['x'], 'x.jpg', { type: 'image/jpeg' })),
+    ).resolves.toEqual(image);
+    await expect(deleteActivityImage(4, 9)).resolves.toBeUndefined();
+
+    expect(fetchMock.mock.calls[0][0]).toContain('/activities/4/images');
+    const uploadInit = fetchMock.mock.calls[1][1];
+    expect(uploadInit.method).toBe('POST');
+    expect(uploadInit.body).toBeInstanceOf(FormData);
+    expect(uploadInit.headers ?? {}).not.toHaveProperty('Content-Type');
+    const [deleteUrl, deleteInit] = fetchMock.mock.calls[2];
+    expect(deleteUrl).toContain('/activities/4/images/9');
+    expect(deleteInit.method).toBe('DELETE');
+  });
+
+  test('propagates an error from every image route', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(errorResponse()));
+    await expect(getActivityImages(4)).rejects.toMatchObject({ status: 400 });
+    await expect(uploadActivityImage(4, new File(['x'], 'x.jpg'))).rejects.toMatchObject({
+      status: 400,
+    });
+    await expect(deleteActivityImage(4, 9)).rejects.toMatchObject({ status: 400 });
+  });
+
+  test('activityImageSrc prepends only the configured API origin', () => {
+    const origin = API_BASE_URL.replace(/\/api\/v1$/, '');
+    expect(activityImageSrc('/api/v1/activities/4/images/9/file')).toBe(
+      `${origin}/api/v1/activities/4/images/9/file`,
+    );
   });
 });

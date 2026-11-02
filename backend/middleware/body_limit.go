@@ -4,6 +4,7 @@ import (
 	apperrors "mycorrhizal/errors"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -62,10 +63,18 @@ func JSONBodySizeLimitMiddleware() gin.HandlerFunc {
 func DefaultBodySizeLimitMiddleware() gin.HandlerFunc {
 	limited := BodySizeLimitMiddleware(DefaultMaxBodySize)
 	return func(c *gin.Context) {
-		if largeBodyRoutePaths[c.Request.URL.Path] {
+		if largeBodyRoutePaths[c.Request.URL.Path] || isLargeBodyRoute(c.Request.URL.Path) {
 			c.Next()
 			return
 		}
 		limited(c)
 	}
+}
+
+// isLargeBodyRoute covers dynamic upload paths (activity image uploads) that
+// cannot be listed as exact paths. A new entry must also register its own
+// explicit per-route BodySizeLimitMiddleware, exactly like the exact-path
+// allowlist above.
+func isLargeBodyRoute(path string) bool {
+	return strings.HasPrefix(path, "/api/v1/activities/") && strings.HasSuffix(path, "/images")
 }

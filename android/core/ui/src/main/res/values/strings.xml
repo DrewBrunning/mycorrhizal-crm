@@ -3088,4 +3088,13 @@
     <string name="error_reason_validation_since_invalid">%1$s</string>
     <string name="error_reason_validation_sort_invalid">must be one of: %1$s</string>
     <string name="error_reason_validation_timestamp_invalid">must be an RFC3339 timestamp</string>
+    <string name="error_reason_image_too_large">File too large. Maximum size is %1$dMB</string>
+    <string name="error_reason_image_pixels_exceeded">Image dimensions exceed the pixel limit (%1$d)</string>
+    <string name="error_reason_image_unsupported_format">Unsupported image format; use JPEG, PNG or GIF</string>
+    <string name="error_reason_image_heic_unsupported">HEIC images are not supported; convert to JPEG first</string>
+    <string name="error_reason_image_corrupt">The image is corrupt or truncated</string>
+    <string name="error_reason_image_limit_reached">This item already has the maximum number of images (%1$d)</string>
+    <string name="error_reason_image_processing_busy">Image processing is busy; try again shortly</string>
+    <string name="error_reason_image_not_found">Image not found</string>
+    <string name="error_reason_image_insufficient_storage">Not enough disk space to store the image</string>
 </resources>

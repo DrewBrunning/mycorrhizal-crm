@@ -376,6 +376,10 @@ func buildCWTable(s seeded) map[string]cwRow {
 		// === Uploads (multipart, not a JSON row replace) ===
 		"POST /api/v1/contacts/:id/attachments":     exempt(reasonCollectionOp),
 		"POST /api/v1/contacts/:id/profile_picture": exempt(reasonCollectionOp),
+		"POST /api/v1/activities/:id/images":        exempt(reasonCollectionOp),
+		// Image rows have no revision column (ADR 0006 excludes them): a delete
+		// is a last-writer-wins tombstone, not a conditional replace.
+		"DELETE /api/v1/activities/:id/images/:image_id": exempt(reasonNonRevision),
 
 		// === MCP (issue #176): read-only tools, no row writes ===
 		"POST /mcp": exempt(reasonMCPReadOnly),

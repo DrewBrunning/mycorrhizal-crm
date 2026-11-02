@@ -368,6 +368,7 @@ backup:
 | SQLite database | `SQLITE_DB_PATH` (default `mycorrhizal.db` / `/app/data/mycorrhizal.db` in the image) | `DATA_PATH` (default `./data`) |
 | Profile photos | `PROFILE_PHOTO_DIR` (default `/app/static/photos`) | `PHOTOS_PATH` (default `./photos`) |
 | Attachments (N7) | `ATTACHMENTS_DIR` (default a sibling of the photos) | `ATTACHMENTS_PATH` (default `./attachments`) |
+| Gallery images (ADR 0040) | `IMAGES_DIR` (default an `images` sibling of the photos) | mount the same volume as photos, or a dedicated one |
 
 Photos and attachments live **outside** the SQLite file, so backing up only the `.db` silently loses
 them. They are plain directories; a file-level copy (`rsync`/`cp`) is exactly right for them.

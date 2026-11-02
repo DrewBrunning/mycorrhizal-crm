@@ -303,6 +303,7 @@ class ErrorTextTest {
             "max" to 1.0,
             "status" to "s",
             "max_mb" to 1.0,
+            "max_pixels" to 1.0,
             "sensitivity" to "x",
             "entity_type" to "x",
             "type" to "x",

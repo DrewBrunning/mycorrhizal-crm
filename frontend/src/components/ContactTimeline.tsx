@@ -27,6 +27,7 @@ import type { ReminderCompletion } from '../api/reminders';
 import { useDateFormat } from '../DateFormatProvider';
 import { formatActivityDateRange } from '../utils/activityRange';
 import { calendarDateOnly } from '../utils/localDate';
+import ActivityImageGallery from './ActivityImageGallery';
 import MarkdownText from './MarkdownText';
 import { timelineMobileDateSx, timelinePhoneSx } from './timelineLayout';
 
@@ -312,6 +313,9 @@ export default function ContactTimeline({
                   ) : (
                     <MarkdownText text={bodyText} sx={{ mt: 1 }} />
                   ))}
+                {item.type === 'activity' && (
+                  <ActivityImageGallery activityId={(item.data as Activity).ID} />
+                )}
                 {item.type === 'activity' && (item.data as Activity).location && (
                   <Typography
                     variant="caption"

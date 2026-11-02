@@ -3071,4 +3071,13 @@
     <string name="error_reason_validation_since_invalid">%1$s</string>
     <string name="error_reason_validation_sort_invalid">muss einer von: %1$s sein</string>
     <string name="error_reason_validation_timestamp_invalid">muss ein RFC3339-Zeitstempel sein</string>
+    <string name="error_reason_image_too_large">Datei zu groß. Maximal %1$d MB</string>
+    <string name="error_reason_image_pixels_exceeded">Die Bildabmessungen überschreiten das Pixel-Limit (%1$d)</string>
+    <string name="error_reason_image_unsupported_format">Nicht unterstütztes Bildformat; verwende JPEG, PNG oder GIF</string>
+    <string name="error_reason_image_heic_unsupported">HEIC-Bilder werden nicht unterstützt; zuerst in JPEG umwandeln</string>
+    <string name="error_reason_image_corrupt">Das Bild ist beschädigt oder abgeschnitten</string>
+    <string name="error_reason_image_limit_reached">Dieses Element hat bereits die maximale Anzahl an Bildern (%1$d)</string>
+    <string name="error_reason_image_processing_busy">Die Bildverarbeitung ist ausgelastet; versuche es gleich noch einmal</string>
+    <string name="error_reason_image_not_found">Bild nicht gefunden</string>
+    <string name="error_reason_image_insufficient_storage">Nicht genügend Speicherplatz für das Bild</string>
 </resources>
