@@ -71,6 +71,9 @@ export default function AddNoteDialog({
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  // Set only after the note exists, so a failed image upload and retry never
+  // creates a second note.
+  const [createdId, setCreatedId] = useState<number | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   const lockedContact = noteContactId != null;
@@ -162,14 +165,19 @@ export default function AddNoteDialog({
 
     setSaving(true);
     try {
-      const created = await onSave(
-        content,
-        date,
-        lockedContact ? noteContactId : selectedContact?.ID,
-      );
-      if (created && selectedImages.length > 0) {
+      let noteId = createdId;
+      if (noteId == null) {
+        const created = await onSave(
+          content,
+          date,
+          lockedContact ? noteContactId : selectedContact?.ID,
+        );
+        noteId = created?.ID ?? null;
+        if (noteId != null) setCreatedId(noteId);
+      }
+      if (noteId != null) {
         for (const file of selectedImages) {
-          await uploadNoteImage(created.ID, file);
+          await uploadNoteImage(noteId, file);
         }
       }
       handleClose();

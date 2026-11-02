@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"testing"
+	"time"
 
 	"mycorrhizal/attachments"
 	"mycorrhizal/config"
@@ -369,4 +370,37 @@ func TestDeleteUser_ImageCaptureFailuresAbort(t *testing.T) {
 		router.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
 	})
+}
+
+func TestDeleteUser_RemovesNoteImageFilesFromDisk(t *testing.T) {
+	db := realDB(t)
+	user := models.User{Username: "del-note-img", Email: "del-note-img@example.com", Password: "password123"}
+	require.NoError(t, db.Create(&user).Error)
+	note := models.Note{UserID: user.ID, Content: "note", Date: time.Now()}
+	require.NoError(t, db.Create(&note).Error)
+
+	imagesDir := filepath.Join(t.TempDir(), "images")
+	store := imaging.Store{Dir: imagesDir}
+	full, thumb, err := store.Save(user.ID, []byte("full"), []byte("thumb"), "jpg", "jpg")
+	require.NoError(t, err)
+	require.NoError(t, db.Create(&models.NoteImage{ImageFields: models.ImageFields{UserID: user.ID, UUID: "del-note-image", StoredName: full, ThumbName: thumb, MIMEType: "image/jpeg", ThumbMIMEType: "image/jpeg", Width: 1, Height: 1, SizeBytes: 4, ThumbSizeBytes: 5, Sensitivity: models.ImageSensitivityNormal}, NoteID: note.ID}).Error)
+
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.Default()
+	router.Use(func(c *gin.Context) {
+		c.Set("db", db)
+		c.Set("userID", uint(999999))
+		c.Set("cfg", config.Config{ImagesDir: imagesDir})
+		c.Next()
+	})
+	router.DELETE("/users/:id", DeleteUser)
+
+	req, _ := http.NewRequest("DELETE", "/users/"+strconv.Itoa(int(user.ID)), nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	for _, name := range []string{full, thumb} {
+		_, statErr := os.Stat(filepath.Join(imagesDir, "u"+strconv.Itoa(int(user.ID)), name))
+		assert.True(t, os.IsNotExist(statErr), "note image file %q must be removed", name)
+	}
 }
