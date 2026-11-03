@@ -1772,7 +1772,8 @@ private fun AppNavGraph(
                 onMenuClick = menu,
                 onNoteClick = { id -> navController.navigate("contacts/0/notes/$id/edit") },
                 // Issue #1757: contact id 0 = no contact, so the form creates an unassigned note.
-                onCreateNote = { navController.navigate("contacts/0/notes/new") }
+                onCreateNote = { navController.navigate("contacts/0/notes/new") },
+                onContactClick = { id -> navController.navigate("contacts/$id") }
             )
         }
         composable("activities") {

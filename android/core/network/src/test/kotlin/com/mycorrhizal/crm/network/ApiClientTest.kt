@@ -1798,6 +1798,37 @@ class ApiClientTest {
         assertEquals("/api/v1/notes?cursor=cursor-1&limit=25", request.path)
     }
 
+    // Issue #2224: additive query parameters from #2223; the defaults above stay untouched.
+    @Test
+    fun `list notes sends scope and include contacts and parses the nested contact`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody(
+                    """
+                {
+                  "notes": [{"ID": 8, "content": "Fair", "contact_id": 5,
+                    "contact": {"ID": 5, "firstname": "Ada", "lastname": "Lovelace"}}],
+                  "next_cursor": "", "limit": 25, "total": 1
+                }
+                    """.trimIndent()
+                )
+            )
+
+            val result = client.listNotes(scope = "all", includeContacts = true)
+
+            assertEquals("Ada Lovelace", result.getOrThrow().notes.single().contact?.displayName)
+            assertEquals("/api/v1/notes?scope=all&include=contacts", server.takeRequest().path)
+        }
+
+    @Test
+    fun `list notes sends only scope when contacts are not requested`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"total": 0}"""))
+
+        client.listNotes(scope = "unfiled")
+
+        assertEquals("/api/v1/notes?scope=unfiled", server.takeRequest().path)
+    }
+
     // Trap-#8 (`/CLAUDE.md`): GetUnassignedNotes marshals a nil Go slice as JSON `null`, not
     // `[]`, for zero unfiled notes — a different failure mode than the absent-key one below.
     @Test

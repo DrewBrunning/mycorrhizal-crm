@@ -5,6 +5,8 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.mycorrhizal.crm.data.local.AppDatabase
 import com.mycorrhizal.crm.data.local.CachedNote
+import com.mycorrhizal.crm.domain.repository.NotesScope
+import com.mycorrhizal.crm.model.network.ContactFlat
 import com.mycorrhizal.crm.model.network.ContactNotesResponse
 import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.model.network.NoteImage
@@ -155,8 +157,8 @@ class NoteRepositoryImplTest {
 
     // M9: the Notes drawer inbox — GET /notes, the N4 unfiled-notes queue.
     @Test
-    fun `listUnfiled caches notes and carries the queue depth`() = runTest {
-        coEvery { apiClient.listNotes(null, null) } returns Result.success(
+    fun `listNotes UNFILED caches notes and carries the queue depth`() = runTest {
+        coEvery { apiClient.listNotes(null, null, "unfiled", false) } returns Result.success(
             NotesPage(
                 notesRaw = listOf(Note(id = 3, content = "Buy milk")),
                 nextCursor = "cursor-2",
@@ -164,7 +166,7 @@ class NoteRepositoryImplTest {
             )
         )
 
-        val result = repository.listUnfiled()
+        val result = repository.listNotes(NotesScope.UNFILED)
 
         assertTrue(result.isSuccess)
         val page = result.getOrThrow()
@@ -178,16 +180,41 @@ class NoteRepositoryImplTest {
     // `[]`, when there are zero unfiled notes. NotesPage's raw field must be nullable so this
     // doesn't crash Moshi — this is the repository-level proof (ApiClientTest covers the parse).
     @Test
-    fun `listUnfiled tolerates a null notes list`() = runTest {
-        coEvery { apiClient.listNotes(null, null) } returns Result.success(
+    fun `listNotes tolerates a null notes list`() = runTest {
+        coEvery { apiClient.listNotes(null, null, "unfiled", false) } returns Result.success(
             NotesPage(notesRaw = null, total = 0)
         )
 
-        val result = repository.listUnfiled()
+        val result = repository.listNotes(NotesScope.UNFILED)
 
         assertTrue(result.isSuccess)
         assertTrue(result.getOrThrow().notes.isEmpty())
         assertTrue(db.cachedNoteDao().getAll().isEmpty())
+    }
+
+    // Issue #2224: the default Notes view is every note, with the contact filled in.
+    @Test
+    fun `listNotes ALL asks for scope all with contacts and pages by cursor`() = runTest {
+        coEvery { apiClient.listNotes("c1", 25, "all", true) } returns Result.success(
+            NotesPage(
+                notesRaw = listOf(
+                    Note(
+                        id = 8,
+                        content = "Met at the fair",
+                        contactId = 5,
+                        contact = ContactFlat(id = 5, firstname = "Ada", lastname = "Lovelace")
+                    )
+                ),
+                nextCursor = null,
+                total = 40
+            )
+        )
+
+        val result = repository.listNotes(NotesScope.ALL, cursor = "c1", limit = 25)
+
+        val page = result.getOrThrow()
+        assertEquals("Ada Lovelace", page.notes.single().contact?.displayName)
+        assertEquals(40, page.total)
     }
 
     @Test

@@ -3,6 +3,7 @@ package com.mycorrhizal.crm.feature.timeline
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.NoteRepository
+import com.mycorrhizal.crm.domain.repository.NotesScope
 import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
@@ -15,14 +16,14 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * M9: the unassigned-notes drawer entry — the N4 unfiled-notes inbox (`GET /notes`,
- * `contact_id IS NULL` only), matching web's `NotesPage.tsx`. Distinct from [NotesViewModel], which
- * is the per-contact notes list — this is a contact-agnostic queue, not "all notes across all
- * contacts". Issue #1757: because it is only the unassigned subset, the destination, its title and
- * its empty state all say "unassigned" (a user whose notes are all on contacts must not read
- * "No notes yet").
+ * The Notes drawer entry, matching web's `NotesPage.tsx`. Issue #2224: it lists every note by
+ * default (like Activities and the web page, #2180) with an All notes / Unfiled filter; Unfiled is
+ * the N4 inbox (`contact_id IS NULL`). Issue #1757: while the filter is Unfiled the title and empty
+ * state say "unassigned" (a user whose notes are all on contacts must not read "No notes yet").
+ * Distinct from [NotesViewModel], the per-contact notes list.
  */
 data class NotesInboxUiState(
+    val scope: NotesScope = NotesScope.ALL,
     val notes: List<Note> = emptyList(),
     val total: Int = 0,
     val nextCursor: String? = null,
@@ -45,10 +46,30 @@ class NotesInboxViewModel @Inject constructor(private val noteRepository: NoteRe
         load()
     }
 
+    /** Switch the All notes / Unfiled filter; re-selecting the active one is a no-op. */
+    fun setScope(scope: NotesScope) {
+        if (scope == _uiState.value.scope) return
+        // Clear the list so the previous scope's notes are not shown under the new filter.
+        _uiState.update {
+            it.copy(
+                scope = scope,
+                notes = emptyList(),
+                total = 0,
+                nextCursor = null,
+                isLoadingMore = false
+            )
+        }
+        load()
+    }
+
     fun load() {
+        val scope = _uiState.value.scope
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
-            noteRepository.listUnfiled().foldApiError(
+            val result = noteRepository.listNotes(scope)
+            // The filter changed while this request was in flight: its page is for the old scope.
+            if (_uiState.value.scope != scope) return@launch
+            result.foldApiError(
                 onSuccess = { page ->
                     hasLoaded = true
                     _uiState.update {
@@ -80,10 +101,13 @@ class NotesInboxViewModel @Inject constructor(private val noteRepository: NoteRe
 
     fun loadMore() {
         val cursor = _uiState.value.nextCursor
+        val scope = _uiState.value.scope
         if (cursor.isNullOrEmpty() || _uiState.value.isLoadingMore) return
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMore = true, error = null) }
-            noteRepository.listUnfiled(cursor = cursor).foldApiError(
+            val result = noteRepository.listNotes(scope, cursor = cursor)
+            if (_uiState.value.scope != scope) return@launch
+            result.foldApiError(
                 onSuccess = { page ->
                     _uiState.update {
                         it.copy(

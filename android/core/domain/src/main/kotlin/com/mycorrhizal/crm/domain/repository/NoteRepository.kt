@@ -4,7 +4,10 @@ import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.model.network.NoteImage
 import com.mycorrhizal.crm.model.network.NoteInput
 
-/** A page of the N4 unfiled-notes inbox, with its T17 cursor-pagination state and queue depth. */
+/** Which notes the Notes screen lists (issue #2224); mirrors `GET /notes?scope=`. */
+enum class NotesScope { ALL, UNFILED }
+
+/** A page of `GET /notes`, with its T17 cursor-pagination state and the total for the scope. */
 data class UnfiledNotesPage(val notes: List<Note>, val nextCursor: String?, val total: Int)
 
 /** A page of one contact's notes (M19), with its T17 cursor-pagination state. */
@@ -29,8 +32,15 @@ interface NoteRepository {
         toDate: String? = null
     ): Result<ContactNotesPage>
 
-    /** The unfiled-notes inbox (M9 Notes drawer entry) — `GET /notes`, not a contact's history. */
-    suspend fun listUnfiled(cursor: String? = null, limit: Int? = null): Result<UnfiledNotesPage>
+    /**
+     * The Notes drawer entry — `GET /notes`, not a contact's history. [NotesScope.ALL] lists every
+     * note with its contact filled in; [NotesScope.UNFILED] is the N4 inbox (no contact).
+     */
+    suspend fun listNotes(
+        scope: NotesScope,
+        cursor: String? = null,
+        limit: Int? = null
+    ): Result<UnfiledNotesPage>
 
     /** A single note. */
     suspend fun get(id: Int): Result<Note>

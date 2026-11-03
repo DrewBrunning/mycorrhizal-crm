@@ -100,7 +100,7 @@ class NavDestinationsTest {
         "network" to R.string.nav_network,
         "map" to R.string.nav_map,
         "activities" to R.string.nav_activities,
-        "notes" to R.string.nav_notes_unassigned,
+        "notes" to R.string.nav_notes,
         "occasions" to R.string.occasions_title,
         "shares" to R.string.shares_title,
         "data" to R.string.settings_data,
@@ -144,12 +144,13 @@ class NavDestinationsTest {
     }
 
     @Test
-    fun `the notes destination names the unassigned subset it lists`() {
-        // Issue #1757: "Notes" read as "all of my notes"; the screen lists only contact-less ones.
+    fun `the notes destination is labelled Notes because it lists every note`() {
+        // Issue #2224: the screen lists all notes by default (Unfiled is a filter), so the
+        // drawer says "Notes" again; #1757's "Unassigned notes" now titles only the Unfiled view.
         val label = localized(
             Locale.ENGLISH
         ).getString(navDestinations.first { it.route == "notes" }.labelRes)
-        assertEquals("Unassigned notes", label)
+        assertEquals("Notes", label)
     }
 
     @Test

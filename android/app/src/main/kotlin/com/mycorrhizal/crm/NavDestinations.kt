@@ -94,7 +94,7 @@ internal val navDestinations: List<TopLevelDestination> = listOf(
     ),
     TopLevelDestination(
         "notes",
-        R.string.nav_notes_unassigned,
+        R.string.nav_notes,
         Icons.Outlined.EditNote,
         NavGroup.INTERACTIONS
     ),
