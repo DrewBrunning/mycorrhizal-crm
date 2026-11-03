@@ -1,5 +1,4 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import vectorsFixture from '@testdata/deep-links/vectors.json';
 import { describe, expect, it } from 'vitest';
 import { notificationTargetPath } from './notificationTarget';
 
@@ -8,9 +7,7 @@ interface Vector {
   web_path: string | null;
 }
 
-const vectors: Vector[] = JSON.parse(
-  readFileSync(resolve(__dirname, '../../../testdata/deep-links/vectors.json'), 'utf8'),
-).vectors;
+const vectors: Vector[] = vectorsFixture.vectors;
 
 describe('notificationTargetPath', () => {
   const accepted = vectors.filter(
