@@ -1,8 +1,27 @@
+import { existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 
+// The repo-root testdata/ fixtures are shared with the Go and Android suites.
+// Tests import them through `@testdata/...` instead of `../../../testdata/...`
+// because Stryker runs vitest from a copy of frontend/ at
+// .stryker-tmp/sandbox-*/, where the relative path points at nothing (10.0.0
+// silently dropped those test files; 10.1.0 fails the dry run). Walking up from
+// this config's directory finds the real testdata/ from both locations.
+function findTestdataDir(): string {
+  for (let dir = import.meta.dirname; ; dir = dirname(dir)) {
+    const candidate = join(dir, 'testdata');
+    if (existsSync(join(candidate, 'contract-fixtures'))) return candidate;
+    if (dirname(dir) === dir) throw new Error('vitest.config.ts: repo-root testdata/ not found');
+  }
+}
+
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: { '@testdata': findTestdataDir() },
+  },
   test: {
     environment: 'jsdom',
     setupFiles: './src/setupTests.ts',
