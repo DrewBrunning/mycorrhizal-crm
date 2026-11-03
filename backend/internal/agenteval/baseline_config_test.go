@@ -173,3 +173,31 @@ func TestBaselineConfigFindings(t *testing.T) {
 		t.Fatalf("missing profile findings = %v", findings)
 	}
 }
+
+// TestCommittedBaselinePromotions keeps every committed entry tied to a
+// measured promotion. A hand-edited config_hash that happens to match the
+// committed spec still fails this because only -write-baseline and
+// -promote-artifact set verified and the promotion provenance.
+func TestCommittedBaselinePromotions(t *testing.T) {
+	root, err := filepath.Abs("../../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	base, err := LoadBaseline(filepath.Join(root, "testdata", "agent-eval", "baseline.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for profile, tasks := range base.Profiles {
+		for task, summary := range tasks {
+			if !summary.Verified {
+				t.Errorf("%s/%s is unverified; promote it from a passing pinned-profile artifact", profile, task)
+			}
+			if summary.ConfigHash == "" {
+				t.Errorf("%s/%s has no config_hash", profile, task)
+			}
+			if summary.PromotedFrom == "" {
+				t.Errorf("%s/%s has no promotion provenance", profile, task)
+			}
+		}
+	}
+}
