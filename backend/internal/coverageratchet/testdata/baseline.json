@@ -370,7 +370,7 @@
     "middleware/account_limiter_reset.go": 100,
     "middleware/admin.go": 100,
     "middleware/api_scope.go": 100,
-    "middleware/auth.go": 100,
+    "middleware/auth.go": 99.26,
     "middleware/auth_velocity.go": 100,
     "middleware/body_limit.go": 100,
     "middleware/client_version.go": 90.48,

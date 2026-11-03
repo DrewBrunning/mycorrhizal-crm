@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"encoding/json"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/internal/logtest"
 	"mycorrhizal/models"
@@ -12,15 +13,19 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 func TestGetContactScore_ReturnsFullBreakdown(t *testing.T) {
 	db, router := setupRouter(t)
+	// Pin the request clock and the contact's timestamps so the score is a
+	// pure function of the fixture, not of the wall clock (issue #2314).
+	withClock(router, clock.NewFake(ctrlT0))
 	router.GET("/contacts/:id/score", GetContactScore)
 
 	var user models.User
 	require.NoError(t, db.First(&user).Error)
-	contact := models.Contact{UserID: user.ID, Firstname: "Alice"}
+	contact := models.Contact{UserID: user.ID, Firstname: "Alice", Model: gorm.Model{CreatedAt: ctrlT0, UpdatedAt: ctrlT0}}
 	require.NoError(t, db.Create(&contact).Error)
 
 	req, _ := http.NewRequest("GET", "/contacts/"+idString(contact.ID)+"/score", nil)
@@ -32,9 +37,8 @@ func TestGetContactScore_ReturnsFullBreakdown(t *testing.T) {
 	var resp models.ContactScoreResponse
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 	assert.Equal(t, contact.ID, resp.ContactID)
-	assert.GreaterOrEqual(t, resp.Score, 0)
-	assert.LessOrEqual(t, resp.Score, 100)
-	assert.Contains(t, []string{"moss", "chanterelle", "russula"}, resp.Band)
+	assert.Equal(t, 51, resp.Score)
+	assert.Equal(t, "chanterelle", resp.Band)
 
 	for name, facet := range map[string]models.ContactScoreFacet{
 		"recency": resp.Recency, "frequency": resp.Frequency, "closeness": resp.Closeness,
