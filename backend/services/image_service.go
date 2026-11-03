@@ -55,6 +55,12 @@ type ImageService[T any, P interface {
 	Limits   imaging.Limits
 	MaxBytes int64
 	Quota    UserQuota
+
+	// afterProcess, when set (tests only), runs after processUpload's checks
+	// and before the insert transaction, so a test can park every concurrent
+	// upload past its fast pre-check and prove the in-transaction recheck is
+	// the authority (issue #2313).
+	afterProcess func()
 }
 
 // ContactImageService builds the contact-gallery service from config (ADR 0040 slice c).
@@ -169,15 +175,8 @@ func (s *ImageService[T, P]) Get(ctx context.Context, userID uint, owner OwnerRe
 // processUpload validates and processes one image without touching disk or the
 // database, so dedupe can decide before storing anything.
 func (s *ImageService[T, P]) processUpload(ctx context.Context, userID uint, owner OwnerRef, src io.Reader) (*imaging.Result, error) {
-	if s.Limit > 0 {
-		var count int64
-		var model T
-		if err := s.baseQuery(ctx, userID, owner).Model(&model).Count(&count).Error; err != nil {
-			return nil, apperrors.ErrDatabase("Failed to check the image limit").WithError(err)
-		}
-		if count >= int64(s.Limit) {
-			return nil, apperrors.ErrConflict("Image limit reached").WithReason(apperrors.ReasonImageLimitReached, map[string]any{"limit": s.Limit})
-		}
+	if aerr := s.checkOwnerLimit(ctx, s.DB, userID, owner); aerr != nil {
+		return nil, aerr
 	}
 
 	reader := src
@@ -206,7 +205,30 @@ func (s *ImageService[T, P]) processUpload(ctx context.Context, userID uint, own
 			return nil, apperrors.ErrInsufficientStorage(err.Error()).WithReason(apperrors.ReasonImageInsufficientStorage, nil)
 		}
 	}
+	if s.afterProcess != nil {
+		s.afterProcess()
+	}
 	return result, nil
+}
+
+// checkOwnerLimit returns the 409 image-limit error when the owner already
+// holds Limit live images. It runs twice per upload: against s.DB as a cheap
+// pre-check before the decode, and against the insert transaction as the
+// authoritative recheck.
+func (s *ImageService[T, P]) checkOwnerLimit(ctx context.Context, db *gorm.DB, userID uint, owner OwnerRef) *apperrors.AppError {
+	if s.Limit <= 0 {
+		return nil
+	}
+	var count int64
+	var model T
+	q := db.WithContext(ctx).Model(&model).Where("user_id = ? AND "+s.newRow().OwnerColumn()+" = ?", userID, s.ownerValue(owner))
+	if err := q.Count(&count).Error; err != nil {
+		return apperrors.ErrDatabase("Failed to check the image limit").WithError(err)
+	}
+	if count >= int64(s.Limit) {
+		return apperrors.ErrConflict("Image limit reached").WithReason(apperrors.ReasonImageLimitReached, map[string]any{"limit": s.Limit})
+	}
+	return nil
 }
 
 // storeUpload writes the processed variants and inserts the row. A failed
@@ -236,9 +258,28 @@ func (s *ImageService[T, P]) storeUpload(ctx context.Context, userID uint, owner
 	f.TakenAt = result.TakenAt
 	f.TakenDate = result.TakenDate
 
-	if err := s.DB.WithContext(ctx).Create(p).Error; err != nil {
+	// The pre-check in processUpload is only a fast rejection: concurrent
+	// uploads all pass it. The authority is this recheck inside the insert
+	// transaction; _txlock=immediate serializes writers, so the count and the
+	// insert cannot interleave with another upload's (backend trap #9).
+	err = s.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if aerr := s.checkOwnerLimit(ctx, tx, userID, owner); aerr != nil {
+			return aerr
+		}
+		if s.Quota.Enabled() {
+			if qerr := s.Quota.CheckAttachmentUpload(tx, userID, int64(len(result.Full)+len(result.Thumb))); qerr != nil {
+				return qerr
+			}
+		}
+		return tx.Create(p).Error
+	})
+	if err != nil {
 		_ = s.Store.Remove(userID, storedName)
 		_ = s.Store.Remove(userID, thumbName)
+		var appErr *apperrors.AppError
+		if errors.As(err, &appErr) {
+			return nil, appErr
+		}
 		return nil, apperrors.ErrDatabase("Failed to save image").WithError(err)
 	}
 	models.RecordAuditEvent(s.DB, s.auditEntity(), imageAuditID(owner), models.AuditOpCreate, userID)
