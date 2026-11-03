@@ -2,12 +2,12 @@ package controllers
 
 import (
 	"encoding/json"
+	"mycorrhizal/internal/clock"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/internal/logtest"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"mycorrhizal/contactmodel"
 	"mycorrhizal/models"
@@ -15,6 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 // TestGetGraph_DatabaseFailureUsesErrorEnvelope pins that each of the graph's
@@ -95,15 +96,18 @@ func TestGetGraph_EmptyData(t *testing.T) {
 
 func TestGetGraph_ContactsRelationshipsAndActivities(t *testing.T) {
 	db, router := setupRouter(t)
+	// Pin the request clock and every fixture timestamp so the health scores
+	// asserted below are a pure function of the fixture (issue #2314).
+	withClock(router, clock.NewFake(ctrlT0))
 	router.GET("/graph", GetGraph)
 
 	var user models.User
 	require.NoError(t, db.First(&user).Error)
 
-	contactA := models.Contact{UserID: user.ID, Firstname: "Alice", Lastname: "Anderson", Circles: []string{"Family"}}
-	contactB := models.Contact{UserID: user.ID, Firstname: "Bob", Lastname: "Brown"}
+	contactA := models.Contact{UserID: user.ID, Firstname: "Alice", Lastname: "Anderson", Circles: []string{"Family"}, Model: gorm.Model{CreatedAt: ctrlT0, UpdatedAt: ctrlT0}}
+	contactB := models.Contact{UserID: user.ID, Firstname: "Bob", Lastname: "Brown", Model: gorm.Model{CreatedAt: ctrlT0, UpdatedAt: ctrlT0}}
 	// Archived contact must be excluded entirely.
-	contactC := models.Contact{UserID: user.ID, Firstname: "Carol", Lastname: "Carter", Archived: true}
+	contactC := models.Contact{UserID: user.ID, Firstname: "Carol", Lastname: "Carter", Archived: true, Model: gorm.Model{CreatedAt: ctrlT0, UpdatedAt: ctrlT0}}
 	require.NoError(t, db.Create(&contactA).Error)
 	require.NoError(t, db.Create(&contactB).Error)
 	require.NoError(t, db.Create(&contactC).Error)
@@ -122,12 +126,12 @@ func TestGetGraph_ContactsRelationshipsAndActivities(t *testing.T) {
 	require.NoError(t, db.Create(&edge).Error)
 
 	// An activity with 2+ contacts must produce an activity node + star edges.
-	multiActivity := models.Activity{UserID: user.ID, Title: "Team Meeting", Date: time.Now()}
+	multiActivity := models.Activity{UserID: user.ID, Title: "Team Meeting", Date: ctrlT0}
 	require.NoError(t, db.Create(&multiActivity).Error)
 	require.NoError(t, db.Model(&multiActivity).Association("Contacts").Append(&contactA, &contactB))
 
 	// An activity with only 1 contact must NOT produce a node or edges.
-	soloActivity := models.Activity{UserID: user.ID, Title: "Solo Errand", Date: time.Now()}
+	soloActivity := models.Activity{UserID: user.ID, Title: "Solo Errand", Date: ctrlT0}
 	require.NoError(t, db.Create(&soloActivity).Error)
 	require.NoError(t, db.Model(&soloActivity).Association("Contacts").Append(&contactA))
 
@@ -159,11 +163,13 @@ func TestGetGraph_ContactsRelationshipsAndActivities(t *testing.T) {
 
 	// Issue #383: every contact node gets a health score/band.
 	require.NotNil(t, nodeA.HealthScore)
-	assert.GreaterOrEqual(t, *nodeA.HealthScore, 0)
-	assert.LessOrEqual(t, *nodeA.HealthScore, 100)
-	assert.Contains(t, []string{"moss", "chanterelle", "russula"}, nodeA.HealthBand)
 	require.NotNil(t, nodeB.HealthScore)
-	assert.Contains(t, []string{"moss", "chanterelle", "russula"}, nodeB.HealthBand)
+	// Exact values for this fixture on the pinned clock (ctrlT0); the 0..100
+	// clamp and band edges are covered in internal/scoring.
+	assert.Equal(t, 90, *nodeA.HealthScore)
+	assert.Equal(t, "moss", nodeA.HealthBand)
+	assert.Equal(t, 80, *nodeB.HealthScore)
+	assert.Equal(t, "moss", nodeB.HealthBand)
 
 	assert.Nil(t, findGraphNode(resp.Nodes, "c-3"), "archived contact must be excluded")
 

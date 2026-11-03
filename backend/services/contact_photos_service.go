@@ -77,7 +77,7 @@ func ListContactPhotos(ctx context.Context, db *gorm.DB, userID uint, contact *m
 		Find(&activities).Error; err != nil {
 		return nil, apperrors.ErrDatabase("Failed to retrieve activity photos").WithError(err)
 	}
-	labels, err := activityLabels(db, userID, activities)
+	labels, err := activityLabels(ctx, db, userID, activities)
 	if err != nil {
 		return nil, apperrors.ErrDatabase("Failed to retrieve activity labels").WithError(err)
 	}
@@ -89,8 +89,17 @@ func ListContactPhotos(ctx context.Context, db *gorm.DB, userID uint, contact *m
 		photos = append(photos, contactPhoto("activity", img.ActivityID, label, img.ID, img.UUID, img.MIMEType, img.Width, img.Height, img.SizeBytes, img.Sensitivity, img.TakenAt, img.TakenDate, img.CreatedAt))
 	}
 
-	sort.SliceStable(photos, func(i, j int) bool {
-		return photos[i].sortTime().After(photos[j].sortTime())
+	// Newest first; kind then image id break ties so the order is stable
+	// across requests regardless of query row order.
+	sort.Slice(photos, func(i, j int) bool {
+		ti, tj := photos[i].sortTime(), photos[j].sortTime()
+		if !ti.Equal(tj) {
+			return ti.After(tj)
+		}
+		if photos[i].Kind != photos[j].Kind {
+			return photos[i].Kind < photos[j].Kind
+		}
+		return photos[i].ImageID < photos[j].ImageID
 	})
 	if len(photos) > limit {
 		photos = photos[:limit]
@@ -116,7 +125,7 @@ func contactPhoto(kind string, sourceID uint, label string, imageID uint, uuid, 
 	}
 }
 
-func activityLabels(db *gorm.DB, userID uint, images []models.ActivityImage) (map[uint]string, error) {
+func activityLabels(ctx context.Context, db *gorm.DB, userID uint, images []models.ActivityImage) (map[uint]string, error) {
 	ids := make([]uint, 0, len(images))
 	for _, img := range images {
 		ids = append(ids, img.ActivityID)
@@ -125,7 +134,7 @@ func activityLabels(db *gorm.DB, userID uint, images []models.ActivityImage) (ma
 		return map[uint]string{}, nil
 	}
 	var activities []models.Activity
-	if err := db.Where("user_id = ? AND id IN ?", userID, ids).Find(&activities).Error; err != nil {
+	if err := db.WithContext(ctx).Where("user_id = ? AND id IN ?", userID, ids).Find(&activities).Error; err != nil {
 		return nil, err
 	}
 	labels := make(map[uint]string, len(activities))

@@ -131,21 +131,27 @@ func DownloadContactImage(c *gin.Context, thumbnail bool) {
 func DeleteContactImage(c *gin.Context) { serveImageDelete(c, contactGallery) }
 
 // ContactPhotoDTO is one aggregated Photos-tab item.
+// PhotoSource names where a Photos-tab image lives (ADR 0040 decision 8):
+// the contact itself, one of its notes, or one of its activities.
+type PhotoSource struct {
+	Kind  string `json:"kind"`
+	ID    uint   `json:"id"`
+	Label string `json:"label"`
+}
+
 type ContactPhotoDTO struct {
-	ID           uint       `json:"id"`
-	Kind         string     `json:"kind"`
-	SourceID     uint       `json:"source_id"`
-	SourceLabel  string     `json:"source_label"`
-	MIMEType     string     `json:"mime_type"`
-	Width        int        `json:"width"`
-	Height       int        `json:"height"`
-	SizeBytes    int64      `json:"size_bytes"`
-	Sensitivity  string     `json:"sensitivity"`
-	TakenAt      *time.Time `json:"taken_at"`
-	TakenDate    *string    `json:"taken_date"`
-	CreatedAt    time.Time  `json:"created_at"`
-	FileURL      string     `json:"file_url"`
-	ThumbnailURL string     `json:"thumbnail_url"`
+	ID           uint        `json:"id"`
+	Source       PhotoSource `json:"source"`
+	MIMEType     string      `json:"mime_type"`
+	Width        int         `json:"width"`
+	Height       int         `json:"height"`
+	SizeBytes    int64       `json:"size_bytes"`
+	Sensitivity  string      `json:"sensitivity"`
+	TakenAt      *time.Time  `json:"taken_at"`
+	TakenDate    *string     `json:"taken_date"`
+	CreatedAt    time.Time   `json:"created_at"`
+	FileURL      string      `json:"file_url"`
+	ThumbnailURL string      `json:"thumbnail_url"`
 }
 
 func contactPhotoDTO(photo services.ContactPhoto, contactID uint) ContactPhotoDTO {
@@ -160,9 +166,7 @@ func contactPhotoDTO(photo services.ContactPhoto, contactID uint) ContactPhotoDT
 	}
 	return ContactPhotoDTO{
 		ID:           photo.ImageID,
-		Kind:         photo.Kind,
-		SourceID:     photo.SourceID,
-		SourceLabel:  photo.SourceLabel,
+		Source:       PhotoSource{Kind: photo.Kind, ID: photo.SourceID, Label: photo.SourceLabel},
 		MIMEType:     photo.MIMEType,
 		Width:        photo.Width,
 		Height:       photo.Height,
@@ -284,15 +288,17 @@ func AdoptContactImage(c *gin.Context) {
 		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("body", "invalid request body").WithReason(apperrors.ReasonValidationInvalidRequestBody, nil))
 		return
 	}
-	cfg := currentConfig(c)
-	db := c.MustGet("db").(*gorm.DB)
 	svc := contactImageService(c)
-	img, err := services.AdoptImageIntoContact(c.Request.Context(), db, svc.Store, userID, contact, input.SourceKind, input.SourceID, input.ImageID, cfg.ImageMaxPerContact)
+	img, duplicated, err := services.AdoptImageIntoContact(c.Request.Context(), svc, userID, contact, input.SourceKind, input.SourceID, input.ImageID)
 	if err != nil {
 		apperrors.AbortWithError(c, apperrors.GetAppError(err))
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{"image": contactImageDTO(*img, contact.ID)})
+	status := http.StatusCreated
+	if duplicated {
+		status = http.StatusOK
+	}
+	c.JSON(status, gin.H{"image": contactImageDTO(*img, contact.ID), "deduplicated": duplicated})
 }
 
 // GetContactPhotos returns the aggregated Photos tab (own + notes + activities).

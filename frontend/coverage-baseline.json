@@ -753,9 +753,9 @@
       "branchesTotal": 87
     },
     "src/components/CardDAVSyncScopeSettings.tsx": {
-      "lines": 89.28,
+      "lines": 91.07,
       "linesTotal": 112,
-      "branches": 65.76,
+      "branches": 66.66,
       "branchesTotal": 111
     },
     "src/components/CardNotesEditor.tsx": {
