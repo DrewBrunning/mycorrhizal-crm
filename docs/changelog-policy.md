@@ -13,31 +13,70 @@ the `changelog-note` job in `.github/workflows/unit-tests.yml` are defined
 against this document; a change here is a change to those, and vice versa (see
 [Document consistency](#document-consistency)).
 
-This page is contributor- and maintainer-facing. What an operator needs — *does
-this upgrade require anything of me?* — is answered on each
-[GitHub Release](https://github.com/DrewBrunning/mycorrhizal-crm/releases), in
-its **Upgrade notes** section.
+This page is contributor- and maintainer-facing. Users and operators read the
+curated [`CHANGELOG.md`](../CHANGELOG.md) at the repository root; the
+machine-assembled record is on each
+[GitHub Release](https://github.com/DrewBrunning/mycorrhizal-crm/releases).
 
 ## What the changelog is
 
-There is **no in-repo `CHANGELOG.md`**. The changelog is the **GitHub Release
-notes**, assembled from two sources:
+There are two records, with different audiences:
 
-1. **What changed** — GitHub's own release-notes generator
-   (`generate_release_notes`), turned into labelled sections by
-   `.github/release.yml`. One section per category, populated from the labels on
-   the pull requests merged since the previous release.
-2. **Operator notes** — an **Upgrade notes** section, a **Security-relevant
-   changes** section when a change affects the security posture, and a
-   **Breaking changes** section when applicable, **hand-written in each pull
-   request's description** and harvested at release time by `cmd/releasenotes`
-   into the top of the release body. Security-relevant changes are their own
-   section (not folded into the upgrade notes) so a new default-off guard, a
-   changed floor, or a new required config cannot be missed among feature notes
-   (issue #953).
+1. **`CHANGELOG.md`** — the human-readable changelog, in
+   [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format. It is
+   written for people who use or self-host the app: plain language, one short
+   bullet per user-visible change, grouped by release. Every user-visible change
+   adds its entry to `[Unreleased]` in the same pull request, so contributors see
+   what is coming and the release section is already written at tag time.
+2. **The GitHub Release notes** — the complete, traceable record, assembled from
+   two sources:
+   - **What changed** — GitHub's own release-notes generator
+     (`generate_release_notes`), turned into labelled sections by
+     `.github/release.yml`. One section per category, populated from the labels
+     on the pull requests merged since the previous release.
+   - **Operator notes** — an **Upgrade notes** section, a **Security-relevant
+     changes** section when a change affects the security posture, and a
+     **Breaking changes** section when applicable, **hand-written in each pull
+     request's description** and harvested at release time by `cmd/releasenotes`
+     into the top of the release body. Security-relevant changes are their own
+     section (not folded into the upgrade notes) so a new default-off guard, a
+     changed floor, or a new required config cannot be missed among feature
+     notes (issue #953).
 
 The generated list answers *what changed*; only a human can answer *what an
-operator must do about it*, which is why part 2 is never generated from a diff.
+operator must do about it*, which is why the operator notes are never generated
+from a diff. `CHANGELOG.md` is the curated summary of both. Until the release
+workflow copies the changelog section into the release body (tracked in
+[#2242](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2242)), the two
+are maintained side by side: the PR-body operator notes still feed the release,
+and the `CHANGELOG.md` entry feeds the file.
+
+## Writing `CHANGELOG.md` entries
+
+Sections, in this order, using only those that apply: `Added`, `Changed`,
+`Deprecated`, `Removed`, `Fixed`, `Security`, `Internal`.
+
+Format: `- **Bold lead phrase** ([#123](https://github.com/DrewBrunning/mycorrhizal-crm/issues/123)): what changed.`
+
+- One bullet per change, **two lines of prose and about 40 words at most**. No
+  sub-bullets. Several PRs that deliver one feature get one bullet.
+- Link the GitHub **issue** (not the PR number GitHub appends to a squashed
+  subject) with a full URL, so the file reads correctly outside GitHub. No issue,
+  no link.
+- Write for users and operators: no file, function, library or framework names
+  outside `Internal`; no rationale, implementation story or future plans — those
+  belong in the commit message, an ADR or `docs/development/`.
+- A breaking change, a migration the operator must know about, or a required
+  action goes in a `> **Upgrade**: …` blockquote at the top of the release
+  section. A change that needs more than two lines of explanation is explained in
+  the user documentation and linked from the bullet.
+- `Internal` is not a second commit history: roughly three one-line entries per
+  release, only for internal changes that are valuable or disruptive. Tests,
+  refactors, dependency bumps and tidy-ups get no entry.
+- A PR with no user-visible effect (test-only, CI, refactor, docs-only) adds no
+  entry and says `no-changelog: <reason>` in its description.
+- The maintainer renames `[Unreleased]` to `[X.Y.Z] - YYYY-MM-DD` as part of the
+  release.
 
 ## Categories
 
@@ -132,7 +171,9 @@ finding*, becomes checkable rather than aspirational.
 
 ## Where the record begins
 
-`v0.6.0` — the [supported-upgrade floor](upgrade-compatibility.md) when this
+`CHANGELOG.md` begins at `v1.0.0` (the current supported-upgrade floor); earlier
+releases are not backfilled there. The GitHub Release record begins at `v0.6.0` — the
+[supported-upgrade floor](upgrade-compatibility.md) when this
 policy landed (issue #529; the floor is now `v1.0.0`, issue #1170).
 Releases from `v0.6.0` onward carry an **Upgrade notes** section (the
 `v0.6.0`–`v0.6.12` releases were backfilled with one when this policy landed).
@@ -148,6 +189,9 @@ one hop anyway.
   dropped or the `*` catch-all loses its label.
 - `cmd/releasenotes` (harvest + assembly, including the **Security-relevant
   changes** section) is covered by `backend/internal/releasenotes` unit tests.
+- `CHANGELOG.md` entries are not machine-checked yet; a lint check for
+  `[Unreleased]` is part of the follow-up in
+  [#2242](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2242).
 - `changelog-note` in `.github/workflows/unit-tests.yml` enforces the
   operator-note requirement on every pull request; its accepted heading set is
   the three operator sections above.

@@ -71,6 +71,7 @@ a trust boundary.
 - Breaking-change and deprecation policy: `docs/breaking-change-policy.md`,
   `docs/deprecation-policy.md`, `docs/versioning-policy.md`, `docs/client-compatibility-policy.md`.
 - Changelog: an operator-visible change needs an `## Upgrade notes` block (or `no-changelog: <reason>`)
-  in the PR body — `docs/changelog-policy.md`.
+  in the PR body, and a user-visible change adds a bullet to `CHANGELOG.md` `[Unreleased]` —
+  `docs/changelog-policy.md`.
 - Dependency upgrades: `docs/dependency-upgrade-policy.md`; a time-bounded exception goes in
   `docs/security/dependency-exceptions.ignore` and `cmd/depexceptions` fails once it expires.
