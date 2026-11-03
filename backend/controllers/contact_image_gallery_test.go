@@ -229,3 +229,135 @@ func TestContactMainImage_ServiceFailuresSurface(t *testing.T) {
 	}))
 	assert.Equal(t, http.StatusInternalServerError, galleryDo(env, "DELETE", galleryPath(contact.ID, "/main-image"), nil).Code)
 }
+
+func contactRevision(t *testing.T, env contactImageTestEnv, id uint) int64 {
+	t.Helper()
+	var c models.Contact
+	require.NoError(t, env.db.First(&c, id).Error)
+	return c.Revision
+}
+
+func TestContactMainImage_IfMatch(t *testing.T) {
+	env := galleryEnv(t)
+	contact := models.Contact{UserID: env.user.ID, Firstname: "IfMatch"}
+	require.NoError(t, env.db.Create(&contact).Error)
+	id := galleryUpload(t, env, contact.ID, 0)
+	p := galleryPath(contact.ID, "/main-image")
+	do := func(method, ifMatch string, body any) *httptest.ResponseRecorder {
+		var buf bytes.Buffer
+		if body != nil {
+			_ = json.NewEncoder(&buf).Encode(body)
+		}
+		req, _ := http.NewRequest(method, p, &buf)
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("If-Match", ifMatch)
+		rec := httptest.NewRecorder()
+		env.router.ServeHTTP(rec, req)
+		return rec
+	}
+	start := contactRevision(t, env, contact.ID)
+
+	// A stale precondition is rejected and nothing changes.
+	assert.Equal(t, http.StatusPreconditionFailed, do("PUT", `"999999"`, map[string]any{"image_id": id}).Code)
+	var got models.Contact
+	require.NoError(t, env.db.First(&got, contact.ID).Error)
+	assert.Nil(t, got.MainImageID)
+	assert.Equal(t, start, got.Revision)
+
+	// The current revision is accepted, bumps the revision and reports it.
+	rec := do("PUT", `"`+strconv.FormatInt(start, 10)+`"`, map[string]any{"image_id": id})
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	var out struct {
+		Revision int64 `json:"revision"`
+	}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &out))
+	now := contactRevision(t, env, contact.ID)
+	assert.Greater(t, now, start)
+	assert.Equal(t, now, out.Revision, "response carries the new revision")
+
+	assert.Equal(t, http.StatusPreconditionFailed, do("DELETE", `"`+strconv.FormatInt(start, 10)+`"`, nil).Code)
+	require.NoError(t, env.db.First(&got, contact.ID).Error)
+	assert.NotNil(t, got.MainImageID, "a stale delete must not clear the main image")
+	assert.Equal(t, http.StatusOK, do("DELETE", `"`+strconv.FormatInt(now, 10)+`"`, nil).Code)
+}
+
+func TestContactMainImage_ConcurrentContactWriteIs412Not500(t *testing.T) {
+	env := galleryEnv(t)
+	contact := models.Contact{UserID: env.user.ID, Firstname: "Race"}
+	require.NoError(t, env.db.Create(&contact).Error)
+	id := galleryUpload(t, env, contact.ID, 0)
+
+	// Simulate another writer bumping the revision between load and save.
+	require.NoError(t, env.db.Callback().Update().Before("gorm:update").Register("test:concurrent_writer", func(tx *gorm.DB) {
+		if tx.Statement.Table == "contacts" {
+			_ = tx.Session(&gorm.Session{NewDB: true}).Exec("UPDATE contacts SET revision = revision + 1 WHERE id = ?", contact.ID).Error
+		}
+	}))
+	rec := galleryDo(env, "PUT", galleryPath(contact.ID, "/main-image"), map[string]any{"image_id": id})
+	assert.Equal(t, http.StatusPreconditionFailed, rec.Code, rec.Body.String())
+	var got models.Contact
+	require.NoError(t, env.db.First(&got, contact.ID).Error)
+	assert.Nil(t, got.MainImageID)
+	entries, err := os.ReadDir(env.profilePhotoDir)
+	require.NoError(t, err)
+	assert.Empty(t, entries, "the derived avatar is removed when the save loses the race")
+}
+
+func TestContactImages_PatchCropRegeneratesMainAvatar(t *testing.T) {
+	env := galleryEnv(t)
+	contact := models.Contact{UserID: env.user.ID, Firstname: "Regen"}
+	require.NoError(t, env.db.Create(&contact).Error)
+	id := galleryUpload(t, env, contact.ID, 0)
+	require.Equal(t, http.StatusOK, galleryDo(env, "PUT", galleryPath(contact.ID, "/main-image"), map[string]any{"image_id": id}).Code)
+	var before models.Contact
+	require.NoError(t, env.db.First(&before, contact.ID).Error)
+
+	p := galleryPath(contact.ID, "/images/"+strconv.FormatUint(uint64(id), 10))
+	rec := galleryDo(env, "PATCH", p, map[string]any{"crop": map[string]float64{"x": 0, "y": 0, "w": 0.5, "h": 0.5}})
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	var after models.Contact
+	require.NoError(t, env.db.First(&after, contact.ID).Error)
+	assert.NotEqual(t, before.PhotoThumbnail, after.PhotoThumbnail, "a crop change regenerates the avatar")
+	assert.Greater(t, after.Revision, before.Revision)
+	assert.NoFileExists(t, filepath.Join(env.profilePhotoDir, before.Photo), "the superseded avatar file is removed")
+	assert.FileExists(t, filepath.Join(env.profilePhotoDir, after.Photo))
+
+	// Making the main image non-normal clears the avatar entirely.
+	require.Equal(t, http.StatusOK, galleryDo(env, "PATCH", p, map[string]any{"sensitivity": "private"}).Code)
+	require.NoError(t, env.db.First(&after, contact.ID).Error)
+	assert.Nil(t, after.MainImageID)
+	assert.Empty(t, after.Photo)
+
+	// A sensitivity or crop change on a non-main image never touches the contact.
+	rev := contactRevision(t, env, contact.ID)
+	require.Equal(t, http.StatusOK, galleryDo(env, "PATCH", p, map[string]any{"sensitivity": "normal"}).Code)
+	assert.Equal(t, rev, contactRevision(t, env, contact.ID))
+}
+
+func TestContactImages_DeleteMainImageIsAtomic(t *testing.T) {
+	env := galleryEnv(t)
+	contact := models.Contact{UserID: env.user.ID, Firstname: "Atomic"}
+	require.NoError(t, env.db.Create(&contact).Error)
+	id := galleryUpload(t, env, contact.ID, 0)
+	require.Equal(t, http.StatusOK, galleryDo(env, "PUT", galleryPath(contact.ID, "/main-image"), map[string]any{"image_id": id}).Code)
+	var row models.ContactImage
+	require.NoError(t, env.db.First(&row, id).Error)
+
+	require.NoError(t, env.db.Callback().Update().Before("gorm:update").Register("test:fail_contact_save", func(tx *gorm.DB) {
+		if tx.Statement.Table == "contacts" {
+			_ = tx.AddError(errors.New("boom"))
+		}
+	}))
+	rec := galleryDo(env, "DELETE", galleryPath(contact.ID, "/images/"+strconv.FormatUint(uint64(id), 10)), nil)
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+
+	// Neither half happened: the image is live, its files exist, the pointer stays.
+	var live int64
+	require.NoError(t, env.db.Model(&models.ContactImage{}).Where("id = ?", id).Count(&live).Error)
+	assert.Equal(t, int64(1), live, "image must not be deleted when clearing the main image fails")
+	assert.FileExists(t, filepath.Join(env.dir, "u"+strconv.FormatUint(uint64(env.user.ID), 10), row.StoredName))
+	var got models.Contact
+	require.NoError(t, env.db.First(&got, contact.ID).Error)
+	require.NotNil(t, got.MainImageID)
+	assert.NotEmpty(t, got.Photo)
+}

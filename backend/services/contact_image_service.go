@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 
@@ -14,11 +15,14 @@ import (
 	"gorm.io/gorm"
 )
 
+var errMainImageGone = errors.New("main image is no longer live")
+
 // SetContactMainImage makes a gallery image the contact's main image and
 // derives the legacy avatar from it (ADR 0040 decision 10). The stored full
 // variant is re-cropped/resized to the existing 400 px avatar and 48 px
-// thumbnail; the contact row is saved in one transaction so the revision/ETag
-// bump is visible to CardDAV.
+// thumbnail. The contact row is saved in one transaction that first re-checks
+// the image is still live and owned, so a concurrent delete cannot leave the
+// pointer on a tombstone; the save bumps the revision/ETag for CardDAV.
 func SetContactMainImage(ctx context.Context, db *gorm.DB, store imaging.Store, userID uint, contact *models.Contact, image *models.ContactImage, photoDir string) (*models.Contact, error) {
 	// The derived avatar ships through CardDAV, vCard export and shares, and the
 	// outward photo filter for private/secret images is not built yet, so only
@@ -42,7 +46,7 @@ func SetContactMainImage(ctx context.Context, db *gorm.DB, store imaging.Store, 
 	}
 	photoName, thumb, err := photostore.SaveContactPhotoCropped(full, image.MIMEType, crop, photoDir)
 	if err != nil {
-		return nil, apperrors.ErrValidation("Failed to derive the profile photo").
+		return nil, apperrors.ErrInternal("Failed to derive the profile photo").
 			WithReason(apperrors.ReasonPhotoProcessFailed, nil).WithError(err)
 	}
 
@@ -53,17 +57,49 @@ func SetContactMainImage(ctx context.Context, db *gorm.DB, store imaging.Store, 
 	if contact.MainImageID != nil {
 		oldPhoto = contact.Photo
 	}
+	prevMain, prevPhoto, prevThumb := contact.MainImageID, contact.Photo, contact.PhotoThumbnail
 	contact.MainImageID = &image.ID
 	contact.Photo = photoName
 	contact.PhotoThumbnail = thumb
-	if err := db.WithContext(ctx).Save(contact).Error; err != nil {
+	err = db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var live int64
+		if err := tx.Model(&models.ContactImage{}).
+			Where("id = ? AND user_id = ? AND contact_vcard_uid = ?", image.ID, userID, contact.VCardUID).
+			Count(&live).Error; err != nil {
+			return err
+		}
+		if live == 0 {
+			return errMainImageGone
+		}
+		return tx.Save(contact).Error
+	})
+	if err != nil {
+		contact.MainImageID, contact.Photo, contact.PhotoThumbnail = prevMain, prevPhoto, prevThumb
 		_ = photostore.RemoveContactPhoto(photoDir, photoName)
+		if errors.Is(err, errMainImageGone) {
+			return nil, apperrors.ErrNotFound("Image")
+		}
 		return nil, apperrors.ErrDatabase("Failed to set the main image").WithError(err)
 	}
 	if oldPhoto != "" && oldPhoto != photoName {
 		_ = photostore.RemoveContactPhoto(photoDir, oldPhoto)
 	}
 	return contact, nil
+}
+
+// clearMainImage clears the main-image pointer and derived avatar on the
+// contact inside tx and returns the avatar filename to remove after commit.
+// The in-memory contact is restored if the save fails.
+func clearMainImage(tx *gorm.DB, contact *models.Contact) (string, error) {
+	prevMain, prevPhoto, prevThumb := contact.MainImageID, contact.Photo, contact.PhotoThumbnail
+	contact.MainImageID = nil
+	contact.Photo = ""
+	contact.PhotoThumbnail = ""
+	if err := tx.Save(contact).Error; err != nil {
+		contact.MainImageID, contact.Photo, contact.PhotoThumbnail = prevMain, prevPhoto, prevThumb
+		return "", err
+	}
+	return prevPhoto, nil
 }
 
 // ClearContactMainImage clears the main-image pointer and the derived avatar.
@@ -73,17 +109,62 @@ func ClearContactMainImage(ctx context.Context, db *gorm.DB, userID uint, contac
 	if contact.MainImageID == nil {
 		return contact, nil
 	}
-	oldPhoto := contact.Photo
-	contact.MainImageID = nil
-	contact.Photo = ""
-	contact.PhotoThumbnail = ""
-	if err := db.WithContext(ctx).Save(contact).Error; err != nil {
+	oldPhoto, err := clearMainImage(db.WithContext(ctx), contact)
+	if err != nil {
 		return nil, apperrors.ErrDatabase("Failed to clear the main image").WithError(err)
 	}
 	if oldPhoto != "" {
 		_ = photostore.RemoveContactPhoto(photoDir, oldPhoto)
 	}
 	return contact, nil
+}
+
+// DeleteContactImageAndClearMain soft-deletes a gallery image and, when it is
+// the contact's main image, clears the pointer and derived avatar in the same
+// transaction (ADR 0040 decisions 4 and 8). Files are removed after commit.
+func DeleteContactImageAndClearMain(ctx context.Context, db *gorm.DB, svc *ImageService[models.ContactImage, *models.ContactImage], userID uint, contact *models.Contact, imageID uint, photoDir string) error {
+	var oldPhoto string
+	err := svc.DeleteWithin(ctx, userID, OwnerRef{ID: contact.ID, UID: contact.VCardUID}, imageID, func(tx *gorm.DB) error {
+		if contact.MainImageID == nil || *contact.MainImageID != imageID {
+			return nil
+		}
+		var err error
+		oldPhoto, err = clearMainImage(tx, contact)
+		return err
+	})
+	if err != nil {
+		return err
+	}
+	if oldPhoto != "" {
+		_ = photostore.RemoveContactPhoto(photoDir, oldPhoto)
+	}
+	return nil
+}
+
+// PatchContactImage applies the PATCH allowlist and keeps the derived avatar
+// in step when the patched image is the contact's main image: a crop change
+// regenerates the avatar, and a sensitivity that is no longer normal clears it
+// (ADR 0040 decisions 7 and 10). The row update commits first; a failed
+// regeneration is reported and an identical retry converges.
+func PatchContactImage(ctx context.Context, db *gorm.DB, svc *ImageService[models.ContactImage, *models.ContactImage], store imaging.Store, userID uint, contact *models.Contact, imageID uint, in models.ContactImagePatchInput, photoDir string) (*models.ContactImage, error) {
+	img, err := svc.Update(ctx, userID, OwnerRef{ID: contact.ID, UID: contact.VCardUID}, imageID, in)
+	if err != nil {
+		return nil, err
+	}
+	if contact.MainImageID == nil || *contact.MainImageID != imageID {
+		return img, nil
+	}
+	switch {
+	case img.Sensitivity != models.ImageSensitivityNormal:
+		if _, err := ClearContactMainImage(ctx, db, userID, contact, photoDir); err != nil {
+			return nil, err
+		}
+	case in.Crop != nil || in.ResetCrop:
+		if _, err := SetContactMainImage(ctx, db, store, userID, contact, img, photoDir); err != nil {
+			return nil, err
+		}
+	}
+	return img, nil
 }
 
 // AdoptImageIntoContact copies a note's or activity's stored full variant into

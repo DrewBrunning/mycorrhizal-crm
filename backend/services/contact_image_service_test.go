@@ -465,3 +465,27 @@ func TestListContactPhotos_ScopedToOwnerAndContact(t *testing.T) {
 		}
 	}
 }
+
+func TestSetContactMainImage_RejectsImageDeletedMeanwhile(t *testing.T) {
+	svc, contact, userID, dir := contactImageServiceEnv(t)
+	owner := OwnerRef{ID: contact.ID, UID: contact.VCardUID}
+	photoDir := t.TempDir()
+	img, err := svc.Upload(context.Background(), userID, owner, bytes.NewReader(imageTestJPEG(t)))
+	require.NoError(t, err)
+	// The caller loaded the image and read its file, then a concurrent request
+	// tombstoned the row (files are removed only after that commit, so they
+	// still exist at the moment SetContactMainImage re-checks).
+	require.NoError(t, svc.DB.Delete(&models.ContactImage{}, img.ID).Error)
+
+	_, err = SetContactMainImage(context.Background(), svc.DB, imaging.Store{Dir: dir}, userID, &contact, img, photoDir)
+	var appErr *apperrors.AppError
+	require.ErrorAs(t, err, &appErr)
+	assert.Equal(t, apperrors.ErrCodeNotFound, appErr.Code)
+	assert.Nil(t, contact.MainImageID, "in-memory contact is restored")
+	assert.Empty(t, contact.Photo)
+	var stored models.Contact
+	require.NoError(t, svc.DB.First(&stored, contact.ID).Error)
+	assert.Nil(t, stored.MainImageID, "no dangling pointer to a tombstone")
+	entries, _ := os.ReadDir(photoDir)
+	assert.Empty(t, entries)
+}

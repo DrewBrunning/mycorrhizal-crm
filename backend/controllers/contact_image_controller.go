@@ -96,6 +96,16 @@ func loadOwnedContact(c *gin.Context) (*models.Contact, bool) {
 	return &contact, true
 }
 
+// abortContactImageError maps a service error to a response. A concurrent
+// contact write surfaces as a revision conflict (412/404), exactly like the
+// other contact writers, instead of a generic 500.
+func abortContactImageError(c *gin.Context, err error) {
+	if handleRevisionConflict(c, "Contact", err) {
+		return
+	}
+	apperrors.AbortWithError(c, apperrors.GetAppError(err))
+}
+
 func contactOwnerRef(contact *models.Contact) services.OwnerRef {
 	return services.OwnerRef{ID: contact.ID, UID: contact.VCardUID}
 }
@@ -231,16 +241,10 @@ func DeleteContactImage(c *gin.Context) {
 		return
 	}
 	svc := contactImageService(c)
-	if err := svc.Delete(c.Request.Context(), userID, contactOwnerRef(contact), uint(id)); err != nil {
-		apperrors.AbortWithError(c, apperrors.GetAppError(err))
+	db := c.MustGet("db").(*gorm.DB)
+	if err := services.DeleteContactImageAndClearMain(c.Request.Context(), db, svc, userID, contact, uint(id), currentConfig(c).ProfilePhotoDir); err != nil {
+		abortContactImageError(c, err)
 		return
-	}
-	if contact.MainImageID != nil && *contact.MainImageID == uint(id) {
-		db := c.MustGet("db").(*gorm.DB)
-		if _, err := services.ClearContactMainImage(c.Request.Context(), db, userID, contact, currentConfig(c).ProfilePhotoDir); err != nil {
-			apperrors.AbortWithError(c, apperrors.GetAppError(err))
-			return
-		}
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Image deleted"})
 }
@@ -292,8 +296,9 @@ func contactPhotoDTO(photo services.ContactPhoto, contactID uint) ContactPhotoDT
 }
 
 // PatchContactImage updates the image's sensitivity and/or crop (ADR 0040
-// decision 8). Crop is contact-gallery-only in practice; nothing here touches
-// the contact row or its revision.
+// decision 8). When the image is the contact's main image, a crop change
+// regenerates the avatar and a non-normal sensitivity clears it, which bumps
+// the contact revision.
 func PatchContactImage(c *gin.Context) {
 	contact, ok := loadOwnedContact(c)
 	if !ok {
@@ -314,9 +319,10 @@ func PatchContactImage(c *gin.Context) {
 		return
 	}
 	svc := contactImageService(c)
-	img, err := svc.Update(c.Request.Context(), userID, contactOwnerRef(contact), uint(id), input)
+	db := c.MustGet("db").(*gorm.DB)
+	img, err := services.PatchContactImage(c.Request.Context(), db, svc, svc.Store, userID, contact, uint(id), input, currentConfig(c).ProfilePhotoDir)
 	if err != nil {
-		apperrors.AbortWithError(c, apperrors.GetAppError(err))
+		abortContactImageError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"image": contactImageDTO(*img, contact.ID)})
@@ -330,6 +336,9 @@ func PutContactMainImage(c *gin.Context) {
 	}
 	userID, ok := currentUserID(c)
 	if !ok {
+		return
+	}
+	if !checkIfMatch(c, contact.Revision) {
 		return
 	}
 	var input struct {
@@ -348,10 +357,10 @@ func PutContactMainImage(c *gin.Context) {
 	}
 	db := c.MustGet("db").(*gorm.DB)
 	if _, err := services.SetContactMainImage(c.Request.Context(), db, svc.Store, userID, contact, img, cfg.ProfilePhotoDir); err != nil {
-		apperrors.AbortWithError(c, apperrors.GetAppError(err))
+		abortContactImageError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Main image updated", "main_image_id": input.ImageID})
+	c.JSON(http.StatusOK, gin.H{"message": "Main image updated", "main_image_id": input.ImageID, "revision": contact.Revision})
 }
 
 // DeleteContactMainImage clears the pointer and the derived avatar.
@@ -364,12 +373,15 @@ func DeleteContactMainImage(c *gin.Context) {
 	if !ok {
 		return
 	}
-	db := c.MustGet("db").(*gorm.DB)
-	if _, err := services.ClearContactMainImage(c.Request.Context(), db, userID, contact, currentConfig(c).ProfilePhotoDir); err != nil {
-		apperrors.AbortWithError(c, apperrors.GetAppError(err))
+	if !checkIfMatch(c, contact.Revision) {
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Main image cleared"})
+	db := c.MustGet("db").(*gorm.DB)
+	if _, err := services.ClearContactMainImage(c.Request.Context(), db, userID, contact, currentConfig(c).ProfilePhotoDir); err != nil {
+		abortContactImageError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Main image cleared", "revision": contact.Revision})
 }
 
 // AdoptContactImage copies a note/activity image into the contact gallery.

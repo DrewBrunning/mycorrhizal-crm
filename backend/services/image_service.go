@@ -329,6 +329,14 @@ func (s *ImageService[T, P]) Update(ctx context.Context, userID uint, owner Owne
 // both on-disk files. A failed file removal is logged, not rolled back (ADR
 // 0040 decision 5).
 func (s *ImageService[T, P]) Delete(ctx context.Context, userID uint, owner OwnerRef, id uint) error {
+	return s.DeleteWithin(ctx, userID, owner, id, nil)
+}
+
+// DeleteWithin is Delete with an optional hook that runs in the same
+// transaction as the soft delete, so a caller can change related rows
+// atomically with the tombstone (ADR 0040 decisions 4 and 8). The hook's error
+// rolls the delete back; file removal still happens only after commit.
+func (s *ImageService[T, P]) DeleteWithin(ctx context.Context, userID uint, owner OwnerRef, id uint, within func(tx *gorm.DB) error) error {
 	row, err := s.Get(ctx, userID, owner, id)
 	if err != nil {
 		return err
@@ -339,6 +347,11 @@ func (s *ImageService[T, P]) Delete(ctx context.Context, userID uint, owner Owne
 	if err := s.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Delete(row).Error; err != nil {
 			return err
+		}
+		if within != nil {
+			if err := within(tx); err != nil {
+				return err
+			}
 		}
 		models.RecordAuditEvent(tx, s.auditEntity(), imageAuditID(owner), models.AuditOpDelete, userID)
 		return nil

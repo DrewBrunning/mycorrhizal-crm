@@ -6067,8 +6067,11 @@ paths:
         schema: { type: integer }
     put:
       summary: Set the contact's main image and derive its avatar
+      description: Only a normal-sensitivity image can be the main image. Saves the contact, so the contact revision advances and the new value is returned.
       operationId: putContactMainImage
-      tags: [Activities]
+      tags: [Contacts]
+      parameters:
+        - $ref: "#/components/parameters/IfMatchRevision"
       requestBody:
         required: true
         content:
@@ -6079,22 +6082,44 @@ paths:
           description: Main image updated.
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/MessageResponse" }
+              schema: { $ref: "#/components/schemas/MainImageResponse" }
+        "400":
+          description: Missing image_id, or the image is private or secret.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "404":
           description: Contact or image not found.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "412":
+          description: Stale If-Match revision, or the contact was modified concurrently; nothing was changed.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
     delete:
       summary: Clear the contact's main image and derived avatar
       operationId: deleteContactMainImage
-      tags: [Activities]
+      tags: [Contacts]
+      parameters:
+        - $ref: "#/components/parameters/IfMatchRevision"
       responses:
         "200":
-          description: Main image cleared.
+          description: Main image cleared (a no-op when none is set).
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/MessageResponse" }
+              schema: { $ref: "#/components/schemas/MainImageResponse" }
+        "404":
+          description: Contact not found.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "412":
+          description: Stale If-Match revision, or the contact was modified concurrently; nothing was changed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /contacts/{id}/images/adopt:
     parameters:
       - name: id
@@ -15038,6 +15063,13 @@ components:
       properties:
         message: { type: string }
       additionalProperties: true
+    MainImageResponse:
+      type: object
+      required: [message, revision]
+      properties:
+        message: { type: string }
+        main_image_id: { type: integer, description: Present when a main image was set. }
+        revision: { type: integer, format: int64, description: The contact revision after the write. }
     LogoutResponse:
       type: object
       properties:

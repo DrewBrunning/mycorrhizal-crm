@@ -109,6 +109,7 @@ func buildCWTable(s seeded) map[string]cwRow {
 	lifeEventBody := func() any {
 		return models.LifeEventInput{EntityID: uid, Type: models.LifeEventTypeMoved, Source: models.LifeEventSourceUser}
 	}
+	mainImageBody := func() any { return map[string]any{"image_id": 1} }
 	reminderBody := func() any {
 		return models.Reminder{Message: "stale probe", RemindAt: time.Now().Add(24 * time.Hour), Recurrence: "once", ContactID: &contactID}
 	}
@@ -123,8 +124,12 @@ func buildCWTable(s seeded) map[string]cwRow {
 		"DELETE /api/v1/activities/:id":  enforced("/api/v1/activities/"+s.activity, nil),
 		"PUT /api/v1/life-events/:id":    enforced("/api/v1/life-events/"+s.lifeEvent, lifeEventBody),
 		"DELETE /api/v1/life-events/:id": enforced("/api/v1/life-events/"+s.lifeEvent, nil),
-		"PUT /api/v1/reminders/:id":      enforced("/api/v1/reminders/"+s.reminder, reminderBody),
-		"DELETE /api/v1/reminders/:id":   enforced("/api/v1/reminders/"+s.reminder, nil),
+		// The main image is a single-row write to the revision-bearing contact
+		// (it saves the contact and bumps its ETag), so it is conditional too.
+		"PUT /api/v1/contacts/:id/main-image":    enforced("/api/v1/contacts/"+contact+"/main-image", mainImageBody),
+		"DELETE /api/v1/contacts/:id/main-image": enforced("/api/v1/contacts/"+contact+"/main-image", nil),
+		"PUT /api/v1/reminders/:id":              enforced("/api/v1/reminders/"+s.reminder, reminderBody),
+		"DELETE /api/v1/reminders/:id":           enforced("/api/v1/reminders/"+s.reminder, nil),
 
 		// === Toggles on revision-bearing entities (ADR 0008 exclusion) ===
 		"POST /api/v1/contacts/:id/archive":   exempt(reasonToggle),
@@ -383,8 +388,6 @@ func buildCWTable(s seeded) map[string]cwRow {
 		"DELETE /api/v1/contacts/:id/images/:image_id": exempt(reasonNonRevision),
 		"PATCH /api/v1/contacts/:id/images/:image_id":  exempt(reasonNonRevision),
 		"POST /api/v1/contacts/:id/images/adopt":       exempt(reasonCollectionOp),
-		"PUT /api/v1/contacts/:id/main-image":          exempt(reasonCollectionOp),
-		"DELETE /api/v1/contacts/:id/main-image":       exempt(reasonCollectionOp),
 		// Image rows have no revision column (ADR 0006 excludes them): a delete
 		// is a last-writer-wins tombstone, not a conditional replace.
 		"DELETE /api/v1/activities/:id/images/:image_id": exempt(reasonNonRevision),
@@ -479,6 +482,9 @@ func TestConditionalWriteMatrix(t *testing.T) {
 		t.Run(key, func(t *testing.T) {
 			method, _, _ := strings.Cut(key, " ")
 			rowID := row.probe[strings.LastIndex(row.probe, "/")+1:]
+			if trimmed, ok := strings.CutSuffix(row.probe, "/main-image"); ok {
+				rowID = trimmed[strings.LastIndex(trimmed, "/")+1:]
+			}
 
 			before := snapshotRow(t, db, key, rowID)
 

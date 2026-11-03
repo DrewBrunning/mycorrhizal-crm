@@ -1927,6 +1927,12 @@ export type MainImageInput = {
   image_id: number;
 };
 
+export type MainImageResponse = {
+  main_image_id?: number;
+  message: string;
+  revision: number;
+};
+
 export type MapConfigResponse = {
   tile_style_url: string;
 };

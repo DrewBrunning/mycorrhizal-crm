@@ -3654,6 +3654,11 @@
       "path": "/contacts/{id}/main-image",
       "parameters": [
         {
+          "name": "If-Match",
+          "in": "header",
+          "required": false
+        },
+        {
           "name": "id",
           "in": "path",
           "required": true
@@ -3663,10 +3668,18 @@
       "responses": [
         {
           "status": "200",
-          "schema": "ref:MessageResponse"
+          "schema": "ref:MainImageResponse"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
         },
         {
           "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "412",
           "schema": "ref:Error"
         }
       ]
@@ -3676,6 +3689,11 @@
       "path": "/contacts/{id}/main-image",
       "parameters": [
         {
+          "name": "If-Match",
+          "in": "header",
+          "required": false
+        },
+        {
           "name": "id",
           "in": "path",
           "required": true
@@ -3684,7 +3702,15 @@
       "responses": [
         {
           "status": "200",
-          "schema": "ref:MessageResponse"
+          "schema": "ref:MainImageResponse"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "412",
+          "schema": "ref:Error"
         }
       ]
     },
@@ -18292,6 +18318,26 @@
       "properties": [
         {
           "name": "image_id",
+          "type": "integer",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "MainImageResponse",
+      "properties": [
+        {
+          "name": "main_image_id",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "message",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "revision",
           "type": "integer",
           "required": true
         }
