@@ -8,9 +8,11 @@ import (
 	"image/color"
 	"image/jpeg"
 	"math"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
+	"sync"
 	"testing"
 
 	apperrors "mycorrhizal/errors"
@@ -443,4 +445,103 @@ func TestImageService_UpdateCropValidation(t *testing.T) {
 		_, err := svc.Update(context.Background(), userID, owner, img.ID, models.ContactImagePatchInput{Crop: models.OptionalCrop{Set: true, Value: &crop}})
 		require.NoError(t, err)
 	}
+}
+
+// uploadConcurrently fires n uploads of data at one owner and returns the
+// per-call errors. Each goroutine waits on a start gate so the cheap pre-check
+// races the way N multi-select picker uploads do.
+func uploadConcurrently(svc *ImageService[models.ActivityImage, *models.ActivityImage], userID uint, owner OwnerRef, data []byte, n int) []error {
+	errs := make([]error, n)
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	// Park every upload after its pre-checks so all N pass `count < Limit` (and
+	// the quota check) against the same empty state before any of them inserts.
+	// That makes the race deterministic instead of timing-dependent.
+	var arrived sync.WaitGroup
+	arrived.Add(n)
+	svc.beforeInsert = func() {
+		arrived.Done()
+		arrived.Wait()
+	}
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			<-start
+			_, errs[i] = svc.Upload(context.Background(), userID, owner, bytes.NewReader(data))
+		}(i)
+	}
+	close(start)
+	wg.Wait()
+	return errs
+}
+
+func countFiles(t *testing.T, dir string) int {
+	t.Helper()
+	n := 0
+	require.NoError(t, filepath.WalkDir(dir, func(_ string, d os.DirEntry, err error) error {
+		if err == nil && !d.IsDir() {
+			n++
+		}
+		return err
+	}))
+	return n
+}
+
+// Issue #2313: the per-owner limit was a check-then-act race, so N concurrent
+// uploads all passed `count < Limit` and all inserted.
+func TestImageService_ConcurrentUploadsRespectOwnerLimit(t *testing.T) {
+	svc, activity, userID, dir := imageServiceEnv(t)
+	svc.Limit = 1
+	owner := OwnerRef{ID: activity.ID, UID: activity.UUID}
+
+	errs := uploadConcurrently(svc, userID, owner, imageTestJPEG(t), 8)
+
+	successes := 0
+	for _, err := range errs {
+		if err == nil {
+			successes++
+			continue
+		}
+		var appErr *apperrors.AppError
+		require.ErrorAs(t, err, &appErr)
+		assert.Equal(t, string(apperrors.ReasonImageLimitReached), appErr.ReasonCode)
+		assert.Equal(t, http.StatusConflict, appErr.HTTPStatus)
+	}
+	assert.Equal(t, 1, successes, "exactly one concurrent upload may win a limit of 1")
+	count, err := svc.Count(context.Background(), userID, owner)
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), count)
+	assert.Equal(t, 2, countFiles(t, dir), "the losers' files are removed; only the winner's full+thumb pair remains")
+}
+
+// The opt-in byte quota had the same race: every concurrent upload saw the
+// same `used` total.
+func TestImageService_ConcurrentUploadsRespectUserQuota(t *testing.T) {
+	svc, activity, userID, dir := imageServiceEnv(t)
+	owner := OwnerRef{ID: activity.ID, UID: activity.UUID}
+	data := imageTestJPEG(t)
+
+	probe, err := imaging.Process(bytes.NewReader(data), imaging.DefaultLimits)
+	require.NoError(t, err)
+	one := int64(len(probe.Full) + len(probe.Thumb))
+	svc.Quota = UserQuota{AttachmentBytes: one + one/2} // room for one upload, not two
+
+	errs := uploadConcurrently(svc, userID, owner, data, 8)
+
+	successes := 0
+	for _, err := range errs {
+		if err == nil {
+			successes++
+			continue
+		}
+		var appErr *apperrors.AppError
+		require.ErrorAs(t, err, &appErr)
+		assert.Equal(t, http.StatusInsufficientStorage, appErr.HTTPStatus)
+	}
+	assert.Equal(t, 1, successes)
+	count, err := svc.Count(context.Background(), userID, owner)
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), count)
+	assert.Equal(t, 2, countFiles(t, dir))
 }

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"image/draw"
 	"image/gif"
 	"image/jpeg"
 	"image/png"
@@ -164,32 +165,43 @@ func Process(r io.Reader, lim Limits) (*Result, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrCorrupt, err)
 	}
-	img = orient(img, meta.Orientation)
-
-	full, fullMIME, ext := encodeVariant(img, MaxLongEdge, jpegFullQuality)
-	thumb, thumbMIME, _ := encodeVariant(img, ThumbLongEdge, jpegThumbQuality)
+	// Resize first, orient the (much smaller) outputs: orienting the decoded
+	// raster would copy every pixel of a up-to-MaxPixels image through
+	// img.At/dst.Set while holding a decode slot (issue #2313).
+	o := meta.Orientation
+	full, fullMIME, ext := encodeOrientedVariant(img, o, MaxLongEdge, jpegFullQuality)
+	thumb, thumbMIME, _ := encodeOrientedVariant(img, o, ThumbLongEdge, jpegThumbQuality)
 	if full == nil || thumb == nil {
 		return nil, ErrCorrupt
 	}
 
 	bounds := img.Bounds()
+	width, height := bounds.Dx(), bounds.Dy()
+	if swapsAxes(o) {
+		width, height = height, width
+	}
 	return &Result{
 		Full:      full,
 		Thumb:     thumb,
 		MIME:      fullMIME,
 		ThumbMIME: thumbMIME,
 		Ext:       ext,
-		Width:     bounds.Dx(),
-		Height:    bounds.Dy(),
-		DHash:     differenceHash(img),
+		Width:     width,
+		Height:    height,
+		DHash:     orientedDifferenceHash(img, o),
 		TakenAt:   meta.TakenAt,
 		TakenDate: meta.TakenDate,
 	}, nil
 }
 
-// encodeVariant resizes to at most longEdge (never enlarging) and encodes. It
-// returns nil bytes only for an impossible zero-sized image.
-func encodeVariant(img image.Image, longEdge, quality int) ([]byte, string, string) {
+// swapsAxes reports whether an EXIF orientation transposes width and height.
+func swapsAxes(orientation int) bool { return orientation >= 5 && orientation <= 8 }
+
+// encodeOrientedVariant resizes the unoriented decoded image so its ORIENTED long edge
+// is at most longEdge (never enlarging), applies the EXIF orientation to that
+// small result, and encodes. It returns nil bytes only for an impossible
+// zero-sized image.
+func encodeOrientedVariant(img image.Image, orientation, longEdge, quality int) ([]byte, string, string) {
 	out := img
 	b := img.Bounds()
 	w, h := b.Dx(), b.Dy()
@@ -197,12 +209,19 @@ func encodeVariant(img image.Image, longEdge, quality int) ([]byte, string, stri
 		return nil, "", ""
 	}
 	if w > longEdge || h > longEdge {
-		if w >= h {
+		// The oriented long edge lies on the other source axis for
+		// orientations 5-8, so which source axis is scaled swaps.
+		ow, oh := w, h
+		if swapsAxes(orientation) {
+			ow, oh = h, w
+		}
+		if (ow >= oh) != swapsAxes(orientation) {
 			out = resize.Resize(uint(longEdge), 0, img, resize.Lanczos3)
 		} else {
 			out = resize.Resize(0, uint(longEdge), img, resize.Lanczos3)
 		}
 	}
+	out = orient(out, orientation)
 
 	var buf bytes.Buffer
 	if hasTransparency(out) {
@@ -215,6 +234,11 @@ func encodeVariant(img image.Image, longEdge, quality int) ([]byte, string, stri
 		return nil, "", ""
 	}
 	return buf.Bytes(), "image/jpeg", "jpg"
+}
+
+// encodeVariant is encodeOrientedVariant for an already-upright image.
+func encodeVariant(img image.Image, longEdge, quality int) ([]byte, string, string) {
+	return encodeOrientedVariant(img, 1, longEdge, quality)
 }
 
 func hasTransparency(img image.Image) bool {
@@ -260,18 +284,22 @@ func isHEIC(data []byte) bool {
 	return false
 }
 
-// orient applies EXIF orientation 1-8.
+// orient applies EXIF orientation 1-8. It runs on the already-resized
+// variants, never the decoded full-resolution raster.
 func orient(img image.Image, orientation int) image.Image {
 	if orientation < 2 || orientation > 8 {
 		return img
 	}
 	b := img.Bounds()
 	w, h := b.Dx(), b.Dy()
-	var dstW, dstH int
-	if orientation >= 5 {
+	src, ok := img.(*image.RGBA)
+	if !ok || src.Rect.Min != (image.Point{}) {
+		src = image.NewRGBA(image.Rect(0, 0, w, h))
+		draw.Draw(src, src.Bounds(), img, b.Min, draw.Src)
+	}
+	dstW, dstH := w, h
+	if swapsAxes(orientation) {
 		dstW, dstH = h, w
-	} else {
-		dstW, dstH = w, h
 	}
 	dst := image.NewRGBA(image.Rect(0, 0, dstW, dstH))
 	for y := 0; y < h; y++ {
@@ -290,15 +318,67 @@ func orient(img image.Image, orientation int) image.Image {
 				nx, ny = h-1-y, x
 			case 7:
 				nx, ny = h-1-y, w-1-x
-			case 8:
+			default: // 8
 				nx, ny = y, w-1-x
-			default:
-				nx, ny = x, y
 			}
-			dst.Set(nx, ny, img.At(b.Min.X+x, b.Min.Y+y))
+			si := y*src.Stride + x*4
+			di := ny*dst.Stride + nx*4
+			copy(dst.Pix[di:di+4], src.Pix[si:si+4])
 		}
 	}
 	return dst
+}
+
+// orientedDifferenceHash is differenceHash(orient(img, orientation)) without
+// materialising the oriented full-resolution raster. A lazy view maps the 72
+// sampled output pixels (plus the nearest filter's averaging window) back to
+// the source, so the stored hash is bit-identical to the one computed on the
+// copied raster (stored dHashes must not drift, issue #2313). Upright images
+// take the unchanged fast path.
+func orientedDifferenceHash(img image.Image, orientation int) int64 {
+	if orientation < 2 || orientation > 8 {
+		return differenceHash(img)
+	}
+	return differenceHash(orientedImage{src: img, orientation: orientation})
+}
+
+type orientedImage struct {
+	src         image.Image
+	orientation int
+}
+
+func (o orientedImage) ColorModel() color.Model { return o.src.ColorModel() }
+
+func (o orientedImage) Bounds() image.Rectangle {
+	b := o.src.Bounds()
+	if swapsAxes(o.orientation) {
+		return image.Rect(0, 0, b.Dy(), b.Dx())
+	}
+	return image.Rect(0, 0, b.Dx(), b.Dy())
+}
+
+// At is the inverse of orient's forward map.
+func (o orientedImage) At(nx, ny int) color.Color {
+	b := o.src.Bounds()
+	w, h := b.Dx(), b.Dy()
+	var x, y int
+	switch o.orientation {
+	case 2:
+		x, y = w-1-nx, ny
+	case 3:
+		x, y = w-1-nx, h-1-ny
+	case 4:
+		x, y = nx, h-1-ny
+	case 5:
+		x, y = ny, nx
+	case 6:
+		x, y = ny, h-1-nx
+	case 7:
+		x, y = w-1-ny, h-1-nx
+	default: // 8
+		x, y = w-1-ny, nx
+	}
+	return o.src.At(b.Min.X+x, b.Min.Y+y)
 }
 
 // differenceHash computes a 64-bit dHash: 9x8 grayscale, adjacent-column

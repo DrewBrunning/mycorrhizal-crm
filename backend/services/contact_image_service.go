@@ -222,7 +222,7 @@ func AdoptImageIntoContact(ctx context.Context, svc *ImageService[models.Contact
 			return dup, true, nil
 		}
 	}
-	if err := svc.checkLimit(ctx, userID, owner); err != nil {
+	if err := svc.checkLimit(ctx, db, userID, owner); err != nil {
 		return nil, false, err
 	}
 
@@ -250,9 +250,13 @@ func AdoptImageIntoContact(ctx context.Context, svc *ImageService[models.Contact
 	fields.CropX, fields.CropY, fields.CropW, fields.CropH = nil, nil, nil, nil
 	fields.StoredName, fields.ThumbName = newFull, newThumb
 	row := models.ContactImage{ImageFields: fields, ContactVCardUID: contact.VCardUID}
-	if err := db.WithContext(ctx).Create(&row).Error; err != nil {
+	if err := svc.insertWithinLimits(ctx, userID, owner, len(full)+len(thumb), &row); err != nil {
 		_ = store.Remove(userID, newFull)
 		_ = store.Remove(userID, newThumb)
+		var appErr *apperrors.AppError
+		if errors.As(err, &appErr) {
+			return nil, false, appErr
+		}
 		return nil, false, apperrors.ErrDatabase("Failed to adopt image").WithError(err)
 	}
 	models.RecordAuditEvent(db, models.AuditEntityContact, contact.VCardUID, models.AuditOpCreate, userID)

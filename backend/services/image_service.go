@@ -55,6 +55,12 @@ type ImageService[T any, P interface {
 	Limits   imaging.Limits
 	MaxBytes int64
 	Quota    UserQuota
+
+	// beforeInsert, when set (tests only), runs after every fast pre-check and
+	// before the insert transaction, so a test can park concurrent requests
+	// past their pre-checks (or fill the cap) and prove the in-transaction
+	// recheck is the authority (issue #2313).
+	beforeInsert func()
 }
 
 // ContactImageService builds the contact-gallery service from config (ADR 0040 slice c).
@@ -135,7 +141,13 @@ func (s *ImageService[T, P]) ownerValue(owner OwnerRef) any {
 }
 
 func (s *ImageService[T, P]) baseQuery(ctx context.Context, userID uint, owner OwnerRef) *gorm.DB {
-	return s.DB.WithContext(ctx).Where("user_id = ? AND "+s.newRow().OwnerColumn()+" = ?", userID, s.ownerValue(owner))
+	return s.ownerQuery(ctx, s.DB, userID, owner)
+}
+
+// ownerQuery is baseQuery against an explicit handle, so the limit recheck can
+// run inside the insert transaction.
+func (s *ImageService[T, P]) ownerQuery(ctx context.Context, db *gorm.DB, userID uint, owner OwnerRef) *gorm.DB {
+	return db.WithContext(ctx).Where("user_id = ? AND "+s.newRow().OwnerColumn()+" = ?", userID, s.ownerValue(owner))
 }
 
 func (s *ImageService[T, P]) newRow() ImageRow {
@@ -166,14 +178,16 @@ func (s *ImageService[T, P]) Get(ctx context.Context, userID uint, owner OwnerRe
 	return &row, nil
 }
 
-// checkLimit enforces the per-owner image cap (ADR 0040 decision 9).
-func (s *ImageService[T, P]) checkLimit(ctx context.Context, userID uint, owner OwnerRef) error {
+// checkLimit enforces the per-owner image cap (ADR 0040 decision 9). Against
+// s.DB it is only a fast rejection before the decode; insertWithinLimits reruns
+// it against the insert transaction as the authority (issue #2313).
+func (s *ImageService[T, P]) checkLimit(ctx context.Context, db *gorm.DB, userID uint, owner OwnerRef) error {
 	if s.Limit <= 0 {
 		return nil
 	}
 	var count int64
 	var model T
-	if err := s.baseQuery(ctx, userID, owner).Model(&model).Count(&count).Error; err != nil {
+	if err := s.ownerQuery(ctx, db, userID, owner).Model(&model).Count(&count).Error; err != nil {
 		return apperrors.ErrDatabase("Failed to check the image limit").WithError(err)
 	}
 	if count >= int64(s.Limit) {
@@ -255,6 +269,29 @@ func (s *ImageService[T, P]) processUpload(ctx context.Context, userID uint, own
 	return result, nil
 }
 
+// insertWithinLimits inserts row after rechecking the owner cap and the
+// storage quota for n new bytes inside the insert transaction. The earlier
+// checks are only fast rejections that concurrent requests all pass;
+// _txlock=immediate serializes writers, so this count and the insert cannot
+// interleave with another request's (backend trap #9). Every path that adds a
+// gallery row (upload and adopt) goes through it.
+func (s *ImageService[T, P]) insertWithinLimits(ctx context.Context, userID uint, owner OwnerRef, n int, row P) error {
+	if s.beforeInsert != nil {
+		s.beforeInsert()
+	}
+	return s.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := s.checkLimit(ctx, tx, userID, owner); err != nil {
+			return err
+		}
+		if s.Quota.Enabled() {
+			if qerr := s.Quota.CheckAttachmentUpload(tx, userID, int64(n)); qerr != nil {
+				return qerr
+			}
+		}
+		return tx.Create(row).Error
+	})
+}
+
 // storeUpload writes the processed variants and inserts the row. A failed
 // insert removes the files so no orphan is left behind (ADR 0040 decision 5).
 func (s *ImageService[T, P]) storeUpload(ctx context.Context, userID uint, owner OwnerRef, result *imaging.Result) (*T, error) {
@@ -282,9 +319,13 @@ func (s *ImageService[T, P]) storeUpload(ctx context.Context, userID uint, owner
 	f.TakenAt = result.TakenAt
 	f.TakenDate = result.TakenDate
 
-	if err := s.DB.WithContext(ctx).Create(p).Error; err != nil {
+	if err := s.insertWithinLimits(ctx, userID, owner, len(result.Full)+len(result.Thumb), p); err != nil {
 		_ = s.Store.Remove(userID, storedName)
 		_ = s.Store.Remove(userID, thumbName)
+		var appErr *apperrors.AppError
+		if errors.As(err, &appErr) {
+			return nil, appErr
+		}
 		return nil, apperrors.ErrDatabase("Failed to save image").WithError(err)
 	}
 	models.RecordAuditEvent(s.DB, s.auditEntity(), imageAuditID(owner), models.AuditOpCreate, userID)
@@ -295,7 +336,7 @@ func (s *ImageService[T, P]) storeUpload(ctx context.Context, userID uint, owner
 // files are removed if the row insert fails, so a failed request leaves no
 // orphan behind (ADR 0040 decision 5).
 func (s *ImageService[T, P]) Upload(ctx context.Context, userID uint, owner OwnerRef, src io.Reader) (*T, error) {
-	if err := s.checkLimit(ctx, userID, owner); err != nil {
+	if err := s.checkLimit(ctx, s.DB, userID, owner); err != nil {
 		return nil, err
 	}
 	result, err := s.processUpload(ctx, userID, owner, src)
@@ -312,7 +353,7 @@ func (s *ImageService[T, P]) Upload(ctx context.Context, userID uint, owner Owne
 func (s *ImageService[T, P]) UploadDeduped(ctx context.Context, userID uint, owner OwnerRef, src io.Reader) (*T, bool, error) {
 	// A duplicate is an idempotent retry, so it is exempt from the cap: the
 	// cap verdict is held back until dedupe has had its say.
-	limitErr := s.checkLimit(ctx, userID, owner)
+	limitErr := s.checkLimit(ctx, s.DB, userID, owner)
 	result, err := s.processUpload(ctx, userID, owner, src)
 	if err != nil {
 		return nil, false, err
