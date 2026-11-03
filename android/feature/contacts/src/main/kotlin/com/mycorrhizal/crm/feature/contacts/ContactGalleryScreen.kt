@@ -59,13 +59,13 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.mycorrhizal.crm.model.network.ContactPhoto
 import com.mycorrhizal.crm.model.network.ImageCrop
 import com.mycorrhizal.crm.model.network.PhotoSource
+import com.mycorrhizal.crm.feature.timeline.ImageLightbox
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
@@ -303,14 +303,11 @@ fun ContactGalleryScreenContent(
     }
 
     viewing?.let { photo ->
-        Dialog(onDismissRequest = { viewing = null }) {
-            AsyncImage(
-                model = photo.fileUrl,
-                contentDescription = stringResource(R.string.contact_images_alt),
-                contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxWidth().padding(8.dp)
-            )
-        }
+        ImageLightbox(
+            url = photo.fileUrl,
+            contentDescription = stringResource(R.string.contact_images_alt),
+            onDismiss = { viewing = null }
+        )
     }
 
     val message = uiState.error?.localizedMessage()

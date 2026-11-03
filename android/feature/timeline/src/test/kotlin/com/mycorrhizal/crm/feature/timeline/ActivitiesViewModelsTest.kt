@@ -716,6 +716,26 @@ class ActivityFormViewModelTest {
     }
 
     @Test
+    fun `an image load failure surfaces the error and keeps the form usable`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery {
+            activityRepository.get(1)
+        } returns Result.success(Activity(id = 1, title = "Trip"))
+        coEvery { activityRepository.listImages(1) } returns Result.failure(
+            ApiError.Client(500, "boom")
+        )
+
+        val vm = createViewModel(activityId = 1)
+        advanceUntilIdle()
+
+        assertFalse(vm.uiState.value.imagesLoading)
+        assertTrue(vm.uiState.value.images.isEmpty())
+        assertEquals("boom", vm.uiState.value.error?.message)
+        assertEquals("Trip", vm.uiState.value.title)
+    }
+
+    @Test
     fun `create mode uploads pending images after the activity exists`() = runTest(
         mainDispatcherRule.testDispatcher
     ) {
