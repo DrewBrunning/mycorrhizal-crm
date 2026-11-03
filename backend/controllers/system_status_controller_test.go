@@ -406,9 +406,10 @@ func TestGetSystemStatus_StorageTrendBlock(t *testing.T) {
 
 	// usage_percent + threshold: the filesystem holding the temp DB is
 	// stat'able, so usage_percent must be populated and the threshold one of
-	// the three tiers.
+	// the three tiers. The percentage itself depends on the shared host
+	// filesystem and metrics.FilesystemBytes cannot be stubbed without a
+	// production seam, so its value is not asserted here.
 	require.NotNil(t, resp.Storage.UsagePercent)
-	assert.InDelta(t, 0, *resp.Storage.UsagePercent, 100, "a fresh temp dir must be nearly empty")
 	assert.Contains(t, []string{
 		services.StorageThresholdOK,
 		services.StorageThresholdWarning,

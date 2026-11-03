@@ -429,8 +429,42 @@ func TestDecodePayload_RejectsMalformedJSON(t *testing.T) {
 
 func TestListTrash_SurfacesQueryFailure(t *testing.T) {
 	db, userID := newPurgeDB(t)
-	require.NoError(t, db.Exec("DROP TABLE contact_deletion_snapshots").Error)
+	dbtest.HideTable(t, db, "contact_deletion_snapshots")
 
 	_, _, err := ListTrash(db, userID, 0, 10)
 	assert.Error(t, err)
+}
+
+// Issue #2315 item 2: total and page come from one join, so an orphan
+// snapshot (its contact live again, or hard-gone) is in neither, and a page is
+// never short because of one.
+func TestListTrash_OrphanSnapshotsExcludedFromTotalAndPages(t *testing.T) {
+	f := newCascadeFixture(t)
+	trash := func(name string, at time.Time) models.Contact {
+		c := models.Contact{UserID: f.userID, Firstname: name}
+		require.NoError(t, f.db.Create(&c).Error)
+		require.NoError(t, DeleteContact(f.db, c, f.userID, at))
+		return c
+	}
+	oldest := trash("Oldest", trashNow.Add(-3*time.Hour))
+	trash("Middle", trashNow.Add(-2*time.Hour))
+	newest := trash("Newest", trashNow.Add(-1*time.Hour))
+
+	// Two orphans that sort newest of all: one whose contact is live again, one hard-gone.
+	live := trash("LiveAgain", trashNow.Add(time.Hour))
+	require.NoError(t, f.db.Unscoped().Model(&models.Contact{}).Where("id = ?", live.ID).Update("deleted_at", nil).Error)
+	gone := trash("Gone", trashNow.Add(2*time.Hour))
+	require.NoError(t, f.db.Unscoped().Delete(&models.Contact{}, gone.ID).Error)
+
+	page1, total, err := ListTrash(f.db, f.userID, 0, 2)
+	require.NoError(t, err)
+	assert.EqualValues(t, 3, total, "orphan snapshots are not counted")
+	require.Len(t, page1, 2, "orphans do not shorten the page")
+	assert.Equal(t, newest.ID, page1[0].Contact.ID)
+
+	page2, total, err := ListTrash(f.db, f.userID, 2, 2)
+	require.NoError(t, err)
+	assert.EqualValues(t, 3, total)
+	require.Len(t, page2, 1)
+	assert.Equal(t, oldest.ID, page2[0].Contact.ID)
 }
