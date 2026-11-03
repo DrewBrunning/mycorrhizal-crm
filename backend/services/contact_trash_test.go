@@ -101,6 +101,7 @@ func TestRestoreContact_RevivesExactlyTheDeletedSet(t *testing.T) {
 	require.NoError(t, f.db.Table("activity_contacts").Where("contact_id = ?", f.contact.ID).Count(&links).Error)
 	assert.EqualValues(t, 1, links)
 	assert.EqualValues(t, 1, count(t, f.db, false, &models.ImportSourceLink{}, "entity_uid = ?", uid))
+	assert.EqualValues(t, 1, count(t, f.db, false, &models.ActivityImage{}, "uuid = 'activity-img'"), "the shared activity's image is intact after restore")
 
 	// Derived / security state is deliberately not restored.
 	assert.Zero(t, count(t, f.db, false, &models.DismissedDuplicatePair{}, "uid_low = ?", uid))
@@ -262,6 +263,9 @@ func TestPurgeContact_RemovesEverythingAndReportsFiles(t *testing.T) {
 	}, files.Images, "note and contact gallery files are reported for removal (issue #2310)")
 	assert.Zero(t, count(t, f.db, true, &models.NoteImage{}, "user_id = ?", f.userID))
 	assert.Zero(t, count(t, f.db, true, &models.ContactImage{}, "user_id = ?", f.userID))
+	// The activity is shared with other attendees, so purging one attendee
+	// keeps the activity, its image row, and its files (not in files.Images).
+	assert.EqualValues(t, 1, count(t, f.db, false, &models.ActivityImage{}, "uuid = 'activity-img'"), "activity image row survives the contact purge")
 
 	assert.Zero(t, count(t, f.db, true, &models.Contact{}, "id = ?", f.contact.ID))
 	assert.Zero(t, count(t, f.db, true, &models.Note{}, "contact_id = ?", f.contact.ID))

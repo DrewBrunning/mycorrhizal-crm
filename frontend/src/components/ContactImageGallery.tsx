@@ -1,7 +1,19 @@
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
 import StarIcon from '@mui/icons-material/Star';
-import { Box, Chip, IconButton, Menu, MenuItem, Typography } from '@mui/material';
-import { useState } from 'react';
+import {
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  Dialog,
+  DialogContent,
+  IconButton,
+  Menu,
+  MenuItem,
+  Typography,
+} from '@mui/material';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { isPreconditionFailed } from '../api/client';
 import {
@@ -17,7 +29,6 @@ import {
   uploadContactImage,
 } from '../api/contactImages';
 import ImageCropDialog from './ImageCropDialog';
-import ImageGallery, { type ImageGalleryContext } from './ImageGallery';
 
 interface ContactImageGalleryProps {
   contactId: number;
@@ -55,63 +66,121 @@ export default function ContactImageGallery({
   onContactChanged,
 }: ContactImageGalleryProps) {
   const { t } = useTranslation();
+  const [photos, setPhotos] = useState<ContactPhoto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [viewing, setViewing] = useState<ContactPhoto | null>(null);
   const [cropping, setCropping] = useState<ContactPhoto | null>(null);
   const [menu, setMenu] = useState<{ photo: ContactPhoto; anchor: HTMLElement } | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  type Ctx = ImageGalleryContext<ContactPhoto>;
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await getContactPhotos(contactId);
+      setPhotos(response.photos || []);
+      setError('');
+    } catch (err) {
+      console.error('Failed to load contact photos:', err);
+      setError(t('contactImages.loadFailed'));
+    } finally {
+      setLoading(false);
+    }
+  }, [contactId, t]);
 
-  const handleDelete = (ctx: Ctx, photo: ContactPhoto) =>
-    ctx.run(async () => {
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  // Runs one write: busy flag, feedback reset, and a single error path.
+  const run = async (action: () => Promise<void>, failure: string) => {
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      await action();
+    } catch (err) {
+      console.error(failure, err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      for (const file of Array.from(files)) {
+        await uploadContactImage(contactId, file);
+      }
+      await load();
+      onChanged?.();
+    } catch (err) {
+      console.error('Failed to upload contact image:', err);
+      setError(t('contactImages.uploadFailed'));
+    } finally {
+      setBusy(false);
+      if (inputRef.current) inputRef.current.value = '';
+    }
+  };
+
+  const handleDelete = (photo: ContactPhoto) =>
+    run(async () => {
       try {
         await deleteContactImage(contactId, photo.id);
-        ctx.setItems((prev) => prev.filter((item) => photoKey(item) !== photoKey(photo)));
+        setPhotos((prev) => prev.filter((item) => photoKey(item) !== photoKey(photo)));
         onChanged?.();
         // Deleting the main image clears the pointer and bumps the revision.
         onContactChanged?.();
       } catch (err) {
-        ctx.setError(t('contactImages.deleteFailed'));
+        setError(t('contactImages.deleteFailed'));
         throw err;
       }
     }, 'Failed to delete contact image:');
 
-  // A 412 means another write moved the contact on: refetch so the next try
-  // carries the current revision. Nothing was changed.
-  const mainFailure = (ctx: Ctx, err: unknown) => {
-    if (isPreconditionFailed(err)) {
-      ctx.setError(t('contactImages.mainStale'));
-      onContactChanged?.();
-    } else {
-      ctx.setError(t('contactImages.mainFailed'));
-    }
-  };
-
-  const handleSetMain = (ctx: Ctx, photo: ContactPhoto) =>
-    ctx.run(async () => {
+  const handleSetMain = (photo: ContactPhoto) =>
+    run(async () => {
       try {
         await setContactMainImage(contactId, photo.id, revision);
         onContactChanged?.();
       } catch (err) {
-        mainFailure(ctx, err);
+        if (isPreconditionFailed(err)) {
+          // Another write moved the contact on; refetch so the next try carries
+          // the current revision. Nothing was changed.
+          setError(t('contactImages.mainStale'));
+          onContactChanged?.();
+        } else {
+          setError(t('contactImages.mainFailed'));
+        }
         throw err;
       }
     }, 'Failed to set main image:');
 
-  const handleClearMain = (ctx: Ctx) =>
-    ctx.run(async () => {
+  const handleClearMain = () =>
+    run(async () => {
       try {
         await clearContactMainImage(contactId, revision);
         onContactChanged?.();
       } catch (err) {
-        mainFailure(ctx, err);
+        if (isPreconditionFailed(err)) {
+          setError(t('contactImages.mainStale'));
+          onContactChanged?.();
+        } else {
+          setError(t('contactImages.mainFailed'));
+        }
         throw err;
       }
     }, 'Failed to clear main image:');
 
-  const handleCrop = (ctx: Ctx, photo: ContactPhoto, crop: ImageCrop | null) =>
-    ctx.run(async () => {
+  const handleCrop = (photo: ContactPhoto, crop: ImageCrop | null) =>
+    run(async () => {
       try {
         const updated = await patchContactImage(contactId, photo.id, { crop });
-        ctx.setItems((prev) =>
+        setPhotos((prev) =>
           prev.map((item) =>
             photoKey(item) === photoKey(photo) ? { ...item, crop: updated.crop ?? crop } : item,
           ),
@@ -120,13 +189,13 @@ export default function ContactImageGallery({
         // Cropping the main image regenerates the avatar and bumps the revision.
         onContactChanged?.();
       } catch (err) {
-        ctx.setError(t('contactImages.cropFailed'));
+        setError(t('contactImages.cropFailed'));
         throw err;
       }
     }, 'Failed to save crop:');
 
-  const handleAdopt = (ctx: Ctx, photo: ContactPhoto) =>
-    ctx.run(async () => {
+  const handleAdopt = (photo: ContactPhoto) =>
+    run(async () => {
       try {
         if (photo.source.kind === 'contact') return;
         const result = await adoptContactImage(contactId, {
@@ -134,19 +203,36 @@ export default function ContactImageGallery({
           source_id: photo.source.id,
           image_id: photo.id,
         });
-        await ctx.reload();
+        await load();
         onChanged?.();
-        ctx.setNotice(
+        setNotice(
           result.deduplicated ? t('contactImages.adoptDuplicate') : t('contactImages.adopted'),
         );
       } catch (err) {
-        ctx.setError(t('contactImages.adoptFailed'));
+        setError(t('contactImages.adoptFailed'));
         throw err;
       }
     }, 'Failed to adopt image:');
 
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 1 }}>
+        <CircularProgress size={20} aria-label={t('contactImages.loading')} />
+      </Box>
+    );
+  }
+
+  if (!editable && photos.length === 0 && !error) return null;
+
   const isMain = (photo: ContactPhoto) =>
     photo.source.kind === 'contact' && mainImageId != null && photo.id === mainImageId;
+
+  const closeMenu = () => setMenu(null);
+  // Closes the menu, then runs the action.
+  const choose = (action: () => unknown) => () => {
+    closeMenu();
+    void action();
+  };
 
   const sourceCaption = (photo: ContactPhoto): string | null => {
     const kind =
@@ -160,136 +246,178 @@ export default function ContactImageGallery({
     return label ? t('contactImages.sourceLabeled', { kind, label }) : kind;
   };
 
-  const renderFooter = (photo: ContactPhoto) => {
-    const caption = sourceCaption(photo);
-    if (!caption && photo.sensitivity === 'normal') return null;
-    return (
-      <Box sx={{ mt: 0.25 }}>
-        {caption && (
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{ display: 'block' }}
-            noWrap
-            title={caption}
-          >
-            {caption}
-          </Typography>
-        )}
-        {photo.sensitivity !== 'normal' && (
-          <Chip
-            size="small"
-            variant="outlined"
-            color={photo.sensitivity === 'secret' ? 'error' : 'warning'}
-            label={
-              photo.sensitivity === 'secret'
-                ? t('contactImages.sensitivitySecret')
-                : t('contactImages.sensitivityPrivate')
-            }
-          />
-        )}
-      </Box>
-    );
-  };
-
-  const renderExtras = (ctx: Ctx) => {
-    const closeMenu = () => setMenu(null);
-    // Closes the menu, then runs the action.
-    const choose = (action: () => unknown) => () => {
-      closeMenu();
-      void action();
-    };
-    return (
-      <>
-        <Menu open={menu !== null} anchorEl={menu?.anchor} onClose={closeMenu}>
-          {menu &&
-            menu.photo.source.kind === 'contact' && [
-              isMain(menu.photo) ? (
-                <MenuItem key="clear-main" onClick={choose(() => handleClearMain(ctx))}>
-                  {t('contactImages.clearMain')}
-                </MenuItem>
-              ) : (
-                // Only a normal-sensitivity image can be the main image (the avatar
-                // leaves the instance via CardDAV), so the server rejects the rest.
-                menu.photo.sensitivity === 'normal' && (
-                  <MenuItem key="set-main" onClick={choose(() => handleSetMain(ctx, menu.photo))}>
-                    {t('contactImages.setMain')}
-                  </MenuItem>
-                )
-              ),
-              <MenuItem key="crop" onClick={choose(() => setCropping(menu.photo))}>
-                {t('contactImages.crop')}
-              </MenuItem>,
-              <MenuItem key="delete" onClick={choose(() => handleDelete(ctx, menu.photo))}>
-                {t('contactImages.delete')}
-              </MenuItem>,
-            ]}
-          {menu && menu.photo.source.kind !== 'contact' && (
-            <MenuItem onClick={choose(() => handleAdopt(ctx, menu.photo))}>
-              {t('contactImages.adopt')}
-            </MenuItem>
-          )}
-        </Menu>
-
-        {cropping && (
-          <ImageCropDialog
-            photo={cropping}
-            busy={ctx.busy}
-            onSave={(crop) => void handleCrop(ctx, cropping, crop)}
-            onClear={() => void handleCrop(ctx, cropping, null)}
-            onClose={() => setCropping(null)}
-          />
-        )}
-      </>
-    );
-  };
-
   return (
-    <ImageGallery<ContactPhoto>
-      ownerId={contactId}
-      logName="contact"
-      labels={{
-        loading: t('contactImages.loading'),
-        alt: t('contactImages.alt'),
-        add: t('contactImages.add'),
-        uploading: t('contactImages.uploading'),
-        delete: t('contactImages.delete'),
-        loadFailed: t('contactImages.loadFailed'),
-        uploadFailed: t('contactImages.uploadFailed'),
-        deleteFailed: t('contactImages.deleteFailed'),
-      }}
-      list={async () => (await getContactPhotos(contactId)).photos || []}
-      upload={(file) => uploadContactImage(contactId, file)}
-      imageKey={photoKey}
-      thumbnailSrc={(photo) => contactImageSrc(photo.thumbnail_url)}
-      fullSrc={(photo) => contactImageSrc(photo.file_url)}
-      itemTestId={(photo) => `contact-photo-${photoKey(photo)}`}
-      editable={editable}
-      onChanged={onChanged}
-      renderOverlay={(photo) =>
-        isMain(photo) && (
-          <StarIcon
-            fontSize="small"
-            color="primary"
-            aria-label={t('contactImages.mainBadge')}
-            role="img"
-            sx={{ position: 'absolute', top: 2, left: 2 }}
-          />
-        )
-      }
-      renderActions={(photo, ctx) => (
-        <IconButton
-          size="small"
-          aria-label={t('contactImages.actions')}
-          disabled={ctx.busy}
-          onClick={(event) => setMenu({ photo, anchor: event.currentTarget })}
-          sx={{ position: 'absolute', top: -8, right: -8, bgcolor: 'background.paper' }}
-        >
-          <MoreVertIcon fontSize="small" />
-        </IconButton>
+    <Box sx={{ mt: 1.5 }}>
+      {photos.length > 0 && (
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+          {photos.map((photo) => {
+            const caption = sourceCaption(photo);
+            return (
+              <Box
+                key={photoKey(photo)}
+                data-testid={`contact-photo-${photoKey(photo)}`}
+                sx={{ position: 'relative', width: 88 }}
+              >
+                <Box
+                  component="img"
+                  src={contactImageSrc(photo.thumbnail_url)}
+                  alt={t('contactImages.alt')}
+                  loading="lazy"
+                  onClick={() => setViewing(photo)}
+                  sx={{
+                    width: 88,
+                    height: 88,
+                    objectFit: 'cover',
+                    borderRadius: 1,
+                    cursor: 'zoom-in',
+                    border: 1,
+                    borderColor: 'divider',
+                    display: 'block',
+                  }}
+                />
+                {isMain(photo) && (
+                  <StarIcon
+                    fontSize="small"
+                    color="primary"
+                    aria-label={t('contactImages.mainBadge')}
+                    role="img"
+                    sx={{ position: 'absolute', top: 2, left: 2 }}
+                  />
+                )}
+                {editable && (
+                  <IconButton
+                    size="small"
+                    aria-label={t('contactImages.actions')}
+                    disabled={busy}
+                    onClick={(event) => setMenu({ photo, anchor: event.currentTarget })}
+                    sx={{ position: 'absolute', top: -8, right: -8, bgcolor: 'background.paper' }}
+                  >
+                    <MoreVertIcon fontSize="small" />
+                  </IconButton>
+                )}
+                {(caption || photo.sensitivity !== 'normal') && (
+                  <Box sx={{ mt: 0.25 }}>
+                    {caption && (
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ display: 'block' }}
+                        noWrap
+                        title={caption}
+                      >
+                        {caption}
+                      </Typography>
+                    )}
+                    {photo.sensitivity !== 'normal' && (
+                      <Chip
+                        size="small"
+                        variant="outlined"
+                        color={photo.sensitivity === 'secret' ? 'error' : 'warning'}
+                        label={
+                          photo.sensitivity === 'secret'
+                            ? t('contactImages.sensitivitySecret')
+                            : t('contactImages.sensitivityPrivate')
+                        }
+                      />
+                    )}
+                  </Box>
+                )}
+              </Box>
+            );
+          })}
+        </Box>
       )}
-      renderFooter={renderFooter}
-      renderExtras={renderExtras}
-    />
+
+      <Menu open={menu !== null} anchorEl={menu?.anchor} onClose={closeMenu}>
+        {menu &&
+          menu.photo.source.kind === 'contact' && [
+            isMain(menu.photo) ? (
+              <MenuItem key="clear-main" onClick={choose(handleClearMain)}>
+                {t('contactImages.clearMain')}
+              </MenuItem>
+            ) : (
+              // Only a normal-sensitivity image can be the main image (the avatar
+              // leaves the instance via CardDAV), so the server rejects the rest.
+              menu.photo.sensitivity === 'normal' && (
+                <MenuItem key="set-main" onClick={choose(() => handleSetMain(menu.photo))}>
+                  {t('contactImages.setMain')}
+                </MenuItem>
+              )
+            ),
+            <MenuItem key="crop" onClick={choose(() => setCropping(menu.photo))}>
+              {t('contactImages.crop')}
+            </MenuItem>,
+            <MenuItem key="delete" onClick={choose(() => handleDelete(menu.photo))}>
+              {t('contactImages.delete')}
+            </MenuItem>,
+          ]}
+        {menu && menu.photo.source.kind !== 'contact' && (
+          <MenuItem onClick={choose(() => handleAdopt(menu.photo))}>
+            {t('contactImages.adopt')}
+          </MenuItem>
+        )}
+      </Menu>
+
+      {editable && (
+        <Box sx={{ mt: photos.length > 0 ? 1 : 0 }}>
+          <input
+            ref={inputRef}
+            type="file"
+            aria-label={t('contactImages.add')}
+            accept="image/jpeg,image/png,image/gif"
+            multiple
+            hidden
+            onChange={(event) => void handleFiles(event.target.files)}
+          />
+          <Button
+            size="small"
+            startIcon={busy ? <CircularProgress size={16} /> : <PhotoLibraryIcon />}
+            disabled={busy}
+            onClick={() => inputRef.current?.click()}
+          >
+            {busy ? t('contactImages.uploading') : t('contactImages.add')}
+          </Button>
+        </Box>
+      )}
+
+      {error && (
+        <Typography variant="caption" color="error" role="alert" sx={{ display: 'block', mt: 0.5 }}>
+          {error}
+        </Typography>
+      )}
+      {notice && (
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          role="status"
+          sx={{ display: 'block', mt: 0.5 }}
+        >
+          {notice}
+        </Typography>
+      )}
+
+      {cropping && (
+        <ImageCropDialog
+          photo={cropping}
+          busy={busy}
+          onSave={(crop) => void handleCrop(cropping, crop)}
+          onClear={() => void handleCrop(cropping, null)}
+          onClose={() => setCropping(null)}
+        />
+      )}
+
+      <Dialog open={viewing !== null} onClose={() => setViewing(null)} maxWidth="lg">
+        <DialogContent sx={{ p: 0, bgcolor: 'common.black' }}>
+          {viewing && (
+            <Box
+              component="img"
+              src={contactImageSrc(viewing.file_url)}
+              alt={t('contactImages.alt')}
+              sx={{ maxWidth: '90vw', maxHeight: '90vh', display: 'block' }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+    </Box>
   );
 }

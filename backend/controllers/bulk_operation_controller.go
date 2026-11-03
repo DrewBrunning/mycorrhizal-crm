@@ -1,8 +1,10 @@
 package controllers
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"mycorrhizal/config"
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/internal/clock"
 	"mycorrhizal/middleware"
@@ -125,7 +127,7 @@ func BulkContactOperation(c *gin.Context) {
 			result.Failures = append(result.Failures, models.BulkFailureEntry{VCardUID: uid, Reason: "contact not found or not owned"})
 			continue
 		}
-		if err := runBulkContactAction(db, userID, contact, input.Action, circle, tag, fieldUpdate, clock.FromContext(c).Now()); err != nil {
+		if err := runBulkContactAction(c.Request.Context(), db, currentConfig(c), userID, contact, input.Action, circle, tag, fieldUpdate, clock.FromContext(c).Now()); err != nil {
 			result.Failed++
 			result.Failures = append(result.Failures, models.BulkFailureEntry{VCardUID: uid, Reason: err.Error()})
 			continue
@@ -142,7 +144,13 @@ func BulkContactOperation(c *gin.Context) {
 // runBulkContactAction applies one bulk action to a single owned contact.
 // Every action is idempotent: it returns nil when the desired end state
 // already holds.
-func runBulkContactAction(db *gorm.DB, userID uint, contact models.Contact, action string, circle *models.Circle, tag *models.Tag, fieldUpdate *bulkFieldUpdate, now time.Time) error {
+//
+// Webhooks (issue #2311): update_fields fires contact.updated (inside
+// bulkFieldUpdate.apply, after the per-contact commit) and delete fires
+// contact.deleted, matching their single-contact routes. archive/unarchive and
+// the circle/tag actions deliberately fire no webhook, exactly like
+// ArchiveContact/UnarchiveContact and the circle/tag membership endpoints.
+func runBulkContactAction(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint, contact models.Contact, action string, circle *models.Circle, tag *models.Tag, fieldUpdate *bulkFieldUpdate, now time.Time) error {
 	switch action {
 	case "add_circle":
 		var existing models.CircleMember
@@ -187,12 +195,17 @@ func runBulkContactAction(db *gorm.DB, userID uint, contact models.Contact, acti
 	case "unarchive":
 		return db.Model(&contact).Update("archived", false).Error
 	case "update_fields":
-		return fieldUpdate.apply(db, userID, contact)
+		return fieldUpdate.apply(ctx, db, cfg, userID, contact)
 	case "delete":
 		// Per-contact transaction: the full DeleteContact cascade either
 		// completes for this contact or rolls back cleanly, so a mid-batch
 		// failure never leaves one contact half-cleaned (N5 trap).
-		return services.DeleteContact(db, contact, userID, now)
+		if err := services.DeleteContact(db, contact, userID, now); err != nil {
+			return err
+		}
+		// Same event and payload as the single DELETE /contacts/:id route.
+		services.TriggerWebhooksAsync(ctx, db, cfg, userID, "contact.deleted", gin.H{"id": contact.ID})
+		return nil
 	}
 	return fmt.Errorf("unknown bulk action %q", action)
 }

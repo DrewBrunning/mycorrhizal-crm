@@ -9,196 +9,209 @@ import {
   IconButton,
   Typography,
 } from '@mui/material';
-import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import {
+  type ActivityImage,
+  activityImageSrc,
+  deleteActivityImage,
+  getActivityImages,
+  uploadActivityImage,
+} from '../api/activities';
+import {
+  type ContactImage,
+  contactImageSrc,
+  deleteContactImage,
+  getContactImages,
+  uploadContactImage,
+} from '../api/contactImages';
+import {
+  deleteNoteImage,
+  getNoteImages,
+  type NoteImage,
+  noteImageSrc,
+  uploadNoteImage,
+} from '../api/notes';
 
-// What a slot needs to drive the gallery's state: the owner wrappers (contact
-// photos: menu, main image, crop, adopt) compose behaviour through this instead
-// of forking the component.
-export interface ImageGalleryContext<T> {
-  items: T[];
-  setItems: (update: (prev: T[]) => T[]) => void;
-  busy: boolean;
-  setError: (message: string) => void;
-  setNotice: (message: string) => void;
-  // Reloads the list from the owner's list endpoint.
-  reload: () => Promise<void>;
-  // Runs one write: busy flag, feedback reset, and a single logged error path.
-  // The action reports failures to the user itself (setError) and rethrows.
-  run: (action: () => Promise<void>, failure: string) => Promise<void>;
+/** The fields the gallery reads from any owner's image row. */
+interface GalleryImage {
+  id: number;
+  file_url: string;
+  thumbnail_url: string;
 }
 
-export interface ImageGalleryLabels {
-  loading: string;
-  alt: string;
-  add: string;
-  uploading: string;
-  delete: string;
-  loadFailed: string;
-  uploadFailed: string;
-  deleteFailed: string;
+/** One owner's API functions; the gallery itself is owner-agnostic. */
+export interface ImageGalleryApi<I extends GalleryImage> {
+  list: (ownerId: number) => Promise<{ images: I[] }>;
+  upload: (ownerId: number, file: File) => Promise<unknown>;
+  remove: (ownerId: number, imageId: number) => Promise<unknown>;
+  /** Resolves a server-relative file/thumbnail URL against the API origin. */
+  src: (path: string) => string;
 }
 
-export interface ImageGalleryProps<T> {
-  // Identity of the owner; a change reloads the list.
+// Literal keys (not a template literal) so the i18n key-usage scan sees them.
+const LABELS = {
+  activityImages: {
+    kind: 'activity',
+    loading: 'activityImages.loading',
+    alt: 'activityImages.alt',
+    delete: 'activityImages.delete',
+    add: 'activityImages.add',
+    uploading: 'activityImages.uploading',
+    loadFailed: 'activityImages.loadFailed',
+    uploadFailed: 'activityImages.uploadFailed',
+    deleteFailed: 'activityImages.deleteFailed',
+  },
+  noteImages: {
+    kind: 'note',
+    loading: 'noteImages.loading',
+    alt: 'noteImages.alt',
+    delete: 'noteImages.delete',
+    add: 'noteImages.add',
+    uploading: 'noteImages.uploading',
+    loadFailed: 'noteImages.loadFailed',
+    uploadFailed: 'noteImages.uploadFailed',
+    deleteFailed: 'noteImages.deleteFailed',
+  },
+  contactImages: {
+    kind: 'contact',
+    loading: 'contactImages.loading',
+    alt: 'contactImages.alt',
+    delete: 'contactImages.delete',
+    add: 'contactImages.add',
+    uploading: 'contactImages.uploading',
+    loadFailed: 'contactImages.loadFailed',
+    uploadFailed: 'contactImages.uploadFailed',
+    deleteFailed: 'contactImages.deleteFailed',
+  },
+} as const;
+
+export type ImageGalleryPrefix = keyof typeof LABELS;
+
+export const activityImageGalleryApi: ImageGalleryApi<ActivityImage> = {
+  list: (id) => getActivityImages(id),
+  upload: (id, file) => uploadActivityImage(id, file),
+  remove: (id, imageId) => deleteActivityImage(id, imageId),
+  src: activityImageSrc,
+};
+
+export const noteImageGalleryApi: ImageGalleryApi<NoteImage> = {
+  list: (id) => getNoteImages(id),
+  upload: (id, file) => uploadNoteImage(id, file),
+  remove: (id, imageId) => deleteNoteImage(id, imageId),
+  src: noteImageSrc,
+};
+
+export const contactImageGalleryApi: ImageGalleryApi<ContactImage> = {
+  list: (id) => getContactImages(id),
+  upload: (id, file) => uploadContactImage(id, file),
+  remove: (id, imageId) => deleteContactImage(id, imageId),
+  src: contactImageSrc,
+};
+
+interface ImageGalleryProps<I extends GalleryImage> {
   ownerId: number;
-  // Already-translated strings. The owner wrapper passes literal t('...') calls
-  // so the i18n key-usage gate can still see every key (no dynamic prefix).
-  labels: ImageGalleryLabels;
-  // Names the owner in console diagnostics (e.g. "note").
-  logName: string;
-  list: () => Promise<T[]>;
-  upload: (file: File) => Promise<unknown>;
-  // When set, an editable gallery shows a delete button per image. Omit it when
-  // renderActions owns the per-image actions.
-  remove?: (image: T) => Promise<void>;
-  imageKey: (image: T) => string;
-  thumbnailSrc: (image: T) => string;
-  fullSrc: (image: T) => string;
-  // Read-only in the timeline; the owner's edit surface shows the actions.
+  api: ImageGalleryApi<I>;
+  // Selects the owner's i18n namespace (activityImages / noteImages / contactImages).
+  i18nPrefix: ImageGalleryPrefix;
+  // Read-only in the timeline; an owner's edit surface shows add/remove.
   editable?: boolean;
   // Called after a successful add/delete so a parent can refetch a summary.
   onChanged?: () => void;
-  // Called after a successful delete, in addition to onChanged.
-  onRemoved?: () => void;
-  itemTestId?: (image: T) => string;
-  // Composition slots for owner-specific extras.
-  renderOverlay?: (image: T) => ReactNode;
-  renderActions?: (image: T, ctx: ImageGalleryContext<T>) => ReactNode;
-  renderFooter?: (image: T) => ReactNode;
-  renderExtras?: (ctx: ImageGalleryContext<T>) => ReactNode;
 }
 
-// ImageGallery is the one gallery for every image owner (activity, note,
-// contact). A failed load is always shown, including on a read-only gallery;
-// only an empty, error-free read-only gallery renders nothing.
-export default function ImageGallery<T>({
+// ImageGallery renders an owner's images from the dedicated owner-nested
+// endpoint. The server already returns ready-made relative URLs, so the client
+// never guesses a file path (ADR 0040 decision 8). One component serves
+// activities, notes and contacts (issue #2312); a load error is always shown,
+// including read-only.
+export default function ImageGallery<I extends GalleryImage>({
   ownerId,
-  labels,
-  logName,
-  list,
-  upload,
-  remove,
-  imageKey,
-  thumbnailSrc,
-  fullSrc,
+  api,
+  i18nPrefix,
   editable = false,
   onChanged,
-  onRemoved,
-  itemTestId,
-  renderOverlay,
-  renderActions,
-  renderFooter,
-  renderExtras,
-}: ImageGalleryProps<T>) {
-  const [items, setItemsState] = useState<T[]>([]);
+}: ImageGalleryProps<I>) {
+  const { t } = useTranslation();
+  const labels = LABELS[i18nPrefix];
+  const [images, setImages] = useState<I[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
-  const [viewing, setViewing] = useState<T | null>(null);
+  const [viewing, setViewing] = useState<I | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  // Callers pass fresh closures every render; reload on owner/locale change only.
-  const listRef = useRef(list);
-  listRef.current = list;
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setItemsState(await listRef.current());
+      const response = await api.list(ownerId);
+      setImages(response.images || []);
       setError('');
     } catch (err) {
-      console.error(`Failed to load ${logName} images:`, err);
-      setError(labels.loadFailed);
+      console.error(`Failed to load ${labels.kind} images:`, err);
+      setError(t(labels.loadFailed));
     } finally {
       setLoading(false);
     }
-  }, [logName, labels.loadFailed]);
+  }, [api, ownerId, labels, t]);
 
   useEffect(() => {
     void load();
-  }, [load, ownerId]);
-
-  const run = async (action: () => Promise<void>, failure: string) => {
-    setBusy(true);
-    setError('');
-    setNotice('');
-    try {
-      await action();
-    } catch (err) {
-      console.error(failure, err);
-    } finally {
-      setBusy(false);
-    }
-  };
+  }, [load]);
 
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     setBusy(true);
     setError('');
-    setNotice('');
     try {
       for (const file of Array.from(files)) {
-        await upload(file);
+        await api.upload(ownerId, file);
       }
       await load();
       onChanged?.();
     } catch (err) {
-      console.error(`Failed to upload ${logName} image:`, err);
-      setError(labels.uploadFailed);
+      console.error(`Failed to upload ${labels.kind} image:`, err);
+      setError(t(labels.uploadFailed));
     } finally {
       setBusy(false);
       if (inputRef.current) inputRef.current.value = '';
     }
   };
 
-  const handleDelete = (image: T) =>
-    run(async () => {
-      try {
-        await remove?.(image);
-        setItemsState((prev) => prev.filter((item) => imageKey(item) !== imageKey(image)));
-        onChanged?.();
-        onRemoved?.();
-      } catch (err) {
-        setError(labels.deleteFailed);
-        throw err;
-      }
-    }, `Failed to delete ${logName} image:`);
+  const handleDelete = async (image: I) => {
+    setBusy(true);
+    try {
+      await api.remove(ownerId, image.id);
+      setImages((prev) => prev.filter((item) => item.id !== image.id));
+      onChanged?.();
+    } catch (err) {
+      console.error(`Failed to delete ${labels.kind} image:`, err);
+      setError(t(labels.deleteFailed));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 1 }}>
-        <CircularProgress size={20} aria-label={labels.loading} />
+        <CircularProgress size={20} aria-label={t(labels.loading)} />
       </Box>
     );
   }
 
-  if (!editable && items.length === 0 && !error) return null;
-
-  const ctx: ImageGalleryContext<T> = {
-    items,
-    setItems: (update) => setItemsState(update),
-    busy,
-    setError,
-    setNotice,
-    reload: load,
-    run,
-  };
+  if (!editable && images.length === 0 && !error) return null;
 
   return (
     <Box sx={{ mt: 1.5 }}>
-      {items.length > 0 && (
+      {images.length > 0 && (
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-          {items.map((image) => (
-            <Box
-              key={imageKey(image)}
-              data-testid={itemTestId?.(image)}
-              sx={{ position: 'relative', width: 88 }}
-            >
+          {images.map((image) => (
+            <Box key={image.id} sx={{ position: 'relative' }}>
               <Box
                 component="img"
-                src={thumbnailSrc(image)}
-                alt={labels.alt}
+                src={api.src(image.thumbnail_url)}
+                alt={t(labels.alt)}
                 loading="lazy"
                 onClick={() => setViewing(image)}
                 sx={{
@@ -209,39 +222,31 @@ export default function ImageGallery<T>({
                   cursor: 'zoom-in',
                   border: 1,
                   borderColor: 'divider',
-                  display: 'block',
                 }}
               />
-              {renderOverlay?.(image)}
-              {editable &&
-                (renderActions ? (
-                  renderActions(image, ctx)
-                ) : remove ? (
-                  <IconButton
-                    size="small"
-                    color="error"
-                    aria-label={labels.delete}
-                    disabled={busy}
-                    onClick={() => void handleDelete(image)}
-                    sx={{ position: 'absolute', top: -8, right: -8, bgcolor: 'background.paper' }}
-                  >
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
-                ) : null)}
-              {renderFooter?.(image)}
+              {editable && (
+                <IconButton
+                  size="small"
+                  color="error"
+                  aria-label={t(labels.delete)}
+                  disabled={busy}
+                  onClick={() => void handleDelete(image)}
+                  sx={{ position: 'absolute', top: -8, right: -8, bgcolor: 'background.paper' }}
+                >
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              )}
             </Box>
           ))}
         </Box>
       )}
 
-      {renderExtras?.(ctx)}
-
       {editable && (
-        <Box sx={{ mt: items.length > 0 ? 1 : 0 }}>
+        <Box sx={{ mt: images.length > 0 ? 1 : 0 }}>
           <input
             ref={inputRef}
             type="file"
-            aria-label={labels.add}
+            aria-label={t(labels.add)}
             accept="image/jpeg,image/png,image/gif"
             multiple
             hidden
@@ -253,24 +258,14 @@ export default function ImageGallery<T>({
             disabled={busy}
             onClick={() => inputRef.current?.click()}
           >
-            {busy ? labels.uploading : labels.add}
+            {busy ? t(labels.uploading) : t(labels.add)}
           </Button>
         </Box>
       )}
 
       {error && (
-        <Typography variant="caption" color="error" role="alert" sx={{ display: 'block', mt: 0.5 }}>
+        <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
           {error}
-        </Typography>
-      )}
-      {notice && (
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          role="status"
-          sx={{ display: 'block', mt: 0.5 }}
-        >
-          {notice}
         </Typography>
       )}
 
@@ -279,8 +274,8 @@ export default function ImageGallery<T>({
           {viewing && (
             <Box
               component="img"
-              src={fullSrc(viewing)}
-              alt={labels.alt}
+              src={api.src(viewing.file_url)}
+              alt={t(labels.alt)}
               sx={{ maxWidth: '90vw', maxHeight: '90vh', display: 'block' }}
             />
           )}

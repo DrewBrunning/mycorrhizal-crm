@@ -200,6 +200,9 @@ func (f cascadeFixture) seed(t *testing.T) {
 	act := models.Activity{UserID: f.userID, Title: "a", Date: time.Now()}
 	require.NoError(t, db.Create(&act).Error)
 	require.NoError(t, db.Exec("INSERT INTO activity_contacts (activity_id, contact_id) VALUES (?, ?)", act.ID, f.contact.ID).Error)
+	// The activity (and so its gallery) is shared with other attendees and is
+	// NOT part of the contact's cascade: only the join row goes (issue #2314).
+	require.NoError(t, db.Create(&models.ActivityImage{ActivityID: act.ID, ImageFields: seedImageFields(f.userID, "activity-img", "activity.jpg", "activity_t.jpg")}).Error)
 	require.NoError(t, db.Create(&models.RelationshipEdge{UserID: f.userID, SourceID: uid, TargetID: f.other.VCardUID, Type: "related_to"}).Error)
 	require.NoError(t, db.Create(&models.Gift{UserID: f.userID, EntityID: uid, Description: "g"}).Error)
 	require.NoError(t, db.Create(&models.DismissedDuplicatePair{UserID: f.userID, UIDLow: uid, UIDHigh: f.other.VCardUID}).Error)
