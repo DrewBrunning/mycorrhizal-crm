@@ -106,10 +106,19 @@ var purgeContactUIDCleanups = []contactUIDCleanup{
 // Both subqueries correlate on <table>.user_id, so another user's same-UID
 // contact can neither trigger nor block the delete.
 func (c contactUIDCleanup) colPredicate(col string) string {
+	return purgedContactUIDPredicate(c.Table, col)
+}
+
+// purgedContactUIDPredicate is the one owner-scoped "this row's <table>.<col>
+// names a contact the purge is entitled to remove" predicate, shared by the row
+// cleanups and the file collection (issue #2309) so the two cannot drift: the
+// files of a UID must be removed exactly when its rows are. It carries two
+// "?" placeholders, both the retention cutoff.
+func purgedContactUIDPredicate(table, col string) string {
 	return fmt.Sprintf(
 		"(EXISTS (SELECT 1 FROM contacts d WHERE d.user_id = %[1]s.user_id AND d.vcard_uid = %[1]s.%[2]s AND d.deleted_at IS NOT NULL AND d.deleted_at < ?)"+
 			" AND NOT EXISTS (SELECT 1 FROM contacts l WHERE l.user_id = %[1]s.user_id AND l.vcard_uid = %[1]s.%[2]s AND (l.deleted_at IS NULL OR l.deleted_at >= ?)))",
-		c.Table, col)
+		table, col)
 }
 
 func (c contactUIDCleanup) query() string {
@@ -319,7 +328,7 @@ func collectPurgeFiles(db *gorm.DB, cutoff time.Time) PurgedFiles {
 		files.Photos = appendPhotoFiles(files.Photos, r.Photo, r.PhotoThumbnail)
 	}
 	if err := db.Unscoped().Model(&models.Attachment{}).
-		Where("contact_vcard_uid IN (SELECT vcard_uid FROM contacts WHERE deleted_at IS NOT NULL AND deleted_at < ?)", cutoff).
+		Where(purgedContactUIDPredicate("attachments", "contact_vcard_uid"), cutoff, cutoff).
 		Pluck("stored_name", &files.Attachments).Error; err != nil {
 		logger.Warn().Err(err).Msg("purge: failed to list contact attachments")
 	}
@@ -341,7 +350,8 @@ func collectPurgeFiles(db *gorm.DB, cutoff time.Time) PurgedFiles {
 		files.Images = appendImageFiles(files.Images, r.UserID, r.StoredName, r.ThumbName)
 	}
 
-	// Contact gallery images: purge with the contact, or individually past retention.
+	// Contact gallery images: purge with the contact (owner-scoped, see
+	// purgedContactUIDPredicate), or individually past retention.
 	var contactImageRows []struct {
 		UserID     uint
 		StoredName string
@@ -349,7 +359,7 @@ func collectPurgeFiles(db *gorm.DB, cutoff time.Time) PurgedFiles {
 	}
 	if err := db.Unscoped().Model(&models.ContactImage{}).
 		Select("user_id", "stored_name", "thumb_name").
-		Where("(deleted_at IS NOT NULL AND deleted_at < ?) OR contact_vcard_uid IN (SELECT vcard_uid FROM contacts WHERE deleted_at IS NOT NULL AND deleted_at < ?)", cutoff, cutoff).
+		Where("(deleted_at IS NOT NULL AND deleted_at < ?) OR "+purgedContactUIDPredicate("contact_images", "contact_vcard_uid"), cutoff, cutoff, cutoff).
 		Scan(&contactImageRows).Error; err != nil {
 		logger.Warn().Err(err).Msg("purge: failed to list contact images")
 	}

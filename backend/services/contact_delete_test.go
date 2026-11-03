@@ -193,7 +193,10 @@ func (f cascadeFixture) seed(t *testing.T) {
 	rem := models.Reminder{UserID: f.userID, ContactID: &f.contact.ID, Message: "m", RemindAt: time.Now().Add(time.Hour), Recurrence: "once"}
 	require.NoError(t, db.Create(&rem).Error)
 	require.NoError(t, db.Create(&models.NotificationDelivery{ReminderID: rem.ID, Channel: "email", Status: "pending"}).Error)
-	require.NoError(t, db.Create(&models.Note{UserID: f.userID, ContactID: &f.contact.ID, Content: "n", Date: time.Now()}).Error)
+	note := models.Note{UserID: f.userID, ContactID: &f.contact.ID, Content: "n", Date: time.Now()}
+	require.NoError(t, db.Create(&note).Error)
+	require.NoError(t, db.Create(&models.NoteImage{NoteID: note.ID, ImageFields: seedImageFields(f.userID, "note-img", "note.jpg", "note_t.jpg")}).Error)
+	require.NoError(t, db.Create(&models.ContactImage{ContactVCardUID: uid, ImageFields: seedImageFields(f.userID, "contact-img", "contact.jpg", "contact_t.jpg")}).Error)
 	act := models.Activity{UserID: f.userID, Title: "a", Date: time.Now()}
 	require.NoError(t, db.Create(&act).Error)
 	require.NoError(t, db.Exec("INSERT INTO activity_contacts (activity_id, contact_id) VALUES (?, ?)", act.ID, f.contact.ID).Error)
@@ -205,6 +208,11 @@ func (f cascadeFixture) seed(t *testing.T) {
 	require.NoError(t, db.Model(&models.User{}).Where("id = ?", f.userID).Update("self_contact_vcard_uid", uid).Error)
 	require.NoError(t, db.Create(&models.ImportSourceLink{UserID: f.userID, System: "meerkat", ExternalID: "contact/1", EntityKind: models.ImportSourceLinkKindContact, EntityUID: uid}).Error)
 	require.NoError(t, db.Create(&models.ImportSourceLink{UserID: f.userID, System: "meerkat", ExternalID: "contact/2", EntityKind: models.ImportSourceLinkKindContact, EntityUID: f.other.VCardUID}).Error)
+}
+
+// seedImageFields builds the common gallery-image columns for a fixture row.
+func seedImageFields(userID uint, id, stored, thumb string) models.ImageFields {
+	return models.ImageFields{UserID: userID, UUID: id, StoredName: stored, ThumbName: thumb, MIMEType: "image/jpeg", ThumbMIMEType: "image/jpeg", Sensitivity: "normal"}
 }
 
 func count(t *testing.T, db *gorm.DB, unscoped bool, model any, where string, args ...any) int64 {
