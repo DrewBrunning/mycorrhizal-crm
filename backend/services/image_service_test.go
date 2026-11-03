@@ -545,3 +545,35 @@ func TestImageService_ConcurrentUploadsRespectUserQuota(t *testing.T) {
 	assert.Equal(t, int64(1), count)
 	assert.Equal(t, 2, countFiles(t, dir))
 }
+
+// The three owner constructors share newImageService (issue #2312): config
+// zero values fall back to the ADR 0040 defaults and each stamps its own kind.
+func TestImageServiceConstructors_DefaultsAndKinds(t *testing.T) {
+	db := dbtest.New(t)
+	store := imaging.Store{Dir: t.TempDir()}
+
+	activity := ActivityImageService(db, store, 3, 0, 0, UserQuota{})
+	note := NoteImageService(db, store, 4, 0, 0, UserQuota{})
+	contact := ContactImageService(db, store, 5, 123, 456, UserQuota{})
+
+	assert.Equal(t, OwnerKindActivity, activity.Kind)
+	assert.Equal(t, OwnerKindNote, note.Kind)
+	assert.Equal(t, OwnerKindContact, contact.Kind)
+	assert.Equal(t, []int{3, 4, 5}, []int{activity.Limit, note.Limit, contact.Limit})
+	assert.Equal(t, imaging.DefaultLimits.MaxPixels, activity.Limits.MaxPixels)
+	assert.Equal(t, int64(20<<20), note.MaxBytes)
+	assert.Equal(t, 123, contact.Limits.MaxPixels)
+	assert.Equal(t, int64(456), contact.MaxBytes)
+}
+
+type failingReader struct{}
+
+func (failingReader) Read([]byte) (int, error) { return 0, errors.New("read failed") }
+
+func TestImageService_UploadReadErrorIsCorrupt(t *testing.T) {
+	svc, activity, userID, _ := imageServiceEnv(t)
+	_, err := svc.Upload(context.Background(), userID, OwnerRef{ID: activity.ID, UID: activity.UUID}, failingReader{})
+	var appErr *apperrors.AppError
+	require.ErrorAs(t, err, &appErr)
+	assert.Equal(t, string(apperrors.ReasonImageCorrupt), appErr.ReasonCode)
+}

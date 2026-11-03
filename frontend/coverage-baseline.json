@@ -41,8 +41,8 @@
     "src/ContactDetailPage.tsx": {
       "lines": 86.6,
       "linesTotal": 403,
-      "branches": 75.52,
-      "branchesTotal": 286
+      "branches": 75.34,
+      "branchesTotal": 288
     },
     "src/ContactSharesPage.tsx": {
       "lines": 95.65,
@@ -252,6 +252,12 @@
       "lines": 100,
       "linesTotal": 11,
       "branches": 100,
+      "branchesTotal": 6
+    },
+    "src/api/contactImages.ts": {
+      "lines": 33.33,
+      "linesTotal": 12,
+      "branches": 16.66,
       "branchesTotal": 6
     },
     "src/api/contactMerge.ts": {
@@ -609,9 +615,9 @@
       "branchesTotal": 4
     },
     "src/auth.ts": {
-      "lines": 88.63,
+      "lines": 98.86,
       "linesTotal": 88,
-      "branches": 92.42,
+      "branches": 98.48,
       "branchesTotal": 66
     },
     "src/components/AcceptContactShareDialog.tsx": {
@@ -619,12 +625,6 @@
       "linesTotal": 35,
       "branches": 85.71,
       "branchesTotal": 28
-    },
-    "src/components/ActivityImageGallery.tsx": {
-      "lines": 100,
-      "linesTotal": 50,
-      "branches": 90.32,
-      "branchesTotal": 31
     },
     "src/components/AddActivityDialog.tsx": {
       "lines": 99.38,
@@ -1064,6 +1064,12 @@
       "branches": 84.61,
       "branchesTotal": 26
     },
+    "src/components/ImageGallery.tsx": {
+      "lines": 100,
+      "linesTotal": 64,
+      "branches": 93.75,
+      "branchesTotal": 32
+    },
     "src/components/ImmichPersonSearchDialog.tsx": {
       "lines": 93.54,
       "linesTotal": 31,
@@ -1237,12 +1243,6 @@
       "linesTotal": 3,
       "branches": 100,
       "branchesTotal": 0
-    },
-    "src/components/NoteImageGallery.tsx": {
-      "lines": 64,
-      "linesTotal": 50,
-      "branches": 74.19,
-      "branchesTotal": 31
     },
     "src/components/NotificationHealthPanel.tsx": {
       "lines": 100,

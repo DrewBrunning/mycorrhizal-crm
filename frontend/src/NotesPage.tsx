@@ -30,10 +30,10 @@ import { createUnassignedNote, deleteNote, type Note, updateNote } from './api/n
 import AddNoteDialog from './components/AddNoteDialog';
 import DateField from './components/DateField';
 import EditTimelineItemDialog from './components/EditTimelineItemDialog';
+import ImageGallery, { noteImageGalleryApi } from './components/ImageGallery';
 import LoadError from './components/LoadError';
 import { ListSkeleton } from './components/LoadingSkeletons';
 import MarkdownText from './components/MarkdownText';
-import NoteImageGallery from './components/NoteImageGallery';
 import PageHeader from './components/PageHeader';
 import { useAnnouncer } from './context/AnnouncerContext';
 import { useDateFormat } from './DateFormatProvider';
@@ -375,8 +375,10 @@ const NotesPage: React.FC = () => {
                     >
                       <Box sx={{ flex: 1 }}>
                         <MarkdownText text={note.content} />
-                        <NoteImageGallery
-                          noteId={note.ID}
+                        <ImageGallery
+                          ownerId={note.ID}
+                          api={noteImageGalleryApi}
+                          i18nPrefix="noteImages"
                           editable
                           onChanged={() => void refetch()}
                         />
