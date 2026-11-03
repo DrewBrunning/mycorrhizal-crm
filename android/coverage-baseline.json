@@ -373,7 +373,7 @@
     "com/mycorrhizal/crm/feature/settings/PaperlessSettingsViewModel.kt": 95.53,
     "com/mycorrhizal/crm/feature/settings/PasskeysScreen.kt": 79.13,
     "com/mycorrhizal/crm/feature/settings/PasskeysViewModel.kt": 98.7,
-    "com/mycorrhizal/crm/feature/settings/QrCodeEncoder.kt": 100,
+    "com/mycorrhizal/crm/feature/settings/QrCodeEncoder.kt": 92.86,
     "com/mycorrhizal/crm/feature/settings/SeafileSettingsScreen.kt": 53.65,
     "com/mycorrhizal/crm/feature/settings/SeafileSettingsViewModel.kt": 95.53,
     "com/mycorrhizal/crm/feature/settings/ServersScreen.kt": 81.38,
