@@ -475,6 +475,15 @@ func TestCollectPurgeFiles_NoteImageQueryFailureYieldsNoFiles(t *testing.T) {
 	})
 }
 
+func TestCollectPurgeFiles_ContactImageQueryFailureYieldsNoFiles(t *testing.T) {
+	db, _ := newPurgeDB(t)
+	dbtest.HideTable(t, db, "contact_images")
+	assert.NotPanics(t, func() {
+		files := collectPurgeFiles(db, Now().AddDate(0, 0, -30))
+		assert.Empty(t, files.Images)
+	})
+}
+
 func TestPurgeSoftDeletedRows_RemovesContactImageRowsAndFiles(t *testing.T) {
 	db, userID := newPurgeDB(t)
 	dir := t.TempDir()
